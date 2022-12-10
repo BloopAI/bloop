@@ -1,0 +1,110 @@
+# Server
+
+A cargo workspace which contains `bleep`, the Rust package which powers bloop's search and code navigation.
+
+## Setup
+
+### Install
+
+Dependencies:
+ - [`Rust`](https://rustup.rs/)
+ - `openssl`
+ - `Universal Ctags`
+
+Follow [these instructions](https://github.com/universal-ctags/ctags) and verify the installation with `ctags --version`. You should see something like this:
+
+```
+Universal Ctags 5.9.0(6f10588d), Copyright (C) 2015-2022 Universal Ctags Team
+Universal Ctags is derived from Exuberant Ctags.
+Exuberant Ctags 5.8, Copyright (C) 1996-2009 Darren Hiebert
+  Compiled: Aug 19 2022, 11:23:10
+  URL: https://ctags.io/
+  Optional compiled features: +wildcards, +regex, +gnulib_fnmatch, +gnulib_regex, +iconv, +option-directory, +xpath, +json, +interactive, +yaml, +case-insensitive-filenames, +packcc, +optscript
+```
+Make sure that `+json` is in the list of compiled features.
+
+### Build
+
+```bash
+cargo build -p bleep
+```
+
+## Usage
+
+To index and search all the repos in a directory (say, `/path/to/source`) run (from this repo's root dir):
+
+```bash
+$ cargo run -p bleep -- \
+  --source-dir /path/to/dir \
+  --webserver-port 7878
+```
+
+bloop will recursively scan `/path/to/source` for repositories and start indexing them. It will also start a webserver. The location of the search index can be specified with the `--index-dir` parameter. By default it is stored in the system cache.
+
+bloop periodically checks for changes to local and remote repos and automatically reindexes if a change is detected. Indexing and polling can be disabled by passing the `--disable-background` and `disable-fsevents` flags.
+
+The log level can be customized by setting the `BLOOP_LOG` env var.
+
+### Sync GitHub
+
+To sync GitHub repos, first create a [GitHub Client ID](https://docs.github.com/en/developers/apps/building-oauth-apps/creating-an-oauth-app). Then call bleep with the `--github-client-id <token>` parameter.
+
+### Arguments
+
+```bash
+Options:
+  -c, --config-file <CONFIG_FILE>
+          If a config file is given, it will override _all_ command line parameters!
+  -d, --source-dir <DIRECTORY>
+          Directory where repositories are located
+  -s, --state-file <STATE_FILE>
+          State file for all repositories
+      --credentials <CREDENTIALS>
+          Credentials store for external providers
+  -v, --version-file <VERSION_FILE>
+          Version of the current schema
+  -i, --index-dir <INDEX_DIR>
+          Directory to store indexes [default: /Users/gabriel/Library/Caches/ai.bloop.bleep]
+      --index-only
+          Quit after indexing the specified repos
+      --disable-background
+          Disable periodic reindexing, and `git pull` on remote repositories
+      --disable-fsevents
+          Disable system-native notification backends to detect new git commits immediately
+  -b, --buffer-size <BUFFER_SIZE>
+          Size of memory to use for file indexes [default: 100000000]
+  -r, --repo-buffer-size <REPO_BUFFER_SIZE>
+          Size of memory to use for repo indexes [default: 30000000]
+  -m, --max-threads <MAX_THREADS>
+          Maximum number of parallel background threads [default: 8]
+  -w, --webserver-port <WEBSERVER_PORT>
+          Bind the webserver to 0.0.0.0:<webserver_port> [default: 7878]
+      --github-client-id <GITHUB_CLIENT_ID>
+          Github Client ID for OAuth connection to private repos
+  -h, --help
+          Print help information
+  -V, --version
+          Print version information
+```
+
+### Query
+
+With the server running you can start searching your code:
+
+```
+$ curl -v "localhost:7878/q?q=anyhow%20path:webserver%20repo:bloop" | jq
+```
+
+You can check which repos are indexed and their status:
+```
+$ curl -v "localhost:7878/repos/indexed" | jq
+```
+
+## OpenAPI
+
+You can view OpenAPI documentation (and railroad diagrams for the query language) [here](https://bloop-api-docs.vercel.app/). 
+
+`bleep` uses [utoipa](https://github.com/juhaku/utoipa) to automatically generate an OpenAPI spec. To can manually access the OpenAPI spec with this endpoint:
+```
+$ curl "localhost:7878/api-doc/openapi.yaml"
+```  

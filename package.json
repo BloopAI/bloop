@@ -1,0 +1,34 @@
+{
+  "name": "@bloop/root",
+  "private": true,
+  "scripts": {
+    "start-app": "pnpm --filter @bloop/desktop run tauri-dev",
+    "start-web": "pnpm --filter @bloop/client run dev",
+    "build-app": "pnpm --filter @bloop/desktop run tauri-build",
+    "build-web": "pnpm --filter @bloop/client run build",
+    "lint": "eslint client/src apps/**/src --ext ts --ext tsx --ext js --ext jsx --ext html",
+    "client-type-check": "pnpm --filter @bloop/client run type-check"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.28.1",
+    "@typescript-eslint/parser": "^5.42.1",
+    "dotenv": "^16.0.3",
+    "eslint": "~8.22.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-config-react-app": "^7.0.1",
+    "eslint-import-resolver-typescript": "^3.4.2",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-jest": "^26.8.3",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-promise": "^6.0.0",
+    "eslint-plugin-react": "^7.30.1",
+    "eslint-plugin-storybook": "^0.6.4"
+  },
+  "resolutions": {
+    "react-virtualized": "git+https://git@github.com/remorses/react-virtualized-fixed-import.git#9.22.3"
+  },
+  "dependencies": {
+    "npm-run-all": "^4.1.5"
+  }
+}

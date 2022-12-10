@@ -1,0 +1,311 @@
+@font-face {
+  font-family: Menlo;
+  font-weight: normal;
+  font-style: normal;
+  src: url("./fonts/Menlo-Regular.ttf");
+}
+
+@font-face {
+  font-family: Inter;
+  font-weight: 100;
+  font-style: normal;
+  src: url("./fonts/Inter/Inter-Thin.ttf");
+}
+
+@font-face {
+  font-family: Inter;
+  font-weight: 200;
+  font-style: normal;
+  src: url("./fonts/Inter/Inter-ExtraLight.ttf");
+}
+
+@font-face {
+  font-family: Inter;
+  font-weight: 300;
+  font-style: normal;
+  src: url("./fonts/Inter/Inter-Light.ttf");
+}
+
+@font-face {
+  font-family: Inter;
+  font-weight: 400;
+  font-style: normal;
+  src: url("./fonts/Inter/Inter-Regular.ttf");
+}
+
+@font-face {
+  font-family: Inter;
+  font-weight: 500;
+  font-style: normal;
+  src: url("./fonts/Inter/Inter-Medium.ttf");
+}
+
+@font-face {
+  font-family: Inter;
+  font-weight: 600;
+  font-style: normal;
+  src: url("./fonts/Inter/Inter-SemiBold.ttf");
+}
+
+@font-face {
+  font-family: Inter;
+  font-weight: 700;
+  font-style: normal;
+  src: url("./fonts/Inter/Inter-Bold.ttf");
+}
+
+@font-face {
+  font-family: Inter;
+  font-weight: 800;
+  font-style: normal;
+  src: url("./fonts/Inter/Inter-ExtraBold.ttf");
+}
+
+@font-face {
+  font-family: Inter;
+  font-weight: 900;
+  font-style: normal;
+  src: url("./fonts/Inter/Inter-Black.ttf");
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  background-color: #131315;
+  color: #F1F1F2;
+  overflow: hidden;
+}
+
+input[type="search" i]::-webkit-search-cancel-button {
+  display: none;
+}
+
+input::placeholder {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+h1, .h1 {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 48px;
+  line-height: 110%;
+  letter-spacing: -0.02em;
+
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+h2, .h2 {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 38px;
+  line-height: 110%;
+  letter-spacing: -0.02em;
+
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+h3, .h3 {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 110%;
+  letter-spacing: -0.02em;
+
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+h4, .h4 {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 110%;
+  letter-spacing: -0.02em;
+
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+h5, .h5 {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 110%;
+  letter-spacing: -0.02em;
+
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+.subhead-l {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 110%;
+  letter-spacing: -0.02em;
+}
+
+.subhead-m {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 110%;
+  letter-spacing: -0.02em;
+}
+
+.subhead-s {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 110%;
+  letter-spacing: -0.02em;
+}
+
+.body-l {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 160%;
+  letter-spacing: -0.02em;
+}
+
+.body-m {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 160%;
+  letter-spacing: -0.02em;
+}
+
+.body-s {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 160%;
+  letter-spacing: -0.02em;
+}
+
+.callout {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 100%;
+  letter-spacing: -0.02em;
+}
+
+.caption {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 140%;
+  letter-spacing: -0.01em;
+}
+
+.caption-strong {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 140%;
+  letter-spacing: -0.01em;
+}
+
+.code-s {
+  font-family: Menlo, sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 150%;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.ellipsis {
+  @apply overflow-ellipsis whitespace-nowrap overflow-hidden;
+}
+
+.fade-bottom {
+  mask-image: linear-gradient(to bottom, black calc(100% - 45px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 45px), transparent 100%);
+}
+
+.backdrop-blur-0 {
+  backdrop-filter: blur(0);
+  -webkit-backdrop-filter: blur(0);
+}
+
+.backdrop-blur-2 {
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.backdrop-blur-6 {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.backdrop-blur-8 {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.dir-rtl {
+  direction: rtl;
+}
+
+/*Fix react-virtualized cutting code overflow*/
+.ReactVirtualized__Grid__innerScrollContainer {
+  overflow: auto !important;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;
+}
+
+.ReactVirtualized__Grid__innerScrollContainer::-webkit-scrollbar {
+  display: none;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* For IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}

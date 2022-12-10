@@ -1,0 +1,124 @@
+name: Server Unit Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "server/**"
+      - ".github/workflows/server**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt-clippy-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Install Tauri dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: cachix/install-nix-action@v18
+      - name: Install Universal Ctags
+        run: 'nix profile install nixpkgs#universal-ctags'
+
+      - name: Check ctags version
+        run: 'which ctags; ctags --version'
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Rust fmt
+        run: cargo fmt -p bleep -- --check
+
+      - name: Build whole project
+        run: cargo build
+
+      - uses: actions-rs/clippy-check@v1
+        with:
+          toolchain: stable
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features --manifest-path Cargo.toml      
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: cachix/install-nix-action@v18
+      - name: Install Universal Ctags
+        run: 'nix profile install nixpkgs#universal-ctags'
+
+      - name: Check ctags version
+        run: 'which ctags; ctags --version'
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Tests
+        run: cargo test -p bleep 
+
+  benchmark:
+    runs-on: [self-hosted, benchmark]
+    steps:
+      - uses: actions/checkout@v3 
+        with:
+          clean: false
+
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      # Assume that self-hosted box already has universal ctags installed
+      # Can use nix when https://github.com/cachix/install-nix-action/issues/98
+      # has been resolved
+      
+      # - uses: cachix/install-nix-action@v18
+      # - name: Install Universal Ctags
+      #   run: 'nix profile install nixpkgs#universal-ctags'
+
+      - name: Check ctags version
+        run: 'which ctags; ctags --version'
+
+      - uses: boa-dev/criterion-compare-action@v3.2.4
+        env:
+          BLOOP_LOG: bleep=debug
+        with:
+          cwd: ./server
+          benchName: "indexes"
+          branchName: ${{ github.base_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: boa-dev/criterion-compare-action@v3.2.4
+        env:
+          BLOOP_LOG: bleep=debug
+        with:
+          cwd: ./server
+          benchName: "queries"
+          branchName: ${{ github.base_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}

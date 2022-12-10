@@ -1,0 +1,55 @@
+{
+    "env": {
+        "browser": true,
+        "es2021": true,
+        "mocha": true,
+        "jest/globals": true,
+        "node": true
+    },
+    "extends": [
+        "plugin:react/recommended",
+        "plugin:import/recommended",
+        "prettier"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+        "ecmaFeatures": {
+            "jsx": true
+        },
+        "ecmaVersion": 12,
+        "sourceType": "module"
+    },
+    "plugins": [
+        "react",
+        "jest",
+        "prettier"
+    ],
+    "settings": {
+        "react": {
+            "version": "18"
+        },
+        "import/resolver": {
+            "typescript": {}
+        }
+    },
+    "rules": {
+        "space-before-function-paren": ["error", {"anonymous": "always", "named": "never", "asyncArrow": "always"}],
+        "curly": ["error", "multi-line"],
+        "no-new": "off",
+        "no-use-before-define": "off",
+        "no-useless-constructor": "off",
+        "react/prop-types": "off",
+        "camelcase": "off",
+        "prettier/prettier": ["error", {
+            "singleQuote": true,
+            "semi": true,
+            "trailingComma": "all",
+            "tabWidth": 2,
+            "bracketSameLine": false
+        }],
+        "import/order": "error",
+        "no-undef": "error",
+        "import/no-unresolved": "off",
+        "react/react-in-jsx-scope": "off"
+    }
+}

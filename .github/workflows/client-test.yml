@@ -1,0 +1,88 @@
+name: Client Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [main]
+    paths:
+      - "client/**"
+      - ".github/workflows/client**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No checks required" '
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No checks required" '
+  fmt-clippy-build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No checks required" '
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v2.2.4
+        with:
+          version: 7.14.0
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install
+      - name: Run lint
+        run: pnpm lint
+      - name: Run type-check
+        run: pnpm client-type-check
+#       - name: Publish to Chromatic
+#         uses: chromaui/action@v1
+#         with:
+#           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+#           workingDir: ./client
+#    - name: BrowserStack Actions
+#      uses: browserstack/github-actions@v1.0.1
+#      with:
+#        username: ${{ secrets.BROWSERSTACK_USERNAME }}
+#        access-key: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+#        build-name: BUILD_INFO
+#        project-name: REPO_NAME
+#    - name: 'Start BrowserStackLocal Tunnel'
+#      uses: 'browserstack/github-actions/setup-local@master'
+#      with:
+#        local-testing: 'start'
+#        local-logging-level: 'all-logs'
+#        local-identifier: 'random'
+
+#    - name: 'Building app'
+#      run: npm run build
+
+#    - name: 'Running application under test'
+#      run: npm run dev &
+#    - name: 'Running test on BrowserStack'  # Invokes the actual test script that would run on BrowserStack browsers
+#      run: npm run test:browserstack  # See sample test script above
+#    - name: 'BrowserStackLocal Stop'  # Terminating the BrowserStackLocal tunnel connection
+#      uses: browserstack/github-actions/setup-local@master
+#      with:
+#        local-testing: stop
+
+#    - name: 'Running application under test'
+#      run: npm run dev &
+#    - name: Run tests
+#      uses: percy/exec-action@v0.3.1
+#      with:
+#        custom-command: "npm run test:persy"
+#    - name: Percy Test
+#      run: npm run test:persy
+
