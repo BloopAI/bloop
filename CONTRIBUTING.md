@@ -3,7 +3,7 @@ Guide to new contributors
 
 Thanks for your interest in contributing to `bloop`!
 
-Before jumping into the best way to participate, please
+Before jumping in, please
 take a look at our [code of conduct](./CODE_OF_CONDUCT.md).
 
 ## Have a question?

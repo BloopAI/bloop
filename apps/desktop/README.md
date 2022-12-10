@@ -1,4 +1,4 @@
-# Tauri Desktop App
+# bloop App
 
 The bloop app is built using [Tauri](https://github.com/tauri-apps/tauri), a Rust framework for building cross-platform apps.
 
