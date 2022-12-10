@@ -77,8 +77,10 @@ Options:
           Size of memory to use for repo indexes [default: 30000000]
   -m, --max-threads <MAX_THREADS>
           Maximum number of parallel background threads [default: 8]
-  -w, --webserver-port <WEBSERVER_PORT>
-          Bind the webserver to 0.0.0.0:<webserver_port> [default: 7878]
+      --host <HOST>
+          Bind the webserver to `<port>` [default: 127.0.0.1]
+      --port <PORT>
+          Bind the webserver to `<host>` [default: 7878]
       --github-client-id <GITHUB_CLIENT_ID>
           Github Client ID for OAuth connection to private repos
   -h, --help
