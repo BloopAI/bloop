@@ -149,15 +149,15 @@ pub struct Configuration {
     /// Maximum number of parallel background threads
     pub max_threads: usize,
 
-    #[clap(short, long, default_value_t = default_host())]
+    #[clap(long, default_value_t = default_host())]
     #[serde(default = "default_host")]
     /// Bind the webserver to `<port>`
-    pub webserver_host: String,
+    pub host: String,
 
-    #[clap(short, long, default_value_t = default_port())]
+    #[clap(long, default_value_t = default_port())]
     #[serde(default = "default_port")]
     /// Bind the webserver to `<host>`
-    pub webserver_port: u16,
+    pub port: u16,
 
     #[clap(long)]
     #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
