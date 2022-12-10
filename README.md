@@ -22,21 +22,23 @@ bloop stands on the shoulders of the Rust ecosystem. Our search indexing is powe
 
 ## Get Started
 
-The simplest way to get started with bloop is to [download the app]() and follow the onboarding steps.
+The simplest way to get started with bloop is to download the app (download links coming soon) and follow the onboarding steps.
 
 For instructions on how to build from source or run bloop from the command line, check out these pages:
-- [Build bloop from source]()
-- [Run bloop from the command line]()
+- [Build bloop app from source](./apps/desktop/README.md)
+- [Run bloop from the command line](./server/README.md)
 
 ## Contributing
 
-We welcome contributions big and small! Here's how to find your way around the repo:
+We welcome contributions big and small! Before jumping in please read [our contributors guide](./CONTRIBUTING.md) and [our code of conduct](./CODE_OF_CONDUCT.md).
+
+Here's how to find your way around the repo:
 
 - `apps/desktop`: The Tauri app
 - `server/bleep`: The Rust backend which contains the core search and navigation logic
 - `client`: The React frontend
 
-If you find a bug or have a feature request, [open an issue]()!
+If you find a bug or have a feature request, [open an issue](https://github.com/BloopAI/bloop/issues)!
 
 ## Privacy
 
