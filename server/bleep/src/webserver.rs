@@ -29,10 +29,7 @@ pub(in crate::webserver) mod prelude {
 }
 
 pub async fn start(app: Application) -> Result<()> {
-    let bind = SocketAddr::new(
-        app.config.webserver_host.parse()?,
-        app.config.webserver_port,
-    );
+    let bind = SocketAddr::new(app.config.host.parse()?, app.config.port);
 
     let mut router = Router::new()
         // querying
