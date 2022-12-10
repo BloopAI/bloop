@@ -1,0 +1,88 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "devPath": "http://localhost:5173",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "bloop",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "fs": {
+        "all": true
+      },
+      "window": {
+        "all": true
+      },
+      "dialog": {
+        "open": true
+      },
+      "http": {
+        "all": true
+      },
+      "os": {
+        "all": true
+      },
+      "shell": {
+        "all": true
+      },
+      "path": {
+        "all": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "category": "DeveloperTool",
+      "copyright": "Bloop AI Limited",
+      "deb": {
+        "depends": []
+      },
+      "externalBin": ["bin/ctags"],
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ],
+      "identifier": "ai.bloop.app",
+      "longDescription": "Helping developers find code faster",
+      "macOS": {
+        "entitlements": null,
+        "exceptionDomain": "",
+        "frameworks": [],
+        "providerShortName": "3J228S55SF",
+        "signingIdentity": "Developer ID Application: Bloop AI Limited (3J228S55SF)"
+      },
+      "resources": [
+        "config.json"
+      ],
+      "shortDescription": "",
+      "targets": "all",
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": ""
+      }
+    },
+    "security": {
+      "csp": null
+    },
+    "updater": {
+      "active": false
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 900,
+        "resizable": true,
+        "title": "bloop",
+        "width": 1200
+      }
+    ]
+  }
+}

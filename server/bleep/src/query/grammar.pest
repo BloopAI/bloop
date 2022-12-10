@@ -1,0 +1,55 @@
+query = _{ SOI ~ intersection ~ EOI }
+
+element = ${ label | mode | literal | group }
+
+literal = _{ !(or ~ terminator) ~ (
+                 (quote ~ quoted_literal ~ quote)
+               | (single_quote ~ single_quoted_literal ~ single_quote)
+               | (triple_quote ~ triple_quoted_literal ~ triple_quote)
+               | (regex_quote ~ regex_quoted_literal ~ regex_quote)
+               | unquoted_literal
+             )
+           }
+
+quote = _{ "\"" }
+single_quote = _{ "'" }
+triple_quote = _{ "'''" }
+regex_quote = _{ "/" }
+terminator = @{ group_start | group_end | WHITESPACE }
+
+unquoted_literal = @{ (!terminator ~ ANY)+ ~ (escape ~ unquoted_literal)? }
+quoted_literal   = @{ (!(quote | "\\") ~ ANY)* ~ (escape ~ quoted_literal)? }
+single_quoted_literal = @{ (!(single_quote | "\\") ~ ANY)* ~ (escape ~ single_quoted_literal)? }
+triple_quoted_literal = @{ (!(triple_quote | "\\") ~ ANY)* ~ (escape ~ triple_quoted_literal)? }
+regex_quoted_literal  = @{ (!(regex_quote | "\\") ~ ANY)* ~ (escape ~ regex_quoted_literal)? }
+
+escape  = @{ "\\" ~ ANY }
+
+// Labels are broken out to rules so we can add arguments and options.
+label = _{ content | repo | org | symbol | path | lang }
+
+content = ${ "content:" ~ literal }
+repo = ${ "repo:" ~ literal }
+org = ${ "org:" ~ literal }
+symbol = ${ "symbol:" ~ literal }
+path = ${ "path:" ~ literal }
+lang = ${ "lang:" ~ unquoted_literal }
+
+mode = _{ case | open | global_regex }
+
+case = ${ "case:" ~ ( case_ignore | case_sensitive ) }
+case_ignore = { "ignore" }
+case_sensitive = { "sensitive" }
+open = ${ "open:" ~ boolean }
+global_regex = ${ "global_regex:" ~ boolean }
+
+// a b or c = (a and b) or c
+or = { "or" }
+boolean = { "true" | "false" }
+intersection = { element+ ~ (or ~ element+)* }
+
+group_start = _{ "(" }
+group_end = _{ ")" }
+group = !{ group_start ~ intersection ~ group_end }
+
+WHITESPACE = _{ " " }

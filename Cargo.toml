@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "server/bleep",
+    "apps/desktop/src-tauri"
+]
+
+[profile.release]
+debug = true

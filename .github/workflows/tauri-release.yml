@@ -1,0 +1,176 @@
+name: Tauri Release
+
+on: workflow_dispatch
+
+env:
+  TAURI_BIN_PATH: apps/desktop/src-tauri/bin/
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies (ubuntu only)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Rust stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Check Formatting
+        run: |
+          cargo fmt -p app -- --check
+
+      - name: Run tests
+        run: |
+          cargo test -p app --verbose
+
+  build-mac-linux-ctags:
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v3
+      - run: env
+      - name: Setup nix
+        uses: cachix/install-nix-action@v18
+      - name: Enable cachix
+        uses: cachix/cachix-action@v12
+        with:
+          name: bloopai
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+
+      - name: Build universal-ctags
+        run: |
+          # ctags_path=$(nix-build -I channel:nixos-22.05 ./nix/universal-ctags)
+          ctags_path=$(nix build --json --access-tokens ${{ secrets.GITHUB_TOKEN }} .#my-ctags | jq -r '.[0].outputs.out')
+          echo ctags_path=$ctags_path >> $GITHUB_ENV
+          mkdir ctags_bundle
+          cp $ctags_path/bin/* ctags_bundle
+
+      - name: Copy macOS dynamic dependencies
+        if: matrix.name == 'macos-latest'
+        run: |
+          copy_deps() {
+              local lib=$2/$(basename $1)
+
+              cp -n $1 $lib || true
+              chmod +w $lib
+
+              local deps="$(otool -L $lib |awk '/\/nix\/store\// { gsub(":", ""); print $1 }' | tr '\n' ' ')"
+              for dep in $(echo $deps);
+              do
+                if [ ! -f "$2/$(basename $dep)" ]
+                then
+                  copy_deps $dep $2 || true
+                fi
+              done
+
+              for dep in $(echo $deps);
+              do
+                echo install_name_tool -change $dep @executable_path/$(basename $dep) $lib
+                install_name_tool -change $dep @executable_path/$(basename $dep) $lib
+              done
+          }
+
+          copy_deps ${{ env.ctags_path }}/bin/ctags  ctags_bundle
+          ls ctags_bundle
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: "ctags_${{ matrix.name }}"
+          path: ctags_bundle
+
+  build-and-sign-tauri:
+    needs: [checks, build-mac-linux-ctags]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.name }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies (ubuntu only)
+        if: matrix.name == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: pnpm/action-setup@v2.2.4
+        with:
+          version: 7.14.0
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: "pnpm"
+
+      - name: Install app dependencies
+        run: pnpm install
+
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Rust stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Download binaries (mac/linux)
+        if: matrix.name == 'ubuntu-latest' || matrix.name == 'macos-latest'
+        uses: actions/download-artifact@v3
+        with:
+          name: "ctags_${{ matrix.name }}"
+          path: "${{ env.TAURI_BIN_PATH }}"
+
+      - name: Set permissions (mac/linux)
+        if: matrix.name == 'ubuntu-latest' || matrix.name == 'macos-latest'
+        run: |
+          resdir=${{ env.TAURI_BIN_PATH }}
+          ls -lR $resdir
+          chmod +x $resdir/*
+          host=$(rustc -Vv |grep host |cut -d\  -f2)
+          mv $resdir/ctags $resdir/ctags-$host
+
+      - name: Download binaries (windows)
+        if: matrix.name == 'windows-latest'
+        shell: bash
+        run: |
+          dirname=2022-12-05%2Fp5.9.20221204.0-5-gf9d21e7
+          filename=ctags-2022-12-05_p5.9.20221204.0-5-gf9d21e7-clang-x64.zip
+          curl -LO https://github.com/universal-ctags/ctags-win32/releases/download/$dirname/$filename
+          echo "7c7b7e2645347d092474a942f988988ee12e045d1d8e65ae7ced68ecaf672130 $filename" |sha256sum -c - 
+
+          unzip $filename || true
+          mv ctags.exe ${{ env.TAURI_BIN_PATH }}/ctags-$(rustc -Vv |grep host |cut -d\  -f2).exe
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ENABLE_CODE_SIGNING: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+        with:
+          args: -v -- -v
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.name }}-app
+          path: target/release/bundle
+          retention-days: 5
