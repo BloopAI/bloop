@@ -7,7 +7,7 @@ build = "build.rs"
 
 [features]
 default = []
-debug = ["console-subscriber"]
+debug = ["console-subscriber", "histogram"]
 
 [[bin]]
 name = "bleep"
@@ -30,8 +30,6 @@ tokio = { version = "1.21.2", features = ["macros", "process", "rt", "rt-multi-t
 rayon = "1.6.0"
 clap = { version = "4.0.26", features = ["derive"] }
 tower-http = {version = "0.3.4", features = ["cors", "catch-panic"]}
-
-# logging
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter", "registry"] }
 color-eyre = "0.6.2"
@@ -89,6 +87,7 @@ replace_with = "0.1.7"
 relative-path = "1.7.2"
 git2 = "0.15.0"
 dunce = "1.0.3"
+histogram = { version = "0.6.9", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.4.0", features = ["async_tokio"] }

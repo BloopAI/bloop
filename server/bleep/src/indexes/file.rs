@@ -20,6 +20,12 @@ use tantivy::{
 };
 use tracing::{debug, info, trace, warn};
 
+#[cfg(feature = "debug")]
+use {
+    histogram::Histogram,
+    std::{sync::RwLock, time::Instant},
+};
+
 use super::{
     reader::{ContentDocument, ContentReader},
     DocumentRead, Indexable, Indexer,
@@ -44,6 +50,8 @@ struct Workload<'a> {
 pub struct File {
     config: Arc<Configuration>,
     schema: Schema,
+    #[cfg(feature = "debug")]
+    histogram: Arc<RwLock<Histogram>>,
 
     // Path to the indexed file on disk
     pub file_disk_path: Field,
@@ -120,6 +128,15 @@ impl File {
             last_commit_unix_seconds,
             schema: builder.build(),
             config,
+
+            #[cfg(feature = "debug")]
+            histogram: Arc::new(
+                Histogram::configure()
+                    .max_memory(5 * 1024 * 1024)
+                    .build()
+                    .unwrap()
+                    .into(),
+            ),
         }
     }
 }
@@ -165,7 +182,7 @@ impl Indexable for File {
             };
 
             debug!(?file_disk_path, "queueing file");
-            if let Err(err) = worker(self.clone(), workload, writer) {
+            if let Err(err) = self.worker(workload, writer) {
                 warn!(%err, ?file_disk_path, "indexing failed; skipping");
             }
         });
@@ -330,126 +347,153 @@ impl Indexer<File> {
     }
 }
 
-fn worker(schema: File, workload: Workload<'_>, writer: &IndexWriter) -> Result<()> {
-    let Workload {
-        file_disk_path,
-        repo_ref,
-        repo_disk_path,
-        repo_name,
-        repo_info,
-        cache,
-    } = workload;
+impl File {
+    #[tracing::instrument(fields(repo=%workload.repo_ref, file_path=?workload.file_disk_path), skip_all)]
+    fn worker(&self, workload: Workload<'_>, writer: &IndexWriter) -> Result<()> {
+        let Workload {
+            file_disk_path,
+            repo_ref,
+            repo_disk_path,
+            repo_name,
+            repo_info,
+            cache,
+        } = workload;
 
-    let mut buffer = match std::fs::read_to_string(&file_disk_path) {
-        Err(err) => {
-            debug!(%err, ?file_disk_path, "read failed; skipping");
-            return Ok(());
-        }
-        Ok(buffer) => buffer,
-    };
+        #[cfg(feature = "debug")]
+        let start = Instant::now();
 
-    let relative_path = file_disk_path.strip_prefix(repo_disk_path)?;
-    trace!(?relative_path, "processing file");
-
-    let content_hash = {
-        let mut hash = blake3::Hasher::new();
-        hash.update(crate::state::SCHEMA_VERSION.as_bytes());
-        hash.update(buffer.as_bytes());
-        hash.finalize().to_hex().to_string()
-    };
-
-    trace!(?relative_path, "adding cache entry");
-
-    match cache.entry(file_disk_path.clone()) {
-        Entry::Occupied(mut val) if val.get().value == content_hash => {
-            // skip processing if contents are up-to-date in the cache
-            val.get_mut().fresh = true;
-            return Ok(());
-        }
-        Entry::Occupied(mut val) => {
-            val.insert(content_hash.into());
-        }
-        Entry::Vacant(val) => {
-            val.insert(content_hash.into());
-        }
-    }
-    trace!(?relative_path, "added cache entry");
-
-    let lang_str = repo_info
-        .langs
-        .path_map
-        .get(&file_disk_path)
-        .unwrap_or_else(|| {
-            warn!("Path not found in language map");
-            &Some("")
-        })
-        .unwrap_or("");
-
-    // calculate symbol locations
-    let symbol_locations = {
-        // build a syntax aware representation of the file
-        let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
-            .and_then(TreeSitterFile::scope_graph);
-
-        match scope_graph {
-            // we have a graph, use that
-            Ok(graph) => SymbolLocations::TreeSitter(graph),
-            // no graph, try ctags instead
+        let mut buffer = match std::fs::read_to_string(&file_disk_path) {
             Err(err) => {
-                debug!(?err, %lang_str, ?file_disk_path, "failed to build scope graph");
-                match repo_info.symbols.get(relative_path) {
-                    Some(syms) => SymbolLocations::Ctags(syms.clone()),
-                    // no ctags either
-                    _ => {
-                        debug!(%lang_str, ?file_disk_path, "failed to build tags");
-                        SymbolLocations::Empty
+                debug!(%err, ?file_disk_path, "read failed; skipping");
+                return Ok(());
+            }
+            Ok(buffer) => buffer,
+        };
+
+        let relative_path = file_disk_path.strip_prefix(repo_disk_path)?;
+        trace!("processing file");
+
+        let content_hash = {
+            let mut hash = blake3::Hasher::new();
+            hash.update(crate::state::SCHEMA_VERSION.as_bytes());
+            hash.update(buffer.as_bytes());
+            hash.finalize().to_hex().to_string()
+        };
+
+        trace!("adding cache entry");
+
+        match cache.entry(file_disk_path.clone()) {
+            Entry::Occupied(mut val) if val.get().value == content_hash => {
+                // skip processing if contents are up-to-date in the cache
+                val.get_mut().fresh = true;
+                return Ok(());
+            }
+            Entry::Occupied(mut val) => {
+                val.insert(content_hash.into());
+            }
+            Entry::Vacant(val) => {
+                val.insert(content_hash.into());
+            }
+        }
+        trace!("added cache entry");
+
+        let lang_str = repo_info
+            .langs
+            .path_map
+            .get(&file_disk_path)
+            .unwrap_or_else(|| {
+                warn!("Path not found in language map");
+                &Some("")
+            })
+            .unwrap_or("");
+
+        // calculate symbol locations
+        let symbol_locations = {
+            // build a syntax aware representation of the file
+            let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
+                .and_then(TreeSitterFile::scope_graph);
+
+            match scope_graph {
+                // we have a graph, use that
+                Ok(graph) => SymbolLocations::TreeSitter(graph),
+                // no graph, try ctags instead
+                Err(err) => {
+                    debug!(?err, %lang_str, "failed to build scope graph");
+                    match repo_info.symbols.get(relative_path) {
+                        Some(syms) => SymbolLocations::Ctags(syms.clone()),
+                        // no ctags either
+                        _ => {
+                            debug!(%lang_str, ?file_disk_path, "failed to build tags");
+                            SymbolLocations::Empty
+                        }
                     }
                 }
             }
+        };
+
+        // flatten the list of symbols into a string with just text
+        let symbols = symbol_locations
+            .list()
+            .iter()
+            .map(|sym| buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        // add an NL if this file is not NL-terminated
+        if !buffer.ends_with('\n') {
+            buffer += "\n";
         }
-    };
 
-    // flatten the list of symbols into a string with just text
-    let symbols = symbol_locations
-        .list()
-        .iter()
-        .map(|sym| buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .collect::<Vec<_>>()
-        .join("\n");
+        let line_end_indices = buffer
+            .match_indices('\n')
+            .flat_map(|(i, _)| u32::to_le_bytes(i as u32))
+            .collect::<Vec<_>>();
 
-    // add an NL if this file is not NL-terminated
-    if !buffer.ends_with('\n') {
-        buffer += "\n";
+        let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
+        let last_commit = repo_info.last_commit_unix_secs;
+
+        trace!("writing document");
+
+        let buf_size = buffer.len();
+        writer.add_document(doc!(
+            self.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
+            self.file_disk_path => file_disk_path.to_string_lossy().as_ref(),
+            self.relative_path => relative_path.to_string_lossy().as_ref(),
+            self.repo_ref => repo_ref,
+            self.repo_name => repo_name,
+            self.content => buffer,
+            self.line_end_indices => line_end_indices,
+            self.lang => lang_str.to_ascii_lowercase().as_bytes(),
+            self.avg_line_length => lines_avg,
+            self.last_commit_unix_seconds => last_commit,
+            self.symbol_locations => bincode::serialize(&symbol_locations)?,
+            self.symbols => symbols,
+        ))?;
+
+        trace!("document written");
+
+        #[cfg(feature = "debug")]
+        {
+            let elapsed = start.elapsed();
+            let time: u64 = elapsed
+                .as_millis()
+                .try_into()
+                .expect("nobody waits this long");
+            self.histogram.write().unwrap().increment(time).unwrap();
+
+            if time > self.histogram.read().unwrap().percentile(99.9).unwrap() {
+                // default console formatter is different when we're debugging. need to print more info here.
+                warn!(
+                    ?relative_path,
+                    ?elapsed,
+                    buf_size,
+                    "file took too long to process"
+                )
+            }
+        }
+
+        Ok(())
     }
-
-    let line_end_indices = buffer
-        .match_indices('\n')
-        .flat_map(|(i, _)| u32::to_le_bytes(i as u32))
-        .collect::<Vec<_>>();
-
-    let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
-    let last_commit = repo_info.last_commit_unix_secs;
-
-    trace!(?relative_path, "writing document");
-
-    writer.add_document(doc!(
-        schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-        schema.file_disk_path => file_disk_path.to_string_lossy().as_ref(),
-        schema.relative_path => relative_path.to_string_lossy().as_ref(),
-        schema.repo_ref => repo_ref,
-        schema.repo_name => repo_name,
-        schema.content => buffer,
-        schema.line_end_indices => line_end_indices,
-        schema.lang => lang_str.to_ascii_lowercase().as_bytes(),
-        schema.avg_line_length => lines_avg,
-        schema.last_commit_unix_seconds => last_commit,
-        schema.symbol_locations => bincode::serialize(&symbol_locations)?,
-        schema.symbols => symbols,
-    ))?;
-
-    trace!(?relative_path, "document written");
-
-    Ok(())
 }
