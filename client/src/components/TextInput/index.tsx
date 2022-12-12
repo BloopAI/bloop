@@ -23,7 +23,7 @@ type Props = {
   regex?: boolean;
   variant?: 'outlined' | 'filled';
   type?: HTMLInputTypeAttribute;
-  onSubmit?: () => void;
+  onSubmit?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onRegexClick?: () => void;
   validate?: () => void;
   regexEnabled?: boolean;
@@ -83,7 +83,8 @@ const TextInput = forwardRef(function TextInputWithRef(
     e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     if (e.key === 'Enter' && onSubmit) {
-      onSubmit();
+      e.preventDefault();
+      onSubmit(e);
     }
   };
 
