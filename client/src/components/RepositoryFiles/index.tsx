@@ -49,20 +49,18 @@ const RepositoryFiles = ({ files, currentPath, onClick }: Props) => {
         {files.map((file, id) => (
           <span
             key={id}
-            className="flex flex-row justify-between px-4 py-4  bg-gray-900 last:rounded-b"
+            className="flex flex-row justify-between px-4 py-4  bg-gray-900 last:rounded-b group cursor-pointer"
             onClick={() => {
               onClick(file.path, true);
             }}
           >
-            <span className="w-fit hover:text-gray-300 flex items-center gap-2">
+            <span className="w-fit group-hover:text-gray-300 flex items-center gap-2">
               {file.type === FileTreeFileType.DIR ? (
                 <FolderFilled />
               ) : (
                 <FileIcon filename={file.name} />
               )}
-              <span className="hover:underline cursor-pointer ">
-                {file.name}
-              </span>
+              <span className="group-hover:underline">{file.name}</span>
             </span>
           </span>
         ))}
