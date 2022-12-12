@@ -30,9 +30,6 @@ export const useGitHubAuth = (
         }
         setLoginUrl(data.authentication_needed.url);
         setCode(data.authentication_needed.code);
-        copyToClipboard(data.authentication_needed.code);
-        setCodeCopied(true);
-        setTimeout(() => setCodeCopied(false), 2000);
       });
     }
   }, [disabled]);
