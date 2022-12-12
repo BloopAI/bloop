@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import * as Sentry from '@sentry/react';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { SearchContext } from './context/searchContext';
 import ResultsPage from './pages/Results';
 import ViewResult from './pages/ViewResult';
@@ -15,24 +14,6 @@ import { AnalyticsContextProvider } from './context/providers/AnalyticsContextPr
 import ReportBugModal from './components/ReportBugModal';
 import { UIContextProvider } from './context/providers/UiContextProvider';
 import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
-
-const sentryCreateBrowserRouter =
-  Sentry.wrapCreateBrowserRouter(createBrowserRouter);
-
-const router = sentryCreateBrowserRouter([
-  {
-    path: '/',
-    element: <HomePage />,
-  },
-  {
-    path: '/results',
-    element: <ResultsPage />,
-  },
-  {
-    path: '/result/file',
-    element: <ViewResult />,
-  },
-]);
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -76,19 +57,25 @@ function App({ deviceContextValue }: Props) {
   );
 
   return (
-    <AnalyticsContextProvider>
-      <DeviceContextProvider deviceContextValue={deviceContextValue}>
-        <UIContextProvider>
-          <SearchContext.Provider value={searchContextValue}>
-            <RepositoriesContext.Provider value={reposContextValue}>
-              <RouterProvider router={router} />
-              <Settings />
-              <ReportBugModal />
-            </RepositoriesContext.Provider>
-          </SearchContext.Provider>
-        </UIContextProvider>
-      </DeviceContextProvider>
-    </AnalyticsContextProvider>
+    <BrowserRouter>
+      <AnalyticsContextProvider>
+        <DeviceContextProvider deviceContextValue={deviceContextValue}>
+          <UIContextProvider>
+            <SearchContext.Provider value={searchContextValue}>
+              <RepositoriesContext.Provider value={reposContextValue}>
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/results" element={<ResultsPage />} />
+                  <Route path="/result/file" element={<ViewResult />} />
+                </Routes>
+                <Settings />
+                <ReportBugModal />
+              </RepositoriesContext.Provider>
+            </SearchContext.Provider>
+          </UIContextProvider>
+        </DeviceContextProvider>
+      </AnalyticsContextProvider>
+    </BrowserRouter>
   );
 }
 

@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useCallback, useContext, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Step2 from '../../../../pages/Home/Onboarding/Step2';
 import Step4 from '../../../../pages/Home/Onboarding/Step4';
 import { MODAL_SIDEBAR_APPEAR_ANIMATION } from '../../../../consts/animations';
+import { UIContext } from '../../../../context/uiContext';
+import Step1 from '../../../../pages/Home/Onboarding/Step1';
 
 type Props = {
   addRepos: null | 'local' | 'github';
@@ -23,7 +25,6 @@ const backdropVisible = {
 
 const initialModalStyles = {
   top: '3rem',
-  bottom: '3.5rem',
   right: '50%',
   transform: 'translate(50%, 1rem)',
   opacity: 0,
@@ -31,13 +32,19 @@ const initialModalStyles = {
 
 const modalAnimation = {
   top: '3rem',
-  bottom: '3.5rem',
   right: '50%',
   transform: 'translate(50%, 0%)',
   opacity: 1,
 };
 
 const AddRepos = ({ addRepos, onClose }: Props) => {
+  const { onBoardingState } = useContext(UIContext);
+  const [isFolderChosen, setFolderChosen] = useState(
+    !!onBoardingState.indexFolder,
+  );
+  const onFolderChosen = useCallback(() => {
+    setFolderChosen(true);
+  }, []);
   return (
     <>
       <AnimatePresence>
@@ -61,9 +68,13 @@ const AddRepos = ({ addRepos, onClose }: Props) => {
             exit={initialModalStyles}
             transition={MODAL_SIDEBAR_APPEAR_ANIMATION}
           >
-            <div className="p-6 flex flex-col gap-8 w-99 relative h-full flex-1">
+            <div className="p-6 flex flex-col gap-8 w-99 relative max-h-[calc(100vh-23rem)] flex-1">
               {addRepos === 'local' ? (
-                <Step2 handleNext={onClose} />
+                isFolderChosen ? (
+                  <Step2 handleNext={onClose} />
+                ) : (
+                  <Step1 handleNext={onFolderChosen} />
+                )
               ) : (
                 <Step4 handleNext={onClose} />
               )}

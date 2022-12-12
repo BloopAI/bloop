@@ -11,8 +11,6 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
     {},
     'onBoardingState',
   );
-  const [backButtonEnabled, setBackButtonEnabled] = useState(false);
-  const [backButtonHandler, setBackButtonHandler] = useState(() => () => {});
   const uiContextValue = useMemo(
     () => ({
       isSettingsOpen,
@@ -23,10 +21,6 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       setSettingsSection,
       onBoardingState,
       setOnBoardingState,
-      backButtonEnabled,
-      setBackButtonEnabled,
-      backButtonHandler,
-      setBackButtonHandler,
       isBugReportModalOpen,
       setBugReportModalOpen,
     }),
@@ -35,8 +29,6 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       symbolsCollapsed,
       settingsSection,
       onBoardingState,
-      backButtonEnabled,
-      backButtonHandler,
       isBugReportModalOpen,
     ],
   );

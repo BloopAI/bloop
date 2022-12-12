@@ -1,15 +1,27 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Remarkable } from 'remarkable';
 import Accordion from '../../components/Accordion';
 import FileIcon from '../../components/FileIcon';
 import { Repository } from '../../types';
 import RepositoryFiles from '../../components/RepositoryFiles';
-import { UIContext } from '../../context/uiContext';
 import { useSearch } from '../../hooks/useSearch';
 import { SearchResponse } from '../../types/api';
-import Code from '../../components/CodeBlock/Code';
 import { sortFiles } from '../../utils/file';
 import { isWindowsPath } from '../../utils';
+import { highlightCode } from '../../utils/prism';
+
+const md = new Remarkable({
+  html: true,
+  highlight(str: string, lang: string): string {
+    try {
+      return highlightCode(str, lang);
+    } catch (err) {
+      console.log(err);
+      return '';
+    }
+  },
+});
 
 type Props = {
   repository: Repository;
@@ -19,21 +31,12 @@ type Props = {
 
 const RepositoryOverview = ({ syncState, repository, sidebarOpen }: Props) => {
   const [sortedFiles, setSortedFiles] = useState(repository.files);
-  const { setBackButtonHandler, setBackButtonEnabled } = useContext(UIContext);
 
   const [readme, setReadme] = useState<{
     contents: string;
     path: string;
   } | null>(null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    setBackButtonEnabled(true);
-    setBackButtonHandler(() => () => {
-      navigate(-1);
-    });
-    return () => setBackButtonEnabled(false);
-  }, []);
 
   const { data: readmeData, searchQuery } = useSearch<SearchResponse>();
   useEffect(() => {
@@ -52,7 +55,7 @@ const RepositoryOverview = ({ syncState, repository, sidebarOpen }: Props) => {
   useEffect(() => {
     if (readmeData?.data[0].kind === 'file') {
       setReadme({
-        contents: readmeData.data[0].data.contents,
+        contents: md.render(readmeData.data[0].data.contents),
         path: readmeData.data[0].data.relative_path,
       });
     }
@@ -90,12 +93,8 @@ const RepositoryOverview = ({ syncState, repository, sidebarOpen }: Props) => {
             title={'Readme'}
             icon={<FileIcon filename={readme.path} />}
           >
-            <div className="py-4 text-xs overflow-x-auto">
-              <Code
-                code={readme.contents}
-                language={'markdown'}
-                showLines={false}
-              />
+            <div className="py-4 text-xs overflow-x-auto px-4 readme">
+              <div dangerouslySetInnerHTML={{ __html: readme.contents }} />
             </div>
           </Accordion>
         </div>

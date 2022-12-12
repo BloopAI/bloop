@@ -28,6 +28,7 @@ import 'prismjs/components/prism-csharp.min';
 import 'prismjs/components/prism-erlang.min';
 import 'prismjs/components/prism-c.min';
 import 'prismjs/components/prism-swift.min';
+import 'prismjs/components/prism-markup-templating.min';
 import 'prismjs/components/prism-php.min';
 import 'prismjs/components/prism-cpp.min';
 import 'prismjs/components/prism-scss.min';
@@ -239,6 +240,17 @@ export const tokenizeCode = (code: string, lang: string) => {
     Prism.languages[lang] || Prism.languages.plaintext,
   );
   return normalizeTokens(tokens, lineEndings!);
+};
+
+export const highlightCode = (code: string, lang: string) => {
+  if (!code) {
+    return code;
+  }
+  return Prism.highlight(
+    code,
+    Prism.languages[lang] || Prism.languages.plaintext,
+    lang,
+  );
 };
 
 export default normalizeTokens;

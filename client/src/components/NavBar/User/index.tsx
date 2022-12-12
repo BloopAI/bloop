@@ -1,13 +1,6 @@
-import { useContext } from 'react';
-import {
-  ArrowLeft,
-  Bug,
-  ChevronDownFilled,
-  Cog,
-  Collections,
-  DoorRight,
-  Person,
-} from '../../../icons';
+import { useCallback, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Bug, ChevronDownFilled, Cog, Person } from '../../../icons';
 import DropdownWithIcon from '../../Dropdown/WithIcon';
 import ShareButton, { ShareFile } from '../../ShareButton';
 import { MenuListItemType } from '../../ContextMenu';
@@ -21,24 +14,22 @@ type Props = {
 };
 
 const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
-  const {
-    setSettingsOpen,
-    backButtonHandler,
-    backButtonEnabled,
-    setBugReportModalOpen,
-  } = useContext(UIContext);
+  const { setSettingsOpen, setBugReportModalOpen } = useContext(UIContext);
+  const navigate = useNavigate();
+
+  const backButtonHandler = useCallback(() => {
+    navigate(-1);
+  }, []);
   return (
     <div className="flex flex-row flex-1">
-      {backButtonEnabled && (
-        <Button
-          variant={'tertiary'}
-          onlyIcon
-          title={'Back'}
-          onClick={backButtonHandler}
-        >
-          <ArrowLeft />
-        </Button>
-      )}
+      <Button
+        variant={'tertiary'}
+        onlyIcon
+        title={'Back'}
+        onClick={backButtonHandler}
+      >
+        <ArrowLeft />
+      </Button>
       <div className="flex items-center justify-between	w-full">
         <span />
         {/*{isSkeleton ? (*/}

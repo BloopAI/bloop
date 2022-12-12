@@ -1,7 +1,5 @@
 import React, { useContext, useEffect } from 'react';
-import Filters from '../../components/Filters';
 import { SearchContext } from '../../context/searchContext';
-import FileIcon from '../../components/FileIcon';
 import { Repository } from '../../types';
 import RepositoryOverview from './RepositoryOverview';
 
@@ -83,9 +81,9 @@ const RepositoryPage = ({ repository, sidebarOpen }: Props) => {
             </span>
           </span>
         </div>
-        <div className="flex-1 flex">
-          <Filters isOpen={true} toggleOpen={() => {}} showHeader={false} />
-        </div>
+        {/*<div className="flex-1 flex">*/}
+        {/*  <Filters isOpen={true} toggleOpen={() => {}} showHeader={false} />*/}
+        {/*</div>*/}
       </div>
       <div className="p-12 w-full overflow-y-auto">
         <RepositoryOverview
