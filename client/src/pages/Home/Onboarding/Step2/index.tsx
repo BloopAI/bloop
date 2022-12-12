@@ -26,7 +26,7 @@ const tabs = [{ title: 'Sync all repos' }, { title: 'Sync selected repos' }];
 
 const STEP_KEY = 'STEP_2';
 const Step2 = ({ handleNext, handleBack }: Props) => {
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(1);
   const [userRepos, setUserRepos] = useState<RepoType[]>([]);
   const [repos, setRepos] = useState<RepoUi[]>([]);
   const { onBoardingState, setOnBoardingState } = useContext(UIContext);
@@ -85,7 +85,7 @@ const Step2 = ({ handleNext, handleBack }: Props) => {
               let selected: boolean =
                 selectedRepos && selectedRepos.length
                   ? selectedRepos.includes(r.ref)
-                  : true;
+                  : false;
               return {
                 ...r,
                 selected,
