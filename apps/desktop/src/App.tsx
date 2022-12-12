@@ -7,6 +7,7 @@ import { homeDir } from '@tauri-apps/api/path';
 import { open as openDialog } from '@tauri-apps/api/dialog';
 import { listen } from '@tauri-apps/api/event';
 import * as tauriOs from '@tauri-apps/api/os';
+import { getVersion } from '@tauri-apps/api/app';
 
 function App() {
   const [homeDirectory, setHomeDir] = useState('');
@@ -18,6 +19,7 @@ function App() {
     platform: '',
     version: '',
   });
+  const [release, setRelease] = useState('');
 
   useEffect(() => {
     homeDir().then(setHomeDir);
@@ -33,8 +35,10 @@ function App() {
       tauriOs.type(),
       tauriOs.platform(),
       tauriOs.version(),
-    ]).then(([arch, type, platform, version]) => {
+      getVersion(),
+    ]).then(([arch, type, platform, version, appVersion]) => {
       setOs({ arch, type, platform, version });
+      setRelease(appVersion);
     });
   }, []);
 
@@ -54,8 +58,9 @@ function App() {
       listen,
       os,
       invokeTauriCommand: invoke,
+      release,
     }),
-    [homeDirectory, indexFolder, deviceId, os],
+    [homeDirectory, indexFolder, deviceId, os, release],
   );
   return <ClientApp deviceContextValue={deviceContextValue} />;
 }

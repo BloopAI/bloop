@@ -1,11 +1,10 @@
 {
   "name": "@bloop/client",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "exports": {
     "./src/App": "./src/App.tsx",
     "./src/index.css": "./src/index.css",
-    "./src/utils/services": "./src/utils/services.ts",
     "./postcss": "./postcss.config.cjs",
     "./tailwind.config": "./tailwind.config.cjs"
   },

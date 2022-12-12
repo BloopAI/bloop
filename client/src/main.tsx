@@ -1,9 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import packageJson from '../package.json';
 import App from './App';
-import { initializeSentry } from './utils/services';
-
-initializeSentry();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
@@ -22,6 +20,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
           version: '',
         },
         invokeTauriCommand: () => {},
+        release: packageJson.version,
       }}
     />
   </React.StrictMode>,

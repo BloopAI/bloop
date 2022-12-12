@@ -7,18 +7,8 @@ import {
   useLocation,
   useNavigationType,
 } from 'react-router-dom';
-import {
-  getPlainFromStorage,
-  IS_ANALYTICS_ALLOWED_KEY,
-} from '../services/storage';
 
-export const telemetryAllowed = {
-  value: getPlainFromStorage(IS_ANALYTICS_ALLOWED_KEY) === 'true',
-};
-
-const getIsTelemetryAllowed = () => telemetryAllowed.value;
-
-export const initializeSentry = () => {
+export const initializeSentry = (release: string) => {
   Sentry.init({
     dsn: 'https://79266c6b7c1e4fbca430019e2acaf941@o4504254520426496.ingest.sentry.io/4504275760775168',
     integrations: [
@@ -33,23 +23,7 @@ export const initializeSentry = () => {
       }),
     ],
     environment: import.meta.env.MODE,
-    release: '0.0.0',
-    beforeSend: (event, hint) => {
-      if (!getIsTelemetryAllowed()) {
-        return null;
-      }
-      return event;
-    },
-    beforeSendTransaction: (event, hint) => {
-      if (!getIsTelemetryAllowed()) {
-        return null;
-      }
-      return event;
-    },
-    tracesSampleRate: !getIsTelemetryAllowed()
-      ? 0
-      : import.meta.env.MODE === 'development'
-      ? 1.0
-      : 0.1,
+    release,
+    tracesSampleRate: import.meta.env.MODE === 'development' ? 1.0 : 0.1,
   });
 };
