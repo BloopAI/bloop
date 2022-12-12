@@ -25,7 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: 'echo "No checks required" '
-  build:
+
+  build-client:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
