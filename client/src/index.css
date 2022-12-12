@@ -309,3 +309,27 @@ h5, .h5 {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+.readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p, .readme span, .readme div {
+  -webkit-user-select: initial;
+  -moz-user-select: initial;
+  user-select: initial;
+  cursor: auto;
+  margin: revert;
+}
+
+.readme ul {
+  list-style: revert;
+  margin: revert;
+  padding: revert;
+}
+
+.readme ol {
+  list-style: revert;
+  margin: revert;
+  padding: revert;
+}
+
+.readme a {
+  color: #5D75FF;
+}
