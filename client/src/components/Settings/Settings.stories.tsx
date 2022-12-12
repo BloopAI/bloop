@@ -31,10 +31,6 @@ export const Default = () => {
             },
           },
           setOnBoardingState: () => {},
-          backButtonEnabled: false,
-          setBackButtonEnabled: () => {},
-          setBackButtonHandler: () => {},
-          backButtonHandler: () => {},
           isBugReportModalOpen: false,
           setBugReportModalOpen: () => {},
         }}
@@ -75,10 +71,6 @@ export const ScanErrors = () => {
             },
           },
           setOnBoardingState: () => {},
-          backButtonEnabled: false,
-          setBackButtonEnabled: () => {},
-          setBackButtonHandler: () => {},
-          backButtonHandler: () => {},
           isBugReportModalOpen: false,
           setBugReportModalOpen: () => {},
         }}
@@ -201,10 +193,6 @@ export const EmailConfirmedReposSynced = () => {
             },
           },
           setOnBoardingState: () => {},
-          backButtonEnabled: false,
-          setBackButtonEnabled: () => {},
-          setBackButtonHandler: () => {},
-          backButtonHandler: () => {},
           isBugReportModalOpen: false,
           setBugReportModalOpen: () => {},
         }}

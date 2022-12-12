@@ -5,7 +5,6 @@ import Accordion from '../../components/Accordion';
 import FileIcon from '../../components/FileIcon';
 import { Repository } from '../../types';
 import RepositoryFiles from '../../components/RepositoryFiles';
-import { UIContext } from '../../context/uiContext';
 import { useSearch } from '../../hooks/useSearch';
 import { SearchResponse } from '../../types/api';
 import { sortFiles } from '../../utils/file';
@@ -32,21 +31,12 @@ type Props = {
 
 const RepositoryOverview = ({ syncState, repository, sidebarOpen }: Props) => {
   const [sortedFiles, setSortedFiles] = useState(repository.files);
-  const { setBackButtonHandler, setBackButtonEnabled } = useContext(UIContext);
 
   const [readme, setReadme] = useState<{
     contents: string;
     path: string;
   } | null>(null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    setBackButtonEnabled(true);
-    setBackButtonHandler(() => () => {
-      navigate(-1);
-    });
-    return () => setBackButtonEnabled(false);
-  }, []);
 
   const { data: readmeData, searchQuery } = useSearch<SearchResponse>();
   useEffect(() => {
