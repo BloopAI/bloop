@@ -13,7 +13,7 @@ import {
 
 type Props = {
   handleNext: (e?: any, skipOne?: boolean) => void;
-  handleBack: (e: any) => void;
+  handleBack?: (e: any) => void;
 };
 
 const Step1 = ({ handleNext, handleBack }: Props) => {
@@ -70,13 +70,15 @@ const Step1 = ({ handleNext, handleBack }: Props) => {
       <div className="flex flex-col overflow-auto">
         <div className={`flex flex-col gap-4`}>
           <Button onClick={handleChooseFolder}>Choose a folder</Button>
-          <Button variant="secondary" onClick={handleSkip}>
-            Skip this step
-            <ArrowRight />
-          </Button>
+          {handleBack ? (
+            <Button variant="secondary" onClick={handleSkip}>
+              Skip this step
+              <ArrowRight />
+            </Button>
+          ) : null}
         </div>
       </div>
-      <GoBackButton handleBack={handleBack} />
+      {handleBack ? <GoBackButton handleBack={handleBack} /> : null}
     </>
   );
 };
