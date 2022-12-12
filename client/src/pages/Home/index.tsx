@@ -34,13 +34,8 @@ const HomePage = ({ emptyRepos }: Props) => {
   const [shouldShowWelcome, setShouldShowWelcome] = useState(
     !getPlainFromStorage(ONBOARDING_DONE_KEY),
   );
-  const [shouldShowTelemetry, setShouldShowTelemetry] = useState(false);
   const [filter, setFilter] = useState(0);
   const { setInputValue } = useContext(SearchContext);
-
-  const closeTelemetry = useCallback(() => {
-    setShouldShowTelemetry(false);
-  }, []);
 
   useEffect(() => {
     if (import.meta.env.VITE_ONBOARDING) {
@@ -60,7 +55,6 @@ const HomePage = ({ emptyRepos }: Props) => {
     setShouldShowWelcome(false);
     onboardingFinished = true; // to avoid showing onboarding twice per session when using VITE_ONBOARDING=true
     savePlainToStorage(ONBOARDING_DONE_KEY, 'true');
-    setTimeout(() => setShouldShowTelemetry(true), 2000);
   }, []);
 
   return (
@@ -76,10 +70,6 @@ const HomePage = ({ emptyRepos }: Props) => {
           <Onboarding onFinish={closeOnboarding} />
         ) : (
           <>
-            <TelemetryPopup
-              onClose={closeTelemetry}
-              visible={shouldShowTelemetry}
-            />
             <div className="w-90 text-gray-300 border-r border-gray-800 flex-shrink-0 h-full">
               <ListNavigation
                 title=" "

@@ -21,6 +21,7 @@ export type DeviceContextType = {
     version: string;
   };
   invokeTauriCommand: (c: string, payload?: any) => void;
+  release: string;
 };
 
 export const DeviceContext = createContext<DeviceContextType>({
@@ -37,4 +38,5 @@ export const DeviceContext = createContext<DeviceContextType>({
     version: '',
   },
   invokeTauriCommand: () => {},
+  release: '0.0.0',
 });

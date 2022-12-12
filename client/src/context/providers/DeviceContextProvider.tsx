@@ -1,7 +1,8 @@
 import { PropsWithChildren, useContext, useEffect } from 'react';
+import * as Sentry from '@sentry/react';
 import { DeviceContext, DeviceContextType } from '../deviceContext';
 import { AnalyticsContext } from '../analyticsContext';
-import { telemetryAllowed } from '../../utils/services';
+import { initializeSentry } from '../../utils/services';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -17,7 +18,14 @@ export const DeviceContextProvider = ({
     deviceContextValue.invokeTauriCommand(
       isAnalyticsAllowed ? 'enable_telemetry' : 'disable_telemetry',
     );
-    telemetryAllowed.value = isAnalyticsAllowed;
+    if (isAnalyticsAllowed) {
+      initializeSentry(deviceContextValue.release);
+    } else {
+      const client = Sentry.getCurrentHub().getClient();
+      if (client) {
+        client.close();
+      }
+    }
   }, [isAnalyticsAllowed, deviceContextValue.invokeTauriCommand]);
 
   return (
