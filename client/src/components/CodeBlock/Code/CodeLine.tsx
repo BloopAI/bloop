@@ -138,7 +138,7 @@ const CodeLine = ({
           className={`text-gray-500 min-w-6 text-right select-none pr-0 leading-5 ${getBlameStyle()} ${
             lineHidden ? 'p-0' : ''
           } ${hoverEffect ? 'group-hover:text-gray-300' : ''}
-          before:content-[attr(data-line)]
+           ${lineHidden ? '' : 'before:content-[attr(data-line)]'}
           `}
         ></td>
       )}

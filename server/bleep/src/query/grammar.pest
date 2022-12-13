@@ -5,7 +5,6 @@ element = ${ label | mode | literal | group }
 literal = _{ !(or ~ terminator) ~ (
                  (quote ~ quoted_literal ~ quote)
                | (single_quote ~ single_quoted_literal ~ single_quote)
-               | (triple_quote ~ triple_quoted_literal ~ triple_quote)
                | (regex_quote ~ regex_quoted_literal ~ regex_quote)
                | unquoted_literal
              )
@@ -13,14 +12,12 @@ literal = _{ !(or ~ terminator) ~ (
 
 quote = _{ "\"" }
 single_quote = _{ "'" }
-triple_quote = _{ "'''" }
 regex_quote = _{ "/" }
 terminator = @{ group_start | group_end | WHITESPACE }
 
 unquoted_literal = @{ (!terminator ~ ANY)+ ~ (escape ~ unquoted_literal)? }
 quoted_literal   = @{ (!(quote | "\\") ~ ANY)* ~ (escape ~ quoted_literal)? }
 single_quoted_literal = @{ (!(single_quote | "\\") ~ ANY)* ~ (escape ~ single_quoted_literal)? }
-triple_quoted_literal = @{ (!(triple_quote | "\\") ~ ANY)* ~ (escape ~ triple_quoted_literal)? }
 regex_quoted_literal  = @{ (!(regex_quote | "\\") ~ ANY)* ~ (escape ~ regex_quoted_literal)? }
 
 escape  = @{ "\\" ~ ANY }

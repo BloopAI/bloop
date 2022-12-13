@@ -16,6 +16,11 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  build-client:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No checks required" '
+
   checks:
     runs-on: ubuntu-latest
     steps:
