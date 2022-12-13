@@ -14,6 +14,9 @@
 #[cfg(any(bench, test))]
 use criterion as _;
 
+#[cfg(all(feature = "debug", not(tokio_unstable)))]
+use console_subscriber as _;
+
 use crate::{
     indexes::Indexes,
     state::{Credentials, RepositoryPool, StateSource},
@@ -301,7 +304,7 @@ impl Application {
     }
 }
 
-#[cfg(feature = "debug")]
+#[cfg(all(tokio_unstable, feature = "debug"))]
 fn tracing_subscribe() -> bool {
     use tracing_subscriber::{fmt, prelude::*};
     let env_filter = fmt::layer().with_filter(EnvFilter::from_env(LOG_ENV_VAR));
@@ -312,7 +315,7 @@ fn tracing_subscribe() -> bool {
         .is_ok()
 }
 
-#[cfg(not(feature = "debug"))]
+#[cfg(not(all(tokio_unstable, feature = "debug")))]
 fn tracing_subscribe() -> bool {
     use tracing_subscriber::{fmt, prelude::*};
     let env_filter = fmt::layer().with_filter(EnvFilter::from_env(LOG_ENV_VAR));
