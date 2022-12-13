@@ -156,6 +156,12 @@ jobs:
           unzip $filename || true
           mv ctags.exe ${{ env.TAURI_BIN_PATH }}/ctags-$(rustc -Vv |grep host |cut -d\  -f2).exe
 
+      - name: Check is Segment key exists
+        env:
+          segment_key: ${{ secrets.VITE_SEGMENT_WRITE_KEY_PROD }}
+        if: ${{ env.segment_key == '' }}
+        run: exit 1
+
       - name: Set environment
         run: echo "VITE_SEGMENT_WRITE_KEY_PROD=${{ secrets.VITE_SEGMENT_WRITE_KEY_PROD }}" >> apps/desktop/.env
 
