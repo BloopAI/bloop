@@ -456,6 +456,7 @@ impl File {
 
         trace!("writing document");
 
+        #[cfg(feature = "debug")]
         let buf_size = buffer.len();
         writer.add_document(doc!(
             self.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
