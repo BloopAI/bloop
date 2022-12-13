@@ -69,8 +69,10 @@ pub struct File {
     //  local: repo
     // github: github.com/org/repo
     pub repo_name: Field,
+    pub raw_repo_name: Field,
 
     pub content: Field,
+    pub raw_content: Field,
     pub line_end_indices: Field,
 
     // a flat list of every symbol's text, for searching, e.g.: ["File", "Repo", "worker"]
@@ -96,9 +98,11 @@ impl File {
         let repo_disk_path = builder.add_text_field("repo_disk_path", STRING);
         let repo_ref = builder.add_text_field("repo_ref", STRING | STORED);
         let repo_name = builder.add_text_field("repo_name", trigram.clone());
+        let raw_repo_name = builder.add_bytes_field("raw_repo_name", FAST);
         let relative_path = builder.add_text_field("relative_path", trigram.clone());
 
         let content = builder.add_text_field("content", trigram.clone());
+        let raw_content = builder.add_bytes_field("raw_content", FAST);
         let line_end_indices =
             builder.add_bytes_field("line_end_indices", BytesOptions::default().set_stored());
 
@@ -119,7 +123,9 @@ impl File {
             relative_path,
             repo_ref,
             repo_name,
+            raw_repo_name,
             content,
+            raw_content,
             line_end_indices,
             symbols,
             symbol_locations,
@@ -464,7 +470,9 @@ impl File {
             self.relative_path => relative_path.to_string_lossy().as_ref(),
             self.repo_ref => repo_ref,
             self.repo_name => repo_name,
-            self.content => buffer,
+            self.raw_repo_name => repo_name.as_bytes(),
+            self.content => buffer.as_str(),
+            self.raw_content => buffer.as_bytes(),
             self.line_end_indices => line_end_indices,
             self.lang => lang_str.to_ascii_lowercase().as_bytes(),
             self.avg_line_length => lines_avg,

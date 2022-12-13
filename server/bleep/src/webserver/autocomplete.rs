@@ -68,7 +68,7 @@ impl ApiQuery {
                 // simply an upper bound.
                 .buffered(10)
                 .try_fold(Vec::new(), |mut a, e| async {
-                    a.extend(e.into_iter());
+                    a.extend(e.data.into_iter());
                     Ok(a)
                 })
                 .await

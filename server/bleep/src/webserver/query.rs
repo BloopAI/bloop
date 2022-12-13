@@ -6,9 +6,10 @@ use std::{
 
 use super::{json, EndpointError, ErrorKind};
 use crate::{
+    collector::{BytesFilterCollector, FrequencyCollector},
     indexes::{
         reader::{base_name, ContentReader, FileReader, OpenReader, RepoReader},
-        File, Indexable, Indexer, Indexes, Repo,
+        DocumentRead, File, Indexable, Indexer, Indexes, Repo,
     },
     query::{parser, ranking::DocumentTweaker},
     snippet::{HighlightedString, SnippedFile, Snipper},
@@ -19,10 +20,10 @@ use async_trait::async_trait;
 use axum::{
     extract::Query, http::StatusCode, response::IntoResponse as IntoAxumResponse, Extension,
 };
-use futures::{stream, StreamExt, TryStreamExt};
+use regex::bytes::RegexBuilder as ByteRegexBuilder;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
-use tantivy::collector::TopDocs;
+use tantivy::collector::{MultiCollector, TopDocs};
 use utoipa::{IntoParams, ToSchema};
 
 const fn default_page_size() -> usize {
@@ -85,112 +86,32 @@ impl ApiQuery {
         let queries =
             parser::parse(&self.q).map_err(|e| EndpointError::user(e.to_string().into()))?;
 
-        let contents = ContentReader.execute(&indexes.file, &queries, &self);
-        let repos = RepoReader.execute(&indexes.repo, &queries, &self);
-        let files = FileReader.execute(&indexes.file, &queries, &self);
-        let opens = OpenReader.execute(&indexes.file, &queries, &self);
-
-        let query_result_list = stream::iter([contents, repos, files, opens])
-            // Buffer several readers at the same time. The exact number is not important; this is
-            // simply an upper bound.
-            .buffered(10)
-            .try_fold(Vec::new(), |mut a, e| async {
-                a.extend(e.into_iter());
-                Ok(a)
-            })
-            .await
-            .map_err(|e| EndpointError {
-                kind: ErrorKind::Internal,
-                message: e.to_string().into(),
-            })?;
-
-        let stats = gather_result_stats(&query_result_list);
-
-        let count = query_result_list.len();
-
-        // calculate totals
-        let (page_count, total_count) = if self.calculate_totals {
-            let (total_content_count, total_repo_count, total_file_count) = tokio::try_join!(
-                indexes.file.count(queries.iter(), &ContentReader),
-                indexes.repo.count(queries.iter(), &RepoReader),
-                indexes.file.count(queries.iter(), &FileReader),
-            )
-            .map_err(|e| EndpointError {
-                kind: ErrorKind::Internal,
-                message: e.to_string().into(),
-            })?;
-
-            // total number of results is the sum of total results per index
-            let total_count = total_content_count + total_repo_count + total_file_count;
-
-            // total pages is the number of pages required to accommodate the greatest
-            // of the three results
-            let page_count = {
-                let max_items = total_content_count
-                    .max(total_repo_count)
-                    .max(total_file_count);
-                div_ceil(max_items, self.page_size)
-            };
-
-            (Some(page_count), Some(total_count))
-        } else {
-            (None, None)
-        };
-
-        let metadata = QueryMetadata {
-            page: self.page,
-            page_size: self.page_size,
-            page_count,
-            total_count,
-        };
-
-        let data = query_result_list;
-
-        let response = QueryResponse {
-            count,
-            data,
-            stats,
-            metadata,
-        };
-
-        Ok(response)
-    }
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct ResultStats {
-    pub repo: HashMap<String, usize>,
-    pub lang: HashMap<String, usize>,
-}
-
-fn gather_result_stats(query_results: &[QueryResult]) -> ResultStats {
-    let mut stats = ResultStats::default();
-    for result in query_results.iter() {
-        match result {
-            QueryResult::Snippets(data) => {
-                *stats.repo.entry(data.repo_name.clone()).or_insert(0) += 1;
-                if let Some(l) = &data.lang {
-                    *stats.lang.entry(l.clone()).or_insert(0) += 1;
-                }
+        for q in &queries {
+            if ContentReader.query_matches(q) {
+                return ContentReader
+                    .execute(&indexes.file, &queries, &self)
+                    .await
+                    .map_err(|e| EndpointError::internal(e.to_string().into()));
+            } else if RepoReader.query_matches(q) {
+                return RepoReader
+                    .execute(&indexes.repo, &queries, &self)
+                    .await
+                    .map_err(|e| EndpointError::internal(e.to_string().into()));
+            } else if FileReader.query_matches(q) {
+                return FileReader
+                    .execute(&indexes.file, &queries, &self)
+                    .await
+                    .map_err(|e| EndpointError::internal(e.to_string().into()));
+            } else if OpenReader.query_matches(q) {
+                return OpenReader
+                    .execute(&indexes.file, &queries, &self)
+                    .await
+                    .map_err(|e| EndpointError::internal(e.to_string().into()));
             }
-            QueryResult::FileResult(data) => {
-                *stats.repo.entry(data.repo_name.clone()).or_insert(0) += 1;
-                if let Some(l) = &data.lang {
-                    *stats.lang.entry(l.clone()).or_insert(0) += 1;
-                }
-            }
-            QueryResult::RepositoryResult(data) => {
-                *stats.repo.entry(data.name.text.clone()).or_insert(0) += 1;
-            }
-
-            // Open queries do not contribute to document statistics.
-            QueryResult::File(..)
-            | QueryResult::Directory(..)
-            | QueryResult::Flag(..)
-            | QueryResult::Lang(..) => {}
         }
+
+        return Err(EndpointError::user("mangled query".into()));
     }
-    stats
 }
 
 #[utoipa::path(
@@ -216,19 +137,19 @@ pub(super) async fn handle(
 }
 
 #[derive(Serialize, ToSchema)]
-pub(super) struct QueryResponse {
+pub struct QueryResponse {
     /// Number of search results in this response
     count: usize,
     /// Paging metadata
     metadata: QueryMetadata,
     /// Search result data
-    data: Vec<QueryResult>,
+    pub data: Vec<QueryResult>,
     /// Stats for nerds
     stats: ResultStats,
 }
 
 /// Metadata pertaining to the query response, such as paging info
-#[derive(Serialize, ToSchema)]
+#[derive(Default, Serialize, ToSchema)]
 pub(super) struct QueryMetadata {
     /// Page number passed in the request
     page: usize,
@@ -242,6 +163,37 @@ pub(super) struct QueryMetadata {
     /// total number of search results across all pages, only populated
     /// if the client requests it
     total_count: Option<usize>,
+}
+
+#[derive(Default, Serialize, Deserialize, Debug)]
+pub struct ResultStats {
+    pub lang: HashMap<String, usize>,
+    pub repo: HashMap<String, usize>,
+}
+
+impl ResultStats {
+    fn with_lang_freqs(mut self, mut lang_freqs: HashMap<Vec<u8>, usize>) -> Self {
+        self.lang = lang_freqs
+            .iter_mut()
+            .map(|(k, v)| {
+                let k =
+                    crate::query::languages::proper_case(String::from_utf8_lossy(k)).to_string();
+                (k, *v)
+            })
+            .collect();
+        self
+    }
+
+    fn with_repo_freqs(mut self, mut repo_freqs: HashMap<Vec<u8>, usize>) -> Self {
+        self.repo = repo_freqs
+            .iter_mut()
+            .map(|(k, v)| {
+                let k = String::from_utf8_lossy(k).to_string();
+                (k, *v)
+            })
+            .collect();
+        self
+    }
 }
 
 #[derive(Serialize, ToSchema)]
@@ -324,7 +276,7 @@ pub trait ExecuteQuery {
         indexer: &Indexer<Self::Index>,
         queries: &[parser::Query<'_>],
         q: &ApiQuery,
-    ) -> Result<Vec<QueryResult>>;
+    ) -> Result<QueryResponse>;
 }
 
 #[async_trait]
@@ -336,18 +288,58 @@ impl ExecuteQuery for ContentReader {
         indexer: &Indexer<Self::Index>,
         queries: &[parser::Query<'_>],
         q: &ApiQuery,
-    ) -> Result<Vec<QueryResult>> {
-        let top_docs = TopDocs::with_limit(q.limit())
-            .and_offset(q.offset())
-            .tweak_score(DocumentTweaker(indexer.source.clone()));
-        let results = indexer.query(queries.iter(), self, top_docs).await?;
-        let targets = results
-            .relevant_queries
-            .into_iter()
+    ) -> Result<QueryResponse> {
+        // queries that produce content results
+        let relevant_queries = queries.iter().filter(|q| self.query_matches(q));
+
+        // a list of targets, for a query of the form `symbol:foo or bar`, this is:
+        // - a symbol target: foo
+        // - a content target: bar
+        let targets = relevant_queries
             .filter_map(|q| Some((q.target.as_ref()?, q.is_case_sensitive())))
             .collect::<SmallVec<[_; 2]>>();
 
-        Ok(results
+        // a regex filter to get rid of docs that contain the trigrams but not the text
+        let byte_regexes = targets
+            .iter()
+            .filter_map(|(target, case)| {
+                ByteRegexBuilder::new(&target.literal().regex_str())
+                    .multi_line(true)
+                    .case_insensitive(!case)
+                    .build()
+                    .ok()
+            })
+            .collect::<Vec<_>>();
+
+        let raw_content = indexer.source.raw_content;
+        let repo_field = indexer.source.raw_repo_name;
+        let lang_field = indexer.source.lang;
+
+        // our results will consist of the top-k docs...
+        let top_k = TopDocs::with_limit(q.limit())
+            .and_offset(q.offset())
+            .tweak_score(DocumentTweaker(indexer.source.clone()));
+
+        // ...plus some rich search metadata
+        let total_count_collector = tantivy::collector::Count;
+        let lang_stats_collector = FrequencyCollector(lang_field);
+        let repo_stats_collector = FrequencyCollector(repo_field);
+
+        let mut metadata_collector = MultiCollector::new();
+        let total_count_handle = metadata_collector.add_collector(total_count_collector);
+        let lang_stats_handle = metadata_collector.add_collector(lang_stats_collector);
+        let repo_stats_handle = metadata_collector.add_collector(repo_stats_collector);
+
+        // our final search results contain top-k, total count, language stats, repo stats,
+        // filtered by the target regex
+        let collector = BytesFilterCollector::new(
+            raw_content,
+            move |b| byte_regexes.iter().any(|r| r.is_match(b)), // a doc is accepted if it contains atleast 1 target
+            (top_k, metadata_collector),
+        );
+
+        let mut results = indexer.query(queries.iter(), self, collector).await?;
+        let data = results
             .docs
             .filter_map(|doc| {
                 let snipper = Snipper::default().context(q.context_before, q.context_after);
@@ -375,7 +367,28 @@ impl ExecuteQuery for ContentReader {
 
                 Some(QueryResult::Snippets(all_snippets?))
             })
-            .collect())
+            .collect::<Vec<QueryResult>>();
+
+        let total_count = total_count_handle.extract(&mut results.metadata);
+
+        let stats = ResultStats::default()
+            .with_lang_freqs(lang_stats_handle.extract(&mut results.metadata))
+            .with_repo_freqs(repo_stats_handle.extract(&mut results.metadata));
+
+        let metadata = QueryMetadata {
+            page: q.page,
+            page_size: q.page_size,
+            page_count: Some(div_ceil(total_count, q.page_size)),
+            total_count: Some(total_count),
+        };
+        let count = data.len();
+        let response = QueryResponse {
+            count,
+            metadata,
+            data,
+            stats,
+        };
+        Ok(response)
     }
 }
 
@@ -395,16 +408,32 @@ impl ExecuteQuery for FileReader {
         indexer: &Indexer<File>,
         queries: &[parser::Query<'_>],
         q: &ApiQuery,
-    ) -> Result<Vec<QueryResult>> {
+    ) -> Result<QueryResponse> {
         let top_docs = TopDocs::with_limit(q.limit()).and_offset(q.offset());
-        let results = indexer.query(queries.iter(), self, top_docs).await?;
-        let filter_regexes = results
-            .relevant_queries
-            .into_iter()
+
+        let repo_field = indexer.source.raw_repo_name;
+        let lang_field = indexer.source.lang;
+
+        let total_count_collector = tantivy::collector::Count;
+        let lang_stats_collector = FrequencyCollector(lang_field);
+        let repo_stats_collector = FrequencyCollector(repo_field);
+
+        let mut metadata_collector = MultiCollector::new();
+        let total_count_handle = metadata_collector.add_collector(total_count_collector);
+        let lang_stats_handle = metadata_collector.add_collector(lang_stats_collector);
+        let repo_stats_handle = metadata_collector.add_collector(repo_stats_collector);
+
+        let mut results = indexer
+            .query(queries.iter(), self, (top_docs, metadata_collector))
+            .await?;
+
+        let filter_regexes = queries
+            .iter()
+            .filter(|q| self.query_matches(q))
             .filter_map(|q| Some(q.path.as_ref()?.regex().expect("failed to parse regex")))
             .collect::<SmallVec<[_; 2]>>();
 
-        Ok(results
+        let data = results
             .docs
             .map(|f| {
                 let mut relative_path = HighlightedString::new(f.relative_path);
@@ -420,7 +449,29 @@ impl ExecuteQuery for FileReader {
                     lang: f.lang,
                 })
             })
-            .collect())
+            .collect::<Vec<QueryResult>>();
+
+        let total_count = total_count_handle.extract(&mut results.metadata);
+
+        let stats = ResultStats::default()
+            .with_lang_freqs(lang_stats_handle.extract(&mut results.metadata))
+            .with_repo_freqs(repo_stats_handle.extract(&mut results.metadata));
+
+        let metadata = QueryMetadata {
+            page: q.page,
+            page_size: q.page_size,
+            page_count: Some(div_ceil(total_count, q.page_size)),
+            total_count: Some(total_count),
+        };
+
+        let response = QueryResponse {
+            count: data.len(),
+            data,
+            metadata,
+            stats,
+        };
+
+        Ok(response)
     }
 }
 
@@ -433,16 +484,29 @@ impl ExecuteQuery for RepoReader {
         indexer: &Indexer<Self::Index>,
         queries: &[parser::Query<'_>],
         q: &ApiQuery,
-    ) -> Result<Vec<QueryResult>> {
-        let top_docs = TopDocs::with_limit(q.limit()).and_offset(q.offset());
-        let results = indexer.query(queries.iter(), self, top_docs).await?;
-        let filter_regexes = results
-            .relevant_queries
+    ) -> Result<QueryResponse> {
+        let filter_regexes = queries
+            .iter()
+            .filter(|q| self.query_matches(q))
             .into_iter()
             .filter_map(|q| q.repo.as_ref().and_then(|lit| lit.regex().ok()))
             .collect::<SmallVec<[_; 2]>>();
 
-        Ok(results
+        let top_docs = TopDocs::with_limit(q.limit()).and_offset(q.offset());
+
+        let name_field = indexer.source.raw_name;
+        let repo_stats_collector = FrequencyCollector(name_field);
+        let total_count_collector = tantivy::collector::Count;
+
+        let mut metadata_collector = MultiCollector::new();
+        let repo_stats_handle = metadata_collector.add_collector(repo_stats_collector);
+        let total_count_handle = metadata_collector.add_collector(total_count_collector);
+
+        let mut results = indexer
+            .query(queries.iter(), self, (top_docs, metadata_collector))
+            .await?;
+
+        let data = results
             .docs
             .map(|r| {
                 let mut name = HighlightedString::new(r.name);
@@ -456,7 +520,27 @@ impl ExecuteQuery for RepoReader {
                     repo_ref: r.repo_ref,
                 })
             })
-            .collect())
+            .collect::<Vec<QueryResult>>();
+
+        let stats = ResultStats::default()
+            .with_repo_freqs(repo_stats_handle.extract(&mut results.metadata));
+
+        let total_count = total_count_handle.extract(&mut results.metadata);
+        let metadata = QueryMetadata {
+            page: q.page,
+            page_size: q.page_size,
+            page_count: Some(div_ceil(total_count, q.page_size)),
+            total_count: Some(total_count),
+        };
+
+        let response = QueryResponse {
+            count: data.len(),
+            data,
+            metadata,
+            stats,
+        };
+
+        Ok(response)
     }
 }
 
@@ -469,18 +553,21 @@ impl ExecuteQuery for OpenReader {
         indexer: &Indexer<Self::Index>,
         queries: &[parser::Query<'_>],
         _q: &ApiQuery,
-    ) -> Result<Vec<QueryResult>> {
+    ) -> Result<QueryResponse> {
         let top_docs = TopDocs::with_limit(1000);
-        let results = indexer.query(queries.iter(), self, top_docs).await?;
+        let empty_collector = MultiCollector::new();
+        let results = indexer
+            .query(queries.iter(), self, (top_docs, empty_collector))
+            .await?;
 
         struct Directive<'a> {
             relative_path: &'a str,
             repo_name: &'a str,
         }
 
-        let open_directives = results
-            .relevant_queries
+        let open_directives = queries
             .iter()
+            .filter(|q| self.query_matches(q))
             .filter_map(|q| {
                 Some(Directive {
                     relative_path: match q.path.as_ref() {
@@ -566,7 +653,7 @@ impl ExecuteQuery for OpenReader {
                 .collect();
         }
 
-        Ok(directories
+        let data = directories
             .into_iter()
             .map(|(repo_name, relative_path)| {
                 let (repo_ref, entries) = dir_entries.get(&(repo_name, relative_path)).unwrap();
@@ -580,7 +667,16 @@ impl ExecuteQuery for OpenReader {
             })
             .map(QueryResult::Directory)
             .chain(files.into_iter().map(QueryResult::File))
-            .collect())
+            .collect::<Vec<QueryResult>>();
+
+        let response = QueryResponse {
+            count: data.len(),
+            data,
+            metadata: QueryMetadata::default(),
+            stats: ResultStats::default(),
+        };
+
+        Ok(response)
     }
 }
 
