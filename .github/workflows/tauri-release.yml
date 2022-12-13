@@ -159,12 +159,13 @@ jobs:
       - name: Check is Segment key exists
         env:
           segment_key: ${{ secrets.VITE_SEGMENT_WRITE_KEY_PROD }}
-          sentry_key: ${{ secrets.VITE_SENTRY_DSN }}
-        if: ${{ env.segment_key == '' }} || ${{ env.sentry_key == '' }}
+          sentry_key_fe: ${{ secrets.VITE_SENTRY_DSN_FE }}
+          sentry_key_be: ${{ secrets.VITE_SENTRY_DSN_BE }}
+        if: ${{ env.segment_key == '' }} || ${{ env.sentry_key_fe == '' }} || ${{ env.sentry_key_be == '' }}
         run: exit 1
 
       - name: Set environment
-        run: echo "VITE_SEGMENT_WRITE_KEY_PROD=${{ secrets.VITE_SEGMENT_WRITE_KEY_PROD }}\nVITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}" >> apps/desktop/.env
+        run: echo "VITE_SEGMENT_WRITE_KEY_PROD=${{ secrets.VITE_SEGMENT_WRITE_KEY_PROD }}\nVITE_SENTRY_DSN_FE=${{ secrets.VITE_SENTRY_DSN_FE }}\nVITE_SENTRY_DSN_BE=${{ secrets.VITE_SENTRY_DSN_BE }}" >> apps/desktop/.env
 
       - uses: tauri-apps/tauri-action@v0
         env:
