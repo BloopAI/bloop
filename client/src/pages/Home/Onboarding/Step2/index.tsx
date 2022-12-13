@@ -29,6 +29,7 @@ const Step2 = ({ handleNext, handleBack }: Props) => {
   const [activeTab, setActiveTab] = useState(1);
   const [userRepos, setUserRepos] = useState<RepoType[]>([]);
   const [repos, setRepos] = useState<RepoUi[]>([]);
+  const [nextButtonDisabled, setNextButtonDisabled] = useState(false);
   const { onBoardingState, setOnBoardingState } = useContext(UIContext);
   const { trackReposSelected } = useAnalytics();
   const { repositories } = useContext(RepositoriesContext);
@@ -105,6 +106,9 @@ const Step2 = ({ handleNext, handleBack }: Props) => {
         ...prevState,
         [STEP_KEY]: repos.filter((r) => r.selected).map((r) => r.ref),
       }));
+      setNextButtonDisabled(!repos.filter((r) => r.selected).length);
+    } else {
+      setNextButtonDisabled(false);
     }
   }, [repos]);
 
@@ -141,7 +145,7 @@ const Step2 = ({ handleNext, handleBack }: Props) => {
             type="submit"
             variant="primary"
             onClick={handleSubmit}
-            disabled={!repos.length}
+            disabled={nextButtonDisabled}
           >
             Sync repositories
           </Button>
