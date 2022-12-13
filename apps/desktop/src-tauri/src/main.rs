@@ -89,7 +89,6 @@ async fn main() {
 #[tauri::command]
 fn initialize_sentry(dsn: String, environment: String) {
     if let Some(_) = sentry::Hub::current().client() {
-        sentry::capture_message("Testing Rust Sentry", sentry::Level::Info);
         return;
     }
     let guard = sentry::init((
@@ -97,7 +96,6 @@ fn initialize_sentry(dsn: String, environment: String) {
         sentry::ClientOptions {
             release: sentry::release_name!(),
             environment: Some(environment.into()),
-            debug: true,
             before_send: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
                 true => Some(event),
                 false => None,
