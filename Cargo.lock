@@ -342,6 +342,7 @@ dependencies = [
  "flume",
  "futures",
  "git2",
+ "histogram",
  "hyperpolyglot",
  "ignore",
  "notify-debouncer-mini",
@@ -1915,6 +1916,12 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "histogram"
+version = "0.6.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12cb882ccb290b8646e554b157ab0b71e64e8d5bef775cd66b6531e52d302669"
 
 [[package]]
 name = "hostname"
