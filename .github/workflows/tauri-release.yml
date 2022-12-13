@@ -156,6 +156,9 @@ jobs:
           unzip $filename || true
           mv ctags.exe ${{ env.TAURI_BIN_PATH }}/ctags-$(rustc -Vv |grep host |cut -d\  -f2).exe
 
+      - name: Set environment
+        run: echo "VITE_SEGMENT_WRITE_KEY_PROD=${{ secrets.VITE_SEGMENT_WRITE_KEY_PROD }}" >> apps/desktop/.env
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
