@@ -15,6 +15,11 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  build-client:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No checks required" '
+
   fmt-clippy-build:
     runs-on: ubuntu-latest
 
@@ -36,10 +41,10 @@ jobs:
 
       - uses: cachix/install-nix-action@v18
       - name: Install Universal Ctags
-        run: 'nix profile install nixpkgs#universal-ctags'
+        run: "nix profile install nixpkgs#universal-ctags"
 
       - name: Check ctags version
-        run: 'which ctags; ctags --version'
+        run: "which ctags; ctags --version"
 
       - uses: Swatinem/rust-cache@v2
 
@@ -53,7 +58,7 @@ jobs:
         with:
           toolchain: stable
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --manifest-path Cargo.toml      
+          args: --all-features --manifest-path Cargo.toml
 
   test:
     runs-on: ubuntu-latest
@@ -70,20 +75,20 @@ jobs:
 
       - uses: cachix/install-nix-action@v18
       - name: Install Universal Ctags
-        run: 'nix profile install nixpkgs#universal-ctags'
+        run: "nix profile install nixpkgs#universal-ctags"
 
       - name: Check ctags version
-        run: 'which ctags; ctags --version'
+        run: "which ctags; ctags --version"
 
       - uses: Swatinem/rust-cache@v2
 
       - name: Tests
-        run: cargo test -p bleep 
+        run: cargo test -p bleep
 
   benchmark:
     runs-on: [self-hosted, benchmark]
     steps:
-      - uses: actions/checkout@v3 
+      - uses: actions/checkout@v3
         with:
           clean: false
 
@@ -97,13 +102,13 @@ jobs:
       # Assume that self-hosted box already has universal ctags installed
       # Can use nix when https://github.com/cachix/install-nix-action/issues/98
       # has been resolved
-      
+
       # - uses: cachix/install-nix-action@v18
       # - name: Install Universal Ctags
       #   run: 'nix profile install nixpkgs#universal-ctags'
 
       - name: Check ctags version
-        run: 'which ctags; ctags --version'
+        run: "which ctags; ctags --version"
 
       - uses: boa-dev/criterion-compare-action@v3.2.4
         env:
