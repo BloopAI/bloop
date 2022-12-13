@@ -200,13 +200,51 @@ impl<'a> From<Pair<'a, Rule>> for Literal<'a> {
     fn from(pair: Pair<'a, Rule>) -> Self {
         match pair.as_rule() {
             Rule::unquoted_literal => Self::Plain(pair.as_str().trim().into()),
-            Rule::quoted_literal | Rule::triple_quoted_literal | Rule::single_quoted_literal => {
-                Self::Plain(pair.as_str().into())
-            }
-            Rule::regex_quoted_literal => Self::Regex(pair.as_str().into()),
+            Rule::quoted_literal => Self::Plain(unescape(pair.as_str(), '"').into()),
+            Rule::single_quoted_literal => Self::Plain(unescape(pair.as_str(), '\'').into()),
+            Rule::regex_quoted_literal => Self::Regex(unescape(pair.as_str(), '/').into()),
             _ => unreachable!(),
         }
     }
+}
+
+/// Unescape a string, with a specific terminating character.
+///
+/// Newline and tab strings (`\n` and `\t`) are replaced with the respective character. Backslashes
+/// are preserved with a double escape (`\\`). If the terminating character is encountered, it is
+/// returned without a preceding backslash. All other escape characters are not interpreted, and
+/// backslashes are preserved.
+///
+///
+/// ```rust,ignore
+/// unescape("ab\\/c", '/') = "ab/c"
+/// unescape("ab\\/c", '"') = "ab\\/c"
+/// unescape("ab\\nc", '"') = "ab\nc"
+/// unescape("ab\\\"c", '"') = "ab\\\"c"
+/// ```
+fn unescape(s: &str, term: char) -> String {
+    let mut result = String::new();
+    let mut chars = s.chars();
+
+    while let Some(c) = chars.next() {
+        if c != '\\' {
+            result.push(c);
+            continue;
+        }
+
+        match chars.next() {
+            Some('n') => result.push('\n'),
+            Some('t') => result.push('\t'),
+            Some(c) if c == term => result.push(c),
+            Some(c) => {
+                result.push('\\');
+                result.push(c);
+            }
+            None => continue,
+        }
+    }
+
+    result
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -233,7 +271,6 @@ impl<'a> Expr<'a> {
         Ok(match pair.as_rule() {
             Rule::unquoted_literal
             | Rule::quoted_literal
-            | Rule::triple_quoted_literal
             | Rule::single_quoted_literal
             | Rule::regex_quoted_literal => Content(Literal::from(pair)),
 
@@ -668,7 +705,15 @@ mod tests {
     }
 
     #[test]
-    fn regex_special_chars() {
+    fn special_chars() {
+        assert_eq!(
+            parse("foo\\nbar\\tquux").unwrap(),
+            vec![Query {
+                target: Some(Target::Content(Literal::Plain("foo\\nbar\\tquux".into()))),
+                ..Query::default()
+            }],
+        );
+
         assert_eq!(
             parse("/^\\b\\B\\w\\Wfoo\\d\\D$/").unwrap(),
             vec![Query {
@@ -830,6 +875,47 @@ mod tests {
                     ..Query::default()
                 },
             ],
+        );
+    }
+
+    #[test]
+    fn test_complex_parse() {
+        let mut q = parse(r#"(?:[a-z0-9!#$%&'*+\/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+\/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])"#).unwrap();
+
+        // Make sure that this regex successfully compiles.
+        q[0].target
+            .take()
+            .unwrap()
+            .content()
+            .unwrap()
+            .regex()
+            .unwrap();
+    }
+
+    #[test]
+    fn escape_characters() {
+        assert_eq!(
+            parse("'foo\\'bar'").unwrap(),
+            vec![Query {
+                target: Some(Target::Content(Literal::Plain("foo'bar".into()))),
+                ..Query::default()
+            }],
+        );
+
+        assert_eq!(
+            parse(r#""foo\"bar""#).unwrap(),
+            vec![Query {
+                target: Some(Target::Content(Literal::Plain("foo\"bar".into()))),
+                ..Query::default()
+            }],
+        );
+
+        assert_eq!(
+            parse("/foo\\/bar/").unwrap(),
+            vec![Query {
+                target: Some(Target::Content(Literal::Regex("foo/bar".into()))),
+                ..Query::default()
+            }],
         );
     }
 }
