@@ -89,6 +89,7 @@ async fn main() {
 #[tauri::command]
 fn initialize_sentry(dsn: String, environment: String) {
     if let Some(_) = sentry::Hub::current().client() {
+        tracing::info!("Sentry has already been initialized");
         return;
     }
     let guard = sentry::init((
