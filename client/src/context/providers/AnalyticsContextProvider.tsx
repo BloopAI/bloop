@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useContext } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AnalyticsBrowser, Analytics } from '@segment/analytics-next';
 import { AnalyticsContext } from '../analyticsContext';
 import {
