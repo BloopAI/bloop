@@ -20,6 +20,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: 'echo "No checks required" '
+  fmt-clippy-build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No checks required" '
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No checks required" '
 
   checks:
     runs-on: ubuntu-latest

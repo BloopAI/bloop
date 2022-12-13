@@ -30,11 +30,17 @@ pub enum TreeSitterFileError {
     ParseTimeout,
     LanguageMismatch,
     QueryError(tree_sitter::QueryError),
+    FileTooLarge,
 }
 
 impl<'a> TreeSitterFile<'a> {
     /// Create a TreeSitterFile out of a sourcefile
     pub fn try_build(src: &'a [u8], lang_id: &str) -> Result<Self, TreeSitterFileError> {
+        // no scope-res for files larger than 500kb
+        if src.len() > 500 * 10usize.pow(3) {
+            return Err(TreeSitterFileError::FileTooLarge);
+        }
+
         let language = match TSLanguage::from_id(lang_id) {
             Language::Supported(language) => Ok(language),
             Language::Unsupported => Err(TreeSitterFileError::UnsupportedLanguage),
@@ -44,6 +50,9 @@ impl<'a> TreeSitterFile<'a> {
         parser
             .set_language((language.grammar)())
             .map_err(|_| TreeSitterFileError::LanguageMismatch)?;
+
+        // do not permit files that take >1s to parse
+        parser.set_timeout_micros(10u64.pow(6));
 
         let tree = parser
             .parse(src, None)

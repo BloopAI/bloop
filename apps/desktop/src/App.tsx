@@ -41,6 +41,12 @@ function App() {
       setRelease(appVersion);
     });
   }, []);
+  if (import.meta.env.VITE_SENTRY_DSN_BE) {
+    invoke('initialize_sentry', {
+      dsn: import.meta.env.VITE_SENTRY_DSN_BE,
+      environment: import.meta.env.MODE,
+    });
+  }
 
   const deviceContextValue = useMemo(
     () => ({

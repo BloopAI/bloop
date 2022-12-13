@@ -58,7 +58,7 @@ function App({ deviceContextValue }: Props) {
 
   return (
     <BrowserRouter>
-      <AnalyticsContextProvider>
+      <AnalyticsContextProvider deviceId={deviceContextValue.deviceId}>
         <DeviceContextProvider deviceContextValue={deviceContextValue}>
           <UIContextProvider>
             <SearchContext.Provider value={searchContextValue}>
