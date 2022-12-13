@@ -8,9 +8,12 @@ import {
   useNavigationType,
 } from 'react-router-dom';
 
-export const initializeSentry = (release: string) => {
+export const initializeSentry = (dsn: string, release: string) => {
+  if (!dsn) {
+    return;
+  }
   Sentry.init({
-    dsn: 'https://79266c6b7c1e4fbca430019e2acaf941@o4504254520426496.ingest.sentry.io/4504275760775168',
+    dsn,
     integrations: [
       new BrowserTracing({
         routingInstrumentation: Sentry.reactRouterV6Instrumentation(
