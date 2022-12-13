@@ -6,10 +6,13 @@
 use std::path::PathBuf;
 
 use bleep::{Application, Configuration, Environment};
+use once_cell::sync::OnceCell;
+use sentry::ClientInitGuard;
 use std::sync::{Arc, RwLock};
 use tauri::Manager;
 
 static TELEMETRY: RwLock<bool> = RwLock::new(false);
+static SENTRY: OnceCell<ClientInitGuard> = OnceCell::new();
 
 // the payload type must implement `Serialize` and `Clone`.
 #[derive(Clone, serde::Serialize)]
@@ -34,29 +37,6 @@ fn relative_command_path(command: impl AsRef<str>) -> Option<PathBuf> {
 #[tokio::main]
 async fn main() {
     Application::install_logging();
-
-    // set sentry environment
-    //
-    // this only sets to dev if BLOOP_MODE=dev env var has been
-    // set, otherwise environment is prod.
-    let mut environment = "production";
-    if let Ok(mode) = std::env::var("BLOOP_MODE") {
-        if mode.to_ascii_lowercase() == "dev" {
-            environment = "development";
-        }
-    }
-    // initialize sentry
-    let _guard = sentry::init(("https://91d3063e3ed84af58f60e7728711b21e@o4504254520426496.ingest.sentry.io/4504254524293120", sentry::ClientOptions {
-        release: sentry::release_name!(),
-        environment: Some(environment.into()),
-        before_send: Some(Arc::new(|event| {
-            match *TELEMETRY.read().unwrap() {
-                true => Some(event),
-                false => None
-            }
-        })),
-        ..Default::default()
-    }));
 
     tauri::Builder::default()
         .setup(|app| {
@@ -99,10 +79,32 @@ async fn main() {
             show_folder_in_finder,
             get_device_id,
             enable_telemetry,
-            disable_telemetry
+            disable_telemetry,
+            initialize_sentry
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri application");
+}
+
+#[tauri::command]
+fn initialize_sentry(dsn: String, environment: String) {
+    if let Some(_) = sentry::Hub::current().client() {
+        tracing::info!("Sentry has already been initialized");
+        return;
+    }
+    let guard = sentry::init((
+        dsn,
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            environment: Some(environment.into()),
+            before_send: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
+                true => Some(event),
+                false => None,
+            })),
+            ..Default::default()
+        },
+    ));
+    _ = SENTRY.set(guard);
 }
 
 #[tauri::command]
