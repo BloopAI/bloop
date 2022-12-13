@@ -15,7 +15,9 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   children,
   deviceId,
 }) => {
-  const WRITE_KEY = import.meta.env.VITE_SEGMENT_WRITE_KEY;
+  const WRITE_KEY = import.meta.env.PROD
+    ? import.meta.env.VITE_SEGMENT_WRITE_KEY_PROD
+    : import.meta.env.VITE_SEGMENT_WRITE_KEY_DEV;
 
   const [analytics, setAnalytics] = useState<Analytics | undefined>(undefined);
   const [isAnalyticsAllowed, setIsAnalyticsAllowed] = useState(
