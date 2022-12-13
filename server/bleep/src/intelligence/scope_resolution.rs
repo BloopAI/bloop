@@ -207,13 +207,12 @@ impl ScopeGraph {
     fn scope_by_range(&self, range: TextRange, start: NodeIndex<u32>) -> Option<NodeIndex<u32>> {
         let target_range = self.graph[start].range();
         if target_range.contains(range) {
-            let child_scopes = self
+            for child_scope in self
                 .graph
                 .edges_directed(start, Direction::Incoming)
                 .filter(|edge| *edge.weight() == EdgeKind::ScopeToScope)
                 .map(|edge| edge.source())
-                .collect::<Vec<_>>();
-            for child_scope in child_scopes {
+            {
                 if let Some(t) = self.scope_by_range(range, child_scope) {
                     return Some(t);
                 }
