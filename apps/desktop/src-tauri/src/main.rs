@@ -6,10 +6,13 @@
 use std::path::PathBuf;
 
 use bleep::{Application, Configuration, Environment};
+use once_cell::sync::OnceCell;
+use sentry::ClientInitGuard;
 use std::sync::{Arc, RwLock};
 use tauri::Manager;
 
 static TELEMETRY: RwLock<bool> = RwLock::new(false);
+static SENTRY: OnceCell<ClientInitGuard> = OnceCell::new();
 
 // the payload type must implement `Serialize` and `Clone`.
 #[derive(Clone, serde::Serialize)]
@@ -84,30 +87,31 @@ async fn main() {
 }
 
 #[tauri::command]
-fn enable_telemetry() {
-    let mut guard = TELEMETRY.write().unwrap();
-    *guard = true;
-}
-
-#[tauri::command]
 fn initialize_sentry(dsn: String, environment: String) {
     if let Some(_) = sentry::Hub::current().client() {
         sentry::capture_message("Testing Rust Sentry", sentry::Level::Info);
         return;
     }
-    let _guard = sentry::init((dsn, sentry::ClientOptions {
-        release: sentry::release_name!(),
-        environment: Some(environment.into()),
-        debug: true,
-        before_send: Some(Arc::new(|event| {
-            match *TELEMETRY.read().unwrap() {
+    let guard = sentry::init((
+        dsn,
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            environment: Some(environment.into()),
+            debug: true,
+            before_send: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
                 true => Some(event),
-                false => None
-            }
-        })),
-        ..Default::default()
-    }));
+                false => None,
+            })),
+            ..Default::default()
+        },
+    ));
+    _ = SENTRY.set(guard);
+}
 
+#[tauri::command]
+fn enable_telemetry() {
+    let mut guard = TELEMETRY.write().unwrap();
+    *guard = true;
 }
 
 #[tauri::command]
