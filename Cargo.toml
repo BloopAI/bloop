@@ -5,4 +5,12 @@ members = [
 ]
 
 [profile.release]
+debug = false
+strip = "debuginfo"
+lto = true
+
+[profile.profiler]
+inherits = "release"
 debug = true
+split-debuginfo = "unpacked"
+strip = "none"
