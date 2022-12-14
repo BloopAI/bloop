@@ -69,6 +69,9 @@ impl Indexable for Repo {
         _info: &RepoHeadInfo,
         writer: &IndexWriter,
     ) -> Result<()> {
+        // Make sure we delete any stale references to this repository when indexing.
+        self.delete_by_repo(writer, repo);
+
         writer.add_document(doc!(
             // We don't have organization support for now.
             self.org => "",
