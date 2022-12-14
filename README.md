@@ -1,10 +1,17 @@
+<p align="center">
+    <img width="130" height="130" src="apps/desktop/src-tauri/icons/Square150x150Logo.png", alt="Logo">
+</p>
 <h1 align="center"><b>bloop</b></h1>
-<p align="center">Find code. Fast.
+<p align="center">
+    Find code. Fast
     <br />
+    <b>Download for</b>
     <i>MacOS</i> -
     <i>Linux</i> -
     <i>Windows</i>
-<p>
+    <br />
+    <a href="https://bloop.ai"><strong>bloop.ai</strong></a>
+</p>
 
 bloop is a fast code-search engine written in Rust. Search both your local and remote
 repositories with plain-text, regex and filtered queries.
@@ -22,7 +29,7 @@ bloop stands on the shoulders of the Rust ecosystem. Our search indexing is powe
 
 ## Get Started
 
-The simplest way to get started with bloop is to download the app (download links coming soon) and follow the onboarding steps.
+The simplest way to get started with bloop is to download the app (links coming soon!) and follow the onboarding steps. Checkout our [getting started guide](https://bloop.ai/docs/getting-started) and our [query language reference](https://bloop.ai/docs/writing-queries).
 
 For instructions on how to build from source or run bloop from the command line, check out these pages:
 - [Build bloop app from source](./apps/desktop/README.md)
