@@ -17,10 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: 'echo "No checks required" '
-  clippy:
-    runs-on: ubuntu-latest
-    steps:
-      - run: 'echo "No checks required" '
   fmt-clippy-build:
     runs-on: ubuntu-latest
     steps:
