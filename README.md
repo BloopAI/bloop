@@ -1,5 +1,5 @@
-[![bloop logo](https://assets.bloop.ai/bloop_github_logo_dark.png#gh-dark-mode-only)](https://bloop.ai)
-[![bloop logo](https://assets.bloop.ai/bloop_github_logo_light.png#gh-light-mode-only)](https://bloop.ai)
+[![bloop logo](./.github/assets/bloop_github_logo_dark.png#gh-dark-mode-only)](https://bloop.ai)
+[![bloop logo](./.github/assets/bloop_github_logo_light.png#gh-light-mode-only)](https://bloop.ai)
 
 bloop is a fast code-search engine written in Rust and Typescript. Search both your local and remote
 repositories with plain-text, regex and filtered queries.
