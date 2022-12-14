@@ -58,7 +58,7 @@ jobs:
         with:
           toolchain: stable
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --manifest-path Cargo.toml
+          args: -p bleep --all-features --manifest-path Cargo.toml
 
   test:
     runs-on: ubuntu-latest
