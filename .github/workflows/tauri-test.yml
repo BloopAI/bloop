@@ -42,7 +42,10 @@ jobs:
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
+          override: true
+          components: rustfmt, clippy
 
       - name: Check Formatting
         run: |
@@ -51,3 +54,9 @@ jobs:
       - name: Run tests
         run: |
           cargo test -p app --verbose
+
+      - uses: actions-rs/clippy-check@v1
+        with:
+          toolchain: stable
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: -p app --all-features --manifest-path Cargo.toml
