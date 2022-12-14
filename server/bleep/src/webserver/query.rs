@@ -175,6 +175,7 @@ impl ResultStats {
     fn with_lang_freqs(mut self, mut lang_freqs: HashMap<Vec<u8>, usize>) -> Self {
         self.lang = lang_freqs
             .iter_mut()
+            .filter(|(k, _)| !k.is_empty())
             .map(|(k, v)| {
                 let k =
                     crate::query::languages::proper_case(String::from_utf8_lossy(k)).to_string();
@@ -187,6 +188,7 @@ impl ResultStats {
     fn with_repo_freqs(mut self, mut repo_freqs: HashMap<Vec<u8>, usize>) -> Self {
         self.repo = repo_freqs
             .iter_mut()
+            .filter(|(k, _)| !k.is_empty())
             .map(|(k, v)| {
                 let k = String::from_utf8_lossy(k).to_string();
                 (k, *v)
