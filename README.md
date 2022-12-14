@@ -13,7 +13,7 @@ repositories with plain-text, regex and filtered queries.
 - Search with regex queries
 - Sophisticated query filters so you can narrow down your results
 - Find functions, variables or traits with symbol search
-- Precise code navigation (go-to-reference and go-to-definition) for 9 of the most popular languages
+- Precise code navigation (go-to-reference and go-to-definition) for 10+ of the most popular languages
 
 bloop stands on the shoulders of the Rust ecosystem. Our search indexing is powered by [Tantivy](https://github.com/quickwit-oss/tantivy) and our multi-platform app is built with [Tauri](https://github.com/tauri-apps/tauri).
 
@@ -21,7 +21,7 @@ bloop stands on the shoulders of the Rust ecosystem. Our search indexing is powe
 
 ## Get Started
 
-The simplest way to get started with bloop is to download the app from the [releases section](https://github.com/BloopAI/bloop/releases). For more information, follow the [guide](https://bloop.ai/docs/getting-started) on our site.
+The simplest way to get started with bloop is to [download the app](https://github.com/BloopAI/bloop/releases) and follow the onboarding steps. Checkout our [getting started guide](https://bloop.ai/docs/getting-started) and our [query language reference](https://bloop.ai/docs/writing-queries).
 
 For instructions on how to build from source or run bloop from the command line, check out these pages:
 
