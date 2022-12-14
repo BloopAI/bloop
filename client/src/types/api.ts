@@ -23,13 +23,14 @@ export interface SearchResponse {
     total_count: number;
   };
 }
-
-export interface SearchResponseFileItems extends SearchResponse {
-  data: FileItem[];
-}
-export interface SearchResponseDirItems extends SearchResponse {
-  data: DirectoryItem[];
-}
+//
+// export interface GeneralSearchResponse
+//   extends SearchResponse<CodeItem | RepoItem | FileResItem> {}
+//
+// export interface DirectorySearchResponse
+//   extends SearchResponse<DirectoryItem> {}
+//
+// export interface FileSearchResponse extends SearchResponse<FileItem> {}
 
 export interface SymbolSnippetItem {
   kind: SymbolType;
