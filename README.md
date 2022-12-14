@@ -23,7 +23,7 @@ repositories with plain-text, regex and filtered queries.
 - Search with regex queries
 - Sophisticated query filters so you can narrow down your results
 - Find functions, variables or traits with symbol search
-- Precise code navigation (go-to-reference and go-to-definition) for 9 of the most popular languages
+- Precise code navigation (go-to-reference and go-to-definition) for 10+ of the most popular languages
 
 bloop stands on the shoulders of the Rust ecosystem. Our search indexing is powered by [Tantivy](https://github.com/quickwit-oss/tantivy) and our multi-platform app is built with [Tauri](https://github.com/tauri-apps/tauri).
 
