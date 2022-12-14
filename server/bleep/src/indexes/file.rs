@@ -438,11 +438,12 @@ impl File {
                 }
             }
         };
-
+        use rayon::iter::IntoParallelRefIterator;
+        use rayon::iter::ParallelIterator;
         // flatten the list of symbols into a string with just text
         let symbols = symbol_locations
             .list()
-            .iter()
+            .par_iter()
             .map(|sym| buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
             .collect::<HashSet<_>>()
             .into_iter()
