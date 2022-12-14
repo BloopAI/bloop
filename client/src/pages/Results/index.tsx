@@ -72,7 +72,7 @@ const ResultsPage = () => {
   useEffect(() => {
     if (queryString) {
       setInputValue(queryString);
-      searchQuery(queryString, page, globalRegex);
+      searchQuery(queryString, 0, globalRegex);
       setPage(0);
     }
   }, [queryString]);
