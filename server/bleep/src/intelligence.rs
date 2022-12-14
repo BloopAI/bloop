@@ -52,7 +52,7 @@ impl<'a> TreeSitterFile<'a> {
             .map_err(|_| TreeSitterFileError::LanguageMismatch)?;
 
         // do not permit files that take >1s to parse
-        parser.set_timeout_micros(10u64.pow(6));
+        parser.set_timeout_micros(10u64.pow(5));
 
         let tree = parser
             .parse(src, None)
