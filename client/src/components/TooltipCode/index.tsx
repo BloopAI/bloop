@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import Tippy, { TippyProps } from '@tippyjs/react/headless';
 import Tabs from '../Tabs';
 import Code from '../CodeBlock/Code';
-import { TokenInfo, TokenInfoFile } from '../../types/results';
+import { TokenInfo, TokenInfoFile, TokenInfoItem } from '../../types/results';
 import BreadcrumbsPath from '../BreadcrumbsPath';
 
 type Props = {
@@ -12,6 +12,7 @@ type Props = {
   children: React.ReactNode;
   onHover: () => void;
   repoName: string;
+  onRefDefClick: (item: TokenInfoItem, filePath: string) => void;
 };
 
 const positionMapping = {
@@ -47,6 +48,7 @@ const TooltipCode = ({
   children,
   onHover,
   repoName,
+  onRefDefClick,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(0);
 
@@ -145,7 +147,8 @@ const TooltipCode = ({
                                 i +
                                 j
                               }
-                              className="py-1 overflow-x-auto hide-scrollbar pr-3 flex-shrink-0"
+                              className="py-1 overflow-x-auto hide-scrollbar pr-3 flex-shrink-0 cursor-pointer"
+                              onClick={() => onRefDefClick(item, fileItem.path)}
                             >
                               <Code
                                 code={item.code}

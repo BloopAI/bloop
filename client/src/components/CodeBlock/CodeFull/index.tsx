@@ -13,9 +13,10 @@ import {
   AutoSizerProps,
   TableProps,
 } from 'react-virtualized';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
-import { Range } from '../../../types/results';
+import { Range, TokenInfoItem } from '../../../types/results';
 import CodeLine from '../Code/CodeLine';
 import { hashCode } from '../../../utils';
 import { Commit } from '../../../types';
@@ -65,8 +66,19 @@ const CodeFull = ({
   const [foldableRanges, setFoldableRanges] = useState<Record<number, number>>(
     {},
   );
+  const [searchParams] = useSearchParams();
   const [foldedLines, setFoldedLines] = useState<Record<number, number>>({});
   const [blameLines, setBlameLines] = useState<Record<number, BlameLine>>({});
+  const scrollLineNumber = useMemo(
+    () => Number(searchParams.get('scroll_line_index')),
+    [searchParams],
+  );
+  const [scrollToIndex, setScrollToIndex] = useState(scrollLineNumber || 0);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setScrollToIndex(scrollLineNumber || 0);
+  }, [code]);
 
   const lang = useMemo(
     () => getPrismLanguage(language) || 'plaintext',
@@ -134,6 +146,23 @@ const CodeFull = ({
     [relativePath],
   ); // To tell if code has changed
 
+  const onRefDefClick = useCallback(
+    (item: TokenInfoItem, filePath: string) => {
+      if (filePath === relativePath) {
+        setScrollToIndex(item.line);
+      } else {
+        navigate(
+          `/results?scroll_line_index=${
+            item.line
+          }&q=open:true repo:${encodeURIComponent(
+            repoName,
+          )} path:${encodeURIComponent(filePath)}`,
+        );
+      }
+    },
+    [repoName, relativePath],
+  );
+
   return (
     <div className="w-full text-xs gap-10 flex flex-row">
       <div className={`${!minimap ? 'w-full' : ''}`} ref={codeRef}>
@@ -149,6 +178,8 @@ const CodeFull = ({
                 rowHeight={20}
                 rowCount={tokens.length}
                 rowGetter={({ index }) => tokens[index]}
+                scrollToIndex={scrollToIndex}
+                scrollToAlignment="center"
                 rowRenderer={(props) => (
                   <CodeLine
                     key={pathHash + '-' + props.index.toString()}
@@ -160,6 +191,7 @@ const CodeFull = ({
                     blameLine={blameLines[props.index]}
                     blame={!!metadata.blame?.length}
                     hoverEffect
+                    shouldHighlight={scrollToIndex === props.index}
                     stylesGenerated={{
                       ...props.style,
                       width: 'auto',
@@ -176,6 +208,7 @@ const CodeFull = ({
                         repoName={repoName}
                         relativePath={relativePath}
                         repoPath={repoPath}
+                        onRefDefClick={onRefDefClick}
                       />
                     ))}
                   </CodeLine>
