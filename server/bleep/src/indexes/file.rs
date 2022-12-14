@@ -3,6 +3,7 @@ use std::{
     ops::Not,
     path::{Path, PathBuf},
     sync::Arc,
+    time::Duration,
 };
 
 use anyhow::{Context, Result};
@@ -410,14 +411,21 @@ impl File {
         // calculate symbol locations
         let symbol_locations = {
             // build a syntax aware representation of the file
-            let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
-                .and_then(TreeSitterFile::scope_graph);
+            let scope_graph = tokio::runtime::Handle::current().block_on(tokio::time::timeout(
+                Duration::from_secs(1),
+                async {
+                    match TreeSitterFile::try_build(buffer.as_bytes(), lang_str) {
+                        Ok(tsf) => tsf.scope_graph().await,
+                        Err(err) => Err(err),
+                    }
+                },
+            ));
 
             match scope_graph {
                 // we have a graph, use that
-                Ok(graph) => SymbolLocations::TreeSitter(graph),
+                Ok(Ok(graph)) => SymbolLocations::TreeSitter(graph),
                 // no graph, try ctags instead
-                Err(err) => {
+                err => {
                     debug!(?err, %lang_str, "failed to build scope graph");
                     match repo_info.symbols.get(relative_path) {
                         Some(syms) => SymbolLocations::Ctags(syms.clone()),

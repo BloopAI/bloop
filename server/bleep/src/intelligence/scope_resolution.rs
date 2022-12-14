@@ -36,7 +36,7 @@ impl ResolutionMethod {
     /// Build a lexical scope-graph with a scope query and a tree-sitter tree. The `src`
     /// parameter is required by tree-sitter to resolve certain kinds of query predicates
     /// such as #match? and #eq?.
-    pub fn build_scope(
+    pub async fn build_scope(
         &self,
         query: &Query,
         root_node: Node<'_>,
@@ -44,7 +44,7 @@ impl ResolutionMethod {
         language: &TSLanguageConfig,
     ) -> ScopeGraph {
         match self {
-            ResolutionMethod::Generic => scope_res_generic(query, root_node, src, language),
+            ResolutionMethod::Generic => scope_res_generic(query, root_node, src, language).await,
         }
     }
 }
@@ -337,7 +337,7 @@ impl ScopeGraph {
     }
 }
 
-fn scope_res_generic(
+async fn scope_res_generic(
     query: &Query,
     root_node: Node<'_>,
     src: &[u8],
@@ -371,6 +371,8 @@ fn scope_res_generic(
 
     // determine indices of every capture group in the query file
     for (i, name) in query.capture_names().iter().enumerate() {
+        tokio::task::yield_now().await;
+
         let i = i as u32;
         let parts: Vec<_> = name.split('.').collect();
 
@@ -453,6 +455,8 @@ fn scope_res_generic(
         is_hoisted,
     } in local_def_captures
     {
+        tokio::task::yield_now().await;
+
         if let Some(ranges) = capture_map.get(&index) {
             for range in ranges {
                 // if the symbol is present, is it one of the supported symbols for this language?
@@ -470,6 +474,8 @@ fn scope_res_generic(
 
     // and then refs
     for LocalRefCapture { index, symbol } in local_ref_captures {
+        tokio::task::yield_now().await;
+
         if let Some(ranges) = capture_map.get(&index) {
             for range in ranges {
                 // if the symbol is present, is it one of the supported symbols for this language?

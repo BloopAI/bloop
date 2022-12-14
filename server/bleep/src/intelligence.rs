@@ -66,7 +66,7 @@ impl<'a> TreeSitterFile<'a> {
     }
 
     /// Produce a lexical scope-graph for this TreeSitterFile.
-    pub fn scope_graph(self) -> Result<ScopeGraph, TreeSitterFileError> {
+    pub async fn scope_graph(self) -> Result<ScopeGraph, TreeSitterFileError> {
         let query = self
             .language
             .scope_query
@@ -74,6 +74,8 @@ impl<'a> TreeSitterFile<'a> {
             .map_err(TreeSitterFileError::QueryError)?;
         let root_node = self.tree.root_node();
 
-        Ok(ResolutionMethod::Generic.build_scope(query, root_node, self.src, self.language))
+        Ok(ResolutionMethod::Generic
+            .build_scope(query, root_node, self.src, self.language)
+            .await)
     }
 }
