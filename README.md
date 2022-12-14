@@ -29,7 +29,7 @@ bloop stands on the shoulders of the Rust ecosystem. Our search indexing is powe
 
 ## Get Started
 
-The simplest way to get started with bloop is to download the app (links coming soon!) and follow the onboarding steps. Checkout our [getting started guide](https://bloop.ai/docs/getting-started) and our [query language reference](https://bloop.ai/docs/writing-queries).
+The simplest way to get started with bloop is to [download the app](https://github.com/BloopAI/bloop/releases) and follow the onboarding steps. Checkout our [getting started guide](https://bloop.ai/docs/getting-started) and our [query language reference](https://bloop.ai/docs/writing-queries).
 
 For instructions on how to build from source or run bloop from the command line, check out these pages:
 - [Build bloop app from source](./apps/desktop/README.md)
