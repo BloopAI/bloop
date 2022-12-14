@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use dashmap::mapref::one::Ref;
 use git2::{Cred, RemoteCallbacks};
 use ignore::WalkBuilder;
@@ -147,6 +147,8 @@ impl BackendCredential {
 
             let existing = app.repo_pool.get_mut(&repo_ref);
             let synced = match existing {
+                // if there's a parallel process already syncing, just return
+                Some(repo) if repo.sync_status == SyncStatus::Syncing => bail!("sync in progress"),
                 Some(mut repo) => {
                     repo.value_mut().sync_status = SyncStatus::Syncing;
                     let repo = repo.downgrade();
