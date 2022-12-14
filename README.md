@@ -1,12 +1,9 @@
-<h1 align="center"><b>bloop</b></h1>
-<p align="center">Find code. Fast.
-    <br />
-    <i>MacOS</i> -
-    <i>Linux</i> -
-    <i>Windows</i>
-<p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://assets.bloop.ai/bloop_github_logo_dark.png">
+  <img alt="bloop logo" src="https://assets.bloop.ai/bloop_github_logo_light.png">
+</picture>
 
-bloop is a fast code-search engine written in Rust. Search both your local and remote
+bloop is a fast code-search engine written in Rust and Typescript. Search both your local and remote
 repositories with plain-text, regex and filtered queries.
 
 ## Features
@@ -20,11 +17,14 @@ repositories with plain-text, regex and filtered queries.
 
 bloop stands on the shoulders of the Rust ecosystem. Our search indexing is powered by [Tantivy](https://github.com/quickwit-oss/tantivy) and our multi-platform app is built with [Tauri](https://github.com/tauri-apps/tauri).
 
+![code search demo](https://assets.bloop.ai/short_gif_for_github_code.gif)
+
 ## Get Started
 
-The simplest way to get started with bloop is to download the app (download links coming soon) and follow the onboarding steps.
+The simplest way to get started with bloop is to download the app from the [releases section](https://github.com/BloopAI/bloop/releases). For more information, follow the [guide](https://bloop.ai/docs/getting-started) on our site.
 
 For instructions on how to build from source or run bloop from the command line, check out these pages:
+
 - [Build bloop app from source](./apps/desktop/README.md)
 - [Run bloop from the command line](./server/README.md)
 
@@ -42,4 +42,6 @@ If you find a bug or have a feature request, [open an issue](https://github.com/
 
 ## Privacy
 
-Our aim is to store as little data as possible, whilst being able to identify bugs and make data-driven product decisions. Therefore all users are given the option to opt-in to telemetry during onboarding. This option sends us crash reports, logs and high level information about feature usage (so we can tell that a search was made, but we wouldn't be able to see the query or results).
+We store as little data as possible. Opting in now to send telemetry to bloop helps us identify bugs and make data-driven product decisions. This option sends us crash reports, logs and high level information about feature usage (so we can tell that a search was made, but we wouldn't be able to see the query or results). If you change your mind, you can always disable this later in Settings!
+
+You can read our full privacy policy [here](https://bloop.ai/privacy).
