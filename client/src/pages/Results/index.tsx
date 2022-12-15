@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import * as Sentry from '@sentry/react';
 import { FullResult, ResultItemType, ResultType } from '../../types/results';
 import Filters from '../../components/Filters';
 import { SearchContext } from '../../context/searchContext';
@@ -20,6 +21,7 @@ import { FileSearchResponse, SearchResponse } from '../../types/api';
 import PageHeader from './PageHeader';
 import ResultsList from './ResultsList';
 import NoResults from './NoResults';
+import ErrorFallback from '../../components/ErrorFallback';
 
 const mockQuerySuggestions = [
   'repo:cobra-ats  error:“no apples”',
@@ -162,4 +164,6 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     </>
   );
 };
-export default ResultsPage;
+export default Sentry.withErrorBoundary(ResultsPage, {
+  fallback: (props) => <ErrorFallback {...props} />,
+});
