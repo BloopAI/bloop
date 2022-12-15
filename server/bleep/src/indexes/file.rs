@@ -69,10 +69,8 @@ pub struct File {
     //  local: repo
     // github: github.com/org/repo
     pub repo_name: Field,
-    pub raw_repo_name: Field,
 
     pub content: Field,
-    pub raw_content: Field,
     pub line_end_indices: Field,
 
     // a flat list of every symbol's text, for searching, e.g.: ["File", "Repo", "worker"]
@@ -83,6 +81,11 @@ pub struct File {
     pub lang: Field,
     pub avg_line_length: Field,
     pub last_commit_unix_seconds: Field,
+
+    // fast byte versions of certain fields for collector-level filtering
+    pub raw_content: Field,
+    pub raw_repo_name: Field,
+    pub raw_relative_path: Field,
 }
 
 impl File {
@@ -98,11 +101,9 @@ impl File {
         let repo_disk_path = builder.add_text_field("repo_disk_path", STRING);
         let repo_ref = builder.add_text_field("repo_ref", STRING | STORED);
         let repo_name = builder.add_text_field("repo_name", trigram.clone());
-        let raw_repo_name = builder.add_bytes_field("raw_repo_name", FAST);
         let relative_path = builder.add_text_field("relative_path", trigram.clone());
 
         let content = builder.add_text_field("content", trigram.clone());
-        let raw_content = builder.add_bytes_field("raw_content", FAST);
         let line_end_indices =
             builder.add_bytes_field("line_end_indices", BytesOptions::default().set_stored());
 
@@ -117,15 +118,17 @@ impl File {
         let avg_line_length = builder.add_f64_field("line_length", FAST);
         let last_commit_unix_seconds = builder.add_u64_field("last_commit_unix_seconds", FAST);
 
+        let raw_content = builder.add_bytes_field("raw_content", FAST);
+        let raw_repo_name = builder.add_bytes_field("raw_repo_name", FAST);
+        let raw_relative_path = builder.add_bytes_field("raw_relative_path", FAST);
+
         Self {
             file_disk_path,
             repo_disk_path,
             relative_path,
             repo_ref,
             repo_name,
-            raw_repo_name,
             content,
-            raw_content,
             line_end_indices,
             symbols,
             symbol_locations,
@@ -134,6 +137,9 @@ impl File {
             last_commit_unix_seconds,
             schema: builder.build(),
             config,
+            raw_content,
+            raw_repo_name,
+            raw_relative_path,
 
             #[cfg(feature = "debug")]
             histogram: Arc::new(
@@ -470,15 +476,16 @@ impl File {
             self.relative_path => relative_path.to_string_lossy().as_ref(),
             self.repo_ref => repo_ref,
             self.repo_name => repo_name,
-            self.raw_repo_name => repo_name.as_bytes(),
             self.content => buffer.as_str(),
-            self.raw_content => buffer.as_bytes(),
             self.line_end_indices => line_end_indices,
             self.lang => lang_str.to_ascii_lowercase().as_bytes(),
             self.avg_line_length => lines_avg,
             self.last_commit_unix_seconds => last_commit,
             self.symbol_locations => bincode::serialize(&symbol_locations)?,
             self.symbols => symbols,
+            self.raw_content => buffer.as_bytes(),
+            self.raw_repo_name => repo_name.as_bytes(),
+            self.raw_relative_path => relative_path.to_string_lossy().as_ref().as_bytes(),
         ))?;
 
         trace!("document written");

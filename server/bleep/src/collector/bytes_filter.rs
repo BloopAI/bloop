@@ -1,4 +1,4 @@
-// a copy of tantivy::collector::FilteCollector that works on byte fast fields
+// a version of tantivy::collector::FilterCollector that works on byte fast fields
 
 use tantivy::collector::{Collector, SegmentCollector};
 use tantivy::fastfield::BytesFastFieldReader;

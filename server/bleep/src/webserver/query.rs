@@ -20,7 +20,10 @@ use async_trait::async_trait;
 use axum::{
     extract::Query, http::StatusCode, response::IntoResponse as IntoAxumResponse, Extension,
 };
-use regex::bytes::RegexBuilder as ByteRegexBuilder;
+use regex::{
+    bytes::{Regex as ByteRegex, RegexBuilder as ByteRegexBuilder},
+    Regex,
+};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use tantivy::collector::{MultiCollector, TopDocs};
@@ -86,6 +89,30 @@ impl ApiQuery {
         let queries =
             parser::parse(&self.q).map_err(|e| EndpointError::user(e.to_string().into()))?;
 
+        // FIXME: this for-loop prevents us from ever producing heterogenous
+        // results.
+        //
+        // It picks up the first query in the query list and produces results only
+        // for that query. A query containing an `or` operator; such as:
+        //
+        //     symbol:foo or repo:bar
+        //
+        //
+        // is actually broken down into two separate queries:
+        //
+        //  - `symbol:foo` which operates on the `File` index
+        //  - `repo:bar` which operates on the `Repo` index
+        //
+        // However, merging the results of a query that operates on multiple indices
+        // poses a few difficult questions:
+        //
+        //  - how do we implement pagination or establish a limit on the number of
+        //    results?
+        //  - how do we rank these results?
+        //
+        // For the time-being, we take the easy way out by prioritizing the first
+        // target of the query, in this case `symbol:foo`. Queries that produce
+        // homogenous results will work as expected: `repo:foo or repo:bar`.
         for q in &queries {
             if ContentReader.query_matches(q) {
                 return ContentReader
@@ -141,7 +168,7 @@ pub struct QueryResponse {
     /// Number of search results in this response
     count: usize,
     /// Paging metadata
-    metadata: QueryMetadata,
+    metadata: PagingMetadata,
     /// Search result data
     pub data: Vec<QueryResult>,
     /// Stats for nerds
@@ -150,7 +177,7 @@ pub struct QueryResponse {
 
 /// Metadata pertaining to the query response, such as paging info
 #[derive(Default, Serialize, ToSchema)]
-pub(super) struct QueryMetadata {
+pub(super) struct PagingMetadata {
     /// Page number passed in the request
     page: usize,
 
@@ -163,6 +190,17 @@ pub(super) struct QueryMetadata {
     /// total number of search results across all pages, only populated
     /// if the client requests it
     total_count: Option<usize>,
+}
+
+impl PagingMetadata {
+    fn new(page: usize, page_size: usize, total_count: Option<usize>) -> Self {
+        Self {
+            page,
+            page_size,
+            page_count: total_count.map(|t| div_ceil(t, page_size)),
+            total_count,
+        }
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Debug)]
@@ -377,12 +415,8 @@ impl ExecuteQuery for ContentReader {
             .with_lang_freqs(lang_stats_handle.extract(&mut results.metadata))
             .with_repo_freqs(repo_stats_handle.extract(&mut results.metadata));
 
-        let metadata = QueryMetadata {
-            page: q.page,
-            page_size: q.page_size,
-            page_count: Some(div_ceil(total_count, q.page_size)),
-            total_count: Some(total_count),
-        };
+        let metadata = PagingMetadata::new(q.page, q.page_size, Some(total_count));
+
         let count = data.len();
         let response = QueryResponse {
             count,
@@ -411,8 +445,20 @@ impl ExecuteQuery for FileReader {
         queries: &[parser::Query<'_>],
         q: &ApiQuery,
     ) -> Result<QueryResponse> {
-        let top_docs = TopDocs::with_limit(q.limit()).and_offset(q.offset());
+        let (filter_regexes, byte_filter_regexes): (Vec<_>, Vec<_>) = queries
+            .iter()
+            .filter(|q| self.query_matches(q))
+            .filter_map(|q| {
+                let regex_str = q.path.as_ref()?.regex_str();
+                let regex = Regex::new(&regex_str).ok()?;
+                let byte_regex = ByteRegex::new(&regex_str).ok()?;
+                Some((regex, byte_regex))
+            })
+            .unzip();
 
+        let top_k = TopDocs::with_limit(q.limit()).and_offset(q.offset());
+
+        let path_field = indexer.source.raw_relative_path;
         let repo_field = indexer.source.raw_repo_name;
         let lang_field = indexer.source.lang;
 
@@ -425,15 +471,13 @@ impl ExecuteQuery for FileReader {
         let lang_stats_handle = metadata_collector.add_collector(lang_stats_collector);
         let repo_stats_handle = metadata_collector.add_collector(repo_stats_collector);
 
-        let mut results = indexer
-            .query(queries.iter(), self, (top_docs, metadata_collector))
-            .await?;
+        let collector = BytesFilterCollector::new(
+            path_field,
+            move |b| byte_filter_regexes.iter().any(|r| r.is_match(b)), // a doc is accepted if it contains atleast 1 target
+            (top_k, metadata_collector),
+        );
 
-        let filter_regexes = queries
-            .iter()
-            .filter(|q| self.query_matches(q))
-            .filter_map(|q| Some(q.path.as_ref()?.regex().expect("failed to parse regex")))
-            .collect::<SmallVec<[_; 2]>>();
+        let mut results = indexer.query(queries.iter(), self, collector).await?;
 
         let data = results
             .docs
@@ -459,12 +503,7 @@ impl ExecuteQuery for FileReader {
             .with_lang_freqs(lang_stats_handle.extract(&mut results.metadata))
             .with_repo_freqs(repo_stats_handle.extract(&mut results.metadata));
 
-        let metadata = QueryMetadata {
-            page: q.page,
-            page_size: q.page_size,
-            page_count: Some(div_ceil(total_count, q.page_size)),
-            total_count: Some(total_count),
-        };
+        let metadata = PagingMetadata::new(q.page, q.page_size, Some(total_count));
 
         let response = QueryResponse {
             count: data.len(),
@@ -487,14 +526,19 @@ impl ExecuteQuery for RepoReader {
         queries: &[parser::Query<'_>],
         q: &ApiQuery,
     ) -> Result<QueryResponse> {
-        let filter_regexes = queries
+        let (filter_regexes, byte_filter_regexes): (Vec<_>, Vec<_>) = queries
             .iter()
             .filter(|q| self.query_matches(q))
             .into_iter()
-            .filter_map(|q| q.repo.as_ref().and_then(|lit| lit.regex().ok()))
-            .collect::<SmallVec<[_; 2]>>();
+            .filter_map(|q| {
+                let regex_str = q.repo.as_ref()?.regex_str();
+                let regex = Regex::new(&regex_str).ok()?;
+                let byte_regex = ByteRegex::new(&regex_str).ok()?;
+                Some((regex, byte_regex))
+            })
+            .unzip();
 
-        let top_docs = TopDocs::with_limit(q.limit()).and_offset(q.offset());
+        let top_k = TopDocs::with_limit(q.limit()).and_offset(q.offset());
 
         let name_field = indexer.source.raw_name;
         let repo_stats_collector = FrequencyCollector(name_field);
@@ -504,9 +548,13 @@ impl ExecuteQuery for RepoReader {
         let repo_stats_handle = metadata_collector.add_collector(repo_stats_collector);
         let total_count_handle = metadata_collector.add_collector(total_count_collector);
 
-        let mut results = indexer
-            .query(queries.iter(), self, (top_docs, metadata_collector))
-            .await?;
+        let collector = BytesFilterCollector::new(
+            name_field,
+            move |b| byte_filter_regexes.iter().any(|r| r.is_match(b)), // a doc is accepted if it contains atleast 1 target
+            (top_k, metadata_collector),
+        );
+
+        let mut results = indexer.query(queries.iter(), self, collector).await?;
 
         let data = results
             .docs
@@ -528,12 +576,7 @@ impl ExecuteQuery for RepoReader {
             .with_repo_freqs(repo_stats_handle.extract(&mut results.metadata));
 
         let total_count = total_count_handle.extract(&mut results.metadata);
-        let metadata = QueryMetadata {
-            page: q.page,
-            page_size: q.page_size,
-            page_count: Some(div_ceil(total_count, q.page_size)),
-            total_count: Some(total_count),
-        };
+        let metadata = PagingMetadata::new(q.page, q.page_size, Some(total_count));
 
         let response = QueryResponse {
             count: data.len(),
@@ -674,7 +717,7 @@ impl ExecuteQuery for OpenReader {
         let response = QueryResponse {
             count: data.len(),
             data,
-            metadata: QueryMetadata::default(),
+            metadata: PagingMetadata::default(),
             stats: ResultStats::default(),
         };
 
@@ -748,7 +791,7 @@ mod tests {
                     symbols: vec![],
                 }],
             })],
-            metadata: QueryMetadata {
+            metadata: PagingMetadata {
                 page: 0,
                 page_size: 100,
                 page_count: Some(6),
