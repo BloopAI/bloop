@@ -6,7 +6,7 @@ import Button from '../../Button';
 import BreadcrumbsPath from '../../BreadcrumbsPath';
 import { DropdownWithIcon } from '../../Dropdown';
 import { MoreHorizontal } from '../../../icons';
-import { getFileManagerName, isWindowsPath } from '../../../utils';
+import { getFileManagerName, isWindowsPath, splitPath } from '../../../utils';
 import { DeviceContext } from '../../../context/deviceContext';
 import { MenuItemType } from '../../../types/general';
 
@@ -85,7 +85,11 @@ const CodeBlockSearch = ({
                     openFolderInExplorer(
                       repoPath +
                         (isWindowsPath(repoPath) ? '\\' : '/') +
-                        filePath,
+                        (os.type === 'Darwin'
+                          ? filePath
+                          : splitPath(filePath)
+                              .slice(0, -1)
+                              .join(isWindowsPath(filePath) ? '\\' : '/')),
                     );
                   },
                 },
