@@ -141,7 +141,14 @@ impl IndexWriter {
 
         let (state, indexed) = match repo.sync_status {
             Uninitialized | Syncing | Indexing => return Ok(()),
-            Removed => (None, self.delete_repo(&repo, &writers)),
+            Removed => {
+                let deleted = self.delete_repo(&repo, &writers);
+                if deleted.is_ok() {
+                    writers.rollback()?;
+                    repo_pool.remove(reporef);
+                }
+                return deleted;
+            }
             _ => {
                 repo_pool.get_mut(reporef).unwrap().value_mut().sync_status = Indexing;
                 let indexed = repo.index(&key, &writers).await;
@@ -150,12 +157,9 @@ impl IndexWriter {
                     _ => None,
                 };
 
-                (state, indexed.map(|_| ()).map_err(|e| e.into()))
+                (state, indexed.map(|_| ()))
             }
         };
-
-        // self is a separate sweep so we don't await while holding locks
-        repo_pool.retain(|_k, v| v.sync_status != Removed);
 
         writers.commit().await?;
         config.source.save_pool(repo_pool.clone())?;
