@@ -1,4 +1,3 @@
-import React, { useEffect, useMemo, useState } from 'react';
 import FileIcon from '../../../FileIcon';
 import NavigationItem from '../../NavigationItem';
 import { FileTreeFileType } from '../../../../types';

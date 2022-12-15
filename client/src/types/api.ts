@@ -26,14 +26,14 @@ export interface SearchResponse {
 export interface FileSearchResponse extends SearchResponse {
   data: FileItem[];
 }
-//
-// export interface GeneralSearchResponse
-//   extends SearchResponse<CodeItem | RepoItem | FileResItem> {}
-//
-// export interface DirectorySearchResponse
-//   extends SearchResponse<DirectoryItem> {}
-//
-// export interface FileSearchResponse extends SearchResponse<FileItem> {}
+
+export interface GeneralSearchResponse extends SearchResponse {
+  data: (CodeItem | RepoItem | FileResItem)[];
+}
+
+export interface DirectorySearchResponse extends SearchResponse {
+  data: DirectoryItem[];
+}
 
 export interface SymbolSnippetItem {
   kind: SymbolType;

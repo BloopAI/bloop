@@ -3,10 +3,11 @@ import { SearchContext } from '../../context/searchContext';
 import { Repository } from '../../types';
 import Skeleton from '../Skeleton';
 import { mapDirResult } from '../../mappers/results';
+import { DirectorySearchResponse } from '../../types/api';
 import RepositoryOverview from './RepositoryOverview';
 
 type Props = {
-  repositoryData: any;
+  repositoryData: DirectorySearchResponse;
   loading: boolean;
 };
 

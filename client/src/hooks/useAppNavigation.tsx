@@ -31,7 +31,6 @@ type ContextType = {
   navigateRepoPath: (repo: string, path?: string) => void;
   navigateSearch: (query: string, page?: number) => void;
   navigateFullResult: (repo: string, path: string) => void;
-  navigateSearchFile: (repo: string, path: string) => void;
   query: string;
 };
 
@@ -42,7 +41,6 @@ const AppNavigationContext = createContext<ContextType>({
   navigateRepoPath: (repo, path) => {},
   navigateSearch: (query, page) => {},
   navigateFullResult: (repo, path) => {},
-  navigateSearchFile: (repo, path) => {},
   query: '',
 });
 
@@ -56,10 +54,6 @@ export const AppNavigationProvider = (prop: {
   );
   const navigateBrowser = useNavigate();
 
-  const getLastItem = () => {
-    return navigation[navigation.length - 1];
-  };
-
   const navigatedItem = useMemo(
     () => (navigation.length ? navigation[navigation.length - 1] : undefined),
     [navigation],
@@ -70,7 +64,6 @@ export const AppNavigationProvider = (prop: {
     switch (type) {
       case 'repo':
       case 'full-result':
-      case 'search-file':
         return `open:true repo:${repo} ${path ? `path:${path}` : ''}`;
       case 'search':
         return query;
@@ -105,24 +98,6 @@ export const AppNavigationProvider = (prop: {
     saveState({ type: 'search', page, query: query });
   };
 
-  const navigateSearchFile = useCallback(
-    (repo: string, path: string) => {
-      /*
-       * We're replacing previous item in navigation history
-       * to avoid back navigation through file modals
-       * */
-      setNavigation((prevState) => {
-        const newState = [...prevState];
-
-        if (prevState[prevState.length - 1].type === 'search-file') {
-          newState.pop();
-        }
-        return [...newState, { type: 'search-file', repo, path }];
-      });
-    },
-    [navigation],
-  );
-
   const navigateRepoPath = (repo: string, path?: string) => {
     /*
      * Handling root path for navigation
@@ -154,7 +129,6 @@ export const AppNavigationProvider = (prop: {
         navigateRepoPath,
         navigateFullResult,
         navigateSearch,
-        navigateSearchFile,
         query: query || '',
       }}
     >

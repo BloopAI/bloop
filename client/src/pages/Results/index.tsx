@@ -17,11 +17,11 @@ import { UIContext } from '../../context/uiContext';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import ResultModal from '../ResultModal';
 import { useSearch } from '../../hooks/useSearch';
-import { FileSearchResponse, SearchResponse } from '../../types/api';
+import { FileSearchResponse, GeneralSearchResponse } from '../../types/api';
+import ErrorFallback from '../../components/ErrorFallback';
 import PageHeader from './PageHeader';
 import ResultsList from './ResultsList';
 import NoResults from './NoResults';
-import ErrorFallback from '../../components/ErrorFallback';
 
 const mockQuerySuggestions = [
   'repo:cobra-ats  error:“no apples”',
@@ -32,7 +32,7 @@ const mockQuerySuggestions = [
 ];
 
 type Props = {
-  resultsData: any;
+  resultsData: GeneralSearchResponse;
   loading: boolean;
 };
 

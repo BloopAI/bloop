@@ -30,12 +30,14 @@ type Props = {
   setMode: (n: FullResultModeEnum) => void;
 };
 
+/*
 const tabs = [
   { title: 'Code' },
   // { title: 'Blame' },
   // { title: 'Commits' },
   // { title: 'Authors' },
 ];
+*/
 
 const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
   const [activeTab, setActiveTab] = useState(0);

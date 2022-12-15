@@ -1,24 +1,16 @@
-<<<<<<< HEAD
-import React, { useCallback, useEffect, useState } from 'react';
-=======
-import React, { useContext, useEffect, useState, MouseEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
->>>>>>> main
+import React, { useContext, useEffect, useState, useCallback } from 'react';
 import { Remarkable } from 'remarkable';
 import Accordion from '../../components/Accordion';
 import FileIcon from '../../components/FileIcon';
 import { FileTreeFileType, Repository } from '../../types';
 import RepositoryFiles from '../../components/RepositoryFiles';
 import { useSearch } from '../../hooks/useSearch';
-import { SearchResponse } from '../../types/api';
+import { FileSearchResponse } from '../../types/api';
 import { sortFiles } from '../../utils/file';
 import { isWindowsPath } from '../../utils';
 import { highlightCode } from '../../utils/prism';
-<<<<<<< HEAD
 import useAppNavigation from '../../hooks/useAppNavigation';
-=======
 import { DeviceContext } from '../../context/deviceContext';
->>>>>>> main
 
 const md = new Remarkable({
   html: true,
@@ -48,7 +40,7 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
   } | null>(null);
   const { navigateRepoPath, navigateFullResult } = useAppNavigation();
 
-  const { data: readmeData, searchQuery } = useSearch<SearchResponse>();
+  const { data: readmeData, searchQuery } = useSearch<FileSearchResponse>();
   useEffect(() => {
     const readmePath = repository.files.find((file) =>
       file.path.includes('.md'),
@@ -63,12 +55,13 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
   }, [repository.files]);
 
   useEffect(() => {
-    if (readmeData?.data[0].kind === 'file') {
-      setReadme({
-        contents: md.render(readmeData.data[0].data.contents),
-        path: readmeData.data[0].data.relative_path,
-      });
+    if (!readmeData) {
+      return;
     }
+    setReadme({
+      contents: md.render(readmeData.data[0].data.contents),
+      path: readmeData.data[0].data.relative_path,
+    });
   }, [readmeData]);
 
   const fileClick = useCallback((path: string, type: FileTreeFileType) => {

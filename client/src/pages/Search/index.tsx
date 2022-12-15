@@ -8,7 +8,6 @@ import PageTemplate from '../../components/PageTemplate';
 import ErrorFallback from '../../components/ErrorFallback';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import { buildQuery } from '../../utils';
-import Skeleton from '../Skeleton';
 import ResultsPage from '../Results';
 import ViewResult from '../ResultFull';
 
@@ -59,13 +58,14 @@ const SearchPage = () => {
       case 'results':
         return <ResultsPage resultsData={resultsData} loading={loading} />;
       case 'repo':
-        return <RepositoryPage repositoryData={resultsData} />;
+        return (
+          <RepositoryPage repositoryData={resultsData} loading={loading} />
+        );
       case 'full-result':
         return <ViewResult data={resultsData} />;
     }
   }, [renderPage, resultsData, loading]);
 
-  // return <PageTemplate>{loading ? <Skeleton /> : renderedPage}</PageTemplate>;
   return <PageTemplate>{renderedPage}</PageTemplate>;
 };
 

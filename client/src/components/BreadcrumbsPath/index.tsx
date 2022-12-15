@@ -14,28 +14,15 @@ type Props = {
   path: string;
   repo: string;
   onClick?: (path: string, fileType?: FileTreeFileType) => void;
-  // shouldNavigate?: boolean;
 } & Omit<BProps, 'pathParts'>;
 
-const BreadcrumbsPath = ({
-  path,
-  onClick,
-  repo,
-  // shouldNavigate,
-  ...rest
-}: Props) => {
+const BreadcrumbsPath = ({ path, onClick, repo, ...rest }: Props) => {
   const { navigateRepoPath } = useAppNavigation();
   const mapPath = useCallback(() => {
     return splitPathForBreadcrumbs(path, (e, item, index, pParts) => {
       const newPath = breadcrumbsItemPath(pParts, index, isWindowsPath(path));
       onClick?.(newPath, FileTreeFileType.DIR);
-      // shouldNavigate &&
       navigateRepoPath(repo, newPath);
-      // navigate(
-      //   `/results?q=open:true repo:${encodeURIComponent(repo)} ${
-      //     newPath.length ? `path:${encodeURIComponent(newPath)}` : ''
-      //   }`,
-      // );
     });
   }, [path]);
 

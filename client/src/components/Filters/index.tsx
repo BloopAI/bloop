@@ -58,7 +58,6 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
     }
 
     setFiltersChanged(false);
-    // navigate(`/results?q=${encodeURIComponent(result)}`);
     navigateSearch(result);
     setSearchHistory((prev) => {
       const newHistory = [result, ...prev].slice(0, 4);
