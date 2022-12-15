@@ -125,6 +125,7 @@ fn show_folder_in_finder(path: String) {
     {
         std::process::Command::new("open")
             .arg(path)
+            .arg("-R") // will reveal the file in finder instead of opening it
             .spawn()
             .unwrap();
     }

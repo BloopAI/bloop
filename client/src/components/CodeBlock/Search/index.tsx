@@ -1,9 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useMemo, useState } from 'react';
 import FileIcon from '../../FileIcon';
 import Code from '../Code';
-import { ResultClick, Snippet, TokenInfoFile } from '../../../types/results';
+import { ResultClick, Snippet } from '../../../types/results';
 import Button from '../../Button';
 import BreadcrumbsPath from '../../BreadcrumbsPath';
+import { DropdownWithIcon } from '../../Dropdown';
+import { MoreHorizontal } from '../../../icons';
+import { getFileManagerName, isWindowsPath } from '../../../utils';
+import { DeviceContext } from '../../../context/deviceContext';
+import { MenuItemType } from '../../../types/general';
 
 type Props = {
   snippets: Snippet[];
@@ -11,6 +16,7 @@ type Props = {
   filePath: string;
   branch: string;
   repoName: string;
+  repoPath: string;
   collapsed?: boolean;
   onClick?: ResultClick;
 };
@@ -30,8 +36,10 @@ const CodeBlockSearch = ({
   collapsed,
   onClick,
   repoName,
+  repoPath,
 }: Props) => {
   const [isExpanded, setExpanded] = useState(false);
+  const { os, openFolderInExplorer } = useContext(DeviceContext);
 
   const handleMouseUp = useCallback(() => {
     if (!document.getSelection()?.toString()) {
@@ -65,6 +73,27 @@ const CodeBlockSearch = ({
           {/*<span className="text-gray-700 h-3 border-l border-l-gray-700"></span>*/}
           <span className="body-s text-gray-100">
             {totalMatches} match{totalMatches > 1 ? 'es' : ''}
+          </span>
+          <span>
+            <DropdownWithIcon
+              items={[
+                {
+                  type: MenuItemType.DEFAULT,
+                  text: `View in ${getFileManagerName(os.type)}`,
+                  onClick: () => {
+                    console.log(filePath, repoName, repoPath);
+                    openFolderInExplorer(
+                      repoPath +
+                        (isWindowsPath(repoPath) ? '\\' : '/') +
+                        filePath,
+                    );
+                  },
+                },
+              ]}
+              icon={<MoreHorizontal />}
+              noChevron
+              btnSize="small"
+            />
           </span>
         </div>
       </div>

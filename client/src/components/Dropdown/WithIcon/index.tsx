@@ -11,6 +11,7 @@ type Props = {
   dropdownBtnClassName?: string;
   noChevron?: boolean;
   btnVariant?: 'primary' | 'secondary' | 'tertiary';
+  btnSize?: 'small' | 'medium' | 'large';
 };
 
 const Dropdown = ({
@@ -20,6 +21,7 @@ const Dropdown = ({
   dropdownBtnClassName,
   noChevron,
   btnVariant = 'tertiary',
+  btnSize = 'medium',
 }: Props) => {
   const [visible, setVisibility] = useState(false);
   const ref = useRef(null);
@@ -36,12 +38,15 @@ const Dropdown = ({
       >
         <Button
           variant={btnVariant}
+          size={btnSize}
           id="dropdownDefault"
           data-dropdown-toggle="dropdown"
           className={`${visible ? 'text-gray-50' : ''} ${
             dropdownBtnClassName || ''
           }`}
           onClick={() => setVisibility(!visible)}
+          onlyIcon={noChevron}
+          title="Open dropdown"
         >
           {icon}
           {noChevron ? null : visible ? (
