@@ -1,15 +1,15 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Remarkable } from 'remarkable';
 import Accordion from '../../components/Accordion';
 import FileIcon from '../../components/FileIcon';
-import { Repository } from '../../types';
+import { FileTreeFileType, Repository } from '../../types';
 import RepositoryFiles from '../../components/RepositoryFiles';
 import { useSearch } from '../../hooks/useSearch';
 import { SearchResponse } from '../../types/api';
 import { sortFiles } from '../../utils/file';
 import { isWindowsPath } from '../../utils';
 import { highlightCode } from '../../utils/prism';
+import useAppNavigation from '../../hooks/useAppNavigation';
 
 const md = new Remarkable({
   html: true,
@@ -26,17 +26,16 @@ const md = new Remarkable({
 type Props = {
   repository: Repository;
   syncState?: boolean;
-  sidebarOpen?: boolean;
 };
 
-const RepositoryOverview = ({ syncState, repository, sidebarOpen }: Props) => {
+const RepositoryOverview = ({ syncState, repository }: Props) => {
   const [sortedFiles, setSortedFiles] = useState(repository.files);
 
   const [readme, setReadme] = useState<{
     contents: string;
     path: string;
   } | null>(null);
-  const navigate = useNavigate();
+  const { navigateRepoPath, navigateFullResult } = useAppNavigation();
 
   const { data: readmeData, searchQuery } = useSearch<SearchResponse>();
   useEffect(() => {
@@ -61,6 +60,14 @@ const RepositoryOverview = ({ syncState, repository, sidebarOpen }: Props) => {
     }
   }, [readmeData]);
 
+  const fileClick = useCallback((path: string, type: FileTreeFileType) => {
+    if (type === FileTreeFileType.FILE) {
+      navigateFullResult(repository.name, path);
+    } else if (type === FileTreeFileType.DIR) {
+      navigateRepoPath(repository.name, path === '/' ? '' : path);
+    }
+  }, []);
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -70,14 +77,7 @@ const RepositoryOverview = ({ syncState, repository, sidebarOpen }: Props) => {
       <div className="select-none">
         <RepositoryFiles
           files={sortedFiles}
-          onClick={(p: string, shouldReplace?: boolean) => {
-            navigate(
-              `/results?q=open:true repo:${encodeURIComponent(
-                repository.name,
-              )} ${p.length ? `path:${encodeURIComponent(p)}` : ''}`,
-              { replace: shouldReplace && sidebarOpen },
-            );
-          }}
+          onClick={fileClick}
           currentPath={
             repository.currentPath
               ? `${repository.name}${

@@ -1,31 +1,31 @@
 import React, { MouseEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import FileIcon from '../../../components/FileIcon';
+import FileIcon from '../../components/FileIcon';
 import {
   ChevronDoubleIntersected,
   CloseSign,
   Modal,
   Sidebar,
-} from '../../../icons';
-import Button from '../../../components/Button';
-import SelectToggleButton from '../../../components/SelectToggleButton';
-import Tabs from '../../../components/Tabs';
-import CodeFull from '../../../components/CodeBlock/CodeFull';
-import { FullResult } from '../../../types/results';
-import CommitHistory from '../../../components/CommitHistory';
-import Dropdown from '../../../components/Dropdown/Normal';
-import ContributionsChart from '../../../components/ContributionsChart';
-import UserContributionsChart from '../../../components/UserContributionsChart';
-import { mockCommits, mockGitBlame } from '../../../mocks';
-import { FullResultModeEnum, MenuItemType } from '../../../types/general';
-import ModalOrSidebar from '../../../components/ModalOrSidebar';
-import ShareFileModal from '../../../components/ShareFileModal';
-import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
-import { splitPathForBreadcrumbs } from '../../../utils';
+} from '../../icons';
+import Button from '../../components/Button';
+import SelectToggleButton from '../../components/SelectToggleButton';
+import Tabs from '../../components/Tabs';
+import CodeFull from '../../components/CodeBlock/CodeFull';
+import { FullResult } from '../../types/results';
+import CommitHistory from '../../components/CommitHistory';
+import Dropdown from '../../components/Dropdown/Normal';
+import ContributionsChart from '../../components/ContributionsChart';
+import UserContributionsChart from '../../components/UserContributionsChart';
+import { mockCommits, mockGitBlame } from '../../mocks';
+import { FullResultModeEnum, MenuItemType } from '../../types/general';
+import ModalOrSidebar from '../../components/ModalOrSidebar';
+import ShareFileModal from '../../components/ShareFileModal';
+import BreadcrumbsPath from '../../components/BreadcrumbsPath';
+import { splitPathForBreadcrumbs } from '../../utils';
 
 type Props = {
   result: FullResult | null;
-  onResultClosed: (shouldNavigateBack?: boolean) => void;
+  onResultClosed: () => void;
   mode: FullResultModeEnum;
   setMode: (n: FullResultModeEnum) => void;
 };
@@ -37,10 +37,9 @@ const tabs = [
   // { title: 'Authors' },
 ];
 
-const ResultFull = ({ result, onResultClosed, mode, setMode }: Props) => {
+const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
   const [activeTab, setActiveTab] = useState(0);
   const [isShareOpen, setShareOpen] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const action =
@@ -69,8 +68,8 @@ const ResultFull = ({ result, onResultClosed, mode, setMode }: Props) => {
     [result?.hoverableRanges],
   );
 
-  const handleClose = (e: MouseEvent, shouldNavigate?: boolean) => {
-    onResultClosed(shouldNavigate);
+  const handleClose = (e: MouseEvent) => {
+    onResultClosed();
   };
 
   const getContent = (result: FullResult) => {
@@ -243,8 +242,7 @@ const ResultFull = ({ result, onResultClosed, mode, setMode }: Props) => {
                       repo={result.repoName}
                       path={result.relativePath}
                       activeStyle="secondary"
-                      shouldNavigate
-                      onClick={() => onResultClosed(false)}
+                      onClick={onResultClosed}
                     />
                   </div>
                 </div>
@@ -272,4 +270,4 @@ const ResultFull = ({ result, onResultClosed, mode, setMode }: Props) => {
   );
 };
 
-export default ResultFull;
+export default ResultModal;

@@ -1,6 +1,5 @@
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import Button from '../Button';
 import {
   ChevronFoldIn,
@@ -14,6 +13,7 @@ import {
   FILTER_PARENT_ANIMATION,
 } from '../../consts/animations';
 import { saveJsonToStorage, SEARCH_HISTORY_KEY } from '../../services/storage';
+import useAppNavigation from '../../hooks/useAppNavigation';
 import FilterSection from './FilterSection';
 
 type Props = {
@@ -31,8 +31,7 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
     setOpenSections(Object.keys(filters));
   }, [filters]);
   const allOpen = openSections.length === Object.keys(filters).length;
-  const navigate = useNavigate();
-
+  const { navigateSearch } = useAppNavigation();
   const handleSubmit = useCallback(() => {
     const regex = inputValue.includes('open:true')
       ? /((lang):[^\s)]+)|\(((lang):[^\s)]+\sor\s)+(lang):[^\s)]+\)/gim
@@ -59,7 +58,8 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
     }
 
     setFiltersChanged(false);
-    navigate(`/results?q=${encodeURIComponent(result)}`);
+    // navigate(`/results?q=${encodeURIComponent(result)}`);
+    navigateSearch(result);
     setSearchHistory((prev) => {
       const newHistory = [result, ...prev].slice(0, 4);
       saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);

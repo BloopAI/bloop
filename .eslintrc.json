@@ -51,5 +51,9 @@
         "no-undef": "error",
         "import/no-unresolved": "off",
         "react/react-in-jsx-scope": "off"
+    },
+    "globals": {
+        "React": true,
+        "JSX": true
     }
 }

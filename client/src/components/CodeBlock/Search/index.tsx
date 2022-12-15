@@ -55,7 +55,7 @@ const CodeBlockSearch = ({
       <div className="w-full flex justify-between bg-gray-800 p-3 border-b border-gray-700 gap-2 select-none">
         <div className="flex items-center gap-2 max-w-[calc(100%-85px)] w-full">
           <FileIcon filename={filePath} />
-          <BreadcrumbsPath path={filePath} repo={repoName} shouldNavigate />
+          <BreadcrumbsPath path={filePath} repo={repoName} />
         </div>
         <div className="flex gap-2 items-center text-gray-500 flex-shrink-0">
           {/*<div className="flex items-center gap-2">*/}

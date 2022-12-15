@@ -83,3 +83,9 @@ export const splitPathForBreadcrumbs = (
       },
     }));
 };
+
+export const buildQuery = (repo?: string, path?: string) => {
+  return `open:true ${repo ? `repo:${repo}` : ''} ${
+    path ? `path:${path}` : ''
+  }`;
+};

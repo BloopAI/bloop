@@ -1,15 +1,37 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { SearchContext } from '../../context/searchContext';
 import { Repository } from '../../types';
+import Skeleton from '../Skeleton';
+import { mapDirResult } from '../../mappers/results';
 import RepositoryOverview from './RepositoryOverview';
 
 type Props = {
-  repository: Repository;
-  sidebarOpen: boolean;
+  repositoryData: any;
+  loading: boolean;
 };
 
-const RepositoryPage = ({ repository, sidebarOpen }: Props) => {
+const RepositoryPage = ({ repositoryData, loading }: Props) => {
+  const [repository, setRepository] = useState<Repository | undefined>();
   const { setFilters } = useContext(SearchContext);
+
+  useEffect(() => {
+    if (!repositoryData) {
+      return;
+    }
+
+    const data = mapDirResult(repositoryData.data[0]);
+    setRepository({
+      name: data.name,
+      fileCount: 0,
+      files: data.entries,
+      commits: [],
+      url: '',
+      description: '',
+      branches: [],
+      followers: 1,
+      currentPath: data.relativePath,
+    });
+  }, [repositoryData]);
 
   useEffect(() => {
     setFilters([
@@ -60,7 +82,9 @@ const RepositoryPage = ({ repository, sidebarOpen }: Props) => {
     ]);
   }, []);
 
-  return (
+  return !repository || loading ? (
+    <Skeleton />
+  ) : (
     <div className="flex w-full">
       <div className="h-full flex flex-col overflow-hidden relative overflow-y-auto w-[20.25rem] flex-shrink-0">
         <div className="p-8 flex flex-row gap-6 justify-between select-none cursor-default">
@@ -86,11 +110,7 @@ const RepositoryPage = ({ repository, sidebarOpen }: Props) => {
         {/*</div>*/}
       </div>
       <div className="p-12 w-full overflow-y-auto">
-        <RepositoryOverview
-          repository={repository}
-          syncState
-          sidebarOpen={sidebarOpen}
-        />
+        <RepositoryOverview repository={repository} syncState />
       </div>
     </div>
   );

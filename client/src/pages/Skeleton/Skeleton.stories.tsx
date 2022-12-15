@@ -1,9 +1,9 @@
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import Skeleton from './Skeleton';
+import Index from './Skeleton';
 
 export default {
   title: 'pages/SkeletonResults',
-  component: Skeleton,
+  component: Index,
   parameters: {
     layout: 'fullscreen',
   },
@@ -13,7 +13,7 @@ export const CodeResults = () => {
   return (
     <MemoryRouter initialEntries={['']}>
       <Routes>
-        <Route path="/" element={<Skeleton />} />
+        <Route path="/" element={<Index />} />
       </Routes>
     </MemoryRouter>
   );

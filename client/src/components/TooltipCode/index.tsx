@@ -132,7 +132,6 @@ const TooltipCode = ({
                               path={fileItem.path}
                               repo={repoName}
                               activeStyle="secondary"
-                              shouldNavigate
                             />
                           </span>
                           {fileItem.items.map((item, j) => (

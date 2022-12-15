@@ -67,7 +67,7 @@ export const ResultsPreviewSkeleton = () => {
 };
 
 const mainContainerStyle = { height: 'calc(100vh - 8rem)' };
-const Skeleton = () => {
+const Index = () => {
   return (
     <div className="text-gray-200">
       <NavBar userSigned />
@@ -169,4 +169,4 @@ const Skeleton = () => {
   );
 };
 
-export default Skeleton;
+export default Index;

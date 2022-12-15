@@ -23,6 +23,9 @@ export interface SearchResponse {
     total_count: number;
   };
 }
+export interface FileSearchResponse extends SearchResponse {
+  data: FileItem[];
+}
 //
 // export interface GeneralSearchResponse
 //   extends SearchResponse<CodeItem | RepoItem | FileResItem> {}
@@ -122,6 +125,7 @@ export interface DirectoryFileEntryData {
 export interface DirectoryEntry {
   name: string;
   entry_data: 'Directory' | DirectoryFileEntryData;
+  currentFile?: boolean;
 }
 
 export interface File {
@@ -130,6 +134,7 @@ export interface File {
   lang: string;
   contents: string;
   repo_ref: string;
+  siblings: DirectoryEntry[];
 }
 
 export interface FileResponse {

@@ -7,6 +7,7 @@ type Props = {
   active?: boolean;
   dense?: boolean;
   variant: 'default' | 'light';
+  onClick?: () => void;
 };
 
 const colorsMap = {
@@ -20,6 +21,7 @@ const NavigationItem = ({
   active = false,
   dense,
   variant,
+  onClick,
 }: Props) => {
   return (
     <span
@@ -28,6 +30,7 @@ const NavigationItem = ({
       } active:text-gray-300 transition-all duration-300 ease-in-bounce ${
         colorsMap[variant]
       } px-8 block py-2 cursor-pointer hover:text-gray-300 w-full`}
+      onClick={onClick}
     >
       <TextField value={value} icon={icon} active={active} />
     </span>

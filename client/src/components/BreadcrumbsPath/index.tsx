@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Breadcrumbs, { PathParts } from '../Breadcrumbs';
 import {
   breadcrumbsItemPath,
@@ -7,6 +6,7 @@ import {
   splitPathForBreadcrumbs,
 } from '../../utils';
 import { FileTreeFileType } from '../../types';
+import useAppNavigation from '../../hooks/useAppNavigation';
 
 type BProps = React.ComponentProps<typeof Breadcrumbs>;
 
@@ -14,27 +14,28 @@ type Props = {
   path: string;
   repo: string;
   onClick?: (path: string, fileType?: FileTreeFileType) => void;
-  shouldNavigate?: boolean;
+  // shouldNavigate?: boolean;
 } & Omit<BProps, 'pathParts'>;
 
 const BreadcrumbsPath = ({
   path,
   onClick,
   repo,
-  shouldNavigate,
+  // shouldNavigate,
   ...rest
 }: Props) => {
-  const navigate = useNavigate();
+  const { navigateRepoPath } = useAppNavigation();
   const mapPath = useCallback(() => {
     return splitPathForBreadcrumbs(path, (e, item, index, pParts) => {
       const newPath = breadcrumbsItemPath(pParts, index, isWindowsPath(path));
       onClick?.(newPath, FileTreeFileType.DIR);
-      shouldNavigate &&
-        navigate(
-          `/results?q=open:true repo:${encodeURIComponent(repo)} ${
-            newPath.length ? `path:${encodeURIComponent(newPath)}` : ''
-          }`,
-        );
+      // shouldNavigate &&
+      navigateRepoPath(repo, newPath);
+      // navigate(
+      //   `/results?q=open:true repo:${encodeURIComponent(repo)} ${
+      //     newPath.length ? `path:${encodeURIComponent(newPath)}` : ''
+      //   }`,
+      // );
     });
   }, [path]);
 
