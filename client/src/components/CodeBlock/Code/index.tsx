@@ -80,8 +80,9 @@ const Code = ({
     }
     const highlightMap: HighlightMap[] = [];
 
-    token.content.split('').forEach((char, index) => {
-      const pos = token.byteRange.start + index;
+    let byteIndex = 0;
+    token.content.split('').forEach((char) => {
+      const pos = token.byteRange.start + byteIndex;
       const existing = highlightMap[highlightMap.length - 1];
 
       if (hlRangesMap.has(pos)) {
@@ -109,6 +110,7 @@ const Code = ({
           existing.token.content += char;
         }
       }
+      byteIndex += new TextEncoder().encode(char).length;
     });
 
     return highlightMap;
