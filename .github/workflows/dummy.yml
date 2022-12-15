@@ -1,0 +1,23 @@
+name: dummy
+
+on:
+  pull_request:
+    paths-ignore:
+      - ".github/workflows/**"
+      - "apps/desktop/**"
+      - "server/**"
+      - "client/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No checks required" '
+  fmt-clippy-build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No checks required" '
+  build-client:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No checks required" '

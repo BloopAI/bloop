@@ -75,22 +75,39 @@ pub struct IndexWriter(pub(super) Application);
 impl IndexWriter {
     /// Pull or clone an existing, or new repo, respectively.
     pub(crate) async fn sync_and_index(self, repositories: Vec<RepoRef>) -> anyhow::Result<()> {
-        let Self(Application { ref background, .. }) = &self;
+        let Self(app) = self;
 
-        // now we fork this off to the background
-        // in reality this may take a loooong time, so don't want to keep the user waiting.
-        // they can always check back later by querying the status of a repo
-        background
-            .clone()
-            .wait_for(async move {
-                let result = self.internal_sync_and_index(repositories).await;
-                if let Err(ref err) = result {
-                    error!(?err, "background job to sync and index failed")
-                }
+        let background = app.background.clone();
+        let job = async move {
+            let mut set = tokio::task::JoinSet::new();
 
-                result
-            })
-            .await
+            for reporef in repositories {
+                let writer = IndexWriter(app.clone());
+                set.spawn(async move {
+                    debug!(?reporef, "syncing repo");
+
+                    if let Err(err) = writer.sync_repo(&reporef).await {
+                        error!(?err, ?reporef, "failed to sync repository");
+                        return Err(err);
+                    }
+
+                    if let Err(err) = writer.index_repo(&reporef).await {
+                        error!(?err, ?reporef, "failed to index repository");
+                        return Err(err);
+                    }
+
+                    Ok(())
+                });
+            }
+
+            while let Some(job) = set.join_next().await {
+                job??
+            }
+
+            Ok(())
+        };
+
+        background.wait_for(job).await
     }
 
     pub(crate) fn queue_sync_and_index(self, repositories: Vec<RepoRef>) {
@@ -104,7 +121,9 @@ impl IndexWriter {
         self.sync_and_index(repos).await
     }
 
-    async fn internal_sync_and_index(self, repositories: Vec<RepoRef>) -> anyhow::Result<()> {
+    async fn index_repo(&self, reporef: &RepoRef) -> anyhow::Result<()> {
+        use SyncStatus::*;
+
         let Self(Application {
             config,
             indexes,
@@ -113,54 +132,43 @@ impl IndexWriter {
         }) = &self;
 
         let writers = indexes.writers().await?;
-        for reporef in repositories.into_iter() {
-            use SyncStatus::*;
+        let (key, repo) = {
+            let ptr = repo_pool.get(reporef).unwrap();
+            let key = ptr.key().clone();
+            let repo = ptr.value().clone();
+            (key, repo)
+        };
 
-            debug!(?reporef, "syncing repo");
-            let synced = self.sync_repo(&reporef).await;
-            if let Err(err) = synced {
-                error!(?err, ?reporef, "failed to sync repository");
-                continue;
-            }
+        let indexed = match repo.sync_status {
+            Uninitialized | Syncing | Indexing => return Ok(()),
+            Removed => self.delete_repo(&repo, &writers),
+            _ => {
+                repo_pool.get_mut(reporef).unwrap().value_mut().sync_status = Indexing;
 
-            let (key, repo) = {
-                let ptr = repo_pool.get(&reporef).unwrap();
-                let key = ptr.key().clone();
-                let repo = ptr.value().clone();
-                (key, repo)
-            };
+                let indexed = repo.index(&key, &writers).await;
+                let mut repo = repo_pool.get_mut(reporef).unwrap();
 
-            let indexed = match repo.sync_status {
-                Uninitialized | Syncing | Indexing => continue,
-                Removed => self.delete_repo(&repo, &writers),
-                _ => {
-                    repo_pool.get_mut(&reporef).unwrap().value_mut().sync_status = Indexing;
-
-                    let indexed = repo.index(&key, &writers).await;
-                    let mut repo = repo_pool.get_mut(&reporef).unwrap();
-
-                    match indexed {
-                        Ok(state) => {
-                            repo.value_mut().sync_done_with(state);
-                            Ok(())
-                        }
-                        Err(err) => {
-                            repo.value_mut().sync_status = Error {
-                                message: err.to_string(),
-                            };
-                            Err(err.into())
-                        }
+                match indexed {
+                    Ok(state) => {
+                        repo.value_mut().sync_done_with(state);
+                        Ok(())
+                    }
+                    Err(err) => {
+                        repo.value_mut().sync_status = Error {
+                            message: err.to_string(),
+                        };
+                        Err(err.into())
                     }
                 }
-            };
-
-            if let Err(err) = indexed {
-                error!(?err, ?reporef, "failed to index repository");
             }
+        };
+
+        if let Err(err) = indexed {
+            error!(?err, ?reporef, "failed to index repository");
         }
 
         // self is a separate sweep so we don't await while holding locks
-        repo_pool.retain(|_k, v| v.sync_status != SyncStatus::Removed);
+        repo_pool.retain(|_k, v| v.sync_status != Removed);
 
         writers.commit().await?;
 

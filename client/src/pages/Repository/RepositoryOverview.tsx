@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Remarkable } from 'remarkable';
 import Accordion from '../../components/Accordion';
@@ -10,6 +10,7 @@ import { SearchResponse } from '../../types/api';
 import { sortFiles } from '../../utils/file';
 import { isWindowsPath } from '../../utils';
 import { highlightCode } from '../../utils/prism';
+import { DeviceContext } from '../../context/deviceContext';
 
 const md = new Remarkable({
   html: true,
@@ -21,6 +22,7 @@ const md = new Remarkable({
       return '';
     }
   },
+  linkTarget: '__blank',
 });
 
 type Props = {
@@ -31,6 +33,7 @@ type Props = {
 
 const RepositoryOverview = ({ syncState, repository, sidebarOpen }: Props) => {
   const [sortedFiles, setSortedFiles] = useState(repository.files);
+  const { openLink } = useContext(DeviceContext);
 
   const [readme, setReadme] = useState<{
     contents: string;
@@ -94,7 +97,17 @@ const RepositoryOverview = ({ syncState, repository, sidebarOpen }: Props) => {
             icon={<FileIcon filename={readme.path} />}
           >
             <div className="py-4 text-xs overflow-x-auto px-4 readme">
-              <div dangerouslySetInnerHTML={{ __html: readme.contents }} />
+              <div
+                dangerouslySetInnerHTML={{ __html: readme.contents }}
+                onClick={(e) => {
+                  // @ts-ignore
+                  const { href } = e.target;
+                  if (href) {
+                    e.preventDefault();
+                    openLink(href);
+                  }
+                }}
+              />
             </div>
           </Accordion>
         </div>
