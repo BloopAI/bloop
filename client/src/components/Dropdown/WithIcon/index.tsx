@@ -12,6 +12,7 @@ type Props = {
   noChevron?: boolean;
   btnVariant?: 'primary' | 'secondary' | 'tertiary';
   btnSize?: 'small' | 'medium' | 'large';
+  btnOnlyIcon?: boolean;
 };
 
 const Dropdown = ({
@@ -22,6 +23,7 @@ const Dropdown = ({
   noChevron,
   btnVariant = 'tertiary',
   btnSize = 'medium',
+  btnOnlyIcon,
 }: Props) => {
   const [visible, setVisibility] = useState(false);
   const ref = useRef(null);
@@ -45,7 +47,7 @@ const Dropdown = ({
             dropdownBtnClassName || ''
           }`}
           onClick={() => setVisibility(!visible)}
-          onlyIcon={noChevron}
+          onlyIcon={btnOnlyIcon}
           title="Open dropdown"
         >
           {icon}

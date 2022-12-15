@@ -19,6 +19,7 @@ type Props = {
   repoPath: string;
   collapsed?: boolean;
   onClick?: ResultClick;
+  hideDropdown?: boolean;
 };
 
 const PREVIEW_NUM = 3;
@@ -37,6 +38,7 @@ const CodeBlockSearch = ({
   onClick,
   repoName,
   repoPath,
+  hideDropdown,
 }: Props) => {
   const [isExpanded, setExpanded] = useState(false);
   const { os, openFolderInExplorer } = useContext(DeviceContext);
@@ -61,7 +63,7 @@ const CodeBlockSearch = ({
   return (
     <div className="w-full border border-gray-700 rounded-4">
       <div className="w-full flex justify-between bg-gray-800 p-3 border-b border-gray-700 gap-2 select-none">
-        <div className="flex items-center gap-2 max-w-[calc(100%-85px)] w-full">
+        <div className="flex items-center gap-2 max-w-[calc(100%-120px)] w-full">
           <FileIcon filename={filePath} />
           <BreadcrumbsPath path={filePath} repo={repoName} shouldNavigate />
         </div>
@@ -74,31 +76,33 @@ const CodeBlockSearch = ({
           <span className="body-s text-gray-100">
             {totalMatches} match{totalMatches > 1 ? 'es' : ''}
           </span>
-          <span>
-            <DropdownWithIcon
-              items={[
-                {
-                  type: MenuItemType.DEFAULT,
-                  text: `View in ${getFileManagerName(os.type)}`,
-                  onClick: () => {
-                    console.log(filePath, repoName, repoPath);
-                    openFolderInExplorer(
-                      repoPath +
-                        (isWindowsPath(repoPath) ? '\\' : '/') +
-                        (os.type === 'Darwin'
-                          ? filePath
-                          : splitPath(filePath)
-                              .slice(0, -1)
-                              .join(isWindowsPath(filePath) ? '\\' : '/')),
-                    );
+          {!hideDropdown && !repoPath.startsWith('github') && (
+            <span>
+              <DropdownWithIcon
+                items={[
+                  {
+                    type: MenuItemType.DEFAULT,
+                    text: `View in ${getFileManagerName(os.type)}`,
+                    onClick: () => {
+                      openFolderInExplorer(
+                        repoPath +
+                          (isWindowsPath(repoPath) ? '\\' : '/') +
+                          (os.type === 'Darwin'
+                            ? filePath
+                            : splitPath(filePath)
+                                .slice(0, -1)
+                                .join(isWindowsPath(filePath) ? '\\' : '/')),
+                      );
+                    },
                   },
-                },
-              ]}
-              icon={<MoreHorizontal />}
-              noChevron
-              btnSize="small"
-            />
-          </span>
+                ]}
+                icon={<MoreHorizontal />}
+                noChevron
+                btnSize="small"
+                btnOnlyIcon
+              />
+            </span>
+          )}
         </div>
       </div>
 
