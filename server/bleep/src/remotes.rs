@@ -1,4 +1,6 @@
-use std::path::Path;
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+use std::{path::Path, process::Command};
 
 use anyhow::{bail, Context, Result};
 use dashmap::mapref::one::Ref;
@@ -73,11 +75,15 @@ pub(in crate::remotes) fn git_pull(
         Some(git2::build::CheckoutBuilder::new().force()),
     )?;
 
-    match tokio::process::Command::new("git")
-        .arg("gc")
-        .current_dir(&repo.disk_path)
-        .spawn()
-    {
+    let mut git_gc = Command::new("git");
+
+    git_gc.arg("gc");
+    git_gc.current_dir(&repo.disk_path);
+
+    #[cfg(windows)]
+    git_gc.creation_flags(0x08000000); // add a CREATE_NO_WINDOW flag to prevent window focus change
+
+    match tokio::process::Command::from(git_gc).spawn() {
         Ok(_) => {
             // don't actually want to wait for this to finish, as `git` may
             // not even be available as a command.

@@ -1,3 +1,5 @@
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::{
     collections::HashMap,
     ffi::OsStr,
@@ -83,11 +85,17 @@ async fn call_ctags(paths: Vec<String>, exclude_langs_list: &[&str]) -> Result<S
             .get()
             .map(|p| p.as_os_str())
             .unwrap_or_else(|| OsStr::new("ctags")),
-    )
-    .args(args)
-    .stdin(Stdio::piped())
-    .stdout(Stdio::piped())
-    .spawn()?;
+    );
+
+    child
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped());
+
+    #[cfg(windows)]
+    child.creation_flags(0x08000000); // add a CREATE_NO_WINDOW flag to prevent window focus change
+
+    let mut child = child.spawn()?;
 
     let mut stdin = child
         .stdin
