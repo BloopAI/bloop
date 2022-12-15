@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePersistentState } from './usePersistentState';
 
 interface NavigationItem {
-  type: 'search' | 'search-file' | 'repo' | 'full-result';
+  type: 'search' | 'repo' | 'full-result';
   query?: string;
   repo?: string;
   path?: string;

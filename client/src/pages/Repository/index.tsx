@@ -1,9 +1,11 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { SearchContext } from '../../context/searchContext';
-import { Repository } from '../../types';
+import { FileTreeFileType, Repository } from '../../types';
 import Skeleton from '../Skeleton';
 import { mapDirResult } from '../../mappers/results';
 import { DirectorySearchResponse } from '../../types/api';
+import FileIcon from '../../components/FileIcon';
+import Filters from '../../components/Filters';
 import RepositoryOverview from './RepositoryOverview';
 
 type Props = {
@@ -35,53 +37,35 @@ const RepositoryPage = ({ repositoryData, loading }: Props) => {
   }, [repositoryData]);
 
   useEffect(() => {
+    if (!repository?.files.length) {
+      return;
+    }
+
+    const fileFilters = repository.files
+      .map((repoFile) => {
+        if (repoFile.type === FileTreeFileType.FILE && repoFile.lang) {
+          return {
+            lang: repoFile.lang,
+            name: repoFile.name,
+          };
+        }
+      })
+      .filter(Boolean);
+
     setFilters([
       {
-        name: 'branch',
-        items: [
-          {
-            label: 'main',
-            checked: true,
-            description: '',
-          },
-        ],
-        type: 'button',
-        title: 'Branch',
-        singleSelect: true,
+        name: 'lang',
+        type: 'checkbox',
+        title: 'File Type',
+        items: fileFilters.map((filter) => ({
+          label: filter!.lang || '',
+          checked: false,
+          description: '',
+          icon: <FileIcon filename={filter!.name} />,
+        })),
       },
-      // {
-      //   name: 'file',
-      //   items: [
-      //     {
-      //       label: '.ts',
-      //       checked: false,
-      //       description: '',
-      //       icon: <FileIcon filename="index.ts" />,
-      //     },
-      //     {
-      //       label: '.js',
-      //       checked: false,
-      //       description: '',
-      //       icon: <FileIcon filename="index.js" />,
-      //     },
-      //     {
-      //       label: '.css',
-      //       checked: false,
-      //       description: '',
-      //       icon: <FileIcon filename="index.css" />,
-      //     },
-      //     {
-      //       label: '.rs',
-      //       checked: false,
-      //       description: '',
-      //       icon: <FileIcon filename="index.rs" />,
-      //     },
-      //   ],
-      //   type: 'checkbox',
-      //   title: 'File Type',
-      // },
     ]);
-  }, []);
+  }, [repository]);
 
   return !repository || loading ? (
     <Skeleton />
@@ -106,9 +90,9 @@ const RepositoryPage = ({ repositoryData, loading }: Props) => {
             </span>
           </span>
         </div>
-        {/*<div className="flex-1 flex">*/}
-        {/*  <Filters isOpen={true} toggleOpen={() => {}} showHeader={false} />*/}
-        {/*</div>*/}
+        <div className="flex-1 flex">
+          <Filters isOpen={true} toggleOpen={() => {}} showHeader={false} />
+        </div>
       </div>
       <div className="p-12 w-full overflow-y-auto">
         <RepositoryOverview repository={repository} syncState />

@@ -41,6 +41,9 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
     let result = inputValue.replace(regex, subst).replace(/ {2,}/g, ' ');
 
     filters.forEach((filter) => {
+      if (filter.disabled) {
+        return;
+      }
       const filterItems = filter.items.filter((item) => item.checked);
       if (filterItems.length) {
         let filterString = `${filter.name}:${filterItems

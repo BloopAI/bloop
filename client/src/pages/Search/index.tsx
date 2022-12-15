@@ -44,12 +44,15 @@ const SearchPage = () => {
     }
     const resultType = data.data[0].kind;
     setResultsData(data);
-    if (resultType === 'dir') {
-      setRenderPage('repo');
-    } else if (resultType === 'file') {
-      setRenderPage('full-result');
-    } else {
-      setRenderPage('results');
+    switch (resultType) {
+      case 'dir':
+        setRenderPage('repo');
+        break;
+      case 'file':
+        setRenderPage('full-result');
+        break;
+      default:
+        setRenderPage('results');
     }
   }, [navigatedItem, loading, data]);
 
