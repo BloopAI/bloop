@@ -435,6 +435,8 @@ impl StateSource {
                     let k = elem.key();
 
                     if let Some(path) = k.local_path() {
+                        // clippy suggestion causes the code to break, revisit after 1.66
+                        #[allow(clippy::needless_borrow)]
                         if path.starts_with(&root) && current_repos.contains(k).not() {
                             debug!(reporef=%k, "repo scheduled to be removed;");
                             elem.value_mut().delete();
