@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import Tippy, { TippyProps } from '@tippyjs/react/headless';
 import Tabs from '../Tabs';
 import Code from '../CodeBlock/Code';
-import { TokenInfo, TokenInfoFile } from '../../types/results';
+import { TokenInfo, TokenInfoFile, TokenInfoItem } from '../../types/results';
 import BreadcrumbsPath from '../BreadcrumbsPath';
 
 type Props = {
@@ -12,6 +12,7 @@ type Props = {
   children: React.ReactNode;
   onHover: () => void;
   repoName: string;
+  onRefDefClick: (item: TokenInfoItem, filePath: string) => void;
 };
 
 const positionMapping = {
@@ -47,6 +48,7 @@ const TooltipCode = ({
   children,
   onHover,
   repoName,
+  onRefDefClick,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(0);
 
@@ -69,8 +71,20 @@ const TooltipCode = ({
     }, 0);
   }, []);
 
-  const getTailPosition = (placement: TippyProps['placement']) => {
-    return placement?.startsWith('top') ? 'bottom' : 'top';
+  const getTailPosition = (
+    placement: TippyProps['placement'],
+  ): {
+    horizontal: 'left' | 'center' | 'right';
+    vertical: 'bottom' | 'top';
+  } => {
+    return {
+      horizontal: placement?.endsWith('start')
+        ? 'left'
+        : placement?.endsWith('end')
+        ? 'right'
+        : 'center',
+      vertical: placement?.startsWith('top') ? 'bottom' : 'top',
+    };
   };
 
   const renderTooltip = (attrs: {
@@ -82,14 +96,22 @@ const TooltipCode = ({
     const tailPosition = getTailPosition(attrs['data-placement']);
 
     return (
-      <div className="relative py-[10px] w-fit">
+      <div className="relative py-[10px] w-fit" {...attrs}>
         <span
-          className={`absolute ${positionMap[position].tail} w-5 h-5 border border-gray-600 ${tailStyles[tailPosition].tail} transform rotate-45 box-border z-[-1] rounded-sm`}
+          className={`absolute ${
+            positionMap[tailPosition.horizontal].tail
+          } w-5 h-5 border border-gray-600 ${
+            tailStyles[tailPosition.vertical].tail
+          } transform rotate-45 box-border z-[-1] rounded-sm`}
         />
 
         <div className="flex flex-col w-96 rounded border border-gray-600 z-10">
           <span
-            className={`absolute ${positionMap[position].fixBorder} w-[11.52px] h-[1px] bg-gray-700 ${tailStyles[tailPosition].fixture} border-l-[1px] border-r-[1px] border-b-transparent border-l-gray-600 border-r-gray-600`}
+            className={`absolute ${
+              positionMap[tailPosition.horizontal].fixBorder
+            } w-[11.52px] h-[1px] bg-gray-700 ${
+              tailStyles[tailPosition.vertical].fixture
+            } border-l-[1px] border-r-[1px] border-b-transparent border-l-gray-600 border-r-gray-600`}
           />
           <span className="bg-gray-700 px-3 pt-2 rounded-t">
             <Tabs
@@ -145,13 +167,15 @@ const TooltipCode = ({
                                 i +
                                 j
                               }
-                              className="py-1 overflow-x-auto hide-scrollbar pr-3 flex-shrink-0"
+                              className="py-1 overflow-x-auto hide-scrollbar pr-3 flex-shrink-0 cursor-pointer"
+                              onClick={() => onRefDefClick(item, fileItem.path)}
                             >
                               <Code
                                 code={item.code}
                                 lineStart={item.line}
                                 language={language}
                                 removePaddings
+                                lineHoverEffect
                               />
                             </span>
                           ))}
@@ -174,10 +198,9 @@ const TooltipCode = ({
       placement={
         `bottom${positionMapping[position]}` as TippyProps['placement']
       }
-      interactive={true}
-      content="Content"
+      interactive
+      trigger="click"
       appendTo={(ref) => ref.ownerDocument.body}
-      offset={[10, 5]}
       onShow={onHover}
       render={renderTooltip}
     >
