@@ -1,15 +1,14 @@
-import React, { MouseEvent, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, {
+  MouseEvent,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import FileIcon from '../../../components/FileIcon';
-import {
-  ChevronDoubleIntersected,
-  CloseSign,
-  Modal,
-  Sidebar,
-} from '../../../icons';
+import { CloseSign, Modal, MoreHorizontal, Sidebar } from '../../../icons';
 import Button from '../../../components/Button';
 import SelectToggleButton from '../../../components/SelectToggleButton';
-import Tabs from '../../../components/Tabs';
 import CodeFull from '../../../components/CodeBlock/CodeFull';
 import { FullResult } from '../../../types/results';
 import CommitHistory from '../../../components/CommitHistory';
@@ -21,7 +20,14 @@ import { FullResultModeEnum, MenuItemType } from '../../../types/general';
 import ModalOrSidebar from '../../../components/ModalOrSidebar';
 import ShareFileModal from '../../../components/ShareFileModal';
 import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
-import { splitPathForBreadcrumbs } from '../../../utils';
+import {
+  getFileManagerName,
+  isWindowsPath,
+  splitPath,
+  splitPathForBreadcrumbs,
+} from '../../../utils';
+import { DropdownWithIcon } from '../../../components/Dropdown';
+import { DeviceContext } from '../../../context/deviceContext';
 
 type Props = {
   result: FullResult | null;
@@ -30,17 +36,18 @@ type Props = {
   setMode: (n: FullResultModeEnum) => void;
 };
 
-const tabs = [
-  { title: 'Code' },
-  // { title: 'Blame' },
-  // { title: 'Commits' },
-  // { title: 'Authors' },
-];
+// const tabs = [
+//   { title: 'Code' },
+//   // { title: 'Blame' },
+//   // { title: 'Commits' },
+//   // { title: 'Authors' },
+// ];
 
 const ResultFull = ({ result, onResultClosed, mode, setMode }: Props) => {
   const [activeTab, setActiveTab] = useState(0);
   const [isShareOpen, setShareOpen] = useState(false);
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
+  const { os, openFolderInExplorer, openLink } = useContext(DeviceContext);
 
   useEffect(() => {
     const action =
@@ -236,17 +243,52 @@ const ResultFull = ({ result, onResultClosed, mode, setMode }: Props) => {
             </div>
             <div className="w-full flex flex-col overflow-y-auto">
               <div className={`w-full border-b border-gray-700 p-3`}>
-                <div className="flex items-center gap-1 max-w-full select-none">
-                  <FileIcon filename={result.relativePath.slice(-5)} />
-                  <div className="max-w-[calc(100% - 20px)]">
-                    <BreadcrumbsPath
-                      repo={result.repoName}
-                      path={result.relativePath}
-                      activeStyle="secondary"
-                      shouldNavigate
-                      onClick={() => onResultClosed(false)}
-                    />
+                <div className="flex items-center gap-2 max-w-full select-none justify-between">
+                  <div className="flex items-center gap-1 max-w-[calc(100%-40px)]">
+                    <FileIcon filename={result.relativePath.slice(-5)} />
+                    <div className="max-w-[calc(100%-20px)]">
+                      <BreadcrumbsPath
+                        repo={result.repoName}
+                        path={result.relativePath}
+                        activeStyle="secondary"
+                        shouldNavigate
+                        onClick={() => onResultClosed(false)}
+                      />
+                    </div>
                   </div>
+                  {result?.repoPath.startsWith('local') && (
+                    <span className="flex-shrink-0">
+                      <DropdownWithIcon
+                        items={[
+                          {
+                            type: MenuItemType.DEFAULT,
+                            text: `View in ${getFileManagerName(os.type)}`,
+                            onClick: () => {
+                              openFolderInExplorer(
+                                result.repoPath.slice(6) +
+                                  (isWindowsPath(result.repoPath)
+                                    ? '\\'
+                                    : '/') +
+                                  (os.type === 'Darwin'
+                                    ? result.relativePath
+                                    : splitPath(result.relativePath)
+                                        .slice(0, -1)
+                                        .join(
+                                          isWindowsPath(result.relativePath)
+                                            ? '\\'
+                                            : '/',
+                                        )),
+                              );
+                            },
+                          },
+                        ]}
+                        btnOnlyIcon
+                        icon={<MoreHorizontal />}
+                        noChevron
+                        btnSize="small"
+                      />
+                    </span>
+                  )}
                 </div>
               </div>
               {/*<div className={`border-b border-gray-700 w-full pb-0 p-3`}>*/}

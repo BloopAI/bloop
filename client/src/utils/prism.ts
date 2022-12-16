@@ -106,9 +106,10 @@ const appendRanges = (tokens: Token[][], lineEndings: 'CRLF' | 'LF') => {
   let b = 0;
   return tokens.map((line) => {
     const lt = line.map((token) => {
-      const currRange = { start: b, end: b + token.content.length };
-      if (!token.empty) {
-        b += token.content.length;
+      const tokenLengthInBytes = new TextEncoder().encode(token.content).length;
+      const currRange = { start: b, end: b + tokenLengthInBytes };
+      if (!token.empty && tokenLengthInBytes) {
+        b += tokenLengthInBytes;
       }
       return { ...token, byteRange: currRange };
     });
