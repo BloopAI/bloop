@@ -83,3 +83,14 @@ export const splitPathForBreadcrumbs = (
       },
     }));
 };
+
+export const getFileManagerName = (os: string) => {
+  switch (os) {
+    case 'Darwin':
+      return 'Finder';
+    case 'Windows_NT':
+      return 'File Explorer';
+    default:
+      return 'File manager';
+  }
+};

@@ -9,8 +9,8 @@
     "build": "npm-run-all tsc vite-build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri-dev": "BLOOP_MODE=dev tauri dev",
-    "tauri-build": "BLOOP_MODE=prod tauri build"
+    "tauri-dev": "tauri dev",
+    "tauri-build": "tauri build"
   },
   "dependencies": {
     "@bloop/client": "workspace:*",
