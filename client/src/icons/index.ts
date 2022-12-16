@@ -76,3 +76,4 @@ export { default as Chronometer } from './Chronometer';
 export { default as MultiShare } from './MultiShare';
 export { default as CursorSelection } from './CursorSelection';
 export { default as RegexIcon } from './Regex';
+export { default as MoreHorizontal } from './MoreHorizontal';

@@ -36,6 +36,7 @@ const AutocompleteMenuItem = ({ getItemProps, item, index }: Props) => {
           branch={item.branch}
           collapsed={false}
           onClick={() => {}}
+          repoPath={item.repoPath}
         />
       ) : item.type === ResultItemType.FILE ? (
         <>
