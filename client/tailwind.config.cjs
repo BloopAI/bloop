@@ -243,7 +243,8 @@ module.exports = {
     animation: {
       'spin-slow': 'spin 1.5s linear infinite',
       'move-x': 'move-x 2.5s linear infinite',
-      'move-x-fast': 'move-bg 1.5s linear infinite'
+      'move-x-fast': 'move-bg 1.5s linear infinite',
+      'flash-highlight': 'flash-highlight 1.5s linear',
     },
     keyframes: {
       'move-x': {
@@ -267,6 +268,13 @@ module.exports = {
         '100%':{
           backgroundPosition: '0 0%'
         }
+      },
+      'flash-highlight': {
+        '0%': { backgroundColor: 'transparent' },
+        '10%': { backgroundColor: '#FFFAE5' },
+        '25%': { backgroundColor: 'rgba(253,201,0,0.25)' },
+        '80%': { backgroundColor: 'rgba(253,201,0,0.25)' },
+        '100%': { backgroundColor: 'transparent' },
       }
     },
     namedGroups: ["tooltip","foo", "bar"],

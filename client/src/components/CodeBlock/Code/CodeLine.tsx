@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { format } from 'timeago.js';
 import FoldButton from '../CodeFull/FoldButton';
 import Tooltip from '../../Tooltip';
@@ -22,11 +22,7 @@ type Props = {
     commit?: Commit;
   };
   stylesGenerated?: any;
-};
-
-const codeLineVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.2 } },
+  shouldHighlight?: boolean;
 };
 
 const CodeLine = ({
@@ -41,7 +37,16 @@ const CodeLine = ({
   symbols,
   hoverEffect,
   stylesGenerated,
+  shouldHighlight,
 }: Props) => {
+  const [isHighlighted, setHighlighted] = useState(false);
+
+  useEffect(() => {
+    if (shouldHighlight) {
+      setHighlighted(true);
+      setTimeout(() => setHighlighted(false), 2000);
+    }
+  }, [shouldHighlight]);
   const renderBlameLine = () => {
     if (blame) {
       if (blameLine?.commit && blameLine?.start) {
@@ -157,7 +162,13 @@ const CodeLine = ({
           />
         )}
       </td>
-      <td className={`pl-2 ${lineHidden ? 'p-0' : ''}`}>{children}</td>
+      <td
+        className={`pl-2 ${lineHidden ? 'p-0' : ''} ${
+          isHighlighted ? 'animate-flash-highlight rounded-4 pr-2' : ''
+        }`}
+      >
+        {children}
+      </td>
       <td>
         <br />
       </td>

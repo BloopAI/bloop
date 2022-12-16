@@ -43,7 +43,7 @@ const SearchFile = ({
       };
       path.split('').forEach((c, cIndex) => {
         const charIndex = index + cIndex;
-        if (hlRanges[charIndex]) {
+        if (hlRanges[charIndex] || hlRanges[charIndex] === 0) {
           if (pathPart.highlight?.start === undefined) {
             if (!pathPart.highlight) {
               pathPart.highlight = { start: 0, end: 0 };
