@@ -139,44 +139,44 @@ impl IndexWriter {
             (key, repo)
         };
 
-        let indexed = match repo.sync_status {
+        let (state, indexed) = match repo.sync_status {
             Uninitialized | Syncing | Indexing => return Ok(()),
-            Removed => self.delete_repo(&repo, &writers),
+            Removed => {
+                let deleted = self.delete_repo(&repo, &writers);
+                if deleted.is_ok() {
+                    writers.rollback()?;
+                    repo_pool.remove(reporef);
+                }
+                return deleted;
+            }
             _ => {
                 repo_pool.get_mut(reporef).unwrap().value_mut().sync_status = Indexing;
-
                 let indexed = repo.index(&key, &writers).await;
-                let mut repo = repo_pool.get_mut(reporef).unwrap();
+                let state = match &indexed {
+                    Ok(state) => Some(state.clone()),
+                    _ => None,
+                };
 
-                match indexed {
-                    Ok(state) => {
-                        repo.value_mut().sync_done_with(state);
-                        Ok(())
-                    }
-                    Err(err) => {
-                        repo.value_mut().sync_status = Error {
-                            message: err.to_string(),
-                        };
-                        Err(err.into())
-                    }
-                }
+                (state, indexed.map(|_| ()))
             }
         };
 
-        if let Err(err) = indexed {
-            error!(?err, ?reporef, "failed to index repository");
-        }
-
-        // self is a separate sweep so we don't await while holding locks
-        repo_pool.retain(|_k, v| v.sync_status != Removed);
-
         writers.commit().await?;
-
-        // update tantivy pointer to latest commit
-        info!("commit complete; indexing done");
-
         config.source.save_pool(repo_pool.clone())?;
-        info!("sync state saved");
+
+        let mut repo = repo_pool.get_mut(reporef).unwrap();
+        match indexed {
+            Ok(()) => {
+                repo.value_mut().sync_done_with(state.unwrap());
+                info!("commit complete; indexing done");
+            }
+            Err(err) => {
+                repo.value_mut().sync_status = Error {
+                    message: err.to_string(),
+                };
+                error!(?err, ?reporef, "failed to index repository");
+            }
+        }
 
         Ok(())
     }
