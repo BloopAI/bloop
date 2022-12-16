@@ -16,6 +16,7 @@ export const TooltipCodeDefault = () => {
             language={'javascript'}
             onHover={() => {}}
             repoName={'bloop'}
+            onRefDefClick={() => {}}
             data={{
               references: [
                 {
@@ -64,6 +65,7 @@ export const TooltipCodeDefault = () => {
             position={'center'}
             language={'javascript'}
             onHover={() => {}}
+            onRefDefClick={() => {}}
             repoName={'bloop'}
             data={{
               references: [
@@ -113,6 +115,7 @@ export const TooltipCodeDefault = () => {
             position={'right'}
             language={'javascript'}
             onHover={() => {}}
+            onRefDefClick={() => {}}
             repoName={'bloop'}
             data={{
               references: [
