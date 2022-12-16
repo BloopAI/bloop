@@ -11,6 +11,7 @@ import Button from '../Button';
 import SkeletonItem from '../SkeletonItem';
 import { RepoType } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
+import { getFileManagerName } from '../../utils';
 
 type RepoSelectType = RepoType & {
   selected: boolean;
@@ -29,7 +30,7 @@ const listItemClassName =
   'bg-gray-900 border-b border-l border-r first:border-t first:rounded-t-md last:border-b last:rounded-b-md border-gray-800 pl-3 p-1.5 body-s group h-11';
 
 const RepoList = ({ repos, setRepos, source, activeTab }: Props) => {
-  const { openFolderInExplorer, openLink } = useContext(DeviceContext);
+  const { openFolderInExplorer, openLink, os } = useContext(DeviceContext);
 
   const handleSelectAll = useCallback((selected: boolean) => {
     setRepos((prev) => prev.map((r) => ({ ...r, selected })));
@@ -103,7 +104,10 @@ const RepoList = ({ repos, setRepos, source, activeTab }: Props) => {
                           : openLink('https://github.com/' + repo.ref)
                       }
                     >
-                      View {source === 'local' ? 'in Finder' : 'on GitHub'}
+                      View{' '}
+                      {source === 'local'
+                        ? `in ${getFileManagerName(os.type)}`
+                        : 'on GitHub'}
                     </Button>
                   </div>
                 </li>
