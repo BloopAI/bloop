@@ -113,6 +113,12 @@ impl<'a> EndpointError<'a> {
             message,
         }
     }
+    fn internal(message: Cow<'a, str>) -> Self {
+        Self {
+            kind: ErrorKind::Internal,
+            message,
+        }
+    }
 }
 
 /// The kind of an error

@@ -4,8 +4,10 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use smallvec::SmallVec;
 use tantivy::{
-    collector::Collector, schema::Schema, tokenizer::NgramTokenizer, DocAddress, Document,
-    IndexReader, IndexWriter, Score,
+    collector::{Collector, MultiFruit},
+    schema::Schema,
+    tokenizer::NgramTokenizer,
+    DocAddress, Document, IndexReader, IndexWriter, Score,
 };
 use tokio::sync::RwLock;
 
@@ -15,7 +17,7 @@ pub mod repo;
 
 pub use file::File;
 pub use repo::Repo;
-use tracing::{debug, error};
+use tracing::debug;
 
 use crate::{
     query::parser::Query,
@@ -233,7 +235,7 @@ impl<T: Indexable> Indexer<T> {
     ) -> Result<SearchResults<'_, R::Document>>
     where
         I: Iterator<Item = &'a Query<'a>> + Send,
-        C: Collector<Fruit = Vec<(Score, DocAddress)>>,
+        C: Collector<Fruit = (Vec<(Score, DocAddress)>, MultiFruit)>,
         R: DocumentRead<Schema = T>,
     {
         let searcher = self.reader.read().await.searcher();
@@ -242,42 +244,24 @@ impl<T: Indexable> Indexer<T> {
             .collect::<SmallVec<[_; 2]>>();
         let compiled_query =
             doc_reader.compile(&self.source, queries.iter().copied(), &self.index)?;
-        let iter = searcher
+
+        let (top_k, metadata) = searcher
             .search(&compiled_query, &collector)
-            .unwrap()
-            .into_iter()
-            .map(move |(_score, addr)| {
-                let doc = searcher.doc(addr).unwrap();
-                doc_reader.read_document(&self.source, doc)
-            });
+            .context("failed to execute search query")?;
+
+        let iter = top_k.into_iter().map(move |(_score, addr)| {
+            let doc = searcher.doc(addr).unwrap();
+            doc_reader.read_document(&self.source, doc)
+        });
 
         Ok(SearchResults {
             docs: Box::new(iter),
-            relevant_queries: queries,
+            metadata,
         })
-    }
-
-    pub async fn count<'a, R, I>(&'a self, queries: I, doc_reader: &'a R) -> Result<usize>
-    where
-        I: Iterator<Item = &'a Query<'a>> + Send,
-        R: DocumentRead<Schema = T>,
-    {
-        let searcher = self.reader.read().await.searcher();
-        let queries = queries
-            .filter(|q| doc_reader.query_matches(q))
-            .collect::<SmallVec<[_; 2]>>();
-        let compiled_query =
-            doc_reader.compile(&self.source, queries.iter().copied(), &self.index)?;
-        Ok(searcher
-            .search(&compiled_query, &tantivy::collector::Count)
-            .unwrap_or_else(|err| {
-                error!("failed to execute `count` query: {}", err);
-                0
-            }))
     }
 }
 
 pub struct SearchResults<'a, T> {
     pub docs: Box<dyn Iterator<Item = T> + Sync + Send + 'a>,
-    pub relevant_queries: SmallVec<[&'a Query<'a>; 2]>,
+    pub metadata: MultiFruit,
 }
