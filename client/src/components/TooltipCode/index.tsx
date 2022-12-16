@@ -71,8 +71,20 @@ const TooltipCode = ({
     }, 0);
   }, []);
 
-  const getTailPosition = (placement: TippyProps['placement']) => {
-    return placement?.startsWith('top') ? 'bottom' : 'top';
+  const getTailPosition = (
+    placement: TippyProps['placement'],
+  ): {
+    horizontal: 'left' | 'center' | 'right';
+    vertical: 'bottom' | 'top';
+  } => {
+    return {
+      horizontal: placement?.endsWith('start')
+        ? 'left'
+        : placement?.endsWith('end')
+        ? 'right'
+        : 'center',
+      vertical: placement?.startsWith('top') ? 'bottom' : 'top',
+    };
   };
 
   const renderTooltip = (attrs: {
@@ -84,14 +96,22 @@ const TooltipCode = ({
     const tailPosition = getTailPosition(attrs['data-placement']);
 
     return (
-      <div className="relative py-[10px] w-fit">
+      <div className="relative py-[10px] w-fit" {...attrs}>
         <span
-          className={`absolute ${positionMap[position].tail} w-5 h-5 border border-gray-600 ${tailStyles[tailPosition].tail} transform rotate-45 box-border z-[-1] rounded-sm`}
+          className={`absolute ${
+            positionMap[tailPosition.horizontal].tail
+          } w-5 h-5 border border-gray-600 ${
+            tailStyles[tailPosition.vertical].tail
+          } transform rotate-45 box-border z-[-1] rounded-sm`}
         />
 
         <div className="flex flex-col w-96 rounded border border-gray-600 z-10">
           <span
-            className={`absolute ${positionMap[position].fixBorder} w-[11.52px] h-[1px] bg-gray-700 ${tailStyles[tailPosition].fixture} border-l-[1px] border-r-[1px] border-b-transparent border-l-gray-600 border-r-gray-600`}
+            className={`absolute ${
+              positionMap[tailPosition.horizontal].fixBorder
+            } w-[11.52px] h-[1px] bg-gray-700 ${
+              tailStyles[tailPosition.vertical].fixture
+            } border-l-[1px] border-r-[1px] border-b-transparent border-l-gray-600 border-r-gray-600`}
           />
           <span className="bg-gray-700 px-3 pt-2 rounded-t">
             <Tabs
@@ -178,10 +198,9 @@ const TooltipCode = ({
       placement={
         `bottom${positionMapping[position]}` as TippyProps['placement']
       }
-      interactive={true}
-      content="Content"
+      interactive
+      trigger="click"
       appendTo={(ref) => ref.ownerDocument.body}
-      offset={[10, 5]}
       onShow={onHover}
       render={renderTooltip}
     >
