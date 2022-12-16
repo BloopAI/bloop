@@ -22,12 +22,7 @@ type Props = {
     commit?: Commit;
   };
   stylesGenerated?: any;
-  shouldHighlight: boolean;
-};
-
-const codeLineVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.2 } },
+  shouldHighlight?: boolean;
 };
 
 const CodeLine = ({
@@ -169,7 +164,7 @@ const CodeLine = ({
       </td>
       <td
         className={`pl-2 ${lineHidden ? 'p-0' : ''} ${
-          isHighlighted ? 'bg-primary-300/30' : ''
+          isHighlighted ? 'animate-flash-highlight rounded-4 pr-2' : ''
         }`}
       >
         {children}
