@@ -3,7 +3,9 @@ name: Tauri Release
 on: workflow_dispatch
 
 env:
-  TAURI_BIN_PATH: apps/desktop/src-tauri/bin/
+  TAURI_BIN_PATH: apps/desktop/src-tauri/bin
+  TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+  TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -133,16 +135,18 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: "ctags_${{ matrix.name }}"
-          path: "${{ env.TAURI_BIN_PATH }}"
+          path: "${{ env.TAURI_BIN_PATH }}/ctags"
 
       - name: Set permissions (mac/linux)
         if: matrix.name == 'ubuntu-latest' || matrix.name == 'macos-latest'
         run: |
           resdir=${{ env.TAURI_BIN_PATH }}
-          ls -lR $resdir
-          chmod +x $resdir/*
+          chmod +x $resdir/ctags/*
           host=$(rustc -Vv |grep host |cut -d\  -f2)
-          mv $resdir/ctags $resdir/ctags-$host
+          rm $resdir/ctags-$host
+          mkdir $resdir/ctags-$host
+          mv $resdir/ctags/* $resdir/ctags-$host
+          ls -lR $resdir
 
       - name: Download binaries (windows)
         if: matrix.name == 'windows-latest'
@@ -156,12 +160,12 @@ jobs:
           unzip $filename || true
           mv ctags.exe ${{ env.TAURI_BIN_PATH }}/ctags-$(rustc -Vv |grep host |cut -d\  -f2).exe
 
-      - name: Check is Segment key exists
+      - name: Check if Segment key exists
         env:
           segment_key: ${{ secrets.VITE_SEGMENT_WRITE_KEY_PROD }}
           sentry_key_fe: ${{ secrets.VITE_SENTRY_DSN_FE }}
           sentry_key_be: ${{ secrets.VITE_SENTRY_DSN_BE }}
-        if: ${{ env.segment_key == '' }} || ${{ env.sentry_key_fe == '' }} || ${{ env.sentry_key_be == '' }}
+        if: ${{ env.segment_key == '' || env.sentry_key_fe == '' || env.sentry_key_be == '' }}
         run: exit 1
 
       - name: Set environment
