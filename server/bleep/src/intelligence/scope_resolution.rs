@@ -329,6 +329,11 @@ impl ScopeGraph {
         }
     }
 
+    // is the given ref/def a direct child of the root scope
+    pub fn is_top_level(&self, idx: NodeIndex<u32>) -> bool {
+        self.graph.contains_edge(idx, self.root_idx)
+    }
+
     #[cfg(test)]
     pub fn debug(&self, src: &[u8], language: &'static TSLanguageConfig) -> debug::ScopeDebug {
         let graph = &self.graph;

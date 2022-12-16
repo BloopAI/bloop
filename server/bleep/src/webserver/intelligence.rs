@@ -129,10 +129,14 @@ impl TokenInfoRequest {
                 // fetch local references with scope-graphs
                 let local_references = handle_definition_local(scope_graph, idx, &content);
 
-                // fetch repo-wide references with trivial search
-                let token = d.name(src.as_bytes());
-                let repo_wide_references =
-                    handle_definition_repo_wide(token, kind, current_file, &all_docs);
+                // fetch repo-wide references with trivial search, only if the def is
+                // a top-level def (typically functions, ADTs, consts)
+                let repo_wide_references = if scope_graph.is_top_level(idx) {
+                    let token = d.name(src.as_bytes());
+                    handle_definition_repo_wide(token, kind, current_file, &all_docs)
+                } else {
+                    vec![]
+                };
 
                 // merge the two
                 let references = merge([local_references], repo_wide_references);
@@ -260,9 +264,7 @@ fn handle_reference_repo_wide(
     start_file: &str,
     all_docs: &[ContentDocument],
 ) -> (Vec<FileSymbols>, Vec<FileSymbols>) {
-    // handle_definition_* produces a list of refs
-    let ref_data = handle_definition_repo_wide(token, kind, start_file, all_docs);
-    let def_data = all_docs
+    all_docs
         .iter()
         .filter(|doc| doc.relative_path != start_file) // do not look in the current file
         .filter_map(|doc| match &doc.symbol_locations {
@@ -274,17 +276,28 @@ fn handle_reference_repo_wide(
                     scope_graph,
                     doc,
                 };
-                let data = handler
-                    .handle_reference()
-                    .into_iter()
-                    .map(|range| to_occurrence(doc, range))
-                    .collect();
-                Some(FileSymbols { file, data })
+                let (defs, refs) = handler.handle_reference();
+
+                let def_data = FileSymbols {
+                    file: file.clone(),
+                    data: defs
+                        .into_iter()
+                        .map(|range| to_occurrence(doc, range))
+                        .collect(),
+                };
+                let ref_data = FileSymbols {
+                    file: file.clone(),
+                    data: refs
+                        .into_iter()
+                        .map(|range| to_occurrence(doc, range))
+                        .collect(),
+                };
+
+                Some((def_data, ref_data))
             }
             _ => None,
         })
-        .collect();
-    (def_data, ref_data)
+        .unzip()
 }
 
 fn to_occurrence(doc: &ContentDocument, range: TextRange) -> SymbolOccurrence {
