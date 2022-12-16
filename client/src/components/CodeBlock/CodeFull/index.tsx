@@ -73,11 +73,13 @@ const CodeFull = ({
     () => Number(searchParams.get('scroll_line_index')),
     [searchParams],
   );
-  const [scrollToIndex, setScrollToIndex] = useState(scrollLineNumber || 0);
+  const [scrollToIndex, setScrollToIndex] = useState(
+    scrollLineNumber || undefined,
+  );
   const navigate = useNavigate();
 
   useEffect(() => {
-    setScrollToIndex(scrollLineNumber || 0);
+    setScrollToIndex(scrollLineNumber || undefined);
   }, [code]);
 
   const lang = useMemo(
