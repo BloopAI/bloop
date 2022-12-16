@@ -3,7 +3,8 @@ use async_trait::async_trait;
 use tantivy::{
     doc,
     schema::{
-        Field, IndexRecordOption, Schema, SchemaBuilder, TextFieldIndexing, TextOptions, STRING,
+        Field, IndexRecordOption, Schema, SchemaBuilder, TextFieldIndexing, TextOptions, FAST,
+        STRING,
     },
     IndexWriter, Term,
 };
@@ -23,6 +24,7 @@ pub struct Repo {
     //  local: repo
     // github: github.com/org/repo
     pub name: Field,
+    pub raw_name: Field,
 
     // Unique repo identifier, of the form:
     //  local: local//path/to/repo
@@ -48,12 +50,14 @@ impl Repo {
         let disk_path = builder.add_text_field("disk_path", STRING);
         let org = builder.add_text_field("org", trigram.clone());
         let name = builder.add_text_field("name", trigram.clone());
+        let raw_name = builder.add_bytes_field("raw_name", FAST);
         let repo_ref = builder.add_text_field("repo_ref", trigram);
 
         Self {
             disk_path,
             org,
             name,
+            raw_name,
             repo_ref,
             schema: builder.build(),
         }
@@ -77,6 +81,7 @@ impl Indexable for Repo {
             self.org => "",
             self.disk_path => repo.disk_path.to_string_lossy().into_owned(),
             self.name => repo_ref.indexed_name(),
+            self.raw_name => repo_ref.indexed_name().as_bytes(),
             self.repo_ref => repo_ref.to_string(),
         ))?;
 
