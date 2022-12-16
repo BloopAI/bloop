@@ -19,6 +19,7 @@ use tantivy::{
     },
     IndexWriter,
 };
+use tokio::runtime::Handle;
 use tracing::{debug, info, trace, warn};
 
 #[cfg(feature = "debug")]
@@ -32,6 +33,7 @@ use super::{
     DocumentRead, Indexable, Indexer,
 };
 use crate::{
+    ctags::ctags_for_file,
     intelligence::TreeSitterFile,
     state::{FileCache, RepoHeadInfo, RepoRef, Repository},
     symbol::SymbolLocations,
@@ -349,7 +351,6 @@ impl Indexer<File> {
 }
 
 impl File {
-    #[tracing::instrument(fields(repo=%workload.repo_ref, file_path=?workload.file_disk_path), skip_all)]
     fn worker(&self, workload: Workload<'_>, writer: &IndexWriter) -> Result<()> {
         let Workload {
             file_disk_path,
@@ -411,15 +412,13 @@ impl File {
         // calculate symbol locations
         let symbol_locations = {
             // build a syntax aware representation of the file
-            let scope_graph = tokio::runtime::Handle::current().block_on(tokio::time::timeout(
-                Duration::from_secs(1),
-                async {
+            let scope_graph =
+                Handle::current().block_on(tokio::time::timeout(Duration::from_secs(1), async {
                     match TreeSitterFile::try_build(buffer.as_bytes(), lang_str) {
                         Ok(tsf) => tsf.scope_graph().await,
                         Err(err) => Err(err),
                     }
-                },
-            ));
+                }));
 
             match scope_graph {
                 // we have a graph, use that
@@ -427,12 +426,15 @@ impl File {
                 // no graph, try ctags instead
                 err => {
                     debug!(?err, %lang_str, "failed to build scope graph");
-                    match repo_info.symbols.get(relative_path) {
-                        Some(syms) => SymbolLocations::Ctags(syms.clone()),
-                        // no ctags either
-                        _ => {
-                            debug!(%lang_str, ?file_disk_path, "failed to build tags");
-                            SymbolLocations::Empty
+                    if let Some(syms) = repo_info.symbols.get(relative_path) {
+                        SymbolLocations::Ctags(syms.clone())
+                    } else {
+                        debug!(%lang_str, ?file_disk_path, "failed to build tags");
+                        let file_specific = Handle::current()
+                            .block_on(ctags_for_file(repo_disk_path, &file_disk_path));
+                        match file_specific {
+                            Ok(Some(syms)) => SymbolLocations::Ctags(syms),
+                            _ => SymbolLocations::Empty,
                         }
                     }
                 }

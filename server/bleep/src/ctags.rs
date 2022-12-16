@@ -111,6 +111,13 @@ async fn call_ctags(paths: Vec<String>, exclude_langs_list: &[&str]) -> Result<S
     Ok(String::from_utf8(output.stdout)?)
 }
 
+pub async fn ctags_for_file(repo_disk_path: &Path, file: &Path) -> Result<Option<Vec<Symbol>>> {
+    call_ctags(vec![file.to_string_lossy().to_string()], &[])
+        .await
+        .map(|output| parse_symbols(repo_disk_path, vec![output]))
+        .map(|sm| sm.into_values().next())
+}
+
 pub async fn get_symbols(repo_disk_path: &Path, exclude_langs: &[&str]) -> SymbolMap {
     let paths = find_files(repo_disk_path);
 
@@ -123,12 +130,22 @@ pub async fn get_symbols(repo_disk_path: &Path, exclude_langs: &[&str]) -> Symbo
         files[i % threads].push(f);
     }
 
-    let outputs = stream::iter(files)
-        .filter_map(|paths| async move { call_ctags(paths, exclude_langs).await.ok() })
-        .collect::<Vec<String>>()
-        .await;
+    let outputs = stream::iter(
+        files
+            .into_iter()
+            .map(|paths| async move { call_ctags(paths, exclude_langs).await }),
+    )
+    .buffer_unordered(threads)
+    .filter_map(|result| async move { result.ok() })
+    .map(|output| async { parse_symbols(repo_disk_path, vec![output]) })
+    .buffer_unordered(threads)
+    .fold(HashMap::new(), |mut acc, input| async move {
+        acc.extend(input);
+        acc
+    })
+    .await;
 
-    parse_symbols(repo_disk_path, outputs)
+    outputs
 }
 
 fn parse_symbols(repo_disk_path: &Path, outputs: Vec<String>) -> SymbolMap {

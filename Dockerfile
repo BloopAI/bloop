@@ -6,4 +6,4 @@ RUN cargo build --release -p bleep
 FROM debian
 RUN apt-get update && apt-get -y install universal-ctags openssl ca-certificates
 COPY --from=builder /build/target/release/bleep /
-ENTRYPOINT ["/bleep", "--webserver-host=0.0.0.0"]
+ENTRYPOINT ["/bleep", "--host=0.0.0.0"]
