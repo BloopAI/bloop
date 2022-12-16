@@ -155,6 +155,7 @@ const TooltipCode = ({
                                 lineStart={item.line}
                                 language={language}
                                 removePaddings
+                                lineHoverEffect
                               />
                             </span>
                           ))}
