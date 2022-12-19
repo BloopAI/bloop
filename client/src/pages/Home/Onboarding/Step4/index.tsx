@@ -102,8 +102,7 @@ const Step4 = ({ handleNext, handleBack }: Props) => {
       );
     });
   }, []);
-  // console.log(!repos.length);
-  // console.log(userRepos);
+
   return (
     <>
       <DialogText

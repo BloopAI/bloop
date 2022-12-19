@@ -1,10 +1,10 @@
-import { useNavigate } from 'react-router-dom';
 import { format as timeAgo } from 'timeago.js';
 import { useCallback, useMemo } from 'react';
 import { GitHubLogo } from '../../icons';
 import { SyncStatus } from '../../types/general';
 import FileIcon from '../FileIcon';
 import { getFileExtensionForLang } from '../../utils';
+import useAppNavigation from '../../hooks/useAppNavigation';
 
 type Props = {
   name: string;
@@ -38,13 +38,9 @@ const RepoCard = ({
     return !isGh ? name.split('/').reverse()[0] : name;
   }, [name, provider]);
 
-  const navigate = useNavigate();
+  const { navigateRepoPath } = useAppNavigation();
   const handleClick = useCallback(() => {
-    navigate(
-      `/results?q=open:true repo:${
-        isGh ? 'github.com/' : ''
-      }${encodeURIComponent(repoName)}`,
-    );
+    navigateRepoPath(`${isGh ? 'github.com/' : ''}${repoName}`);
   }, [repoName, provider]);
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-md p-4 w-full flex flex-col gap-6">

@@ -27,7 +27,10 @@ export const CodeResults = () => {
   return (
     <MemoryRouter initialEntries={['']}>
       <Routes>
-        <Route path="/" element={<ResultsPage />} />
+        <Route
+          path="/"
+          element={<ResultsPage loading={false} resultsData={codeSearch} />}
+        />
       </Routes>
     </MemoryRouter>
   );
@@ -37,7 +40,10 @@ export const CodeSymbolsResults = () => {
   return (
     <MemoryRouter initialEntries={['']}>
       <Routes>
-        <Route path="/" element={<ResultsPage />} />
+        <Route
+          path="/"
+          element={<ResultsPage loading={false} resultsData={codeSearch} />}
+        />
       </Routes>
     </MemoryRouter>
   );
@@ -47,7 +53,10 @@ export const RepoResults = () => {
   return (
     <MemoryRouter initialEntries={['']}>
       <Routes>
-        <Route path="/" element={<ResultsPage />} />
+        <Route
+          path="/"
+          element={<ResultsPage loading={false} resultsData={codeSearch} />}
+        />
       </Routes>
     </MemoryRouter>
   );
@@ -56,7 +65,10 @@ export const FileResults = () => {
   return (
     <MemoryRouter initialEntries={['']}>
       <Routes>
-        <Route path="/" element={<ResultsPage />} />
+        <Route
+          path="/"
+          element={<ResultsPage loading={false} resultsData={codeSearch} />}
+        />
       </Routes>
     </MemoryRouter>
   );

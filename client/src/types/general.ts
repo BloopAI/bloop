@@ -37,6 +37,7 @@ export type FilterType = {
   type: 'checkbox' | 'button';
   name: FilterName | string;
   singleSelect?: boolean;
+  disabled?: boolean;
 };
 
 export enum SyncStatus {

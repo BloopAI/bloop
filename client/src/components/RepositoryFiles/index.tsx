@@ -13,7 +13,7 @@ import {
 type Props = {
   files: RepositoryFile[];
   currentPath: string;
-  onClick: (p: string, shouldReplace?: boolean) => void;
+  onClick: (p: string, type: FileTreeFileType) => void;
 };
 
 const RepositoryFiles = ({ files, currentPath, onClick }: Props) => {
@@ -35,7 +35,7 @@ const RepositoryFiles = ({ files, currentPath, onClick }: Props) => {
                         isWindowsPath(currentPath),
                       )
                     : '';
-                  onClick(path);
+                  onClick(path, FileTreeFileType.DIR);
                 },
               )}
               path={currentPath}
@@ -51,7 +51,7 @@ const RepositoryFiles = ({ files, currentPath, onClick }: Props) => {
             key={id}
             className="flex flex-row justify-between px-4 py-4  bg-gray-900 last:rounded-b group cursor-pointer"
             onClick={() => {
-              onClick(file.path, true);
+              onClick(file.path, file.type);
             }}
           >
             <span className="w-fit group-hover:text-gray-300 flex items-center gap-2">

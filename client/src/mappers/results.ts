@@ -1,5 +1,6 @@
 import {
   CodeItem,
+  DirectoryEntry,
   DirectoryItem,
   FileItem,
   FileResItem,
@@ -20,6 +21,7 @@ import {
   TokenInfoFile,
 } from '../types/results';
 import { FileTreeFileType } from '../types';
+import { sortFiles } from '../utils/file';
 
 const mapRepoResults = (item: RepoItem, id: number): RepoResult => {
   return {
@@ -113,20 +115,32 @@ export const mapRanges = (
 export const mapDirResult = (directoryItem: DirectoryItem) => {
   return {
     name: directoryItem.data.repo_name,
-    entries: directoryItem.data.entries.map((item) => ({
-      ...item,
+    entries: mapFileTree(
+      directoryItem.data.entries,
+      directoryItem.data.relative_path,
+    ),
+    relativePath: directoryItem.data.relative_path,
+  };
+};
+
+const mapFileTree = (siblings: DirectoryEntry[], relativePath: string) => {
+  return siblings
+    .map((item) => ({
       type:
         item.entry_data === 'Directory'
           ? FileTreeFileType.DIR
           : FileTreeFileType.FILE,
-      path: `${directoryItem.data.relative_path}${item.name}`,
+      path: `${relativePath}${item.name}`,
       name:
         item.entry_data === 'Directory'
           ? item.name.substring(item.name.length - 1, -1)
           : item.name,
-    })),
-    relativePath: directoryItem.data.relative_path,
-  };
+      lang:
+        item.entry_data !== 'Directory' ? item.entry_data.File.lang : undefined,
+      children: [],
+      selected: item.currentFile,
+    }))
+    .sort(sortFiles);
 };
 
 export const mapFileResult = (fileItem: FileItem) => {
@@ -137,6 +151,7 @@ export const mapFileResult = (fileItem: FileItem) => {
     code: fileItem.data.contents,
     hoverableRanges: [],
     repoName: fileItem.data.repo_name,
+    fileTree: mapFileTree(fileItem.data.siblings, fileItem.data.relative_path),
   };
 };
 

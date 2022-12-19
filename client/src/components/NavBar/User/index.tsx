@@ -7,6 +7,7 @@ import { MenuListItemType } from '../../ContextMenu';
 import SearchInput from '../../SearchInput';
 import { UIContext } from '../../../context/uiContext';
 import Button from '../../Button';
+import useAppNavigation from '../../../hooks/useAppNavigation';
 
 type Props = {
   shareFiles?: ShareFile[];
@@ -15,11 +16,12 @@ type Props = {
 
 const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
   const { setSettingsOpen, setBugReportModalOpen } = useContext(UIContext);
-  const navigate = useNavigate();
+  const { navigateBack } = useAppNavigation();
 
   const backButtonHandler = useCallback(() => {
-    navigate(-1);
+    navigateBack();
   }, []);
+
   return (
     <div className="flex flex-row flex-1">
       <Button

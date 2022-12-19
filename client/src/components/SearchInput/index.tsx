@@ -8,7 +8,6 @@ import React, {
 } from 'react';
 import { useCombobox } from 'downshift';
 import throttle from 'lodash.throttle';
-import { useNavigate } from 'react-router-dom';
 import TextInput from '../TextInput';
 import { ArrowRevert, Clipboard, TrashCan } from '../../icons';
 import { DropdownWithIcon } from '../Dropdown';
@@ -25,6 +24,7 @@ import {
   SuggestionType,
 } from '../../types/results';
 import { mapResults } from '../../mappers/results';
+import useAppNavigation from '../../hooks/useAppNavigation';
 import AutocompleteMenu from './AutocompleteMenu';
 
 const INPUT_POSITION_LEFT = 47;
@@ -46,7 +46,6 @@ function SearchInput() {
     inputValue,
     setInputValue,
     searchHistory,
-    // setSearchSubmitted,
     setFilters,
     filters,
     setSearchHistory,
@@ -55,7 +54,7 @@ function SearchInput() {
   const [left] = useState<number>(INPUT_POSITION_LEFT);
   const inputRef = useRef<HTMLInputElement>(null);
   const { globalRegex, setGlobalRegex } = useContext(SearchContext);
-  const navigate = useNavigate();
+  const { navigateSearch, navigateRepoPath } = useAppNavigation();
   const arrowNavContainerRef = useArrowKeyNavigation({
     selectors: 'input, .arrow-navigate',
     tabSelects: true,
@@ -116,17 +115,12 @@ function SearchInput() {
             state.selectedItem?.type === ResultItemType.FILE ||
             state.selectedItem?.type === ResultItemType.CODE
           ) {
-            navigate(
-              `/results?q=open:true repo:${encodeURIComponent(
-                state.selectedItem.repoName,
-              )} path:${encodeURIComponent(state.selectedItem.relativePath)}`,
+            navigateRepoPath(
+              state.selectedItem.repoName,
+              state.selectedItem.relativePath,
             );
           } else if (state.selectedItem?.type === ResultItemType.REPO) {
-            navigate(
-              `/results?q=open:true repo:${encodeURIComponent(
-                state.selectedItem.repository,
-              )}`,
-            );
+            navigateRepoPath(state.selectedItem.repository);
           }
         }
         inputRef.current?.focus();
@@ -134,7 +128,6 @@ function SearchInput() {
         if (state.inputValue === '') {
           setInputValue(state.inputValue);
           setOptions([]);
-          // setFilters([]);
           return;
         }
         if (!state.inputValue) {
@@ -170,7 +163,7 @@ function SearchInput() {
   });
 
   const onSubmit = useCallback((val: string) => {
-    navigate(`/results?q=${encodeURIComponent(val)}`);
+    navigateSearch(val);
     closeMenu();
     setSearchHistory((prev) => {
       const newHistory = [val, ...prev].slice(0, 4);
