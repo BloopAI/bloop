@@ -40,7 +40,6 @@ fn find_files(path: &Path) -> Vec<String> {
     WalkBuilder::new(path)
         .ignore(true)
         .git_ignore(true)
-        .hidden(false)
         .build()
         .filter_map(|res| match res {
             Ok(de) => Some(de),
