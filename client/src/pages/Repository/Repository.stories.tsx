@@ -1,6 +1,7 @@
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 import { mockRepo } from '../../mocks';
+import { codeSearch } from '../../mocks/api_mocks';
 import RepositoryPage from './index';
 
 export default {
@@ -17,7 +18,12 @@ export const RepositoryView = () => {
       <Routes>
         <Route
           path="/"
-          element={<RepositoryPage repository={mockRepo} sidebarOpen={false} />}
+          element={
+            <RepositoryPage
+              repositoryData={codeSearch as any}
+              loading={false}
+            />
+          }
         />
       </Routes>
     </MemoryRouter>
