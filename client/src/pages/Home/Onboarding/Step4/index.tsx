@@ -37,7 +37,6 @@ const Step4 = ({ handleNext, handleBack }: Props) => {
       const reposToSync = repos
         .filter((r) => (activeTab === 1 ? r.selected : r))
         .map((r) => r.ref);
-      console.log('reposToSync', reposToSync, repos.length);
       const localRepos = userRepos
         .filter(
           (r) =>

@@ -28,6 +28,7 @@ const Pagination = ({ page, setPage, totalPages }: Props) => {
         ),
     [totalPages, page],
   );
+
   return (
     <div className="flex items-center justify-between">
       <p className="body-s text-gray-400">

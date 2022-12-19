@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { Branch, Version } from '../../icons';
-import FileTree, { FileItemType } from './FileTree';
+import { FileTreeFileType } from '../../types';
+import { FileTreeItem } from '../../types/results';
+import FileTree from './FileTree';
 import ListNavigation from './ListNavigation';
 import NavigationPanel from './NavigationPanel';
 
 type Props = {
   repoName: string;
-  files: FileItemType[];
+  files: FileTreeItem[];
   branches: { title: string }[];
   versions: { title: string }[];
-  onBackNavigate: () => void;
   initialBranch?: number;
   initialVersion?: number;
+  currentPath: string;
+  onFileClick: (p: string, type: FileTreeFileType) => void;
 };
 
 const IdeNavigation = ({
@@ -19,9 +22,10 @@ const IdeNavigation = ({
   files,
   versions,
   branches,
-  onBackNavigate,
   initialVersion,
   initialBranch,
+  currentPath,
+  onFileClick,
 }: Props) => {
   const [selectedBranch, setSelectedBranch] = useState<number | undefined>(
     initialBranch,
@@ -31,26 +35,34 @@ const IdeNavigation = ({
   );
 
   return (
-    <NavigationPanel onBackNavigate={onBackNavigate} repoName={repoName}>
+    <NavigationPanel repoName={repoName}>
       <span>
-        <FileTree items={files} />
+        <FileTree
+          items={files}
+          onFileClick={onFileClick}
+          currentPath={currentPath}
+        />
       </span>
-      <ListNavigation
-        title="Branch"
-        items={branches}
-        icon={<Branch />}
-        selected={selectedBranch}
-        setSelected={setSelectedBranch}
-        dense
-      />
-      <ListNavigation
-        title="Version"
-        items={versions}
-        icon={<Version />}
-        setSelected={setSelectedVersion}
-        selected={selectedVersion}
-        dense
-      />
+      {branches.length > 0 && (
+        <ListNavigation
+          title="Branch"
+          items={branches}
+          icon={<Branch />}
+          selected={selectedBranch}
+          setSelected={setSelectedBranch}
+          dense
+        />
+      )}
+      {versions.length > 0 && (
+        <ListNavigation
+          title="Version"
+          items={versions}
+          icon={<Version />}
+          setSelected={setSelectedVersion}
+          selected={selectedVersion}
+          dense
+        />
+      )}
     </NavigationPanel>
   );
 };

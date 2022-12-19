@@ -1,66 +1,79 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { SearchContext } from '../../context/searchContext';
-import { Repository } from '../../types';
+import { FileTreeFileType, Repository } from '../../types';
+import Skeleton from '../Skeleton';
+import { mapDirResult } from '../../mappers/results';
+import { DirectorySearchResponse } from '../../types/api';
+import FileIcon from '../../components/FileIcon';
+import Filters from '../../components/Filters';
 import RepositoryOverview from './RepositoryOverview';
 
 type Props = {
-  repository: Repository;
-  sidebarOpen: boolean;
+  repositoryData: DirectorySearchResponse;
+  loading: boolean;
 };
 
-const RepositoryPage = ({ repository, sidebarOpen }: Props) => {
+const RepositoryPage = ({ repositoryData, loading }: Props) => {
+  const [repository, setRepository] = useState<Repository | undefined>();
+  const [initialLoad, setInitialLoad] = useState(true);
   const { setFilters } = useContext(SearchContext);
 
   useEffect(() => {
+    setInitialLoad(false);
+  }, []);
+  useEffect(() => {
+    if (!repositoryData) {
+      return;
+    }
+
+    const data = mapDirResult(repositoryData.data[0]);
+    setRepository({
+      name: data.name,
+      fileCount: 0,
+      files: data.entries,
+      commits: [],
+      url: '',
+      description: '',
+      branches: [],
+      followers: 1,
+      currentPath: data.relativePath,
+    });
+  }, [repositoryData]);
+
+  useEffect(() => {
+    if (!repository?.files.length) {
+      return;
+    }
+
+    const fileFilters = repository.files
+      .map((repoFile) => {
+        if (repoFile.type === FileTreeFileType.FILE && repoFile.lang) {
+          return {
+            lang: repoFile.lang,
+            name: repoFile.name,
+          };
+        }
+      })
+      .filter(Boolean);
+
     setFilters([
       {
-        name: 'branch',
-        items: [
-          {
-            label: 'main',
-            checked: true,
-            description: '',
-          },
-        ],
-        type: 'button',
-        title: 'Branch',
-        singleSelect: true,
+        name: 'lang',
+        type: 'checkbox',
+        title: 'File Type',
+        items: fileFilters.map((filter) => ({
+          label: filter!.lang || '',
+          checked: false,
+          description: '',
+          icon: <FileIcon filename={filter!.name} />,
+        })),
       },
-      // {
-      //   name: 'file',
-      //   items: [
-      //     {
-      //       label: '.ts',
-      //       checked: false,
-      //       description: '',
-      //       icon: <FileIcon filename="index.ts" />,
-      //     },
-      //     {
-      //       label: '.js',
-      //       checked: false,
-      //       description: '',
-      //       icon: <FileIcon filename="index.js" />,
-      //     },
-      //     {
-      //       label: '.css',
-      //       checked: false,
-      //       description: '',
-      //       icon: <FileIcon filename="index.css" />,
-      //     },
-      //     {
-      //       label: '.rs',
-      //       checked: false,
-      //       description: '',
-      //       icon: <FileIcon filename="index.rs" />,
-      //     },
-      //   ],
-      //   type: 'checkbox',
-      //   title: 'File Type',
-      // },
     ]);
-  }, []);
+  }, [repository]);
 
-  return (
+  return !repository || initialLoad ? (
+    <Skeleton />
+  ) : (
     <div className="flex w-full">
       <div className="h-full flex flex-col overflow-hidden relative overflow-y-auto w-[20.25rem] flex-shrink-0">
         <div className="p-8 flex flex-row gap-6 justify-between select-none cursor-default">
@@ -81,16 +94,12 @@ const RepositoryPage = ({ repository, sidebarOpen }: Props) => {
             </span>
           </span>
         </div>
-        {/*<div className="flex-1 flex">*/}
-        {/*  <Filters isOpen={true} toggleOpen={() => {}} showHeader={false} />*/}
-        {/*</div>*/}
+        <div className="flex-1 flex">
+          <Filters isOpen={true} toggleOpen={() => {}} showHeader={false} />
+        </div>
       </div>
       <div className="p-12 w-full overflow-y-auto">
-        <RepositoryOverview
-          repository={repository}
-          syncState
-          sidebarOpen={sidebarOpen}
-        />
+        <RepositoryOverview repository={repository} syncState />
       </div>
     </div>
   );
