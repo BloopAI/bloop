@@ -1,4 +1,3 @@
-
 import { format as timeAgo } from 'timeago.js';
 import { useCallback, useMemo } from 'react';
 import { GitHubLogo } from '../../icons';

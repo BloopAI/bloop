@@ -15,8 +15,12 @@ type Props = {
 
 const RepositoryPage = ({ repositoryData, loading }: Props) => {
   const [repository, setRepository] = useState<Repository | undefined>();
+  const [initialLoad, setInitialLoad] = useState(true);
   const { setFilters } = useContext(SearchContext);
 
+  useEffect(() => {
+    setInitialLoad(false);
+  }, []);
   useEffect(() => {
     if (!repositoryData) {
       return;
@@ -67,7 +71,7 @@ const RepositoryPage = ({ repositoryData, loading }: Props) => {
     ]);
   }, [repository]);
 
-  return !repository || loading ? (
+  return !repository || initialLoad ? (
     <Skeleton />
   ) : (
     <div className="flex w-full">
