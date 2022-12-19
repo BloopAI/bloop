@@ -3,7 +3,8 @@ name: dummy
 on:
   pull_request:
     paths-ignore:
-      - ".github/workflows/**"
+      - ".github/workflows/server**"
+      - ".github/workflows/client**"
       - "apps/desktop/**"
       - "server/**"
       - "client/**"

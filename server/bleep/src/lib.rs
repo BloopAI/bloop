@@ -37,6 +37,7 @@ use tracing::{error, warn};
 use tracing_subscriber::EnvFilter;
 
 mod background;
+mod collector;
 mod language;
 mod remotes;
 mod webserver;

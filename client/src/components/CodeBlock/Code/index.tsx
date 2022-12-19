@@ -21,6 +21,7 @@ type Props = {
   symbols?: SnippetSymbol[];
   onlySymbolLines?: boolean;
   removePaddings?: boolean;
+  lineHoverEffect?: boolean;
 };
 
 const Code = ({
@@ -32,6 +33,7 @@ const Code = ({
   symbols,
   onlySymbolLines,
   removePaddings,
+  lineHoverEffect,
 }: Props) => {
   const lang = useMemo(
     () => getPrismLanguage(language) || 'plaintext',
@@ -138,6 +140,7 @@ const Code = ({
                 lineHidden={
                   onlySymbolLines && !getSymbols(lineStart + lineNumber).length
                 }
+                hoverEffect={lineHoverEffect}
               >
                 {line.map((token, index) => (
                   <CodeToken

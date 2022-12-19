@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import TooltipCode from '../../TooltipCode';
 import CodeToken from '../Code/CodeToken';
 import { Token as TokenType } from '../../../types/prism';
-import { Range, TokenInfo } from '../../../types/results';
+import { Range, TokenInfo, TokenInfoItem } from '../../../types/results';
 import { getTokenInfo } from '../../../services/api';
 import { mapTokenInfoData } from '../../../mappers/results';
 
@@ -13,6 +13,7 @@ type Props = {
   repoName: string;
   lineHoverRanges: Range[];
   repoPath: string;
+  onRefDefClick: (item: TokenInfoItem, filePath: string) => void;
 };
 
 const tokenHoverable = (tokenPosition: Range, ranges: Range[]) => {
@@ -36,6 +37,7 @@ const Token = ({
   repoName,
   relativePath,
   repoPath,
+  onRefDefClick,
 }: Props) => {
   const [hoverableRange, setHoverableRange] = useState(
     tokenHoverable(token.byteRange, lineHoverRanges),
@@ -72,6 +74,17 @@ const Token = ({
     }
   }, [hoverableRange]);
 
+  const handleRefsDefsClick = useCallback(
+    (item: TokenInfoItem, filePath: string) => {
+      setTokenInfo({
+        definitions: [],
+        references: [],
+      });
+      onRefDefClick(item, filePath);
+    },
+    [],
+  );
+
   return hoverableRange ? (
     <TooltipCode
       language={language}
@@ -79,6 +92,7 @@ const Token = ({
       position={'left'}
       onHover={onHover}
       repoName={repoName}
+      onRefDefClick={handleRefsDefsClick}
     >
       <CodeToken token={token} />
     </TooltipCode>

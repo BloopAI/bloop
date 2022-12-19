@@ -24,6 +24,7 @@ const ResultPreview = ({ result, onClick }: Props) => {
             collapsed={symbolsCollapsed}
             onClick={onClick}
             repoName={result.repoName}
+            repoPath={result.repoPath}
           />
         );
       case ResultItemType.FILE:

@@ -1,12 +1,13 @@
-import React, { MouseEvent, useEffect, useMemo, useState } from 'react';
+import React, {
+  MouseEvent,
+  useEffect,
+  useMemo,
+  useState,
+  useContext,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileIcon from '../../components/FileIcon';
-import {
-  ChevronDoubleIntersected,
-  CloseSign,
-  Modal,
-  Sidebar,
-} from '../../icons';
+import { CloseSign, Modal, MoreHorizontal, Sidebar } from '../../icons';
 import Button from '../../components/Button';
 import SelectToggleButton from '../../components/SelectToggleButton';
 import Tabs from '../../components/Tabs';
@@ -21,10 +22,17 @@ import { FullResultModeEnum, MenuItemType } from '../../types/general';
 import ModalOrSidebar from '../../components/ModalOrSidebar';
 import ShareFileModal from '../../components/ShareFileModal';
 import BreadcrumbsPath from '../../components/BreadcrumbsPath';
-import { splitPathForBreadcrumbs } from '../../utils';
+import {
+  getFileManagerName,
+  isWindowsPath,
+  splitPath,
+  splitPathForBreadcrumbs,
+} from '../../utils';
+import { DropdownWithIcon } from '../../components/Dropdown';
+import { DeviceContext } from '../../context/deviceContext';
 
 type Props = {
-  result: FullResult | null;
+  result: FullResult;
   onResultClosed: () => void;
   mode: FullResultModeEnum;
   setMode: (n: FullResultModeEnum) => void;
@@ -33,15 +41,16 @@ type Props = {
 /*
 const tabs = [
   { title: 'Code' },
-  // { title: 'Blame' },
-  // { title: 'Commits' },
-  // { title: 'Authors' },
+  { title: 'Blame' },
+  { title: 'Commits' },
+  { title: 'Authors' },
 ];
 */
 
 const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
   const [activeTab, setActiveTab] = useState(0);
   const [isShareOpen, setShareOpen] = useState(false);
+  const { os, openFolderInExplorer, openLink } = useContext(DeviceContext);
 
   useEffect(() => {
     const action =
@@ -178,75 +187,115 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
         containerClassName="w-[60vw]"
         filtersOverlay={mode === FullResultModeEnum.SIDEBAR}
       >
-        {!!result && (
-          <>
-            <div className="flex justify-between items-center p-3 bg-gray-800 border-b border-gray-700 shadow-lighter select-none">
-              <div className="flex gap-2">
-                {/*<SelectToggleButton*/}
-                {/*  onlyIcon*/}
-                {/*  onClick={() =>*/}
-                {/*    navigate(*/}
-                {/*      `/result/file?relativePath=${encodeURIComponent(*/}
-                {/*        result?.relativePath,*/}
-                {/*      )}&repoPath=${encodeURIComponent(*/}
-                {/*        result?.repoPath,*/}
-                {/*      )}&repoName=${encodeURIComponent(result?.repoName)}`,*/}
-                {/*    )*/}
-                {/*  }*/}
-                {/*  selected={false}*/}
-                {/*  title="Open in full view"*/}
-                {/*>*/}
-                {/*  <ChevronDoubleIntersected />*/}
-                {/*</SelectToggleButton>*/}
-                <SelectToggleButton
-                  onlyIcon
-                  onClick={() => setModeAndTransition(FullResultModeEnum.MODAL)}
-                  selected={mode === FullResultModeEnum.MODAL}
-                  title="Open in modal"
-                >
-                  <Modal />
-                </SelectToggleButton>
-                <SelectToggleButton
-                  onlyIcon
-                  onClick={() =>
-                    setModeAndTransition(FullResultModeEnum.SIDEBAR)
-                  }
-                  selected={mode === FullResultModeEnum.SIDEBAR}
-                  title="Open in sidebar"
-                >
-                  <Sidebar />
-                </SelectToggleButton>
-              </div>
-              <div className="flex gap-2">
-                {/*<SelectToggleButton onlyIcon title="Star">*/}
-                {/*  <Star />*/}
-                {/*</SelectToggleButton>*/}
-                {/*<Button variant="primary" onClick={() => setShareOpen(true)}>*/}
-                {/*  Share*/}
-                {/*  <ArrowBoxOut />*/}
-                {/*</Button>*/}
-                <Button
-                  onlyIcon
-                  variant="tertiary"
-                  onClick={handleClose}
-                  title="Close"
-                >
-                  <CloseSign />
-                </Button>
-              </div>
-            </div>
-            <div className="w-full flex flex-col overflow-y-auto">
-              <div className={`w-full border-b border-gray-700 p-3`}>
-                <div className="flex items-center gap-1 max-w-full select-none">
-                  <FileIcon filename={result.relativePath.slice(-5)} />
-                  <div className="max-w-[calc(100% - 20px)]">
-                    <BreadcrumbsPath
-                      repo={result.repoName}
-                      path={result.relativePath}
-                      activeStyle="secondary"
-                      onClick={onResultClosed}
-                    />
+        <div className="flex justify-between items-center p-3 bg-gray-800 border-b border-gray-700 shadow-lighter select-none">
+          <div className="flex gap-2">
+            {/*<SelectToggleButton*/}
+            {/*  onlyIcon*/}
+            {/*  onClick={() =>*/}
+            {/*    navigate(*/}
+            {/*      `/result/file?relativePath=${encodeURIComponent(*/}
+            {/*        result?.relativePath,*/}
+            {/*      )}&repoPath=${encodeURIComponent(*/}
+            {/*        result?.repoPath,*/}
+            {/*      )}&repoName=${encodeURIComponent(result?.repoName)}`,*/}
+            {/*    )*/}
+            {/*  }*/}
+            {/*  selected={false}*/}
+            {/*  title="Open in full view"*/}
+            {/*>*/}
+            {/*  <ChevronDoubleIntersected />*/}
+            {/*</SelectToggleButton>*/}
+            <SelectToggleButton
+              onlyIcon
+              onClick={() => setModeAndTransition(FullResultModeEnum.MODAL)}
+              selected={mode === FullResultModeEnum.MODAL}
+              title="Open in modal"
+            >
+              <Modal />
+            </SelectToggleButton>
+            <SelectToggleButton
+              onlyIcon
+              onClick={() => setModeAndTransition(FullResultModeEnum.SIDEBAR)}
+              selected={mode === FullResultModeEnum.SIDEBAR}
+              title="Open in sidebar"
+            >
+              <Sidebar />
+            </SelectToggleButton>
+          </div>
+          <div className="flex gap-2">
+            {/*<SelectToggleButton onlyIcon title="Star">*/}
+            {/*  <Star />*/}
+            {/*</SelectToggleButton>*/}
+            {/*<Button variant="primary" onClick={() => setShareOpen(true)}>*/}
+            {/*  Share*/}
+            {/*  <ArrowBoxOut />*/}
+            {/*</Button>*/}
+            <Button
+              onlyIcon
+              variant="tertiary"
+              onClick={handleClose}
+              title="Close"
+            >
+              <CloseSign />
+            </Button>
+          </div>
+        </div>
+        <div className="w-full flex flex-col overflow-y-auto">
+          <div className={`w-full border-b border-gray-700 p-3`}>
+            <div className="flex items-center gap-1 max-w-full select-none">
+              <FileIcon filename={result.relativePath.slice(-5)} />
+              <div className="max-w-[calc(100% - 20px)]">
+                <BreadcrumbsPath
+                  repo={result.repoName}
+                  path={result.relativePath}
+                  activeStyle="secondary"
+                  onClick={onResultClosed}
+                />
+                <div className="flex items-center gap-2 max-w-full select-none justify-between">
+                  <div className="flex items-center gap-1 max-w-[calc(100%-40px)]">
+                    <FileIcon filename={result.relativePath.slice(-5)} />
+                    <div className="max-w-[calc(100%-20px)]">
+                      <BreadcrumbsPath
+                        repo={result.repoName}
+                        path={result.relativePath}
+                        activeStyle="secondary"
+                        onClick={() => onResultClosed}
+                      />
+                    </div>
                   </div>
+                  {result?.repoPath.startsWith('local') && (
+                    <span className="flex-shrink-0">
+                      <DropdownWithIcon
+                        items={[
+                          {
+                            type: MenuItemType.DEFAULT,
+                            text: `View in ${getFileManagerName(os.type)}`,
+                            onClick: () => {
+                              openFolderInExplorer(
+                                result.repoPath.slice(6) +
+                                  (isWindowsPath(result.repoPath)
+                                    ? '\\'
+                                    : '/') +
+                                  (os.type === 'Darwin'
+                                    ? result.relativePath
+                                    : splitPath(result.relativePath)
+                                        .slice(0, -1)
+                                        .join(
+                                          isWindowsPath(result.relativePath)
+                                            ? '\\'
+                                            : '/',
+                                        )),
+                              );
+                            },
+                          },
+                        ]}
+                        btnOnlyIcon
+                        icon={<MoreHorizontal />}
+                        noChevron
+                        btnSize="small"
+                      />
+                    </span>
+                  )}
                 </div>
               </div>
               {/*<div className={`border-b border-gray-700 w-full pb-0 p-3`}>*/}
@@ -258,8 +307,8 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
               {/*</div>*/}
               {getContent(result)}
             </div>
-          </>
-        )}
+          </div>
+        </div>
       </ModalOrSidebar>
       <ShareFileModal
         isOpen={isShareOpen}

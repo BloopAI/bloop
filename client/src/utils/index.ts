@@ -89,3 +89,14 @@ export const buildQuery = (repo?: string, path?: string) => {
     path ? `path:${encodeURIComponent(path)}` : ''
   }`;
 };
+
+export const getFileManagerName = (os: string) => {
+  switch (os) {
+    case 'Darwin':
+      return 'Finder';
+    case 'Windows_NT':
+      return 'File Explorer';
+    default:
+      return 'File manager';
+  }
+};
