@@ -7,7 +7,7 @@ import RepositoryPage from '../Repository';
 import PageTemplate from '../../components/PageTemplate';
 import ErrorFallback from '../../components/ErrorFallback';
 import useAppNavigation from '../../hooks/useAppNavigation';
-import { buildQuery } from '../../utils';
+import { buildRepoQuery } from '../../utils';
 import ResultsPage from '../Results';
 import ViewResult from '../ResultFull';
 
@@ -27,7 +27,7 @@ const SearchPage = () => {
     switch (navigatedItem.type) {
       case 'repo':
       case 'full-result':
-        searchQuery(buildQuery(navigatedItem.repo, navigatedItem.path));
+        searchQuery(buildRepoQuery(navigatedItem.repo, navigatedItem.path));
         break;
       default:
         searchQuery(navigatedItem.query!, navigatedItem.page, globalRegex);

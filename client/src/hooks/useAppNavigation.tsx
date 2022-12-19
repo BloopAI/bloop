@@ -1,11 +1,6 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { buildRepoQuery } from '../utils';
 import { usePersistentState } from './usePersistentState';
 
 interface NavigationItem {
@@ -64,7 +59,7 @@ export const AppNavigationProvider = (prop: {
     switch (type) {
       case 'repo':
       case 'full-result':
-        return `open:true repo:${repo} ${path ? `path:${path}` : ''}`;
+        return buildRepoQuery(repo, path);
       case 'search':
         return query;
       default:
