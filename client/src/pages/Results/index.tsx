@@ -11,7 +11,7 @@ import { FullResult, ResultItemType, ResultType } from '../../types/results';
 import Filters from '../../components/Filters';
 import { SearchContext } from '../../context/searchContext';
 import { mapFiltersData } from '../../mappers/filter';
-import { mapFileResult, mapResults } from '../../mappers/results';
+import { mapFileResult, mapRanges, mapResults } from '../../mappers/results';
 import { FullResultModeEnum } from '../../types/general';
 import { UIContext } from '../../context/uiContext';
 import useAppNavigation from '../../hooks/useAppNavigation';
@@ -19,6 +19,7 @@ import ResultModal from '../ResultModal';
 import { useSearch } from '../../hooks/useSearch';
 import { FileSearchResponse, GeneralSearchResponse } from '../../types/api';
 import ErrorFallback from '../../components/ErrorFallback';
+import { getHoverables } from '../../services/api';
 import PageHeader from './PageHeader';
 import ResultsList from './ResultsList';
 import NoResults from './NoResults';
@@ -42,7 +43,6 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   const [totalCount, setTotalCount] = useState(1);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  // const [totalPages, setTotalPages] = usePersistentState(1,'totalPages');
   const [results, setResults] = useState<ResultType[]>([]);
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.SIDEBAR,
@@ -116,14 +116,17 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   useEffect(() => {
     if (fileResultData) {
       setOpenResult(mapFileResult(fileResultData.data[0]));
+      getHoverables(
+        fileResultData.data[0].data.relative_path,
+        fileResultData.data[0].data.repo_ref,
+      ).then((data) => {
+        setOpenResult((prevState) => ({
+          ...prevState!,
+          hoverableRanges: mapRanges(data.ranges),
+        }));
+      });
     }
   }, [fileResultData]);
-
-  useEffect(() => {
-    // if (!isFileNav) {
-    //   ref.current?.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
-    // }
-  }, [page]);
 
   return (
     <>

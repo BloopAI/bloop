@@ -41,7 +41,7 @@ const RepoCard = ({
 
   const { navigateRepoPath } = useAppNavigation();
   const handleClick = useCallback(() => {
-    navigateRepoPath(encodeURIComponent(repoName));
+    navigateRepoPath(repoName);
   }, [repoName, provider]);
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-md p-4 w-full flex flex-col gap-6">
