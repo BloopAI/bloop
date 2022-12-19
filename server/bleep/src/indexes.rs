@@ -64,7 +64,7 @@ pub struct Indexes {
 }
 
 impl Indexes {
-    pub fn new(config: Arc<Configuration>) -> Result<Self> {
+    pub async fn new(config: Arc<Configuration>) -> Result<Self> {
         if config.source.index_version_mismatch() {
             std::fs::remove_dir_all(config.index_path("repo"))?;
             std::fs::remove_dir_all(config.index_path("content"))?;
@@ -79,7 +79,7 @@ impl Indexes {
                 config.max_threads,
             )?,
             file: Indexer::create(
-                File::new(config.clone()),
+                File::new(config.clone()).await,
                 config.index_path("content").as_ref(),
                 config.buffer_size,
                 config.max_threads,

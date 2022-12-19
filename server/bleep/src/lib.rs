@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 #![deny(
     clippy::all,
     arithmetic_overflow,
@@ -13,6 +12,11 @@
 
 #[cfg(any(bench, test))]
 use criterion as _;
+
+// this needs an explicit `no_fp16` feature. due to how cargo
+// calculates dependencies and feature matrices, there is only one
+// version in the resulting binary with the correct feature
+use tract_linalg as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
@@ -61,6 +65,10 @@ fn default_index_path() -> PathBuf {
     }
 }
 
+fn default_model_dir() -> PathBuf {
+    "model".into()
+}
+
 pub fn default_parallelism() -> usize {
     std::thread::available_parallelism().unwrap().get()
 }
@@ -83,6 +91,10 @@ const fn default_port() -> u16 {
 
 fn default_host() -> String {
     String::from("127.0.0.1")
+}
+
+fn default_qdrant() -> String {
+    String::from("http://127.0.0.1:6334")
 }
 
 #[derive(Debug)]
@@ -153,6 +165,16 @@ pub struct Configuration {
     /// Maximum number of parallel background threads
     pub max_threads: usize,
 
+    #[clap(long, default_value_t = default_qdrant())]
+    #[serde(default = "default_qdrant")]
+    /// URL for the qdrant server
+    pub qdrant_url: String,
+
+    #[clap(long, default_value_os_t = default_model_dir())]
+    #[serde(default = "default_model_dir")]
+    /// URL for the qdrant server
+    pub model_dir: PathBuf,
+
     #[clap(long, default_value_t = default_host())]
     #[serde(default = "default_host")]
     /// Bind the webserver to `<port>`
@@ -194,7 +216,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn initialize(env: Environment, config: Configuration) -> Result<Application> {
+    pub async fn initialize(env: Environment, config: Configuration) -> Result<Application> {
         let mut config = match config.config_file {
             None => config,
             Some(ref path) => {
@@ -221,7 +243,7 @@ impl Application {
         let config = Arc::new(config);
 
         Ok(Self {
-            indexes: Indexes::new(config.clone())?.into(),
+            indexes: Indexes::new(config.clone()).await?.into(),
             repo_pool: config.source.initialize_pool()?,
             credentials: config.source.initialize_credentials()?,
             background: BackgroundExecutor::start(config.clone()),

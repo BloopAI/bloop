@@ -8,6 +8,11 @@ use std::{
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use dashmap::mapref::entry::Entry;
+use ndarray_linalg::norm::Norm;
+use qdrant_client::{
+    prelude::{QdrantClient, QdrantClientConfig},
+    qdrant::{CreateCollection, PointStruct},
+};
 use tantivy::{
     collector::TopDocs,
     doc,
@@ -19,6 +24,7 @@ use tantivy::{
     IndexWriter,
 };
 use tracing::{debug, info, trace, warn};
+use tract_onnx::{prelude::*, tract_hir::internal::InferenceOp};
 
 #[cfg(feature = "debug")]
 use {
@@ -50,6 +56,16 @@ struct Workload<'a> {
 pub struct File {
     config: Arc<Configuration>,
     schema: Schema,
+    qdrant: Arc<QdrantClient>,
+    tokenizer: Arc<tokenizers::Tokenizer>,
+    onnx: Arc<
+        SimplePlan<
+            InferenceFact,
+            Box<dyn InferenceOp + 'static>,
+            Graph<InferenceFact, Box<dyn InferenceOp + 'static>>,
+        >,
+    >,
+
     #[cfg(feature = "debug")]
     histogram: Arc<RwLock<Histogram>>,
 
@@ -89,7 +105,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn new(config: Arc<Configuration>) -> Self {
+    pub async fn new(config: Arc<Configuration>) -> Self {
         let mut builder = tantivy::schema::SchemaBuilder::new();
         let trigram = TextOptions::default().set_stored().set_indexing_options(
             TextFieldIndexing::default()
@@ -121,6 +137,17 @@ impl File {
         let raw_content = builder.add_bytes_field("raw_content", FAST);
         let raw_repo_name = builder.add_bytes_field("raw_repo_name", FAST);
         let raw_relative_path = builder.add_bytes_field("raw_relative_path", FAST);
+        let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(&config.qdrant_url)))
+            .await
+            .unwrap();
+
+        qdrant
+            .create_collection(&CreateCollection {
+                collection_name: "documents".to_string(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
 
         Self {
             file_disk_path,
@@ -136,6 +163,19 @@ impl File {
             avg_line_length,
             last_commit_unix_seconds,
             schema: builder.build(),
+            qdrant: qdrant.into(),
+            tokenizer: tokenizers::Tokenizer::from_pretrained(
+                "sentence-transformers/all-MiniLM-L6-v2",
+                None,
+            )
+            .unwrap()
+            .into(),
+            onnx: onnx()
+                .model_for_path(Path::join(&config.model_dir, "model.onnx"))
+                .unwrap()
+                .into_runnable()
+                .unwrap()
+                .into(),
             config,
             raw_content,
             raw_repo_name,
@@ -465,6 +505,58 @@ impl File {
 
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
         let last_commit = repo_info.last_commit_unix_secs;
+
+        trace!("ndarray");
+        let tokenizer_output = self.tokenizer.encode(buffer.to_owned(), true).unwrap();
+
+        let input_ids = tokenizer_output.get_ids();
+        let attention_mask = tokenizer_output.get_attention_mask();
+        let token_type_ids = tokenizer_output.get_type_ids();
+
+        let length = input_ids.len();
+
+        let input_ids: Tensor = tract_ndarray::Array2::from_shape_vec(
+            (1, length),
+            input_ids.iter().map(|&x| x as i64).collect(),
+        )?
+        .into();
+        let attention_mask: Tensor = tract_ndarray::Array2::from_shape_vec(
+            (1, length),
+            attention_mask.iter().map(|&x| x as i64).collect(),
+        )?
+        .into();
+        let token_type_ids: Tensor = tract_ndarray::Array2::from_shape_vec(
+            (1, length),
+            token_type_ids.iter().map(|&x| x as i64).collect(),
+        )?
+        .into();
+
+        let outputs = self.onnx.run(tvec!(
+            input_ids.into(),
+            attention_mask.into(),
+            token_type_ids.into()
+        ))?;
+
+        let logits = outputs[0].to_array_view::<f32>()?;
+
+        let logits = logits.slice(tract_ndarray::s![.., 0, ..]);
+
+        let norm = logits.to_owned().norm();
+        let data = logits.to_owned() / norm;
+
+        Handle::current()
+            .block_on(async {
+                self.qdrant
+                    .upsert_points(
+                        "documents",
+                        vec![PointStruct {
+                            vectors: Some(data.as_slice().unwrap().to_vec().into()),
+                            ..Default::default()
+                        }],
+                    )
+                    .await
+            })
+            .unwrap();
 
         trace!("writing document");
 

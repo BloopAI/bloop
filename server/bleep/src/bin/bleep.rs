@@ -3,6 +3,6 @@ use bleep::{Application, Configuration, Environment};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let app = Application::initialize(Environment::Server, Configuration::from_cli()?)?;
+    let app = Application::initialize(Environment::Server, Configuration::from_cli()?).await?;
     app.run().await
 }
