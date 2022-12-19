@@ -276,7 +276,9 @@ impl Repository {
     }
 
     pub(crate) fn open_walker(&self) -> ignore::Walk {
-        ignore::WalkBuilder::new(&self.disk_path).build()
+        ignore::WalkBuilder::new(&self.disk_path)
+            .hidden(false)
+            .build()
     }
 
     pub(crate) async fn get_head_info(&self) -> Arc<RepoHeadInfo> {
