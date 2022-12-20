@@ -50,10 +50,11 @@ async fn main() {
             configuration.max_threads = bleep::default_parallelism() / 4;
 
             let app = app.handle();
-            let initialized = Application::initialize(Environment::InsecureLocal, configuration);
+            tokio::spawn(async move {
+                let initialized =
+                    Application::initialize(Environment::InsecureLocal, configuration).await;
 
-            if let Ok(backend) = initialized {
-                tokio::spawn(async move {
+                if let Ok(backend) = initialized {
                     if let Err(_e) = backend.run().await {
                         app.emit_all(
                             "server-crashed",
@@ -61,18 +62,19 @@ async fn main() {
                                 message: _e.to_string(),
                             },
                         )
-                        .unwrap();
+                        .unwrap()
                     }
-                });
-            } else {
-                app.emit_all(
-                    "server-crashed",
-                    Payload {
-                        message: "Something bad happened".into(),
-                    },
-                )
-                .unwrap();
-            }
+                } else {
+                    app.emit_all(
+                        "server-crashed",
+                        Payload {
+                            message: "Something bad happened".into(),
+                        },
+                    )
+                    .unwrap();
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
