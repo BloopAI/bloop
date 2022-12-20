@@ -94,6 +94,10 @@ fn default_qdrant() -> String {
     String::from("http://127.0.0.1:6334")
 }
 
+fn default_answer_api_host() -> String {
+    String::from("localhost:7879")
+}
+
 #[derive(Debug)]
 pub enum Environment {
     /// Safe API that's suitable for public use
@@ -186,6 +190,11 @@ pub struct Configuration {
     #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
     /// Github Client ID for OAuth connection to private repos
     pub github_client_id: Option<SecretString>,
+
+    #[clap(long, default_value_t = default_answer_api_host())]
+    #[serde(default = "default_answer_api_host")]
+    /// Answer API `host` string, with optional `:port`
+    pub answer_api_host: String,
 }
 
 impl Configuration {

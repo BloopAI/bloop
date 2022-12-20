@@ -18,6 +18,7 @@ mod intelligence;
 mod query;
 mod repos;
 mod semantic;
+mod answer;
 
 #[allow(unused)]
 pub(in crate::webserver) mod prelude {
@@ -61,6 +62,7 @@ pub async fn start(app: Application) -> Result<()> {
         // misc
         .route("/file/*ref", get(file::handle))
         .route("/semantic/chunks", get(semantic::raw_chunks))
+        .route("/answer", get(answer::handle))
         .route("/api-doc/openapi.json", get(openapi_json::handle))
         .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
         .route("/health", get(health));
@@ -157,6 +159,7 @@ pub(in crate::webserver) enum Response<'a> {
     Intelligence(intelligence::TokenInfoResponse),
     File(file::FileResponse),
     Semantic(semantic::SemanticResponse),
+    Answer(answer::AnswerResponse),
     /// A blanket error response
     Error(EndpointError<'a>),
 }
