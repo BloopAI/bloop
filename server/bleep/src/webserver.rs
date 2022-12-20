@@ -17,6 +17,7 @@ mod index;
 mod intelligence;
 mod query;
 mod repos;
+mod answer;
 
 #[allow(unused)]
 pub(in crate::webserver) mod prelude {
@@ -57,6 +58,7 @@ pub async fn start(app: Application) -> Result<()> {
         .route("/token-info", get(intelligence::handle))
         // misc
         .route("/file/*ref", get(file::handle))
+        .route("/answer", get(answer::handle))
         .route("/api-doc/openapi.json", get(openapi_json::handle))
         .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
         .route("/health", get(health));
@@ -151,6 +153,7 @@ pub(in crate::webserver) enum Response<'a> {
     Hoverable(hoverable::HoverableResponse),
     Intelligence(intelligence::TokenInfoResponse),
     File(file::FileResponse),
+    Answer(answer::AnswerResponse),
     /// A blanket error response
     Error(EndpointError<'a>),
 }
