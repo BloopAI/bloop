@@ -100,6 +100,7 @@ impl Semantic {
         let response = self
             .qdrant
             .search_points(&SearchPoints {
+                collection_name: "documents".to_string(),
                 limit,
                 vector: self.embed(query)?,
                 with_payload: Some(WithPayloadSelector {
