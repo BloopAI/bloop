@@ -20,6 +20,7 @@ type Props = {
   collapsed?: boolean;
   onClick?: ResultClick;
   hideDropdown?: boolean;
+  hideMatchCounter?: boolean;
 };
 
 const PREVIEW_NUM = 3;
@@ -39,6 +40,7 @@ const CodeBlockSearch = ({
   repoName,
   repoPath,
   hideDropdown,
+  hideMatchCounter,
 }: Props) => {
   const [isExpanded, setExpanded] = useState(false);
   const { os, openFolderInExplorer } = useContext(DeviceContext);
@@ -73,9 +75,13 @@ const CodeBlockSearch = ({
           {/*  <span className="body-s">{branch}</span>*/}
           {/*</div>*/}
           {/*<span className="text-gray-700 h-3 border-l border-l-gray-700"></span>*/}
-          <span className="body-s text-gray-100">
-            {totalMatches} match{totalMatches > 1 ? 'es' : ''}
-          </span>
+          {!hideMatchCounter ? (
+            <span className="body-s text-gray-100">
+              {totalMatches} match{totalMatches > 1 ? 'es' : ''}
+            </span>
+          ) : (
+            ''
+          )}
           {!hideDropdown && !repoPath.startsWith('github') && (
             <span>
               <DropdownWithIcon

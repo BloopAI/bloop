@@ -5,7 +5,7 @@ import ResultsPage from './pages/Results';
 import ViewResult from './pages/ResultFull';
 import HomePage from './pages/Home';
 import Settings from './components/Settings';
-import { FilterType, RepoType } from './types/general';
+import { FilterType, RepoType, SearchType } from './types/general';
 import { DeviceContextType } from './context/deviceContext';
 import { RepositoriesContext } from './context/repositoriesContext';
 import { getJsonFromStorage, SEARCH_HISTORY_KEY } from './services/storage';
@@ -30,6 +30,7 @@ function App({ deviceContextValue }: Props) {
   );
   const [lastQueryTime, setLastQueryTime] = useState(3);
   const [globalRegex, setGlobalRegex] = useState(false);
+  const [searchType, setSearchType] = useState(SearchType.REGEX);
 
   // useRouterSate(router);
   const searchContextValue = useMemo(
@@ -44,8 +45,17 @@ function App({ deviceContextValue }: Props) {
       setLastQueryTime,
       globalRegex,
       setGlobalRegex,
+      searchType,
+      setSearchType,
     }),
-    [inputValue, filters, searchHistory, lastQueryTime, globalRegex],
+    [
+      inputValue,
+      filters,
+      searchHistory,
+      lastQueryTime,
+      globalRegex,
+      searchType,
+    ],
   );
 
   const reposContextValue = useMemo(

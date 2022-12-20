@@ -77,3 +77,6 @@ export { default as MultiShare } from './MultiShare';
 export { default as CursorSelection } from './CursorSelection';
 export { default as RegexIcon } from './Regex';
 export { default as MoreHorizontal } from './MoreHorizontal';
+export { default as ThumbsUp } from './ThumbsUp';
+export { default as ThumbsDown } from './ThumbsDown';
+export { default as NaturalLanguage } from './NaturalLanguage';
