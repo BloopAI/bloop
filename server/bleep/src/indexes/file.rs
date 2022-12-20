@@ -33,7 +33,6 @@ use super::{
     DocumentRead, Indexable, Indexer,
 };
 use crate::{
-    ctags::ctags_for_file,
     intelligence::TreeSitterFile,
     semantic::Semantic,
     state::{FileCache, RepoHeadInfo, RepoRef, Repository},
