@@ -49,7 +49,7 @@ pub fn tree_sitter<'a, 'l>(src: &'a str, lang_id: &'l str) -> Result<Vec<&'a str
 pub fn trivial<'a>(src: &'a str, size: usize) -> Vec<&'a str> {
     let line_ends = [0usize]
         .into_iter()
-        .chain(src.match_indices('\n').skip(size).map(|(i, _)| i))
+        .chain(src.match_indices('\n').step_by(size).map(|(i, _)| i))
         .collect::<Vec<_>>();
     line_ends
         .iter()

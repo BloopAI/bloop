@@ -103,6 +103,7 @@ tokenizers = "0.13.2"
 tract-onnx = "0.18.5"
 ndarray-linalg = { version = "0.16.0", features = ["openblas-system"] }
 maplit = "1.0.2"
+uuid = "1.2.2"
 
 [dev-dependencies]
 criterion = { version = "0.4.0", features = ["async_tokio"] }

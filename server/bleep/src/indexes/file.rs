@@ -149,7 +149,7 @@ impl File {
                 collection_name: "documents".to_string(),
                 vectors_config: Some(VectorsConfig {
                     config: Some(vectors_config::Config::Params(VectorParams {
-                        size: 10,
+                        size: 384,
                         distance: Distance::Cosine.into(),
                     })),
                 }),
@@ -518,6 +518,7 @@ impl File {
             debug!(?e, %lang_str, "failed to chunk, falling back to trivial chunker");
             chunk::trivial(&buffer, 15) // line-wise chunking, 15 lines per chunk
         });
+        debug!("found {} chunks", chunks.len());
         let datapoints = chunks
             .par_iter()
             .filter_map(|&chunk| {
@@ -541,18 +542,30 @@ impl File {
                     (1, length),
                     input_ids.iter().map(|&x| x as i64).collect(),
                 )
+                .map_err(|e| {
+                    tracing::error!("{e}");
+                    e
+                })
                 .ok()?
                 .into();
                 let attention_mask: Tensor = tract_ndarray::Array2::from_shape_vec(
                     (1, length),
                     attention_mask.iter().map(|&x| x as i64).collect(),
                 )
+                .map_err(|e| {
+                    tracing::error!("{e}");
+                    e
+                })
                 .ok()?
                 .into();
                 let token_type_ids: Tensor = tract_ndarray::Array2::from_shape_vec(
                     (1, length),
                     token_type_ids.iter().map(|&x| x as i64).collect(),
                 )
+                .map_err(|e| {
+                    tracing::error!("{e}");
+                    e
+                })
                 .ok()?
                 .into();
 
@@ -563,33 +576,47 @@ impl File {
                         attention_mask.into(),
                         token_type_ids.into()
                     ))
+                    .map_err(|e| {
+                        tracing::error!("{e}");
+                        e
+                    })
                     .ok()?;
 
-                let logits = outputs[0].to_array_view::<f32>().ok()?;
+                let logits = outputs[0]
+                    .to_array_view::<f32>()
+                    .map_err(|e| {
+                        tracing::error!("{e}");
+                        e
+                    })
+                    .ok()?;
 
                 let logits = logits.slice(tract_ndarray::s![.., 0, ..]);
 
                 let norm = logits.to_owned().norm();
 
-                Some(logits.to_owned() / norm)
+                let data = logits.to_owned() / norm;
+                Some(PointStruct {
+                    id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
+                    vectors: Some(data.as_slice().unwrap().to_vec().into()),
+                    payload: hashmap! {
+                        "lang".into() => lang_str.to_ascii_lowercase().into(),
+                        "file".into() => relative_path.to_string_lossy().as_ref().into(),
+                        "snippet".into() => chunk.into(),
+                    },
+                    ..Default::default()
+                })
             })
-            .map(|data| PointStruct {
-                id: Some(PointId {
-                    point_id_options: Some(PointIdOptions::Uuid(
-                        file_disk_path.to_string_lossy().to_string(),
-                    )),
-                }),
-                vectors: Some(data.as_slice().unwrap().to_vec().into()),
-                payload: hashmap! {
-                    "lang".into() => lang_str.to_ascii_lowercase().into()
-                },
-            });
+            .collect::<Vec<_>>();
 
-        Handle::current().block_on(async {
-            self.qdrant
-                .upsert_points("documents", datapoints.collect())
-                .await
-        });
+        if datapoints.len() > 0 {
+            debug!("updating docs with {} points", datapoints.len());
+            Handle::current().block_on(async {
+                let status = self.qdrant.upsert_points("documents", datapoints).await;
+                if status.is_ok() {
+                    debug!("successful upsert");
+                }
+            });
+        }
 
         trace!("writing document");
 
