@@ -15,6 +15,7 @@ use criterion as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
+use semantic::Semantic;
 
 use crate::{
     indexes::Indexes,
@@ -207,6 +208,7 @@ pub struct Application {
     pub config: Arc<Configuration>,
     pub(crate) repo_pool: RepositoryPool,
     pub(crate) background: BackgroundExecutor,
+    pub(crate) semantic: Semantic,
     indexes: Arc<Indexes>,
     credentials: Credentials,
 }
@@ -237,12 +239,14 @@ impl Application {
         }
 
         let config = Arc::new(config);
+        let semantic = Semantic::new(&config.model_dir, &config.qdrant_url).await;
 
         Ok(Self {
-            indexes: Indexes::new(config.clone()).await?.into(),
+            indexes: Indexes::new(config.clone(), semantic.clone())?.into(),
             repo_pool: config.source.initialize_pool()?,
             credentials: config.source.initialize_credentials()?,
             background: BackgroundExecutor::start(config.clone()),
+            semantic,
             config,
         })
     }

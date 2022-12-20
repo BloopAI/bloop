@@ -94,7 +94,7 @@ pub struct File {
 }
 
 impl File {
-    pub async fn new(config: Arc<Configuration>) -> Self {
+    pub fn new(config: Arc<Configuration>, semantic: Semantic) -> Self {
         let mut builder = tantivy::schema::SchemaBuilder::new();
         let trigram = TextOptions::default().set_stored().set_indexing_options(
             TextFieldIndexing::default()
@@ -141,7 +141,7 @@ impl File {
             avg_line_length,
             last_commit_unix_seconds,
             schema: builder.build(),
-            semantic: Semantic::new(&config.model_dir, &config.qdrant_url).await,
+            semantic,
             config,
             raw_content,
             raw_repo_name,
@@ -472,10 +472,11 @@ impl File {
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
         let last_commit = repo_info.last_commit_unix_secs;
 
-        _ = Handle::current().block_on(async {
-            self.semantic
-                .insert_points_for_buffer(&file_disk_path, &buffer, lang_str)
-        });
+        Handle::current().block_on(self.semantic.insert_points_for_buffer(
+            &file_disk_path,
+            &buffer,
+            lang_str,
+        ));
 
         trace!("writing document");
         #[cfg(feature = "debug")]

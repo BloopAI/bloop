@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use anyhow::Result;
 use maplit::hashmap;
@@ -6,8 +6,9 @@ use ndarray_linalg::Norm;
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
-        vectors_config, CreateCollection, Distance, PointId, PointStruct, VectorParams,
-        VectorsConfig,
+        vectors_config, with_payload_selector::SelectorOptions, CreateCollection, Distance,
+        PointId, PointStruct, SearchPoints, Value, VectorParams, VectorsConfig,
+        WithPayloadSelector,
     },
 };
 use rayon::prelude::*;
@@ -25,7 +26,7 @@ pub struct Semantic {
 
 impl Semantic {
     pub async fn new(model_dir: &Path, qdrant_url: &str) -> Self {
-        let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(&qdrant_url)))
+        let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url)))
             .await
             .unwrap();
 
@@ -45,11 +46,11 @@ impl Semantic {
 
         Self {
             qdrant: qdrant.into(),
-            tokenizer: tokenizers::Tokenizer::from_file(Path::join(&model_dir, "tokenizer.json"))
+            tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("tokenizer.json"))
                 .unwrap()
                 .into(),
             onnx: onnx()
-                .model_for_path(Path::join(&model_dir, "model.onnx"))
+                .model_for_path(model_dir.join("model.onnx"))
                 .unwrap()
                 .into_runnable()
                 .unwrap()
@@ -84,11 +85,9 @@ impl Semantic {
         )?
         .into();
 
-        let outputs = self.onnx.run(tvec!(
-            input_ids.into(),
-            attention_mask.into(),
-            token_type_ids.into()
-        ))?;
+        let outputs = self
+            .onnx
+            .run(tvec!(input_ids, attention_mask, token_type_ids))?;
 
         let logits = outputs[0].to_array_view::<f32>()?;
         let logits = logits.slice(tract_ndarray::s![.., 0, ..]);
@@ -97,17 +96,32 @@ impl Semantic {
         Ok((logits.to_owned() / norm).as_slice().unwrap().to_vec())
     }
 
+    pub async fn search(&self, query: &str, limit: u64) -> Result<Vec<HashMap<String, Value>>> {
+        let response = self
+            .qdrant
+            .search_points(&SearchPoints {
+                limit,
+                vector: self.embed(query)?,
+                with_payload: Some(WithPayloadSelector {
+                    selector_options: Some(SelectorOptions::Enable(true)),
+                }),
+                ..Default::default()
+            })
+            .await?;
+
+        Ok(response.result.into_iter().map(|pt| pt.payload).collect())
+    }
+
     #[tracing::instrument(skip(self, buffer))]
     pub async fn insert_points_for_buffer(&self, file_path: &Path, buffer: &str, lang_str: &str) {
-        let chunks = chunk::tree_sitter(&buffer, lang_str).unwrap_or_else(|e| {
+        let chunks = chunk::tree_sitter(buffer, lang_str).unwrap_or_else(|e| {
             debug!(?e, %lang_str, "failed to chunk, falling back to trivial chunker");
-            chunk::trivial(&buffer, 15) // line-wise chunking, 15 lines per chunk
+            chunk::trivial(buffer, 15) // line-wise chunking, 15 lines per chunk
         });
         debug!("found {} chunks", chunks.len());
         let datapoints = chunks
             .par_iter()
             .filter_map(|&chunk| {
-                trace!("ndarray");
                 debug!(
                     "chunk size: {}b {}",
                     chunk.len(),
@@ -116,7 +130,7 @@ impl Semantic {
                         .unwrap_or_default()
                 );
 
-                match self.embed(&chunk) {
+                match self.embed(chunk) {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
@@ -125,7 +139,6 @@ impl Semantic {
                             "file".into() => file_path.to_string_lossy().as_ref().into(),
                             "snippet".into() => chunk.into(),
                         },
-                        ..Default::default()
                     }),
                     Err(err) => {
                         trace!(?err, "embedding failed");
@@ -135,7 +148,7 @@ impl Semantic {
             })
             .collect::<Vec<_>>();
 
-        if datapoints.len() > 0 {
+        if !datapoints.is_empty() {
             debug!("updating docs with {} points", datapoints.len());
             let upserted = self.qdrant.upsert_points("documents", datapoints).await;
             if upserted.is_ok() {
