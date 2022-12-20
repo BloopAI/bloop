@@ -1,4 +1,10 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { MenuItemType, RepoProvider, SyncStatus } from '../../../types/general';
 import { useGitHubAuth } from '../../../hooks/useGitHubAuth';
@@ -10,10 +16,10 @@ import {
   Repository,
 } from '../../../icons';
 import Button from '../../Button';
-import { getRepos, gitHubStatus } from '../../../services/api';
+import { getRepos, gitHubStatus, syncRepos } from '../../../services/api';
 import { UIContext } from '../../../context/uiContext';
 import RepoList from '../../RepoList';
-import { splitPath } from '../../../utils';
+import { getCommonFolder, splitPath } from '../../../utils';
 import { DropdownWithIcon } from '../../Dropdown';
 import GitHubIcon from '../../../icons/GitHubIcon';
 import AddRepos from './AddRepos';
@@ -28,24 +34,34 @@ const RepositoriesSettings = () => {
   );
 
   const localRepos = useMemo(() => {
-    return repositories
-      .filter(
-        (r) =>
-          r.provider === RepoProvider.Local && r.sync_status == SyncStatus.Done,
-      )
+    const localRepositories = repositories.filter(
+      (r) =>
+        r.provider === RepoProvider.Local && r.sync_status == SyncStatus.Done,
+    );
+    const commonFolder =
+      localRepositories.length > 1
+        ? getCommonFolder(localRepositories.map((lr) => lr.ref))
+        : '';
+    return localRepositories
       .map((r) => {
-        const folderName = `/${r.ref
-          .slice(
-            r.ref.indexOf(splitPath(onBoardingState.indexFolder).pop() || ''),
-          )
-          .slice(0, -r.name.length - 1)}`;
+        const folderName =
+          localRepositories.length > 1
+            ? r.ref.replace(commonFolder, '')
+            : `/${r.ref
+                .slice(
+                  r.ref.indexOf(
+                    splitPath(onBoardingState.indexFolder).pop() || '',
+                  ),
+                )
+                .slice(0, -r.name.length - 1)}`;
         return {
           ...r,
           selected: true,
           shortName: r.name,
           folderName,
         };
-      });
+      })
+      .sort((a, b) => (a.folderName > b.folderName ? 1 : -1));
   }, [repositories]);
 
   const githubRepos = useMemo(() => {
@@ -63,7 +79,8 @@ const RepositoriesSettings = () => {
           shortName: pathParts[pathParts.length - 1],
           folderName: pathParts[0],
         };
-      });
+      })
+      .sort((a, b) => (a.folderName > b.folderName ? 1 : -1));
   }, [repositories]);
 
   const [githubAuth, setGitHubAuth] = useState(!githubRepos.length);
@@ -87,6 +104,17 @@ const RepositoriesSettings = () => {
       setRepositories(data.list || []);
     });
   }, []);
+
+  const handleRemoveOne = useCallback(
+    (repoRef: string) => {
+      syncRepos(
+        [...localRepos, ...githubRepos]
+          .filter((r) => r.ref !== repoRef)
+          .map((r) => r.ref),
+      ).then(console.log);
+    },
+    [localRepos, githubRepos],
+  );
 
   return (
     <>
@@ -181,6 +209,8 @@ const RepositoriesSettings = () => {
               setRepos={() => {}}
               source="local"
               activeTab={0}
+              removable
+              handleRemoveOne={handleRemoveOne}
             />
           )}
           {!!githubRepos.length && (
@@ -189,6 +219,8 @@ const RepositoriesSettings = () => {
               setRepos={() => {}}
               source="GitHub"
               activeTab={0}
+              removable
+              handleRemoveOne={handleRemoveOne}
             />
           )}
         </div>

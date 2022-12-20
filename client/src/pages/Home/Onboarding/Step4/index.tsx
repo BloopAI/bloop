@@ -25,7 +25,7 @@ const STEP_KEY = 'STEP_4';
 const tabs = [{ title: 'Sync all repos' }, { title: 'Sync selected repos' }];
 
 const Step4 = ({ handleNext, handleBack }: Props) => {
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(1);
   const [userRepos, setUserRepos] = useState<RepoType[]>([]);
   const [repos, setRepos] = useState<RepoUi[]>([]);
   const [nextButtonDisabled, setNextButtonDisabled] = useState(false);
@@ -91,7 +91,7 @@ const Step4 = ({ handleNext, handleBack }: Props) => {
           const pathParts = splitPath(r.name);
           let selected: boolean = selectedRepos?.length
             ? !!selectedRepos.includes(r.ref)
-            : true;
+            : false;
           return {
             ...r,
             selected,

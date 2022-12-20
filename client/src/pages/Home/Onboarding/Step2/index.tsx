@@ -40,6 +40,14 @@ const Step2 = ({ handleNext, handleBack }: Props) => {
       const reposToSync = repos
         .filter((r) => (activeTab === 1 ? r.selected : r))
         .map((r) => r.ref);
+      const prevSyncedLocalRepos = repositories
+        .filter(
+          (r) =>
+            r.provider === RepoProvider.Local &&
+            r.sync_status == SyncStatus.Done &&
+            !repos.find((repo) => r.ref === repo.ref),
+        )
+        .map((r) => r.ref);
       const githubRepos = repositories
         .filter(
           (r) =>
@@ -54,7 +62,9 @@ const Step2 = ({ handleNext, handleBack }: Props) => {
         githubRepos: githubRepos.length,
         where: 'onboarding_step_2',
       });
-      syncRepos([...reposToSync, ...githubRepos]).then(console.log);
+      syncRepos([...prevSyncedLocalRepos, ...reposToSync, ...githubRepos]).then(
+        console.log,
+      );
       handleNext();
     },
     [repos, userRepos, repositories],
