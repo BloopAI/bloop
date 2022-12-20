@@ -113,6 +113,7 @@ export interface FileItem {
 export interface Directory {
   repo_name: string;
   relative_path: string;
+  repo_ref: string;
   entries: DirectoryEntry[];
 }
 

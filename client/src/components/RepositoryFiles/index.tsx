@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FileTreeFileType, RepositoryFile } from '../../types';
 import Accordion from '../Accordion';
 import { FolderFilled, Papers } from '../../icons';
 import FileIcon from '../FileIcon';
-import Breadcrumbs from '../Breadcrumbs';
+import Breadcrumbs, { PathParts } from '../Breadcrumbs';
 import {
   breadcrumbsItemPath,
   isWindowsPath,
@@ -12,11 +12,39 @@ import {
 
 type Props = {
   files: RepositoryFile[];
+  repositoryName: string;
   currentPath: string;
   onClick: (p: string, type: FileTreeFileType) => void;
 };
 
-const RepositoryFiles = ({ files, currentPath, onClick }: Props) => {
+const RepositoryFiles = ({
+  files,
+  currentPath,
+  onClick,
+  repositoryName,
+}: Props) => {
+  const [pathParts, setPathParts] = useState<PathParts[]>([]);
+  useEffect(() => {
+    const parts = splitPathForBreadcrumbs(
+      currentPath,
+      (e, item, index, arr) => {
+        const path = breadcrumbsItemPath(
+          arr,
+          index,
+          isWindowsPath(currentPath),
+        );
+        onClick(path, FileTreeFileType.DIR);
+      },
+    );
+
+    setPathParts([
+      {
+        label: repositoryName,
+        onClick: () => onClick('/', FileTreeFileType.DIR),
+      },
+      ...parts,
+    ]);
+  }, [currentPath]);
   return (
     <Accordion
       title={
@@ -24,22 +52,7 @@ const RepositoryFiles = ({ files, currentPath, onClick }: Props) => {
           'Files'
         ) : (
           <div className="flex-1 overflow-hidden">
-            <Breadcrumbs
-              pathParts={splitPathForBreadcrumbs(
-                currentPath,
-                (e, item, index, arr) => {
-                  const path = index
-                    ? breadcrumbsItemPath(
-                        arr.slice(1),
-                        index - 1,
-                        isWindowsPath(currentPath),
-                      )
-                    : '';
-                  onClick(path, FileTreeFileType.DIR);
-                },
-              )}
-              path={currentPath}
-            />
+            <Breadcrumbs pathParts={pathParts} path={currentPath} />
           </div>
         )
       }

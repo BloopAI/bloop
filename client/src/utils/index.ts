@@ -55,10 +55,13 @@ export const breadcrumbsItemPath = (
   array: string[],
   index: number,
   isWindows: boolean,
+  isFile?: boolean,
 ) => {
-  return `${array.slice(0, index + 1).join(isWindows ? '\\' : '/')}${
-    index === array.length - 1 ? '' : isWindows ? '\\' : '/'
-  }`;
+  const separator = isWindows ? '\\' : '/';
+  const path = array.slice(0, index + 1).join(separator);
+
+  const pathEnding = isFile ? '' : separator;
+  return `${path}${pathEnding}`;
 };
 
 export const splitPath = (path: string) =>
@@ -115,4 +118,16 @@ export const getCommonFolder = (paths: string[]) => {
     }
   }
   return commonFolder.join(isWindowsPath(paths[0]) ? '\\' : '/');
+};
+
+export const arrayUnique = (array: any[], property: string) => {
+  const unique: any = {};
+  const distinct = [];
+  for (const i in array) {
+    if (typeof unique[array[i][property]] == 'undefined') {
+      distinct.push(array[i]);
+    }
+    unique[array[i][property]] = 0;
+  }
+  return distinct;
 };

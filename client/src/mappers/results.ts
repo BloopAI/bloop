@@ -120,6 +120,7 @@ export const mapDirResult = (directoryItem: DirectoryItem) => {
       directoryItem.data.relative_path,
     ),
     relativePath: directoryItem.data.relative_path,
+    repoRef: directoryItem.data.repo_ref,
   };
 };
 
