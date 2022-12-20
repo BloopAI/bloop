@@ -32,7 +32,7 @@ const NavigationItem = ({
       } px-8 block py-2 cursor-pointer hover:text-gray-300 w-full`}
       onClick={onClick}
     >
-      <TextFieldw
+      <TextField
         value={value}
         icon={icon}
         active={active}

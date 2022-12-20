@@ -23,28 +23,18 @@ const RepositoryFiles = ({
   onClick,
   repositoryName,
 }: Props) => {
-  const [pathParts, setPathParts] = useState<PathParts[]>([]);
-  useEffect(() => {
-    const parts = splitPathForBreadcrumbs(
-      currentPath,
-      (e, item, index, arr) => {
-        const path = breadcrumbsItemPath(
-          arr,
-          index,
-          isWindowsPath(currentPath),
-        );
-        onClick(path, FileTreeFileType.DIR);
-      },
-    );
+  const parts = splitPathForBreadcrumbs(currentPath, (e, item, index, arr) => {
+    const path = breadcrumbsItemPath(arr, index, isWindowsPath(currentPath));
+    onClick(path, FileTreeFileType.DIR);
+  });
+  const [pathParts] = useState<PathParts[]>([
+    {
+      label: repositoryName,
+      onClick: () => onClick('/', FileTreeFileType.DIR),
+    },
+    ...parts,
+  ]);
 
-    setPathParts([
-      {
-        label: repositoryName,
-        onClick: () => onClick('/', FileTreeFileType.DIR),
-      },
-      ...parts,
-    ]);
-  }, [currentPath]);
   return (
     <Accordion
       title={
