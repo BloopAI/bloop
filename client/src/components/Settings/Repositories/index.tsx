@@ -1,4 +1,10 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { MenuItemType, RepoProvider, SyncStatus } from '../../../types/general';
 import { useGitHubAuth } from '../../../hooks/useGitHubAuth';
@@ -10,7 +16,7 @@ import {
   Repository,
 } from '../../../icons';
 import Button from '../../Button';
-import { getRepos, gitHubStatus } from '../../../services/api';
+import { getRepos, gitHubStatus, syncRepos } from '../../../services/api';
 import { UIContext } from '../../../context/uiContext';
 import RepoList from '../../RepoList';
 import { splitPath } from '../../../utils';
@@ -87,6 +93,17 @@ const RepositoriesSettings = () => {
       setRepositories(data.list || []);
     });
   }, []);
+
+  const handleRemoveOne = useCallback(
+    (repoRef: string) => {
+      syncRepos(
+        [...localRepos, ...githubRepos]
+          .filter((r) => r.ref !== repoRef)
+          .map((r) => r.ref),
+      ).then(console.log);
+    },
+    [localRepos, githubRepos],
+  );
 
   return (
     <>
@@ -181,6 +198,8 @@ const RepositoriesSettings = () => {
               setRepos={() => {}}
               source="local"
               activeTab={0}
+              removable
+              handleRemoveOne={handleRemoveOne}
             />
           )}
           {!!githubRepos.length && (
@@ -189,6 +208,8 @@ const RepositoriesSettings = () => {
               setRepos={() => {}}
               source="GitHub"
               activeTab={0}
+              removable
+              handleRemoveOne={handleRemoveOne}
             />
           )}
         </div>

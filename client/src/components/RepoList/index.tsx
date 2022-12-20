@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useContext,
 } from 'react';
-import { Repository } from '../../icons';
+import { GitHubLogo, Repository } from '../../icons';
 import Checkbox from '../Checkbox';
 import Button from '../Button';
 import SkeletonItem from '../SkeletonItem';
@@ -24,12 +24,21 @@ type Props = {
   setRepos: Dispatch<SetStateAction<RepoSelectType[]>>;
   source: 'local' | 'GitHub';
   activeTab: number;
+  removable?: boolean;
+  handleRemoveOne?: (repoRef: string) => void;
 };
 
 const listItemClassName =
   'bg-gray-900 border-b border-l border-r first:border-t first:rounded-t-md last:border-b last:rounded-b-md border-gray-800 pl-3 p-1.5 body-s group h-11';
 
-const RepoList = ({ repos, setRepos, source, activeTab }: Props) => {
+const RepoList = ({
+  repos,
+  setRepos,
+  source,
+  activeTab,
+  removable,
+  handleRemoveOne,
+}: Props) => {
   const { openFolderInExplorer, openLink, os } = useContext(DeviceContext);
 
   const handleSelectAll = useCallback((selected: boolean) => {
@@ -80,9 +89,13 @@ const RepoList = ({ repos, setRepos, source, activeTab }: Props) => {
                   <div className="flex items-center justify-between w-full gap-2">
                     {activeTab === 0 ? (
                       <div className="py-1.5 flex items-center gap-2 overflow-hidden">
-                        <span className="w-4 h-5 flex-shrink-0">
-                          <Repository raw />
-                        </span>
+                        {source === 'local' ? (
+                          <span className="w-4 h-5 flex-shrink-0">
+                            <Repository raw />
+                          </span>
+                        ) : (
+                          <GitHubLogo />
+                        )}
                         <span className="whitespace-nowrap">
                           {repo.shortName}
                         </span>
@@ -98,16 +111,24 @@ const RepoList = ({ repos, setRepos, source, activeTab }: Props) => {
                       variant="secondary"
                       size="small"
                       className="opacity-0 group-hover:opacity-100"
-                      onClick={() =>
-                        source === 'local'
-                          ? openFolderInExplorer(repo.ref.slice(6))
-                          : openLink('https://github.com/' + repo.ref)
-                      }
+                      onClick={() => {
+                        if (removable && handleRemoveOne) {
+                          handleRemoveOne(repo.ref);
+                        } else {
+                          source === 'local'
+                            ? openFolderInExplorer(repo.ref.slice(6))
+                            : openLink('https://github.com/' + repo.ref);
+                        }
+                      }}
                     >
-                      View{' '}
-                      {source === 'local'
-                        ? `in ${getFileManagerName(os.type)}`
-                        : 'on GitHub'}
+                      {removable
+                        ? 'Remove'
+                        : `View ${
+                            source === 'local'
+                              ? `in ${getFileManagerName(os.type)}`
+                              : 'on GitHub'
+                          }
+                        `}
                     </Button>
                   </div>
                 </li>
