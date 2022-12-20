@@ -29,7 +29,7 @@ export const useSearch = <T,>(
 
     const startTime = Date.now();
 
-    return searchApiCall(query, page, undefined, globalRegex)
+    searchApiCall(query, page, undefined, globalRegex)
       .then((res: any) => {
         const queryTime = Date.now() - startTime;
         setLastQueryTime(queryTime);

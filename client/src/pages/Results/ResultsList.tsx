@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { ResultClick, ResultType } from '../../types/results';
 import Pagination from '../../components/Pagination';
+import { ResultsPreviewSkeleton } from '../Skeleton';
 import ResultPreview from './ResultPreview';
-import { ResultsPreviewSkeleton } from './Skeleton';
 
 type Props = {
   results: ResultType[];

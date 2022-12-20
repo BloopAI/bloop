@@ -84,6 +84,12 @@ export const splitPathForBreadcrumbs = (
     }));
 };
 
+export const buildRepoQuery = (repo?: string, path?: string) => {
+  return `open:true ${repo ? `repo:${repo}` : ''} ${
+    path ? `path:${path}` : ''
+  }`;
+};
+
 export const getFileManagerName = (os: string) => {
   switch (os) {
     case 'Darwin':

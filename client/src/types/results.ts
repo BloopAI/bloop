@@ -1,4 +1,4 @@
-import { FileTreeFileType } from './index';
+import { FileTreeFileType, RepositoryFile } from './index';
 
 export type BaseSymbolType =
   | 'method'
@@ -117,6 +117,7 @@ export type FullResult = {
   language: string;
   hoverableRanges: Record<number, Range[]>;
   repoName: string;
+  fileTree?: FileTreeItem[];
 };
 
 export type DirectoryResult = {
@@ -145,4 +146,9 @@ export type TokenInfo = {
   definitions?: TokenInfoFile[];
 };
 
-export type ResultClick = (repo?: string, path?: string) => void;
+export type ResultClick = (repo: string, path?: string) => void;
+
+export type FileTreeItem = RepositoryFile & {
+  children: FileTreeItem[];
+  selected?: boolean;
+};

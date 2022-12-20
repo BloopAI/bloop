@@ -1,5 +1,6 @@
 import { Version, Branch } from '../../icons';
 import FileIcon from '../FileIcon';
+import { FileTreeFileType } from '../../types';
 import NavigationItem from './NavigationItem';
 import NavigationItemChevron from './NavigationItemChevron';
 import '../../index.css';
@@ -48,50 +49,52 @@ export const IdeNavigationPanel = () => {
   return (
     <div style={{ width: 354, backgroundColor: '#131315' }}>
       <IdeNavigation
+        currentPath={''}
+        onFileClick={() => {}}
+        initialBranch={0}
+        initialVersion={0}
         files={[
           {
             name: '.editoconfig',
+            type: FileTreeFileType.FILE,
+            path: '/',
+            children: [],
           },
           {
             name: '.gitognore',
+            type: FileTreeFileType.FILE,
+            path: '/',
+            children: [],
           },
           {
             name: 'Styles',
-            children: [{ name: 'main.css' }, { name: 'button.css' }],
+            type: FileTreeFileType.DIR,
+            path: '/',
+            children: [],
           },
           {
             name: 'Javascript',
-            children: [
-              {
-                name: 'tests',
-                children: [
-                  {
-                    name: 'tests',
-                    children: [
-                      { name: 'app.spec.js' },
-                      { name: 'index.spec.js' },
-                      { name: 'functions.spec.js' },
-                    ],
-                  },
-                  { name: 'app.spec.js' },
-                  { name: 'index.spec.js' },
-                  { name: 'functions.spec.js' },
-                ],
-              },
-              { name: 'index.js' },
-              { name: 'app.js' },
-              { name: 'functions.js' },
-            ],
+            type: FileTreeFileType.FILE,
+            path: '/',
+            children: [],
           },
           {
             name: 'Html',
-            children: [{ name: 'index.html' }, { name: 'main.html' }],
+            type: FileTreeFileType.DIR,
+            path: '/',
+            children: [],
           },
           {
             name: 'index.tsx',
+            type: FileTreeFileType.FILE,
+            path: '/',
+            children: [],
           },
           {
             name: 'config.json',
+            type: FileTreeFileType.FILE,
+            path: '/',
+            children: [],
           },
         ]}
         branches={[
@@ -105,7 +108,6 @@ export const IdeNavigationPanel = () => {
           { title: '2.1.2-alpha' },
         ]}
         repoName={'bloop-enterprise'}
-        onBackNavigate={() => {}}
       />
     </div>
   );

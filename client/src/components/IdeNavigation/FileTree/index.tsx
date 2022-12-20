@@ -1,15 +1,14 @@
+import { FileTreeFileType } from '../../../types';
+import { FileTreeItem } from '../../../types/results';
 import FileItem from './FileItem';
 
-export type FileItemType = {
-  name: string;
-  children?: FileItemType[];
-};
-
 type Props = {
-  items: FileItemType[];
+  items: FileTreeItem[];
+  currentPath: string;
+  onFileClick: (p: string, type: FileTreeFileType) => void;
 };
 
-const FileTree = ({ items }: Props) => {
+const FileTree = ({ items, currentPath, onFileClick }: Props) => {
   return (
     <>
       {items.map((item) => (
@@ -18,7 +17,8 @@ const FileTree = ({ items }: Props) => {
           item={item}
           level={0}
           expand={false}
-          handleClick={null}
+          handleClick={onFileClick}
+          currentPath={currentPath + item.name}
         />
       ))}
     </>

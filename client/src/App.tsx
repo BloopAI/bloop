@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { SearchContext } from './context/searchContext';
 import ResultsPage from './pages/Results';
-import ViewResult from './pages/ViewResult';
+import ViewResult from './pages/ResultFull';
 import HomePage from './pages/Home';
 import Settings from './components/Settings';
 import { FilterType, RepoType } from './types/general';
@@ -14,6 +14,8 @@ import { AnalyticsContextProvider } from './context/providers/AnalyticsContextPr
 import ReportBugModal from './components/ReportBugModal';
 import { UIContextProvider } from './context/providers/UiContextProvider';
 import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
+import { AppNavigationProvider } from './hooks/useAppNavigation';
+import SearchPage from './pages/Search';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -63,13 +65,14 @@ function App({ deviceContextValue }: Props) {
           <UIContextProvider>
             <SearchContext.Provider value={searchContextValue}>
               <RepositoriesContext.Provider value={reposContextValue}>
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/results" element={<ResultsPage />} />
-                  <Route path="/result/file" element={<ViewResult />} />
-                </Routes>
-                <Settings />
-                <ReportBugModal />
+                <AppNavigationProvider>
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/search" element={<SearchPage />} />
+                  </Routes>
+                  <Settings />
+                  <ReportBugModal />
+                </AppNavigationProvider>
               </RepositoriesContext.Provider>
             </SearchContext.Provider>
           </UIContextProvider>

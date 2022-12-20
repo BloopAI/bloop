@@ -1,3 +1,4 @@
+import { FileTreeFileType } from '../../../types';
 import FileTree from './index';
 import '../../../index.css';
 
@@ -10,34 +11,50 @@ export const FileTreeSample = () => {
   return (
     <div style={{ width: 384, backgroundColor: '#131315' }}>
       <FileTree
+        onFileClick={() => {}}
+        currentPath={'/'}
         items={[
           {
             name: '.editoconfig',
+            type: FileTreeFileType.FILE,
+            path: '/',
+            children: [],
           },
           {
             name: '.gitognore',
+            type: FileTreeFileType.FILE,
+            path: '/',
+            children: [],
           },
           {
             name: 'Styles',
-            children: [{ name: 'main.css' }, { name: 'button.css' }],
+            type: FileTreeFileType.DIR,
+            path: '/',
+            children: [],
           },
           {
             name: 'Javascript',
-            children: [
-              { name: 'index.js' },
-              { name: 'app.js' },
-              { name: 'functions.js' },
-            ],
+            type: FileTreeFileType.DIR,
+            path: '/',
+            children: [],
           },
           {
             name: 'Html',
-            children: [{ name: 'index.html' }, { name: 'main.html' }],
+            type: FileTreeFileType.DIR,
+            path: '/',
+            children: [],
           },
           {
             name: 'index.tsx',
+            type: FileTreeFileType.FILE,
+            path: '/',
+            children: [],
           },
           {
             name: 'config.json',
+            type: FileTreeFileType.FILE,
+            path: '/',
+            children: [],
           },
         ]}
       />
