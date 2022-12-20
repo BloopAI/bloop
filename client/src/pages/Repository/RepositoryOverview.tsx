@@ -42,8 +42,8 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
 
   const { data: readmeData, searchQuery } = useSearch<FileSearchResponse>();
   useEffect(() => {
-    const readmePath = repository.files.find((file) =>
-      file.path.includes('.md'),
+    const readmePath = repository.files.find(
+      (file) => file.path.toLowerCase() === 'readme.md',
     );
     if (readmePath) {
       searchQuery(`open:true repo:${repository.name} path:${readmePath.path}`);
