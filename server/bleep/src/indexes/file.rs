@@ -472,11 +472,13 @@ impl File {
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
         let last_commit = repo_info.last_commit_unix_secs;
 
-        Handle::current().block_on(self.semantic.insert_points_for_buffer(
-            &file_disk_path,
-            &buffer,
-            lang_str,
-        ));
+        tokio::task::block_in_place(|| {
+            Handle::current().block_on(self.semantic.insert_points_for_buffer(
+                &file_disk_path,
+                &buffer,
+                lang_str,
+            ))
+        });
 
         trace!("writing document");
         #[cfg(feature = "debug")]
