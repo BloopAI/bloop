@@ -68,8 +68,13 @@ fn kind_to_value(kind: Option<Kind>) -> serde_json::Value {
         }
         Some(Kind::IntegerValue(v)) => serde_json::Value::Number(v.into()),
         Some(Kind::StringValue(v)) => serde_json::Value::String(v),
-        Some(Kind::StructValue(v)) => todo!(),
-        Some(Kind::ListValue(v)) => todo!(),
+        Some(Kind::ListValue(v)) => serde_json::Value::Array(
+            v.values
+                .into_iter()
+                .map(|v| kind_to_value(v.kind))
+                .collect(),
+        ),
+        Some(Kind::StructValue(_v)) => todo!(),
         None => serde_json::Value::Null,
     }
 }
