@@ -27,6 +27,8 @@ use tantivy::{
     },
     IndexWriter,
 };
+use tokenizers as _;
+use tokio::runtime::Handle;
 use tracing::{debug, info, trace, warn};
 use tract_onnx::{prelude::*, tract_hir::internal::InferenceOp};
 
@@ -41,6 +43,8 @@ use super::{
     DocumentRead, Indexable, Indexer,
 };
 use crate::{
+    chunk,
+    ctags::ctags_for_file,
     intelligence::TreeSitterFile,
     state::{FileCache, RepoHeadInfo, RepoRef, Repository},
     symbol::SymbolLocations,
@@ -510,64 +514,82 @@ impl File {
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
         let last_commit = repo_info.last_commit_unix_secs;
 
-        trace!("ndarray");
-        let tokenizer_output = self.tokenizer.encode(buffer.to_owned(), true).unwrap();
+        let chunks = chunk::tree_sitter(&buffer, lang_str).unwrap_or_else(|e| {
+            debug!(?e, %lang_str, "failed to chunk, falling back to trivial chunker");
+            chunk::trivial(&buffer, 15) // line-wise chunking, 15 lines per chunk
+        });
+        let datapoints = chunks
+            .par_iter()
+            .filter_map(|&chunk| {
+                trace!("ndarray");
+                debug!(
+                    "chunk size: {}b {}",
+                    chunk.len(),
+                    (chunk.len() > 800)
+                        .then_some("(big chunk)")
+                        .unwrap_or_default()
+                );
+                let tokenizer_output = self.tokenizer.encode(chunk, true).unwrap();
 
-        let input_ids = tokenizer_output.get_ids();
-        let attention_mask = tokenizer_output.get_attention_mask();
-        let token_type_ids = tokenizer_output.get_type_ids();
+                let input_ids = tokenizer_output.get_ids();
+                let attention_mask = tokenizer_output.get_attention_mask();
+                let token_type_ids = tokenizer_output.get_type_ids();
 
-        let length = input_ids.len();
+                let length = input_ids.len();
 
-        let input_ids: Tensor = tract_ndarray::Array2::from_shape_vec(
-            (1, length),
-            input_ids.iter().map(|&x| x as i64).collect(),
-        )?
-        .into();
-        let attention_mask: Tensor = tract_ndarray::Array2::from_shape_vec(
-            (1, length),
-            attention_mask.iter().map(|&x| x as i64).collect(),
-        )?
-        .into();
-        let token_type_ids: Tensor = tract_ndarray::Array2::from_shape_vec(
-            (1, length),
-            token_type_ids.iter().map(|&x| x as i64).collect(),
-        )?
-        .into();
+                let input_ids: Tensor = tract_ndarray::Array2::from_shape_vec(
+                    (1, length),
+                    input_ids.iter().map(|&x| x as i64).collect(),
+                )
+                .ok()?
+                .into();
+                let attention_mask: Tensor = tract_ndarray::Array2::from_shape_vec(
+                    (1, length),
+                    attention_mask.iter().map(|&x| x as i64).collect(),
+                )
+                .ok()?
+                .into();
+                let token_type_ids: Tensor = tract_ndarray::Array2::from_shape_vec(
+                    (1, length),
+                    token_type_ids.iter().map(|&x| x as i64).collect(),
+                )
+                .ok()?
+                .into();
 
-        let outputs = self.onnx.run(tvec!(
-            input_ids.into(),
-            attention_mask.into(),
-            token_type_ids.into()
-        ))?;
+                let outputs = self
+                    .onnx
+                    .run(tvec!(
+                        input_ids.into(),
+                        attention_mask.into(),
+                        token_type_ids.into()
+                    ))
+                    .ok()?;
 
-        let logits = outputs[0].to_array_view::<f32>()?;
+                let logits = outputs[0].to_array_view::<f32>().ok()?;
 
-        let logits = logits.slice(tract_ndarray::s![.., 0, ..]);
+                let logits = logits.slice(tract_ndarray::s![.., 0, ..]);
 
-        let norm = logits.to_owned().norm();
-        let data = logits.to_owned() / norm;
+                let norm = logits.to_owned().norm();
 
-        Handle::current()
-            .block_on(async {
-                self.qdrant
-                    .upsert_points(
-                        "documents",
-                        vec![PointStruct {
-                            id: Some(PointId {
-                                point_id_options: Some(PointIdOptions::Uuid(
-                                    file_disk_path.to_string_lossy().to_string(),
-                                )),
-                            }),
-                            vectors: Some(data.as_slice().unwrap().to_vec().into()),
-                            payload: hashmap! {
-                            "lang".into() => lang_str.to_ascii_lowercase().into()
-                            },
-                        }],
-                    )
-                    .await
+                Some(logits.to_owned() / norm)
             })
-            .unwrap();
+            .map(|data| PointStruct {
+                id: Some(PointId {
+                    point_id_options: Some(PointIdOptions::Uuid(
+                        file_disk_path.to_string_lossy().to_string(),
+                    )),
+                }),
+                vectors: Some(data.as_slice().unwrap().to_vec().into()),
+                payload: hashmap! {
+                    "lang".into() => lang_str.to_ascii_lowercase().into()
+                },
+            });
+
+        Handle::current().block_on(async {
+            self.qdrant
+                .upsert_points("documents", datapoints.collect())
+                .await
+        });
 
         trace!("writing document");
 

@@ -5,6 +5,7 @@ pub static JAVA: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["java"],
     grammar: tree_sitter_java::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
+    chunk_query: None,
     namespaces: &[&[
         // variables
         "local",

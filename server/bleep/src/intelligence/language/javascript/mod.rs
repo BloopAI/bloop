@@ -5,6 +5,7 @@ pub static JAVASCRIPT: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["js", "jsx"],
     grammar: tree_sitter_javascript::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
+    chunk_query: None,
     namespaces: &[&[
         //variables
         "constant",

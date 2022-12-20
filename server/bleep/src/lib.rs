@@ -41,6 +41,7 @@ mod language;
 mod remotes;
 mod webserver;
 
+pub mod chunk;
 pub mod ctags;
 pub mod indexes;
 pub mod intelligence;
