@@ -94,3 +94,19 @@ export const getFileManagerName = (os: string) => {
       return 'File manager';
   }
 };
+
+export const getCommonFolder = (paths: string[]) => {
+  const pathParts = paths
+    .map((p) => splitPath(p))
+    .sort((a, b) => a.length - b.length);
+  let commonFolder = [];
+
+  for (let i = 0; i < pathParts[0].length; i++) {
+    if (pathParts.every((pp) => pp[i] === pathParts[0][i])) {
+      commonFolder.push(pathParts[0][i]);
+    } else {
+      break;
+    }
+  }
+  return commonFolder.join(isWindowsPath(paths[0]) ? '\\' : '/');
+};

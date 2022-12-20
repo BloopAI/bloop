@@ -1,9 +1,8 @@
-import React, { useCallback, useContext, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Step2 from '../../../../pages/Home/Onboarding/Step2';
 import Step4 from '../../../../pages/Home/Onboarding/Step4';
 import { MODAL_SIDEBAR_APPEAR_ANIMATION } from '../../../../consts/animations';
-import { UIContext } from '../../../../context/uiContext';
 import Step1 from '../../../../pages/Home/Onboarding/Step1';
 
 type Props = {
@@ -38,13 +37,14 @@ const modalAnimation = {
 };
 
 const AddRepos = ({ addRepos, onClose }: Props) => {
-  const { onBoardingState } = useContext(UIContext);
-  const [isFolderChosen, setFolderChosen] = useState(
-    !!onBoardingState.indexFolder,
-  );
+  const [isFolderChosen, setFolderChosen] = useState(false);
   const onFolderChosen = useCallback(() => {
     setFolderChosen(true);
   }, []);
+  const handleClose = () => {
+    setFolderChosen(false);
+    onClose();
+  };
   return (
     <>
       <AnimatePresence>
@@ -54,7 +54,7 @@ const AddRepos = ({ addRepos, onClose }: Props) => {
             initial={backdropHidden}
             animate={backdropVisible}
             exit={backdropHidden}
-            onClick={onClose}
+            onClick={handleClose}
             transition={MODAL_SIDEBAR_APPEAR_ANIMATION}
           />
         )}
