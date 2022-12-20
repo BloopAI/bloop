@@ -10,9 +10,11 @@ import useAppNavigation from '../../hooks/useAppNavigation';
 import { buildRepoQuery } from '../../utils';
 import ResultsPage from '../Results';
 import ViewResult from '../ResultFull';
+import { SearchType } from '../../types/general';
+import NLResults from '../NLResults';
 
 const SearchPage = () => {
-  const { setInputValue, globalRegex } = useContext(SearchContext);
+  const { setInputValue, globalRegex, searchType } = useContext(SearchContext);
   const [resultsData, setResultsData] = useState<any>();
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
 
@@ -24,6 +26,7 @@ const SearchPage = () => {
     }
 
     setInputValue(query);
+
     switch (navigatedItem.type) {
       case 'repo':
       case 'full-result':
@@ -35,10 +38,18 @@ const SearchPage = () => {
   }, [navigatedItem]);
 
   const [renderPage, setRenderPage] = useState<
-    'results' | 'repo' | 'full-result'
+    'results' | 'repo' | 'full-result' | 'nl-result'
   >();
 
   useEffect(() => {
+    /*
+     * Temporary enabling NL search with mock data
+     * */
+    if (searchType === SearchType.NL) {
+      setRenderPage('nl-result');
+      setResultsData({ some: 'data' });
+      return;
+    }
     if (!data?.data[0] || loading) {
       return;
     }
@@ -57,6 +68,7 @@ const SearchPage = () => {
   }, [navigatedItem, loading, data]);
 
   const renderedPage = useMemo(() => {
+    console.log(renderPage);
     switch (renderPage) {
       case 'results':
         return <ResultsPage resultsData={resultsData} loading={loading} />;
@@ -66,8 +78,10 @@ const SearchPage = () => {
         );
       case 'full-result':
         return <ViewResult data={resultsData} />;
+      case 'nl-result':
+        return <NLResults loading={false} resultsData={resultsData} />;
     }
-  }, [renderPage, resultsData, loading]);
+  }, [renderPage, resultsData, loading, searchType]);
 
   return <PageTemplate>{renderedPage}</PageTemplate>;
 };

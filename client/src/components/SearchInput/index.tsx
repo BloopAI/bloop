@@ -8,7 +8,6 @@ import React, {
 } from 'react';
 import { useCombobox } from 'downshift';
 import throttle from 'lodash.throttle';
-import TextInput from '../TextInput';
 import { ArrowRevert, Clipboard, TrashCan } from '../../icons';
 import { DropdownWithIcon } from '../Dropdown';
 import { useArrowKeyNavigation } from '../../hooks/useArrowNavigationHook';

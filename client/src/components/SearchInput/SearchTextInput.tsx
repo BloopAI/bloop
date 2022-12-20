@@ -138,7 +138,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
             closeOnClickOutside={false}
           >
             <button
-              className="w-16 flex items-center flex-1 gap-2 flex-row px-2 h-full bg-gray-700 rounded-l"
+              className="w-16 flex items-center flex-1 gap-1 flex-row px-2 h-full bg-gray-700 rounded-l"
               onClick={(e) => {
                 e.preventDefault();
                 setSearchCtxMenuVisible(!searchCtxMenuVisible);

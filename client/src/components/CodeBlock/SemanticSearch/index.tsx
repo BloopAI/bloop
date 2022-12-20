@@ -11,7 +11,7 @@ const SemanticSearch = () => {
   return (
     <div className="flex flex-col">
       <div className="bg-gray-800 p-3 flex flex-row rounded-t">
-        <span className="text-gray-300">
+        <span className="text-gray-300 text-sm">
           We calculate the speed of the last query by tracking the start time of
           the query and comparing it to the current time. This can be done by
           using the Date.now) function to get the current time and comparing it
