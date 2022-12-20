@@ -41,11 +41,11 @@ mod language;
 mod remotes;
 mod webserver;
 
-pub mod chunk;
 pub mod ctags;
 pub mod indexes;
 pub mod intelligence;
 pub mod query;
+pub mod semantic;
 pub mod snippet;
 pub mod state;
 pub mod symbol;
