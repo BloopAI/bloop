@@ -13,11 +13,6 @@
 #[cfg(any(bench, test))]
 use criterion as _;
 
-// this needs an explicit `no_fp16` feature. due to how cargo
-// calculates dependencies and feature matrices, there is only one
-// version in the resulting binary with the correct feature
-use tract_linalg as _;
-
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
 

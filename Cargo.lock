@@ -369,6 +369,7 @@ dependencies = [
  "histogram",
  "hyperpolyglot",
  "ignore",
+ "maplit",
  "ndarray-linalg",
  "notify-debouncer-mini",
  "octocrab",
@@ -400,7 +401,6 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
- "tract-linalg",
  "tract-onnx",
  "tree-sitter",
  "tree-sitter-c",
@@ -2750,6 +2750,7 @@ dependencies = [
  "katexit",
  "lapack-sys",
  "num-traits",
+ "openblas-src",
  "thiserror",
 ]
 
@@ -3502,6 +3503,27 @@ checksum = "b4a3100141f1733ea40b53381b0ae3117330735ef22309a190ac57b9576ea716"
 dependencies = [
  "pathdiff",
  "windows-sys 0.36.1",
+]
+
+[[package]]
+name = "openblas-build"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2796ae60e2d04434936195a8be9f4ae248dd140e78f222caed0961034c2932ba"
+dependencies = [
+ "thiserror",
+ "walkdir",
+]
+
+[[package]]
+name = "openblas-src"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9016355894bd1c6e2e52dd6ea37866a7c062929743f33abc96fddaf31a18d67"
+dependencies = [
+ "dirs",
+ "openblas-build",
+ "vcpkg",
 ]
 
 [[package]]

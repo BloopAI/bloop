@@ -101,8 +101,8 @@ dunce = "1.0.3"
 qdrant-client = "0.11.5"
 tokenizers = "0.13.2"
 tract-onnx = "0.18.5"
-ndarray-linalg = "0.16.0"
-tract-linalg = { version = "*", features = ["no_fp16"] }
+ndarray-linalg = { version = "0.16.0", features = ["openblas-system"] }
+maplit = "1.0.2"
 
 [dev-dependencies]
 criterion = { version = "0.4.0", features = ["async_tokio"] }

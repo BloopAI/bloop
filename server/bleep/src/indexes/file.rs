@@ -8,10 +8,14 @@ use std::{
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use dashmap::mapref::entry::Entry;
+use maplit::hashmap;
 use ndarray_linalg::norm::Norm;
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
-    qdrant::{CreateCollection, PointStruct},
+    qdrant::{
+        point_id::PointIdOptions, vectors_config, CreateCollection, Distance, PointId, PointStruct,
+        VectorParams, VectorsConfig,
+    },
 };
 use tantivy::{
     collector::TopDocs,
@@ -58,13 +62,7 @@ pub struct File {
     schema: Schema,
     qdrant: Arc<QdrantClient>,
     tokenizer: Arc<tokenizers::Tokenizer>,
-    onnx: Arc<
-        SimplePlan<
-            InferenceFact,
-            Box<dyn InferenceOp + 'static>,
-            Graph<InferenceFact, Box<dyn InferenceOp + 'static>>,
-        >,
-    >,
+    onnx: Arc<InferenceSimplePlan<Graph<InferenceFact, Box<dyn InferenceOp + 'static>>>>,
 
     #[cfg(feature = "debug")]
     histogram: Arc<RwLock<Histogram>>,
@@ -141,13 +139,19 @@ impl File {
             .await
             .unwrap();
 
-        qdrant
+        // don't panic if the collection already exists
+        _ = qdrant
             .create_collection(&CreateCollection {
                 collection_name: "documents".to_string(),
+                vectors_config: Some(VectorsConfig {
+                    config: Some(vectors_config::Config::Params(VectorParams {
+                        size: 10,
+                        distance: Distance::Cosine.into(),
+                    })),
+                }),
                 ..Default::default()
             })
-            .await
-            .unwrap();
+            .await;
 
         Self {
             file_disk_path,
@@ -164,10 +168,10 @@ impl File {
             last_commit_unix_seconds,
             schema: builder.build(),
             qdrant: qdrant.into(),
-            tokenizer: tokenizers::Tokenizer::from_pretrained(
-                "sentence-transformers/all-MiniLM-L6-v2",
-                None,
-            )
+            tokenizer: tokenizers::Tokenizer::from_file(Path::join(
+                &config.model_dir,
+                "tokenizer.json",
+            ))
             .unwrap()
             .into(),
             onnx: onnx()
@@ -550,8 +554,15 @@ impl File {
                     .upsert_points(
                         "documents",
                         vec![PointStruct {
+                            id: Some(PointId {
+                                point_id_options: Some(PointIdOptions::Uuid(
+                                    file_disk_path.to_string_lossy().to_string(),
+                                )),
+                            }),
                             vectors: Some(data.as_slice().unwrap().to_vec().into()),
-                            ..Default::default()
+                            payload: hashmap! {
+                            "lang".into() => lang_str.to_ascii_lowercase().into()
+                            },
                         }],
                     )
                     .await
