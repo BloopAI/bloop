@@ -242,72 +242,59 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
         </div>
         <div className="w-full flex flex-col overflow-y-auto">
           <div className={`w-full border-b border-gray-700 p-3`}>
-            <div className="flex items-center gap-1 max-w-full select-none">
-              <FileIcon filename={result.relativePath.slice(-5)} />
-              <div className="max-w-[calc(100% - 20px)]">
-                <BreadcrumbsPath
-                  repo={result.repoName}
-                  path={result.relativePath}
-                  activeStyle="secondary"
-                  onClick={onResultClosed}
-                />
-                <div className="flex items-center gap-2 max-w-full select-none justify-between">
-                  <div className="flex items-center gap-1 max-w-[calc(100%-40px)]">
-                    <FileIcon filename={result.relativePath.slice(-5)} />
-                    <div className="max-w-[calc(100%-20px)]">
-                      <BreadcrumbsPath
-                        repo={result.repoName}
-                        path={result.relativePath}
-                        activeStyle="secondary"
-                        onClick={() => onResultClosed}
-                      />
-                    </div>
-                  </div>
-                  {result?.repoPath.startsWith('local') && (
-                    <span className="flex-shrink-0">
-                      <DropdownWithIcon
-                        items={[
-                          {
-                            type: MenuItemType.DEFAULT,
-                            text: `View in ${getFileManagerName(os.type)}`,
-                            onClick: () => {
-                              openFolderInExplorer(
-                                result.repoPath.slice(6) +
-                                  (isWindowsPath(result.repoPath)
-                                    ? '\\'
-                                    : '/') +
-                                  (os.type === 'Darwin'
-                                    ? result.relativePath
-                                    : splitPath(result.relativePath)
-                                        .slice(0, -1)
-                                        .join(
-                                          isWindowsPath(result.relativePath)
-                                            ? '\\'
-                                            : '/',
-                                        )),
-                              );
-                            },
-                          },
-                        ]}
-                        btnOnlyIcon
-                        icon={<MoreHorizontal />}
-                        noChevron
-                        btnSize="small"
-                      />
-                    </span>
-                  )}
+            <div className="flex items-center gap-2 max-w-full select-none justify-between">
+              <div className="flex items-center gap-1 max-w-[calc(100%-40px)]">
+                <FileIcon filename={result.relativePath.slice(-5)} />
+                <div className="max-w-[calc(100%-20px)]">
+                  <BreadcrumbsPath
+                    repo={result.repoName}
+                    path={result.relativePath}
+                    activeStyle="secondary"
+                    onClick={onResultClosed}
+                  />
                 </div>
               </div>
-              {/*<div className={`border-b border-gray-700 w-full pb-0 p-3`}>*/}
-              {/*  <Tabs*/}
-              {/*    activeTab={activeTab}*/}
-              {/*    onTabChange={setActiveTab}*/}
-              {/*    tabs={tabs}*/}
-              {/*  />*/}
-              {/*</div>*/}
-              {getContent(result)}
+              {result?.repoPath.startsWith('local') && (
+                <span className="flex-shrink-0">
+                  <DropdownWithIcon
+                    items={[
+                      {
+                        type: MenuItemType.DEFAULT,
+                        text: `View in ${getFileManagerName(os.type)}`,
+                        onClick: () => {
+                          openFolderInExplorer(
+                            result.repoPath.slice(6) +
+                              (isWindowsPath(result.repoPath) ? '\\' : '/') +
+                              (os.type === 'Darwin'
+                                ? result.relativePath
+                                : splitPath(result.relativePath)
+                                    .slice(0, -1)
+                                    .join(
+                                      isWindowsPath(result.relativePath)
+                                        ? '\\'
+                                        : '/',
+                                    )),
+                          );
+                        },
+                      },
+                    ]}
+                    btnOnlyIcon
+                    icon={<MoreHorizontal />}
+                    noChevron
+                    btnSize="small"
+                  />
+                </span>
+              )}
             </div>
           </div>
+          {/*<div className={`border-b border-gray-700 w-full pb-0 p-3`}>*/}
+          {/*  <Tabs*/}
+          {/*    activeTab={activeTab}*/}
+          {/*    onTabChange={setActiveTab}*/}
+          {/*    tabs={tabs}*/}
+          {/*  />*/}
+          {/*</div>*/}
+          {getContent(result)}
         </div>
       </ModalOrSidebar>
       <ShareFileModal
