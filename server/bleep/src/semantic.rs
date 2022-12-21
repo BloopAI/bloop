@@ -13,7 +13,7 @@ use qdrant_client::{
 };
 use rayon::prelude::*;
 use tracing::{debug, trace};
-use tract_onnx::{prelude::*, tract_hir::internal::InferenceOp};
+use tract_onnx::prelude::*;
 
 pub mod chunk;
 
@@ -21,7 +21,7 @@ pub mod chunk;
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
     tokenizer: Arc<tokenizers::Tokenizer>,
-    onnx: Arc<InferenceSimplePlan<Graph<InferenceFact, Box<dyn InferenceOp + 'static>>>>,
+    onnx: Arc<SimplePlan<TypedFact, Box<dyn TypedOp>, Graph<TypedFact, Box<dyn TypedOp>>>>,
 }
 
 impl Semantic {
@@ -51,6 +51,8 @@ impl Semantic {
                 .into(),
             onnx: onnx()
                 .model_for_path(model_dir.join("model.onnx"))
+                .unwrap()
+                .into_optimized()
                 .unwrap()
                 .into_runnable()
                 .unwrap()
