@@ -2,11 +2,12 @@
 
 
 QDRANT_VERSION=v0.11.5
-BINDIR=src-tauri
-QDRANT_RELEASE=$BINDIR/bin/qdrant
+ROOTDIR=src-tauri
+BINDIR=src-tauri/bin
+QDRANT_RELEASE=qdrant
 
 TARGET_TRIPLET="$(rustc -Vv |grep host |cut -d\  -f2)"
-QDRANT_BIN=$BINDIR/bin/qdrant-$TARGET_TRIPLET
+QDRANT_LINK=qdrant-$TARGET_TRIPLET
 
 COMMAND=$1 
 case "$COMMAND" in
@@ -17,8 +18,7 @@ case "$COMMAND" in
 esac
 
 
-cargo install --git https://github.com/qdrant/qdrant --tag $QDRANT_VERSION --bin qdrant --locked --root $BINDIR || true
-mv $QDRANT_RELEASE $QDRANT_BIN
-ln -sf $QDRANT_BIN $QDRANT_RELEASE
+cargo install --git https://github.com/qdrant/qdrant --tag $QDRANT_VERSION --bin qdrant --locked --root $ROOTDIR || true
+(cd $BINDIR; ln -sf $QDRANT_RELEASE $QDRANT_LINK)
 
 pnpm build $COMMAND
