@@ -33,6 +33,8 @@
               libsoup.dev
               webkitgtk
               dmidecode
+              cmake
+              openblas
             ];
           };
 
