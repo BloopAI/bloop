@@ -92,7 +92,7 @@ pub async fn handle(
         selection: res.json().await.map_err(|e| {
             super::error(
                 ErrorKind::Internal,
-                format!("got bad answer API response: {}", e),
+                format!("answer API was not able to create a valid result: {}", e),
             )
         })?,
     })))
