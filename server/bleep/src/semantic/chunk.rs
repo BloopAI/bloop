@@ -47,13 +47,16 @@ pub fn tree_sitter<'a, 'l>(src: &'a str, lang_id: &'l str) -> Result<Vec<&'a str
 }
 
 pub fn trivial(src: &str, size: usize) -> Vec<&str> {
-    let line_ends = [0usize]
-        .into_iter()
-        .chain(src.match_indices('\n').step_by(size).map(|(i, _)| i))
+    let last = src.len() - 1;
+    let ends = std::iter::once(0)
+        .chain(src.match_indices('\n').map(|(i, _)| i))
+        .step_by(size)
         .collect::<Vec<_>>();
-    line_ends
-        .iter()
-        .zip(line_ends.iter().skip(1))
-        .map(|(start, end)| &src[*start..*end])
+
+    ends.iter()
+        .copied()
+        .zip(ends.iter().copied().skip(1).chain([last]))
+        .filter(|(start, end)| start < end)
+        .map(|(start, end)| &src[start..end])
         .collect()
 }
