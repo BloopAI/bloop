@@ -2,7 +2,6 @@ use std::{
     fs::{create_dir_all, write},
     path::Path,
     process::Command,
-    thread,
     time::Duration,
 };
 
@@ -175,7 +174,7 @@ pub async fn start(cache_dir: impl AsRef<Path>) {
             return;
         }
 
-        thread::sleep(Duration::from_secs(1));
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
     panic!("qdrant cannot be started");
