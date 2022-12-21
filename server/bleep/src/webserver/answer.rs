@@ -15,7 +15,8 @@ mod api {
 
     #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
     pub struct Snippet {
-        pub path: String,
+        pub repo_name: String,
+        pub relative_path: String,
         pub text: String,
     }
 
@@ -47,11 +48,14 @@ pub async fn handle(
     Query(params): Query<Params>,
     Extension(app): Extension<Application>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
-    let snippets = app.semantic.search(&params.q, params.limit).await
+    let snippets = app
+        .semantic
+        .search(&params.q, params.limit)
+        .await
         .map_err(|e| super::error(ErrorKind::Internal, e.to_string()))?
         .into_iter()
         .map(|mut s| {
-            use qdrant_client::qdrant::{Value, value::Kind};
+            use qdrant_client::qdrant::{value::Kind, Value};
 
             fn value_to_string(value: Value) -> String {
                 match value.kind.unwrap() {
@@ -61,7 +65,8 @@ pub async fn handle(
             }
 
             api::Snippet {
-                path: value_to_string(s.remove("file").unwrap()),
+                repo_name: value_to_string(s.remove("repo_name").unwrap()),
+                relative_path: value_to_string(s.remove("relative_path").unwrap()),
                 text: value_to_string(s.remove("snippet").unwrap()),
             }
         })

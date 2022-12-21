@@ -116,7 +116,14 @@ impl Semantic {
     }
 
     #[tracing::instrument(skip(self, buffer))]
-    pub async fn insert_points_for_buffer(&self, file_path: &Path, buffer: &str, lang_str: &str) {
+    pub async fn insert_points_for_buffer(
+        &self,
+        file_path: &Path,
+        repo_name: &str,
+        relative_path: &str,
+        buffer: &str,
+        lang_str: &str,
+    ) {
         let chunks = chunk::tree_sitter(buffer, lang_str).unwrap_or_else(|e| {
             debug!(?e, %lang_str, "failed to chunk, falling back to trivial chunker");
             chunk::trivial(buffer, 15) // line-wise chunking, 15 lines per chunk
@@ -140,7 +147,8 @@ impl Semantic {
                         vectors: Some(ok.into()),
                         payload: hashmap! {
                             "lang".into() => lang_str.to_ascii_lowercase().into(),
-                            "file".into() => file_path.to_string_lossy().as_ref().into(),
+                            "repo_name".into() => repo_name.into(),
+                            "relative_path".into() => relative_path.into(),
                             "snippet".into() => chunk.into(),
                         },
                     }),
