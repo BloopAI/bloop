@@ -19,6 +19,6 @@ esac
 
 
 cargo install --git https://github.com/qdrant/qdrant --tag $QDRANT_VERSION --bin qdrant --locked --root $ROOTDIR || true
-(cd $BINDIR; ln -sf $QDRANT_RELEASE $QDRANT_LINK)
+(cd $BINDIR; test -f $QDRANT_LINK || ln -sf $QDRANT_RELEASE $QDRANT_LINK)
 
 pnpm build $COMMAND
