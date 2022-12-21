@@ -11,6 +11,9 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           pkgsStatic = pkgs.pkgsStatic;
+          lib = pkgs.lib;
+          clang = pkgs.llvmPackages_14.clang;
+          libclang = pkgs.llvmPackages_14.libclang;
         in
         {
           devShell = pkgs.mkShell {
@@ -20,6 +23,8 @@
             '';
             buildInputs = with pkgs; [
               llvmPackages_14.stdenv
+              libclang
+              clang
               rustup
               nodePackages.pnpm
               appimage-run
@@ -35,7 +40,11 @@
               dmidecode
               cmake
               openblas
+              protobuf
             ];
+
+            LIBCLANG_PATH = "${libclang.lib}/lib";
+            BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${libclang.lib}/lib/clang/${lib.getVersion clang}/include";
           };
 
           packages.my-ctags = pkgsStatic.universal-ctags.overrideAttrs (old: {

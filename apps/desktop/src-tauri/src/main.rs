@@ -53,6 +53,8 @@ async fn main() {
                 .resolve_resource("model")
                 .expect("bad bundle");
 
+            println!("{0:?}", configuration.model_dir);
+
             let app = app.handle();
             tokio::spawn(async move {
                 let initialized =
