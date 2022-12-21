@@ -53,6 +53,11 @@ async fn main() {
                 .resolve_resource("model")
                 .expect("bad bundle");
 
+            let qdrant = relative_command_path("qdrant").expect("bad bundle");
+            _ = std::process::Command::new(qdrant)
+                .spawn()
+                .expect("failed to start qdrant");
+
             println!("{0:?}", configuration.model_dir);
 
             let app = app.handle();
