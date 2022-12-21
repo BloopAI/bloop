@@ -41,7 +41,9 @@
       "deb": {
         "depends": []
       },
-      "externalBin": ["bin/ctags"],
+      "externalBin": [
+        "bin/ctags"
+      ],
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
@@ -59,7 +61,8 @@
         "signingIdentity": "Developer ID Application: Bloop AI Limited (3J228S55SF)"
       },
       "resources": [
-        "config.json"
+        "config.json",
+        "../../../model"
       ],
       "shortDescription": "",
       "targets": "all",
