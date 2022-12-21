@@ -138,15 +138,15 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
             closeOnClickOutside={false}
           >
             <button
-              className="w-16 flex items-center flex-1 gap-1 flex-row px-2 h-full bg-gray-700 rounded-l"
+              className="flex items-center px-2 h-full bg-gray-700 rounded-l"
               onClick={(e) => {
                 e.preventDefault();
                 setSearchCtxMenuVisible(!searchCtxMenuVisible);
               }}
             >
               <span
-                className={`w-5 h-5 text-gray-300 group-hover:text-gray-200 ${
-                  searchCtxMenuVisible ? 'text-gray-200' : ''
+                className={`w-5 h-5 group-hover:text-gray-200 ${
+                  searchCtxMenuVisible ? 'text-gray-200' : 'text-gray-300'
                 }`}
               >
                 {searchType === SearchType.NL ? (
@@ -156,8 +156,8 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
                 )}
               </span>
               <span
-                className={`w-5 h-5 text-gray-500 group-hover:text-gray-200 ${
-                  searchCtxMenuVisible ? 'text-gray-200' : ''
+                className={`w-5 h-5 group-hover:text-gray-200 ${
+                  searchCtxMenuVisible ? 'text-gray-200' : 'text-gray-500'
                 }`}
               >
                 {searchCtxMenuVisible ? (

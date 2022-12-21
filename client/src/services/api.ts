@@ -107,3 +107,17 @@ export const saveCrashReport = (report: {
   info: string;
   metadata: string;
 }) => axios.post(`${DB_API}/crash_reports`, report).then((r) => r.data);
+
+export const saveUpvote = (upvote: {
+  unique_id: string;
+  snippet_id: string;
+  query: string;
+  text: string;
+  is_upvote: boolean;
+}) => axios.post(`${DB_API}/upvotes`, upvote).then((r) => r.data);
+
+export const getUpvote = (params: {
+  unique_id: string;
+  snippet_id: string;
+  query: string;
+}) => axios.get(`${DB_API}/upvote`, { params }).then((r) => r.data);
