@@ -94,8 +94,8 @@ fn default_qdrant() -> String {
     String::from("http://127.0.0.1:6334")
 }
 
-fn default_answer_api_host() -> String {
-    String::from("localhost:7879")
+fn default_answer_api_base() -> String {
+    String::from("kw50d42q6a.execute-api.eu-west-1.amazonaws.com/default")
 }
 
 #[derive(Debug)]
