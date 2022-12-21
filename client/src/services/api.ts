@@ -1,6 +1,7 @@
 import axios from 'axios';
 import {
   HoverablesRespone,
+  NLSearchResponse,
   SearchResponse,
   SuggestionsResponse,
   TokenInfoResponse,
@@ -26,6 +27,16 @@ export const search = (
         page_size,
         page,
         calculate_totals: page === 0,
+      },
+    })
+    .then((r) => r.data);
+};
+
+export const nlSearch = (q: string): Promise<NLSearchResponse> => {
+  return http
+    .get('/answer', {
+      params: {
+        q,
       },
     })
     .then((r) => r.data);

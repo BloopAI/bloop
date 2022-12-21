@@ -2,7 +2,12 @@ import React, { useContext, useEffect, useMemo, useState } from 'react';
 import * as Sentry from '@sentry/react';
 import { SearchContext } from '../../context/searchContext';
 import { useSearch } from '../../hooks/useSearch';
-import { SearchResponse } from '../../types/api';
+import {
+  DirectorySearchResponse,
+  GeneralSearchResponse,
+  NLSearchResponse,
+  SearchResponse,
+} from '../../types/api';
 import RepositoryPage from '../Repository';
 import PageTemplate from '../../components/PageTemplate';
 import ErrorFallback from '../../components/ErrorFallback';
@@ -15,8 +20,16 @@ import NLResults from '../NLResults';
 
 const SearchPage = () => {
   const { setInputValue, globalRegex, searchType } = useContext(SearchContext);
-  const [resultsData, setResultsData] = useState<any>();
+  const [resultsData, setResultsData] = useState<SearchResponse>();
+  const [nlResultsData, setNLResultsData] = useState<
+    NLSearchResponse | undefined
+  >();
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
+  const {
+    searchQuery: nlSearchQuery,
+    data: nlData,
+    loading: nlLoading,
+  } = useSearch<NLSearchResponse>();
 
   const { navigatedItem, query } = useAppNavigation();
 
@@ -33,21 +46,32 @@ const SearchPage = () => {
         searchQuery(buildRepoQuery(navigatedItem.repo, navigatedItem.path));
         break;
       default:
-        searchQuery(navigatedItem.query!, navigatedItem.page, globalRegex);
+        if (searchType === SearchType.NL) {
+          nlSearchQuery(navigatedItem.query!);
+        } else {
+          searchQuery(navigatedItem.query!, navigatedItem.page, globalRegex);
+        }
     }
-  }, [navigatedItem]);
+  }, [navigatedItem, searchType]);
 
   const [renderPage, setRenderPage] = useState<
     'results' | 'repo' | 'full-result' | 'nl-result' | 'no-results'
   >();
 
   useEffect(() => {
-    /*
-     * Temporary enabling NL search with mock data
-     * */
+    if (searchType === SearchType.REGEX) {
+      return;
+    }
+    if (!nlData?.selection) {
+      setNLResultsData(undefined);
+    } else {
+      setNLResultsData(nlData);
+    }
+    setRenderPage('nl-result');
+  }, [nlData, searchType]);
+
+  useEffect(() => {
     if (searchType === SearchType.NL) {
-      setRenderPage('nl-result');
-      setResultsData(data);
       return;
     }
     if (loading) {
@@ -70,23 +94,31 @@ const SearchPage = () => {
       default:
         setRenderPage('results');
     }
-  }, [navigatedItem, loading, data]);
+  }, [loading, data, searchType]);
 
   const renderedPage = useMemo(() => {
     switch (renderPage) {
       case 'results':
       case 'no-results':
-        return <ResultsPage resultsData={resultsData} loading={loading} />;
+        return (
+          <ResultsPage
+            resultsData={resultsData as GeneralSearchResponse}
+            loading={loading}
+          />
+        );
       case 'repo':
         return (
-          <RepositoryPage repositoryData={resultsData} loading={loading} />
+          <RepositoryPage
+            repositoryData={resultsData as DirectorySearchResponse}
+            loading={loading}
+          />
         );
       case 'full-result':
         return <ViewResult data={resultsData} />;
       case 'nl-result':
-        return <NLResults loading={false} resultsData={resultsData} />;
+        return <NLResults loading={nlLoading} resultsData={nlResultsData} />;
     }
-  }, [renderPage, resultsData, loading, searchType]);
+  }, [renderPage, resultsData, loading, nlLoading, nlResultsData]);
 
   return <PageTemplate>{renderedPage}</PageTemplate>;
 };

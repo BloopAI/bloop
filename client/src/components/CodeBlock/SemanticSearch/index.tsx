@@ -1,23 +1,38 @@
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import hljs from 'highlight.js';
 import CodeBlockSearch from '../Search';
 import Button from '../../Button';
 import { ThumbsDown, ThumbsUp } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
 import { getUpvote, saveUpvote } from '../../../services/api';
 import useAppNavigation from '../../../hooks/useAppNavigation';
+import { ResultClick } from '../../../types/results';
+import 'highlight.js/styles/vs2015.css';
 
-const SemanticSearch = () => {
+type Props = {
+  answer: string;
+  snippets: { code: string; path: string; repoName: string }[];
+  onClick: ResultClick;
+};
+const SemanticSearch = ({ answer, snippets, onClick }: Props) => {
   const { deviceId } = useContext(DeviceContext);
   const { query } = useAppNavigation();
   const [isUpvoteLoading, setUpvoteLoading] = useState(true);
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
 
-  const results = [
-    "listen(_: unknown, event: string, arg?: any): Event<any> {\n switch (event) {\n  default: throw new Error('no apples');\n }\n}",
-    "listen(_: unknown, event: string, arg?: any): Event<any> {\n switch (event) {\n  default: throw new Error('no apples');\n }\n}",
-    "listen(_: unknown, event: string, arg?: any): Event<any> {\n switch (event) {\n  default: throw new Error('no apples');\n }\n}",
-  ];
+  const highlightedAnswer = useMemo(() => {
+    const code = answer.replace(/`(.*?)`/gs, (match) => {
+      console.log(match.replace(/`/g, ''));
+      const hl = hljs.highlightAuto(match.replace(/`/g, ''), [
+        'javascript',
+        'rust',
+      ]).value;
+      return `<code class="italic">\`${hl}\`</code>`;
+    });
+
+    return `<pre class="whitespace-pre-wrap break-words">${code}</pre>`;
+  }, [answer]);
 
   useEffect(() => {
     setUpvoteLoading(true);
@@ -51,17 +66,10 @@ const SemanticSearch = () => {
   return (
     <div className="flex flex-col">
       <div className="bg-gray-800 p-3 flex flex-row rounded-t relative">
-        <span className="body-s pr-16">
-          We calculate the speed of the last query by tracking the start time of
-          the query and comparing it to the current time. This can be done by
-          using the Date.now) function to get the current time and comparing it
-          to the start time stored in a variable. We can track the speed of the
-          query by subtracting the start time from the current time and storing
-          this as the last query time and setting it as the value for the
-          lastQueryTime variable. This can be seen in the useSearch hook in the
-          bloop / client / src / hooks / useSearch.tsx file with the following
-          code:
-        </span>
+        <span
+          className="body-s pr-16"
+          dangerouslySetInnerHTML={{ __html: highlightedAnswer }}
+        ></span>
         {!isUpvoteLoading && (
           <div className="flex flex-row absolute top-3 right-3">
             <Button
@@ -85,17 +93,18 @@ const SemanticSearch = () => {
           </div>
         )}
       </div>
-      {results.map((item, index) => (
+      {snippets.map((item, index) => (
         <span key={index} className={`${index ? 'mt-5' : ''}`}>
           <CodeBlockSearch
-            snippets={[{ code: item, highlights: [] }]}
+            snippets={[{ code: item.code, highlights: [] }]}
             language={'JavaScript'}
-            filePath={'test/main/src.js'}
+            filePath={item.path}
             branch={''}
-            repoName={''}
+            repoName={item.repoName}
             repoPath={''}
             hideMatchCounter
             hideDropdown
+            onClick={onClick}
           />
         </span>
       ))}

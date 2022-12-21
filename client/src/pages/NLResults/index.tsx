@@ -12,11 +12,15 @@ import Filters from '../../components/Filters';
 import { SearchContext } from '../../context/searchContext';
 import { mapFiltersData } from '../../mappers/filter';
 import { mapFileResult, mapRanges, mapResults } from '../../mappers/results';
-import { FullResultModeEnum } from '../../types/general';
+import { FullResultModeEnum, SearchType } from '../../types/general';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import ResultModal from '../ResultModal';
 import { useSearch } from '../../hooks/useSearch';
-import { FileSearchResponse, GeneralSearchResponse } from '../../types/api';
+import {
+  FileSearchResponse,
+  GeneralSearchResponse,
+  NLSearchResponse,
+} from '../../types/api';
 import ErrorFallback from '../../components/ErrorFallback';
 import { getHoverables } from '../../services/api';
 import NoResults from '../Results/NoResults';
@@ -26,7 +30,7 @@ import SemanticSearch from '../../components/CodeBlock/SemanticSearch';
 import PageHeader from './PageHeader';
 
 type Props = {
-  resultsData: GeneralSearchResponse;
+  resultsData?: NLSearchResponse;
   loading: boolean;
 };
 
@@ -41,13 +45,10 @@ const mockQuerySuggestions = [
 const ResultsPage = ({ resultsData, loading }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
-  const [results, setResults] = useState<ResultType[]>([]);
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.SIDEBAR,
   );
   const [openResult, setOpenResult] = useState<FullResult | null>(null);
-  const { filters, setFilters, inputValue, globalRegex } =
-    useContext(SearchContext);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
@@ -58,7 +59,12 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
 
   const onResultClick = useCallback((repo: string, path?: string) => {
     if (path) {
-      fileModalSearchQuery(`open:true repo:${repo} path:${path}`);
+      fileModalSearchQuery(
+        `open:true repo:${repo} path:${path}`,
+        0,
+        false,
+        SearchType.REGEX,
+      );
     } else {
       navigateRepoPath(repo);
     }
@@ -78,10 +84,10 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     setOpenResult(null);
   }, [mode]);
 
-  useEffect(() => {
-    // setFilters(mapFiltersData(resultsData.stats, filters));
-    // setResults(mapResults(resultsData));
-  }, [resultsData]);
+  // useEffect(() => {
+  //   // setFilters(mapFiltersData(resultsData.stats, filters));
+  //   // setResults(mapResults(resultsData));
+  // }, [resultsData]);
 
   useEffect(() => {
     if (fileResultData) {
@@ -98,6 +104,25 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     }
   }, [fileResultData]);
 
+  const renderResults = () => {
+    if (loading) {
+      return <ResultsPreviewSkeleton />;
+    }
+    if (!resultsData) {
+      return <NoResults suggestions={mockQuerySuggestions} />;
+    }
+    return (
+      <SemanticSearch
+        snippets={resultsData.snippets.map((item) => ({
+          path: item.relative_path,
+          code: item.text,
+          repoName: item.repo_name,
+        }))}
+        answer={resultsData.selection.answer}
+        onClick={onResultClick}
+      />
+    );
+  };
   return (
     <>
       <Filters isOpen={isFiltersOpen} toggleOpen={toggleFiltersOpen} />
@@ -106,12 +131,20 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
         ref={ref}
       >
         <PageHeader resultsNumber={1} loading={loading} />
-        {/*{results.length || loading ? (*/}
+        {renderResults()}
+        {/*{resultsData || loading ? (*/}
         {/*  loading ? (*/}
         {/*    <ResultsPreviewSkeleton />*/}
         {/*  ) : (*/}
-        <SemanticSearch />
-        {/*)*/}
+        {/*    <SemanticSearch*/}
+        {/*      snippets={resultsData.snippets.map((item) => ({*/}
+        {/*        path: item.path,*/}
+        {/*        code: item.text,*/}
+        {/*      }))}*/}
+        {/*      answer={resultsData.selection.answer}*/}
+        {/*      onClick={() => onResultClick('', '')}*/}
+        {/*    />*/}
+        {/*  )*/}
         {/*) : (*/}
         {/*  <NoResults suggestions={mockQuerySuggestions} />*/}
         {/*)}*/}

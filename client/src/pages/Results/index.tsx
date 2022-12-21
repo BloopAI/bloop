@@ -105,12 +105,12 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
 
   useEffect(() => {
     if (page === 0) {
-      setTotalPages(resultsData.metadata.page_count);
-      setTotalCount(resultsData.metadata.total_count);
+      setTotalPages(resultsData.metadata.page_count!);
+      setTotalCount(resultsData.metadata.total_count!);
     }
     setFilters(mapFiltersData(resultsData.stats, filters));
-    setResults(mapResults(resultsData));
-    setPage(resultsData.metadata.page);
+    setResults(mapResults(resultsData as any));
+    setPage(resultsData.metadata.page!);
   }, [resultsData]);
 
   useEffect(() => {
