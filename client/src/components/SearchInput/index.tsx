@@ -163,15 +163,18 @@ function SearchInput() {
     },
   });
 
-  const onSubmit = useCallback((val: string) => {
-    navigateSearch(val);
-    closeMenu();
-    setSearchHistory((prev) => {
-      const newHistory = [val, ...prev].slice(0, 4);
-      saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
-      return newHistory;
-    });
-  }, []);
+  const onSubmit = useCallback(
+    (val: string) => {
+      navigateSearch(val, searchType);
+      closeMenu();
+      setSearchHistory((prev) => {
+        const newHistory = [val, ...prev].slice(0, 4);
+        saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
+        return newHistory;
+      });
+    },
+    [searchType],
+  );
 
   const handleClearHistory = useCallback(() => {
     setSearchHistory([]);

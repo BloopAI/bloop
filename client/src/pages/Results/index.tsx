@@ -48,7 +48,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     FullResultModeEnum.SIDEBAR,
   );
   const [openResult, setOpenResult] = useState<FullResult | null>(null);
-  const { filters, setFilters, inputValue, globalRegex } =
+  const { filters, setFilters, inputValue, globalRegex, searchType } =
     useContext(SearchContext);
   const { setSymbolsCollapsed } = useContext(UIContext);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
@@ -80,9 +80,9 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   const handlePageChange = useCallback(
     (page: number) => {
       setPage(page);
-      navigateSearch(inputValue, page);
+      navigateSearch(inputValue, searchType, page);
     },
-    [inputValue, globalRegex],
+    [inputValue, globalRegex, searchType],
   );
 
   const handleModeChange = useCallback((m: FullResultModeEnum) => {

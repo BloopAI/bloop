@@ -38,7 +38,7 @@ const SearchPage = () => {
   }, [navigatedItem]);
 
   const [renderPage, setRenderPage] = useState<
-    'results' | 'repo' | 'full-result' | 'nl-result'
+    'results' | 'repo' | 'full-result' | 'nl-result' | 'no-results'
   >();
 
   useEffect(() => {
@@ -47,10 +47,15 @@ const SearchPage = () => {
      * */
     if (searchType === SearchType.NL) {
       setRenderPage('nl-result');
-      setResultsData({ some: 'data' });
+      setResultsData(data);
       return;
     }
-    if (!data?.data[0] || loading) {
+    if (loading) {
+      return;
+    }
+    if (!data?.data[0]) {
+      setRenderPage('no-results');
+      setResultsData({ data: [], metadata: {}, stats: {} });
       return;
     }
     const resultType = data.data[0].kind;
@@ -68,9 +73,9 @@ const SearchPage = () => {
   }, [navigatedItem, loading, data]);
 
   const renderedPage = useMemo(() => {
-    console.log(renderPage);
     switch (renderPage) {
       case 'results':
+      case 'no-results':
         return <ResultsPage resultsData={resultsData} loading={loading} />;
       case 'repo':
         return (

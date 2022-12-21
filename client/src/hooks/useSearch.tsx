@@ -21,10 +21,17 @@ export const useSearch = <T,>(
     loading: false,
   });
 
-  const { setLastQueryTime } = useContext(SearchContext);
+  const { setLastQueryTime, searchType } = useContext(SearchContext);
   const { trackSearch } = useAnalytics();
 
   const searchQuery = (query: string, page = 0, globalRegex?: boolean) => {
+    if (searchType) {
+      setStatus({
+        loading: false,
+        // @ts-ignore
+        data: { data: [], metadata: {}, stats: {} },
+      });
+    }
     setStatus({ loading: true });
 
     const startTime = Date.now();
