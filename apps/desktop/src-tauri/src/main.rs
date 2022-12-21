@@ -60,7 +60,9 @@ async fn main() {
                 .source
                 .set_default_dir(&cache_dir.join("bleep"));
 
-            qdrant::start(cache_dir);
+            tokio::task::block_in_place(move || {
+                tokio::runtime::Handle::current().block_on(qdrant::start(cache_dir))
+            });
 
             let app = app.handle();
             tokio::spawn(async move {

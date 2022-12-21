@@ -2,6 +2,8 @@ use std::{
     fs::{create_dir_all, write},
     path::Path,
     process::Command,
+    thread,
+    time::Duration,
 };
 
 use super::relative_command_path;
@@ -138,7 +140,7 @@ cluster:
     tick_period_ms: 100
 "#;
 
-pub fn start(cache_dir: impl AsRef<Path>) {
+pub async fn start(cache_dir: impl AsRef<Path>) {
     let cache_dir = cache_dir.as_ref();
     let qdrant_dir = cache_dir.join("qdrant");
     let qd_config_dir = qdrant_dir.join("config");
@@ -157,9 +159,24 @@ pub fn start(cache_dir: impl AsRef<Path>) {
     )
     .unwrap();
 
-    let qdrant = relative_command_path("qdrant").expect("bad bundle");
-    _ = Command::new(qdrant)
+    let command = relative_command_path("qdrant").expect("bad bundle");
+    _ = Command::new(command)
         .current_dir(qdrant_dir)
         .spawn()
         .expect("failed to start qdrant");
+
+    use qdrant_client::prelude::*;
+    let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url("http://127.0.0.1:6334")))
+        .await
+        .unwrap();
+
+    for _ in 0..60 {
+        if qdrant.health_check().await.is_ok() {
+            return;
+        }
+
+        thread::sleep(Duration::from_secs(1));
+    }
+
+    panic!("qdrant cannot be started");
 }

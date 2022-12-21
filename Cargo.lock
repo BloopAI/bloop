@@ -96,6 +96,7 @@ dependencies = [
  "bleep",
  "color-eyre",
  "once_cell",
+ "qdrant-client",
  "sentry",
  "serde",
  "serde_json",
