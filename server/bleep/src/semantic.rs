@@ -124,7 +124,7 @@ impl Semantic {
         debug!("found {} chunks", chunks.len());
         let datapoints = chunks
             .par_iter()
-            .filter(|chunk| chunk.len() < 50) // small chunks tend to skew results
+            .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
             .filter_map(|&chunk| {
                 debug!(
                     "chunk size: {}b {}",
