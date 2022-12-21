@@ -62,7 +62,7 @@
       },
       "resources": [
         "config.json",
-        "../../../model"
+        "model/*"
       ],
       "shortDescription": "",
       "targets": "all",

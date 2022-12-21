@@ -48,6 +48,10 @@ async fn main() {
             let mut configuration = Configuration::read(config).unwrap();
             configuration.ctags_path = relative_command_path("ctags");
             configuration.max_threads = bleep::default_parallelism() / 4;
+            configuration.model_dir = app
+                .path_resolver()
+                .resolve_resource("model")
+                .expect("bad bundle");
 
             let app = app.handle();
             tokio::spawn(async move {
