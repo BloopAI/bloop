@@ -75,7 +75,7 @@ pub async fn handle(
         .collect::<Vec<_>>();
 
     let res = reqwest::Client::new()
-        .post(format!("http://{}/q", app.config.answer_api_host))
+        .post(format!("{}/q", app.config.answer_api_base))
         .json(&api::Request {
             query: params.q,
             snippets: snippets.clone(),
