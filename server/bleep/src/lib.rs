@@ -191,8 +191,8 @@ pub struct Configuration {
     /// Github Client ID for OAuth connection to private repos
     pub github_client_id: Option<SecretString>,
 
-    #[clap(long, default_value_t = default_answer_api_host())]
-    #[serde(default = "default_answer_api_host")]
+    #[clap(long, default_value_t = default_answer_api_base())]
+    #[serde(default = "default_answer_api_base")]
     /// Answer API `host` string, with optional `:port`
     pub answer_api_host: String,
 }
