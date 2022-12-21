@@ -3,6 +3,8 @@
     windows_subsystem = "windows"
 )]
 
+mod qdrant;
+
 use std::path::PathBuf;
 
 use bleep::{Application, Configuration, Environment};
@@ -53,12 +55,12 @@ async fn main() {
                 .resolve_resource("model")
                 .expect("bad bundle");
 
-            let qdrant = relative_command_path("qdrant").expect("bad bundle");
-            _ = std::process::Command::new(qdrant)
-                .spawn()
-                .expect("failed to start qdrant");
+            let cache_dir = app.path_resolver().app_cache_dir().unwrap();
+            configuration
+                .source
+                .set_default_dir(&cache_dir.join("bleep"));
 
-            println!("{0:?}", configuration.model_dir);
+            qdrant::start(cache_dir);
 
             let app = app.handle();
             tokio::spawn(async move {
