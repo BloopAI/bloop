@@ -115,10 +115,9 @@ impl Semantic {
         Ok(response.result.into_iter().map(|pt| pt.payload).collect())
     }
 
-    #[tracing::instrument(skip(self, buffer))]
+    #[tracing::instrument(skip(self, repo_name, relative_path, buffer))]
     pub async fn insert_points_for_buffer(
         &self,
-        file_path: &Path,
         repo_name: &str,
         relative_path: &str,
         buffer: &str,
@@ -128,17 +127,16 @@ impl Semantic {
             debug!(?e, %lang_str, "failed to chunk, falling back to trivial chunker");
             chunk::trivial(buffer, 15) // line-wise chunking, 15 lines per chunk
         });
-        debug!("found {} chunks", chunks.len());
+
+        debug!(chunk_count = chunks.len(), "found chunks");
         let datapoints = chunks
             .par_iter()
             .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
             .filter_map(|&chunk| {
                 debug!(
-                    "chunk size: {}b {}",
-                    chunk.len(),
-                    (chunk.len() > 800)
-                        .then_some("(big chunk)")
-                        .unwrap_or_default()
+                    chunk_len = chunk.len(),
+                    big_chunk = chunk.len() > 800,
+                    "new chunk",
                 );
 
                 match self.embed(chunk) {
@@ -161,7 +159,7 @@ impl Semantic {
             .collect::<Vec<_>>();
 
         if !datapoints.is_empty() {
-            debug!("updating docs with {} points", datapoints.len());
+            debug!(point_count = datapoints.len(), "updating docs");
             let upserted = self.qdrant.upsert_points("documents", datapoints).await;
             if upserted.is_ok() {
                 debug!("successful upsert");
