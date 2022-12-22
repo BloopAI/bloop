@@ -204,6 +204,8 @@ export interface NLSnippet {
   repo_name: string;
   relative_path: string;
   text: string;
+  lang: string;
+  start_line: number;
 }
 
 export interface NLResponseSelection {

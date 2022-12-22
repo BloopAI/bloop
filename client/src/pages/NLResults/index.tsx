@@ -49,7 +49,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     FullResultModeEnum.SIDEBAR,
   );
   const [openResult, setOpenResult] = useState<FullResult | null>(null);
-  const { navigateSearch, navigateRepoPath } = useAppNavigation();
+  const { navigateRepoPath } = useAppNavigation();
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
 
@@ -84,11 +84,6 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     setOpenResult(null);
   }, [mode]);
 
-  // useEffect(() => {
-  //   // setFilters(mapFiltersData(resultsData.stats, filters));
-  //   // setResults(mapResults(resultsData));
-  // }, [resultsData]);
-
   useEffect(() => {
     if (fileResultData) {
       setOpenResult(mapFileResult(fileResultData.data[0]));
@@ -117,6 +112,8 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
           path: item.relative_path,
           code: item.text,
           repoName: item.repo_name,
+          lang: item.lang,
+          line: item.start_line,
         }))}
         answer={resultsData.selection.answer}
         onClick={onResultClick}
@@ -132,22 +129,6 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
       >
         <PageHeader resultsNumber={1} loading={loading} />
         {renderResults()}
-        {/*{resultsData || loading ? (*/}
-        {/*  loading ? (*/}
-        {/*    <ResultsPreviewSkeleton />*/}
-        {/*  ) : (*/}
-        {/*    <SemanticSearch*/}
-        {/*      snippets={resultsData.snippets.map((item) => ({*/}
-        {/*        path: item.path,*/}
-        {/*        code: item.text,*/}
-        {/*      }))}*/}
-        {/*      answer={resultsData.selection.answer}*/}
-        {/*      onClick={() => onResultClick('', '')}*/}
-        {/*    />*/}
-        {/*  )*/}
-        {/*) : (*/}
-        {/*  <NoResults suggestions={mockQuerySuggestions} />*/}
-        {/*)}*/}
       </div>
 
       {openResult ? (

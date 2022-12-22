@@ -13,7 +13,13 @@ import useAnalytics from '../../../hooks/useAnalytics';
 
 type Props = {
   answer: string;
-  snippets: { code: string; path: string; repoName: string }[];
+  snippets: {
+    code: string;
+    path: string;
+    repoName: string;
+    lang: string;
+    line: number;
+  }[];
   onClick: ResultClick;
 };
 const SemanticSearch = ({ answer, snippets, onClick }: Props) => {
@@ -100,8 +106,10 @@ const SemanticSearch = ({ answer, snippets, onClick }: Props) => {
       {snippets.map((item, index) => (
         <span key={index} className={`${index ? 'mt-5' : ''}`}>
           <CodeBlockSearch
-            snippets={[{ code: item.code, highlights: [] }]}
-            language={'JavaScript'}
+            snippets={[
+              { code: item.code, highlights: [], lineStart: item.line },
+            ]}
+            language={item.lang}
             filePath={item.path}
             branch={''}
             repoName={item.repoName}
