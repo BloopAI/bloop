@@ -69,13 +69,16 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     [results, page],
   );
 
-  const onResultClick = useCallback((repo: string, path?: string) => {
-    if (path) {
-      fileModalSearchQuery(`open:true repo:${repo} path:${path}`);
-    } else {
-      navigateRepoPath(repo);
-    }
-  }, []);
+  const onResultClick = useCallback(
+    (repo: string, path?: string) => {
+      if (path) {
+        fileModalSearchQuery(`open:true repo:${repo} path:${path}`);
+      } else {
+        navigateRepoPath(repo);
+      }
+    },
+    [fileModalSearchQuery, navigateRepoPath],
+  );
 
   const handlePageChange = useCallback(
     (page: number) => {
