@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, ops::Not, path::Path};
 
 use anyhow::Result;
 use maplit::hashmap;
@@ -6,9 +6,9 @@ use ndarray_linalg::Norm;
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
-        vectors_config, with_payload_selector::SelectorOptions, CreateCollection, Distance,
-        PointId, PointStruct, SearchPoints, Value, VectorParams, VectorsConfig,
-        WithPayloadSelector,
+        vectors_config, with_payload_selector::SelectorOptions, CollectionOperationResponse,
+        CreateCollection, Distance, PointId, PointStruct, SearchPoints, Value, VectorParams,
+        VectorsConfig, WithPayloadSelector,
     },
 };
 use rayon::prelude::*;
@@ -17,11 +17,26 @@ use tract_onnx::prelude::*;
 
 pub mod chunk;
 
+const COLLECTION_NAME: &str = "documents";
+
 #[derive(Clone)]
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
     tokenizer: Arc<tokenizers::Tokenizer>,
     onnx: Arc<SimplePlan<TypedFact, Box<dyn TypedOp>, Graph<TypedFact, Box<dyn TypedOp>>>>,
+}
+
+fn collection_config() -> CreateCollection {
+    CreateCollection {
+        collection_name: COLLECTION_NAME.to_string(),
+        vectors_config: Some(VectorsConfig {
+            config: Some(vectors_config::Config::Params(VectorParams {
+                size: 384,
+                distance: Distance::Cosine.into(),
+            })),
+        }),
+        ..Default::default()
+    }
 }
 
 impl Semantic {
@@ -30,19 +45,21 @@ impl Semantic {
             .await
             .unwrap();
 
-        // don't panic if the collection already exists
-        _ = qdrant
-            .create_collection(&CreateCollection {
-                collection_name: "documents".to_string(),
-                vectors_config: Some(VectorsConfig {
-                    config: Some(vectors_config::Config::Params(VectorParams {
-                        size: 384,
-                        distance: Distance::Cosine.into(),
-                    })),
-                }),
-                ..Default::default()
-            })
-            .await;
+        if qdrant.has_collection(COLLECTION_NAME).await.unwrap().not() {
+            let CollectionOperationResponse { result, time } = qdrant
+                .create_collection(&collection_config())
+                .await
+                .unwrap();
+
+            debug!(
+                time,
+                created = result,
+                name = COLLECTION_NAME,
+                "created qdrant collection"
+            );
+
+            assert!(result);
+        }
 
         Self {
             qdrant: qdrant.into(),
@@ -102,7 +119,7 @@ impl Semantic {
         let response = self
             .qdrant
             .search_points(&SearchPoints {
-                collection_name: "documents".to_string(),
+                collection_name: COLLECTION_NAME.to_string(),
                 limit,
                 vector: self.embed(query)?,
                 with_payload: Some(WithPayloadSelector {
@@ -134,7 +151,7 @@ impl Semantic {
             .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
             .filter_map(|&chunk| {
                 debug!(
-                    chunk_len = chunk.len(),
+                    len = chunk.len(),
                     big_chunk = chunk.len() > 800,
                     "new chunk",
                 );
@@ -160,7 +177,7 @@ impl Semantic {
 
         if !datapoints.is_empty() {
             debug!(point_count = datapoints.len(), "updating docs");
-            let upserted = self.qdrant.upsert_points("documents", datapoints).await;
+            let upserted = self.qdrant.upsert_points(COLLECTION_NAME, datapoints).await;
             if upserted.is_ok() {
                 debug!("successful upsert");
             }
