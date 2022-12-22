@@ -19,7 +19,8 @@ import { SearchType } from '../../types/general';
 import NLResults from '../NLResults';
 
 const SearchPage = () => {
-  const { setInputValue, globalRegex, searchType } = useContext(SearchContext);
+  const { setInputValue, globalRegex, searchType, setSearchType } =
+    useContext(SearchContext);
   const [resultsData, setResultsData] = useState<SearchResponse>();
   const [nlResultsData, setNLResultsData] = useState<
     NLSearchResponse | undefined
@@ -43,7 +44,12 @@ const SearchPage = () => {
     switch (navigatedItem.type) {
       case 'repo':
       case 'full-result':
-        searchQuery(buildRepoQuery(navigatedItem.repo, navigatedItem.path));
+        searchQuery(
+          buildRepoQuery(navigatedItem.repo, navigatedItem.path),
+          0,
+          false,
+          SearchType.REGEX,
+        );
         break;
       default:
         if (searchType === SearchType.NL) {
@@ -71,7 +77,10 @@ const SearchPage = () => {
   }, [nlData, searchType]);
 
   useEffect(() => {
-    if (searchType === SearchType.NL) {
+    if (
+      searchType === SearchType.NL &&
+      !['repo', 'full-result'].includes(navigatedItem?.type || '')
+    ) {
       return;
     }
     if (loading) {

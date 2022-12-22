@@ -111,11 +111,16 @@ export const AppNavigationProvider = (prop: {
       path = undefined;
     }
 
-    saveState({ type: 'repo', repo, path });
+    saveState({ type: 'repo', repo, path, searchType: SearchType.REGEX });
   };
 
   const navigateFullResult = (repo: string, path: string) => {
-    saveState({ type: 'full-result', repo, path });
+    saveState({
+      type: 'full-result',
+      repo,
+      path,
+      searchType: SearchType.REGEX,
+    });
   };
 
   const navigateBack = () => {
