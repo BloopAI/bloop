@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { FileTreeFileType, RepositoryFile } from '../../types';
 import Accordion from '../Accordion';
 import { FolderFilled, Papers } from '../../icons';
@@ -23,17 +23,26 @@ const RepositoryFiles = ({
   onClick,
   repositoryName,
 }: Props) => {
-  const parts = splitPathForBreadcrumbs(currentPath, (e, item, index, arr) => {
-    const path = breadcrumbsItemPath(arr, index, isWindowsPath(currentPath));
-    onClick(path, FileTreeFileType.DIR);
-  });
-  const [pathParts] = useState<PathParts[]>([
-    {
-      label: repositoryName,
-      onClick: () => onClick('/', FileTreeFileType.DIR),
-    },
-    ...parts,
-  ]);
+  const pathParts = useMemo<PathParts[]>(() => {
+    const parts = splitPathForBreadcrumbs(
+      currentPath,
+      (e, item, index, arr) => {
+        const path = breadcrumbsItemPath(
+          arr,
+          index,
+          isWindowsPath(currentPath),
+        );
+        onClick(path, FileTreeFileType.DIR);
+      },
+    );
+    return [
+      {
+        label: repositoryName,
+        onClick: () => onClick('/', FileTreeFileType.DIR),
+      },
+      ...parts,
+    ];
+  }, [currentPath, onClick, repositoryName]);
 
   return (
     <Accordion
