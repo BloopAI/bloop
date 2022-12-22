@@ -99,7 +99,7 @@ const ProfileSettings = () => {
             name="firstName"
             label="First name"
             variant="filled"
-            placeholder="Louis"
+            placeholder="First name"
           />
           <TextInput
             value={form.lastName}
@@ -107,7 +107,7 @@ const ProfileSettings = () => {
             name="lastName"
             label="Last name"
             variant="filled"
-            placeholder="Knight-Webb"
+            placeholder="Last name"
           />
         </div>
       </SettingsRow>
@@ -123,7 +123,7 @@ const ProfileSettings = () => {
             name="email"
             label="Email"
             variant="filled"
-            placeholder="louis@bloop.ai"
+            placeholder="Email address"
             validate={() => {
               if (!EMAIL_REGEX.test(form.email)) {
                 setForm((prev) => ({

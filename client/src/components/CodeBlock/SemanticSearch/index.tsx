@@ -8,6 +8,8 @@ import { getUpvote, saveUpvote } from '../../../services/api';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import { ResultClick } from '../../../types/results';
 import 'highlight.js/styles/vs2015.css';
+import { hashCode } from '../../../utils';
+import useAnalytics from '../../../hooks/useAnalytics';
 
 type Props = {
   answer: string;
@@ -20,6 +22,8 @@ const SemanticSearch = ({ answer, snippets, onClick }: Props) => {
   const [isUpvoteLoading, setUpvoteLoading] = useState(true);
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
+  const snippetId = useMemo(() => hashCode(answer).toString(), [answer]);
+  const { trackUpvote } = useAnalytics();
 
   const highlightedAnswer = useMemo(() => {
     const code = answer.replace(/`(.*?)`/gs, (match) => {
@@ -38,30 +42,33 @@ const SemanticSearch = ({ answer, snippets, onClick }: Props) => {
     setUpvoteLoading(true);
     setIsUpvote(false);
     setIsDownvote(false);
-    getUpvote({ unique_id: deviceId, snippet_id: '1', query: query }).then(
-      (resp) => {
-        setUpvoteLoading(false);
-        if (resp) {
-          setIsUpvote(resp.is_upvote === true);
-          setIsDownvote(resp.is_upvote === false);
-        }
-      },
-    );
+    getUpvote({
+      unique_id: deviceId,
+      snippet_id: snippetId,
+      query: query,
+    }).then((resp) => {
+      setUpvoteLoading(false);
+      if (resp) {
+        setIsUpvote(resp.is_upvote === true);
+        setIsDownvote(resp.is_upvote === false);
+      }
+    });
   }, [deviceId, query]);
 
   const handleUpvote = useCallback(
     (isUpvote: boolean) => {
       setIsUpvote(isUpvote);
       setIsDownvote(!isUpvote);
+      trackUpvote(isUpvote, query, answer);
       return saveUpvote({
         unique_id: deviceId,
         is_upvote: isUpvote,
         query: query,
-        snippet_id: '1',
-        text: 'lorem ipsum',
+        snippet_id: snippetId,
+        text: answer,
       });
     },
-    [deviceId, query],
+    [deviceId, query, answer],
   );
   return (
     <div className="flex flex-col">
@@ -71,7 +78,7 @@ const SemanticSearch = ({ answer, snippets, onClick }: Props) => {
           dangerouslySetInnerHTML={{ __html: highlightedAnswer }}
         ></span>
         {!isUpvoteLoading && (
-          <div className="flex flex-row absolute top-3 right-3">
+          <div className="flex flex-row absolute top-2 right-3">
             <Button
               onlyIcon
               title="Upvote"

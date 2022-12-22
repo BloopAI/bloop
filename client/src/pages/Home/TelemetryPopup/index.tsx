@@ -53,23 +53,32 @@ const TelemetryPopup = ({ onClose, visible }: Props) => {
               We may retain search and telemetry data to improve the quality of
               bloop search and to investigate abuse. Further details can be
               found within our{' '}
-              <a className="underline" href="https://bloop.ai/terms">
+              <a
+                className="underline"
+                href="https://bloop.ai/terms"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
                 Terms and Conditions
               </a>{' '}
               and{' '}
-              <a className="underline" href="https://bloop.ai/privacy">
+              <a
+                className="underline"
+                href="https://bloop.ai/privacy"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
                 Privacy Policy
               </a>
               .
             </p>
-            <p className="caption text-gray-500"></p>
           </div>
           <div className="flex flex-col gap-4">
             <Button
               variant="primary"
               onClick={() => {
-                // savePlainToStorage(IS_ANALYTICS_ALLOWED_KEY, 'true');
-                // setIsAnalyticsAllowed(true);
+                savePlainToStorage(IS_ANALYTICS_ALLOWED_KEY, 'true');
+                setIsAnalyticsAllowed(true);
                 onClose();
               }}
             >
