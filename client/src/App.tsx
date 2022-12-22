@@ -31,7 +31,6 @@ function App({ deviceContextValue }: Props) {
   const [lastQueryTime, setLastQueryTime] = useState(3);
   const [globalRegex, setGlobalRegex] = useState(false);
 
-  // useRouterSate(router);
   const searchContextValue = useMemo(
     () => ({
       inputValue,

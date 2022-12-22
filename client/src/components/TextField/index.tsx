@@ -9,7 +9,7 @@ type Props = {
 
 const TextField = ({ icon, value, className, active = true }: Props) => {
   return (
-    <span className={`flex items-center gap-2 ${className}`}>
+    <span className={`flex items-center gap-2 ${className ? className : ''}`}>
       {icon}
       <span className="ellipsis">{value}</span>
     </span>

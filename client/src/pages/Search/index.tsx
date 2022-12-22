@@ -61,9 +61,7 @@ const SearchPage = () => {
       case 'results':
         return <ResultsPage resultsData={resultsData} loading={loading} />;
       case 'repo':
-        return (
-          <RepositoryPage repositoryData={resultsData} loading={loading} />
-        );
+        return <RepositoryPage repositoryData={resultsData} />;
       case 'full-result':
         return <ViewResult data={resultsData} />;
     }
