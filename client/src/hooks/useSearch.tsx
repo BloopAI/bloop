@@ -39,13 +39,6 @@ export const useSearch = <T,>(
     globalRegex?: boolean,
     forceSearchType?: SearchType,
   ) => {
-    if (searchType) {
-      setStatus({
-        loading: false,
-        // @ts-ignore
-        data: { data: [], metadata: {}, stats: {} },
-      });
-    }
     setStatus({ loading: true });
 
     const startTime = Date.now();
