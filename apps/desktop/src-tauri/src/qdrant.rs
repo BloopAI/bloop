@@ -1,7 +1,8 @@
 use std::{
     fs::{create_dir_all, write},
     path::Path,
-    process::Command,
+    process::{Child, Command},
+    sync::Mutex,
     time::Duration,
 };
 
@@ -139,7 +140,9 @@ cluster:
     tick_period_ms: 100
 "#;
 
-pub async fn start(cache_dir: impl AsRef<Path>) {
+static QDRANT_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
+
+pub(super) async fn start(cache_dir: impl AsRef<Path>) {
     let cache_dir = cache_dir.as_ref();
     let qdrant_dir = cache_dir.join("qdrant");
     let qd_config_dir = qdrant_dir.join("config");
@@ -159,10 +162,12 @@ pub async fn start(cache_dir: impl AsRef<Path>) {
     .unwrap();
 
     let command = relative_command_path("qdrant").expect("bad bundle");
-    _ = Command::new(command)
+    let child = Command::new(command)
         .current_dir(qdrant_dir)
         .spawn()
         .expect("failed to start qdrant");
+
+    _ = QDRANT_PROCESS.lock().unwrap().insert(child);
 
     use qdrant_client::prelude::*;
     let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url("http://127.0.0.1:6334")))
@@ -178,4 +183,14 @@ pub async fn start(cache_dir: impl AsRef<Path>) {
     }
 
     panic!("qdrant cannot be started");
+}
+
+pub(super) fn shutdown() {
+    QDRANT_PROCESS
+        .lock()
+        .unwrap()
+        .take()
+        .expect("qdrant not started")
+        .kill()
+        .expect("failed to kill qdrant");
 }
