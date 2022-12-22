@@ -92,6 +92,10 @@ async fn main() {
 
             Ok(())
         })
+        .on_window_event(|window_event| match window_event.event() {
+            tauri::WindowEvent::CloseRequested { .. } => qdrant::shutdown(),
+            _ => {}
+        })
         .invoke_handler(tauri::generate_handler![
             show_folder_in_finder,
             get_device_id,
@@ -101,8 +105,6 @@ async fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri application");
-
-    qdrant::shutdown();
 }
 
 #[tauri::command]
