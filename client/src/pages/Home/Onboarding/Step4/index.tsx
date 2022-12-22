@@ -66,7 +66,7 @@ const Step4 = ({ handleNext, handleBack }: Props) => {
       }));
       setNextButtonDisabled(!repos.filter((r) => r.selected).length);
     } else {
-      setNextButtonDisabled(false);
+      setNextButtonDisabled(true);
     }
   }, [repos]);
 
