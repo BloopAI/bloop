@@ -24,6 +24,7 @@ import {
 } from '../../types/results';
 import { mapResults } from '../../mappers/results';
 import useAppNavigation from '../../hooks/useAppNavigation';
+import { SearchType } from '../../types/general';
 import AutocompleteMenu from './AutocompleteMenu';
 import SearchTextInput from './SearchTextInput';
 
@@ -135,7 +136,9 @@ function SearchInput() {
           setFilters([]);
           return;
         }
-        getAutocompleteThrottled(state.inputValue, setOptions);
+        if (searchType === SearchType.REGEX) {
+          getAutocompleteThrottled(state.inputValue, setOptions);
+        }
         const parsedFilters = parseFilters(state.inputValue);
         if (Object.entries(parsedFilters).some((filters) => filters.length)) {
           const newFilters = filters.map((filterItem) => ({
