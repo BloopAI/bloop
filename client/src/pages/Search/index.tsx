@@ -39,7 +39,7 @@ const SearchPage = () => {
   >();
 
   useEffect(() => {
-    if (!data?.data[0] || loading) {
+    if (!data?.data?.[0] || loading) {
       return;
     }
     const resultType = data.data[0].kind;
