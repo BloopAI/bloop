@@ -16,7 +16,7 @@ type Props = {
 
 const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
   const { setSettingsOpen, setBugReportModalOpen } = useContext(UIContext);
-  const { navigateBack } = useAppNavigation();
+  const { navigateBack, navigationHistory } = useAppNavigation();
 
   const backButtonHandler = useCallback(() => {
     navigateBack();
@@ -28,6 +28,8 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
         variant={'tertiary'}
         onlyIcon
         title={'Back'}
+        disabled={!navigationHistory.length}
+        className={!navigationHistory.length ? 'opacity-0' : ''}
         onClick={backButtonHandler}
       >
         <ArrowLeft />

@@ -92,7 +92,7 @@ const RepositoriesSettings = () => {
     useGitHubAuth(() => {
       setGitHubAuth(false);
       setGitHubConnected(true);
-    }, !githubAuth || !isSettingsOpen || settingsSection !== 2);
+    }, !githubAuth || !isSettingsOpen || settingsSection !== 1);
 
   const [isGithubConnected, setGitHubConnected] = useState(false);
 

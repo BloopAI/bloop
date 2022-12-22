@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { buildRepoQuery } from '../utils';
+import { SearchType } from '../types/general';
 import { usePersistentState } from './usePersistentState';
 
 interface NavigationItem {
@@ -10,6 +11,7 @@ interface NavigationItem {
   path?: string;
   page?: number;
   loaded?: boolean;
+  searchType?: SearchType;
 }
 
 type ContextType = {
@@ -24,7 +26,11 @@ type ContextType = {
   ) => void;
   navigateBack: () => void;
   navigateRepoPath: (repo: string, path?: string) => void;
-  navigateSearch: (query: string, page?: number) => void;
+  navigateSearch: (
+    query: string,
+    searchType: SearchType,
+    page?: number,
+  ) => void;
   navigateFullResult: (repo: string, path: string) => void;
   query: string;
 };
@@ -89,8 +95,12 @@ export const AppNavigationProvider = (prop: {
     saveState({ type, query, repo, path, page });
   };
 
-  const navigateSearch = (query: string, page?: number) => {
-    saveState({ type: 'search', page, query: query });
+  const navigateSearch = (
+    query: string,
+    searchType: SearchType,
+    page?: number,
+  ) => {
+    saveState({ type: 'search', page, query, searchType });
   };
 
   const navigateRepoPath = (repo: string, path?: string) => {
@@ -101,11 +111,16 @@ export const AppNavigationProvider = (prop: {
       path = undefined;
     }
 
-    saveState({ type: 'repo', repo, path });
+    saveState({ type: 'repo', repo, path, searchType: SearchType.REGEX });
   };
 
   const navigateFullResult = (repo: string, path: string) => {
-    saveState({ type: 'full-result', repo, path });
+    saveState({
+      type: 'full-result',
+      repo,
+      path,
+      searchType: SearchType.REGEX,
+    });
   };
 
   const navigateBack = () => {

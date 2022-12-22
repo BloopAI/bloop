@@ -149,14 +149,14 @@ impl Semantic {
         let datapoints = chunks
             .par_iter()
             .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
-            .filter_map(|&chunk| {
+            .filter_map(|chunk| {
                 debug!(
                     len = chunk.len(),
                     big_chunk = chunk.len() > 800,
                     "new chunk",
                 );
 
-                match self.embed(chunk) {
+                match self.embed(chunk.data) {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
@@ -164,7 +164,8 @@ impl Semantic {
                             "lang".into() => lang_str.to_ascii_lowercase().into(),
                             "repo_name".into() => repo_name.into(),
                             "relative_path".into() => relative_path.into(),
-                            "snippet".into() => chunk.into(),
+                            "snippet".into() => chunk.data.into(),
+                            "start_line".into() => chunk.range.start.line.to_string().into(),
                         },
                     }),
                     Err(err) => {

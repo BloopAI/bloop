@@ -95,7 +95,7 @@ fn default_qdrant() -> String {
 }
 
 fn default_answer_api_base() -> String {
-    String::from("kw50d42q6a.execute-api.eu-west-1.amazonaws.com/default")
+    String::from("https://kw50d42q6a.execute-api.eu-west-1.amazonaws.com/default")
 }
 
 #[derive(Debug)]
@@ -193,8 +193,8 @@ pub struct Configuration {
 
     #[clap(long, default_value_t = default_answer_api_base())]
     #[serde(default = "default_answer_api_base")]
-    /// Answer API `host` string, with optional `:port`
-    pub answer_api_host: String,
+    /// Answer API `base` string
+    pub answer_api_base: String,
 }
 
 impl Configuration {

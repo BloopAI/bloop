@@ -77,3 +77,8 @@ export enum FullResultModeEnum {
   SIDEBAR,
   MODAL,
 }
+
+export enum SearchType {
+  REGEX,
+  NL,
+}

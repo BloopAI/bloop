@@ -1,4 +1,8 @@
-use crate::intelligence::{Language, TSLanguage};
+use crate::{
+    intelligence::{Language, TSLanguage},
+    text_range::{Point, TextRange},
+};
+
 use tree_sitter::{Parser, QueryCursor};
 
 #[derive(Debug)]
@@ -7,7 +11,19 @@ pub enum ChunkError {
     Query(tree_sitter::QueryError),
 }
 
-pub fn tree_sitter<'a, 'l>(src: &'a str, lang_id: &'l str) -> Result<Vec<&'a str>, ChunkError> {
+#[derive(Debug)]
+pub struct Chunk<'a> {
+    pub data: &'a str,
+    pub range: TextRange,
+}
+
+impl<'a> Chunk<'a> {
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+}
+
+pub fn tree_sitter<'a, 'l>(src: &'a str, lang_id: &'l str) -> Result<Vec<Chunk<'a>>, ChunkError> {
     let (language, query) = match TSLanguage::from_id(lang_id) {
         Language::Supported(config) => {
             let language = config.grammar;
@@ -36,27 +52,59 @@ pub fn tree_sitter<'a, 'l>(src: &'a str, lang_id: &'l str) -> Result<Vec<&'a str
                 // if we have two or more captures, we found docs + content, merge them
                 m.captures
                     .iter()
-                    .map(|c| c.node.byte_range())
-                    .reduce(|acc, x| usize::min(x.start, acc.start)..usize::max(x.end, acc.end))
+                    .map(|c| c.node.range())
+                    .reduce(|mut acc, x| {
+                        acc.start_point.column =
+                            usize::min(x.start_point.column, acc.start_point.column);
+                        acc.start_point.row = usize::min(x.start_point.row, acc.start_point.row);
+                        acc.start_byte = usize::min(x.start_byte, acc.start_byte);
+
+                        acc.end_point.column = usize::max(x.end_point.column, acc.end_point.column);
+                        acc.end_point.row = usize::max(x.end_point.row, acc.end_point.row);
+                        acc.end_byte = usize::max(x.end_byte, acc.end_byte);
+
+                        acc
+                    })
             }
         })
-        .map(|r| &src[r])
+        .map(|r| Chunk {
+            data: &src[r.start_byte..r.end_byte],
+            range: r.into(),
+        })
         .collect();
 
     Ok(chunks)
 }
 
-pub fn trivial(src: &str, size: usize) -> Vec<&str> {
-    let last = src.len() - 1;
+pub fn trivial(src: &str, size: usize) -> Vec<Chunk<'_>> {
     let ends = std::iter::once(0)
         .chain(src.match_indices('\n').map(|(i, _)| i))
-        .step_by(size)
+        .enumerate()
         .collect::<Vec<_>>();
+
+    let s = ends.iter().copied();
+    let last = src.len().saturating_sub(1);
+    let last_line = *ends.last().map(|(idx, _)| idx).unwrap_or(&0);
 
     ends.iter()
         .copied()
-        .zip(ends.iter().copied().skip(1).chain([last]))
-        .filter(|(start, end)| start < end)
-        .map(|(start, end)| &src[start..end])
+        .step_by(size)
+        .zip(s.step_by(size).skip(1).chain([(last_line, last)]))
+        .filter(|((_, start_byte), (_, end_byte))| start_byte < end_byte)
+        .map(|((start_line, start_byte), (end_line, end_byte))| Chunk {
+            data: &src[start_byte..end_byte],
+            range: TextRange {
+                start: Point {
+                    byte: start_byte,
+                    line: start_line,
+                    column: 0,
+                },
+                end: Point {
+                    byte: end_byte,
+                    line: end_line,
+                    column: 0,
+                },
+            },
+        })
         .collect()
 }

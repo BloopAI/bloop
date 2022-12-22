@@ -15,9 +15,11 @@ mod api {
 
     #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
     pub struct Snippet {
+        pub lang: String,
         pub repo_name: String,
         pub relative_path: String,
         pub text: String,
+        pub start_line: usize,
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -65,15 +67,19 @@ pub async fn handle(
             }
 
             api::Snippet {
+                lang: value_to_string(s.remove("lang").unwrap()),
                 repo_name: value_to_string(s.remove("repo_name").unwrap()),
                 relative_path: value_to_string(s.remove("relative_path").unwrap()),
                 text: value_to_string(s.remove("snippet").unwrap()),
+                start_line: value_to_string(s.remove("start_line").unwrap())
+                    .parse::<usize>()
+                    .unwrap(),
             }
         })
         .collect::<Vec<_>>();
 
     let res = reqwest::Client::new()
-        .post(format!("http://{}/q", app.config.answer_api_host))
+        .post(format!("{}/q", app.config.answer_api_base))
         .json(&api::Request {
             query: params.q,
             snippets: snippets.clone(),
