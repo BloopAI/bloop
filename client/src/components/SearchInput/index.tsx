@@ -8,7 +8,6 @@ import React, {
 } from 'react';
 import { useCombobox } from 'downshift';
 import throttle from 'lodash.throttle';
-import TextInput from '../TextInput';
 import { ArrowRevert, Clipboard, TrashCan } from '../../icons';
 import { DropdownWithIcon } from '../Dropdown';
 import { useArrowKeyNavigation } from '../../hooks/useArrowNavigationHook';
@@ -26,6 +25,7 @@ import {
 import { mapResults } from '../../mappers/results';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import AutocompleteMenu from './AutocompleteMenu';
+import SearchTextInput from './SearchTextInput';
 
 const INPUT_POSITION_LEFT = 47;
 
@@ -53,7 +53,8 @@ function SearchInput() {
   const [options, setOptions] = useState<SuggestionType[]>([]);
   const [left] = useState<number>(INPUT_POSITION_LEFT);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { globalRegex, setGlobalRegex } = useContext(SearchContext);
+  const { globalRegex, setGlobalRegex, searchType, setSearchType } =
+    useContext(SearchContext);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
   const arrowNavContainerRef = useArrowKeyNavigation({
     selectors: 'input, .arrow-navigate',
@@ -162,15 +163,18 @@ function SearchInput() {
     },
   });
 
-  const onSubmit = useCallback((val: string) => {
-    navigateSearch(val);
-    closeMenu();
-    setSearchHistory((prev) => {
-      const newHistory = [val, ...prev].slice(0, 4);
-      saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
-      return newHistory;
-    });
-  }, []);
+  const onSubmit = useCallback(
+    (val: string) => {
+      navigateSearch(val, searchType);
+      closeMenu();
+      setSearchHistory((prev) => {
+        const newHistory = [val, ...prev].slice(0, 4);
+        saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
+        return newHistory;
+      });
+    },
+    [searchType],
+  );
 
   const handleClearHistory = useCallback(() => {
     setSearchHistory([]);
@@ -209,7 +213,7 @@ function SearchInput() {
       </Button>
       <div className="w-98">
         <div {...getComboboxProps()}>
-          <TextInput
+          <SearchTextInput
             type="search"
             placeholder="My search"
             regex
@@ -228,6 +232,8 @@ function SearchInput() {
               setGlobalRegex(!globalRegex);
             }}
             regexEnabled={globalRegex}
+            searchType={searchType}
+            onSearchTypeChanged={setSearchType}
           />
         </div>
       </div>

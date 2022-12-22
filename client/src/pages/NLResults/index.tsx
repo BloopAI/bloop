@@ -12,17 +12,27 @@ import Filters from '../../components/Filters';
 import { SearchContext } from '../../context/searchContext';
 import { mapFiltersData } from '../../mappers/filter';
 import { mapFileResult, mapRanges, mapResults } from '../../mappers/results';
-import { FullResultModeEnum } from '../../types/general';
-import { UIContext } from '../../context/uiContext';
+import { FullResultModeEnum, SearchType } from '../../types/general';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import ResultModal from '../ResultModal';
 import { useSearch } from '../../hooks/useSearch';
-import { FileSearchResponse, GeneralSearchResponse } from '../../types/api';
+import {
+  FileSearchResponse,
+  GeneralSearchResponse,
+  NLSearchResponse,
+} from '../../types/api';
 import ErrorFallback from '../../components/ErrorFallback';
 import { getHoverables } from '../../services/api';
+import NoResults from '../Results/NoResults';
+import { ResultsPreviewSkeleton } from '../Skeleton';
+import Pagination from '../../components/Pagination';
+import SemanticSearch from '../../components/CodeBlock/SemanticSearch';
 import PageHeader from './PageHeader';
-import ResultsList from './ResultsList';
-import NoResults from './NoResults';
+
+type Props = {
+  resultsData?: NLSearchResponse;
+  loading: boolean;
+};
 
 const mockQuerySuggestions = [
   'repo:cobra-ats  error:“no apples”',
@@ -32,25 +42,13 @@ const mockQuerySuggestions = [
   'lang:tsx apples',
 ];
 
-type Props = {
-  resultsData: GeneralSearchResponse;
-  loading: boolean;
-};
-
 const ResultsPage = ({ resultsData, loading }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
-  const [totalCount, setTotalCount] = useState(1);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [results, setResults] = useState<ResultType[]>([]);
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.SIDEBAR,
   );
   const [openResult, setOpenResult] = useState<FullResult | null>(null);
-  const { filters, setFilters, inputValue, globalRegex, searchType } =
-    useContext(SearchContext);
-  const { setSymbolsCollapsed } = useContext(UIContext);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
@@ -59,31 +57,18 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     setIsFiltersOpen((prev) => !prev);
   }, []);
 
-  const onlySymbolResults = useMemo(
-    () =>
-      results.every(
-        (item) =>
-          item.type === ResultItemType.CODE &&
-          item.snippets.every((sItem) => sItem.symbols?.length),
-      ),
-    [results, page],
-  );
-
   const onResultClick = useCallback((repo: string, path?: string) => {
     if (path) {
-      fileModalSearchQuery(`open:true repo:${repo} path:${path}`);
+      fileModalSearchQuery(
+        `open:true repo:${repo} path:${path}`,
+        0,
+        false,
+        SearchType.REGEX,
+      );
     } else {
       navigateRepoPath(repo);
     }
   }, []);
-
-  const handlePageChange = useCallback(
-    (page: number) => {
-      setPage(page);
-      navigateSearch(inputValue, searchType, page);
-    },
-    [inputValue, globalRegex, searchType],
-  );
 
   const handleModeChange = useCallback((m: FullResultModeEnum) => {
     setMode(m);
@@ -99,19 +84,10 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     setOpenResult(null);
   }, [mode]);
 
-  useEffect(() => {
-    setSymbolsCollapsed(onlySymbolResults);
-  }, [onlySymbolResults]);
-
-  useEffect(() => {
-    if (page === 0) {
-      setTotalPages(resultsData.metadata.page_count!);
-      setTotalCount(resultsData.metadata.total_count!);
-    }
-    setFilters(mapFiltersData(resultsData.stats, filters));
-    setResults(mapResults(resultsData as any));
-    setPage(resultsData.metadata.page!);
-  }, [resultsData]);
+  // useEffect(() => {
+  //   // setFilters(mapFiltersData(resultsData.stats, filters));
+  //   // setResults(mapResults(resultsData));
+  // }, [resultsData]);
 
   useEffect(() => {
     if (fileResultData) {
@@ -128,6 +104,25 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     }
   }, [fileResultData]);
 
+  const renderResults = () => {
+    if (loading) {
+      return <ResultsPreviewSkeleton />;
+    }
+    if (!resultsData) {
+      return <NoResults suggestions={mockQuerySuggestions} />;
+    }
+    return (
+      <SemanticSearch
+        snippets={resultsData.snippets.map((item) => ({
+          path: item.relative_path,
+          code: item.text,
+          repoName: item.repo_name,
+        }))}
+        answer={resultsData.selection.answer}
+        onClick={onResultClick}
+      />
+    );
+  };
   return (
     <>
       <Filters isOpen={isFiltersOpen} toggleOpen={toggleFiltersOpen} />
@@ -135,23 +130,24 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
         className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content"
         ref={ref}
       >
-        <PageHeader
-          resultsNumber={totalCount || results.length}
-          showCollapseControls={onlySymbolResults}
-          loading={loading}
-        />
-        {results.length || loading ? (
-          <ResultsList
-            results={results}
-            onResultClick={onResultClick}
-            page={page}
-            setPage={handlePageChange}
-            totalPages={totalPages}
-            loading={loading}
-          />
-        ) : (
-          <NoResults suggestions={mockQuerySuggestions} />
-        )}
+        <PageHeader resultsNumber={1} loading={loading} />
+        {renderResults()}
+        {/*{resultsData || loading ? (*/}
+        {/*  loading ? (*/}
+        {/*    <ResultsPreviewSkeleton />*/}
+        {/*  ) : (*/}
+        {/*    <SemanticSearch*/}
+        {/*      snippets={resultsData.snippets.map((item) => ({*/}
+        {/*        path: item.path,*/}
+        {/*        code: item.text,*/}
+        {/*      }))}*/}
+        {/*      answer={resultsData.selection.answer}*/}
+        {/*      onClick={() => onResultClick('', '')}*/}
+        {/*    />*/}
+        {/*  )*/}
+        {/*) : (*/}
+        {/*  <NoResults suggestions={mockQuerySuggestions} />*/}
+        {/*)}*/}
       </div>
 
       {openResult ? (
