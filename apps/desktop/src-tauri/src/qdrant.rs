@@ -33,7 +33,7 @@ storage:
 
   performance:
     # Number of parallel threads used for search operations. If 0 - auto selection.
-    max_search_threads: 0
+    max_search_threads: 4
 
   optimizers:
     # The minimal fraction of deleted vectors in a segment, required to perform segment optimization
@@ -50,7 +50,7 @@ storage:
     # It is recommended to select default number of segments as a factor of the number of search threads,
     # so that each segment would be handled evenly by one of the threads.
     # If `default_segment_number = 0`, will be automatically selected by the number of available CPUs
-    default_segment_number: 0
+    default_segment_number: 2
 
     # Do not create segments larger this size (in KiloBytes).
     # Large segments might require disproportionately long indexation times,
@@ -111,9 +111,8 @@ service:
 
   # gRPC port to bind the service on.
   # If `null` - gRPC is disabled. Default: null
-  grpc_port: 6334
   # Uncomment to enable gRPC:
-  # grpc_port: 6334
+  grpc_port: 6334
 
   # Enable CORS headers in REST API.
   # If enabled, browsers would be allowed to query REST endpoints regardless of query origin.
