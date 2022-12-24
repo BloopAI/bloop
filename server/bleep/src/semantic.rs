@@ -140,10 +140,7 @@ impl Semantic {
         buffer: &str,
         lang_str: &str,
     ) {
-        let chunks = chunk::tree_sitter(buffer, lang_str).unwrap_or_else(|e| {
-            debug!(?e, %lang_str, "failed to chunk, falling back to trivial chunker");
-            chunk::trivial(buffer, 15) // line-wise chunking, 15 lines per chunk
-        });
+        let chunks = chunk::trivial(buffer, 15); // line-wise chunking, 15 lines per chunk
 
         debug!(chunk_count = chunks.len(), "found chunks");
         let datapoints = chunks
