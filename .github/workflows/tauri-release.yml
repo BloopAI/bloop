@@ -29,11 +29,11 @@ jobs:
 
       - name: Check Formatting
         run: |
-          cargo fmt -p app -- --check
+          cargo fmt -p bloop -- --check
 
       - name: Run tests
         run: |
-          cargo test -p app --verbose
+          cargo test -p bloop --verbose
 
   build-mac-linux-ctags:
     strategy:

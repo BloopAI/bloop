@@ -7,7 +7,7 @@ members = [
 [profile.release]
 debug = false
 strip = "debuginfo"
-lto = true
+#lto = true
 
 [profile.profiler]
 inherits = "release"

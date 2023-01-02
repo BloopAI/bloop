@@ -1,11 +1,11 @@
 [package]
-name = "app"
+name = "bloop"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "Search code. Fast."
+authors = ["Bloop AI Developers"]
 license = ""
 repository = ""
-default-run = "app"
+default-run = "bloop"
 edition = "2021"
 rust-version = "1.57"
 

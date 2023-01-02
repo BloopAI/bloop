@@ -1,7 +1,8 @@
 use std::{
     fs::{create_dir_all, write},
     path::Path,
-    process::Command,
+    process::{Child, Command},
+    sync::Mutex,
     time::Duration,
 };
 
@@ -32,7 +33,7 @@ storage:
 
   performance:
     # Number of parallel threads used for search operations. If 0 - auto selection.
-    max_search_threads: 0
+    max_search_threads: 4
 
   optimizers:
     # The minimal fraction of deleted vectors in a segment, required to perform segment optimization
@@ -49,7 +50,7 @@ storage:
     # It is recommended to select default number of segments as a factor of the number of search threads,
     # so that each segment would be handled evenly by one of the threads.
     # If `default_segment_number = 0`, will be automatically selected by the number of available CPUs
-    default_segment_number: 0
+    default_segment_number: 2
 
     # Do not create segments larger this size (in KiloBytes).
     # Large segments might require disproportionately long indexation times,
@@ -110,9 +111,8 @@ service:
 
   # gRPC port to bind the service on.
   # If `null` - gRPC is disabled. Default: null
-  grpc_port: 6334
   # Uncomment to enable gRPC:
-  # grpc_port: 6334
+  grpc_port: 6334
 
   # Enable CORS headers in REST API.
   # If enabled, browsers would be allowed to query REST endpoints regardless of query origin.
@@ -139,7 +139,9 @@ cluster:
     tick_period_ms: 100
 "#;
 
-pub async fn start(cache_dir: impl AsRef<Path>) {
+static QDRANT_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
+
+pub(super) async fn start(cache_dir: impl AsRef<Path>) {
     let cache_dir = cache_dir.as_ref();
     let qdrant_dir = cache_dir.join("qdrant");
     let qd_config_dir = qdrant_dir.join("config");
@@ -159,10 +161,12 @@ pub async fn start(cache_dir: impl AsRef<Path>) {
     .unwrap();
 
     let command = relative_command_path("qdrant").expect("bad bundle");
-    _ = Command::new(command)
+    let child = Command::new(command)
         .current_dir(qdrant_dir)
         .spawn()
         .expect("failed to start qdrant");
+
+    _ = QDRANT_PROCESS.lock().unwrap().insert(child);
 
     use qdrant_client::prelude::*;
     let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url("http://127.0.0.1:6334")))
@@ -178,4 +182,14 @@ pub async fn start(cache_dir: impl AsRef<Path>) {
     }
 
     panic!("qdrant cannot be started");
+}
+
+pub(super) fn shutdown() {
+    QDRANT_PROCESS
+        .lock()
+        .unwrap()
+        .take()
+        .expect("qdrant not started")
+        .kill()
+        .expect("failed to kill qdrant");
 }
