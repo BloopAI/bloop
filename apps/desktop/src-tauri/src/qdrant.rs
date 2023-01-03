@@ -1,10 +1,10 @@
 use std::{
     fs::{create_dir_all, write},
-    path::Path,
     process::{Child, Command},
-    sync::Mutex,
     time::Duration,
 };
+
+use tauri::{plugin::Plugin, Runtime};
 
 use super::relative_command_path;
 
@@ -139,35 +139,72 @@ cluster:
     tick_period_ms: 100
 "#;
 
-static QDRANT_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
+#[derive(Default)]
+pub(super) struct QdrantSupervisor {
+    child: Option<Child>,
+}
 
-pub(super) async fn start(cache_dir: impl AsRef<Path>) {
-    let cache_dir = cache_dir.as_ref();
-    let qdrant_dir = cache_dir.join("qdrant");
-    let qd_config_dir = qdrant_dir.join("config");
-    create_dir_all(&qd_config_dir).unwrap();
-    write(
-        qd_config_dir.join("config.yaml"),
-        &QDRANT_CONFIG
-            .replace(
-                "{{ STORAGE }}",
-                &qdrant_dir.join("storage").to_string_lossy(),
-            )
-            .replace(
-                "{{ SNAPSHOTS }}",
-                &qdrant_dir.join("snapshots").to_string_lossy(),
-            ),
-    )
-    .unwrap();
+impl<R> Plugin<R> for QdrantSupervisor
+where
+    R: Runtime,
+{
+    fn name(&self) -> &'static str {
+        "qdrant"
+    }
 
-    let command = relative_command_path("qdrant").expect("bad bundle");
-    let child = Command::new(command)
-        .current_dir(qdrant_dir)
-        .spawn()
-        .expect("failed to start qdrant");
+    fn initialize(
+        &mut self,
+        app: &tauri::AppHandle<R>,
+        _config: serde_json::Value,
+    ) -> tauri::plugin::Result<()> {
+        let cache_dir = app.path_resolver().app_cache_dir().unwrap();
+        let qdrant_dir = cache_dir.join("qdrant");
+        let qd_config_dir = qdrant_dir.join("config");
+        create_dir_all(&qd_config_dir).unwrap();
+        write(
+            qd_config_dir.join("config.yaml"),
+            &QDRANT_CONFIG
+                .replace(
+                    "{{ STORAGE }}",
+                    &qdrant_dir.join("storage").to_string_lossy(),
+                )
+                .replace(
+                    "{{ SNAPSHOTS }}",
+                    &qdrant_dir.join("snapshots").to_string_lossy(),
+                ),
+        )
+        .unwrap();
 
-    _ = QDRANT_PROCESS.lock().unwrap().insert(child);
+        let command = relative_command_path("qdrant").expect("bad bundle");
+        self.child = Some(
+            Command::new(command)
+                .current_dir(qdrant_dir)
+                .spawn()
+                .expect("failed to start qdrant"),
+        );
 
+        tokio::task::block_in_place(move || {
+            tokio::runtime::Handle::current().block_on(wait_for_qdrant())
+        });
+
+        Ok(())
+    }
+
+    fn on_event(&mut self, _app: &tauri::AppHandle<R>, event: &tauri::RunEvent) {
+        use tauri::RunEvent::Exit;
+        match event {
+            Exit => self
+                .child
+                .take()
+                .expect("qdrant not started")
+                .kill()
+                .expect("failed to kill qdrant"),
+            _ => (),
+        }
+    }
+}
+
+async fn wait_for_qdrant() {
     use qdrant_client::prelude::*;
     let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url("http://127.0.0.1:6334")))
         .await
@@ -182,14 +219,4 @@ pub(super) async fn start(cache_dir: impl AsRef<Path>) {
     }
 
     panic!("qdrant cannot be started");
-}
-
-pub(super) fn shutdown() {
-    QDRANT_PROCESS
-        .lock()
-        .unwrap()
-        .take()
-        .expect("qdrant not started")
-        .kill()
-        .expect("failed to kill qdrant");
 }
