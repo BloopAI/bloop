@@ -3,7 +3,6 @@
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-22.05";
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.flake-utils.inputs.nixpkgs.follows = "nixpkgs";
 
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem
@@ -21,27 +20,31 @@
               rustup default stable >&2
               pnpm install >&2
             '';
-            buildInputs = with pkgs; [
+            buildInputs = with pkgs; ([
               llvmPackages_14.stdenv
               libclang
               clang
               rustup
               nodePackages.pnpm
-              appimage-run
-              appimage-run-tests
-              appimagekit
               dbus.dev
               pkg-config
               openssl
               glib.dev
-              gtk3.dev
               libsoup.dev
-              webkitgtk
-              dmidecode
               cmake
               openblas
               protobuf
-            ];
+            ] ++ lib.optionals pkgs.stdenv.isLinux [
+	      gtk3.dev
+	      webkitgtk
+	      dmidecode
+	      appimage-run
+	      appimagekit
+	    ] ++ lib.optionals pkgs.stdenv.isDarwin [
+              darwin.apple_sdk.frameworks.Carbon
+              darwin.apple_sdk.frameworks.WebKit
+              darwin.apple_sdk.frameworks.AppKit
+	    ]);
 
             LIBCLANG_PATH = "${libclang.lib}/lib";
             BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${libclang.lib}/lib/clang/${lib.getVersion clang}/include";
