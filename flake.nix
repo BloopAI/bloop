@@ -26,15 +26,15 @@
               clang
               rustup
               nodePackages.pnpm
-              dbus.dev
               pkg-config
               openssl
               glib.dev
-              libsoup.dev
               cmake
               openblas
               protobuf
             ] ++ lib.optionals pkgs.stdenv.isLinux [
+              dbus.dev
+              libsoup.dev
 	      gtk3.dev
 	      webkitgtk
 	      dmidecode
