@@ -3470,6 +3470,7 @@ dependencies = [
 [[package]]
 name = "ort"
 version = "1.13.2"
+source = "git+https://github.com/rsdy/ort?branch=arm64-convert-fix#153f45d8722e4c74a87a6bb1f87564ae1aea23ce"
 dependencies = [
  "casey",
  "flate2",
