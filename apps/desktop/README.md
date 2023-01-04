@@ -9,6 +9,7 @@ To build the Tauri app you need the following dependencies:
 - `rustup`
 - `clang` `cmake` `wget`
 - `openBLAS`
+- `protobuf`
 
 Linux users need to ensure that the following are present:
 - `AppImageKit`
@@ -16,7 +17,6 @@ Linux users need to ensure that the following are present:
 - `dbus`
 - `glib` `gtk3` (including `webkit-gtk`)
 - `pango`
-- `protobuf`
  
 ## Setup
 
