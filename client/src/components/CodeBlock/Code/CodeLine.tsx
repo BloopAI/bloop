@@ -47,7 +47,17 @@ const CodeLine = ({
       setTimeout(() => setHighlighted(false), 2000);
     }
   }, [shouldHighlight]);
-  const renderBlameLine = () => {
+
+  const blameStyle = useMemo(() => {
+    if (blameLine?.start) {
+      return '';
+    } else if (blameLine?.start === false) {
+      return 'p-0 pb-1 align-top';
+    }
+    return '';
+  }, [blameLine?.start]);
+
+  const renderBlameLine = useMemo(() => {
     if (blame) {
       if (blameLine?.commit && blameLine?.start) {
         return (
@@ -75,21 +85,12 @@ const CodeLine = ({
         );
       }
     }
-    return <td className={`p-0 ${getBlameStyle()}`}></td>;
-  };
-
-  const getBlameStyle = () => {
-    if (blameLine?.start) {
-      return '';
-    } else if (blameLine?.start === false) {
-      return 'p-0 pb-1 align-top';
-    }
-    return '';
-  };
+    return <td className={`p-0 ${blameStyle}`}></td>;
+  }, [blame, blameLine]);
 
   const style = useMemo(
-    () => ({ lineHeight: lineHidden ? '0' : '' }),
-    [lineHidden],
+    () => ({ lineHeight: lineHidden ? '0' : '', ...stylesGenerated }),
+    [lineHidden, stylesGenerated],
   );
   const [actualLineNumber] = useState(lineNumber);
 
@@ -100,9 +101,9 @@ const CodeLine = ({
       } ${
         blameLine?.start && lineNumber !== 0 ? ' border-t border-gray-700' : ''
       }`}
-      style={{ ...style, ...stylesGenerated }}
+      style={style}
     >
-      {renderBlameLine()}
+      {renderBlameLine}
       {symbols?.length ? (
         <td
           className={`peer text-center text-purple ${lineHidden ? 'p-0' : ''}`}
@@ -140,18 +141,14 @@ const CodeLine = ({
       {showLineNumbers && (
         <td
           data-line={lineNumber + 1}
-          className={`text-gray-500 min-w-6 text-right select-none pr-0 leading-5 ${getBlameStyle()} ${
+          className={`text-gray-500 min-w-6 text-right select-none pr-0 leading-5 ${blameStyle} ${
             lineHidden ? 'p-0' : ''
           } ${hoverEffect ? 'group-hover:text-gray-300' : ''}
            ${lineHidden ? '' : 'before:content-[attr(data-line)]'}
           `}
         ></td>
       )}
-      <td
-        className={`text-gray-500 ${
-          lineHidden ? 'p-0' : ''
-        } ${getBlameStyle()}`}
-      >
+      <td className={`text-gray-500 ${lineHidden ? 'p-0' : ''} ${blameStyle}`}>
         {lineFoldable && (
           <FoldButton
             onClick={(folded: boolean) => {
