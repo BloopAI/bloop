@@ -61,7 +61,12 @@ const SearchFile = ({
         e.preventDefault();
         onFileClick(
           repoName,
-          breadcrumbsItemPath(pathParts, pathIndex, isWindowsPath(filePath)),
+          breadcrumbsItemPath(
+            pathParts,
+            pathIndex,
+            isWindowsPath(filePath),
+            pathIndex === pathParts.length - 1,
+          ),
         );
       };
       pp.push(pathPart);
