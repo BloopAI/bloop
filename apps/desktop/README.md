@@ -37,4 +37,4 @@ Alternatively, to run the app in dev mode:
 npm run start-app
 ```
 
-If the build should fail, please delete all `node_modules` directories you may find and try again. `npm` is sometimes obtuse with caches.
+If the build fails, delete all `node_modules` directories and try again.
