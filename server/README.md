@@ -9,6 +9,7 @@ A cargo workspace which contains `bleep`, the Rust package which powers bloop's 
 Dependencies:
  - [`Rust`](https://rustup.rs/)
  - `openssl`
+ - `onnxruntime`
  - `Universal Ctags`
 
 Follow [these instructions](https://github.com/universal-ctags/ctags) and verify the installation with `ctags --version`. You should see something like this:

@@ -10,6 +10,7 @@ To build the Tauri app you need the following dependencies:
 - `clang` `cmake` `wget`
 - `openBLAS`
 - `protobuf`
+- `onnxruntime`
 
 Linux users need to ensure that the following are present:
 - `AppImageKit`
