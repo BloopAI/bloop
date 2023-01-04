@@ -58,8 +58,8 @@
         "entitlements": null,
         "exceptionDomain": "",
         "frameworks": [],
-        "providerShortName": "3J228S55SF",
-        "signingIdentity": "Developer ID Application: Bloop AI Limited (3J228S55SF)"
+        "providerShortName": null,
+        "signingIdentity": null
       },
       "resources": [
         "config.json",

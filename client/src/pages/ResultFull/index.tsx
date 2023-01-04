@@ -10,11 +10,16 @@ import { getHoverables } from '../../services/api';
 import { mapFileResult, mapRanges } from '../../mappers/results';
 import ShareFileModal from '../../components/ShareFileModal';
 import { FullResult } from '../../types/results';
-import { splitPathForBreadcrumbs } from '../../utils';
+import {
+  breadcrumbsItemPath,
+  isWindowsPath,
+  splitPathForBreadcrumbs,
+} from '../../utils';
 import ErrorFallback from '../../components/ErrorFallback';
 import Skeleton from '../Skeleton';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import { FileTreeFileType } from '../../types';
+import { getFileName } from '../../utils/file';
 
 type Props = {
   data: any;
@@ -42,7 +47,7 @@ const ResultFull = ({ data }: Props) => {
         siblings: [
           ...item.data.siblings,
           {
-            name: item.data.relative_path.split('/').reverse()[0],
+            name: getFileName(item.data.relative_path),
             entry_data: {
               File: {
                 lang: item.data.lang,
@@ -75,6 +80,7 @@ const ResultFull = ({ data }: Props) => {
     },
     [result],
   );
+
   const breadcrumbs = useMemo(() => {
     if (!result) {
       return [];
@@ -82,9 +88,15 @@ const ResultFull = ({ data }: Props) => {
     return splitPathForBreadcrumbs(
       result.relativePath,
       (e, item, index, pathParts) => {
-        const path = pathParts.slice(0, index).join('/');
         const isFile = index === pathParts.length - 1;
-        navigateTo(isFile ? path : `${path}/`, isFile);
+        const path = breadcrumbsItemPath(
+          pathParts,
+          index,
+          isWindowsPath(currentPath),
+          isFile,
+        );
+
+        navigateTo(isFile ? path : `${path}`, isFile);
       },
     );
   }, [result?.relativePath]);

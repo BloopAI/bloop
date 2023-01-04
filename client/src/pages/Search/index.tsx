@@ -116,12 +116,7 @@ const SearchPage = () => {
           />
         );
       case 'repo':
-        return (
-          <RepositoryPage
-            repositoryData={resultsData as DirectorySearchResponse}
-            loading={loading}
-          />
-        );
+        return <RepositoryPage repositoryData={resultsData} />;
       case 'full-result':
         return <ViewResult data={resultsData} />;
       case 'nl-result':

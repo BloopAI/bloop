@@ -7,7 +7,12 @@ import React, {
   useState,
 } from 'react';
 import * as Sentry from '@sentry/react';
-import { FullResult, ResultItemType, ResultType } from '../../types/results';
+import {
+  FullResult,
+  ResultClick,
+  ResultItemType,
+  ResultType,
+} from '../../types/results';
 import Filters from '../../components/Filters';
 import { SearchContext } from '../../context/searchContext';
 import { mapFiltersData } from '../../mappers/filter';
@@ -69,13 +74,16 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     [results, page],
   );
 
-  const onResultClick = useCallback((repo: string, path?: string) => {
-    if (path) {
-      fileModalSearchQuery(`open:true repo:${repo} path:${path}`);
-    } else {
-      navigateRepoPath(repo);
-    }
-  }, []);
+  const onResultClick = useCallback<ResultClick>(
+    (repo, path) => {
+      if (path && !(path.endsWith('/') || path.endsWith('\\'))) {
+        fileModalSearchQuery(`open:true repo:${repo} path:${path}`);
+      } else {
+        navigateRepoPath(repo, path);
+      }
+    },
+    [fileModalSearchQuery, navigateRepoPath],
+  );
 
   const handlePageChange = useCallback(
     (page: number) => {

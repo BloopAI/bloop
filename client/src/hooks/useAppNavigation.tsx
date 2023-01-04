@@ -12,6 +12,7 @@ interface NavigationItem {
   page?: number;
   loaded?: boolean;
   searchType?: SearchType;
+  pathParams?: Record<string, string>;
 }
 
 type ContextType = {
@@ -25,7 +26,11 @@ type ContextType = {
     page?: number,
   ) => void;
   navigateBack: () => void;
-  navigateRepoPath: (repo: string, path?: string) => void;
+  navigateRepoPath: (
+    repo: string,
+    path?: string,
+    pathParams?: Record<string, string>
+  ) => void;
   navigateSearch: (
     query: string,
     searchType: SearchType,
@@ -82,7 +87,14 @@ export const AppNavigationProvider = (prop: {
 
   const saveState = (navigationItem: NavigationItem) => {
     setNavigation((prevState) => [...prevState, navigationItem]);
-    navigateBrowser('/search#' + buildQuery(navigationItem));
+    navigateBrowser(
+      '/search' +
+        (navigationItem.pathParams
+          ? '?' + new URLSearchParams(navigationItem.pathParams).toString()
+          : '') +
+        '#' +
+        buildQuery(navigationItem),
+    );
   };
 
   const navigate = (
@@ -103,7 +115,11 @@ export const AppNavigationProvider = (prop: {
     saveState({ type: 'search', page, query, searchType });
   };
 
-  const navigateRepoPath = (repo: string, path?: string) => {
+  const navigateRepoPath = (
+    repo: string,
+    path?: string,
+    pathParams?: Record<string, string>,
+  ) => {
     /*
      * Handling root path for navigation
      * */
@@ -111,7 +127,13 @@ export const AppNavigationProvider = (prop: {
       path = undefined;
     }
 
-    saveState({ type: 'repo', repo, path, searchType: SearchType.REGEX });
+    saveState({
+      type: 'repo',
+      repo,
+      path,
+      searchType: SearchType.REGEX ,
+      pathParams,
+    });
   };
 
   const navigateFullResult = (repo: string, path: string) => {

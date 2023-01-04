@@ -120,6 +120,7 @@ export const mapDirResult = (directoryItem: DirectoryItem) => {
       directoryItem.data.relative_path,
     ),
     relativePath: directoryItem.data.relative_path,
+    repoRef: directoryItem.data.repo_ref,
   };
 };
 
@@ -151,7 +152,10 @@ export const mapFileResult = (fileItem: FileItem) => {
     code: fileItem.data.contents,
     hoverableRanges: [],
     repoName: fileItem.data.repo_name,
-    fileTree: mapFileTree(fileItem.data.siblings, fileItem.data.relative_path),
+    fileTree: mapFileTree(
+      fileItem.data.siblings || [],
+      fileItem.data.relative_path,
+    ),
   };
 };
 

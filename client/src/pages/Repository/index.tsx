@@ -1,19 +1,21 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { SearchContext } from '../../context/searchContext';
-import { FileTreeFileType, Repository } from '../../types';
+import { FileTreeFileType, Repository, RepoSource } from '../../types';
 import Skeleton from '../Skeleton';
 import { mapDirResult } from '../../mappers/results';
 import { DirectorySearchResponse } from '../../types/api';
 import FileIcon from '../../components/FileIcon';
 import Filters from '../../components/Filters';
+import { arrayUnique } from '../../utils';
+import { getRepoSource } from '../../utils/file';
+import { GitHubLogo, Repository as RepositoryIcon } from '../../icons';
 import RepositoryOverview from './RepositoryOverview';
 
 type Props = {
   repositoryData: DirectorySearchResponse;
-  loading: boolean;
 };
 
-const RepositoryPage = ({ repositoryData, loading }: Props) => {
+const RepositoryPage = ({ repositoryData }: Props) => {
   const [repository, setRepository] = useState<Repository | undefined>();
   const [initialLoad, setInitialLoad] = useState(true);
   const { setFilters } = useContext(SearchContext);
@@ -21,6 +23,7 @@ const RepositoryPage = ({ repositoryData, loading }: Props) => {
   useEffect(() => {
     setInitialLoad(false);
   }, []);
+
   useEffect(() => {
     if (!repositoryData) {
       return;
@@ -37,6 +40,7 @@ const RepositoryPage = ({ repositoryData, loading }: Props) => {
       branches: [],
       followers: 1,
       currentPath: data.relativePath,
+      source: getRepoSource(data.repoRef),
     });
   }, [repositoryData]);
 
@@ -45,16 +49,14 @@ const RepositoryPage = ({ repositoryData, loading }: Props) => {
       return;
     }
 
-    const fileFilters = repository.files
-      .map((repoFile) => {
-        if (repoFile.type === FileTreeFileType.FILE && repoFile.lang) {
-          return {
-            lang: repoFile.lang,
-            name: repoFile.name,
-          };
-        }
-      })
-      .filter(Boolean);
+    const fileFilters = arrayUnique(repository.files, 'lang')
+      .filter(
+        (repoFile) => repoFile.type === FileTreeFileType.FILE && repoFile.lang,
+      )
+      .map((repoFile) => ({
+        lang: repoFile.lang,
+        name: repoFile.name,
+      }));
 
     setFilters([
       {
@@ -79,8 +81,12 @@ const RepositoryPage = ({ repositoryData, loading }: Props) => {
         <div className="p-8 flex flex-row gap-6 justify-between select-none cursor-default">
           <span className="flex flex-col gap-3">
             <span className="flex flex-row gap-4 items-center">
-              <span className="bg-gray-800 rounded-md p-1 select-none">
-                <img src={'/repo_logo.png'} />
+              <span className="bg-gray-800 rounded-md p-1 w-7 h-7 select-none">
+                {repository.source === RepoSource.LOCAL ? (
+                  <RepositoryIcon />
+                ) : (
+                  <GitHubLogo />
+                )}
               </span>
               <span className="flex flex-col">
                 <span>{repository.name}</span>

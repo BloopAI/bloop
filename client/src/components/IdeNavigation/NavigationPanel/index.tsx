@@ -10,10 +10,16 @@ type Props = {
 const NavigationPanel = ({ repoName, children }: Props) => {
   return (
     <div className="flex divide-y divide-gray-800 flex-col border-r border-gray-800 w-90 h-full select-none">
-      <span className="flex items-center gap-3 text-gray-300 py-6 px-8 bg-gray-900">
-        <TextField value={repoName} icon={<GitHubLogo />} />
-      </span>
-      <span className="flex flex-col gap-3">{children}</span>
+      <div className="w-full border-b border-gray-700 flex justify-between py-7 px-8 select-none">
+        <TextField
+          value={repoName}
+          icon={<GitHubLogo />}
+          className={'ellipsis'}
+        />
+      </div>
+      <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
+        {children}
+      </div>
     </div>
   );
 };

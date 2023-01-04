@@ -18,12 +18,7 @@ export const RepositoryView = () => {
       <Routes>
         <Route
           path="/"
-          element={
-            <RepositoryPage
-              repositoryData={codeSearch as any}
-              loading={false}
-            />
-          }
+          element={<RepositoryPage repositoryData={codeSearch as any} />}
         />
       </Routes>
     </MemoryRouter>

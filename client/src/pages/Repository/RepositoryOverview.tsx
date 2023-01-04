@@ -6,7 +6,7 @@ import { FileTreeFileType, Repository } from '../../types';
 import RepositoryFiles from '../../components/RepositoryFiles';
 import { useSearch } from '../../hooks/useSearch';
 import { FileSearchResponse } from '../../types/api';
-import { sortFiles } from '../../utils/file';
+import { cleanRepoName, sortFiles } from '../../utils/file';
 import { isWindowsPath } from '../../utils';
 import { highlightCode } from '../../utils/prism';
 import useAppNavigation from '../../hooks/useAppNavigation';
@@ -82,13 +82,8 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
         <RepositoryFiles
           files={sortedFiles}
           onClick={fileClick}
-          currentPath={
-            repository.currentPath
-              ? `${repository.name}${
-                  isWindowsPath(repository.currentPath) ? '\\' : '/'
-                }${repository.currentPath.slice(0, -1)}`
-              : repository.currentPath.slice(0, -1)
-          }
+          repositoryName={cleanRepoName(repository.name)}
+          currentPath={repository.currentPath.slice(0, -1)}
         />
       </div>
       {readme ? (
