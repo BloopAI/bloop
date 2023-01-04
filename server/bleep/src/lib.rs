@@ -248,7 +248,7 @@ impl Application {
         }
 
         let config = Arc::new(config);
-        let semantic = Semantic::new(&config.model_dir, &config.qdrant_url).await;
+        let semantic = Semantic::new(&config.model_dir, &config.qdrant_url).await?;
 
         Ok(Self {
             indexes: Indexes::new(config.clone(), semantic.clone())?.into(),
