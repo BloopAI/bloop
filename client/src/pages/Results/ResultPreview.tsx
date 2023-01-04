@@ -1,18 +1,25 @@
-import { useContext } from 'react';
+import { useContext, useRef } from 'react';
 import CodeBlockSearch from '../../components/CodeBlock/Search';
 import SearchRepo from '../../components/CodeBlock/SearchRepo';
 import { ResultClick, ResultItemType, ResultType } from '../../types/results';
 import SearchFile from '../../components/CodeBlock/SearchFile';
 import { UIContext } from '../../context/uiContext';
+import useIsOnScreen from '../../hooks/useIsOnScreen';
 
 type Props = {
   result: ResultType;
   onClick: ResultClick;
 };
 
+let wasRendered = false;
+
 const ResultPreview = ({ result, onClick }: Props) => {
   const { symbolsCollapsed } = useContext(UIContext);
+  const ref = useRef(null);
+  const isOnScreen = useIsOnScreen(ref);
+
   const getItem = (result: ResultType) => {
+    wasRendered = true;
     switch (result.type) {
       case ResultItemType.CODE:
         return (
@@ -50,7 +57,9 @@ const ResultPreview = ({ result, onClick }: Props) => {
     }
   };
 
-  return <li>{getItem(result)}</li>;
+  return (
+    <li ref={ref}>{isOnScreen || wasRendered ? getItem(result) : null}</li>
+  );
 };
 
 export default ResultPreview;
