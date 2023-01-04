@@ -440,6 +440,11 @@ impl StateSource {
                             elem.value_mut().delete();
                         }
                     }
+
+                    // in case the app terminated during indexing, make sure to re-queue it
+                    if elem.sync_status == SyncStatus::Indexing {
+                        elem.value_mut().sync_status = SyncStatus::Queued;
+                    }
                 }
 
                 // then add anything new that's appeared
