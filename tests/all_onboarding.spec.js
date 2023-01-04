@@ -13,7 +13,7 @@ test.describe.serial('Main test group', () => {
     const context = await browser.newContext();
     page = await context.newPage();
     await page.goto(
-      'http://localhost:5173/?chosen_scan_folder=${process.env.SCAN_FOLDER}'
+      'http://localhost:5173/?chosen_scan_folder=${process.env.SCAN_FOLDER}',
     );
   });
 
@@ -25,8 +25,9 @@ test.describe.serial('Main test group', () => {
 
   test('Local and GitHub onboarding', async () => {
     await page.goto(
-      `http://localhost:5173/?chosen_scan_folder=${process.env.SCAN_FOLDER}`
+      `http://localhost:5173/?chosen_scan_folder=${process.env.SCAN_FOLDER}`,
     );
+    await page.getByRole('button', { name: "Don't share" }).click();
     await page.getByPlaceholder('First name').click();
     await page.getByPlaceholder('First name').fill('Steve');
     await page.getByPlaceholder('First name').press('Tab');
@@ -111,15 +112,14 @@ test.describe.serial('Main test group', () => {
     }
 
     await page.getByRole('button', { name: 'Sync repositories' }).click();
-    await page.getByRole('button', { name: 'Share with bloop' }).click();
 
     await Promise.all(
       repoNames.map((repoName) =>
         page.waitForSelector(`p:has-text("${repoName}")`, {
           state: 'attached',
           timeout: 60 * 1000,
-        })
-      )
+        }),
+      ),
     );
 
     await Promise.all(
@@ -127,8 +127,8 @@ test.describe.serial('Main test group', () => {
         page
           .locator('.bg-green-500')
           .nth(i)
-          .waitFor({ timeout: 60 * 1000 })
-      )
+          .waitFor({ timeout: 60 * 1000 }),
+      ),
     );
 
     await page.evaluate(() => {
@@ -138,7 +138,7 @@ test.describe.serial('Main test group', () => {
           localStorage.key(i) +
             '=[' +
             localStorage.getItem(localStorage.key(i)) +
-            ']'
+            ']',
         );
       }
     });
