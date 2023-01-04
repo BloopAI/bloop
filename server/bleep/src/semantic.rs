@@ -1,8 +1,13 @@
-use std::{collections::HashMap, ops::Not, path::Path};
+use std::{collections::HashMap, ops::Not, path::Path, sync::Arc};
 
 use anyhow::Result;
 use maplit::hashmap;
+use ndarray::s;
 use ndarray_linalg::Norm;
+use ort::{
+    tensor::{FromArray, InputTensor, OrtOwnedTensor},
+    Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
+};
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
@@ -13,7 +18,6 @@ use qdrant_client::{
 };
 use rayon::prelude::*;
 use tracing::{debug, trace};
-use tract_onnx::prelude::*;
 
 pub mod chunk;
 
@@ -23,7 +27,7 @@ const COLLECTION_NAME: &str = "documents";
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
     tokenizer: Arc<tokenizers::Tokenizer>,
-    onnx: Arc<SimplePlan<TypedFact, Box<dyn TypedOp>, Graph<TypedFact, Box<dyn TypedOp>>>>,
+    session: Arc<ort::Session>,
 }
 
 fn collection_config() -> CreateCollection {
@@ -40,7 +44,7 @@ fn collection_config() -> CreateCollection {
 }
 
 impl Semantic {
-    pub async fn new(model_dir: &Path, qdrant_url: &str) -> Self {
+    pub async fn new(model_dir: &Path, qdrant_url: &str) -> Result<Self> {
         let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url)))
             .await
             .unwrap();
@@ -61,20 +65,25 @@ impl Semantic {
             assert!(result);
         }
 
-        Self {
+        let environment = Arc::new(
+            Environment::builder()
+                .with_name("CodeGen")
+                .with_log_level(LoggingLevel::Warning)
+                .with_execution_providers([ExecutionProvider::cpu()])
+                .build()?,
+        );
+
+        Ok(Self {
             qdrant: qdrant.into(),
             tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("tokenizer.json"))
                 .unwrap()
                 .into(),
-            onnx: onnx()
-                .model_for_path(model_dir.join("model.onnx"))
-                .unwrap()
-                .into_optimized()
-                .unwrap()
-                .into_runnable()
-                .unwrap()
+            session: SessionBuilder::new(&environment)?
+                .with_optimization_level(GraphOptimizationLevel::Level3)?
+                .with_intra_threads(1)?
+                .with_model_from_file(model_dir.join("model.onnx"))?
                 .into(),
-        }
+        })
     }
 
     pub fn embed(&self, chunk: &str) -> Result<Vec<f32>> {
@@ -83,36 +92,35 @@ impl Semantic {
         let input_ids = tokenizer_output.get_ids();
         let attention_mask = tokenizer_output.get_attention_mask();
         let token_type_ids = tokenizer_output.get_type_ids();
-
         let length = input_ids.len();
 
-        let input_ids: Tensor = tract_ndarray::Array2::from_shape_vec(
+        let inputs_ids_array = ndarray::Array::from_shape_vec(
             (1, length),
             input_ids.iter().map(|&x| x as i64).collect(),
-        )?
-        .into();
+        )?;
 
-        let attention_mask: Tensor = tract_ndarray::Array2::from_shape_vec(
+        let attention_mask_array = ndarray::Array::from_shape_vec(
             (1, length),
             attention_mask.iter().map(|&x| x as i64).collect(),
-        )?
-        .into();
+        )?;
 
-        let token_type_ids: Tensor = tract_ndarray::Array2::from_shape_vec(
+        let token_type_ids_array = ndarray::Array::from_shape_vec(
             (1, length),
             token_type_ids.iter().map(|&x| x as i64).collect(),
-        )?
-        .into();
+        )?;
 
-        let outputs = self
-            .onnx
-            .run(tvec!(input_ids, attention_mask, token_type_ids))?;
+        let outputs = self.session.run([
+            InputTensor::from_array(inputs_ids_array.into_dyn()),
+            InputTensor::from_array(attention_mask_array.into_dyn()),
+            InputTensor::from_array(token_type_ids_array.into_dyn()),
+        ])?;
 
-        let logits = outputs[0].to_array_view::<f32>()?;
-        let logits = logits.slice(tract_ndarray::s![.., 0, ..]);
-        let norm = logits.norm();
+        let output_tensor: OrtOwnedTensor<f32, _> = outputs[0].try_extract().unwrap();
+        let logits = &*output_tensor.view();
+        let pooled = logits.slice(s![.., 0, ..]);
+        let norm = pooled.norm();
 
-        Ok((logits.to_owned() / norm).as_slice().unwrap().to_vec())
+        Ok((pooled.to_owned() / norm).as_slice().unwrap().to_vec())
     }
 
     pub async fn search(&self, query: &str, limit: u64) -> Result<Vec<HashMap<String, Value>>> {
