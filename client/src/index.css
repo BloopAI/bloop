@@ -318,6 +318,35 @@ h5, .h5 {
   margin: revert;
 }
 
+.readme h1, .readme h2 {
+  border-bottom: 1px solid #27272D;
+  padding-bottom: 0.6rem;
+}
+
+.readme h1 {
+  font-size: 2rem;
+}
+
+.readme h2 {
+  font-size: 1.5rem;
+}
+
+.readme h3 {
+  font-size: 1.25rem
+}
+
+.readme h4 {
+  font-size: 1rem
+}
+
+.readme h5 {
+  font-size: .875rem
+}
+
+.readme h6 {
+  font-size: .85rem
+}
+
 .readme ul {
   list-style: revert;
   margin: revert;
