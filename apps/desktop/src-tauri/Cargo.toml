@@ -29,7 +29,7 @@ sentry = "0.29.1"
 qdrant-client = "0.11.5"
 
 [target.'cfg(unix)'.dependencies]
-nix = "0.26.1"
+nix = { version = "0.26.1", default-features = false, features = [ "resource" ] }
 
 [features]
 # by default Tauri runs in production mode
