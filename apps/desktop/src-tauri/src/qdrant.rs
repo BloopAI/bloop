@@ -1,5 +1,6 @@
 use std::{
     fs::{create_dir_all, write},
+    path::Path,
     process::{Child, Command},
     time::Duration,
 };
@@ -176,12 +177,7 @@ where
         .unwrap();
 
         let command = relative_command_path("qdrant").expect("bad bundle");
-        self.child = Some(
-            Command::new(command)
-                .current_dir(qdrant_dir)
-                .spawn()
-                .expect("failed to start qdrant"),
-        );
+        self.child = Some(run_command(&command, &qdrant_dir));
 
         tokio::task::block_in_place(move || {
             tokio::runtime::Handle::current().block_on(wait_for_qdrant())
@@ -202,6 +198,46 @@ where
             _ => (),
         }
     }
+}
+
+#[cfg(unix)]
+fn run_command(command: &Path, qdrant_dir: &Path) -> Child {
+    use nix::sys::resource::{getrlimit, setrlimit, Resource};
+    use tracing::{error, info};
+    match getrlimit(Resource::RLIMIT_NOFILE) {
+        Ok((current_soft, current_hard)) if current_hard < 2048 => {
+            if let Err(err) = setrlimit(Resource::RLIMIT_NOFILE, 1024, 2048) {
+                error!(
+                    ?err,
+                    new_soft = 1024,
+                    new_hard = 2048,
+                    current_soft,
+                    current_hard,
+                    "failed to set rlimit/nofile"
+                );
+            }
+        }
+        Ok((current_soft, current_hard)) => {
+            info!(current_soft, current_hard, "no change to rlimit needed");
+        }
+        Err(err) => {
+            error!(?err, "failed to get rlimit/nofile");
+        }
+    }
+
+    // nix::sys::resource::setrlimit().unwrap();
+    Command::new(command)
+        .current_dir(qdrant_dir)
+        .spawn()
+        .expect("failed to start qdrant")
+}
+
+#[cfg(windows)]
+fn run_command(command: &Path, qdrant_dir: &Path) -> Child {
+    Command::new(command)
+        .current_dir(qdrant_dir)
+        .spawn()
+        .expect("failed to start qdrant")
 }
 
 async fn wait_for_qdrant() {

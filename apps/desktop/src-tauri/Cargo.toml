@@ -28,6 +28,9 @@ once_cell = "1.16.0"
 sentry = "0.29.1"
 qdrant-client = "0.11.5"
 
+[target.'cfg(unix)'.dependencies]
+nix = "0.26.1"
+
 [features]
 # by default Tauri runs in production mode
 # when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL
