@@ -20,7 +20,7 @@ test.describe.serial('Main test group', () => {
   const repoNames = [];
 
   test.afterAll(async ({ browser }) => {
-    browser.close;
+    await browser.close();
   });
 
   test('Local and GitHub onboarding', async () => {
