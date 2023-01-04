@@ -100,6 +100,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   }, [fileResultData]);
 
   const renderResults = () => {
+    // console.log(loading, resultsData);
     if (loading) {
       return <ResultsPreviewSkeleton />;
     }

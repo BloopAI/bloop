@@ -68,6 +68,7 @@ const SearchPage = () => {
     if (searchType === SearchType.REGEX) {
       return;
     }
+    // console.log('HH')
     if (!nlData?.selection) {
       setNLResultsData(undefined);
     } else {
@@ -116,7 +117,11 @@ const SearchPage = () => {
           />
         );
       case 'repo':
-        return <RepositoryPage repositoryData={resultsData} />;
+        return (
+          <RepositoryPage
+            repositoryData={resultsData as DirectorySearchResponse}
+          />
+        );
       case 'full-result':
         return <ViewResult data={resultsData} />;
       case 'nl-result':

@@ -33,7 +33,6 @@ const SemanticSearch = ({ answer, snippets, onClick }: Props) => {
 
   const highlightedAnswer = useMemo(() => {
     const code = answer.replace(/`(.*?)`/gs, (match) => {
-      console.log(match.replace(/`/g, ''));
       const hl = hljs.highlightAuto(match.replace(/`/g, '')).value;
       return `<code class="italic">\`${hl}\`</code>`;
     });
