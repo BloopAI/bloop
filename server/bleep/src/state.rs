@@ -6,6 +6,7 @@ use crate::{
 };
 use clap::Args;
 use dashmap::DashMap;
+use rand::Rng;
 use relative_path::RelativePath;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{
@@ -522,8 +523,29 @@ pub fn pretty_write_file<T: Serialize + ?Sized>(
     path: impl AsRef<Path>,
     val: &T,
 ) -> Result<(), RepoError> {
-    let tmpfile = path.as_ref().with_extension("new");
-    let file = std::fs::File::create(&tmpfile)?;
+    let tmpfile = path
+        .as_ref()
+        .with_extension("new")
+        .with_extension(format!("{}", rand::thread_rng().gen_range(0..=9999)));
+
+    let file = {
+        let mut tries = 0;
+        const MAX_TRIES: u8 = 10;
+
+        loop {
+            let file = std::fs::File::options()
+                .write(true)
+                .create_new(true)
+                .open(&tmpfile);
+
+            if file.is_ok() || tries == MAX_TRIES {
+                break file;
+            }
+
+            tries += 1;
+        }
+    }?;
+
     serde_json::to_writer_pretty(file, val)?;
     std::fs::rename(tmpfile, path)?;
 
