@@ -361,9 +361,7 @@ impl Repository {
         cache: FileCache,
     ) -> Result<(), RepoError> {
         let file_name = self.file_cache_path(index_dir);
-        let file = std::fs::File::create(file_name)?;
-
-        Ok(serde_json::to_writer(file, cache.as_ref())?)
+        pretty_write_file(file_name, cache.as_ref())
     }
 
     pub(crate) fn delete_file_cache(&self, index_dir: &Path) -> Result<(), RepoError> {
@@ -515,9 +513,14 @@ impl StateSource {
     }
 }
 
-pub fn pretty_write_file<T: Serialize + ?Sized>(path: &Path, val: &T) -> Result<(), RepoError> {
-    let file = std::fs::File::create(path)?;
+pub fn pretty_write_file<T: Serialize + ?Sized>(
+    path: impl AsRef<Path>,
+    val: &T,
+) -> Result<(), RepoError> {
+    let tmpfile = path.as_ref().with_extension("new");
+    let file = std::fs::File::create(&tmpfile)?;
     serde_json::to_writer_pretty(file, val)?;
+    std::fs::rename(tmpfile, path)?;
 
     Ok(())
 }
