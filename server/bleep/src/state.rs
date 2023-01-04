@@ -6,6 +6,7 @@ use crate::{
 };
 use clap::Args;
 use dashmap::DashMap;
+use rand::Rng;
 use relative_path::RelativePath;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{
@@ -361,9 +362,7 @@ impl Repository {
         cache: FileCache,
     ) -> Result<(), RepoError> {
         let file_name = self.file_cache_path(index_dir);
-        let file = std::fs::File::create(file_name)?;
-
-        Ok(serde_json::to_writer(file, cache.as_ref())?)
+        pretty_write_file(file_name, cache.as_ref())
     }
 
     pub(crate) fn delete_file_cache(&self, index_dir: &Path) -> Result<(), RepoError> {
@@ -442,6 +441,11 @@ impl StateSource {
                             elem.value_mut().delete();
                         }
                     }
+
+                    // in case the app terminated during indexing, make sure to re-queue it
+                    if elem.sync_status == SyncStatus::Indexing {
+                        elem.value_mut().sync_status = SyncStatus::Queued;
+                    }
                 }
 
                 // then add anything new that's appeared
@@ -515,9 +519,35 @@ impl StateSource {
     }
 }
 
-pub fn pretty_write_file<T: Serialize + ?Sized>(path: &Path, val: &T) -> Result<(), RepoError> {
-    let file = std::fs::File::create(path)?;
+pub fn pretty_write_file<T: Serialize + ?Sized>(
+    path: impl AsRef<Path>,
+    val: &T,
+) -> Result<(), RepoError> {
+    let tmpfile = path
+        .as_ref()
+        .with_extension("new")
+        .with_extension(format!("{}", rand::thread_rng().gen_range(0..=9999)));
+
+    let file = {
+        let mut tries = 0;
+        const MAX_TRIES: u8 = 10;
+
+        loop {
+            let file = std::fs::File::options()
+                .write(true)
+                .create_new(true)
+                .open(&tmpfile);
+
+            if file.is_ok() || tries == MAX_TRIES {
+                break file;
+            }
+
+            tries += 1;
+        }
+    }?;
+
     serde_json::to_writer_pretty(file, val)?;
+    std::fs::rename(tmpfile, path)?;
 
     Ok(())
 }
