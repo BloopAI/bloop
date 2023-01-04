@@ -4,23 +4,20 @@ The bloop app is built using [Tauri](https://github.com/tauri-apps/tauri), a Rus
 
 ## Dependencies
 
-As we are building Tauri, we need a complete build environment containing at least:
+To build the Tauri app you need the following dependencies:
+- `pnpm`
+- `rustup`
+- `clang` `cmake` `wget`
+- `openBLAS`
 
-* AppImageKit
-* atk
-* clang
-* cmake
-* dbus
-* glib
-* gtk3 including webkit-gtk
-* npm (usually in the node package)
-* openBLAS
-* pango
-* pnpm
-* protobuf
-* rustup
-* wget
-
+Linux users need to ensure that the following are present:
+- `AppImageKit`
+- `atk`
+- `dbus`
+- `glib` `gtk3` (including `webkit-gtk`)
+- `pango`
+- `protobuf`
+ 
 ## Setup
 
 All commands should be run from the root directory.
