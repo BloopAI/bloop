@@ -3,7 +3,5 @@ PCRE2_SYS_STATIC = "1"
 
 [target.aarch64-apple-darwin]
 rustflags = [
-    "-C", "link-arg=-L/opt/homebrew/opt/openblas/lib",
-    "-C", "link-arg=-I/opt/homebrew/opt/openblas/include", 
     "-C", "link-args=-Wl,-rpath,/opt/homebrew/opt/onnxruntime/lib"
 ]

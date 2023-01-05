@@ -3,7 +3,6 @@ use std::{collections::HashMap, ops::Not, path::Path, sync::Arc};
 use anyhow::Result;
 use maplit::hashmap;
 use ndarray::s;
-use ndarray_linalg::Norm;
 use ort::{
     tensor::{FromArray, InputTensor, OrtOwnedTensor},
     Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
@@ -118,9 +117,8 @@ impl Semantic {
         let output_tensor: OrtOwnedTensor<f32, _> = outputs[0].try_extract().unwrap();
         let logits = &*output_tensor.view();
         let pooled = logits.slice(s![.., 0, ..]);
-        let norm = pooled.norm();
 
-        Ok((pooled.to_owned() / norm).as_slice().unwrap().to_vec())
+        Ok(pooled.to_owned().as_slice().unwrap().to_vec())
     }
 
     pub async fn search(&self, query: &str, limit: u64) -> Result<Vec<HashMap<String, Value>>> {

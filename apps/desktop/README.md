@@ -8,7 +8,6 @@ To build the Tauri app you need the following dependencies:
 - `pnpm`
 - `rustup`
 - `clang` `cmake` `wget`
-- `openBLAS`
 - `protobuf`
 - `onnxruntime`
 

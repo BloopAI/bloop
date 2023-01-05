@@ -30,7 +30,6 @@
               openssl
               glib.dev
               cmake
-              openblas
               protobuf
             ] ++ lib.optionals pkgs.stdenv.isLinux [
               dbus.dev
