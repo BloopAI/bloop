@@ -204,6 +204,7 @@ where
 fn run_command(command: &Path, qdrant_dir: &Path) -> Child {
     use nix::sys::resource::{getrlimit, setrlimit, Resource};
     use tracing::{error, info};
+    error!("BIG CAPITALS I AM HERE");
     match getrlimit(Resource::RLIMIT_NOFILE) {
         Ok((current_soft, current_hard)) if current_hard < 2048 => {
             if let Err(err) = setrlimit(Resource::RLIMIT_NOFILE, 1024, 2048) {
