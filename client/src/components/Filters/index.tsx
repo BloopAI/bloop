@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import isEqual from 'lodash.isequal';
 import Button from '../Button';
 import {
   ChevronFoldIn,
@@ -26,12 +27,23 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
   const { filters, setFilters, inputValue, setInputValue, setSearchHistory } =
     useContext(SearchContext);
   const [openSections, setOpenSections] = useState<string[]>([]);
+  const [newFilters, setNewFilters] = useState(filters);
   const [hasFiltersChanged, setFiltersChanged] = useState(false);
+
   useEffect(() => {
-    setOpenSections(Object.keys(filters));
-  }, [filters]);
-  const allOpen = openSections.length === Object.keys(filters).length;
+    setOpenSections(Object.keys(newFilters));
+  }, [newFilters]);
+  const allOpen = openSections.length === Object.keys(newFilters).length;
   const { navigateSearch } = useAppNavigation();
+
+  useEffect(() => {
+    setNewFilters(filters);
+  }, [filters]);
+
+  useEffect(() => {
+    setFiltersChanged(!isEqual(newFilters, filters));
+  }, [newFilters]);
+
   const handleSubmit = useCallback(() => {
     const regex = inputValue.includes('open:true')
       ? /((lang):[^\s)]+)|\(((lang):[^\s)]+\sor\s)+(lang):[^\s)]+\)/gim
@@ -40,7 +52,7 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
 
     let result = inputValue.replace(regex, subst).replace(/ {2,}/g, ' ');
 
-    filters.forEach((filter) => {
+    newFilters.forEach((filter) => {
       if (filter.disabled) {
         return;
       }
@@ -60,18 +72,18 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
       setInputValue(result);
     }
 
-    setFiltersChanged(false);
+    setFilters(newFilters);
     navigateSearch(result);
     setSearchHistory((prev) => {
       const newHistory = [result, ...prev].slice(0, 4);
       saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
       return newHistory;
     });
-  }, [filters]);
+  }, [newFilters]);
 
   const handleFiltersChange = useCallback(
     (s: number, i: number, b: boolean) => {
-      setFilters((prev) => {
+      setNewFilters((prev) => {
         const newFilters = [...prev];
         const newItems = newFilters[s].singleSelect
           ? [
@@ -87,13 +99,12 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
 
         return newFilters;
       });
-      setFiltersChanged(true);
     },
     [],
   );
 
   const handleFiltersAllSelected = useCallback((s: number, b: boolean) => {
-    setFilters((prev) => {
+    setNewFilters((prev) => {
       const newFilters = [...prev];
       newFilters[s] = {
         ...newFilters[s],
@@ -105,91 +116,95 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
 
       return newFilters;
     });
-    setFiltersChanged(true);
   }, []);
 
   const onReset = useCallback(() => {
-    setFilters([]);
-    setFiltersChanged(true);
+    setNewFilters([]);
   }, []);
 
   return (
     <motion.div
-      className={`text-gray-300 border-r border-gray-800 overflow-y-auto flex-shrink-0 select-none overflow-hidden relative`}
+      className={`text-gray-300 border-r border-gray-800  flex-shrink-0 select-none overflow-x-hidden relative`}
       animate={{ width: isOpen ? '20.25rem' : '5rem' }}
       transition={FILTER_PARENT_ANIMATION}
     >
-      {showHeader && (
-        <div
-          className={`px-8 subhead-m py-6 border-b border-gray-800 flex items-center justify-between ${
-            isOpen ? 'px-8' : 'px-6'
-          }`}
-        >
-          <span className={isOpen ? '' : 'hidden'}>Filters</span>
-          <div className="flex items-center gap-2 caption-strong">
-            {isOpen && (
+      <div
+        className={`overflow-y-auto h-full ${hasFiltersChanged ? 'pb-10' : ''}`}
+      >
+        {showHeader && (
+          <div
+            className={`px-8 subhead-m py-6 border-b border-gray-800 flex items-center justify-between ${
+              isOpen ? 'px-8' : 'px-6'
+            }`}
+          >
+            <span className={isOpen ? '' : 'hidden'}>Filters</span>
+            <div className="flex items-center gap-2 caption-strong">
+              {isOpen && (
+                <Button
+                  variant="tertiary"
+                  size="small"
+                  onlyIcon
+                  onClick={() => {
+                    setOpenSections(allOpen ? [] : Object.keys(newFilters));
+                  }}
+                  title={allOpen ? 'Fold everything' : 'Expand everything'}
+                >
+                  {allOpen ? <ChevronFoldIn /> : <ChevronFoldOut />}
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={onReset}
+                className={isOpen ? '' : 'hidden'}
+              >
+                Reset filters
+              </Button>
               <Button
                 variant="tertiary"
                 size="small"
                 onlyIcon
-                onClick={() => {
-                  setOpenSections(allOpen ? [] : Object.keys(filters));
-                }}
-                title={allOpen ? 'Fold everything' : 'Expand everything'}
+                onClick={toggleOpen}
+                title={isOpen ? 'Hide filters' : 'Show filters'}
               >
-                {allOpen ? <ChevronFoldIn /> : <ChevronFoldOut />}
+                {isOpen ? <DoubleChevronLeft /> : <DoubleChevronRight />}
               </Button>
-            )}
-            <Button
-              variant="secondary"
-              size="small"
-              onClick={onReset}
-              className={isOpen ? '' : 'hidden'}
-            >
-              Reset filters
-            </Button>
-            <Button
-              variant="tertiary"
-              size="small"
-              onlyIcon
-              onClick={toggleOpen}
-              title={isOpen ? 'Hide filters' : 'Show filters'}
-            >
-              {isOpen ? <DoubleChevronLeft /> : <DoubleChevronRight />}
-            </Button>
+            </div>
           </div>
-        </div>
-      )}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            className={`w-full`}
-            animate={{ visibility: 'visible' }}
-            exit={{ visibility: 'hidden' }}
-            transition={FILTER_TEXT_ANIMATION}
-          >
-            {filters.map((s, index) => (
-              <FilterSection
-                key={s.name}
-                items={s.items}
-                type={s.type}
-                onChange={(i, b) => handleFiltersChange(index, i, b)}
-                name={s.name}
-                title={s.title}
-                singleSelect={s.singleSelect}
-                open={openSections.includes(index.toString())}
-                onToggle={() => {
-                  const newOpenSection = openSections.includes(index.toString())
-                    ? openSections.filter((s) => s !== index.toString())
-                    : openSections.concat(index.toString());
-                  setOpenSections(newOpenSection);
-                }}
-                onSelectAll={(b) => handleFiltersAllSelected(index, b)}
-              />
-            ))}
-          </motion.div>
         )}
-      </AnimatePresence>
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              className={`w-full`}
+              animate={{ visibility: 'visible' }}
+              exit={{ visibility: 'hidden' }}
+              transition={FILTER_TEXT_ANIMATION}
+            >
+              {newFilters.map((s, index) => (
+                <FilterSection
+                  key={s.name}
+                  items={s.items}
+                  type={s.type}
+                  onChange={(i, b) => handleFiltersChange(index, i, b)}
+                  name={s.name}
+                  title={s.title}
+                  singleSelect={s.singleSelect}
+                  open={openSections.includes(index.toString())}
+                  onToggle={() => {
+                    const newOpenSection = openSections.includes(
+                      index.toString(),
+                    )
+                      ? openSections.filter((s) => s !== index.toString())
+                      : openSections.concat(index.toString());
+                    setOpenSections(newOpenSection);
+                  }}
+                  onSelectAll={(b) => handleFiltersAllSelected(index, b)}
+                />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
       <AnimatePresence>
         {hasFiltersChanged && (
           <motion.div
