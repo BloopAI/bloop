@@ -38,12 +38,28 @@ const SemanticSearch = ({
   const { trackUpvote } = useAnalytics();
 
   const highlightedAnswer = useMemo(() => {
-    const code = answer.replace(/`(.*?)`/gs, (match) => {
-      const hl = hljs.highlightAuto(match.replace(/`/g, '')).value;
-      return `<code class="italic">\`${hl}\`</code>`;
+    const lang = /```(.*?)\n/.exec(answer)?.[1];
+
+    const langSubset = lang ? [lang.trim()] : undefined;
+    let code = answer.replace(/```(.*?)```/gs, (match) => {
+      const escapedString = match.replace(/```/g, '');
+      if (!escapedString.length) {
+        return '';
+      }
+      const hl = hljs.highlightAuto(escapedString, langSubset).value;
+      return `<pre class="whitespace-pre-wrap break-words bg-gray-700 rounded my-1 text-xs p-1"><code>${hl}</code></pre>`;
     });
 
-    return `<pre class="whitespace-pre-wrap break-words">${code}</pre>`;
+    code = code.replace(/`(.*?)`/gs, (match) => {
+      const escapedString = match.replace(/`/g, '');
+      if (!escapedString.length) {
+        return '';
+      }
+      const hl = hljs.highlightAuto(escapedString, langSubset).value;
+      return `<code class="bg-gray-700 p-[2px] rounded">${hl}</code>`;
+    });
+
+    return `${code}`;
   }, [answer]);
 
   const handleUpvote = useCallback(
