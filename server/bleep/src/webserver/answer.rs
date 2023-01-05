@@ -50,7 +50,7 @@ pub async fn handle(
     Query(params): Query<Params>,
     Extension(app): Extension<Application>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
-    let snippets = app
+    let mut snippets = app
         .semantic
         .search(&params.q, params.limit)
         .await
@@ -93,13 +93,18 @@ pub async fn handle(
             )
         })?;
 
+    let selection: api::Response = res.json().await.map_err(|e| {
+        super::error(
+            ErrorKind::Internal,
+            format!("answer API was not able to create a valid result: {}", e),
+        )
+    })?;
+
+    let selected_snippet = snippets.remove(selection.index as usize);
+    snippets.insert(0, selected_snippet);
+
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
         snippets,
-        selection: res.json().await.map_err(|e| {
-            super::error(
-                ErrorKind::Internal,
-                format!("answer API was not able to create a valid result: {}", e),
-            )
-        })?,
+        selection,
     })))
 }
