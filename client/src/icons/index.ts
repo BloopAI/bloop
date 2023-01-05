@@ -80,3 +80,4 @@ export { default as MoreHorizontal } from './MoreHorizontal';
 export { default as ThumbsUp } from './ThumbsUp';
 export { default as ThumbsDown } from './ThumbsDown';
 export { default as NaturalLanguage } from './NaturalLanguage';
+export { default as ArrowRotate } from './ArrowRotate';

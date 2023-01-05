@@ -5,6 +5,7 @@ import {
 } from '../services/api';
 import { SearchContext } from '../context/searchContext';
 import { SearchType } from '../types/general';
+import { DeviceContext } from '../context/deviceContext';
 import useAnalytics from './useAnalytics';
 
 interface Status<T> {
@@ -29,6 +30,7 @@ export const useSearch = <T,>(
   const [status, setStatus] = useState<Status<T>>({
     loading: false,
   });
+  const { deviceId } = useContext(DeviceContext);
 
   const { setLastQueryTime, searchType } = useContext(SearchContext);
   const { trackSearch } = useAnalytics();
@@ -47,7 +49,7 @@ export const useSearch = <T,>(
 
     switch (currentSearchType) {
       case SearchType.NL:
-        nlSearchApiCall(query)
+        nlSearchApiCall(query, deviceId)
           .then((data) => {
             const queryTime = Date.now() - startTime;
             setLastQueryTime(queryTime);

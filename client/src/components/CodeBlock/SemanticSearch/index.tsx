@@ -1,10 +1,10 @@
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useMemo, useState } from 'react';
 import hljs from 'highlight.js';
 import CodeBlockSearch from '../Search';
 import Button from '../../Button';
-import { ThumbsDown, ThumbsUp } from '../../../icons';
+import { ArrowRotate, ThumbsDown, ThumbsUp } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
-import { getUpvote, saveUpvote } from '../../../services/api';
+import { saveUpvote } from '../../../services/api';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import { ResultClick } from '../../../types/results';
 import 'highlight.js/styles/vs2015.css';
@@ -21,11 +21,11 @@ type Props = {
     line: number;
   }[];
   onClick: ResultClick;
+  handleRetry: () => void;
 };
-const SemanticSearch = ({ answer, snippets, onClick }: Props) => {
+const SemanticSearch = ({ answer, snippets, onClick, handleRetry }: Props) => {
   const { deviceId } = useContext(DeviceContext);
   const { query } = useAppNavigation();
-  const [isUpvoteLoading, setUpvoteLoading] = useState(true);
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
   const snippetId = useMemo(() => hashCode(answer).toString(), [answer]);
@@ -39,23 +39,6 @@ const SemanticSearch = ({ answer, snippets, onClick }: Props) => {
 
     return `<pre class="whitespace-pre-wrap break-words">${code}</pre>`;
   }, [answer]);
-
-  useEffect(() => {
-    setUpvoteLoading(true);
-    setIsUpvote(false);
-    setIsDownvote(false);
-    getUpvote({
-      unique_id: deviceId,
-      snippet_id: snippetId,
-      query: query,
-    }).then((resp) => {
-      setUpvoteLoading(false);
-      if (resp) {
-        setIsUpvote(resp.is_upvote === true);
-        setIsDownvote(resp.is_upvote === false);
-      }
-    });
-  }, [deviceId, query]);
 
   const handleUpvote = useCallback(
     (isUpvote: boolean) => {
@@ -72,35 +55,43 @@ const SemanticSearch = ({ answer, snippets, onClick }: Props) => {
     },
     [deviceId, query, answer],
   );
+
   return (
     <div className="flex flex-col">
       <div className="bg-gray-800 p-3 flex flex-row rounded-t relative">
         <span
-          className="body-s pr-16"
+          className="body-s pr-24"
           dangerouslySetInnerHTML={{ __html: highlightedAnswer }}
         ></span>
-        {!isUpvoteLoading && (
-          <div className="flex flex-row absolute top-2 right-3">
-            <Button
-              onlyIcon
-              title="Upvote"
-              variant={isUpvote ? 'secondary' : 'tertiary'}
-              size="small"
-              onClick={() => handleUpvote(true)}
-            >
-              <ThumbsUp />
-            </Button>
-            <Button
-              onlyIcon
-              title="Downvote"
-              variant={isDownvote ? 'secondary' : 'tertiary'}
-              size="small"
-              onClick={() => handleUpvote(false)}
-            >
-              <ThumbsDown />
-            </Button>
-          </div>
-        )}
+        <div className="flex flex-row absolute top-2 right-3">
+          <Button
+            onlyIcon
+            title="Retry"
+            variant="tertiary"
+            size="small"
+            onClick={handleRetry}
+          >
+            <ArrowRotate />
+          </Button>
+          <Button
+            onlyIcon
+            title="Upvote"
+            variant={isUpvote ? 'secondary' : 'tertiary'}
+            size="small"
+            onClick={() => handleUpvote(true)}
+          >
+            <ThumbsUp />
+          </Button>
+          <Button
+            onlyIcon
+            title="Downvote"
+            variant={isDownvote ? 'secondary' : 'tertiary'}
+            size="small"
+            onClick={() => handleUpvote(false)}
+          >
+            <ThumbsDown />
+          </Button>
+        </div>
       </div>
       {snippets.map((item, index) => (
         <span key={index} className={`${index ? 'mt-5' : ''}`}>

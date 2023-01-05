@@ -32,6 +32,7 @@ import PageHeader from './PageHeader';
 type Props = {
   resultsData?: NLSearchResponse;
   loading: boolean;
+  handleRetry: () => void;
 };
 
 const mockQuerySuggestions = [
@@ -42,7 +43,7 @@ const mockQuerySuggestions = [
   'lang:tsx apples',
 ];
 
-const ResultsPage = ({ resultsData, loading }: Props) => {
+const ResultsPage = ({ resultsData, loading, handleRetry }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const [mode, setMode] = useState<FullResultModeEnum>(
@@ -118,6 +119,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
         }))}
         answer={resultsData.selection.answer}
         onClick={onResultClick}
+        handleRetry={handleRetry}
       />
     );
   };

@@ -32,11 +32,17 @@ export const search = (
     .then((r) => r.data);
 };
 
-export const nlSearch = (q: string): Promise<NLSearchResponse> => {
+export const nlSearch = (
+  q: string,
+  segment_user_id: string,
+): Promise<NLSearchResponse> => {
   return http
     .get('/answer', {
       params: {
         q,
+      },
+      headers: {
+        segment_user_id,
       },
     })
     .then((r) => r.data);

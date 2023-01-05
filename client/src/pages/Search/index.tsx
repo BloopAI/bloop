@@ -1,4 +1,10 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import * as Sentry from '@sentry/react';
 import { SearchContext } from '../../context/searchContext';
 import { useSearch } from '../../hooks/useSearch';
@@ -106,6 +112,10 @@ const SearchPage = () => {
     }
   }, [loading, data, searchType]);
 
+  const handleRetry = useCallback(() => {
+    nlSearchQuery(navigatedItem!.query!);
+  }, [navigatedItem?.query]);
+
   const renderedPage = useMemo(() => {
     switch (renderPage) {
       case 'results':
@@ -125,9 +135,15 @@ const SearchPage = () => {
       case 'full-result':
         return <ViewResult data={resultsData} />;
       case 'nl-result':
-        return <NLResults loading={nlLoading} resultsData={nlResultsData} />;
+        return (
+          <NLResults
+            loading={nlLoading}
+            resultsData={nlResultsData}
+            handleRetry={handleRetry}
+          />
+        );
     }
-  }, [renderPage, resultsData, loading, nlLoading, nlResultsData]);
+  }, [renderPage, resultsData, loading, nlLoading, nlResultsData, handleRetry]);
 
   return <PageTemplate>{renderedPage}</PageTemplate>;
 };
