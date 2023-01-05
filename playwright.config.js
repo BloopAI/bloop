@@ -1,13 +1,11 @@
 // @ts-check
 const { devices } = require('@playwright/test');
 const dotenv = require('dotenv');
-dotenv.config({ path: '.tests.env' });
-
+dotenv.config({ path: './tests/.env' });
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
  */
-// require('dotenv').config();
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -52,19 +50,27 @@ const config = {
   /* Configure projects for major browsers */
   projects: [
     {
+      name: 'msedge',
+      use: { ...devices['Desktop Edge'] },
+    },
+    {
       name: 'webkit',
-      use: {
-        ...devices['Desktop Safari'],
-      },
+      use: { ...devices['Desktop Safari'] },
     },
   ],
+
+  // globalSetup: './tests/global-setup',
 
   /* Folder for test artifacts such as screenshots, videos, traces, etc. */
   // outputDir: 'test-results/',
 
   /* Run your local dev server before starting the tests */
+  // app: {
+  //   command: 'pnpm start-app',
+  //   port: '1',
+  // },
   // webServer: {
-  //   command: 'npm run start',
+  //   command: 'pnpm start-app',
   //   port: 3000,
   // },
 };
