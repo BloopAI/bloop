@@ -11,6 +11,7 @@ mod api {
     pub struct Request {
         pub query: String,
         pub snippets: Vec<Snippet>,
+        pub user_id: String,
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
@@ -23,9 +24,16 @@ mod api {
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
-    pub struct Response {
+    pub struct DecodedResponse {
         pub index: u32,
         pub answer: String,
+    }
+
+    #[derive(Debug, serde::Serialize, serde::Deserialize)]
+    pub struct Response {
+        #[serde(flatten)]
+        pub data: DecodedResponse,
+        pub id: String,
     }
 }
 
@@ -38,6 +46,7 @@ pub struct Params {
     pub q: String,
     #[serde(default = "default_limit")]
     pub limit: u64,
+    pub user_id: String,
 }
 
 #[derive(serde::Serialize, ToSchema)]
@@ -82,6 +91,7 @@ pub async fn handle(
         .post(format!("{}/q", app.config.answer_api_base))
         .json(&api::Request {
             query: params.q,
+            user_id: params.user_id,
             snippets: snippets.clone(),
         })
         .send()
