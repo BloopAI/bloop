@@ -29,7 +29,7 @@ type ContextType = {
   navigateRepoPath: (
     repo: string,
     path?: string,
-    pathParams?: Record<string, string>
+    pathParams?: Record<string, string>,
   ) => void;
   navigateSearch: (
     query: string,
@@ -131,7 +131,7 @@ export const AppNavigationProvider = (prop: {
       type: 'repo',
       repo,
       path,
-      searchType: SearchType.REGEX ,
+      searchType: SearchType.REGEX,
       pathParams,
     });
   };
