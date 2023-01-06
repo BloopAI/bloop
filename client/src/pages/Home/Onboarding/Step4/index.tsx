@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useEffect, useState } from 'react';
 import DialogText from '../DialogText';
 import Button from '../../../../components/Button';
 import { ArrowRight } from '../../../../icons';
-import RepoList from '../../../../components/RepoList';
+import SearchableRepoList from '../../../../components/RepoList/SearchableRepoList';
 import { getRepos, syncRepos } from '../../../../services/api';
 import {
   RepoProvider,
@@ -14,7 +14,6 @@ import GoBackButton from '../GoBackButton';
 import { UIContext } from '../../../../context/uiContext';
 import useAnalytics from '../../../../hooks/useAnalytics';
 import { splitPath } from '../../../../utils';
-import Tabs from '../../../../components/Tabs';
 
 type Props = {
   handleNext: (e?: any) => void;
@@ -22,7 +21,6 @@ type Props = {
 };
 
 const STEP_KEY = 'STEP_4';
-const tabs = [{ title: 'Sync all repos' }, { title: 'Sync selected repos' }];
 
 const Step4 = ({ handleNext, handleBack }: Props) => {
   const [activeTab, setActiveTab] = useState(1);
@@ -110,23 +108,13 @@ const Step4 = ({ handleNext, handleBack }: Props) => {
         description="Select the GitHub repositories you want to add to bloop. You can always sync, unsync or removed unwanted repositories later."
       />
       <div className="flex flex-col overflow-auto">
-        <div className="flex flex-col overflow-auto">
-          <div className="overflow-hidden flex-shrink-0">
-            <Tabs
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              tabs={tabs}
-              variant="button"
-              fullWidth
-            />
-          </div>
-          <RepoList
-            repos={repos}
-            setRepos={setRepos}
-            source="GitHub"
-            activeTab={activeTab}
-          />
-        </div>
+        <SearchableRepoList
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          repos={repos}
+          setRepos={setRepos}
+          source="GitHub"
+        />
         <div className="flex flex-col gap-4 mt-4">
           <Button
             type="submit"

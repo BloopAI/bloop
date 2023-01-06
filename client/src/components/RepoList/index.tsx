@@ -4,6 +4,8 @@ import React, {
   SetStateAction,
   useCallback,
   useContext,
+  useEffect,
+  useState,
 } from 'react';
 import { GitHubLogo, Repository } from '../../icons';
 import Checkbox from '../Checkbox';
@@ -26,6 +28,7 @@ type Props = {
   activeTab: number;
   removable?: boolean;
   handleRemoveOne?: (repoRef: string) => void;
+  filter?: string;
 };
 
 const listItemClassName =
@@ -38,7 +41,9 @@ const RepoList = ({
   activeTab,
   removable,
   handleRemoveOne,
+  filter,
 }: Props) => {
+  const [filteredRepos, setFilteredRepos] = useState(repos);
   const { openFolderInExplorer, openLink, os } = useContext(DeviceContext);
 
   const handleSelectAll = useCallback((selected: boolean) => {
@@ -53,10 +58,16 @@ const RepoList = ({
     });
   }, []);
 
+  useEffect(() => {
+    if (filter !== undefined) {
+      setFilteredRepos(repos.filter((r) => r.name.includes(filter)));
+    }
+  }, [filter]);
+
   return (
-    <div className={`fade-bottom relative mt-3 overflow-auto`}>
+    <>
       {activeTab === 1 && (
-        <div className="bg-gray-900 p-3 h-11 border border-b-4 border-transparent">
+        <div className="bg-gray-900 px-3 border border-b-4 border-transparent">
           <Checkbox
             checked={!!repos.length && repos.every((r) => r.selected)}
             intermediary={
@@ -68,81 +79,94 @@ const RepoList = ({
           />
         </div>
       )}
-      <ul className="bg-gray-900 shadow-light overflow-y-auto pb-6">
-        {repos.length
-          ? repos.map((repo, i) => (
-              <Fragment key={repo.name + i}>
-                {i === 0 ||
-                (repos[i - 1] &&
-                  repos[i - 1].folderName !== repo.folderName) ? (
-                  <span
-                    className={`bg-gray-800 text-sm w-full py-1 px-4 block ${
-                      i === 0 ? 'rounded-t-md' : ''
-                    }`}
-                  >
-                    {repo.folderName}
-                  </span>
-                ) : (
-                  ''
-                )}
-                <li className={listItemClassName} title={repo.name}>
-                  <div className="flex items-center justify-between w-full gap-2">
-                    {activeTab === 0 ? (
-                      <div className="py-1.5 flex items-center gap-2 overflow-hidden">
-                        {source === 'local' ? (
-                          <span className="w-4 h-5 flex-shrink-0">
-                            <Repository raw />
-                          </span>
-                        ) : (
-                          <GitHubLogo />
-                        )}
-                        <span className="whitespace-nowrap">
-                          {repo.shortName}
-                        </span>
-                      </div>
-                    ) : (
-                      <Checkbox
-                        checked={repo.selected}
-                        label={repo.shortName}
-                        onChange={(val) => handleSelectOne(val, i)}
-                      />
-                    )}
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      className="opacity-0 group-hover:opacity-100"
-                      onClick={() => {
-                        if (removable && handleRemoveOne) {
-                          handleRemoveOne(repo.ref);
-                        } else {
-                          source === 'local'
-                            ? openFolderInExplorer(repo.ref.slice(6))
-                            : openLink('https://github.com/' + repo.ref);
-                        }
-                      }}
+      <div className={`fade-bottom relative overflow-auto`}>
+        <ul className="bg-gray-900 shadow-light overflow-y-auto pb-6">
+          {repos.length ? (
+            !filteredRepos.length ? (
+              <div className="flex flex-col gap-2 py-6 text-center">
+                <p className="body-s text-gray-300">No results...</p>
+                <p className="text-gray-500 caption">
+                  Nothing matched your search. Try a different combination!
+                </p>
+              </div>
+            ) : (
+              filteredRepos.map((repo, i) => (
+                <Fragment key={repo.name + i}>
+                  {i === 0 ||
+                  (repos[i - 1] &&
+                    repos[i - 1].folderName !== repo.folderName) ? (
+                    <span
+                      className={`bg-gray-800 text-sm w-full py-1 px-4 block ${
+                        i === 0 ? 'rounded-t-md' : ''
+                      }`}
                     >
-                      {removable
-                        ? 'Remove'
-                        : `View ${
+                      {repo.folderName}
+                    </span>
+                  ) : (
+                    ''
+                  )}
+                  <li className={listItemClassName} title={repo.name}>
+                    <div className="flex items-center justify-between w-full gap-2">
+                      {activeTab === 0 ? (
+                        <div className="py-1.5 flex items-center gap-2 overflow-hidden">
+                          {source === 'local' ? (
+                            <span className="w-4 h-5 flex-shrink-0">
+                              <Repository raw />
+                            </span>
+                          ) : (
+                            <GitHubLogo />
+                          )}
+                          <span className="whitespace-nowrap">
+                            {repo.shortName}
+                          </span>
+                        </div>
+                      ) : (
+                        <Checkbox
+                          checked={repo.selected}
+                          label={repo.shortName}
+                          onChange={(val) => handleSelectOne(val, i)}
+                        />
+                      )}
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        className="opacity-0 group-hover:opacity-100"
+                        onClick={() => {
+                          if (removable && handleRemoveOne) {
+                            handleRemoveOne(repo.ref);
+                          } else {
                             source === 'local'
-                              ? `in ${getFileManagerName(os.type)}`
-                              : 'on GitHub'
+                              ? openFolderInExplorer(repo.ref.slice(6))
+                              : openLink('https://github.com/' + repo.ref);
                           }
+                        }}
+                      >
+                        {removable
+                          ? 'Remove'
+                          : `View ${
+                              source === 'local'
+                                ? `in ${getFileManagerName(os.type)}`
+                                : 'on GitHub'
+                            }
                         `}
-                    </Button>
-                  </div>
-                </li>
-              </Fragment>
-            ))
-          : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+                      </Button>
+                    </div>
+                  </li>
+                </Fragment>
+              ))
+            )
+          ) : (
+            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
               <li key={i} className={`${listItemClassName} flex items-center`}>
                 <span className="h-4 w-full inline-block">
                   <SkeletonItem />
                 </span>
               </li>
-            ))}
-      </ul>
-    </div>
+            ))
+          )}
+        </ul>
+      </div>
+    </>
   );
 };
 
