@@ -34,15 +34,13 @@ export const search = (
 
 export const nlSearch = (
   q: string,
-  segment_user_id: string,
+  user_id: string,
 ): Promise<NLSearchResponse> => {
   return http
     .get('/answer', {
       params: {
         q,
-      },
-      headers: {
-        segment_user_id,
+        user_id,
       },
     })
     .then((r) => r.data);
