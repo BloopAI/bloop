@@ -22,13 +22,19 @@ type Props = {
   }[];
   onClick: ResultClick;
   handleRetry: () => void;
+  searchId: string;
 };
-const SemanticSearch = ({ answer, snippets, onClick, handleRetry }: Props) => {
+const SemanticSearch = ({
+  answer,
+  snippets,
+  onClick,
+  handleRetry,
+  searchId,
+}: Props) => {
   const { deviceId } = useContext(DeviceContext);
   const { query } = useAppNavigation();
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
-  const snippetId = useMemo(() => hashCode(answer).toString(), [answer]);
   const { trackUpvote } = useAnalytics();
 
   const highlightedAnswer = useMemo(() => {
@@ -44,12 +50,12 @@ const SemanticSearch = ({ answer, snippets, onClick, handleRetry }: Props) => {
     (isUpvote: boolean) => {
       setIsUpvote(isUpvote);
       setIsDownvote(!isUpvote);
-      trackUpvote(isUpvote, query, answer);
+      trackUpvote(isUpvote, query, answer, searchId);
       return saveUpvote({
         unique_id: deviceId,
         is_upvote: isUpvote,
         query: query,
-        snippet_id: snippetId,
+        snippet_id: searchId,
         text: answer,
       });
     },

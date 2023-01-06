@@ -102,6 +102,7 @@ const ResultsPage = ({ resultsData, loading, handleRetry }: Props) => {
           lang: item.lang,
           line: item.start_line,
         }))}
+        searchId={resultsData.selection.id}
         answer={resultsData.selection.answer}
         onClick={onResultClick}
         handleRetry={handleRetry}
