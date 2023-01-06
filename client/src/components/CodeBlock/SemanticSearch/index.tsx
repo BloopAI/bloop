@@ -41,7 +41,9 @@ const SemanticSearch = ({
     const lang = /```(.*?)\n/.exec(answer)?.[1];
 
     const langSubset = lang ? [lang.trim()] : undefined;
-    let code = answer.replace(/```(.*?)```/gs, (match) => {
+
+    let code = answer.replace(/```(.*?)\n/, '```');
+    code = code.replace(/```(.*?)```/gs, (match) => {
       const escapedString = match.replace(/```/g, '');
       if (!escapedString.length) {
         return '';
