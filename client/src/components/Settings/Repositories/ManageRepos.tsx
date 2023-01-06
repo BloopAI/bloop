@@ -5,6 +5,7 @@ import RepoList from '../../RepoList';
 import Button from '../../Button';
 import { RepoType, RepoUi, SyncStatus } from '../../../types/general';
 import { splitPath } from '../../../utils';
+import SearchableRepoList from '../../RepoList/SearchableRepoList';
 
 type Props = {
   type: 'local' | 'GitHub';
@@ -61,14 +62,13 @@ const ManageRepos = ({
         ]}
         activeStyle="secondary"
       />
-      <div className="w-full mt-6 overflow-auto flex flex-col">
-        <RepoList
-          repos={repos}
-          setRepos={setRepos}
-          source={type}
-          activeTab={0}
-        />
-      </div>
+      <SearchableRepoList
+        activeTab={0}
+        repos={repos}
+        setRepos={setRepos}
+        source={type}
+        containerClassName="w-full mt-6"
+      />
       <Button className="self-end" onClick={(e) => handleSubmit(e, repos)}>
         Re-sync
       </Button>
