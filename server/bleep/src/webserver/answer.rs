@@ -78,6 +78,10 @@ pub async fn handle(
         })
         .collect::<Vec<_>>();
 
+    if snippets.len() < 1 {
+        super::error(ErrorKind::Internal, "semantic search returned no snippets");
+    }
+
     let res = reqwest::Client::new()
         .post(format!("{}/q", app.config.answer_api_base))
         .json(&api::Request {
