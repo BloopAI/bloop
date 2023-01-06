@@ -19,7 +19,7 @@ const statusMap = {
   error: { text: 'Error', color: 'bg-red-500' },
   removed: { text: 'Removed', color: 'bg-red-500' },
   uninitialized: { text: 'Not synced', color: 'bg-gray-700' },
-  queued: { text: 'Queued...', color: 'bg-yellow-500' },
+  queued: { text: 'Queued...', color: 'bg-gray-700' },
   indexing: { text: 'Indexing...', color: 'bg-yellow-500' },
   syncing: { text: 'Syncing...', color: 'bg-yellow-500' },
   done: { text: 'Last updated ', color: 'bg-green-500' },
