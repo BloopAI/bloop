@@ -55,7 +55,10 @@ const SemanticSearch = ({
       if (!escapedString.length) {
         return '';
       }
-      const hl = hljs.highlightAuto(escapedString, langSubset).value;
+      const hl = hljs.highlightAuto(
+        escapedString,
+        langSubset || ['markdown'],
+      ).value;
       return `<code class="bg-gray-700 p-[2px] rounded">${hl}</code>`;
     });
 
