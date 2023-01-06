@@ -59,18 +59,12 @@ const config = {
     },
   ],
 
-  // globalSetup: './tests/global-setup',
-
   /* Folder for test artifacts such as screenshots, videos, traces, etc. */
   // outputDir: 'test-results/',
 
   /* Run your local dev server before starting the tests */
-  // app: {
-  //   command: 'pnpm start-app',
-  //   port: '1',
-  // },
   // webServer: {
-  //   command: 'pnpm start-app',
+  //   command: '',
   //   port: 3000,
   // },
 };
