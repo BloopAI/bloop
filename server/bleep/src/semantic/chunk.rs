@@ -86,7 +86,10 @@ pub fn tree_sitter<'a, 'l>(src: &'a str, lang_id: &'l str) -> Result<Vec<Chunk<'
 }
 
 fn point(src: &str, byte: usize) -> Point {
-    let line = src.as_bytes()[..byte].iter().filter(|&&b| b == b'\n').count();
+    let line = src.as_bytes()[..byte]
+        .iter()
+        .filter(|&&b| b == b'\n')
+        .count() + 1; // we count from line 1
     let column = if let Some(last_nl) = src[..byte].rfind('\n') {
         byte - last_nl
     } else {
@@ -95,13 +98,38 @@ fn point(src: &str, byte: usize) -> Point {
     Point { byte, column, line }
 }
 
-fn add_chunks<'s>(results: &mut Vec<Chunk<'s>>, src: &'s str, offsets: &[(usize, usize)], start: usize, end: usize, _max_tokens: usize) {
-    //TODO: split if more than _max_tokens
+fn add_chunk<'s>(
+    results: &mut Vec<Chunk<'s>>,
+    src: &'s str,
+    offsets: &[(usize, usize)],
+    start: usize,
+    end: usize,
+) {
     let startpoint = point(src, offsets[start].0);
     let endpoint = point(src, offsets[end].1);
-    if endpoint.byte > startpoint.byte { 
-        results.push(Chunk::new(&src[startpoint.byte .. endpoint.byte], startpoint, endpoint));        
+    if endpoint.byte > startpoint.byte {
+        results.push(Chunk::new(
+            &src[startpoint.byte..endpoint.byte],
+            startpoint,
+            endpoint,
+        ));
     }
+}
+
+fn add_chunks<'s>(
+    results: &mut Vec<Chunk<'s>>,
+    src: &'s str,
+    offsets: &[(usize, usize)],
+    mut start: usize,
+    end: usize,
+    max_tokens: usize,
+) {
+    while end - start > max_tokens {
+        let Some(mid) = (start..(start + max_tokens - 1)).rfind(|&i| offsets[i].1 < offsets[i + 1].0) else { return };
+        add_chunk(results, src, offsets, start, mid);
+        start = mid;
+    }
+    add_chunk(results, src, offsets, start, end);
 }
 
 /// This tries to split the code by lines and add as much tokens as possible until reaching
@@ -128,15 +156,31 @@ pub fn by_tokens<'s>(
     let mut first_newline = 0;
     let mut last_newline = 0;
     let mut result = Vec::new();
-    for newline in (0..(offset_len - 1)).filter(|&i| src[offsets[i].1 .. offsets[i + 1].0].contains('\n')) {
+    for newline in
+        (0..(offset_len - 1)).filter(|&i| src[offsets[i].1..offsets[i + 1].0].contains('\n'))
+    {
         if newline - first_newline > max_tokens {
-            add_chunks(&mut result, src, offsets, first_newline, last_newline, max_tokens);
+            add_chunks(
+                &mut result,
+                src,
+                offsets,
+                first_newline,
+                last_newline,
+                max_tokens,
+            );
             first_newline = (last_newline + 1).min(offset_len);
         }
         last_newline = newline;
     }
     if first_newline < offset_len {
-        add_chunks(&mut result, src, offsets, first_newline, offset_len - 1, max_tokens);
+        add_chunks(
+            &mut result,
+            src,
+            offsets,
+            first_newline,
+            offset_len - 1,
+            max_tokens,
+        );
     }
     result
 }
@@ -179,8 +223,7 @@ mod tests {
     #[test]
     pub fn test_by_tokens() {
         let src = include_str!("chunk.rs"); // tokenize yourself!
-        let tokenizer = tokenizers::Tokenizer::from_file("../../model/tokenizer.json")
-        .unwrap();
+        let tokenizer = tokenizers::Tokenizer::from_file("../../model/tokenizer.json").unwrap();
         let max_tokens = 128;
         let max_lines = 15;
         dbg!(super::by_tokens(src, &tokenizer, max_tokens, max_lines));
