@@ -110,7 +110,7 @@ pub async fn handle(
         )
     })?;
 
-    let selected_snippet = snippets.remove(selection.index as usize);
+    let selected_snippet = snippets.remove(selection.data.index as usize);
     snippets.insert(0, selected_snippet);
 
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
