@@ -165,7 +165,7 @@ const TextInput = forwardRef(function TextInputWithRef(
             autoComplete="off"
             spellCheck="false"
             className={`bg-transparent border-none focus:outline-none w-full group-focus-within:placeholder:text-gray-100 disabled:placeholder:text-gray-500 ${
-              type === 'email' ? 'px-1' : 'pl-2.5'
+              type === 'email' || type === 'search' ? 'px-1' : 'pl-2.5'
             } transition-all duration-300 ease-in-bounce outline-none outline-0 pr-9`}
             onKeyDown={handleEnter}
           />
