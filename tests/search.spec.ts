@@ -3,6 +3,7 @@ import { expect, Page, test } from '@playwright/test';
 
 test.describe.serial('Search', () => {
   let page: Page;
+
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext();
     page = await context.newPage();
