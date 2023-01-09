@@ -222,12 +222,12 @@ dependencies = [
 
 [[package]]
 name = "axum"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08b108ad2665fa3f6e6a517c3d80ec3e77d224c47d605167aefaa5d7ef97fa48"
+checksum = "1304eab461cf02bd70b083ed8273388f9724c549b316ba3d1e213ce0e9e7fb7e"
 dependencies = [
  "async-trait",
- "axum-core 0.3.0",
+ "axum-core 0.3.1",
  "bitflags",
  "bytes",
  "futures-util",
@@ -267,9 +267,9 @@ dependencies = [
 
 [[package]]
 name = "axum-core"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79b8558f5a0581152dc94dcd289132a1d377494bdeafcd41869b3258e3e2ad92"
+checksum = "f487e40dc9daee24d8a1779df88522f159a54a980f99cfbe43db0be0bd3444a8"
 dependencies = [
  "async-trait",
  "bytes",
@@ -3400,7 +3400,7 @@ dependencies = [
 [[package]]
 name = "ort"
 version = "1.13.2"
-source = "git+https://github.com/rsdy/ort?branch=build-rs-fix#1ecd75a1f91528a3eb0c69dea97654378b1a6863"
+source = "git+https://github.com/rsdy/ort?branch=build-rs-fix#77c6a2c56600b65533d7e6399b6db47afaf1b663"
 dependencies = [
  "casey",
  "flate2",
@@ -5723,7 +5723,7 @@ checksum = "8f219fad3b929bef19b1f86fbc0358d35daed8f2cac972037ac0dc10bbb8d5fb"
 dependencies = [
  "async-stream",
  "async-trait",
- "axum 0.6.1",
+ "axum 0.6.2",
  "base64",
  "bytes",
  "futures-core",

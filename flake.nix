@@ -21,6 +21,7 @@
               pnpm install >&2
             '';
             buildInputs = with pkgs; ([
+	      git-lfs
               llvmPackages_14.stdenv
               libclang
               clang
@@ -32,6 +33,8 @@
               cmake
               python3
               protobuf
+              automake
+              autoconf
             ] ++ lib.optionals pkgs.stdenv.isLinux [
               dbus.dev
               libsoup.dev
