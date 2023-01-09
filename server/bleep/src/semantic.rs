@@ -146,7 +146,7 @@ impl Semantic {
 
         let repo_filter = nl_query
             .repo()
-            .map(|r| make_kv_filter("repo".to_string(), r.to_string()));
+            .map(|r| make_kv_filter("repo_name".to_string(), r.to_string()));
 
         let lang_filter = nl_query
             .lang()
