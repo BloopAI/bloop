@@ -18,6 +18,8 @@ import ViewResult from '../ResultFull';
 import { SearchType } from '../../types/general';
 import NLResults from '../NLResults';
 import NoResults from '../Results/NoResults';
+import HomePage from '../Home';
+import { TabsContext } from '../../context/tabsContext';
 
 const mockQuerySuggestions = [
   'repo:cobra-ats  error:“no apples”',
@@ -36,11 +38,13 @@ const SearchPage = () => {
     data: nlData,
     loading: nlLoading,
   } = useSearch<NLSearchResponse>();
+  const { updateCurrentTabName } = useContext(TabsContext);
 
   const { navigatedItem, query } = useAppNavigation();
 
   useEffect(() => {
     if (!navigatedItem) {
+      updateCurrentTabName('Home');
       return;
     }
     if (navigatedItem.searchType !== undefined) {
@@ -52,6 +56,11 @@ const SearchPage = () => {
     switch (navigatedItem.type) {
       case 'repo':
       case 'full-result':
+        updateCurrentTabName(
+          navigatedItem.type === 'repo'
+            ? `Repo: ${navigatedItem.repo}`
+            : `File: ${navigatedItem.path}`,
+        );
         searchQuery(
           buildRepoQuery(navigatedItem.repo, navigatedItem.path),
           0,
@@ -60,6 +69,7 @@ const SearchPage = () => {
         );
         break;
       default:
+        updateCurrentTabName(`Search: ${navigatedItem.query}`);
         if ((navigatedItem.searchType ?? searchType) === SearchType.NL) {
           nlSearchQuery(navigatedItem.query!);
         } else {
@@ -78,7 +88,11 @@ const SearchPage = () => {
       | 'repo'
       | 'full-result'
       | 'nl-result'
-      | 'no-results';
+      | 'no-results'
+      | 'home';
+    if (!navigatedItem || navigatedItem.type === 'home') {
+      return 'home';
+    }
     if (
       (navigatedItem?.searchType === SearchType.NL &&
         !nlData?.snippets?.length &&
@@ -87,23 +101,22 @@ const SearchPage = () => {
         !data?.data[0] &&
         !loading)
     ) {
-      renderPage = 'no-results';
-    } else {
-      const resultType =
-        navigatedItem?.searchType === SearchType.NL ? 'nl' : data?.data[0].kind;
-      switch (resultType) {
-        case 'dir':
-          renderPage = 'repo';
-          break;
-        case 'file':
-          renderPage = 'full-result';
-          break;
-        case 'nl':
-          renderPage = 'nl-result';
-          break;
-        default:
-          renderPage = 'results';
-      }
+      return 'no-results';
+    }
+    const resultType =
+      navigatedItem?.searchType === SearchType.NL ? 'nl' : data?.data[0].kind;
+    switch (resultType) {
+      case 'dir':
+        renderPage = 'repo';
+        break;
+      case 'file':
+        renderPage = 'full-result';
+        break;
+      case 'nl':
+        renderPage = 'nl-result';
+        break;
+      default:
+        renderPage = 'results';
     }
     return renderPage;
   }, [navigatedItem, data, loading, nlData, nlLoading]);
@@ -134,6 +147,8 @@ const SearchPage = () => {
             handleRetry={handleRetry}
           />
         );
+      default:
+        return <HomePage />;
     }
   }, [data, loading, nlLoading, nlData, handleRetry, navigatedItem]);
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronDownFilled, ChevronUpFilled } from '../../../icons';
 import TextField from '../../TextField';
 import ContextMenu, { ContextMenuItem } from '../../ContextMenu';
@@ -8,12 +8,23 @@ type Props = {
   items: ContextMenuItem[];
   hint?: string;
   btnHint?: string;
+  titleClassName?: string;
   selected?: ContextMenuItem;
 };
 
-const Dropdown = ({ items, hint, selected, btnHint }: Props) => {
+const Dropdown = ({
+  items,
+  hint,
+  selected,
+  btnHint,
+  titleClassName,
+}: Props) => {
   const [visible, setVisibility] = useState(false);
   const [selectedItem, setSelectedItem] = useState(selected);
+
+  useEffect(() => {
+    setSelectedItem(selected);
+  }, [selected]);
 
   const handleSelect = (item: ContextMenuItem) => {
     setSelectedItem(item);
@@ -35,9 +46,17 @@ const Dropdown = ({ items, hint, selected, btnHint }: Props) => {
         >
           {btnHint ? <span className="text-gray-500">{btnHint}</span> : null}
           {selectedItem ? (
-            <TextField value={selectedItem.text!} icon={selectedItem.icon} />
+            <TextField
+              value={selectedItem.text!}
+              icon={selectedItem.icon}
+              className={titleClassName}
+            />
           ) : (
-            <TextField value={items[0].text!} icon={items[0].icon} />
+            <TextField
+              value={items[0].text!}
+              icon={items[0].icon}
+              className={titleClassName}
+            />
           )}
 
           <span>{visible ? <ChevronUpFilled /> : <ChevronDownFilled />}</span>
