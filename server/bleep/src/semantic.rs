@@ -146,8 +146,7 @@ impl Semantic {
         buffer: &str,
         lang_str: &str,
     ) {
-        let chunks = //chunk::trivial(buffer, 15); // line-wise chunking, 15 lines per chunk
-            chunk::by_tokens(buffer, &*self.tokenizer, self.session.inputs.len(), 15);
+        let chunks = chunk::trivial(buffer, 15); // line-wise chunking, 15 lines per chunk
 
         debug!(chunk_count = chunks.len(), "found chunks");
         let datapoints = chunks
