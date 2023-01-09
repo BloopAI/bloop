@@ -23,7 +23,7 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
   }, []);
 
   return (
-    <div className="flex flex-row flex-1">
+    <div className="flex flex-row flex-1 gap-4">
       <Button
         variant={'tertiary'}
         onlyIcon
@@ -63,7 +63,7 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
         {/*    hint={'Open tabs'}*/}
         {/*  />*/}
         {/*)}*/}
-        <div className="flex items-center">
+        <div className="flex items-center flex-1">
           {isSkeleton ? (
             <>
               <div className="bg-gray-700 rounded-4 h-7 w-68 mr-2" />
