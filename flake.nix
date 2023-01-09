@@ -1,7 +1,7 @@
 {
   description = "bloop";
 
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-22.05";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-22.11";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   outputs = { self, nixpkgs, flake-utils }:
@@ -30,6 +30,7 @@
               openssl
               glib.dev
               cmake
+              python3
               protobuf
             ] ++ lib.optionals pkgs.stdenv.isLinux [
               dbus.dev
