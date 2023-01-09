@@ -1,4 +1,5 @@
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
+use ndarray::Axis;
 use utoipa::ToSchema;
 
 use crate::Application;
@@ -38,7 +39,7 @@ mod api {
 }
 
 fn default_limit() -> u64 {
-    10
+    30
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -59,7 +60,7 @@ pub async fn handle(
     Query(params): Query<Params>,
     Extension(app): Extension<Application>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
-    let mut snippets = app
+    let snippets = app
         .semantic
         .search(&params.q, params.limit)
         .await
@@ -91,6 +92,9 @@ pub async fn handle(
         super::error(ErrorKind::Internal, "semantic search returned no snippets");
     }
 
+    // rerank results and get the top 5
+    let mut snippets = rank(&params.q, snippets, &app, 5);
+
     let res = reqwest::Client::new()
         .post(format!("{}/q", app.config.answer_api_base))
         .json(&api::Request {
@@ -121,4 +125,49 @@ pub async fn handle(
         snippets,
         selection,
     })))
+}
+
+fn rank(
+    query: &str,
+    snippets: Vec<api::Snippet>,
+    app: &Application,
+    max_results: usize,
+) -> Vec<api::Snippet> {
+    // number of ranked results
+    let k = std::cmp::min(max_results, snippets.len());
+
+    let mut scores: Vec<(usize, (api::Snippet, f32))> = snippets
+        .into_iter()
+        .map(|snippet| {
+            let tokens = app
+                .semantic
+                .rank_tokenizer
+                .encode((query, snippet.text.as_str()), true)
+                .unwrap();
+            let logit = app
+                .semantic
+                .encode(&tokens, app.semantic.rank_session.clone())
+                .unwrap()
+                .remove_axis(Axis(0))[0];
+            // normalise snippet score
+            let score = 1. / (1. + (logit.exp()));
+            (snippet, score)
+        })
+        .enumerate()
+        .collect();
+
+    // sort snippets by reranker score
+    scores.sort_by(|a, b| {
+        let (_, (_, score_a)) = a;
+        let (_, (_, score_b)) = b;
+        score_a.partial_cmp(score_b).unwrap()
+    });
+
+    scores[..k]
+        .into_iter()
+        .map(|s| {
+            let (_, (snippet, _)) = s;
+            snippet.clone()
+        })
+        .collect()
 }
