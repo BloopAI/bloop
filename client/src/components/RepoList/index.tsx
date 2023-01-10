@@ -59,10 +59,12 @@ const RepoList = ({
   }, []);
 
   useEffect(() => {
-    if (filter !== undefined) {
+    if (filter) {
       setFilteredRepos(repos.filter((r) => r.name.includes(filter)));
+    } else {
+      setFilteredRepos(repos);
     }
-  }, [filter]);
+  }, [filter, repos]);
 
   return (
     <>
