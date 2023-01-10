@@ -129,7 +129,7 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
         {/*    hint={'Open tabs'}*/}
         {/*  />*/}
         {/*)}*/}
-        <div className="flex items-center">
+        <div className="flex items-center flex-1">
           {isSkeleton ? (
             <>
               <div className="bg-gray-700 rounded-4 h-7 w-68 mr-2" />
