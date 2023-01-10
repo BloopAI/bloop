@@ -1,3 +1,4 @@
+use crate::query::parser;
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
 use utoipa::ToSchema;
 
@@ -59,9 +60,11 @@ pub async fn handle(
     Query(params): Query<Params>,
     Extension(app): Extension<Application>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
+    let query =
+        parser::parse_nl(&params.q).map_err(|e| super::error(ErrorKind::User, e.to_string()))?;
     let mut snippets = app
         .semantic
-        .search(&params.q, params.limit)
+        .search(&query, params.limit)
         .await
         .map_err(|e| super::error(ErrorKind::Internal, e.to_string()))?
         .into_iter()

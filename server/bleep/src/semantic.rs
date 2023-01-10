@@ -1,5 +1,7 @@
 use std::{collections::HashMap, ops::Not, path::Path, sync::Arc};
 
+use crate::query::parser::NLQuery;
+
 use anyhow::Result;
 use maplit::hashmap;
 use ndarray::s;
@@ -10,9 +12,10 @@ use ort::{
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
-        vectors_config, with_payload_selector::SelectorOptions, CollectionOperationResponse,
-        CreateCollection, Distance, PointId, PointStruct, SearchPoints, Value, VectorParams,
-        VectorsConfig, WithPayloadSelector,
+        r#match::MatchValue, vectors_config, with_payload_selector::SelectorOptions,
+        CollectionOperationResponse, CreateCollection, Distance, FieldCondition, Filter, Match,
+        PointId, PointStruct, SearchPoints, Value, VectorParams, VectorsConfig,
+        WithPayloadSelector,
     },
 };
 use rayon::prelude::*;
@@ -121,7 +124,39 @@ impl Semantic {
         Ok(pooled.to_owned().as_slice().unwrap().to_vec())
     }
 
-    pub async fn search(&self, query: &str, limit: u64) -> Result<Vec<HashMap<String, Value>>> {
+    pub async fn search<'a>(
+        &self,
+        nl_query: &NLQuery<'a>,
+        limit: u64,
+    ) -> Result<Vec<HashMap<String, Value>>> {
+        let Some(query) = nl_query.target() else {
+            anyhow::bail!("no search target for query");
+        };
+
+        let make_kv_filter = |key, value| {
+            FieldCondition {
+                key,
+                r#match: Some(Match {
+                    match_value: MatchValue::Text(value).into(),
+                }),
+                ..Default::default()
+            }
+            .into()
+        };
+
+        let repo_filter = nl_query
+            .repo()
+            .map(|r| make_kv_filter("repo_name".to_string(), r.to_string()));
+
+        let lang_filter = nl_query
+            .lang()
+            .map(|l| make_kv_filter("lang".to_string(), l.to_string()));
+
+        let filters = [repo_filter, lang_filter]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+
         let response = self
             .qdrant
             .search_points(&SearchPoints {
@@ -130,6 +165,10 @@ impl Semantic {
                 vector: self.embed(query)?,
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(SelectorOptions::Enable(true)),
+                }),
+                filter: Some(Filter {
+                    must: filters,
+                    ..Default::default()
                 }),
                 ..Default::default()
             })
