@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     ops::Not,
     path::{Path, PathBuf},
     sync::Arc,
@@ -8,6 +8,9 @@ use std::{
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use dashmap::mapref::entry::Entry;
+use once_cell::sync::Lazy;
+use regex::Regex;
+use smallvec::SmallVec;
 use tantivy::{
     collector::TopDocs,
     doc,
@@ -153,6 +156,64 @@ impl File {
     }
 }
 
+fn should_index<P: AsRef<Path>>(p: &P) -> bool {
+    let path = p.as_ref();
+
+    const EXT_BLACKLIST: &[&str] = &["png", "jpg", "jpeg", "ico", "ttf", "otf", "woff2"];
+
+    let Some(ext) = path.extension() else {
+        return true;
+    };
+
+    let ext = ext.to_string_lossy();
+    if EXT_BLACKLIST.contains(&&*ext) {
+        return false;
+    }
+
+    static VENDOR_PATTERNS: Lazy<HashMap<&'static str, SmallVec<[Regex; 1]>>> = Lazy::new(|| {
+        let patterns: &[(&[&str], &[&str])] = &[
+            (
+                &["go", "proto"],
+                &["^(vendor|third_party)/.*\\.\\w+$", "\\w+\\.pb\\.go$"],
+            ),
+            (
+                &["js", "jsx", "ts", "tsx", "css", "md", "json", "txt", "conf"],
+                &["^(node_modules|vendor|dist)/.*\\.\\w+$"],
+            ),
+        ];
+
+        patterns
+            .iter()
+            .flat_map(|(exts, rxs)| exts.iter().map(move |&e| (e, rxs)))
+            .map(|(ext, rxs)| {
+                let regexes = rxs
+                    .iter()
+                    .filter_map(|source| match Regex::new(source) {
+                        Ok(r) => Some(r),
+                        Err(e) => {
+                            warn!(%e, "failed to compile vendor regex {source:?}");
+                            None
+                        }
+                    })
+                    .collect();
+
+                (ext, regexes)
+            })
+            .collect()
+    });
+
+    match VENDOR_PATTERNS.get(&*ext) {
+        None => true,
+        Some(rxs) => !rxs.iter().any(|r| r.is_match(&path.to_string_lossy())),
+    }
+}
+
+// Empirically calculated using:
+//     cat **/*.rs | awk '{SUM+=length;N+=1}END{print SUM/N}'
+const AVG_LINE_LEN: u64 = 30;
+const MAX_LINE_COUNT: u64 = 20000;
+const MAX_FILE_LEN: u64 = AVG_LINE_LEN * MAX_LINE_COUNT;
+
 #[async_trait]
 impl Indexable for File {
     fn index_repository(
@@ -166,18 +227,20 @@ impl Indexable for File {
         let repo_name = reporef.indexed_name();
 
         // note: this WILL observe .gitignore files for the respective repos.
-        let walker = repo
-            .open_walker()
-            .filter_map(|entry| match entry {
-                Ok(de) => match de.file_type() {
-                    Some(ft) if ft.is_file() => Some(dunce::canonicalize(de.into_path()).unwrap()),
-                    _ => None,
-                },
+        let walker = ignore::Walk::new(&repo.disk_path)
+            .filter_map(|de| match de {
+                Ok(de) => Some(de),
                 Err(err) => {
                     warn!(%err, "access failure; skipping");
                     None
                 }
             })
+            // Ignore directories from walk result.
+            .filter(|de| matches!(de.file_type(), Some(ft) if ft.is_file()))
+            // Preliminarily ignore files that are very large, without reading the contents.
+            .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
+            .map(|de| dunce::canonicalize(de.into_path()).unwrap())
+            .filter(|p| should_index(&p.strip_prefix(&repo.disk_path).unwrap()))
             .collect::<Vec<PathBuf>>();
 
         let start = std::time::Instant::now();
@@ -463,6 +526,12 @@ impl File {
             .flat_map(|(i, _)| u32::to_le_bytes(i as u32))
             .collect::<Vec<_>>();
 
+        // Skip files that are too long. This is not necessarily caught in the filesize check, e.g.
+        // for a file like `vocab.txt` which has thousands of very short lines.
+        if line_end_indices.len() > MAX_LINE_COUNT as usize {
+            return Ok(());
+        }
+
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
         let last_commit = repo_info.last_commit_unix_secs;
 
@@ -511,5 +580,44 @@ impl File {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_should_index() {
+        let tests = [
+            // Ignore these extensions completely.
+            ("image.png", false),
+            ("image.jpg", false),
+            ("image.jpeg", false),
+            ("font.ttf", false),
+            ("font.otf", false),
+            ("font.woff2", false),
+            ("icon.ico", false),
+            // Simple paths that should be indexed.
+            ("foo.js", true),
+            ("bar.ts", true),
+            ("quux/fred.ts", true),
+            // Typical vendored paths.
+            ("vendor/jquery.js", false),
+            ("dist/react.js", false),
+            ("vendor/github.com/Microsoft/go-winio/file.go", false),
+            (
+                "third_party/protobuf/google/protobuf/descriptor.proto",
+                false,
+            ),
+            ("src/defs.pb.go", false),
+            // These are not typically vendored in Rust.
+            ("dist/main.rs", true),
+            ("vendor/foo.rs", true),
+        ];
+
+        for (path, index) in tests {
+            assert_eq!(should_index(&Path::new(dbg!(path))), index);
+        }
     }
 }

@@ -276,10 +276,6 @@ impl Repository {
         }
     }
 
-    pub(crate) fn open_walker(&self) -> ignore::Walk {
-        ignore::WalkBuilder::new(&self.disk_path).build()
-    }
-
     pub(crate) async fn get_head_info(&self) -> Arc<RepoHeadInfo> {
         let repo = git2::Repository::open(&self.disk_path)
             .and_then(|repo| Ok(repo.head()?.peel_to_commit()?.time().seconds() as u64))
