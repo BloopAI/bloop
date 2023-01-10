@@ -9,6 +9,7 @@ use tracing::info;
 use utoipa::OpenApi;
 use utoipa::ToSchema;
 
+mod answer;
 mod autocomplete;
 mod file;
 mod github;
@@ -18,7 +19,6 @@ mod intelligence;
 mod query;
 mod repos;
 mod semantic;
-mod answer;
 
 #[allow(unused)]
 pub(in crate::webserver) mod prelude {
@@ -53,9 +53,6 @@ pub async fn start(app: Application) -> Result<()> {
             get(repos::get_by_id).delete(repos::delete_by_id),
         )
         .route("/repos/sync/*path", get(repos::sync))
-        // remotes
-        .route("/remotes/github/login", get(github::login))
-        .route("/remotes/github/status", get(github::status))
         // intelligence
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))
