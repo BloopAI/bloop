@@ -94,6 +94,8 @@ pub async fn handle(
         super::error(ErrorKind::Internal, "semantic search returned no snippets");
     }
 
+    let answer_api_client = AnswerAPIClient::new(&format!("{}/q", app.config.answer_api_base));
+
     let res = reqwest::Client::new()
         .post(format!("{}/q", app.config.answer_api_base))
         .json(&api::Request {
@@ -124,4 +126,83 @@ pub async fn handle(
         snippets,
         selection,
     })))
+}
+
+#[derive(serde::Serialize)]
+struct OpenAIRequest {
+    prompt: String,
+}
+
+struct AnswerAPIClient {
+    client: reqwest::Client,
+    host: String,
+}
+
+impl AnswerAPIClient {
+    fn new(host: &str) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            host: host.to_owned(),
+        }
+    }
+
+    async fn send(&self, prompt: String) -> Result<reqwest::Response, reqwest::Error> {
+        self.client
+            .post(self.host.as_str())
+            .json(&OpenAIRequest {
+                prompt: prompt.clone(),
+            })
+            .send()
+            .await
+    }
+}
+
+const DELIMITER: &str = "######";
+impl AnswerAPIClient {
+    async fn stage_1(
+        &self,
+        query: &str,
+        snippets: &[api::Snippet],
+    ) -> Result<reqwest::Response, reqwest::Error> {
+        let mut prompt = snippets
+            .iter()
+            .enumerate()
+            .map(|(i, snippet)| {
+                format!(
+                    "Repository: {}\nPath: {}\nLanguage: {}\nIndex: {}\n\n{}\n{DELIMITER}\n",
+                    snippet.repo_name, snippet.relative_path, snippet.lang, i, snippet.text
+                )
+            })
+            .collect::<String>();
+
+        prompt += &format!(
+            "\nAbove are {} code snippets separated by {DELIMITER}.\
+            Your job is to select the snippet that best answers the \
+            query \"{}\". Reply with a zero-based index.",
+            snippets.len(),
+            query,
+        );
+
+        self.send(prompt).await
+    }
+
+    async fn stage_2(
+        &self,
+        query: &str,
+        snippet: &api::Snippet,
+    ) -> Result<reqwest::Response, reqwest::Error> {
+        let mut prompt = format!(
+            "Path: {}\n\n{}\n\n{DELIMITER}\n
+            \nAbove the delimiter {DELIMITER} is a code snippet. \
+            Your job is to answer the questions\
+            about the snippet, giving detailed explanations. Cite any code \
+            used to answer the question formatted in GitHub markdown and \
+            state the file path.
+            Q: {}
+            A:",
+            snippet.relative_path, snippet.text, query
+        );
+
+        self.send(prompt).await
+    }
 }
