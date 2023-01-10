@@ -53,9 +53,6 @@ pub async fn start(app: Application) -> Result<()> {
             get(repos::get_by_id).delete(repos::delete_by_id),
         )
         .route("/repos/sync/*path", get(repos::sync))
-        // remotes
-        .route("/remotes/github/login", get(github::login))
-        .route("/remotes/github/status", get(github::status))
         // intelligence
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))
