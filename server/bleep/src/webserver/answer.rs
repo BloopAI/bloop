@@ -62,6 +62,10 @@ pub async fn handle(
 ) -> Result<impl IntoResponse, impl IntoResponse> {
     let query =
         parser::parse_nl(&params.q).map_err(|e| super::error(ErrorKind::User, e.to_string()))?;
+    let target = query.target().ok_or(super::error(
+        ErrorKind::User,
+        "missing search target".to_owned(),
+    ))?;
     let mut snippets = app
         .semantic
         .search(&query, params.limit)
@@ -94,55 +98,62 @@ pub async fn handle(
         super::error(ErrorKind::Internal, "semantic search returned no snippets");
     }
 
-    let answer_api_client = AnswerAPIClient::new(&format!("{}/q", app.config.answer_api_base));
+    let answer_api_client = AnswerAPIClient::new(
+        &format!("{}/q", app.config.answer_api_base),
+        &target,
+        &params.user_id,
+    );
 
-    let res = reqwest::Client::new()
-        .post(format!("{}/q", app.config.answer_api_base))
-        .json(&api::Request {
-            query: params.q,
-            user_id: params.user_id,
-            snippets: snippets.clone(),
-        })
-        .send()
+    let res1 = answer_api_client
+        .stage_1(&snippets)
         .await
-        .map_err(|e| {
-            super::error(
-                ErrorKind::Internal,
-                format!("failed to make request to answer API: {}", e),
-            )
-        })?;
+        .map_err(|e| super::error(ErrorKind::Internal, e.to_string()))?
+        .index;
 
-    let selection: api::Response = res.json().await.map_err(|e| {
-        super::error(
-            ErrorKind::Internal,
-            format!("answer API was not able to create a valid result: {}", e),
-        )
-    })?;
+    let processed_snippet = &snippets[res1];
 
-    let selected_snippet = snippets.remove(selection.data.index as usize);
+    let res2 = answer_api_client
+        .stage_2(processed_snippet)
+        .await
+        .map_err(|e| super::error(ErrorKind::Internal, e.to_string()))?
+        .answer;
+
+    // reorder snippets
+    let selected_snippet = snippets.remove(res1);
     snippets.insert(0, selected_snippet);
 
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
         snippets,
-        selection,
+        selection: api::Response {
+            data: api::DecodedResponse {
+                index: res1 as u32,
+                answer: res2,
+            },
+            id: params.user_id,
+        },
     })))
 }
 
 #[derive(serde::Serialize)]
 struct OpenAIRequest {
     prompt: String,
+    user_id: String,
 }
 
 struct AnswerAPIClient {
     client: reqwest::Client,
     host: String,
+    query: String,
+    user_id: String,
 }
 
 impl AnswerAPIClient {
-    fn new(host: &str) -> Self {
+    fn new(host: &str, query: &str, user_id: &str) -> Self {
         Self {
             client: reqwest::Client::new(),
             host: host.to_owned(),
+            query: query.to_owned(),
+            user_id: user_id.to_owned(),
         }
     }
 
@@ -151,19 +162,26 @@ impl AnswerAPIClient {
             .post(self.host.as_str())
             .json(&OpenAIRequest {
                 prompt: prompt.clone(),
+                user_id: self.user_id.clone(),
             })
             .send()
             .await
     }
 }
 
+#[derive(serde::Deserialize)]
+struct Stage1Response {
+    index: usize,
+}
+
+#[derive(serde::Deserialize)]
+struct Stage2Response {
+    answer: String,
+}
+
 const DELIMITER: &str = "######";
 impl AnswerAPIClient {
-    async fn stage_1(
-        &self,
-        query: &str,
-        snippets: &[api::Snippet],
-    ) -> Result<reqwest::Response, reqwest::Error> {
+    async fn stage_1(&self, snippets: &[api::Snippet]) -> Result<Stage1Response, reqwest::Error> {
         let mut prompt = snippets
             .iter()
             .enumerate()
@@ -176,33 +194,45 @@ impl AnswerAPIClient {
             .collect::<String>();
 
         prompt += &format!(
-            "\nAbove are {} code snippets separated by {DELIMITER}.\
-            Your job is to select the snippet that best answers the \
-            query \"{}\". Reply with a zero-based index.",
-            snippets.len(),
-            query,
-        );
+            "\nAbove are {} code snippets separated by \"{DELIMITER}\". \
+            Your job is to answer which snippet index best answers the question. Your\
+            reply must obey the JSON schema {{ \"index\": number}}.
 
-        self.send(prompt).await
-    }
+            Q: What icon do we use to clear search history?
+            A: {{ \"index\": 0 }}
 
-    async fn stage_2(
-        &self,
-        query: &str,
-        snippet: &api::Snippet,
-    ) -> Result<reqwest::Response, reqwest::Error> {
-        let mut prompt = format!(
-            "Path: {}\n\n{}\n\n{DELIMITER}\n
-            \nAbove the delimiter {DELIMITER} is a code snippet. \
-            Your job is to answer the questions\
-            about the snippet, giving detailed explanations. Cite any code \
-            used to answer the question formatted in GitHub markdown and \
-            state the file path.
             Q: {}
             A:",
-            snippet.relative_path, snippet.text, query
+            snippets.len(),
+            self.query,
         );
 
-        self.send(prompt).await
+        self.send(prompt).await?.json::<Stage1Response>().await
+    }
+
+    async fn stage_2(&self, snippet: &api::Snippet) -> Result<Stage2Response, reqwest::Error> {
+        let prompt = format!(
+            "
+            File: {}
+
+            {}
+
+            #####
+
+            Above is a code snippet.\
+            Your job is to answer the questions about the snippet,\
+            giving detailed explanations. Cite any code used to\
+            answer the question formatted in GitHub markdown and state the file path.\
+            Your reply must obey the JSON schema {{ \"answer\": string }}
+
+            Q: What icon do we use to clear search history?
+            A: {{ \"answer\": \"We use the left-double chevron icon.\" }}
+
+            Q: {}
+            A:",
+            snippet.relative_path, snippet.text, self.query
+        );
+
+        self.send(prompt).await?.json::<Stage2Response>().await
     }
 }
