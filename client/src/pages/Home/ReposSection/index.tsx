@@ -116,17 +116,6 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
     <div className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content">
       <div className="flex items-center justify-between">
         <h4 className="">{textsMap[filter].header}</h4>
-        {reposToShow.length ? (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setSettingsSection(1);
-              setSettingsOpen(true);
-            }}
-          >
-            Manage repositories
-          </Button>
-        ) : null}
       </div>
 
       <div className="mt-10 grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3.5 w-full 2xl:justify-between relative items-start grid-rows-[min-content]">

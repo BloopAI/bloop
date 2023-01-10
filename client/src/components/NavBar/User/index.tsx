@@ -1,6 +1,5 @@
 import { useCallback, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bug, ChevronDownFilled, Cog, Person } from '../../../icons';
+import { ArrowLeft, Bug, ChevronDownFilled, Person } from '../../../icons';
 import DropdownWithIcon from '../../Dropdown/WithIcon';
 import ShareButton, { ShareFile } from '../../ShareButton';
 import { MenuListItemType } from '../../ContextMenu';
@@ -15,7 +14,7 @@ type Props = {
 };
 
 const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
-  const { setSettingsOpen, setBugReportModalOpen } = useContext(UIContext);
+  const { setBugReportModalOpen } = useContext(UIContext);
   const { navigateBack, navigationHistory } = useAppNavigation();
 
   const backButtonHandler = useCallback(() => {
@@ -85,12 +84,6 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
           ) : (
             <DropdownWithIcon
               items={[
-                {
-                  text: 'Settings',
-                  icon: <Cog />,
-                  type: MenuListItemType.DEFAULT,
-                  onClick: () => setSettingsOpen(true),
-                },
                 // {
                 //   text: 'My Collections',
                 //   icon: <Collections />,
