@@ -199,7 +199,7 @@ impl IndexWriter {
 		    bail!("no keys for backend {:?}", backend)
 		};
 
-                if !app.path_allowed(path) {
+                if !app.allow_path(path) {
                     bail!("path not authorized {repo:?}")
                 }
 

@@ -1,14 +1,15 @@
 use crate::{snippet, state, Application};
 
 use anyhow::Result;
+use axum::routing::put;
 use axum::{response::IntoResponse, routing::get, Extension, Json, Router};
 use std::{borrow::Cow, net::SocketAddr};
-use tower_http::catch_panic::CatchPanicLayer;
-use tower_http::cors::CorsLayer;
+use tower_http::{auth::RequireAuthorizationLayer, catch_panic::CatchPanicLayer, cors::CorsLayer};
 use tracing::info;
 use utoipa::OpenApi;
 use utoipa::ToSchema;
 
+mod aaa;
 mod answer;
 mod autocomplete;
 mod file;
@@ -53,9 +54,6 @@ pub async fn start(app: Application) -> Result<()> {
             get(repos::get_by_id).delete(repos::delete_by_id),
         )
         .route("/repos/sync/*path", get(repos::sync))
-        // remotes
-        .route("/remotes/github/login", get(github::login))
-        .route("/remotes/github/status", get(github::status))
         // intelligence
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))
@@ -67,8 +65,23 @@ pub async fn start(app: Application) -> Result<()> {
         .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
         .route("/health", get(health));
 
-    if app.scan_allowed() {
+    if app.allow_github_device_flow() {
+        router = router
+            .route("/remotes/github/login", get(github::login))
+            .route("/remotes/github/status", get(github::status));
+    }
+
+    if app.allow_path_scan() {
         router = router.route("/repos/scan", get(repos::scan_local));
+    }
+
+    if app.use_aaa() {
+        router = router
+            .route("/auth/login", get(aaa::login))
+            .route("/auth/authorized", put(aaa::authorized))
+            .route("/auth/users", put(aaa::list_users))
+            .route("/auth/users/:user", put(aaa::set_user))
+            .layer(RequireAuthorizationLayer::custom(aaa::MyAuth));
     }
 
     router = router
