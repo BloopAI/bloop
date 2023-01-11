@@ -1,11 +1,5 @@
 use crate::query::parser;
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
-use secrecy::ExposeSecret;
-use segment::{
-    message::{Track, User},
-    Client, Message,
-};
-use serde_json::json;
 use utoipa::ToSchema;
 
 use crate::Application;
@@ -135,28 +129,14 @@ pub async fn handle(
     snippets.swap(relevant_snippet_index, 0);
 
     if let Some(ref segment) = *app.segment {
-        let id = uuid::Uuid::new_v4().to_string();
-
         segment
-            .client
-            .send(
-                segment.key.expose_secret().clone(),
-                Message::from(Track {
-                    user: User::UserId {
-                        user_id: params.user_id.clone(),
-                    },
-                    event: "openai query".to_owned(),
-                    properties: json!({
-                        "query": params.q,
-                        "relevant_snippet": &snippets[0],
-                        "response": snippet_explaination,
-                        "id": id.to_string()
-                    }),
-                    ..Default::default()
-                }),
+            .track_query(
+                &params.user_id,
+                &params.q,
+                &snippets[0].text,
+                &snippet_explaination,
             )
-            .await
-            .expect("Could not send to Segment")
+            .await;
     }
 
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {

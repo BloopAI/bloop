@@ -19,6 +19,7 @@ use semantic::Semantic;
 
 use crate::{
     indexes::Indexes,
+    segment::Segment,
     state::{Credentials, RepositoryPool, StateSource},
 };
 use anyhow::{anyhow, Result};
@@ -26,7 +27,7 @@ use background::BackgroundExecutor;
 use clap::Parser;
 use once_cell::sync::OnceCell;
 use relative_path::RelativePath;
-use secrecy::{Secret, SecretString};
+use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use std::{
     ops::Not,
@@ -40,6 +41,7 @@ mod background;
 mod collector;
 mod language;
 mod remotes;
+mod segment;
 mod webserver;
 
 pub mod ctags;
@@ -217,20 +219,6 @@ impl Configuration {
     }
 }
 
-pub struct Segment {
-    pub key: Secret<String>,
-    pub client: segment::HttpClient,
-}
-
-impl Segment {
-    pub fn new(segment_key: Secret<String>) -> Segment {
-        Self {
-            key: segment_key,
-            client: segment::HttpClient::default(),
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct Application {
     pub config: Arc<Configuration>,
@@ -267,11 +255,9 @@ impl Application {
                 .map_err(|existing| anyhow!("ctags binary already set: {existing:?}"))?;
         }
 
-        // configure segment
-        let segment = Arc::new(config.segment_key.clone().map(Segment::new));
-
         let config = Arc::new(config);
         let semantic = Semantic::new(&config.model_dir, &config.qdrant_url).await?;
+        let segment = Arc::new(config.segment_key.clone().map(Segment::new));
 
         Ok(Self {
             indexes: Indexes::new(config.clone(), semantic.clone())?.into(),
