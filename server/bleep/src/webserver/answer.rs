@@ -147,6 +147,7 @@ pub async fn handle(
                     },
                     event: "openai query".to_owned(),
                     properties: json!({
+                        "query": params.q,
                         "relevant_snippet": &snippets[0],
                         "response": snippet_explaination,
                         "id": id.to_string()
