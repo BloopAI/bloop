@@ -268,7 +268,7 @@ impl Application {
         }
 
         // configure segment
-        let segment = config.segment_key.clone().map(Segment::new);
+        let segment = Arc::new(config.segment_key.clone().map(Segment::new));
 
         let config = Arc::new(config);
         let semantic = Semantic::new(&config.model_dir, &config.qdrant_url).await?;
