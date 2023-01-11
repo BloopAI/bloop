@@ -62,6 +62,10 @@ pub async fn handle(
 ) -> Result<impl IntoResponse, impl IntoResponse> {
     let query =
         parser::parse_nl(&params.q).map_err(|e| super::error(ErrorKind::User, e.to_string()))?;
+    let target = query.target().ok_or(super::error(
+        ErrorKind::User,
+        "missing search target".to_owned(),
+    ))?;
     let mut snippets = app
         .semantic
         .search(&query, params.limit)
@@ -94,34 +98,145 @@ pub async fn handle(
         super::error(ErrorKind::Internal, "semantic search returned no snippets");
     }
 
-    let res = reqwest::Client::new()
-        .post(format!("{}/q", app.config.answer_api_base))
-        .json(&api::Request {
-            query: params.q,
-            user_id: params.user_id,
-            snippets: snippets.clone(),
-        })
-        .send()
+    let answer_api_client = AnswerAPIClient::new(
+        &format!("{}/q", app.config.answer_api_base),
+        &target,
+        &params.user_id,
+    );
+
+    let relevant_snippet_index = answer_api_client
+        .select_snippet(&snippets)
         .await
-        .map_err(|e| {
-            super::error(
-                ErrorKind::Internal,
-                format!("failed to make request to answer API: {}", e),
-            )
-        })?;
+        .map_err(super::internal_error)?
+        .text()
+        .await
+        .map_err(super::internal_error)?
+        .trim()
+        .parse::<usize>()
+        .map_err(super::internal_error)?;
 
-    let selection: api::Response = res.json().await.map_err(|e| {
-        super::error(
-            ErrorKind::Internal,
-            format!("answer API was not able to create a valid result: {}", e),
-        )
-    })?;
+    // TODO: do something cool with the snippet here
+    let processed_snippet = &snippets[relevant_snippet_index];
 
-    let selected_snippet = snippets.remove(selection.data.index as usize);
-    snippets.insert(0, selected_snippet);
+    let snippet_explaination = answer_api_client
+        .explain_snippet(processed_snippet)
+        .await
+        .map_err(super::internal_error)?
+        .text()
+        .await
+        .map_err(super::internal_error)?;
+
+    // reorder snippets
+    snippets.swap(relevant_snippet_index, 0);
 
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
         snippets,
-        selection,
+        selection: api::Response {
+            data: api::DecodedResponse {
+                index: 0 as u32, // the relevant snippet is always placed at 0
+                answer: snippet_explaination,
+            },
+            id: params.user_id,
+        },
     })))
+}
+
+#[derive(serde::Serialize)]
+struct OpenAIRequest {
+    prompt: String,
+    user_id: String,
+}
+
+struct AnswerAPIClient {
+    client: reqwest::Client,
+    host: String,
+    query: String,
+    user_id: String,
+}
+
+impl AnswerAPIClient {
+    fn new(host: &str, query: &str, user_id: &str) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            host: host.to_owned(),
+            query: query.to_owned(),
+            user_id: user_id.to_owned(),
+        }
+    }
+
+    async fn send(&self, prompt: String) -> Result<reqwest::Response, reqwest::Error> {
+        self.client
+            .post(self.host.as_str())
+            .json(&OpenAIRequest {
+                prompt: prompt.clone(),
+                user_id: self.user_id.clone(),
+            })
+            .send()
+            .await
+    }
+}
+
+const DELIMITER: &str = "######";
+impl AnswerAPIClient {
+    async fn select_snippet(
+        &self,
+        snippets: &[api::Snippet],
+    ) -> Result<reqwest::Response, reqwest::Error> {
+        let mut prompt = snippets
+            .iter()
+            .enumerate()
+            .map(|(i, snippet)| {
+                format!(
+                    "Repository: {}\nPath: {}\nLanguage: {}\nIndex: {}\n\n{}\n{DELIMITER}\n",
+                    snippet.repo_name, snippet.relative_path, snippet.lang, i, snippet.text
+                )
+            })
+            .collect::<String>();
+
+        // the example question/answer pair helps reinforce that we want exactly a single
+        // number in the output, with no spaces or punctuation such as fullstops.
+        prompt += &format!(
+            "\nAbove are {} code snippets separated by \"{DELIMITER}\". \
+            Your job is to answer which snippet index best answers the question. Reply
+            with a single number.
+
+            Q:What icon do we use to clear search history?
+            A:3
+
+            Q:{}
+            A:",
+            snippets.len(),
+            self.query,
+        );
+
+        self.send(prompt).await
+    }
+
+    async fn explain_snippet(
+        &self,
+        snippet: &api::Snippet,
+    ) -> Result<reqwest::Response, reqwest::Error> {
+        let prompt = format!(
+            "
+            File: {}
+
+            {}
+
+            #####
+
+            Above is a code snippet.\
+            Your job is to answer the questions about the snippet,\
+            giving detailed explanations. Cite any code used to\
+            answer the question formatted in GitHub markdown and state the file path.
+
+            Q:What icon do we use to clear search history?
+            A:We use the left-double chevron icon.
+
+            Q:{}
+            A:",
+            snippet.relative_path, snippet.text, self.query
+        );
+
+        self.send(prompt).await
+    }
 }
