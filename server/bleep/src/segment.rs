@@ -31,7 +31,7 @@ impl Segment {
                         "query": query.to_owned(),
                         "relevant_snippet": snippet.to_owned(),
                         "response": response.to_owned(),
-                        "id": uuid::Uuid::new_v4()
+                        "id": uuid::Uuid::new_v4().to_string()
                     }),
                     ..Default::default()
                 }),
