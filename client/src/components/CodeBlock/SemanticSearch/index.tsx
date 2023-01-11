@@ -1,5 +1,6 @@
 import { useCallback, useContext, useMemo, useState } from 'react';
 import hljs from 'highlight.js';
+import { Remarkable } from 'remarkable';
 import CodeBlockSearch from '../Search';
 import Button from '../../Button';
 import { ArrowRotate, ThumbsDown, ThumbsUp } from '../../../icons';
@@ -10,6 +11,7 @@ import { ResultClick } from '../../../types/results';
 import 'highlight.js/styles/vs2015.css';
 import { hashCode } from '../../../utils';
 import useAnalytics from '../../../hooks/useAnalytics';
+import { highlightCode } from '../../../utils/prism';
 
 type Props = {
   answer: string;
@@ -24,6 +26,20 @@ type Props = {
   handleRetry: () => void;
   searchId: string;
 };
+
+const md = new Remarkable({
+  html: true,
+  highlight(str: string, lang: string): string {
+    // const langFromSnippet = /```(.*?)\n/.exec(str)?.[1];
+
+    const langSubset = lang ? [lang] : undefined;
+    console.log(str);
+    const hl = hljs.highlightAuto(str, langSubset).value;
+    return hl;
+  },
+  linkTarget: '__blank',
+});
+
 const SemanticSearch = ({
   answer,
   snippets,
@@ -38,33 +54,36 @@ const SemanticSearch = ({
   const { trackUpvote } = useAnalytics();
 
   const highlightedAnswer = useMemo(() => {
-    const lang = /```(.*?)\n/.exec(answer)?.[1];
+    // const lang = /```(.*?)\n/.exec(answer)?.[1];
+    //
+    // const langSubset = lang ? [lang.trim()] : undefined;
+    //
+    // let code = answer.replace(/```(.*?)\n/, '```');
+    // code = code.replace(/```(.*?)```/gs, (match) => {
+    //   const escapedString = match.replace(/```/g, '');
+    //   if (!escapedString.length) {
+    //     return '';
+    //   }
+    //   const hl = hljs.highlightAuto(escapedString, langSubset).value;
+    //   return `<pre class="whitespace-pre-wrap break-words bg-gray-700 rounded my-1 text-xs p-1"><code>${hl}</code></pre>`;
+    // });
+    //
+    // code = code.replace(/`(.*?)`/gs, (match) => {
+    //   const escapedString = match.replace(/`/g, '');
+    //   if (!escapedString.length) {
+    //     return '';
+    //   }
+    //   const hl = hljs.highlightAuto(
+    //     escapedString,
+    //     langSubset || ['markdown'],
+    //   ).value;
+    //
+    //   return `<code class="bg-gray-700 p-[2px] rounded">${hl}</code>`;
+    // });
 
-    const langSubset = lang ? [lang.trim()] : undefined;
-
-    let code = answer.replace(/```(.*?)\n/, '```');
-    code = code.replace(/```(.*?)```/gs, (match) => {
-      const escapedString = match.replace(/```/g, '');
-      if (!escapedString.length) {
-        return '';
-      }
-      const hl = hljs.highlightAuto(escapedString, langSubset).value;
-      return `<pre class="whitespace-pre-wrap break-words bg-gray-700 rounded my-1 text-xs p-1"><code>${hl}</code></pre>`;
-    });
-
-    code = code.replace(/`(.*?)`/gs, (match) => {
-      const escapedString = match.replace(/`/g, '');
-      if (!escapedString.length) {
-        return '';
-      }
-      const hl = hljs.highlightAuto(
-        escapedString,
-        langSubset || ['markdown'],
-      ).value;
-      return `<code class="bg-gray-700 p-[2px] rounded">${hl}</code>`;
-    });
-
-    return `${code}`;
+    // return md.render(code);
+    return md.render(answer);
+    // return code;
   }, [answer]);
 
   const handleUpvote = useCallback(
@@ -87,7 +106,7 @@ const SemanticSearch = ({
     <div className="flex flex-col">
       <div className="bg-gray-800 p-3 flex flex-row rounded-t relative">
         <span
-          className="body-s pr-24"
+          className="body-s pr-24 semantic-answer"
           dangerouslySetInnerHTML={{ __html: highlightedAnswer }}
         ></span>
         <div className="flex flex-row absolute top-2 right-3">
