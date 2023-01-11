@@ -280,7 +280,7 @@ impl Application {
             background: BackgroundExecutor::start(config.clone()),
             semantic,
             config,
-            segment: Arc::new(segment),
+            segment,
         })
     }
 
