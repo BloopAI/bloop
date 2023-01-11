@@ -1,5 +1,11 @@
 use crate::query::parser;
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
+use secrecy::ExposeSecret;
+use segment::{
+    message::{Track, User},
+    Client, Message,
+};
+use serde_json::json;
 use utoipa::ToSchema;
 
 use crate::Application;
@@ -62,10 +68,9 @@ pub async fn handle(
 ) -> Result<impl IntoResponse, impl IntoResponse> {
     let query =
         parser::parse_nl(&params.q).map_err(|e| super::error(ErrorKind::User, e.to_string()))?;
-    let target = query.target().ok_or(super::error(
-        ErrorKind::User,
-        "missing search target".to_owned(),
-    ))?;
+    let target = query
+        .target()
+        .ok_or_else(|| super::error(ErrorKind::User, "missing search target".to_owned()))?;
     let mut snippets = app
         .semantic
         .search(&query, params.limit)
@@ -94,13 +99,13 @@ pub async fn handle(
         })
         .collect::<Vec<_>>();
 
-    if snippets.len() < 1 {
+    if snippets.is_empty() {
         super::error(ErrorKind::Internal, "semantic search returned no snippets");
     }
 
     let answer_api_client = AnswerAPIClient::new(
         &format!("{}/q", app.config.answer_api_base),
-        &target,
+        target,
         &params.user_id,
     );
 
@@ -129,11 +134,35 @@ pub async fn handle(
     // reorder snippets
     snippets.swap(relevant_snippet_index, 0);
 
+    if let Some(ref segment) = *app.segment {
+        let id = uuid::Uuid::new_v4().to_string();
+
+        segment
+            .client
+            .send(
+                segment.key.expose_secret().clone(),
+                Message::from(Track {
+                    user: User::UserId {
+                        user_id: params.user_id.clone(),
+                    },
+                    event: "openai query".to_owned(),
+                    properties: json!({
+                        "relevant_snippet": &snippets[0],
+                        "response": snippet_explaination,
+                        "id": id.to_string()
+                    }),
+                    ..Default::default()
+                }),
+            )
+            .await
+            .expect("Could not send to Segment")
+    }
+
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
         snippets,
         selection: api::Response {
             data: api::DecodedResponse {
-                index: 0 as u32, // the relevant snippet is always placed at 0
+                index: 0_u32, // the relevant snippet is always placed at 0
                 answer: snippet_explaination,
             },
             id: params.user_id,

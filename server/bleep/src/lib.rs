@@ -26,7 +26,7 @@ use background::BackgroundExecutor;
 use clap::Parser;
 use once_cell::sync::OnceCell;
 use relative_path::RelativePath;
-use secrecy::SecretString;
+use secrecy::{Secret, SecretString};
 use serde::{Deserialize, Serialize};
 use std::{
     ops::Not,
@@ -191,6 +191,11 @@ pub struct Configuration {
     /// Github Client ID for OAuth connection to private repos
     pub github_client_id: Option<SecretString>,
 
+    #[clap(long)]
+    #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
+    /// segment write key
+    pub segment_key: Option<SecretString>,
+
     #[clap(long, default_value_t = default_answer_api_base())]
     #[serde(default = "default_answer_api_base")]
     /// Answer API `base` string
@@ -212,6 +217,20 @@ impl Configuration {
     }
 }
 
+pub struct Segment {
+    pub key: Secret<String>,
+    pub client: segment::HttpClient,
+}
+
+impl Segment {
+    pub fn new(segment_key: Secret<String>) -> Segment {
+        Self {
+            key: segment_key,
+            client: segment::HttpClient::default(),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Application {
     pub config: Arc<Configuration>,
@@ -220,6 +239,7 @@ pub struct Application {
     pub(crate) semantic: Semantic,
     indexes: Arc<Indexes>,
     credentials: Credentials,
+    pub segment: Arc<Option<Segment>>,
 }
 
 impl Application {
@@ -247,6 +267,9 @@ impl Application {
                 .map_err(|existing| anyhow!("ctags binary already set: {existing:?}"))?;
         }
 
+        // configure segment
+        let segment = config.segment_key.clone().map(Segment::new);
+
         let config = Arc::new(config);
         let semantic = Semantic::new(&config.model_dir, &config.qdrant_url).await?;
 
@@ -257,6 +280,7 @@ impl Application {
             background: BackgroundExecutor::start(config.clone()),
             semantic,
             config,
+            segment: Arc::new(segment),
         })
     }
 
