@@ -89,7 +89,10 @@ pub fn tree_sitter<'a, 'l>(src: &'a str, lang_id: &'l str) -> Result<Vec<Chunk<'
 // parameters can be used to reduce the amount of searching for the line position from quadratic
 // to linear. If in doubt, just use `1` for last_line and `0` for last_byte.
 fn point(src: &str, byte: usize, last_line: usize, last_byte: usize) -> Point {
-    assert!(byte >= last_byte, "byte={byte} < last_byte={last_byte}, last_line={last_line}");
+    assert!(
+        byte >= last_byte,
+        "byte={byte} < last_byte={last_byte}, last_line={last_line}"
+    );
     let line = src.as_bytes()[last_byte..byte]
         .iter()
         .filter(|&&b| b == b'\n')
@@ -103,67 +106,54 @@ fn point(src: &str, byte: usize, last_line: usize, last_byte: usize) -> Point {
     Point { byte, column, line }
 }
 
-fn add_chunk<'s>(
-    file: &str,
-    results: &mut Vec<Chunk<'s>>,
-    src: &'s str,
-    offsets: &[(usize, usize)],
-    start: usize,
-    end: usize,
-    last_line: usize,
-    last_byte: usize,
-) -> (usize, usize) {
-    assert!(end > start, "!(end > start) @ add_chunk({file}.., {start}, {end}, {last_line}, {last_byte}");
-    assert!(offsets[end].1 > offsets[start].0);
-    let startpoint = point(src, offsets[start].0, last_line, last_byte);
-    let endpoint = point(src, offsets[end].1, startpoint.line, startpoint.byte);
-    if endpoint.byte > startpoint.byte {
-        results.push(Chunk::new(
-            &src[startpoint.byte..endpoint.byte],
-            startpoint,
-            endpoint,
-        ));
-    }
-    (endpoint.line, endpoint.byte)
+/// The strategy for overlapping
+pub enum OverlapStrategy {
+    /// go back _ lines from the end
+    ByLines(usize),
+    /// A value > 0 and < 1 that indicates the target overlap in tokens.
+    Partial(f64),
 }
 
-fn add_chunks<'s>(
-    file: &str,
-    results: &mut Vec<Chunk<'s>>,
-    src: &'s str,
-    offsets: &[(usize, usize)],
-    mut start: usize,
-    end: usize,
-    max_tokens: usize,
-    mut last_line: usize,
-    mut last_byte: usize,
-) -> (usize, usize) {
-    while end - start > max_tokens {
-        let Some(mid) = ((start + (max_tokens / 4).max(1))..(start + max_tokens - 1)).rfind(|&i| offsets[i].1 < offsets[i + 1].0)
-        else { return (last_line, last_byte) };
-        (last_line, last_byte) = add_chunk(file, results, src, offsets, start, mid, last_line, last_byte);
-        start = mid + 1;
+impl OverlapStrategy {
+    /// returns the index into the `starts` array according to the strategy
+    fn next_start(&self, starts: &[usize], start: usize, end: usize) -> usize {
+        (match self {
+            Self::ByLines(n) => starts.partition_point(|&x| x <= end).saturating_sub(*n),
+            Self::Partial(part) => {
+                let mid = start + (((end - start) as f64) * part) as usize;
+                starts.partition_point(|&x| x <= mid)
+            }
+        }) + 1
     }
-    if end > start {
-        add_chunk(file, results, src, offsets, start, end, last_line, last_byte)
-    } else {
-        (last_line, last_byte)
+
+    // returns the next startpoint for overlong lines
+    fn next_subdivision(&self, max_tokens: usize) -> usize {
+        (match self {
+            OverlapStrategy::ByLines(n) => max_tokens - n,
+            OverlapStrategy::Partial(part) => ((max_tokens as f64) * part) as usize,
+        })
+        .max(1) // ensure we make forward progress
     }
 }
+
+/// This should take care of [CLS], [SEP] etc. which could be introduced during per-chunk tokenization
+pub const DEDUCT_SPECIAL_TOKENS: usize = 2;
 
 /// This tries to split the code by lines and add as much tokens as possible until reaching
 /// `max_tokens`. Then it'll reduce to the last newline.
 pub fn by_tokens<'s>(
-    file: &str,
+    _file: &str,
     src: &'s str,
     tokenizer: &Tokenizer, // we count from line
     max_tokens: usize,
     max_lines: usize,
+    strategy: OverlapStrategy,
 ) -> Vec<Chunk<'s>> {
     if src.is_empty() {
         return Vec::new();
     }
-    let Ok(encoding) = tokenizer.encode(src, false)
+    //TODO: We should probably encode once before chunking and reuse the encoding.
+    let Ok(encoding) = tokenizer.encode(src, true)
     else {
         warn!("Could not encode \"{}\"", src);
         return trivial(src, max_lines);
@@ -173,46 +163,76 @@ pub fn by_tokens<'s>(
     if offsets.is_empty() {
         return Vec::new();
     }
-    assert!((1..offsets.len()).all(|i| offsets[i].0 >= offsets[i - 1].1), "offsets overlap?!");
-    let offset_len = offsets.len();
-    let mut first_newline = 0;
-    let mut last_newline = 0;
-    let mut result = Vec::new();
-    let mut last_line = 1;
-    let mut last_byte = 0;
-    for newline in
-        (0..(offset_len - 1)).filter(|&i| src[offsets[i].1..offsets[i + 1].0].contains('\n'))
-    {
-        if newline - first_newline > max_tokens {
-            (last_line, last_byte) = add_chunks(
-                file,
-                &mut result,
-                src,
-                offsets,
-                first_newline,
-                last_newline,
-                max_tokens,
-                last_line,
-                last_byte,
-            );
-            first_newline = (last_newline + 1).min(offset_len);
+
+    if max_tokens <= DEDUCT_SPECIAL_TOKENS {
+        tracing::error!("too little tokens");
+        return Vec::new();
+    }
+    let max_tokens = max_tokens - DEDUCT_SPECIAL_TOKENS;
+    tracing::info!("max tokens reduced to {max_tokens}");
+    // all indices into tokens/offsets at which a new line might begin.
+    let mut starts: Vec<_> = vec![0];
+    starts.extend((1..offsets.len()).filter(|&i| {
+        let (from, until) = (offsets[i - 1].0, offsets[i].0);
+        from < until && src[from..until].contains('\n')
+    }));
+
+    // calculate the start/end indices into tokens/offsets for the chunk starts/ends
+    let mut token_ranges = Vec::new();
+    let mut s = 0;
+    let mut offset = 0;
+    while let Some(index_diff) = starts[s..].iter().position(|&p| p - offset > max_tokens) {
+        let next_s = s + index_diff - 1;
+        // add (offset, end) to token_ranges, split if necessary
+        if next_s == s {
+            // overlong line
+            let end_offset = starts.get(s + 1).map_or_else(|| offsets.len(), |&o| o);
+            loop {
+                let end = offset + max_tokens;
+                if end > end_offset {
+                    token_ranges.push((offset, end_offset));
+                    break;
+                }
+                token_ranges.push((offset, end));
+                offset += strategy.next_subdivision(max_tokens);
+            }
+            s += 1;
+        } else {
+            let end = starts[next_s];
+            token_ranges.push((offset, end));
+
+            s = strategy.next_start(&starts, offset, end);
         }
-        last_newline = newline;
+        offset = starts[s];
     }
-    if first_newline < offset_len {
-        add_chunks(
-            file,
-            &mut result,
-            src,
-            offsets,
-            first_newline,
-            offset_len - 1,
-            max_tokens,
-            last_line,
-            last_byte,
-        );
+    if offset < offsets.len() {
+        token_ranges.push((offset, offsets.len()));
     }
-    result
+    let (mut last_line, mut last_byte) = (1, 0);
+    
+    let ranges = token_ranges
+        .into_iter()
+        .filter_map(move |(start, end)| {
+            let start_byte = offsets[start].0;
+            let end_byte = offsets.get(end).map_or(src.len(), |&(s, _)| s);
+            let trimmed_start_byte = start_byte
+                + src[start_byte..]
+                    .char_indices()
+                    .find_map(|(i, c)| (!c.is_whitespace()).then_some(i))?;
+            let trimmed_end_byte = src[..end_byte]
+                .char_indices()
+                .rev()
+                .find_map(|(i, c)| (!c.is_whitespace()).then_some(i))?;
+            (trimmed_start_byte < trimmed_end_byte).then(|| {
+                let start = point(&src, trimmed_start_byte, last_line, last_byte);
+                let end = point(&src, trimmed_end_byte, last_line, last_byte);
+                (last_line, last_byte) = (start.line, start.byte);
+                Chunk::new(&src[trimmed_start_byte..trimmed_end_byte], start, end)
+            })
+        })
+        .collect();
+
+    ranges
 }
 
 pub fn trivial(src: &str, size: usize) -> Vec<Chunk<'_>> {
@@ -250,24 +270,45 @@ pub fn trivial(src: &str, size: usize) -> Vec<Chunk<'_>> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use std::path::Path;
+
     #[test]
     pub fn test_by_tokens() {
-        let tokenizer = tokenizers::Tokenizer::from_file("../../model/tokenizer.json").unwrap();
+        let base_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+        let tok_json = base_dir.join("model/tokenizer.json");
+        let tokenizer = tokenizers::Tokenizer::from_file(tok_json).unwrap();
         let max_tokens = 256;
         let max_lines = 15;
-        let walk = ignore::WalkBuilder::new("../../")
+        let walk = ignore::WalkBuilder::new(base_dir)
             .standard_filters(true)
             .build();
+        let (mut tokensum, mut linesum) = (0, 0);
         for file in walk {
             let file = file.unwrap();
             if file.metadata().unwrap().is_dir() {
                 continue;
             }
             let Ok(src) = std::fs::read_to_string(file.path()) else { continue };
-            dbg!(
-                super::by_tokens(&file.path().to_string_lossy(), &src, &tokenizer, max_tokens, max_lines).len(),
-                super::trivial(&src, 15).len()
-            );
+            let path = file.path().to_string_lossy();
+            let tokenwise = by_tokens(
+                &file.path().to_string_lossy(),
+                &src,
+                &tokenizer,
+                max_tokens,
+                max_lines,
+                OverlapStrategy::Partial(0.5),
+            )
+            .len();
+            let linewise = trivial(&src, 15).len();
+            dbg!((path, tokenwise, linewise));
+            tokensum += tokenwise;
+            linesum += linewise;
         }
+        dbg!(tokensum, linesum);
     }
 }
