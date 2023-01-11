@@ -52,7 +52,7 @@ const Item = ({ onClick, text, icon, type, onDelete, href }: ItemProps) => {
             'overflow-x-hidden flex items-center justify-between w-full'
           }
         >
-          <TextField value={text} icon={icon} />
+          <TextField value={text} icon={icon} className="ellipsis" />
           {type === MenuItemType.REMOVABLE ? (
             <Button
               size={'small'}

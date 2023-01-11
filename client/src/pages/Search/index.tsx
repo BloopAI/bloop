@@ -58,8 +58,8 @@ const SearchPage = () => {
       case 'full-result':
         updateCurrentTabName(
           navigatedItem.type === 'repo'
-            ? `Repo: ${navigatedItem.repo}`
-            : `File: ${navigatedItem.path}`,
+            ? navigatedItem.repo!
+            : navigatedItem.path!,
         );
         searchQuery(
           buildRepoQuery(navigatedItem.repo, navigatedItem.path),
@@ -68,8 +68,11 @@ const SearchPage = () => {
           SearchType.REGEX,
         );
         break;
+      case 'home':
+        updateCurrentTabName('Home');
+        break;
       default:
-        updateCurrentTabName(`Search: ${navigatedItem.query}`);
+        updateCurrentTabName(navigatedItem.query!);
         if ((navigatedItem.searchType ?? searchType) === SearchType.NL) {
           nlSearchQuery(navigatedItem.query!);
         } else {

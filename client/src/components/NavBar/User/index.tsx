@@ -95,6 +95,7 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
         titleClassName="max-w-[120px] ellipsis"
       />
       <div className="flex items-center justify-between	w-full">
+        <span />
         {/*{isSkeleton ? (*/}
         {/*  <div className="bg-gray-700 rounded-4 h-7 w-32" />*/}
         {/*) : (*/}

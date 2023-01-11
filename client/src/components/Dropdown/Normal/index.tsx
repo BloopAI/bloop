@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDownFilled, ChevronUpFilled } from '../../../icons';
 import TextField from '../../TextField';
 import ContextMenu, { ContextMenuItem } from '../../ContextMenu';
 import Button from '../../Button';
+import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
 
 type Props = {
   items: ContextMenuItem[];
@@ -21,6 +22,8 @@ const Dropdown = ({
 }: Props) => {
   const [visible, setVisibility] = useState(false);
   const [selectedItem, setSelectedItem] = useState(selected);
+  const ref = useRef(null);
+  useOnClickOutside(ref, () => setVisibility(false));
 
   useEffect(() => {
     setSelectedItem(selected);
@@ -32,12 +35,13 @@ const Dropdown = ({
   };
 
   return (
-    <div className="relative select-none">
+    <div className="relative select-none" ref={ref}>
       <ContextMenu
         items={items}
         visible={visible}
         title={hint}
         handleClose={() => setVisibility(false)}
+        closeOnClickOutside={false}
       >
         <Button
           variant="secondary"
