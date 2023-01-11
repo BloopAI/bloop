@@ -16,7 +16,7 @@ use qdrant_client::{
     },
 };
 use rayon::prelude::*;
-use tracing::{debug, trace};
+use tracing::{debug, trace, info};
 
 pub mod chunk;
 
@@ -92,6 +92,7 @@ impl Semantic {
         let attention_mask = tokenizer_output.get_attention_mask();
         let token_type_ids = tokenizer_output.get_type_ids();
         let length = input_ids.len();
+        info!("embedding {} tokens {:?}", length, chunk);
 
         let inputs_ids_array = ndarray::Array::from_shape_vec(
             (1, length),
@@ -150,11 +151,12 @@ impl Semantic {
             relative_path,
             buffer,
             &*self.tokenizer,
-            self.session.inputs.len(),
+            256, //TODO: Get this from some config
             15,
+            chunk::OverlapStrategy::Partial(0.5),
         );
 
-        debug!(chunk_count = chunks.len(), "found chunks");
+        info!(chunk_count = chunks.len(), "found chunks");
         let datapoints = chunks
             .par_iter()
             .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
@@ -163,7 +165,7 @@ impl Semantic {
                     len = chunk.len(),
                     big_chunk = chunk.len() > 800,
                     "new chunk",
-                );
+                );nfo!("embedding {} tokens {:?}", length, chunk
 
                 match self.embed(chunk.data) {
                     Ok(ok) => Some(PointStruct {
