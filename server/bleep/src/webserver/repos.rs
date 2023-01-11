@@ -272,7 +272,7 @@ pub(super) async fn scan_local(
 ) -> impl IntoResponse {
     let root = std::path::Path::new(&scan_request.path);
 
-    if app.path_allowed(root) {
+    if app.allow_path(root) {
         (
             StatusCode::OK,
             json(ReposResponse::List(

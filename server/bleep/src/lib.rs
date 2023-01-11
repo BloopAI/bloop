@@ -115,6 +115,8 @@ fn default_max_chunk_tokens() -> usize {
 pub enum Environment {
     /// Safe API that's suitable for public use
     Server,
+    /// Access to the API is access controlled using an OAuth provider
+    PrivateServer,
     /// Enables scanning arbitrary user-specified locations through a Web-endpoint.
     InsecureLocal,
 }
@@ -125,7 +127,7 @@ impl Default for Environment {
     }
 }
 
-#[derive(Serialize, Deserialize, Parser, Debug)]
+#[derive(Deserialize, Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 pub struct Configuration {
     #[clap(skip)]
@@ -189,16 +191,6 @@ pub struct Configuration {
     /// Bind the webserver to `<host>`
     pub port: u16,
 
-    #[clap(long, default_value_t = default_qdrant_url())]
-    #[serde(default = "default_qdrant_url")]
-    /// URL for the qdrant server
-    pub qdrant_url: String,
-
-    #[clap(long, default_value_t = default_answer_api_url())]
-    #[serde(default = "default_answer_api_url")]
-    /// URL for the answer-api
-    pub answer_api_url: String,
-
     #[clap(long, default_value_os_t = default_model_dir())]
     #[serde(default = "default_model_dir")]
     /// Path to the embedding model directory
@@ -217,6 +209,23 @@ pub struct Configuration {
     #[clap(long)]
     /// Chunking strategy
     pub overlap: Option<OverlapStrategy>,
+
+    //
+    // External dependencies
+    //
+    #[clap(long, default_value_t = default_qdrant_url())]
+    #[serde(default = "default_qdrant_url")]
+    /// URL for the qdrant server
+    pub qdrant_url: String,
+
+    #[clap(long, default_value_t = default_answer_api_url())]
+    #[serde(default = "default_answer_api_url")]
+    /// URL for the answer-api
+    pub answer_api_url: String,
+
+    #[clap(long)]
+    /// Address to authentication server for private deployments
+    pub auth_server_url: Option<SecretString>,
 }
 
 impl Configuration {
@@ -262,7 +271,12 @@ impl Application {
         config.buffer_size = config.buffer_size.max(threads * 3_000_000);
         config.repo_buffer_size = config.repo_buffer_size.max(threads * 3_000_000);
         config.source.set_default_dir(&config.index_dir);
-        config.env = env;
+
+        if config.auth_server_url.is_some() {
+            config.env = Environment::PrivateServer;
+        } else {
+            config.env = env;
+        }
 
         if let Some(ref executable) = config.ctags_path {
             ctags::CTAGS_BINARY
@@ -380,16 +394,16 @@ impl Application {
         Ok(())
     }
 
-    pub(crate) fn scan_allowed(&self) -> bool {
+    pub(crate) fn allow_path_scan(&self) -> bool {
         use Environment::*;
 
         match self.config.env {
-            Server => false,
             InsecureLocal => true,
+            _ => false,
         }
     }
 
-    pub(crate) fn path_allowed(&self, path: impl AsRef<Path>) -> bool {
+    pub(crate) fn allow_path(&self, path: impl AsRef<Path>) -> bool {
         use Environment::*;
 
         let source_dir = self.config.source.directory();
@@ -398,7 +412,27 @@ impl Application {
                 .map(|p| p.to_logical_path(&source_dir))
                 .unwrap_or_else(|_| path.as_ref().to_owned())
                 .starts_with(&source_dir),
+            PrivateServer => false,
             InsecureLocal => true,
+        }
+    }
+
+    pub(crate) fn allow_github_device_flow(&self) -> bool {
+        use Environment::*;
+        match self.config.env {
+            Server => true,
+            InsecureLocal => true,
+            PrivateServer => false,
+        }
+    }
+
+    /// Use AAA layer (authentication, authorization, accounting)
+    pub(crate) fn use_aaa(&self) -> bool {
+        use Environment::*;
+        match self.config.env {
+            Server => false,
+            InsecureLocal => false,
+            PrivateServer => true,
         }
     }
 
@@ -408,7 +442,6 @@ impl Application {
     // To be performed on the background executor
     //
     //
-
     pub(crate) fn write_index(&self) -> background::IndexWriter {
         background::IndexWriter(self.clone())
     }
