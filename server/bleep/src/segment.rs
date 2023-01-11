@@ -19,8 +19,6 @@ impl Segment {
     }
 
     pub async fn track_query(&self, user_id: &str, query: &str, snippet: &str, response: &str) {
-        let id = uuid::Uuid::new_v4().to_string();
-
         self.client
             .send(
                 self.key.expose_secret().clone(),
@@ -33,7 +31,7 @@ impl Segment {
                         "query": query.to_owned(),
                         "relevant_snippet": snippet.to_owned(),
                         "response": response.to_owned(),
-                        "id": id.to_string()
+                        "id": uuid::Uuid::new_v4()
                     }),
                     ..Default::default()
                 }),
