@@ -11,7 +11,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         openLink: (p) => window.open(p),
         chooseFolder: (conf) => Promise.resolve(null),
         homeDir: '$HOME',
-        deviceId: '',
+        deviceId: 'posthog-web-app',
         listen: () => {},
         os: {
           arch: '',

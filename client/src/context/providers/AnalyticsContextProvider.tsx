@@ -20,9 +20,7 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
     : import.meta.env.VITE_SEGMENT_WRITE_KEY_DEV;
 
   const [analytics, setAnalytics] = useState<Analytics | undefined>(undefined);
-  const [isAnalyticsAllowed, setIsAnalyticsAllowed] = useState(
-    getPlainFromStorage(IS_ANALYTICS_ALLOWED_KEY) === 'true',
-  );
+  const [isAnalyticsAllowed, setIsAnalyticsAllowed] = useState(true);
 
   const loadAnalytics = async () => {
     if (!WRITE_KEY || analytics) {
