@@ -104,30 +104,37 @@ pub async fn handle(
         &params.user_id,
     );
 
-    let res1 = answer_api_client
-        .stage_1(&snippets)
+    let relevant_snippet_index = answer_api_client
+        .select_snippet(&snippets)
         .await
-        .map_err(|e| super::error(ErrorKind::Internal, e.to_string()))?
-        .index;
-
-    let processed_snippet = &snippets[res1];
-
-    let res2 = answer_api_client
-        .stage_2(processed_snippet)
+        .map_err(super::internal_error)?
+        .text()
         .await
-        .map_err(|e| super::error(ErrorKind::Internal, e.to_string()))?
-        .answer;
+        .map_err(super::internal_error)?
+        .trim()
+        .parse::<usize>()
+        .map_err(super::internal_error)?;
+
+    // TODO: do something cool with the snippet here
+    let processed_snippet = &snippets[relevant_snippet_index];
+
+    let snippet_explaination = answer_api_client
+        .explain_snippet(processed_snippet)
+        .await
+        .map_err(super::internal_error)?
+        .text()
+        .await
+        .map_err(super::internal_error)?;
 
     // reorder snippets
-    let selected_snippet = snippets.remove(res1);
-    snippets.insert(0, selected_snippet);
+    snippets.swap(relevant_snippet_index, 0);
 
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
         snippets,
         selection: api::Response {
             data: api::DecodedResponse {
-                index: res1 as u32,
-                answer: res2,
+                index: 0 as u32, // the relevant snippet is always placed at 0
+                answer: snippet_explaination,
             },
             id: params.user_id,
         },
@@ -169,19 +176,12 @@ impl AnswerAPIClient {
     }
 }
 
-#[derive(serde::Deserialize)]
-struct Stage1Response {
-    index: usize,
-}
-
-#[derive(serde::Deserialize)]
-struct Stage2Response {
-    answer: String,
-}
-
 const DELIMITER: &str = "######";
 impl AnswerAPIClient {
-    async fn stage_1(&self, snippets: &[api::Snippet]) -> Result<Stage1Response, reqwest::Error> {
+    async fn select_snippet(
+        &self,
+        snippets: &[api::Snippet],
+    ) -> Result<reqwest::Response, reqwest::Error> {
         let mut prompt = snippets
             .iter()
             .enumerate()
@@ -193,24 +193,29 @@ impl AnswerAPIClient {
             })
             .collect::<String>();
 
+        // the example question/answer pair helps reinforce that we want exactly a single
+        // number in the output, with no spaces or punctuation such as fullstops.
         prompt += &format!(
             "\nAbove are {} code snippets separated by \"{DELIMITER}\". \
-            Your job is to answer which snippet index best answers the question. Your\
-            reply must obey the JSON schema {{ \"index\": number}}.
+            Your job is to answer which snippet index best answers the question. Reply
+            with a single number.
 
-            Q: What icon do we use to clear search history?
-            A: {{ \"index\": 0 }}
+            Q:What icon do we use to clear search history?
+            A:3
 
-            Q: {}
+            Q:{}
             A:",
             snippets.len(),
             self.query,
         );
 
-        self.send(prompt).await?.json::<Stage1Response>().await
+        self.send(prompt).await
     }
 
-    async fn stage_2(&self, snippet: &api::Snippet) -> Result<Stage2Response, reqwest::Error> {
+    async fn explain_snippet(
+        &self,
+        snippet: &api::Snippet,
+    ) -> Result<reqwest::Response, reqwest::Error> {
         let prompt = format!(
             "
             File: {}
@@ -222,17 +227,16 @@ impl AnswerAPIClient {
             Above is a code snippet.\
             Your job is to answer the questions about the snippet,\
             giving detailed explanations. Cite any code used to\
-            answer the question formatted in GitHub markdown and state the file path.\
-            Your reply must obey the JSON schema {{ \"answer\": string }}
+            answer the question formatted in GitHub markdown and state the file path.
 
-            Q: What icon do we use to clear search history?
-            A: {{ \"answer\": \"We use the left-double chevron icon.\" }}
+            Q:What icon do we use to clear search history?
+            A:We use the left-double chevron icon.
 
-            Q: {}
+            Q:{}
             A:",
             snippet.relative_path, snippet.text, self.query
         );
 
-        self.send(prompt).await?.json::<Stage2Response>().await
+        self.send(prompt).await
     }
 }
