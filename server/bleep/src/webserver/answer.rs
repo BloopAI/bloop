@@ -163,7 +163,7 @@ pub async fn handle(
         snippets,
         selection: api::Response {
             data: api::DecodedResponse {
-                index: 0_u32, // the relevant snippet is always placed at 0
+                index: 0u32, // the relevant snippet is always placed at 0
                 answer: snippet_explaination,
             },
             id: params.user_id,
