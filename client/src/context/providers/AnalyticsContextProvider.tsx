@@ -9,11 +9,13 @@ import {
 interface AnalyticsProviderProps {
   children: React.ReactNode;
   deviceId?: string;
+  forceAnalytics?: boolean;
 }
 
 export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   children,
   deviceId,
+  forceAnalytics,
 }) => {
   const WRITE_KEY = import.meta.env.PROD
     ? import.meta.env.VITE_SEGMENT_WRITE_KEY_PROD
@@ -21,7 +23,7 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
 
   const [analytics, setAnalytics] = useState<Analytics | undefined>(undefined);
   const [isAnalyticsAllowed, setIsAnalyticsAllowed] = useState(
-    getPlainFromStorage(IS_ANALYTICS_ALLOWED_KEY) === 'true',
+    forceAnalytics || getPlainFromStorage(IS_ANALYTICS_ALLOWED_KEY) === 'true',
   );
 
   const loadAnalytics = async () => {

@@ -25,10 +25,8 @@ const TelemetryPopup = ({ onClose, visible }: Props) => {
   const { setIsAnalyticsAllowed } = useContext(AnalyticsContext);
   return (
     <div
-      className={`fixed top-16 bottom-16 left-0 right-0 bg-gray-900 bg-opacity-75 z-10 ${
-        visible
-          ? 'visible bg-opacity-75 backdrop-blur-2'
-          : 'invisible bg-opacity-0 backdrop-blur-0'
+      className={`fixed top-16 bottom-16 left-0 right-0 z-10 ${
+        visible ? 'visible' : 'invisible'
       }`}
       style={visible ? backdropFilterVisible : backdropFilterInvisible}
     >

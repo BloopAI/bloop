@@ -205,7 +205,10 @@ function SearchInput() {
   );
 
   return (
-    <div className="relative flex gap-2" ref={arrowNavContainerRef}>
+    <div
+      className="relative flex gap-2 flex-1 justify-center"
+      ref={arrowNavContainerRef}
+    >
       <Button
         variant="tertiary"
         onlyIcon
@@ -214,7 +217,7 @@ function SearchInput() {
       >
         <Clipboard />
       </Button>
-      <div className="w-98">
+      <div className="flex-1 max-w-3xl">
         <div {...getComboboxProps()}>
           <SearchTextInput
             type="search"

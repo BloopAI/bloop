@@ -5,12 +5,16 @@ import Tab from './Tab';
 import { TabsContext } from './context/tabsContext';
 import { UITabType } from './types/general';
 import { getJsonFromStorage, SEARCH_HISTORY_KEY } from './services/storage';
+import { initApi } from './services/api';
+import { useComponentWillMount } from './hooks/useComponentWillMount';
 
 type Props = {
   deviceContextValue: DeviceContextType;
 };
 
 function App({ deviceContextValue }: Props) {
+  useComponentWillMount(() => initApi(deviceContextValue.apiUrl));
+
   const [tabs, setTabs] = useState<UITabType[]>([
     {
       key: 'initial',
