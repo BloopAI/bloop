@@ -4,11 +4,18 @@ import { getJsonFromStorage, SEARCH_HISTORY_KEY } from '../../services/storage';
 import { SearchContext } from '../searchContext';
 import useAppNavigation from '../../hooks/useAppNavigation';
 
-export const SearchContextProvider = ({ children }: PropsWithChildren) => {
+type Props = {
+  initialSearchHistory?: string[];
+};
+
+export const SearchContextProvider = ({
+  children,
+  initialSearchHistory,
+}: PropsWithChildren<Props>) => {
   const [inputValue, setInputValue] = useState('');
   const [filters, setFilters] = useState<FilterType[]>([]);
   const [searchHistory, setSearchHistory] = useState<string[]>(
-    getJsonFromStorage(SEARCH_HISTORY_KEY) || [],
+    initialSearchHistory || [],
   );
   const [lastQueryTime, setLastQueryTime] = useState(3);
   const [globalRegex, setGlobalRegex] = useState(false);

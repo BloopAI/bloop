@@ -131,3 +131,7 @@ export const arrayUnique = (array: any[], property: string) => {
   }
   return distinct;
 };
+
+export const generateUniqueId = (): string => {
+  return hashCode(new Date().toISOString()).toString();
+};
