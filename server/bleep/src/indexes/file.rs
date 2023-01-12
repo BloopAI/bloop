@@ -3,6 +3,7 @@ use std::{
     ops::Not,
     path::{Path, PathBuf},
     sync::Arc,
+    time::Duration,
 };
 
 use anyhow::{Context, Result};
@@ -21,6 +22,7 @@ use tantivy::{
     },
     IndexWriter,
 };
+use tokio::runtime::Handle;
 use tracing::{debug, info, trace, warn};
 
 #[cfg(feature = "debug")]
@@ -34,6 +36,7 @@ use super::{
     DocumentRead, Indexable, Indexer,
 };
 use crate::{
+    ctags::ctags_for_file,
     intelligence::TreeSitterFile,
     state::{FileCache, RepoHeadInfo, RepoRef, Repository},
     symbol::SymbolLocations,
@@ -423,7 +426,6 @@ impl Indexer<File> {
 }
 
 impl File {
-    #[tracing::instrument(fields(repo=%workload.repo_ref, file_path=?workload.file_disk_path), skip_all)]
     fn worker(&self, workload: Workload<'_>, writer: &IndexWriter) -> Result<()> {
         let Workload {
             file_disk_path,
@@ -485,31 +487,40 @@ impl File {
         // calculate symbol locations
         let symbol_locations = {
             // build a syntax aware representation of the file
-            let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
-                .and_then(TreeSitterFile::scope_graph);
+            let scope_graph =
+                Handle::current().block_on(tokio::time::timeout(Duration::from_secs(1), async {
+                    match TreeSitterFile::try_build(buffer.as_bytes(), lang_str) {
+                        Ok(tsf) => tsf.scope_graph().await,
+                        Err(err) => Err(err),
+                    }
+                }));
 
             match scope_graph {
                 // we have a graph, use that
-                Ok(graph) => SymbolLocations::TreeSitter(graph),
+                Ok(Ok(graph)) => SymbolLocations::TreeSitter(graph),
                 // no graph, try ctags instead
-                Err(err) => {
+                err => {
                     debug!(?err, %lang_str, "failed to build scope graph");
-                    match repo_info.symbols.get(relative_path) {
-                        Some(syms) => SymbolLocations::Ctags(syms.clone()),
-                        // no ctags either
-                        _ => {
-                            debug!(%lang_str, ?file_disk_path, "failed to build tags");
-                            SymbolLocations::Empty
+                    if let Some(syms) = repo_info.symbols.get(relative_path) {
+                        SymbolLocations::Ctags(syms.clone())
+                    } else {
+                        debug!(%lang_str, ?file_disk_path, "failed to build tags");
+                        let file_specific = Handle::current()
+                            .block_on(ctags_for_file(repo_disk_path, &file_disk_path));
+                        match file_specific {
+                            Ok(Some(syms)) => SymbolLocations::Ctags(syms),
+                            _ => SymbolLocations::Empty,
                         }
                     }
                 }
             }
         };
-
+        use rayon::iter::IntoParallelRefIterator;
+        use rayon::iter::ParallelIterator;
         // flatten the list of symbols into a string with just text
         let symbols = symbol_locations
             .list()
-            .iter()
+            .par_iter()
             .map(|sym| buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
             .collect::<HashSet<_>>()
             .into_iter()

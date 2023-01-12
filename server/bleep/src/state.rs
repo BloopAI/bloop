@@ -296,7 +296,6 @@ impl Repository {
             // misc languages
             "json",
             "markdown",
-            "rmarkdown",
             "iniconf",
             "man",
             "protobuf",
