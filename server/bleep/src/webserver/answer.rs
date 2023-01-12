@@ -65,10 +65,9 @@ pub async fn handle(
 ) -> Result<impl IntoResponse, impl IntoResponse> {
     let query =
         parser::parse_nl(&params.q).map_err(|e| super::error(ErrorKind::User, e.to_string()))?;
-    let target = query.target().ok_or(super::error(
-        ErrorKind::User,
-        "missing search target".to_owned(),
-    ))?;
+    let target = query
+        .target()
+        .ok_or_else(|| super::error(ErrorKind::User, "missing search target".to_owned()))?;
     let mut snippets = app
         .semantic
         .search(&query, params.limit)
@@ -107,13 +106,13 @@ pub async fn handle(
         })
         .collect::<Vec<_>>();
 
-    if snippets.len() < 1 {
+    if snippets.is_empty() {
         super::error(ErrorKind::Internal, "semantic search returned no snippets");
     }
 
     let answer_api_client = AnswerAPIClient::new(
         &format!("{}/q", app.config.answer_api_base),
-        &target,
+        target,
         &params.user_id,
     );
 
@@ -168,11 +167,22 @@ pub async fn handle(
     // reorder snippets
     snippets.swap(relevant_snippet_index, 0);
 
+    if let Some(ref segment) = *app.segment {
+        segment
+            .track_query(
+                &params.user_id,
+                &params.q,
+                &snippets[0].text,
+                &snippet_explaination,
+            )
+            .await;
+    }
+
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
         snippets,
         selection: api::Response {
             data: api::DecodedResponse {
-                index: 0 as u32, // the relevant snippet is always placed at 0
+                index: 0u32, // the relevant snippet is always placed at 0
                 answer: snippet_explaination,
             },
             id: params.user_id,

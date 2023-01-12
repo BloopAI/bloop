@@ -19,6 +19,7 @@ use semantic::Semantic;
 
 use crate::{
     indexes::Indexes,
+    segment::Segment,
     state::{Credentials, RepositoryPool, StateSource},
 };
 use anyhow::{anyhow, Result};
@@ -40,6 +41,7 @@ mod background;
 mod collector;
 mod language;
 mod remotes;
+mod segment;
 mod webserver;
 
 pub mod ctags;
@@ -191,6 +193,11 @@ pub struct Configuration {
     /// Github Client ID for OAuth connection to private repos
     pub github_client_id: Option<SecretString>,
 
+    #[clap(long)]
+    #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
+    /// segment write key
+    pub segment_key: Option<SecretString>,
+
     #[clap(long, default_value_t = default_answer_api_base())]
     #[serde(default = "default_answer_api_base")]
     /// Answer API `base` string
@@ -220,6 +227,7 @@ pub struct Application {
     pub(crate) semantic: Semantic,
     indexes: Arc<Indexes>,
     credentials: Credentials,
+    pub segment: Arc<Option<Segment>>,
 }
 
 impl Application {
@@ -249,6 +257,7 @@ impl Application {
 
         let config = Arc::new(config);
         let semantic = Semantic::new(&config.model_dir, &config.qdrant_url).await?;
+        let segment = Arc::new(config.segment_key.clone().map(Segment::new));
 
         Ok(Self {
             indexes: Indexes::new(config.clone(), semantic.clone())?.into(),
@@ -257,6 +266,7 @@ impl Application {
             background: BackgroundExecutor::start(config.clone()),
             semantic,
             config,
+            segment,
         })
     }
 
