@@ -270,8 +270,9 @@ impl AnswerAPIClient {
         // number in the output, with no spaces or punctuation such as fullstops.
         prompt += &format!(
             "\nAbove are {} code snippets separated by \"{DELIMITER}\". \
-            Your job is to answer which snippet index best answers the question. Reply
-            with a single number.
+            Your job is to select the snippet that best answers the question. Reply\
+            with a single number indicating the index of the snippet in the list.\
+            If none of the snippets seem relevant, reply with \"0\".
 
             Q:What icon do we use to clear search history?
             A:3
