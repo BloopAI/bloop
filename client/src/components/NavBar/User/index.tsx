@@ -1,9 +1,13 @@
-import { useCallback } from 'react';
-import { ArrowLeft } from '../../../icons';
+import { useCallback, useContext } from 'react';
+import { ArrowLeft, Bug, ChevronDownFilled, Cog, Person } from '../../../icons';
+import DropdownWithIcon from '../../Dropdown/WithIcon';
 import ShareButton, { ShareFile } from '../../ShareButton';
+import { MenuListItemType } from '../../ContextMenu';
 import SearchInput from '../../SearchInput';
+import { UIContext } from '../../../context/uiContext';
 import Button from '../../Button';
 import useAppNavigation from '../../../hooks/useAppNavigation';
+import { DeviceContext } from '../../../context/deviceContext';
 
 type Props = {
   shareFiles?: ShareFile[];
@@ -11,7 +15,9 @@ type Props = {
 };
 
 const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
+  const { setSettingsOpen, setBugReportModalOpen } = useContext(UIContext);
   const { navigateBack, navigationHistory } = useAppNavigation();
+  const { isRepoManagementAllowed } = useContext(DeviceContext);
 
   const backButtonHandler = useCallback(() => {
     navigateBack();
@@ -71,7 +77,47 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
           )}
         </div>
         {shareFiles?.length ? <ShareButton files={shareFiles} visible /> : ''}
-        <span />
+        {isRepoManagementAllowed ? (
+          <span>
+            {isSkeleton ? (
+              <div className="flex items-center gap-1.5 text-gray-500">
+                <div className="bg-gray-700 rounded-full h-10 w-10" />
+                <ChevronDownFilled />
+              </div>
+            ) : (
+              <DropdownWithIcon
+                items={[
+                  {
+                    text: 'Settings',
+                    icon: <Cog />,
+                    type: MenuListItemType.DEFAULT,
+                    onClick: () => setSettingsOpen(true),
+                  },
+                  // {
+                  //   text: 'My Collections',
+                  //   icon: <Collections />,
+                  //   type: MenuListItemType.DEFAULT,
+                  // },
+                  {
+                    text: 'Report a bug',
+                    icon: <Bug />,
+                    type: MenuListItemType.DEFAULT,
+                    onClick: () => setBugReportModalOpen(true),
+                  },
+                  // {
+                  //   text: 'Sign out',
+                  //   icon: <DoorRight />,
+                  //   type: MenuListItemType.DEFAULT,
+                  // },
+                ]}
+                icon={<Person />}
+                dropdownBtnClassName="-mr-4"
+              />
+            )}
+          </span>
+        ) : (
+          <span />
+        )}
       </div>
     </div>
   );

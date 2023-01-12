@@ -6,6 +6,7 @@ import { getRepos } from '../../../services/api';
 import { RepoProvider, RepoType, SyncStatus } from '../../../types/general';
 import { UIContext } from '../../../context/uiContext';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
+import { DeviceContext } from '../../../context/deviceContext';
 
 type Props = {
   filter: number;
@@ -64,6 +65,7 @@ const textsMap = [
 const ReposSection = ({ filter, emptyRepos }: Props) => {
   const [reposToShow, setReposToShow] = useState<RepoType[]>([]);
   const { setSettingsSection, setSettingsOpen } = useContext(UIContext);
+  const { isRepoManagementAllowed } = useContext(DeviceContext);
   const { setRepositories, repositories } = useContext(RepositoriesContext);
 
   useEffect(() => {
@@ -116,6 +118,17 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
     <div className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content">
       <div className="flex items-center justify-between">
         <h4 className="">{textsMap[filter].header}</h4>
+        {isRepoManagementAllowed && reposToShow.length ? (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setSettingsSection(1);
+              setSettingsOpen(true);
+            }}
+          >
+            Manage repositories
+          </Button>
+        ) : null}
       </div>
 
       <div className="mt-10 grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3.5 w-full 2xl:justify-between relative items-start grid-rows-[min-content]">

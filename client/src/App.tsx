@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import HomePage from './pages/Home';
 import Settings from './components/Settings';
@@ -13,12 +13,16 @@ import { DeviceContextProvider } from './context/providers/DeviceContextProvider
 import { AppNavigationProvider } from './hooks/useAppNavigation';
 import SearchPage from './pages/Search';
 import { SearchContextProvider } from './context/providers/SearchContextProvider';
+import { initApi } from './services/api';
+import { useComponentWillMount } from './hooks/useComponentWillMount';
 
 type Props = {
   deviceContextValue: DeviceContextType;
 };
 
 function App({ deviceContextValue }: Props) {
+  useComponentWillMount(() => initApi(deviceContextValue.apiUrl));
+
   const [repositories, setRepositories] = useState<RepoType[]>([]);
 
   const reposContextValue = useMemo(
@@ -33,7 +37,10 @@ function App({ deviceContextValue }: Props) {
 
   return (
     <BrowserRouter>
-      <AnalyticsContextProvider deviceId={deviceContextValue.deviceId}>
+      <AnalyticsContextProvider
+        deviceId={deviceContextValue.deviceId}
+        forceAnalytics={deviceContextValue.forceAnalytics}
+      >
         <DeviceContextProvider deviceContextValue={deviceContextValue}>
           <UIContextProvider>
             <AppNavigationProvider>

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import {
   HoverablesRespone,
   NLSearchResponse,
@@ -8,11 +8,16 @@ import {
 } from '../types/api';
 import { RepoType } from '../types/general';
 
-const API = 'https://posthog.bloop.ai';
+let http: AxiosInstance;
 const DB_API = 'https://api.bloop.ai';
-const http = axios.create({
-  baseURL: API,
-});
+
+export const initApi = (serverUrl = '') => {
+  if (!http) {
+    http = axios.create({
+      baseURL: serverUrl,
+    });
+  }
+};
 
 export const search = (
   q: string,
