@@ -6,6 +6,7 @@ pub static JAVASCRIPT: TSLanguageConfig = TSLanguageConfig {
     grammar: tree_sitter_javascript::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
     chunk_query: None,
+    import_regex: None,
     namespaces: &[&[
         //variables
         "constant",

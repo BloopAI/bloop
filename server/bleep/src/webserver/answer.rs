@@ -1,7 +1,10 @@
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
 use utoipa::ToSchema;
 
-use crate::{indexes::reader::ContentDocument, query::parser, state::RepoRef, Application};
+use crate::{
+    indexes::reader::ContentDocument, intelligence::TSLanguage, query::parser, state::RepoRef,
+    Application,
+};
 
 use super::ErrorKind;
 
@@ -128,21 +131,21 @@ pub async fn handle(
         .map_err(super::internal_error)?;
 
     let relevant_snippet = &snippets[relevant_snippet_index];
+    let repo_ref = &relevant_snippet
+        .repo_ref
+        .parse::<RepoRef>()
+        .map_err(super::internal_error)?;
+    let doc = app
+        .indexes
+        .file
+        .by_path(repo_ref, &relevant_snippet.relative_path)
+        .await
+        .map_err(super::internal_error)?;
     // grow the snippet by 60 lines above and below, we have sufficient space
     // to grow this snippet by 10 times its original size (15 to 150)
     let processed_snippet = {
-        let repo_ref = &relevant_snippet
-            .repo_ref
-            .parse::<RepoRef>()
-            .map_err(super::internal_error)?;
-        let doc = app
-            .indexes
-            .file
-            .by_path(repo_ref, &relevant_snippet.relative_path)
-            .await
-            .map_err(super::internal_error)?;
+        let grown_text = grow(&doc, &relevant_snippet, 50);
 
-        let grown_text = grow(&doc, &relevant_snippet, 60);
         api::Snippet {
             lang: relevant_snippet.lang.clone(),
             repo_name: relevant_snippet.repo_name.clone(),
@@ -156,8 +159,10 @@ pub async fn handle(
         }
     };
 
+    let extracted_imports = extract_imports(&doc, processed_snippet.lang.as_str());
+
     let snippet_explaination = answer_api_client
-        .explain_snippet(&processed_snippet)
+        .explain_snippet(&processed_snippet, &extracted_imports)
         .await
         .map_err(super::internal_error)?
         .text()
@@ -212,6 +217,26 @@ fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
         .unwrap_or(content.len());
 
     content[new_start_byte..new_end_byte].to_owned()
+}
+
+fn extract_imports(doc: &ContentDocument, lang: &str) -> String {
+    match TSLanguage::from_id(&lang) {
+        TSLanguage::Supported(config) => config
+            .import_regex
+            .as_ref()
+            .map(|regex| {
+                regex
+                    .find_iter(&doc.content.as_str())
+                    .map(|m| m.as_str())
+                    .fold(String::new(), |mut acc, x| {
+                        acc.push_str(x);
+                        acc.push('\n');
+                        acc
+                    })
+            })
+            .unwrap_or_default(),
+        _ => String::default(),
+    }
 }
 
 #[derive(serde::Serialize)]
@@ -289,11 +314,16 @@ impl AnswerAPIClient {
     async fn explain_snippet(
         &self,
         snippet: &api::Snippet,
+        extracted_imports: &str,
     ) -> Result<reqwest::Response, reqwest::Error> {
         let prompt = format!(
             "
             File: {}
 
+            List of imports from the file:
+            {}
+
+            Snippet:
             {}
 
             #####
@@ -301,14 +331,15 @@ impl AnswerAPIClient {
             Above is a code snippet.\
             Your job is to answer the questions about the snippet,\
             giving detailed explanations. Cite any code used to\
-            answer the question formatted in GitHub markdown and state the file path.
+            answer the question formatted in GitHub markdown and state the file path
+            in your reply if applicable.
 
             Q:What icon do we use to clear search history?
             A:We use the left-double chevron icon.
 
             Q:{}
             A:",
-            snippet.relative_path, snippet.text, self.query
+            snippet.relative_path, extracted_imports, snippet.text, self.query
         );
 
         self.send(prompt).await

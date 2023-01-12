@@ -6,6 +6,7 @@ pub static CPP: TSLanguageConfig = TSLanguageConfig {
     grammar: tree_sitter_cpp::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
     chunk_query: None,
+    import_regex: None,
     namespaces: &[&[
         // imports
         "header",

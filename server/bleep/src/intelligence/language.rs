@@ -11,7 +11,8 @@ mod typescript;
 #[cfg(test)]
 mod test_utils;
 
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
+use regex::Regex;
 
 use super::NameSpaces;
 
@@ -57,6 +58,9 @@ pub struct TSLanguageConfig {
 
     /// Compiled tree-sitter chunk query for this language.
     pub chunk_query: Option<MemoizedQuery>,
+
+    /// A regex to extract lines containing imports
+    pub import_regex: Option<Lazy<Regex>>,
 
     /// Namespaces defined by this language,
     /// E.g.: type namespace, variable namespace, function namespace

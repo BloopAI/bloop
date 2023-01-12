@@ -1,11 +1,15 @@
 use crate::intelligence::{MemoizedQuery, TSLanguageConfig};
 
+use once_cell::sync::Lazy;
+use regex::Regex;
+
 pub static C: TSLanguageConfig = TSLanguageConfig {
     language_ids: &["C"],
     file_extensions: &["c", "h"],
     grammar: tree_sitter_c::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
     chunk_query: None,
+    import_regex: Some(Lazy::new(|| Regex::new("^#include.*$").unwrap())),
     namespaces: &[&[
         // imports
         "header",
