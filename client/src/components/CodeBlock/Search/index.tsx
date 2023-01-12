@@ -45,7 +45,7 @@ const CodeBlockSearch = ({
 
   const handleMouseUp = useCallback(() => {
     if (!document.getSelection()?.toString()) {
-      onClick?.(repoName, filePath);
+      onClick?.(repoName, filePath, snippets[0].lineStart);
     }
   }, [onClick]);
 

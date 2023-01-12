@@ -146,7 +146,11 @@ export type TokenInfo = {
   definitions?: TokenInfoFile[];
 };
 
-export type ResultClick = (repo: string, path?: string) => void;
+export type ResultClick = (
+  repo: string,
+  path?: string,
+  lineNumber?: number,
+) => void;
 
 export type FileTreeItem = RepositoryFile & {
   children: FileTreeItem[];
