@@ -1,6 +1,6 @@
 use std::{collections::HashMap, ops::Not, path::Path, sync::Arc};
 
-use crate::query::parser::NLQuery;
+use crate::{query::parser::NLQuery, Configuration};
 
 use anyhow::Result;
 use maplit::hashmap;
@@ -30,6 +30,7 @@ pub struct Semantic {
     qdrant: Arc<QdrantClient>,
     tokenizer: Arc<tokenizers::Tokenizer>,
     session: Arc<ort::Session>,
+    config: Arc<Configuration>,
 }
 
 fn collection_config() -> CreateCollection {
@@ -46,7 +47,7 @@ fn collection_config() -> CreateCollection {
 }
 
 impl Semantic {
-    pub async fn new(model_dir: &Path, qdrant_url: &str) -> Result<Self> {
+    pub async fn new(model_dir: &Path, qdrant_url: &str, config: Arc<Configuration>) -> Result<Self> {
         let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url)))
             .await
             .unwrap();
@@ -85,6 +86,7 @@ impl Semantic {
                 .with_intra_threads(1)?
                 .with_model_from_file(model_dir.join("model.onnx"))?
                 .into(),
+            config,
         })
     }
 
@@ -95,6 +97,7 @@ impl Semantic {
         let attention_mask = tokenizer_output.get_attention_mask();
         let token_type_ids = tokenizer_output.get_type_ids();
         let length = input_ids.len();
+        trace!("embedding {} tokens {:?}", length, chunk);
 
         let inputs_ids_array = ndarray::Array::from_shape_vec(
             (1, length),
@@ -186,20 +189,22 @@ impl Semantic {
         buffer: &str,
         lang_str: &str,
     ) {
-        let chunks = chunk::trivial(buffer, 15); // line-wise chunking, 15 lines per chunk
-
+        let chunks = chunk::by_tokens(
+            repo_name,
+            relative_path,
+            buffer,
+            &*self.tokenizer,
+            self.config.embedding_input_size,
+            15,
+            self.config.overlap.unwrap_or(chunk::OverlapStrategy::Partial(0.5)),
+        );
+        let repo_plus_file = repo_name.to_owned() + "\t" + relative_path + "\n";
         debug!(chunk_count = chunks.len(), "found chunks");
         let datapoints = chunks
             .par_iter()
             .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
             .filter_map(|chunk| {
-                debug!(
-                    len = chunk.len(),
-                    big_chunk = chunk.len() > 800,
-                    "new chunk",
-                );
-
-                match self.embed(chunk.data) {
+                match self.embed(&(repo_plus_file.clone() + chunk.data)) {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
