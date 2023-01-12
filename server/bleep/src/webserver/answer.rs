@@ -1,8 +1,7 @@
-use crate::query::parser;
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
 use utoipa::ToSchema;
 
-use crate::Application;
+use crate::{indexes::reader::ContentDocument, query::parser, state::RepoRef, Application};
 
 use super::ErrorKind;
 
@@ -19,9 +18,13 @@ mod api {
     pub struct Snippet {
         pub lang: String,
         pub repo_name: String,
+        pub repo_ref: String,
         pub relative_path: String,
         pub text: String,
         pub start_line: usize,
+        pub end_line: usize,
+        pub start_byte: usize,
+        pub end_byte: usize,
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -84,9 +87,19 @@ pub async fn handle(
             api::Snippet {
                 lang: value_to_string(s.remove("lang").unwrap()),
                 repo_name: value_to_string(s.remove("repo_name").unwrap()),
+                repo_ref: value_to_string(s.remove("repo_ref").unwrap()),
                 relative_path: value_to_string(s.remove("relative_path").unwrap()),
                 text: value_to_string(s.remove("snippet").unwrap()),
                 start_line: value_to_string(s.remove("start_line").unwrap())
+                    .parse::<usize>()
+                    .unwrap(),
+                end_line: value_to_string(s.remove("end_line").unwrap())
+                    .parse::<usize>()
+                    .unwrap(),
+                start_byte: value_to_string(s.remove("start_byte").unwrap())
+                    .parse::<usize>()
+                    .unwrap(),
+                end_byte: value_to_string(s.remove("end_byte").unwrap())
                     .parse::<usize>()
                     .unwrap(),
             }
@@ -114,11 +127,37 @@ pub async fn handle(
         .parse::<usize>()
         .map_err(super::internal_error)?;
 
-    // TODO: do something cool with the snippet here
-    let processed_snippet = &snippets[relevant_snippet_index];
+    let relevant_snippet = &snippets[relevant_snippet_index];
+    // grow the snippet by 60 lines above and below, we have sufficient space
+    // to grow this snippet by 10 times its original size (15 to 150)
+    let processed_snippet = {
+        let repo_ref = &relevant_snippet
+            .repo_ref
+            .parse::<RepoRef>()
+            .map_err(super::internal_error)?;
+        let doc = app
+            .indexes
+            .file
+            .by_path(repo_ref, &relevant_snippet.relative_path)
+            .await
+            .map_err(super::internal_error)?;
+
+        let grown_text = grow(&doc, &relevant_snippet, 60);
+        api::Snippet {
+            lang: relevant_snippet.lang.clone(),
+            repo_name: relevant_snippet.repo_name.clone(),
+            repo_ref: relevant_snippet.repo_ref.clone(),
+            relative_path: relevant_snippet.relative_path.clone(),
+            text: grown_text,
+            start_line: relevant_snippet.start_line,
+            end_line: relevant_snippet.end_line,
+            start_byte: relevant_snippet.start_byte,
+            end_byte: relevant_snippet.end_byte,
+        }
+    };
 
     let snippet_explaination = answer_api_client
-        .explain_snippet(processed_snippet)
+        .explain_snippet(&processed_snippet)
         .await
         .map_err(super::internal_error)?
         .text()
@@ -149,6 +188,30 @@ pub async fn handle(
             id: params.user_id,
         },
     })))
+}
+
+// grow the text of this snippet by `size` and return the new text
+fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
+    let content = &doc.content;
+
+    // skip upwards `size` number of lines
+    let new_start_byte = content[..snippet.start_byte]
+        .rmatch_indices('\n')
+        .map(|(idx, _)| idx)
+        .skip(size)
+        .next()
+        .unwrap_or(0);
+
+    // skip downwards `size` number of lines
+    let new_end_byte = content[snippet.end_byte..]
+        .match_indices('\n')
+        .map(|(idx, _)| idx)
+        .skip(size)
+        .next()
+        .map(|s| s.saturating_add(snippet.end_byte)) // the index is off by `snippet.end_byte`
+        .unwrap_or(content.len());
+
+    content[new_start_byte..new_end_byte].to_owned()
 }
 
 #[derive(serde::Serialize)]

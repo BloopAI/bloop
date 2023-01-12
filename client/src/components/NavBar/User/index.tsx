@@ -1,13 +1,24 @@
-import { useCallback, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bug, ChevronDownFilled, Cog, Person } from '../../../icons';
+import React, { useCallback, useContext, useMemo } from 'react';
+import {
+  ArrowLeft,
+  Bug,
+  ChevronDownFilled,
+  Cog,
+  Person,
+  PlusSignInBubble,
+  Tab,
+} from '../../../icons';
 import DropdownWithIcon from '../../Dropdown/WithIcon';
+import Dropdown from '../../Dropdown/Normal';
 import ShareButton, { ShareFile } from '../../ShareButton';
-import { MenuListItemType } from '../../ContextMenu';
+import { ContextMenuItem, MenuListItemType } from '../../ContextMenu';
 import SearchInput from '../../SearchInput';
 import { UIContext } from '../../../context/uiContext';
 import Button from '../../Button';
 import useAppNavigation from '../../../hooks/useAppNavigation';
+import { TabsContext } from '../../../context/tabsContext';
+import { generateUniqueId } from '../../../utils';
+import { MenuItemType } from '../../../types/general';
 
 type Props = {
   shareFiles?: ShareFile[];
@@ -17,13 +28,56 @@ type Props = {
 const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
   const { setSettingsOpen, setBugReportModalOpen } = useContext(UIContext);
   const { navigateBack, navigationHistory } = useAppNavigation();
+  const { tabs, setActiveTab, handleAddTab, activeTab, handleRemoveTab } =
+    useContext(TabsContext);
 
   const backButtonHandler = useCallback(() => {
     navigateBack();
   }, []);
 
+  const tabItems = useMemo(
+    () =>
+      tabs
+        .map(
+          (t): ContextMenuItem => ({
+            text: t.name,
+            type:
+              tabs.length > 1
+                ? MenuListItemType.REMOVABLE
+                : MenuItemType.DEFAULT,
+            onClick: () => setActiveTab(t.key),
+            onDelete: () => handleRemoveTab(t.key),
+            icon: <Tab />,
+          }),
+        )
+        .concat(
+          tabs.length < 5
+            ? [
+                {
+                  type: MenuListItemType.DIVIDER,
+                  text: '',
+                  onClick: () => {},
+                  icon: <Tab />,
+                },
+                {
+                  type: MenuListItemType.DEFAULT,
+                  text: 'Add tab',
+                  icon: <PlusSignInBubble />,
+                  onClick: () => {
+                    handleAddTab({
+                      key: generateUniqueId(),
+                      name: 'Home',
+                    });
+                  },
+                },
+              ]
+            : [],
+        ),
+    [tabs, activeTab, setActiveTab, handleAddTab],
+  );
+
   return (
-    <div className="flex flex-row flex-1">
+    <div className="flex flex-row flex-1 gap-4">
       <Button
         variant={'tertiary'}
         onlyIcon
@@ -34,6 +88,12 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
       >
         <ArrowLeft />
       </Button>
+      <Dropdown
+        items={tabItems}
+        selected={tabItems[tabs.findIndex((t) => t.key === activeTab)]}
+        hint="Open tabs"
+        titleClassName="max-w-[120px] ellipsis"
+      />
       <div className="flex items-center justify-between	w-full">
         <span />
         {/*{isSkeleton ? (*/}

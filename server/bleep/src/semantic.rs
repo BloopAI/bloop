@@ -177,10 +177,11 @@ impl Semantic {
         Ok(response.result.into_iter().map(|pt| pt.payload).collect())
     }
 
-    #[tracing::instrument(skip(self, repo_name, relative_path, buffer))]
+    #[tracing::instrument(skip(self, repo_ref, relative_path, buffer))]
     pub async fn insert_points_for_buffer(
         &self,
         repo_name: &str,
+        repo_ref: &str,
         relative_path: &str,
         buffer: &str,
         lang_str: &str,
@@ -205,9 +206,13 @@ impl Semantic {
                         payload: hashmap! {
                             "lang".into() => lang_str.to_ascii_lowercase().into(),
                             "repo_name".into() => repo_name.into(),
+                            "repo_ref".into() => repo_ref.into(),
                             "relative_path".into() => relative_path.into(),
                             "snippet".into() => chunk.data.into(),
                             "start_line".into() => chunk.range.start.line.to_string().into(),
+                            "end_line".into() => chunk.range.end.line.to_string().into(),
+                            "start_byte".into() => chunk.range.start.byte.to_string().into(),
+                            "end_byte".into() => chunk.range.end.byte.to_string().into(),
                         },
                     }),
                     Err(err) => {

@@ -1,5 +1,5 @@
 import React, {
-  FormEvent,
+  ChangeEvent,
   useCallback,
   useContext,
   useMemo,
@@ -222,8 +222,7 @@ function SearchInput() {
             regex
             {...getInputProps(
               {
-                onChange: (e: FormEvent<HTMLInputElement>) => {
-                  // @ts-ignore
+                onChange: (e: ChangeEvent<HTMLInputElement>) => {
                   setInputValue(e.target.value);
                 },
               },

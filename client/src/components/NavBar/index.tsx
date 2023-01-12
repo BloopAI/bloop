@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
 import { LogoSmall } from '../../icons';
+import useAppNavigation from '../../hooks/useAppNavigation';
 import NavBarNoUser from './NoUser';
 import NavBarUser from './User';
 
@@ -9,6 +9,7 @@ type Props = {
 };
 
 const NavBar = ({ userSigned, isSkeleton }: Props) => {
+  const { navigateHome } = useAppNavigation();
   return (
     <div
       className={`h-16 flex items-center gap-8 px-8 bg-gray-800/75 fixed top-0 left-0 right-0 z-30 ${
@@ -17,9 +18,9 @@ const NavBar = ({ userSigned, isSkeleton }: Props) => {
     >
       {!isSkeleton && (
         <span className="text-gray-50">
-          <Link to={'/'}>
+          <button onClick={navigateHome}>
             <LogoSmall />
-          </Link>
+          </button>
         </span>
       )}
       {userSigned ? <NavBarUser isSkeleton={isSkeleton} /> : <NavBarNoUser />}
