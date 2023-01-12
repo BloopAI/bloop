@@ -139,6 +139,39 @@ impl OverlapStrategy {
 /// This should take care of [CLS], [SEP] etc. which could be introduced during per-chunk tokenization
 pub const DEDUCT_SPECIAL_TOKENS: usize = 2;
 
+fn add_token_range<'s>(
+    chunks: &mut Vec<Chunk<'s>>,
+    src: &'s str,
+    offsets: &[(usize, usize)],
+    start: usize,
+    end: usize,
+    last_line: &mut usize,
+    last_byte: &mut usize,
+) {
+    let start_byte = offsets[start].0;
+    let end_byte = offsets.get(end).map_or(src.len(), |&(s, _)| s);
+    let Some(trim_start) = src[start_byte..]
+            .char_indices()
+            .find_map(|(i, c)| (!c.is_whitespace()).then_some(i))
+    else { return };
+    let trimmed_start_byte = start_byte + trim_start;
+    let Some(trimmed_end_byte) = src[..end_byte]
+        .char_indices()
+        .rev()
+        .find_map(|(i, c)| (!c.is_whitespace()).then_some(i)) else { return };
+    if trimmed_end_byte <= trimmed_start_byte {
+        return;
+    }
+    let start = point(&src, trimmed_start_byte, *last_line, *last_byte);
+    let end = point(&src, trimmed_end_byte, *last_line, *last_byte);
+    (*last_line, *last_byte) = (start.line, start.byte);
+    chunks.push(Chunk::new(
+        &src[trimmed_start_byte..trimmed_end_byte],
+        start,
+        end,
+    ));
+}
+
 /// This tries to split the code by lines and add as much tokens as possible until reaching
 /// `max_tokens`. Then it'll reduce to the last newline.
 pub fn by_tokens<'s>(
@@ -152,7 +185,6 @@ pub fn by_tokens<'s>(
     if src.is_empty() {
         return Vec::new();
     }
-    //TODO: We should probably encode once before chunking and reuse the encoding.
     let Ok(encoding) = tokenizer.encode(src, true)
     else {
         warn!("Could not encode \"{}\"", src);
@@ -178,9 +210,10 @@ pub fn by_tokens<'s>(
     }));
 
     // calculate the start/end indices into tokens/offsets for the chunk starts/ends
-    let mut token_ranges = Vec::new();
+    let mut chunks = Vec::new();
     let mut s = 0;
     let mut offset = 0;
+    let (mut last_line, mut last_byte) = (1, 0);
     while let Some(index_diff) = starts[s..].iter().position(|&p| p - offset > max_tokens) {
         let next_s = s + index_diff - 1;
         // add (offset, end) to token_ranges, split if necessary
@@ -190,49 +223,56 @@ pub fn by_tokens<'s>(
             loop {
                 let end = offset + max_tokens;
                 if end > end_offset {
-                    token_ranges.push((offset, end_offset));
+                    add_token_range(
+                        &mut chunks,
+                        src,
+                        offsets,
+                        offset,
+                        end_offset,
+                        &mut last_line,
+                        &mut last_byte,
+                    );
                     break;
                 }
-                token_ranges.push((offset, end));
+                add_token_range(
+                    &mut chunks,
+                    src,
+                    offsets,
+                    offset,
+                    end,
+                    &mut last_line,
+                    &mut last_byte,
+                );
                 offset += strategy.next_subdivision(max_tokens);
             }
             s += 1;
         } else {
             let end = starts[next_s];
-            token_ranges.push((offset, end));
-
+            add_token_range(
+                &mut chunks,
+                src,
+                offsets,
+                offset,
+                end,
+                &mut last_line,
+                &mut last_byte,
+            );
             s = strategy.next_start(&starts, offset, end);
         }
         offset = starts[s];
     }
     if offset < offsets.len() {
-        token_ranges.push((offset, offsets.len()));
+        add_token_range(
+            &mut chunks,
+            src,
+            offsets,
+            offset,
+            offsets.len(),
+            &mut last_line,
+            &mut last_byte,
+        );
     }
-    let (mut last_line, mut last_byte) = (1, 0);
-    
-    let ranges = token_ranges
-        .into_iter()
-        .filter_map(move |(start, end)| {
-            let start_byte = offsets[start].0;
-            let end_byte = offsets.get(end).map_or(src.len(), |&(s, _)| s);
-            let trimmed_start_byte = start_byte
-                + src[start_byte..]
-                    .char_indices()
-                    .find_map(|(i, c)| (!c.is_whitespace()).then_some(i))?;
-            let trimmed_end_byte = src[..end_byte]
-                .char_indices()
-                .rev()
-                .find_map(|(i, c)| (!c.is_whitespace()).then_some(i))?;
-            (trimmed_start_byte < trimmed_end_byte).then(|| {
-                let start = point(&src, trimmed_start_byte, last_line, last_byte);
-                let end = point(&src, trimmed_end_byte, last_line, last_byte);
-                (last_line, last_byte) = (start.line, start.byte);
-                Chunk::new(&src[trimmed_start_byte..trimmed_end_byte], start, end)
-            })
-        })
-        .collect();
-
-    ranges
+    chunks
 }
 
 pub fn trivial(src: &str, size: usize) -> Vec<Chunk<'_>> {
