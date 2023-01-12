@@ -35,7 +35,7 @@ const Onboarding = ({ onFinish }: Props) => {
   }, []);
 
   return (
-    <div className="fixed top-0 bottom-0 left-0 right-0 my-16 bg-[url('/onboarding-background.png')] bg-cover">
+    <div className="fixed top-0 bottom-0 left-0 right-0 my-16 bg-[url('/onboarding-background.png')] bg-cover z-50">
       <div className="absolute top-0 bottom-0 left-0 right-0 flex justify-center items-start overflow-auto bg-gray-900 bg-opacity-75">
         <TelemetryPopup
           onClose={closeTelemetry}

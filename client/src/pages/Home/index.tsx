@@ -24,40 +24,10 @@ const listNavigationItems = [
   { title: 'GitHub repos', icon: <GitHubLogo /> },
 ];
 
-let onboardingFinished = false;
-
 const HomePage = ({ emptyRepos }: Props) => {
-  const [shouldShowWelcome, setShouldShowWelcome] = useState(
-    !getPlainFromStorage(ONBOARDING_DONE_KEY),
-  );
   const [filter, setFilter] = useState(0);
 
-  const { setInputValue } = useContext(SearchContext);
-  const { isRepoManagementAllowed } = useContext(DeviceContext);
-
-  useEffect(() => {
-    if (import.meta.env.VITE_ONBOARDING) {
-      if (
-        getPlainFromStorage(SESSION_ID_KEY) !==
-        window.__APP_SESSION__.toString()
-      ) {
-        localStorage.removeItem(ONBOARDING_DONE_KEY);
-        savePlainToStorage(SESSION_ID_KEY, window.__APP_SESSION__.toString());
-        setShouldShowWelcome(true);
-      }
-    }
-    setInputValue('');
-  }, []);
-
-  const closeOnboarding = useCallback(() => {
-    setShouldShowWelcome(false);
-    onboardingFinished = true; // to avoid showing onboarding twice per session when using VITE_ONBOARDING=true
-    savePlainToStorage(ONBOARDING_DONE_KEY, 'true');
-  }, []);
-
-  return isRepoManagementAllowed && shouldShowWelcome ? (
-    <Onboarding onFinish={closeOnboarding} />
-  ) : (
+  return (
     <>
       <div className="w-90 text-gray-300 border-r border-gray-800 flex-shrink-0 h-full">
         <ListNavigation

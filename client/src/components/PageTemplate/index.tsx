@@ -10,7 +10,7 @@ const mainContainerStyle = { height: 'calc(100vh - 8rem)' };
 const PageTemplate = ({ children }: Props) => {
   return (
     <div className="text-gray-200">
-      <NavBar userSigned />
+      <NavBar userSigned isSkeleton />
       <div
         className="flex my-16 w-screen overflow-hidden relative z-10"
         style={mainContainerStyle}

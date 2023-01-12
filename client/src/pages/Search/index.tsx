@@ -1,4 +1,10 @@
-import React, { useCallback, useContext, useEffect, useMemo } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import * as Sentry from '@sentry/react';
 import { SearchContext } from '../../context/searchContext';
 import { useSearch } from '../../hooks/useSearch';
@@ -20,6 +26,16 @@ import NLResults from '../NLResults';
 import NoResults from '../Results/NoResults';
 import HomePage from '../Home';
 import { TabsContext } from '../../context/tabsContext';
+import Onboarding from '../Home/Onboarding';
+import { DeviceContext } from '../../context/deviceContext';
+import {
+  getPlainFromStorage,
+  ONBOARDING_DONE_KEY,
+  savePlainToStorage,
+  SESSION_ID_KEY,
+} from '../../services/storage';
+import StatusBar from '../../components/StatusBar';
+import NavBar from '../../components/NavBar';
 
 const mockQuerySuggestions = [
   'repo:cobra-ats  error:“no apples”',
@@ -29,9 +45,15 @@ const mockQuerySuggestions = [
   'lang:tsx apples',
 ];
 
+let onboardingFinished = false;
+
 const SearchPage = () => {
   const { setInputValue, globalRegex, searchType, setSearchType } =
     useContext(SearchContext);
+  const { isRepoManagementAllowed } = useContext(DeviceContext);
+  const [shouldShowWelcome, setShouldShowWelcome] = useState(
+    !getPlainFromStorage(ONBOARDING_DONE_KEY),
+  );
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
   const {
     searchQuery: nlSearchQuery,
@@ -41,6 +63,26 @@ const SearchPage = () => {
   const { updateCurrentTabName } = useContext(TabsContext);
 
   const { navigatedItem, query } = useAppNavigation();
+
+  const closeOnboarding = useCallback(() => {
+    setShouldShowWelcome(false);
+    onboardingFinished = true; // to avoid showing onboarding twice per session when using VITE_ONBOARDING=true
+    savePlainToStorage(ONBOARDING_DONE_KEY, 'true');
+  }, []);
+
+  useEffect(() => {
+    if (import.meta.env.VITE_ONBOARDING) {
+      if (
+        getPlainFromStorage(SESSION_ID_KEY) !==
+        window.__APP_SESSION__.toString()
+      ) {
+        localStorage.removeItem(ONBOARDING_DONE_KEY);
+        savePlainToStorage(SESSION_ID_KEY, window.__APP_SESSION__.toString());
+        setShouldShowWelcome(true);
+      }
+    }
+    setInputValue('');
+  }, []);
 
   useEffect(() => {
     if (!navigatedItem) {
@@ -155,7 +197,19 @@ const SearchPage = () => {
     }
   }, [data, loading, nlLoading, nlData, handleRetry, navigatedItem]);
 
-  return <PageTemplate>{renderedPage}</PageTemplate>;
+  return isRepoManagementAllowed && shouldShowWelcome ? (
+    <div className="text-gray-200">
+      <NavBar userSigned isSkeleton />
+      <div
+        className={`flex justify-center items-start mt-16 w-screen overflow-auto relative h-[calc(100vh-8rem)]`}
+      >
+        <Onboarding onFinish={closeOnboarding} />
+      </div>
+      <StatusBar />
+    </div>
+  ) : (
+    <PageTemplate>{renderedPage}</PageTemplate>
+  );
 };
 
 export default Sentry.withErrorBoundary(SearchPage, {

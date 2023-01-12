@@ -90,12 +90,14 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
       >
         <ArrowLeft />
       </Button>
-      <Dropdown
-        items={tabItems}
-        selected={tabItems[tabs.findIndex((t) => t.key === activeTab)]}
-        hint="Open tabs"
-        titleClassName="max-w-[120px] ellipsis"
-      />
+      {!isSkeleton && (
+        <Dropdown
+          items={tabItems}
+          selected={tabItems[tabs.findIndex((t) => t.key === activeTab)]}
+          hint="Open tabs"
+          titleClassName="max-w-[120px] ellipsis"
+        />
+      )}
       <div className="flex items-center justify-between	w-full">
         <span />
         {/*{isSkeleton ? (*/}
