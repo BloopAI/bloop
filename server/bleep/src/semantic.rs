@@ -47,7 +47,11 @@ fn collection_config() -> CreateCollection {
 }
 
 impl Semantic {
-    pub async fn new(model_dir: &Path, qdrant_url: &str, config: Arc<Configuration>) -> Result<Self> {
+    pub async fn new(
+        model_dir: &Path,
+        qdrant_url: &str,
+        config: Arc<Configuration>,
+    ) -> Result<Self> {
         let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url)))
             .await
             .unwrap();
@@ -196,15 +200,17 @@ impl Semantic {
             &*self.tokenizer,
             self.config.embedding_input_size,
             15,
-            self.config.overlap.unwrap_or(chunk::OverlapStrategy::Partial(0.5)),
+            self.config
+                .overlap
+                .unwrap_or(chunk::OverlapStrategy::Partial(0.5)),
         );
         let repo_plus_file = repo_name.to_owned() + "\t" + relative_path + "\n";
         debug!(chunk_count = chunks.len(), "found chunks");
         let datapoints = chunks
             .par_iter()
             .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
-            .filter_map(|chunk| {
-                match self.embed(&(repo_plus_file.clone() + chunk.data)) {
+            .filter_map(
+                |chunk| match self.embed(&(repo_plus_file.clone() + chunk.data)) {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
@@ -224,8 +230,8 @@ impl Semantic {
                         trace!(?err, "embedding failed");
                         None
                     }
-                }
-            })
+                },
+            )
             .collect::<Vec<_>>();
 
         if !datapoints.is_empty() {
