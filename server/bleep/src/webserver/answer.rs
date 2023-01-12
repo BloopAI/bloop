@@ -142,7 +142,7 @@ pub async fn handle(
             .await
             .map_err(super::internal_error)?;
 
-        let grown_text = grow(&doc, &relevant_snippet, 60);
+        let grown_text = grow(&doc, relevant_snippet, 60);
         api::Snippet {
             lang: relevant_snippet.lang.clone(),
             repo_name: relevant_snippet.repo_name.clone(),
@@ -198,16 +198,14 @@ fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
     let new_start_byte = content[..snippet.start_byte]
         .rmatch_indices('\n')
         .map(|(idx, _)| idx)
-        .skip(size)
-        .next()
+        .nth(size)
         .unwrap_or(0);
 
     // skip downwards `size` number of lines
     let new_end_byte = content[snippet.end_byte..]
         .match_indices('\n')
         .map(|(idx, _)| idx)
-        .skip(size)
-        .next()
+        .nth(size)
         .map(|s| s.saturating_add(snippet.end_byte)) // the index is off by `snippet.end_byte`
         .unwrap_or(content.len());
 

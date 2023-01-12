@@ -3,7 +3,7 @@ name: Tauri Tests
 on:
   pull_request:
     types: [opened, synchronize]
-    branches: [main, dev]
+    branches: [main, semantic]
     paths:
       - "apps/desktop/**"
       - ".github/workflows/tauri**"
