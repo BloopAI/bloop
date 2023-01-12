@@ -15,7 +15,7 @@ use criterion as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
-use semantic::Semantic;
+use semantic::{Semantic, chunk::OverlapStrategy};
 
 use crate::{
     indexes::Indexes,
@@ -202,6 +202,13 @@ pub struct Configuration {
     #[serde(default = "default_answer_api_base")]
     /// Answer API `base` string
     pub answer_api_base: String,
+
+    #[clap(long, default_value_t = 256)]
+    /// the size of tokens to embed at once (should be the model's input size)
+    pub embedding_input_size: usize,
+
+    #[clap(long)]
+    pub overlap: Option<OverlapStrategy>,
 }
 
 impl Configuration {
@@ -256,7 +263,7 @@ impl Application {
         }
 
         let config = Arc::new(config);
-        let semantic = Semantic::new(&config.model_dir, &config.qdrant_url).await?;
+        let semantic = Semantic::new(&config.model_dir, &config.qdrant_url, Arc::clone(&config)).await?;
         let segment = Arc::new(config.segment_key.clone().map(Segment::new));
 
         Ok(Self {

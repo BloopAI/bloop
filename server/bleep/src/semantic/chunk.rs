@@ -1,10 +1,14 @@
+use std::fmt::{Display, Write};
+
 use crate::{
     intelligence::{Language, TSLanguage},
     text_range::{Point, TextRange},
 };
 
+use clap::{builder::PossibleValue, ValueEnum};
+use serde::{Deserialize, Serialize};
 use tokenizers::Tokenizer;
-use tracing::{warn, error};
+use tracing::{error, warn};
 use tree_sitter::{Parser, QueryCursor};
 
 #[derive(Debug)]
@@ -106,12 +110,68 @@ fn point(src: &str, byte: usize, last_line: usize, last_byte: usize) -> Point {
     Point { byte, column, line }
 }
 
-/// The strategy for overlapping
+/// The strategy for overlapping chunks
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(try_from = "&str", into = "String")]
 pub enum OverlapStrategy {
     /// go back _ lines from the end
     ByLines(usize),
     /// A value > 0 and < 1 that indicates the target overlap in tokens.
     Partial(f64),
+}
+
+impl Display for OverlapStrategy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ByLines(n) => n.fmt(f),
+            Self::Partial(p) => {
+                (*p / 100.0).fmt(f)?;
+                f.write_char('%')
+            },
+        }
+    }
+}
+
+impl Into<String> for OverlapStrategy {
+    fn into(self) -> String {
+        self.to_string()
+    }
+}
+
+static OVERLAP_STRATEGY_VARIANTS: &[OverlapStrategy] =
+    &[OverlapStrategy::ByLines(1), OverlapStrategy::Partial(0.5)];
+
+impl ValueEnum for OverlapStrategy {
+    fn value_variants<'a>() -> &'a [Self] {
+        OVERLAP_STRATEGY_VARIANTS
+    }
+
+    fn to_possible_value(&self) -> Option<PossibleValue> {
+        if self == &OVERLAP_STRATEGY_VARIANTS[0] {
+            Some(PossibleValue::new("1"))
+        } else if self == &OVERLAP_STRATEGY_VARIANTS[1] {
+            Some(PossibleValue::new("50%"))
+        } else {
+            None
+        }
+    }
+
+    fn from_str(input: &str, _ignore_case: bool) -> Result<Self, String> {
+        Self::try_from(input)
+            .map_err(|_| String::from("overlap should be a number of lines or a percentage"))
+    }
+}
+
+impl TryFrom<&'_ str> for OverlapStrategy {
+    type Error = &'static str;
+
+    fn try_from(input: &str) -> Result<Self, &'static str> {
+        Ok(if let Some(percentage) = input.strip_suffix("%") {
+            Self::Partial(str::parse::<f64>(percentage).map_err(|_| "failure parsing overlap strategy")? * 0.01)
+        } else {
+            Self::ByLines(str::parse(input).map_err(|_| "failure parsing overlap strategy")?)
+        })
+    }
 }
 
 impl OverlapStrategy {
@@ -203,7 +263,7 @@ pub fn by_tokens<'s>(
         Err(e) => {
             error!("failure during encoding repo + file {:?}", e);
             return Vec::new();
-        },
+        }
     };
 
     if max_tokens <= DEDUCT_SPECIAL_TOKENS + repo_tokens {
@@ -347,6 +407,7 @@ mod tests {
             let Ok(src) = std::fs::read_to_string(file.path()) else { continue };
             let path = file.path().to_string_lossy();
             let tokenwise = by_tokens(
+                "bloop",
                 &file.path().to_string_lossy(),
                 &src,
                 &tokenizer,
