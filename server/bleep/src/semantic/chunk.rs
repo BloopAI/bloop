@@ -149,6 +149,11 @@ fn add_token_range<'s>(
     last_byte: &mut usize,
 ) {
     let start_byte = offsets[start].0;
+    let line_start_byte = src[..start_byte]
+        .char_indices()
+        .rev()
+        .find_map(|(i, c)| (c == '\n').then_some(i + 1))
+        .unwrap_or(0);
     let end_byte = offsets.get(end).map_or(src.len(), |&(s, _)| s);
     let Some(trimmed_end_byte) = src[..end_byte]
         .char_indices()
@@ -157,11 +162,11 @@ fn add_token_range<'s>(
     if trimmed_end_byte <= start_byte {
         return;
     }
-    let start = point(&src, start_byte, *last_line, *last_byte);
+    let start = point(&src, line_start_byte, *last_line, *last_byte);
     let end = point(&src, trimmed_end_byte, *last_line, *last_byte);
     (*last_line, *last_byte) = (start.line, start.byte);
     chunks.push(Chunk::new(
-        &src[start_byte..trimmed_end_byte],
+        &src[line_start_byte..trimmed_end_byte],
         start,
         end,
     ));
