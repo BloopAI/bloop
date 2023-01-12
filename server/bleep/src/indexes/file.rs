@@ -474,7 +474,7 @@ impl File {
 
         tokio::task::block_in_place(|| {
             Handle::current().block_on(self.semantic.insert_points_for_buffer(
-                &repo_name,
+                repo_name,
                 &repo_ref,
                 &relative_path.to_string_lossy(),
                 &buffer,

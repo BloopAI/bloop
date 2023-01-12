@@ -2,9 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchContext } from '../../context/searchContext';
 import { mockFiltersInitial } from '../../mocks';
+import { SearchType } from '../../types/general';
 import SearchInput from './index';
 import '../../index.css';
-import { SearchType } from '../../types/general';
 
 export default {
   title: 'components/SearchInput',

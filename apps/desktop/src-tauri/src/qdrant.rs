@@ -164,7 +164,7 @@ where
         create_dir_all(&qd_config_dir).unwrap();
         write(
             qd_config_dir.join("config.yaml"),
-            &QDRANT_CONFIG
+            QDRANT_CONFIG
                 .replace(
                     "{{ STORAGE }}",
                     &qdrant_dir.join("storage").to_string_lossy(),
@@ -188,14 +188,12 @@ where
 
     fn on_event(&mut self, _app: &tauri::AppHandle<R>, event: &tauri::RunEvent) {
         use tauri::RunEvent::Exit;
-        match event {
-            Exit => self
-                .child
+        if let Exit = event {
+            self.child
                 .take()
                 .expect("qdrant not started")
                 .kill()
-                .expect("failed to kill qdrant"),
-            _ => (),
+                .expect("failed to kill qdrant")
         }
     }
 }
