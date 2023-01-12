@@ -55,6 +55,9 @@ pub struct TSLanguageConfig {
     /// Compiled tree-sitter scope query for this language.
     pub scope_query: MemoizedQuery,
 
+    /// Compiled tree-sitter chunk query for this language.
+    pub chunk_query: Option<MemoizedQuery>,
+
     /// Namespaces defined by this language,
     /// E.g.: type namespace, variable namespace, function namespace
     pub namespaces: NameSpaces,

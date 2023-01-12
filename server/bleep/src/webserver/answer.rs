@@ -1,7 +1,7 @@
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
 use utoipa::ToSchema;
 
-use crate::Application;
+use crate::{indexes::reader::ContentDocument, query::parser, state::RepoRef, Application};
 
 use super::ErrorKind;
 
@@ -11,24 +11,46 @@ mod api {
     pub struct Request {
         pub query: String,
         pub snippets: Vec<Snippet>,
+        pub user_id: String,
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
     pub struct Snippet {
-        pub path: String,
+        pub lang: String,
+        pub repo_name: String,
+        pub repo_ref: String,
+        pub relative_path: String,
         pub text: String,
+        pub start_line: usize,
+        pub end_line: usize,
+        pub start_byte: usize,
+        pub end_byte: usize,
+    }
+
+    #[derive(Debug, serde::Serialize, serde::Deserialize)]
+    pub struct DecodedResponse {
+        pub index: u32,
+        pub answer: String,
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Response {
-        pub index: u32,
-        pub answer: String,
+        #[serde(flatten)]
+        pub data: DecodedResponse,
+        pub id: String,
     }
+}
+
+fn default_limit() -> u64 {
+    10
 }
 
 #[derive(Debug, serde::Deserialize)]
 pub struct Params {
     pub q: String,
+    #[serde(default = "default_limit")]
+    pub limit: u64,
+    pub user_id: String,
 }
 
 #[derive(serde::Serialize, ToSchema)]
@@ -37,105 +59,258 @@ pub struct AnswerResponse {
     pub selection: api::Response,
 }
 
-fn sample_snippets() -> Vec<api::Snippet> {
-    vec![
-        api::Snippet {
-            path: "server/bleep/Cargo.toml".into(),
-            text: r#"[dependencies]
-git2 = "0.15.0"
-serde = "1.0.147"
-regex = "1.7.0"
-regex-syntax = "0.6.28"
-smallvec = { version = "1.10.0", features = ["serde"]}
-async-trait = "0.1.58"
-flume = "0.10.14"
-dashmap = { version = "5.4.0", features = ["serde"] }
-either = "1.8.0"
-compact_str = "0.6.1"
-bincode = "1.3.3"
-directories = "4.0.1"
-chrono = { version = "0.4.23", features = ["serde"], default-features = false }
-phf = "0.11.1"
-rand = "0.8.5"
-once_cell = "1.16.0"
-replace_with = "0.1.7"
-relative-path = "1.7.2"
-dunce = "1.0.3""#
-                .into(),
-        },
-        api::Snippet {
-            path: "client/package.json".into(),
-            text: r#""dependencies": {
-    "@segment/analytics-next": "^1.46.3",
-    "@sentry/react": "^7.23.0",
-    "@sentry/tracing": "^7.23.0",
-    "@tailwindcss/line-clamp": "^0.4.2",
-    "@tippyjs/react": "^4.2.6",
-    "axios": "^1.1.3",
-    "chart.js": "^3.9.1",
-    "date-fns": "^2.29.3",
-    "downshift": "^6.1.10",
-    "file-icons-js": "^1.1.0",
-    "framer-motion": "^7.6.2",
-    "lodash.debounce": "^4.0.8",
-    "lodash.throttle": "^4.1.1",
-    "msw-storybook-addon": "^1.6.3",
-    "prismjs": "^1.29.0",
-    "react": "^18.2.0",
-    "react-chartjs-2": "^4.3.1",
-    "react-dom": "^18.2.0",
-    "react-draggable": "^4.4.5",
-    "react-router-dom": "^6.4.1",
-    "react-virtualized": "^9.22.3",
-    "remarkable": "^2.0.1",
-    "textarea-caret": "^3.1.0",
-    "timeago.js": "^4.0.2"
-  },"#
-            .into(),
-        },
-        api::Snippet {
-            path: "server/bleep/src/bin/bleep.rs".into(),
-            text: r#"use anyhow::Result;
-use bleep::{Application, Configuration, Environment};
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    let app = Application::initialize(Environment::Server, Configuration::from_cli()?)?;
-    app.run().await
-}"#
-            .into(),
-        },
-    ]
-}
-
 pub async fn handle(
     Query(params): Query<Params>,
     Extension(app): Extension<Application>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
-    let snippets = sample_snippets();
-
-    let res = reqwest::Client::new()
-        .post(format!("http://{}/q", app.config.answer_api_host))
-        .json(&api::Request {
-            query: params.q,
-            snippets: snippets.clone(),
-        })
-        .send()
+    let query =
+        parser::parse_nl(&params.q).map_err(|e| super::error(ErrorKind::User, e.to_string()))?;
+    let target = query
+        .target()
+        .ok_or_else(|| super::error(ErrorKind::User, "missing search target".to_owned()))?;
+    let mut snippets = app
+        .semantic
+        .search(&query, params.limit)
         .await
-        .map_err(|e| {
-            super::error(
-                ErrorKind::Internal,
-                format!("failed to make request to answer API: {}", e),
+        .map_err(|e| super::error(ErrorKind::Internal, e.to_string()))?
+        .into_iter()
+        .map(|mut s| {
+            use qdrant_client::qdrant::{value::Kind, Value};
+
+            fn value_to_string(value: Value) -> String {
+                match value.kind.unwrap() {
+                    Kind::StringValue(s) => s,
+                    _ => panic!("got non-string value"),
+                }
+            }
+
+            api::Snippet {
+                lang: value_to_string(s.remove("lang").unwrap()),
+                repo_name: value_to_string(s.remove("repo_name").unwrap()),
+                repo_ref: value_to_string(s.remove("repo_ref").unwrap()),
+                relative_path: value_to_string(s.remove("relative_path").unwrap()),
+                text: value_to_string(s.remove("snippet").unwrap()),
+                start_line: value_to_string(s.remove("start_line").unwrap())
+                    .parse::<usize>()
+                    .unwrap(),
+                end_line: value_to_string(s.remove("end_line").unwrap())
+                    .parse::<usize>()
+                    .unwrap(),
+                start_byte: value_to_string(s.remove("start_byte").unwrap())
+                    .parse::<usize>()
+                    .unwrap(),
+                end_byte: value_to_string(s.remove("end_byte").unwrap())
+                    .parse::<usize>()
+                    .unwrap(),
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if snippets.is_empty() {
+        super::error(ErrorKind::Internal, "semantic search returned no snippets");
+    }
+
+    let answer_api_client = AnswerAPIClient::new(
+        &format!("{}/q", app.config.answer_api_base),
+        target,
+        &params.user_id,
+    );
+
+    let relevant_snippet_index = answer_api_client
+        .select_snippet(&snippets)
+        .await
+        .map_err(super::internal_error)?
+        .text()
+        .await
+        .map_err(super::internal_error)?
+        .trim()
+        .parse::<usize>()
+        .map_err(super::internal_error)?;
+
+    let relevant_snippet = &snippets[relevant_snippet_index];
+    // grow the snippet by 60 lines above and below, we have sufficient space
+    // to grow this snippet by 10 times its original size (15 to 150)
+    let processed_snippet = {
+        let repo_ref = &relevant_snippet
+            .repo_ref
+            .parse::<RepoRef>()
+            .map_err(super::internal_error)?;
+        let doc = app
+            .indexes
+            .file
+            .by_path(repo_ref, &relevant_snippet.relative_path)
+            .await
+            .map_err(super::internal_error)?;
+
+        let grown_text = grow(&doc, &relevant_snippet, 60);
+        api::Snippet {
+            lang: relevant_snippet.lang.clone(),
+            repo_name: relevant_snippet.repo_name.clone(),
+            repo_ref: relevant_snippet.repo_ref.clone(),
+            relative_path: relevant_snippet.relative_path.clone(),
+            text: grown_text,
+            start_line: relevant_snippet.start_line,
+            end_line: relevant_snippet.end_line,
+            start_byte: relevant_snippet.start_byte,
+            end_byte: relevant_snippet.end_byte,
+        }
+    };
+
+    let snippet_explaination = answer_api_client
+        .explain_snippet(&processed_snippet)
+        .await
+        .map_err(super::internal_error)?
+        .text()
+        .await
+        .map_err(super::internal_error)?;
+
+    // reorder snippets
+    snippets.swap(relevant_snippet_index, 0);
+
+    if let Some(ref segment) = *app.segment {
+        segment
+            .track_query(
+                &params.user_id,
+                &params.q,
+                &snippets[0].text,
+                &snippet_explaination,
             )
-        })?;
+            .await;
+    }
 
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
         snippets,
-        selection: res.json().await.map_err(|e| {
-            super::error(
-                ErrorKind::Internal,
-                format!("got bad answer API response: {}", e),
-            )
-        })?,
+        selection: api::Response {
+            data: api::DecodedResponse {
+                index: 0u32, // the relevant snippet is always placed at 0
+                answer: snippet_explaination,
+            },
+            id: params.user_id,
+        },
     })))
+}
+
+// grow the text of this snippet by `size` and return the new text
+fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
+    let content = &doc.content;
+
+    // skip upwards `size` number of lines
+    let new_start_byte = content[..snippet.start_byte]
+        .rmatch_indices('\n')
+        .map(|(idx, _)| idx)
+        .skip(size)
+        .next()
+        .unwrap_or(0);
+
+    // skip downwards `size` number of lines
+    let new_end_byte = content[snippet.end_byte..]
+        .match_indices('\n')
+        .map(|(idx, _)| idx)
+        .skip(size)
+        .next()
+        .map(|s| s.saturating_add(snippet.end_byte)) // the index is off by `snippet.end_byte`
+        .unwrap_or(content.len());
+
+    content[new_start_byte..new_end_byte].to_owned()
+}
+
+#[derive(serde::Serialize)]
+struct OpenAIRequest {
+    prompt: String,
+    user_id: String,
+}
+
+struct AnswerAPIClient {
+    client: reqwest::Client,
+    host: String,
+    query: String,
+    user_id: String,
+}
+
+impl AnswerAPIClient {
+    fn new(host: &str, query: &str, user_id: &str) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            host: host.to_owned(),
+            query: query.to_owned(),
+            user_id: user_id.to_owned(),
+        }
+    }
+
+    async fn send(&self, prompt: String) -> Result<reqwest::Response, reqwest::Error> {
+        self.client
+            .post(self.host.as_str())
+            .json(&OpenAIRequest {
+                prompt: prompt.clone(),
+                user_id: self.user_id.clone(),
+            })
+            .send()
+            .await
+    }
+}
+
+const DELIMITER: &str = "######";
+impl AnswerAPIClient {
+    async fn select_snippet(
+        &self,
+        snippets: &[api::Snippet],
+    ) -> Result<reqwest::Response, reqwest::Error> {
+        let mut prompt = snippets
+            .iter()
+            .enumerate()
+            .map(|(i, snippet)| {
+                format!(
+                    "Repository: {}\nPath: {}\nLanguage: {}\nIndex: {}\n\n{}\n{DELIMITER}\n",
+                    snippet.repo_name, snippet.relative_path, snippet.lang, i, snippet.text
+                )
+            })
+            .collect::<String>();
+
+        // the example question/answer pair helps reinforce that we want exactly a single
+        // number in the output, with no spaces or punctuation such as fullstops.
+        prompt += &format!(
+            "\nAbove are {} code snippets separated by \"{DELIMITER}\". \
+            Your job is to select the snippet that best answers the question. Reply\
+            with a single number indicating the index of the snippet in the list.\
+            If none of the snippets seem relevant, reply with \"0\".
+
+            Q:What icon do we use to clear search history?
+            A:3
+
+            Q:{}
+            A:",
+            snippets.len(),
+            self.query,
+        );
+
+        self.send(prompt).await
+    }
+
+    async fn explain_snippet(
+        &self,
+        snippet: &api::Snippet,
+    ) -> Result<reqwest::Response, reqwest::Error> {
+        let prompt = format!(
+            "
+            File: {}
+
+            {}
+
+            #####
+
+            Above is a code snippet.\
+            Your job is to answer the questions about the snippet,\
+            giving detailed explanations. Cite any code used to\
+            answer the question formatted in GitHub markdown and state the file path.
+
+            Q:What icon do we use to clear search history?
+            A:We use the left-double chevron icon.
+
+            Q:{}
+            A:",
+            snippet.relative_path, snippet.text, self.query
+        );
+
+        self.send(prompt).await
+    }
 }

@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 #![deny(
     clippy::all,
     arithmetic_overflow,
@@ -16,9 +15,11 @@ use criterion as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
+use semantic::{chunk::OverlapStrategy, Semantic};
 
 use crate::{
     indexes::Indexes,
+    segment::Segment,
     state::{Credentials, RepositoryPool, StateSource},
 };
 use anyhow::{anyhow, Result};
@@ -40,12 +41,14 @@ mod background;
 mod collector;
 mod language;
 mod remotes;
+mod segment;
 mod webserver;
 
 pub mod ctags;
 pub mod indexes;
 pub mod intelligence;
 pub mod query;
+pub mod semantic;
 pub mod snippet;
 pub mod state;
 pub mod symbol;
@@ -59,6 +62,10 @@ fn default_index_path() -> PathBuf {
         Some(dirs) => dirs.cache_dir().to_owned(),
         None => "bloop_index".into(),
     }
+}
+
+fn default_model_dir() -> PathBuf {
+    "model".into()
 }
 
 pub fn default_parallelism() -> usize {
@@ -85,8 +92,16 @@ fn default_host() -> String {
     String::from("127.0.0.1")
 }
 
-fn default_answer_api_host() -> String {
-    String::from("localhost:7879")
+fn default_qdrant() -> String {
+    String::from("http://127.0.0.1:6334")
+}
+
+fn default_answer_api_base() -> String {
+    String::from("https://kw50d42q6a.execute-api.eu-west-1.amazonaws.com/default")
+}
+
+fn default_embedding_input_size() -> usize {
+    256
 }
 
 #[derive(Debug)]
@@ -157,6 +172,16 @@ pub struct Configuration {
     /// Maximum number of parallel background threads
     pub max_threads: usize,
 
+    #[clap(long, default_value_t = default_qdrant())]
+    #[serde(default = "default_qdrant")]
+    /// URL for the qdrant server
+    pub qdrant_url: String,
+
+    #[clap(long, default_value_os_t = default_model_dir())]
+    #[serde(default = "default_model_dir")]
+    /// URL for the qdrant server
+    pub model_dir: PathBuf,
+
     #[clap(long, default_value_t = default_host())]
     #[serde(default = "default_host")]
     /// Bind the webserver to `<port>`
@@ -172,10 +197,23 @@ pub struct Configuration {
     /// Github Client ID for OAuth connection to private repos
     pub github_client_id: Option<SecretString>,
 
-    #[clap(long, default_value_t = default_answer_api_host())]
-    #[serde(default = "default_answer_api_host")]
-    /// Answer API `host` string, with optional `:port`
-    pub answer_api_host: String,
+    #[clap(long)]
+    #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
+    /// segment write key
+    pub segment_key: Option<SecretString>,
+
+    #[clap(long, default_value_t = default_answer_api_base())]
+    #[serde(default = "default_answer_api_base")]
+    /// Answer API `base` string
+    pub answer_api_base: String,
+
+    #[clap(long, default_value_t = default_embedding_input_size())]
+    #[serde(default = "default_embedding_input_size")]
+    /// the size of tokens to embed at once (should be the model's input size)
+    pub embedding_input_size: usize,
+
+    #[clap(long)]
+    pub overlap: Option<OverlapStrategy>,
 }
 
 impl Configuration {
@@ -198,12 +236,14 @@ pub struct Application {
     pub config: Arc<Configuration>,
     pub(crate) repo_pool: RepositoryPool,
     pub(crate) background: BackgroundExecutor,
+    pub(crate) semantic: Semantic,
     indexes: Arc<Indexes>,
     credentials: Credentials,
+    pub segment: Arc<Option<Segment>>,
 }
 
 impl Application {
-    pub fn initialize(env: Environment, config: Configuration) -> Result<Application> {
+    pub async fn initialize(env: Environment, config: Configuration) -> Result<Application> {
         let mut config = match config.config_file {
             None => config,
             Some(ref path) => {
@@ -228,13 +268,18 @@ impl Application {
         }
 
         let config = Arc::new(config);
+        let semantic =
+            Semantic::new(&config.model_dir, &config.qdrant_url, Arc::clone(&config)).await?;
+        let segment = Arc::new(config.segment_key.clone().map(Segment::new));
 
         Ok(Self {
-            indexes: Indexes::new(config.clone())?.into(),
+            indexes: Indexes::new(config.clone(), semantic.clone())?.into(),
             repo_pool: config.source.initialize_pool()?,
             credentials: config.source.initialize_credentials()?,
             background: BackgroundExecutor::start(config.clone()),
+            semantic,
             config,
+            segment,
         })
     }
 

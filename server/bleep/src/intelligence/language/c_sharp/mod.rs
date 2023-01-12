@@ -5,6 +5,7 @@ pub static C_SHARP: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["cs"],
     grammar: tree_sitter_c_sharp::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
+    chunk_query: None,
     namespaces: &[&[
         // variables, functions
         "local",

@@ -50,3 +50,6 @@ group_end = _{ ")" }
 group = !{ group_start ~ intersection ~ group_end }
 
 WHITESPACE = _{ " " }
+
+// natural language queries
+nl_query = _{ SOI ~ (label | literal)* ~ EOI }

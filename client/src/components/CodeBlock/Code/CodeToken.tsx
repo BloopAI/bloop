@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { PureComponent } from 'react';
 import { Token } from '../../../types/prism';
 import { Range } from '../../../types/results';
 
@@ -10,28 +10,26 @@ type Props = {
   endHl?: boolean;
 };
 
-const CodeToken = ({ token, highlight, startHl, endHl }: Props) => {
-  return (
-    <span
-      data-byte-range={`${token.byteRange?.start}-${token.byteRange?.end}`}
-      className={`token ${token.types.join(
-        ' ',
-      )}  transition-opacity duration-300`}
-    >
-      <motion.span
-        layout="position"
-        className={`${
-          highlight
-            ? `before:block before:absolute before:-inset-0.5 before:right-0 before:left-0 before:bg-secondary-500/25 relative`
-            : ''
-        } ${startHl ? 'before:rounded-l before:left-[-2px]' : ''} ${
-          endHl ? 'before:rounded-r before:right-[-2px]' : ''
-        }`}
+class CodeToken extends PureComponent<Props> {
+  render() {
+    const { token, highlight, startHl, endHl } = this.props;
+    return (
+      <span
+        data-byte-range={`${token.byteRange?.start}-${token.byteRange?.end}`}
+        className={`token ${token.types
+          .filter((t) => t !== 'table')
+          .join(' ')}`}
       >
-        {token.content}
-      </motion.span>
-    </span>
-  );
-};
+        <span
+          className={`${highlight ? `bg-secondary-500/25 py-0.5` : ''} ${
+            startHl ? 'rounded-l pl-[2px]' : ''
+          } ${endHl ? 'rounded-r pr-[2px]' : ''}`}
+        >
+          {token.content}
+        </span>
+      </span>
+    );
+  }
+}
 
 export default CodeToken;

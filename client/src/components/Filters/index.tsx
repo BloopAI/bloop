@@ -23,8 +23,14 @@ type Props = {
 };
 
 const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
-  const { filters, setFilters, inputValue, setInputValue, setSearchHistory } =
-    useContext(SearchContext);
+  const {
+    filters,
+    setFilters,
+    inputValue,
+    setInputValue,
+    setSearchHistory,
+    searchType,
+  } = useContext(SearchContext);
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [hasFiltersChanged, setFiltersChanged] = useState(false);
   useEffect(() => {
@@ -32,6 +38,7 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
   }, [filters]);
   const allOpen = openSections.length === Object.keys(filters).length;
   const { navigateSearch } = useAppNavigation();
+
   const handleSubmit = useCallback(() => {
     const regex = inputValue.includes('open:true')
       ? /((lang):[^\s)]+)|\(((lang):[^\s)]+\sor\s)+(lang):[^\s)]+\)/gim
@@ -61,13 +68,13 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
     }
 
     setFiltersChanged(false);
-    navigateSearch(result);
+    navigateSearch(result, searchType);
     setSearchHistory((prev) => {
       const newHistory = [result, ...prev].slice(0, 4);
       saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
       return newHistory;
     });
-  }, [filters]);
+  }, [filters, searchType]);
 
   const handleFiltersChange = useCallback(
     (s: number, i: number, b: boolean) => {

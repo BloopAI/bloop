@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/schema.json",
   "build": {
-    "beforeBuildCommand": "npm run build",
-    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "./build.sh build",
+    "beforeDevCommand": "./build.sh dev",
     "devPath": "http://localhost:5173",
     "distDir": "../dist"
   },
@@ -41,7 +41,10 @@
       "deb": {
         "depends": []
       },
-      "externalBin": ["bin/ctags"],
+      "externalBin": [
+        "bin/ctags",
+	"bin/qdrant"
+      ],
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
@@ -49,17 +52,18 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "ai.bloop.app",
+      "identifier": "ai.bloop.bloop",
       "longDescription": "Helping developers find code faster",
       "macOS": {
         "entitlements": null,
         "exceptionDomain": "",
         "frameworks": [],
-        "providerShortName": "3J228S55SF",
-        "signingIdentity": "Developer ID Application: Bloop AI Limited (3J228S55SF)"
+        "providerShortName": null,
+        "signingIdentity": null
       },
       "resources": [
-        "config.json"
+        "config.json",
+        "model/*"
       ],
       "shortDescription": "",
       "targets": "all",

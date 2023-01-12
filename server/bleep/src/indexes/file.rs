@@ -18,6 +18,8 @@ use tantivy::{
     },
     IndexWriter,
 };
+use tokenizers as _;
+use tokio::runtime::Handle;
 use tracing::{debug, info, trace, warn};
 
 #[cfg(feature = "debug")]
@@ -32,6 +34,7 @@ use super::{
 };
 use crate::{
     intelligence::TreeSitterFile,
+    semantic::Semantic,
     state::{FileCache, RepoHeadInfo, RepoRef, Repository},
     symbol::SymbolLocations,
     Configuration,
@@ -50,6 +53,8 @@ struct Workload<'a> {
 pub struct File {
     config: Arc<Configuration>,
     schema: Schema,
+    semantic: Semantic,
+
     #[cfg(feature = "debug")]
     histogram: Arc<RwLock<Histogram>>,
 
@@ -89,7 +94,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn new(config: Arc<Configuration>) -> Self {
+    pub fn new(config: Arc<Configuration>, semantic: Semantic) -> Self {
         let mut builder = tantivy::schema::SchemaBuilder::new();
         let trigram = TextOptions::default().set_stored().set_indexing_options(
             TextFieldIndexing::default()
@@ -136,6 +141,7 @@ impl File {
             avg_line_length,
             last_commit_unix_seconds,
             schema: builder.build(),
+            semantic,
             config,
             raw_content,
             raw_repo_name,
@@ -466,8 +472,17 @@ impl File {
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
         let last_commit = repo_info.last_commit_unix_secs;
 
-        trace!("writing document");
+        tokio::task::block_in_place(|| {
+            Handle::current().block_on(self.semantic.insert_points_for_buffer(
+                &repo_name,
+                &repo_ref,
+                &relative_path.to_string_lossy(),
+                &buffer,
+                lang_str,
+            ))
+        });
 
+        trace!("writing document");
         #[cfg(feature = "debug")]
         let buf_size = buffer.len();
         writer.add_document(doc!(

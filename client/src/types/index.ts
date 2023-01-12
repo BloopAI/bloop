@@ -33,6 +33,11 @@ export interface RepositoryBranch {
   main?: boolean;
 }
 
+export enum RepoSource {
+  GH,
+  LOCAL,
+}
+
 export interface Repository {
   url: string;
   name: string;
@@ -43,4 +48,5 @@ export interface Repository {
   followers: number;
   files: RepositoryFile[];
   currentPath: string;
+  source: RepoSource;
 }

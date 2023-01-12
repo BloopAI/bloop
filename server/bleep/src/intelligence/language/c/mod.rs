@@ -5,6 +5,7 @@ pub static C: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["c", "h"],
     grammar: tree_sitter_c::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
+    chunk_query: None,
     namespaces: &[&[
         // imports
         "header",

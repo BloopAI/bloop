@@ -1,7 +1,7 @@
 import React from 'react';
 import { GitHubLogo } from '../icons';
 import { FilterName, FilterType } from '../types/general';
-import { FileTreeFileType, Repository } from '../types';
+import { FileTreeFileType, Repository, RepoSource } from '../types';
 
 export const mockFiltersInitial: FilterType[] = [
   {
@@ -211,6 +211,7 @@ export const mockRepo: Repository = {
   url: 'https://github.com/BloopAI/bloop',
   commits: mockCommits,
   currentPath: '',
+  source: RepoSource.LOCAL,
   branches: [
     {
       name: 'main',

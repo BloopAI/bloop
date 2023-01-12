@@ -42,14 +42,35 @@ const TelemetryPopup = ({ onClose, visible }: Props) => {
         </div>
         <div className="p-6 flex flex-col gap-8">
           <div className="flex flex-col gap-3">
-            <h4 className="text-center">Telemetry</h4>
+            <h4 className="text-center">Your privacy</h4>
             <p className="caption text-gray-500">
-              Help us improve bloop by sharing telemetry. Telemetry can be
-              disabled on the Settings page.
+              Natural language search shares your query and select code snippets
+              from your indexed repositories with bloop and OpenAI. Data is
+              encrypted during transit and at rest. Access is strictly
+              controlled.
             </p>
             <p className="caption text-gray-500">
-              * All data is collected using privacy preserving techniques and is
-              not associated with you or your account.
+              We may retain search and telemetry data to improve the quality of
+              bloop search and to investigate abuse. Further details can be
+              found within our{' '}
+              <a
+                className="underline"
+                href="https://bloop.ai/terms"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                Terms and Conditions
+              </a>{' '}
+              and{' '}
+              <a
+                className="underline"
+                href="https://bloop.ai/privacy"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                Privacy Policy
+              </a>
+              .
             </p>
           </div>
           <div className="flex flex-col gap-4">
@@ -61,18 +82,18 @@ const TelemetryPopup = ({ onClose, visible }: Props) => {
                 onClose();
               }}
             >
-              Share with bloop
+              I Understand
             </Button>
-            <Button
-              variant="tertiary"
-              onClick={() => {
-                savePlainToStorage(IS_ANALYTICS_ALLOWED_KEY, 'false');
-                setIsAnalyticsAllowed(false);
-                onClose();
-              }}
-            >
-              Don&apos;t share
-            </Button>
+            {/*<Button*/}
+            {/*  variant="tertiary"*/}
+            {/*  onClick={() => {*/}
+            {/*    savePlainToStorage(IS_ANALYTICS_ALLOWED_KEY, 'false');*/}
+            {/*    setIsAnalyticsAllowed(false);*/}
+            {/*    onClose();*/}
+            {/*  }}*/}
+            {/*>*/}
+            {/*  Don&apos;t share*/}
+            {/*</Button>*/}
           </div>
         </div>
       </div>

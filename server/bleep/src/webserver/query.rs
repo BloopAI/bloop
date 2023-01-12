@@ -599,7 +599,7 @@ impl ExecuteQuery for OpenReader {
         queries: &[parser::Query<'_>],
         _q: &ApiQuery,
     ) -> Result<QueryResponse> {
-        let top_docs = TopDocs::with_limit(1000);
+        let top_docs = TopDocs::with_limit(50000);
         let empty_collector = MultiCollector::new();
         let results = indexer
             .query(queries.iter(), self, (top_docs, empty_collector))

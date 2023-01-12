@@ -7,7 +7,13 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileIcon from '../../components/FileIcon';
-import { CloseSign, Modal, MoreHorizontal, Sidebar } from '../../icons';
+import {
+  ChevronDoubleIntersected,
+  CloseSign,
+  Modal,
+  MoreHorizontal,
+  Sidebar,
+} from '../../icons';
 import Button from '../../components/Button';
 import SelectToggleButton from '../../components/SelectToggleButton';
 import Tabs from '../../components/Tabs';
@@ -30,6 +36,7 @@ import {
 } from '../../utils';
 import { DropdownWithIcon } from '../../components/Dropdown';
 import { DeviceContext } from '../../context/deviceContext';
+import useAppNavigation from '../../hooks/useAppNavigation';
 
 type Props = {
   result: FullResult;
@@ -51,6 +58,7 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
   const [activeTab, setActiveTab] = useState(0);
   const [isShareOpen, setShareOpen] = useState(false);
   const { os, openFolderInExplorer, openLink } = useContext(DeviceContext);
+  const { navigateFullResult } = useAppNavigation();
 
   useEffect(() => {
     const action =
@@ -189,22 +197,16 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
       >
         <div className="flex justify-between items-center p-3 bg-gray-800 border-b border-gray-700 shadow-lighter select-none">
           <div className="flex gap-2">
-            {/*<SelectToggleButton*/}
-            {/*  onlyIcon*/}
-            {/*  onClick={() =>*/}
-            {/*    navigate(*/}
-            {/*      `/result/file?relativePath=${encodeURIComponent(*/}
-            {/*        result?.relativePath,*/}
-            {/*      )}&repoPath=${encodeURIComponent(*/}
-            {/*        result?.repoPath,*/}
-            {/*      )}&repoName=${encodeURIComponent(result?.repoName)}`,*/}
-            {/*    )*/}
-            {/*  }*/}
-            {/*  selected={false}*/}
-            {/*  title="Open in full view"*/}
-            {/*>*/}
-            {/*  <ChevronDoubleIntersected />*/}
-            {/*</SelectToggleButton>*/}
+            <SelectToggleButton
+              onlyIcon
+              onClick={() =>
+                navigateFullResult(result.repoName, result.relativePath)
+              }
+              selected={false}
+              title="Open in full view"
+            >
+              <ChevronDoubleIntersected />
+            </SelectToggleButton>
             <SelectToggleButton
               onlyIcon
               onClick={() => setModeAndTransition(FullResultModeEnum.MODAL)}

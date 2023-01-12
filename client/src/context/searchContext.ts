@@ -1,5 +1,5 @@
 import React, { createContext } from 'react';
-import { FilterType } from '../types/general';
+import { FilterType, SearchType } from '../types/general';
 
 type ContextType = {
   inputValue: string;
@@ -12,6 +12,8 @@ type ContextType = {
   setLastQueryTime: (v: number) => void;
   globalRegex: boolean;
   setGlobalRegex: React.Dispatch<React.SetStateAction<boolean>>;
+  searchType: SearchType;
+  setSearchType: React.Dispatch<React.SetStateAction<SearchType>>;
 };
 
 export const SearchContext = createContext<ContextType>({
@@ -25,4 +27,6 @@ export const SearchContext = createContext<ContextType>({
   setLastQueryTime: (n) => {},
   globalRegex: false,
   setGlobalRegex: (b) => {},
+  searchType: SearchType.REGEX,
+  setSearchType: (s) => {},
 });

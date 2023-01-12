@@ -105,6 +105,7 @@ importers:
       downshift: ^6.1.10
       file-icons-js: ^1.1.0
       framer-motion: ^7.6.2
+      highlight.js: ^11.7.0
       jest: ^29.0.1
       jest-environment-jsdom: ^29.0.1
       lodash.debounce: ^4.0.8
@@ -141,6 +142,7 @@ importers:
       downshift: 6.1.12_react@18.2.0
       file-icons-js: 1.1.0
       framer-motion: 7.6.12_biqbaboplfbrettd7655fr4n2y
+      highlight.js: 11.7.0
       lodash.debounce: 4.0.8
       lodash.throttle: 4.1.1
       msw-storybook-addon: 1.6.3_biqbaboplfbrettd7655fr4n2y
@@ -9927,6 +9929,11 @@ packages:
 
   /hey-listen/1.0.8:
     resolution: {integrity: sha512-COpmrF2NOg4TBWUJ5UVyaCU2A88wEMkUPK4hNqyCkqHbxT92BbvfjoSozkAIIm6XhicGlJHhFdullInrdhwU8Q==}
+    dev: false
+
+  /highlight.js/11.7.0:
+    resolution: {integrity: sha512-1rRqesRFhMO/PRF+G86evnyJkCgaZFOI+Z6kdj15TA18funfoqJXvgPCLSf0SWq3SRfg1j3HlDs8o4s3EGq1oQ==}
+    engines: {node: '>=12.0.0'}
     dev: false
 
   /highlight.js/9.18.5:

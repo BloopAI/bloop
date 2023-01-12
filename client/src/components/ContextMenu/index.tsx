@@ -74,12 +74,7 @@ const ContextMenu = ({
           />
         );
       case ExtendedMenuItemType.DIVIDER:
-        return (
-          <span
-            className="border-gray-700 border-t h-[1px] w-full flex my-1"
-            key={i}
-          />
-        );
+        return <span className="bg-gray-700 h-[1px] w-full" key={i} />;
       case ExtendedMenuItemType.SHARED:
         return (
           <ItemShared
@@ -109,12 +104,15 @@ const ContextMenu = ({
           ref={contextMenuRef}
           className={`${visible ? '' : 'scale-0 opacity-0'}
       transition-all duration-300 ease-in-slow backdrop-blur-6
-       rounded p-1 bg-gray-800/75 shadow-light-bigger w-72 `}
+       rounded p-1 bg-gray-800/75 shadow-light-bigger w-72 flex flex-col gap-1`}
         >
           {title ? (
-            <span className="text-gray-300 text-xs px-3 py-2 block ">
-              {title}
-            </span>
+            <>
+              <span className="text-gray-300 text-xs px-2.5 pt-2 block ">
+                {title}
+              </span>
+              <div className="bg-gray-700 h-[1px] w-full" />
+            </>
           ) : (
             ''
           )}

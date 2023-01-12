@@ -40,13 +40,13 @@ function App() {
       setOs({ arch, type, platform, version });
       setRelease(appVersion);
     });
+    if (import.meta.env.VITE_SENTRY_DSN_BE) {
+      invoke('initialize_sentry', {
+        dsn: import.meta.env.VITE_SENTRY_DSN_BE,
+        environment: import.meta.env.MODE,
+      });
+    }
   }, []);
-  if (import.meta.env.VITE_SENTRY_DSN_BE) {
-    invoke('initialize_sentry', {
-      dsn: import.meta.env.VITE_SENTRY_DSN_BE,
-      environment: import.meta.env.MODE,
-    });
-  }
 
   const deviceContextValue = useMemo(
     () => ({

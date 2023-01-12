@@ -3,6 +3,7 @@ import { Snippet, SymbolType } from '../../types/results';
 import CodeBlockSearch from './Search/index';
 import SearchRepo from './SearchRepo';
 import SearchFile from './SearchFile';
+import SemanticSearch from './SemanticSearch';
 
 export default {
   title: 'components/CodeBlockSearch',
@@ -201,5 +202,13 @@ export const CodeSearchRepo = () => {
         />
       </div>
     </MemoryRouter>
+  );
+};
+
+export const SemanticSearchSnippets = () => {
+  return (
+    <div style={{ width: 1000 }} className="flex flex-col gap-4">
+      <SemanticSearch />
+    </div>
   );
 };

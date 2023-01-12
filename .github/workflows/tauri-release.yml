@@ -29,11 +29,11 @@ jobs:
 
       - name: Check Formatting
         run: |
-          cargo fmt -p app -- --check
+          cargo fmt -p bloop -- --check
 
       - name: Run tests
         run: |
-          cargo test -p app --verbose
+          cargo test -p bloop --verbose
 
   build-mac-linux-ctags:
     strategy:
@@ -170,6 +170,20 @@ jobs:
 
       - name: Set environment
         run: echo "VITE_SEGMENT_WRITE_KEY_PROD=${{ secrets.VITE_SEGMENT_WRITE_KEY_PROD }}\nVITE_SENTRY_DSN_FE=${{ secrets.VITE_SENTRY_DSN_FE }}\nVITE_SENTRY_DSN_BE=${{ secrets.VITE_SENTRY_DSN_BE }}" >> apps/desktop/.env
+
+      - name: Set providerShortName in tauri.conf.json
+        uses: jossef/action-set-json-field@v2
+        with:
+          file: apps/desktop/src-tauri/tauri.conf.json
+          field: tauri.bundle.macOS.providerShortName
+          value: ${{ secrets.MAC_PROVIDER_SHORT_NAME }}
+
+      - name: Set signingIdentity in tauri.conf.json
+        uses: jossef/action-set-json-field@v2
+        with:
+          file: apps/desktop/src-tauri/tauri.conf.json
+          field: tauri.bundle.macOS.signingIdentity
+          value: ${{ secrets.APPLE_SIGNING_IDENTITY }}
 
       - uses: tauri-apps/tauri-action@v0
         env:

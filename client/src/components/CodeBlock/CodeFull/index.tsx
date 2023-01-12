@@ -13,7 +13,7 @@ import {
   AutoSizerProps,
   TableProps,
 } from 'react-virtualized';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
 import { Range, TokenInfoItem } from '../../../types/results';
@@ -21,6 +21,7 @@ import CodeLine from '../Code/CodeLine';
 import { hashCode } from '../../../utils';
 import { Commit } from '../../../types';
 import { Token as TokenType } from '../../../types/prism';
+import useAppNavigation from '../../../hooks/useAppNavigation';
 import Token from './Token';
 
 const Table = _Table as unknown as FC<TableProps>;
@@ -76,11 +77,11 @@ const CodeFull = ({
   const [scrollToIndex, setScrollToIndex] = useState(
     scrollLineNumber || undefined,
   );
-  const navigate = useNavigate();
+  const { navigateRepoPath } = useAppNavigation();
 
   useEffect(() => {
     setScrollToIndex(scrollLineNumber || undefined);
-  }, [code]);
+  }, [scrollLineNumber]);
 
   const lang = useMemo(
     () => getPrismLanguage(language) || 'plaintext',
@@ -153,13 +154,9 @@ const CodeFull = ({
       if (filePath === relativePath) {
         setScrollToIndex(item.line);
       } else {
-        navigate(
-          `/results?scroll_line_index=${
-            item.line
-          }&q=open:true repo:${encodeURIComponent(
-            repoName,
-          )} path:${encodeURIComponent(filePath)}`,
-        );
+        navigateRepoPath(repoName, filePath, {
+          scroll_line_index: item.line.toString(),
+        });
       }
     },
     [repoName, relativePath],

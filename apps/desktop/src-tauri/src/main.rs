@@ -3,13 +3,15 @@
     windows_subsystem = "windows"
 )]
 
+mod backend;
+mod qdrant;
+
 use std::path::PathBuf;
 
-use bleep::{Application, Configuration, Environment};
+use bleep::Application;
 use once_cell::sync::OnceCell;
 use sentry::ClientInitGuard;
 use std::sync::{Arc, RwLock};
-use tauri::Manager;
 
 static TELEMETRY: RwLock<bool> = RwLock::new(false);
 static SENTRY: OnceCell<ClientInitGuard> = OnceCell::new();
@@ -39,42 +41,8 @@ async fn main() {
     Application::install_logging();
 
     tauri::Builder::default()
-        .setup(|app| {
-            let config = app
-                .path_resolver()
-                .resolve_resource("config.json")
-                .expect("failed to resolve resource");
-
-            let mut configuration = Configuration::read(config).unwrap();
-            configuration.ctags_path = relative_command_path("ctags");
-            configuration.max_threads = bleep::default_parallelism() / 4;
-
-            let app = app.handle();
-            let initialized = Application::initialize(Environment::InsecureLocal, configuration);
-
-            if let Ok(backend) = initialized {
-                tokio::spawn(async move {
-                    if let Err(_e) = backend.run().await {
-                        app.emit_all(
-                            "server-crashed",
-                            Payload {
-                                message: _e.to_string(),
-                            },
-                        )
-                        .unwrap();
-                    }
-                });
-            } else {
-                app.emit_all(
-                    "server-crashed",
-                    Payload {
-                        message: "Something bad happened".into(),
-                    },
-                )
-                .unwrap();
-            }
-            Ok(())
-        })
+        .plugin(qdrant::QdrantSupervisor::default())
+        .setup(backend::bleep)
         .invoke_handler(tauri::generate_handler![
             show_folder_in_finder,
             get_device_id,

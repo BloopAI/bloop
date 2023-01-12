@@ -5,6 +5,7 @@ pub static TYPESCRIPT: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["ts", "tsx"],
     grammar: tree_sitter_typescript::language_tsx,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
+    chunk_query: None,
     namespaces: &[&[
         //variables
         "constant",

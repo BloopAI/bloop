@@ -122,6 +122,36 @@ const Code = ({
     return tokens.map((line) => getMap(line));
   }, [tokens]);
 
+  const codeLines = useMemo(
+    () =>
+      tokensMap.map((line, lineNumber) => (
+        <CodeLine
+          key={lineNumber}
+          lineNumber={lineStart + lineNumber}
+          showLineNumbers={showLines}
+          symbols={getSymbols(lineStart + lineNumber)}
+          lineHidden={
+            !!symbols?.length &&
+            onlySymbolLines &&
+            !getSymbols(lineStart + lineNumber).length
+          }
+          hoverEffect={lineHoverEffect}
+        >
+          {line.map((token, index) => (
+            <CodeToken
+              key={index}
+              token={token.token}
+              highlights={highlights}
+              highlight={token.highlight}
+              startHl={token.startHl}
+              endHl={token.endHl}
+            />
+          ))}
+        </CodeLine>
+      )),
+    [tokensMap, showLines, highlights, symbols, onlySymbolLines],
+  );
+
   return (
     <div>
       <pre
@@ -130,31 +160,7 @@ const Code = ({
         } ${onlySymbolLines ? 'overflow-hidden' : ''}`}
       >
         <table>
-          <tbody>
-            {tokensMap.map((line, lineNumber) => (
-              <CodeLine
-                key={lineNumber}
-                lineNumber={lineStart + lineNumber}
-                showLineNumbers={showLines}
-                symbols={getSymbols(lineStart + lineNumber)}
-                lineHidden={
-                  onlySymbolLines && !getSymbols(lineStart + lineNumber).length
-                }
-                hoverEffect={lineHoverEffect}
-              >
-                {line.map((token, index) => (
-                  <CodeToken
-                    key={index}
-                    token={token.token}
-                    highlights={highlights}
-                    highlight={token.highlight}
-                    startHl={token.startHl}
-                    endHl={token.endHl}
-                  />
-                ))}
-              </CodeLine>
-            ))}
-          </tbody>
+          <tbody>{codeLines}</tbody>
         </table>
       </pre>
     </div>
