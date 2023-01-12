@@ -15,7 +15,7 @@ use criterion as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
-use semantic::{Semantic, chunk::OverlapStrategy};
+use semantic::{chunk::OverlapStrategy, Semantic};
 
 use crate::{
     indexes::Indexes,
@@ -98,6 +98,10 @@ fn default_qdrant() -> String {
 
 fn default_answer_api_base() -> String {
     String::from("https://kw50d42q6a.execute-api.eu-west-1.amazonaws.com/default")
+}
+
+fn default_embedding_input_size() -> usize {
+    256
 }
 
 #[derive(Debug)]
@@ -203,7 +207,8 @@ pub struct Configuration {
     /// Answer API `base` string
     pub answer_api_base: String,
 
-    #[clap(long, default_value_t = 256)]
+    #[clap(long, default_value_t = default_embedding_input_size())]
+    #[serde(default = "default_embedding_input_size")]
     /// the size of tokens to embed at once (should be the model's input size)
     pub embedding_input_size: usize,
 
@@ -263,7 +268,8 @@ impl Application {
         }
 
         let config = Arc::new(config);
-        let semantic = Semantic::new(&config.model_dir, &config.qdrant_url, Arc::clone(&config)).await?;
+        let semantic =
+            Semantic::new(&config.model_dir, &config.qdrant_url, Arc::clone(&config)).await?;
         let segment = Arc::new(config.segment_key.clone().map(Segment::new));
 
         Ok(Self {
