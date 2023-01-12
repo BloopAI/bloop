@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.28.1",
+    "@types/node": "^18.11.18",
     "@typescript-eslint/parser": "^5.42.1",
     "dotenv": "^16.0.3",
     "eslint": "~8.22.0",

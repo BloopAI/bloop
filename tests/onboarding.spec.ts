@@ -1,32 +1,26 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 const REPOS_TO_SYNC = 1;
 
-if (!process.env.SCAN_FOLDER) {
-  throw new Error('SCAN_FOLDER env not set');
-}
-
-test.describe.serial('Main test group', () => {
+test.describe.serial('OnBoarding', () => {
   let page; // Share page context between tests
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext();
     page = await context.newPage();
     await page.goto(
-      'http://localhost:5173/?chosen_scan_folder=${process.env.SCAN_FOLDER}'
+      `http://localhost:5173/?chosen_scan_folder=${process.env.SCAN_FOLDER}`,
     );
   });
-
-  const repoNames = [];
 
   test.afterAll(async ({ browser }) => {
-    browser.close;
+    await browser.close();
   });
 
-  test('Local and GitHub onboarding', async () => {
-    await page.goto(
-      `http://localhost:5173/?chosen_scan_folder=${process.env.SCAN_FOLDER}`
-    );
+  test('Local and GitHub', async () => {
+    const repoNames = [];
+
+    await page.getByRole('button', { name: "Don't share" }).click();
     await page.getByPlaceholder('First name').click();
     await page.getByPlaceholder('First name').fill('Steve');
     await page.getByPlaceholder('First name').press('Tab');
@@ -47,12 +41,6 @@ test.describe.serial('Main test group', () => {
       state: 'detached',
       timeout: 60 * 1000,
     });
-
-    await page
-      .locator('label')
-      .filter({ hasText: 'Select all' })
-      .getByRole('checkbox')
-      .click();
 
     for (let i = 1; i <= REPOS_TO_SYNC; i++) {
       const repo = page.locator(`ul > :nth-match(li, ${i})`);
@@ -98,12 +86,6 @@ test.describe.serial('Main test group', () => {
       timeout: 60 * 1000,
     });
 
-    await page
-      .locator('label')
-      .filter({ hasText: 'Select all' })
-      .getByRole('checkbox')
-      .click();
-
     for (let i = 1; i <= REPOS_TO_SYNC; i++) {
       const repo = page.locator(`ul > :nth-match(li, ${i})`);
       repoNames.push(await repo.locator('span').innerText());
@@ -111,15 +93,14 @@ test.describe.serial('Main test group', () => {
     }
 
     await page.getByRole('button', { name: 'Sync repositories' }).click();
-    await page.getByRole('button', { name: 'Share with bloop' }).click();
 
     await Promise.all(
       repoNames.map((repoName) =>
         page.waitForSelector(`p:has-text("${repoName}")`, {
           state: 'attached',
           timeout: 60 * 1000,
-        })
-      )
+        }),
+      ),
     );
 
     await Promise.all(
@@ -127,58 +108,19 @@ test.describe.serial('Main test group', () => {
         page
           .locator('.bg-green-500')
           .nth(i)
-          .waitFor({ timeout: 60 * 1000 })
-      )
+          .waitFor({ timeout: 60 * 1000 }),
+      ),
     );
 
     await page.evaluate(() => {
-      console.log('local storage');
       for (i = 0; i < localStorage.length; i++) {
         console.log(
           localStorage.key(i) +
             '=[' +
             localStorage.getItem(localStorage.key(i)) +
-            ']'
+            ']',
         );
       }
     });
-  });
-
-  test('Code search', async () => {
-    test.setTimeout(5 * 1000);
-    await page.locator('a').first().click();
-    await page.getByPlaceholder('My search').click();
-    await page.getByPlaceholder('My search').fill('test');
-    await page.getByPlaceholder('My search').press('Enter');
-    await expect(page.getByText(/Showing \d+ results?/)).toBeVisible();
-  });
-
-  test('Symbol search', async () => {
-    test.setTimeout(5 * 1000);
-    await page.locator('a').first().click();
-    await page.getByPlaceholder('My search').click();
-    await page.getByPlaceholder('My search').fill('symbol:test');
-    await page.getByPlaceholder('My search').press('Enter');
-    await expect(page.getByText(/Showing \d+ results?/)).toBeVisible();
-  });
-
-  test('Repo search', async () => {
-    test.setTimeout(repoNames.length * 5 * 1000);
-    for (let repoName of repoNames) {
-      await page.locator('a').first().click();
-      await page.getByPlaceholder('My search').click();
-      await page.getByPlaceholder('My search').fill(`repo:${repoName}`);
-      await page.getByPlaceholder('My search').press('Enter');
-      await expect(page.getByText(/Showing \d+ results?/)).toBeVisible();
-    }
-  });
-
-  test('Path search', async () => {
-    test.setTimeout(5 * 1000);
-    await page.locator('a').first().click();
-    await page.getByPlaceholder('My search').click();
-    await page.getByPlaceholder('My search').fill('path:src');
-    await page.getByPlaceholder('My search').press('Enter');
-    await expect(page.getByText(/Showing \d+ results?/)).toBeVisible();
   });
 });

@@ -4,6 +4,7 @@ const REPOS_TO_SYNC = 3;
 
 test('test', async ({ page }) => {
   await page.goto(`http://localhost:5173`);
+  await page.getByRole('button', { name: "Don't share" }).click();
   await page.getByRole('button', { name: 'Skip this step' }).click();
   await page.getByRole('button', { name: 'Skip this step' }).click();
   await expect(page.locator('.subhead-l > span')).toBeVisible();
@@ -56,15 +57,14 @@ test('test', async ({ page }) => {
   }
 
   await page.getByRole('button', { name: 'Sync repositories' }).click();
-  await page.getByRole('button', { name: 'Share with bloop' }).click();
 
   await Promise.all(
     repoNames.map((repoName) =>
       page.waitForSelector(`p:has-text("${repoName}")`, {
         state: 'attached',
         timeout: 60 * 1000,
-      })
-    )
+      }),
+    ),
   );
 
   await Promise.all(
@@ -72,7 +72,7 @@ test('test', async ({ page }) => {
       page
         .locator('.bg-green-500')
         .nth(i)
-        .waitFor({ timeout: 60 * 1000 })
-    )
+        .waitFor({ timeout: 60 * 1000 }),
+    ),
   );
 });
