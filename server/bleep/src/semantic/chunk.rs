@@ -8,7 +8,7 @@ use crate::{
 use clap::{builder::PossibleValue, ValueEnum};
 use serde::{Deserialize, Serialize};
 use tokenizers::Tokenizer;
-use tracing::{error, warn};
+use tracing::{debug, error, warn};
 use tree_sitter::{Parser, QueryCursor};
 
 #[derive(Debug)]
@@ -127,7 +127,7 @@ impl Display for OverlapStrategy {
             Self::Partial(p) => {
                 (*p / 100.0).fmt(f)?;
                 f.write_char('%')
-            },
+            }
         }
     }
 }
@@ -167,7 +167,10 @@ impl TryFrom<&'_ str> for OverlapStrategy {
 
     fn try_from(input: &str) -> Result<Self, &'static str> {
         Ok(if let Some(percentage) = input.strip_suffix("%") {
-            Self::Partial(str::parse::<f64>(percentage).map_err(|_| "failure parsing overlap strategy")? * 0.01)
+            Self::Partial(
+                str::parse::<f64>(percentage).map_err(|_| "failure parsing overlap strategy")?
+                    * 0.01,
+            )
         } else {
             Self::ByLines(str::parse(input).map_err(|_| "failure parsing overlap strategy")?)
         })
@@ -267,12 +270,12 @@ pub fn by_tokens<'s>(
     };
 
     if max_tokens <= DEDUCT_SPECIAL_TOKENS + repo_tokens {
-        tracing::error!("too little tokens");
+        error!("too few tokens");
         return Vec::new();
     }
 
     let max_tokens = max_tokens - DEDUCT_SPECIAL_TOKENS - repo_tokens;
-    tracing::info!("max tokens reduced to {max_tokens}");
+    debug!("max tokens reduced to {max_tokens}");
     // all indices into tokens/offsets at which a new line might begin.
     let mut starts: Vec<_> = vec![0];
     starts.extend((1..offsets.len()).filter(|&i| {
