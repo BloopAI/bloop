@@ -19,7 +19,7 @@ use qdrant_client::{
     },
 };
 use rayon::prelude::*;
-use tracing::{debug, trace, info};
+use tracing::{debug, info, trace};
 
 pub mod chunk;
 
@@ -205,7 +205,7 @@ impl Semantic {
                     len = chunk.len(),
                     big_chunk = chunk.len() > 800,
                     "new chunk",
-                );nfo!("embedding {} tokens {:?}", length, chunk
+                );
 
                 match self.embed(chunk.data) {
                     Ok(ok) => Some(PointStruct {
