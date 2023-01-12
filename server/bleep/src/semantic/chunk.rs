@@ -4,7 +4,7 @@ use crate::{
 };
 
 use tokenizers::Tokenizer;
-use tracing::warn;
+use tracing::{warn, error};
 use tree_sitter::{Parser, QueryCursor};
 
 #[derive(Debug)]
@@ -150,23 +150,18 @@ fn add_token_range<'s>(
 ) {
     let start_byte = offsets[start].0;
     let end_byte = offsets.get(end).map_or(src.len(), |&(s, _)| s);
-    let Some(trim_start) = src[start_byte..]
-            .char_indices()
-            .find_map(|(i, c)| (!c.is_whitespace()).then_some(i))
-    else { return };
-    let trimmed_start_byte = start_byte + trim_start;
     let Some(trimmed_end_byte) = src[..end_byte]
         .char_indices()
         .rev()
         .find_map(|(i, c)| (!c.is_whitespace()).then_some(i)) else { return };
-    if trimmed_end_byte <= trimmed_start_byte {
+    if trimmed_end_byte <= start_byte {
         return;
     }
-    let start = point(&src, trimmed_start_byte, *last_line, *last_byte);
+    let start = point(&src, start_byte, *last_line, *last_byte);
     let end = point(&src, trimmed_end_byte, *last_line, *last_byte);
     (*last_line, *last_byte) = (start.line, start.byte);
     chunks.push(Chunk::new(
-        &src[trimmed_start_byte..trimmed_end_byte],
+        &src[start_byte..trimmed_end_byte],
         start,
         end,
     ));
@@ -175,7 +170,8 @@ fn add_token_range<'s>(
 /// This tries to split the code by lines and add as much tokens as possible until reaching
 /// `max_tokens`. Then it'll reduce to the last newline.
 pub fn by_tokens<'s>(
-    _file: &str,
+    repo: &str,
+    file: &str,
     src: &'s str,
     tokenizer: &Tokenizer, // we count from line
     max_tokens: usize,
@@ -196,11 +192,21 @@ pub fn by_tokens<'s>(
         return Vec::new();
     }
 
-    if max_tokens <= DEDUCT_SPECIAL_TOKENS {
+    let repo_plus_file = repo.to_owned() + "\t" + file + "\n";
+    let repo_tokens = match tokenizer.encode(repo_plus_file, true) {
+        Ok(encoding) => encoding.get_ids().len(),
+        Err(e) => {
+            error!("failure during encoding repo + file {:?}", e);
+            return Vec::new();
+        },
+    };
+
+    if max_tokens <= DEDUCT_SPECIAL_TOKENS + repo_tokens {
         tracing::error!("too little tokens");
         return Vec::new();
     }
-    let max_tokens = max_tokens - DEDUCT_SPECIAL_TOKENS;
+
+    let max_tokens = max_tokens - DEDUCT_SPECIAL_TOKENS - repo_tokens;
     tracing::info!("max tokens reduced to {max_tokens}");
     // all indices into tokens/offsets at which a new line might begin.
     let mut starts: Vec<_> = vec![0];

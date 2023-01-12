@@ -188,6 +188,7 @@ impl Semantic {
         lang_str: &str,
     ) {
         let chunks = chunk::by_tokens(
+            repo_name,
             relative_path,
             buffer,
             &*self.tokenizer,
@@ -195,7 +196,7 @@ impl Semantic {
             15,
             chunk::OverlapStrategy::Partial(0.5),
         );
-
+        let repo_plus_file = repo_name.to_owned() + "\t" + relative_path + "\n";
         info!(chunk_count = chunks.len(), "found chunks");
         let datapoints = chunks
             .par_iter()
@@ -207,7 +208,7 @@ impl Semantic {
                     "new chunk",
                 );
 
-                match self.embed(chunk.data) {
+                match self.embed(&(repo_plus_file.clone() + chunk.data)) {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
