@@ -1,17 +1,8 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import * as Sentry from '@sentry/react';
 import ListNavigation from '../../components/IdeNavigation/ListNavigation';
 import { GitHubLogo, List, Repository } from '../../icons';
-import {
-  getPlainFromStorage,
-  ONBOARDING_DONE_KEY,
-  savePlainToStorage,
-  SESSION_ID_KEY,
-} from '../../services/storage';
-import { SearchContext } from '../../context/searchContext';
 import ErrorFallback from '../../components/ErrorFallback';
-import { DeviceContext } from '../../context/deviceContext';
-import Onboarding from './Onboarding';
 import ReposSection from './ReposSection';
 
 type Props = {
