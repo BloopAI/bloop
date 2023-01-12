@@ -19,7 +19,7 @@ use qdrant_client::{
     },
 };
 use rayon::prelude::*;
-use tracing::{debug, info, trace};
+use tracing::{debug, trace};
 
 pub mod chunk;
 
@@ -199,17 +199,11 @@ impl Semantic {
             self.config.overlap.unwrap_or(chunk::OverlapStrategy::Partial(0.5)),
         );
         let repo_plus_file = repo_name.to_owned() + "\t" + relative_path + "\n";
-        info!(chunk_count = chunks.len(), "found chunks");
+        debug!(chunk_count = chunks.len(), "found chunks");
         let datapoints = chunks
             .par_iter()
             .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
             .filter_map(|chunk| {
-                debug!(
-                    len = chunk.len(),
-                    big_chunk = chunk.len() > 800,
-                    "new chunk",
-                );
-
                 match self.embed(&(repo_plus_file.clone() + chunk.data)) {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),

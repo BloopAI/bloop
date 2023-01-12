@@ -398,15 +398,13 @@ mod tests {
         let walk = ignore::WalkBuilder::new(base_dir)
             .standard_filters(true)
             .build();
-        let (mut tokensum, mut linesum) = (0, 0);
         for file in walk {
             let file = file.unwrap();
             if file.metadata().unwrap().is_dir() {
                 continue;
             }
             let Ok(src) = std::fs::read_to_string(file.path()) else { continue };
-            let path = file.path().to_string_lossy();
-            let tokenwise = by_tokens(
+            let _tokenwise = by_tokens(
                 "bloop",
                 &file.path().to_string_lossy(),
                 &src,
@@ -414,13 +412,7 @@ mod tests {
                 max_tokens,
                 max_lines,
                 OverlapStrategy::Partial(0.5),
-            )
-            .len();
-            let linewise = trivial(&src, 15).len();
-            dbg!((path, tokenwise, linewise));
-            tokensum += tokenwise;
-            linesum += linewise;
+            );
         }
-        dbg!(tokensum, linesum);
     }
 }
