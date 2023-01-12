@@ -281,26 +281,6 @@ impl AnswerAPIClient {
         &self,
         snippet: &api::Snippet,
     ) -> Result<reqwest::Response, reqwest::Error> {
-//         let prompt = format!(
-//             "
-//             File: {}
-//
-//             {}
-//
-//             #####
-//
-//             Above is a code snippet.\
-//             Your job is to answer the questions about the snippet,\
-//             giving detailed explanations. Cite any code used to\
-//             answer the question formatted in GitHub markdown and state the file path.
-//
-//             Q:What icon do we use to clear search history?
-//             A:We use the left-double chevron icon.
-//
-//             Q:{}
-//             A:",
-//             snippet.relative_path, snippet.text, self.query
-//         );
       let prompt = format!(
             "
             File: {}
