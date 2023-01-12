@@ -1,11 +1,17 @@
 use crate::intelligence::{MemoizedQuery, TSLanguageConfig};
 
+use once_cell::sync::Lazy;
+use regex::Regex;
+
 pub static C_SHARP: TSLanguageConfig = TSLanguageConfig {
     language_ids: &["C#"],
     file_extensions: &["cs"],
     grammar: tree_sitter_c_sharp::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
     chunk_query: None,
+    import_regex: Some(Lazy::new(|| {
+        Regex::new(r"^(?:global\s)?using.*;$").unwrap()
+    })),
     namespaces: &[&[
         // variables, functions
         "local",

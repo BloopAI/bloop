@@ -6,6 +6,7 @@ pub static JAVA: TSLanguageConfig = TSLanguageConfig {
     grammar: tree_sitter_java::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
     chunk_query: None,
+    import_regex: Some(Lazy::new(|| Regex::new(r"^\s*import.*;$").unwrap())),
     namespaces: &[&[
         // variables
         "local",

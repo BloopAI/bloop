@@ -1,11 +1,15 @@
 use crate::intelligence::{MemoizedQuery, TSLanguageConfig};
 
+use once_cell::sync::Lazy;
+use regex::Regex;
+
 pub static RUST: TSLanguageConfig = TSLanguageConfig {
     language_ids: &["Rust"],
     file_extensions: &["rs"],
     grammar: tree_sitter_rust::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
     chunk_query: Some(MemoizedQuery::new(include_str!("./chunk.scm"))),
+    import_regex: Some(Lazy::new(|| Regex::new(r#"^\s*use\s.*;$"#).unwrap())),
     namespaces: &[&[
         // variables
         "const",
