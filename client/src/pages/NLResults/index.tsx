@@ -1,31 +1,17 @@
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as Sentry from '@sentry/react';
-import { FullResult, ResultItemType, ResultType } from '../../types/results';
+import { FullResult } from '../../types/results';
 import Filters from '../../components/Filters';
-import { SearchContext } from '../../context/searchContext';
-import { mapFiltersData } from '../../mappers/filter';
-import { mapFileResult, mapRanges, mapResults } from '../../mappers/results';
+import { mapFileResult, mapRanges } from '../../mappers/results';
 import { FullResultModeEnum, SearchType } from '../../types/general';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import ResultModal from '../ResultModal';
 import { useSearch } from '../../hooks/useSearch';
-import {
-  FileSearchResponse,
-  GeneralSearchResponse,
-  NLSearchResponse,
-} from '../../types/api';
+import { FileSearchResponse, NLSearchResponse } from '../../types/api';
 import ErrorFallback from '../../components/ErrorFallback';
 import { getHoverables } from '../../services/api';
 import NoResults from '../Results/NoResults';
 import { ResultsPreviewSkeleton } from '../Skeleton';
-import Pagination from '../../components/Pagination';
 import SemanticSearch from '../../components/CodeBlock/SemanticSearch';
 import PageHeader from './PageHeader';
 
@@ -101,7 +87,6 @@ const ResultsPage = ({ resultsData, loading, handleRetry }: Props) => {
   }, [fileResultData]);
 
   const renderResults = () => {
-    // console.log(loading, resultsData);
     if (loading) {
       return <ResultsPreviewSkeleton />;
     }
@@ -117,6 +102,7 @@ const ResultsPage = ({ resultsData, loading, handleRetry }: Props) => {
           lang: item.lang,
           line: item.start_line,
         }))}
+        searchId={resultsData.selection.id}
         answer={resultsData.selection.answer}
         onClick={onResultClick}
         handleRetry={handleRetry}

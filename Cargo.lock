@@ -342,6 +342,7 @@ dependencies = [
  "replace_with",
  "reqwest",
  "secrecy",
+ "segment",
  "serde",
  "serde_json",
  "serde_yaml 0.9.16",
@@ -4524,6 +4525,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "segment"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bb93f3f738322ce8f33c4e80c251fb1560ca81f3a241355271fcb912eeb48e3"
+dependencies = [
+ "async-trait",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "time 0.3.17",
+]
+
+[[package]]
 name = "selectors"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6195,6 +6210,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "422ee0de9031b5b948b97a8fc04e3aa35230001a722ddd27943e0be31564ce4c"
 dependencies = [
  "getrandom 0.2.8",
+ "rand 0.8.5",
  "serde",
 ]
 

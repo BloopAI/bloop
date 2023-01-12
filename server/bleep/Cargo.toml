@@ -103,7 +103,8 @@ tokenizers = "0.13.2"
 ort = { git = "https://github.com/rsdy/ort", branch = "arm64-convert-fix" }
 ndarray = "0.15"
 maplit = "1.0.2"
-uuid = "1.2.2"
+segment = "0.2.1"
+uuid = { version = "1.2.2", features = ["v4", "fast-rng"] }
 
 [dev-dependencies]
 criterion = { version = "0.4.0", features = ["async_tokio"] }

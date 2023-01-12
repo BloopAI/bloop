@@ -212,6 +212,7 @@ export interface NLSnippet {
 export interface NLResponseSelection {
   index: number;
   answer: string;
+  id: string;
 }
 
 export interface NLSearchResponse {

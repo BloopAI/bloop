@@ -14,11 +14,12 @@ const useAnalytics = () => {
   );
 
   const trackUpvote = useCallback(
-    (isUpvote: boolean, query: string, answer: string) => {
+    (isUpvote: boolean, query: string, answer: string, searchId: string) => {
       analytics?.track('Upvote', {
         isUpvote,
         query,
         answer,
+        searchId,
       });
     },
     [analytics],

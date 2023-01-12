@@ -1,5 +1,7 @@
 use std::{collections::HashMap, ops::Not, path::Path, sync::Arc};
 
+use crate::query::parser::NLQuery;
+
 use anyhow::Result;
 use maplit::hashmap;
 use ndarray::s;
@@ -10,9 +12,10 @@ use ort::{
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
-        vectors_config, with_payload_selector::SelectorOptions, CollectionOperationResponse,
-        CreateCollection, Distance, PointId, PointStruct, SearchPoints, Value, VectorParams,
-        VectorsConfig, WithPayloadSelector,
+        r#match::MatchValue, vectors_config, with_payload_selector::SelectorOptions,
+        CollectionOperationResponse, CreateCollection, Distance, FieldCondition, Filter, Match,
+        PointId, PointStruct, SearchPoints, Value, VectorParams, VectorsConfig,
+        WithPayloadSelector,
     },
 };
 use rayon::prelude::*;
@@ -122,7 +125,39 @@ impl Semantic {
         Ok(pooled.to_owned().as_slice().unwrap().to_vec())
     }
 
-    pub async fn search(&self, query: &str, limit: u64) -> Result<Vec<HashMap<String, Value>>> {
+    pub async fn search<'a>(
+        &self,
+        nl_query: &NLQuery<'a>,
+        limit: u64,
+    ) -> Result<Vec<HashMap<String, Value>>> {
+        let Some(query) = nl_query.target() else {
+            anyhow::bail!("no search target for query");
+        };
+
+        let make_kv_filter = |key, value| {
+            FieldCondition {
+                key,
+                r#match: Some(Match {
+                    match_value: MatchValue::Text(value).into(),
+                }),
+                ..Default::default()
+            }
+            .into()
+        };
+
+        let repo_filter = nl_query
+            .repo()
+            .map(|r| make_kv_filter("repo_name".to_string(), r.to_string()));
+
+        let lang_filter = nl_query
+            .lang()
+            .map(|l| make_kv_filter("lang".to_string(), l.to_string()));
+
+        let filters = [repo_filter, lang_filter]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+
         let response = self
             .qdrant
             .search_points(&SearchPoints {
@@ -132,6 +167,10 @@ impl Semantic {
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(SelectorOptions::Enable(true)),
                 }),
+                filter: Some(Filter {
+                    must: filters,
+                    ..Default::default()
+                }),
                 ..Default::default()
             })
             .await?;
@@ -139,10 +178,11 @@ impl Semantic {
         Ok(response.result.into_iter().map(|pt| pt.payload).collect())
     }
 
-    #[tracing::instrument(skip(self, repo_name, relative_path, buffer))]
+    #[tracing::instrument(skip(self, repo_ref, relative_path, buffer))]
     pub async fn insert_points_for_buffer(
         &self,
         repo_name: &str,
+        repo_ref: &str,
         relative_path: &str,
         buffer: &str,
         lang_str: &str,
@@ -174,9 +214,13 @@ impl Semantic {
                         payload: hashmap! {
                             "lang".into() => lang_str.to_ascii_lowercase().into(),
                             "repo_name".into() => repo_name.into(),
+                            "repo_ref".into() => repo_ref.into(),
                             "relative_path".into() => relative_path.into(),
                             "snippet".into() => chunk.data.into(),
                             "start_line".into() => chunk.range.start.line.to_string().into(),
+                            "end_line".into() => chunk.range.end.line.to_string().into(),
+                            "start_byte".into() => chunk.range.start.byte.to_string().into(),
+                            "end_byte".into() => chunk.range.end.byte.to_string().into(),
                         },
                     }),
                     Err(err) => {
