@@ -20,6 +20,7 @@
     "chromatic": "npx chromatic --project-token=6115d726666b"
   },
   "dependencies": {
+    "@rive-app/react-canvas": "^3.0.34",
     "@segment/analytics-next": "^1.46.3",
     "@sentry/react": "^7.23.0",
     "@sentry/tracing": "^7.23.0",

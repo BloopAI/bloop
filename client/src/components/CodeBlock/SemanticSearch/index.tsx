@@ -1,14 +1,14 @@
 import { useCallback, useContext, useMemo, useState } from 'react';
 import hljs from 'highlight.js';
+import { useRive } from '@rive-app/react-canvas';
 import CodeBlockSearch from '../Search';
 import Button from '../../Button';
-import { ArrowRotate, ThumbsDown, ThumbsUp } from '../../../icons';
+import { ArrowRotate, ThumbsDown } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
 import { saveUpvote } from '../../../services/api';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import { ResultClick } from '../../../types/results';
 import 'highlight.js/styles/vs2015.css';
-import { hashCode } from '../../../utils';
 import useAnalytics from '../../../hooks/useAnalytics';
 
 type Props = {
@@ -36,6 +36,10 @@ const SemanticSearch = ({
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
   const { trackUpvote } = useAnalytics();
+  const { rive, RiveComponent: RiveComponentPlayback } = useRive({
+    src: '/like_button.riv',
+    autoplay: false,
+  });
 
   const highlightedAnswer = useMemo(() => {
     const lang = /```(.*?)\n/.exec(answer)?.[1];
@@ -69,6 +73,9 @@ const SemanticSearch = ({
 
   const handleUpvote = useCallback(
     (isUpvote: boolean) => {
+      if (rive) {
+        rive.play();
+      }
       setIsUpvote(isUpvote);
       setIsDownvote(!isUpvote);
       trackUpvote(isUpvote, query, answer, searchId);
@@ -80,7 +87,7 @@ const SemanticSearch = ({
         text: answer,
       });
     },
-    [deviceId, query, answer],
+    [deviceId, query, answer, rive],
   );
 
   return (
@@ -106,8 +113,9 @@ const SemanticSearch = ({
             variant={isUpvote ? 'secondary' : 'tertiary'}
             size="small"
             onClick={() => handleUpvote(true)}
+            className="overflow-hidden"
           >
-            <ThumbsUp />
+            <RiveComponentPlayback className="w-4/5 h-4/5" />
           </Button>
           <Button
             onlyIcon

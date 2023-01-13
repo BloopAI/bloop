@@ -72,6 +72,7 @@ importers:
   client:
     specifiers:
       '@babel/core': ^7.18.10
+      '@rive-app/react-canvas': ^3.0.34
       '@segment/analytics-next': ^1.46.3
       '@sentry/react': ^7.23.0
       '@sentry/tracing': ^7.23.0
@@ -131,6 +132,7 @@ importers:
       vite: ^3.0.7
       xhr-mock: ^2.5.1
     dependencies:
+      '@rive-app/react-canvas': 3.0.34_react@18.2.0
       '@segment/analytics-next': 1.46.4
       '@sentry/react': 7.23.0_react@18.2.0
       '@sentry/tracing': 7.23.0
@@ -2446,6 +2448,19 @@ packages:
   /@remix-run/router/1.0.3:
     resolution: {integrity: sha512-ceuyTSs7PZ/tQqi19YZNBc5X7kj1f8p+4DIyrcIYFY9h+hd1OKm4RqtiWldR9eGEvIiJfsqwM4BsuCtRIuEw6Q==}
     engines: {node: '>=14'}
+    dev: false
+
+  /@rive-app/canvas/1.0.97:
+    resolution: {integrity: sha512-NpA/z8FW/ktIghJSeZB/ySgG3H+TMhzFC5tnotKuFnxbzhH4qyKk+6FHM7BIjBKhBQ10vHnf45kUrLTRArfQhA==}
+    dev: false
+
+  /@rive-app/react-canvas/3.0.34_react@18.2.0:
+    resolution: {integrity: sha512-UJFmPXKKnx7wUsNN5FADMVqqlV8/iTj8KJ2vs9/tUYLO7UYSpvTGswNEnPELUgDXJl7VWiO9MyikhWk450/4MA==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
+    dependencies:
+      '@rive-app/canvas': 1.0.97
+      react: 18.2.0
     dev: false
 
   /@rollup/pluginutils/4.2.1:
