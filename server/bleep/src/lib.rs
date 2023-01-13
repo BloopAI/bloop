@@ -15,7 +15,9 @@ use criterion as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
+use octocrab::current::ListReposForAuthenticatedUserBuilder;
 use semantic::{chunk::OverlapStrategy, Semantic};
+use webserver::AuthenticationLayer;
 
 use crate::{
     indexes::Indexes,
@@ -246,11 +248,12 @@ impl Configuration {
 #[derive(Clone)]
 pub struct Application {
     pub config: Arc<Configuration>,
-    pub(crate) repo_pool: RepositoryPool,
-    pub(crate) background: BackgroundExecutor,
-    pub(crate) semantic: Option<Semantic>,
+    repo_pool: RepositoryPool,
+    background: BackgroundExecutor,
+    semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
     credentials: Credentials,
+    auth: AuthenticationLayer,
     pub segment: Arc<Option<Segment>>,
 }
 
@@ -305,6 +308,7 @@ impl Application {
         let segment = Arc::new(segment);
 
         let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
+        let auth = AuthenticationLayer::new(&config);
 
         Ok(Self {
             indexes,
@@ -313,6 +317,7 @@ impl Application {
             background: BackgroundExecutor::start(config.clone()),
             semantic,
             config,
+            auth,
             segment,
         })
     }
