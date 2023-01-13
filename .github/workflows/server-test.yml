@@ -46,7 +46,7 @@ jobs:
 
       - uses: cachix/install-nix-action@v18
       - name: Install Universal Ctags
-        run: "nix profile --access-tokens ${{ secrets.GITHUB_TOKEN }} install nixpkgs#universal-ctags"
+        run: "nix profile --access-tokens ${{ secrets.GITHUB_TOKEN }} install nixpkgs#universal-ctags nixpkgs#protobuf"
 
       - name: Check ctags version
         run: "which ctags; ctags --version"
@@ -82,7 +82,7 @@ jobs:
 
       - uses: cachix/install-nix-action@v18
       - name: Install Universal Ctags
-        run: "nix profile --access-tokens ${{ secrets.GITHUB_TOKEN }} install nixpkgs#universal-ctags"
+        run: "nix profile --access-tokens ${{ secrets.GITHUB_TOKEN }} install nixpkgs#universal-ctags nixpkgs#protobuf"
 
       - name: Check ctags version
         run: "which ctags; ctags --version"
