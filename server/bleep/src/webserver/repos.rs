@@ -230,8 +230,8 @@ pub(super) struct SetIndexed {
     ),
 )]
 pub(super) async fn set_indexed(
-    Json(new_list): Json<SetIndexed>,
     Extension(app): Extension<Application>,
+    Json(new_list): Json<SetIndexed>,
 ) -> impl IntoResponse {
     let repo_list = new_list.indexed.into_iter().collect::<HashSet<_>>();
 
