@@ -94,8 +94,11 @@ impl Semantic {
         })
     }
 
-    pub fn embed(&self, chunk: &str) -> Result<Vec<f32>> {
-        let tokenizer_output = self.tokenizer.encode(chunk, true).unwrap();
+    pub fn embed(&self, chunk: &str, prefix: &str) -> Result<Vec<f32>> {
+        let mut sequence = prefix.to_owned();
+        sequence.push_str(chunk);
+
+        let tokenizer_output = self.tokenizer.encode(sequence, true).unwrap();
 
         let input_ids = tokenizer_output.get_ids();
         let attention_mask = tokenizer_output.get_attention_mask();
@@ -168,7 +171,7 @@ impl Semantic {
             .search_points(&SearchPoints {
                 collection_name: COLLECTION_NAME.to_string(),
                 limit,
-                vector: self.embed(query)?,
+                vector: self.embed(query, "query: ")?,
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(SelectorOptions::Enable(true)),
                 }),
@@ -196,7 +199,7 @@ impl Semantic {
             repo_name,
             relative_path,
             buffer,
-            &*self.tokenizer,
+            &self.tokenizer,
             self.config.embedding_input_size,
             15,
             self.config
@@ -208,8 +211,8 @@ impl Semantic {
         let datapoints = chunks
             .par_iter()
             .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
-            .filter_map(
-                |chunk| match self.embed(&(repo_plus_file.clone() + chunk.data)) {
+            .filter_map(|chunk| {
+                match self.embed(&(repo_plus_file.clone() + chunk.data), "passage: ") {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
@@ -229,8 +232,8 @@ impl Semantic {
                         trace!(?err, "embedding failed");
                         None
                     }
-                },
-            )
+                }
+            })
             .collect::<Vec<_>>();
 
         if !datapoints.is_empty() {
