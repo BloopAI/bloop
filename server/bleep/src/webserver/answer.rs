@@ -281,9 +281,7 @@ impl AnswerAPIClient {
             snippets.len(),
             self.query,
         );
-        let tokens_used = token_count_estimate(&prompt);
-        let max_tokens = 4097 - tokens_used;
-        self.send(prompt, max_tokens).await
+        self.send(prompt, 1).await
     }
 
     async fn explain_snippet(
@@ -299,8 +297,7 @@ impl AnswerAPIClient {
             #####
 
             Above is a code snippet.\
-            Your job is to respond as a friendly customer support agent,\
-            answering the user's question with a detailed response.\
+            Answer the user's question with a detailed response.\
             Separate each function out and explain why it is relevant.\
             Format your response in GitHub markdown with code blocks annotated\
             with programming language. Include the path of the file.
@@ -310,7 +307,7 @@ impl AnswerAPIClient {
             snippet.relative_path, snippet.text, self.query
         );
         let tokens_used = token_count_estimate(&prompt);
-        let max_tokens = 4097 - tokens_used;
+        let max_tokens = 1500_u32.saturating_sub(tokens_used);
         self.send(prompt, max_tokens).await
     }
 }
