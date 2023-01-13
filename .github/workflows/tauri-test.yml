@@ -62,4 +62,4 @@ jobs:
         with:
           toolchain: stable
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: -p app --all-features --manifest-path Cargo.toml
+          args: --all-features --manifest-path Cargo.toml
