@@ -110,11 +110,8 @@ pub async fn handle(
         super::error(ErrorKind::Internal, "semantic search returned no snippets");
     }
 
-    let answer_api_client = AnswerAPIClient::new(
-        &format!("{}/q", app.config.answer_api_base),
-        target,
-        &params.user_id,
-    );
+    let answer_api_client =
+        AnswerAPIClient::new(&format!("{}/q", app.config.answer_api_base), target);
 
     let relevant_snippet_index = answer_api_client
         .select_snippet(&snippets)
@@ -217,23 +214,20 @@ fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
 #[derive(serde::Serialize)]
 struct OpenAIRequest {
     prompt: String,
-    user_id: String,
 }
 
 struct AnswerAPIClient {
     client: reqwest::Client,
     host: String,
     query: String,
-    user_id: String,
 }
 
 impl AnswerAPIClient {
-    fn new(host: &str, query: &str, user_id: &str) -> Self {
+    fn new(host: &str, query: &str) -> Self {
         Self {
             client: reqwest::Client::new(),
             host: host.to_owned(),
             query: query.to_owned(),
-            user_id: user_id.to_owned(),
         }
     }
 
@@ -242,7 +236,6 @@ impl AnswerAPIClient {
             .post(self.host.as_str())
             .json(&OpenAIRequest {
                 prompt: prompt.clone(),
-                user_id: self.user_id.clone(),
             })
             .send()
             .await
