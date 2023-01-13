@@ -1,4 +1,5 @@
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
+use reqwest::StatusCode;
 use utoipa::ToSchema;
 
 use crate::{indexes::reader::ContentDocument, query::parser, state::RepoRef, Application};
@@ -116,7 +117,13 @@ pub async fn handle(
     let relevant_snippet_index = answer_api_client
         .select_snippet(&snippets)
         .await
-        .map_err(super::internal_error)?
+        .map_err(|e| match e.status() {
+            Some(StatusCode::SERVICE_UNAVAILABLE) => super::error(
+                ErrorKind::UpstreamService,
+                "service is currently overloaded",
+            ),
+            _ => super::internal_error(e),
+        })?
         .text()
         .await
         .map_err(super::internal_error)?
@@ -156,7 +163,13 @@ pub async fn handle(
     let snippet_explaination = answer_api_client
         .explain_snippet(&processed_snippet)
         .await
-        .map_err(super::internal_error)?
+        .map_err(|e| match e.status() {
+            Some(StatusCode::SERVICE_UNAVAILABLE) => super::error(
+                ErrorKind::UpstreamService,
+                "service is currently overloaded",
+            ),
+            _ => super::internal_error(e),
+        })?
         .text()
         .await
         .map_err(super::internal_error)?;
@@ -307,7 +320,7 @@ impl AnswerAPIClient {
             snippet.relative_path, snippet.text, self.query
         );
         let tokens_used = token_count_estimate(&prompt);
-        let max_tokens = 1500_u32.saturating_sub(tokens_used);
+        let max_tokens = 1500_u32.saturating_sub(tokens_used).clamp(100, 2500);
         self.send(prompt, max_tokens).await
     }
 }
