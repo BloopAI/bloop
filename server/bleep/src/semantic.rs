@@ -4,7 +4,7 @@ use crate::{query::parser::NLQuery, Configuration};
 
 use anyhow::Result;
 use maplit::hashmap;
-use ndarray::s;
+use ndarray::Axis;
 use ort::{
     tensor::{FromArray, InputTensor, OrtOwnedTensor},
     Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
@@ -74,7 +74,7 @@ impl Semantic {
 
         let environment = Arc::new(
             Environment::builder()
-                .with_name("CodeGen")
+                .with_name("Encode")
                 .with_log_level(LoggingLevel::Warning)
                 .with_execution_providers([ExecutionProvider::cpu()])
                 .build()?,
@@ -125,9 +125,8 @@ impl Semantic {
         ])?;
 
         let output_tensor: OrtOwnedTensor<f32, _> = outputs[0].try_extract().unwrap();
-        let logits = &*output_tensor.view();
-        let pooled = logits.slice(s![.., 0, ..]);
-
+        let sequence_embedding = &*output_tensor.view();
+        let pooled = sequence_embedding.mean_axis(Axis(1)).unwrap();
         Ok(pooled.to_owned().as_slice().unwrap().to_vec())
     }
 
