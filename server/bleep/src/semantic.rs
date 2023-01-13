@@ -4,7 +4,7 @@ use crate::{query::parser::NLQuery, Configuration};
 
 use anyhow::Result;
 use maplit::hashmap;
-use ndarray::s;
+use ndarray::Axis;
 use ort::{
     tensor::{FromArray, InputTensor, OrtOwnedTensor},
     Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
@@ -74,7 +74,7 @@ impl Semantic {
 
         let environment = Arc::new(
             Environment::builder()
-                .with_name("CodeGen")
+                .with_name("Encode")
                 .with_log_level(LoggingLevel::Warning)
                 .with_execution_providers([ExecutionProvider::cpu()])
                 .build()?,
@@ -94,8 +94,11 @@ impl Semantic {
         })
     }
 
-    pub fn embed(&self, chunk: &str) -> Result<Vec<f32>> {
-        let tokenizer_output = self.tokenizer.encode(chunk, true).unwrap();
+    pub fn embed(&self, chunk: &str, prefix: &str) -> Result<Vec<f32>> {
+        let mut sequence = prefix.to_owned();
+        sequence.push_str(chunk);
+
+        let tokenizer_output = self.tokenizer.encode(sequence, true).unwrap();
 
         let input_ids = tokenizer_output.get_ids();
         let attention_mask = tokenizer_output.get_attention_mask();
@@ -125,9 +128,8 @@ impl Semantic {
         ])?;
 
         let output_tensor: OrtOwnedTensor<f32, _> = outputs[0].try_extract().unwrap();
-        let logits = &*output_tensor.view();
-        let pooled = logits.slice(s![.., 0, ..]);
-
+        let sequence_embedding = &*output_tensor.view();
+        let pooled = sequence_embedding.mean_axis(Axis(1)).unwrap();
         Ok(pooled.to_owned().as_slice().unwrap().to_vec())
     }
 
@@ -169,7 +171,7 @@ impl Semantic {
             .search_points(&SearchPoints {
                 collection_name: COLLECTION_NAME.to_string(),
                 limit,
-                vector: self.embed(query)?,
+                vector: self.embed(query, "query: ")?,
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(SelectorOptions::Enable(true)),
                 }),
@@ -197,7 +199,7 @@ impl Semantic {
             repo_name,
             relative_path,
             buffer,
-            &*self.tokenizer,
+            &self.tokenizer,
             self.config.embedding_input_size,
             15,
             self.config
@@ -209,8 +211,8 @@ impl Semantic {
         let datapoints = chunks
             .par_iter()
             .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
-            .filter_map(
-                |chunk| match self.embed(&(repo_plus_file.clone() + chunk.data)) {
+            .filter_map(|chunk| {
+                match self.embed(&(repo_plus_file.clone() + chunk.data), "passage: ") {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
@@ -230,8 +232,8 @@ impl Semantic {
                         trace!(?err, "embedding failed");
                         None
                     }
-                },
-            )
+                }
+            })
             .collect::<Vec<_>>();
 
         if !datapoints.is_empty() {
