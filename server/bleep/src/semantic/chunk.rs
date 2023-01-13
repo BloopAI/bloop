@@ -136,9 +136,9 @@ impl Display for OverlapStrategy {
     }
 }
 
-impl Into<String> for OverlapStrategy {
-    fn into(self) -> String {
-        self.to_string()
+impl From<OverlapStrategy> for String {
+    fn from(val: OverlapStrategy) -> Self {
+        val.to_string()
     }
 }
 
@@ -170,7 +170,7 @@ impl TryFrom<&'_ str> for OverlapStrategy {
     type Error = &'static str;
 
     fn try_from(input: &str) -> Result<Self, &'static str> {
-        Ok(if let Some(percentage) = input.strip_suffix("%") {
+        Ok(if let Some(percentage) = input.strip_suffix('%') {
             Self::Partial(
                 str::parse::<f64>(percentage).map_err(|_| "failure parsing overlap strategy")?
                     * 0.01,
@@ -229,8 +229,8 @@ fn add_token_range<'s>(
     if trimmed_end_byte <= start_byte {
         return;
     }
-    let start = point(&src, line_start_byte, *last_line, *last_byte);
-    let end = point(&src, trimmed_end_byte, *last_line, *last_byte);
+    let start = point(src, line_start_byte, *last_line, *last_byte);
+    let end = point(src, trimmed_end_byte, *last_line, *last_byte);
     (*last_line, *last_byte) = (start.line, start.byte);
     chunks.push(Chunk::new(
         &src[line_start_byte..trimmed_end_byte],
@@ -389,15 +389,12 @@ pub fn trivial(src: &str, size: usize) -> Vec<Chunk<'_>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
+    use std::env;
 
     #[test]
     pub fn test_by_tokens() {
-        let base_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap();
+        let cur_dir = env::current_dir().unwrap();
+        let base_dir = cur_dir.ancestors().nth(2).unwrap();
         let tok_json = base_dir.join("model/tokenizer.json");
         let tokenizer = tokenizers::Tokenizer::from_file(tok_json).unwrap();
         let max_tokens = 256;
