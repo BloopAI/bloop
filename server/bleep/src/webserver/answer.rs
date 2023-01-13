@@ -1,4 +1,5 @@
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
+use reqwest::StatusCode;
 use utoipa::ToSchema;
 
 use crate::{indexes::reader::ContentDocument, query::parser, state::RepoRef, Application};
@@ -116,7 +117,13 @@ pub async fn handle(
     let relevant_snippet_index = answer_api_client
         .select_snippet(&snippets)
         .await
-        .map_err(super::internal_error)?
+        .map_err(|e| match e.status() {
+            Some(StatusCode::SERVICE_UNAVAILABLE) => super::error(
+                ErrorKind::UpstreamService,
+                "service is currently overloaded",
+            ),
+            _ => super::internal_error(e),
+        })?
         .text()
         .await
         .map_err(super::internal_error)?
@@ -156,7 +163,13 @@ pub async fn handle(
     let snippet_explaination = answer_api_client
         .explain_snippet(&processed_snippet)
         .await
-        .map_err(super::internal_error)?
+        .map_err(|e| match e.status() {
+            Some(StatusCode::SERVICE_UNAVAILABLE) => super::error(
+                ErrorKind::UpstreamService,
+                "service is currently overloaded",
+            ),
+            _ => super::internal_error(e),
+        })?
         .text()
         .await
         .map_err(super::internal_error)?;
@@ -212,6 +225,7 @@ fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
 #[derive(serde::Serialize)]
 struct OpenAIRequest {
     prompt: String,
+    max_tokens: u32,
 }
 
 struct AnswerAPIClient {
@@ -229,11 +243,16 @@ impl AnswerAPIClient {
         }
     }
 
-    async fn send(&self, prompt: String) -> Result<reqwest::Response, reqwest::Error> {
+    async fn send(
+        &self,
+        prompt: String,
+        max_tokens: u32,
+    ) -> Result<reqwest::Response, reqwest::Error> {
         self.client
             .post(self.host.as_str())
             .json(&OpenAIRequest {
                 prompt: prompt.clone(),
+                max_tokens,
             })
             .send()
             .await
@@ -273,8 +292,7 @@ impl AnswerAPIClient {
             snippets.len(),
             self.query,
         );
-
-        self.send(prompt).await
+        self.send(prompt, 1).await
     }
 
     async fn explain_snippet(
@@ -290,18 +308,27 @@ impl AnswerAPIClient {
             #####
 
             Above is a code snippet.\
-            Your job is to answer the questions about the snippet,\
-            giving detailed explanations. Cite any code used to\
-            answer the question formatted in GitHub markdown and state the file path.
-
-            Q:What icon do we use to clear search history?
-            A:We use the left-double chevron icon.
+            Answer the user's question with a detailed response.\
+            Separate each function out and explain why it is relevant.\
+            Format your response in GitHub markdown with code blocks annotated\
+            with programming language. Include the path of the file.
 
             Q:{}
             A:",
             snippet.relative_path, snippet.text, self.query
         );
-
-        self.send(prompt).await
+        let tokens_used = token_count_estimate(&prompt);
+        let max_tokens = 1500_u32.saturating_sub(tokens_used).clamp(100, 2500);
+        self.send(prompt, max_tokens).await
     }
+}
+
+// openai claims 4 characters = 1 token for english,
+// but code typically clobbers the token count,
+// we get no more than 3 characters per token.
+//
+// TODO: this is a heuristic, a realistic tokenizer
+// can tune this better, rust_tokenizers::Gpt2Tokenizer?
+fn token_count_estimate(input: &str) -> u32 {
+    input.len().saturating_div(3) as u32
 }
