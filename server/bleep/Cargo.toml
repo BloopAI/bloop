@@ -68,7 +68,7 @@ axum = { version = "0.5.17", features = ["http2"] }
 tower-http = {version = "0.3.5", features = ["cors", "catch-panic"]}
 
 # api integrations
-octocrab = { git = "https://github.com/bloopai/octocrab", features = ["rustls"] }
+octocrab = { git = "https://github.com/bloopai/octocrab", default-features = false, features = ["rustls"] }
 reqwest = { version = "0.11.13", features = ["rustls-tls", "rustls"], default-features = false }
 secrecy = { version = "0.8.0", features = ["serde"] }
 
@@ -95,16 +95,16 @@ chrono = { version = "0.4.23", features = ["serde"], default-features = false }
 phf = "0.11.1"
 rand = "0.8.5"
 once_cell = "1.16.0"
-replace_with = "0.1.7"
 relative-path = "1.7.2"
-dunce = "1.0.3"
-qdrant-client = "0.11.5"
-tokenizers = "0.13.2"
-ort = { git = "https://github.com/rsdy/ort", branch = "arm64-convert-fix" }
+qdrant-client = { version = "0.11.6", default-features = false }
+tokenizers = { git = "https://github.com/llogiq/tokenizers", branch = "look-ma-no-sysregex", default-features = false }
+ort = { git = "https://github.com/bloopAI/ort", branch = "arm64-convert-fix" }
 ndarray = "0.15"
-maplit = "1.0.2"
 segment = "0.2.1"
 uuid = { version = "1.2.2", features = ["v4", "fast-rng"] }
+
+[target.'cfg(windows)'.dependencies]
+dunce = "1.0.3"
 
 [dev-dependencies]
 criterion = { version = "0.4.0", features = ["async_tokio"] }

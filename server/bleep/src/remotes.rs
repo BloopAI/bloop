@@ -114,7 +114,7 @@ pub(crate) fn gather_repo_roots(path: impl AsRef<Path>) -> impl Iterator<Item = 
                             .contains(&de.file_name().to_string_lossy().as_ref()) =>
                 {
                     Some(RepoRef::from(
-                        &dunce::canonicalize(
+                        &crate::canonicalize(
                             de.path().parent().expect("/ shouldn't be a git repo"),
                         )
                         .expect("repo root is both a dir and exists"),

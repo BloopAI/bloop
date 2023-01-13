@@ -174,6 +174,12 @@ pub enum Literal<'a> {
     Regex(Cow<'a, str>),
 }
 
+impl<'a> Default for Literal<'a> {
+    fn default() -> Self {
+        Self::Plain(Cow::Borrowed(""))
+    }
+}
+
 impl Literal<'_> {
     fn join_as_regex(self, rhs: Self) -> Self {
         let lhs = self.regex_str();
@@ -211,15 +217,9 @@ impl Literal<'_> {
 
     /// Force this literal into the `Regex` variant.
     fn make_regex(&mut self) {
-        replace_with::replace_with(
-            self,
-            // We should never hit this default, the closure is too simple to panic.
-            || Self::Plain("".into()),
-            |lit| match lit {
-                Self::Plain(s) => Self::Regex(s),
-                Self::Regex(s) => Self::Regex(s),
-            },
-        );
+        *self = match std::mem::take(self) {
+            Self::Plain(s) | Self::Regex(s) => Self::Regex(s),
+        }
     }
 }
 

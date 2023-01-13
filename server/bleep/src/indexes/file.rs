@@ -176,7 +176,7 @@ impl Indexable for File {
             .open_walker()
             .filter_map(|entry| match entry {
                 Ok(de) => match de.file_type() {
-                    Some(ft) if ft.is_file() => Some(dunce::canonicalize(de.into_path()).unwrap()),
+                    Some(ft) if ft.is_file() => Some(crate::canonicalize(de.into_path()).unwrap()),
                     _ => None,
                 },
                 Err(err) => {
