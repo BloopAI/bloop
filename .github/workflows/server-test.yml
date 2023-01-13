@@ -2,7 +2,7 @@ name: Server Unit Tests
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, semantic]
     paths:
       - "server/**"
       - ".github/workflows/server**"
@@ -25,6 +25,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          lfs: true
 
       - name: Setup Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -38,6 +40,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Dummy Qdrant binary
+        run: touch apps/desktop/src-tauri/bin/qdrant-x86_64-unknown-linux-gnu
 
       - uses: cachix/install-nix-action@v18
       - name: Install Universal Ctags
@@ -65,6 +70,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          lfs: true
 
       - name: Setup Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -91,6 +98,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           clean: false
+          lfs: true
 
       - name: Setup Rust toolchain
         uses: actions-rs/toolchain@v1

@@ -208,7 +208,13 @@ export const CodeSearchRepo = () => {
 export const SemanticSearchSnippets = () => {
   return (
     <div style={{ width: 1000 }} className="flex flex-col gap-4">
-      <SemanticSearch />
+      <SemanticSearch
+        snippets={[]}
+        searchId={'1'}
+        answer={''}
+        handleRetry={() => {}}
+        onClick={() => {}}
+      />
     </div>
   );
 };
