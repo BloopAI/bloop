@@ -15,7 +15,10 @@ use criterion as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
+
+use octocrab::current::ListReposForAuthenticatedUserBuilder;
 use semantic::{chunk::OverlapStrategy, Semantic};
+use webserver::AuthenticationLayer;
 
 use crate::{
     indexes::Indexes,
@@ -213,15 +216,15 @@ pub struct Configuration {
     //
     // External dependencies
     //
-    #[clap(long, default_value_t = default_qdrant())]
-    #[serde(default = "default_qdrant")]
+    #[clap(long, default_value_t = default_qdrant_url())]
+    #[serde(default = "default_qdrant_url")]
     /// URL for the qdrant server
     pub qdrant_url: String,
 
-    #[clap(long, default_value_t = default_answer_api_base())]
-    #[serde(default = "default_answer_api_base")]
+    #[clap(long, default_value_t = default_answer_api_url())]
+    #[serde(default = "default_answer_api_url")]
     /// Answer API `base` string
-    pub answer_api_base: String,
+    pub answer_api_url: String,
 
     #[clap(long)]
     /// Address to authentication server for private deployments
@@ -246,12 +249,13 @@ impl Configuration {
 #[derive(Clone)]
 pub struct Application {
     pub config: Arc<Configuration>,
+    pub segment: Arc<Option<Segment>>,
     pub(crate) repo_pool: RepositoryPool,
     pub(crate) background: BackgroundExecutor,
     pub(crate) semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
     credentials: Credentials,
-    pub segment: Arc<Option<Segment>>,
+    auth: AuthenticationLayer,
 }
 
 impl Application {
@@ -301,19 +305,21 @@ impl Application {
         } else {
             warn!("could not find segment key ... skipping initialization");
             None
-        };
-        let segment = Arc::new(segment);
+        }
+        .into();
 
         let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
+        let auth = AuthenticationLayer::new(&config);
 
         Ok(Self {
-            indexes,
             repo_pool: config.source.initialize_pool()?,
             credentials: config.source.initialize_credentials()?,
             background: BackgroundExecutor::start(config.clone()),
+            indexes,
             semantic,
             config,
             segment,
+            auth,
         })
     }
 

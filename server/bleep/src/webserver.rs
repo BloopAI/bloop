@@ -21,6 +21,8 @@ mod query;
 mod repos;
 mod semantic;
 
+pub(super) use aaa::AuthenticationLayer;
+
 #[allow(unused)]
 pub(in crate::webserver) mod prelude {
     pub(in crate::webserver) use super::{error, json, EndpointError, ErrorKind};
@@ -76,12 +78,7 @@ pub async fn start(app: Application) -> Result<()> {
     }
 
     if app.use_aaa() {
-        router = router
-            .route("/auth/login", get(aaa::login))
-            .route("/auth/authorized", put(aaa::authorized))
-            .route("/auth/users", put(aaa::list_users))
-            .route("/auth/users/:user", put(aaa::set_user))
-            .layer(RequireAuthorizationLayer::custom(aaa::MyAuth));
+        router = router.merge(aaa::router(app.auth.clone()));
     }
 
     router = router
