@@ -33,6 +33,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          lfs: true
+
       - name: Install dependencies (ubuntu only)
         run: |
           sudo apt-get update

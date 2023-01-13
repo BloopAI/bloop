@@ -25,6 +25,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          lfs: true
 
       - name: Setup Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -68,6 +70,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          lfs: true
 
       - name: Setup Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -94,6 +98,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           clean: false
+          lfs: true
 
       - name: Setup Rust toolchain
         uses: actions-rs/toolchain@v1
