@@ -221,9 +221,15 @@ impl Semantic {
                             ("repo_ref".into(), repo_ref.into()),
                             ("relative_path".into(), relative_path.into()),
                             ("snippet".into(), chunk.data.into()),
-                            ("start_line".into(), chunk.range.start.line.to_string().into()),
+                            (
+                                "start_line".into(),
+                                chunk.range.start.line.to_string().into(),
+                            ),
                             ("end_line".into(), chunk.range.end.line.to_string().into()),
-                            ("start_byte".into(), chunk.range.start.byte.to_string().into()),
+                            (
+                                "start_byte".into(),
+                                chunk.range.start.byte.to_string().into(),
+                            ),
                             ("end_byte".into(), chunk.range.end.byte.to_string().into()),
                         ]),
                     }),
