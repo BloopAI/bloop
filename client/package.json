@@ -6,7 +6,8 @@
     "./src/App": "./src/App.tsx",
     "./src/index.css": "./src/index.css",
     "./postcss": "./postcss.config.cjs",
-    "./tailwind.config": "./tailwind.config.cjs"
+    "./tailwind.config": "./tailwind.config.cjs",
+    "./src/components/TextInput": "./src/components/TextInput/index.tsx"
   },
   "scripts": {
     "dev": "vite",

@@ -27,6 +27,7 @@ type Props = {
   onRegexClick?: () => void;
   validate?: () => void;
   regexEnabled?: boolean;
+  autoFocus: boolean;
 };
 
 type SingleLineProps = Props & {
@@ -74,6 +75,7 @@ const TextInput = forwardRef(function TextInputWithRef(
     onRegexClick,
     regexEnabled,
     multiline,
+    autoFocus,
   }: Props & (SingleLineProps | MultilineProps),
   ref: ForwardedRef<HTMLInputElement>,
 ) {
@@ -168,6 +170,7 @@ const TextInput = forwardRef(function TextInputWithRef(
               type === 'email' || type === 'search' ? 'px-1' : 'pl-2.5'
             } transition-all duration-300 ease-in-bounce outline-none outline-0 pr-9`}
             onKeyDown={handleEnter}
+            autoFocus={autoFocus}
           />
         )}
         {value && !multiline ? (
