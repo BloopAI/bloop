@@ -1,6 +1,6 @@
-use std::sync::Arc;
+use std::{ops::Not, sync::Arc};
 
-use crate::Configuration;
+use crate::{remotes::BackendCredential, Configuration};
 
 use super::*;
 use axum::{
@@ -10,40 +10,110 @@ use axum::{
     response::Redirect,
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar};
+use biscuit_auth::{self as biscuit, Biscuit};
 use dashmap::{DashMap, DashSet};
 use secrecy::{ExposeSecret, SecretString};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::auth::{AuthorizeRequest, RequireAuthorizationLayer};
 
 type State = String;
-type Token = String;
-type Oauth = String;
+type Resource<'a> = Cow<'a, str>;
+type Operation<'a> = Cow<'a, str>;
 
-pub(super) fn router(auth: AuthenticationLayer) -> Router {
-    Router::new()
-        .route("/auth/login/start", get(login))
-        .route("/auth/login/complete", put(authorized))
-        .route("/auth/users", put(list_users))
-        .route("/auth/users/:user", put(set_user))
-        .layer(RequireAuthorizationLayer::custom(auth))
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+struct UserId(String);
+
+#[derive(Deserialize)]
+struct InputUserPermissions<'a>(Vec<(Resource<'a>, Operation<'a>)>);
+
+#[derive(Deserialize, Serialize)]
+struct UserPermissions(Vec<(Resource<'static>, Operation<'static>)>);
+
+#[derive(Debug)]
+struct PermissionsError(Resource<'static>, Operation<'static>);
+
+impl<'a> InputUserPermissions<'a> {
+    /// Validate user input and make it compatible with our storage if
+    /// all gucci
+    fn validate(self) -> Result<UserPermissions, PermissionsError> {
+        let InputUserPermissions(perms) = self;
+
+        perms
+            .into_iter()
+            .map(|(res, op)| {
+                if ["admin", "repos"].contains(&res.as_ref())
+                    && ["read", "write"].contains(&op.as_ref())
+                {
+                    Ok((res.into_owned().into(), op.into_owned().into()))
+                } else {
+                    Err(PermissionsError(
+                        res.into_owned().into(),
+                        op.into_owned().into(),
+                    ))
+                }
+            })
+            .collect::<Result<Vec<_>, PermissionsError>>()
+            .map(UserPermissions)
+    }
 }
 
+impl Default for UserPermissions {
+    fn default() -> Self {
+        Self(vec![("repos".into(), "read".into())])
+    }
+}
+
+// TODO:
+//
+// Since this is an `Arc`fest, may be useful to do an
+// `AuthenticatedLayer(Arc<AuthenticatedLayerInner>)` pattern instead
 #[derive(Clone)]
 pub(crate) struct AuthenticationLayer {
+    /// Identity key of this server.
+    /// Never persisted, we force re-logins if the server is re-deployed.
+    ///
+    /// TODO: This is good for privacy, may or may not suck for UX
+    identity: Arc<biscuit::KeyPair>,
+
+    /// The HTTP client
     client: reqwest::Client,
-    host: Option<SecretString>,
+
+    /// Base URL for the auth server
+    auth_server_url: Option<SecretString>,
+
+    /// Logins that have been initiated, but not completed
+    ///
+    /// TODO: Note that this isn't currently cleaned up with a
+    /// timeout, so there's a DoS here
     initialized_login: Arc<DashSet<State>>,
-    cached_tokens: Arc<DashMap<State, Token>>,
+
+    /// OAuth tokens for the users of this system that authenticate to
+    /// the upstream OAuth provider.
+    ///
+    /// We retain these so we can check expiry & force log out
+    /// the user if their access has been revoked to the organization.
+    ///
+    /// TODO: None of these are enforced right now.
+    backend_tokens: Arc<DashMap<UserId, BackendCredential>>,
+
+    /// Permissions available for a user.
+    user_perms: Arc<DashMap<UserId, UserPermissions>>,
+
+    /// Users that need a new token issued.
+    refreshed_permissions: Arc<DashSet<UserId>>,
 }
 
 impl AuthenticationLayer {
     pub fn new(config: &Configuration) -> Self {
         AuthenticationLayer {
+            identity: biscuit::KeyPair::new().into(),
             client: reqwest::Client::new(),
-            host: config.auth_server_url.clone(),
+            auth_server_url: config.auth_server_url.clone(),
             initialized_login: DashSet::default().into(),
-            cached_tokens: DashMap::default().into(),
+            backend_tokens: DashMap::default().into(),
+            user_perms: DashMap::default().into(),
+            refreshed_permissions: DashSet::default().into(),
         }
     }
 
@@ -54,7 +124,7 @@ impl AuthenticationLayer {
     ) -> reqwest::Result<reqwest::Response> {
         let url = format!(
             "{}/{path}",
-            self.host
+            self.auth_server_url
                 .as_ref()
                 .expect("auth server not found")
                 .expose_secret()
@@ -63,19 +133,73 @@ impl AuthenticationLayer {
     }
 
     pub(crate) async fn get(&self, path: &str) -> reqwest::Result<reqwest::Response> {
-        let url = format!("{}/{path}", self.host.as_ref().unwrap().expose_secret());
+        let url = format!(
+            "{}/{path}",
+            self.auth_server_url.as_ref().unwrap().expose_secret()
+        );
         self.client.get(url).send().await
     }
-}
 
-#[derive(Debug)]
-struct UserId(String);
+    /// Issue a new session token for the user with the given
+    /// permission matrix, and store the permissions in the local
+    /// cache.
+    fn issue_auth_cookie(
+        &self,
+        UserId(user): UserId,
+        UserPermissions(perms): UserPermissions,
+    ) -> String {
+        use biscuit::builder::{fact, string};
+
+        let authority = {
+            let mut builder = Biscuit::builder(&self.identity);
+            for (res, op) in &perms {
+                builder
+                    .add_authority_fact(fact("right", &[string(res), string(op)]))
+                    .unwrap();
+            }
+
+            builder.add_authority_fact(fact("user", &[&user])).unwrap();
+
+            // TODO:
+            // would be good to sign the organization name here as
+            // well, but it's not an issue since the instance identity
+            // key will be unique anyway.
+            //
+            // i don't really know where to get the org name from
+            // without pinging the auth server
+
+            builder
+                .add_code(r#"check if resource($res), operation($op), right($res, $op)"#)
+                .unwrap();
+
+            builder.build().unwrap()
+        };
+
+        let mut token = {
+            let mut builder = authority.create_block();
+            builder.expiration_date(SystemTime::now() + Duration::from_days(1));
+
+            let end_token = authority.append(builder).unwrap();
+            end_token.to_base64()
+        };
+
+        self.user_perms
+            .insert(user.clone(), UserPermissions(perms.clone()));
+
+        token
+    }
+
+    fn check_auth<B>(&self, request: &Request<B>) -> Option<UserId> {
+        // ...
+        None
+    }
+}
 
 impl<B> AuthorizeRequest<B> for AuthenticationLayer {
     type ResponseBody = body::BoxBody;
 
     fn authorize(&mut self, request: &mut Request<B>) -> Result<(), Response<Self::ResponseBody>> {
-        if let Some(user_id) = check_auth(request) {
+        if let Some(user_id) = self.check_auth(request) {
             // Set `user_id` as a request extension so it can be accessed by other
             // services down the stack.
             request.extensions_mut().insert(user_id);
@@ -92,20 +216,9 @@ impl<B> AuthorizeRequest<B> for AuthenticationLayer {
     }
 }
 
-fn check_auth<B>(request: &Request<B>) -> Option<UserId> {
-    // ...
-    None
-}
-
 #[derive(Deserialize)]
 pub(super) struct LoginParams {
     state: State,
-}
-
-#[derive(Deserialize)]
-pub(super) struct LoginComplete {
-    oauth: String,
-    token: Token,
 }
 
 /// Initiate a new login using a web-based OAuth flow.
@@ -166,19 +279,34 @@ pub(super) async fn authorized(
         .remove(&state)
         .expect("auth unauthorized");
 
-    let token = app
+    let oauth = app
         .auth
         .get(&format!("/private/issue_token?state={state}"))
         .await
-        .unwrap()
-        .json::<LoginComplete>()
+        .expect("can't reach auth server")
+        .json::<BackendCredential>()
         .await
-        .unwrap();
+        .expect("invalid auth server response");
 
-    (
-        jar.add(Cookie::new("auth_token", token.token)),
-        Redirect::to("/"),
-    )
+    let userid = {
+        let BackendCredential::Github(ref auth) = oauth;
+        let user = auth
+            .client()
+            .unwrap()
+            .current()
+            .user()
+            .await
+            .expect("invalid github oauth token")
+            .login;
+
+        UserId(user)
+    };
+    app.auth.backend_tokens.insert(userid.clone(), oauth);
+
+    let perms = UserPermissions::default();
+    let token = app.auth.issue_auth_cookie(userid, perms);
+
+    (jar.add(Cookie::new("auth_token", token)), Redirect::to("/"))
 }
 
 /// List all users in the organization (admin only)
@@ -189,7 +317,8 @@ pub(super) async fn authorized(
         (status = 500, description = "Server error", body = EndpointError),
     ),
 )]
-pub(super) async fn list_users(Extension(app): Extension<Application>) -> impl IntoResponse {
+async fn list_users(Extension(app): Extension<Application>) -> impl IntoResponse {
+    let github_installation_client = app.credentials.github_client().await;
     todo!()
 }
 
@@ -201,9 +330,31 @@ pub(super) async fn list_users(Extension(app): Extension<Application>) -> impl I
         (status = 500, description = "Server error", body = EndpointError),
     ),
 )]
-pub(super) async fn set_user(
-    Path(user): Path<String>,
+async fn set_user(
     Extension(app): Extension<Application>,
+    Path(user): Path<String>,
+    Json(permissions): Json<InputUserPermissions<'_>>,
 ) -> impl IntoResponse {
-    todo!()
+    let github_installation_client = app.credentials.github_client().await;
+    {
+        // validate if user is part of the organization
+        todo!()
+    }
+
+    app.auth.user_perms.insert(
+        UserId(user),
+        permissions.validate().expect("invalid permission set"),
+    );
+    app.auth.refreshed_permissions.insert(UserId(user));
+
+    StatusCode::OK
+}
+
+pub(super) fn router(auth: AuthenticationLayer) -> Router {
+    Router::new()
+        .route("/auth/login/start", get(login))
+        .route("/auth/login/complete", put(authorized))
+        .route("/auth/users", put(list_users))
+        .route("/auth/users/:user", put(set_user))
+        .layer(RequireAuthorizationLayer::custom(auth))
 }
