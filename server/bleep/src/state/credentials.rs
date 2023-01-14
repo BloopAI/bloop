@@ -52,15 +52,21 @@ impl Credentials {
         self.credstore.remove(backend.borrow())
     }
 
+    /// Does its best to ensure a fresh github token is available.
+    ///
+    /// The idea is that this MUST be called periodically, and
+    /// therefore shouldn't blow up the call site.
+    /// There is no error reporting here, apart from the log entries
+    /// generated.
     pub(crate) async fn ensure_fresh_github_installation_token(&self) {
         let Some(BackendCredential::Github(auth)) = self.get(Backend::Github) else {
-	    self.get_new_github_token().await;
+	    _ = self.get_new_github_token().await;
 	    return;
 	};
 
         if let remotes::github::Auth::JWT { expiry, .. } = auth {
             if expiry < Utc::now() + Duration::minutes(10) {
-                self.get_new_github_token().await;
+                _ = self.get_new_github_token().await;
             }
         }
     }
@@ -68,10 +74,11 @@ impl Credentials {
     pub(crate) async fn github_client(&self) -> Option<octocrab::Octocrab> {
         let auth = match self.get(Backend::Github) {
             Some(BackendCredential::Github(auth)) => auth,
-            None => {
+            None if self.env.use_aaa() => {
                 let BackendCredential::Github(auth) = self.get_new_github_token().await.ok()?;
                 auth
             }
+            None => return None,
         };
 
         auth.client().ok()
