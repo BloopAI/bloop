@@ -47,7 +47,7 @@ impl AuthenticationLayer {
         }
     }
 
-    async fn post(
+    pub(crate) async fn post(
         &self,
         path: &str,
         json: &serde_json::Value,
@@ -62,7 +62,7 @@ impl AuthenticationLayer {
         self.client.post(url).json(json).send().await
     }
 
-    async fn get(&self, path: &str) -> reqwest::Result<reqwest::Response> {
+    pub(crate) async fn get(&self, path: &str) -> reqwest::Result<reqwest::Response> {
         let url = format!("{}/{path}", self.host.as_ref().unwrap().expose_secret());
         self.client.get(url).send().await
     }
@@ -108,7 +108,10 @@ pub(super) struct LoginComplete {
     token: Token,
 }
 
-/// Initiate a new login using a web-based OAuth flow
+/// Initiate a new login using a web-based OAuth flow.
+///
+/// Redirects to Github after setting up the correct expectations.
+/// Use this endpoint as a redirect target instead of an API call!
 #[utoipa::path(get, path = "/auth/login/start",
     responses(
         (status = 200, description = "Execute query successfully", body = Response),
@@ -140,6 +143,8 @@ pub(super) async fn login(
 }
 
 /// Complete the login flow.
+///
+/// Takes the `state` that has been established previously so we don't leak the actual keys.
 #[utoipa::path(post, path = "/auth/login/complete",
     responses(
         (status = 200, description = "Execute query successfully", body = Response),
@@ -153,6 +158,14 @@ pub(super) async fn authorized(
     jar: CookieJar,
 ) -> impl IntoResponse {
     let state = params.state;
+
+    // Probably some better error handling here would be useful, but
+    // we can also just blow up.
+    app.auth
+        .initialized_login
+        .remove(&state)
+        .expect("auth unauthorized");
+
     let token = app
         .auth
         .get(&format!("/private/issue_token?state={state}"))

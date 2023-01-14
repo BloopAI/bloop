@@ -67,17 +67,17 @@ pub async fn start(app: Application) -> Result<()> {
         .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
         .route("/health", get(health));
 
-    if app.allow_github_device_flow() {
+    if app.env.allow_github_device_flow() {
         router = router
             .route("/remotes/github/login", get(github::login))
             .route("/remotes/github/status", get(github::status));
     }
 
-    if app.allow_path_scan() {
+    if app.env.allow_path_scan() {
         router = router.route("/repos/scan", get(repos::scan_local));
     }
 
-    if app.use_aaa() {
+    if app.env.use_aaa() {
         router = router.merge(aaa::router(app.auth.clone()));
     }
 

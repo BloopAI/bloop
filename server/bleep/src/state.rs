@@ -3,6 +3,7 @@ use crate::{
     indexes,
     language::{get_language_info, LanguageInfo},
     remotes::{gather_repo_roots, BackendCredential},
+    AuthenticationLayer, Environment,
 };
 use clap::Args;
 use dashmap::DashMap;
@@ -25,10 +26,12 @@ use std::{
 use tracing::debug;
 use utoipa::ToSchema;
 
+mod credentials;
+pub(crate) use credentials::Credentials;
+
 #[derive(Hash, Eq, PartialEq, Debug, Clone)]
 pub struct RepoRef(Backend, String);
 pub(crate) type RepositoryPool = Arc<DashMap<RepoRef, Repository>>;
-pub(crate) type Credentials = Arc<DashMap<Backend, BackendCredential>>;
 
 include!(concat!(env!("OUT_DIR"), "/schema_version.rs"));
 
@@ -496,14 +499,19 @@ impl StateSource {
         }
     }
 
-    pub(crate) fn initialize_credentials(&self) -> Result<Credentials, RepoError> {
+    pub(crate) fn initialize_credentials(
+        &self,
+        auth: AuthenticationLayer,
+        env: Environment,
+    ) -> Result<Credentials, RepoError> {
         read_file_or_default(self.credentials.as_ref().unwrap())
+            .map(|credstore| Credentials::new(credstore, auth, env))
     }
 
     pub(crate) fn save_credentials(&self, creds: Credentials) -> Result<(), RepoError> {
         match self.credentials {
             None => Err(RepoError::NoSourceGiven),
-            Some(ref path) => pretty_write_file(path, creds.as_ref()),
+            Some(ref path) => pretty_write_file(path, creds.serializable()),
         }
     }
 

@@ -24,19 +24,23 @@ const POLL_INTERVAL_MINUTE: &[Duration] = &[
 
 pub(crate) async fn check_credentials(app: Application) {
     loop {
-        let remove = 'remove: {
-            let Some(creds) = app.credentials.get(&Backend::Github) else { break 'remove true };
-            let Ok(client) = creds.to_github_client() else { break 'remove true };
+        if app.env.use_aaa() {
+            app.credentials
+                .ensure_fresh_github_installation_token()
+                .await
+        } else {
+            let expired = 'expired: {
+                let Some(client) = app.credentials.github_client().await else { break 'expired true };
+                client.current().user().await.is_err()
+            };
 
-            client.current().user().await.is_err()
-        };
-
-        if remove && app.credentials.remove(&Backend::Github).is_some() {
-            app.config
-                .source
-                .save_credentials(app.credentials.clone())
-                .unwrap();
-            debug!("github oauth is invalid; credentials removed");
+            if expired && app.credentials.remove(&Backend::Github).is_some() {
+                app.config
+                    .source
+                    .save_credentials(app.credentials.clone())
+                    .unwrap();
+                debug!("github oauth is invalid; credentials removed");
+            }
         }
 
         sleep(POLL_INTERVAL_MINUTE[0]).await;
