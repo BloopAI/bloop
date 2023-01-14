@@ -1,9 +1,5 @@
 use super::{prelude::*, repos::Repo};
-use crate::{
-    remotes::{self, BackendCredential},
-    state::Backend,
-    Application,
-};
+use crate::{remotes::BackendCredential, state::Backend, Application};
 
 use either::Either;
 use octocrab::{auth::DeviceCodes, Octocrab};
@@ -138,14 +134,8 @@ async fn poll_for_oauth_token(
         }
     };
 
-    app.credentials.insert(
-        Backend::Github,
-        BackendCredential::Github(remotes::github::Auth {
-            access_token: auth.access_token,
-            token_type: auth.token_type,
-            scope: auth.scope,
-        }),
-    );
+    app.credentials
+        .insert(Backend::Github, BackendCredential::Github(auth.into()));
 
     let saved = app.config.source.save_credentials(app.credentials.clone());
 
@@ -155,24 +145,16 @@ async fn poll_for_oauth_token(
 }
 
 pub(super) async fn list_repos(app: Application) -> Result<Vec<Repo>, EndpointError<'static>> {
-    let gh_client = match app.credentials.get(&Backend::Github) {
-        Some(credref) => credref.value().to_github_client(),
-        None => {
+    let Some(gh_client) = app.credentials.github_client().await else {
             return Err(EndpointError {
                 kind: ErrorKind::Configuration,
                 message: "No github credentials".into(),
-            })
-        }
+            });
     };
-
-    let repo_list_req = gh_client.map_err(|err| EndpointError {
-        kind: ErrorKind::UpstreamService,
-        message: err.to_string().into(),
-    })?;
 
     let mut results = vec![];
     for page in 1.. {
-        let mut resp = repo_list_req
+        let mut resp = gh_client
             .current()
             .list_repos_for_authenticated_user()
             .per_page(100)

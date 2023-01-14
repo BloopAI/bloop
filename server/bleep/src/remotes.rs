@@ -131,22 +131,6 @@ pub(crate) enum BackendCredential {
 }
 
 impl BackendCredential {
-    pub(crate) fn to_github_client(&self) -> octocrab::Result<octocrab::Octocrab> {
-        let Self::Github(github::Auth {
-            access_token,
-            token_type,
-            scope,
-        }) = self.clone();
-
-        let token = octocrab::auth::OAuth {
-            access_token,
-            token_type,
-            scope,
-        };
-
-        octocrab::Octocrab::builder().oauth(token).build()
-    }
-
     pub(crate) async fn sync(self, app: Application, repo_ref: RepoRef) -> Result<()> {
         tokio::task::spawn_blocking(move || {
             use BackendCredential::*;

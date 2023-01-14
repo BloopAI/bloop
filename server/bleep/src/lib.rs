@@ -113,7 +113,7 @@ fn default_max_chunk_tokens() -> usize {
     256
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Environment {
     /// Safe API that's suitable for public use
     Server,
@@ -123,19 +123,39 @@ pub enum Environment {
     InsecureLocal,
 }
 
-impl Default for Environment {
-    fn default() -> Self {
-        Environment::Server
+impl Environment {
+    pub(crate) fn allow_path_scan(&self) -> bool {
+        use Environment::*;
+
+        match self {
+            InsecureLocal => true,
+            _ => false,
+        }
+    }
+
+    pub(crate) fn allow_github_device_flow(&self) -> bool {
+        use Environment::*;
+        match self {
+            Server => true,
+            InsecureLocal => true,
+            PrivateServer => false,
+        }
+    }
+
+    /// Use AAA layer (authentication, authorization, accounting)
+    pub(crate) fn use_aaa(&self) -> bool {
+        use Environment::*;
+        match self {
+            Server => false,
+            InsecureLocal => false,
+            PrivateServer => true,
+        }
     }
 }
 
 #[derive(Deserialize, Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 pub struct Configuration {
-    #[clap(skip)]
-    #[serde(skip)]
-    pub(crate) env: Environment,
-
     #[clap(short, long)]
     #[serde(skip)]
     /// If a config file is given, it will override _all_ command line parameters!
@@ -247,6 +267,7 @@ impl Configuration {
 
 #[derive(Clone)]
 pub struct Application {
+    pub env: Environment,
     pub config: Arc<Configuration>,
     repo_pool: RepositoryPool,
     background: BackgroundExecutor,
@@ -274,12 +295,6 @@ impl Application {
         config.buffer_size = config.buffer_size.max(threads * 3_000_000);
         config.repo_buffer_size = config.repo_buffer_size.max(threads * 3_000_000);
         config.source.set_default_dir(&config.index_dir);
-
-        if config.auth_server_url.is_some() {
-            config.env = Environment::PrivateServer;
-        } else {
-            config.env = env;
-        }
 
         if let Some(ref executable) = config.ctags_path {
             ctags::CTAGS_BINARY
@@ -309,16 +324,25 @@ impl Application {
 
         let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
         let auth = AuthenticationLayer::new(&config);
+        let env = if config.auth_server_url.is_some() {
+            Environment::PrivateServer
+        } else {
+            env
+        };
 
         Ok(Self {
             indexes,
-            repo_pool: config.source.initialize_pool()?,
-            credentials: config.source.initialize_credentials()?,
+            //credentials: config.source.initialize_credentials()?,
             background: BackgroundExecutor::start(config.clone()),
+            repo_pool: config.source.initialize_pool()?,
+            credentials: config
+                .source
+                .initialize_credentials(auth.clone(), env.clone())?,
             semantic,
             config,
             auth,
             segment,
+            env,
         })
     }
 
@@ -399,45 +423,17 @@ impl Application {
         Ok(())
     }
 
-    pub(crate) fn allow_path_scan(&self) -> bool {
-        use Environment::*;
-
-        match self.config.env {
-            InsecureLocal => true,
-            _ => false,
-        }
-    }
-
     pub(crate) fn allow_path(&self, path: impl AsRef<Path>) -> bool {
         use Environment::*;
 
         let source_dir = self.config.source.directory();
-        match self.config.env {
+        match self.env {
             Server => RelativePath::from_path(&path)
                 .map(|p| p.to_logical_path(&source_dir))
                 .unwrap_or_else(|_| path.as_ref().to_owned())
                 .starts_with(&source_dir),
             PrivateServer => false,
             InsecureLocal => true,
-        }
-    }
-
-    pub(crate) fn allow_github_device_flow(&self) -> bool {
-        use Environment::*;
-        match self.config.env {
-            Server => true,
-            InsecureLocal => true,
-            PrivateServer => false,
-        }
-    }
-
-    /// Use AAA layer (authentication, authorization, accounting)
-    pub(crate) fn use_aaa(&self) -> bool {
-        use Environment::*;
-        match self.config.env {
-            Server => false,
-            InsecureLocal => false,
-            PrivateServer => true,
         }
     }
 
