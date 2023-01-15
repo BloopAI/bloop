@@ -19,6 +19,7 @@ use qdrant_client::{
     },
 };
 use rayon::prelude::*;
+use tokenizers::{PaddingDirection, PaddingParams, PaddingStrategy};
 use tracing::{debug, trace};
 
 pub mod chunk;
@@ -76,15 +77,24 @@ impl Semantic {
             Environment::builder()
                 .with_name("Encode")
                 .with_log_level(LoggingLevel::Warning)
-                .with_execution_providers([ExecutionProvider::cpu()])
+                .with_execution_providers([ExecutionProvider::coreml()])
                 .build()?,
         );
 
+        let mut tokenizer =
+            tokenizers::Tokenizer::from_file(model_dir.join("tokenizer.json")).unwrap();
+        tokenizer.with_padding(Some(PaddingParams {
+            strategy: PaddingStrategy::BatchLongest,
+            direction: PaddingDirection::Right,
+            pad_id: 0,
+            pad_type_id: 0,
+            pad_token: "[PAD]".into(),
+            pad_to_multiple_of: None,
+        }));
+
         Ok(Self {
             qdrant: qdrant.into(),
-            tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("tokenizer.json"))
-                .unwrap()
-                .into(),
+            tokenizer: tokenizer.into(),
             session: SessionBuilder::new(&environment)?
                 .with_optimization_level(GraphOptimizationLevel::Level3)?
                 .with_intra_threads(1)?
@@ -131,6 +141,57 @@ impl Semantic {
         let sequence_embedding = &*output_tensor.view();
         let pooled = sequence_embedding.mean_axis(Axis(1)).unwrap();
         Ok(pooled.to_owned().as_slice().unwrap().to_vec())
+    }
+
+    pub fn batch_embed(&self, sequences: Vec<String>) -> Result<Vec<Vec<f32>>> {
+        let tokenizer_output = self.tokenizer.encode_batch(sequences, true).unwrap();
+
+        let bsz = tokenizer_output.len();
+        let seq_len = tokenizer_output[0].get_ids().len();
+
+        // to unrolled vector
+        let input_ids: Vec<u32> = tokenizer_output
+            .iter()
+            .fold(vec![], |acc, x| [acc, x.get_ids().to_vec()].concat());
+
+        let attention_mask: Vec<u32> = tokenizer_output.iter().fold(vec![], |acc, x| {
+            [acc, x.get_attention_mask().to_vec()].concat()
+        });
+
+        let token_type_ids: Vec<u32> = tokenizer_output
+            .iter()
+            .fold(vec![], |acc, x| [acc, x.get_type_ids().to_vec()].concat());
+
+        // to (bsz, seq_len) arrays
+        let inputs_ids_array = ndarray::Array::from_shape_vec(
+            (bsz, seq_len),
+            input_ids.iter().map(|&x| x as i64).collect(),
+        )?;
+
+        let attention_mask_array = ndarray::Array::from_shape_vec(
+            (bsz, seq_len),
+            attention_mask.iter().map(|&x| x as i64).collect(),
+        )?;
+
+        let token_type_ids_array = ndarray::Array::from_shape_vec(
+            (bsz, seq_len),
+            token_type_ids.iter().map(|&x| x as i64).collect(),
+        )?;
+
+        let outputs = self.session.run([
+            InputTensor::from_array(inputs_ids_array.into_dyn()),
+            InputTensor::from_array(attention_mask_array.into_dyn()),
+            InputTensor::from_array(token_type_ids_array.into_dyn()),
+        ])?;
+
+        let output_tensor: OrtOwnedTensor<f32, _> = outputs[0].try_extract().unwrap();
+        let sequence_embedding = &*output_tensor.view();
+        let pooled = sequence_embedding.mean_axis(Axis(1)).unwrap();
+
+        Ok(pooled
+            .axis_iter(Axis(0))
+            .map(|row| row.to_owned().as_slice().unwrap().to_vec())
+            .collect())
     }
 
     pub async fn search<'a>(
@@ -208,33 +269,72 @@ impl Semantic {
         );
         let repo_plus_file = repo_name.to_owned() + "\t" + relative_path + "\n";
         debug!(chunk_count = chunks.len(), "found chunks");
-        let datapoints = chunks
-            .par_iter()
-            .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
-            .filter_map(|chunk| {
-                match self.embed(&(repo_plus_file.clone() + chunk.data), "passage: ") {
-                    Ok(ok) => Some(PointStruct {
-                        id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
-                        vectors: Some(ok.into()),
-                        payload: hashmap! {
-                            "lang".into() => lang_str.to_ascii_lowercase().into(),
-                            "repo_name".into() => repo_name.into(),
-                            "repo_ref".into() => repo_ref.into(),
-                            "relative_path".into() => relative_path.into(),
-                            "snippet".into() => chunk.data.into(),
-                            "start_line".into() => chunk.range.start.line.to_string().into(),
-                            "end_line".into() => chunk.range.end.line.to_string().into(),
-                            "start_byte".into() => chunk.range.start.byte.to_string().into(),
-                            "end_byte".into() => chunk.range.end.byte.to_string().into(),
-                        },
-                    }),
-                    Err(err) => {
-                        trace!(?err, "embedding failed");
-                        None
-                    }
-                }
-            })
+
+        let chunks = chunks
+            .iter()
+            .filter(|chunk| chunk.len() > 50)
             .collect::<Vec<_>>();
+
+        let datapoints = chunks
+            .par_chunks(32)
+            .filter_map(|batch| {
+                let sequences = batch
+                    .iter()
+                    .map(|ch| ("passage: ".to_string() + &repo_plus_file.clone() + ch.data))
+                    .collect::<Vec<String>>();
+
+                match self.batch_embed(sequences) {
+                Ok(e) => Some(e.iter().enumerate().map(|(i, emb)| PointStruct {
+                    id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
+                    vectors: Some((*emb).clone().into()),
+                    payload: hashmap! {
+                        "lang".into() => lang_str.to_ascii_lowercase().into(),
+                        "repo_name".into() => repo_name.into(),
+                        "repo_ref".into() => repo_ref.into(),
+                        "relative_path".into() => relative_path.into(),
+                        "snippet".into() => chunks[i].data.into(),
+                        "start_line".into() => chunks[i].range.start.line.to_string().into(),
+                        "end_line".into() => chunks[i].range.end.line.to_string().into(),
+                        "start_byte".into() => chunks[i].range.start.byte.to_string().into(),
+                        "end_byte".into() => chunks[i].range.end.byte.to_string().into(),
+                    },
+                }).collect::<Vec<_>>()),
+                Err(err) => {
+                    trace!(?err, "embedding failed");
+                    None
+                }
+            }
+            })
+            .flatten()
+            .collect::<Vec<_>>();
+
+        // let datapoints = chunks
+        //     .par_iter()
+        //     .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
+        //     .filter_map(|chunk| {
+        //         match self.embed(&(repo_plus_file.clone() + chunk.data), "passage: ") {
+        //             Ok(ok) => Some(PointStruct {
+        //                 id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
+        //                 vectors: Some(ok.into()),
+        //                 payload: hashmap! {
+        //                     "lang".into() => lang_str.to_ascii_lowercase().into(),
+        //                     "repo_name".into() => repo_name.into(),
+        //                     "repo_ref".into() => repo_ref.into(),
+        //                     "relative_path".into() => relative_path.into(),
+        //                     "snippet".into() => chunk.data.into(),
+        //                     "start_line".into() => chunk.range.start.line.to_string().into(),
+        //                     "end_line".into() => chunk.range.end.line.to_string().into(),
+        //                     "start_byte".into() => chunk.range.start.byte.to_string().into(),
+        //                     "end_byte".into() => chunk.range.end.byte.to_string().into(),
+        //                 },
+        //             }),
+        //             Err(err) => {
+        //                 trace!(?err, "embedding failed");
+        //                 None
+        //             }
+        //         }
+        //     })
+        //     .collect::<Vec<_>>();
 
         if !datapoints.is_empty() {
             debug!(point_count = datapoints.len(), "updating docs");

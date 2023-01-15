@@ -1,7 +1,9 @@
 [env]
 PCRE2_SYS_STATIC = "1"
+ORT_STRATEGY="system"
+ORT_LIB_LOCATION="/Users/gabriel/bloop/research/onnxruntime-osx-arm64-1.13.1"
 
 [target.aarch64-apple-darwin]
 rustflags = [
-    "-C", "link-args=-Wl,-rpath,/opt/homebrew/opt/onnxruntime/lib"
+    "-C", "link-args=-Wl,-rpath,/Users/gabriel/bloop/research/onnxruntime-osx-arm64-1.13.1/lib"
 ]

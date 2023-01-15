@@ -100,7 +100,7 @@ relative-path = "1.7.2"
 dunce = "1.0.3"
 qdrant-client = "0.11.5"
 tokenizers = "0.13.2"
-ort = { git = "https://github.com/rsdy/ort", branch = "arm64-convert-fix" }
+ort = { path = "/Users/gabriel/bloop/research/ort", features = ["coreml"] }
 ndarray = "0.15"
 maplit = "1.0.2"
 segment = "0.2.1"
