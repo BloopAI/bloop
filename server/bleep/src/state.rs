@@ -2,7 +2,7 @@ use crate::{
     ctags::{get_symbols, SymbolMap},
     indexes,
     language::{get_language_info, LanguageInfo},
-    remotes::{gather_repo_roots, BackendCredential},
+    remotes::gather_repo_roots,
     AuthenticationLayer, Environment,
 };
 use clap::Args;

@@ -1,12 +1,21 @@
-use std::{ops::Not, sync::Arc};
+use std::{
+    ops::Not,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 
 use crate::{remotes::BackendCredential, Configuration};
 
 use super::*;
 use axum::{
-    body::{self, boxed},
+    body::{self, boxed, Body, BoxBody},
     extract::{Path, Query},
-    http::{self, header::AUTHORIZATION, Error, Request, Response, StatusCode},
+    headers::{
+        authorization::{Authorization, Bearer},
+        Header,
+    },
+    http::{self, header::AUTHORIZATION, Error, Method, Request, Response, StatusCode},
+    middleware::{self, Next},
     response::Redirect,
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar};
@@ -17,17 +26,19 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::auth::{AuthorizeRequest, RequireAuthorizationLayer};
 
+const COOKIE: &str = "auth_token";
+
 type State = String;
 type Resource<'a> = Cow<'a, str>;
 type Operation<'a> = Cow<'a, str>;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
-struct UserId(String);
+pub(crate) struct UserId(String);
 
 #[derive(Deserialize)]
 struct InputUserPermissions<'a>(Vec<(Resource<'a>, Operation<'a>)>);
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 struct UserPermissions(Vec<(Resource<'static>, Operation<'static>)>);
 
 #[derive(Debug)]
@@ -101,7 +112,7 @@ pub(crate) struct AuthenticationLayer {
     user_perms: Arc<DashMap<UserId, UserPermissions>>,
 
     /// Users that need a new token issued.
-    refreshed_permissions: Arc<DashSet<UserId>>,
+    refresh_token: Arc<DashSet<UserId>>,
 }
 
 impl AuthenticationLayer {
@@ -113,7 +124,7 @@ impl AuthenticationLayer {
             initialized_login: DashSet::default().into(),
             backend_tokens: DashMap::default().into(),
             user_perms: DashMap::default().into(),
-            refreshed_permissions: DashSet::default().into(),
+            refresh_token: DashSet::default().into(),
         }
     }
 
@@ -158,7 +169,9 @@ impl AuthenticationLayer {
                     .unwrap();
             }
 
-            builder.add_authority_fact(fact("user", &[&user])).unwrap();
+            builder
+                .add_authority_fact(fact("user", &[string(&user)]))
+                .unwrap();
 
             // TODO:
             // would be good to sign the organization name here as
@@ -175,43 +188,95 @@ impl AuthenticationLayer {
             builder.build().unwrap()
         };
 
-        let mut token = {
+        let token = {
             let mut builder = authority.create_block();
-            builder.expiration_date(SystemTime::now() + Duration::from_days(1));
+
+            // default expiration for a token is 10m. after expiry,
+            // force re-issue after a github API check.
+            builder.expiration_date(SystemTime::now() + Duration::from_secs(600));
 
             let end_token = authority.append(builder).unwrap();
-            end_token.to_base64()
+            end_token.to_base64().expect("failed to issue token")
         };
 
         self.user_perms
-            .insert(user.clone(), UserPermissions(perms.clone()));
+            .insert(UserId(user.clone()), UserPermissions(perms.clone()));
 
         token
     }
 
+    /// The lack of detail in error reporting here is deliberate. We
+    /// don't want to leak information about how the authorization
+    /// failed even inadvertently.
+    ///
+    /// Note this function is not timing safe, so a timing oracle may
+    /// still exist.
     fn check_auth<B>(&self, request: &Request<B>) -> Option<UserId> {
-        // ...
-        None
-    }
-}
+        let jar = CookieJar::from_headers(request.headers());
+        let mut auth_headers = request.headers().get_all(AUTHORIZATION).iter();
 
-impl<B> AuthorizeRequest<B> for AuthenticationLayer {
-    type ResponseBody = body::BoxBody;
-
-    fn authorize(&mut self, request: &mut Request<B>) -> Result<(), Response<Self::ResponseBody>> {
-        if let Some(user_id) = self.check_auth(request) {
-            // Set `user_id` as a request extension so it can be accessed by other
-            // services down the stack.
-            request.extensions_mut().insert(user_id);
-
-            Ok(())
+        let token = if let Some(cookie) = jar.get(COOKIE) {
+            cookie.value().to_string()
+        } else if let Ok(header) = Authorization::<Bearer>::decode(&mut auth_headers) {
+            header.token().to_string()
         } else {
-            let unauthorized_response = Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .body(boxed(body::Empty::new()))
-                .unwrap();
+            return None;
+        };
 
-            Err(unauthorized_response)
+        self.validate_token(&token, request)
+    }
+
+    /// Validates a token and returns the UserId if it's either valid
+    /// or needs refreshing
+    ///
+    /// **WARNING**: It is the responsibility of the *caller* to
+    /// ensure the UserId is up to date before granting authorization.
+    fn validate_token<B>(&self, token: &str, request: &Request<B>) -> Option<UserId> {
+        use biscuit::builder::{fact, string};
+
+        let biscuit = Biscuit::from_base64(token, |_| self.identity.public()).ok()?;
+        let mut authorizer = biscuit.authorizer().ok()?;
+        authorizer
+            .add_fact(fact(
+                "resource",
+                &[string(if request.uri().path().starts_with("/auth") {
+                    "admin"
+                } else {
+                    "repos"
+                })],
+            ))
+            .ok()?;
+
+        authorizer
+            .add_fact(fact(
+                "operation",
+                &[string(
+                    if [Method::OPTIONS, Method::GET].contains(request.method()) {
+                        "read"
+                    } else {
+                        "write"
+                    },
+                )],
+            ))
+            .ok()?;
+
+        let users: Vec<(String,)> = authorizer.query("data($name) <- user($name)").ok()?;
+        let user = users.get(0)?.0.to_string();
+        let permissions_ok = authorizer.authorize().is_ok();
+
+        authorizer.set_time();
+        let expired = authorizer.authorize().is_err();
+
+        match (permissions_ok, expired) {
+            (true, false) => Some(UserId(user)),
+            (_, true) => {
+                self.refresh_token.insert(UserId(user.clone()));
+                Some(UserId(user))
+            }
+            (false, false) => {
+                // this is a straight up rejection
+                None
+            }
         }
     }
 }
@@ -306,7 +371,7 @@ pub(super) async fn authorized(
     let perms = UserPermissions::default();
     let token = app.auth.issue_auth_cookie(userid, perms);
 
-    (jar.add(Cookie::new("auth_token", token)), Redirect::to("/"))
+    (jar.add(Cookie::new(COOKIE, token)), Redirect::to("/"))
 }
 
 /// List all users in the organization (admin only)
@@ -345,7 +410,7 @@ async fn set_user(
         UserId(user),
         permissions.validate().expect("invalid permission set"),
     );
-    app.auth.refreshed_permissions.insert(UserId(user));
+    app.auth.refresh_token.insert(UserId(user));
 
     StatusCode::OK
 }
@@ -356,5 +421,60 @@ pub(super) fn router(auth: AuthenticationLayer) -> Router {
         .route("/auth/login/complete", put(authorized))
         .route("/auth/users", put(list_users))
         .route("/auth/users/:user", put(set_user))
-        .layer(RequireAuthorizationLayer::custom(auth))
+        .layer(middleware::from_fn(authenticate_authorize_reissue))
+}
+
+async fn authenticate_authorize_reissue<B>(
+    Extension(app): Extension<Application>,
+    Extension(user_id): Extension<UserId>,
+    mut jar: CookieJar,
+    mut request: Request<B>,
+    next: Next<B>,
+) -> Response<BoxBody> {
+    let auth = &app.auth;
+    let unauthorized = || StatusCode::UNAUTHORIZED.into_response();
+
+    if let Some(user_id) = auth.check_auth(&request) {
+        // first check passed, now we check if we need a second one.
+        if auth.refresh_token.remove(&user_id).is_some() {
+            let perms = {
+                let Some(perms) = auth.user_perms.get(&user_id) else {
+		    // this should exist, if it doesn't, something's fishy. bail.
+		    return unauthorized();
+		};
+
+                perms.value().clone()
+            };
+
+            // issue new token, rotate.
+            let token = auth.issue_auth_cookie(user_id.clone(), perms);
+            if auth.validate_token(&token, &request).is_none() {
+                return unauthorized();
+            }
+
+            // TODO: validate Github OAuth token of the user.
+            //
+            // At this stage they should be fine by our permission
+            // system, but we should check if the user has been
+            // withdrawn access from the Github Org.
+
+            // set the new token as a cookie
+            jar = jar
+                .remove(Cookie::named(COOKIE))
+                .add(Cookie::new(COOKIE, token));
+        }
+
+        request.extensions_mut().insert(user_id);
+    } else {
+        return unauthorized();
+    }
+
+    next.run(request).await;
+
+    // TODOL: I don't actually know if this will discard the inner
+    // transformations of the response
+    //
+    // Since I didn't find a way to cleanly transform the response of
+    // `Next`, I have to assume these are merged by axum.
+    jar.into_response()
 }
