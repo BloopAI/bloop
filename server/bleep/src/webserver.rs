@@ -82,11 +82,11 @@ pub async fn start(app: Application) -> Result<()> {
     }
 
     router = router
-        .layer(CatchPanicLayer::new())
         .layer(Extension(app.indexes.clone()))
         .layer(Extension(app.semantic.clone()))
         .layer(Extension(app))
-        .layer(CorsLayer::permissive());
+        .layer(CorsLayer::permissive())
+        .layer(CatchPanicLayer::new());
 
     info!(%bind, "starting webserver");
     axum::Server::bind(&bind)
