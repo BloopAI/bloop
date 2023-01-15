@@ -131,6 +131,14 @@ pub(crate) enum BackendCredential {
 }
 
 impl BackendCredential {
+    pub(crate) async fn validate(&self) -> Result<()> {
+        let BackendCredential::Github(auth) = self;
+
+        let client = auth.client()?;
+        client.current().user().await?;
+        Ok(())
+    }
+
     pub(crate) async fn sync(self, app: Application, repo_ref: RepoRef) -> Result<()> {
         tokio::task::spawn_blocking(move || {
             use BackendCredential::*;

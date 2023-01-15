@@ -71,6 +71,12 @@ impl Credentials {
         }
     }
 
+    /// TODO: Get the list of users that can access the organization
+    /// referenced by the current installation token.
+    pub(crate) async fn github_installation_org_users(&self) -> Vec<String> {
+        todo!()
+    }
+
     pub(crate) async fn github_client(&self) -> Option<octocrab::Octocrab> {
         let auth = match self.get(Backend::Github) {
             Some(BackendCredential::Github(auth)) => auth,

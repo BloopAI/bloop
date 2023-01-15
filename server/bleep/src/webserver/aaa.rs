@@ -383,8 +383,7 @@ pub(super) async fn authorized(
     ),
 )]
 async fn list_users(Extension(app): Extension<Application>) -> impl IntoResponse {
-    let github_installation_client = app.credentials.github_client().await;
-    todo!()
+    Json(app.credentials.github_installation_org_users().await)
 }
 
 /// Set user permissions & details (admin only)
@@ -400,14 +399,18 @@ async fn set_user(
     Path(user): Path<String>,
     Json(permissions): Json<InputUserPermissions<'_>>,
 ) -> impl IntoResponse {
-    let github_installation_client = app.credentials.github_client().await;
+    if app
+        .credentials
+        .github_installation_org_users()
+        .await
+        .contains(&user)
+        .not()
     {
-        // validate if user is part of the organization
-        todo!()
+        return StatusCode::BAD_REQUEST;
     }
 
     app.auth.user_perms.insert(
-        UserId(user),
+        UserId(user.clone()),
         permissions.validate().expect("invalid permission set"),
     );
     app.auth.refresh_token.insert(UserId(user));
@@ -415,7 +418,7 @@ async fn set_user(
     StatusCode::OK
 }
 
-pub(super) fn router(auth: AuthenticationLayer) -> Router {
+pub(super) fn router() -> Router {
     Router::new()
         .route("/auth/login/start", get(login))
         .route("/auth/login/complete", put(authorized))
@@ -426,7 +429,6 @@ pub(super) fn router(auth: AuthenticationLayer) -> Router {
 
 async fn authenticate_authorize_reissue<B>(
     Extension(app): Extension<Application>,
-    Extension(user_id): Extension<UserId>,
     mut jar: CookieJar,
     mut request: Request<B>,
     next: Next<B>,
@@ -434,44 +436,53 @@ async fn authenticate_authorize_reissue<B>(
     let auth = &app.auth;
     let unauthorized = || StatusCode::UNAUTHORIZED.into_response();
 
-    if let Some(user_id) = auth.check_auth(&request) {
-        // first check passed, now we check if we need a second one.
-        if auth.refresh_token.remove(&user_id).is_some() {
-            let perms = {
-                let Some(perms) = auth.user_perms.get(&user_id) else {
+    let Some(user_id) = auth.check_auth(&request) else {
+        return unauthorized();
+    };
+
+    // first check passed, now we check if we need a second one.
+    if auth.refresh_token.remove(&user_id).is_some() {
+        let perms = {
+            // reload permission table
+            let Some(perms) = auth.user_perms.get(&user_id) else {
 		    // this should exist, if it doesn't, something's fishy. bail.
 		    return unauthorized();
 		};
 
-                perms.value().clone()
-            };
+            perms.value().clone()
+        };
 
-            // issue new token, rotate.
-            let token = auth.issue_auth_cookie(user_id.clone(), perms);
-            if auth.validate_token(&token, &request).is_none() {
-                return unauthorized();
-            }
+        // issue new token, rotate.
+        let token = auth.issue_auth_cookie(user_id.clone(), perms);
 
-            // TODO: validate Github OAuth token of the user.
-            //
-            // At this stage they should be fine by our permission
-            // system, but we should check if the user has been
-            // withdrawn access from the Github Org.
-
-            // set the new token as a cookie
-            jar = jar
-                .remove(Cookie::named(COOKIE))
-                .add(Cookie::new(COOKIE, token));
+        // check if new permissions would grant access
+        if auth.validate_token(&token, &request).is_none() {
+            return unauthorized();
         }
 
-        request.extensions_mut().insert(user_id);
-    } else {
-        return unauthorized();
+        // if this fails, the token has no backing user
+        let Some(creds) = auth.backend_tokens.get(&user_id) else {
+	    return unauthorized();
+	};
+
+        // check if the user revoked access to the token
+        if creds.validate().await.is_err() {
+            auth.user_perms.remove(&user_id);
+            auth.backend_tokens.remove(&user_id);
+
+            return unauthorized();
+        }
+
+        // set the new token as a cookie
+        jar = jar
+            .remove(Cookie::named(COOKIE))
+            .add(Cookie::new(COOKIE, token));
     }
+    request.extensions_mut().insert(user_id);
 
     next.run(request).await;
 
-    // TODOL: I don't actually know if this will discard the inner
+    // TODO: I don't actually know if this will discard the inner
     // transformations of the response
     //
     // Since I didn't find a way to cleanly transform the response of

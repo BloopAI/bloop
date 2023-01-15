@@ -78,7 +78,7 @@ pub async fn start(app: Application) -> Result<()> {
     }
 
     if app.env.use_aaa() {
-        router = router.merge(aaa::router(app.auth.clone()));
+        router = router.merge(aaa::router());
     }
 
     router = router
