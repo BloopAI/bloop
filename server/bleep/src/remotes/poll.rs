@@ -29,9 +29,10 @@ pub(crate) async fn check_credentials(app: Application) {
                 .ensure_fresh_github_installation_token()
                 .await
         } else {
-            let expired = 'expired: {
-                let Some(client) = app.credentials.github_client().await else { break 'expired true };
-                client.current().user().await.is_err()
+            let expired = if let Some(github) = app.credentials.get(Backend::Github) {
+                github.validate().await.is_err()
+            } else {
+                true
             };
 
             if expired && app.credentials.remove(&Backend::Github).is_some() {
