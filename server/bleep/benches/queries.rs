@@ -51,6 +51,7 @@ async fn index(index_dir: &Path) -> Result<()> {
     config.index_only = true;
 
     bleep::Application::initialize(bleep::Environment::Server, config)
+        .await
         .unwrap()
         .run()
         .await
@@ -68,6 +69,7 @@ async fn start_server(index_dir: &Path) -> tokio::task::JoinHandle<anyhow::Resul
 
     let handle = tokio::spawn(
         bleep::Application::initialize(bleep::Environment::Server, config)
+            .await
             .unwrap()
             .run(),
     );

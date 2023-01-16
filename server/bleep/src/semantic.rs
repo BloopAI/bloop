@@ -3,7 +3,6 @@ use std::{collections::HashMap, ops::Not, path::Path, sync::Arc};
 use crate::{query::parser::NLQuery, Configuration};
 
 use anyhow::Result;
-use maplit::hashmap;
 use ndarray::Axis;
 use ort::{
     tensor::{FromArray, InputTensor, OrtOwnedTensor},
@@ -216,17 +215,23 @@ impl Semantic {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
-                        payload: hashmap! {
-                            "lang".into() => lang_str.to_ascii_lowercase().into(),
-                            "repo_name".into() => repo_name.into(),
-                            "repo_ref".into() => repo_ref.into(),
-                            "relative_path".into() => relative_path.into(),
-                            "snippet".into() => chunk.data.into(),
-                            "start_line".into() => chunk.range.start.line.to_string().into(),
-                            "end_line".into() => chunk.range.end.line.to_string().into(),
-                            "start_byte".into() => chunk.range.start.byte.to_string().into(),
-                            "end_byte".into() => chunk.range.end.byte.to_string().into(),
-                        },
+                        payload: HashMap::from([
+                            ("lang".into(), lang_str.to_ascii_lowercase().into()),
+                            ("repo_name".into(), repo_name.into()),
+                            ("repo_ref".into(), repo_ref.into()),
+                            ("relative_path".into(), relative_path.into()),
+                            ("snippet".into(), chunk.data.into()),
+                            (
+                                "start_line".into(),
+                                chunk.range.start.line.to_string().into(),
+                            ),
+                            ("end_line".into(), chunk.range.end.line.to_string().into()),
+                            (
+                                "start_byte".into(),
+                                chunk.range.start.byte.to_string().into(),
+                            ),
+                            ("end_byte".into(), chunk.range.end.byte.to_string().into()),
+                        ]),
                     }),
                     Err(err) => {
                         trace!(?err, "embedding failed");

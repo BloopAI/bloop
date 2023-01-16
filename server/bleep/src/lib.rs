@@ -37,6 +37,11 @@ use std::{
 use tracing::{error, warn};
 use tracing_subscriber::EnvFilter;
 
+#[cfg(target = "windows")]
+use dunce::canonicalize;
+#[cfg(not(target = "windows"))]
+use std::fs::canonicalize;
+
 mod background;
 mod collector;
 mod language;
