@@ -30,8 +30,8 @@ pub struct Semantic {
     qdrant: Arc<QdrantClient>,
     pub embedder_tokenizer: Arc<tokenizers::Tokenizer>,
     embedder_session: Arc<ort::Session>,
-    pub ranker_session: Arc<ort::Session>,
-    pub ranker_tokenizer: Arc<tokenizers::Tokenizer>,
+    ranker_session: Arc<ort::Session>,
+    ranker_tokenizer: Arc<tokenizers::Tokenizer>,
     config: Arc<Configuration>,
 }
 
@@ -149,6 +149,16 @@ impl Semantic {
         let embedding = self.encode(&tokens, self.embedder_session.clone())?;
         let pooled = embedding.mean_axis(Axis(1)).unwrap();
         Ok(pooled.to_owned().as_slice().unwrap().to_vec())
+    }
+
+    pub fn score(&self, query: &str, chunk: &str) -> Result<f32> {
+        let tokens = self.ranker_tokenizer.encode((query, chunk), true).unwrap();
+        let logit = self
+            .encode(&tokens, self.ranker_session.clone())?
+            .remove_axis(Axis(0))[0];
+        // normalise with sigmoid function
+        let score = 1. / (1. + (-logit).exp());
+        Ok(score)
     }
 
     pub async fn search<'a>(

@@ -1,5 +1,4 @@
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
-use ndarray::Axis;
 use reqwest::StatusCode;
 use utoipa::ToSchema;
 
@@ -113,7 +112,10 @@ pub async fn handle(
     }
 
     // score each result
-    let snippet_scores = score(&params.q, &snippets, &app);
+    let snippet_scores = snippets
+        .iter()
+        .filter_map(|snippet| app.semantic.score(&params.q, snippet.text.as_str()).ok())
+        .collect::<Vec<f32>>();
 
     tracing::info!("{:?}", &snippets);
     tracing::info!("{:?}", &snippet_scores);
@@ -199,27 +201,6 @@ pub async fn handle(
             id: params.user_id,
         },
     })))
-}
-
-fn score(query: &str, snippets: &Vec<api::Snippet>, app: &Application) -> Vec<f32> {
-    snippets
-        .into_iter()
-        .map(|snippet| {
-            let tokens = app
-                .semantic
-                .ranker_tokenizer
-                .encode((query, snippet.text.as_str()), true)
-                .unwrap();
-            let logit = app
-                .semantic
-                .encode(&tokens, app.semantic.ranker_session.clone())
-                .unwrap()
-                .remove_axis(Axis(0))[0];
-            // normalise snippet score
-            let score = 1. / (1. + (-logit).exp());
-            score
-        })
-        .collect()
 }
 
 // grow the text of this snippet by `size` and return the new text
