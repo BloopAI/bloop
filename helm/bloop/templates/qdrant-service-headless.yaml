@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "qdrant.fullname" . }}-headless
+  labels:
+    {{- include "qdrant.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    {{- range .Values.service.ports }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      protocol: {{ .protocol | default "TCP" }}
+    {{- end }}
+  selector:
+    {{- include "qdrant.selectorLabels" . | nindent 4 }}
