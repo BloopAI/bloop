@@ -8,13 +8,13 @@ use crate::{remotes::BackendCredential, Configuration};
 
 use super::*;
 use axum::{
-    body::{self, boxed, Body, BoxBody},
+    body::BoxBody,
     extract::{Path, Query},
     headers::{
         authorization::{Authorization, Bearer},
         Header,
     },
-    http::{self, header::AUTHORIZATION, Error, Method, Request, Response, StatusCode},
+    http::{header::AUTHORIZATION, Method, Request, Response, StatusCode},
     middleware::{self, Next},
     response::Redirect,
 };
@@ -24,7 +24,6 @@ use dashmap::{DashMap, DashSet};
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tower_http::auth::{AuthorizeRequest, RequireAuthorizationLayer};
 
 const COOKIE: &str = "auth_token";
 
@@ -433,8 +432,31 @@ async fn authenticate_authorize_reissue<B>(
     mut request: Request<B>,
     next: Next<B>,
 ) -> Response<BoxBody> {
+    let path = request.uri().path();
+    if !(path.starts_with("/health") || path.starts_with("/api-doc")) {
+        match user_auth(jar, &app, &mut request).await {
+            Ok(new_cookies) => jar = new_cookies,
+            Err(unauthorized) => return unauthorized,
+        }
+    }
+
+    next.run(request).await;
+
+    // TODO: I don't actually know if this will discard the inner
+    // transformations of the response
+    //
+    // Since I didn't find a way to cleanly transform the response of
+    // `Next`, I have to assume these are merged by axum.
+    jar.into_response()
+}
+
+async fn user_auth<B>(
+    mut jar: CookieJar,
+    app: &Application,
+    request: &mut Request<B>,
+) -> Result<CookieJar, Response<BoxBody>> {
     let auth = &app.auth;
-    let unauthorized = || StatusCode::UNAUTHORIZED.into_response();
+    let unauthorized = || Err(StatusCode::UNAUTHORIZED.into_response());
 
     let Some(user_id) = auth.check_auth(&request) else {
         return unauthorized();
@@ -480,12 +502,5 @@ async fn authenticate_authorize_reissue<B>(
     }
     request.extensions_mut().insert(user_id);
 
-    next.run(request).await;
-
-    // TODO: I don't actually know if this will discard the inner
-    // transformations of the response
-    //
-    // Since I didn't find a way to cleanly transform the response of
-    // `Next`, I have to assume these are merged by axum.
-    jar.into_response()
+    Ok(jar)
 }
