@@ -1,8 +1,9 @@
 use std::{collections::HashMap, ops::Not, path::Path, sync::Arc};
 
+use crate::{query::parser::NLQuery, Configuration};
+
 use anyhow::Result;
-use maplit::hashmap;
-use ndarray::{s, ArrayBase, Dim, IxDynImpl, OwnedRepr};
+use ndarray::{ArrayBase, Axis, Dim, IxDynImpl, OwnedRepr};
 use ort::{
     tensor::{FromArray, InputTensor, OrtOwnedTensor},
     Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
@@ -10,9 +11,10 @@ use ort::{
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
-        vectors_config, with_payload_selector::SelectorOptions, CollectionOperationResponse,
-        CreateCollection, Distance, PointId, PointStruct, SearchPoints, Value, VectorParams,
-        VectorsConfig, WithPayloadSelector,
+        r#match::MatchValue, vectors_config, with_payload_selector::SelectorOptions,
+        CollectionOperationResponse, CreateCollection, Distance, FieldCondition, Filter, Match,
+        PointId, PointStruct, SearchPoints, Value, VectorParams, VectorsConfig,
+        WithPayloadSelector,
     },
 };
 use rayon::prelude::*;
@@ -26,10 +28,11 @@ const COLLECTION_NAME: &str = "documents";
 #[derive(Clone)]
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
-    pub embed_tokenizer: Arc<tokenizers::Tokenizer>,
-    embed_session: Arc<ort::Session>,
-    pub rank_session: Arc<ort::Session>,
-    pub rank_tokenizer: Arc<tokenizers::Tokenizer>,
+    pub embedder_tokenizer: Arc<tokenizers::Tokenizer>,
+    embedder_session: Arc<ort::Session>,
+    pub ranker_session: Arc<ort::Session>,
+    pub ranker_tokenizer: Arc<tokenizers::Tokenizer>,
+    config: Arc<Configuration>,
 }
 
 fn collection_config() -> CreateCollection {
@@ -46,8 +49,15 @@ fn collection_config() -> CreateCollection {
 }
 
 impl Semantic {
-    pub async fn new(model_dir: &Path, qdrant_url: &str) -> Result<Self> {
-        let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url))).await?;
+    pub async fn new(
+        model_dir: &Path,
+        qdrant_url: &str,
+        config: Arc<Configuration>,
+    ) -> Result<Self> {
+        dbg!(&model_dir);
+        let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url)))
+            .await
+            .unwrap();
 
         if qdrant.has_collection(COLLECTION_NAME).await?.not() {
             let CollectionOperationResponse { result, time } =
@@ -65,7 +75,7 @@ impl Semantic {
 
         let environment = Arc::new(
             Environment::builder()
-                .with_name("CodeGen")
+                .with_name("Encode")
                 .with_log_level(LoggingLevel::Warning)
                 .with_execution_providers([ExecutionProvider::cpu()])
                 .build()?,
@@ -73,26 +83,27 @@ impl Semantic {
 
         Ok(Self {
             qdrant: qdrant.into(),
-            embed_tokenizer: tokenizers::Tokenizer::from_file(
+            embedder_tokenizer: tokenizers::Tokenizer::from_file(
                 model_dir.join("embedder/tokenizer.json"),
             )
             .unwrap()
             .into(),
-            embed_session: SessionBuilder::new(&environment)?
-                .with_optimization_level(GraphOptimizationLevel::Level3)?
-                .with_intra_threads(1)?
-                .with_model_from_file(model_dir.join("embedder/model.onnx"))?
-                .into(),
-            rank_session: SessionBuilder::new(&environment)?
-                .with_optimization_level(GraphOptimizationLevel::Level3)?
-                .with_intra_threads(1)?
-                .with_model_from_file(model_dir.join("ranker/model.onnx"))?
-                .into(),
-            rank_tokenizer: tokenizers::Tokenizer::from_file(
+            ranker_tokenizer: tokenizers::Tokenizer::from_file(
                 model_dir.join("ranker/tokenizer.json"),
             )
             .unwrap()
             .into(),
+            embedder_session: SessionBuilder::new(&environment)?
+                .with_optimization_level(GraphOptimizationLevel::Level3)?
+                .with_intra_threads(1)?
+                .with_model_from_file(model_dir.join("embedder/model.onnx"))?
+                .into(),
+            ranker_session: SessionBuilder::new(&environment)?
+                .with_optimization_level(GraphOptimizationLevel::Level3)?
+                .with_intra_threads(1)?
+                .with_model_from_file(model_dir.join("ranker/model.onnx"))?
+                .into(),
+            config,
         })
     }
 
@@ -126,27 +137,65 @@ impl Semantic {
             InputTensor::from_array(token_type_ids_array.into_dyn()),
         ])?;
 
-        let tensor: OrtOwnedTensor<f32, _> = outputs[0].try_extract()?;
-        let array = tensor.view();
-        Ok(array.to_owned())
+        let output_tensor: OrtOwnedTensor<f32, _> = outputs[0].try_extract().unwrap();
+        Ok(output_tensor.view().to_owned())
     }
 
-    pub fn embed(&self, chunk: &str) -> Result<Vec<f32>> {
-        let tokens = self.embed_tokenizer.encode(chunk, true).unwrap();
-        let logits = self.encode(&tokens, self.embed_session.clone())?;
-        let pooled = logits.slice(s![.., 0, ..]);
+    pub fn embed(&self, chunk: &str, prefix: &str) -> Result<Vec<f32>> {
+        let mut sequence = prefix.to_owned();
+        sequence.push_str(chunk);
+
+        let tokens = self.embedder_tokenizer.encode(sequence, true).unwrap();
+        let embedding = self.encode(&tokens, self.embedder_session.clone())?;
+        let pooled = embedding.mean_axis(Axis(1)).unwrap();
         Ok(pooled.to_owned().as_slice().unwrap().to_vec())
     }
 
-    pub async fn search(&self, query: &str, limit: u64) -> Result<Vec<HashMap<String, Value>>> {
+    pub async fn search<'a>(
+        &self,
+        nl_query: &NLQuery<'a>,
+        limit: u64,
+    ) -> Result<Vec<HashMap<String, Value>>> {
+        let Some(query) = nl_query.target() else {
+            anyhow::bail!("no search target for query");
+        };
+
+        let make_kv_filter = |key, value| {
+            FieldCondition {
+                key,
+                r#match: Some(Match {
+                    match_value: MatchValue::Text(value).into(),
+                }),
+                ..Default::default()
+            }
+            .into()
+        };
+
+        let repo_filter = nl_query
+            .repo()
+            .map(|r| make_kv_filter("repo_name".to_string(), r.to_string()));
+
+        let lang_filter = nl_query
+            .lang()
+            .map(|l| make_kv_filter("lang".to_string(), l.to_string()));
+
+        let filters = [repo_filter, lang_filter]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+
         let response = self
             .qdrant
             .search_points(&SearchPoints {
                 collection_name: COLLECTION_NAME.to_string(),
                 limit,
-                vector: self.embed(query)?,
+                vector: self.embed(query, "query: ")?,
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(SelectorOptions::Enable(true)),
+                }),
+                filter: Some(Filter {
+                    must: filters,
+                    ..Default::default()
                 }),
                 ..Default::default()
             })
@@ -155,38 +204,53 @@ impl Semantic {
         Ok(response.result.into_iter().map(|pt| pt.payload).collect())
     }
 
-    #[tracing::instrument(skip(self, repo_name, relative_path, buffer))]
+    #[tracing::instrument(skip(self, repo_ref, relative_path, buffer))]
     pub async fn insert_points_for_buffer(
         &self,
         repo_name: &str,
+        repo_ref: &str,
         relative_path: &str,
         buffer: &str,
         lang_str: &str,
     ) {
-        let chunks = chunk::trivial(buffer, 15); // line-wise chunking, 15 lines per chunk
-
+        let chunks = chunk::by_tokens(
+            repo_name,
+            relative_path,
+            buffer,
+            &self.embedder_tokenizer,
+            self.config.embedding_input_size,
+            15,
+            self.config
+                .overlap
+                .unwrap_or(chunk::OverlapStrategy::Partial(0.5)),
+        );
+        let repo_plus_file = repo_name.to_owned() + "\t" + relative_path + "\n";
         debug!(chunk_count = chunks.len(), "found chunks");
         let datapoints = chunks
             .par_iter()
             .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
             .filter_map(|chunk| {
-                debug!(
-                    len = chunk.len(),
-                    big_chunk = chunk.len() > 800,
-                    "new chunk",
-                );
-
-                match self.embed(chunk.data) {
+                match self.embed(&(repo_plus_file.clone() + chunk.data), "passage: ") {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
-                        payload: hashmap! {
-                            "lang".into() => lang_str.to_ascii_lowercase().into(),
-                            "repo_name".into() => repo_name.into(),
-                            "relative_path".into() => relative_path.into(),
-                            "snippet".into() => chunk.data.into(),
-                            "start_line".into() => chunk.range.start.line.to_string().into(),
-                        },
+                        payload: HashMap::from([
+                            ("lang".into(), lang_str.to_ascii_lowercase().into()),
+                            ("repo_name".into(), repo_name.into()),
+                            ("repo_ref".into(), repo_ref.into()),
+                            ("relative_path".into(), relative_path.into()),
+                            ("snippet".into(), chunk.data.into()),
+                            (
+                                "start_line".into(),
+                                chunk.range.start.line.to_string().into(),
+                            ),
+                            ("end_line".into(), chunk.range.end.line.to_string().into()),
+                            (
+                                "start_byte".into(),
+                                chunk.range.start.byte.to_string().into(),
+                            ),
+                            ("end_byte".into(), chunk.range.end.byte.to_string().into()),
+                        ]),
                     }),
                     Err(err) => {
                         trace!(?err, "embedding failed");

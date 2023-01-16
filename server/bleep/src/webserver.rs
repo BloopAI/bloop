@@ -9,6 +9,7 @@ use tracing::info;
 use utoipa::OpenApi;
 use utoipa::ToSchema;
 
+mod answer;
 mod autocomplete;
 mod file;
 mod github;
@@ -18,7 +19,6 @@ mod intelligence;
 mod query;
 mod repos;
 mod semantic;
-mod answer;
 
 #[allow(unused)]
 pub(in crate::webserver) mod prelude {
@@ -100,6 +100,15 @@ pub(in crate::webserver) fn error<'a>(
     Json(Response::from(EndpointError {
         kind,
         message: message.into(),
+    }))
+}
+
+pub(in crate::webserver) fn internal_error<'a, S: std::fmt::Display>(
+    message: S,
+) -> Json<Response<'a>> {
+    Json(Response::from(EndpointError {
+        kind: ErrorKind::Internal,
+        message: message.to_string().into(),
     }))
 }
 

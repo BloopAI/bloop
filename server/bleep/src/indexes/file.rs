@@ -176,7 +176,7 @@ impl Indexable for File {
             .open_walker()
             .filter_map(|entry| match entry {
                 Ok(de) => match de.file_type() {
-                    Some(ft) if ft.is_file() => Some(dunce::canonicalize(de.into_path()).unwrap()),
+                    Some(ft) if ft.is_file() => Some(crate::canonicalize(de.into_path()).unwrap()),
                     _ => None,
                 },
                 Err(err) => {
@@ -474,7 +474,8 @@ impl File {
 
         tokio::task::block_in_place(|| {
             Handle::current().block_on(self.semantic.insert_points_for_buffer(
-                &repo_name,
+                repo_name,
+                &repo_ref,
                 &relative_path.to_string_lossy(),
                 &buffer,
                 lang_str,

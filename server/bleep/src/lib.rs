@@ -15,10 +15,11 @@ use criterion as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
-use semantic::Semantic;
+use semantic::{chunk::OverlapStrategy, Semantic};
 
 use crate::{
     indexes::Indexes,
+    segment::Segment,
     state::{Credentials, RepositoryPool, StateSource},
 };
 use anyhow::{anyhow, Result};
@@ -36,10 +37,16 @@ use std::{
 use tracing::{error, warn};
 use tracing_subscriber::EnvFilter;
 
+#[cfg(target = "windows")]
+use dunce::canonicalize;
+#[cfg(not(target = "windows"))]
+use std::fs::canonicalize;
+
 mod background;
 mod collector;
 mod language;
 mod remotes;
+mod segment;
 mod webserver;
 
 pub mod ctags;
@@ -96,6 +103,10 @@ fn default_qdrant() -> String {
 
 fn default_answer_api_base() -> String {
     String::from("https://kw50d42q6a.execute-api.eu-west-1.amazonaws.com/default")
+}
+
+fn default_embedding_input_size() -> usize {
+    256
 }
 
 #[derive(Debug)]
@@ -191,10 +202,23 @@ pub struct Configuration {
     /// Github Client ID for OAuth connection to private repos
     pub github_client_id: Option<SecretString>,
 
+    #[clap(long)]
+    #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
+    /// segment write key
+    pub segment_key: Option<SecretString>,
+
     #[clap(long, default_value_t = default_answer_api_base())]
     #[serde(default = "default_answer_api_base")]
     /// Answer API `base` string
     pub answer_api_base: String,
+
+    #[clap(long, default_value_t = default_embedding_input_size())]
+    #[serde(default = "default_embedding_input_size")]
+    /// the size of tokens to embed at once (should be the model's input size)
+    pub embedding_input_size: usize,
+
+    #[clap(long)]
+    pub overlap: Option<OverlapStrategy>,
 }
 
 impl Configuration {
@@ -220,6 +244,7 @@ pub struct Application {
     pub(crate) semantic: Semantic,
     indexes: Arc<Indexes>,
     credentials: Credentials,
+    pub segment: Arc<Option<Segment>>,
 }
 
 impl Application {
@@ -248,7 +273,9 @@ impl Application {
         }
 
         let config = Arc::new(config);
-        let semantic = Semantic::new(&config.model_dir, &config.qdrant_url).await?;
+        let semantic =
+            Semantic::new(&config.model_dir, &config.qdrant_url, Arc::clone(&config)).await?;
+        let segment = Arc::new(config.segment_key.clone().map(Segment::new));
 
         Ok(Self {
             indexes: Indexes::new(config.clone(), semantic.clone())?.into(),
@@ -257,6 +284,7 @@ impl Application {
             background: BackgroundExecutor::start(config.clone()),
             semantic,
             config,
+            segment,
         })
     }
 

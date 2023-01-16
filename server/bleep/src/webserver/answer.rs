@@ -1,8 +1,9 @@
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
 use ndarray::Axis;
+use reqwest::StatusCode;
 use utoipa::ToSchema;
 
-use crate::Application;
+use crate::{indexes::reader::ContentDocument, query::parser, state::RepoRef, Application};
 
 use super::ErrorKind;
 
@@ -19,9 +20,13 @@ mod api {
     pub struct Snippet {
         pub lang: String,
         pub repo_name: String,
+        pub repo_ref: String,
         pub relative_path: String,
         pub text: String,
         pub start_line: usize,
+        pub end_line: usize,
+        pub start_byte: usize,
+        pub end_byte: usize,
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -60,9 +65,14 @@ pub async fn handle(
     Query(params): Query<Params>,
     Extension(app): Extension<Application>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
-    let snippets = app
+    let query =
+        parser::parse_nl(&params.q).map_err(|e| super::error(ErrorKind::User, e.to_string()))?;
+    let target = query
+        .target()
+        .ok_or_else(|| super::error(ErrorKind::User, "missing search target".to_owned()))?;
+    let mut snippets = app
         .semantic
-        .search(&params.q, params.limit)
+        .search(&query, params.limit)
         .await
         .map_err(|e| super::error(ErrorKind::Internal, e.to_string()))?
         .into_iter()
@@ -79,95 +89,233 @@ pub async fn handle(
             api::Snippet {
                 lang: value_to_string(s.remove("lang").unwrap()),
                 repo_name: value_to_string(s.remove("repo_name").unwrap()),
+                repo_ref: value_to_string(s.remove("repo_ref").unwrap()),
                 relative_path: value_to_string(s.remove("relative_path").unwrap()),
                 text: value_to_string(s.remove("snippet").unwrap()),
                 start_line: value_to_string(s.remove("start_line").unwrap())
+                    .parse::<usize>()
+                    .unwrap(),
+                end_line: value_to_string(s.remove("end_line").unwrap())
+                    .parse::<usize>()
+                    .unwrap(),
+                start_byte: value_to_string(s.remove("start_byte").unwrap())
+                    .parse::<usize>()
+                    .unwrap(),
+                end_byte: value_to_string(s.remove("end_byte").unwrap())
                     .parse::<usize>()
                     .unwrap(),
             }
         })
         .collect::<Vec<_>>();
 
-    if snippets.len() < 1 {
+    if snippets.is_empty() {
         super::error(ErrorKind::Internal, "semantic search returned no snippets");
     }
 
-    // rerank results and get the top 5
-    let mut snippets = rank(&params.q, snippets, &app, 5);
+    // score each result
+    let snippet_scores = score(&params.q, &snippets, &app);
 
-    let res = reqwest::Client::new()
-        .post(format!("{}/q", app.config.answer_api_base))
-        .json(&api::Request {
-            query: params.q,
-            user_id: params.user_id,
-            snippets: snippets.clone(),
-        })
-        .send()
+    tracing::info!("{:?}", &snippets);
+    tracing::info!("{:?}", &snippet_scores);
+
+    let relevant_snippet_index = snippet_scores
+        .iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| a.total_cmp(b))
+        .map(|(index, _)| index)
+        .unwrap();
+
+    tracing::info!("{:?}", &relevant_snippet_index);
+
+    let answer_api_client =
+        AnswerAPIClient::new(&format!("{}/q", app.config.answer_api_base), target);
+
+    let relevant_snippet = &snippets[relevant_snippet_index];
+    tracing::info!("{:?}", &relevant_snippet);
+
+    // grow the snippet by 60 lines above and below, we have sufficient space
+    // to grow this snippet by 10 times its original size (15 to 150)
+    let processed_snippet = {
+        let repo_ref = &relevant_snippet
+            .repo_ref
+            .parse::<RepoRef>()
+            .map_err(super::internal_error)?;
+        let doc = app
+            .indexes
+            .file
+            .by_path(repo_ref, &relevant_snippet.relative_path)
+            .await
+            .map_err(super::internal_error)?;
+
+        let grown_text = grow(&doc, relevant_snippet, 60);
+        api::Snippet {
+            lang: relevant_snippet.lang.clone(),
+            repo_name: relevant_snippet.repo_name.clone(),
+            repo_ref: relevant_snippet.repo_ref.clone(),
+            relative_path: relevant_snippet.relative_path.clone(),
+            text: grown_text,
+            start_line: relevant_snippet.start_line,
+            end_line: relevant_snippet.end_line,
+            start_byte: relevant_snippet.start_byte,
+            end_byte: relevant_snippet.end_byte,
+        }
+    };
+
+    let snippet_explaination = answer_api_client
+        .explain_snippet(&processed_snippet)
         .await
-        .map_err(|e| {
-            super::error(
-                ErrorKind::Internal,
-                format!("failed to make request to answer API: {}", e),
+        .map_err(|e| match e.status() {
+            Some(StatusCode::SERVICE_UNAVAILABLE) => super::error(
+                ErrorKind::UpstreamService,
+                "service is currently overloaded",
+            ),
+            _ => super::internal_error(e),
+        })?
+        .text()
+        .await
+        .map_err(super::internal_error)?;
+
+    // reorder snippets
+    snippets.swap(relevant_snippet_index, 0);
+
+    if let Some(ref segment) = *app.segment {
+        segment
+            .track_query(
+                &params.user_id,
+                &params.q,
+                &snippets[0].text,
+                &snippet_explaination,
             )
-        })?;
-
-    let selection: api::Response = res.json().await.map_err(|e| {
-        super::error(
-            ErrorKind::Internal,
-            format!("answer API was not able to create a valid result: {}", e),
-        )
-    })?;
-
-    let selected_snippet = snippets.remove(selection.data.index as usize);
-    snippets.insert(0, selected_snippet);
+            .await;
+    }
 
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
         snippets,
-        selection,
+        selection: api::Response {
+            data: api::DecodedResponse {
+                index: 0u32, // the relevant snippet is always placed at 0
+                answer: snippet_explaination,
+            },
+            id: params.user_id,
+        },
     })))
 }
 
-fn rank(
-    query: &str,
-    snippets: Vec<api::Snippet>,
-    app: &Application,
-    max_results: usize,
-) -> Vec<api::Snippet> {
-    // number of ranked results
-    let k = std::cmp::min(max_results, snippets.len());
-
-    let mut scores: Vec<(usize, (api::Snippet, f32))> = snippets
+fn score(query: &str, snippets: &Vec<api::Snippet>, app: &Application) -> Vec<f32> {
+    snippets
         .into_iter()
         .map(|snippet| {
             let tokens = app
                 .semantic
-                .rank_tokenizer
+                .ranker_tokenizer
                 .encode((query, snippet.text.as_str()), true)
                 .unwrap();
             let logit = app
                 .semantic
-                .encode(&tokens, app.semantic.rank_session.clone())
+                .encode(&tokens, app.semantic.ranker_session.clone())
                 .unwrap()
                 .remove_axis(Axis(0))[0];
             // normalise snippet score
-            let score = 1. / (1. + (logit.exp()));
-            (snippet, score)
-        })
-        .enumerate()
-        .collect();
-
-    // sort snippets by reranker score
-    scores.sort_by(|a, b| {
-        let (_, (_, score_a)) = a;
-        let (_, (_, score_b)) = b;
-        score_a.partial_cmp(score_b).unwrap()
-    });
-
-    scores[..k]
-        .into_iter()
-        .map(|s| {
-            let (_, (snippet, _)) = s;
-            snippet.clone()
+            let score = 1. / (1. + (-logit).exp());
+            score
         })
         .collect()
+}
+
+// grow the text of this snippet by `size` and return the new text
+fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
+    let content = &doc.content;
+
+    // skip upwards `size` number of lines
+    let new_start_byte = content[..snippet.start_byte]
+        .rmatch_indices('\n')
+        .map(|(idx, _)| idx)
+        .nth(size)
+        .unwrap_or(0);
+
+    // skip downwards `size` number of lines
+    let new_end_byte = content[snippet.end_byte..]
+        .match_indices('\n')
+        .map(|(idx, _)| idx)
+        .nth(size)
+        .map(|s| s.saturating_add(snippet.end_byte)) // the index is off by `snippet.end_byte`
+        .unwrap_or(content.len());
+
+    content[new_start_byte..new_end_byte].to_owned()
+}
+
+#[derive(serde::Serialize)]
+struct OpenAIRequest {
+    prompt: String,
+    max_tokens: u32,
+}
+
+struct AnswerAPIClient {
+    client: reqwest::Client,
+    host: String,
+    query: String,
+}
+
+impl AnswerAPIClient {
+    fn new(host: &str, query: &str) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            host: host.to_owned(),
+            query: query.to_owned(),
+        }
+    }
+
+    async fn send(
+        &self,
+        prompt: String,
+        max_tokens: u32,
+    ) -> Result<reqwest::Response, reqwest::Error> {
+        self.client
+            .post(self.host.as_str())
+            .json(&OpenAIRequest {
+                prompt: prompt.clone(),
+                max_tokens,
+            })
+            .send()
+            .await
+    }
+}
+
+impl AnswerAPIClient {
+    async fn explain_snippet(
+        &self,
+        snippet: &api::Snippet,
+    ) -> Result<reqwest::Response, reqwest::Error> {
+        let prompt = format!(
+            "
+            File: {}
+
+            {}
+
+            #####
+
+            Above is a code snippet.\
+            Answer the user's question with a detailed response.\
+            Separate each function out and explain why it is relevant.\
+            Format your response in GitHub markdown with code blocks annotated\
+            with programming language. Include the path of the file.
+
+            Q:{}
+            A:",
+            snippet.relative_path, snippet.text, self.query
+        );
+        let tokens_used = token_count_estimate(&prompt);
+        let max_tokens = 1500_u32.saturating_sub(tokens_used).clamp(100, 2500);
+        self.send(prompt, max_tokens).await
+    }
+}
+
+// openai claims 4 characters = 1 token for english,
+// but code typically clobbers the token count,
+// we get no more than 3 characters per token.
+//
+// TODO: this is a heuristic, a realistic tokenizer
+// can tune this better, rust_tokenizers::Gpt2Tokenizer?
+fn token_count_estimate(input: &str) -> u32 {
+    input.len().saturating_div(3) as u32
 }

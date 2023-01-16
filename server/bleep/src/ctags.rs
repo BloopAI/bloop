@@ -51,7 +51,7 @@ fn find_files(path: &Path) -> Vec<String> {
         })
         .filter(|de| matches!(de.file_type(), Some(ft) if ft.is_file()))
         .map(|de| {
-            dunce::canonicalize(de.path())
+            crate::canonicalize(de.path())
                 .unwrap()
                 .to_string_lossy()
                 .to_string()
@@ -222,7 +222,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_ctags() {
-        let path = dunce::canonicalize(Path::new(".")).unwrap();
+        let path = crate::canonicalize(Path::new(".")).unwrap();
         let symbols = get_symbols(&path, &[]).await;
         assert!(!symbols.is_empty());
     }
@@ -231,7 +231,7 @@ mod tests {
     async fn exclude_js_files() {
         let exclude_langs = &["javascript", "typescript", "python", "go", "c", "rust"];
         let dir = TempDir::new("parse-ctags").unwrap();
-        let dir_path = dunce::canonicalize(dir.path()).unwrap();
+        let dir_path = crate::canonicalize(dir.path()).unwrap();
 
         // create js file with 2 symbols
         let js_file_path = dir_path.join("foo.js");
