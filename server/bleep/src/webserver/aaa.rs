@@ -367,7 +367,15 @@ pub(super) async fn authorized(
     };
     app.auth.backend_tokens.insert(userid.clone(), oauth);
 
-    let perms = UserPermissions::default();
+    // we need to check if this is a re-auth, or they've been
+    // pre-provisioned through a `/private/hello` call.
+    let perms = app
+        .auth
+        .user_perms
+        .get(&userid)
+        .map(|elem| elem.value().clone())
+        .unwrap_or_default();
+
     let token = app.auth.issue_auth_cookie(userid, perms);
 
     (jar.add(Cookie::new(COOKIE, token)), Redirect::to("/"))
