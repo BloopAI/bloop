@@ -1,9 +1,12 @@
 replicaCount: 1
 
+bloop:
+  githubOrg: ""
+
 image:
   repository: 466687392010.dkr.ecr.eu-west-1.amazonaws.com/bloop
   pullPolicy: Always
-  tag: vol-poc
+  tag: build-e096effb2e32ddd2994318a5d8f7699f90f62e3d
 
 imagePullSecrets:
   - name: eu-west-1-ecr-registry
@@ -126,7 +129,7 @@ qdrant:
   persistence:
     accessModes: [ "ReadWriteOnce" ]
     size: 1Gi
-    #storageClassName: local-path
+    storageClassName: gp3
 
   #only supported for single node qdrant clusters.
   snapshotRestoration:
