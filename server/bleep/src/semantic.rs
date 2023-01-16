@@ -28,6 +28,7 @@ const COLLECTION_NAME: &str = "documents";
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
     tokenizer: Arc<tokenizers::Tokenizer>,
+    gpt2_tokenizer: Arc<tokenizers::Tokenizer>,
     session: Arc<ort::Session>,
     config: Arc<Configuration>,
 }
@@ -83,6 +84,9 @@ impl Semantic {
             qdrant: qdrant.into(),
             tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("tokenizer.json"))
                 .unwrap()
+                .into(),
+            gpt2_tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("gpt-2").join("tokenizer.json"))
+                .expect("unable to open gpt2-tokenizer, try `git lfs pull` and pass `--model-dir bloop/model` at the CLI")
                 .into(),
             session: SessionBuilder::new(&environment)?
                 .with_optimization_level(GraphOptimizationLevel::Level3)?
@@ -248,5 +252,12 @@ impl Semantic {
                 debug!("successful upsert");
             }
         }
+    }
+
+    pub fn gpt2_token_count(&self, input: &str) -> usize {
+        self.gpt2_tokenizer
+            .encode(input, false)
+            .map(|code| code.len())
+            .unwrap_or(0)
     }
 }

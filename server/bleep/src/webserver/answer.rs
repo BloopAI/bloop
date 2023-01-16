@@ -1,8 +1,12 @@
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
 use reqwest::StatusCode;
+use tracing::{error, info};
 use utoipa::ToSchema;
 
-use crate::{indexes::reader::ContentDocument, query::parser, state::RepoRef, Application};
+use crate::{
+    indexes::reader::ContentDocument, query::parser, semantic::Semantic, state::RepoRef,
+    Application,
+};
 
 use super::ErrorKind;
 
@@ -111,8 +115,10 @@ pub async fn handle(
         super::error(ErrorKind::Internal, "semantic search returned no snippets");
     }
 
-    let answer_api_client =
-        AnswerAPIClient::new(&format!("{}/q", app.config.answer_api_base), target);
+    let answer_api_host = format!("{}/q", app.config.answer_api_base);
+    let answer_api_client = app
+        .semantic
+        .build_answer_api_client(answer_api_host.as_str(), target);
 
     let relevant_snippet_index = answer_api_client
         .select_snippet(&snippets)
@@ -146,7 +152,17 @@ pub async fn handle(
             .await
             .map_err(super::internal_error)?;
 
-        let grown_text = grow(&doc, relevant_snippet, 60);
+        let mut grow_size = 40;
+        let grown_text = loop {
+            let grown_text = grow(&doc, relevant_snippet, grow_size);
+            let token_count = app.semantic.gpt2_token_count(&grown_text);
+            info!(%grow_size, %token_count, "growing ...");
+            if token_count > 2000 || grow_size > 100 {
+                break grown_text;
+            } else {
+                grow_size += 10;
+            }
+        };
         api::Snippet {
             lang: relevant_snippet.lang.clone(),
             repo_name: relevant_snippet.repo_name.clone(),
@@ -228,21 +244,25 @@ struct OpenAIRequest {
     max_tokens: u32,
 }
 
-struct AnswerAPIClient {
+struct AnswerAPIClient<'s> {
     client: reqwest::Client,
     host: String,
     query: String,
+    semantic: &'s Semantic,
 }
 
-impl AnswerAPIClient {
-    fn new(host: &str, query: &str) -> Self {
-        Self {
+impl Semantic {
+    fn build_answer_api_client<'s>(&'s self, host: &str, query: &str) -> AnswerAPIClient<'s> {
+        AnswerAPIClient {
             client: reqwest::Client::new(),
             host: host.to_owned(),
             query: query.to_owned(),
+            semantic: self,
         }
     }
+}
 
+impl<'s> AnswerAPIClient<'s> {
     async fn send(
         &self,
         prompt: String,
@@ -260,7 +280,7 @@ impl AnswerAPIClient {
 }
 
 const DELIMITER: &str = "######";
-impl AnswerAPIClient {
+impl<'a> AnswerAPIClient<'a> {
     async fn select_snippet(
         &self,
         snippets: &[api::Snippet],
@@ -317,18 +337,18 @@ impl AnswerAPIClient {
             A:",
             snippet.relative_path, snippet.text, self.query
         );
-        let tokens_used = token_count_estimate(&prompt);
-        let max_tokens = 1500_u32.saturating_sub(tokens_used).clamp(100, 2500);
-        self.send(prompt, max_tokens).await
-    }
-}
+        let tokens_used = self.semantic.gpt2_token_count(&prompt);
+        info!(%tokens_used, "input prompt token count");
+        let max_tokens = 4096usize.saturating_sub(tokens_used);
+        if max_tokens == 0 {
+            // our prompt has overshot the token count, log an error for now
+            // TODO: this should propagte to sentry
+            error!(%tokens_used, "prompt overshot token limit");
+        }
 
-// openai claims 4 characters = 1 token for english,
-// but code typically clobbers the token count,
-// we get no more than 3 characters per token.
-//
-// TODO: this is a heuristic, a realistic tokenizer
-// can tune this better, rust_tokenizers::Gpt2Tokenizer?
-fn token_count_estimate(input: &str) -> u32 {
-    input.len().saturating_div(3) as u32
+        // do not let the completion cross 2500 tokens
+        let max_tokens = max_tokens.clamp(1, 500);
+        info!(%max_tokens, "clamping max tokens");
+        self.send(prompt, max_tokens as u32).await
+    }
 }
