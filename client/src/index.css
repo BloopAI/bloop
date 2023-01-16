@@ -362,3 +362,7 @@ h5, .h5 {
 .readme a {
   color: #5D75FF;
 }
+
+.search-highlight {
+  background-color: yellow;
+}
