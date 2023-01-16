@@ -4,14 +4,14 @@ use tracing::{error, info};
 use utoipa::ToSchema;
 
 use crate::{
-    indexes::reader::ContentDocument, query::parser, semantic::Semantic, state::RepoRef,
-    Application,
+    indexes::reader::ContentDocument, query::parser, segment::QueryEvent, semantic::Semantic,
+    state::RepoRef, Application,
 };
 
 use super::ErrorKind;
 
 /// Mirrored from `answer_api/lib.rs` to avoid private dependency.
-mod api {
+pub mod api {
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Request {
         pub query: String,
@@ -120,8 +120,9 @@ pub async fn handle(
         .semantic
         .build_answer_api_client(answer_api_host.as_str(), target);
 
+    let select_prompt = answer_api_client.build_select_prompt(&snippets);
     let relevant_snippet_index = answer_api_client
-        .select_snippet(&snippets)
+        .select_snippet(&select_prompt)
         .await
         .map_err(|e| match e.status() {
             Some(StatusCode::SERVICE_UNAVAILABLE) => super::error(
@@ -176,8 +177,9 @@ pub async fn handle(
         }
     };
 
-    let snippet_explaination = answer_api_client
-        .explain_snippet(&processed_snippet)
+    let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
+    let snippet_explanation = answer_api_client
+        .explain_snippet(&explain_prompt)
         .await
         .map_err(|e| match e.status() {
             Some(StatusCode::SERVICE_UNAVAILABLE) => super::error(
@@ -195,12 +197,14 @@ pub async fn handle(
 
     if let Some(ref segment) = *app.segment {
         segment
-            .track_query(
-                &params.user_id,
-                &params.q,
-                &snippets[0].text,
-                &snippet_explaination,
-            )
+            .track_query(QueryEvent {
+                user_id: params.user_id.clone(),
+                query: params.q.clone(),
+                select_prompt,
+                relevant_snippet_index,
+                explain_prompt,
+                explanation: snippet_explanation.clone(),
+            })
             .await;
     }
 
@@ -209,7 +213,7 @@ pub async fn handle(
         selection: api::Response {
             data: api::DecodedResponse {
                 index: 0u32, // the relevant snippet is always placed at 0
-                answer: snippet_explaination,
+                answer: snippet_explanation,
             },
             id: params.user_id,
         },
@@ -281,10 +285,7 @@ impl<'s> AnswerAPIClient<'s> {
 
 const DELIMITER: &str = "######";
 impl<'a> AnswerAPIClient<'a> {
-    async fn select_snippet(
-        &self,
-        snippets: &[api::Snippet],
-    ) -> Result<reqwest::Response, reqwest::Error> {
+    fn build_select_prompt(&self, snippets: &[api::Snippet]) -> String {
         let mut prompt = snippets
             .iter()
             .enumerate()
@@ -312,13 +313,10 @@ impl<'a> AnswerAPIClient<'a> {
             snippets.len(),
             self.query,
         );
-        self.send(prompt, 1).await
+        prompt
     }
 
-    async fn explain_snippet(
-        &self,
-        snippet: &api::Snippet,
-    ) -> Result<reqwest::Response, reqwest::Error> {
+    fn build_explain_prompt(&self, snippet: &api::Snippet) -> String {
         let prompt = format!(
             "
             File: {}
@@ -337,7 +335,15 @@ impl<'a> AnswerAPIClient<'a> {
             A:",
             snippet.relative_path, snippet.text, self.query
         );
-        let tokens_used = self.semantic.gpt2_token_count(&prompt);
+        prompt
+    }
+
+    async fn select_snippet(&self, prompt: &str) -> Result<reqwest::Response, reqwest::Error> {
+        self.send(prompt.to_string(), 1).await
+    }
+
+    async fn explain_snippet(&self, prompt: &str) -> Result<reqwest::Response, reqwest::Error> {
+        let tokens_used = self.semantic.gpt2_token_count(prompt);
         info!(%tokens_used, "input prompt token count");
         let max_tokens = 4096usize.saturating_sub(tokens_used);
         if max_tokens == 0 {
@@ -349,6 +355,6 @@ impl<'a> AnswerAPIClient<'a> {
         // do not let the completion cross 2500 tokens
         let max_tokens = max_tokens.clamp(1, 500);
         info!(%max_tokens, "clamping max tokens");
-        self.send(prompt, max_tokens as u32).await
+        self.send(prompt.to_string(), max_tokens as u32).await
     }
 }
