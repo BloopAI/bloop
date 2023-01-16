@@ -42,6 +42,9 @@ spec:
                 fieldPath: metadata.namespace
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+          - name: {{ include "bloop.fullname" . }}-storage
+            mountPath: /data
         - name: {{ .Chart.Name }}-qdrant
           image: "{{ .Values.qdrant.image.repository }}:{{ .Values.qdrant.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.qdrant.image.pullPolicy }}
@@ -94,7 +97,7 @@ spec:
           resources:
             {{- toYaml .Values.qdrant.resources | nindent 12 }}
           volumeMounts:
-          - name: qdrant-storage
+          - name: {{ include "qdrant.fullname" . }}-storage
             mountPath: /qdrant/storage
           - name: qdrant-config
             mountPath: /qdrant/config/initialize.sh
@@ -124,23 +127,14 @@ spec:
           configMap:
             name: {{ include "qdrant.fullname" . }}
             defaultMode: 0755
+        - name: {{ include "bloop.fullname" . }}-storage
+          persistentVolumeClaim:
+            claimName: {{ include "bloop.fullname" . }}-storage
+        - name: {{ include "qdrant.fullname" . }}-storage
+          persistentVolumeClaim:
+            claimName: {{ include "qdrant.fullname" . }}-storage
         {{- if .Values.qdrant.snapshotRestoration.enabled }}
         - name: qdrant-snapshots
           persistentVolumeClaim:
             claimName: {{ .Values.qdrant.snapshotRestoration.pvcName }}
         {{- end }}
-
-  volumeClaimTemplates:
-    - metadata:
-        name: qdrant-storage
-        labels:
-          app: {{ template "qdrant.name" . }}
-      spec:
-        storageClassName: {{ .Values.qdrant.persistence.storageClassName }}
-        accessModes:
-        {{- range .Values.qdrant.persistence.accessModes }}
-          - {{ . | quote }}
-        {{- end }}
-        resources:
-          requests:
-            storage: {{ .Values.qdrant.persistence.size | quote }}

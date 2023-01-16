@@ -59,6 +59,10 @@ tolerations: []
 
 affinity: {}
 
+persistence:
+  accessModes: [ "ReadWriteOnce" ]
+  size: 1Gi
+  storageClassName: gp3
 
 qdrant:
   replicaCount: 1
