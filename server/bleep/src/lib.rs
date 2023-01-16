@@ -31,7 +31,7 @@ use clap::Parser;
 use once_cell::sync::OnceCell;
 use relative_path::RelativePath;
 use secrecy::SecretString;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::{
     ops::Not,
     path::{Path, PathBuf},

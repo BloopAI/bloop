@@ -4,7 +4,7 @@ use anyhow::Result;
 use axum::routing::put;
 use axum::{response::IntoResponse, routing::get, Extension, Json, Router};
 use std::{borrow::Cow, net::SocketAddr};
-use tower_http::{auth::RequireAuthorizationLayer, catch_panic::CatchPanicLayer, cors::CorsLayer};
+use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
 use tracing::info;
 use utoipa::OpenApi;
 use utoipa::ToSchema;
