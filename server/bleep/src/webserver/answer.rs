@@ -269,13 +269,13 @@ impl Semantic {
 impl<'s> AnswerAPIClient<'s> {
     async fn send(
         &self,
-        prompt: String,
+        prompt: &str,
         max_tokens: u32,
     ) -> Result<reqwest::Response, reqwest::Error> {
         self.client
             .post(self.host.as_str())
             .json(&OpenAIRequest {
-                prompt: prompt.clone(),
+                prompt: prompt.to_string(),
                 max_tokens,
             })
             .send()
@@ -339,7 +339,7 @@ impl<'a> AnswerAPIClient<'a> {
     }
 
     async fn select_snippet(&self, prompt: &str) -> Result<reqwest::Response, reqwest::Error> {
-        self.send(prompt.to_string(), 1).await
+        self.send(prompt, 1).await
     }
 
     async fn explain_snippet(&self, prompt: &str) -> Result<reqwest::Response, reqwest::Error> {
@@ -355,6 +355,6 @@ impl<'a> AnswerAPIClient<'a> {
         // do not let the completion cross 2500 tokens
         let max_tokens = max_tokens.clamp(1, 500);
         info!(%max_tokens, "clamping max tokens");
-        self.send(prompt.to_string(), max_tokens as u32).await
+        self.send(prompt, max_tokens as u32).await
     }
 }
