@@ -115,7 +115,10 @@ pub async fn handle(
         .collect::<Vec<_>>();
 
     if snippets.is_empty() {
-        super::error(ErrorKind::Internal, "semantic search returned no snippets");
+        return Err(super::error(
+            ErrorKind::Internal,
+            "semantic search returned no snippets",
+        ));
     }
 
     let answer_api_host = format!("{}/q", app.config.answer_api_base);
