@@ -3,7 +3,6 @@ on: push
 
 jobs:
   build_and_push:
-    needs: [install_dependencies]
     uses: BloopAI/workflows/.github/workflows/build-container.yml@enable-lfs
     with:
       repository: bloop
