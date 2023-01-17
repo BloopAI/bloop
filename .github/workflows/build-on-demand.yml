@@ -1,5 +1,5 @@
 name: Build&Push API docker container image with SHA tag
-on: workflow_dispatch
+on: push
 
 jobs:
   install_dependencies:
