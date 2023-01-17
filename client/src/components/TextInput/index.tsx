@@ -27,7 +27,7 @@ type Props = {
   onRegexClick?: () => void;
   validate?: () => void;
   regexEnabled?: boolean;
-  autoFocus: boolean;
+  autoFocus?: boolean;
   inputClassName?: string;
   forceClear?: boolean;
 };
