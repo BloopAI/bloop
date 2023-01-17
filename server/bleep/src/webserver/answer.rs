@@ -68,13 +68,16 @@ pub async fn handle(
     Query(params): Query<Params>,
     Extension(app): Extension<Application>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
+    let semantic = app
+        .semantic
+        .ok_or_else(|| super::error(ErrorKind::Configuration, "Qdrant not configured"))?;
+
     let query =
         parser::parse_nl(&params.q).map_err(|e| super::error(ErrorKind::User, e.to_string()))?;
     let target = query
         .target()
         .ok_or_else(|| super::error(ErrorKind::User, "missing search target".to_owned()))?;
-    let mut snippets = app
-        .semantic
+    let mut snippets = semantic
         .search(&query, params.limit)
         .await
         .map_err(|e| super::error(ErrorKind::Internal, e.to_string()))?
@@ -116,9 +119,7 @@ pub async fn handle(
     }
 
     let answer_api_host = format!("{}/q", app.config.answer_api_base);
-    let answer_api_client = app
-        .semantic
-        .build_answer_api_client(answer_api_host.as_str(), target);
+    let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target);
 
     let select_prompt = answer_api_client.build_select_prompt(&snippets);
     let relevant_snippet_index = answer_api_client
@@ -156,7 +157,7 @@ pub async fn handle(
         let mut grow_size = 40;
         let grown_text = loop {
             let grown_text = grow(&doc, relevant_snippet, grow_size);
-            let token_count = app.semantic.gpt2_token_count(&grown_text);
+            let token_count = semantic.gpt2_token_count(&grown_text);
             info!(%grow_size, %token_count, "growing ...");
             if token_count > 2000 || grow_size > 100 {
                 break grown_text;

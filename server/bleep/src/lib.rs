@@ -20,9 +20,10 @@ use semantic::{chunk::OverlapStrategy, Semantic};
 use crate::{
     indexes::Indexes,
     segment::Segment,
+    semantic::SemanticError,
     state::{Credentials, RepositoryPool, StateSource},
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use background::BackgroundExecutor;
 use clap::Parser;
 use once_cell::sync::OnceCell;
@@ -241,7 +242,7 @@ pub struct Application {
     pub config: Arc<Configuration>,
     pub(crate) repo_pool: RepositoryPool,
     pub(crate) background: BackgroundExecutor,
-    pub(crate) semantic: Semantic,
+    pub(crate) semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
     credentials: Credentials,
     pub segment: Arc<Option<Segment>>,
@@ -274,11 +275,20 @@ impl Application {
 
         let config = Arc::new(config);
         let semantic =
-            Semantic::new(&config.model_dir, &config.qdrant_url, Arc::clone(&config)).await?;
+            match Semantic::new(&config.model_dir, &config.qdrant_url, Arc::clone(&config)).await {
+                Ok(semantic) => Some(semantic),
+                Err(SemanticError::QdrantInitializationError) => {
+                    warn!("Qdrant initialization failed. Starting without semantic search...");
+                    None
+                }
+                Err(e) => bail!(e),
+            };
+
         let segment = Arc::new(config.segment_key.clone().map(Segment::new));
+        let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
 
         Ok(Self {
-            indexes: Indexes::new(config.clone(), semantic.clone())?.into(),
+            indexes,
             repo_pool: config.source.initialize_pool()?,
             credentials: config.source.initialize_credentials()?,
             background: BackgroundExecutor::start(config.clone()),
