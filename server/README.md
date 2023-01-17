@@ -7,10 +7,10 @@ A cargo workspace which contains `bleep`, the Rust package which powers bloop's 
 ### Install
 
 Dependencies:
- - [`Rust`](https://rustup.rs/)
+ - [`rust`](https://rustup.rs/)
  - `openssl`
  - `onnxruntime`
- - `Universal Ctags`
+ - `universal-ctags`
 
 Follow [these instructions](https://github.com/universal-ctags/ctags) and verify the installation with `ctags --version`. You should see something like this:
 
@@ -24,10 +24,21 @@ Exuberant Ctags 5.8, Copyright (C) 1996-2009 Darren Hiebert
 ```
 Make sure that `+json` is in the list of compiled features.
 
+### Natural Language
+To execute natural language queries `bleep` needs to connect to a instance of [Qdrant](https://github.com/qdrant/qdrant), a vector search database. You can start Qdrant on port 6334 (where `bleep` expects it by default) with:
+
+```
+docker run -p 6333:6333 -p 6334:6334 \
+    -e QDRANT__SERVICE__GRPC_PORT="6334" \
+    qdrant/qdrant
+```
+
+You can run `bleep` without linking it to a `Qdrant` instance but calls to the `/answer` endpoint will return an error.
+
 ### Build
 
 ```bash
-cargo build -p bleep
+cargo build -p bleep --release
 ```
 
 ## Usage
@@ -35,9 +46,8 @@ cargo build -p bleep
 To index and search all the repos in a directory (say, `/path/to/source`) run (from this repo's root dir):
 
 ```bash
-$ cargo run -p bleep -- \
-  --source-dir /path/to/dir \
-  --webserver-port 7878
+$ cargo run -p bleep --release -- \
+  --source-dir /path/to/dir
 ```
 
 bloop will recursively scan `/path/to/source` for repositories and start indexing them. It will also start a webserver. The location of the search index can be specified with the `--index-dir` parameter. By default it is stored in the system cache.

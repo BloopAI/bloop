@@ -102,7 +102,7 @@ fn default_qdrant() -> String {
 }
 
 fn default_answer_api_base() -> String {
-    String::from("https://kw50d42q6a.execute-api.eu-west-1.amazonaws.com/default")
+    String::from("http://127.0.0.1:7879")
 }
 
 fn default_embedding_input_size() -> usize {
