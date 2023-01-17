@@ -88,6 +88,7 @@ importers:
       '@tippyjs/react': ^4.2.6
       '@types/jest': ^29.0.0
       '@types/lodash.debounce': ^4.0.7
+      '@types/lodash.isequal': ^4.5.6
       '@types/lodash.throttle': ^4.1.7
       '@types/prismjs': ^1.26.0
       '@types/react': ^18.0.17
@@ -171,6 +172,7 @@ importers:
       '@testing-library/react': 13.4.0_biqbaboplfbrettd7655fr4n2y
       '@types/jest': 29.2.3
       '@types/lodash.debounce': 4.0.7
+      '@types/lodash.isequal': 4.5.6
       '@types/lodash.throttle': 4.1.7
       '@types/prismjs': 1.26.0
       '@types/react': 18.0.25
@@ -5299,6 +5301,12 @@ packages:
 
   /@types/lodash.debounce/4.0.7:
     resolution: {integrity: sha512-X1T4wMZ+gT000M2/91SYj0d/7JfeNZ9PeeOldSNoE/lunLeQXKvkmIumI29IaKMotU/ln/McOIvgzZcQ/3TrSA==}
+    dependencies:
+      '@types/lodash': 4.14.190
+    dev: true
+
+  /@types/lodash.isequal/4.5.6:
+    resolution: {integrity: sha512-Ww4UGSe3DmtvLLJm2F16hDwEQSv7U0Rr8SujLUA2wHI2D2dm8kPu6Et+/y303LfjTIwSBKXB/YTUcAKpem/XEg==}
     dependencies:
       '@types/lodash': 4.14.190
     dev: true

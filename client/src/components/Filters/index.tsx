@@ -130,7 +130,7 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
 
   return (
     <motion.div
-      className={`text-gray-300 border-r border-gray-800 flex-shrink-0 select-none overflow-x-hidden relative`}
+      className={`text-gray-300 border-r border-gray-800  flex-shrink-0 select-none overflow-x-hidden relative`}
       animate={{ width: isOpen ? '20.25rem' : '5rem' }}
       transition={FILTER_PARENT_ANIMATION}
     >
