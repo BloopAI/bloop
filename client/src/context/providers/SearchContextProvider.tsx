@@ -21,11 +21,11 @@ export const SearchContextProvider = ({
   const [globalRegex, setGlobalRegex] = useState(false);
   const { navigatedItem } = useAppNavigation();
   const [searchType, setSearchType] = useState(
-    navigatedItem?.searchType ?? SearchType.REGEX,
+    navigatedItem?.searchType ?? SearchType.NL,
   );
 
   useEffect(() => {
-    setSearchType(navigatedItem?.searchType ?? SearchType.REGEX);
+    setSearchType(navigatedItem?.searchType ?? SearchType.NL);
   }, [navigatedItem?.searchType]);
 
   const searchContextValue = useMemo(
