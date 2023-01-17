@@ -11,7 +11,7 @@ type Props = {
 const NavBar = ({ userSigned, isSkeleton }: Props) => {
   return (
     <div
-      className={`h-16 flex items-center gap-8 px-8 bg-gray-800/75 fixed top-0 left-0 right-0 z-30 ${
+      className={`h-16 flex items-center gap-6 px-8 bg-gray-800/75 fixed top-0 left-0 right-0 z-30 ${
         userSigned ? '' : 'justify-between'
       } border-b border-gray-700 backdrop-blur-8`}
     >

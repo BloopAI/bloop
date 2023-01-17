@@ -147,7 +147,7 @@ const Code = ({
           ))}
         </CodeLine>
       )),
-    [tokensMap, showLines, highlights],
+    [tokensMap, showLines, highlights, onlySymbolLines],
   );
 
   return (

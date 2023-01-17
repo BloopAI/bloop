@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useRef, useState } from 'react';
 
 type Props = {
   activeTab: number;
-  onTabChange: (i: number) => void;
+  onTabChange?: (i: number) => void;
   tabs: { title?: string; iconLeft?: ReactNode; iconRight?: ReactNode }[];
   size?: 'small' | 'medium' | 'large';
   variant?: 'link' | 'button';
@@ -64,7 +64,7 @@ const Tabs = ({
           } transition-all outline-none outline-0 bg-transparent ${
             fullWidth ? 'flex-1 justify-center' : ''
           }`}
-          onClick={() => onTabChange(i)}
+          onClick={() => onTabChange?.(i)}
         >
           {t.iconLeft || null}
           {t.title ? <span>{t.title}</span> : ''}
