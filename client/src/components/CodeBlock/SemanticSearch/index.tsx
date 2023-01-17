@@ -74,7 +74,12 @@ const SemanticSearch = ({
   const handleUpvote = useCallback(
     (isUpvote: boolean) => {
       if (rive) {
-        rive.play();
+        if (isUpvote) {
+          rive.play();
+        } else {
+          rive.reset();
+          rive.drawFrame();
+        }
       }
       setIsUpvote(isUpvote);
       setIsDownvote(!isUpvote);

@@ -208,7 +208,23 @@ export const CodeSearchRepo = () => {
 export const SemanticSearchSnippets = () => {
   return (
     <div style={{ width: 1000 }} className="flex flex-col gap-4">
-      <SemanticSearch />
+      <SemanticSearch
+        searchId={'myid'}
+        snippets={[
+          {
+            line: 1,
+            code: 'console.log("Hello world!");',
+            path: 'src/index.js',
+            repoName: 'bloop',
+            lang: 'JavaScript',
+          },
+        ]}
+        answer="Some nice answer"
+        onClick={(e) => {
+          // e.preventDefault();
+        }}
+        handleRetry={() => {}}
+      />
     </div>
   );
 };
