@@ -131,9 +131,7 @@ const Code = ({
           showLineNumbers={showLines}
           symbols={getSymbols(lineStart + lineNumber)}
           lineHidden={
-            !!symbols?.length &&
-            onlySymbolLines &&
-            !getSymbols(lineStart + lineNumber).length
+            onlySymbolLines && !getSymbols(lineStart + lineNumber).length
           }
           hoverEffect={lineHoverEffect}
         >
@@ -149,7 +147,7 @@ const Code = ({
           ))}
         </CodeLine>
       )),
-    [tokensMap, showLines, highlights, symbols, onlySymbolLines],
+    [tokensMap, showLines, highlights, onlySymbolLines],
   );
 
   return (

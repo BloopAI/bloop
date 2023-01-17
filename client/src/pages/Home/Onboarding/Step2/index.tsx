@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useEffect, useState } from 'react';
 import DialogText from '../DialogText';
 import Button from '../../../../components/Button';
 import { ArrowRight } from '../../../../icons';
-import RepoList from '../../../../components/RepoList';
+import SearchableRepoList from '../../../../components/RepoList/SearchableRepoList';
 import { scanLocalRepos, syncRepos } from '../../../../services/api';
 import {
   RepoProvider,
@@ -14,15 +14,12 @@ import GoBackButton from '../GoBackButton';
 import { UIContext } from '../../../../context/uiContext';
 import useAnalytics from '../../../../hooks/useAnalytics';
 import { splitPath } from '../../../../utils';
-import Tabs from '../../../../components/Tabs';
 import { RepositoriesContext } from '../../../../context/repositoriesContext';
 
 type Props = {
   handleNext: (e?: any) => void;
   handleBack?: (e: any) => void;
 };
-
-const tabs = [{ title: 'Sync all repos' }, { title: 'Sync selected repos' }];
 
 const STEP_KEY = 'STEP_2';
 const Step2 = ({ handleNext, handleBack }: Props) => {
@@ -129,23 +126,13 @@ const Step2 = ({ handleNext, handleBack }: Props) => {
         description="Select the folders you want to add to bloop. You can always sync, unsync or removed unwanted repositories later."
       />
       <div className="flex flex-col overflow-auto h-full">
-        <div className="flex flex-col overflow-auto">
-          <div className="overflow-hidden flex-shrink-0">
-            <Tabs
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              tabs={tabs}
-              variant="button"
-              fullWidth
-            />
-          </div>
-          <RepoList
-            repos={repos}
-            setRepos={setRepos}
-            source="local"
-            activeTab={activeTab}
-          />
-        </div>
+        <SearchableRepoList
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          repos={repos}
+          setRepos={setRepos}
+          source="local"
+        />
         <div
           className={`flex flex-col gap-4 ${
             onBoardingState.indexFolder ? 'mt-4' : ''

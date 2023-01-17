@@ -123,10 +123,8 @@ mod tests {
 
         for language in ALL_LANGUAGES {
             let kinds = language.namespaces.all_symbols();
-            if !has_valid_symbol_kinds(
-                &language.scope_query.query(language.grammar).unwrap(),
-                kinds,
-            ) {
+            if !has_valid_symbol_kinds(language.scope_query.query(language.grammar).unwrap(), kinds)
+            {
                 for id in language.language_ids {
                     failed_languages.push(*id);
                 }
@@ -135,8 +133,6 @@ mod tests {
 
         if !failed_languages.is_empty() {
             panic!("invalid symbol kinds for {}", failed_languages.join(", "))
-        } else {
-            assert!(true)
         }
     }
 

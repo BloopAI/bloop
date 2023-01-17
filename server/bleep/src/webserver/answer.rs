@@ -1,12 +1,17 @@
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
+use reqwest::StatusCode;
+use tracing::{error, info};
 use utoipa::ToSchema;
 
-use crate::{indexes::reader::ContentDocument, query::parser, state::RepoRef, Application};
+use crate::{
+    indexes::reader::ContentDocument, query::parser, segment::QueryEvent, semantic::Semantic,
+    state::RepoRef, Application,
+};
 
 use super::ErrorKind;
 
 /// Mirrored from `answer_api/lib.rs` to avoid private dependency.
-mod api {
+pub mod api {
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Request {
         pub query: String,
@@ -110,16 +115,22 @@ pub async fn handle(
         super::error(ErrorKind::Internal, "semantic search returned no snippets");
     }
 
-    let answer_api_client = AnswerAPIClient::new(
-        &format!("{}/q", app.config.answer_api_base),
-        target,
-        &params.user_id,
-    );
+    let answer_api_host = format!("{}/q", app.config.answer_api_base);
+    let answer_api_client = app
+        .semantic
+        .build_answer_api_client(answer_api_host.as_str(), target);
 
+    let select_prompt = answer_api_client.build_select_prompt(&snippets);
     let relevant_snippet_index = answer_api_client
-        .select_snippet(&snippets)
+        .select_snippet(&select_prompt)
         .await
-        .map_err(super::internal_error)?
+        .map_err(|e| match e.status() {
+            Some(StatusCode::SERVICE_UNAVAILABLE) => super::error(
+                ErrorKind::UpstreamService,
+                "service is currently overloaded",
+            ),
+            _ => super::internal_error(e),
+        })?
         .text()
         .await
         .map_err(super::internal_error)?
@@ -142,7 +153,17 @@ pub async fn handle(
             .await
             .map_err(super::internal_error)?;
 
-        let grown_text = grow(&doc, &relevant_snippet, 60);
+        let mut grow_size = 40;
+        let grown_text = loop {
+            let grown_text = grow(&doc, relevant_snippet, grow_size);
+            let token_count = app.semantic.gpt2_token_count(&grown_text);
+            info!(%grow_size, %token_count, "growing ...");
+            if token_count > 2000 || grow_size > 100 {
+                break grown_text;
+            } else {
+                grow_size += 10;
+            }
+        };
         api::Snippet {
             lang: relevant_snippet.lang.clone(),
             repo_name: relevant_snippet.repo_name.clone(),
@@ -156,10 +177,17 @@ pub async fn handle(
         }
     };
 
-    let snippet_explaination = answer_api_client
-        .explain_snippet(&processed_snippet)
+    let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
+    let snippet_explanation = answer_api_client
+        .explain_snippet(&explain_prompt)
         .await
-        .map_err(super::internal_error)?
+        .map_err(|e| match e.status() {
+            Some(StatusCode::SERVICE_UNAVAILABLE) => super::error(
+                ErrorKind::UpstreamService,
+                "service is currently overloaded",
+            ),
+            _ => super::internal_error(e),
+        })?
         .text()
         .await
         .map_err(super::internal_error)?;
@@ -169,12 +197,14 @@ pub async fn handle(
 
     if let Some(ref segment) = *app.segment {
         segment
-            .track_query(
-                &params.user_id,
-                &params.q,
-                &snippets[0].text,
-                &snippet_explaination,
-            )
+            .track_query(QueryEvent {
+                user_id: params.user_id.clone(),
+                query: params.q.clone(),
+                select_prompt,
+                relevant_snippet_index,
+                explain_prompt,
+                explanation: snippet_explanation.clone(),
+            })
             .await;
     }
 
@@ -183,7 +213,7 @@ pub async fn handle(
         selection: api::Response {
             data: api::DecodedResponse {
                 index: 0u32, // the relevant snippet is always placed at 0
-                answer: snippet_explaination,
+                answer: snippet_explanation,
             },
             id: params.user_id,
         },
@@ -198,16 +228,14 @@ fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
     let new_start_byte = content[..snippet.start_byte]
         .rmatch_indices('\n')
         .map(|(idx, _)| idx)
-        .skip(size)
-        .next()
+        .nth(size)
         .unwrap_or(0);
 
     // skip downwards `size` number of lines
     let new_end_byte = content[snippet.end_byte..]
         .match_indices('\n')
         .map(|(idx, _)| idx)
-        .skip(size)
-        .next()
+        .nth(size)
         .map(|s| s.saturating_add(snippet.end_byte)) // the index is off by `snippet.end_byte`
         .unwrap_or(content.len());
 
@@ -217,32 +245,38 @@ fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
 #[derive(serde::Serialize)]
 struct OpenAIRequest {
     prompt: String,
-    user_id: String,
+    max_tokens: u32,
 }
 
-struct AnswerAPIClient {
+struct AnswerAPIClient<'s> {
     client: reqwest::Client,
     host: String,
     query: String,
-    user_id: String,
+    semantic: &'s Semantic,
 }
 
-impl AnswerAPIClient {
-    fn new(host: &str, query: &str, user_id: &str) -> Self {
-        Self {
+impl Semantic {
+    fn build_answer_api_client<'s>(&'s self, host: &str, query: &str) -> AnswerAPIClient<'s> {
+        AnswerAPIClient {
             client: reqwest::Client::new(),
             host: host.to_owned(),
             query: query.to_owned(),
-            user_id: user_id.to_owned(),
+            semantic: self,
         }
     }
+}
 
-    async fn send(&self, prompt: String) -> Result<reqwest::Response, reqwest::Error> {
+impl<'s> AnswerAPIClient<'s> {
+    async fn send(
+        &self,
+        prompt: &str,
+        max_tokens: u32,
+    ) -> Result<reqwest::Response, reqwest::Error> {
         self.client
             .post(self.host.as_str())
             .json(&OpenAIRequest {
-                prompt: prompt.clone(),
-                user_id: self.user_id.clone(),
+                prompt: prompt.to_string(),
+                max_tokens,
             })
             .send()
             .await
@@ -250,11 +284,8 @@ impl AnswerAPIClient {
 }
 
 const DELIMITER: &str = "######";
-impl AnswerAPIClient {
-    async fn select_snippet(
-        &self,
-        snippets: &[api::Snippet],
-    ) -> Result<reqwest::Response, reqwest::Error> {
+impl<'a> AnswerAPIClient<'a> {
+    fn build_select_prompt(&self, snippets: &[api::Snippet]) -> String {
         let mut prompt = snippets
             .iter()
             .enumerate()
@@ -282,14 +313,10 @@ impl AnswerAPIClient {
             snippets.len(),
             self.query,
         );
-
-        self.send(prompt).await
+        prompt
     }
 
-    async fn explain_snippet(
-        &self,
-        snippet: &api::Snippet,
-    ) -> Result<reqwest::Response, reqwest::Error> {
+    fn build_explain_prompt(&self, snippet: &api::Snippet) -> String {
         let prompt = format!(
             "
             File: {}
@@ -299,18 +326,35 @@ impl AnswerAPIClient {
             #####
 
             Above is a code snippet.\
-            Your job is to answer the questions about the snippet,\
-            giving detailed explanations. Cite any code used to\
-            answer the question formatted in GitHub markdown and state the file path.
-
-            Q:What icon do we use to clear search history?
-            A:We use the left-double chevron icon.
+            Answer the user's question with a detailed response.\
+            Separate each function out and explain why it is relevant.\
+            Format your response in GitHub markdown with code blocks annotated\
+            with programming language. Include the path of the file.
 
             Q:{}
             A:",
             snippet.relative_path, snippet.text, self.query
         );
+        prompt
+    }
 
-        self.send(prompt).await
+    async fn select_snippet(&self, prompt: &str) -> Result<reqwest::Response, reqwest::Error> {
+        self.send(prompt, 1).await
+    }
+
+    async fn explain_snippet(&self, prompt: &str) -> Result<reqwest::Response, reqwest::Error> {
+        let tokens_used = self.semantic.gpt2_token_count(prompt);
+        info!(%tokens_used, "input prompt token count");
+        let max_tokens = 4096usize.saturating_sub(tokens_used);
+        if max_tokens == 0 {
+            // our prompt has overshot the token count, log an error for now
+            // TODO: this should propagte to sentry
+            error!(%tokens_used, "prompt overshot token limit");
+        }
+
+        // do not let the completion cross 2500 tokens
+        let max_tokens = max_tokens.clamp(1, 500);
+        info!(%max_tokens, "clamping max tokens");
+        self.send(prompt, max_tokens as u32).await
     }
 }
