@@ -35,7 +35,8 @@ pub(super) async fn raw_chunks(
         let result = semantic.search(&query, limit).await.and_then(|raw| {
             raw.into_iter()
                 .map(|v| {
-                    v.into_iter()
+                    v.payload
+                        .into_iter()
                         .map(|(k, v)| (k, kind_to_value(v.kind)))
                         .collect::<HashMap<_, _>>()
                 })

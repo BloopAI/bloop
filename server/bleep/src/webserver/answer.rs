@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
 use reqwest::StatusCode;
 use tracing::{error, info};
@@ -30,6 +32,7 @@ pub mod api {
         pub end_line: usize,
         pub start_byte: usize,
         pub end_byte: usize,
+        pub score: f32,
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -64,6 +67,8 @@ pub struct AnswerResponse {
     pub selection: api::Response,
 }
 
+const SNIPPET_COUNT: usize = 14;
+
 pub async fn handle(
     Query(params): Query<Params>,
     Extension(app): Extension<Application>,
@@ -77,12 +82,13 @@ pub async fn handle(
     let target = query
         .target()
         .ok_or_else(|| super::error(ErrorKind::User, "missing search target".to_owned()))?;
-    let mut snippets = semantic
-        .search(&query, params.limit)
+
+    let all_snippets: Vec<api::Snippet> = semantic
+        .search(&query, 4 * SNIPPET_COUNT as u64) // heuristic
         .await
         .map_err(|e| super::error(ErrorKind::Internal, e.to_string()))?
         .into_iter()
-        .map(|mut s| {
+        .map(|r| {
             use qdrant_client::qdrant::{value::Kind, Value};
 
             fn value_to_string(value: Value) -> String {
@@ -92,12 +98,15 @@ pub async fn handle(
                 }
             }
 
+            let mut s = r.payload;
+
             api::Snippet {
                 lang: value_to_string(s.remove("lang").unwrap()),
                 repo_name: value_to_string(s.remove("repo_name").unwrap()),
                 repo_ref: value_to_string(s.remove("repo_ref").unwrap()),
                 relative_path: value_to_string(s.remove("relative_path").unwrap()),
                 text: value_to_string(s.remove("snippet").unwrap()),
+
                 start_line: value_to_string(s.remove("start_line").unwrap())
                     .parse::<usize>()
                     .unwrap(),
@@ -110,9 +119,47 @@ pub async fn handle(
                 end_byte: value_to_string(s.remove("end_byte").unwrap())
                     .parse::<usize>()
                     .unwrap(),
+                score: r.score,
             }
         })
-        .collect::<Vec<_>>();
+        .collect();
+
+    let mut snippets = vec![];
+    let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
+
+    for snippet in all_snippets.into_iter() {
+        if snippets.len() > SNIPPET_COUNT {
+            break;
+        }
+
+        let path = &snippet.relative_path;
+        if !chunk_ranges_by_file.contains_key(path) {
+            chunk_ranges_by_file
+                .entry(path.to_string())
+                .or_insert_with(Vec::new);
+        }
+
+        if chunk_ranges_by_file.get(path).unwrap().len() <= 2 {
+            // check if line ranges of any added chunk overlap with current chunk
+            let any_overlap = chunk_ranges_by_file
+                .get(path)
+                .unwrap()
+                .iter()
+                .any(|r| (snippet.start_line <= r.end) && (r.start <= snippet.end_line));
+
+            // no overlap, add snippet
+            if !any_overlap {
+                chunk_ranges_by_file
+                    .entry(path.to_string())
+                    .or_insert_with(Vec::new)
+                    .push(std::ops::Range {
+                        start: snippet.start_line,
+                        end: snippet.end_line,
+                    });
+                snippets.push(snippet);
+            }
+        }
+    }
 
     if snippets.is_empty() {
         return Err(super::error(
@@ -139,10 +186,16 @@ pub async fn handle(
         .await
         .map_err(super::internal_error)?
         .trim()
+        .to_string()
+        .clone();
+
+    let relevant_snippet_index = relevant_snippet_index
         .parse::<usize>()
         .map_err(super::internal_error)?;
 
-    let relevant_snippet = &snippets[relevant_snippet_index];
+    let relevant_snippet = snippets
+        .get(relevant_snippet_index)
+        .ok_or_else(|| super::internal_error("answer-api returned out-of-bounds index"))?;
     // grow the snippet by 60 lines above and below, we have sufficient space
     // to grow this snippet by 10 times its original size (15 to 150)
     let processed_snippet = {
@@ -178,6 +231,7 @@ pub async fn handle(
             end_line: relevant_snippet.end_line,
             start_byte: relevant_snippet.start_byte,
             end_byte: relevant_snippet.end_byte,
+            score: relevant_snippet.score,
         }
     };
 
@@ -304,39 +358,41 @@ impl<'a> AnswerAPIClient<'a> {
         // the example question/answer pair helps reinforce that we want exactly a single
         // number in the output, with no spaces or punctuation such as fullstops.
         prompt += &format!(
-            "\nAbove are {} code snippets separated by \"{DELIMITER}\". \
-            Your job is to select the snippet that best answers the question. Reply\
-            with a single number indicating the index of the snippet in the list.\
-            If none of the snippets seem relevant, reply with \"0\".
+            "Above are {} code snippets separated by \"{DELIMITER}\". \
+Your job is to select the snippet that best answers the question. Reply\
+with a single number indicating the index of the snippet in the list.\
+If none of the snippets seem relevant, reply with \"0\".
 
-            Q:What icon do we use to clear search history?
-            A:3
+Q:What icon do we use to clear search history?
+A:3
 
-            Q:{}
-            A:",
+Q:{}
+A:",
             snippets.len(),
             self.query,
         );
+
+        let tokens_used = self.semantic.gpt2_token_count(&prompt);
+        tracing::debug!(%tokens_used, "select prompt token count");
         prompt
     }
 
     fn build_explain_prompt(&self, snippet: &api::Snippet) -> String {
         let prompt = format!(
-            "
-            File: {}
+            "File: {}
 
-            {}
+{}
 
-            #####
+#####
 
-            Above is a code snippet.\
-            Answer the user's question with a detailed response.\
-            Separate each function out and explain why it is relevant.\
-            Format your response in GitHub markdown with code blocks annotated\
-            with programming language. Include the path of the file.
+Above is a code snippet. \
+Answer the user's question with a detailed response. \
+Repeat any relevant code, separate each block of code out and explain why it is relevant. \
+Format your response in GitHub markdown with code blocks annotated\
+with programming language. Include the path of the file.
 
-            Q:{}
-            A:",
+Q:{}
+A:",
             snippet.relative_path, snippet.text, self.query
         );
         prompt
