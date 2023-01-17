@@ -121,7 +121,7 @@ impl Semantic {
         })
     }
 
-    pub fn embed(&self, chunk: &str) -> Result<Vec<f32>> {
+    pub fn embed(&self, chunk: &str) -> anyhow::Result<Vec<f32>> {
         let tokenizer_output = self.tokenizer.encode(chunk, true).unwrap();
 
         let input_ids = tokenizer_output.get_ids();
