@@ -7,7 +7,8 @@
     "./src/index.css": "./src/index.css",
     "./postcss": "./postcss.config.cjs",
     "./tailwind.config": "./tailwind.config.cjs",
-    "./src/components/TextInput": "./src/components/TextInput/index.tsx"
+    "./src/components/TextInput": "./src/components/TextInput/index.tsx",
+    "./src/icons": "./src/icons/index.ts"
   },
   "scripts": {
     "dev": "vite",

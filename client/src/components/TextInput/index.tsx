@@ -28,6 +28,8 @@ type Props = {
   validate?: () => void;
   regexEnabled?: boolean;
   autoFocus: boolean;
+  inputClassName?: string;
+  forceClear?: boolean;
 };
 
 type SingleLineProps = Props & {
@@ -76,6 +78,8 @@ const TextInput = forwardRef(function TextInputWithRef(
     regexEnabled,
     multiline,
     autoFocus,
+    inputClassName,
+    forceClear,
   }: Props & (SingleLineProps | MultilineProps),
   ref: ForwardedRef<HTMLInputElement>,
 ) {
@@ -168,12 +172,12 @@ const TextInput = forwardRef(function TextInputWithRef(
             spellCheck="false"
             className={`bg-transparent border-none focus:outline-none w-full group-focus-within:placeholder:text-gray-100 disabled:placeholder:text-gray-500 ${
               type === 'email' || type === 'search' ? 'px-1' : 'pl-2.5'
-            } transition-all duration-300 ease-in-bounce outline-none outline-0 pr-9`}
+            } transition-all duration-300 ease-in-bounce outline-none outline-0 pr-9 ${inputClassName}`}
             onKeyDown={handleEnter}
             autoFocus={autoFocus}
           />
         )}
-        {value && !multiline ? (
+        {(value || forceClear) && !multiline ? (
           <ClearButton
             tabIndex={-1}
             onClick={() => {
