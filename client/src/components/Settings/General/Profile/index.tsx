@@ -99,7 +99,7 @@ const ProfileSettings = () => {
             name="firstName"
             label="First name"
             variant="filled"
-            placeholder="First name"
+            placeholder="Your name"
           />
           <TextInput
             value={form.lastName}
@@ -107,7 +107,7 @@ const ProfileSettings = () => {
             name="lastName"
             label="Last name"
             variant="filled"
-            placeholder="Last name"
+            placeholder="Your last name"
           />
         </div>
       </SettingsRow>
@@ -123,7 +123,7 @@ const ProfileSettings = () => {
             name="email"
             label="Email"
             variant="filled"
-            placeholder="Email address"
+            placeholder="Your email address"
             validate={() => {
               if (!EMAIL_REGEX.test(form.email)) {
                 setForm((prev) => ({

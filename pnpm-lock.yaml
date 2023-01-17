@@ -109,6 +109,7 @@ importers:
       jest: ^29.0.1
       jest-environment-jsdom: ^29.0.1
       lodash.debounce: ^4.0.8
+      lodash.isequal: ^4.5.0
       lodash.throttle: ^4.1.1
       msw-storybook-addon: ^1.6.3
       postcss: ^8.4.16
@@ -144,6 +145,7 @@ importers:
       framer-motion: 7.6.12_biqbaboplfbrettd7655fr4n2y
       highlight.js: 11.7.0
       lodash.debounce: 4.0.8
+      lodash.isequal: 4.5.0
       lodash.throttle: 4.1.1
       msw-storybook-addon: 1.6.3_biqbaboplfbrettd7655fr4n2y
       prismjs: 1.29.0
@@ -11475,6 +11477,10 @@ packages:
 
   /lodash.debounce/4.0.8:
     resolution: {integrity: sha512-FT1yDzDYEoYWhnSGnpE/4Kj1fLZkDFyqRb7fNt6FdYOSxlUWAtp42Eh6Wb0rGIv/m9Bgo7x4GhQbm5Ys4SG5ow==}
+
+  /lodash.isequal/4.5.0:
+    resolution: {integrity: sha512-pDo3lu8Jhfjqls6GkMgpahsF9kCyayhgykjyLMNFTKWrpVdAQtYyB4muAMWozBB4ig/dtWAmsMxLEI8wuz+DYQ==}
+    dev: false
 
   /lodash.memoize/4.1.2:
     resolution: {integrity: sha512-t7j+NzmgnQzTAYXcsHYLgimltOV1MXHtlOWf6GjL9Kj8GK5FInw5JotxvbOs+IvV1/Dzo04/fCGfLVs7aXb4Ag==}
