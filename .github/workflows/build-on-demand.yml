@@ -2,21 +2,9 @@ name: Build&Push API docker container image with SHA tag
 on: push
 
 jobs:
-  install_dependencies:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - run: |
-          sudo apt install git-lfs
-          git lfs pull
-
   build_and_push:
     needs: [install_dependencies]
-    uses: BloopAI/workflows/.github/workflows/build-container.yml@main
+    uses: BloopAI/workflows/.github/workflows/build-container.yml@enable-lfs
     with:
       repository: bloop
       tag: build-${{ github.sha }}
