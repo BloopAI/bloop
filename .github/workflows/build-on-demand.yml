@@ -15,6 +15,7 @@ jobs:
           git lfs pull
 
   build_and_push:
+    needs: [install_dependencies]
     uses: BloopAI/workflows/.github/workflows/build-container.yml@main
     with:
       repository: bloop
