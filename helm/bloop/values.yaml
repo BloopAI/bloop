@@ -1,7 +1,8 @@
 replicaCount: 1
 
 bloop:
-  githubOrg: ""
+  githubOrgName: ""
+  githubOrgOwnerEmail: ""
 
 image:
   repository: 466687392010.dkr.ecr.eu-west-1.amazonaws.com/bloop
@@ -15,12 +16,11 @@ fullnameOverride: ""
 
 podAnnotations: {}
 
-podSecurityContext:
-  {}
-  # fsGroup: 2000
-
 securityContext:
-  runAsUser: 65534
+  # fsGroup: 65534
+
+podSecurityContext:
+  runAsUser: 0
   # capabilities:
   #   drop:
   #   - ALL
