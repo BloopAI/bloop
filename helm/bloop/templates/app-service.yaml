@@ -13,6 +13,6 @@ spec:
   ports:
     - name: http
       port: {{ .Values.service.port }}
-      targetPort: 7879
+      targetPort: 8080
   selector:
     {{- include "bloop.selectorLabels" . | nindent 4 }}

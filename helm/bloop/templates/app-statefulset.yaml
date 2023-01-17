@@ -26,12 +26,13 @@ spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
       containers:
+        - name: {{ include "bloop.fullname" . }}-proxy
+          image: caddy
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          volumeMounts:
+            - name: {{ include "bloop.fullname" . }}-proxy-config
+              mountPath: /etc/caddy
         - name: {{ .Chart.Name }}-app
-          command:
-          - /bin/sh
-          args:
-          - -c
-          - "sleep infinity"
           securityContext:
             {{- toYaml .Values.podSecurityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -116,7 +117,6 @@ spec:
           - name: qdrant-snapshots
             mountPath: /qdrant/snapshots
           {{- end }}
-
       {{- with .Values.qdrant.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -140,6 +140,9 @@ spec:
         - name: {{ include "qdrant.fullname" . }}-storage
           persistentVolumeClaim:
             claimName: {{ include "qdrant.fullname" . }}-storage
+        - name: {{ include "bloop.fullname" . }}-proxy-config
+          configMap:
+            name: {{ include "bloop.fullname" . }}-proxy-config
         {{- if .Values.qdrant.snapshotRestoration.enabled }}
         - name: qdrant-snapshots
           persistentVolumeClaim:
