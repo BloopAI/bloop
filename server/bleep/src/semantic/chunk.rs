@@ -177,7 +177,7 @@ fn add_token_range<'s>(
     if trimmed_end_byte <= start_byte {
         return;
     }
-    assert!(
+    debug_assert!(
         end - start < 256,
         "chunk too large: {} tokens in {:?} bytes {:?}",
         end - start,
