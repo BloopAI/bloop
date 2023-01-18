@@ -4,11 +4,6 @@ bloop:
   githubOrgName: ""
   githubOrgOwnerEmail: ""
 
-proxy:
-  user: bloop
-  password: ouPz36g@nnRRGtgtCnm!AgQ24YP1zYbO
-  passwordHash: JDJhJDEwJG5yTlo5bEZCVW4waWNXRnZDQTBOT3VncnpiME4vRFhSNGJ6aDYyTGtUSWVJeXJLUlJmS3Yu
-
 image:
   repository: 466687392010.dkr.ecr.eu-west-1.amazonaws.com/bloop
   pullPolicy: Always

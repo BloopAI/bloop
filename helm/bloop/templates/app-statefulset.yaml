@@ -26,12 +26,6 @@ spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
       containers:
-        - name: {{ include "bloop.fullname" . }}-proxy
-          image: caddy
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          volumeMounts:
-            - name: {{ include "bloop.fullname" . }}-proxy-config
-              mountPath: /etc/caddy
         - name: {{ .Chart.Name }}-app
           securityContext:
             {{- toYaml .Values.podSecurityContext | nindent 12 }}
@@ -140,9 +134,6 @@ spec:
         - name: {{ include "qdrant.fullname" . }}-storage
           persistentVolumeClaim:
             claimName: {{ include "qdrant.fullname" . }}-storage
-        - name: {{ include "bloop.fullname" . }}-proxy-config
-          configMap:
-            name: {{ include "bloop.fullname" . }}-proxy-config
         {{- if .Values.qdrant.snapshotRestoration.enabled }}
         - name: qdrant-snapshots
           persistentVolumeClaim:
