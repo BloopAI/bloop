@@ -27,37 +27,43 @@ pub(super) struct SemanticResponse {
 )]
 pub(super) async fn raw_chunks(
     Query(args): Query<Args>,
-    Extension(semantic): Extension<Semantic>,
+    Extension(semantic): Extension<Option<Semantic>>,
 ) -> impl IntoResponse {
-    let Args { ref query, limit } = args;
+    if let Some(semantic) = semantic {
+        let Args { ref query, limit } = args;
+        let query = parser::parse_nl(query).unwrap();
+        let result = semantic.search(&query, limit).await.and_then(|raw| {
+            raw.into_iter()
+                .map(|v| {
+                    v.into_iter()
+                        .map(|(k, v)| (k, kind_to_value(v.kind)))
+                        .collect::<HashMap<_, _>>()
+                })
+                .map(serde_json::to_value)
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| e.into())
+        });
 
-    let query = parser::parse_nl(query).unwrap();
-    let result = semantic.search(&query, limit).await.and_then(|raw| {
-        raw.into_iter()
-            .map(|v| {
-                v.into_iter()
-                    .map(|(k, v)| (k, kind_to_value(v.kind)))
-                    .collect::<HashMap<_, _>>()
-            })
-            .map(serde_json::to_value)
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| e.into())
-    });
+        if let Err(err) = result {
+            error!(?err, "qdrant query failed");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                error(ErrorKind::UpstreamService, "error"),
+            );
+        };
 
-    if let Err(err) = result {
-        error!(?err, "qdrant query failed");
+        (
+            StatusCode::OK,
+            json(SemanticResponse {
+                chunks: result.unwrap(),
+            }),
+        )
+    } else {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
-            error(ErrorKind::UpstreamService, "error"),
+            error(ErrorKind::Configuration, "Qdrant not configured"),
         );
-    };
-
-    (
-        StatusCode::OK,
-        json(SemanticResponse {
-            chunks: result.unwrap(),
-        }),
-    )
+    }
 }
 
 fn kind_to_value(kind: Option<Kind>) -> serde_json::Value {

@@ -65,7 +65,7 @@ pub struct Indexes {
 }
 
 impl Indexes {
-    pub fn new(config: Arc<Configuration>, semantic: Semantic) -> Result<Self> {
+    pub fn new(config: Arc<Configuration>, semantic: Option<Semantic>) -> Result<Self> {
         if config.source.index_version_mismatch() {
             std::fs::remove_dir_all(config.index_path("repo"))?;
             std::fs::remove_dir_all(config.index_path("content"))?;
