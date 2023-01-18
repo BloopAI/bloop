@@ -2,8 +2,11 @@ import TextInput from '@bloop/client/src/components/TextInput';
 import React, { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp } from '@bloop/client/src/icons';
 
+const HIGHLIGHT_CLASSNAME = 'search-highlight';
+const ACTIVE_HIGHLIGHT_CLASSNAME = 'search-highlight-active';
+
 function unmark(): void {
-  const markedElements = document.querySelectorAll('.search-highlight');
+  const markedElements = document.querySelectorAll(`.${HIGHLIGHT_CLASSNAME}`);
   for (let i = 0; i < markedElements.length; i++) {
     const element = markedElements[i] as HTMLElement;
     const parentNode = element.parentNode as HTMLElement;
@@ -48,7 +51,7 @@ function markNode(node: HTMLElement, regex: RegExp): void {
       const nodeValue = childNode.nodeValue;
       if (nodeValue) {
         const newValue = nodeValue.replace(regex, function (match) {
-          return `<span class="search-highlight">${match}</span>`;
+          return `<span class="${HIGHLIGHT_CLASSNAME}">${match}</span>`;
         });
         if (newValue !== nodeValue) {
           const newElement = document.createElement('span');
@@ -82,6 +85,8 @@ const TextSearch = ({
   const [isSearchActive, setSearchActive] = useState(false);
   const [resultNum, setResultNum] = useState(0);
   const [currentResult, setCurrentResult] = useState(0);
+  const [currentHighlightParent, setCurrentHighlightParent] =
+    useState<HTMLElement | null>(null);
 
   useEffect(() => {
     const toggleSearch = (e: KeyboardEvent) => {
@@ -109,41 +114,70 @@ const TextSearch = ({
     }
   }, [isSearchActive]);
 
-  const handleChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const searchTerm = e.target.value;
-      setSearchValue(searchTerm);
+  const doSearch = useCallback(
+    (searchTerm: string) => {
       unmark();
 
-      setCurrentResult(0);
       if (searchTerm === '') {
         setResultNum(0);
+        setCurrentResult(0);
+        setCurrentHighlightParent(null);
         return;
       }
       const regex = new RegExp(searchTerm, 'gi');
       if (contentRoot) {
         markNode(contentRoot, regex);
-        setResultNum(
-          document.getElementsByClassName('search-highlight').length,
-        );
+        const allHighlights =
+          document.getElementsByClassName(HIGHLIGHT_CLASSNAME);
+        const resNum = allHighlights.length;
+        setResultNum(resNum);
+        let prevIncedInNewHighlights = currentHighlightParent
+          ? [...allHighlights].findIndex((el) =>
+              el.parentNode?.parentNode?.isSameNode(currentHighlightParent),
+            )
+          : -1;
+        setCurrentResult((prev) => {
+          const newR = resNum
+            ? prevIncedInNewHighlights >= 0
+              ? prevIncedInNewHighlights + 1
+              : 1
+            : 0;
+          if (prev === newR) {
+            allHighlights[newR - 1].classList.add(ACTIVE_HIGHLIGHT_CLASSNAME);
+            setCurrentHighlightParent(
+              allHighlights[newR - 1].parentNode as HTMLElement,
+            );
+          }
+          return newR;
+        });
       }
     },
-    [contentRoot],
+    [contentRoot, currentHighlightParent],
+  );
+
+  const handleChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const searchTerm = e.target.value;
+      setSearchValue(searchTerm);
+      doSearch(searchTerm);
+    },
+    [doSearch],
   );
 
   useEffect(() => {
-    const highlights = document.getElementsByClassName('search-highlight');
+    const highlights = document.getElementsByClassName(HIGHLIGHT_CLASSNAME);
     [...highlights].forEach((el) =>
-      el.classList.remove('search-highlight-active'),
+      el.classList.remove(ACTIVE_HIGHLIGHT_CLASSNAME),
     );
     const elementToShow = highlights[currentResult - 1];
     if (elementToShow) {
+      setCurrentHighlightParent(elementToShow.parentNode as HTMLElement);
       elementToShow.scrollIntoView({
         behavior: 'smooth',
         block: 'center',
         inline: 'nearest',
       });
-      elementToShow.classList.add('search-highlight-active');
+      elementToShow.classList.add(ACTIVE_HIGHLIGHT_CLASSNAME);
     }
   }, [currentResult]);
 
@@ -155,16 +189,23 @@ const TextSearch = ({
         WebkitBackdropFilter: 'blur(1px)',
       }}
     >
-      <TextInput
-        type="search"
-        id="app-search"
-        name="app-search"
-        autoFocus
-        value={searchValue}
-        onChange={handleChange}
-        forceClear
-        inputClassName="pr-24"
-      />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setCurrentResult((prev) => (prev < resultNum ? prev + 1 : 1));
+        }}
+      >
+        <TextInput
+          type="search"
+          id="app-search"
+          name="app-search"
+          autoFocus
+          value={searchValue}
+          onChange={handleChange}
+          forceClear
+          inputClassName="pr-24"
+        />
+      </form>
       <div className="flex items-center absolute top-0.5 right-9 caption text-gray-300">
         {resultNum ? (
           <span>
@@ -174,20 +215,20 @@ const TextSearch = ({
         <button
           className="p-2 hover:text-gray-50 disabled:hover:text-gray-300"
           onClick={() =>
-            setCurrentResult((prev) => (prev < resultNum ? prev + 1 : 1))
-          }
-          disabled={!searchValue}
-        >
-          <ChevronDown />
-        </button>
-        <button
-          className="p-2 hover:text-gray-50 disabled:hover:text-gray-300"
-          onClick={() =>
             setCurrentResult((prev) => (prev > 1 ? prev - 1 : resultNum))
           }
           disabled={!searchValue}
         >
           <ChevronUp />
+        </button>
+        <button
+          className="p-2 hover:text-gray-50 disabled:hover:text-gray-300"
+          onClick={() =>
+            setCurrentResult((prev) => (prev < resultNum ? prev + 1 : 1))
+          }
+          disabled={!searchValue}
+        >
+          <ChevronDown />
         </button>
       </div>
     </div>
