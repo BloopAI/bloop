@@ -7,10 +7,10 @@ A cargo workspace which contains `bleep`, the Rust package which powers bloop's 
 ### Install
 
 Dependencies:
- - [`Rust`](https://rustup.rs/)
+ - [`rust`](https://rustup.rs/)
  - `openssl`
  - `onnxruntime`
- - `Universal Ctags`
+ - `universal-ctags`
 
 Follow [these instructions](https://github.com/universal-ctags/ctags) and verify the installation with `ctags --version`. You should see something like this:
 
@@ -24,10 +24,23 @@ Exuberant Ctags 5.8, Copyright (C) 1996-2009 Darren Hiebert
 ```
 Make sure that `+json` is in the list of compiled features.
 
+### Natural Language Answers
+To execute natural language queries `bleep` needs to connect to a instance of [Qdrant](https://github.com/qdrant/qdrant), a vector search database. You can start Qdrant on port 6334 (where `bleep` expects it by default) with:
+
+```
+docker run -p 6333:6333 -p 6334:6334 \
+    -e QDRANT__SERVICE__GRPC_PORT="6334" \
+    qdrant/qdrant
+```
+
+You can run `bleep` without linking it to a `Qdrant` instance but calls to the `/answer` endpoint will return an error.
+
+You'll also need to run a local instance of `answer_api` (`bleep` expects it on port 7879 by default) which handles requests to the OpenAI API.
+
 ### Build
 
 ```bash
-cargo build -p bleep
+cargo build -p bleep --release
 ```
 
 ## Usage
@@ -35,14 +48,13 @@ cargo build -p bleep
 To index and search all the repos in a directory (say, `/path/to/source`) run (from this repo's root dir):
 
 ```bash
-$ cargo run -p bleep -- \
-  --source-dir /path/to/dir \
-  --webserver-port 7878
+$ cargo run -p bleep --release -- \
+  --source-dir /path/to/dir
 ```
 
 bloop will recursively scan `/path/to/source` for repositories and start indexing them. It will also start a webserver. The location of the search index can be specified with the `--index-dir` parameter. By default it is stored in the system cache.
 
-bloop periodically checks for changes to local and remote repos and automatically reindexes if a change is detected. Indexing and polling can be disabled by passing the `--disable-background` and `disable-fsevents` flags.
+bloop periodically checks for changes to local and remote repos and automatically reindexes if a change is detected. Indexing and polling can be disabled by passing the `--disable-background` and `--disable-fsevents` flags.
 
 The log level can be customized by setting the `BLOOP_LOG` env var.
 
@@ -82,8 +94,20 @@ Options:
           Bind the webserver to `<port>` [default: 127.0.0.1]
       --port <PORT>
           Bind the webserver to `<host>` [default: 7878]
+      --qdrant-url <QDRANT_URL>
+          URL for the qdrant server [default: http://127.0.0.1:6334]
+      --answer-api-url <ANSWER_API_URL>
+          URL for the answer-api [default: http://127.0.0.1:7879]
+      --model-dir <MODEL_DIR>
+          Path to the embedding model directory [default: model]
       --github-client-id <GITHUB_CLIENT_ID>
           Github Client ID for OAuth connection to private repos
+      --segment-key <SEGMENT_KEY>
+          Segment write key
+      --max-chunk-tokens <MAX_CHUNK_TOKENS>
+          Maximum number of tokens in a chunk (should be the model's input size) [default: 256]
+      --overlap <OVERLAP>
+          Chunking strategy [possible values: 1, 50%]
   -h, --help
           Print help information
   -V, --version
@@ -96,6 +120,12 @@ With the server running you can start searching your code:
 
 ```
 $ curl -v "localhost:7878/q?q=anyhow%20path:webserver%20repo:bloop" | jq
+```
+
+You can get answers in natural language by querying the `answer` endpoint:
+
+```
+curl "localhost:7878/answer?q=what%20does%20the%20query%20parser%20do?"
 ```
 
 You can check which repos are indexed and their status:

@@ -4,18 +4,19 @@
 </picture>
 
 bloop is a fast code-search engine written in Rust and Typescript. Search both your local and remote
-repositories with plain-text, regex and filtered queries.
+repositories with natural language, regex and filtered queries.
 
 ## Features
 
 - Super-fast code search
+- AI-powered natural langauge search
 - Sync your local and GitHub repositories (support for more code hosts coming soon!)
 - Search with regex queries
 - Sophisticated query filters so you can narrow down your results
 - Find functions, variables or traits with symbol search
 - Precise code navigation (go-to-reference and go-to-definition) for 10+ of the most popular languages
 
-bloop stands on the shoulders of the Rust ecosystem. Our search indexing is powered by [Tantivy](https://github.com/quickwit-oss/tantivy) and our multi-platform app is built with [Tauri](https://github.com/tauri-apps/tauri).
+bloop stands on the shoulders of the Rust ecosystem. Our search indexing is powered by [Tantivy](https://github.com/quickwit-oss/tantivy), our multi-platform app is built with [Tauri](https://github.com/tauri-apps/tauri), and we use [Qdrant](https://github.com/qdrant/qdrant) for natural language search.
 
 ![code search demo](https://assets.bloop.ai/short_gif_for_github_code.gif)
 
