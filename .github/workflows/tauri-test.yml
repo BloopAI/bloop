@@ -3,7 +3,7 @@ name: Tauri Tests
 on:
   pull_request:
     types: [opened, synchronize]
-    branches: [main]
+    branches: [main, semantic]
     paths:
       - "apps/desktop/**"
       - ".github/workflows/tauri**"
@@ -40,6 +40,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: cachix/install-nix-action@v18
+      - name: Install Universal Ctags
+        run: "nix profile --access-tokens ${{ secrets.GITHUB_TOKEN }} install nixpkgs#universal-ctags nixpkgs#protobuf"
 
       - name: Dummy Qdrant binary
         run: touch apps/desktop/src-tauri/bin/qdrant-x86_64-unknown-linux-gnu
