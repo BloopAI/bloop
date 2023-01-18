@@ -1,4 +1,7 @@
-use std::{fmt::{Display, Write}, ops::Range};
+use std::{
+    fmt::{Display, Write},
+    ops::Range,
+};
 
 use crate::text_range::{Point, TextRange};
 
