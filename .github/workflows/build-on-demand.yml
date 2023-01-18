@@ -1,0 +1,20 @@
+name: Build&Push API docker container image with SHA tag
+on: push
+
+jobs:
+  build_and_push:
+    uses: BloopAI/workflows/.github/workflows/build-container.yml@enable-lfs
+    with:
+      repository: bloop
+      tag: build-${{ github.sha }}
+    secrets:
+      awsRegion: eu-west-1
+      awsAccountID: '466687392010'
+      slackBuildWebhook: ${{ secrets.SLACK_BUILD_WEBHOOK }}
+
+  validate_helm:
+    uses: BloopAI/reusable-workflows/.github/workflows/validate-helm-chart.yml@main
+    with:
+      path: helm/bloop
+    secrets:
+      slackBuildWebhook: ${{ secrets.SLACK_BUILD_WEBHOOK }}
