@@ -74,7 +74,7 @@ const SearchPage = () => {
       default:
         updateCurrentTabName(navigatedItem.query!);
         if ((navigatedItem.searchType ?? searchType) === SearchType.NL) {
-          nlSearchQuery(navigatedItem.query!);
+          nlSearchQuery(navigatedItem.query!, 0, false, SearchType.NL);
         } else {
           searchQuery(navigatedItem.query!, navigatedItem.page, globalRegex);
         }

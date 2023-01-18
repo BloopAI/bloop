@@ -52,7 +52,7 @@ function SearchInput() {
     setSearchHistory,
   } = useContext(SearchContext);
   const [options, setOptions] = useState<SuggestionType[]>([]);
-  const [left] = useState<number>(INPUT_POSITION_LEFT);
+  const [left, setLeft] = useState<number>(INPUT_POSITION_LEFT);
   const inputRef = useRef<HTMLInputElement>(null);
   const { globalRegex, setGlobalRegex, searchType, setSearchType } =
     useContext(SearchContext);
@@ -138,6 +138,9 @@ function SearchInput() {
         }
         if (searchType === SearchType.REGEX) {
           getAutocompleteThrottled(state.inputValue, setOptions);
+        } else if (searchType === SearchType.NL) {
+          setOptions([]);
+          return;
         }
         const parsedFilters = parseFilters(state.inputValue);
         if (Object.entries(parsedFilters).some((filters) => filters.length)) {
@@ -151,6 +154,12 @@ function SearchInput() {
 
           if (JSON.stringify(newFilters) !== JSON.stringify(filters)) {
             setFilters(newFilters);
+          }
+        }
+        const input = inputRef.current;
+        if (input) {
+          if (input.getBoundingClientRect().left) {
+            setLeft(input.getBoundingClientRect().left - 272);
           }
         }
       }
@@ -246,7 +255,7 @@ function SearchInput() {
       <AutocompleteMenu
         getMenuProps={getMenuProps}
         getItemProps={getItemProps}
-        left={INPUT_POSITION_LEFT}
+        left={left}
         isOpen={isOpen && !!options.length}
         options={options}
       />
