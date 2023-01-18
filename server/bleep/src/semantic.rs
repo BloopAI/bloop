@@ -223,8 +223,8 @@ impl Semantic {
             repo_name,
             relative_path,
             buffer,
-            &self.gpt2_tokenizer,
-            self.config.embedding_input_size,
+            &self.tokenizer,
+            self.config.max_chunk_tokens,
             15,
             self.config
                 .overlap

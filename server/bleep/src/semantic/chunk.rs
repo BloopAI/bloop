@@ -199,7 +199,7 @@ pub fn by_tokens<'s>(
     let Ok(encoding) = tokenizer.encode(src, true)
     else {
         warn!("Could not encode \"{}\"", src);
-        return trivial(src, max_lines);
+        return by_lines(src, max_lines);
     };
 
     let offsets = encoding.get_offsets();
@@ -296,7 +296,7 @@ pub fn by_tokens<'s>(
     chunks
 }
 
-pub fn trivial(src: &str, size: usize) -> Vec<Chunk<'_>> {
+pub fn by_lines(src: &str, size: usize) -> Vec<Chunk<'_>> {
     let ends = std::iter::once(0)
         .chain(src.match_indices('\n').map(|(i, _)| i))
         .enumerate()
