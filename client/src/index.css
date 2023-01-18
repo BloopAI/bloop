@@ -362,3 +362,17 @@ h5, .h5 {
 .readme a {
   color: #5D75FF;
 }
+
+.hljs-addition {
+  width: auto !important;
+}
+.semantic-answer pre {
+  @apply whitespace-pre-wrap break-words bg-gray-700 rounded my-1 text-xs p-1;
+}
+.semantic-answer pre > code {
+  @apply bg-gray-700 p-[2px] rounded;
+}
+.semantic-answer p > code {
+  @apply text-sky-400;
+}
+

@@ -31,6 +31,7 @@
     "downshift": "^6.1.10",
     "file-icons-js": "^1.1.0",
     "framer-motion": "^7.6.2",
+    "highlight.js": "^11.7.0",
     "lodash.debounce": "^4.0.8",
     "lodash.isequal": "^4.5.0",
     "lodash.throttle": "^4.1.1",

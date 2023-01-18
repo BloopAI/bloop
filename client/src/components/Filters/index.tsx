@@ -24,8 +24,14 @@ type Props = {
 };
 
 const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
-  const { filters, setFilters, inputValue, setInputValue, setSearchHistory } =
-    useContext(SearchContext);
+  const {
+    filters,
+    setFilters,
+    inputValue,
+    setInputValue,
+    setSearchHistory,
+    searchType,
+  } = useContext(SearchContext);
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [newFilters, setNewFilters] = useState(filters);
   const [hasFiltersChanged, setFiltersChanged] = useState(false);
@@ -73,13 +79,13 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
     }
 
     setFilters(newFilters);
-    navigateSearch(result);
+    navigateSearch(result, searchType);
     setSearchHistory((prev) => {
       const newHistory = [result, ...prev].slice(0, 4);
       saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
       return newHistory;
     });
-  }, [newFilters]);
+  }, [newFilters, searchType]);
 
   const handleFiltersChange = useCallback(
     (s: number, i: number, b: boolean) => {

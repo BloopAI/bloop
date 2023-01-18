@@ -13,6 +13,18 @@ const useAnalytics = () => {
     [analytics],
   );
 
+  const trackUpvote = useCallback(
+    (isUpvote: boolean, query: string, answer: string, searchId: string) => {
+      analytics?.track('Upvote', {
+        isUpvote,
+        query,
+        answer,
+        searchId,
+      });
+    },
+    [analytics],
+  );
+
   const trackReposSelected = useCallback(
     ({
       localRepos,
@@ -35,6 +47,7 @@ const useAnalytics = () => {
   return {
     trackSearch,
     trackReposSelected,
+    trackUpvote,
   };
 };
 

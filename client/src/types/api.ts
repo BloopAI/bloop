@@ -7,20 +7,20 @@ export interface RangeLine {
 }
 
 export interface SearchResponseStats {
-  lang: Record<string, number>;
-  repo: Record<string, number>;
-  org: Record<string, number>;
+  lang?: Record<string, number>;
+  repo?: Record<string, number>;
+  org?: Record<string, number>;
 }
 
 export interface SearchResponse {
-  count: number;
+  count?: number;
   data: (CodeItem | RepoItem | FileResItem | DirectoryItem | FileItem)[];
   stats: SearchResponseStats;
   metadata: {
-    page: number;
-    page_size: number;
-    page_count: number;
-    total_count: number;
+    page?: number;
+    page_size?: number;
+    page_count?: number;
+    total_count?: number;
   };
 }
 export interface FileSearchResponse extends SearchResponse {
@@ -199,4 +199,23 @@ export interface SuggestionsResponse {
     | FileItem
     | LangItem
   )[];
+}
+
+export interface NLSnippet {
+  repo_name: string;
+  relative_path: string;
+  text: string;
+  lang: string;
+  start_line: number;
+}
+
+export interface NLResponseSelection {
+  index: number;
+  answer: string;
+  id: string;
+}
+
+export interface NLSearchResponse {
+  selection: NLResponseSelection;
+  snippets: NLSnippet[];
 }

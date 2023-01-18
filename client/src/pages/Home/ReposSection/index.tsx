@@ -120,7 +120,7 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
           <Button
             variant="secondary"
             onClick={() => {
-              setSettingsSection(2);
+              setSettingsSection(1);
               setSettingsOpen(true);
             }}
           >
@@ -150,7 +150,7 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
             </p>
             <div className="w-full flex flex-col gap-4">
               {textsMap[filter].buttons(() => {
-                setSettingsSection(2);
+                setSettingsSection(1);
                 setSettingsOpen(true);
               })}
             </div>

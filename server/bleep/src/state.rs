@@ -416,6 +416,10 @@ impl StateSource {
     }
 
     pub fn initialize_pool(&self) -> Result<RepositoryPool, RepoError> {
+        #[cfg(target = "windows")]
+        use dunce::canonicalize;
+        #[cfg(not(target = "windows"))]
+        use std::fs::canonicalize;
         match (self.directory.as_ref(), self.state_file.as_ref()) {
             (Some(root), None) => read_root(root),
             (None, Some(path)) => read_file_or_default(path),
@@ -423,7 +427,7 @@ impl StateSource {
             (Some(root), Some(path)) => {
                 let state: RepositoryPool = read_file_or_default(path)?;
                 let current_repos = gather_repo_roots(root).collect::<HashSet<_>>();
-                let root = dunce::canonicalize(root)?;
+                let root = canonicalize(root)?;
 
                 // mark repositories from the index which are no longer present
                 for mut elem in state.iter_mut() {
@@ -786,7 +790,7 @@ mod test {
         found_repos.sort();
 
         let repo = |subdir| {
-            dunce::canonicalize(path.join(subdir))
+            crate::canonicalize(path.join(subdir))
                 .unwrap()
                 .to_str()
                 .unwrap()

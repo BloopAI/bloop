@@ -9,6 +9,7 @@ use tracing::info;
 use utoipa::OpenApi;
 use utoipa::ToSchema;
 
+mod answer;
 mod autocomplete;
 mod file;
 mod github;
@@ -17,12 +18,15 @@ mod index;
 mod intelligence;
 mod query;
 mod repos;
+mod semantic;
 
 #[allow(unused)]
 pub(in crate::webserver) mod prelude {
     pub(in crate::webserver) use super::{error, json, EndpointError, ErrorKind};
     pub(in crate::webserver) use crate::indexes::Indexes;
-    pub(in crate::webserver) use axum::{http::StatusCode, response::IntoResponse, Extension};
+    pub(in crate::webserver) use axum::{
+        extract::Query, http::StatusCode, response::IntoResponse, Extension,
+    };
     pub(in crate::webserver) use serde::{Deserialize, Serialize};
     pub(in crate::webserver) use std::sync::Arc;
     pub(in crate::webserver) use utoipa::{IntoParams, ToSchema};
@@ -57,6 +61,8 @@ pub async fn start(app: Application) -> Result<()> {
         .route("/token-info", get(intelligence::handle))
         // misc
         .route("/file/*ref", get(file::handle))
+        .route("/semantic/chunks", get(semantic::raw_chunks))
+        .route("/answer", get(answer::handle))
         .route("/api-doc/openapi.json", get(openapi_json::handle))
         .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
         .route("/health", get(health));
@@ -68,6 +74,7 @@ pub async fn start(app: Application) -> Result<()> {
     router = router
         .layer(CatchPanicLayer::new())
         .layer(Extension(app.indexes.clone()))
+        .layer(Extension(app.semantic.clone()))
         .layer(Extension(app))
         .layer(CorsLayer::permissive());
 
@@ -93,6 +100,15 @@ pub(in crate::webserver) fn error<'a>(
     Json(Response::from(EndpointError {
         kind,
         message: message.into(),
+    }))
+}
+
+pub(in crate::webserver) fn internal_error<'a, S: std::fmt::Display>(
+    message: S,
+) -> Json<Response<'a>> {
+    Json(Response::from(EndpointError {
+        kind: ErrorKind::Internal,
+        message: message.to_string().into(),
     }))
 }
 
@@ -151,6 +167,8 @@ pub(in crate::webserver) enum Response<'a> {
     Hoverable(hoverable::HoverableResponse),
     Intelligence(intelligence::TokenInfoResponse),
     File(file::FileResponse),
+    Semantic(semantic::SemanticResponse),
+    Answer(answer::AnswerResponse),
     /// A blanket error response
     Error(EndpointError<'a>),
 }
@@ -194,6 +212,12 @@ impl<'a> From<intelligence::TokenInfoResponse> for Response<'a> {
 impl<'a> From<file::FileResponse> for Response<'a> {
     fn from(r: file::FileResponse) -> Response<'a> {
         Response::File(r)
+    }
+}
+
+impl<'a> From<semantic::SemanticResponse> for Response<'a> {
+    fn from(r: semantic::SemanticResponse) -> Response<'a> {
+        Response::Semantic(r)
     }
 }
 

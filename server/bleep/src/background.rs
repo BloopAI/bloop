@@ -76,28 +76,13 @@ impl IndexWriter {
     /// Pull or clone an existing, or new repo, respectively.
     pub(crate) async fn sync_and_index(self, repositories: Vec<RepoRef>) -> anyhow::Result<()> {
         let Self(app) = self;
-
         let background = app.background.clone();
+
         let job = async move {
             let mut set = tokio::task::JoinSet::new();
 
             for reporef in repositories {
-                let writer = IndexWriter(app.clone());
-                set.spawn(async move {
-                    debug!(?reporef, "syncing repo");
-
-                    if let Err(err) = writer.sync_repo(&reporef).await {
-                        error!(?err, ?reporef, "failed to sync repository");
-                        return Err(err);
-                    }
-
-                    if let Err(err) = writer.index_repo(&reporef).await {
-                        error!(?err, ?reporef, "failed to index repository");
-                        return Err(err);
-                    }
-
-                    Ok(())
-                });
+                set.spawn(IndexWriter(app.clone()).sync_and_index_call(reporef));
             }
 
             while let Some(job) = set.join_next().await {
@@ -108,6 +93,22 @@ impl IndexWriter {
         };
 
         background.wait_for(job).await
+    }
+
+    async fn sync_and_index_call(self, reporef: RepoRef) -> anyhow::Result<()> {
+        debug!(?reporef, "syncing repo");
+
+        if let Err(err) = self.sync_repo(&reporef).await {
+            error!(?err, ?reporef, "failed to sync repository");
+            return Err(err);
+        }
+
+        if let Err(err) = self.index_repo(&reporef).await {
+            error!(?err, ?reporef, "failed to index repository");
+            return Err(err);
+        }
+
+        Ok(())
     }
 
     pub(crate) fn queue_sync_and_index(self, repositories: Vec<RepoRef>) {

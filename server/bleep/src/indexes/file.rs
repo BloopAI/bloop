@@ -21,6 +21,8 @@ use tantivy::{
     },
     IndexWriter,
 };
+use tokenizers as _;
+use tokio::runtime::Handle;
 use tracing::{debug, info, trace, warn};
 
 #[cfg(feature = "debug")]
@@ -35,6 +37,7 @@ use super::{
 };
 use crate::{
     intelligence::TreeSitterFile,
+    semantic::Semantic,
     state::{FileCache, RepoHeadInfo, RepoRef, Repository},
     symbol::SymbolLocations,
     Configuration,
@@ -53,6 +56,8 @@ struct Workload<'a> {
 pub struct File {
     config: Arc<Configuration>,
     schema: Schema,
+    semantic: Option<Semantic>,
+
     #[cfg(feature = "debug")]
     histogram: Arc<RwLock<Histogram>>,
 
@@ -92,7 +97,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn new(config: Arc<Configuration>) -> Self {
+    pub fn new(config: Arc<Configuration>, semantic: Option<Semantic>) -> Self {
         let mut builder = tantivy::schema::SchemaBuilder::new();
         let trigram = TextOptions::default().set_stored().set_indexing_options(
             TextFieldIndexing::default()
@@ -139,6 +144,7 @@ impl File {
             avg_line_length,
             last_commit_unix_seconds,
             schema: builder.build(),
+            semantic,
             config,
             raw_content,
             raw_repo_name,
@@ -239,7 +245,7 @@ impl Indexable for File {
             .filter(|de| matches!(de.file_type(), Some(ft) if ft.is_file()))
             // Preliminarily ignore files that are very large, without reading the contents.
             .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
-            .map(|de| dunce::canonicalize(de.into_path()).unwrap())
+            .map(|de| crate::canonicalize(de.into_path()).unwrap())
             .filter(|p| should_index(&p.strip_prefix(&repo.disk_path).unwrap()))
             .collect::<Vec<PathBuf>>();
 
@@ -535,8 +541,19 @@ impl File {
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
         let last_commit = repo_info.last_commit_unix_secs;
 
-        trace!("writing document");
+        if let Some(semantic) = &self.semantic {
+            tokio::task::block_in_place(|| {
+                Handle::current().block_on(semantic.insert_points_for_buffer(
+                    repo_name,
+                    &repo_ref,
+                    &relative_path.to_string_lossy(),
+                    &buffer,
+                    lang_str,
+                ))
+            });
+        }
 
+        trace!("writing document");
         #[cfg(feature = "debug")]
         let buf_size = buffer.len();
         writer.add_document(doc!(

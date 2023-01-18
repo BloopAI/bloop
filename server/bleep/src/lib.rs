@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 #![deny(
     clippy::all,
     arithmetic_overflow,
@@ -16,12 +15,15 @@ use criterion as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
+use semantic::{chunk::OverlapStrategy, Semantic};
 
 use crate::{
     indexes::Indexes,
+    segment::Segment,
+    semantic::SemanticError,
     state::{Credentials, RepositoryPool, StateSource},
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use background::BackgroundExecutor;
 use clap::Parser;
 use once_cell::sync::OnceCell;
@@ -36,16 +38,23 @@ use std::{
 use tracing::{error, warn};
 use tracing_subscriber::EnvFilter;
 
+#[cfg(target = "windows")]
+use dunce::canonicalize;
+#[cfg(not(target = "windows"))]
+use std::fs::canonicalize;
+
 mod background;
 mod collector;
 mod language;
 mod remotes;
+mod segment;
 mod webserver;
 
 pub mod ctags;
 pub mod indexes;
 pub mod intelligence;
 pub mod query;
+pub mod semantic;
 pub mod snippet;
 pub mod state;
 pub mod symbol;
@@ -59,6 +68,10 @@ fn default_index_path() -> PathBuf {
         Some(dirs) => dirs.cache_dir().to_owned(),
         None => "bloop_index".into(),
     }
+}
+
+fn default_model_dir() -> PathBuf {
+    "model".into()
 }
 
 pub fn default_parallelism() -> usize {
@@ -83,6 +96,18 @@ const fn default_port() -> u16 {
 
 fn default_host() -> String {
     String::from("127.0.0.1")
+}
+
+fn default_qdrant_url() -> String {
+    String::from("http://127.0.0.1:6334")
+}
+
+fn default_answer_api_url() -> String {
+    String::from("http://127.0.0.1:7879")
+}
+
+fn default_max_chunk_tokens() -> usize {
+    256
 }
 
 #[derive(Debug)]
@@ -163,10 +188,39 @@ pub struct Configuration {
     /// Bind the webserver to `<host>`
     pub port: u16,
 
+    #[clap(long, default_value_t = default_qdrant_url())]
+    #[serde(default = "default_qdrant_url")]
+    /// URL for the qdrant server
+    pub qdrant_url: String,
+
+    #[clap(long, default_value_t = default_answer_api_url())]
+    #[serde(default = "default_answer_api_url")]
+    /// URL for the answer-api
+    pub answer_api_url: String,
+
+    #[clap(long, default_value_os_t = default_model_dir())]
+    #[serde(default = "default_model_dir")]
+    /// Path to the embedding model directory
+    pub model_dir: PathBuf,
+
     #[clap(long)]
     #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
     /// Github Client ID for OAuth connection to private repos
     pub github_client_id: Option<SecretString>,
+
+    #[clap(long)]
+    #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
+    /// Segment write key
+    pub segment_key: Option<SecretString>,
+
+    #[clap(long, default_value_t = default_max_chunk_tokens())]
+    #[serde(default = "default_max_chunk_tokens")]
+    /// Maximum number of tokens in a chunk (should be the model's input size)
+    pub max_chunk_tokens: usize,
+
+    #[clap(long)]
+    /// Chunking strategy
+    pub overlap: Option<OverlapStrategy>,
 }
 
 impl Configuration {
@@ -189,12 +243,14 @@ pub struct Application {
     pub config: Arc<Configuration>,
     pub(crate) repo_pool: RepositoryPool,
     pub(crate) background: BackgroundExecutor,
+    pub(crate) semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
     credentials: Credentials,
+    pub segment: Arc<Option<Segment>>,
 }
 
 impl Application {
-    pub fn initialize(env: Environment, config: Configuration) -> Result<Application> {
+    pub async fn initialize(env: Environment, config: Configuration) -> Result<Application> {
         let mut config = match config.config_file {
             None => config,
             Some(ref path) => {
@@ -219,13 +275,27 @@ impl Application {
         }
 
         let config = Arc::new(config);
+        let semantic =
+            match Semantic::new(&config.model_dir, &config.qdrant_url, Arc::clone(&config)).await {
+                Ok(semantic) => Some(semantic),
+                Err(SemanticError::QdrantInitializationError) => {
+                    warn!("Qdrant initialization failed. Starting without semantic search...");
+                    None
+                }
+                Err(e) => bail!(e),
+            };
+
+        let segment = Arc::new(config.segment_key.clone().map(Segment::new));
+        let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
 
         Ok(Self {
-            indexes: Indexes::new(config.clone())?.into(),
+            indexes,
             repo_pool: config.source.initialize_pool()?,
             credentials: config.source.initialize_credentials()?,
             background: BackgroundExecutor::start(config.clone()),
+            semantic,
             config,
+            segment,
         })
     }
 
@@ -324,4 +394,11 @@ fn tracing_subscribe() -> bool {
         .with(env_filter)
         .try_init()
         .is_ok()
+}
+
+// FIXME: use usize::div_ceil soon
+fn div_ceil(a: usize, b: usize) -> usize {
+    let d = a / b;
+    let r = a % b;
+    d + usize::from(r > 0)
 }

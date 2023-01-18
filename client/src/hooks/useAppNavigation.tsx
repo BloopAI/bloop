@@ -1,15 +1,16 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { buildRepoQuery } from '../utils';
-import { usePersistentState } from './usePersistentState';
+import { SearchType } from '../types/general';
 
 interface NavigationItem {
-  type: 'search' | 'repo' | 'full-result';
+  type: 'search' | 'repo' | 'full-result' | 'home';
   query?: string;
   repo?: string;
   path?: string;
   page?: number;
   loaded?: boolean;
+  searchType?: SearchType;
   pathParams?: Record<string, string>;
 }
 
@@ -24,12 +25,17 @@ type ContextType = {
     page?: number,
   ) => void;
   navigateBack: () => void;
+  navigateHome: () => void;
   navigateRepoPath: (
     repo: string,
     path?: string,
     pathParams?: Record<string, string>,
   ) => void;
-  navigateSearch: (query: string, page?: number) => void;
+  navigateSearch: (
+    query: string,
+    searchType: SearchType,
+    page?: number,
+  ) => void;
   navigateFullResult: (repo: string, path: string) => void;
   query: string;
 };
@@ -38,6 +44,7 @@ const AppNavigationContext = createContext<ContextType>({
   navigationHistory: [],
   navigate: (type) => {},
   navigateBack: () => {},
+  navigateHome: () => {},
   navigateRepoPath: (repo, path) => {},
   navigateSearch: (query, page) => {},
   navigateFullResult: (repo, path) => {},
@@ -48,10 +55,7 @@ export const AppNavigationProvider = (prop: {
   value?: string;
   children: JSX.Element | JSX.Element[];
 }) => {
-  const [navigation, setNavigation] = usePersistentState<NavigationItem[]>(
-    [],
-    'navigation',
-  );
+  const [navigation, setNavigation] = useState<NavigationItem[]>([]);
   const navigateBrowser = useNavigate();
 
   const navigatedItem = useMemo(
@@ -81,6 +85,10 @@ export const AppNavigationProvider = (prop: {
 
   const saveState = (navigationItem: NavigationItem) => {
     setNavigation((prevState) => [...prevState, navigationItem]);
+    if (navigationItem.type === 'home') {
+      navigateBrowser('/');
+      return;
+    }
     navigateBrowser(
       '/search' +
         (navigationItem.pathParams
@@ -101,8 +109,12 @@ export const AppNavigationProvider = (prop: {
     saveState({ type, query, repo, path, page });
   };
 
-  const navigateSearch = (query: string, page?: number) => {
-    saveState({ type: 'search', page, query: query });
+  const navigateSearch = (
+    query: string,
+    searchType: SearchType,
+    page?: number,
+  ) => {
+    saveState({ type: 'search', page, query, searchType });
   };
 
   const navigateRepoPath = (
@@ -121,18 +133,28 @@ export const AppNavigationProvider = (prop: {
       type: 'repo',
       repo,
       path,
+      searchType: SearchType.REGEX,
       pathParams,
     });
   };
 
   const navigateFullResult = (repo: string, path: string) => {
-    saveState({ type: 'full-result', repo, path });
+    saveState({
+      type: 'full-result',
+      repo,
+      path,
+      searchType: SearchType.REGEX,
+    });
   };
 
   const navigateBack = () => {
     setNavigation((prevState) => {
       return prevState.slice(0, -1);
     });
+  };
+
+  const navigateHome = () => {
+    saveState({ type: 'home' });
   };
 
   return (
@@ -145,6 +167,7 @@ export const AppNavigationProvider = (prop: {
         navigateRepoPath,
         navigateFullResult,
         navigateSearch,
+        navigateHome,
         query: query || '',
       }}
     >
