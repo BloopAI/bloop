@@ -3,7 +3,7 @@ name: Client Tests
 on:
   pull_request:
     types: [opened, synchronize]
-    branches: [main, semantic]
+    branches: [main]
     paths:
       - "client/**"
       - ".github/workflows/client**"

@@ -167,10 +167,13 @@ pub async fn handle(
     }
 
     if snippets.is_empty() {
+        tracing::warn!("Semantic search returned no snippets");
         return Err(super::error(
             ErrorKind::Internal,
             "semantic search returned no snippets",
         ));
+    } else {
+        info!("Semantic search returned {} snippets", snippets.len());
     }
 
     let answer_api_host = format!("{}/q", app.config.answer_api_url);
@@ -193,6 +196,8 @@ pub async fn handle(
         .trim()
         .to_string()
         .clone();
+
+    info!("Relevant snippet index: {}", &relevant_snippet_index);
 
     let relevant_snippet_index = relevant_snippet_index
         .parse::<usize>()

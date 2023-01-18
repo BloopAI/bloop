@@ -2,7 +2,7 @@ name: Server Unit Tests
 
 on:
   pull_request:
-    branches: [main, semantic]
+    branches: [main]
     paths:
       - "server/**"
       - ".github/workflows/server**"
