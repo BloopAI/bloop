@@ -5,7 +5,6 @@ pub static RUST: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["rs"],
     grammar: tree_sitter_rust::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
-    chunk_query: Some(MemoizedQuery::new(include_str!("./chunk.scm"))),
     namespaces: &[&[
         // variables
         "const",

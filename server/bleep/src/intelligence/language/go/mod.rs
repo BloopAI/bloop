@@ -5,7 +5,6 @@ pub static GO: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["go"],
     grammar: tree_sitter_go::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
-    chunk_query: None,
     namespaces: &[
         // variables
         &["const", "var", "func", "module"],
