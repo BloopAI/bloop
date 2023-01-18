@@ -367,7 +367,7 @@ h5, .h5 {
   width: auto !important;
 }
 .semantic-answer pre {
-  @apply whitespace-pre-wrap break-words bg-gray-700 rounded my-1 text-xs p-1;
+  @apply whitespace-pre-wrap break-words bg-gray-700 rounded my-1 text-xs p-1 overflow-y-auto;
 }
 .semantic-answer pre > code {
   @apply bg-gray-700 p-[2px] rounded;
