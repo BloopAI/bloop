@@ -20,11 +20,17 @@ Linux users need to ensure that the following are present:
  
 ## Setup
 
-All commands should be run from the root directory.
+All commands should be run from the root directory unless specified otherwise.
 
 To install dependencies run:
 ```
 pnpm install
+```
+
+To build Qdrant run:
+```
+cd app/desktop
+./build.sh build
 ```
 
 Then, to build the bloop app locally:
