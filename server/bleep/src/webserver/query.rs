@@ -197,7 +197,7 @@ impl PagingMetadata {
         Self {
             page,
             page_size,
-            page_count: total_count.map(|t| div_ceil(t, page_size)),
+            page_count: total_count.map(|t| crate::div_ceil(t, page_size)),
             total_count,
         }
     }
@@ -426,13 +426,6 @@ impl ExecuteQuery for ContentReader {
         };
         Ok(response)
     }
-}
-
-// FIXME: use usize::div_ceil soon
-fn div_ceil(a: usize, b: usize) -> usize {
-    let d = a / b;
-    let r = a % b;
-    d + usize::from(r > 0)
 }
 
 #[async_trait]

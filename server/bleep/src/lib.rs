@@ -395,3 +395,10 @@ fn tracing_subscribe() -> bool {
         .try_init()
         .is_ok()
 }
+
+// FIXME: use usize::div_ceil soon
+fn div_ceil(a: usize, b: usize) -> usize {
+    let d = a / b;
+    let r = a % b;
+    d + usize::from(r > 0)
+}
