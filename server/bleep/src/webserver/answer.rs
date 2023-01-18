@@ -50,11 +50,16 @@ fn default_limit() -> u64 {
     10
 }
 
+fn default_user_id() -> String {
+    String::from("test_user")
+}
+
 #[derive(Debug, serde::Deserialize)]
 pub struct Params {
     pub q: String,
     #[serde(default = "default_limit")]
     pub limit: u64,
+    #[serde(default = "default_user_id")]
     pub user_id: String,
 }
 
@@ -115,7 +120,7 @@ pub async fn handle(
         super::error(ErrorKind::Internal, "semantic search returned no snippets");
     }
 
-    let answer_api_host = format!("{}/q", app.config.answer_api_base);
+    let answer_api_host = format!("{}/q", app.config.answer_api_url);
     let answer_api_client = app
         .semantic
         .build_answer_api_client(answer_api_host.as_str(), target);
@@ -139,6 +144,7 @@ pub async fn handle(
         .map_err(super::internal_error)?;
 
     let relevant_snippet = &snippets[relevant_snippet_index];
+
     // grow the snippet by 60 lines above and below, we have sufficient space
     // to grow this snippet by 10 times its original size (15 to 150)
     let processed_snippet = {

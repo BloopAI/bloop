@@ -24,7 +24,7 @@ Exuberant Ctags 5.8, Copyright (C) 1996-2009 Darren Hiebert
 ```
 Make sure that `+json` is in the list of compiled features.
 
-### Natural Language
+### Natural Language Answers
 To execute natural language queries `bleep` needs to connect to a instance of [Qdrant](https://github.com/qdrant/qdrant), a vector search database. You can start Qdrant on port 6334 (where `bleep` expects it by default) with:
 
 ```
@@ -34,6 +34,8 @@ docker run -p 6333:6333 -p 6334:6334 \
 ```
 
 You can run `bleep` without linking it to a `Qdrant` instance but calls to the `/answer` endpoint will return an error.
+
+You'll also need to run a local instance of `answer_api` (`bleep` expects it on port 7879 by default) which handles requests to the OpenAI API.
 
 ### Build
 
@@ -92,8 +94,20 @@ Options:
           Bind the webserver to `<port>` [default: 127.0.0.1]
       --port <PORT>
           Bind the webserver to `<host>` [default: 7878]
+      --qdrant-url <QDRANT_URL>
+          URL for the qdrant server [default: http://127.0.0.1:6334]
+      --answer-api-url <ANSWER_API_URL>
+          URL for the answer-api [default: http://127.0.0.1:7879]
+      --model-dir <MODEL_DIR>
+          Path to the embedding model directory [default: model]
       --github-client-id <GITHUB_CLIENT_ID>
           Github Client ID for OAuth connection to private repos
+      --segment-key <SEGMENT_KEY>
+          Segment write key
+      --max-chunk-tokens <MAX_CHUNK_TOKENS>
+          Maximum number of tokens in a chunk (should be the model's input size) [default: 256]
+      --overlap <OVERLAP>
+          Chunking strategy [possible values: 1, 50%]
   -h, --help
           Print help information
   -V, --version
@@ -106,6 +120,12 @@ With the server running you can start searching your code:
 
 ```
 $ curl -v "localhost:7878/q?q=anyhow%20path:webserver%20repo:bloop" | jq
+```
+
+You can get answers in natural language by querying the `answer` endpoint:
+
+```
+curl "localhost:7878/answer?q=what%20does%20the%20query%20parser%20do?"
 ```
 
 You can check which repos are indexed and their status:

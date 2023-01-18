@@ -97,15 +97,15 @@ fn default_host() -> String {
     String::from("127.0.0.1")
 }
 
-fn default_qdrant() -> String {
+fn default_qdrant_url() -> String {
     String::from("http://127.0.0.1:6334")
 }
 
-fn default_answer_api_base() -> String {
+fn default_answer_api_url() -> String {
     String::from("http://127.0.0.1:7879")
 }
 
-fn default_embedding_input_size() -> usize {
+fn default_max_chunk_tokens() -> usize {
     256
 }
 
@@ -177,16 +177,6 @@ pub struct Configuration {
     /// Maximum number of parallel background threads
     pub max_threads: usize,
 
-    #[clap(long, default_value_t = default_qdrant())]
-    #[serde(default = "default_qdrant")]
-    /// URL for the qdrant server
-    pub qdrant_url: String,
-
-    #[clap(long, default_value_os_t = default_model_dir())]
-    #[serde(default = "default_model_dir")]
-    /// URL for the qdrant server
-    pub model_dir: PathBuf,
-
     #[clap(long, default_value_t = default_host())]
     #[serde(default = "default_host")]
     /// Bind the webserver to `<port>`
@@ -197,6 +187,21 @@ pub struct Configuration {
     /// Bind the webserver to `<host>`
     pub port: u16,
 
+    #[clap(long, default_value_t = default_qdrant_url())]
+    #[serde(default = "default_qdrant_url")]
+    /// URL for the qdrant server
+    pub qdrant_url: String,
+
+    #[clap(long, default_value_t = default_answer_api_url())]
+    #[serde(default = "default_answer_api_url")]
+    /// URL for the answer-api
+    pub answer_api_url: String,
+
+    #[clap(long, default_value_os_t = default_model_dir())]
+    #[serde(default = "default_model_dir")]
+    /// Path to the embedding model directory
+    pub model_dir: PathBuf,
+
     #[clap(long)]
     #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
     /// Github Client ID for OAuth connection to private repos
@@ -204,20 +209,16 @@ pub struct Configuration {
 
     #[clap(long)]
     #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
-    /// segment write key
+    /// Segment write key
     pub segment_key: Option<SecretString>,
 
-    #[clap(long, default_value_t = default_answer_api_base())]
-    #[serde(default = "default_answer_api_base")]
-    /// Answer API `base` string
-    pub answer_api_base: String,
-
-    #[clap(long, default_value_t = default_embedding_input_size())]
-    #[serde(default = "default_embedding_input_size")]
-    /// the size of tokens to embed at once (should be the model's input size)
-    pub embedding_input_size: usize,
+    #[clap(long, default_value_t = default_max_chunk_tokens())]
+    #[serde(default = "default_max_chunk_tokens")]
+    /// Maximum number of tokens in a chunk (should be the model's input size)
+    pub max_chunk_tokens: usize,
 
     #[clap(long)]
+    /// Chunking strategy
     pub overlap: Option<OverlapStrategy>,
 }
 

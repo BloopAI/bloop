@@ -200,7 +200,7 @@ impl Semantic {
             relative_path,
             buffer,
             &self.tokenizer,
-            self.config.embedding_input_size,
+            self.config.max_chunk_tokens,
             15,
             self.config
                 .overlap
