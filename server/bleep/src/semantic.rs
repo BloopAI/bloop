@@ -2,7 +2,6 @@ use std::{collections::HashMap, ops::Not, path::Path, sync::Arc};
 
 use crate::{query::parser::NLQuery, Configuration};
 
-use anyhow::Result;
 use ndarray::Axis;
 use ort::{
     tensor::{FromArray, InputTensor, OrtOwnedTensor},
@@ -18,11 +17,31 @@ use qdrant_client::{
     },
 };
 use rayon::prelude::*;
+use thiserror::Error;
 use tracing::{debug, trace};
 
 pub mod chunk;
 
 const COLLECTION_NAME: &str = "documents";
+
+#[derive(Error, Debug)]
+pub enum SemanticError {
+    /// Represents failure to initialize Qdrant client
+    #[error("Qdrant initialization failed. Is Qdrant running on `qdrant-url`?")]
+    QdrantInitializationError,
+
+    #[error("ONNX runtime error")]
+    OnnxRuntimeError {
+        #[from]
+        error: ort::OrtError,
+    },
+
+    #[error("semantic error")]
+    Anyhow {
+        #[from]
+        error: anyhow::Error,
+    },
+}
 
 #[derive(Clone)]
 pub struct Semantic {
@@ -51,25 +70,30 @@ impl Semantic {
         model_dir: &Path,
         qdrant_url: &str,
         config: Arc<Configuration>,
-    ) -> Result<Self> {
+    ) -> Result<Self, SemanticError> {
         let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url)))
             .await
             .unwrap();
 
-        if qdrant.has_collection(COLLECTION_NAME).await.unwrap().not() {
-            let CollectionOperationResponse { result, time } = qdrant
-                .create_collection(&collection_config())
-                .await
-                .unwrap();
+        match qdrant.has_collection(COLLECTION_NAME).await {
+            Ok(has_collection) => {
+                if has_collection.not() {
+                    let CollectionOperationResponse { result, time } = qdrant
+                        .create_collection(&collection_config())
+                        .await
+                        .unwrap();
 
-            debug!(
-                time,
-                created = result,
-                name = COLLECTION_NAME,
-                "created qdrant collection"
-            );
+                    debug!(
+                        time,
+                        created = result,
+                        name = COLLECTION_NAME,
+                        "created qdrant collection"
+                    );
 
-            assert!(result);
+                    assert!(result);
+                }
+            }
+            Err(_) => return Err(SemanticError::QdrantInitializationError),
         }
 
         let environment = Arc::new(
@@ -97,7 +121,7 @@ impl Semantic {
         })
     }
 
-    pub fn embed(&self, chunk: &str) -> Result<Vec<f32>> {
+    pub fn embed(&self, chunk: &str) -> anyhow::Result<Vec<f32>> {
         let tokenizer_output = self.tokenizer.encode(chunk, true).unwrap();
 
         let input_ids = tokenizer_output.get_ids();
@@ -137,7 +161,7 @@ impl Semantic {
         &self,
         nl_query: &NLQuery<'a>,
         limit: u64,
-    ) -> Result<Vec<HashMap<String, Value>>> {
+    ) -> anyhow::Result<Vec<HashMap<String, Value>>> {
         let Some(query) = nl_query.target() else {
             anyhow::bail!("no search target for query");
         };

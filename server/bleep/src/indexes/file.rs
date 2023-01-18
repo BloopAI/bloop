@@ -56,7 +56,7 @@ struct Workload<'a> {
 pub struct File {
     config: Arc<Configuration>,
     schema: Schema,
-    semantic: Semantic,
+    semantic: Option<Semantic>,
 
     #[cfg(feature = "debug")]
     histogram: Arc<RwLock<Histogram>>,
@@ -97,7 +97,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn new(config: Arc<Configuration>, semantic: Semantic) -> Self {
+    pub fn new(config: Arc<Configuration>, semantic: Option<Semantic>) -> Self {
         let mut builder = tantivy::schema::SchemaBuilder::new();
         let trigram = TextOptions::default().set_stored().set_indexing_options(
             TextFieldIndexing::default()
@@ -541,15 +541,17 @@ impl File {
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
         let last_commit = repo_info.last_commit_unix_secs;
 
-        tokio::task::block_in_place(|| {
-            Handle::current().block_on(self.semantic.insert_points_for_buffer(
-                repo_name,
-                &repo_ref,
-                &relative_path.to_string_lossy(),
-                &buffer,
-                lang_str,
-            ))
-        });
+        if let Some(semantic) = &self.semantic {
+            tokio::task::block_in_place(|| {
+                Handle::current().block_on(semantic.insert_points_for_buffer(
+                    repo_name,
+                    &repo_ref,
+                    &relative_path.to_string_lossy(),
+                    &buffer,
+                    lang_str,
+                ))
+            });
+        }
 
         trace!("writing document");
         #[cfg(feature = "debug")]
