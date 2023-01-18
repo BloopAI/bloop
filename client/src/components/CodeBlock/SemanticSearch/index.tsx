@@ -51,7 +51,11 @@ const SemanticSearch = ({
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
   const { trackUpvote } = useAnalytics();
-  const { rive, RiveComponent: RiveComponentPlayback } = useRive({
+  const RiveUpvote = useRive({
+    src: '/like_button.riv',
+    autoplay: false,
+  });
+  const RiveDownvote = useRive({
     src: '/like_button.riv',
     autoplay: false,
   });
@@ -60,12 +64,20 @@ const SemanticSearch = ({
 
   const handleUpvote = useCallback(
     (isUpvote: boolean) => {
-      if (rive) {
+      if (RiveUpvote.rive) {
         if (isUpvote) {
-          rive.play();
+          RiveUpvote.rive.play();
         } else {
-          rive.reset();
-          rive.drawFrame();
+          RiveUpvote.rive.reset();
+          RiveUpvote.rive.drawFrame();
+        }
+      }
+      if (RiveDownvote.rive) {
+        if (!isUpvote) {
+          RiveDownvote.rive.play();
+        } else {
+          RiveDownvote.rive.reset();
+          RiveDownvote.rive.drawFrame();
         }
       }
       setIsUpvote(isUpvote);
@@ -79,7 +91,7 @@ const SemanticSearch = ({
         text: answer,
       });
     },
-    [deviceId, query, answer, rive],
+    [deviceId, query, answer, RiveUpvote, RiveDownvote],
   );
 
   return (
@@ -107,7 +119,7 @@ const SemanticSearch = ({
             onClick={() => handleUpvote(true)}
             className="overflow-hidden"
           >
-            <RiveComponentPlayback className="w-4/5 h-4/5" />
+            <RiveUpvote.RiveComponent className="w-4/5 h-4/5" />
           </Button>
           <Button
             onlyIcon
@@ -116,7 +128,7 @@ const SemanticSearch = ({
             size="small"
             onClick={() => handleUpvote(false)}
           >
-            <ThumbsDown />
+            <RiveDownvote.RiveComponent className="w-4/5 h-4/5 transform rotate-180" />
           </Button>
         </div>
       </div>
