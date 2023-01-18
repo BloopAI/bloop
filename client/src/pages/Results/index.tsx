@@ -54,7 +54,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     FullResultModeEnum.SIDEBAR,
   );
   const [openResult, setOpenResult] = useState<FullResult | null>(null);
-  const [scrollToLine, setScrollToLine] = useState<number | undefined>(
+  const [scrollToLine, setScrollToLine] = useState<string | undefined>(
     undefined,
   );
   const { filters, setFilters, inputValue, globalRegex } =
@@ -81,7 +81,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
 
   const onResultClick = useCallback<ResultClick>(
     (repo, path, lineNumber) => {
-      setScrollToLine(lineNumber);
+      setScrollToLine(lineNumber ? lineNumber.join('_') : undefined);
       if (path && !(path.endsWith('/') || path.endsWith('\\'))) {
         fileModalSearchQuery(`open:true repo:${repo} path:${path}`);
       } else {

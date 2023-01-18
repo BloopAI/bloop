@@ -45,7 +45,16 @@ const CodeBlockSearch = ({
 
   const handleMouseUp = useCallback(() => {
     if (!document.getSelection()?.toString()) {
-      onClick?.(repoName, filePath, snippets[0].lineStart);
+      onClick?.(
+        repoName,
+        filePath,
+        snippets[0].lineStart
+          ? [
+              snippets[0].lineStart,
+              snippets[0].lineStart + snippets[0].code.split('\n').length - 1,
+            ]
+          : undefined,
+      );
     }
   }, [onClick]);
 

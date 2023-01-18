@@ -149,7 +149,7 @@ export type TokenInfo = {
 export type ResultClick = (
   repo: string,
   path?: string,
-  lineNumber?: number,
+  lineNumbers?: [number, number],
 ) => void;
 
 export type FileTreeItem = RepositoryFile & {
