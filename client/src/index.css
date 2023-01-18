@@ -373,6 +373,6 @@ h5, .h5 {
   @apply bg-gray-700 p-[2px] rounded;
 }
 .semantic-answer p > code {
-  @apply text-sky-200;
+  @apply text-sky-400;
 }
 
