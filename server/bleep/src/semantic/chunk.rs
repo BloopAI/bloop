@@ -157,13 +157,18 @@ fn add_token_range<'s>(
     end: usize,
     last_line: &mut usize,
     last_byte: &mut usize,
+    go_back_to_line_start: bool,
 ) {
     let start_byte = offsets[start].0;
-    let line_start_byte = src[..start_byte]
-        .char_indices()
-        .rev()
-        .find_map(|(i, c)| (c == '\n').then_some(i + 1))
-        .unwrap_or(0);
+    let line_start_byte = if go_back_to_line_start {
+        src[..start_byte]
+            .char_indices()
+            .rev()
+            .find_map(|(i, c)| (c == '\n').then_some(i + 1))
+            .unwrap_or(0)
+    } else {
+        start_byte
+    };
     let end_byte = offsets.get(end).map_or(src.len(), |&(s, _)| s);
     let Some(trimmed_end_byte) = src[..end_byte]
         .char_indices()
@@ -172,6 +177,13 @@ fn add_token_range<'s>(
     if trimmed_end_byte <= start_byte {
         return;
     }
+    assert!(
+        end - start < 256,
+        "chunk too large: {} tokens in {:?} bytes {:?}",
+        end - start,
+        start..end,
+        line_start_byte..trimmed_end_byte
+    );
     let start = point(src, line_start_byte, *last_line, *last_byte);
     let end = point(src, trimmed_end_byte, *last_line, *last_byte);
     (*last_line, *last_byte) = (start.line, start.byte);
@@ -236,11 +248,12 @@ pub fn by_tokens<'s>(
     let mut offset = 0;
     let (mut last_line, mut last_byte) = (1, 0);
     while let Some(index_diff) = starts[s..].iter().position(|&p| p - offset > max_tokens) {
-        let next_s = s + index_diff - 1;
+        let index_diff = index_diff - 1;
         // add (offset, end) to token_ranges, split if necessary
-        if next_s == s {
+        if index_diff == 0 {
             // overlong line
             let end_offset = starts.get(s + 1).map_or_else(|| offsets.len(), |&o| o);
+            let mut start = true;
             loop {
                 let end = offset + max_tokens;
                 if end > end_offset {
@@ -252,6 +265,7 @@ pub fn by_tokens<'s>(
                         end_offset,
                         &mut last_line,
                         &mut last_byte,
+                        std::mem::take(&mut start),
                     );
                     break;
                 }
@@ -263,12 +277,13 @@ pub fn by_tokens<'s>(
                     end,
                     &mut last_line,
                     &mut last_byte,
+                    std::mem::take(&mut start),
                 );
                 offset += strategy.next_subdivision(max_tokens);
             }
             s += 1;
         } else {
-            let end = starts[next_s];
+            let end = starts[s + index_diff];
             add_token_range(
                 &mut chunks,
                 src,
@@ -277,21 +292,29 @@ pub fn by_tokens<'s>(
                 end,
                 &mut last_line,
                 &mut last_byte,
+                true,
             );
-            s = strategy.next_start(&starts, offset, end);
+            s = strategy.next_start(&starts, offset, end).max(s + 1);
         }
         offset = starts[s];
     }
-    if offset < offsets.len() {
+    let mut start = true;
+    while offset < offsets.len() {
+        let end_offset = (offset + max_tokens).min(offsets.len());
         add_token_range(
             &mut chunks,
             src,
             offsets,
             offset,
-            offsets.len(),
+            end_offset,
             &mut last_line,
             &mut last_byte,
+            std::mem::take(&mut start),
         );
+        if end_offset == offsets.len() {
+            break;
+        }
+        offset += strategy.next_subdivision(max_tokens);
     }
     chunks
 }
