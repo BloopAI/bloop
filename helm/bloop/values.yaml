@@ -44,7 +44,15 @@ service:
     {}
 
 ingress:
-  enabled: false
+  enabled: true
+  className: nginx
+  annotations:
+    kubernetes.io/tls-acme: "true"
+  hosts: []
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
 
 env: {}
 
