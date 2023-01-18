@@ -52,7 +52,7 @@ $ cargo run -p bleep --release -- \
 
 bloop will recursively scan `/path/to/source` for repositories and start indexing them. It will also start a webserver. The location of the search index can be specified with the `--index-dir` parameter. By default it is stored in the system cache.
 
-bloop periodically checks for changes to local and remote repos and automatically reindexes if a change is detected. Indexing and polling can be disabled by passing the `--disable-background` and `disable-fsevents` flags.
+bloop periodically checks for changes to local and remote repos and automatically reindexes if a change is detected. Indexing and polling can be disabled by passing the `--disable-background` and `--disable-fsevents` flags.
 
 The log level can be customized by setting the `BLOOP_LOG` env var.
 
