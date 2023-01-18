@@ -15,7 +15,6 @@ use criterion as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
-use octocrab::current::ListReposForAuthenticatedUserBuilder;
 use semantic::{chunk::OverlapStrategy, Semantic};
 use webserver::AuthenticationLayer;
 

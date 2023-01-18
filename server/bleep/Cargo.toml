@@ -102,7 +102,6 @@ tokenizers = "0.13.2"
 ort = { git = "https://github.com/bloopai/ort", branch = "arm64-convert-fix" }
 ndarray = "0.15"
 uuid = { version = "1.2.2", features = ["v4", "fast-rng"] }
-maplit = "1.0.2"
 biscuit-auth = "2.2.0"
 
 # telemetry
