@@ -72,11 +72,11 @@ const SemanticSearch = ({
   return (
     <div className="flex flex-col">
       <div className="bg-gray-800 p-3 flex flex-row rounded-t relative">
-        <span
-          className="body-s pr-24 semantic-answer"
+        <div
+          className="body-s w-full semantic-answer"
           dangerouslySetInnerHTML={{ __html: highlightedAnswer }}
-        ></span>
-        <div className="flex flex-row absolute top-2 right-3">
+        ></div>
+        <div className="flex flex-row">
           <Button
             onlyIcon
             title="Retry"
