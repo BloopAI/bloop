@@ -1,4 +1,4 @@
-use std::fmt::{Display, Write};
+use std::{fmt::{Display, Write}, ops::Range};
 
 use crate::text_range::{Point, TextRange};
 
@@ -153,13 +153,12 @@ fn add_token_range<'s>(
     chunks: &mut Vec<Chunk<'s>>,
     src: &'s str,
     offsets: &[(usize, usize)],
-    start: usize,
-    end: usize,
+    o: Range<usize>,
     last_line: &mut usize,
     last_byte: &mut usize,
     go_back_to_line_start: bool,
 ) {
-    let start_byte = offsets[start].0;
+    let start_byte = offsets[o.start].0;
     let line_start_byte = if go_back_to_line_start {
         src[..start_byte]
             .char_indices()
@@ -169,7 +168,7 @@ fn add_token_range<'s>(
     } else {
         start_byte
     };
-    let end_byte = offsets.get(end).map_or(src.len(), |&(s, _)| s);
+    let end_byte = offsets.get(o.end).map_or(src.len(), |&(s, _)| s);
     let Some(trimmed_end_byte) = src[..end_byte]
         .char_indices()
         .rev()
@@ -178,10 +177,10 @@ fn add_token_range<'s>(
         return;
     }
     debug_assert!(
-        end - start < 256,
+        o.end - o.start < 256,
         "chunk too large: {} tokens in {:?} bytes {:?}",
-        end - start,
-        start..end,
+        o.end - o.start,
+        o,
         line_start_byte..trimmed_end_byte
     );
     let start = point(src, line_start_byte, *last_line, *last_byte);
@@ -261,8 +260,7 @@ pub fn by_tokens<'s>(
                         &mut chunks,
                         src,
                         offsets,
-                        offset,
-                        end_offset,
+                        offset..end_offset,
                         &mut last_line,
                         &mut last_byte,
                         std::mem::take(&mut start),
@@ -273,8 +271,7 @@ pub fn by_tokens<'s>(
                     &mut chunks,
                     src,
                     offsets,
-                    offset,
-                    end,
+                    offset..end,
                     &mut last_line,
                     &mut last_byte,
                     std::mem::take(&mut start),
@@ -288,8 +285,7 @@ pub fn by_tokens<'s>(
                 &mut chunks,
                 src,
                 offsets,
-                offset,
-                end,
+                offset..end,
                 &mut last_line,
                 &mut last_byte,
                 true,
@@ -305,8 +301,7 @@ pub fn by_tokens<'s>(
             &mut chunks,
             src,
             offsets,
-            offset,
-            end_offset,
+            offset..end_offset,
             &mut last_line,
             &mut last_byte,
             std::mem::take(&mut start),
