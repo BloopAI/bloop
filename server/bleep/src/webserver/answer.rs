@@ -127,8 +127,7 @@ pub async fn handle(
     }
 
     let answer_api_host = format!("{}/q", app.config.answer_api_url);
-    let answer_api_client = semantic
-        .build_answer_api_client(answer_api_host.as_str(), target);
+    let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target);
 
     let select_prompt = answer_api_client.build_select_prompt(&snippets);
     let relevant_snippet_index = answer_api_client
