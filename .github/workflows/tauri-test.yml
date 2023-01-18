@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies (ubuntu only)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf protobuf-compiler
 
       - uses: cachix/install-nix-action@v18
       - name: Install Universal Ctags
