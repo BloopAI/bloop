@@ -121,7 +121,7 @@ jobs:
       # bench boxes are expected to have a registry with the dependencies
       # from our flake.nix file. to setup a bench box from scratch:
       - name: Enter benchmark environment
-        run: "nix registry list; nix develop environment"
+        run: "which nix; nix registry list; nix develop environment"
 
       - name: Dummy Qdrant binary
         run: "touch apps/desktop/src-tauri/bin/qdrant-x86_64-unknown-linux-gnu"
