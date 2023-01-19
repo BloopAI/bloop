@@ -176,36 +176,30 @@ pub async fn handle(
         info!("Semantic search returned {} snippets", snippets.len());
     }
 
-    let answer_api_host = format!("{}/q", app.config.answer_api_url);
-    let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target);
+    // score each result
+    let snippet_scores = snippets
+        .iter()
+        .filter_map(|snippet| semantic.score(&params.q, snippet.text.as_str()).ok())
+        .collect::<Vec<f32>>();
 
-    let select_prompt = answer_api_client.build_select_prompt(&snippets);
-    let relevant_snippet_index = answer_api_client
-        .select_snippet(&select_prompt)
-        .await
-        .map_err(|e| match e.status() {
-            Some(StatusCode::SERVICE_UNAVAILABLE) => super::error(
-                ErrorKind::UpstreamService,
-                "service is currently overloaded",
-            ),
-            _ => super::internal_error(e),
-        })?
-        .text()
-        .await
-        .map_err(super::internal_error)?
-        .trim()
-        .to_string()
-        .clone();
+    tracing::info!("{:?}", &snippets);
+    tracing::info!("{:?}", &snippet_scores);
+
+    let relevant_snippet_index = snippet_scores
+        .iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| a.total_cmp(b))
+        .map(|(index, _)| index)
+        .unwrap();
 
     info!("Relevant snippet index: {}", &relevant_snippet_index);
-
-    let relevant_snippet_index = relevant_snippet_index
-        .parse::<usize>()
-        .map_err(super::internal_error)?;
 
     let relevant_snippet = snippets
         .get(relevant_snippet_index)
         .ok_or_else(|| super::internal_error("answer-api returned out-of-bounds index"))?;
+
+    let answer_api_host = format!("{}/q", app.config.answer_api_url);
+    let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target);
 
     // grow the snippet by 60 lines above and below, we have sufficient space
     // to grow this snippet by 10 times its original size (15 to 150)
@@ -269,7 +263,6 @@ pub async fn handle(
             .track_query(QueryEvent {
                 user_id: params.user_id.clone(),
                 query: params.q.clone(),
-                select_prompt,
                 relevant_snippet_index,
                 explain_prompt,
                 explanation: snippet_explanation.clone(),
@@ -352,42 +345,7 @@ impl<'s> AnswerAPIClient<'s> {
     }
 }
 
-const DELIMITER: &str = "######";
 impl<'a> AnswerAPIClient<'a> {
-    fn build_select_prompt(&self, snippets: &[api::Snippet]) -> String {
-        let mut prompt = snippets
-            .iter()
-            .enumerate()
-            .map(|(i, snippet)| {
-                format!(
-                    "Repository: {}\nPath: {}\nLanguage: {}\nIndex: {}\n\n{}\n{DELIMITER}\n",
-                    snippet.repo_name, snippet.relative_path, snippet.lang, i, snippet.text
-                )
-            })
-            .collect::<String>();
-
-        // the example question/answer pair helps reinforce that we want exactly a single
-        // number in the output, with no spaces or punctuation such as fullstops.
-        prompt += &format!(
-            "Above are {} code snippets separated by \"{DELIMITER}\". \
-Your job is to select the snippet that best answers the question. Reply\
-with a single number indicating the index of the snippet in the list.\
-If none of the snippets seem relevant, reply with \"0\".
-
-Q:What icon do we use to clear search history?
-A:3
-
-Q:{}
-A:",
-            snippets.len(),
-            self.query,
-        );
-
-        let tokens_used = self.semantic.gpt2_token_count(&prompt);
-        tracing::debug!(%tokens_used, "select prompt token count");
-        prompt
-    }
-
     fn build_explain_prompt(&self, snippet: &api::Snippet) -> String {
         let prompt = format!(
             "File: {}
@@ -407,10 +365,6 @@ A:",
             snippet.relative_path, snippet.text, self.query
         );
         prompt
-    }
-
-    async fn select_snippet(&self, prompt: &str) -> Result<reqwest::Response, reqwest::Error> {
-        self.send(prompt, 1).await
     }
 
     async fn explain_snippet(&self, prompt: &str) -> Result<reqwest::Response, reqwest::Error> {
