@@ -73,7 +73,7 @@ const SemanticSearch = ({
     <div className="flex flex-col">
       <div className="bg-gray-800 p-3 flex flex-row rounded-t relative">
         <div
-          className="body-s w-full semantic-answer"
+          className="body-s w-full semantic-answer overflow-auto"
           dangerouslySetInnerHTML={{ __html: highlightedAnswer }}
         ></div>
         <div className="flex flex-row">
