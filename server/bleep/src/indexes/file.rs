@@ -250,24 +250,21 @@ impl Indexable for File {
         let start = std::time::Instant::now();
 
         use rayon::prelude::*;
-        walker
-            .into_par_iter()
-            .chain(Some(repo.disk_path.clone()))
-            .for_each(|entry_disk_path| {
-                let workload = Workload {
-                    entry_disk_path: entry_disk_path.clone(),
-                    repo_disk_path: &repo.disk_path,
-                    repo_ref: reporef.to_string(),
-                    repo_name: &repo_name,
-                    cache: &file_cache,
-                    repo_info,
-                };
+        walker.into_par_iter().for_each(|entry_disk_path| {
+            let workload = Workload {
+                entry_disk_path: entry_disk_path.clone(),
+                repo_disk_path: &repo.disk_path,
+                repo_ref: reporef.to_string(),
+                repo_name: &repo_name,
+                cache: &file_cache,
+                repo_info,
+            };
 
-                debug!(?entry_disk_path, "queueing entry");
-                if let Err(err) = self.worker(workload, writer) {
-                    warn!(%err, ?entry_disk_path, "indexing failed; skipping");
-                }
-            });
+            debug!(?entry_disk_path, "queueing entry");
+            if let Err(err) = self.worker(workload, writer) {
+                warn!(%err, ?entry_disk_path, "indexing failed; skipping");
+            }
+        });
 
         info!(?repo.disk_path, "file indexing finished, took {:?}", start.elapsed());
 
