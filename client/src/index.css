@@ -376,3 +376,6 @@ h5, .h5 {
   @apply text-sky-400;
 }
 
+.semantic-answer a {
+  color: #5D75FF;
+}
