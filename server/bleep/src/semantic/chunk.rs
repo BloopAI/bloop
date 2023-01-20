@@ -248,7 +248,7 @@ pub fn by_tokens<'s>(
     let mut chunks = Vec::new();
     let mut s = 0;
     let mut offset = 0;
-    let (mut last_line, mut last_byte) = (1, 0);
+    let (mut last_line, mut last_byte) = (0, 0);
     while let Some(index_diff) = starts[s..].iter().position(|&p| p - offset > max_tokens) {
         let index_diff = index_diff - 1;
         // add (offset, end) to token_ranges, split if necessary
