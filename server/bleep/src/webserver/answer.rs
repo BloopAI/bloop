@@ -7,7 +7,7 @@ use tracing::{debug, error, info, warn};
 use utoipa::ToSchema;
 
 use crate::{
-    indexes::reader::ContentDocument, query::parser, segment::QueryEvent, semantic::Semantic,
+    analytics::QueryEvent, indexes::reader::ContentDocument, query::parser, semantic::Semantic,
     state::RepoRef, Application,
 };
 
@@ -81,6 +81,7 @@ pub async fn handle(
 ) -> Result<impl IntoResponse, impl IntoResponse> {
     let semantic = app
         .semantic
+        .as_ref()
         .ok_or_else(|| super::error(ErrorKind::Configuration, "Qdrant not configured"))?;
 
     let query =
@@ -133,7 +134,7 @@ pub async fn handle(
     let mut snippets = vec![];
     let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
 
-    for snippet in all_snippets.into_iter() {
+    for snippet in all_snippets.clone().into_iter() {
         if snippets.len() > SNIPPET_COUNT {
             break;
         }
@@ -264,18 +265,17 @@ pub async fn handle(
     // reorder snippets
     snippets.swap(relevant_snippet_index, 0);
 
-    if let Some(ref segment) = *app.segment {
-        segment
-            .track_query(QueryEvent {
-                user_id: params.user_id.clone(),
-                query: params.q.clone(),
-                select_prompt,
-                relevant_snippet_index,
-                explain_prompt,
-                explanation: snippet_explanation.clone(),
-            })
-            .await;
-    }
+    app.track_query(QueryEvent {
+        user_id: params.user_id.clone(),
+        query: params.q.clone(),
+        semantic_results: all_snippets,
+        filtered_semantic_results: snippets.clone(),
+        select_prompt,
+        relevant_snippet_index,
+        explain_prompt,
+        explanation: snippet_explanation.clone(),
+        overlap_strategy: semantic.overlap_strategy(),
+    });
 
     // answering snippet is always at index 0
     let answer_path = snippets.get(0).unwrap().relative_path.to_string();
