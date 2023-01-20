@@ -20,7 +20,6 @@
     "chromatic": "npx chromatic --project-token=6115d726666b"
   },
   "dependencies": {
-    "@segment/analytics-next": "^1.46.3",
     "@sentry/react": "^7.23.0",
     "@sentry/tracing": "^7.23.0",
     "@tailwindcss/line-clamp": "^0.4.2",
@@ -44,6 +43,7 @@
     "react-router-dom": "^6.4.1",
     "react-virtualized": "^9.22.3",
     "remarkable": "^2.0.1",
+    "rudder-sdk-js": "^2.22.3",
     "textarea-caret": "^3.1.0",
     "timeago.js": "^4.0.2"
   },
