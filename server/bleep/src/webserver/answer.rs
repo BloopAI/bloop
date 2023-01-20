@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
 use reqwest::StatusCode;
-use tracing::{error, info};
+use thiserror::Error;
+use tracing::{debug, error, info, warn};
 use utoipa::ToSchema;
 
 use crate::{
@@ -72,7 +73,7 @@ pub struct AnswerResponse {
     pub selection: api::Response,
 }
 
-const SNIPPET_COUNT: usize = 14;
+const SNIPPET_COUNT: usize = 13;
 
 pub async fn handle(
     Query(params): Query<Params>,
@@ -167,9 +168,8 @@ pub async fn handle(
     }
 
     if snippets.is_empty() {
-        tracing::warn!("Semantic search returned no snippets");
-        return Err(super::error(
-            ErrorKind::Internal,
+        warn!("Semantic search returned no snippets");
+        return Err(super::internal_error(
             "semantic search returned no snippets",
         ));
     } else {
@@ -177,18 +177,18 @@ pub async fn handle(
     }
 
     let answer_api_host = format!("{}/q", app.config.answer_api_url);
-    let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target);
+    let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target, 5);
 
     let select_prompt = answer_api_client.build_select_prompt(&snippets);
     let relevant_snippet_index = answer_api_client
         .select_snippet(&select_prompt)
         .await
-        .map_err(|e| match e.status() {
-            Some(StatusCode::SERVICE_UNAVAILABLE) => super::error(
-                ErrorKind::UpstreamService,
-                "service is currently overloaded",
-            ),
-            _ => super::internal_error(e),
+        .map_err(|e| {
+            sentry::capture_message(
+                format!("answer-api failed to respond: {}", e).as_str(),
+                sentry::Level::Error,
+            );
+            super::error(ErrorKind::UpstreamService, e.to_string())
         })?
         .text()
         .await
@@ -250,12 +250,12 @@ pub async fn handle(
     let snippet_explanation = answer_api_client
         .explain_snippet(&explain_prompt)
         .await
-        .map_err(|e| match e.status() {
-            Some(StatusCode::SERVICE_UNAVAILABLE) => super::error(
-                ErrorKind::UpstreamService,
-                "service is currently overloaded",
-            ),
-            _ => super::internal_error(e),
+        .map_err(|e| {
+            sentry::capture_message(
+                format!("answer-api failed to respond: {}", e).as_str(),
+                sentry::Level::Error,
+            );
+            super::error(ErrorKind::UpstreamService, e.to_string())
         })?
         .text()
         .await
@@ -322,15 +322,31 @@ struct AnswerAPIClient<'s> {
     host: String,
     query: String,
     semantic: &'s Semantic,
+    max_attempts: usize,
+}
+
+#[derive(Error, Debug)]
+enum AnswerAPIError {
+    #[error("max retry attempts reached {0}")]
+    MaxAttemptsReached(usize),
+
+    #[error("fatal error {0}")]
+    Fatal(reqwest::Error),
 }
 
 impl Semantic {
-    fn build_answer_api_client<'s>(&'s self, host: &str, query: &str) -> AnswerAPIClient<'s> {
+    fn build_answer_api_client<'s>(
+        &'s self,
+        host: &str,
+        query: &str,
+        max_attempts: usize,
+    ) -> AnswerAPIClient<'s> {
         AnswerAPIClient {
             client: reqwest::Client::new(),
             host: host.to_owned(),
             query: query.to_owned(),
             semantic: self,
+            max_attempts,
         }
     }
 }
@@ -349,6 +365,23 @@ impl<'s> AnswerAPIClient<'s> {
             })
             .send()
             .await
+    }
+
+    async fn send_until_success(
+        &self,
+        prompt: &str,
+        max_tokens: u32,
+    ) -> Result<reqwest::Response, AnswerAPIError> {
+        for attempt in 0..self.max_attempts {
+            let response = self.send(prompt, max_tokens).await;
+            match response {
+                Ok(r) if r.status() == StatusCode::OK => return Ok(r),
+                Err(e) => return Err(AnswerAPIError::Fatal(e)),
+                _ => (),
+            };
+            warn!(%attempt, "answer-api returned {} ... retrying", response.unwrap().status());
+        }
+        Err(AnswerAPIError::MaxAttemptsReached(self.max_attempts))
     }
 }
 
@@ -384,7 +417,7 @@ A:",
         );
 
         let tokens_used = self.semantic.gpt2_token_count(&prompt);
-        tracing::debug!(%tokens_used, "select prompt token count");
+        debug!(%tokens_used, "select prompt token count");
         prompt
     }
 
@@ -409,11 +442,11 @@ A:",
         prompt
     }
 
-    async fn select_snippet(&self, prompt: &str) -> Result<reqwest::Response, reqwest::Error> {
-        self.send(prompt, 1).await
+    async fn select_snippet(&self, prompt: &str) -> Result<reqwest::Response, AnswerAPIError> {
+        self.send_until_success(prompt, 1).await
     }
 
-    async fn explain_snippet(&self, prompt: &str) -> Result<reqwest::Response, reqwest::Error> {
+    async fn explain_snippet(&self, prompt: &str) -> Result<reqwest::Response, AnswerAPIError> {
         let tokens_used = self.semantic.gpt2_token_count(prompt);
         info!(%tokens_used, "input prompt token count");
         let max_tokens = 4096usize.saturating_sub(tokens_used);
@@ -423,9 +456,9 @@ A:",
             error!(%tokens_used, "prompt overshot token limit");
         }
 
-        // do not let the completion cross 2500 tokens
+        // do not let the completion cross 500 tokens
         let max_tokens = max_tokens.clamp(1, 500);
         info!(%max_tokens, "clamping max tokens");
-        self.send(prompt, max_tokens as u32).await
+        self.send_until_success(prompt, max_tokens as u32).await
     }
 }
