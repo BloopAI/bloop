@@ -1,9 +1,8 @@
 use bleep::{Application, Configuration, Environment};
-use tauri::{Manager, Runtime};
 
-use crate::{relative_command_path, Payload};
+use super::{plugin, relative_command_path, App, Manager, Payload, Runtime};
 
-pub(super) fn bleep<R>(app: &mut tauri::App<R>) -> tauri::plugin::Result<()>
+pub(super) fn bleep<R>(app: &mut App<R>) -> plugin::Result<()>
 where
     R: Runtime,
 {
