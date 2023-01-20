@@ -1,4 +1,3 @@
-use secrecy::{ExposeSecret, Secret};
 use segment::{
     message::{Track, User},
     Client, Message,
@@ -15,12 +14,12 @@ pub struct QueryEvent {
 }
 
 pub struct Segment {
-    pub key: Secret<String>,
+    pub key: String,
     pub client: segment::HttpClient,
 }
 
 impl Segment {
-    pub fn new(segment_key: Secret<String>) -> Segment {
+    pub fn new(segment_key: String) -> Segment {
         Self {
             key: segment_key,
             client: segment::HttpClient::default(),
@@ -30,7 +29,7 @@ impl Segment {
     pub async fn track_query(&self, event: QueryEvent) {
         self.client
             .send(
-                self.key.expose_secret().clone(),
+                self.key.clone(),
                 Message::from(Track {
                     user: User::UserId {
                         user_id: event.user_id,

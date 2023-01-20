@@ -35,7 +35,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 
 #[cfg(target = "windows")]
@@ -62,6 +62,7 @@ pub mod text_range;
 
 const LOG_ENV_VAR: &str = "BLOOP_LOG";
 static LOGGER_INSTALLED: OnceCell<bool> = OnceCell::new();
+static SENTRY_GUARD: OnceCell<sentry::ClientInitGuard> = OnceCell::new();
 
 fn default_index_path() -> PathBuf {
     match directories::ProjectDirs::from("ai", "bloop", "bleep") {
@@ -208,11 +209,6 @@ pub struct Configuration {
     /// Github Client ID for OAuth connection to private repos
     pub github_client_id: Option<SecretString>,
 
-    #[clap(long)]
-    #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
-    /// Segment write key
-    pub segment_key: Option<SecretString>,
-
     #[clap(long, default_value_t = default_max_chunk_tokens())]
     #[serde(default = "default_max_chunk_tokens")]
     /// Maximum number of tokens in a chunk (should be the model's input size)
@@ -285,7 +281,15 @@ impl Application {
                 Err(e) => bail!(e),
             };
 
-        let segment = Arc::new(config.segment_key.clone().map(Segment::new));
+        let segment = if let Ok(segment_key) = std::env::var("SEGMENT_KEY_BE") {
+            info!("initializing segment");
+            Some(Segment::new(segment_key))
+        } else {
+            warn!("could not find segment key ... skipping initialization");
+            None
+        };
+        let segment = Arc::new(segment);
+
         let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
 
         Ok(Self {
@@ -297,6 +301,18 @@ impl Application {
             config,
             segment,
         })
+    }
+
+    pub fn load_env_vars() {
+        info!("loading .env file ...");
+        if let Ok(path) = dotenvy::dotenv() {
+            info!(
+                "loaded env from `{:?}`",
+                canonicalize(path).ok().as_ref().map(|p| p.display())
+            );
+        } else {
+            warn!("failed to load .env file")
+        };
     }
 
     pub fn install_logging() {
@@ -313,6 +329,29 @@ impl Application {
         };
 
         LOGGER_INSTALLED.set(true).unwrap();
+    }
+
+    pub fn install_sentry() {
+        let Some(dsn) = std::env::var("VITE_SENTRY_DSN_BE").ok() else {
+            info!("sentry DSN missing, skipping initialization");
+            return;
+        };
+
+        if sentry::Hub::current().client().is_some() {
+            warn!("sentry has already been initialized");
+            return;
+        }
+
+        info!("initializing sentry ...");
+        let guard = sentry::init((
+            dsn,
+            sentry::ClientOptions {
+                release: sentry::release_name!(),
+                ..Default::default()
+            },
+        ));
+
+        _ = SENTRY_GUARD.set(guard);
     }
 
     pub async fn run(self) -> Result<()> {
