@@ -17,10 +17,7 @@ use criterion as _;
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
 use dashmap::DashMap;
-use octocrab::{
-    models::Installation,
-    Octocrab,
-};
+use octocrab::{models::Installation, Octocrab};
 use remotes::BackendCredential;
 use semantic::{chunk::OverlapStrategy, Semantic};
 use state::Backend;

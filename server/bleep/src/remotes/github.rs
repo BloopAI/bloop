@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use octocrab::{Octocrab, models::InstallationToken};
+use octocrab::{models::InstallationToken, Octocrab};
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 

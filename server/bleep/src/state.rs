@@ -477,8 +477,7 @@ impl StateSource {
     }
 
     pub fn index_version_mismatch(&self) -> bool {
-        let current: String =
-            read_file_or_default(self.version_file.as_ref().unwrap()).unwrap();
+        let current: String = read_file_or_default(self.version_file.as_ref().unwrap()).unwrap();
 
         !current.is_empty() && current != SCHEMA_VERSION
     }
@@ -500,7 +499,10 @@ impl StateSource {
         read_file_or_default(self.credentials.as_ref().unwrap())
     }
 
-    pub(crate) fn save_credentials(&self, creds: &DashMap<Backend, BackendCredential>) -> Result<(), RepoError> {
+    pub(crate) fn save_credentials(
+        &self,
+        creds: &DashMap<Backend, BackendCredential>,
+    ) -> Result<(), RepoError> {
         match self.credentials {
             None => Err(RepoError::NoSourceGiven),
             Some(ref path) => pretty_write_file(path, creds),
@@ -552,9 +554,7 @@ pub fn pretty_write_file<T: Serialize + ?Sized>(
     Ok(())
 }
 
-pub fn read_file_or_default<T: Default + DeserializeOwned>(
-    path: &Path,
-) -> Result<T, RepoError> {
+pub fn read_file_or_default<T: Default + DeserializeOwned>(path: &Path) -> Result<T, RepoError> {
     if !path.exists() {
         return Ok(Default::default());
     }

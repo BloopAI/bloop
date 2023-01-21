@@ -1,5 +1,9 @@
 use super::{prelude::*, repos::Repo};
-use crate::{remotes::{BackendCredential, self}, state::Backend, Application};
+use crate::{
+    remotes::{self, BackendCredential},
+    state::Backend,
+    Application,
+};
 
 use either::Either;
 use octocrab::{auth::DeviceCodes, Octocrab};
@@ -157,20 +161,24 @@ pub(super) async fn list_repos(app: Application) -> Result<Vec<Repo>, EndpointEr
     let mut results = vec![];
     for page in 1.. {
         let mut resp = match auth {
-            remotes::github::Auth::OAuth { .. } => gh_client
-                .current()
-                .list_repos_for_authenticated_user()
-                .per_page(100)
-                .page(page)
-                .send()
-                .await,
-            remotes::github::Auth::App { ref org, .. } => gh_client
-                .orgs(org)
-                .list_repos()
-                .per_page(100)
-                .page(page)
-                .send()
-                .await,
+            remotes::github::Auth::OAuth { .. } => {
+                gh_client
+                    .current()
+                    .list_repos_for_authenticated_user()
+                    .per_page(100)
+                    .page(page)
+                    .send()
+                    .await
+            }
+            remotes::github::Auth::App { ref org, .. } => {
+                gh_client
+                    .orgs(org)
+                    .list_repos()
+                    .per_page(100)
+                    .page(page)
+                    .send()
+                    .await
+            }
         }
         .map_err(|err| EndpointError {
             kind: ErrorKind::UpstreamService,
