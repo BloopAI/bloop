@@ -16,7 +16,7 @@ use utoipa::{IntoParams, ToSchema};
 
 use super::{error, json, ErrorKind};
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize, ToSchema, Debug)]
 pub(super) struct Repo {
     pub(super) provider: Backend,
     pub(super) name: String,
@@ -103,7 +103,6 @@ pub(super) async fn indexed(Extension(app): Extension<Application>) -> impl Into
 }
 
 /// Get details of an indexed repository based on their id
-//
 #[utoipa::path(get, path = "/repos/indexed/:ref",
     responses(
         (status = 200, description = "Execute query successfully", body = Response),
@@ -196,8 +195,7 @@ pub(super) async fn sync(
     ),
 )]
 pub(super) async fn available(Extension(app): Extension<Application>) -> impl IntoResponse {
-    let unknown_github = super::github::list_repos(app.clone())
-        .await
+    let unknown_github = dbg!(super::github::list_repos(app.clone()).await)
         .unwrap_or_default()
         .into_iter()
         .filter(|repo| !app.repo_pool.contains_key(&repo.repo_ref));

@@ -2,8 +2,7 @@ use crate::{
     ctags::{get_symbols, SymbolMap},
     indexes,
     language::{get_language_info, LanguageInfo},
-    remotes::gather_repo_roots,
-    AuthenticationLayer, Environment,
+    remotes::{gather_repo_roots, BackendCredential},
 };
 use clap::Args;
 use dashmap::DashMap;
@@ -17,7 +16,6 @@ use serde::{
 use std::{
     collections::HashSet,
     fmt::{self, Display},
-    ops::Not,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -25,9 +23,6 @@ use std::{
 };
 use tracing::debug;
 use utoipa::ToSchema;
-
-mod credentials;
-pub(crate) use credentials::Credentials;
 
 #[derive(Hash, Eq, PartialEq, Debug, Clone)]
 pub struct RepoRef(Backend, String);
@@ -425,10 +420,10 @@ impl StateSource {
         use std::fs::canonicalize;
         match (self.directory.as_ref(), self.state_file.as_ref()) {
             (Some(root), None) => read_root(root),
-            (None, Some(path)) => read_file_or_default(path),
+            (None, Some(path)) => read_file_or_default(path).map(Arc::new),
 
             (Some(root), Some(path)) => {
-                let state: RepositoryPool = read_file_or_default(path)?;
+                let state: RepositoryPool = Arc::new(read_file_or_default(path)?);
                 let current_repos = gather_repo_roots(root).collect::<HashSet<_>>();
                 let root = canonicalize(root)?;
 
@@ -439,7 +434,7 @@ impl StateSource {
                     if let Some(path) = k.local_path() {
                         // clippy suggestion causes the code to break, revisit after 1.66
                         #[allow(clippy::needless_borrow)]
-                        if path.starts_with(&root) && current_repos.contains(k).not() {
+                        if path.starts_with(&root) && !current_repos.contains(k) {
                             debug!(reporef=%k, "repo scheduled to be removed;");
                             elem.value_mut().delete();
                         }
@@ -482,10 +477,10 @@ impl StateSource {
     }
 
     pub fn index_version_mismatch(&self) -> bool {
-        let current: Arc<String> =
+        let current: String =
             read_file_or_default(self.version_file.as_ref().unwrap()).unwrap();
 
-        current.is_empty().not() && current.as_ref() != SCHEMA_VERSION
+        !current.is_empty() && current != SCHEMA_VERSION
     }
 
     pub fn save_index_version(&self) -> Result<(), RepoError> {
@@ -501,17 +496,14 @@ impl StateSource {
 
     pub(crate) fn initialize_credentials(
         &self,
-        auth: AuthenticationLayer,
-        env: Environment,
-    ) -> Result<Credentials, RepoError> {
+    ) -> Result<DashMap<Backend, BackendCredential>, RepoError> {
         read_file_or_default(self.credentials.as_ref().unwrap())
-            .map(|credstore| Credentials::new(credstore, auth, env))
     }
 
-    pub(crate) fn save_credentials(&self, creds: Credentials) -> Result<(), RepoError> {
+    pub(crate) fn save_credentials(&self, creds: &DashMap<Backend, BackendCredential>) -> Result<(), RepoError> {
         match self.credentials {
             None => Err(RepoError::NoSourceGiven),
-            Some(ref path) => pretty_write_file(path, creds.serializable()),
+            Some(ref path) => pretty_write_file(path, creds),
         }
     }
 
@@ -562,13 +554,13 @@ pub fn pretty_write_file<T: Serialize + ?Sized>(
 
 pub fn read_file_or_default<T: Default + DeserializeOwned>(
     path: &Path,
-) -> Result<Arc<T>, RepoError> {
-    if path.exists().not() {
+) -> Result<T, RepoError> {
+    if !path.exists() {
         return Ok(Default::default());
     }
 
     let file = std::fs::File::open(path)?;
-    Ok(Arc::new(serde_json::from_reader::<_, T>(file)?))
+    Ok(serde_json::from_reader::<_, T>(file)?)
 }
 
 fn read_root(path: &Path) -> Result<RepositoryPool, RepoError> {

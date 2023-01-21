@@ -1,5 +1,5 @@
 use super::{prelude::*, repos::Repo};
-use crate::{remotes::BackendCredential, state::Backend, Application};
+use crate::{remotes::{BackendCredential, self}, state::Backend, Application};
 
 use either::Either;
 use octocrab::{auth::DeviceCodes, Octocrab};
@@ -137,7 +137,7 @@ async fn poll_for_oauth_token(
     app.credentials
         .insert(Backend::Github, BackendCredential::Github(auth.into()));
 
-    let saved = app.config.source.save_credentials(app.credentials.clone());
+    let saved = app.config.source.save_credentials(&app.credentials);
 
     if let Err(err) = saved {
         error!(?err, "Failed to save credentials to disk");
@@ -145,26 +145,37 @@ async fn poll_for_oauth_token(
 }
 
 pub(super) async fn list_repos(app: Application) -> Result<Vec<Repo>, EndpointError<'static>> {
-    let Some(gh_client) = app.credentials.github_client().await else {
-            return Err(EndpointError {
-                kind: ErrorKind::Configuration,
-                message: "No github credentials".into(),
-            });
+    let Some(auth) = app.github_auth().await else {
+        return Err(EndpointError {
+            kind: ErrorKind::Configuration,
+            message: "No github authorization".into(),
+        });
     };
+
+    let gh_client = auth.client().expect("failed to build github client");
 
     let mut results = vec![];
     for page in 1.. {
-        let mut resp = gh_client
-            .current()
-            .list_repos_for_authenticated_user()
-            .per_page(100)
-            .page(page)
-            .send()
-            .await
-            .map_err(|err| EndpointError {
-                kind: ErrorKind::UpstreamService,
-                message: err.to_string().into(),
-            })?;
+        let mut resp = match auth {
+            remotes::github::Auth::OAuth { .. } => gh_client
+                .current()
+                .list_repos_for_authenticated_user()
+                .per_page(100)
+                .page(page)
+                .send()
+                .await,
+            remotes::github::Auth::App { ref org, .. } => gh_client
+                .orgs(org)
+                .list_repos()
+                .per_page(100)
+                .page(page)
+                .send()
+                .await,
+        }
+        .map_err(|err| EndpointError {
+            kind: ErrorKind::UpstreamService,
+            message: err.to_string().into(),
+        })?;
 
         if resp.items.is_empty() {
             break;

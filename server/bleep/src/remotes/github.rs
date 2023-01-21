@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use octocrab::Octocrab;
+use octocrab::{Octocrab, models::InstallationToken};
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 
@@ -17,14 +17,15 @@ pub enum Auth {
         token_type: String,
         scope: Vec<String>,
     },
-    /// Github App Installation JWT token.
-    JWT {
+    /// Github App installation token.
+    App {
         #[serde(serialize_with = "crate::state::serialize_secret_str")]
         /// Technically, serializing this doesn't make any sense,
         /// because it expires quickly, but the current code paths
         /// make this the most straightforward way to implement it
         token: SecretString,
         expiry: DateTime<Utc>,
+        org: String,
     },
 }
 
@@ -35,6 +36,27 @@ impl From<octocrab::auth::OAuth> for Auth {
             token_type: auth.token_type,
             scope: auth.scope,
         }
+    }
+}
+
+impl Auth {
+    pub async fn from_installation(
+        install: octocrab::models::Installation,
+        install_id: u64,
+        octocrab: Octocrab,
+    ) -> Result<Self> {
+        let token: InstallationToken = octocrab
+            .post(
+                format!("app/installations/{install_id}/access_tokens"),
+                None::<&()>,
+            )
+            .await?;
+
+        Ok(Self::App {
+            token: token.token.into(),
+            expiry: token.expires_at.unwrap().parse().unwrap(),
+            org: install.account.login,
+        })
     }
 }
 
@@ -53,7 +75,7 @@ impl Auth {
             OAuth { access_token, .. } => Box::new(move |_, _, _| {
                 Cred::userpass_plaintext(access_token.expose_secret(), "ignored by github")
             }),
-            JWT { token, .. } => Box::new(move |_, _, _| {
+            App { token, .. } => Box::new(move |_, _, _| {
                 Cred::userpass_plaintext("x-access-token", token.expose_secret())
             }),
         }
@@ -75,7 +97,7 @@ impl Auth {
 
                 Octocrab::builder().oauth(token).build()
             }
-            JWT { token, .. } => Octocrab::builder()
+            App { token, .. } => Octocrab::builder()
                 .personal_token(token.expose_secret().to_string())
                 .build(),
         }

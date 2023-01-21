@@ -1,7 +1,7 @@
 use crate::{snippet, state, Application};
 
 use anyhow::Result;
-use axum::routing::put;
+use axum::middleware;
 use axum::{response::IntoResponse, routing::get, Extension, Json, Router};
 use std::{borrow::Cow, net::SocketAddr};
 use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
@@ -20,8 +20,6 @@ mod intelligence;
 mod query;
 mod repos;
 mod semantic;
-
-pub(super) use aaa::AuthenticationLayer;
 
 #[allow(unused)]
 pub(in crate::webserver) mod prelude {
@@ -62,10 +60,7 @@ pub async fn start(app: Application) -> Result<()> {
         // misc
         .route("/file/*ref", get(file::handle))
         .route("/semantic/chunks", get(semantic::raw_chunks))
-        .route("/answer", get(answer::handle))
-        .route("/api-doc/openapi.json", get(openapi_json::handle))
-        .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
-        .route("/health", get(health));
+        .route("/answer", get(answer::handle));
 
     if app.env.allow_github_device_flow() {
         router = router
@@ -77,9 +72,15 @@ pub async fn start(app: Application) -> Result<()> {
         router = router.route("/repos/scan", get(repos::scan_local));
     }
 
+    // Note: all routes above this point must be authenticated.
     if app.env.use_aaa() {
-        router = router.merge(aaa::router());
+        router = aaa::router(router);
     }
+
+    router = router
+        .route("/api-doc/openapi.json", get(openapi_json::handle))
+        .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
+        .route("/health", get(health));
 
     router = router
         .layer(Extension(app.indexes.clone()))
@@ -123,7 +124,7 @@ pub(in crate::webserver) fn internal_error<'a, S: std::fmt::Display>(
 }
 
 /// The response upon encountering an error
-#[derive(serde::Serialize, PartialEq, Eq, ToSchema)]
+#[derive(serde::Serialize, PartialEq, Eq, ToSchema, Debug)]
 pub(in crate::webserver) struct EndpointError<'a> {
     /// The kind of this error
     pub kind: ErrorKind,
@@ -149,7 +150,7 @@ impl<'a> EndpointError<'a> {
 
 /// The kind of an error
 #[allow(unused)]
-#[derive(serde::Serialize, PartialEq, Eq, ToSchema)]
+#[derive(serde::Serialize, PartialEq, Eq, ToSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub(in crate::webserver) enum ErrorKind {

@@ -10,29 +10,36 @@
 )]
 #![allow(elided_lifetimes_in_paths)]
 
+use chrono::{Duration, Utc};
 #[cfg(any(bench, test))]
 use criterion as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
+use dashmap::DashMap;
+use octocrab::{
+    models::Installation,
+    Octocrab,
+};
+use remotes::BackendCredential;
 use semantic::{chunk::OverlapStrategy, Semantic};
-use webserver::AuthenticationLayer;
+use state::Backend;
 
 use crate::{
     indexes::Indexes,
     segment::Segment,
     semantic::SemanticError,
-    state::{Credentials, RepositoryPool, StateSource},
+    state::{RepositoryPool, StateSource},
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use background::BackgroundExecutor;
 use clap::Parser;
+use jsonwebtoken::EncodingKey;
 use once_cell::sync::OnceCell;
 use relative_path::RelativePath;
-use secrecy::SecretString;
+use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use std::{
-    ops::Not,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -126,10 +133,7 @@ impl Environment {
     pub(crate) fn allow_path_scan(&self) -> bool {
         use Environment::*;
 
-        match self {
-            InsecureLocal => true,
-            _ => false,
-        }
+        matches!(self, InsecureLocal)
     }
 
     pub(crate) fn allow_github_device_flow(&self) -> bool {
@@ -222,6 +226,26 @@ pub struct Configuration {
     /// Github Client ID for OAuth connection to private repos
     pub github_client_id: Option<SecretString>,
 
+    #[clap(long)]
+    #[serde(serialize_with = "State::serialize_secret_opt_str", default)]
+    pub github_client_secret: Option<SecretString>,
+
+    #[clap(long)]
+    /// GitHub App ID
+    pub github_app_id: Option<u64>,
+
+    #[clap(long)]
+    /// GitHub app installation ID
+    pub github_app_install_id: Option<u64>,
+
+    #[clap(long)]
+    /// Path to a GitHub private key file, for signing access token requests
+    pub github_app_private_key: Option<PathBuf>,
+
+    #[clap(long)]
+    /// Full instance domain, e.g. `foo.bloop.ai`
+    pub instance_domain: Option<String>,
+
     #[clap(long, default_value_t = default_max_chunk_tokens())]
     #[serde(default = "default_max_chunk_tokens")]
     /// Maximum number of tokens in a chunk (should be the model's input size)
@@ -262,6 +286,12 @@ impl Configuration {
     pub fn index_path(&self, name: impl AsRef<Path>) -> impl AsRef<Path> {
         self.index_dir.join(name)
     }
+
+    pub fn github_client_id_and_secret(&self) -> Option<(&str, &str)> {
+        let id = self.github_client_id.as_ref()?.expose_secret();
+        let secret = self.github_client_secret.as_ref()?.expose_secret();
+        Some((id, secret))
+    }
 }
 
 #[derive(Clone)]
@@ -272,8 +302,7 @@ pub struct Application {
     background: BackgroundExecutor,
     semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
-    credentials: Credentials,
-    auth: AuthenticationLayer,
+    credentials: Arc<DashMap<Backend, BackendCredential>>,
     pub segment: Arc<Option<Segment>>,
 }
 
@@ -322,7 +351,6 @@ impl Application {
         let segment = Arc::new(segment);
 
         let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
-        let auth = AuthenticationLayer::new(&config);
         let env = if config.auth_server_url.is_some() {
             Environment::PrivateServer
         } else {
@@ -331,15 +359,11 @@ impl Application {
 
         Ok(Self {
             indexes,
-            //credentials: config.source.initialize_credentials()?,
+            credentials: Arc::new(config.source.initialize_credentials()?),
             background: BackgroundExecutor::start(config.clone()),
             repo_pool: config.source.initialize_pool()?,
-            credentials: config
-                .source
-                .initialize_credentials(auth.clone(), env.clone())?,
             semantic,
             config,
-            auth,
             segment,
             env,
         })
@@ -362,7 +386,7 @@ impl Application {
             return;
         }
 
-        if tracing_subscribe().not() {
+        if !tracing_subscribe() {
             warn!("Failed to install tracing_subscriber. There's probably one already...");
         };
 
@@ -404,7 +428,7 @@ impl Application {
         if self.config.index_only {
             joins.spawn(self.write_index().startup_scan());
         } else {
-            if self.config.disable_background.not() {
+            if !self.config.disable_background {
                 tokio::spawn(remotes::check_credentials(self.clone()));
                 tokio::spawn(remotes::check_repo_updates(self.clone()));
             }
@@ -434,6 +458,92 @@ impl Application {
             PrivateServer => false,
             InsecureLocal => true,
         }
+    }
+
+    /// Does its best to ensure a fresh github token is available.
+    ///
+    /// The idea is that this MUST be called periodically, and
+    /// therefore shouldn't blow up the call site.
+    /// There is no error reporting here, apart from the log entries
+    /// generated.
+    pub(crate) async fn ensure_fresh_github_installation_token(&self) {
+        let Some(auth) = self.credentials.get(&Backend::Github) else {
+            _ = self.get_new_github_token().await;
+            return;
+        };
+
+        if let BackendCredential::Github(remotes::github::Auth::App { expiry, .. }) = *auth {
+            if expiry < Utc::now() + Duration::minutes(10) {
+                _ = self.get_new_github_token().await;
+            }
+        }
+    }
+
+    /// TODO: Get the list of users that can access the organization
+    /// referenced by the current installation token.
+    pub(crate) async fn github_installation_org_users(&self) -> Option<Vec<String>> {
+        todo!()
+    }
+
+    pub(crate) async fn github_auth(&self) -> Option<remotes::github::Auth> {
+        let BackendCredential::Github(auth) = match self.credentials.get(&Backend::Github) {
+            Some(auth) => auth.clone(),
+            None if self.env.use_aaa() => match self.get_new_github_token().await {
+                Ok(auth) => auth,
+                Err(e) => {
+                    error!(?e, "failed to get github token");
+                    return None;
+                }
+            },
+            None => return None,
+        };
+
+        Some(auth)
+    }
+
+    async fn get_new_github_token(&self) -> Result<BackendCredential> {
+        let privkey = std::fs::read(
+            self.config
+                .github_app_private_key
+                .as_ref()
+                .context("missing GitHub app private key")?,
+        )?;
+
+        let install_id = self
+            .config
+            .github_app_install_id
+            .context("need GitHub App installation ID")?;
+
+        let octocrab = Octocrab::builder()
+            .app(
+                self.config
+                    .github_app_id
+                    .context("need GitHub App ID")?
+                    .into(),
+                EncodingKey::from_rsa_pem(&privkey)
+                    .context("invalid GitHub app private key, expected RSA PEM format")?,
+            )
+            .build()?;
+
+        let installation: Installation = octocrab
+            .get(format!("app/installations/{install_id}"), None::<&()>)
+            .await?;
+
+        if installation
+            .target_type
+            .as_ref()
+            .context("installation is missing target_type")?
+            == "User"
+        {
+            bail!("app installation is only valid on organizations");
+        }
+
+        let auth =
+            remotes::github::Auth::from_installation(installation, install_id, octocrab).await?;
+        let credential = BackendCredential::Github(auth);
+        self.credentials.insert(Backend::Github, credential.clone());
+
+        Ok(credential)
     }
 
     //
