@@ -9,10 +9,20 @@ spec:
     spec:
       containers:
       - name: send-email
-        image: alpine:3.17
-        command: ["perl",  "-Mbignum=bpi", "-wle", "print bpi(2000)"]
+        image: alpine/curl:3.14
+        command:
+        - /bin/sh
+        args:
+        - /bloop/notification-script.sh
         env:
         - name: LOOP_API_KEY
           value: {{ .Values.bloop.loopsAPIKey }}
+        volumeMounts:
+        - name: notification-script
+          mountPath: /bloop/
       restartPolicy: Never
+      volumes:
+        - name: notification-script
+          configMap:
+            name: {{ include "bloop.fullname" . }}-notification-script
   backoffLimit: 4

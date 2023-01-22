@@ -3,15 +3,16 @@ kind: ConfigMap
 metadata:
   name: {{ include "bloop.fullname" . }}-notification-script
 data:
-  notify.sh: |
+  notification-script.sh: |
     printf 'Waiting for environment to become ready'
     until $(curl --output /dev/null --silent --head --fail http://{{ include "bloop.fullname" . }}:{{ .Values.service.port }}/repos); do
       printf '.'
       sleep 5
     done
 
-    echo "Sending notification email to {{ .Values.bloop.githubOrgOwner }}"
+    echo
+    echo "Sending notification email to {{ .Values.bloop.githubOrgOwnerEmail }}"
     curl -X POST https://app.loops.so/api/v1/events/send \
       -H "Accept: application/json" \
       -H "Authorization: Bearer ${LOOP_API_KEY}" \
-      --data '{"email": "{{ .Values.bloop.githubOrgOwner }}", "eventName": "{{ .Values.bloop.loopsEventName }}"}'
+      --data '{"email": "{{ .Values.bloop.githubOrgOwnerEmail }}", "eventName": "{{ .Values.bloop.loopsEventName }}"}'
