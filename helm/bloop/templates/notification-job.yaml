@@ -1,0 +1,18 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "bloop.fullname" . }}
+  labels:
+    {{- include "bloop.labels" . | nindent 4 }}
+spec:
+  template:
+    spec:
+      containers:
+      - name: send-email
+        image: alpine:3.17
+        command: ["perl",  "-Mbignum=bpi", "-wle", "print bpi(2000)"]
+        env:
+        - name: LOOP_API_KEY
+          value: {{ .Values.bloop.loopsAPIKey }}
+      restartPolicy: Never
+  backoffLimit: 4
