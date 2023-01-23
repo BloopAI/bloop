@@ -223,7 +223,7 @@ impl Semantic {
             repo_name,
             relative_path,
             buffer,
-            &self.tokenizer,
+            &self.gpt2_tokenizer,
             self.config.max_chunk_tokens,
             15,
             self.config
