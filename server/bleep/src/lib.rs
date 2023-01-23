@@ -479,12 +479,6 @@ impl Application {
         }
     }
 
-    /// TODO: Get the list of users that can access the organization
-    /// referenced by the current installation token.
-    pub(crate) async fn github_installation_org_users(&self) -> Option<Vec<String>> {
-        todo!()
-    }
-
     pub(crate) async fn github_auth(&self) -> Option<remotes::github::Auth> {
         let BackendCredential::Github(auth) = match self.credentials.get(&Backend::Github) {
             Some(auth) => auth.clone(),

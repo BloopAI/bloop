@@ -9,7 +9,7 @@ use crate::{
 };
 
 use super::*;
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use axum::{
     extract::Query,
     http::{Request, StatusCode},
@@ -18,22 +18,72 @@ use axum::{
 };
 use axum_extra::extract::cookie::{Cookie, PrivateCookieJar};
 use dashmap::DashSet;
+use octocrab::Octocrab;
 use rand::{distributions::Alphanumeric, Rng};
-use secrecy::ExposeSecret;
+use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use tantivy::time::Duration;
 use tracing::error;
 
-const AUTH_TOKEN_COOKIE: &str = "auth_token";
-const AUTH_CREATED_AT_COOKIE: &str = "auth_created_at";
+#[derive(serde::Serialize, serde::Deserialize)]
+struct GithubAuthToken {
+    expires_in: u64,
+    #[serde(serialize_with = "crate::state::serialize_secret_str")]
+    refresh_token: SecretString,
+    #[serde(serialize_with = "crate::state::serialize_secret_str")]
+    access_token: SecretString,
+    // Ignore other fields here ...
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct AuthCookie {
+    github_token: GithubAuthToken,
+    created_at: u64,
+    member_checked_at: Option<u64>,
+}
+
+impl AuthCookie {
+    const COOKIE_NAME: &str = "auth_cookie";
+
+    fn new(github_token: GithubAuthToken) -> Self {
+        Self {
+            github_token,
+            created_at: unix_time_sec(),
+            member_checked_at: None,
+        }
+    }
+
+    fn member_checked(&self) -> bool {
+        const MEMBERSHIP_CHECK_DURATION_SECS: u64 = 60 * 5;
+
+        self.member_checked_at
+            .map(|t| t + MEMBERSHIP_CHECK_DURATION_SECS >= unix_time_sec())
+            .unwrap_or(false)
+    }
+
+    fn need_refresh(&self) -> bool {
+        self.created_at + self.github_token.expires_in <= unix_time_sec()
+    }
+
+    fn set_member_checked(&mut self) {
+        self.member_checked_at = Some(unix_time_sec());
+    }
+
+    fn to_cookie(&self) -> Cookie<'static> {
+        let mut c = Cookie::new(
+            AuthCookie::COOKIE_NAME,
+            serde_json::to_string(self).unwrap(),
+        );
+        c.set_path("/");
+        c.set_max_age(Duration::weeks(52));
+        c
+    }
+}
 
 const STATE_LEN: usize = 32;
 type State = String;
 
 /// Initiate a new login using a web-based OAuth flow.
-///
-/// Redirects to Github after setting up the correct expectations.
-/// Use this endpoint as a redirect target instead of an API call!
 #[utoipa::path(get, path = "/auth/login/start",
     responses(
         (status = 200, description = "Execute query successfully", body = Response),
@@ -76,24 +126,7 @@ pub(super) async fn login(
 
     auth_layer.initialized_login.insert(state);
 
-    Redirect::to(github_oauth_url)
-}
-
-fn update_cookies(jar: PrivateCookieJar, oauth_json: String) -> PrivateCookieJar {
-    const ONE_YEAR: Duration = Duration::seconds(60 * 60 * 24 * 365);
-
-    jar.add(
-        Cookie::build(AUTH_TOKEN_COOKIE, oauth_json)
-            .path("/")
-            .max_age(ONE_YEAR)
-            .finish(),
-    )
-    .add(
-        Cookie::build(AUTH_CREATED_AT_COOKIE, unix_time().to_string())
-            .path("/")
-            .max_age(ONE_YEAR)
-            .finish(),
-    )
+    serde_json::json!({ "oauth_url": github_oauth_url }).to_string()
 }
 
 #[derive(Deserialize)]
@@ -130,7 +163,7 @@ pub(super) async fn authorized(
         .github_client_id_and_secret()
         .expect("github client id and secret must be provided");
 
-    let oauth_json: String = auth_layer
+    let gh_token = auth_layer
         .client
         .post(format!(
             "https://github.com/login/oauth/access_token\
@@ -142,14 +175,17 @@ pub(super) async fn authorized(
         .send()
         .await
         .unwrap()
-        .text()
+        .json()
         .await
         .unwrap();
 
-    (update_cookies(jar, oauth_json), Redirect::to("/"))
+    (
+        jar.add(AuthCookie::new(gh_token).to_cookie()),
+        Redirect::to("/"),
+    )
 }
 
-fn unix_time() -> u64 {
+fn unix_time_sec() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
@@ -204,64 +240,93 @@ async fn user_auth(
     app: &Application,
     client: &reqwest::Client,
 ) -> Result<PrivateCookieJar> {
-    let auth_cookie = jar
-        .get(AUTH_TOKEN_COOKIE)
-        .context("missing auth_token cookie")?;
+    let mut auth_cookie: AuthCookie = serde_json::from_str(
+        jar.get(AuthCookie::COOKIE_NAME)
+            .context("missing auth cookie")?
+            .value(),
+    )
+    .context("invalid auth cookie")?;
 
-    let auth_token = auth_cookie.value();
+    let member_checked = auth_cookie.member_checked();
+    let need_refresh = auth_cookie.need_refresh();
 
-    let created_at = jar
-        .get(AUTH_CREATED_AT_COOKIE)
-        .context("missing auth_created_at cookie")?
-        .value()
-        .parse::<u64>()
-        .context("invalid auth_created_at cookie")?;
-
-    #[derive(Deserialize)]
-    struct GithubAuth {
-        expires_in: u64,
-        refresh_token: String,
-        // Ignore other fields here ...
-    }
-
-    let auth: GithubAuth = serde_json::from_str(auth_token)?;
-
-    let org_name = {
-        let BackendCredential::Github(cred) =
-            app.credentials.get(&Backend::Github).unwrap().clone();
-
-        match cred {
-            remotes::github::Auth::App { org, .. } => org,
-            _ => panic!("backend has invalid github credential"),
-        }
-    };
-
-    // TODO: Get user name and check membership, cache in new cookie
-    // "https://github.com/orgs/{org_name}/members/{user_name}"
-
-    if created_at + auth.expires_in > unix_time() {
+    if member_checked && !need_refresh {
         return Ok(jar);
     }
 
-    let GithubAuth { refresh_token, .. } = auth;
+    if need_refresh {
+        let refresh_token = &auth_cookie.github_token.refresh_token.expose_secret();
 
-    let (client_id, client_secret) = app
-        .config
-        .github_client_id_and_secret()
-        .expect("github client id and secret must be provided");
+        let (client_id, client_secret) = app
+            .config
+            .github_client_id_and_secret()
+            .expect("github client id and secret must be provided");
 
-    let oauth_json = client
-        .post(format!(
-            "https://github.com/login/oauth/access_token\
-            ?refresh_token={refresh_token}\
-            &grant_type=refresh_token\
-            &client_id={client_id}\
-            &client_secret={client_secret}"
-        ))
-        .send()
-        .await?
-        .text()
-        .await?;
+        let oauth_json = client
+            .post(format!(
+                "https://github.com/login/oauth/access_token\
+                ?refresh_token={refresh_token}\
+                &grant_type=refresh_token\
+                &client_id={client_id}\
+                &client_secret={client_secret}"
+            ))
+            .header("Accept", "application/json")
+            .send()
+            .await?
+            .text()
+            .await?;
 
-    Ok(update_cookies(jar, oauth_json))
+        auth_cookie.github_token =
+            serde_json::from_str(&oauth_json).context("failed to deserialize refresh token")?;
+    }
+
+    if !member_checked {
+        let org_name = {
+            let BackendCredential::Github(cred) =
+                app.credentials.get(&Backend::Github).unwrap().clone();
+
+            match cred {
+                remotes::github::Auth::App { org, .. } => org,
+                _ => panic!("backend has invalid github credentials"),
+            }
+        };
+
+        // An octocrab instance based on the user's access token.
+        let octocrab = Octocrab::builder()
+            .personal_token(
+                auth_cookie
+                    .github_token
+                    .access_token
+                    .expose_secret()
+                    .clone(),
+            )
+            .build()
+            .context("failed to build octocrab instance")?;
+
+        let user_name: String = octocrab
+            .current()
+            .user()
+            .await
+            .context("failed to get user")?
+            .login;
+
+        // https://docs.github.com/en/rest/orgs/members?apiVersion=2022-11-28#check-organization-membership-for-a-user
+        let is_member = octocrab
+            ._get(
+                format!("https://api.github.com/orgs/{org_name}/members/{user_name}"),
+                None::<&()>,
+            )
+            .await
+            .context("failed to check user membership on org")?
+            .status()
+            .is_success();
+
+        if !is_member {
+            bail!("{user_name} is not a member of the {org_name} organization");
+        }
+
+        auth_cookie.set_member_checked();
+    }
+
+    Ok(jar.add(auth_cookie.to_cookie()))
 }
