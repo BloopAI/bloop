@@ -16,7 +16,7 @@ use axum::{
     middleware::Next,
     response::Redirect,
 };
-use axum_extra::extract::cookie::{Cookie, CookieJar};
+use axum_extra::extract::cookie::{Cookie, PrivateCookieJar};
 use dashmap::DashSet;
 use rand::{distributions::Alphanumeric, Rng};
 use secrecy::ExposeSecret;
@@ -79,7 +79,7 @@ pub(super) async fn login(
     Redirect::to(github_oauth_url)
 }
 
-fn update_cookies(jar: CookieJar, oauth_json: String) -> CookieJar {
+fn update_cookies(jar: PrivateCookieJar, oauth_json: String) -> PrivateCookieJar {
     const ONE_YEAR: Duration = Duration::seconds(60 * 60 * 24 * 365);
 
     jar.add(
@@ -116,7 +116,7 @@ pub(super) async fn authorized(
     Extension(app): Extension<Application>,
     Extension(auth_layer): Extension<Arc<AuthLayer>>,
     Query(params): Query<AuthorizedParams>,
-    jar: CookieJar,
+    jar: PrivateCookieJar,
 ) -> impl IntoResponse {
     let AuthorizedParams { state, code } = params;
 
@@ -156,9 +156,9 @@ fn unix_time() -> u64 {
         .as_secs()
 }
 
-pub(super) fn router(router: Router) -> Router {
+pub(super) fn router(router: Router, app: Application) -> Router {
     router
-        .layer(middleware::from_fn(authenticate_authorize_reissue))
+        .layer(middleware::from_fn_with_state(app, authenticate_authorize_reissue))
         .route("/auth/login/complete", get(authorized))
         .route("/auth/login/start", get(login))
         .layer(Extension(Arc::new(AuthLayer::default())))
@@ -166,7 +166,7 @@ pub(super) fn router(router: Router) -> Router {
 
 #[derive(Default)]
 pub(crate) struct AuthLayer {
-    /// Logins that have been initiaed, but not completed.
+    /// Logins that have been initiated, but not completed.
     // TODO: Note that this isn't currently cleaned up with a timeout, so there's a DoS
     // vulnerability here.
     initialized_login: DashSet<State>,
@@ -178,7 +178,7 @@ pub(crate) struct AuthLayer {
 async fn authenticate_authorize_reissue<B>(
     Extension(app): Extension<Application>,
     Extension(auth_layer): Extension<Arc<AuthLayer>>,
-    mut jar: CookieJar,
+    mut jar: PrivateCookieJar,
     request: Request<B>,
     next: Next<B>,
 ) -> impl IntoResponse {
@@ -197,14 +197,15 @@ async fn authenticate_authorize_reissue<B>(
 }
 
 async fn user_auth(
-    jar: CookieJar,
+    jar: PrivateCookieJar,
     app: &Application,
     client: &reqwest::Client,
-) -> Result<CookieJar> {
-    let auth_token = jar
+) -> Result<PrivateCookieJar> {
+    let auth_cookie = jar
         .get(AUTH_TOKEN_COOKIE)
-        .context("missing auth_token cookie")?
-        .value();
+        .context("missing auth_token cookie")?;
+
+    let auth_token = auth_cookie.value();
 
     let created_at = jar
         .get(AUTH_CREATED_AT_COOKIE)

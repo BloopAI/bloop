@@ -10,6 +10,7 @@
 )]
 #![allow(elided_lifetimes_in_paths)]
 
+use axum::extract::FromRef;
 use chrono::{Duration, Utc};
 #[cfg(any(bench, test))]
 use criterion as _;
@@ -301,6 +302,7 @@ pub struct Application {
     indexes: Arc<Indexes>,
     credentials: Arc<DashMap<Backend, BackendCredential>>,
     pub segment: Arc<Option<Segment>>,
+    cookie_key: axum_extra::extract::cookie::Key,
 }
 
 impl Application {
@@ -359,6 +361,7 @@ impl Application {
             credentials: Arc::new(config.source.initialize_credentials()?),
             background: BackgroundExecutor::start(config.clone()),
             repo_pool: config.source.initialize_pool()?,
+            cookie_key: config.source.initialize_cookie_key()?,
             semantic,
             config,
             segment,
@@ -551,6 +554,12 @@ impl Application {
     //
     pub(crate) fn write_index(&self) -> background::IndexWriter {
         background::IndexWriter(self.clone())
+    }
+}
+
+impl FromRef<Application> for axum_extra::extract::cookie::Key {
+    fn from_ref(input: &Application) -> Self {
+        input.cookie_key.clone()
     }
 }
 

@@ -4,6 +4,7 @@ use crate::{
     language::{get_language_info, LanguageInfo},
     remotes::{gather_repo_roots, BackendCredential},
 };
+use anyhow::Result;
 use clap::Args;
 use dashmap::DashMap;
 use rand::Rng;
@@ -392,6 +393,11 @@ pub struct StateSource {
     #[clap(short, long)]
     #[serde(default)]
     version_file: Option<PathBuf>,
+
+    /// Cookie private key file
+    #[clap(long)]
+    #[serde(default)]
+    cookie_key: Option<PathBuf>,
 }
 
 impl StateSource {
@@ -404,6 +410,9 @@ impl StateSource {
 
         self.version_file
             .get_or_insert_with(|| dir.join("version.json"));
+
+        self.cookie_key
+            .get_or_insert_with(|| dir.join("cookie_key.bin"));
 
         self.directory.get_or_insert_with(|| {
             let target = dir.join("local_cache");
@@ -518,6 +527,19 @@ impl StateSource {
         RelativePath::from_path(dir)
             .map(|p| p.to_logical_path(std::env::current_dir().unwrap()))
             .unwrap_or_else(|_| dir.to_owned())
+    }
+
+    pub fn initialize_cookie_key(&self) -> Result<axum_extra::extract::cookie::Key> {
+        let path = self.cookie_key.as_ref().unwrap();
+
+        if path.exists() {
+            let master_key = std::fs::read(path)?;
+            Ok(axum_extra::extract::cookie::Key::from(&master_key))
+        } else {
+            let master_key = axum_extra::extract::cookie::Key::generate();
+            std::fs::write(path, master_key.master())?;
+            Ok(master_key)
+        }
     }
 }
 
@@ -779,6 +801,7 @@ mod test {
             credentials: None,
             state_file: None,
             version_file: None,
+            cookie_key: None,
         }
         .initialize_pool()
         .unwrap();

@@ -2,7 +2,7 @@ use crate::{snippet, state, Application};
 
 use anyhow::Result;
 use axum::middleware;
-use axum::{response::IntoResponse, routing::get, Extension, Json, Router};
+use axum::{response::IntoResponse, routing::get, Extension, Json};
 use std::{borrow::Cow, net::SocketAddr};
 use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
 use tracing::info;
@@ -20,6 +20,8 @@ mod intelligence;
 mod query;
 mod repos;
 mod semantic;
+
+pub type Router<S = Application> = axum::Router<S>;
 
 #[allow(unused)]
 pub(in crate::webserver) mod prelude {
@@ -74,7 +76,7 @@ pub async fn start(app: Application) -> Result<()> {
 
     // Note: all routes above this point must be authenticated.
     if app.env.use_aaa() {
-        router = aaa::router(router);
+        router = aaa::router(router, app.clone());
     }
 
     router = router
@@ -82,10 +84,11 @@ pub async fn start(app: Application) -> Result<()> {
         .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
         .route("/health", get(health));
 
-    router = router
+    let router: Router<()> = router
         .layer(Extension(app.indexes.clone()))
         .layer(Extension(app.semantic.clone()))
-        .layer(Extension(app))
+        .layer(Extension(app.clone()))
+        .with_state(app)
         .layer(CorsLayer::permissive())
         .layer(CatchPanicLayer::new());
 
