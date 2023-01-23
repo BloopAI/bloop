@@ -158,7 +158,10 @@ fn unix_time() -> u64 {
 
 pub(super) fn router(router: Router, app: Application) -> Router {
     router
-        .layer(middleware::from_fn_with_state(app, authenticate_authorize_reissue))
+        .layer(middleware::from_fn_with_state(
+            app,
+            authenticate_authorize_reissue,
+        ))
         .route("/auth/login/complete", get(authorized))
         .route("/auth/login/start", get(login))
         .layer(Extension(Arc::new(AuthLayer::default())))
