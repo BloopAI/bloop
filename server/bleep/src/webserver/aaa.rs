@@ -1,6 +1,6 @@
 use std::{
     sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
 use crate::{
@@ -17,7 +17,7 @@ use axum::{
     response::Redirect,
 };
 use axum_extra::extract::cookie::{Cookie, PrivateCookieJar};
-use dashmap::DashSet;
+use dashmap::DashMap;
 use octocrab::Octocrab;
 use rand::{distributions::Alphanumeric, Rng};
 use secrecy::{ExposeSecret, SecretString};
@@ -124,7 +124,8 @@ pub(super) async fn login(
          &redirect_uri={redirect_uri}",
     );
 
-    auth_layer.initialized_login.insert(state);
+    auth_layer.initialized_login.insert(state, Instant::now());
+    auth_layer.clean_old_states();
 
     serde_json::json!({ "oauth_url": github_oauth_url }).to_string()
 }
@@ -206,12 +207,20 @@ pub(super) fn router(router: Router, app: Application) -> Router {
 #[derive(Default)]
 pub(crate) struct AuthLayer {
     /// Logins that have been initiated, but not completed.
-    // TODO: Note that this isn't currently cleaned up with a timeout, so there's a DoS
-    // vulnerability here.
-    initialized_login: DashSet<State>,
+    ///
+    /// Maps to the time this login attempt was created.
+    initialized_login: DashMap<State, Instant>,
 
     /// The HTTP client.
     client: reqwest::Client,
+}
+
+impl AuthLayer {
+    fn clean_old_states(&self) {
+        const MAX_AGE: std::time::Duration = std::time::Duration::from_secs(60 * 5);
+        let now = Instant::now();
+        self.initialized_login.retain(|_, t| now - *t < MAX_AGE);
+    }
 }
 
 async fn authenticate_authorize_reissue<B>(
