@@ -3,6 +3,8 @@ replicaCount: 1
 bloop:
   githubOrgName: ""
   githubOrgOwnerEmail: ""
+  loopsAPIKey: ""
+  loopsEventName: ""
 
 image:
   repository: 466687392010.dkr.ecr.eu-west-1.amazonaws.com/bloop
