@@ -11,14 +11,12 @@
 #![allow(elided_lifetimes_in_paths)]
 
 use axum::extract::FromRef;
-use chrono::{Duration, Utc};
 #[cfg(any(bench, test))]
 use criterion as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
 use dashmap::DashMap;
-use octocrab::{models::Installation, Octocrab};
 use remotes::BackendCredential;
 use semantic::{chunk::OverlapStrategy, Semantic};
 use state::Backend;
@@ -29,10 +27,9 @@ use crate::{
     semantic::SemanticError,
     state::{RepositoryPool, StateSource},
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
 use background::BackgroundExecutor;
 use clap::Parser;
-use jsonwebtoken::EncodingKey;
 use once_cell::sync::OnceCell;
 use relative_path::RelativePath;
 use secrecy::{ExposeSecret, SecretString};
@@ -458,86 +455,6 @@ impl Application {
             PrivateServer => false,
             InsecureLocal => true,
         }
-    }
-
-    /// Does its best to ensure a fresh github token is available.
-    ///
-    /// The idea is that this MUST be called periodically, and
-    /// therefore shouldn't blow up the call site.
-    /// There is no error reporting here, apart from the log entries
-    /// generated.
-    pub(crate) async fn ensure_fresh_github_installation_token(&self) {
-        let Some(auth) = self.credentials.get(&Backend::Github) else {
-            _ = self.get_new_github_token().await;
-            return;
-        };
-
-        if let BackendCredential::Github(remotes::github::Auth::App { expiry, .. }) = *auth {
-            if expiry < Utc::now() + Duration::minutes(10) {
-                _ = self.get_new_github_token().await;
-            }
-        }
-    }
-
-    pub(crate) async fn github_auth(&self) -> Option<remotes::github::Auth> {
-        let BackendCredential::Github(auth) = match self.credentials.get(&Backend::Github) {
-            Some(auth) => auth.clone(),
-            None if self.env.use_aaa() => match self.get_new_github_token().await {
-                Ok(auth) => auth,
-                Err(e) => {
-                    error!(?e, "failed to get github token");
-                    return None;
-                }
-            },
-            None => return None,
-        };
-
-        Some(auth)
-    }
-
-    async fn get_new_github_token(&self) -> Result<BackendCredential> {
-        let privkey = std::fs::read(
-            self.config
-                .github_app_private_key
-                .as_ref()
-                .context("missing GitHub app private key")?,
-        )?;
-
-        let install_id = self
-            .config
-            .github_app_install_id
-            .context("need GitHub App installation ID")?;
-
-        let octocrab = Octocrab::builder()
-            .app(
-                self.config
-                    .github_app_id
-                    .context("need GitHub App ID")?
-                    .into(),
-                EncodingKey::from_rsa_pem(&privkey)
-                    .context("invalid GitHub app private key, expected RSA PEM format")?,
-            )
-            .build()?;
-
-        let installation: Installation = octocrab
-            .get(format!("app/installations/{install_id}"), None::<&()>)
-            .await?;
-
-        if installation
-            .target_type
-            .as_ref()
-            .context("installation is missing target_type")?
-            == "User"
-        {
-            bail!("app installation is only valid on organizations");
-        }
-
-        let auth =
-            remotes::github::Auth::from_installation(installation, install_id, octocrab).await?;
-        let credential = BackendCredential::Github(auth);
-        self.credentials.insert(Backend::Github, credential.clone());
-
-        Ok(credential)
     }
 
     //

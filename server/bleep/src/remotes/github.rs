@@ -1,10 +1,14 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use octocrab::{models::InstallationToken, Octocrab};
+use jsonwebtoken::EncodingKey;
+use octocrab::{
+    models::{Installation, InstallationToken},
+    Octocrab,
+};
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 
-use crate::state::Repository;
+use crate::state::{Backend, Repository};
 
 use super::*;
 
@@ -41,7 +45,7 @@ impl From<octocrab::auth::OAuth> for Auth {
 
 impl Auth {
     pub async fn from_installation(
-        install: octocrab::models::Installation,
+        install: Installation,
         install_id: u64,
         octocrab: Octocrab,
     ) -> Result<Self> {
@@ -102,4 +106,48 @@ impl Auth {
                 .build(),
         }
     }
+}
+
+pub(crate) async fn get_new_github_token(app: &Application) -> Result<BackendCredential> {
+    let privkey = std::fs::read(
+        app.config
+            .github_app_private_key
+            .as_ref()
+            .context("missing GitHub app private key")?,
+    )?;
+
+    let install_id = app
+        .config
+        .github_app_install_id
+        .context("need GitHub App installation ID")?;
+
+    let octocrab = Octocrab::builder()
+        .app(
+            app.config
+                .github_app_id
+                .context("need GitHub App ID")?
+                .into(),
+            EncodingKey::from_rsa_pem(&privkey)
+                .context("invalid GitHub app private key, expected RSA PEM format")?,
+        )
+        .build()?;
+
+    let installation: Installation = octocrab
+        .get(format!("app/installations/{install_id}"), None::<&()>)
+        .await?;
+
+    if installation
+        .target_type
+        .as_ref()
+        .context("installation is missing target_type")?
+        == "User"
+    {
+        bail!("app installation is only valid on organizations");
+    }
+
+    let auth = remotes::github::Auth::from_installation(installation, install_id, octocrab).await?;
+    let credential = BackendCredential::Github(auth);
+    app.credentials.insert(Backend::Github, credential.clone());
+
+    Ok(credential)
 }

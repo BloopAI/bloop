@@ -148,8 +148,14 @@ async fn poll_for_oauth_token(
     }
 }
 
+async fn github_auth(app: &Application) -> Option<remotes::github::Auth> {
+    match app.credentials.get(&Backend::Github)?.clone() {
+        BackendCredential::Github(auth) => Some(auth),
+    }
+}
+
 pub(super) async fn list_repos(app: Application) -> Result<Vec<Repo>, EndpointError<'static>> {
-    let Some(auth) = app.github_auth().await else {
+    let Some(auth) = github_auth(&app).await else {
         return Err(EndpointError {
             kind: ErrorKind::Configuration,
             message: "No github authorization".into(),

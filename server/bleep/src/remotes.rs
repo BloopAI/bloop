@@ -3,6 +3,7 @@ use std::os::windows::process::CommandExt;
 use std::{path::Path, process::Command};
 
 use anyhow::{bail, Context, Result};
+use chrono::{DateTime, Utc};
 use dashmap::mapref::one::Ref;
 use git2::{Cred, RemoteCallbacks};
 use ignore::WalkBuilder;
@@ -10,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::{
+    remotes,
     state::{RepoRef, Repository, SyncStatus},
     Application,
 };
@@ -183,6 +185,13 @@ impl BackendCredential {
             synced
         })
         .await?
+    }
+
+    pub(crate) fn expiry(&self) -> Option<DateTime<Utc>> {
+        match self {
+            Self::Github(remotes::github::Auth::App { expiry, .. }) => Some(*expiry),
+            _ => None,
+        }
     }
 }
 

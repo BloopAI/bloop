@@ -1,5 +1,6 @@
 use std::{collections::HashMap, ops::Not, time::Duration};
 
+use chrono::Utc;
 use notify_debouncer_mini::{
     new_debouncer_opt,
     notify::{Config, RecommendedWatcher, RecursiveMode},
@@ -10,6 +11,7 @@ use tokio::time::sleep;
 use tracing::{debug, error, info};
 
 use crate::{
+    remotes,
     state::{Backend, RepoRef, SyncStatus},
     Application,
 };
@@ -25,7 +27,20 @@ const POLL_INTERVAL_MINUTE: &[Duration] = &[
 pub(crate) async fn check_credentials(app: Application) {
     loop {
         if app.env.use_aaa() {
-            app.ensure_fresh_github_installation_token().await
+            match app
+                .credentials
+                .get(&Backend::Github)
+                .and_then(|c| c.expiry())
+            {
+                // If we have a valid token, do nothing.
+                Some(expiry) if expiry > Utc::now() + chrono::Duration::minutes(10) => {}
+
+                _ => {
+                    if let Err(e) = remotes::github::get_new_github_token(&app).await {
+                        error!(?e, "failed to get GitHub token");
+                    }
+                }
+            }
         } else {
             let expired = if let Some(github) = app.credentials.get(&Backend::Github) {
                 github.validate().await.is_err()
