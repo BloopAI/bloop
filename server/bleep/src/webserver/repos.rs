@@ -195,7 +195,8 @@ pub(super) async fn sync(
     ),
 )]
 pub(super) async fn available(Extension(app): Extension<Application>) -> impl IntoResponse {
-    let unknown_github = dbg!(super::github::list_repos(app.clone()).await)
+    let unknown_github = super::github::list_repos(app.clone())
+        .await
         .unwrap_or_default()
         .into_iter()
         .filter(|repo| !app.repo_pool.contains_key(&repo.repo_ref));
