@@ -15,7 +15,7 @@ spec:
         args:
         - /bloop/notification-script.sh
         env:
-        - name: LOOP_API_KEY
+        - name: LOOPS_API_KEY
           value: {{ .Values.bloop.loopsAPIKey }}
         volumeMounts:
         - name: notification-script

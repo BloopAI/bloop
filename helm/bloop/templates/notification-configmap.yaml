@@ -13,6 +13,6 @@ data:
     echo
     echo "Sending notification email to {{ .Values.bloop.githubOrgOwnerEmail }}"
     curl -X POST https://app.loops.so/api/v1/events/send \
-      -H "Accept: application/json" \
-      -H "Authorization: Bearer ${LOOP_API_KEY}" \
+      -H "Content-Type: application/json; charset=utf-8" \
+      -H "Authorization: Bearer ${LOOPS_API_KEY}" \
       --data '{"email": "{{ .Values.bloop.githubOrgOwnerEmail }}", "eventName": "{{ .Values.bloop.loopsEventName }}", "instanceUrl": "{{ .Values.bloop.githubOrgName }}.bloop.ai"}'
