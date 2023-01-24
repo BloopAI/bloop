@@ -38,8 +38,8 @@ pub mod api {
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct DecodedResponse {
-        pub index: u32,
         pub answer: String,
+        pub answer_path: String,
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -277,12 +277,15 @@ pub async fn handle(
             .await;
     }
 
+    // answering snippet is always at index 0
+    let answer_path = snippets.get(0).unwrap().relative_path.to_string();
+
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
         snippets,
         selection: api::Response {
             data: api::DecodedResponse {
-                index: 0u32, // the relevant snippet is always placed at 0
                 answer: snippet_explanation,
+                answer_path,
             },
             id: params.user_id,
         },
@@ -423,21 +426,17 @@ A:",
 
     fn build_explain_prompt(&self, snippet: &api::Snippet) -> String {
         let prompt = format!(
-            "File: {}
-
-{}
-
-#####
-
-Above is a code snippet. \
-Answer the user's question with a detailed response. \
-Repeat any relevant code, separate each block of code out and explain why it is relevant. \
-Format your response in GitHub markdown with code blocks annotated\
-with programming language. Include the path of the file.
-
-Q:{}
-A:",
-            snippet.relative_path, snippet.text, self.query
+            r#"You are an AI assistant for a repo. You are given an extract from a file and a question.
+        Use the file to write a detailed answer to the question. Copy relevant parts of the file into the answer and explain why they are relevant.
+        Do NOT include code that is not in the file. If the file doesn't contain enough information to answer the question, or you don't know the answer, just say "I'm not sure".
+        Do NOT try to make up an answer. Format your response in GitHub markdown with code blocks annotated with programming language. Separate different parts of your answer with bullet points.
+        Question: {}
+        =========
+        File: {}
+        =========
+        Answer in GitHub Markdown:
+        "#,
+            self.query, snippet.text,
         );
         prompt
     }
