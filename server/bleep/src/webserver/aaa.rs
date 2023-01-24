@@ -16,7 +16,7 @@ use axum::{
     middleware::Next,
     response::Redirect,
 };
-use axum_extra::extract::cookie::{Cookie, PrivateCookieJar};
+use axum_extra::extract::cookie::{Cookie, PrivateCookieJar, SameSite};
 use dashmap::DashMap;
 use octocrab::Octocrab;
 use rand::{distributions::Alphanumeric, Rng};
@@ -337,5 +337,13 @@ async fn user_auth(
         auth_cookie.set_member_checked();
     }
 
-    Ok(jar.add(auth_cookie.to_cookie()))
+    // We set SameSite to Strict to avoid CSRF. Specifically, this is *not* done when the cookie is
+    // initially created as part of the OAuth process, as OAuth redirects would not work. The
+    // cookie will have to undergo a membership check on the first request in this function, which
+    // is when we set the `SameSite=Strict` attribute.
+    let mut cookie = auth_cookie.to_cookie();
+    cookie.set_same_site(SameSite::Strict);
+    cookie.set_secure(true);
+
+    Ok(jar.add(cookie))
 }
