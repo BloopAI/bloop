@@ -4,6 +4,7 @@ metadata:
   name: {{ include "bloop.fullname" . }}-notification-script
 data:
   notification-script.sh: |
+    loops_api_key=$1
     printf 'Waiting for environment to become ready'
     until $(curl --output /dev/null --silent --head --fail http://{{ include "bloop.fullname" . }}:{{ .Values.service.port }}/repos); do
       printf '.'
@@ -14,5 +15,5 @@ data:
     echo "Sending notification email to {{ .Values.bloop.githubOrgOwnerEmail }}"
     curl -X POST https://app.loops.so/api/v1/events/send \
       -H "Content-Type: application/json; charset=utf-8" \
-      -H "Authorization: Bearer ${LOOPS_API_KEY}" \
+      -H "Authorization: Bearer ${loops_api_key}" \
       --data '{"email": "{{ .Values.bloop.githubOrgOwnerEmail }}", "eventName": "{{ .Values.bloop.loopsEventName }}", "instanceUrl": "{{ .Values.bloop.githubOrgName }}.bloop.ai"}'

@@ -13,7 +13,7 @@ spec:
         command:
         - /bin/sh
         args:
-        - /bloop/notification-script.sh
+        - /bloop/notification-script.sh ${LOOPS_API_KEY}
         env:
         - name: LOOPS_API_KEY
           value: {{ .Values.bloop.loopsAPIKey }}
