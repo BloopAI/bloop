@@ -262,10 +262,6 @@ pub struct Configuration {
     #[serde(default = "default_answer_api_url")]
     /// URL for the answer-api
     pub answer_api_url: String,
-
-    #[clap(long)]
-    /// Address to authentication server for private deployments
-    pub auth_server_url: Option<SecretString>,
 }
 
 impl Configuration {
@@ -347,7 +343,7 @@ impl Application {
         let segment = Arc::new(segment);
 
         let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
-        let env = if config.auth_server_url.is_some() {
+        let env = if config.github_app_id.is_some() {
             Environment::PrivateServer
         } else {
             env
