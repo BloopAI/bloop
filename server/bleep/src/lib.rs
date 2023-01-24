@@ -140,16 +140,6 @@ impl Environment {
             PrivateServer => false,
         }
     }
-
-    /// Use AAA layer (authentication, authorization, accounting)
-    pub(crate) fn use_aaa(&self) -> bool {
-        use Environment::*;
-        match self {
-            Server => false,
-            InsecureLocal => false,
-            PrivateServer => true,
-        }
-    }
 }
 
 #[derive(Deserialize, Parser, Debug)]
@@ -250,6 +240,10 @@ pub struct Configuration {
     #[clap(long)]
     /// Chunking strategy
     pub overlap: Option<OverlapStrategy>,
+
+    /// Path to built front-end folder
+    #[clap(long)]
+    pub frontend_dist: Option<PathBuf>,
 
     //
     // External dependencies
