@@ -1,3 +1,11 @@
+FROM node AS frontend
+WORKDIR /build
+RUN npm install -g pnpm && \
+    pnpm -g config set store-dir /tmp/pnpm-store
+COPY . .
+RUN --mount=target=/tmp/pnpm-store,type=cache pnpm install
+RUN --mount=target=/tmp/pnpm-store,type=cache pnpm run build-web
+
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 WORKDIR /build
 
@@ -22,4 +30,5 @@ VOLUME ["/repos", "/data"]
 RUN apt-get update && apt-get -y install universal-ctags openssl ca-certificates && apt-get clean
 COPY model /model
 COPY --from=builder /bleep /
+COPY --from=frontend /build/client/dist /frontend
 ENTRYPOINT ["/bleep", "--host=0.0.0.0", "--source-dir=/repos", "--index-dir=/data", "--model-dir=/model"]
