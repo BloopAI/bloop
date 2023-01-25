@@ -21,7 +21,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         },
         invokeTauriCommand: () => {},
         release: packageJson.version,
-        apiUrl: import.meta.env.VITE_API_URL || '',
+        apiUrl: import.meta.env.VITE_API_URL || '/api',
         isRepoManagementAllowed: false,
         forceAnalytics: true,
       }}
