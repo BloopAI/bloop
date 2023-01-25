@@ -47,6 +47,8 @@ jobs:
         run: "which ctags; ctags --version"
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "bloop"
 
       - name: Rust fmt
         run: cargo fmt -p bleep -- --check

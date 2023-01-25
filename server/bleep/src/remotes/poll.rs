@@ -1,5 +1,6 @@
 use std::{collections::HashMap, ops::Not, time::Duration};
 
+use chrono::Utc;
 use notify_debouncer_mini::{
     new_debouncer_opt,
     notify::{Config, RecommendedWatcher, RecursiveMode},
@@ -10,6 +11,7 @@ use tokio::time::sleep;
 use tracing::{debug, error, info};
 
 use crate::{
+    remotes,
     state::{Backend, RepoRef, SyncStatus},
     Application,
 };
@@ -24,19 +26,35 @@ const POLL_INTERVAL_MINUTE: &[Duration] = &[
 
 pub(crate) async fn check_credentials(app: Application) {
     loop {
-        let remove = 'remove: {
-            let Some(creds) = app.credentials.get(&Backend::Github) else { break 'remove true };
-            let Ok(client) = creds.to_github_client() else { break 'remove true };
+        if app.env.use_aaa() {
+            match app
+                .credentials
+                .get(&Backend::Github)
+                .and_then(|c| c.expiry())
+            {
+                // If we have a valid token, do nothing.
+                Some(expiry) if expiry > Utc::now() + chrono::Duration::minutes(10) => {}
 
-            client.current().user().await.is_err()
-        };
+                _ => {
+                    if let Err(e) = remotes::github::get_new_github_token(&app).await {
+                        error!(?e, "failed to get GitHub token");
+                    }
+                }
+            }
+        } else {
+            let expired = if let Some(github) = app.credentials.get(&Backend::Github) {
+                github.validate().await.is_err()
+            } else {
+                true
+            };
 
-        if remove && app.credentials.remove(&Backend::Github).is_some() {
-            app.config
-                .source
-                .save_credentials(app.credentials.clone())
-                .unwrap();
-            debug!("github oauth is invalid; credentials removed");
+            if expired && app.credentials.remove(&Backend::Github).is_some() {
+                app.config
+                    .source
+                    .save_credentials(&app.credentials)
+                    .unwrap();
+                debug!("github oauth is invalid; credentials removed");
+            }
         }
 
         sleep(POLL_INTERVAL_MINUTE[0]).await;
