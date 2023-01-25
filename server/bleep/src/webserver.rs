@@ -3,8 +3,9 @@ use crate::{snippet, state, Application, Environment};
 use anyhow::Result;
 use axum::middleware;
 use axum::{response::IntoResponse, routing::get, Extension, Json};
-use axum_extra::routing::SpaRouter;
 use std::{borrow::Cow, net::SocketAddr};
+use tower::Service;
+use tower_http::services::{ServeDir, ServeFile};
 use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
 use tracing::info;
 use utoipa::OpenApi;
@@ -96,13 +97,21 @@ pub async fn start(app: Application) -> Result<()> {
     let mut router = Router::new().nest("/api", api);
 
     if let Environment::PrivateServer = app.env {
-        router = router.merge(SpaRouter::new(
-            "/",
-            app.config
-                .frontend_dist
-                .as_ref()
-                .expect("need path to built frontend folder"),
-        ));
+        if let Some(frontend_dist) = app.config.frontend_dist.clone() {
+            router = router.nest_service(
+                "/",
+                tower::service_fn(move |req| {
+                    let frontend_dist = frontend_dist.clone();
+                    async move {
+                        Ok(ServeDir::new(&frontend_dist)
+                            .fallback(ServeFile::new(frontend_dist.join("index.html")))
+                            .call(req)
+                            .await
+                            .unwrap())
+                    }
+                }),
+            );
+        }
     }
 
     info!(%bind, "starting webserver");
