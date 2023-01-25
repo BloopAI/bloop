@@ -216,6 +216,8 @@ export interface NLResponseSelection {
 }
 
 export interface NLSearchResponse {
+  query_id: string;
   selection: NLResponseSelection;
   snippets: NLSnippet[];
+  user_id: string;
 }
