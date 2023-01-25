@@ -13,7 +13,7 @@ use tracing::{debug, error, info};
 use crate::{
     remotes,
     state::{Backend, RepoRef, SyncStatus},
-    Application,
+    Application, Environment,
 };
 
 const POLL_INTERVAL_MINUTE: &[Duration] = &[
@@ -26,7 +26,7 @@ const POLL_INTERVAL_MINUTE: &[Duration] = &[
 
 pub(crate) async fn check_credentials(app: Application) {
     loop {
-        if app.env.use_aaa() {
+        if let Environment::PrivateServer = app.env {
             match app
                 .credentials
                 .get(&Backend::Github)

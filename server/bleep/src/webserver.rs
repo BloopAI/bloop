@@ -1,4 +1,4 @@
-use crate::{snippet, state, Application};
+use crate::{snippet, state, Application, Environment};
 
 use anyhow::Result;
 use axum::middleware;
@@ -77,7 +77,7 @@ pub async fn start(app: Application) -> Result<()> {
     }
 
     // Note: all routes above this point must be authenticated.
-    if app.env.use_aaa() {
+    if let Environment::PrivateServer = app.env {
         api = aaa::router(api, app.clone());
     }
 
@@ -96,7 +96,7 @@ pub async fn start(app: Application) -> Result<()> {
 
     let mut router = Router::new().nest("/api", api);
 
-    if app.env.serve_frontend() {
+    if let Environment::PrivateServer = app.env {
         if let Some(frontend_dist) = app.config.frontend_dist.clone() {
             router = router.nest_service(
                 "/",

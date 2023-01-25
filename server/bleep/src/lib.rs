@@ -119,7 +119,26 @@ fn default_max_chunk_tokens() -> usize {
 pub enum Environment {
     /// Safe API that's suitable for public use
     Server,
-    /// Access to the API is access controlled using an OAuth provider
+    /// Use a GitHub App installation to manage repositories and user access.
+    ///
+    /// Running the server in this environment makes use of a GitHub App in order to list and fetch
+    /// repositories. Note that GitHub App installs for a user profile are not valid in this mode.
+    ///
+    /// Connecting properly to a GitHub App installation requires the following flags:
+    ///
+    /// - `--github-client-id`
+    /// - `--github-client-secret`
+    /// - `--github-app-id`
+    /// - `--github-app-private-key`
+    /// - `--github-app-install-id`
+    /// - `--instance-domain`
+    ///
+    /// In order to serve the front-end, the `--frontend-dist` flag can provide a path to a built
+    /// version of the Bloop client SPA.
+    ///
+    /// Users are authenticated by checking whether they belong to the organization which installed
+    /// the GitHub App. All users belonging to the organization are able to see all repos that the
+    /// installation was allowed to access.
     PrivateServer,
     /// Enables scanning arbitrary user-specified locations through a Web-endpoint.
     InsecureLocal,
@@ -139,14 +158,6 @@ impl Environment {
             InsecureLocal => true,
             PrivateServer => false,
         }
-    }
-
-    pub(crate) fn use_aaa(&self) -> bool {
-        matches!(self, Self::PrivateServer)
-    }
-
-    pub(crate) fn serve_frontend(&self) -> bool {
-        matches!(self, Self::PrivateServer)
     }
 }
 
