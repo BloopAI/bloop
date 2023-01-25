@@ -3,7 +3,6 @@ use crate::{snippet, state, Application, Environment};
 use anyhow::Result;
 use axum::middleware;
 use axum::{response::IntoResponse, routing::get, Extension, Json};
-use axum_extra::routing::SpaRouter;
 use std::{borrow::Cow, net::SocketAddr};
 use tower::Service;
 use tower_http::services::{ServeDir, ServeFile};
