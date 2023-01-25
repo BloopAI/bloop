@@ -56,9 +56,11 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
         let file = File::new(
             app.config.clone(),
-            Semantic::new(&model_dir, &app.config.qdrant_url, Arc::clone(&app.config))
-                .await
-                .unwrap(),
+            Some(
+                Semantic::new(&model_dir, &app.config.qdrant_url, Arc::clone(&app.config))
+                    .await
+                    .unwrap(),
+            ),
         );
 
         // Get the symbols for the `js-sample-big-symbols.js` file in this directory.
