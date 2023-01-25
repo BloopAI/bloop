@@ -10,6 +10,7 @@ import {
 } from '../../services/storage';
 import { SearchContext } from '../../context/searchContext';
 import ErrorFallback from '../../components/ErrorFallback';
+import { getRepos } from '../../services/api';
 import Onboarding from './Onboarding';
 import ReposSection from './ReposSection';
 
@@ -50,6 +51,16 @@ const HomePage = ({ emptyRepos }: Props) => {
     setShouldShowWelcome(false);
     onboardingFinished = true; // to avoid showing onboarding twice per session when using VITE_ONBOARDING=true
     savePlainToStorage(ONBOARDING_DONE_KEY, 'true');
+  }, []);
+
+  useEffect(() => {
+    getRepos()
+      .then(() => {
+        closeOnboarding();
+      })
+      .catch(() => {
+        setShouldShowWelcome(true);
+      });
   }, []);
 
   return shouldShowWelcome ? (

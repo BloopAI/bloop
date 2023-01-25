@@ -8,9 +8,8 @@ type Props = {
   handleNext: (e?: any, skipOne?: boolean) => void;
 };
 
-const SelfServeStep0 = ({ handleNext }: Props) => {
+const SelfServeStep0 = () => {
   const [loginUrl, setLoginUrl] = useState('');
-  const [buttonClicked, setButtonClicked] = useState(false);
 
   useEffect(() => {
     githubWebLogin().then((resp) => {
@@ -18,45 +17,17 @@ const SelfServeStep0 = ({ handleNext }: Props) => {
     });
   }, []);
 
-  useEffect(() => {
-    console.log('buttonClicked', buttonClicked);
-    if (buttonClicked) {
-      let intervalId: number;
-      intervalId = setInterval(() => {
-        getRepos().then((resp) => {
-          console.log(resp);
-          handleNext();
-        });
-      }, 1000);
-      setTimeout(() => {
-        clearInterval(intervalId);
-      }, 10 * 60 * 1000);
-
-      return () => {
-        if (intervalId) {
-          clearInterval(intervalId);
-        }
-      };
-    }
-  }, [buttonClicked]);
-
   return (
     <>
       <DialogText
         title="Sign In"
         description="Use GitHub to Sign In to your account"
       />
-      <Button variant="primary" disabled={!loginUrl}>
-        <a
-          href={loginUrl}
-          onClick={() => setButtonClicked(true)}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="w-full flex items-center gap-2 justify-center"
-        >
+      <a href={loginUrl} className="w-full">
+        <Button variant="primary" disabled={!loginUrl}>
           <GitHubLogo /> Sign in with GitHub
-        </a>
-      </Button>
+        </Button>
+      </a>
     </>
   );
 };

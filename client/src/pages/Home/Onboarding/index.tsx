@@ -45,7 +45,7 @@ const Onboarding = ({ onFinish }: Props) => {
         {!shouldShowTelemetry && (
           <div className="flex flex-col items-center max-w-md2 w-full">
             <div className="mt-8 bg-gray-900 border border-gray-800 rounded-lg shadow-big p-6 flex flex-col gap-8 w-full max-w-md2 w-full relative max-h-[calc(100vh-12rem)]">
-              <SelfServeStep0 handleNext={handleNext} />
+              <SelfServeStep0 />
               {/*{step === 0 ? (*/}
               {/*  <Step0 handleNext={handleNext} />*/}
               {/*) : step === 1 ? (*/}
