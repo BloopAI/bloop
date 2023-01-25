@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     ops::Not,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf, MAIN_SEPARATOR},
     sync::Arc,
 };
 
@@ -21,6 +21,8 @@ use tantivy::{
     },
     IndexWriter,
 };
+use tokenizers as _;
+use tokio::runtime::Handle;
 use tracing::{debug, info, trace, warn};
 
 #[cfg(feature = "debug")]
@@ -35,13 +37,14 @@ use super::{
 };
 use crate::{
     intelligence::TreeSitterFile,
+    semantic::Semantic,
     state::{FileCache, RepoHeadInfo, RepoRef, Repository},
     symbol::SymbolLocations,
     Configuration,
 };
 
 struct Workload<'a> {
-    file_disk_path: PathBuf,
+    entry_disk_path: PathBuf,
     repo_disk_path: &'a Path,
     repo_ref: String,
     repo_name: &'a str,
@@ -53,11 +56,13 @@ struct Workload<'a> {
 pub struct File {
     config: Arc<Configuration>,
     schema: Schema,
+    semantic: Option<Semantic>,
+
     #[cfg(feature = "debug")]
     histogram: Arc<RwLock<Histogram>>,
 
-    // Path to the indexed file on disk
-    pub file_disk_path: Field,
+    // Path to the indexed file or directory on disk
+    pub entry_disk_path: Field,
     // Path to the root of the repo on disk
     pub repo_disk_path: Field,
     // Path to the file, relative to the repo root
@@ -92,7 +97,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn new(config: Arc<Configuration>) -> Self {
+    pub fn new(config: Arc<Configuration>, semantic: Option<Semantic>) -> Self {
         let mut builder = tantivy::schema::SchemaBuilder::new();
         let trigram = TextOptions::default().set_stored().set_indexing_options(
             TextFieldIndexing::default()
@@ -100,7 +105,7 @@ impl File {
                 .set_index_option(IndexRecordOption::WithFreqsAndPositions),
         );
 
-        let file_disk_path = builder.add_text_field("file_disk_path", STRING);
+        let entry_disk_path = builder.add_text_field("entry_disk_path", STRING);
         let repo_disk_path = builder.add_text_field("repo_disk_path", STRING);
         let repo_ref = builder.add_text_field("repo_ref", STRING | STORED);
         let repo_name = builder.add_text_field("repo_name", trigram.clone());
@@ -126,7 +131,7 @@ impl File {
         let raw_relative_path = builder.add_bytes_field("raw_relative_path", FAST);
 
         Self {
-            file_disk_path,
+            entry_disk_path,
             repo_disk_path,
             relative_path,
             repo_ref,
@@ -139,6 +144,7 @@ impl File {
             avg_line_length,
             last_commit_unix_seconds,
             schema: builder.build(),
+            semantic,
             config,
             raw_content,
             raw_repo_name,
@@ -235,20 +241,18 @@ impl Indexable for File {
                     None
                 }
             })
-            // Ignore directories from walk result.
-            .filter(|de| matches!(de.file_type(), Some(ft) if ft.is_file()))
             // Preliminarily ignore files that are very large, without reading the contents.
             .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
-            .map(|de| dunce::canonicalize(de.into_path()).unwrap())
+            .map(|de| crate::canonicalize(de.into_path()).unwrap())
             .filter(|p| should_index(&p.strip_prefix(&repo.disk_path).unwrap()))
             .collect::<Vec<PathBuf>>();
 
         let start = std::time::Instant::now();
 
         use rayon::prelude::*;
-        walker.par_iter().for_each(|file_disk_path| {
+        walker.into_par_iter().for_each(|entry_disk_path| {
             let workload = Workload {
-                file_disk_path: file_disk_path.clone(),
+                entry_disk_path: entry_disk_path.clone(),
                 repo_disk_path: &repo.disk_path,
                 repo_ref: reporef.to_string(),
                 repo_name: &repo_name,
@@ -256,9 +260,9 @@ impl Indexable for File {
                 repo_info,
             };
 
-            debug!(?file_disk_path, "queueing file");
+            debug!(?entry_disk_path, "queueing entry");
             if let Err(err) = self.worker(workload, writer) {
-                warn!(%err, ?file_disk_path, "indexing failed; skipping");
+                warn!(%err, ?entry_disk_path, "indexing failed; skipping");
             }
         });
 
@@ -267,7 +271,7 @@ impl Indexable for File {
         file_cache.retain(|k, v| {
             if v.fresh.not() {
                 writer.delete_term(Term::from_field_text(
-                    self.file_disk_path,
+                    self.entry_disk_path,
                     &k.to_string_lossy(),
                 ));
             }
@@ -302,7 +306,7 @@ impl Indexer<File> {
         let searcher = reader.searcher();
 
         let query = TermQuery::new(
-            Term::from_field_text(self.source.file_disk_path, file_disk_path),
+            Term::from_field_text(self.source.entry_disk_path, file_disk_path),
             IndexRecordOption::Basic,
         );
 
@@ -423,10 +427,10 @@ impl Indexer<File> {
 }
 
 impl File {
-    #[tracing::instrument(fields(repo=%workload.repo_ref, file_path=?workload.file_disk_path), skip_all)]
+    #[tracing::instrument(fields(repo=%workload.repo_ref, entry_disk_path=?workload.entry_disk_path), skip_all)]
     fn worker(&self, workload: Workload<'_>, writer: &IndexWriter) -> Result<()> {
         let Workload {
-            file_disk_path,
+            entry_disk_path,
             repo_ref,
             repo_disk_path,
             repo_name,
@@ -437,15 +441,25 @@ impl File {
         #[cfg(feature = "debug")]
         let start = Instant::now();
 
-        let mut buffer = match std::fs::read_to_string(&file_disk_path) {
-            Err(err) => {
-                debug!(%err, ?file_disk_path, "read failed; skipping");
-                return Ok(());
+        let mut buffer = if entry_disk_path.is_file() {
+            match std::fs::read_to_string(&entry_disk_path) {
+                Err(err) => {
+                    debug!(%err, ?entry_disk_path, "read failed; skipping");
+                    return Ok(());
+                }
+                Ok(buffer) => buffer,
             }
-            Ok(buffer) => buffer,
+        } else {
+            String::new()
         };
 
-        let relative_path = file_disk_path.strip_prefix(repo_disk_path)?;
+        let relative_path = entry_disk_path.strip_prefix(repo_disk_path)?;
+        let relative_path_str = if entry_disk_path.is_dir() {
+            format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy()).into()
+        } else {
+            relative_path.to_string_lossy()
+        };
+
         trace!("processing file");
 
         let content_hash = {
@@ -457,7 +471,7 @@ impl File {
 
         trace!("adding cache entry");
 
-        match cache.entry(file_disk_path.clone()) {
+        match cache.entry(entry_disk_path.clone()) {
             Entry::Occupied(mut val) if val.get().value == content_hash => {
                 // skip processing if contents are up-to-date in the cache
                 val.get_mut().fresh = true;
@@ -475,7 +489,7 @@ impl File {
         let lang_str = repo_info
             .langs
             .path_map
-            .get(&file_disk_path)
+            .get(&entry_disk_path)
             .unwrap_or_else(|| {
                 warn!("Path not found in language map");
                 &Some("")
@@ -498,7 +512,7 @@ impl File {
                         Some(syms) => SymbolLocations::Ctags(syms.clone()),
                         // no ctags either
                         _ => {
-                            debug!(%lang_str, ?file_disk_path, "failed to build tags");
+                            debug!(%lang_str, ?entry_disk_path, "failed to build tags");
                             SymbolLocations::Empty
                         }
                     }
@@ -535,14 +549,25 @@ impl File {
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
         let last_commit = repo_info.last_commit_unix_secs;
 
-        trace!("writing document");
+        if let Some(semantic) = &self.semantic {
+            tokio::task::block_in_place(|| {
+                Handle::current().block_on(semantic.insert_points_for_buffer(
+                    repo_name,
+                    &repo_ref,
+                    &relative_path.to_string_lossy(),
+                    &buffer,
+                    lang_str,
+                ))
+            });
+        }
 
+        trace!("writing document");
         #[cfg(feature = "debug")]
         let buf_size = buffer.len();
         writer.add_document(doc!(
             self.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-            self.file_disk_path => file_disk_path.to_string_lossy().as_ref(),
-            self.relative_path => relative_path.to_string_lossy().as_ref(),
+            self.entry_disk_path => entry_disk_path.to_string_lossy().as_ref(),
+            self.relative_path => relative_path_str.as_ref(),
             self.repo_ref => repo_ref,
             self.repo_name => repo_name,
             self.content => buffer.as_str(),
@@ -554,7 +579,7 @@ impl File {
             self.symbols => symbols,
             self.raw_content => buffer.as_bytes(),
             self.raw_repo_name => repo_name.as_bytes(),
-            self.raw_relative_path => relative_path.to_string_lossy().as_ref().as_bytes(),
+            self.raw_relative_path => relative_path_str.as_ref().as_bytes(),
         ))?;
 
         trace!("document written");

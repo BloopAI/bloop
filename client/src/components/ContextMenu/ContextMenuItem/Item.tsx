@@ -37,9 +37,9 @@ const Item = ({ onClick, text, icon, type, onDelete, href }: ItemProps) => {
 
   return (
     <Comp
-      className={`p-2.5 group hover:bg-gray-700 text-gray-300 flex items-center justify-between rounded cursor-pointer text-sm ${
+      className={`p-2.5 group hover:bg-gray-700 text-gray-300 flex items-center justify-between rounded ${
         type === MenuItemType.DANGER ? 'text-danger-600' : ''
-      }`}
+      } cursor-pointer text-sm duration-100`}
       onClick={handleClick}
     >
       {showConfirmation ? (
@@ -47,15 +47,22 @@ const Item = ({ onClick, text, icon, type, onDelete, href }: ItemProps) => {
           <TextField value="Confirm" icon={<CheckIcon />} />
         </>
       ) : (
-        <span className={'overflow-x-hidden'}>
-          <TextField value={text} icon={icon} />
+        <span
+          className={
+            'overflow-x-hidden flex items-center justify-between w-full'
+          }
+        >
+          <TextField value={text} icon={icon} className="ellipsis" />
           {type === MenuItemType.REMOVABLE ? (
             <Button
               size={'small'}
               variant={'tertiary'}
               onlyIcon
               className="invisible group-hover:visible duration-100"
-              onClick={onDelete}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.();
+              }}
               title="Delete"
             >
               <TrashCan />

@@ -3,7 +3,7 @@ name: Tauri Tests
 on:
   pull_request:
     types: [opened, synchronize]
-    branches: [main, dev]
+    branches: [main]
     paths:
       - "apps/desktop/**"
       - ".github/workflows/tauri**"
@@ -33,10 +33,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          lfs: true
+
       - name: Install dependencies (ubuntu only)
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: cachix/install-nix-action@v18
+      - name: Install Universal Ctags
+        run: "nix profile --access-tokens ${{ secrets.GITHUB_TOKEN }} install nixpkgs#universal-ctags nixpkgs#protobuf"
+
+      - name: Dummy Qdrant binary
+        run: touch apps/desktop/src-tauri/bin/qdrant-x86_64-unknown-linux-gnu
 
       - uses: Swatinem/rust-cache@v2
       - name: Install Rust stable
@@ -49,14 +59,14 @@ jobs:
 
       - name: Check Formatting
         run: |
-          cargo fmt -p app -- --check
+          cargo fmt -p bloop -- --check
 
       - name: Run tests
         run: |
-          cargo test -p app --verbose
+          cargo test -p bloop --verbose
 
       - uses: actions-rs/clippy-check@v1
         with:
           toolchain: stable
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: -p app --all-features --manifest-path Cargo.toml
+          args: --all-features --manifest-path Cargo.toml

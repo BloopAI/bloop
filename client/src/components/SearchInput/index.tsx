@@ -1,5 +1,5 @@
 import React, {
-  FormEvent,
+  ChangeEvent,
   useCallback,
   useContext,
   useMemo,
@@ -8,7 +8,6 @@ import React, {
 } from 'react';
 import { useCombobox } from 'downshift';
 import throttle from 'lodash.throttle';
-import TextInput from '../TextInput';
 import { ArrowRevert, Clipboard, TrashCan } from '../../icons';
 import { DropdownWithIcon } from '../Dropdown';
 import { useArrowKeyNavigation } from '../../hooks/useArrowNavigationHook';
@@ -25,7 +24,9 @@ import {
 } from '../../types/results';
 import { mapResults } from '../../mappers/results';
 import useAppNavigation from '../../hooks/useAppNavigation';
+import { SearchType } from '../../types/general';
 import AutocompleteMenu from './AutocompleteMenu';
+import SearchTextInput from './SearchTextInput';
 
 const INPUT_POSITION_LEFT = 47;
 
@@ -51,9 +52,10 @@ function SearchInput() {
     setSearchHistory,
   } = useContext(SearchContext);
   const [options, setOptions] = useState<SuggestionType[]>([]);
-  const [left] = useState<number>(INPUT_POSITION_LEFT);
+  const [left, setLeft] = useState<number>(INPUT_POSITION_LEFT);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { globalRegex, setGlobalRegex } = useContext(SearchContext);
+  const { globalRegex, setGlobalRegex, searchType, setSearchType } =
+    useContext(SearchContext);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
   const arrowNavContainerRef = useArrowKeyNavigation({
     selectors: 'input, .arrow-navigate',
@@ -134,7 +136,12 @@ function SearchInput() {
           setFilters([]);
           return;
         }
-        getAutocompleteThrottled(state.inputValue, setOptions);
+        if (searchType === SearchType.REGEX) {
+          getAutocompleteThrottled(state.inputValue, setOptions);
+        } else if (searchType === SearchType.NL) {
+          setOptions([]);
+          return;
+        }
         const parsedFilters = parseFilters(state.inputValue);
         if (Object.entries(parsedFilters).some((filters) => filters.length)) {
           const newFilters = filters.map((filterItem) => ({
@@ -147,6 +154,12 @@ function SearchInput() {
 
           if (JSON.stringify(newFilters) !== JSON.stringify(filters)) {
             setFilters(newFilters);
+          }
+        }
+        const input = inputRef.current;
+        if (input) {
+          if (input.getBoundingClientRect().left) {
+            setLeft(input.getBoundingClientRect().left - 272);
           }
         }
       }
@@ -162,15 +175,18 @@ function SearchInput() {
     },
   });
 
-  const onSubmit = useCallback((val: string) => {
-    navigateSearch(val);
-    closeMenu();
-    setSearchHistory((prev) => {
-      const newHistory = [val, ...prev].slice(0, 4);
-      saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
-      return newHistory;
-    });
-  }, []);
+  const onSubmit = useCallback(
+    (val: string) => {
+      navigateSearch(val, searchType);
+      closeMenu();
+      setSearchHistory((prev) => {
+        const newHistory = [val, ...prev].slice(0, 4);
+        saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
+        return newHistory;
+      });
+    },
+    [searchType],
+  );
 
   const handleClearHistory = useCallback(() => {
     setSearchHistory([]);
@@ -212,14 +228,13 @@ function SearchInput() {
       </Button>
       <div className="flex-1 max-w-3xl">
         <div {...getComboboxProps()}>
-          <TextInput
+          <SearchTextInput
             type="search"
             placeholder="My search"
             regex
             {...getInputProps(
               {
-                onChange: (e: FormEvent<HTMLInputElement>) => {
-                  // @ts-ignore
+                onChange: (e: ChangeEvent<HTMLInputElement>) => {
                   setInputValue(e.target.value);
                 },
               },
@@ -231,6 +246,8 @@ function SearchInput() {
               setGlobalRegex(!globalRegex);
             }}
             regexEnabled={globalRegex}
+            searchType={searchType}
+            onSearchTypeChanged={setSearchType}
           />
         </div>
       </div>
@@ -238,7 +255,7 @@ function SearchInput() {
       <AutocompleteMenu
         getMenuProps={getMenuProps}
         getItemProps={getItemProps}
-        left={INPUT_POSITION_LEFT}
+        left={left}
         isOpen={isOpen && !!options.length}
         options={options}
       />

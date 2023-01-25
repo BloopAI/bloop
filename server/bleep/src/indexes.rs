@@ -21,6 +21,7 @@ use tracing::debug;
 
 use crate::{
     query::parser::Query,
+    semantic::Semantic,
     state::{RepoHeadInfo, RepoRef, Repository},
     Configuration,
 };
@@ -64,7 +65,7 @@ pub struct Indexes {
 }
 
 impl Indexes {
-    pub fn new(config: Arc<Configuration>) -> Result<Self> {
+    pub fn new(config: Arc<Configuration>, semantic: Option<Semantic>) -> Result<Self> {
         if config.source.index_version_mismatch() {
             std::fs::remove_dir_all(config.index_path("repo"))?;
             std::fs::remove_dir_all(config.index_path("content"))?;
@@ -79,7 +80,7 @@ impl Indexes {
                 config.max_threads,
             )?,
             file: Indexer::create(
-                File::new(config.clone()),
+                File::new(config.clone(), semantic),
                 config.index_path("content").as_ref(),
                 config.buffer_size,
                 config.max_threads,

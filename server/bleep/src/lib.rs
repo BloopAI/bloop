@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 #![deny(
     clippy::all,
     arithmetic_overflow,
@@ -11,41 +10,54 @@
 )]
 #![allow(elided_lifetimes_in_paths)]
 
+use axum::extract::FromRef;
 #[cfg(any(bench, test))]
 use criterion as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
+use dashmap::DashMap;
+use remotes::BackendCredential;
+use semantic::{chunk::OverlapStrategy, Semantic};
+use state::Backend;
 
 use crate::{
     indexes::Indexes,
-    state::{Credentials, RepositoryPool, StateSource},
+    segment::Segment,
+    semantic::SemanticError,
+    state::{RepositoryPool, StateSource},
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use background::BackgroundExecutor;
 use clap::Parser;
 use once_cell::sync::OnceCell;
 use relative_path::RelativePath;
-use secrecy::SecretString;
-use serde::{Deserialize, Serialize};
+use secrecy::{ExposeSecret, SecretString};
+use serde::Deserialize;
 use std::{
-    ops::Not,
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
+
+#[cfg(target = "windows")]
+use dunce::canonicalize;
+#[cfg(not(target = "windows"))]
+use std::fs::canonicalize;
 
 mod background;
 mod collector;
 mod language;
 mod remotes;
+mod segment;
 mod webserver;
 
 pub mod ctags;
 pub mod indexes;
 pub mod intelligence;
 pub mod query;
+pub mod semantic;
 pub mod snippet;
 pub mod state;
 pub mod symbol;
@@ -53,12 +65,17 @@ pub mod text_range;
 
 const LOG_ENV_VAR: &str = "BLOOP_LOG";
 static LOGGER_INSTALLED: OnceCell<bool> = OnceCell::new();
+static SENTRY_GUARD: OnceCell<sentry::ClientInitGuard> = OnceCell::new();
 
 fn default_index_path() -> PathBuf {
     match directories::ProjectDirs::from("ai", "bloop", "bleep") {
         Some(dirs) => dirs.cache_dir().to_owned(),
         None => "bloop_index".into(),
     }
+}
+
+fn default_model_dir() -> PathBuf {
+    "model".into()
 }
 
 pub fn default_parallelism() -> usize {
@@ -85,27 +102,58 @@ fn default_host() -> String {
     String::from("127.0.0.1")
 }
 
-#[derive(Debug)]
+fn default_qdrant_url() -> String {
+    String::from("http://127.0.0.1:6334")
+}
+
+fn default_answer_api_url() -> String {
+    String::from("http://127.0.0.1:7879")
+}
+
+fn default_max_chunk_tokens() -> usize {
+    256
+}
+
+#[derive(Debug, Clone)]
 pub enum Environment {
     /// Safe API that's suitable for public use
     Server,
+    /// Access to the API is access controlled using an OAuth provider
+    PrivateServer,
     /// Enables scanning arbitrary user-specified locations through a Web-endpoint.
     InsecureLocal,
 }
 
-impl Default for Environment {
-    fn default() -> Self {
-        Environment::Server
+impl Environment {
+    pub(crate) fn allow_path_scan(&self) -> bool {
+        use Environment::*;
+
+        matches!(self, InsecureLocal)
+    }
+
+    pub(crate) fn allow_github_device_flow(&self) -> bool {
+        use Environment::*;
+        match self {
+            Server => true,
+            InsecureLocal => true,
+            PrivateServer => false,
+        }
+    }
+
+    /// Use AAA layer (authentication, authorization, accounting)
+    pub(crate) fn use_aaa(&self) -> bool {
+        use Environment::*;
+        match self {
+            Server => false,
+            InsecureLocal => false,
+            PrivateServer => true,
+        }
     }
 }
 
-#[derive(Serialize, Deserialize, Parser, Debug)]
+#[derive(Deserialize, Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 pub struct Configuration {
-    #[clap(skip)]
-    #[serde(skip)]
-    pub(crate) env: Environment,
-
     #[clap(short, long)]
     #[serde(skip)]
     /// If a config file is given, it will override _all_ command line parameters!
@@ -163,10 +211,57 @@ pub struct Configuration {
     /// Bind the webserver to `<host>`
     pub port: u16,
 
+    #[clap(long, default_value_os_t = default_model_dir())]
+    #[serde(default = "default_model_dir")]
+    /// Path to the embedding model directory
+    pub model_dir: PathBuf,
+
     #[clap(long)]
     #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
     /// Github Client ID for OAuth connection to private repos
     pub github_client_id: Option<SecretString>,
+
+    #[clap(long)]
+    #[serde(serialize_with = "State::serialize_secret_opt_str", default)]
+    pub github_client_secret: Option<SecretString>,
+
+    #[clap(long)]
+    /// GitHub App ID
+    pub github_app_id: Option<u64>,
+
+    #[clap(long)]
+    /// GitHub app installation ID
+    pub github_app_install_id: Option<u64>,
+
+    #[clap(long)]
+    /// Path to a GitHub private key file, for signing access token requests
+    pub github_app_private_key: Option<PathBuf>,
+
+    #[clap(long)]
+    /// Full instance domain, e.g. `foo.bloop.ai`
+    pub instance_domain: Option<String>,
+
+    #[clap(long, default_value_t = default_max_chunk_tokens())]
+    #[serde(default = "default_max_chunk_tokens")]
+    /// Maximum number of tokens in a chunk (should be the model's input size)
+    pub max_chunk_tokens: usize,
+
+    #[clap(long)]
+    /// Chunking strategy
+    pub overlap: Option<OverlapStrategy>,
+
+    //
+    // External dependencies
+    //
+    #[clap(long, default_value_t = default_qdrant_url())]
+    #[serde(default = "default_qdrant_url")]
+    /// URL for the qdrant server
+    pub qdrant_url: String,
+
+    #[clap(long, default_value_t = default_answer_api_url())]
+    #[serde(default = "default_answer_api_url")]
+    /// URL for the answer-api
+    pub answer_api_url: String,
 }
 
 impl Configuration {
@@ -182,19 +277,29 @@ impl Configuration {
     pub fn index_path(&self, name: impl AsRef<Path>) -> impl AsRef<Path> {
         self.index_dir.join(name)
     }
+
+    pub fn github_client_id_and_secret(&self) -> Option<(&str, &str)> {
+        let id = self.github_client_id.as_ref()?.expose_secret();
+        let secret = self.github_client_secret.as_ref()?.expose_secret();
+        Some((id, secret))
+    }
 }
 
 #[derive(Clone)]
 pub struct Application {
+    pub env: Environment,
     pub config: Arc<Configuration>,
-    pub(crate) repo_pool: RepositoryPool,
-    pub(crate) background: BackgroundExecutor,
+    repo_pool: RepositoryPool,
+    background: BackgroundExecutor,
+    semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
-    credentials: Credentials,
+    credentials: Arc<DashMap<Backend, BackendCredential>>,
+    pub segment: Arc<Option<Segment>>,
+    cookie_key: axum_extra::extract::cookie::Key,
 }
 
 impl Application {
-    pub fn initialize(env: Environment, config: Configuration) -> Result<Application> {
+    pub async fn initialize(env: Environment, config: Configuration) -> Result<Application> {
         let mut config = match config.config_file {
             None => config,
             Some(ref path) => {
@@ -210,7 +315,6 @@ impl Application {
         config.buffer_size = config.buffer_size.max(threads * 3_000_000);
         config.repo_buffer_size = config.repo_buffer_size.max(threads * 3_000_000);
         config.source.set_default_dir(&config.index_dir);
-        config.env = env;
 
         if let Some(ref executable) = config.ctags_path {
             ctags::CTAGS_BINARY
@@ -219,14 +323,55 @@ impl Application {
         }
 
         let config = Arc::new(config);
+        let semantic =
+            match Semantic::new(&config.model_dir, &config.qdrant_url, Arc::clone(&config)).await {
+                Ok(semantic) => Some(semantic),
+                Err(SemanticError::QdrantInitializationError) => {
+                    warn!("Qdrant initialization failed. Starting without semantic search...");
+                    None
+                }
+                Err(e) => bail!(e),
+            };
+
+        let segment = if let Ok(segment_key) = std::env::var("SEGMENT_KEY_BE") {
+            info!("initializing segment");
+            Some(Segment::new(segment_key))
+        } else {
+            warn!("could not find segment key ... skipping initialization");
+            None
+        };
+        let segment = Arc::new(segment);
+
+        let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
+        let env = if config.github_app_id.is_some() {
+            Environment::PrivateServer
+        } else {
+            env
+        };
 
         Ok(Self {
-            indexes: Indexes::new(config.clone())?.into(),
-            repo_pool: config.source.initialize_pool()?,
-            credentials: config.source.initialize_credentials()?,
+            indexes,
+            credentials: Arc::new(config.source.initialize_credentials()?),
             background: BackgroundExecutor::start(config.clone()),
+            repo_pool: config.source.initialize_pool()?,
+            cookie_key: config.source.initialize_cookie_key()?,
+            semantic,
             config,
+            segment,
+            env,
         })
+    }
+
+    pub fn load_env_vars() {
+        info!("loading .env file ...");
+        if let Ok(path) = dotenvy::dotenv() {
+            info!(
+                "loaded env from `{:?}`",
+                canonicalize(path).ok().as_ref().map(|p| p.display())
+            );
+        } else {
+            warn!("failed to load .env file")
+        };
     }
 
     pub fn install_logging() {
@@ -234,7 +379,7 @@ impl Application {
             return;
         }
 
-        if tracing_subscribe().not() {
+        if !tracing_subscribe() {
             warn!("Failed to install tracing_subscriber. There's probably one already...");
         };
 
@@ -245,6 +390,29 @@ impl Application {
         LOGGER_INSTALLED.set(true).unwrap();
     }
 
+    pub fn install_sentry() {
+        let Some(dsn) = std::env::var("VITE_SENTRY_DSN_BE").ok() else {
+            info!("sentry DSN missing, skipping initialization");
+            return;
+        };
+
+        if sentry::Hub::current().client().is_some() {
+            warn!("sentry has already been initialized");
+            return;
+        }
+
+        info!("initializing sentry ...");
+        let guard = sentry::init((
+            dsn,
+            sentry::ClientOptions {
+                release: sentry::release_name!(),
+                ..Default::default()
+            },
+        ));
+
+        _ = SENTRY_GUARD.set(guard);
+    }
+
     pub async fn run(self) -> Result<()> {
         Self::install_logging();
 
@@ -253,7 +421,7 @@ impl Application {
         if self.config.index_only {
             joins.spawn(self.write_index().startup_scan());
         } else {
-            if self.config.disable_background.not() {
+            if !self.config.disable_background {
                 tokio::spawn(remotes::check_credentials(self.clone()));
                 tokio::spawn(remotes::check_repo_updates(self.clone()));
             }
@@ -271,24 +439,16 @@ impl Application {
         Ok(())
     }
 
-    pub(crate) fn scan_allowed(&self) -> bool {
-        use Environment::*;
-
-        match self.config.env {
-            Server => false,
-            InsecureLocal => true,
-        }
-    }
-
-    pub(crate) fn path_allowed(&self, path: impl AsRef<Path>) -> bool {
+    pub(crate) fn allow_path(&self, path: impl AsRef<Path>) -> bool {
         use Environment::*;
 
         let source_dir = self.config.source.directory();
-        match self.config.env {
+        match self.env {
             Server => RelativePath::from_path(&path)
                 .map(|p| p.to_logical_path(&source_dir))
                 .unwrap_or_else(|_| path.as_ref().to_owned())
                 .starts_with(&source_dir),
+            PrivateServer => false,
             InsecureLocal => true,
         }
     }
@@ -299,9 +459,14 @@ impl Application {
     // To be performed on the background executor
     //
     //
-
     pub(crate) fn write_index(&self) -> background::IndexWriter {
         background::IndexWriter(self.clone())
+    }
+}
+
+impl FromRef<Application> for axum_extra::extract::cookie::Key {
+    fn from_ref(input: &Application) -> Self {
+        input.cookie_key.clone()
     }
 }
 
@@ -324,4 +489,11 @@ fn tracing_subscribe() -> bool {
         .with(env_filter)
         .try_init()
         .is_ok()
+}
+
+// FIXME: use usize::div_ceil soon
+fn div_ceil(a: usize, b: usize) -> usize {
+    let d = a / b;
+    let r = a % b;
+    d + usize::from(r > 0)
 }
