@@ -7,6 +7,7 @@ use serde_json::json;
 
 pub struct QueryEvent {
     pub user_id: String,
+    pub query_id: uuid::Uuid,
     pub query: String,
     pub select_prompt: String,
     pub semantic_results: Vec<Snippet>,
@@ -27,7 +28,7 @@ impl QueryAnalyticsSource for RudderAnalytics {
             user_id: Some(event.user_id),
             event: "openai query".to_owned(),
             properties: Some(json!({
-                "id": uuid::Uuid::new_v4().to_string(),
+                "query_id": event.query_id,
                 "overlap_strategy": event.overlap_strategy,
                 "stages": [
                     {

@@ -37,16 +37,9 @@ pub mod api {
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
-    pub struct DecodedResponse {
+    pub struct Response {
         pub answer: String,
         pub answer_path: String,
-    }
-
-    #[derive(Debug, serde::Serialize, serde::Deserialize)]
-    pub struct Response {
-        #[serde(flatten)]
-        pub data: DecodedResponse,
-        pub id: String,
     }
 }
 
@@ -69,6 +62,8 @@ pub struct Params {
 
 #[derive(serde::Serialize, ToSchema)]
 pub struct AnswerResponse {
+    pub user_id: String,
+    pub query_id: uuid::Uuid,
     pub snippets: Vec<api::Snippet>,
     pub selection: api::Response,
 }
@@ -265,8 +260,10 @@ pub async fn handle(
     // reorder snippets
     snippets.swap(relevant_snippet_index, 0);
 
+    let query_id = uuid::Uuid::new_v4();
     app.track_query(QueryEvent {
         user_id: params.user_id.clone(),
+        query_id,
         query: params.q.clone(),
         semantic_results: all_snippets,
         filtered_semantic_results: snippets.clone(),
@@ -282,12 +279,11 @@ pub async fn handle(
 
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
         snippets,
+        query_id,
+        user_id: params.user_id,
         selection: api::Response {
-            data: api::DecodedResponse {
-                answer: snippet_explanation,
-                answer_path,
-            },
-            id: params.user_id,
+            answer: snippet_explanation,
+            answer_path,
         },
     })))
 }
