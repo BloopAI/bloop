@@ -16,8 +16,8 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   deviceId,
 }) => {
   const WRITE_KEY = import.meta.env.PROD
-    ? import.meta.env.VITE_ANALYTICS_WRITE_KEY_PROD
-    : import.meta.env.VITE_ANALYTICS_WRITE_KEY_DEV;
+    ? import.meta.env.ANALYTICS_WRITE_KEY_PROD
+    : import.meta.env.ANALYTICS_WRITE_KEY_DEV;
 
   const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
 
@@ -34,7 +34,7 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
         reject(new Error('Failed to initialize analytics'));
       }, 2000);
 
-      analytics.load(WRITE_KEY, import.meta.env.VITE_ANALYTICS_DATA_PLANE_URL, {
+      analytics.load(WRITE_KEY, import.meta.env.ANALYTICS_DATA_PLANE_URL, {
         logLevel: 'DEBUG',
         integrations: { All: true },
       });
