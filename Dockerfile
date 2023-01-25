@@ -13,11 +13,13 @@ RUN --mount=target=/build/target,type=cache \
     cargo chef cook -p bleep --release --recipe-path recipe.json
 COPY . .
 RUN --mount=target=/build/target,type=cache \
-    rm server/bleep/src/main.rs && cargo build -p bleep --release
+    rm server/bleep/src/main.rs && \
+    cargo build -p bleep --release && \
+    cp /build/target/release/bleep /
 
 FROM debian:stable-slim
 VOLUME ["/repos", "/data"]
 RUN apt-get update && apt-get -y install universal-ctags openssl ca-certificates && apt-get clean
 COPY model /model
-COPY --from=builder /build/target/release/bleep /
+COPY --from=builder /bleep /
 ENTRYPOINT ["/bleep", "--host=0.0.0.0", "--source-dir=/repos", "--index-dir=/data", "--model-dir=/model"]
