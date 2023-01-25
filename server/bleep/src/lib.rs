@@ -391,7 +391,7 @@ impl Application {
     }
 
     pub fn install_sentry() {
-        let Some(dsn) = std::env::var("VITE_SENTRY_DSN_BE").ok() else {
+        let Some(dsn) = std::env::var("SENTRY_DSN_BE").ok() else {
             info!("sentry DSN missing, skipping initialization");
             return;
         };

@@ -13,6 +13,7 @@ export default defineConfig({
         'ANALYTICS_WRITE_KEY_PROD',
         'SENTRY_DSN_FE',
         'SENTRY_DSN_BE',
+        'ONBOARDING'
       ],
       {
         defineOn: 'import.meta.env',

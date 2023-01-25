@@ -33,7 +33,7 @@ const HomePage = ({ emptyRepos }: Props) => {
   const { setInputValue } = useContext(SearchContext);
 
   useEffect(() => {
-    if (import.meta.env.VITE_ONBOARDING) {
+    if (import.meta.env.ONBOARDING) {
       if (
         getPlainFromStorage(SESSION_ID_KEY) !==
         window.__APP_SESSION__.toString()
@@ -48,7 +48,7 @@ const HomePage = ({ emptyRepos }: Props) => {
 
   const closeOnboarding = useCallback(() => {
     setShouldShowWelcome(false);
-    onboardingFinished = true; // to avoid showing onboarding twice per session when using VITE_ONBOARDING=true
+    onboardingFinished = true; // to avoid showing onboarding twice per session when using ONBOARDING=true
     savePlainToStorage(ONBOARDING_DONE_KEY, 'true');
   }, []);
 

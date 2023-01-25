@@ -42,9 +42,9 @@ function App() {
       setOs({ arch, type, platform, version });
       setRelease(appVersion);
     });
-    if (import.meta.env.VITE_SENTRY_DSN_BE) {
+    if (import.meta.env.SENTRY_DSN_BE) {
       invoke('initialize_sentry', {
-        dsn: import.meta.env.VITE_SENTRY_DSN_BE,
+        dsn: import.meta.env.SENTRY_DSN_BE,
         environment: import.meta.env.MODE,
       });
     }
