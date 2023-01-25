@@ -26,7 +26,7 @@ where
 
     let app = app.handle();
     tokio::spawn(async move {
-        let initialized = Application::initialize(Environment::InsecureLocal, configuration).await;
+        let initialized = Application::initialize(Environment::PrivateServer, configuration).await;
 
         if let Ok(backend) = initialized {
             if let Err(_e) = backend.run().await {
