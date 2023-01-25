@@ -9,9 +9,11 @@ FROM chef AS builder
 RUN apt-get update && apt-get -y install cmake python3 protobuf-compiler && apt-get -y clean
 COPY --from=planner /build/recipe.json recipe.json
 # Build dependencies - this is the caching Docker layer!
-RUN cargo chef cook -p bleep --release --recipe-path recipe.json
+RUN --mount=target=/build/target,type=cache \
+    cargo chef cook -p bleep --release --recipe-path recipe.json
 COPY . .
-RUN rm server/bleep/src/main.rs && cargo build -p bleep --release
+RUN --mount=target=/build/target,type=cache \
+    rm server/bleep/src/main.rs && cargo build -p bleep --release
 
 FROM debian:stable-slim
 VOLUME ["/repos", "/data"]
