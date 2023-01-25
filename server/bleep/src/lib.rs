@@ -140,6 +140,14 @@ impl Environment {
             PrivateServer => false,
         }
     }
+
+    pub(crate) fn use_aaa(&self) -> bool {
+        matches!(self, Self::PrivateServer)
+    }
+
+    pub(crate) fn serve_frontend(&self) -> bool {
+        matches!(self, Self::PrivateServer)
+    }
 }
 
 #[derive(Deserialize, Parser, Debug)]
