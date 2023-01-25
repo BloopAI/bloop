@@ -10,28 +10,32 @@
 )]
 #![allow(elided_lifetimes_in_paths)]
 
+use axum::extract::FromRef;
 #[cfg(any(bench, test))]
 use criterion as _;
 
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
+use dashmap::DashMap;
+use remotes::BackendCredential;
 use semantic::{chunk::OverlapStrategy, Semantic};
+use state::Backend;
 
 use crate::{
+    analytics::QueryAnalyticsSource,
     indexes::Indexes,
-    segment::Segment,
     semantic::SemanticError,
-    state::{Credentials, RepositoryPool, StateSource},
+    state::{RepositoryPool, StateSource},
 };
 use anyhow::{anyhow, bail, Result};
 use background::BackgroundExecutor;
 use clap::Parser;
 use once_cell::sync::OnceCell;
 use relative_path::RelativePath;
-use secrecy::SecretString;
-use serde::{Deserialize, Serialize};
+use rudderanalytics::client::RudderAnalytics;
+use secrecy::{ExposeSecret, SecretString};
+use serde::Deserialize;
 use std::{
-    ops::Not,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -43,11 +47,11 @@ use dunce::canonicalize;
 #[cfg(not(target = "windows"))]
 use std::fs::canonicalize;
 
+mod analytics;
 mod background;
 mod collector;
 mod language;
 mod remotes;
-mod segment;
 mod webserver;
 
 pub mod ctags;
@@ -111,27 +115,46 @@ fn default_max_chunk_tokens() -> usize {
     256
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Environment {
     /// Safe API that's suitable for public use
     Server,
+    /// Access to the API is access controlled using an OAuth provider
+    PrivateServer,
     /// Enables scanning arbitrary user-specified locations through a Web-endpoint.
     InsecureLocal,
 }
 
-impl Default for Environment {
-    fn default() -> Self {
-        Environment::Server
+impl Environment {
+    pub(crate) fn allow_path_scan(&self) -> bool {
+        use Environment::*;
+
+        matches!(self, InsecureLocal)
+    }
+
+    pub(crate) fn allow_github_device_flow(&self) -> bool {
+        use Environment::*;
+        match self {
+            Server => true,
+            InsecureLocal => true,
+            PrivateServer => false,
+        }
+    }
+
+    /// Use AAA layer (authentication, authorization, accounting)
+    pub(crate) fn use_aaa(&self) -> bool {
+        use Environment::*;
+        match self {
+            Server => false,
+            InsecureLocal => false,
+            PrivateServer => true,
+        }
     }
 }
 
-#[derive(Serialize, Deserialize, Parser, Debug)]
+#[derive(Deserialize, Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 pub struct Configuration {
-    #[clap(skip)]
-    #[serde(skip)]
-    pub(crate) env: Environment,
-
     #[clap(short, long)]
     #[serde(skip)]
     /// If a config file is given, it will override _all_ command line parameters!
@@ -189,16 +212,6 @@ pub struct Configuration {
     /// Bind the webserver to `<host>`
     pub port: u16,
 
-    #[clap(long, default_value_t = default_qdrant_url())]
-    #[serde(default = "default_qdrant_url")]
-    /// URL for the qdrant server
-    pub qdrant_url: String,
-
-    #[clap(long, default_value_t = default_answer_api_url())]
-    #[serde(default = "default_answer_api_url")]
-    /// URL for the answer-api
-    pub answer_api_url: String,
-
     #[clap(long, default_value_os_t = default_model_dir())]
     #[serde(default = "default_model_dir")]
     /// Path to the embedding model directory
@@ -209,6 +222,26 @@ pub struct Configuration {
     /// Github Client ID for OAuth connection to private repos
     pub github_client_id: Option<SecretString>,
 
+    #[clap(long)]
+    #[serde(serialize_with = "State::serialize_secret_opt_str", default)]
+    pub github_client_secret: Option<SecretString>,
+
+    #[clap(long)]
+    /// GitHub App ID
+    pub github_app_id: Option<u64>,
+
+    #[clap(long)]
+    /// GitHub app installation ID
+    pub github_app_install_id: Option<u64>,
+
+    #[clap(long)]
+    /// Path to a GitHub private key file, for signing access token requests
+    pub github_app_private_key: Option<PathBuf>,
+
+    #[clap(long)]
+    /// Full instance domain, e.g. `foo.bloop.ai`
+    pub instance_domain: Option<String>,
+
     #[clap(long, default_value_t = default_max_chunk_tokens())]
     #[serde(default = "default_max_chunk_tokens")]
     /// Maximum number of tokens in a chunk (should be the model's input size)
@@ -217,6 +250,19 @@ pub struct Configuration {
     #[clap(long)]
     /// Chunking strategy
     pub overlap: Option<OverlapStrategy>,
+
+    //
+    // External dependencies
+    //
+    #[clap(long, default_value_t = default_qdrant_url())]
+    #[serde(default = "default_qdrant_url")]
+    /// URL for the qdrant server
+    pub qdrant_url: String,
+
+    #[clap(long, default_value_t = default_answer_api_url())]
+    #[serde(default = "default_answer_api_url")]
+    /// URL for the answer-api
+    pub answer_api_url: String,
 }
 
 impl Configuration {
@@ -232,21 +278,30 @@ impl Configuration {
     pub fn index_path(&self, name: impl AsRef<Path>) -> impl AsRef<Path> {
         self.index_dir.join(name)
     }
+
+    pub fn github_client_id_and_secret(&self) -> Option<(&str, &str)> {
+        let id = self.github_client_id.as_ref()?.expose_secret();
+        let secret = self.github_client_secret.as_ref()?.expose_secret();
+        Some((id, secret))
+    }
 }
 
 #[derive(Clone)]
 pub struct Application {
+    pub env: Environment,
     pub config: Arc<Configuration>,
-    pub(crate) repo_pool: RepositoryPool,
-    pub(crate) background: BackgroundExecutor,
-    pub(crate) semantic: Option<Semantic>,
+    repo_pool: RepositoryPool,
+    background: BackgroundExecutor,
+    semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
-    credentials: Credentials,
-    pub segment: Arc<Option<Segment>>,
+    credentials: Arc<DashMap<Backend, BackendCredential>>,
+    pub analytics_client: Arc<Option<RudderAnalytics>>,
+    cookie_key: axum_extra::extract::cookie::Key,
 }
 
 impl Application {
     pub async fn initialize(env: Environment, config: Configuration) -> Result<Application> {
+        Application::load_env_vars();
         let mut config = match config.config_file {
             None => config,
             Some(ref path) => {
@@ -262,7 +317,6 @@ impl Application {
         config.buffer_size = config.buffer_size.max(threads * 3_000_000);
         config.repo_buffer_size = config.repo_buffer_size.max(threads * 3_000_000);
         config.source.set_default_dir(&config.index_dir);
-        config.env = env;
 
         if let Some(ref executable) = config.ctags_path {
             ctags::CTAGS_BINARY
@@ -281,25 +335,36 @@ impl Application {
                 Err(e) => bail!(e),
             };
 
-        let segment = if let Ok(segment_key) = std::env::var("SEGMENT_KEY_BE") {
-            info!("initializing segment");
-            Some(Segment::new(segment_key))
+        let analytics_client = if let (Ok(key), Ok(data_plane)) = (
+            std::env::var("ANALYTICS_KEY_BE"),
+            std::env::var("ANALYTICS_DATA_PLANE"),
+        ) {
+            info!("initializing analytics");
+            let handle = tokio::task::spawn_blocking(|| RudderAnalytics::load(key, data_plane));
+            Some(handle.await.unwrap())
         } else {
-            warn!("could not find segment key ... skipping initialization");
+            warn!("could not find analytics key ... skipping initialization");
             None
         };
-        let segment = Arc::new(segment);
+        let analytics_client = Arc::new(analytics_client);
 
         let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
+        let env = if config.github_app_id.is_some() {
+            Environment::PrivateServer
+        } else {
+            env
+        };
 
         Ok(Self {
             indexes,
-            repo_pool: config.source.initialize_pool()?,
-            credentials: config.source.initialize_credentials()?,
+            credentials: Arc::new(config.source.initialize_credentials()?),
             background: BackgroundExecutor::start(config.clone()),
+            repo_pool: config.source.initialize_pool()?,
+            cookie_key: config.source.initialize_cookie_key()?,
             semantic,
             config,
-            segment,
+            analytics_client,
+            env,
         })
     }
 
@@ -320,7 +385,7 @@ impl Application {
             return;
         }
 
-        if tracing_subscribe().not() {
+        if !tracing_subscribe() {
             warn!("Failed to install tracing_subscriber. There's probably one already...");
         };
 
@@ -354,6 +419,12 @@ impl Application {
         _ = SENTRY_GUARD.set(guard);
     }
 
+    pub fn track_query(&self, event: analytics::QueryEvent) {
+        if let Some(client) = &*self.analytics_client {
+            tokio::task::block_in_place(|| client.track_query(event));
+        }
+    }
+
     pub async fn run(self) -> Result<()> {
         Self::install_logging();
 
@@ -362,7 +433,7 @@ impl Application {
         if self.config.index_only {
             joins.spawn(self.write_index().startup_scan());
         } else {
-            if self.config.disable_background.not() {
+            if !self.config.disable_background {
                 tokio::spawn(remotes::check_credentials(self.clone()));
                 tokio::spawn(remotes::check_repo_updates(self.clone()));
             }
@@ -380,24 +451,16 @@ impl Application {
         Ok(())
     }
 
-    pub(crate) fn scan_allowed(&self) -> bool {
-        use Environment::*;
-
-        match self.config.env {
-            Server => false,
-            InsecureLocal => true,
-        }
-    }
-
-    pub(crate) fn path_allowed(&self, path: impl AsRef<Path>) -> bool {
+    pub(crate) fn allow_path(&self, path: impl AsRef<Path>) -> bool {
         use Environment::*;
 
         let source_dir = self.config.source.directory();
-        match self.config.env {
+        match self.env {
             Server => RelativePath::from_path(&path)
                 .map(|p| p.to_logical_path(&source_dir))
                 .unwrap_or_else(|_| path.as_ref().to_owned())
                 .starts_with(&source_dir),
+            PrivateServer => false,
             InsecureLocal => true,
         }
     }
@@ -408,9 +471,14 @@ impl Application {
     // To be performed on the background executor
     //
     //
-
     pub(crate) fn write_index(&self) -> background::IndexWriter {
         background::IndexWriter(self.clone())
+    }
+}
+
+impl FromRef<Application> for axum_extra::extract::cookie::Key {
+    fn from_ref(input: &Application) -> Self {
+        input.cookie_key.clone()
     }
 }
 

@@ -8,6 +8,7 @@ importers:
   .:
     specifiers:
       '@playwright/test': ^1.28.1
+      '@types/node': ^18.11.18
       '@typescript-eslint/parser': ^5.42.1
       dotenv: ^16.0.3
       eslint: ~8.22.0
@@ -26,6 +27,7 @@ importers:
       npm-run-all: 4.1.5
     devDependencies:
       '@playwright/test': 1.28.1
+      '@types/node': 18.11.18
       '@typescript-eslint/parser': 5.44.0_eslint@8.22.0
       dotenv: 16.0.3
       eslint: 8.22.0
@@ -2388,7 +2390,7 @@ packages:
     engines: {node: '>=14'}
     hasBin: true
     dependencies:
-      '@types/node': 18.11.9
+      '@types/node': 18.11.18
       playwright-core: 1.28.1
     dev: true
 
@@ -4233,6 +4235,10 @@ packages:
 
   /@types/node/16.18.3:
     resolution: {integrity: sha512-jh6m0QUhIRcZpNv7Z/rpN+ZWXOicUUQbSoWks7Htkbb9IjFQj4kzcX/xFCkjstCj5flMsN8FiSvt+q+Tcs4Llg==}
+    dev: true
+
+  /@types/node/18.11.18:
+    resolution: {integrity: sha512-DHQpWGjyQKSHj3ebjFI/wRKcqQcdR+MoFBygntYOZytCqNfkd2ZC4ARDJ2DQqhjH5p85Nnd3jhUJIXrszFX/JA==}
     dev: true
 
   /@types/node/18.11.9:

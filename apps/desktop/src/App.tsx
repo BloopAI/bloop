@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ClientApp from '@bloop/client/src/App';
 import '@bloop/client/src/index.css';
 import { invoke } from '@tauri-apps/api';
@@ -8,6 +8,7 @@ import { open as openDialog } from '@tauri-apps/api/dialog';
 import { listen } from '@tauri-apps/api/event';
 import * as tauriOs from '@tauri-apps/api/os';
 import { getVersion } from '@tauri-apps/api/app';
+import TextSearch from './TextSearch';
 
 function App() {
   const [homeDirectory, setHomeDir] = useState('');
@@ -20,6 +21,7 @@ function App() {
     version: '',
   });
   const [release, setRelease] = useState('');
+  const contentContainer = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     homeDir().then(setHomeDir);
@@ -68,7 +70,14 @@ function App() {
     }),
     [homeDirectory, indexFolder, deviceId, os, release],
   );
-  return <ClientApp deviceContextValue={deviceContextValue} />;
+  return (
+    <>
+      <TextSearch contentRoot={contentContainer.current} />
+      <div ref={contentContainer}>
+        <ClientApp deviceContextValue={deviceContextValue} />
+      </div>
+    </>
+  );
 }
 
 export default App;
