@@ -138,51 +138,58 @@ async fn poll_for_oauth_token(
         }
     };
 
-    app.credentials.insert(
-        Backend::Github,
-        BackendCredential::Github(remotes::github::Auth {
-            access_token: auth.access_token,
-            token_type: auth.token_type,
-            scope: auth.scope,
-        }),
-    );
+    app.credentials
+        .insert(Backend::Github, BackendCredential::Github(auth.into()));
 
-    let saved = app.config.source.save_credentials(app.credentials.clone());
+    let saved = app.config.source.save_credentials(&app.credentials);
 
     if let Err(err) = saved {
         error!(?err, "Failed to save credentials to disk");
     }
 }
 
+async fn github_auth(app: &Application) -> Option<remotes::github::Auth> {
+    match app.credentials.get(&Backend::Github)?.clone() {
+        BackendCredential::Github(auth) => Some(auth),
+    }
+}
+
 pub(super) async fn list_repos(app: Application) -> Result<Vec<Repo>, EndpointError<'static>> {
-    let gh_client = match app.credentials.get(&Backend::Github) {
-        Some(credref) => credref.value().to_github_client(),
-        None => {
-            return Err(EndpointError {
-                kind: ErrorKind::Configuration,
-                message: "No github credentials".into(),
-            })
-        }
+    let Some(auth) = github_auth(&app).await else {
+        return Err(EndpointError {
+            kind: ErrorKind::Configuration,
+            message: "No github authorization".into(),
+        });
     };
 
-    let repo_list_req = gh_client.map_err(|err| EndpointError {
-        kind: ErrorKind::UpstreamService,
-        message: err.to_string().into(),
-    })?;
+    let gh_client = auth.client().expect("failed to build github client");
 
     let mut results = vec![];
     for page in 1.. {
-        let mut resp = repo_list_req
-            .current()
-            .list_repos_for_authenticated_user()
-            .per_page(100)
-            .page(page)
-            .send()
-            .await
-            .map_err(|err| EndpointError {
-                kind: ErrorKind::UpstreamService,
-                message: err.to_string().into(),
-            })?;
+        let mut resp = match auth {
+            remotes::github::Auth::OAuth { .. } => {
+                gh_client
+                    .current()
+                    .list_repos_for_authenticated_user()
+                    .per_page(100)
+                    .page(page)
+                    .send()
+                    .await
+            }
+            remotes::github::Auth::App { ref org, .. } => {
+                gh_client
+                    .orgs(org)
+                    .list_repos()
+                    .per_page(100)
+                    .page(page)
+                    .send()
+                    .await
+            }
+        }
+        .map_err(|err| EndpointError {
+            kind: ErrorKind::UpstreamService,
+            message: err.to_string().into(),
+        })?;
 
         if resp.items.is_empty() {
             break;

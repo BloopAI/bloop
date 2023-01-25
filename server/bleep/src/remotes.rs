@@ -3,6 +3,7 @@ use std::os::windows::process::CommandExt;
 use std::{path::Path, process::Command};
 
 use anyhow::{bail, Context, Result};
+use chrono::{DateTime, Utc};
 use dashmap::mapref::one::Ref;
 use git2::{Cred, RemoteCallbacks};
 use ignore::WalkBuilder;
@@ -10,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::{
+    remotes,
     state::{RepoRef, Repository, SyncStatus},
     Application,
 };
@@ -114,7 +116,7 @@ pub(crate) fn gather_repo_roots(path: impl AsRef<Path>) -> impl Iterator<Item = 
                             .contains(&de.file_name().to_string_lossy().as_ref()) =>
                 {
                     Some(RepoRef::from(
-                        &dunce::canonicalize(
+                        &crate::canonicalize(
                             de.path().parent().expect("/ shouldn't be a git repo"),
                         )
                         .expect("repo root is both a dir and exists"),
@@ -131,20 +133,12 @@ pub(crate) enum BackendCredential {
 }
 
 impl BackendCredential {
-    pub(crate) fn to_github_client(&self) -> octocrab::Result<octocrab::Octocrab> {
-        let Self::Github(github::Auth {
-            access_token,
-            token_type,
-            scope,
-        }) = self.clone();
+    pub(crate) async fn validate(&self) -> Result<()> {
+        let BackendCredential::Github(auth) = self;
 
-        let token = octocrab::auth::OAuth {
-            access_token,
-            token_type,
-            scope,
-        };
-
-        octocrab::Octocrab::builder().oauth(token).build()
+        let client = auth.client()?;
+        client.current().user().await?;
+        Ok(())
     }
 
     pub(crate) async fn sync(self, app: Application, repo_ref: RepoRef) -> Result<()> {
@@ -191,6 +185,13 @@ impl BackendCredential {
             synced
         })
         .await?
+    }
+
+    pub(crate) fn expiry(&self) -> Option<DateTime<Utc>> {
+        match self {
+            Self::Github(remotes::github::Auth::App { expiry, .. }) => Some(*expiry),
+            _ => None,
+        }
     }
 }
 

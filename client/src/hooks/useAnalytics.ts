@@ -1,13 +1,23 @@
-import { useCallback, useContext } from 'react';
-import { AnalyticsContext } from '../context/analyticsContext';
+import { useCallback } from 'react';
+import * as analytics from 'rudder-sdk-js';
 
 const useAnalytics = () => {
-  const { analytics } = useContext(AnalyticsContext);
-
   const trackSearch = useCallback(
     (queryTime: number) => {
       analytics?.track('Search', {
         queryTime,
+      });
+    },
+    [analytics],
+  );
+
+  const trackUpvote = useCallback(
+    (isUpvote: boolean, query: string, answer: string, searchId: string) => {
+      analytics?.track('Upvote', {
+        isUpvote,
+        query,
+        answer,
+        searchId,
       });
     },
     [analytics],
@@ -35,6 +45,7 @@ const useAnalytics = () => {
   return {
     trackSearch,
     trackReposSelected,
+    trackUpvote,
   };
 };
 

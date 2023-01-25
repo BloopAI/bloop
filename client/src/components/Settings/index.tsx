@@ -1,6 +1,6 @@
 import React, { useContext, useEffect } from 'react';
 import ListNavigation from '../IdeNavigation/ListNavigation';
-import { Person, Repository, TuneControls } from '../../icons';
+import { Person, Repository } from '../../icons';
 import { UIContext } from '../../context/uiContext';
 import General from './General';
 import Preferences from './Preferences';
@@ -18,7 +18,7 @@ const backdropFilterInvisible = {
 
 const listNavigationItems = [
   { title: 'General', icon: <Person /> },
-  { title: 'Preferences', icon: <TuneControls /> },
+  // { title: 'Preferences', icon: <TuneControls /> },
   { title: 'Repositories', icon: <Repository /> },
 ];
 
@@ -43,7 +43,10 @@ const Settings = () => {
           : 'invisible bg-opacity-0 backdrop-blur-0'
       }`}
       style={isSettingsOpen ? backdropFilterVisible : backdropFilterInvisible}
-      onClick={() => setSettingsOpen(false)}
+      onClick={() => {
+        setSettingsOpen(false);
+        setSettingsSection(0);
+      }}
     >
       <div
         className={`bg-gray-900 border border-gray-700 rounded-lg shadow-medium w-[85vw] h-[77vh] xl:w-[78vw] xl:h-[70vh] max-w-5.5xl flex ${
@@ -60,13 +63,7 @@ const Settings = () => {
           />
         </div>
         <div className="p-8 flex-1 overflow-y-auto flex flex-col">
-          {settingsSection === 0 ? (
-            <General />
-          ) : settingsSection === 1 ? (
-            <Preferences />
-          ) : (
-            <RepositoriesSettings />
-          )}
+          {settingsSection === 0 ? <General /> : <RepositoriesSettings />}
         </div>
       </div>
     </div>

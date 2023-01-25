@@ -27,15 +27,6 @@ import ErrorFallback from '../../components/ErrorFallback';
 import { getHoverables } from '../../services/api';
 import PageHeader from './PageHeader';
 import ResultsList from './ResultsList';
-import NoResults from './NoResults';
-
-const mockQuerySuggestions = [
-  'repo:cobra-ats  error:“no apples”',
-  'error:“no apples”',
-  'no apples',
-  'repo:cobra-ats apples',
-  'lang:tsx apples',
-];
 
 type Props = {
   resultsData: GeneralSearchResponse;
@@ -53,7 +44,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     FullResultModeEnum.SIDEBAR,
   );
   const [openResult, setOpenResult] = useState<FullResult | null>(null);
-  const { filters, setFilters, inputValue, globalRegex } =
+  const { filters, setFilters, inputValue, globalRegex, searchType } =
     useContext(SearchContext);
   const { setSymbolsCollapsed } = useContext(UIContext);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
@@ -88,9 +79,9 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   const handlePageChange = useCallback(
     (page: number) => {
       setPage(page);
-      navigateSearch(inputValue, page);
+      navigateSearch(inputValue, searchType, page);
     },
-    [inputValue, globalRegex],
+    [inputValue, globalRegex, searchType],
   );
 
   const handleModeChange = useCallback((m: FullResultModeEnum) => {
@@ -112,13 +103,15 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   }, [onlySymbolResults]);
 
   useEffect(() => {
-    if (page === 0) {
-      setTotalPages(resultsData.metadata.page_count);
-      setTotalCount(resultsData.metadata.total_count);
+    if (resultsData) {
+      if (page === 0) {
+        setTotalPages(resultsData.metadata.page_count!);
+        setTotalCount(resultsData.metadata.total_count!);
+      }
+      setFilters(mapFiltersData(resultsData.stats, filters));
+      setResults(mapResults(resultsData as any));
+      setPage(resultsData.metadata.page!);
     }
-    setFilters(mapFiltersData(resultsData.stats, filters));
-    setResults(mapResults(resultsData));
-    setPage(resultsData.metadata.page);
   }, [resultsData]);
 
   useEffect(() => {
@@ -148,18 +141,14 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
           showCollapseControls={onlySymbolResults}
           loading={loading}
         />
-        {results.length || loading ? (
-          <ResultsList
-            results={results}
-            onResultClick={onResultClick}
-            page={page}
-            setPage={handlePageChange}
-            totalPages={totalPages}
-            loading={loading}
-          />
-        ) : (
-          <NoResults suggestions={mockQuerySuggestions} />
-        )}
+        <ResultsList
+          results={results}
+          onResultClick={onResultClick}
+          page={page}
+          setPage={handlePageChange}
+          totalPages={totalPages}
+          loading={loading}
+        />
       </div>
 
       {openResult ? (

@@ -317,8 +317,8 @@ mod tests {
         let out = trigrams("a").collect::<Vec<_>>();
         assert_eq!(out, &["a"]);
 
-        let out = trigrams("").collect::<Vec<_>>();
-        assert_eq!(out.len(), 0);
+        let out = trigrams("").count();
+        assert_eq!(out, 0);
 
         let out = trigrams("ab㐀de").collect::<Vec<_>>();
         assert_eq!(out, &["ab㐀", "b㐀d", "㐀de"]);

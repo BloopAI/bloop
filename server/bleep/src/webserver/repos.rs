@@ -16,7 +16,7 @@ use utoipa::{IntoParams, ToSchema};
 
 use super::{error, json, ErrorKind};
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize, ToSchema, Debug)]
 pub(super) struct Repo {
     pub(super) provider: Backend,
     pub(super) name: String,
@@ -103,7 +103,6 @@ pub(super) async fn indexed(Extension(app): Extension<Application>) -> impl Into
 }
 
 /// Get details of an indexed repository based on their id
-//
 #[utoipa::path(get, path = "/repos/indexed/:ref",
     responses(
         (status = 200, description = "Execute query successfully", body = Response),
@@ -230,8 +229,8 @@ pub(super) struct SetIndexed {
     ),
 )]
 pub(super) async fn set_indexed(
-    Json(new_list): Json<SetIndexed>,
     Extension(app): Extension<Application>,
+    Json(new_list): Json<SetIndexed>,
 ) -> impl IntoResponse {
     let repo_list = new_list.indexed.into_iter().collect::<HashSet<_>>();
 
@@ -272,7 +271,7 @@ pub(super) async fn scan_local(
 ) -> impl IntoResponse {
     let root = std::path::Path::new(&scan_request.path);
 
-    if app.path_allowed(root) {
+    if app.allow_path(root) {
         (
             StatusCode::OK,
             json(ReposResponse::List(

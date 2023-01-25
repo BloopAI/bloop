@@ -216,6 +216,7 @@ export const getPrismLanguage = (lang: string) => {
     TypeScript: 'tsx',
     'C#': 'csharp',
     'C++': 'cpp',
+    'c++': 'cpp',
   };
   // @ts-ignore
   return langMap[lang] || lang?.toLowerCase() || 'plain';
