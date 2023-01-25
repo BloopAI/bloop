@@ -195,10 +195,17 @@ pub async fn handle(
 
     info!("Relevant snippet index: {}", &relevant_snippet_index);
 
-    let relevant_snippet_index = relevant_snippet_index
+    let mut relevant_snippet_index = relevant_snippet_index
         .parse::<usize>()
         .map_err(super::internal_error)?;
 
+    if relevant_snippet_index == 0 {
+        return Err(super::internal_error(
+            "None of the snippets help answer the question",
+        ));
+    }
+
+    relevant_snippet_index -= 1; // return to 0-indexing
     let relevant_snippet = snippets
         .get(relevant_snippet_index)
         .ok_or_else(|| super::internal_error("answer-api returned out-of-bounds index"))?;
@@ -314,6 +321,7 @@ fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
 struct OpenAIRequest {
     prompt: String,
     max_tokens: u32,
+    temperature: f32,
 }
 
 struct AnswerAPIClient<'s> {
@@ -355,12 +363,14 @@ impl<'s> AnswerAPIClient<'s> {
         &self,
         prompt: &str,
         max_tokens: u32,
+        temperature: f32,
     ) -> Result<reqwest::Response, reqwest::Error> {
         self.client
             .post(self.host.as_str())
             .json(&OpenAIRequest {
                 prompt: prompt.to_string(),
                 max_tokens,
+                temperature,
             })
             .send()
             .await
@@ -370,9 +380,10 @@ impl<'s> AnswerAPIClient<'s> {
         &self,
         prompt: &str,
         max_tokens: u32,
+        temperature: f32,
     ) -> Result<reqwest::Response, AnswerAPIError> {
         for attempt in 0..self.max_attempts {
-            let response = self.send(prompt, max_tokens).await;
+            let response = self.send(prompt, max_tokens, temperature).await;
             match response {
                 Ok(r) if r.status() == StatusCode::OK => return Ok(r),
                 Err(e) => return Err(AnswerAPIError::Fatal(e)),
@@ -384,16 +395,21 @@ impl<'s> AnswerAPIClient<'s> {
     }
 }
 
-const DELIMITER: &str = "######";
+const DELIMITER: &str = "=========";
 impl<'a> AnswerAPIClient<'a> {
     fn build_select_prompt(&self, snippets: &[api::Snippet]) -> String {
+        // snippets are 1-indexed so we can use index 0 where no snippets are relevant
         let mut prompt = snippets
             .iter()
             .enumerate()
             .map(|(i, snippet)| {
                 format!(
                     "Repository: {}\nPath: {}\nLanguage: {}\nIndex: {}\n\n{}\n{DELIMITER}\n",
-                    snippet.repo_name, snippet.relative_path, snippet.lang, i, snippet.text
+                    snippet.repo_name,
+                    snippet.relative_path,
+                    snippet.lang,
+                    i + 1,
+                    snippet.text
                 )
             })
             .collect::<String>();
@@ -402,9 +418,9 @@ impl<'a> AnswerAPIClient<'a> {
         // number in the output, with no spaces or punctuation such as fullstops.
         prompt += &format!(
             "Above are {} code snippets separated by \"{DELIMITER}\". \
-Your job is to select the snippet that best answers the question. Reply\
-with a single number indicating the index of the snippet in the list.\
-If none of the snippets seem relevant, reply with \"0\".
+Your job is to select the snippet that best answers the question. Reply \
+with a single number indicating the index of the snippet in the list. \
+If none of the snippets are relevant, reply with \"0\". Do NOT return a non-numeric answer.
 
 Q:What icon do we use to clear search history?
 A:3
@@ -437,7 +453,7 @@ Answer in GitHub Markdown:",
     }
 
     async fn select_snippet(&self, prompt: &str) -> Result<reqwest::Response, AnswerAPIError> {
-        self.send_until_success(prompt, 1).await
+        self.send_until_success(prompt, 1, 0.0).await
     }
 
     async fn explain_snippet(&self, prompt: &str) -> Result<reqwest::Response, AnswerAPIError> {
@@ -453,6 +469,7 @@ Answer in GitHub Markdown:",
         // do not let the completion cross 500 tokens
         let max_tokens = max_tokens.clamp(1, 500);
         info!(%max_tokens, "clamping max tokens");
-        self.send_until_success(prompt, max_tokens as u32).await
+        self.send_until_success(prompt, max_tokens as u32, 0.9)
+            .await
     }
 }
