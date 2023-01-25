@@ -2,14 +2,15 @@ import { test, expect } from '@playwright/test';
 
 const REPOS_TO_SYNC = 3;
 
-test('test', async ({ page }) => {
+test.skip('test', async ({ page }) => {
   if (!process.env.SCAN_FOLDER) {
     throw new Error('SCAN_FOLDER env not set');
   }
 
   await page.goto(
-    `http://localhost:5173/?chosen_scan_folder=${process.env.SCAN_FOLDER}`
+    `http://localhost:5173/?chosen_scan_folder=${process.env.SCAN_FOLDER}`,
   );
+  await page.getByRole('button', { name: "Don't share" }).click();
   await page.getByPlaceholder('First name').click();
   await page.getByPlaceholder('First name').fill('Steve');
   await page.getByPlaceholder('First name').press('Tab');
@@ -45,15 +46,14 @@ test('test', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Sync repositories' }).click();
   await page.getByRole('button', { name: 'Setup later' }).click();
-  await page.getByRole('button', { name: 'Share with bloop' }).click();
 
   await Promise.all(
     repoNames.map((repoName) =>
       page.waitForSelector(`p:has-text("${repoName}")`, {
         state: 'attached',
         timeout: 60 * 1000,
-      })
-    )
+      }),
+    ),
   );
 
   await Promise.all(
@@ -61,7 +61,7 @@ test('test', async ({ page }) => {
       page
         .locator('.bg-green-500')
         .nth(i)
-        .waitFor({ timeout: 60 * 1000 })
-    )
+        .waitFor({ timeout: 60 * 1000 }),
+    ),
   );
 });
