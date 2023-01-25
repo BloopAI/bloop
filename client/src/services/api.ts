@@ -8,7 +8,7 @@ import {
 } from '../types/api';
 import { RepoType } from '../types/general';
 
-const API = 'http://127.0.01:7878';
+const API = 'http://127.0.0.1:7878/api';
 const DB_API = 'https://api.bloop.ai';
 const http = axios.create({
   baseURL: API,
