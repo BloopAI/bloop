@@ -226,9 +226,7 @@ impl Semantic {
             &self.tokenizer,
             self.config.max_chunk_tokens,
             15,
-            self.config
-                .overlap
-                .unwrap_or(chunk::OverlapStrategy::Partial(0.5)),
+            self.overlap_strategy(),
         );
         let repo_plus_file = repo_name.to_owned() + "\t" + relative_path + "\n";
         debug!(chunk_count = chunks.len(), "found chunks");
@@ -280,5 +278,11 @@ impl Semantic {
             .encode(input, false)
             .map(|code| code.len())
             .unwrap_or(0)
+    }
+
+    pub fn overlap_strategy(&self) -> chunk::OverlapStrategy {
+        self.config
+            .overlap
+            .unwrap_or(chunk::OverlapStrategy::Partial(0.5))
     }
 }
