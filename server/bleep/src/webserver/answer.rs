@@ -7,7 +7,7 @@ use tracing::{debug, error, info, warn};
 use utoipa::ToSchema;
 
 use crate::{
-    indexes::reader::ContentDocument, query::parser, segment::QueryEvent, semantic::Semantic,
+    analytics::QueryEvent, indexes::reader::ContentDocument, query::parser, semantic::Semantic,
     state::RepoRef, Application,
 };
 
@@ -37,16 +37,9 @@ pub mod api {
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
-    pub struct DecodedResponse {
+    pub struct Response {
         pub answer: String,
         pub answer_path: String,
-    }
-
-    #[derive(Debug, serde::Serialize, serde::Deserialize)]
-    pub struct Response {
-        #[serde(flatten)]
-        pub data: DecodedResponse,
-        pub id: String,
     }
 }
 
@@ -69,6 +62,8 @@ pub struct Params {
 
 #[derive(serde::Serialize, ToSchema)]
 pub struct AnswerResponse {
+    pub user_id: String,
+    pub query_id: uuid::Uuid,
     pub snippets: Vec<api::Snippet>,
     pub selection: api::Response,
 }
@@ -81,6 +76,7 @@ pub async fn handle(
 ) -> Result<impl IntoResponse, impl IntoResponse> {
     let semantic = app
         .semantic
+        .as_ref()
         .ok_or_else(|| super::error(ErrorKind::Configuration, "Qdrant not configured"))?;
 
     let query =
@@ -133,7 +129,7 @@ pub async fn handle(
     let mut snippets = vec![];
     let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
 
-    for snippet in all_snippets.into_iter() {
+    for snippet in all_snippets.clone().into_iter() {
         if snippets.len() > SNIPPET_COUNT {
             break;
         }
@@ -264,30 +260,30 @@ pub async fn handle(
     // reorder snippets
     snippets.swap(relevant_snippet_index, 0);
 
-    if let Some(ref segment) = *app.segment {
-        segment
-            .track_query(QueryEvent {
-                user_id: params.user_id.clone(),
-                query: params.q.clone(),
-                select_prompt,
-                relevant_snippet_index,
-                explain_prompt,
-                explanation: snippet_explanation.clone(),
-            })
-            .await;
-    }
+    let query_id = uuid::Uuid::new_v4();
+    app.track_query(QueryEvent {
+        user_id: params.user_id.clone(),
+        query_id,
+        query: params.q.clone(),
+        semantic_results: all_snippets,
+        filtered_semantic_results: snippets.clone(),
+        select_prompt,
+        relevant_snippet_index,
+        explain_prompt,
+        explanation: snippet_explanation.clone(),
+        overlap_strategy: semantic.overlap_strategy(),
+    });
 
     // answering snippet is always at index 0
     let answer_path = snippets.get(0).unwrap().relative_path.to_string();
 
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
         snippets,
+        query_id,
+        user_id: params.user_id,
         selection: api::Response {
-            data: api::DecodedResponse {
-                answer: snippet_explanation,
-                answer_path,
-            },
-            id: params.user_id,
+            answer: snippet_explanation,
+            answer_path,
         },
     })))
 }

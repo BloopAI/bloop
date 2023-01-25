@@ -22,8 +22,8 @@ use semantic::{chunk::OverlapStrategy, Semantic};
 use state::Backend;
 
 use crate::{
+    analytics::QueryAnalyticsSource,
     indexes::Indexes,
-    segment::Segment,
     semantic::SemanticError,
     state::{RepositoryPool, StateSource},
 };
@@ -32,6 +32,7 @@ use background::BackgroundExecutor;
 use clap::Parser;
 use once_cell::sync::OnceCell;
 use relative_path::RelativePath;
+use rudderanalytics::client::RudderAnalytics;
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use std::{
@@ -46,11 +47,11 @@ use dunce::canonicalize;
 #[cfg(not(target = "windows"))]
 use std::fs::canonicalize;
 
+mod analytics;
 mod background;
 mod collector;
 mod language;
 mod remotes;
-mod segment;
 mod webserver;
 
 pub mod ctags;
@@ -294,12 +295,13 @@ pub struct Application {
     semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
     credentials: Arc<DashMap<Backend, BackendCredential>>,
-    pub segment: Arc<Option<Segment>>,
+    pub analytics_client: Arc<Option<RudderAnalytics>>,
     cookie_key: axum_extra::extract::cookie::Key,
 }
 
 impl Application {
     pub async fn initialize(env: Environment, config: Configuration) -> Result<Application> {
+        Application::load_env_vars();
         let mut config = match config.config_file {
             None => config,
             Some(ref path) => {
@@ -333,14 +335,18 @@ impl Application {
                 Err(e) => bail!(e),
             };
 
-        let segment = if let Ok(segment_key) = std::env::var("SEGMENT_KEY_BE") {
-            info!("initializing segment");
-            Some(Segment::new(segment_key))
+        let analytics_client = if let (Ok(key), Ok(data_plane)) = (
+            std::env::var("ANALYTICS_KEY_BE"),
+            std::env::var("ANALYTICS_DATA_PLANE"),
+        ) {
+            info!("initializing analytics");
+            let handle = tokio::task::spawn_blocking(|| RudderAnalytics::load(key, data_plane));
+            Some(handle.await.unwrap())
         } else {
-            warn!("could not find segment key ... skipping initialization");
+            warn!("could not find analytics key ... skipping initialization");
             None
         };
-        let segment = Arc::new(segment);
+        let analytics_client = Arc::new(analytics_client);
 
         let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
         let env = if config.github_app_id.is_some() {
@@ -357,7 +363,7 @@ impl Application {
             cookie_key: config.source.initialize_cookie_key()?,
             semantic,
             config,
-            segment,
+            analytics_client,
             env,
         })
     }
@@ -411,6 +417,12 @@ impl Application {
         ));
 
         _ = SENTRY_GUARD.set(guard);
+    }
+
+    pub fn track_query(&self, event: analytics::QueryEvent) {
+        if let Some(client) = &*self.analytics_client {
+            tokio::task::block_in_place(|| client.track_query(event));
+        }
     }
 
     pub async fn run(self) -> Result<()> {
