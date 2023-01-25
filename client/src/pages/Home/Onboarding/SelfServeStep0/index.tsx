@@ -23,7 +23,7 @@ const SelfServeStep0 = () => {
         title="Sign In"
         description="Use GitHub to Sign In to your account"
       />
-      <a href={loginUrl} className="w-full">
+      <a href={loginUrl} className="w-full flex flex-col">
         <Button variant="primary" disabled={!loginUrl}>
           <GitHubLogo /> Sign in with GitHub
         </Button>
