@@ -431,7 +431,6 @@ A:",
             self.query,
         );
 
-        println!("{}", &prompt);
         let tokens_used = self.semantic.gpt2_token_count(&prompt);
         debug!(%tokens_used, "select prompt token count");
         prompt
@@ -450,7 +449,6 @@ File: {}
 Answer in GitHub Markdown:",
             self.query, snippet.text,
         );
-        println!("{}", &prompt);
         prompt
     }
 
