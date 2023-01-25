@@ -6,6 +6,7 @@ import Step1 from './Step1';
 import Step2 from './Step2';
 import Step3 from './Step3';
 import Step4 from './Step4';
+import SelfServeStep0 from './SelfServeStep0';
 
 type Props = {
   onFinish: () => void;
@@ -21,7 +22,7 @@ const Onboarding = ({ onFinish }: Props) => {
   }, []);
 
   useEffect(() => {
-    if (step === 5) {
+    if (step === 1) {
       onFinish();
     }
   }, [step]);
@@ -42,29 +43,30 @@ const Onboarding = ({ onFinish }: Props) => {
           visible={shouldShowTelemetry}
         />
         {!shouldShowTelemetry && (
-          <div className="flex flex-col items-center">
-            <div className="mt-8 bg-gray-900 border border-gray-800 rounded-lg shadow-big p-6 flex flex-col gap-8 max-w-md2 w-full relative max-h-[calc(100vh-12rem)]">
-              {step === 0 ? (
-                <Step0 handleNext={handleNext} />
-              ) : step === 1 ? (
-                <Step1 handleNext={handleNext} handleBack={handlePrev} />
-              ) : step === 2 ? (
-                <Step2 handleNext={handleNext} handleBack={handlePrev} />
-              ) : step === 3 ? (
-                <Step3
-                  handleNext={handleNext}
-                  handleBack={(e) =>
-                    handlePrev(e, onBoardingState.indexFolder ? 1 : 2)
-                  }
-                />
-              ) : step === 4 ? (
-                <Step4
-                  handleNext={handleNext}
-                  handleBack={(e) =>
-                    handlePrev(e, onBoardingState.indexFolder ? 2 : 3)
-                  }
-                />
-              ) : null}
+          <div className="flex flex-col items-center max-w-md2 w-full">
+            <div className="mt-8 bg-gray-900 border border-gray-800 rounded-lg shadow-big p-6 flex flex-col gap-8 w-full max-w-md2 w-full relative max-h-[calc(100vh-12rem)]">
+              <SelfServeStep0 handleNext={handleNext} />
+              {/*{step === 0 ? (*/}
+              {/*  <Step0 handleNext={handleNext} />*/}
+              {/*) : step === 1 ? (*/}
+              {/*  <Step1 handleNext={handleNext} handleBack={handlePrev} />*/}
+              {/*) : step === 2 ? (*/}
+              {/*  <Step2 handleNext={handleNext} handleBack={handlePrev} />*/}
+              {/*) : step === 3 ? (*/}
+              {/*  <Step3*/}
+              {/*    handleNext={handleNext}*/}
+              {/*    handleBack={(e) =>*/}
+              {/*      handlePrev(e, onBoardingState.indexFolder ? 1 : 2)*/}
+              {/*    }*/}
+              {/*  />*/}
+              {/*) : step === 4 ? (*/}
+              {/*  <Step4*/}
+              {/*    handleNext={handleNext}*/}
+              {/*    handleBack={(e) =>*/}
+              {/*      handlePrev(e, onBoardingState.indexFolder ? 2 : 3)*/}
+              {/*    }*/}
+              {/*  />*/}
+              {/*) : null}*/}
             </div>
           </div>
         )}

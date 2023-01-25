@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { gitHubLogin, gitHubStatus } from '../services/api';
+import { gitHubDeviceLogin, gitHubStatus } from '../services/api';
 import { copyToClipboard } from '../utils';
 
 const formatTime = (time: number) => {
@@ -24,7 +24,7 @@ export const useGitHubAuth = (
 
   useEffect(() => {
     if (!disabled) {
-      gitHubLogin().then((data) => {
+      gitHubDeviceLogin().then((data) => {
         if (!data?.authentication_needed) {
           setAuthenticationFailed(true);
         }
@@ -46,7 +46,7 @@ export const useGitHubAuth = (
   }, []);
 
   const generateNewCode = useCallback(() => {
-    gitHubLogin().then((data) => {
+    gitHubDeviceLogin().then((data) => {
       setAuthenticationFailed(false);
       setLoginUrl(data.authentication_needed.url);
       setCode(data.authentication_needed.code);

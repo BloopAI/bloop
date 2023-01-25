@@ -84,7 +84,7 @@ export const getAutocomplete = async (
   return http.get(`/autocomplete?q=${q}`).then((r) => r.data);
 };
 
-export const gitHubLogin = () =>
+export const gitHubDeviceLogin = () =>
   http.get('/remotes/github/login').then((r) => r.data);
 
 export const gitHubStatus = () =>
@@ -136,3 +136,6 @@ export const getUpvote = (params: {
   snippet_id: string;
   query: string;
 }) => axios.get(`${DB_API}/upvote`, { params }).then((r) => r.data);
+
+export const githubWebLogin = () =>
+  http.get('/auth/login/start').then((r) => r.data);
