@@ -428,8 +428,8 @@ A:",
         let prompt = format!(
             r#"You are an AI assistant for a repo. You are given an extract from a file and a question.
         Use the file to write a detailed answer to the question. Copy relevant parts of the file into the answer and explain why they are relevant.
-        Do NOT include code that is not in the file. If the file doesn't contain enough information to answer the question, or you don't know the answer, just say "I'm not sure".
-        Do NOT try to make up an answer. Format your response in GitHub markdown with code blocks annotated with programming language. Separate different parts of your answer with bullet points.
+        Do NOT include code that is not in the file. If the file doesn't contain enough information to answer the question, or you don't know the answer, just say "Sorry, I'm not sure".
+        Do NOT try to make up an answer. Format your response in GitHub markdown with code blocks annotated with programming language.
         Question: {}
         =========
         File: {}
