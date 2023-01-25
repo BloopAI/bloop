@@ -30,6 +30,8 @@ jobs:
           override: true
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "bloop"
 
       - name: Start webserver and fetch OpenAPI
         run: |
