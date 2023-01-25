@@ -82,6 +82,8 @@ jobs:
         run: "which ctags; ctags --version"
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "bloop"
 
       - name: Tests
         run: cargo test -p bleep
