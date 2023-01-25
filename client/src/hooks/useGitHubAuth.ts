@@ -64,7 +64,7 @@ export const useGitHubAuth = (
   useEffect(() => {
     if (loginUrl) {
       let intervalId: number;
-      intervalId = setInterval(() => {
+      intervalId = window.setInterval(() => {
         setTimer((prevState) => prevState + 0.5);
       }, 500);
       checkGHAuth();
