@@ -1,14 +1,16 @@
 use crate::{snippet, state, Application};
 
 use anyhow::Result;
-use axum::{response::IntoResponse, routing::get, Extension, Json, Router};
+use axum::middleware;
+use axum::{response::IntoResponse, routing::get, Extension, Json};
 use std::{borrow::Cow, net::SocketAddr};
-use tower_http::catch_panic::CatchPanicLayer;
-use tower_http::cors::CorsLayer;
+use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
 use tracing::info;
 use utoipa::OpenApi;
 use utoipa::ToSchema;
 
+mod aaa;
+mod answer;
 mod autocomplete;
 mod file;
 mod github;
@@ -17,12 +19,17 @@ mod index;
 mod intelligence;
 mod query;
 mod repos;
+mod semantic;
+
+pub type Router<S = Application> = axum::Router<S>;
 
 #[allow(unused)]
 pub(in crate::webserver) mod prelude {
     pub(in crate::webserver) use super::{error, json, EndpointError, ErrorKind};
     pub(in crate::webserver) use crate::indexes::Indexes;
-    pub(in crate::webserver) use axum::{http::StatusCode, response::IntoResponse, Extension};
+    pub(in crate::webserver) use axum::{
+        extract::Query, http::StatusCode, response::IntoResponse, Extension,
+    };
     pub(in crate::webserver) use serde::{Deserialize, Serialize};
     pub(in crate::webserver) use std::sync::Arc;
     pub(in crate::webserver) use utoipa::{IntoParams, ToSchema};
@@ -49,27 +56,41 @@ pub async fn start(app: Application) -> Result<()> {
             get(repos::get_by_id).delete(repos::delete_by_id),
         )
         .route("/repos/sync/*path", get(repos::sync))
-        // remotes
-        .route("/remotes/github/login", get(github::login))
-        .route("/remotes/github/status", get(github::status))
         // intelligence
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))
         // misc
         .route("/file/*ref", get(file::handle))
+        .route("/semantic/chunks", get(semantic::raw_chunks))
+        .route("/answer", get(answer::handle));
+
+    if app.env.allow_github_device_flow() {
+        router = router
+            .route("/remotes/github/login", get(github::login))
+            .route("/remotes/github/status", get(github::status));
+    }
+
+    if app.env.allow_path_scan() {
+        router = router.route("/repos/scan", get(repos::scan_local));
+    }
+
+    // Note: all routes above this point must be authenticated.
+    if app.env.use_aaa() {
+        router = aaa::router(router, app.clone());
+    }
+
+    router = router
         .route("/api-doc/openapi.json", get(openapi_json::handle))
         .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
         .route("/health", get(health));
 
-    if app.scan_allowed() {
-        router = router.route("/repos/scan", get(repos::scan_local));
-    }
-
-    router = router
-        .layer(CatchPanicLayer::new())
+    let router: Router<()> = router
         .layer(Extension(app.indexes.clone()))
-        .layer(Extension(app))
-        .layer(CorsLayer::permissive());
+        .layer(Extension(app.semantic.clone()))
+        .layer(Extension(app.clone()))
+        .with_state(app)
+        .layer(CorsLayer::permissive())
+        .layer(CatchPanicLayer::new());
 
     info!(%bind, "starting webserver");
     axum::Server::bind(&bind)
@@ -96,8 +117,17 @@ pub(in crate::webserver) fn error<'a>(
     }))
 }
 
+pub(in crate::webserver) fn internal_error<'a, S: std::fmt::Display>(
+    message: S,
+) -> Json<Response<'a>> {
+    Json(Response::from(EndpointError {
+        kind: ErrorKind::Internal,
+        message: message.to_string().into(),
+    }))
+}
+
 /// The response upon encountering an error
-#[derive(serde::Serialize, PartialEq, Eq, ToSchema)]
+#[derive(serde::Serialize, PartialEq, Eq, ToSchema, Debug)]
 pub(in crate::webserver) struct EndpointError<'a> {
     /// The kind of this error
     pub kind: ErrorKind,
@@ -123,7 +153,7 @@ impl<'a> EndpointError<'a> {
 
 /// The kind of an error
 #[allow(unused)]
-#[derive(serde::Serialize, PartialEq, Eq, ToSchema)]
+#[derive(serde::Serialize, PartialEq, Eq, ToSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub(in crate::webserver) enum ErrorKind {
@@ -151,6 +181,8 @@ pub(in crate::webserver) enum Response<'a> {
     Hoverable(hoverable::HoverableResponse),
     Intelligence(intelligence::TokenInfoResponse),
     File(file::FileResponse),
+    Semantic(semantic::SemanticResponse),
+    Answer(answer::AnswerResponse),
     /// A blanket error response
     Error(EndpointError<'a>),
 }
@@ -194,6 +226,12 @@ impl<'a> From<intelligence::TokenInfoResponse> for Response<'a> {
 impl<'a> From<file::FileResponse> for Response<'a> {
     fn from(r: file::FileResponse) -> Response<'a> {
         Response::File(r)
+    }
+}
+
+impl<'a> From<semantic::SemanticResponse> for Response<'a> {
+    fn from(r: semantic::SemanticResponse) -> Response<'a> {
+        Response::Semantic(r)
     }
 }
 

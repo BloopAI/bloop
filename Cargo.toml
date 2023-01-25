@@ -4,6 +4,9 @@ members = [
     "apps/desktop/src-tauri"
 ]
 
+[profile.dev]
+opt-level = 3
+
 [profile.release]
 debug = false
 strip = "debuginfo"

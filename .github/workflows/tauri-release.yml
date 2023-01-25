@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          lfs: true
+
       - name: Install dependencies (ubuntu only)
         run: |
           sudo apt-get update
@@ -29,11 +32,11 @@ jobs:
 
       - name: Check Formatting
         run: |
-          cargo fmt -p app -- --check
+          cargo fmt -p bloop -- --check
 
       - name: Run tests
         run: |
-          cargo test -p app --verbose
+          cargo test -p bloop --verbose
 
   build-mac-linux-ctags:
     strategy:
@@ -44,6 +47,9 @@ jobs:
     runs-on: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v3
+        with:
+          lfs: true
+
       - run: env
       - name: Setup nix
         uses: cachix/install-nix-action@v18
@@ -106,6 +112,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          lfs: true
+
       - name: Install dependencies (ubuntu only)
         if: matrix.name == 'ubuntu-latest'
         run: |

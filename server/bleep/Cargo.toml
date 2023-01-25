@@ -28,10 +28,10 @@ harness = false
 
 # core
 tantivy = { version = "0.18.1", features = ["mmap"] }
-tokio = { version = "1.21.2", features = ["macros", "process", "rt", "rt-multi-thread", "io-std", "io-util", "sync", "fs"] }
+tokio = { version = "1.23.0", features = ["macros", "process", "rt", "rt-multi-thread", "io-std", "io-util", "sync", "fs"] }
 futures = "0.3.25"
-rayon = "1.6.0"
-clap = { version = "4.0.26", features = ["derive"] }
+rayon = "1.6.1"
+clap = { version = "4.0.29", features = ["derive"] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter", "registry"] }
 color-eyre = "0.6.2"
@@ -41,12 +41,12 @@ console-subscriber = { version = "0.1.8", optional = true }
 histogram = { version = "0.6.9", optional = true }
 
 # error handling
-anyhow = "1.0.66"
-thiserror = "1.0.37"
+anyhow = "1.0.68"
+thiserror = "1.0.38"
 
 # query parsing
-pest = "2.4.1"
-pest_derive = "2.4.1"
+pest = "2.5.1"
+pest_derive = "2.5.1"
 
 # code-nav
 tree-sitter = "0.20.9"
@@ -62,29 +62,30 @@ tree-sitter-cpp = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev 
 petgraph = { version = "0.6.2", default-features = false, features = ["serde-1"] }
 
 # webserver
-serde_json = "1.0.87"
-utoipa = { version = "2.3.0", features = ["axum_extras", "yaml"] }
-axum = { version = "0.5.17", features = ["http2"] }
-tower-http = {version = "0.3.4", features = ["cors", "catch-panic"]}
+serde_json = "1.0.91"
+utoipa = { version = "2.4.2", features = ["axum_extras", "yaml"] }
+axum = { version = "0.6.2", features = ["http2", "headers"] }
+axum-extra = { version = "0.4.2", features = ["cookie", "cookie-private"] }
+tower-http = { version = "0.3.5", features = ["auth", "cors", "catch-panic"] }
 
 # api integrations
-octocrab = { git = "https://github.com/bloopai/octocrab", features = ["rustls"] }
+octocrab = { git = "https://github.com/bloopai/octocrab", default-features = false, features = ["rustls"] }
 reqwest = { version = "0.11.13", features = ["rustls-tls", "rustls"], default-features = false }
 secrecy = { version = "0.8.0", features = ["serde"] }
 
 # file processing
 ignore = "0.4.18"
-hyperpolyglot = "0.1.7"
-blake3 = "1.3.1"
+hyperpolyglot = { git = "https://github.com/bloopai/hyperpolyglot", branch = "remove-pcre" }
+blake3 = "1.3.3"
 notify-debouncer-mini = { version = "0.2.1", default-features = false }
 
 # misc
 git2 = "0.15.0"
-serde = "1.0.147"
+serde = "1.0.151"
 regex = "1.7.0"
 regex-syntax = "0.6.28"
 smallvec = { version = "1.10.0", features = ["serde"]}
-async-trait = "0.1.58"
+async-trait = "0.1.60"
 flume = "0.10.14"
 dashmap = { version = "5.4.0", features = ["serde"] }
 either = "1.8.0"
@@ -95,8 +96,20 @@ chrono = { version = "0.4.23", features = ["serde"], default-features = false }
 phf = "0.11.1"
 rand = "0.8.5"
 once_cell = "1.16.0"
-replace_with = "0.1.7"
 relative-path = "1.7.2"
+qdrant-client = { version = "0.11.6", default-features = false }
+tokenizers = "0.13.2"
+ort = { git = "https://github.com/bloopai/ort", branch = "arm64-convert-fix" }
+ndarray = "0.15"
+uuid = { version = "1.2.2", features = ["v4", "fast-rng"] }
+jsonwebtoken = { version = "8.2.0", features = ["use_pem"] }
+
+# telemetry
+sentry = "0.29.1"
+dotenvy = "0.15.6"
+segment = "0.2.1"
+
+[target.'cfg(windows)'.dependencies]
 dunce = "1.0.3"
 
 [dev-dependencies]
@@ -108,6 +121,6 @@ reqwest = { version = "0.11.13", features = ["blocking"] }
 
 [build-dependencies]
 phf_codegen = "0.11.1"
-serde = {version = "1.0.147", features = ["derive"]}
-serde_yaml = "0.9.14"
-blake3 = "1.3.1"
+serde = {version = "1.0.151", features = ["derive"]}
+serde_yaml = "0.9.16"
+blake3 = "1.3.3"

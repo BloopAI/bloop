@@ -1,6 +1,7 @@
 import axios from 'axios';
 import {
   HoverablesRespone,
+  NLSearchResponse,
   SearchResponse,
   SuggestionsResponse,
   TokenInfoResponse,
@@ -26,6 +27,20 @@ export const search = (
         page_size,
         page,
         calculate_totals: page === 0,
+      },
+    })
+    .then((r) => r.data);
+};
+
+export const nlSearch = (
+  q: string,
+  user_id: string,
+): Promise<NLSearchResponse> => {
+  return http
+    .get('/answer', {
+      params: {
+        q,
+        user_id,
       },
     })
     .then((r) => r.data);
@@ -107,3 +122,17 @@ export const saveCrashReport = (report: {
   info: string;
   metadata: string;
 }) => axios.post(`${DB_API}/crash_reports`, report).then((r) => r.data);
+
+export const saveUpvote = (upvote: {
+  unique_id: string;
+  snippet_id: string;
+  query: string;
+  text: string;
+  is_upvote: boolean;
+}) => axios.post(`${DB_API}/upvotes`, upvote).then((r) => r.data);
+
+export const getUpvote = (params: {
+  unique_id: string;
+  snippet_id: string;
+  query: string;
+}) => axios.get(`${DB_API}/upvote`, { params }).then((r) => r.data);

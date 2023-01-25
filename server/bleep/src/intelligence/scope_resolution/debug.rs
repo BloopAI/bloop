@@ -106,7 +106,7 @@ impl ScopeDebug {
             .map(|edge| {
                 let source_scope = edge.source();
                 let mut scope_debug = ScopeDebug::empty(graph[source_scope].range(), self.language);
-                scope_debug.build(&graph, source_scope, src);
+                scope_debug.build(graph, source_scope, src);
                 scope_debug
             })
             .collect::<Vec<_>>();

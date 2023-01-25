@@ -1,11 +1,12 @@
 use bleep::{
     indexes::{reader::ContentReader, DocumentRead, File},
+    semantic::Semantic,
     symbol::{Symbol, SymbolLocations},
     Application, Configuration, Environment,
 };
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use serde_json::json;
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 use tantivy::doc;
 use tempdir::TempDir;
 
@@ -30,12 +31,15 @@ async fn index(index_dir: &Path) {
 
     index_only.index_only = true;
 
-    let app = Application::initialize(Environment::Server, index_only).unwrap();
+    let app = Application::initialize(Environment::Server, index_only)
+        .await
+        .unwrap();
     _ = app.run().await.unwrap();
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let index_dir = TempDir::new("bleep").unwrap();
+    let model_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("model");
     let (_app, file, symbols) = tokio::runtime::Runtime::new().unwrap().block_on(async {
         index(index_dir.path()).await;
 
@@ -47,9 +51,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             }))
             .unwrap(),
         )
+        .await
         .unwrap();
 
-        let file = File::new(app.config.clone());
+        let file = File::new(
+            app.config.clone(),
+            Semantic::new(&model_dir, &app.config.qdrant_url, Arc::clone(&app.config))
+                .await
+                .unwrap(),
+        );
 
         // Get the symbols for the `js-sample-big-symbols.js` file in this directory.
         let symbols = get_symbols().await;
@@ -61,7 +71,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         b.iter_batched(
             || {
                 doc! {
-                    file.file_disk_path => "js-sample-big-symbols.js",
+                    file.entry_disk_path => "js-sample-big-symbols.js",
                     file.repo_ref => "local//bloop",
                     file.repo_name => "bloop",
                     file.relative_path => "js-sample-big-symbols.js",

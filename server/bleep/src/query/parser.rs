@@ -22,6 +22,27 @@ pub enum Target<'a> {
     Content(Literal<'a>),
 }
 
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
+pub struct NLQuery<'a> {
+    pub repo: Option<Literal<'a>>,
+    pub lang: Option<Cow<'a, str>>,
+    pub target: Option<Literal<'a>>,
+}
+
+impl<'a> NLQuery<'a> {
+    pub fn repo(&self) -> Option<&Cow<'_, str>> {
+        self.repo.as_ref().and_then(|t| t.as_plain())
+    }
+
+    pub fn lang(&self) -> Option<&Cow<'_, str>> {
+        self.lang.as_ref()
+    }
+
+    pub fn target(&self) -> Option<&Cow<'_, str>> {
+        self.target.as_ref().and_then(|t| t.as_plain())
+    }
+}
+
 impl<'a> Query<'a> {
     /// Merge this query with another, overwriting current terms by terms in the new query, if they
     /// exist.
@@ -153,11 +174,23 @@ pub enum Literal<'a> {
     Regex(Cow<'a, str>),
 }
 
+impl<'a> Default for Literal<'a> {
+    fn default() -> Self {
+        Self::Plain(Cow::Borrowed(""))
+    }
+}
+
 impl Literal<'_> {
     fn join_as_regex(self, rhs: Self) -> Self {
         let lhs = self.regex_str();
         let rhs = rhs.regex_str();
         Self::Regex(Cow::Owned(format!("{lhs}\\s+{rhs}")))
+    }
+
+    fn join_as_plain(self, rhs: Self) -> Option<Self> {
+        let lhs = self.as_plain()?;
+        let rhs = rhs.as_plain()?;
+        Some(Self::Plain(Cow::Owned(format!("{lhs} {rhs}"))))
     }
 
     /// Convert this literal into a regex string.
@@ -184,15 +217,9 @@ impl Literal<'_> {
 
     /// Force this literal into the `Regex` variant.
     fn make_regex(&mut self) {
-        replace_with::replace_with(
-            self,
-            // We should never hit this default, the closure is too simple to panic.
-            || Self::Plain("".into()),
-            |lit| match lit {
-                Self::Plain(s) => Self::Regex(s),
-                Self::Regex(s) => Self::Regex(s),
-            },
-        );
+        *self = match std::mem::take(self) {
+            Self::Plain(s) | Self::Regex(s) => Self::Regex(s),
+        }
     }
 }
 
@@ -373,6 +400,37 @@ pub fn parse(query: &str) -> Result<Vec<Query<'_>>, ParseError> {
     }
 
     Ok(qs.into_vec())
+}
+
+pub fn parse_nl(query: &str) -> Result<NLQuery<'_>, ParseError> {
+    let pairs = PestParser::parse(Rule::nl_query, query).map_err(Box::new)?;
+
+    let mut repo = None;
+    let mut lang = None;
+    let mut target: Option<Literal> = None;
+    for pair in pairs {
+        match pair.as_rule() {
+            Rule::repo => repo = Some(Literal::from(pair.into_inner().next().unwrap())),
+            Rule::lang => {
+                lang = Some(super::languages::parse_alias(
+                    pair.into_inner().as_str().into(),
+                ))
+            }
+            Rule::unquoted_literal | Rule::quoted_literal | Rule::single_quoted_literal => {
+                let rhs = Literal::from(pair);
+                if let Some(t) = target {
+                    target = t.join_as_plain(rhs);
+                } else {
+                    target = Some(rhs);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let qs = NLQuery { repo, lang, target };
+
+    Ok(qs)
 }
 
 fn flatten(root: Expr<'_>) -> SmallVec<[Query<'_>; 1]> {
@@ -890,6 +948,18 @@ mod tests {
             .unwrap()
             .regex()
             .unwrap();
+    }
+
+    #[test]
+    fn test_nl_parse() {
+        assert_eq!(
+            parse_nl("what is background color? lang:tsx repo:bloop").unwrap(),
+            NLQuery {
+                target: Some(Literal::Plain("what is background color?".into())),
+                lang: Some("tsx".into()),
+                repo: Some(Literal::Plain("bloop".into())),
+            },
+        );
     }
 
     #[test]
