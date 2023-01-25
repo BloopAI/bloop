@@ -128,17 +128,6 @@ impl TryFrom<&'_ str> for OverlapStrategy {
 }
 
 impl OverlapStrategy {
-    /// returns the index into the `starts` array according to the strategy
-    fn next_start(&self, starts: &[usize], start: usize, end: usize) -> usize {
-        (match self {
-            Self::ByLines(n) => starts.partition_point(|&x| x <= end).saturating_sub(*n),
-            Self::Partial(part) => {
-                let mid = start + (((end - start) as f64) * part) as usize;
-                starts.partition_point(|&x| x <= mid)
-            }
-        }) + 1
-    }
-
     // returns the next startpoint for overlong lines
     fn next_subdivision(&self, max_tokens: usize) -> usize {
         (match self {
@@ -236,85 +225,75 @@ pub fn by_tokens<'s>(
     }
 
     let max_tokens = max_tokens - DEDUCT_SPECIAL_TOKENS - repo_tokens;
+    let max_newline_tokens = max_tokens * 3 / 4; //TODO: make this configurable
+    let max_boundary_tokens = max_tokens * 7 / 8; //TODO: make this configurable
     debug!("max tokens reduced to {max_tokens}");
-    // all indices into tokens/offsets at which a new line might begin.
-    let mut starts: Vec<_> = vec![0];
-    starts.extend((1..offsets.len()).filter(|&i| {
-        let (from, until) = (offsets[i - 1].0, offsets[i].0);
-        from < until && src[from..until].contains('\n')
-    }));
 
-    // calculate the start/end indices into tokens/offsets for the chunk starts/ends
+    let offsets_len = offsets.len() - 1;
+    // remove the SEP token which has (0, 0) offsets for some reason
+    let offsets = if offsets[offsets_len].0 == 0 {
+        &offsets[..offsets_len]
+    } else {
+        offsets
+    };
+    let ids = encoding.get_ids();
     let mut chunks = Vec::new();
-    let mut s = 0;
-    let mut offset = 0;
+    let mut start = 0;
     let (mut last_line, mut last_byte) = (0, 0);
-    while let Some(index_diff) = starts[s..].iter().position(|&p| p - offset > max_tokens) {
-        let index_diff = index_diff - 1;
-        // add (offset, end) to token_ranges, split if necessary
-        if index_diff == 0 {
-            // overlong line
-            let end_offset = starts.get(s + 1).map_or_else(|| offsets.len(), |&o| o);
-            let mut start = true;
-            loop {
-                let end = offset + max_tokens;
-                if end > end_offset {
-                    add_token_range(
-                        &mut chunks,
-                        src,
-                        offsets,
-                        offset..end_offset,
-                        &mut last_line,
-                        &mut last_byte,
-                        std::mem::take(&mut start),
-                    );
-                    break;
-                }
-                add_token_range(
-                    &mut chunks,
-                    src,
-                    offsets,
-                    offset..end,
-                    &mut last_line,
-                    &mut last_byte,
-                    std::mem::take(&mut start),
-                );
-                offset += strategy.next_subdivision(max_tokens);
-            }
-            s += 1;
+    loop {
+        let next_limit = start + max_tokens;
+        let end_limit = if next_limit >= offsets_len {
+            offsets_len
+        } else if let Some(next_newline) = (start + max_newline_tokens..next_limit)
+            .rfind(|&i| src[offsets[i].0..offsets[i + 1].0].contains('\n'))
+        {
+            next_newline
+        } else if let Some(next_boundary) = (start + max_boundary_tokens..next_limit).rfind(|&i| {
+            !tokenizer
+                .id_to_token(ids[i + 1])
+                .map_or(false, |s| s.starts_with("##"))
+        }) {
+            next_boundary
         } else {
-            let end = starts[s + index_diff];
-            add_token_range(
-                &mut chunks,
-                src,
-                offsets,
-                offset..end,
-                &mut last_line,
-                &mut last_byte,
-                true,
-            );
-            s = strategy.next_start(&starts, offset, end).max(s + 1);
-        }
-        offset = starts[s];
-    }
-    let mut start = true;
-    while offset < offsets.len() {
-        let end_offset = (offset + max_tokens).min(offsets.len());
+            next_limit
+        };
         add_token_range(
             &mut chunks,
             src,
             offsets,
-            offset..end_offset,
+            start..end_limit,
             &mut last_line,
             &mut last_byte,
-            std::mem::take(&mut start),
+            false,
         );
-        if end_offset == offsets.len() {
-            break;
+        if end_limit == offsets_len {
+            return chunks;
         }
-        offset += strategy.next_subdivision(max_tokens);
+        let diff = strategy.next_subdivision(end_limit - start);
+        let mid = start + diff;
+        //TODO: find nearest newlines or boundaries, set start accordingly
+        let next_newline_diff =
+            (mid..end_limit).find(|&i| src[offsets[i].0..offsets[i + 1].0].contains('\n'));
+        let prev_newline_diff = (start + (diff / 2)..mid)
+            .rfind(|&i| src[offsets[i].0..offsets[i + 1].0].contains('\n'));
+        start = match (next_newline_diff, prev_newline_diff) {
+            (Some(n), None) | (None, Some(n)) => n,
+            (Some(n), Some(p)) => {
+                if n - mid < mid - p {
+                    n
+                } else {
+                    p
+                }
+            }
+            (None, None) => (mid..end_limit)
+                .find(|&i| {
+                    !tokenizer
+                        .id_to_token(ids[i + 1])
+                        .map_or(false, |s| s.starts_with("##"))
+                })
+                .unwrap_or(mid),
+        };
     }
-    chunks
 }
 
 pub fn by_lines(src: &str, size: usize) -> Vec<Chunk<'_>> {

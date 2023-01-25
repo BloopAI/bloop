@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".", // This must be specified if "paths" is.
+    "lib": [ "es2015" ],
+    "types": ["node"],
+    "include": [
+      "./"
+    ]
+  }
+}

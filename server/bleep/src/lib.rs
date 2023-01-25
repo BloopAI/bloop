@@ -22,8 +22,8 @@ use semantic::{chunk::OverlapStrategy, Semantic};
 use state::Backend;
 
 use crate::{
+    analytics::QueryAnalyticsSource,
     indexes::Indexes,
-    segment::Segment,
     semantic::SemanticError,
     state::{RepositoryPool, StateSource},
 };
@@ -32,6 +32,7 @@ use background::BackgroundExecutor;
 use clap::Parser;
 use once_cell::sync::OnceCell;
 use relative_path::RelativePath;
+use rudderanalytics::client::RudderAnalytics;
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use std::{
@@ -46,11 +47,11 @@ use dunce::canonicalize;
 #[cfg(not(target = "windows"))]
 use std::fs::canonicalize;
 
+mod analytics;
 mod background;
 mod collector;
 mod language;
 mod remotes;
-mod segment;
 mod webserver;
 
 pub mod ctags;
@@ -118,7 +119,26 @@ fn default_max_chunk_tokens() -> usize {
 pub enum Environment {
     /// Safe API that's suitable for public use
     Server,
-    /// Access to the API is access controlled using an OAuth provider
+    /// Use a GitHub App installation to manage repositories and user access.
+    ///
+    /// Running the server in this environment makes use of a GitHub App in order to list and fetch
+    /// repositories. Note that GitHub App installs for a user profile are not valid in this mode.
+    ///
+    /// Connecting properly to a GitHub App installation requires the following flags:
+    ///
+    /// - `--github-client-id`
+    /// - `--github-client-secret`
+    /// - `--github-app-id`
+    /// - `--github-app-private-key`
+    /// - `--github-app-install-id`
+    /// - `--instance-domain`
+    ///
+    /// In order to serve the front-end, the `--frontend-dist` flag can provide a path to a built
+    /// version of the Bloop client SPA.
+    ///
+    /// Users are authenticated by checking whether they belong to the organization which installed
+    /// the GitHub App. All users belonging to the organization are able to see all repos that the
+    /// installation was allowed to access.
     PrivateServer,
     /// Enables scanning arbitrary user-specified locations through a Web-endpoint.
     InsecureLocal,
@@ -288,12 +308,13 @@ pub struct Application {
     semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
     credentials: Arc<DashMap<Backend, BackendCredential>>,
-    pub segment: Arc<Option<Segment>>,
+    pub analytics_client: Arc<Option<RudderAnalytics>>,
     cookie_key: axum_extra::extract::cookie::Key,
 }
 
 impl Application {
     pub async fn initialize(env: Environment, config: Configuration) -> Result<Application> {
+        Application::load_env_vars();
         let mut config = match config.config_file {
             None => config,
             Some(ref path) => {
@@ -327,14 +348,18 @@ impl Application {
                 Err(e) => bail!(e),
             };
 
-        let segment = if let Ok(segment_key) = std::env::var("SEGMENT_KEY_BE") {
-            info!("initializing segment");
-            Some(Segment::new(segment_key))
+        let analytics_client = if let (Ok(key), Ok(data_plane)) = (
+            std::env::var("ANALYTICS_KEY_BE"),
+            std::env::var("ANALYTICS_DATA_PLANE"),
+        ) {
+            info!("initializing analytics");
+            let handle = tokio::task::spawn_blocking(|| RudderAnalytics::load(key, data_plane));
+            Some(handle.await.unwrap())
         } else {
-            warn!("could not find segment key ... skipping initialization");
+            warn!("could not find analytics key ... skipping initialization");
             None
         };
-        let segment = Arc::new(segment);
+        let analytics_client = Arc::new(analytics_client);
 
         let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
         let env = if config.github_app_id.is_some() {
@@ -351,7 +376,7 @@ impl Application {
             cookie_key: config.source.initialize_cookie_key()?,
             semantic,
             config,
-            segment,
+            analytics_client,
             env,
         })
     }
@@ -405,6 +430,12 @@ impl Application {
         ));
 
         _ = SENTRY_GUARD.set(guard);
+    }
+
+    pub fn track_query(&self, event: analytics::QueryEvent) {
+        if let Some(client) = &*self.analytics_client {
+            tokio::task::block_in_place(|| client.track_query(event));
+        }
     }
 
     pub async fn run(self) -> Result<()> {
