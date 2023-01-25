@@ -10,7 +10,7 @@ use utoipa::OpenApi;
 use utoipa::ToSchema;
 
 mod aaa;
-mod answer;
+pub mod answer;
 mod autocomplete;
 mod file;
 mod github;

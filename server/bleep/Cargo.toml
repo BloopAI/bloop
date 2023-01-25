@@ -107,7 +107,7 @@ jsonwebtoken = { version = "8.2.0", features = ["use_pem"] }
 # telemetry
 sentry = "0.29.1"
 dotenvy = "0.15.6"
-segment = "0.2.1"
+rudderanalytics = "1.1.2"
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.3"
