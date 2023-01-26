@@ -109,7 +109,7 @@ pub(super) async fn login(
         .expose_secret();
 
     let redirect_uri = format!(
-        "https://{}/auth/login/complete",
+        "https://{}/api/auth/login/complete",
         app.config
             .instance_domain
             .as_ref()
