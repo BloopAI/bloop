@@ -1,7 +1,2 @@
 [env]
 PCRE2_SYS_STATIC = "1"
-
-[target.aarch64-apple-darwin]
-rustflags = [
-    "-C", "link-args=-Wl,-rpath,/opt/homebrew/opt/onnxruntime/lib"
-]

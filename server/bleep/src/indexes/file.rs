@@ -151,13 +151,7 @@ impl File {
             raw_relative_path,
 
             #[cfg(feature = "debug")]
-            histogram: Arc::new(
-                Histogram::configure()
-                    .max_memory(5 * 1024 * 1024)
-                    .build()
-                    .unwrap()
-                    .into(),
-            ),
+            histogram: Arc::new(Histogram::builder().build().unwrap().into()),
         }
     }
 }
@@ -165,7 +159,26 @@ impl File {
 fn should_index<P: AsRef<Path>>(p: &P) -> bool {
     let path = p.as_ref();
 
-    const EXT_BLACKLIST: &[&str] = &["png", "jpg", "jpeg", "ico", "ttf", "otf", "woff2"];
+    #[rustfmt::skip]
+    const EXT_BLACKLIST: &[&str] = &[
+        // graphics
+        "png", "jpg", "jpeg", "ico", "bmp", "bpg", "eps", "pcx", "ppm", "tga", "tiff", "wmf", "xpm",
+        "svg",
+        // fonts
+        "ttf", "woff2", "fnt", "fon", "otf",
+        // documents
+        "pdf", "ps", "doc", "dot", "docx", "dotx", "xls", "xlsx", "xlt", "odt", "ott", "ods", "ots", "dvi", "pcl",
+        // media
+        "mp3", "ogg", "ac3", "aac", "mod", "mp4", "mkv", "avi", "m4v", "mov", "flv",
+        // compiled
+        "jar", "pyc", "war", "ear",
+        // compression
+        "tar", "gz", "bz2", "xz", "7z", "bin", "apk", "deb", "rpm",
+        // executable
+        "com", "exe", "out", "coff", "obj", "dll", "app", "class",
+        // misc.
+        "log", "wad", "bsp", "bak", "sav", "dat",
+    ];
 
     let Some(ext) = path.extension() else {
         return true;
@@ -591,9 +604,17 @@ impl File {
                 .as_millis()
                 .try_into()
                 .expect("nobody waits this long");
-            self.histogram.write().unwrap().increment(time).unwrap();
+            self.histogram.write().unwrap().increment(time, 1).unwrap();
 
-            if time > self.histogram.read().unwrap().percentile(99.9).unwrap() {
+            if time
+                > self
+                    .histogram
+                    .read()
+                    .unwrap()
+                    .percentile(99.9)
+                    .unwrap()
+                    .low()
+            {
                 // default console formatter is different when we're debugging. need to print more info here.
                 warn!(
                     ?relative_path,
