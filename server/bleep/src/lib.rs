@@ -127,7 +127,6 @@ pub struct Application {
 
 impl Application {
     pub async fn initialize(env: Environment, config: Configuration) -> Result<Application> {
-        Application::load_env_vars();
         let mut config = match config.config_file {
             None => config,
             Some(ref path) => {
@@ -161,12 +160,14 @@ impl Application {
                 Err(e) => bail!(e),
             };
 
-        let analytics_client = if let (Ok(key), Ok(data_plane)) = (
-            std::env::var("ANALYTICS_KEY_BE"),
-            std::env::var("ANALYTICS_DATA_PLANE"),
-        ) {
+        let analytics_client = if let (Some(key), Some(data_plane)) =
+            (&config.analytics_key, &config.analytics_data_plane)
+        {
+            let key = key.to_string();
+            let data_plane = data_plane.to_string();
             info!("initializing analytics");
-            let handle = tokio::task::spawn_blocking(|| RudderAnalytics::load(key, data_plane));
+            let handle =
+                tokio::task::spawn_blocking(move || RudderAnalytics::load(key, data_plane));
             Some(handle.await.unwrap())
         } else {
             warn!("could not find analytics key ... skipping initialization");
@@ -194,16 +195,27 @@ impl Application {
         })
     }
 
-    pub fn load_env_vars() {
-        info!("loading .env file ...");
-        if let Ok(path) = dotenvy::dotenv() {
-            info!(
-                "loaded env from `{:?}`",
-                canonicalize(path).ok().as_ref().map(|p| p.display())
-            );
-        } else {
-            warn!("failed to load .env file")
+    pub fn install_sentry(&self) {
+        let Some(ref dsn) = self.config.sentry_dsn else {
+            info!("sentry DSN missing, skipping initialization");
+            return;
         };
+
+        if sentry::Hub::current().client().is_some() {
+            warn!("sentry has already been initialized");
+            return;
+        }
+
+        info!("initializing sentry ...");
+        let guard = sentry::init((
+            dsn.to_string(),
+            sentry::ClientOptions {
+                release: sentry::release_name!(),
+                ..Default::default()
+            },
+        ));
+
+        _ = SENTRY_GUARD.set(guard);
     }
 
     pub fn install_logging() {
@@ -220,29 +232,6 @@ impl Application {
         };
 
         LOGGER_INSTALLED.set(true).unwrap();
-    }
-
-    pub fn install_sentry() {
-        let Some(dsn) = std::env::var("VITE_SENTRY_DSN_BE").ok() else {
-            info!("sentry DSN missing, skipping initialization");
-            return;
-        };
-
-        if sentry::Hub::current().client().is_some() {
-            warn!("sentry has already been initialized");
-            return;
-        }
-
-        info!("initializing sentry ...");
-        let guard = sentry::init((
-            dsn,
-            sentry::ClientOptions {
-                release: sentry::release_name!(),
-                ..Default::default()
-            },
-        ));
-
-        _ = SENTRY_GUARD.set(guard);
     }
 
     pub fn track_query(&self, event: analytics::QueryEvent) {

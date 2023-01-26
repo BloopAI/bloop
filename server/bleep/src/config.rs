@@ -71,31 +71,6 @@ pub struct Configuration {
     /// Path to the embedding model directory
     pub model_dir: PathBuf,
 
-    #[clap(long)]
-    #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
-    /// Github Client ID for OAuth connection to private repos
-    pub github_client_id: Option<SecretString>,
-
-    #[clap(long)]
-    #[serde(serialize_with = "State::serialize_secret_opt_str", default)]
-    pub github_client_secret: Option<SecretString>,
-
-    #[clap(long)]
-    /// GitHub App ID
-    pub github_app_id: Option<u64>,
-
-    #[clap(long)]
-    /// GitHub app installation ID
-    pub github_app_install_id: Option<u64>,
-
-    #[clap(long)]
-    /// Path to a GitHub private key file, for signing access token requests
-    pub github_app_private_key: Option<PathBuf>,
-
-    #[clap(long)]
-    /// Full instance domain, e.g. `foo.bloop.ai`
-    pub instance_domain: Option<String>,
-
     #[clap(long, default_value_t = default_max_chunk_tokens())]
     #[serde(default = "default_max_chunk_tokens")]
     /// Maximum number of tokens in a chunk (should be the model's input size)
@@ -121,6 +96,46 @@ pub struct Configuration {
     #[serde(default = "default_answer_api_url")]
     /// URL for the answer-api
     pub answer_api_url: String,
+
+    //
+    // Installation-specific values
+    //
+    #[clap(long)]
+    #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
+    /// Github Client ID for OAuth connection to private repos
+    pub github_client_id: Option<SecretString>,
+
+    #[clap(long)]
+    #[serde(serialize_with = "State::serialize_secret_opt_str", default)]
+    pub github_client_secret: Option<SecretString>,
+
+    #[clap(long)]
+    /// GitHub App ID
+    pub github_app_id: Option<u64>,
+
+    #[clap(long)]
+    /// GitHub app installation ID
+    pub github_app_install_id: Option<u64>,
+
+    #[clap(long)]
+    /// Path to a GitHub private key file, for signing access token requests
+    pub github_app_private_key: Option<PathBuf>,
+
+    #[clap(long)]
+    /// Full instance domain, e.g. `foo.bloop.ai`
+    pub instance_domain: Option<String>,
+
+    #[clap(long)]
+    /// Key for analytics backend
+    pub analytics_key: Option<String>,
+
+    #[clap(long)]
+    /// Analytics data plane identifier
+    pub analytics_data_plane: Option<String>,
+
+    #[clap(long)]
+    /// Analytics data plane identifier
+    pub sentry_dsn: Option<String>,
 }
 
 impl Configuration {
