@@ -1,5 +1,5 @@
 name: Build&Push API docker container image with SHA tag
-on: push
+on: pull_request
 
 jobs:
   build_and_push:
