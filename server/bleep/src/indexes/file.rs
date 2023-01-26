@@ -151,13 +151,7 @@ impl File {
             raw_relative_path,
 
             #[cfg(feature = "debug")]
-            histogram: Arc::new(
-                Histogram::configure()
-                    .max_memory(5 * 1024 * 1024)
-                    .build()
-                    .unwrap()
-                    .into(),
-            ),
+            histogram: Arc::new(Histogram::builder().build().unwrap().into()),
         }
     }
 }
@@ -591,9 +585,17 @@ impl File {
                 .as_millis()
                 .try_into()
                 .expect("nobody waits this long");
-            self.histogram.write().unwrap().increment(time).unwrap();
+            self.histogram.write().unwrap().increment(time, 1).unwrap();
 
-            if time > self.histogram.read().unwrap().percentile(99.9).unwrap() {
+            if time
+                > self
+                    .histogram
+                    .read()
+                    .unwrap()
+                    .percentile(99.9)
+                    .unwrap()
+                    .low()
+            {
                 // default console formatter is different when we're debugging. need to print more info here.
                 warn!(
                     ?relative_path,
