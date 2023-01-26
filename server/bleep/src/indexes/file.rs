@@ -159,7 +159,26 @@ impl File {
 fn should_index<P: AsRef<Path>>(p: &P) -> bool {
     let path = p.as_ref();
 
-    const EXT_BLACKLIST: &[&str] = &["png", "jpg", "jpeg", "ico", "ttf", "otf", "woff2"];
+    #[rustfmt::skip]
+    const EXT_BLACKLIST: &[&str] = &[
+        // graphics
+        "png", "jpg", "jpeg", "ico", "bmp", "bpg", "eps", "pcx", "ppm", "tga", "tiff", "wmf", "xpm",
+        "svg",
+        // fonts
+        "ttf", "woff2", "fnt", "fon", "otf",
+        // documents
+        "pdf", "ps", "doc", "dot", "docx", "dotx", "xls", "xlsx", "xlt", "odt", "ott", "ods", "ots", "dvi", "pcl",
+        // media
+        "mp3", "ogg", "ac3", "aac", "mod", "mp4", "mkv", "avi", "m4v", "mov", "flv",
+        // compiled
+        "jar", "pyc", "war", "ear",
+        // compression
+        "tar", "gz", "bz2", "xz", "7z", "bin", "apk", "deb", "rpm",
+        // executable
+        "com", "exe", "out", "coff", "obj", "dll", "app", "class",
+        // misc.
+        "log", "wad", "bsp", "bak", "sav", "dat",
+    ];
 
     let Some(ext) = path.extension() else {
         return true;
