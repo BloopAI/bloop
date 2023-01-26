@@ -16,6 +16,8 @@ pub enum ChunkError {
     Query(tree_sitter::QueryError),
 }
 
+/// A Chunk type, containing the plain text (borrowed from the source)
+/// and a `TextRange` with byte, line and column positions
 #[derive(Debug)]
 pub struct Chunk<'a> {
     pub data: &'a str,
@@ -39,10 +41,19 @@ impl<'a> Chunk<'a> {
     }
 }
 
-// This calculates the line and column for a given byte position. The last_line and last_byte
-// parameters can be used to reduce the amount of searching for the line position from quadratic
-// to linear. If in doubt, just use `1` for last_line and `0` for last_byte.
-fn point(src: &str, byte: usize, last_line: usize, last_byte: usize) -> Point {
+/// This calculates the line and column for a given byte position. The last_line and last_byte
+/// parameters can be used to reduce the amount of searching for the line position from quadratic
+/// to linear. If in doubt, just use `0` for last_line and `0` for last_byte.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!(
+///     bleep::semantic::chunk::point("fn hello() {\n    \"world\"\n}\n", 16, 0, 0),
+///     bleep::text_range::Point::new(16, 1, 4)
+/// );
+/// ```
+pub fn point(src: &str, byte: usize, last_line: usize, last_byte: usize) -> Point {
     assert!(
         byte >= last_byte,
         "byte={byte} < last_byte={last_byte}, last_line={last_line}"
@@ -192,11 +203,13 @@ pub fn by_tokens<'s>(
     file: &str,
     src: &'s str,
     tokenizer: &Tokenizer, // we count from line
-    max_tokens: usize,
+    token_bounds: Range<usize>,
     max_lines: usize,
     strategy: OverlapStrategy,
 ) -> Vec<Chunk<'s>> {
-    if src.is_empty() {
+    let min_tokens = token_bounds.start;
+    // no need to even tokenize files too small to contain our min number of tokens
+    if src.len() < min_tokens {
         return Vec::new();
     }
     let Ok(encoding) = tokenizer.encode(src, true)
@@ -206,7 +219,8 @@ pub fn by_tokens<'s>(
     };
 
     let offsets = encoding.get_offsets();
-    if offsets.is_empty() {
+    // again, if we have less than our minimum number of tokens, we may skip the file
+    if offsets.len() < min_tokens {
         return Vec::new();
     }
 
@@ -219,12 +233,12 @@ pub fn by_tokens<'s>(
         }
     };
 
-    if max_tokens <= DEDUCT_SPECIAL_TOKENS + repo_tokens {
+    if token_bounds.end <= DEDUCT_SPECIAL_TOKENS + repo_tokens {
         error!("too few tokens");
         return Vec::new();
     }
 
-    let max_tokens = max_tokens - DEDUCT_SPECIAL_TOKENS - repo_tokens;
+    let max_tokens = token_bounds.end - DEDUCT_SPECIAL_TOKENS - repo_tokens;
     let max_newline_tokens = max_tokens * 3 / 4; //TODO: make this configurable
     let max_boundary_tokens = max_tokens * 7 / 8; //TODO: make this configurable
     debug!("max tokens reduced to {max_tokens}");
@@ -257,21 +271,23 @@ pub fn by_tokens<'s>(
         } else {
             next_limit
         };
-        add_token_range(
-            &mut chunks,
-            src,
-            offsets,
-            start..end_limit,
-            &mut last_line,
-            &mut last_byte,
-            false,
-        );
+        if end_limit - start >= min_tokens {
+            add_token_range(
+                &mut chunks,
+                src,
+                offsets,
+                start..end_limit,
+                &mut last_line,
+                &mut last_byte,
+                false,
+            );
+        }
         if end_limit == offsets_len {
             return chunks;
         }
         let diff = strategy.next_subdivision(end_limit - start);
         let mid = start + diff;
-        //TODO: find nearest newlines or boundaries, set start accordingly
+        // find nearest newlines or boundaries, set start accordingly
         let next_newline_diff =
             (mid..end_limit).find(|&i| src[offsets[i].0..offsets[i + 1].0].contains('\n'));
         let prev_newline_diff = (start + (diff / 2)..mid)
@@ -335,31 +351,64 @@ mod tests {
     use std::env;
 
     #[test]
+    pub fn test_empty() {
+        let cur_dir = env::current_dir().unwrap();
+        let base_dir = cur_dir.ancestors().nth(2).unwrap();
+        let tok_json = base_dir.join("model/tokenizer.json");
+        let tokenizer = tokenizers::Tokenizer::from_file(tok_json).unwrap();
+        let token_bounds = 50..256;
+        let max_lines = 15;
+        let no_tokens = by_tokens(
+            "bloop",
+            "rmpty.rs",
+            "",
+            &tokenizer,
+            token_bounds,
+            max_lines,
+            OverlapStrategy::ByLines(1),
+        );
+        assert!(no_tokens.is_empty());
+    }
+
+    #[test]
     pub fn test_by_tokens() {
         let cur_dir = env::current_dir().unwrap();
         let base_dir = cur_dir.ancestors().nth(2).unwrap();
         let tok_json = base_dir.join("model/tokenizer.json");
         let tokenizer = tokenizers::Tokenizer::from_file(tok_json).unwrap();
-        let max_tokens = 256;
+        let token_bounds = 50..256;
         let max_lines = 15;
         let walk = ignore::WalkBuilder::new(base_dir)
             .standard_filters(true)
             .build();
+        let mut num_chunks = 0;
+        let mut combined_size = 0;
         for file in walk {
             let file = file.unwrap();
             if file.metadata().unwrap().is_dir() {
                 continue;
             }
             let Ok(src) = std::fs::read_to_string(file.path()) else { continue };
-            let _tokenwise = by_tokens(
+            let chunks = by_tokens(
                 "bloop",
                 &file.path().to_string_lossy(),
                 &src,
                 &tokenizer,
-                max_tokens,
+                token_bounds.clone(),
                 max_lines,
                 OverlapStrategy::Partial(0.5),
             );
+            num_chunks += chunks.len();
+            combined_size += chunks.iter().map(Chunk::len).sum::<usize>();
         }
+        let avg_size = combined_size / num_chunks;
+        // we use string length as a stand in for token length, seeing as tokens will
+        // on average be two chars long, and our distribution should be skewed towards
+        // longer chunks.
+        let min_avg_size = 512;
+        assert!(
+            avg_size > min_avg_size,
+            "Average chunk size should be more than {min_avg_size}, was {avg_size}",
+        );
     }
 }
