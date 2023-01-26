@@ -14,6 +14,7 @@ import RepoList from '../../RepoList';
 import { getCommonFolder, splitPath } from '../../../utils';
 import { DropdownWithIcon } from '../../Dropdown';
 import GitHubIcon from '../../../icons/GitHubIcon';
+import { DeviceContext } from '../../../context/deviceContext';
 import AddRepos from './AddRepos';
 import GithubStatus from './GithubStatus';
 
@@ -27,6 +28,7 @@ const dropdownIcon = (
 const RepositoriesSettings = () => {
   const { repositories, setRepositories } = useContext(RepositoriesContext);
   const { onBoardingState } = useContext(UIContext);
+  const { isSelfServe } = useContext(DeviceContext);
   const [isAddReposOpen, setAddReposOpen] = useState<null | 'local' | 'github'>(
     null,
   );
@@ -86,7 +88,7 @@ const RepositoriesSettings = () => {
     setGitHubAuth(!githubRepos.length);
   }, [githubRepos.length]);
 
-  const [isGithubConnected, setGitHubConnected] = useState(false);
+  const [isGithubConnected, setGitHubConnected] = useState(isSelfServe);
 
   useEffect(() => {
     gitHubStatus().then((r) => {
@@ -110,14 +112,18 @@ const RepositoriesSettings = () => {
 
   const addReposMenuItems = useMemo(
     () => [
-      {
-        text: 'Local repo',
-        icon: <Repository />,
-        type: MenuItemType.DEFAULT,
-        onClick: () => {
-          setAddReposOpen('local');
-        },
-      },
+      ...(!isSelfServe
+        ? [
+            {
+              text: 'Local repo',
+              icon: <Repository />,
+              type: MenuItemType.DEFAULT,
+              onClick: () => {
+                setAddReposOpen('local');
+              },
+            },
+          ]
+        : []),
       ...(isGithubConnected
         ? [
             {
@@ -147,7 +153,7 @@ const RepositoriesSettings = () => {
           />
         </div>
         <div className="flex flex-col gap-3.5">
-          {!isGithubConnected && (
+          {!isGithubConnected && !isSelfServe && (
             <GithubStatus
               setGitHubAuth={setGitHubAuth}
               setGitHubConnected={setGitHubConnected}

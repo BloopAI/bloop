@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import * as Sentry from '@sentry/react';
 import ListNavigation from '../../components/IdeNavigation/ListNavigation';
 import { GitHubLogo, List, Repository } from '../../icons';
 import ErrorFallback from '../../components/ErrorFallback';
+import { DeviceContext } from '../../context/deviceContext';
 import ReposSection from './ReposSection';
 
 type Props = {
@@ -17,17 +18,20 @@ const listNavigationItems = [
 
 const HomePage = ({ emptyRepos }: Props) => {
   const [filter, setFilter] = useState(0);
+  const { isSelfServe } = useContext(DeviceContext);
 
   return (
     <>
-      <div className="w-90 text-gray-300 border-r border-gray-800 flex-shrink-0 h-full">
-        <ListNavigation
-          title=" "
-          items={listNavigationItems}
-          setSelected={setFilter}
-          selected={filter}
-        />
-      </div>
+      {isSelfServe ? null : (
+        <div className="w-90 text-gray-300 border-r border-gray-800 flex-shrink-0 h-full">
+          <ListNavigation
+            title=" "
+            items={listNavigationItems}
+            setSelected={setFilter}
+            selected={filter}
+          />
+        </div>
+      )}
       <ReposSection filter={filter} emptyRepos={emptyRepos} />
     </>
   );

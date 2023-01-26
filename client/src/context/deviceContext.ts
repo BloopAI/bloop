@@ -25,6 +25,7 @@ export type DeviceContextType = {
   apiUrl: string;
   isRepoManagementAllowed: boolean;
   forceAnalytics: boolean;
+  isSelfServe: boolean;
 };
 
 export const DeviceContext = createContext<DeviceContextType>({
@@ -45,4 +46,5 @@ export const DeviceContext = createContext<DeviceContextType>({
   apiUrl: '',
   isRepoManagementAllowed: true,
   forceAnalytics: false,
+  isSelfServe: false,
 });
