@@ -36,8 +36,8 @@ jobs:
           tags: |
             ghcr.io/bloopai/bloop:latest
           push: true
-          cache-from: type=gha
+          cache-from: type=gha, scope=${{ github.workflow }}
           # Note the mode=max here
           # More: https://github.com/moby/buildkit#--export-cache-options
           # And: https://github.com/docker/buildx#--cache-tonametypetypekeyvalue
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max, scope=${{ github.workflow }}
