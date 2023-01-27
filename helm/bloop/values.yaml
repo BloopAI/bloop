@@ -7,9 +7,9 @@ bloop:
   loopsEventName: ""
 
 image:
-  repository: 466687392010.dkr.ecr.eu-west-1.amazonaws.com/bloop
+  repository: ""
   pullPolicy: Always
-  tag: build-485dbdb79499e4ac724d3af8f6967e671064bc79
+  tag: ""
 
 imagePullSecrets:
   - name: eu-west-1-ecr-registry
