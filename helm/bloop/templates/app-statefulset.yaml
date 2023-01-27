@@ -31,6 +31,13 @@ spec:
             {{- toYaml .Values.podSecurityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+          - --answer-api-url={{ .Values.bloop.answerApiUrl }}
+          - --instance-domain={{ .Values.bloop.instanceDomain }}
+          - --github-app-install-id={{ .Values.bloop.githubAppId }}
+          - --github-client-id={{ .Values.bloop.githubClientId }}
+          - --github-client-secret={{ .Values.bloop.githubClientSecret }}
+          - --github-app-private-key=/bloop/app-private-key.pem
           env:
           {{ if .Values.env }}
           {{ range .Values.env }}
