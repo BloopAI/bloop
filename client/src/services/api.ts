@@ -32,10 +32,16 @@ export const search = (
     .then((r) => r.data);
 };
 
+const nlSearchResultsCache = new Map();
+
 export const nlSearch = (
   q: string,
   user_id: string,
+  search_hash?: string,
 ): Promise<NLSearchResponse> => {
+  if (search_hash && nlSearchResultsCache.has(search_hash)) {
+    return Promise.resolve(nlSearchResultsCache.get(search_hash));
+  }
   return http
     .get('/answer', {
       params: {
@@ -43,7 +49,15 @@ export const nlSearch = (
         user_id,
       },
     })
-    .then((r) => r.data);
+    .then((r) => {
+      if (search_hash) {
+        if (nlSearchResultsCache.size === 3) {
+          nlSearchResultsCache.delete(nlSearchResultsCache.keys().next().value);
+        }
+        nlSearchResultsCache.set(search_hash, r.data);
+      }
+      return r.data;
+    });
 };
 
 export const getHoverables = async (

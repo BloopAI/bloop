@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { buildRepoQuery } from '../utils';
+import { buildRepoQuery, hashCode } from '../utils';
 import { SearchType } from '../types/general';
 
 interface NavigationItem {
@@ -12,6 +12,7 @@ interface NavigationItem {
   loaded?: boolean;
   searchType?: SearchType;
   pathParams?: Record<string, string>;
+  searchHash?: string;
 }
 
 type ContextType = {
@@ -38,6 +39,7 @@ type ContextType = {
   ) => void;
   navigateFullResult: (repo: string, path: string) => void;
   query: string;
+  replaceSearchHash: (hash: string) => void;
 };
 
 const AppNavigationContext = createContext<ContextType>({
@@ -49,6 +51,7 @@ const AppNavigationContext = createContext<ContextType>({
   navigateSearch: (query, page) => {},
   navigateFullResult: (repo, path) => {},
   query: '',
+  replaceSearchHash: () => {},
 });
 
 export const AppNavigationProvider = (prop: {
@@ -114,7 +117,24 @@ export const AppNavigationProvider = (prop: {
     searchType: SearchType,
     page?: number,
   ) => {
-    saveState({ type: 'search', page, query, searchType });
+    saveState({
+      type: 'search',
+      page,
+      query,
+      searchType,
+      searchHash: hashCode(new Date().toISOString()).toString(),
+    });
+  };
+
+  const replaceSearchHash = (searchHash: string) => {
+    setNavigation((prevState) => {
+      const newState = [...prevState];
+      newState[newState.length - 1] = {
+        ...newState[newState.length - 1],
+        searchHash,
+      };
+      return newState;
+    });
   };
 
   const navigateRepoPath = (
@@ -169,6 +189,7 @@ export const AppNavigationProvider = (prop: {
         navigateSearch,
         navigateHome,
         query: query || '',
+        replaceSearchHash,
       }}
     >
       {prop.children}

@@ -12,7 +12,7 @@ import RepositoryPage from '../Repository';
 import PageTemplate from '../../components/PageTemplate';
 import ErrorFallback from '../../components/ErrorFallback';
 import useAppNavigation from '../../hooks/useAppNavigation';
-import { buildRepoQuery } from '../../utils';
+import { buildRepoQuery, hashCode } from '../../utils';
 import ResultsPage from '../Results';
 import ViewResult from '../ResultFull';
 import { SearchType } from '../../types/general';
@@ -40,7 +40,7 @@ const SearchPage = () => {
   } = useSearch<NLSearchResponse>();
   const { updateCurrentTabName } = useContext(TabsContext);
 
-  const { navigatedItem, query } = useAppNavigation();
+  const { navigatedItem, query, replaceSearchHash } = useAppNavigation();
 
   useEffect(() => {
     if (!navigatedItem) {
@@ -74,7 +74,13 @@ const SearchPage = () => {
       default:
         updateCurrentTabName(navigatedItem.query!);
         if ((navigatedItem.searchType ?? searchType) === SearchType.NL) {
-          nlSearchQuery(navigatedItem.query!, 0, false, SearchType.NL);
+          nlSearchQuery(
+            navigatedItem.query!,
+            0,
+            false,
+            SearchType.NL,
+            navigatedItem.searchHash,
+          );
         } else {
           searchQuery(navigatedItem.query!, navigatedItem.page, globalRegex);
         }
@@ -82,7 +88,9 @@ const SearchPage = () => {
   }, [navigatedItem]);
 
   const handleRetry = useCallback(() => {
-    nlSearchQuery(navigatedItem!.query!);
+    const newHash = hashCode(new Date().toISOString()).toString();
+    replaceSearchHash(newHash);
+    nlSearchQuery(navigatedItem!.query!, 0, false, SearchType.NL, newHash);
   }, [navigatedItem?.query]);
 
   const getRenderPage = useCallback(() => {

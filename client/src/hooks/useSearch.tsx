@@ -20,6 +20,7 @@ interface SearchResponse<T> extends Status<T> {
     page?: number,
     globalRegex?: boolean,
     forceSearchType?: SearchType,
+    searchHash?: string,
   ) => void;
 }
 
@@ -40,6 +41,7 @@ export const useSearch = <T,>(
     page = 0,
     globalRegex?: boolean,
     forceSearchType?: SearchType,
+    searchHash?: string,
   ) => {
     setStatus({ loading: true });
 
@@ -49,7 +51,7 @@ export const useSearch = <T,>(
 
     switch (currentSearchType) {
       case SearchType.NL:
-        nlSearchApiCall(query, deviceId)
+        nlSearchApiCall(query, deviceId, searchHash)
           .then((data) => {
             const queryTime = Date.now() - startTime;
             setLastQueryTime(queryTime);
