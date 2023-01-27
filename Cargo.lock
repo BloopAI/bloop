@@ -422,6 +422,7 @@ dependencies = [
  "tantivy",
  "tempdir",
  "thiserror",
+ "time 0.3.17",
  "tokenizers",
  "tokio",
  "tower",
