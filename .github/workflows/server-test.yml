@@ -48,7 +48,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "bloop"
+          prefix-key: "bloop"
+          shared-key: "server-test"
 
       - name: Rust fmt
         run: cargo fmt -p bleep -- --check
