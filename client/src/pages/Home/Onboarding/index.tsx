@@ -24,10 +24,10 @@ const Onboarding = ({ onFinish }: Props) => {
   }, []);
 
   useEffect(() => {
-    if (step === 1) {
+    if (isSelfServe ? step === 1 : step === 5) {
       onFinish();
     }
-  }, [step]);
+  }, [step, isSelfServe]);
 
   const handleNext = useCallback((e: any, skipOne = false) => {
     setStep((prev) => prev + (skipOne ? 2 : 1));
