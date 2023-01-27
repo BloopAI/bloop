@@ -104,6 +104,12 @@ impl Semantic {
                 .build()?,
         );
 
+        let threads = if let Ok(v) = std::env::var("NUM_OMP_THREADS") {
+            str::parse(&v).unwrap_or(1)
+        } else {
+            1
+        };
+
         Ok(Self {
             qdrant: qdrant.into(),
             tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("tokenizer.json"))
@@ -114,7 +120,7 @@ impl Semantic {
                 .into(),
             session: SessionBuilder::new(&environment)?
                 .with_optimization_level(GraphOptimizationLevel::Level3)?
-                .with_intra_threads(1)?
+                .with_intra_threads(threads)?
                 .with_model_from_file(model_dir.join("model.onnx"))?
                 .into(),
             config,
@@ -224,7 +230,7 @@ impl Semantic {
             relative_path,
             buffer,
             &self.tokenizer,
-            self.config.max_chunk_tokens,
+            50..self.config.max_chunk_tokens,
             15,
             self.overlap_strategy(),
         );
@@ -232,7 +238,6 @@ impl Semantic {
         debug!(chunk_count = chunks.len(), "found chunks");
         let datapoints = chunks
             .par_iter()
-            .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
             .filter_map(
                 |chunk| match self.embed(&(repo_plus_file.clone() + chunk.data)) {
                     Ok(ok) => Some(PointStruct {
