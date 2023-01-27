@@ -203,7 +203,7 @@ impl Display for Fragment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Break => write!(f, " * "),
-            Self::Literal(s) => write!(f, "{}", s),
+            Self::Literal(s) => write!(f, "{s}"),
             Self::Dense(op, children) => {
                 let mut join = "";
                 let op = match op {
