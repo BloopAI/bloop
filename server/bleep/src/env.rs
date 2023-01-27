@@ -1,5 +1,6 @@
 use Feature::*;
 
+#[repr(u64)]
 pub(crate) enum Feature {
     /// Allow scanning any path on the system. This is dangerous!
     AnyPathScan = 1 << 0,
@@ -22,11 +23,17 @@ pub(crate) enum Feature {
 
 #[rustfmt::skip]
 #[derive(Debug, Clone, Copy)]
+#[repr(u64)]
+/// Select the environment the service will run in.
+///
+/// The different variants represent distinct capability sets that are
+/// suited for different deployment model, and will enable or disable
+/// certain features.
 pub enum Environment {
     /// Safe API that's suitable for public use
     Server =
-	GithubDeviceFlow as isize
-	| SafePathScan as isize,
+	GithubDeviceFlow as u64
+	| SafePathScan as u64,
 
     /// Use a GitHub App installation to manage repositories and user access.
     ///
@@ -46,13 +53,13 @@ pub enum Environment {
     /// the GitHub App. All users belonging to the organization are able to see all repos that the
     /// installation was allowed to access.
     PrivateServer =
-	GithubInstallation as isize
-	| AuthorizationRequired as isize,
+	GithubInstallation as u64
+	| AuthorizationRequired as u64,
 
     /// Enables scanning arbitrary user-specified locations through a Web-endpoint.
     InsecureLocal =
-	AnyPathScan as isize
-	| GithubDeviceFlow as isize,
+	AnyPathScan as u64
+	| GithubDeviceFlow as u64,
 }
 
 #[derive(Debug, Clone)]
@@ -64,6 +71,6 @@ impl RuntimeEnvironment {
     }
 
     pub(crate) fn allow(&self, f: Feature) -> bool {
-        0 < self.0 as isize & f as isize
+        0 < self.0 as u64 & f as u64
     }
 }
