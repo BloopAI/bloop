@@ -22,7 +22,7 @@ RUN --mount=target=/build/target,type=cache \
 COPY . .
 RUN --mount=target=/build/target,type=cache \
     rm server/bleep/src/main.rs && \
-    cargo build -p bleep --release --locked && \
+    cargo build -p bleep --release --locked --frozen --offline && \
     cp /build/target/release/bleep /
 
 FROM debian:stable-slim
