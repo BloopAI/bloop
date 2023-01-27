@@ -365,8 +365,7 @@ impl Indexer<File> {
         );
         let query = query_parser
             .parse_query(&format!(
-                "repo_ref:\"{}\" AND relative_path:\"{}\"",
-                repo_ref, relative_path
+                "repo_ref:\"{repo_ref}\" AND relative_path:\"{relative_path}\""
             ))
             .expect("failed to parse tantivy query");
 

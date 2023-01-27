@@ -4,8 +4,8 @@ use bleep::{Application, Configuration, Environment};
 #[tokio::main]
 async fn main() -> Result<()> {
     Application::install_logging();
-    Application::install_sentry();
     let app = Application::initialize(Environment::Server, Configuration::from_cli()?).await?;
 
+    app.install_sentry();
     app.run().await
 }
