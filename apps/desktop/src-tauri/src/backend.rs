@@ -20,9 +20,7 @@ where
         .expect("bad bundle");
 
     let cache_dir = app.path_resolver().app_cache_dir().unwrap();
-    configuration
-        .source
-        .set_default_dir(&cache_dir.join("bleep"));
+    configuration.index_dir = cache_dir.join("bleep");
 
     let app = app.handle();
     tokio::spawn(async move {
