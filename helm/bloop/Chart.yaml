@@ -1,0 +1,6 @@
+apiVersion: v2
+name: bloop
+description: A Helm chart for bloop Kubernetes application
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

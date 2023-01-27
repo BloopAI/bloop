@@ -1,11 +1,8 @@
 name: Build docker container
 
 on:
-  push:
-    branches: [main]
-
-#schedule:
-#  - cron: '0 0 * * *'
+  schedule:
+    - cron: '0 0 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -39,8 +36,3 @@ jobs:
           tags: |
             ghcr.io/bloopai/bloop:latest
           push: true
-          cache-from: type=gha, scope=${{ github.workflow }}
-          # Note the mode=max here
-          # More: https://github.com/moby/buildkit#--export-cache-options
-          # And: https://github.com/docker/buildx#--cache-tonametypetypekeyvalue
-          cache-to: type=gha,mode=max, scope=${{ github.workflow }}
