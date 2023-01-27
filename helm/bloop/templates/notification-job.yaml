@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "bloop.fullname" . }}
+  labels:
+    {{- include "bloop.labels" . | nindent 4 }}
+spec:
+  template:
+    spec:
+      containers:
+      - name: send-email
+        image: alpine/curl:3.14
+        command:
+        - /bin/sh
+        args:
+        - /bloop/notification-script.sh
+        volumeMounts:
+        - name: notification-script
+          mountPath: /bloop/
+      restartPolicy: Never
+      volumes:
+        - name: notification-script
+          configMap:
+            name: {{ include "bloop.fullname" . }}-notification-script
+  backoffLimit: 4
