@@ -72,6 +72,7 @@ tower-http = { version = "0.3.5", features = ["auth", "cors", "catch-panic", "fs
 # api integrations
 octocrab = { git = "https://github.com/bloopai/octocrab", default-features = false, features = ["rustls"] }
 reqwest = { version = "0.11.14", features = ["rustls-tls", "rustls"], default-features = false }
+reqwest-eventsource = "0.4.0"
 secrecy = { version = "0.8.0", features = ["serde"] }
 
 # file processing
@@ -109,6 +110,7 @@ jsonwebtoken = { version = "8.2.0", features = ["use_pem"] }
 # telemetry
 sentry = "0.29.2"
 rudderanalytics = "1.1.2"
+async-stream = "0.3.3"
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.3"
