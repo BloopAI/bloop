@@ -29,7 +29,7 @@ pub(crate) enum Feature {
 /// The different variants represent distinct capability sets that are
 /// suited for different deployment model, and will enable or disable
 /// certain features.
-pub enum Environment {
+enum EnvironmentInner {
     /// Safe API that's suitable for public use
     Server =
 	GithubDeviceFlow as u64
@@ -63,11 +63,19 @@ pub enum Environment {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct RuntimeEnvironment(Environment);
+pub struct Environment(EnvironmentInner);
 
-impl RuntimeEnvironment {
-    pub(crate) fn new(env: Environment) -> Self {
-        Self(env)
+impl Environment {
+    pub fn server() -> Self {
+        Self(EnvironmentInner::Server)
+    }
+
+    pub fn private_server() -> Self {
+        Self(EnvironmentInner::PrivateServer)
+    }
+
+    pub fn insecure_local() -> Self {
+        Self(EnvironmentInner::InsecureLocal)
     }
 
     pub(crate) fn allow(&self, f: Feature) -> bool {

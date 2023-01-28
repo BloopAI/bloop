@@ -63,7 +63,6 @@ pub mod text_range;
 
 pub use config::{default_parallelism, minimum_parallelism, Configuration};
 pub use env::Environment;
-use env::RuntimeEnvironment;
 
 const LOG_ENV_VAR: &str = "BLOOP_LOG";
 static LOGGER_INSTALLED: OnceCell<bool> = OnceCell::new();
@@ -71,7 +70,7 @@ static SENTRY_GUARD: OnceCell<sentry::ClientInitGuard> = OnceCell::new();
 
 #[derive(Clone)]
 pub struct Application {
-    env: RuntimeEnvironment,
+    env: Environment,
     pub config: Arc<Configuration>,
     repo_pool: RepositoryPool,
     background: BackgroundExecutor,
@@ -133,11 +132,11 @@ impl Application {
         let analytics_client = Arc::new(analytics_client);
 
         let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
-        let env = RuntimeEnvironment::new(if config.github_app_id.is_some() {
-            Environment::PrivateServer
+        let env = if config.github_app_id.is_some() {
+            Environment::private_server()
         } else {
             env
-        });
+        };
 
         Ok(Self {
             indexes,
