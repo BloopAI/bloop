@@ -11,7 +11,10 @@ where
         .resolve_resource("config.json")
         .expect("failed to resolve resource");
 
-    let mut configuration = Configuration::read(config).unwrap();
+    let mut configuration = Configuration::merge(
+        Configuration::read(config).unwrap(),
+        Configuration::from_cli().unwrap(),
+    );
     configuration.ctags_path = relative_command_path("ctags");
     configuration.max_threads = bleep::default_parallelism() / 4;
     configuration.model_dir = app

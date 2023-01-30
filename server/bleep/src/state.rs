@@ -371,7 +371,7 @@ fn get_unix_time(time: SystemTime) -> u64 {
         .as_secs()
 }
 
-#[derive(Serialize, Deserialize, Args, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Args, Debug, Clone, Default, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct StateSource {
     /// Directory where repositories are located

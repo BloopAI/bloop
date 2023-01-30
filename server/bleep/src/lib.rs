@@ -85,10 +85,7 @@ impl Application {
     pub async fn initialize(env: Environment, config: Configuration) -> Result<Application> {
         let mut config = match config.config_file {
             None => config,
-            Some(ref path) => {
-                let file = std::fs::File::open(path)?;
-                serde_json::from_reader::<_, Configuration>(file)?
-            }
+            Some(ref path) => Configuration::read(path)?,
         };
 
         config.max_threads = config.max_threads.max(minimum_parallelism());
