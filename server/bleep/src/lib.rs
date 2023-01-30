@@ -46,6 +46,7 @@ mod analytics;
 mod background;
 mod collector;
 mod config;
+mod env;
 mod language;
 mod remotes;
 mod webserver;
@@ -61,60 +62,15 @@ pub mod symbol;
 pub mod text_range;
 
 pub use config::{default_parallelism, minimum_parallelism, Configuration};
+pub use env::Environment;
 
 const LOG_ENV_VAR: &str = "BLOOP_LOG";
 static LOGGER_INSTALLED: OnceCell<bool> = OnceCell::new();
 static SENTRY_GUARD: OnceCell<sentry::ClientInitGuard> = OnceCell::new();
 
-#[derive(Debug, Clone)]
-pub enum Environment {
-    /// Safe API that's suitable for public use
-    Server,
-    /// Use a GitHub App installation to manage repositories and user access.
-    ///
-    /// Running the server in this environment makes use of a GitHub App in order to list and fetch
-    /// repositories. Note that GitHub App installs for a user profile are not valid in this mode.
-    ///
-    /// Connecting properly to a GitHub App installation requires the following flags:
-    ///
-    /// - `--github-client-id`
-    /// - `--github-client-secret`
-    /// - `--github-app-id`
-    /// - `--github-app-private-key`
-    /// - `--github-app-install-id`
-    /// - `--instance-domain`
-    ///
-    /// In order to serve the front-end, the `--frontend-dist` flag can provide a path to a built
-    /// version of the Bloop client SPA.
-    ///
-    /// Users are authenticated by checking whether they belong to the organization which installed
-    /// the GitHub App. All users belonging to the organization are able to see all repos that the
-    /// installation was allowed to access.
-    PrivateServer,
-    /// Enables scanning arbitrary user-specified locations through a Web-endpoint.
-    InsecureLocal,
-}
-
-impl Environment {
-    pub(crate) fn allow_path_scan(&self) -> bool {
-        use Environment::*;
-
-        matches!(self, InsecureLocal)
-    }
-
-    pub(crate) fn allow_github_device_flow(&self) -> bool {
-        use Environment::*;
-        match self {
-            Server => true,
-            InsecureLocal => true,
-            PrivateServer => false,
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct Application {
-    pub env: Environment,
+    env: Environment,
     pub config: Arc<Configuration>,
     repo_pool: RepositoryPool,
     background: BackgroundExecutor,
@@ -177,7 +133,7 @@ impl Application {
 
         let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
         let env = if config.github_app_id.is_some() {
-            Environment::PrivateServer
+            Environment::private_server()
         } else {
             env
         };
@@ -267,17 +223,19 @@ impl Application {
     }
 
     pub(crate) fn allow_path(&self, path: impl AsRef<Path>) -> bool {
-        use Environment::*;
+        if self.env.allow(env::Feature::AnyPathScan) {
+            return true;
+        }
 
-        let source_dir = self.config.source.directory();
-        match self.env {
-            Server => RelativePath::from_path(&path)
+        if self.env.allow(env::Feature::SafePathScan) {
+            let source_dir = self.config.source.directory();
+            return RelativePath::from_path(&path)
                 .map(|p| p.to_logical_path(&source_dir))
                 .unwrap_or_else(|_| path.as_ref().to_owned())
-                .starts_with(&source_dir),
-            PrivateServer => false,
-            InsecureLocal => true,
+                .starts_with(&source_dir);
         }
+
+        false
     }
 
     //
