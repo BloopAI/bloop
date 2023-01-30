@@ -35,7 +35,8 @@ spec:
           - /bleep
           args:
           - --host=0.0.0.0
-          - --index-dir=/data
+          - --source-dir=/data/repos
+          - --index-dir=/data/index
           - --model-dir=/model
           - --frontend-dist=/frontend
           - --answer-api-url={{ .Values.bloop.answerApiUrl }}
