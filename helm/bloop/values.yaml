@@ -1,5 +1,17 @@
 replicaCount: 1
 
+bloop:
+  githubOrgName: ""
+  githubOrgOwnerEmail: ""
+  loopsAPIKey: ""
+  loopsEventName: ""
+  githubAppPrivateKey: ""
+  githubAppInstallId: ""
+  githubClientId: ""
+  githubClientSecret: ""
+  instanceDomain: ""
+  answerApi: ""
+
 image:
   repository: ""
   pullPolicy: Always
