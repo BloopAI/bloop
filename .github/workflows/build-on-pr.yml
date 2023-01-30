@@ -8,8 +8,8 @@ jobs:
       repository: bloop
       tag: build-${{ github.sha }}
     secrets:
-      awsRegion: ${{ vars.AWS_REGION }}
-      awsAccountID: ${{ vars.AWS_ACCOUNT_ID }}
+      awsRegion: ${{ secrets.AWS_REGION }}
+      awsAccountID: ${{ secrets.AWS_ACCOUNT_ID }}
       slackBuildWebhook: ${{ secrets.SLACK_BUILD_WEBHOOK }}
 
   validate_helm:
