@@ -26,9 +26,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "bloop"
           prefix-key: "bloop"
-          shared-key: "tauri-release"
+          shared-key: "tauri-checks"
 
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
@@ -139,6 +138,9 @@ jobs:
         run: pnpm install
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "bloop"
+          shared-key: "tauri-release"
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
