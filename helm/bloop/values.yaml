@@ -1,11 +1,5 @@
 replicaCount: 1
 
-bloop:
-  githubOrgName: ""
-  githubOrgOwnerEmail: ""
-  loopsAPIKey: ""
-  loopsEventName: ""
-
 image:
   repository: ""
   pullPolicy: Always

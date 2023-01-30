@@ -31,7 +31,13 @@ spec:
             {{- toYaml .Values.podSecurityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - /bleep
           args:
+          - --host=0.0.0.0
+          - --index-dir=/data
+          - --model-dir=/model
+          - --frontend-dist=/frontend
           - --answer-api-url={{ .Values.bloop.answerApiUrl }}
           - --instance-domain={{ .Values.bloop.instanceDomain }}
           - --github-app-install-id={{ .Values.bloop.githubAppId }}
