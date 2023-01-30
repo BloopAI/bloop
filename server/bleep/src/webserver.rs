@@ -1,15 +1,18 @@
-use crate::{snippet, state, Application};
+use crate::{env::Feature, snippet, state, Application};
 
 use anyhow::Result;
-use axum::{response::IntoResponse, routing::get, Extension, Json, Router};
+use axum::middleware;
+use axum::{response::IntoResponse, routing::get, Extension, Json};
 use std::{borrow::Cow, net::SocketAddr};
-use tower_http::catch_panic::CatchPanicLayer;
-use tower_http::cors::CorsLayer;
+use tower::Service;
+use tower_http::services::{ServeDir, ServeFile};
+use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
 use tracing::info;
 use utoipa::OpenApi;
 use utoipa::ToSchema;
 
-mod answer;
+mod aaa;
+pub mod answer;
 mod autocomplete;
 mod file;
 mod github;
@@ -19,6 +22,8 @@ mod intelligence;
 mod query;
 mod repos;
 mod semantic;
+
+pub type Router<S = Application> = axum::Router<S>;
 
 #[allow(unused)]
 pub(in crate::webserver) mod prelude {
@@ -35,7 +40,7 @@ pub(in crate::webserver) mod prelude {
 pub async fn start(app: Application) -> Result<()> {
     let bind = SocketAddr::new(app.config.host.parse()?, app.config.port);
 
-    let mut router = Router::new()
+    let mut api = Router::new()
         // querying
         .route("/q", get(query::handle))
         // autocomplete
@@ -53,30 +58,59 @@ pub async fn start(app: Application) -> Result<()> {
             get(repos::get_by_id).delete(repos::delete_by_id),
         )
         .route("/repos/sync/*path", get(repos::sync))
-        // remotes
-        .route("/remotes/github/login", get(github::login))
-        .route("/remotes/github/status", get(github::status))
         // intelligence
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))
         // misc
         .route("/file/*ref", get(file::handle))
         .route("/semantic/chunks", get(semantic::raw_chunks))
-        .route("/answer", get(answer::handle))
+        .route("/answer", get(answer::handle));
+
+    if app.env.allow(Feature::GithubDeviceFlow) {
+        api = api
+            .route("/remotes/github/login", get(github::login))
+            .route("/remotes/github/status", get(github::status));
+    }
+
+    if app.env.allow(Feature::AnyPathScan) {
+        api = api.route("/repos/scan", get(repos::scan_local));
+    }
+
+    // Note: all routes above this point must be authenticated.
+    if app.env.allow(Feature::AuthorizationRequired) {
+        api = aaa::router(api, app.clone());
+    }
+
+    api = api
         .route("/api-doc/openapi.json", get(openapi_json::handle))
         .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
         .route("/health", get(health));
 
-    if app.scan_allowed() {
-        router = router.route("/repos/scan", get(repos::scan_local));
-    }
-
-    router = router
-        .layer(CatchPanicLayer::new())
+    let api: Router<()> = api
         .layer(Extension(app.indexes.clone()))
         .layer(Extension(app.semantic.clone()))
-        .layer(Extension(app))
-        .layer(CorsLayer::permissive());
+        .layer(Extension(app.clone()))
+        .with_state(app.clone())
+        .layer(CorsLayer::permissive())
+        .layer(CatchPanicLayer::new());
+
+    let mut router = Router::new().nest("/api", api);
+
+    if let Some(frontend_dist) = app.config.frontend_dist.clone() {
+        router = router.nest_service(
+            "/",
+            tower::service_fn(move |req| {
+                let frontend_dist = frontend_dist.clone();
+                async move {
+                    Ok(ServeDir::new(&frontend_dist)
+                        .fallback(ServeFile::new(frontend_dist.join("index.html")))
+                        .call(req)
+                        .await
+                        .unwrap())
+                }
+            }),
+        );
+    }
 
     info!(%bind, "starting webserver");
     axum::Server::bind(&bind)
@@ -113,7 +147,7 @@ pub(in crate::webserver) fn internal_error<'a, S: std::fmt::Display>(
 }
 
 /// The response upon encountering an error
-#[derive(serde::Serialize, PartialEq, Eq, ToSchema)]
+#[derive(serde::Serialize, PartialEq, Eq, ToSchema, Debug)]
 pub(in crate::webserver) struct EndpointError<'a> {
     /// The kind of this error
     pub kind: ErrorKind,
@@ -139,7 +173,7 @@ impl<'a> EndpointError<'a> {
 
 /// The kind of an error
 #[allow(unused)]
-#[derive(serde::Serialize, PartialEq, Eq, ToSchema)]
+#[derive(serde::Serialize, PartialEq, Eq, ToSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub(in crate::webserver) enum ErrorKind {

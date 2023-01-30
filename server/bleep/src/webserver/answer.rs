@@ -2,11 +2,12 @@ use std::collections::HashMap;
 
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
 use reqwest::StatusCode;
-use tracing::{error, info};
+use thiserror::Error;
+use tracing::{error, info, warn};
 use utoipa::ToSchema;
 
 use crate::{
-    indexes::reader::ContentDocument, query::parser, segment::QueryEvent, semantic::Semantic,
+    analytics::QueryEvent, indexes::reader::ContentDocument, query::parser, semantic::Semantic,
     state::RepoRef, Application,
 };
 
@@ -36,16 +37,9 @@ pub mod api {
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
-    pub struct DecodedResponse {
-        pub index: u32,
-        pub answer: String,
-    }
-
-    #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Response {
-        #[serde(flatten)]
-        pub data: DecodedResponse,
-        pub id: String,
+        pub answer: String,
+        pub answer_path: String,
     }
 }
 
@@ -68,11 +62,13 @@ pub struct Params {
 
 #[derive(serde::Serialize, ToSchema)]
 pub struct AnswerResponse {
+    pub user_id: String,
+    pub query_id: uuid::Uuid,
     pub snippets: Vec<api::Snippet>,
     pub selection: api::Response,
 }
 
-const SNIPPET_COUNT: usize = 14;
+const SNIPPET_COUNT: usize = 50;
 
 pub async fn handle(
     Query(params): Query<Params>,
@@ -80,6 +76,7 @@ pub async fn handle(
 ) -> Result<impl IntoResponse, impl IntoResponse> {
     let semantic = app
         .semantic
+        .as_ref()
         .ok_or_else(|| super::error(ErrorKind::Configuration, "Qdrant not configured"))?;
 
     let query =
@@ -132,7 +129,7 @@ pub async fn handle(
     let mut snippets = vec![];
     let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
 
-    for snippet in all_snippets.into_iter() {
+    for snippet in all_snippets.clone().into_iter() {
         if snippets.len() > SNIPPET_COUNT {
             break;
         }
@@ -167,9 +164,8 @@ pub async fn handle(
     }
 
     if snippets.is_empty() {
-        tracing::warn!("Semantic search returned no snippets");
-        return Err(super::error(
-            ErrorKind::Internal,
+        warn!("Semantic search returned no snippets");
+        return Err(super::internal_error(
             "semantic search returned no snippets",
         ));
     } else {
@@ -194,12 +190,12 @@ pub async fn handle(
 
     info!("Relevant snippet index: {}", &relevant_snippet_index);
 
+    let answer_api_host = format!("{}/q", app.config.answer_api_url);
+    let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target, 5);
+
     let relevant_snippet = snippets
         .get(relevant_snippet_index)
         .ok_or_else(|| super::internal_error("answer-api returned out-of-bounds index"))?;
-
-    let answer_api_host = format!("{}/q", app.config.answer_api_url);
-    let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target);
 
     // grow the snippet by 60 lines above and below, we have sufficient space
     // to grow this snippet by 10 times its original size (15 to 150)
@@ -244,12 +240,12 @@ pub async fn handle(
     let snippet_explanation = answer_api_client
         .explain_snippet(&explain_prompt)
         .await
-        .map_err(|e| match e.status() {
-            Some(StatusCode::SERVICE_UNAVAILABLE) => super::error(
-                ErrorKind::UpstreamService,
-                "service is currently overloaded",
-            ),
-            _ => super::internal_error(e),
+        .map_err(|e| {
+            sentry::capture_message(
+                format!("answer-api failed to respond: {e}").as_str(),
+                sentry::Level::Error,
+            );
+            super::error(ErrorKind::UpstreamService, e.to_string())
         })?
         .text()
         .await
@@ -258,26 +254,29 @@ pub async fn handle(
     // reorder snippets
     snippets.swap(relevant_snippet_index, 0);
 
-    if let Some(ref segment) = *app.segment {
-        segment
-            .track_query(QueryEvent {
-                user_id: params.user_id.clone(),
-                query: params.q.clone(),
-                relevant_snippet_index,
-                explain_prompt,
-                explanation: snippet_explanation.clone(),
-            })
-            .await;
-    }
+    let query_id = uuid::Uuid::new_v4();
+    app.track_query(QueryEvent {
+        user_id: params.user_id.clone(),
+        query_id,
+        query: params.q.clone(),
+        semantic_results: all_snippets,
+        filtered_semantic_results: snippets.clone(),
+        relevant_snippet_index,
+        explain_prompt,
+        explanation: snippet_explanation.clone(),
+        overlap_strategy: semantic.overlap_strategy(),
+    });
+
+    // answering snippet is always at index 0
+    let answer_path = snippets.get(0).unwrap().relative_path.to_string();
 
     Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
         snippets,
+        query_id,
+        user_id: params.user_id,
         selection: api::Response {
-            data: api::DecodedResponse {
-                index: 0u32, // the relevant snippet is always placed at 0
-                answer: snippet_explanation,
-            },
-            id: params.user_id,
+            answer: snippet_explanation,
+            answer_path,
         },
     })))
 }
@@ -308,6 +307,7 @@ fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
 struct OpenAIRequest {
     prompt: String,
     max_tokens: u32,
+    temperature: f32,
 }
 
 struct AnswerAPIClient<'s> {
@@ -315,15 +315,31 @@ struct AnswerAPIClient<'s> {
     host: String,
     query: String,
     semantic: &'s Semantic,
+    max_attempts: usize,
+}
+
+#[derive(Error, Debug)]
+enum AnswerAPIError {
+    #[error("max retry attempts reached {0}")]
+    MaxAttemptsReached(usize),
+
+    #[error("fatal error {0}")]
+    Fatal(reqwest::Error),
 }
 
 impl Semantic {
-    fn build_answer_api_client<'s>(&'s self, host: &str, query: &str) -> AnswerAPIClient<'s> {
+    fn build_answer_api_client<'s>(
+        &'s self,
+        host: &str,
+        query: &str,
+        max_attempts: usize,
+    ) -> AnswerAPIClient<'s> {
         AnswerAPIClient {
             client: reqwest::Client::new(),
             host: host.to_owned(),
             query: query.to_owned(),
             semantic: self,
+            max_attempts,
         }
     }
 }
@@ -333,41 +349,56 @@ impl<'s> AnswerAPIClient<'s> {
         &self,
         prompt: &str,
         max_tokens: u32,
+        temperature: f32,
     ) -> Result<reqwest::Response, reqwest::Error> {
         self.client
             .post(self.host.as_str())
             .json(&OpenAIRequest {
                 prompt: prompt.to_string(),
                 max_tokens,
+                temperature,
             })
             .send()
             .await
+    }
+
+    async fn send_until_success(
+        &self,
+        prompt: &str,
+        max_tokens: u32,
+        temperature: f32,
+    ) -> Result<reqwest::Response, AnswerAPIError> {
+        for attempt in 0..self.max_attempts {
+            let response = self.send(prompt, max_tokens, temperature).await;
+            match response {
+                Ok(r) if r.status() == StatusCode::OK => return Ok(r),
+                Err(e) => return Err(AnswerAPIError::Fatal(e)),
+                _ => (),
+            };
+            warn!(%attempt, "answer-api returned {} ... retrying", response.unwrap().status());
+        }
+        Err(AnswerAPIError::MaxAttemptsReached(self.max_attempts))
     }
 }
 
 impl<'a> AnswerAPIClient<'a> {
     fn build_explain_prompt(&self, snippet: &api::Snippet) -> String {
         let prompt = format!(
-            "File: {}
-
-{}
-
-#####
-
-Above is a code snippet. \
-Answer the user's question with a detailed response. \
-Repeat any relevant code, separate each block of code out and explain why it is relevant. \
-Format your response in GitHub markdown with code blocks annotated\
-with programming language. Include the path of the file.
-
-Q:{}
-A:",
-            snippet.relative_path, snippet.text, self.query
+            "You are an AI assistant for a repo. You are given an extract from a file and a question. \
+Use the file to write a detailed answer to the question. Copy relevant parts of the file into the answer and explain why they are relevant. \
+Do NOT include code that is not in the file. If the file doesn't contain enough information to answer the question, or you don't know the answer, just say \"Sorry, I'm not sure\". \
+Do NOT try to make up an answer. Format your response in GitHub markdown with code blocks annotated with programming language.
+Question: {}
+=========
+File: {}
+=========
+Answer in GitHub Markdown:",
+            self.query, snippet.text,
         );
         prompt
     }
 
-    async fn explain_snippet(&self, prompt: &str) -> Result<reqwest::Response, reqwest::Error> {
+    async fn explain_snippet(&self, prompt: &str) -> Result<reqwest::Response, AnswerAPIError> {
         let tokens_used = self.semantic.gpt2_token_count(prompt);
         info!(%tokens_used, "input prompt token count");
         let max_tokens = 4096usize.saturating_sub(tokens_used);
@@ -377,9 +408,10 @@ A:",
             error!(%tokens_used, "prompt overshot token limit");
         }
 
-        // do not let the completion cross 2500 tokens
+        // do not let the completion cross 500 tokens
         let max_tokens = max_tokens.clamp(1, 500);
         info!(%max_tokens, "clamping max tokens");
-        self.send(prompt, max_tokens as u32).await
+        self.send_until_success(prompt, max_tokens as u32, 0.9)
+            .await
     }
 }

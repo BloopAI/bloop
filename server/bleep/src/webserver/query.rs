@@ -592,12 +592,7 @@ impl ExecuteQuery for OpenReader {
         queries: &[parser::Query<'_>],
         _q: &ApiQuery,
     ) -> Result<QueryResponse> {
-        let top_docs = TopDocs::with_limit(50000);
-        let empty_collector = MultiCollector::new();
-        let results = indexer
-            .query(queries.iter(), self, (top_docs, empty_collector))
-            .await?;
-
+        #[derive(Debug)]
         struct Directive<'a> {
             relative_path: &'a str,
             repo_name: &'a str,
@@ -617,6 +612,41 @@ impl ExecuteQuery for OpenReader {
                 })
             })
             .collect::<SmallVec<[_; 2]>>();
+
+        let top_docs = TopDocs::with_limit(50000);
+        let empty_collector = MultiCollector::new();
+
+        let relative_paths = open_directives
+            .iter()
+            .map(|d| d.relative_path.to_owned())
+            .collect::<Vec<_>>();
+
+        let collector = BytesFilterCollector::new(
+            indexer.source.raw_relative_path,
+            move |b| {
+                let Ok(relative_path) = std::str::from_utf8(b) else {
+                    return false;
+                };
+
+                // Check if *any* of the relative paths match. We can't compare repositories here
+                // because the `BytesFilterCollector` operates on one field. So we sort through this
+                // later. It's unlikely that a search will use more than one open query.
+                relative_paths.iter().any(|rp| {
+                    let rp = rp.trim_end_matches(|c| c != MAIN_SEPARATOR);
+
+                    matches!(
+                        // Trim trailing suffix and avoid returning results for an empty string
+                        // (this means that the document we are looking at is the folder itself; a
+                        // redundant result).
+                        relative_path.strip_prefix(rp).map(|p| p.trim_end_matches(MAIN_SEPARATOR)),
+                        Some(p) if !p.is_empty() && !p.contains(MAIN_SEPARATOR)
+                    )
+                })
+            },
+            (top_docs, empty_collector),
+        );
+
+        let results = indexer.query(queries.iter(), self, collector).await?;
 
         // Map of (repo_name, relative_path) -> (String, entry set)
         //
@@ -693,15 +723,15 @@ impl ExecuteQuery for OpenReader {
 
         let data = directories
             .into_iter()
-            .map(|(repo_name, relative_path)| {
-                let (repo_ref, entries) = dir_entries.get(&(repo_name, relative_path)).unwrap();
+            .filter_map(|(repo_name, relative_path)| {
+                let (repo_ref, entries) = dir_entries.get(&(repo_name, relative_path))?;
 
-                DirectoryData {
+                Some(DirectoryData {
                     repo_name: repo_name.to_owned(),
                     relative_path: relative_path.to_owned(),
                     repo_ref: repo_ref.clone(),
                     entries: entries.iter().cloned().collect(),
-                }
+                })
             })
             .map(QueryResult::Directory)
             .chain(files.into_iter().map(QueryResult::File))

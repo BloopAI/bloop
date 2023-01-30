@@ -1,9 +1,8 @@
 use bleep::{Application, Configuration, Environment};
-use tauri::{Manager, Runtime};
 
-use crate::{relative_command_path, Payload};
+use super::{plugin, relative_command_path, App, Manager, Payload, Runtime};
 
-pub(super) fn bleep<R>(app: &mut tauri::App<R>) -> tauri::plugin::Result<()>
+pub(super) fn bleep<R>(app: &mut App<R>) -> plugin::Result<()>
 where
     R: Runtime,
 {
@@ -21,13 +20,12 @@ where
         .expect("bad bundle");
 
     let cache_dir = app.path_resolver().app_cache_dir().unwrap();
-    configuration
-        .source
-        .set_default_dir(&cache_dir.join("bleep"));
+    configuration.index_dir = cache_dir.join("bleep");
 
     let app = app.handle();
     tokio::spawn(async move {
-        let initialized = Application::initialize(Environment::InsecureLocal, configuration).await;
+        let initialized =
+            Application::initialize(Environment::insecure_local(), configuration).await;
 
         if let Ok(backend) = initialized {
             if let Err(_e) = backend.run().await {

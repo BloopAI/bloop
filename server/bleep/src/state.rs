@@ -4,6 +4,7 @@ use crate::{
     language::{get_language_info, LanguageInfo},
     remotes::{gather_repo_roots, BackendCredential},
 };
+use anyhow::Result;
 use clap::Args;
 use dashmap::DashMap;
 use rand::Rng;
@@ -16,7 +17,6 @@ use serde::{
 use std::{
     collections::HashSet,
     fmt::{self, Display},
-    ops::Not,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -28,7 +28,6 @@ use utoipa::ToSchema;
 #[derive(Hash, Eq, PartialEq, Debug, Clone)]
 pub struct RepoRef(Backend, String);
 pub(crate) type RepositoryPool = Arc<DashMap<RepoRef, Repository>>;
-pub(crate) type Credentials = Arc<DashMap<Backend, BackendCredential>>;
 
 include!(concat!(env!("OUT_DIR"), "/schema_version.rs"));
 
@@ -394,10 +393,15 @@ pub struct StateSource {
     #[clap(short, long)]
     #[serde(default)]
     version_file: Option<PathBuf>,
+
+    /// Cookie private key file
+    #[clap(long)]
+    #[serde(default)]
+    cookie_key: Option<PathBuf>,
 }
 
 impl StateSource {
-    pub fn set_default_dir(&mut self, dir: &Path) {
+    pub(crate) fn set_default_dir(&mut self, dir: &Path) {
         self.state_file
             .get_or_insert_with(|| dir.join("repo_state.json"));
 
@@ -407,6 +411,9 @@ impl StateSource {
         self.version_file
             .get_or_insert_with(|| dir.join("version.json"));
 
+        self.cookie_key
+            .get_or_insert_with(|| dir.join("cookie_key.bin"));
+
         self.directory.get_or_insert_with(|| {
             let target = dir.join("local_cache");
             std::fs::create_dir_all(&target).unwrap();
@@ -415,17 +422,17 @@ impl StateSource {
         });
     }
 
-    pub fn initialize_pool(&self) -> Result<RepositoryPool, RepoError> {
+    pub(crate) fn initialize_pool(&self) -> Result<RepositoryPool, RepoError> {
         #[cfg(target = "windows")]
         use dunce::canonicalize;
         #[cfg(not(target = "windows"))]
         use std::fs::canonicalize;
         match (self.directory.as_ref(), self.state_file.as_ref()) {
             (Some(root), None) => read_root(root),
-            (None, Some(path)) => read_file_or_default(path),
+            (None, Some(path)) => read_file_or_default(path).map(Arc::new),
 
             (Some(root), Some(path)) => {
-                let state: RepositoryPool = read_file_or_default(path)?;
+                let state: RepositoryPool = Arc::new(read_file_or_default(path)?);
                 let current_repos = gather_repo_roots(root).collect::<HashSet<_>>();
                 let root = canonicalize(root)?;
 
@@ -436,7 +443,7 @@ impl StateSource {
                     if let Some(path) = k.local_path() {
                         // clippy suggestion causes the code to break, revisit after 1.66
                         #[allow(clippy::needless_borrow)]
-                        if path.starts_with(&root) && current_repos.contains(k).not() {
+                        if path.starts_with(&root) && !current_repos.contains(k) {
                             debug!(reporef=%k, "repo scheduled to be removed;");
                             elem.value_mut().delete();
                         }
@@ -479,10 +486,9 @@ impl StateSource {
     }
 
     pub fn index_version_mismatch(&self) -> bool {
-        let current: Arc<String> =
-            read_file_or_default(self.version_file.as_ref().unwrap()).unwrap();
+        let current: String = read_file_or_default(self.version_file.as_ref().unwrap()).unwrap();
 
-        current.is_empty().not() && current.as_ref() != SCHEMA_VERSION
+        !current.is_empty() && current != SCHEMA_VERSION
     }
 
     pub fn save_index_version(&self) -> Result<(), RepoError> {
@@ -496,14 +502,19 @@ impl StateSource {
         }
     }
 
-    pub(crate) fn initialize_credentials(&self) -> Result<Credentials, RepoError> {
+    pub(crate) fn initialize_credentials(
+        &self,
+    ) -> Result<DashMap<Backend, BackendCredential>, RepoError> {
         read_file_or_default(self.credentials.as_ref().unwrap())
     }
 
-    pub(crate) fn save_credentials(&self, creds: Credentials) -> Result<(), RepoError> {
+    pub(crate) fn save_credentials(
+        &self,
+        creds: &DashMap<Backend, BackendCredential>,
+    ) -> Result<(), RepoError> {
         match self.credentials {
             None => Err(RepoError::NoSourceGiven),
-            Some(ref path) => pretty_write_file(path, creds.as_ref()),
+            Some(ref path) => pretty_write_file(path, creds),
         }
     }
 
@@ -516,6 +527,19 @@ impl StateSource {
         RelativePath::from_path(dir)
             .map(|p| p.to_logical_path(std::env::current_dir().unwrap()))
             .unwrap_or_else(|_| dir.to_owned())
+    }
+
+    pub fn initialize_cookie_key(&self) -> Result<axum_extra::extract::cookie::Key> {
+        let path = self.cookie_key.as_ref().unwrap();
+
+        if path.exists() {
+            let master_key = std::fs::read(path)?;
+            Ok(axum_extra::extract::cookie::Key::from(&master_key))
+        } else {
+            let master_key = axum_extra::extract::cookie::Key::generate();
+            std::fs::write(path, master_key.master())?;
+            Ok(master_key)
+        }
     }
 }
 
@@ -552,15 +576,13 @@ pub fn pretty_write_file<T: Serialize + ?Sized>(
     Ok(())
 }
 
-pub fn read_file_or_default<T: Default + DeserializeOwned>(
-    path: &Path,
-) -> Result<Arc<T>, RepoError> {
-    if path.exists().not() {
+pub fn read_file_or_default<T: Default + DeserializeOwned>(path: &Path) -> Result<T, RepoError> {
+    if !path.exists() {
         return Ok(Default::default());
     }
 
     let file = std::fs::File::open(path)?;
-    Ok(Arc::new(serde_json::from_reader::<_, T>(file)?))
+    Ok(serde_json::from_reader::<_, T>(file)?)
 }
 
 fn read_root(path: &Path) -> Result<RepositoryPool, RepoError> {
@@ -779,6 +801,7 @@ mod test {
             credentials: None,
             state_file: None,
             version_file: None,
+            cookie_key: None,
         }
         .initialize_pool()
         .unwrap();

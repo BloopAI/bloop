@@ -108,6 +108,12 @@ impl Semantic {
                 .build()?,
         );
 
+        let threads = if let Ok(v) = std::env::var("NUM_OMP_THREADS") {
+            str::parse(&v).unwrap_or(1)
+        } else {
+            1
+        };
+
         Ok(Self {
             qdrant: qdrant.into(),
             embedder_tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("embedder").join("tokenizer.json"))
@@ -119,12 +125,12 @@ impl Semantic {
                 .into(),
             embedder_session: SessionBuilder::new(&environment)?
                 .with_optimization_level(GraphOptimizationLevel::Level3)?
-                .with_intra_threads(1)?
+                .with_intra_threads(threads)?
                 .with_model_from_file(model_dir.join("embedder").join("model.onnx"))?
                 .into(),
             ranker_session: SessionBuilder::new(&environment)?
                 .with_optimization_level(GraphOptimizationLevel::Level3)?
-                .with_intra_threads(1)?
+                .with_intra_threads(threads)?
                 .with_model_from_file(model_dir.join("ranker").join("model.onnx"))?
                 .into(),
             config,
@@ -245,17 +251,14 @@ impl Semantic {
             relative_path,
             buffer,
             &self.embedder_tokenizer,
-            self.config.max_chunk_tokens,
+            50..self.config.max_chunk_tokens,
             15,
-            self.config
-                .overlap
-                .unwrap_or(chunk::OverlapStrategy::Partial(0.5)),
+            self.overlap_strategy(),
         );
         let repo_plus_file = repo_name.to_owned() + "\t" + relative_path + "\n";
         debug!(chunk_count = chunks.len(), "found chunks");
         let datapoints = chunks
             .par_iter()
-            .filter(|chunk| chunk.len() > 50) // small chunks tend to skew results
             .filter_map(
                 |chunk| match self.embed(&(repo_plus_file.clone() + chunk.data)) {
                     Ok(ok) => Some(PointStruct {
@@ -301,5 +304,11 @@ impl Semantic {
             .encode(input, false)
             .map(|code| code.len())
             .unwrap_or(0)
+    }
+
+    pub fn overlap_strategy(&self) -> chunk::OverlapStrategy {
+        self.config
+            .overlap
+            .unwrap_or(chunk::OverlapStrategy::Partial(0.5))
     }
 }

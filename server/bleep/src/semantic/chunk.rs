@@ -16,6 +16,8 @@ pub enum ChunkError {
     Query(tree_sitter::QueryError),
 }
 
+/// A Chunk type, containing the plain text (borrowed from the source)
+/// and a `TextRange` with byte, line and column positions
 #[derive(Debug)]
 pub struct Chunk<'a> {
     pub data: &'a str,
@@ -39,10 +41,19 @@ impl<'a> Chunk<'a> {
     }
 }
 
-// This calculates the line and column for a given byte position. The last_line and last_byte
-// parameters can be used to reduce the amount of searching for the line position from quadratic
-// to linear. If in doubt, just use `1` for last_line and `0` for last_byte.
-fn point(src: &str, byte: usize, last_line: usize, last_byte: usize) -> Point {
+/// This calculates the line and column for a given byte position. The last_line and last_byte
+/// parameters can be used to reduce the amount of searching for the line position from quadratic
+/// to linear. If in doubt, just use `0` for last_line and `0` for last_byte.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!(
+///     bleep::semantic::chunk::point("fn hello() {\n    \"world\"\n}\n", 16, 0, 0),
+///     bleep::text_range::Point::new(16, 1, 4)
+/// );
+/// ```
+pub fn point(src: &str, byte: usize, last_line: usize, last_byte: usize) -> Point {
     assert!(
         byte >= last_byte,
         "byte={byte} < last_byte={last_byte}, last_line={last_line}"
@@ -128,17 +139,6 @@ impl TryFrom<&'_ str> for OverlapStrategy {
 }
 
 impl OverlapStrategy {
-    /// returns the index into the `starts` array according to the strategy
-    fn next_start(&self, starts: &[usize], start: usize, end: usize) -> usize {
-        (match self {
-            Self::ByLines(n) => starts.partition_point(|&x| x <= end).saturating_sub(*n),
-            Self::Partial(part) => {
-                let mid = start + (((end - start) as f64) * part) as usize;
-                starts.partition_point(|&x| x <= mid)
-            }
-        }) + 1
-    }
-
     // returns the next startpoint for overlong lines
     fn next_subdivision(&self, max_tokens: usize) -> usize {
         (match self {
@@ -203,11 +203,13 @@ pub fn by_tokens<'s>(
     file: &str,
     src: &'s str,
     tokenizer: &Tokenizer, // we count from line
-    max_tokens: usize,
+    token_bounds: Range<usize>,
     max_lines: usize,
     strategy: OverlapStrategy,
 ) -> Vec<Chunk<'s>> {
-    if src.is_empty() {
+    let min_tokens = token_bounds.start;
+    // no need to even tokenize files too small to contain our min number of tokens
+    if src.len() < min_tokens {
         return Vec::new();
     }
     let Ok(encoding) = tokenizer.encode(src, true)
@@ -217,7 +219,8 @@ pub fn by_tokens<'s>(
     };
 
     let offsets = encoding.get_offsets();
-    if offsets.is_empty() {
+    // again, if we have less than our minimum number of tokens, we may skip the file
+    if offsets.len() < min_tokens {
         return Vec::new();
     }
 
@@ -230,91 +233,83 @@ pub fn by_tokens<'s>(
         }
     };
 
-    if max_tokens <= DEDUCT_SPECIAL_TOKENS + repo_tokens {
+    if token_bounds.end <= DEDUCT_SPECIAL_TOKENS + repo_tokens {
         error!("too few tokens");
         return Vec::new();
     }
 
-    let max_tokens = max_tokens - DEDUCT_SPECIAL_TOKENS - repo_tokens;
+    let max_tokens = token_bounds.end - DEDUCT_SPECIAL_TOKENS - repo_tokens;
+    let max_newline_tokens = max_tokens * 3 / 4; //TODO: make this configurable
+    let max_boundary_tokens = max_tokens * 7 / 8; //TODO: make this configurable
     debug!("max tokens reduced to {max_tokens}");
-    // all indices into tokens/offsets at which a new line might begin.
-    let mut starts: Vec<_> = vec![0];
-    starts.extend((1..offsets.len()).filter(|&i| {
-        let (from, until) = (offsets[i - 1].0, offsets[i].0);
-        from < until && src[from..until].contains('\n')
-    }));
 
-    // calculate the start/end indices into tokens/offsets for the chunk starts/ends
+    let offsets_len = offsets.len() - 1;
+    // remove the SEP token which has (0, 0) offsets for some reason
+    let offsets = if offsets[offsets_len].0 == 0 {
+        &offsets[..offsets_len]
+    } else {
+        offsets
+    };
+    let ids = encoding.get_ids();
     let mut chunks = Vec::new();
-    let mut s = 0;
-    let mut offset = 0;
-    let (mut last_line, mut last_byte) = (1, 0);
-    while let Some(index_diff) = starts[s..].iter().position(|&p| p - offset > max_tokens) {
-        let index_diff = index_diff - 1;
-        // add (offset, end) to token_ranges, split if necessary
-        if index_diff == 0 {
-            // overlong line
-            let end_offset = starts.get(s + 1).map_or_else(|| offsets.len(), |&o| o);
-            let mut start = true;
-            loop {
-                let end = offset + max_tokens;
-                if end > end_offset {
-                    add_token_range(
-                        &mut chunks,
-                        src,
-                        offsets,
-                        offset..end_offset,
-                        &mut last_line,
-                        &mut last_byte,
-                        std::mem::take(&mut start),
-                    );
-                    break;
-                }
-                add_token_range(
-                    &mut chunks,
-                    src,
-                    offsets,
-                    offset..end,
-                    &mut last_line,
-                    &mut last_byte,
-                    std::mem::take(&mut start),
-                );
-                offset += strategy.next_subdivision(max_tokens);
-            }
-            s += 1;
+    let mut start = 0;
+    let (mut last_line, mut last_byte) = (0, 0);
+    loop {
+        let next_limit = start + max_tokens;
+        let end_limit = if next_limit >= offsets_len {
+            offsets_len
+        } else if let Some(next_newline) = (start + max_newline_tokens..next_limit)
+            .rfind(|&i| src[offsets[i].0..offsets[i + 1].0].contains('\n'))
+        {
+            next_newline
+        } else if let Some(next_boundary) = (start + max_boundary_tokens..next_limit).rfind(|&i| {
+            !tokenizer
+                .id_to_token(ids[i + 1])
+                .map_or(false, |s| s.starts_with("##"))
+        }) {
+            next_boundary
         } else {
-            let end = starts[s + index_diff];
+            next_limit
+        };
+        if end_limit - start >= min_tokens {
             add_token_range(
                 &mut chunks,
                 src,
                 offsets,
-                offset..end,
+                start..end_limit,
                 &mut last_line,
                 &mut last_byte,
-                true,
+                false,
             );
-            s = strategy.next_start(&starts, offset, end).max(s + 1);
         }
-        offset = starts[s];
-    }
-    let mut start = true;
-    while offset < offsets.len() {
-        let end_offset = (offset + max_tokens).min(offsets.len());
-        add_token_range(
-            &mut chunks,
-            src,
-            offsets,
-            offset..end_offset,
-            &mut last_line,
-            &mut last_byte,
-            std::mem::take(&mut start),
-        );
-        if end_offset == offsets.len() {
-            break;
+        if end_limit == offsets_len {
+            return chunks;
         }
-        offset += strategy.next_subdivision(max_tokens);
+        let diff = strategy.next_subdivision(end_limit - start);
+        let mid = start + diff;
+        // find nearest newlines or boundaries, set start accordingly
+        let next_newline_diff =
+            (mid..end_limit).find(|&i| src[offsets[i].0..offsets[i + 1].0].contains('\n'));
+        let prev_newline_diff = (start + (diff / 2)..mid)
+            .rfind(|&i| src[offsets[i].0..offsets[i + 1].0].contains('\n'));
+        start = match (next_newline_diff, prev_newline_diff) {
+            (Some(n), None) | (None, Some(n)) => n,
+            (Some(n), Some(p)) => {
+                if n - mid < mid - p {
+                    n
+                } else {
+                    p
+                }
+            }
+            (None, None) => (mid..end_limit)
+                .find(|&i| {
+                    !tokenizer
+                        .id_to_token(ids[i + 1])
+                        .map_or(false, |s| s.starts_with("##"))
+                })
+                .unwrap_or(mid),
+        };
     }
-    chunks
 }
 
 pub fn by_lines(src: &str, size: usize) -> Vec<Chunk<'_>> {
@@ -356,31 +351,64 @@ mod tests {
     use std::env;
 
     #[test]
+    pub fn test_empty() {
+        let cur_dir = env::current_dir().unwrap();
+        let base_dir = cur_dir.ancestors().nth(2).unwrap();
+        let tok_json = base_dir.join("model/tokenizer.json");
+        let tokenizer = tokenizers::Tokenizer::from_file(tok_json).unwrap();
+        let token_bounds = 50..256;
+        let max_lines = 15;
+        let no_tokens = by_tokens(
+            "bloop",
+            "rmpty.rs",
+            "",
+            &tokenizer,
+            token_bounds,
+            max_lines,
+            OverlapStrategy::ByLines(1),
+        );
+        assert!(no_tokens.is_empty());
+    }
+
+    #[test]
     pub fn test_by_tokens() {
         let cur_dir = env::current_dir().unwrap();
         let base_dir = cur_dir.ancestors().nth(2).unwrap();
         let tok_json = base_dir.join("model/tokenizer.json");
         let tokenizer = tokenizers::Tokenizer::from_file(tok_json).unwrap();
-        let max_tokens = 256;
+        let token_bounds = 50..256;
         let max_lines = 15;
         let walk = ignore::WalkBuilder::new(base_dir)
             .standard_filters(true)
             .build();
+        let mut num_chunks = 0;
+        let mut combined_size = 0;
         for file in walk {
             let file = file.unwrap();
             if file.metadata().unwrap().is_dir() {
                 continue;
             }
             let Ok(src) = std::fs::read_to_string(file.path()) else { continue };
-            let _tokenwise = by_tokens(
+            let chunks = by_tokens(
                 "bloop",
                 &file.path().to_string_lossy(),
                 &src,
                 &tokenizer,
-                max_tokens,
+                token_bounds.clone(),
                 max_lines,
                 OverlapStrategy::Partial(0.5),
             );
+            num_chunks += chunks.len();
+            combined_size += chunks.iter().map(Chunk::len).sum::<usize>();
         }
+        let avg_size = combined_size / num_chunks;
+        // we use string length as a stand in for token length, seeing as tokens will
+        // on average be two chars long, and our distribution should be skewed towards
+        // longer chunks.
+        let min_avg_size = 512;
+        assert!(
+            avg_size > min_avg_size,
+            "Average chunk size should be more than {min_avg_size}, was {avg_size}",
+        );
     }
 }

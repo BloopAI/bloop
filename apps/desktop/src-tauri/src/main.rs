@@ -12,6 +12,7 @@ use bleep::Application;
 use once_cell::sync::OnceCell;
 use sentry::ClientInitGuard;
 use std::sync::{Arc, RwLock};
+pub use tauri::{plugin, App, Manager, Runtime};
 
 static TELEMETRY: RwLock<bool> = RwLock::new(false);
 static SENTRY: OnceCell<ClientInitGuard> = OnceCell::new();

@@ -1,8 +1,8 @@
-use std::time::SystemTime;
+use std::{sync::Arc, time::SystemTime};
 
 use tantivy::{
     collector::{ScoreSegmentTweaker, ScoreTweaker},
-    fastfield::{BytesFastFieldReader, DynamicFastFieldReader, FastFieldReader},
+    fastfield::{BytesFastFieldReader, Column},
     DocId, Score,
 };
 
@@ -10,9 +10,9 @@ use crate::indexes::file::File;
 
 pub struct DocumentTweaker(pub File);
 pub struct SegmentScorer {
-    line_length: DynamicFastFieldReader<f64>,
+    line_length: Arc<dyn Column<f64>>,
     lang: BytesFastFieldReader,
-    last_commit: DynamicFastFieldReader<u64>,
+    last_commit: Arc<dyn Column<u64>>,
 }
 
 impl ScoreSegmentTweaker<Score> for SegmentScorer {
@@ -21,12 +21,12 @@ impl ScoreSegmentTweaker<Score> for SegmentScorer {
         score *= 1.0 + self.lang.num_bytes(doc).min(1) as f32 * 999.0;
 
         // Penalty for lines that are too long
-        score /= self.line_length.get(doc).clamp(20.0, 1000.0) as f32;
+        score /= self.line_length.get_val(doc).clamp(20.0, 1000.0) as f32;
         score /= SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_secs()
-            .saturating_sub(self.last_commit.get(doc))
+            .saturating_sub(self.last_commit.get_val(doc))
             .min(5_000_000) as f32;
 
         score
