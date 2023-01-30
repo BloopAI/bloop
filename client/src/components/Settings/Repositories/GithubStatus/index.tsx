@@ -60,7 +60,7 @@ const GithubStatus = ({
               handleClick();
               openLink(loginUrl);
             }}
-            disabled={buttonClicked}
+            disabled={buttonClicked || !loginUrl}
           >
             {buttonClicked ? 'Waiting for auth' : 'Connect'}
           </Button>
