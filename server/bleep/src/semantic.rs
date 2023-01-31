@@ -5,7 +5,8 @@ use crate::{query::parser::NLQuery, Configuration};
 use ndarray::Axis;
 use ort::{
     tensor::{FromArray, InputTensor, OrtOwnedTensor},
-    Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
+    AllocatorType, Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel,
+    SessionBuilder,
 };
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
@@ -95,12 +96,13 @@ impl Semantic {
             }
             Err(_) => return Err(SemanticError::QdrantInitializationError),
         }
+        let providers = [ExecutionProvider::tensorrt(), ExecutionProvider::cuda()];
 
         let environment = Arc::new(
             Environment::builder()
                 .with_name("Encode")
                 .with_log_level(LoggingLevel::Warning)
-                .with_execution_providers([ExecutionProvider::cpu()])
+                .with_execution_providers(&providers)
                 .build()?,
         );
 
@@ -120,6 +122,8 @@ impl Semantic {
                 .into(),
             session: SessionBuilder::new(&environment)?
                 .with_optimization_level(GraphOptimizationLevel::Level3)?
+                .with_execution_providers(&providers)?
+                .with_allocator(AllocatorType::Device)?
                 .with_intra_threads(threads)?
                 .with_model_from_file(model_dir.join("model.onnx"))?
                 .into(),
