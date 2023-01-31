@@ -24,6 +24,10 @@ export const useGitHubAuth = (
 
   useEffect(() => {
     if (!disabled) {
+      setButtonClicked(false);
+      setAuthenticationFailed(false);
+      setTokenExpireIn(null);
+      setLoginUrl('');
       gitHubDeviceLogin().then((data) => {
         if (!data?.authentication_needed) {
           setAuthenticationFailed(true);

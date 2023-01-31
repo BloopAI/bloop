@@ -8,7 +8,12 @@ import React, {
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { MenuItemType, RepoProvider, SyncStatus } from '../../../types/general';
 import { PlusSignInBubble, Repository } from '../../../icons';
-import { getRepos, gitHubStatus, syncRepos } from '../../../services/api';
+import {
+  getRepos,
+  gitHubLogout,
+  gitHubStatus,
+  syncRepos,
+} from '../../../services/api';
 import { UIContext } from '../../../context/uiContext';
 import RepoList from '../../RepoList';
 import { getCommonFolder, splitPath } from '../../../utils';
@@ -140,6 +145,12 @@ const RepositoriesSettings = () => {
     [isGithubConnected],
   );
 
+  const onLogout = useCallback(() => {
+    gitHubLogout().then(() => {
+      setGitHubConnected(false);
+    });
+  }, []);
+
   return (
     <>
       <div className="w-full relative overflow-auto flex flex-col h-full">
@@ -153,11 +164,13 @@ const RepositoriesSettings = () => {
           />
         </div>
         <div className="flex flex-col gap-3.5">
-          {!isGithubConnected && !isSelfServe && (
+          {!isSelfServe && (
             <GithubStatus
               setGitHubAuth={setGitHubAuth}
               setGitHubConnected={setGitHubConnected}
               githubAuth={githubAuth}
+              isConnected={isGithubConnected}
+              onLogout={onLogout}
             />
           )}
         </div>
