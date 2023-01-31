@@ -618,7 +618,15 @@ pub enum SyncStatus {
     Syncing,
     Queued,
     Indexing,
+    RemoteRemoved,
     Done,
+}
+
+impl SyncStatus {
+    pub(crate) fn indexable(&self) -> bool {
+        use SyncStatus::*;
+        matches!(self, Queued | Done | Error { .. })
+    }
 }
 
 #[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug)]

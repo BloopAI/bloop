@@ -2,7 +2,6 @@
 use std::os::windows::process::CommandExt;
 use std::{path::Path, process::Command};
 
-use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use dashmap::mapref::one::Ref;
 use git2::{Cred, RemoteCallbacks};
@@ -20,6 +19,52 @@ pub mod github;
 
 mod poll;
 pub(crate) use poll::*;
+
+pub(crate) type Result<T> = std::result::Result<T, RemoteError>;
+#[derive(thiserror::Error, Debug)]
+pub(crate) enum RemoteError {
+    #[error("remote not found")]
+    RemoteNotFound,
+
+    #[error("permission denied")]
+    PermissionDenied,
+
+    #[error("invalid checkout state")]
+    InvalidLocalState,
+
+    #[error("syncing in progress")]
+    SyncInProgress,
+
+    #[error("invalid configuration; missing: {0}")]
+    Configuration(&'static str),
+
+    #[error("operation not supported: {0}")]
+    NotSupported(&'static str),
+
+    #[error("IO error: {0}")]
+    IO(#[from] std::io::Error),
+
+    #[error("JWT error: {0}")]
+    Jwt(#[from] jsonwebtoken::errors::Error),
+
+    #[error("github access error: {0}")]
+    GitHub(#[from] octocrab::Error),
+
+    #[error("low-level code: {0:?}")]
+    UnspecifiedGit(git2::ErrorCode),
+}
+
+impl From<git2::Error> for RemoteError {
+    fn from(value: git2::Error) -> Self {
+        use git2::ErrorCode::*;
+
+        match value.code() {
+            Auth => RemoteError::PermissionDenied,
+            NotFound => RemoteError::RemoteNotFound,
+            val => RemoteError::UnspecifiedGit(val),
+        }
+    }
+}
 
 pub(in crate::remotes) fn git_clone(
     auth: Box<git2::Credentials<'static>>,
@@ -51,10 +96,10 @@ pub(in crate::remotes) fn git_pull(
     let head = git.head()?;
     let branch = head
         .name()
-        .context("invalid checkout")?
+        .ok_or(RemoteError::InvalidLocalState)?
         .split('/')
         .last()
-        .context("invalid checkout")?;
+        .ok_or(RemoteError::InvalidLocalState)?;
 
     let mut options = {
         let mut callbacks = RemoteCallbacks::new();
@@ -148,7 +193,9 @@ impl BackendCredential {
             let existing = app.repo_pool.get_mut(&repo_ref);
             let synced = match existing {
                 // if there's a parallel process already syncing, just return
-                Some(repo) if repo.sync_status == SyncStatus::Syncing => bail!("sync in progress"),
+                Some(repo) if repo.sync_status == SyncStatus::Syncing => {
+                    return Err(RemoteError::SyncInProgress)
+                }
                 Some(mut repo) => {
                     repo.value_mut().sync_status = SyncStatus::Syncing;
                     let repo = repo.downgrade();
@@ -184,7 +231,8 @@ impl BackendCredential {
 
             synced
         })
-        .await?
+        .await
+        .expect("blocking task panic'd")
     }
 
     pub(crate) fn expiry(&self) -> Option<DateTime<Utc>> {

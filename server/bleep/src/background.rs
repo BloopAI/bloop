@@ -3,6 +3,7 @@ use tracing::{debug, error, info};
 
 use crate::{
     indexes,
+    remotes::RemoteError,
     state::{RepoRef, Repository, SyncStatus},
     Application, Configuration,
 };
@@ -143,11 +144,21 @@ impl IndexWriter {
         let (state, indexed) = match repo.sync_status {
             Uninitialized | Syncing | Indexing => return Ok(()),
             Removed => {
-                let deleted = self.delete_repo(&repo, &writers);
+                let deleted = self.delete_repo_indexes(&repo, &writers);
                 if deleted.is_ok() {
                     writers.rollback()?;
                     repo_pool.remove(reporef);
                 }
+                return deleted;
+            }
+            RemoteRemoved => {
+                // Note we don't fully clean up here, leave the
+                // barebones behind.
+                //
+                // This is to be able to report to the user that
+                // something happened, and let them clean up in a
+                // subsequent action
+                let deleted = self.delete_repo_indexes(&repo, &writers);
                 return deleted;
             }
             _ => {
@@ -213,10 +224,25 @@ impl IndexWriter {
             }
         };
 
-        creds.sync(app.clone(), repo).await
+        let synced = creds.sync(app.clone(), repo.clone()).await;
+        if let Err(RemoteError::RemoteNotFound | RemoteError::PermissionDenied) = synced {
+            let details = {
+                let mut val = self.0.repo_pool.get_mut(&repo).unwrap();
+                val.value_mut().sync_status = SyncStatus::RemoteRemoved;
+                val.downgrade()
+            };
+
+            tokio::fs::remove_dir_all(&details.disk_path).await?;
+
+            // we want indexing to pick this up later and handle the new state
+            // all local cleanups are done, so everything should be consistent
+            return Ok(());
+        }
+
+        Ok(synced?)
     }
 
-    fn delete_repo(
+    fn delete_repo_indexes(
         &self,
         repo: &Repository,
         writers: &indexes::GlobalWriteHandleRef<'_>,
