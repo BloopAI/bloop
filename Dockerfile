@@ -31,4 +31,4 @@ RUN apt-get update && apt-get -y install universal-ctags openssl ca-certificates
 COPY model /model
 COPY --from=builder /bleep /
 COPY --from=frontend /build/client/dist /frontend
-ENTRYPOINT ["/bleep", "--host=0.0.0.0", "--source-dir=/repos", "--index-dir=/data", "--model-dir=/model", "--frontend-dist=/frontend"]
+ENTRYPOINT ["/bleep", "--host=0.0.0.0", "--source-dir=/repos", "--index-dir=/data", "--model-dir=/model"]
