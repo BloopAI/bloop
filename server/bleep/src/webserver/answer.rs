@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
+use qdrant_client::qdrant::{vectors, ScoredPoint};
 use reqwest::StatusCode;
 use thiserror::Error;
 use tracing::{debug, error, info, warn};
@@ -22,7 +23,7 @@ pub mod api {
         pub user_id: String,
     }
 
-    #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Default)]
     pub struct Snippet {
         pub lang: String,
         pub repo_name: String,
@@ -34,6 +35,9 @@ pub mod api {
         pub start_byte: usize,
         pub end_byte: usize,
         pub score: f32,
+
+        #[serde(skip)]
+        pub vector: Vec<f32>,
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -100,6 +104,19 @@ pub async fn handle(
                 }
             }
 
+            fn extract_vector(point: &ScoredPoint) -> Vec<f32> {
+                if let Some(vectors) = &point.vectors {
+                    if let Some(options) = &vectors.vectors_options {
+                        if let vectors::VectorsOptions::Vector(v) = options {
+                            return v.data.clone();
+                        }
+                    }
+                }
+                panic!("got non-vector value");
+            }
+
+            let vector = extract_vector(&r);
+            let score = r.score;
             let mut s = r.payload;
 
             api::Snippet {
@@ -121,7 +138,8 @@ pub async fn handle(
                 end_byte: value_to_string(s.remove("end_byte").unwrap())
                     .parse::<usize>()
                     .unwrap(),
-                score: r.score,
+                score,
+                vector,
             }
         })
         .collect();
@@ -129,6 +147,7 @@ pub async fn handle(
     let mut snippets = vec![];
     let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
 
+    // remove overlapping snippets
     for snippet in all_snippets.clone().into_iter() {
         if snippets.len() > SNIPPET_COUNT {
             break;
@@ -162,6 +181,22 @@ pub async fn handle(
             }
         }
     }
+
+    // deduplicate snippets with MMR
+    let k = 4;
+    let lambda = 0.5;
+    let query_embedding = semantic.embed(target).map_err(|e| {
+        error!("failed to embed query: {}", e);
+        super::internal_error(e)
+    })?;
+    let idxs = deduplicate_with_mmr(&query_embedding, &snippets, lambda, k);
+    let mut with_mmr_snippets = vec![];
+    info!("preserved idxs after MMR are {:?}", idxs);
+    for i in idxs {
+        let item = std::mem::take(&mut snippets[i]);
+        with_mmr_snippets.push(item);
+    }
+    snippets = with_mmr_snippets;
 
     if snippets.is_empty() {
         warn!("Semantic search returned no snippets");
@@ -246,6 +281,7 @@ pub async fn handle(
             start_byte: relevant_snippet.start_byte,
             end_byte: relevant_snippet.end_byte,
             score: relevant_snippet.score,
+            vector: relevant_snippet.vector.clone(),
         }
     };
 
@@ -472,4 +508,53 @@ Answer in GitHub Markdown:",
         self.send_until_success(prompt, max_tokens as u32, 0.9)
             .await
     }
+}
+
+fn dot(a: &[f32], b: &[f32]) -> f32 {
+    a.iter().zip(b.iter()).map(|(ai, bi)| ai * bi).sum()
+}
+
+fn norm(a: &[f32]) -> f32 {
+    dot(a, a)
+}
+
+fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+    dot(a, b) / (norm(a) * norm(b))
+}
+
+// returns a list of indices to preserve from `snippets`
+fn deduplicate_with_mmr(
+    query_embedding: &[f32],
+    snippets: &[api::Snippet],
+    lambda: f32,
+    k: usize,
+) -> Vec<usize> {
+    let mut idxs = vec![];
+    while idxs.len() < k {
+        let mut best_score = f32::NEG_INFINITY;
+        let mut idx_to_add = None;
+
+        for (i, emb) in snippets.iter().map(|s| s.vector.as_slice()).enumerate() {
+            if idxs.contains(&i) {
+                continue;
+            }
+            let first_part = cosine_similarity(&query_embedding, &emb);
+            let mut second_part = 0.;
+            for j in idxs.iter() {
+                let cos_sim = cosine_similarity(&emb, &snippets[*j].vector);
+                if cos_sim > second_part {
+                    second_part = cos_sim;
+                }
+            }
+            let equation_score = lambda * first_part - (1. - lambda) * second_part;
+            if equation_score > best_score {
+                best_score = equation_score;
+                idx_to_add = Some(i);
+            }
+        }
+        if let Some(i) = idx_to_add {
+            idxs.push(i);
+        }
+    }
+    return idxs;
 }

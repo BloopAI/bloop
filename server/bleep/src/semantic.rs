@@ -10,10 +10,10 @@ use ort::{
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
-        r#match::MatchValue, vectors_config, with_payload_selector::SelectorOptions,
+        r#match::MatchValue, vectors_config, with_payload_selector, with_vectors_selector,
         CollectionOperationResponse, CreateCollection, Distance, FieldCondition, Filter, Match,
         PointId, PointStruct, ScoredPoint, SearchPoints, VectorParams, VectorsConfig,
-        WithPayloadSelector,
+        WithPayloadSelector, WithVectorsSelector,
     },
 };
 use rayon::prelude::*;
@@ -203,11 +203,14 @@ impl Semantic {
                 limit,
                 vector: self.embed(query)?,
                 with_payload: Some(WithPayloadSelector {
-                    selector_options: Some(SelectorOptions::Enable(true)),
+                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
                 filter: Some(Filter {
                     must: filters,
                     ..Default::default()
+                }),
+                with_vectors: Some(WithVectorsSelector {
+                    selector_options: Some(with_vectors_selector::SelectorOptions::Enable(true)),
                 }),
                 ..Default::default()
             })
