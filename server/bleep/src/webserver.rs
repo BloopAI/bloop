@@ -1,4 +1,4 @@
-use crate::{snippet, state, Application, Environment};
+use crate::{env::Feature, snippet, state, Application};
 
 use anyhow::Result;
 use axum::middleware;
@@ -66,18 +66,19 @@ pub async fn start(app: Application) -> Result<()> {
         .route("/semantic/chunks", get(semantic::raw_chunks))
         .route("/answer", get(answer::handle));
 
-    if app.env.allow_github_device_flow() {
+    if app.env.allow(Feature::GithubDeviceFlow) {
         api = api
             .route("/remotes/github/login", get(github::login))
+            .route("/remotes/github/logout", get(github::logout))
             .route("/remotes/github/status", get(github::status));
     }
 
-    if app.env.allow_path_scan() {
+    if app.env.allow(Feature::AnyPathScan) {
         api = api.route("/repos/scan", get(repos::scan_local));
     }
 
     // Note: all routes above this point must be authenticated.
-    if let Environment::PrivateServer = app.env {
+    if app.env.allow(Feature::AuthorizationRequired) {
         api = aaa::router(api, app.clone());
     }
 
@@ -96,22 +97,20 @@ pub async fn start(app: Application) -> Result<()> {
 
     let mut router = Router::new().nest("/api", api);
 
-    if let Environment::PrivateServer = app.env {
-        if let Some(frontend_dist) = app.config.frontend_dist.clone() {
-            router = router.nest_service(
-                "/",
-                tower::service_fn(move |req| {
-                    let frontend_dist = frontend_dist.clone();
-                    async move {
-                        Ok(ServeDir::new(&frontend_dist)
-                            .fallback(ServeFile::new(frontend_dist.join("index.html")))
-                            .call(req)
-                            .await
-                            .unwrap())
-                    }
-                }),
-            );
-        }
+    if let Some(frontend_dist) = app.config.frontend_dist.clone() {
+        router = router.nest_service(
+            "/",
+            tower::service_fn(move |req| {
+                let frontend_dist = frontend_dist.clone();
+                async move {
+                    Ok(ServeDir::new(&frontend_dist)
+                        .fallback(ServeFile::new(frontend_dist.join("index.html")))
+                        .call(req)
+                        .await
+                        .unwrap())
+                }
+            }),
+        );
     }
 
     info!(%bind, "starting webserver");

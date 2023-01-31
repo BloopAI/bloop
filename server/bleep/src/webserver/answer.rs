@@ -181,7 +181,7 @@ pub async fn handle(
         .await
         .map_err(|e| {
             sentry::capture_message(
-                format!("answer-api failed to respond: {}", e).as_str(),
+                format!("answer-api failed to respond: {e}").as_str(),
                 sentry::Level::Error,
             );
             super::error(ErrorKind::UpstreamService, e.to_string())
@@ -255,7 +255,7 @@ pub async fn handle(
         .await
         .map_err(|e| {
             sentry::capture_message(
-                format!("answer-api failed to respond: {}", e).as_str(),
+                format!("answer-api failed to respond: {e}").as_str(),
                 sentry::Level::Error,
             );
             super::error(ErrorKind::UpstreamService, e.to_string())

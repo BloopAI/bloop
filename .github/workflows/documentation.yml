@@ -31,7 +31,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "bloop"
+          prefix-key: "bloop"
+          shared-key: "doc"
 
       - name: Start webserver and fetch OpenAPI
         run: |
