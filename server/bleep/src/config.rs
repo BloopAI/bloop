@@ -1,5 +1,5 @@
 use crate::{semantic::chunk::OverlapStrategy, state::StateSource};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
 
 use secrecy::{ExposeSecret, SecretString};
@@ -52,7 +52,7 @@ pub struct Configuration {
     pub repo_buffer_size: usize,
 
     #[clap(short, long, default_value_t = default_parallelism())]
-    #[serde(default = "minimum_parallelism")]
+    #[serde(default = "default_parallelism")]
     /// Maximum number of parallel background threads
     pub max_threads: usize,
 
@@ -138,6 +138,16 @@ pub struct Configuration {
     pub sentry_dsn: Option<String>,
 }
 
+macro_rules! right_if_default {
+    ($left:expr, $right:expr, $default:expr) => {
+        if $left == $default {
+            $right
+        } else {
+            $left
+        }
+    };
+}
+
 impl Configuration {
     pub fn read(file: impl AsRef<Path>) -> Result<Self> {
         let file = std::fs::File::open(file)?;
@@ -156,6 +166,92 @@ impl Configuration {
         let id = self.github_client_id.as_ref()?.expose_secret();
         let secret = self.github_client_secret.as_ref()?.expose_secret();
         Some((id, secret))
+    }
+
+    pub fn cli_overriding_config_file() -> Result<Self> {
+        let cli = Self::from_cli()?;
+        let Ok(file) = cli.config_file.as_ref().context("no config file specified").and_then(Self::read) else {
+	    return Ok(cli);
+	};
+
+        Ok(Self::merge(file, cli))
+    }
+
+    /// Merge 2 configurations with values from `b` taking precedence
+    ///
+    /// In case a default value is recognized in *either* sides,
+    /// always the non-default value will be used for the resulting
+    /// configuration.
+    pub fn merge(a: Self, b: Self) -> Self {
+        // the values here are in the order they're listed in the
+        // original `Configuration` declaration
+        Self {
+            config_file: b.config_file.or(a.config_file),
+
+            ctags_path: b.ctags_path.or(a.ctags_path),
+
+            source: right_if_default!(b.source, a.source, Default::default()),
+
+            index_dir: b.index_dir,
+
+            index_only: b.index_only | a.index_only,
+
+            disable_background: b.disable_background | a.disable_background,
+
+            disable_fsevents: b.disable_fsevents | a.disable_fsevents,
+
+            buffer_size: right_if_default!(b.buffer_size, a.buffer_size, default_buffer_size()),
+
+            repo_buffer_size: right_if_default!(
+                b.repo_buffer_size,
+                a.repo_buffer_size,
+                default_repo_buffer_size()
+            ),
+
+            max_threads: right_if_default!(b.max_threads, a.max_threads, default_parallelism()),
+
+            host: right_if_default!(b.host, a.host, default_host()),
+
+            port: right_if_default!(b.port, a.port, default_port()),
+
+            model_dir: right_if_default!(b.model_dir, a.model_dir, default_model_dir()),
+
+            max_chunk_tokens: right_if_default!(
+                b.max_chunk_tokens,
+                a.max_chunk_tokens,
+                default_max_chunk_tokens()
+            ),
+
+            overlap: b.overlap.or(a.overlap),
+
+            frontend_dist: b.frontend_dist.or(a.frontend_dist),
+
+            qdrant_url: right_if_default!(b.qdrant_url, a.qdrant_url, default_qdrant_url()),
+
+            answer_api_url: right_if_default!(
+                b.answer_api_url,
+                a.answer_api_url,
+                default_answer_api_url()
+            ),
+
+            github_client_id: b.github_client_id.or(a.github_client_id),
+
+            github_client_secret: b.github_client_secret.or(a.github_client_secret),
+
+            github_app_id: b.github_app_id.or(a.github_app_id),
+
+            github_app_install_id: b.github_app_install_id.or(a.github_app_install_id),
+
+            github_app_private_key: b.github_app_private_key.or(a.github_app_private_key),
+
+            instance_domain: b.instance_domain.or(a.instance_domain),
+
+            analytics_key: b.analytics_key.or(a.analytics_key),
+
+            analytics_data_plane: b.analytics_data_plane.or(a.analytics_data_plane),
+
+            sentry_dsn: b.sentry_dsn.or(a.sentry_dsn),
+        }
     }
 }
 
