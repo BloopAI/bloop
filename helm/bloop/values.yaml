@@ -5,6 +5,12 @@ bloop:
   githubOrgOwnerEmail: ""
   loopsAPIKey: ""
   loopsEventName: ""
+  githubAppPrivateKey: ""
+  githubAppInstallId: ""
+  githubClientId: ""
+  githubClientSecret: ""
+  instanceDomain: ""
+  answerApi: ""
 
 image:
   repository: ""
