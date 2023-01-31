@@ -4,7 +4,7 @@ use tracing::{debug, error, info};
 use crate::{
     indexes,
     remotes::RemoteError,
-    state::{RepoRef, Repository, SyncStatus},
+    state::{RepoRef, RepoRemote, Repository, SyncStatus},
     Application, Configuration,
 };
 
@@ -144,7 +144,7 @@ impl IndexWriter {
         let (state, indexed) = match repo.sync_status {
             Uninitialized | Syncing | Indexing => return Ok(()),
             Removed => {
-                let deleted = self.delete_repo_indexes(&repo, &writers);
+                let deleted = self.delete_repo_indexes(&repo, &writers).await;
                 if deleted.is_ok() {
                     writers.rollback()?;
                     repo_pool.remove(reporef);
@@ -152,14 +152,13 @@ impl IndexWriter {
                 return deleted;
             }
             RemoteRemoved => {
-                // Note we don't fully clean up here, leave the
+                // Note we don't clean up here, leave the
                 // barebones behind.
                 //
                 // This is to be able to report to the user that
                 // something happened, and let them clean up in a
-                // subsequent action
-                let deleted = self.delete_repo_indexes(&repo, &writers);
-                return deleted;
+                // subsequent action.
+                return Ok(());
             }
             _ => {
                 repo_pool.get_mut(reporef).unwrap().value_mut().sync_status = Indexing;
@@ -226,13 +225,12 @@ impl IndexWriter {
 
         let synced = creds.sync(app.clone(), repo.clone()).await;
         if let Err(RemoteError::RemoteNotFound | RemoteError::PermissionDenied) = synced {
-            let details = {
-                let mut val = self.0.repo_pool.get_mut(&repo).unwrap();
-                val.value_mut().sync_status = SyncStatus::RemoteRemoved;
-                val.downgrade()
-            };
-
-            tokio::fs::remove_dir_all(&details.disk_path).await?;
+            self.0
+                .repo_pool
+                .get_mut(&repo)
+                .unwrap()
+                .value_mut()
+                .sync_status = SyncStatus::RemoteRemoved;
 
             // we want indexing to pick this up later and handle the new state
             // all local cleanups are done, so everything should be consistent
@@ -242,7 +240,7 @@ impl IndexWriter {
         Ok(synced?)
     }
 
-    fn delete_repo_indexes(
+    async fn delete_repo_indexes(
         &self,
         repo: &Repository,
         writers: &indexes::GlobalWriteHandleRef<'_>,
@@ -250,6 +248,9 @@ impl IndexWriter {
         let IndexWriter(Application { config, .. }) = self;
 
         repo.delete_file_cache(&config.index_dir)?;
+        if !matches!(repo.remote, RepoRemote::None) {
+            tokio::fs::remove_dir_all(&repo.disk_path).await?;
+        }
 
         for handle in writers {
             handle.delete(repo);
