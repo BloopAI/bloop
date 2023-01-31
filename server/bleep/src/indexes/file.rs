@@ -245,6 +245,7 @@ impl Indexable for File {
         let file_cache = repo.open_file_cache(&self.config.index_dir)?;
         let repo_name = reporef.indexed_name();
 
+        info!("{:?}", &repo.disk_path);
         // note: this WILL observe .gitignore files for the respective repos.
         let walker = ignore::Walk::new(&repo.disk_path)
             .filter_map(|de| match de {
@@ -498,15 +499,18 @@ impl File {
         }
         trace!("added cache entry");
 
-        let lang_str = repo_info
-            .langs
-            .path_map
-            .get(&entry_disk_path)
-            .unwrap_or_else(|| {
-                warn!("Path not found in language map");
-                &Some("")
-            })
-            .unwrap_or("");
+        let lang_str = match &entry_disk_path.is_file() {
+            true => repo_info
+                .langs
+                .path_map
+                .get(&entry_disk_path)
+                .unwrap_or_else(|| {
+                    warn!("Path not found in language map");
+                    &Some("")
+                })
+                .unwrap_or(""),
+            false => "",
+        };
 
         // calculate symbol locations
         let symbol_locations = {
