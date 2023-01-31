@@ -245,7 +245,6 @@ impl Indexable for File {
         let file_cache = repo.open_file_cache(&self.config.index_dir)?;
         let repo_name = reporef.indexed_name();
 
-        info!("{:?}", &repo.disk_path);
         // note: this WILL observe .gitignore files for the respective repos.
         let walker = ignore::Walk::new(&repo.disk_path)
             .filter_map(|de| match de {
