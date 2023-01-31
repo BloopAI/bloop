@@ -286,7 +286,7 @@ fn handle_reference_repo_wide(
                         .collect(),
                 };
                 let ref_data = FileSymbols {
-                    file: file.clone(),
+                    file,
                     data: refs
                         .into_iter()
                         .map(|range| to_occurrence(doc, range))
