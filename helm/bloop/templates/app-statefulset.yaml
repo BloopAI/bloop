@@ -25,13 +25,44 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
+      initContainers:
+        - name: prepare-folders
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          image: "alpine:3.14"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - /bin/sh
+          args:
+          - -c
+          - "mkdir /data/repos -p"
+          volumeMounts:
+          - name: {{ include "bloop.fullname" . }}-storage
+            mountPath: /data
       containers:
         - name: {{ .Chart.Name }}-app
           securityContext:
             {{- toYaml .Values.podSecurityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - /bleep
+          args:
+          - --host=0.0.0.0
+          - --source-dir=/data/repos
+          - --index-dir=/data/index
+          - --model-dir=/model
+          - --frontend-dist=/frontend
+          - --answer-api-url={{ .Values.bloop.answerApiUrl }}
+          - --instance-domain={{ .Values.bloop.instanceDomain }}
+          - --github-app-id={{ .Values.bloop.githubAppId }}
+          - --github-app-install-id={{ .Values.bloop.githubAppInstallId }}
+          - --github-client-id={{ .Values.bloop.githubClientId }}
+          - --github-client-secret={{ .Values.bloop.githubClientSecret }}
+          - --github-app-private-key=/app/secrets/github-app-private-key.pem
           env:
+          - name: BLOOP_LOG
+            value: info
           {{ if .Values.env }}
           {{ range .Values.env }}
           -
@@ -47,6 +78,9 @@ spec:
           volumeMounts:
           - name: {{ include "bloop.fullname" . }}-storage
             mountPath: /data
+          - mountPath: "/app/secrets"
+            name: {{ include "bloop.fullname" . }}
+            readOnly: true
         - name: {{ .Chart.Name }}-qdrant
           image: "{{ .Values.qdrant.image.repository }}:{{ .Values.qdrant.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.qdrant.image.pullPolicy }}
@@ -128,6 +162,9 @@ spec:
           configMap:
             name: {{ include "qdrant.fullname" . }}
             defaultMode: 0755
+        - name: {{ include "bloop.fullname" . }}
+          secret:
+            secretName: {{ include "bloop.fullname" . }}
         - name: {{ include "bloop.fullname" . }}-storage
           persistentVolumeClaim:
             claimName: {{ include "bloop.fullname" . }}-storage

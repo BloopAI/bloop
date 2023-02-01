@@ -96,6 +96,33 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
     )
 }
 
+/// Remove Github OAuth credentials
+//
+#[utoipa::path(get, path = "/remotes/github/logout",
+    responses(
+        (status = 200, description = "Execute query successfully", body = Response),
+        (status = 400, description = "Bad request", body = EndpointError),
+        (status = 500, description = "Server error", body = EndpointError),
+    ),
+)]
+pub(super) async fn logout(Extension(app): Extension<Application>) -> impl IntoResponse {
+    let deleted = app.credentials.remove(&Backend::Github).is_some();
+    if deleted {
+        let saved = app.config.source.save_credentials(&app.credentials);
+
+        if saved.is_ok() {
+            return json(GithubResponse::Status(GithubCredentialStatus::Ok));
+        }
+
+        if let Err(err) = saved {
+            error!(?err, "Failed to delete credentials from disk");
+            return error(ErrorKind::Internal, "failed to save changes");
+        }
+    }
+
+    json(GithubResponse::Status(GithubCredentialStatus::Missing))
+}
+
 async fn poll_for_oauth_token(
     github: Octocrab,
     client_id: SecretString,

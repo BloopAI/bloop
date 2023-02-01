@@ -69,6 +69,7 @@ pub async fn start(app: Application) -> Result<()> {
     if app.env.allow(Feature::GithubDeviceFlow) {
         api = api
             .route("/remotes/github/login", get(github::login))
+            .route("/remotes/github/logout", get(github::logout))
             .route("/remotes/github/status", get(github::status));
     }
 
