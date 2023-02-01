@@ -48,6 +48,7 @@ export enum SyncStatus {
   Removed = 'removed',
   Indexing = 'indexing',
   Syncing = 'syncing',
+  RemoteRemoved = 'remote_removed',
 }
 
 export enum RepoProvider {
