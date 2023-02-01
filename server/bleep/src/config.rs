@@ -4,7 +4,11 @@ use clap::Parser;
 
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
-use std::path::{Path, PathBuf};
+use std::{
+    fs::File,
+    io,
+    path::{Path, PathBuf},
+};
 
 #[derive(Deserialize, Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -149,8 +153,7 @@ macro_rules! right_if_default {
 }
 
 impl Configuration {
-    pub fn read(file: impl AsRef<Path>) -> Result<Self> {
-        let file = std::fs::File::open(file)?;
+    pub fn read<R: io::Read>(file: R) -> Result<Self> {
         Ok(serde_json::from_reader::<_, Self>(file)?)
     }
 
@@ -170,9 +173,14 @@ impl Configuration {
 
     pub fn cli_overriding_config_file() -> Result<Self> {
         let cli = Self::from_cli()?;
-        let Ok(file) = cli.config_file.as_ref().context("no config file specified").and_then(Self::read) else {
-	    return Ok(cli);
-	};
+        let Ok(file) = cli
+            .config_file
+            .as_ref()
+            .context("no config file specified")
+            .and_then(|p| File::open(p).with_context(|| format!("failed to open `{}`", p.display())))
+            .and_then(Self::read) else {
+                return Ok(cli);
+            };
 
         Ok(Self::merge(file, cli))
     }
@@ -300,4 +308,38 @@ fn default_answer_api_url() -> String {
 
 fn default_max_chunk_tokens() -> usize {
     256
+}
+
+impl Default for Configuration {
+    fn default() -> Self {
+        Self {
+            config_file: None,
+            ctags_path: None,
+            source: StateSource::default(),
+            index_dir: default_index_path(),
+            index_only: false,
+            disable_background: false,
+            disable_fsevents: false,
+            buffer_size: default_buffer_size(),
+            repo_buffer_size: default_repo_buffer_size(),
+            max_threads: default_parallelism(),
+            host: default_host(),
+            port: default_port(),
+            model_dir: default_model_dir(),
+            max_chunk_tokens: default_max_chunk_tokens(),
+            overlap: None,
+            frontend_dist: None,
+            qdrant_url: default_qdrant_url(),
+            answer_api_url: default_answer_api_url(),
+            github_client_id: None,
+            github_client_secret: None,
+            github_app_id: None,
+            github_app_install_id: None,
+            github_app_private_key: None,
+            instance_domain: None,
+            analytics_key: None,
+            analytics_data_plane: None,
+            sentry_dsn: None,
+        }
+    }
 }

@@ -1,3 +1,6 @@
+use std::fs::File;
+
+use anyhow::Context;
 use bleep::{Application, Configuration, Environment};
 
 use super::{plugin, relative_command_path, App, Manager, Payload, Runtime};
@@ -9,12 +12,12 @@ where
     let config = app
         .path_resolver()
         .resolve_resource("config.json")
-        .expect("failed to resolve resource");
+        .context("failed to resolve resource `config.json`")
+        .and_then(|p| File::open(&p).with_context(|| format!("failed to read `{}`", p.display())))
+        .and_then(Configuration::read)
+        .unwrap_or_default();
 
-    let mut configuration = Configuration::merge(
-        Configuration::read(config).unwrap(),
-        Configuration::from_cli().unwrap(),
-    );
+    let mut configuration = Configuration::merge(config, Configuration::from_cli().unwrap());
     configuration.ctags_path = relative_command_path("ctags");
     configuration.max_threads = bleep::default_parallelism() / 4;
     configuration.model_dir = app

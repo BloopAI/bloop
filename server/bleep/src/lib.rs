@@ -38,7 +38,7 @@ use once_cell::sync::OnceCell;
 use relative_path::RelativePath;
 use rudderanalytics::client::RudderAnalytics;
 
-use std::{path::Path, sync::Arc};
+use std::{fs::File, path::Path, sync::Arc};
 use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 
@@ -85,7 +85,7 @@ impl Application {
     pub async fn initialize(env: Environment, config: Configuration) -> Result<Application> {
         let mut config = match config.config_file {
             None => config,
-            Some(ref path) => Configuration::read(path)?,
+            Some(ref path) => Configuration::read(File::open(path)?)?,
         };
 
         config.max_threads = config.max_threads.max(minimum_parallelism());
