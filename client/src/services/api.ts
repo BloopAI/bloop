@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import {
   HoverablesRespone,
   NLSearchResponse,
@@ -8,11 +8,16 @@ import {
 } from '../types/api';
 import { RepoType } from '../types/general';
 
-const API = 'http://127.0.0.1:7878/api';
 const DB_API = 'https://api.bloop.ai';
-const http = axios.create({
-  baseURL: API,
-});
+let http: AxiosInstance;
+
+export const initApi = (serverUrl = '') => {
+  if (!http) {
+    http = axios.create({
+      baseURL: serverUrl,
+    });
+  }
+};
 
 export const search = (
   q: string,
@@ -98,8 +103,11 @@ export const getAutocomplete = async (
   return http.get(`/autocomplete?q=${q}`).then((r) => r.data);
 };
 
-export const gitHubLogin = () =>
+export const gitHubDeviceLogin = () =>
   http.get('/remotes/github/login').then((r) => r.data);
+
+export const gitHubLogout = () =>
+  http.get('/remotes/github/logout').then((r) => r.data);
 
 export const gitHubStatus = () =>
   http.get('/remotes/github/status').then((r) => r.data);
@@ -150,3 +158,6 @@ export const getUpvote = (params: {
   snippet_id: string;
   query: string;
 }) => axios.get(`${DB_API}/upvote`, { params }).then((r) => r.data);
+
+export const githubWebLogin = () =>
+  http.get('/auth/login/start').then((r) => r.data);

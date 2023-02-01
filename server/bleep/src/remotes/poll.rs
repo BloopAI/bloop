@@ -11,9 +11,10 @@ use tokio::time::sleep;
 use tracing::{debug, error, info};
 
 use crate::{
+    env::Feature,
     remotes,
     state::{Backend, RepoRef, SyncStatus},
-    Application, Environment,
+    Application,
 };
 
 const POLL_INTERVAL_MINUTE: &[Duration] = &[
@@ -26,7 +27,7 @@ const POLL_INTERVAL_MINUTE: &[Duration] = &[
 
 pub(crate) async fn check_credentials(app: Application) {
     loop {
-        if let Environment::PrivateServer = app.env {
+        if app.env.allow(Feature::GithubInstallation) {
             match app
                 .credentials
                 .get(&Backend::Github)
@@ -41,7 +42,9 @@ pub(crate) async fn check_credentials(app: Application) {
                     }
                 }
             }
-        } else {
+        }
+
+        if app.env.allow(Feature::GithubDeviceFlow) {
             let expired = if let Some(github) = app.credentials.get(&Backend::Github) {
                 github.validate().await.is_err()
             } else {

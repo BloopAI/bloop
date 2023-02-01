@@ -23,14 +23,14 @@ const backdropVisible = {
 };
 
 const initialModalStyles = {
-  top: '3rem',
+  top: '1rem',
   right: '50%',
   transform: 'translate(50%, 1rem)',
   opacity: 0,
 };
 
 const modalAnimation = {
-  top: '3rem',
+  top: '1rem',
   right: '50%',
   transform: 'translate(50%, 0%)',
   opacity: 1,
@@ -68,7 +68,7 @@ const AddRepos = ({ addRepos, onClose }: Props) => {
             exit={initialModalStyles}
             transition={MODAL_SIDEBAR_APPEAR_ANIMATION}
           >
-            <div className="p-6 flex flex-col gap-8 w-99 relative max-h-[calc(100vh-23rem)] flex-1">
+            <div className="p-6 flex flex-col gap-8 w-99 relative max-h-[calc(100vh-13rem)] flex-1">
               {addRepos === 'local' ? (
                 isFolderChosen ? (
                   <Step2 handleNext={onClose} />

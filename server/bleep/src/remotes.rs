@@ -104,7 +104,7 @@ pub(crate) fn gather_repo_roots(path: impl AsRef<Path>) -> impl Iterator<Item = 
     WalkBuilder::new(path)
         .ignore(true)
         .hidden(false)
-        .git_ignore(false)
+        .git_ignore(true)
         .git_global(false)
         .git_exclude(false)
         .build()
