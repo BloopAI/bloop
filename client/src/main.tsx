@@ -11,7 +11,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         openLink: (p) => window.open(p),
         chooseFolder: (conf) => Promise.resolve(null),
         homeDir: '$HOME',
-        deviceId: '',
+        deviceId: import.meta.env.VITE_DEVICE_ID || '',
         listen: () => {},
         os: {
           arch: '',
@@ -21,6 +21,10 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         },
         invokeTauriCommand: () => {},
         release: packageJson.version,
+        apiUrl: import.meta.env.VITE_API_URL || '/api',
+        isRepoManagementAllowed: true,
+        isSelfServe: true,
+        forceAnalytics: true,
       }}
     />
   </React.StrictMode>,

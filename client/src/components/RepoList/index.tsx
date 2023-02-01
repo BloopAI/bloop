@@ -50,9 +50,10 @@ const RepoList = ({
     setRepos((prev) => prev.map((r) => ({ ...r, selected })));
   }, []);
 
-  const handleSelectOne = useCallback((selected: boolean, i: number) => {
+  const handleSelectOne = useCallback((selected: boolean, repoRef: string) => {
     setRepos((prev) => {
       const newRepos = JSON.parse(JSON.stringify(prev));
+      const i = prev.findIndex((r) => r.ref === repoRef);
       newRepos[i].selected = selected;
       return newRepos;
     });
@@ -126,7 +127,7 @@ const RepoList = ({
                         <Checkbox
                           checked={repo.selected}
                           label={repo.shortName}
-                          onChange={(val) => handleSelectOne(val, i)}
+                          onChange={(val) => handleSelectOne(val, repo.ref)}
                         />
                       )}
                       <Button
@@ -139,7 +140,7 @@ const RepoList = ({
                           } else {
                             source === 'local'
                               ? openFolderInExplorer(repo.ref.slice(6))
-                              : openLink('https://github.com/' + repo.ref);
+                              : openLink('https://' + repo.ref);
                           }
                         }}
                       >

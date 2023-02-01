@@ -2,6 +2,7 @@ import React, { useContext, useEffect } from 'react';
 import ListNavigation from '../IdeNavigation/ListNavigation';
 import { Person, Repository } from '../../icons';
 import { UIContext } from '../../context/uiContext';
+import { DeviceContext } from '../../context/deviceContext';
 import General from './General';
 import Preferences from './Preferences';
 import RepositoriesSettings from './Repositories';
@@ -29,6 +30,7 @@ const Settings = () => {
     isSettingsOpen,
     setSettingsOpen,
   } = useContext(UIContext);
+  const { isSelfServe } = useContext(DeviceContext);
 
   useEffect(() => {
     const action = isSettingsOpen ? 'add' : 'remove';
@@ -57,13 +59,23 @@ const Settings = () => {
         <div className="bg-gray-800 py-3 w-64">
           <ListNavigation
             setSelected={setSettingsSection}
-            items={listNavigationItems}
-            selected={settingsSection}
+            items={
+              isSelfServe
+                ? [{ title: 'Repositories', icon: <Repository /> }]
+                : listNavigationItems
+            }
+            selected={isSelfServe ? 0 : settingsSection}
             variant="light"
           />
         </div>
         <div className="p-8 flex-1 overflow-y-auto flex flex-col">
-          {settingsSection === 0 ? <General /> : <RepositoriesSettings />}
+          {isSelfServe ? (
+            <RepositoriesSettings />
+          ) : settingsSection === 0 ? (
+            <General />
+          ) : (
+            <RepositoriesSettings />
+          )}
         </div>
       </div>
     </div>
