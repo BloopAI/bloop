@@ -8,12 +8,18 @@ import React, {
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { MenuItemType, RepoProvider, SyncStatus } from '../../../types/general';
 import { PlusSignInBubble, Repository } from '../../../icons';
-import { getRepos, gitHubStatus, syncRepos } from '../../../services/api';
+import {
+  getRepos,
+  gitHubLogout,
+  gitHubStatus,
+  syncRepos,
+} from '../../../services/api';
 import { UIContext } from '../../../context/uiContext';
 import RepoList from '../../RepoList';
 import { getCommonFolder, splitPath } from '../../../utils';
 import { DropdownWithIcon } from '../../Dropdown';
 import GitHubIcon from '../../../icons/GitHubIcon';
+import { DeviceContext } from '../../../context/deviceContext';
 import AddRepos from './AddRepos';
 import GithubStatus from './GithubStatus';
 
@@ -27,6 +33,7 @@ const dropdownIcon = (
 const RepositoriesSettings = () => {
   const { repositories, setRepositories } = useContext(RepositoriesContext);
   const { onBoardingState } = useContext(UIContext);
+  const { isSelfServe } = useContext(DeviceContext);
   const [isAddReposOpen, setAddReposOpen] = useState<null | 'local' | 'github'>(
     null,
   );
@@ -86,7 +93,7 @@ const RepositoriesSettings = () => {
     setGitHubAuth(!githubRepos.length);
   }, [githubRepos.length]);
 
-  const [isGithubConnected, setGitHubConnected] = useState(false);
+  const [isGithubConnected, setGitHubConnected] = useState(isSelfServe);
 
   useEffect(() => {
     gitHubStatus().then((r) => {
@@ -110,14 +117,18 @@ const RepositoriesSettings = () => {
 
   const addReposMenuItems = useMemo(
     () => [
-      {
-        text: 'Local repo',
-        icon: <Repository />,
-        type: MenuItemType.DEFAULT,
-        onClick: () => {
-          setAddReposOpen('local');
-        },
-      },
+      ...(!isSelfServe
+        ? [
+            {
+              text: 'Local repo',
+              icon: <Repository />,
+              type: MenuItemType.DEFAULT,
+              onClick: () => {
+                setAddReposOpen('local');
+              },
+            },
+          ]
+        : []),
       ...(isGithubConnected
         ? [
             {
@@ -134,6 +145,12 @@ const RepositoriesSettings = () => {
     [isGithubConnected],
   );
 
+  const onLogout = useCallback(() => {
+    gitHubLogout().then(() => {
+      setGitHubConnected(false);
+    });
+  }, []);
+
   return (
     <>
       <div className="w-full relative overflow-auto flex flex-col h-full">
@@ -147,11 +164,13 @@ const RepositoriesSettings = () => {
           />
         </div>
         <div className="flex flex-col gap-3.5">
-          {!isGithubConnected && (
+          {!isSelfServe && (
             <GithubStatus
               setGitHubAuth={setGitHubAuth}
               setGitHubConnected={setGitHubConnected}
               githubAuth={githubAuth}
+              isConnected={isGithubConnected}
+              onLogout={onLogout}
             />
           )}
         </div>
