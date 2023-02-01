@@ -63,14 +63,14 @@ jobs:
 
       - name: Check Formatting
         run: |
-          cargo fmt -p bloop -- --check
+          cargo --locked fmt -p bloop -- --check 
 
       - name: Run tests
         run: |
-          cargo test -p bloop --verbose
+          cargo --locked test -p bloop --verbose
 
       - uses: actions-rs/clippy-check@v1
         with:
           toolchain: stable
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --manifest-path Cargo.toml
+          args: --locked -p bloop --all-features --manifest-path Cargo.toml
