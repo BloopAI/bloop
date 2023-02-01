@@ -1,16 +1,18 @@
-use crate::{snippet, state, Application};
+use crate::{env::Feature, snippet, state, Application};
 
 use anyhow::Result;
 use axum::middleware;
 use axum::{response::IntoResponse, routing::get, Extension, Json};
 use std::{borrow::Cow, net::SocketAddr};
+use tower::Service;
+use tower_http::services::{ServeDir, ServeFile};
 use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
 use tracing::info;
 use utoipa::OpenApi;
 use utoipa::ToSchema;
 
 mod aaa;
-mod answer;
+pub mod answer;
 mod autocomplete;
 mod file;
 mod github;
@@ -38,7 +40,7 @@ pub(in crate::webserver) mod prelude {
 pub async fn start(app: Application) -> Result<()> {
     let bind = SocketAddr::new(app.config.host.parse()?, app.config.port);
 
-    let mut router = Router::new()
+    let mut api = Router::new()
         // querying
         .route("/q", get(query::handle))
         // autocomplete
@@ -64,33 +66,52 @@ pub async fn start(app: Application) -> Result<()> {
         .route("/semantic/chunks", get(semantic::raw_chunks))
         .route("/answer", get(answer::handle));
 
-    if app.env.allow_github_device_flow() {
-        router = router
+    if app.env.allow(Feature::GithubDeviceFlow) {
+        api = api
             .route("/remotes/github/login", get(github::login))
+            .route("/remotes/github/logout", get(github::logout))
             .route("/remotes/github/status", get(github::status));
     }
 
-    if app.env.allow_path_scan() {
-        router = router.route("/repos/scan", get(repos::scan_local));
+    if app.env.allow(Feature::AnyPathScan) {
+        api = api.route("/repos/scan", get(repos::scan_local));
     }
 
     // Note: all routes above this point must be authenticated.
-    if app.env.use_aaa() {
-        router = aaa::router(router, app.clone());
+    if app.env.allow(Feature::AuthorizationRequired) {
+        api = aaa::router(api, app.clone());
     }
 
-    router = router
+    api = api
         .route("/api-doc/openapi.json", get(openapi_json::handle))
         .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
         .route("/health", get(health));
 
-    let router: Router<()> = router
+    let api: Router<()> = api
         .layer(Extension(app.indexes.clone()))
         .layer(Extension(app.semantic.clone()))
         .layer(Extension(app.clone()))
-        .with_state(app)
+        .with_state(app.clone())
         .layer(CorsLayer::permissive())
         .layer(CatchPanicLayer::new());
+
+    let mut router = Router::new().nest("/api", api);
+
+    if let Some(frontend_dist) = app.config.frontend_dist.clone() {
+        router = router.nest_service(
+            "/",
+            tower::service_fn(move |req| {
+                let frontend_dist = frontend_dist.clone();
+                async move {
+                    Ok(ServeDir::new(&frontend_dist)
+                        .fallback(ServeFile::new(frontend_dist.join("index.html")))
+                        .call(req)
+                        .await
+                        .unwrap())
+                }
+            }),
+        );
+    }
 
     info!(%bind, "starting webserver");
     axum::Server::bind(&bind)

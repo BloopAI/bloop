@@ -48,7 +48,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "bloop"
+          prefix-key: "bloop"
+          shared-key: "server-clippy"
 
       - name: Rust fmt
         run: cargo fmt -p bleep -- --check
@@ -82,50 +83,53 @@ jobs:
         run: "which ctags; ctags --version"
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "bloop"
+          shared-key: "server-test"
 
       - name: Tests
         run: cargo test -p bleep
 
-  benchmark:
-    runs-on: [self-hosted, benchmark]
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          clean: false
-          lfs: true
+  # benchmark:
+  #   runs-on: [self-hosted, benchmark]
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         clean: false
+  #         lfs: true
 
-      - name: Setup Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+  #     - name: Setup Rust toolchain
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
 
-      # Assume that self-hosted box already has universal ctags installed
-      # Can use nix when https://github.com/cachix/install-nix-action/issues/98
-      # has been resolved
+  #     # Assume that self-hosted box already has universal ctags installed
+  #     # Can use nix when https://github.com/cachix/install-nix-action/issues/98
+  #     # has been resolved
 
-      # - uses: cachix/install-nix-action@v18
-      # - name: Install Universal Ctags
-      #   run: 'nix profile install nixpkgs#universal-ctags'
+  #     # - uses: cachix/install-nix-action@v18
+  #     # - name: Install Universal Ctags
+  #     #   run: 'nix profile install nixpkgs#universal-ctags'
 
-      - name: Check ctags version
-        run: "which ctags; ctags --version"
+  #     - name: Check ctags version
+  #       run: "which ctags; ctags --version"
 
-      - uses: boa-dev/criterion-compare-action@v3.2.4
-        env:
-          BLOOP_LOG: bleep=debug
-        with:
-          cwd: ./server
-          benchName: "indexes"
-          branchName: ${{ github.base_ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+  #     - uses: boa-dev/criterion-compare-action@v3.2.4
+  #       env:
+  #         BLOOP_LOG: bleep=debug
+  #       with:
+  #         cwd: ./server
+  #         benchName: "indexes"
+  #         branchName: ${{ github.base_ref }}
+  #         token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: boa-dev/criterion-compare-action@v3.2.4
-        env:
-          BLOOP_LOG: bleep=debug
-        with:
-          cwd: ./server
-          benchName: "queries"
-          branchName: ${{ github.base_ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+  #     - uses: boa-dev/criterion-compare-action@v3.2.4
+  #       env:
+  #         BLOOP_LOG: bleep=debug
+  #       with:
+  #         cwd: ./server
+  #         benchName: "queries"
+  #         branchName: ${{ github.base_ref }}
+  #         token: ${{ secrets.GITHUB_TOKEN }}

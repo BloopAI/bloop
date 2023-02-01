@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "bloop.fullname" . }}-notification-script
+data:
+  notification-script.sh: |
+    printf 'Waiting for environment to become ready'
+    until $(curl --output /dev/null --silent --head --fail http://{{ include "bloop.fullname" . }}:{{ .Values.service.port }}/repos); do
+      printf '.'
+      sleep 5
+    done
+
+    echo "Sending notification email to {{ .Values.bloop.githubOrgOwnerEmail }}"
+    curl -X POST https://app.loops.so/api/v1/events/send \
+      -H "Content-Type: application/json; charset=utf-8" \
+      -H "Authorization: Bearer {{ .Values.bloop.loopsAPIKey }}" \
+      --data '{"email": "{{ .Values.bloop.githubOrgOwnerEmail }}", "eventName": "{{ .Values.bloop.loopsEventName }}", "instanceUrl": "{{ .Values.bloop.githubOrgName }}.bloop.ai"}'
+    echo
+    echo "Done"    

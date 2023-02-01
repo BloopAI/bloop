@@ -11,7 +11,10 @@ where
         .resolve_resource("config.json")
         .expect("failed to resolve resource");
 
-    let mut configuration = Configuration::read(config).unwrap();
+    let mut configuration = Configuration::merge(
+        Configuration::read(config).unwrap(),
+        Configuration::from_cli().unwrap(),
+    );
     configuration.ctags_path = relative_command_path("ctags");
     configuration.max_threads = bleep::default_parallelism() / 4;
     configuration.model_dir = app
@@ -20,13 +23,12 @@ where
         .expect("bad bundle");
 
     let cache_dir = app.path_resolver().app_cache_dir().unwrap();
-    configuration
-        .source
-        .set_default_dir(&cache_dir.join("bleep"));
+    configuration.index_dir = cache_dir.join("bleep");
 
     let app = app.handle();
     tokio::spawn(async move {
-        let initialized = Application::initialize(Environment::InsecureLocal, configuration).await;
+        let initialized =
+            Application::initialize(Environment::insecure_local(), configuration).await;
 
         if let Ok(backend) = initialized {
             if let Err(_e) = backend.run().await {

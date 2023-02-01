@@ -371,7 +371,7 @@ fn get_unix_time(time: SystemTime) -> u64 {
         .as_secs()
 }
 
-#[derive(Serialize, Deserialize, Args, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Args, Debug, Clone, Default, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct StateSource {
     /// Directory where repositories are located
@@ -401,7 +401,7 @@ pub struct StateSource {
 }
 
 impl StateSource {
-    pub fn set_default_dir(&mut self, dir: &Path) {
+    pub(crate) fn set_default_dir(&mut self, dir: &Path) {
         self.state_file
             .get_or_insert_with(|| dir.join("repo_state.json"));
 
@@ -422,7 +422,7 @@ impl StateSource {
         });
     }
 
-    pub fn initialize_pool(&self) -> Result<RepositoryPool, RepoError> {
+    pub(crate) fn initialize_pool(&self) -> Result<RepositoryPool, RepoError> {
         #[cfg(target = "windows")]
         use dunce::canonicalize;
         #[cfg(not(target = "windows"))]

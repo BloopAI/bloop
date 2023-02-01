@@ -22,6 +22,10 @@ export type DeviceContextType = {
   };
   invokeTauriCommand: (c: string, payload?: any) => void;
   release: string;
+  apiUrl: string;
+  isRepoManagementAllowed: boolean;
+  forceAnalytics: boolean;
+  isSelfServe: boolean;
 };
 
 export const DeviceContext = createContext<DeviceContextType>({
@@ -39,4 +43,8 @@ export const DeviceContext = createContext<DeviceContextType>({
   },
   invokeTauriCommand: () => {},
   release: '0.0.0',
+  apiUrl: '',
+  isRepoManagementAllowed: true,
+  forceAnalytics: false,
+  isSelfServe: false,
 });

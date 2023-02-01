@@ -19,6 +19,7 @@ import useAppNavigation from '../../../hooks/useAppNavigation';
 import { TabsContext } from '../../../context/tabsContext';
 import { generateUniqueId } from '../../../utils';
 import { MenuItemType } from '../../../types/general';
+import { DeviceContext } from '../../../context/deviceContext';
 
 type Props = {
   shareFiles?: ShareFile[];
@@ -27,6 +28,7 @@ type Props = {
 
 const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
   const { setSettingsOpen, setBugReportModalOpen } = useContext(UIContext);
+  const { isRepoManagementAllowed } = useContext(DeviceContext);
   const { navigateBack, navigationHistory } = useAppNavigation();
   const { tabs, setActiveTab, handleAddTab, activeTab, handleRemoveTab } =
     useContext(TabsContext);
@@ -88,12 +90,14 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
       >
         <ArrowLeft />
       </Button>
-      <Dropdown
-        items={tabItems}
-        selected={tabItems[tabs.findIndex((t) => t.key === activeTab)]}
-        hint="Open tabs"
-        titleClassName="max-w-[120px] ellipsis"
-      />
+      {!isSkeleton && (
+        <Dropdown
+          items={tabItems}
+          selected={tabItems[tabs.findIndex((t) => t.key === activeTab)]}
+          hint="Open tabs"
+          titleClassName="max-w-[120px] ellipsis"
+        />
+      )}
       <div className="flex items-center justify-between	w-full">
         <span />
         {/*{isSkeleton ? (*/}
@@ -136,43 +140,47 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
           )}
         </div>
         {shareFiles?.length ? <ShareButton files={shareFiles} visible /> : ''}
-        <span>
-          {isSkeleton ? (
-            <div className="flex items-center gap-1.5 text-gray-500">
-              <div className="bg-gray-700 rounded-full h-10 w-10" />
-              <ChevronDownFilled />
-            </div>
-          ) : (
-            <DropdownWithIcon
-              items={[
-                {
-                  text: 'Settings',
-                  icon: <Cog />,
-                  type: MenuListItemType.DEFAULT,
-                  onClick: () => setSettingsOpen(true),
-                },
-                // {
-                //   text: 'My Collections',
-                //   icon: <Collections />,
-                //   type: MenuListItemType.DEFAULT,
-                // },
-                {
-                  text: 'Report a bug',
-                  icon: <Bug />,
-                  type: MenuListItemType.DEFAULT,
-                  onClick: () => setBugReportModalOpen(true),
-                },
-                // {
-                //   text: 'Sign out',
-                //   icon: <DoorRight />,
-                //   type: MenuListItemType.DEFAULT,
-                // },
-              ]}
-              icon={<Person />}
-              dropdownBtnClassName="-mr-4"
-            />
-          )}
-        </span>
+        {isRepoManagementAllowed ? (
+          <span>
+            {isSkeleton ? (
+              <div className="flex items-center gap-1.5 text-gray-500">
+                <div className="bg-gray-700 rounded-full h-10 w-10" />
+                <ChevronDownFilled />
+              </div>
+            ) : (
+              <DropdownWithIcon
+                items={[
+                  {
+                    text: 'Settings',
+                    icon: <Cog />,
+                    type: MenuListItemType.DEFAULT,
+                    onClick: () => setSettingsOpen(true),
+                  },
+                  // {
+                  //   text: 'My Collections',
+                  //   icon: <Collections />,
+                  //   type: MenuListItemType.DEFAULT,
+                  // },
+                  {
+                    text: 'Report a bug',
+                    icon: <Bug />,
+                    type: MenuListItemType.DEFAULT,
+                    onClick: () => setBugReportModalOpen(true),
+                  },
+                  // {
+                  //   text: 'Sign out',
+                  //   icon: <DoorRight />,
+                  //   type: MenuListItemType.DEFAULT,
+                  // },
+                ]}
+                icon={<Person />}
+                dropdownBtnClassName="-mr-4"
+              />
+            )}
+          </span>
+        ) : (
+          <span />
+        )}
       </div>
     </div>
   );

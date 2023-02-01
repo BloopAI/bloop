@@ -6,6 +6,7 @@ import { getRepos } from '../../../services/api';
 import { RepoProvider, RepoType, SyncStatus } from '../../../types/general';
 import { UIContext } from '../../../context/uiContext';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
+import { DeviceContext } from '../../../context/deviceContext';
 
 type Props = {
   filter: number;
@@ -64,6 +65,7 @@ const textsMap = [
 const ReposSection = ({ filter, emptyRepos }: Props) => {
   const [reposToShow, setReposToShow] = useState<RepoType[]>([]);
   const { setSettingsSection, setSettingsOpen } = useContext(UIContext);
+  const { isRepoManagementAllowed, isSelfServe } = useContext(DeviceContext);
   const { setRepositories, repositories } = useContext(RepositoriesContext);
 
   useEffect(() => {
@@ -75,7 +77,7 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
         getRepos().then((data) => {
           setRepositories(data.list || []);
         });
-      }, 5000);
+      }, 10000);
       return () => {
         clearInterval(intervalId);
       };
@@ -115,8 +117,10 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
   return (
     <div className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content">
       <div className="flex items-center justify-between">
-        <h4 className="">{textsMap[filter].header}</h4>
-        {reposToShow.length ? (
+        <h4 className="">
+          {isSelfServe ? 'All repositories' : textsMap[filter].header}
+        </h4>
+        {isRepoManagementAllowed && (reposToShow.length || isSelfServe) ? (
           <Button
             variant="secondary"
             onClick={() => {
@@ -140,7 +144,7 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
             provider={r.provider}
           />
         ))}
-        {!reposToShow.length && (
+        {!reposToShow.length && !isSelfServe && (
           <div className="absolute top-[10vh] left-1/2 transform -translate-x-1/2 text-center w-96">
             <h5 className="select-none cursor-default">
               {textsMap[filter].title}
