@@ -87,7 +87,9 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
       case 0:
         setReposToShow(
           repositories.filter(
-            (r) => r.sync_status !== SyncStatus.Uninitialized,
+            (r) =>
+              r.sync_status !== SyncStatus.Uninitialized &&
+              r.sync_status !== SyncStatus.Removed,
           ),
         );
         break;
@@ -96,7 +98,8 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
           repositories.filter(
             (r) =>
               r.provider === RepoProvider.Local &&
-              r.sync_status !== SyncStatus.Uninitialized,
+              r.sync_status !== SyncStatus.Uninitialized &&
+              r.sync_status !== SyncStatus.Removed,
           ),
         );
         break;
@@ -105,7 +108,8 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
           repositories.filter(
             (r) =>
               r.provider === RepoProvider.GitHub &&
-              r.sync_status !== SyncStatus.Uninitialized,
+              r.sync_status !== SyncStatus.Uninitialized &&
+              r.sync_status !== SyncStatus.Removed,
           ),
         );
         break;

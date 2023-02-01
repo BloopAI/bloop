@@ -8,7 +8,7 @@ import React, {
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { MenuItemType, RepoProvider, SyncStatus } from '../../../types/general';
 import { PlusSignInBubble, Repository } from '../../../icons';
-import { getRepos, gitHubStatus, syncRepos } from '../../../services/api';
+import { deleteRepo, getRepos, gitHubStatus } from '../../../services/api';
 import { UIContext } from '../../../context/uiContext';
 import RepoList from '../../RepoList';
 import { getCommonFolder, splitPath } from '../../../utils';
@@ -97,16 +97,9 @@ const RepositoriesSettings = () => {
     });
   }, []);
 
-  const handleRemoveOne = useCallback(
-    (repoRef: string) => {
-      syncRepos(
-        [...localRepos, ...githubRepos]
-          .filter((r) => r.ref !== repoRef)
-          .map((r) => r.ref),
-      ).then(console.log);
-    },
-    [localRepos, githubRepos],
-  );
+  const handleRemoveOne = useCallback(async (repoRef: string) => {
+    await deleteRepo(repoRef);
+  }, []);
 
   const addReposMenuItems = useMemo(
     () => [

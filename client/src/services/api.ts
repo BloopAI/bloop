@@ -102,6 +102,9 @@ export const syncRepos = (repos: string[]) =>
     })
     .then((r) => r.data);
 
+export const deleteRepo = (repoRef: string) =>
+  http.delete(`/repos/indexed/${repoRef}`).then((r) => r.data);
+
 export const saveUserData = (userData: {
   email: string;
   first_name: string;
