@@ -77,7 +77,7 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
         getRepos().then((data) => {
           setRepositories(data.list || []);
         });
-      }, 5000);
+      }, 10000);
       return () => {
         clearInterval(intervalId);
       };
