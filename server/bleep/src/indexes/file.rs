@@ -498,8 +498,8 @@ impl File {
         }
         trace!("added cache entry");
 
-        let lang_str = match &entry_disk_path.is_file() {
-            true => repo_info
+        let lang_str = if entry_disk_path.is_file() {
+            repo_info
                 .langs
                 .path_map
                 .get(&entry_disk_path)
@@ -507,8 +507,9 @@ impl File {
                     warn!("Path not found in language map");
                     &Some("")
                 })
-                .unwrap_or(""),
-            false => "",
+                .unwrap_or("")
+        } else {
+            ""
         };
 
         // calculate symbol locations
