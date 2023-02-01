@@ -31,7 +31,7 @@ async fn index(index_dir: &Path) {
 
     index_only.index_only = true;
 
-    let app = Application::initialize(Environment::Server, index_only)
+    let app = Application::initialize(Environment::server(), index_only)
         .await
         .unwrap();
     _ = app.run().await.unwrap();
@@ -44,7 +44,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         index(index_dir.path()).await;
 
         let app = Application::initialize(
-            Environment::Server,
+            Environment::server(),
             serde_json::from_value::<Configuration>(json!({
             "disable_background": true,
             "index_dir": index_dir.path()
@@ -56,9 +56,11 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
         let file = File::new(
             app.config.clone(),
-            Semantic::new(&model_dir, &app.config.qdrant_url, Arc::clone(&app.config))
-                .await
-                .unwrap(),
+            Some(
+                Semantic::new(&model_dir, &app.config.qdrant_url, Arc::clone(&app.config))
+                    .await
+                    .unwrap(),
+            ),
         );
 
         // Get the symbols for the `js-sample-big-symbols.js` file in this directory.
