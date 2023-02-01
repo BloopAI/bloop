@@ -18,11 +18,11 @@ RUN apt-get update && apt-get -y install cmake python3 protobuf-compiler && apt-
 COPY --from=planner /build/recipe.json recipe.json
 # Build dependencies - this is the caching Docker layer!
 RUN --mount=target=/build/target,type=cache \
-    cargo chef cook -p bleep --release --recipe-path recipe.json
+    cargo --locked chef cook -p bleep --release --recipe-path recipe.json
 COPY . .
 RUN --mount=target=/build/target,type=cache \
     rm server/bleep/src/main.rs && \
-    cargo build -p bleep --release --locked --frozen --offline && \
+    cargo --locked --frozen --offline build -p bleep --release && \
     cp /build/target/release/bleep /
 
 FROM debian:stable-slim
