@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
 use qdrant_client::qdrant::{vectors, ScoredPoint};
 use reqwest::StatusCode;
@@ -106,10 +104,8 @@ pub async fn handle(
 
             fn extract_vector(point: &ScoredPoint) -> Vec<f32> {
                 if let Some(vectors) = &point.vectors {
-                    if let Some(options) = &vectors.vectors_options {
-                        if let vectors::VectorsOptions::Vector(v) = options {
-                            return v.data.clone();
-                        }
+                    if let Some(vectors::VectorsOptions::Vector(v)) = &vectors.vectors_options {
+                        return v.data.clone();
                     }
                 }
                 panic!("got non-vector value");
@@ -144,59 +140,20 @@ pub async fn handle(
         })
         .collect();
 
-    let mut snippets = vec![];
-    let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
-
-    // remove overlapping snippets
-    for snippet in all_snippets.clone().into_iter() {
-        if snippets.len() > SNIPPET_COUNT {
-            break;
-        }
-
-        let path = &snippet.relative_path;
-        if !chunk_ranges_by_file.contains_key(path) {
-            chunk_ranges_by_file
-                .entry(path.to_string())
-                .or_insert_with(Vec::new);
-        }
-
-        if chunk_ranges_by_file.get(path).unwrap().len() <= 2 {
-            // check if line ranges of any added chunk overlap with current chunk
-            let any_overlap = chunk_ranges_by_file
-                .get(path)
-                .unwrap()
-                .iter()
-                .any(|r| (snippet.start_line <= r.end) && (r.start <= snippet.end_line));
-
-            // no overlap, add snippet
-            if !any_overlap {
-                chunk_ranges_by_file
-                    .entry(path.to_string())
-                    .or_insert_with(Vec::new)
-                    .push(std::ops::Range {
-                        start: snippet.start_line,
-                        end: snippet.end_line,
-                    });
-                snippets.push(snippet);
-            }
-        }
-    }
-
     // deduplicate snippets with MMR
-    let k = 4;
-    let lambda = 0.5;
     let query_embedding = semantic.embed(target).map_err(|e| {
         error!("failed to embed query: {}", e);
         super::internal_error(e)
     })?;
-    let idxs = deduplicate_with_mmr(&query_embedding, &snippets, lambda, k);
-    let mut with_mmr_snippets = vec![];
+    let lambda = 0.5;
+    let k = 9;
+    let idxs = deduplicate_with_mmr(&query_embedding, &all_snippets, lambda, k);
+    let mut snippets = vec![];
     info!("preserved idxs after MMR are {:?}", idxs);
     for i in idxs {
-        let item = std::mem::take(&mut snippets[i]);
-        with_mmr_snippets.push(item);
+        let item = all_snippets[i].clone();
+        snippets.push(item);
     }
-    snippets = with_mmr_snippets;
 
     if snippets.is_empty() {
         warn!("Semantic search returned no snippets");
@@ -538,10 +495,10 @@ fn deduplicate_with_mmr(
             if idxs.contains(&i) {
                 continue;
             }
-            let first_part = cosine_similarity(&query_embedding, &emb);
+            let first_part = cosine_similarity(query_embedding, emb);
             let mut second_part = 0.;
             for j in idxs.iter() {
-                let cos_sim = cosine_similarity(&emb, &snippets[*j].vector);
+                let cos_sim = cosine_similarity(emb, &snippets[*j].vector);
                 if cos_sim > second_part {
                     second_part = cos_sim;
                 }
@@ -556,5 +513,5 @@ fn deduplicate_with_mmr(
             idxs.push(i);
         }
     }
-    return idxs;
+    idxs
 }
