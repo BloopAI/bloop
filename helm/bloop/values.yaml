@@ -10,7 +10,8 @@ bloop:
   githubClientId: ""
   githubClientSecret: ""
   instanceDomain: ""
-  answerApi: ""
+  answerApiUrl: ""
+  qdrantUrl: ""
 
 image:
   repository: ""
@@ -48,8 +49,7 @@ serviceAccount:
 service:
   type: ClusterIP
   port: 7879
-  annotations:
-    {}
+  annotations: {}
 
 ingress:
   enabled: true
@@ -76,7 +76,7 @@ tolerations: []
 affinity: {}
 
 persistence:
-  accessModes: [ "ReadWriteOnce" ]
+  accessModes: ["ReadWriteOnce"]
   size: 1Gi
   storageClassName: gp3
 
@@ -132,7 +132,8 @@ qdrant:
 
   podAnnotations: {}
 
-  resources: {}
+  resources:
+    {}
     # limits:
     #   cpu: 100m
     #   memory: 128Mi
@@ -147,7 +148,7 @@ qdrant:
   affinity: {}
 
   persistence:
-    accessModes: [ "ReadWriteOnce" ]
+    accessModes: ["ReadWriteOnce"]
     size: 1Gi
     storageClassName: gp3
 
