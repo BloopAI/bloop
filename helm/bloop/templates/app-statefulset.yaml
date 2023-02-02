@@ -75,6 +75,12 @@ spec:
                 fieldPath: metadata.namespace
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 7878
+            initialDelaySeconds: 20
+            periodSeconds: 5
           volumeMounts:
           - name: {{ include "bloop.fullname" . }}-storage
             mountPath: /data

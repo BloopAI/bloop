@@ -52,13 +52,13 @@ jobs:
           shared-key: "server-clippy"
 
       - name: Rust fmt
-        run: cargo fmt -p bleep -- --check
+        run: cargo --locked fmt -p bleep -- --check
 
       - uses: actions-rs/clippy-check@v1
         with:
           toolchain: stable
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: -p bleep --all-features --manifest-path Cargo.toml
+          args: --locked -p bleep --all-features --manifest-path Cargo.toml
 
   test:
     runs-on: ubuntu-latest
@@ -88,7 +88,7 @@ jobs:
           shared-key: "server-test"
 
       - name: Tests
-        run: cargo test -p bleep
+        run: cargo --locked test -p bleep
 
   # benchmark:
   #   runs-on: [self-hosted, benchmark]

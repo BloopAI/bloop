@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import * as Sentry from '@sentry/react';
+import { useNavigate } from 'react-router-dom';
 import {
   FullResult,
   ResultClick,
@@ -44,12 +45,16 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     FullResultModeEnum.SIDEBAR,
   );
   const [openResult, setOpenResult] = useState<FullResult | null>(null);
+  const [scrollToLine, setScrollToLine] = useState<string | undefined>(
+    undefined,
+  );
   const { filters, setFilters, inputValue, globalRegex, searchType } =
     useContext(SearchContext);
   const { setSymbolsCollapsed } = useContext(UIContext);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
+  const navigateBrowser = useNavigate();
 
   const toggleFiltersOpen = useCallback(() => {
     setIsFiltersOpen((prev) => !prev);
@@ -66,7 +71,8 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   );
 
   const onResultClick = useCallback<ResultClick>(
-    (repo, path) => {
+    (repo, path, lineNumber) => {
+      setScrollToLine(lineNumber ? lineNumber.join('_') : undefined);
       if (path && !(path.endsWith('/') || path.endsWith('\\'))) {
         fileModalSearchQuery(`open:true repo:${repo} path:${path}`);
       } else {
@@ -117,6 +123,14 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   useEffect(() => {
     if (fileResultData) {
       setOpenResult(mapFileResult(fileResultData.data[0]));
+      navigateBrowser({
+        search: scrollToLine
+          ? '?' +
+            new URLSearchParams({
+              scroll_line_index: scrollToLine.toString(),
+            }).toString()
+          : '',
+      });
       getHoverables(
         fileResultData.data[0].data.relative_path,
         fileResultData.data[0].data.repo_ref,
