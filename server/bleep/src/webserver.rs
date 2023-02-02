@@ -85,7 +85,8 @@ pub async fn start(app: Application) -> Result<()> {
     api = api
         .route("/api-doc/openapi.json", get(openapi_json::handle))
         .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
-        .route("/health", get(health));
+        .route("/health", get(health))
+        .route("/health-qdrant", get(health_qdrant));
 
     let api: Router<()> = api
         .layer(Extension(app.indexes.clone()))
@@ -309,4 +310,19 @@ pub mod openapi_yaml {
     }
 }
 
-async fn health() {}
+async fn health(Extension(app): Extension<Application>) {
+    if let Some(ref semantic) = app.semantic {
+        // panic is fine here, we don't need exact reporting of
+        // subsystem checks at this stage
+        semantic.health_check().await.unwrap()
+    }
+}
+
+async fn health_qdrant(Extension(app): Extension<Application>) {
+    use qdrant_client::prelude::*;
+    let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(&app.config.qdrant_url)))
+        .await
+        .unwrap();
+
+    qdrant.health_check().await.unwrap();
+}
