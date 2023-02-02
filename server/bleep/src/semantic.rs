@@ -66,7 +66,7 @@ fn collection_config() -> CreateCollection {
 }
 
 impl Semantic {
-    pub async fn new(
+    pub async fn initialize(
         model_dir: &Path,
         qdrant_url: &str,
         config: Arc<Configuration>,

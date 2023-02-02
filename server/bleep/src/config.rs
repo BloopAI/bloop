@@ -87,10 +87,9 @@ pub struct Configuration {
     //
     // External dependencies
     //
-    #[clap(long, default_value_t = default_qdrant_url())]
-    #[serde(default = "default_qdrant_url")]
+    #[clap(long)]
     /// URL for the qdrant server
-    pub qdrant_url: String,
+    pub qdrant_url: Option<String>,
 
     #[clap(long, default_value_t = default_answer_api_url())]
     #[serde(default = "default_answer_api_url")]
@@ -226,7 +225,7 @@ impl Configuration {
 
             frontend_dist: b.frontend_dist.or(a.frontend_dist),
 
-            qdrant_url: right_if_default!(b.qdrant_url, a.qdrant_url, default_qdrant_url()),
+            qdrant_url: b.qdrant_url.or(a.qdrant_url),
 
             answer_api_url: right_if_default!(
                 b.answer_api_url,
@@ -288,10 +287,6 @@ const fn default_port() -> u16 {
 
 fn default_host() -> String {
     String::from("127.0.0.1")
-}
-
-fn default_qdrant_url() -> String {
-    String::from("http://127.0.0.1:6334")
 }
 
 fn default_answer_api_url() -> String {
