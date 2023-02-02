@@ -127,6 +127,11 @@ impl Semantic {
         })
     }
 
+    pub async fn health_check(&self) -> anyhow::Result<()> {
+        self.qdrant.health_check().await?;
+        Ok(())
+    }
+
     pub fn embed(&self, chunk: &str) -> anyhow::Result<Vec<f32>> {
         let tokenizer_output = self.tokenizer.encode(chunk, true).unwrap();
 

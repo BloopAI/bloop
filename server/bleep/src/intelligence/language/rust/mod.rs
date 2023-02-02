@@ -459,30 +459,36 @@ mod tests {
                                         `fn foo<'b>(&'a self) -> &'b §T§ { }`,
                                     ],
                                 },
-                                foo {
-                                    kind: "function",
-                                    context: "fn §foo§<'b>(&'a self) -> &'b T { }",
-                                },
                             ],
                             child scopes: [
                                 scope {
                                     definitions: [
-                                        'b {
-                                            kind: "lifetime",
-                                            context: "fn foo<§'b§>(&'a self) -> &'b T { }",
-                                            referenced in (1): [
-                                                `fn foo<'b>(&'a self) -> &§'b§ T { }`,
-                                            ],
-                                        },
-                                        self {
-                                            kind: "variable",
-                                            context: "fn foo<'b>(&'a §self§) -> &'b T { }",
+                                        foo {
+                                            kind: "function",
+                                            context: "fn §foo§<'b>(&'a self) -> &'b T { }",
                                         },
                                     ],
                                     child scopes: [
                                         scope {
-                                            definitions: [],
-                                            child scopes: [],
+                                            definitions: [
+                                                'b {
+                                                    kind: "lifetime",
+                                                    context: "fn foo<§'b§>(&'a self) -> &'b T { }",
+                                                    referenced in (1): [
+                                                        `fn foo<'b>(&'a self) -> &§'b§ T { }`,
+                                                    ],
+                                                },
+                                                self {
+                                                    kind: "variable",
+                                                    context: "fn foo<'b>(&'a §self§) -> &'b T { }",
+                                                },
+                                            ],
+                                            child scopes: [
+                                                scope {
+                                                    definitions: [],
+                                                    child scopes: [],
+                                                },
+                                            ],
                                         },
                                     ],
                                 },
@@ -525,7 +531,12 @@ mod tests {
                     child scopes: [
                         scope {
                             definitions: [],
-                            child scopes: [],
+                            child scopes: [
+                                scope {
+                                    definitions: [],
+                                    child scopes: [],
+                                },
+                            ],
                         },
                         scope {
                             definitions: [
@@ -769,43 +780,48 @@ mod tests {
                             child scopes: [],
                         },
                         scope {
-                            definitions: [
-                                foo {
-                                    kind: "function",
-                                    context: "fn §foo§() {",
-                                    referenced in (1): [
-                                        `Self::§foo§()`,
-                                    ],
-                                },
-                                bar {
-                                    kind: "function",
-                                    context: "fn §bar§(&self) {",
-                                    referenced in (1): [
-                                        `self.§bar§()`,
-                                    ],
-                                },
-                            ],
+                            definitions: [],
                             child scopes: [
                                 scope {
-                                    definitions: [],
-                                    child scopes: [
-                                        scope {
-                                            definitions: [],
-                                            child scopes: [],
-                                        },
-                                    ],
-                                },
-                                scope {
                                     definitions: [
-                                        self {
-                                            kind: "variable",
-                                            context: "fn bar(&§self§) {",
+                                        foo {
+                                            kind: "function",
+                                            context: "fn §foo§() {",
+                                            referenced in (1): [
+                                                `Self::§foo§()`,
+                                            ],
+                                        },
+                                        bar {
+                                            kind: "function",
+                                            context: "fn §bar§(&self) {",
+                                            referenced in (1): [
+                                                `self.§bar§()`,
+                                            ],
                                         },
                                     ],
                                     child scopes: [
                                         scope {
                                             definitions: [],
-                                            child scopes: [],
+                                            child scopes: [
+                                                scope {
+                                                    definitions: [],
+                                                    child scopes: [],
+                                                },
+                                            ],
+                                        },
+                                        scope {
+                                            definitions: [
+                                                self {
+                                                    kind: "variable",
+                                                    context: "fn bar(&§self§) {",
+                                                },
+                                            ],
+                                            child scopes: [
+                                                scope {
+                                                    definitions: [],
+                                                    child scopes: [],
+                                                },
+                                            ],
                                         },
                                     ],
                                 },
