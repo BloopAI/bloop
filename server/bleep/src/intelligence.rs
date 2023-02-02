@@ -6,7 +6,7 @@ mod scope_resolution;
 pub use {
     language::{Language, MemoizedQuery, TSLanguage, TSLanguageConfig, ALL_LANGUAGES},
     namespace::*,
-    scope_resolution::{NodeKind, ScopeGraph},
+    scope_resolution::{LocalDef, NodeKind, Reference, ScopeGraph},
 };
 
 use scope_resolution::ResolutionMethod;

@@ -2,7 +2,7 @@ use crate::{intelligence::namespace::SymbolId, text_range::TextRange};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 pub struct Reference {
     pub range: TextRange,
     pub symbol_id: Option<SymbolId>,

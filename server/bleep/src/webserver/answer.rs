@@ -7,8 +7,16 @@ use tracing::{debug, error, info, warn};
 use utoipa::ToSchema;
 
 use crate::{
-    analytics::QueryEvent, indexes::reader::ContentDocument, query::parser, semantic::Semantic,
-    state::RepoRef, Application,
+    analytics::QueryEvent,
+    indexes::reader::ContentDocument,
+    intelligence::NodeKind,
+    query::parser,
+    semantic::Semantic,
+    snippet,
+    state::RepoRef,
+    symbol::SymbolLocations,
+    text_range::{Point, TextRange},
+    Application,
 };
 
 use super::ErrorKind;
@@ -212,7 +220,44 @@ pub async fn handle(
 
     // grow the snippet by 60 lines above and below, we have sufficient space
     // to grow this snippet by 10 times its original size (15 to 150)
-    let processed_snippet = {
+    // let processed_snippet = {
+    //     let repo_ref = &relevant_snippet
+    //         .repo_ref
+    //         .parse::<RepoRef>()
+    //         .map_err(super::internal_error)?;
+    //     let doc = app
+    //         .indexes
+    //         .file
+    //         .by_path(repo_ref, &relevant_snippet.relative_path)
+    //         .await
+    //         .map_err(super::internal_error)?;
+
+    //     let mut grow_size = 40;
+    //     let grown_text = loop {
+    //         let grown_text = grow(&doc, relevant_snippet, grow_size);
+    //         let token_count = semantic.gpt2_token_count(&grown_text);
+    //         info!(%grow_size, %token_count, "growing ...");
+    //         if token_count > 2000 || grow_size > 100 {
+    //             break grown_text;
+    //         } else {
+    //             grow_size += 10;
+    //         }
+    //     };
+    //     api::Snippet {
+    //         lang: relevant_snippet.lang.clone(),
+    //         repo_name: relevant_snippet.repo_name.clone(),
+    //         repo_ref: relevant_snippet.repo_ref.clone(),
+    //         relative_path: relevant_snippet.relative_path.clone(),
+    //         text: grown_text,
+    //         start_line: relevant_snippet.start_line,
+    //         end_line: relevant_snippet.end_line,
+    //         start_byte: relevant_snippet.start_byte,
+    //         end_byte: relevant_snippet.end_byte,
+    //         score: relevant_snippet.score,
+    //     }
+    // };
+    let processed_snippet = relevant_snippet;
+    let related_defs = {
         let repo_ref = &relevant_snippet
             .repo_ref
             .parse::<RepoRef>()
@@ -223,33 +268,16 @@ pub async fn handle(
             .by_path(repo_ref, &relevant_snippet.relative_path)
             .await
             .map_err(super::internal_error)?;
-
-        let mut grow_size = 40;
-        let grown_text = loop {
-            let grown_text = grow(&doc, relevant_snippet, grow_size);
-            let token_count = semantic.gpt2_token_count(&grown_text);
-            info!(%grow_size, %token_count, "growing ...");
-            if token_count > 2000 || grow_size > 100 {
-                break grown_text;
-            } else {
-                grow_size += 10;
-            }
-        };
-        api::Snippet {
-            lang: relevant_snippet.lang.clone(),
-            repo_name: relevant_snippet.repo_name.clone(),
-            repo_ref: relevant_snippet.repo_ref.clone(),
-            relative_path: relevant_snippet.relative_path.clone(),
-            text: grown_text,
-            start_line: relevant_snippet.start_line,
-            end_line: relevant_snippet.end_line,
-            start_byte: relevant_snippet.start_byte,
-            end_byte: relevant_snippet.end_byte,
-            score: relevant_snippet.score,
-        }
+        let all_docs = app.indexes.file.by_repo(repo_ref, None).await;
+        let ref_list = ref_list(&doc, relevant_snippet);
+        ref_list
+            .into_iter()
+            .flat_map(|(token, _)| def_data(token, &all_docs, &doc.relative_path))
+            .collect()
     };
 
-    let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
+    let explain_prompt =
+        answer_api_client.build_explain_prompt_v2(&processed_snippet, related_defs);
     let snippet_explanation = answer_api_client
         .explain_snippet(&explain_prompt)
         .await
@@ -315,6 +343,98 @@ fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
         .unwrap_or(content.len());
 
     content[new_start_byte..new_end_byte].to_owned()
+}
+
+// produce a list of references that are found in this snippet
+fn ref_list<'a, 'b>(
+    doc: &'a ContentDocument,
+    snippet: &'b api::Snippet,
+) -> Vec<(&'a [u8], Option<&'a str>)> {
+    // assume this is scope-graph backed
+    let SymbolLocations::TreeSitter(sg) = &doc.symbol_locations else {
+        return vec![];
+    };
+
+    let snippet_range = TextRange::new(
+        Point::new(snippet.start_byte, snippet.start_line, 0),
+        Point::new(snippet.end_byte, snippet.end_line, 0),
+    );
+
+    sg.graph
+        .node_indices()
+        .filter_map(|idx| match sg.graph[idx] {
+            NodeKind::Ref(r) => Some((r, idx)),
+            _ => None,
+        })
+        .filter(|(r, _)| snippet_range.contains(r.range))
+        .map(|(r, idx)| (r.name(doc.content.as_bytes()), sg.symbol_name_of(idx)))
+        .collect()
+}
+
+struct DefData {
+    context: snippet::Snippet,
+    file: String,
+    name: String,
+}
+
+// given a token, look all over the repo for possible defs, remove defs that are:
+// - from the current file
+// - do not have a symbol attached to them
+fn def_data(token: &[u8], all_docs: &[ContentDocument], start_file: &str) -> Vec<DefData> {
+    all_docs
+        .iter()
+        .filter(|d| d.relative_path != start_file)
+        .filter_map(|doc| match &doc.symbol_locations {
+            SymbolLocations::TreeSitter(scope_graph) => {
+                let graph = &scope_graph.graph;
+                let src = &doc.content;
+                let ends = &doc.line_end_indices;
+                let defs = graph
+                    .node_indices()
+                    .filter_map(|node_idx| {
+                        // the node should be a def
+                        let NodeKind::Def(d) = &graph[node_idx] else {
+                            return None;
+                        };
+
+                        // the def should match the token we are looking for
+                        if d.name(src.as_bytes()) != token {
+                            return None;
+                        }
+
+                        // the def should have a symbol kind
+                        // TODO: permit only function/method symbols here
+                        if scope_graph.symbol_name_of(node_idx).is_none() {
+                            return None;
+                        }
+
+                        Some(d)
+                    })
+                    .copied()
+                    .map(|def| {
+                        let hl_range = def.range.start.byte..def.range.end.byte;
+                        let def_name = std::str::from_utf8(def.name(src.as_bytes()))
+                            .unwrap_or_default()
+                            .to_owned();
+                        let s = snippet::Snipper::default()
+                            .context(5, 5)
+                            .find_symbols(false)
+                            .case_sensitive(false)
+                            .expand(hl_range, src, ends)
+                            .reify(src, &[]);
+                        DefData {
+                            context: s,
+                            name: def_name,
+                            file: doc.relative_path.to_owned(),
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                Some(defs)
+            }
+            _ => None,
+        })
+        .flatten()
+        .collect()
 }
 
 #[derive(serde::Serialize)]
@@ -449,6 +569,32 @@ File: {}
 Answer in GitHub Markdown:",
             self.query, snippet.text,
         );
+        prompt
+    }
+
+    fn build_explain_prompt_v2(&self, snippet: &api::Snippet, def_data: Vec<DefData>) -> String {
+        let def_data_formatted = def_data
+            .iter()
+            .map(|d| {
+                format!(
+                    "Definition of {} in file {}:\n{}\n=========",
+                    d.name, d.file, d.context.data
+                )
+            })
+            .collect::<String>();
+        let prompt = format!(
+            "You are an AI assistant for a repo. You are given an extract from a code base and a question. \
+Use the extract to write a detailed answer to the question. Copy relevant parts of the extract into the answer and explain why they are relevant. \
+Do NOT include code that is not in the file. Some of the functions used in the extract are also provided, use this information\
+to explain the extract step-by-step. If the file doesn't contain enough information to answer the question, or you don't know the answer, just say \"Sorry, I'm not sure\". \
+Do NOT try to make up an answer. Format your response in GitHub markdown with code blocks annotated with programming language.
+Question: {}
+=========
+File: {}
+=========
+{}
+Answer in GitHub Markdown:", self.query, snippet.text, def_data_formatted
+            );
         prompt
     }
 
