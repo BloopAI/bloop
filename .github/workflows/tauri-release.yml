@@ -36,11 +36,11 @@ jobs:
 
       - name: Check Formatting
         run: |
-          cargo fmt -p bloop -- --check
+          cargo --locked fmt -p bloop -- --check
 
       - name: Run tests
         run: |
-          cargo test -p bloop --verbose
+          cargo --locked test -p bloop --verbose
 
   build-mac-linux-ctags:
     strategy:
@@ -211,7 +211,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
         with:
-          args: -v -- -v
+          args: --locked -v -- -v
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3

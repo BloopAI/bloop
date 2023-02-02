@@ -22,6 +22,7 @@
     "chromatic": "npx chromatic --project-token=6115d726666b"
   },
   "dependencies": {
+    "@rive-app/react-canvas": "^3.0.34",
     "@sentry/react": "^7.23.0",
     "@sentry/tracing": "^7.23.0",
     "@tailwindcss/line-clamp": "^0.4.2",

@@ -1,8 +1,9 @@
 ;; see tree-sitter-rust/src/grammar.json for an exhaustive list of productions
 
 ;; scopes
-(block) @local.scope    ; { ... }
+(block) @local.scope              ; { ... }
 (function_item) @local.scope
+(declaration_list) @local.scope   ; mod { ... }
 
 ;; impl items can define types and lifetimes:
 ;;

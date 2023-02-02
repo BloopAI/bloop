@@ -67,6 +67,10 @@ function App() {
       os,
       invokeTauriCommand: invoke,
       release,
+      apiUrl: 'http://127.0.0.1:7878/api',
+      isRepoManagementAllowed: true,
+      forceAnalytics: false,
+      isSelfServe: false,
     }),
     [homeDirectory, indexFolder, deviceId, os, release],
   );
