@@ -1,9 +1,10 @@
 import { useCallback, useContext, useMemo, useState } from 'react';
 import hljs from 'highlight.js';
 import { Remarkable } from 'remarkable';
+import { useRive } from '@rive-app/react-canvas';
 import CodeBlockSearch from '../Search';
 import Button from '../../Button';
-import { ArrowRotate, ThumbsDown, ThumbsUp } from '../../../icons';
+import { ArrowRotate } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
 import { saveUpvote } from '../../../services/api';
 import useAppNavigation from '../../../hooks/useAppNavigation';
@@ -50,11 +51,35 @@ const SemanticSearch = ({
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
   const { trackUpvote } = useAnalytics();
+  const RiveUpvote = useRive({
+    src: '/like_button.riv',
+    autoplay: false,
+  });
+  const RiveDownvote = useRive({
+    src: '/like_button.riv',
+    autoplay: false,
+  });
 
   const highlightedAnswer = useMemo(() => md.render(answer), [answer]);
 
   const handleUpvote = useCallback(
     (isUpvote: boolean) => {
+      if (RiveUpvote.rive) {
+        if (isUpvote) {
+          RiveUpvote.rive.play();
+        } else {
+          RiveUpvote.rive.reset();
+          RiveUpvote.rive.drawFrame();
+        }
+      }
+      if (RiveDownvote.rive) {
+        if (!isUpvote) {
+          RiveDownvote.rive.play();
+        } else {
+          RiveDownvote.rive.reset();
+          RiveDownvote.rive.drawFrame();
+        }
+      }
       setIsUpvote(isUpvote);
       setIsDownvote(!isUpvote);
       trackUpvote(isUpvote, query, answer, searchId);
@@ -66,7 +91,7 @@ const SemanticSearch = ({
         text: answer,
       });
     },
-    [deviceId, query, answer],
+    [deviceId, query, answer, RiveUpvote, RiveDownvote],
   );
 
   return (
@@ -93,7 +118,7 @@ const SemanticSearch = ({
             size="small"
             onClick={() => handleUpvote(true)}
           >
-            <ThumbsUp />
+            <RiveUpvote.RiveComponent className="w-4/5 h-4/5" />
           </Button>
           <Button
             onlyIcon
@@ -102,7 +127,7 @@ const SemanticSearch = ({
             size="small"
             onClick={() => handleUpvote(false)}
           >
-            <ThumbsDown />
+            <RiveDownvote.RiveComponent className="w-4/5 h-4/5 transform rotate-180" />
           </Button>
         </div>
       </div>
