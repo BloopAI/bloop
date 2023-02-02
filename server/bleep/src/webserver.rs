@@ -85,8 +85,7 @@ pub async fn start(app: Application) -> Result<()> {
     api = api
         .route("/api-doc/openapi.json", get(openapi_json::handle))
         .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
-        .route("/health", get(health))
-        .route("/health-qdrant", get(health_qdrant));
+        .route("/health", get(health));
 
     let api: Router<()> = api
         .layer(Extension(app.indexes.clone()))
