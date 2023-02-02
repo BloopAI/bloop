@@ -111,7 +111,10 @@ impl Application {
                     }
                 }
             }
-            None => None,
+            None => {
+                warn!("Qdrant not initialized because `qdrant_url` is not provided. Starting without semantic search!");
+                None
+            }
         };
 
         let analytics_client = if let (Some(key), Some(data_plane)) =
