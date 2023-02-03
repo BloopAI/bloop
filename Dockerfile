@@ -25,12 +25,12 @@ RUN cargo --locked chef prepare --recipe-path recipe.json
 FROM chef AS builder
 COPY --from=planner /build/recipe.json recipe.json
 # Build dependencies - this is the caching Docker layer!
-RUN --mount=target=/root/.cache/sccache,type=cache --mount=target=/build/target,type=cache \
+RUN --mount=target=/root/.cache/sccache,type=cache \
     cargo --locked chef cook -p bleep --release --recipe-path recipe.json
 COPY server server
 COPY apps/desktop/src-tauri apps/desktop/src-tauri
 COPY Cargo.lock Cargo.toml .
-RUN --mount=target=/root/.cache/sccache,type=cache --mount=target=/build/target,type=cache \
+RUN --mount=target=/root/.cache/sccache,type=cache \
     rm server/bleep/src/main.rs && \
     cargo --locked --frozen --offline build -p bleep --release && \
     cp /build/target/release/bleep / && \
