@@ -1,8 +1,6 @@
 name: Build docker container
 
-on:
-  schedule:
-    - cron: '0 0 * * *'
+on: pull_request
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -13,7 +11,7 @@ env:
 
 jobs:
   build-docker:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -34,5 +32,5 @@ jobs:
           context: .
           platforms: linux/amd64
           tags: |
-            ghcr.io/bloopai/bloop:latest
+            ghcr.io/bloopai/bloop:build-${{ github.sha }}
           push: true
