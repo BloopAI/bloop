@@ -12,6 +12,9 @@ bloop:
   instanceDomain: ""
   answerApiUrl: ""
   qdrantUrl: ""
+  analyticsKey: ""
+  analyticsDataPlane: ""
+  sentryDsn: ""
 
 image:
   repository: ""
