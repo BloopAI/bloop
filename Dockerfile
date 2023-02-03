@@ -1,10 +1,14 @@
 FROM node AS frontend
 WORKDIR /build
 RUN npm install -g pnpm && \
-    pnpm -g config set store-dir /tmp/pnpm-store
-COPY . .
-RUN --mount=target=/tmp/pnpm-store,type=cache pnpm install
-RUN --mount=target=/tmp/pnpm-store,type=cache pnpm run build-web
+    pnpm -g config set store-dir /tmp/pnpm-store && \
+    pnpm -g config set global-dir /tmp/pnpm-store/global 
+COPY pnpm-lock.yaml ./
+RUN pnpm fetch
+COPY apps/ apps
+COPY client/ client
+COPY package.json pnpm-workspace.yaml playwright.config.js .
+RUN pnpm install -r --offline && pnpm run build-web
 
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 WORKDIR /build
@@ -19,7 +23,9 @@ COPY --from=planner /build/recipe.json recipe.json
 # Build dependencies - this is the caching Docker layer!
 RUN --mount=target=/build/target,type=cache \
     cargo --locked chef cook -p bleep --release --recipe-path recipe.json
-COPY . .
+COPY server server
+COPY apps/desktop/src-tauri apps/desktop/src-tauri
+COPY Cargo.lock Cargo.toml .
 RUN --mount=target=/build/target,type=cache \
     rm server/bleep/src/main.rs && \
     cargo --locked --frozen --offline build -p bleep --release && \

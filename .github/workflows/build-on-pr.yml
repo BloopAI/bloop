@@ -1,4 +1,4 @@
-name: Build&Push API docker container image with SHA tag
+name: Build docker container
 on: pull_request
 
 jobs:
