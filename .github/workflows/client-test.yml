@@ -13,8 +13,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No checks required" '
+  fmt-clippy-build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No checks required" '
+
   build-client:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
