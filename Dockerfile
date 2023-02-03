@@ -11,7 +11,7 @@ WORKDIR /build
 
 FROM chef AS planner
 COPY . .
-RUN cargo chef prepare --recipe-path recipe.json
+RUN cargo --locked chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
 RUN apt-get update && apt-get -y install cmake python3 protobuf-compiler && apt-get -y clean
