@@ -34,3 +34,5 @@ jobs:
           tags: |
             ghcr.io/bloopai/bloop:build-${{ github.sha }}
           push: true
+          cache-from: type=local,dest=/docker_cache
+          cache-to: type=local,src=/docker_cache,mode=max
