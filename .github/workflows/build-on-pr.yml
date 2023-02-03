@@ -7,6 +7,7 @@ jobs:
     with:
       repository: bloop
       tag: build-${{ github.sha }}
+      runner: self-hosted
     secrets:
       awsRegion: ${{ secrets.AWS_REGION }}
       awsAccountID: ${{ secrets.AWS_ACCOUNT_ID }}
