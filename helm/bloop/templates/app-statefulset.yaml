@@ -61,6 +61,9 @@ spec:
           - --github-client-id={{ .Values.bloop.githubClientId }}
           - --github-client-secret={{ .Values.bloop.githubClientSecret }}
           - --github-app-private-key=/app/secrets/github-app-private-key.pem
+          - --analytics-key={{ .Values.bloop.analyticsKey }}
+          - --analytics-data-plane={{ .Values.bloop.analyticsDataPlane }}
+          - --sentry-dsn={{ .Values.bloop.sentryDsn }}
           env:
           - name: BLOOP_LOG
             value: info
