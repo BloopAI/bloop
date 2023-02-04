@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use axum::{
     extract::Query,
+    http::StatusCode,
     response::{sse::Event, IntoResponse, Sse},
     Extension, Json,
 };
@@ -78,22 +79,36 @@ const SNIPPET_COUNT: usize = 13;
 pub(super) async fn handle(
     Query(params): Query<Params>,
     Extension(app): Extension<Application>,
-) -> super::Result<impl IntoResponse> {
-    let semantic = app
-        .semantic
-        .clone()
-        .ok_or_else(|| super::error(ErrorKind::Configuration, "Qdrant not configured"))?;
+) -> Result<impl IntoResponse, (StatusCode, Json<super::Response<'static>>)> {
+    let semantic = app.semantic.clone().ok_or_else(|| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            super::error(ErrorKind::Configuration, "Qdrant not configured"),
+        )
+    })?;
 
-    let query =
-        parser::parse_nl(&params.q).map_err(|e| super::error(ErrorKind::User, e.to_string()))?;
-    let target = query
-        .target()
-        .ok_or_else(|| super::error(ErrorKind::User, "missing search target".to_owned()))?;
+    let query = parser::parse_nl(&params.q).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            super::error(ErrorKind::User, e.to_string()),
+        )
+    })?;
+    let target = query.target().ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            super::error(ErrorKind::User, "missing search target".to_owned()),
+        )
+    })?;
 
     let all_snippets: Vec<Snippet> = semantic
         .search(&query, 4 * SNIPPET_COUNT as u64) // heuristic
         .await
-        .map_err(|e| super::error(ErrorKind::Internal, e.to_string()))?
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                super::error(ErrorKind::Internal, e.to_string()),
+            )
+        })?
         .into_iter()
         .map(|r| {
             use qdrant_client::qdrant::{value::Kind, Value};
@@ -170,8 +185,9 @@ pub(super) async fn handle(
 
     if snippets.is_empty() {
         warn!("Semantic search returned no snippets");
-        return Err(super::internal_error(
-            "semantic search returned no snippets",
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            (super::internal_error("semantic search returned no snippets")),
         ));
     } else {
         info!("Semantic search returned {} snippets", snippets.len());
@@ -183,7 +199,8 @@ pub(super) async fn handle(
     let select_prompt = answer_api_client.build_select_prompt(&snippets);
     let relevant_snippet_index = answer_api_client
         .select_snippet(&select_prompt)
-        .await?
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?
         .trim()
         .to_string()
         .clone();
@@ -192,18 +209,22 @@ pub(super) async fn handle(
 
     let mut relevant_snippet_index = relevant_snippet_index
         .parse::<usize>()
-        .map_err(super::internal_error)?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))?;
 
     if relevant_snippet_index == 0 {
-        return Err(super::internal_error(
-            "None of the snippets help answer the question",
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            super::internal_error("None of the snippets help answer the question"),
         ));
     }
 
     relevant_snippet_index -= 1; // return to 0-indexing
-    let relevant_snippet = snippets
-        .get(relevant_snippet_index)
-        .ok_or_else(|| super::internal_error("answer-api returned out-of-bounds index"))?;
+    let relevant_snippet = snippets.get(relevant_snippet_index).ok_or_else(|| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            super::internal_error("answer-api returned out-of-bounds index"),
+        )
+    })?;
 
     // grow the snippet by 60 lines above and below, we have sufficient space
     // to grow this snippet by 10 times its original size (15 to 150)
@@ -211,13 +232,13 @@ pub(super) async fn handle(
         let repo_ref = &relevant_snippet
             .repo_ref
             .parse::<RepoRef>()
-            .map_err(super::internal_error)?;
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))?;
         let doc = app
             .indexes
             .file
             .by_path(repo_ref, &relevant_snippet.relative_path)
             .await
-            .map_err(super::internal_error)?;
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))?;
 
         let mut grow_size = 40;
         let grown_text = loop {
@@ -259,13 +280,14 @@ pub(super) async fn handle(
             user_id: params.user_id.clone(),
             answer_path,
         }))
-        .map_err(super::internal_error)?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))?;
 
     let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
 
     let mut snippet_explanation = answer_api_client
         .explain_snippet(&explain_prompt)
         .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))
         .map(Box::pin)?;
 
     let stream = async_stream::stream! {
@@ -291,7 +313,7 @@ pub(super) async fn handle(
         });
     };
 
-    Ok::<_, Json<super::Response<'static>>>(Sse::new(stream))
+    Ok(Sse::new(stream))
 }
 
 // grow the text of this snippet by `size` and return the new text
