@@ -74,6 +74,12 @@ pub struct AnswerResponse {
     pub answer_path: String,
 }
 
+impl From<AnswerResponse> for super::Response<'static> {
+    fn from(res: AnswerResponse) -> super::Response<'static> {
+        super::Response::Answer(res)
+    }
+}
+
 const SNIPPET_COUNT: usize = 13;
 
 pub(super) async fn handle(
@@ -274,7 +280,7 @@ pub(super) async fn handle(
     let answer_path = snippets.get(0).unwrap().relative_path.to_string();
 
     let initial_event = Event::default()
-        .json_data(super::Response::Answer(AnswerResponse {
+        .json_data(super::Response::<'static>::from(AnswerResponse {
             snippets: snippets.clone(),
             query_id,
             user_id: params.user_id.clone(),
