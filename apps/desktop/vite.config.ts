@@ -4,6 +4,7 @@ import EnvironmentPlugin from 'vite-plugin-environment';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  envDir: '../../.',
   plugins: [
     react(),
     EnvironmentPlugin(
@@ -13,7 +14,9 @@ export default defineConfig({
         'ANALYTICS_WRITE_KEY_PROD',
         'SENTRY_DSN_FE',
         'SENTRY_DSN_BE',
-        'ONBOARDING'
+        'ONBOARDING',
+        'API_URL',
+        'DEVICE_ID',
       ],
       {
         defineOn: 'import.meta.env',
