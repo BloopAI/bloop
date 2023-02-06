@@ -18,9 +18,9 @@ export const DeviceContextProvider = ({
     deviceContextValue.invokeTauriCommand(
       isAnalyticsAllowed ? 'enable_telemetry' : 'disable_telemetry',
     );
-    if (isAnalyticsAllowed && import.meta.env.VITE_SENTRY_DSN_FE) {
+    if (isAnalyticsAllowed && import.meta.env.SENTRY_DSN_FE) {
       initializeSentry(
-        import.meta.env.VITE_SENTRY_DSN_FE,
+        import.meta.env.SENTRY_DSN_FE,
         deviceContextValue.release,
       );
     } else {

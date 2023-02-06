@@ -33,3 +33,5 @@ playwright-report
 apps/desktop/src-tauri/bin/qdrant*
 apps/desktop/src-tauri/.crates*
 apps/desktop/src-tauri/.rustc_info*
+
+.env
