@@ -21,7 +21,7 @@ jobs:
       - run: 'echo "No checks required" '
 
   fmt-clippy-build:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
@@ -61,7 +61,7 @@ jobs:
           args: --locked -p bleep --all-features --manifest-path Cargo.toml
 
   test:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
