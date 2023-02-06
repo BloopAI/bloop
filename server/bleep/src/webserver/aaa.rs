@@ -12,12 +12,15 @@ use super::*;
 use anyhow::{bail, Context, Result};
 use axum::{
     extract::Query,
+    headers::{authorization::Bearer, Authorization},
     http::{Request, StatusCode},
     middleware::Next,
     response::Redirect,
+    TypedHeader,
 };
 use axum_extra::extract::cookie::{Cookie, PrivateCookieJar, SameSite};
 use dashmap::DashMap;
+use futures::future;
 use octocrab::Octocrab;
 use rand::{distributions::Alphanumeric, Rng};
 use secrecy::{ExposeSecret, SecretString};
@@ -231,22 +234,27 @@ impl AuthLayer {
 async fn authenticate_authorize_reissue<B>(
     Extension(app): Extension<Application>,
     Extension(auth_layer): Extension<Arc<AuthLayer>>,
-    mut jar: PrivateCookieJar,
+    auth_header: Option<TypedHeader<Authorization<Bearer>>>,
+    jar: PrivateCookieJar,
     request: Request<B>,
     next: Next<B>,
 ) -> impl IntoResponse {
     let unauthorized = || StatusCode::UNAUTHORIZED.into_response();
 
-    match user_auth(jar, &app, &auth_layer.client).await {
-        Ok(new_cookies) => jar = new_cookies,
-        Err(err) => {
-            error!(?err, "failed to authenticate user");
+    let user_fut = user_auth(jar, &app, &auth_layer.client);
+    let bearer_fut = bot_auth(auth_header, &app);
+
+    let new_cookies = match future::join(user_fut, bearer_fut).await {
+        (Ok(new_cookies), _) => Some(new_cookies),
+        (_, Ok(_)) => None,
+        (Err(e1), Err(e2)) => {
+            error!(?e1, ?e2, "failed to authenticate request");
             return unauthorized();
         }
-    }
+    };
 
     let body = next.run(request).await;
-    (jar, body).into_response()
+    (new_cookies, body).into_response()
 }
 
 async fn user_auth(
@@ -351,4 +359,22 @@ async fn user_auth(
     cookie.set_secure(true);
 
     Ok(jar.add(cookie))
+}
+
+async fn bot_auth(
+    auth_header: Option<TypedHeader<Authorization<Bearer>>>,
+    app: &Application,
+) -> Result<()> {
+    let slackbot_secret = app
+        .config
+        .slackbot_secret
+        .as_ref()
+        .context("missing slackbot_secret configuration option")?;
+    let TypedHeader(Authorization(bearer)) = auth_header.context("missing Bearer token")?;
+
+    if bearer.token() != slackbot_secret.expose_secret() {
+        bail!("slackbot secret token mismatch");
+    }
+
+    Ok(())
 }
