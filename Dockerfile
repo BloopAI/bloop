@@ -1,4 +1,10 @@
 FROM node AS frontend
+
+# set frontend build args
+ARG ANALYTICS_WRITE_KEY_PROD_FE
+ARG ANALYTICS_DATA_PLANE_URL
+ARG SENTRY_DSN_FE
+
 WORKDIR /build
 RUN npm install -g pnpm && \
     pnpm -g config set store-dir /tmp/pnpm-store

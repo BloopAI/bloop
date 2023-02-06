@@ -11,6 +11,10 @@ jobs:
       awsRegion: ${{ secrets.AWS_REGION }}
       awsAccountID: ${{ secrets.AWS_ACCOUNT_ID }}
       slackBuildWebhook: ${{ secrets.SLACK_BUILD_WEBHOOK }}
+      build-args: |
+        ANALYTICS_WRITE_KEY_PROD_FE=${{ secrets.ANALYTICS_WRITE_KEY_PROD_FE }}
+        ANALYTICS_DATA_PLANE_URL=${{ secrets.ANALYTICS_DATA_PLANE_URL }}
+        SENTRY_DSN_FE=${{ secrets.SENTRY_DSN_FE }}
 
   validate_helm:
     uses: BloopAI/reusable-workflows/.github/workflows/validate-helm-chart.yml@main
