@@ -75,9 +75,9 @@ impl Auth {
     fn git_cred(&self) -> Box<git2::Credentials<'static>> {
         use Auth::*;
         match self.clone() {
-            OAuth { access_token, .. } => Box::new(move |_, _, _| {
-                Cred::userpass_plaintext(access_token.expose_secret(), "ignored by github")
-            }),
+            OAuth { access_token, .. } => {
+                Box::new(move |_, _, _| Cred::userpass_plaintext(access_token.expose_secret(), ""))
+            }
             App { token, .. } => Box::new(move |_, _, _| {
                 Cred::userpass_plaintext("x-access-token", token.expose_secret())
             }),
