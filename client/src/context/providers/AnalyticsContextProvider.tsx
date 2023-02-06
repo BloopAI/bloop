@@ -18,8 +18,8 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   forceAnalytics,
 }) => {
   const WRITE_KEY = import.meta.env.PROD
-    ? import.meta.env.ANALYTICS_WRITE_KEY_PROD
-    : import.meta.env.ANALYTICS_WRITE_KEY_DEV;
+    ? import.meta.env.ANALYTICS_FE_WRITE_KEY_PROD
+    : import.meta.env.ANALYTICS_FE_WRITE_KEY_DEV;
 
   const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
 

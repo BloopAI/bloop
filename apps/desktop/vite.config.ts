@@ -9,9 +9,9 @@ export default defineConfig({
     react(),
     EnvironmentPlugin(
       [
-        'ANALYTICS_WRITE_KEY_DEV',
+        'ANALYTICS_FE_WRITE_KEY_DEV',
+        'ANALYTICS_FE_WRITE_KEY_PROD',
         'ANALYTICS_DATA_PLANE_URL',
-        'ANALYTICS_WRITE_KEY_PROD',
         'SENTRY_DSN_FE',
         'SENTRY_DSN_BE',
         'ONBOARDING',
