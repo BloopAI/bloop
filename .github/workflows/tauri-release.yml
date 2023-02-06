@@ -26,7 +26,9 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "bloop"
+          prefix-key: "bloop"
+          shared-key: "tauri-checks"
+
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
@@ -34,11 +36,11 @@ jobs:
 
       - name: Check Formatting
         run: |
-          cargo fmt -p bloop -- --check
+          cargo --locked fmt -p bloop -- --check
 
       - name: Run tests
         run: |
-          cargo test -p bloop --verbose
+          cargo --locked test -p bloop --verbose
 
   build-mac-linux-ctags:
     strategy:
@@ -136,6 +138,9 @@ jobs:
         run: pnpm install
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "bloop"
+          shared-key: "tauri-release"
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
@@ -206,7 +211,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
         with:
-          args: -v -- -v
+          args: --locked -v -- -v
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3

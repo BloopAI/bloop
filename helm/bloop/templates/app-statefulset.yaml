@@ -1,0 +1,188 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "bloop.fullname" . }}
+  labels:
+    {{- include "bloop.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "bloop.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "bloop.fullname" . }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "bloop.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      initContainers:
+        - name: prepare-folders
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          image: "alpine:3.14"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - /bin/sh
+          args:
+          - -c
+          - "mkdir /data/repos -p"
+          volumeMounts:
+          - name: {{ include "bloop.fullname" . }}-storage
+            mountPath: /data
+      containers:
+        - name: {{ .Chart.Name }}-app
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - /bleep
+          args:
+          - --host=0.0.0.0
+          - --source-dir=/data/repos
+          - --index-dir=/data/index
+          - --model-dir=/model
+          - --frontend-dist=/frontend
+          - --answer-api-url={{ .Values.bloop.answerApiUrl }}
+          - --qdrant-url={{ .Values.bloop.qdrantUrl }}
+          - --instance-domain={{ .Values.bloop.instanceDomain }}
+          - --github-app-id={{ .Values.bloop.githubAppId }}
+          - --github-app-install-id={{ .Values.bloop.githubAppInstallId }}
+          - --github-client-id={{ .Values.bloop.githubClientId }}
+          - --github-client-secret={{ .Values.bloop.githubClientSecret }}
+          - --github-app-private-key=/app/secrets/github-app-private-key.pem
+          - --analytics-key={{ .Values.bloop.analyticsKey }}
+          - --analytics-data-plane={{ .Values.bloop.analyticsDataPlane }}
+          - --sentry-dsn={{ .Values.bloop.sentryDsn }}
+          env:
+          - name: BLOOP_LOG
+            value: info
+          {{ if .Values.env }}
+          {{ range .Values.env }}
+          -
+          {{- . | toYaml | nindent 12 -}}
+          {{ end }}
+          {{ end }}
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 7878
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          volumeMounts:
+          - name: {{ include "bloop.fullname" . }}-storage
+            mountPath: /data
+          - mountPath: "/app/secrets"
+            name: {{ include "bloop.fullname" . }}
+            readOnly: true
+        - name: {{ .Chart.Name }}-qdrant
+          image: "{{ .Values.qdrant.image.repository }}:{{ .Values.qdrant.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.qdrant.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args: ["./config/initialize.sh"]
+          ports:
+          {{- range .Values.qdrant.service.ports }}
+            - name: {{ .name }}
+              containerPort: {{ .targetPort }}
+              protocol: {{ .protocol }}
+          {{- end }}
+
+          {{- $values := .Values.qdrant -}}
+          {{- range .Values.qdrant.service.ports }}
+          {{- if and $values.livenessProbe.enabled .checksEnabled }}
+          livenessProbe:
+            {{- if eq .name "grpc"}}
+            grpc:
+              port: {{ .targetPort }}
+            {{- end }}
+            {{- if eq .name "rest"}}
+            httpGet:
+              path: /
+              port: {{ .targetPort }}
+            {{- end }}
+            initialDelaySeconds: {{ $values.livenessProbe.initialDelaySeconds }}
+            timeoutSeconds: {{ $values.livenessProbe.timeoutSeconds }}
+            periodSeconds: {{ $values.livenessProbe.periodSeconds }}
+            successThreshold: {{ $values.livenessProbe.successThreshold }}
+            failureThreshold: {{ $values.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if and $values.readinessProbe.enabled .checksEnabled }}
+          readinessProbe:
+            {{- if eq .name "grpc"}}
+            grpc:
+              port: {{ .targetPort }}
+            {{- end }}
+            {{- if eq .name "rest"}}
+            httpGet:
+              path: /
+              port: {{ .targetPort }}
+            {{- end }}
+            initialDelaySeconds: {{ $values.readinessProbe.initialDelaySeconds }}
+            timeoutSeconds: {{ $values.readinessProbe.timeoutSeconds }}
+            periodSeconds: {{ $values.readinessProbe.periodSeconds }}
+            successThreshold: {{ $values.readinessProbe.successThreshold }}
+            failureThreshold: {{ $values.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.qdrant.resources | nindent 12 }}
+          volumeMounts:
+          - name: {{ include "qdrant.fullname" . }}-storage
+            mountPath: /qdrant/storage
+          - name: qdrant-config
+            mountPath: /qdrant/config/initialize.sh
+            subPath: initialize.sh
+          - name: qdrant-config
+            mountPath: /qdrant/config/production.yaml
+            subPath: production.yaml
+          {{- if .Values.qdrant.snapshotRestoration.enabled }}
+          - name: qdrant-snapshots
+            mountPath: /qdrant/snapshots
+          {{- end }}
+      {{- with .Values.qdrant.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.qdrant.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.qdrant.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: qdrant-config
+          configMap:
+            name: {{ include "qdrant.fullname" . }}
+            defaultMode: 0755
+        - name: {{ include "bloop.fullname" . }}
+          secret:
+            secretName: {{ include "bloop.fullname" . }}
+        - name: {{ include "bloop.fullname" . }}-storage
+          persistentVolumeClaim:
+            claimName: {{ include "bloop.fullname" . }}-storage
+        - name: {{ include "qdrant.fullname" . }}-storage
+          persistentVolumeClaim:
+            claimName: {{ include "qdrant.fullname" . }}-storage
+        {{- if .Values.qdrant.snapshotRestoration.enabled }}
+        - name: qdrant-snapshots
+          persistentVolumeClaim:
+            claimName: {{ .Values.qdrant.snapshotRestoration.pvcName }}
+        {{- end }}

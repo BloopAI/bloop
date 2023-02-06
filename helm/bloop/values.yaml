@@ -1,0 +1,172 @@
+replicaCount: 1
+
+bloop:
+  githubOrgName: ""
+  githubOrgOwnerEmail: ""
+  loopsAPIKey: ""
+  loopsEventName: ""
+  githubAppPrivateKey: ""
+  githubAppInstallId: ""
+  githubClientId: ""
+  githubClientSecret: ""
+  instanceDomain: ""
+  answerApiUrl: ""
+  qdrantUrl: ""
+  analyticsKey: ""
+  analyticsDataPlane: ""
+  sentryDsn: ""
+
+image:
+  repository: ""
+  pullPolicy: Always
+  tag: ""
+
+imagePullSecrets:
+  - name: eu-west-1-ecr-registry
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+
+securityContext:
+  # fsGroup: 65534
+
+podSecurityContext:
+  runAsUser: 0
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 7879
+  annotations: {}
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    kubernetes.io/tls-acme: "true"
+  hosts: []
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+env: {}
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 100Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+persistence:
+  accessModes: ["ReadWriteOnce"]
+  size: 1Gi
+  storageClassName: gp3
+
+qdrant:
+  replicaCount: 1
+
+  image:
+    repository: qdrant/qdrant
+    pullPolicy: IfNotPresent
+    tag: latest
+
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+
+  # checks - Readiness and liveness checks can only be enabled for either rest or grpc (multiple checks not supported)
+  # grpc checks are only available from k8s 1.24+ so as of per default we check rest
+  service:
+    type: ClusterIP
+    annotations: {}
+    ports:
+      - name: rest
+        port: 6333
+        targetPort: 6333
+        protocol: TCP
+        checksEnabled: true
+      - name: grpc
+        port: 6334
+        targetPort: 6334
+        protocol: TCP
+        checksEnabled: false
+      - name: p2p
+        port: 6335
+        targetPort: 6335
+        protocol: TCP
+        checksEnabled: false
+
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 3
+    successThreshold: 1
+
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 3
+    successThreshold: 1
+
+  podAnnotations: {}
+
+  resources:
+    {}
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+  persistence:
+    accessModes: ["ReadWriteOnce"]
+    size: 1Gi
+    storageClassName: gp3
+
+  #only supported for single node qdrant clusters.
+  snapshotRestoration:
+    enabled: false
+    pvcName: snapshots-pvc
+    snapshots:
+    #  - /qdrant/snapshots/test_collection/test_collection-2022-10-24-13-56-50.snapshot:test_collection
+
+  #modification example for configuration to overwrite defaults
+  config:
+    cluster:
+      enabled: true
+      p2p:
+        port: 6335
+      consensus:
+        tick_period_ms: 100

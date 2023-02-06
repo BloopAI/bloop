@@ -22,8 +22,10 @@ use octocrab::Octocrab;
 use rand::{distributions::Alphanumeric, Rng};
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
-use tantivy::time::Duration;
+use time::Duration;
 use tracing::error;
+
+const MAX_PARALLEL_PENDING_LOGINS: usize = 512;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct GithubAuthToken {
@@ -95,6 +97,11 @@ pub(super) async fn login(
     Extension(app): Extension<Application>,
     Extension(auth_layer): Extension<Arc<AuthLayer>>,
 ) -> impl IntoResponse {
+    auth_layer.clean_old_states();
+    if auth_layer.initialized_login.len() >= MAX_PARALLEL_PENDING_LOGINS {
+        panic!("too many parallel authorization requests");
+    }
+
     let state = rand::thread_rng()
         .sample_iter(Alphanumeric)
         .take(STATE_LEN)
@@ -109,7 +116,7 @@ pub(super) async fn login(
         .expose_secret();
 
     let redirect_uri = format!(
-        "https://{}/auth/login/complete",
+        "https://{}/api/auth/login/complete",
         app.config
             .instance_domain
             .as_ref()
@@ -125,8 +132,6 @@ pub(super) async fn login(
     );
 
     auth_layer.initialized_login.insert(state, Instant::now());
-    auth_layer.clean_old_states();
-
     serde_json::json!({ "oauth_url": github_oauth_url }).to_string()
 }
 
@@ -217,7 +222,7 @@ pub(crate) struct AuthLayer {
 
 impl AuthLayer {
     fn clean_old_states(&self) {
-        const MAX_AGE: std::time::Duration = std::time::Duration::from_secs(60 * 5);
+        const MAX_AGE: Duration = Duration::seconds(60 * 5);
         let now = Instant::now();
         self.initialized_login.retain(|_, t| now - *t < MAX_AGE);
     }
