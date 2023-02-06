@@ -2,6 +2,9 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "bloop.fullname" . }}
+  annotations:
+    configmap.reloader.stakater.com/reload: "{{ include "qdrant.fullname" . }}"
+    secret.reloader.stakater.com/reload: "{{ include "bloop.fullname" . }}"
   labels:
     {{- include "bloop.labels" . | nindent 4 }}
 spec:
