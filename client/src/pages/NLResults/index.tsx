@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as Sentry from '@sentry/react';
-import { FullResult } from '../../types/results';
+import { useNavigate } from 'react-router-dom';
+import { FullResult, ResultClick } from '../../types/results';
 import Filters from '../../components/Filters';
 import { mapFileResult, mapRanges } from '../../mappers/results';
 import { FullResultModeEnum, SearchType } from '../../types/general';
@@ -35,16 +36,21 @@ const ResultsPage = ({ resultsData, loading, handleRetry }: Props) => {
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.SIDEBAR,
   );
+  const [scrollToLine, setScrollToLine] = useState<string | undefined>(
+    undefined,
+  );
   const [openResult, setOpenResult] = useState<FullResult | null>(null);
   const { navigateRepoPath } = useAppNavigation();
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
+  const navigateBrowser = useNavigate();
 
   const toggleFiltersOpen = useCallback(() => {
     setIsFiltersOpen((prev) => !prev);
   }, []);
 
-  const onResultClick = useCallback((repo: string, path?: string) => {
+  const onResultClick = useCallback<ResultClick>((repo, path, lineNumber) => {
+    setScrollToLine(lineNumber ? lineNumber.join('_') : undefined);
     if (path) {
       fileModalSearchQuery(
         `open:true repo:${repo} path:${path}`,
@@ -74,6 +80,14 @@ const ResultsPage = ({ resultsData, loading, handleRetry }: Props) => {
   useEffect(() => {
     if (fileResultData) {
       setOpenResult(mapFileResult(fileResultData.data[0]));
+      navigateBrowser({
+        search: scrollToLine
+          ? '?' +
+            new URLSearchParams({
+              scroll_line_index: scrollToLine.toString(),
+            }).toString()
+          : '',
+      });
       getHoverables(
         fileResultData.data[0].data.relative_path,
         fileResultData.data[0].data.repo_ref,

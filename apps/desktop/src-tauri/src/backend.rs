@@ -15,6 +15,7 @@ where
         Configuration::read(config).unwrap(),
         Configuration::from_cli().unwrap(),
     );
+    configuration.qdrant_url = Some("http://127.0.0.1:6334".into());
     configuration.ctags_path = relative_command_path("ctags");
     configuration.max_threads = bleep::default_parallelism() / 4;
     configuration.model_dir = app

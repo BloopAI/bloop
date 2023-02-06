@@ -27,7 +27,6 @@ use crate::{
     indexes::Indexes,
     remotes::BackendCredential,
     semantic::Semantic,
-    semantic::SemanticError,
     state::{Backend, RepositoryPool},
 };
 use anyhow::{anyhow, bail, Result};
@@ -103,15 +102,20 @@ impl Application {
         }
 
         let config = Arc::new(config);
-        let semantic =
-            match Semantic::new(&config.model_dir, &config.qdrant_url, Arc::clone(&config)).await {
-                Ok(semantic) => Some(semantic),
-                Err(SemanticError::QdrantInitializationError) => {
-                    warn!("Qdrant initialization failed. Starting without semantic search...");
-                    None
+        let semantic = match config.qdrant_url {
+            Some(ref url) => {
+                match Semantic::initialize(&config.model_dir, url, Arc::clone(&config)).await {
+                    Ok(semantic) => Some(semantic),
+                    Err(e) => {
+                        bail!("Qdrant initialization failed: {}", e);
+                    }
                 }
-                Err(e) => bail!(e),
-            };
+            }
+            None => {
+                warn!("Qdrant not initialized because `qdrant_url` is not provided. Starting without semantic search!");
+                None
+            }
+        };
 
         let analytics_client = if let (Some(key), Some(data_plane)) =
             (&config.analytics_key, &config.analytics_data_plane)
