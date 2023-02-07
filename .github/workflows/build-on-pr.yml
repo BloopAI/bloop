@@ -7,7 +7,7 @@ jobs:
     with:
       repository: bloop
       tag: build-${{ github.sha }}
-      runner: "docker"
+      runner: docker
     secrets:
       awsRegion: ${{ secrets.AWS_REGION }}
       awsAccountID: ${{ secrets.AWS_ACCOUNT_ID }}
