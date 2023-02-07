@@ -19,6 +19,7 @@ type Props = {
   resultsData?: NLSearchResponse;
   loading: boolean;
   handleRetry: () => void;
+  nlQuery?: string;
 };
 
 const mockQuerySuggestions = [
@@ -29,7 +30,7 @@ const mockQuerySuggestions = [
   'lang:tsx apples',
 ];
 
-const ResultsPage = ({ resultsData, loading, handleRetry }: Props) => {
+const ResultsPage = ({ resultsData, loading, handleRetry, nlQuery }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const [mode, setMode] = useState<FullResultModeEnum>(
@@ -103,7 +104,7 @@ const ResultsPage = ({ resultsData, loading, handleRetry }: Props) => {
           line: item.start_line,
         }))}
         searchId={resultsData.query_id}
-        answer={resultsData.selection.answer}
+        nlQuery={nlQuery}
         onClick={onResultClick}
         handleRetry={handleRetry}
       />
