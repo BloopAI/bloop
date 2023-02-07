@@ -12,7 +12,6 @@ jobs:
       awsRegion: ${{ secrets.AWS_REGION }}
       awsAccountID: ${{ secrets.AWS_ACCOUNT_ID }}
       slackBuildWebhook: ${{ secrets.SLACK_BUILD_WEBHOOK }}
-      githubToken: ${{ secrets.GITHUB_TOKEN }}
 
   validate_helm:
     uses: BloopAI/reusable-workflows/.github/workflows/validate-helm-chart.yml@main
