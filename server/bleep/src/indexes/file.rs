@@ -177,7 +177,7 @@ fn should_index<P: AsRef<Path>>(p: &P) -> bool {
         // executable
         "com", "exe", "out", "coff", "obj", "dll", "app", "class",
         // misc.
-        "log", "wad", "bsp", "bak", "sav", "dat",
+        "log", "wad", "bsp", "bak", "sav", "dat", "lock",
     ];
 
     let Some(ext) = path.extension() else {
