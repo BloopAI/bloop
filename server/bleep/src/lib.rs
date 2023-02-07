@@ -18,6 +18,7 @@ use console_subscriber as _;
 
 #[cfg(target = "windows")]
 use dunce::canonicalize;
+use state::RepoRef;
 #[cfg(not(target = "windows"))]
 use std::fs::canonicalize;
 
@@ -47,13 +48,13 @@ mod collector;
 mod config;
 mod env;
 mod language;
-mod remotes;
 mod webserver;
 
 pub mod ctags;
 pub mod indexes;
 pub mod intelligence;
 pub mod query;
+pub mod remotes;
 pub mod semantic;
 pub mod snippet;
 pub mod state;
@@ -204,7 +205,12 @@ impl Application {
         let mut joins = tokio::task::JoinSet::new();
 
         if self.config.index_only {
-            joins.spawn(self.write_index().startup_scan());
+            if let Some(repo_path) = &self.config.index_issues {
+                let reporef = str::parse::<RepoRef>(repo_path)?;
+                joins.spawn(self.write_index().index_issues(reporef));
+            } else {
+                joins.spawn(self.write_index().startup_scan());
+            }
         } else {
             if !self.config.disable_background {
                 tokio::spawn(remotes::check_credentials(self.clone()));

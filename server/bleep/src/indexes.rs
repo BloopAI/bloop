@@ -12,6 +12,7 @@ use tantivy::{
 use tokio::sync::RwLock;
 
 pub mod file;
+pub mod issues;
 pub mod reader;
 pub mod repo;
 
@@ -25,6 +26,8 @@ use crate::{
     state::{RepoHeadInfo, RepoRef, Repository},
     Configuration,
 };
+
+use self::issues::Issues;
 
 pub type GlobalWriteHandleRef<'a> = [IndexWriteHandle<'a>];
 
@@ -61,6 +64,7 @@ impl<'a> GlobalWriteHandle<'a> {
 pub struct Indexes {
     pub repo: Indexer<Repo>,
     pub file: Indexer<File>,
+    pub issues: Indexer<Issues>,
     write_mutex: tokio::sync::Mutex<()>,
 }
 
@@ -80,8 +84,14 @@ impl Indexes {
                 config.max_threads,
             )?,
             file: Indexer::create(
-                File::new(config.clone(), semantic),
+                File::new(config.clone(), semantic.clone()),
                 config.index_path("content").as_ref(),
+                config.buffer_size,
+                config.max_threads,
+            )?,
+            issues: Indexer::create(
+                Issues::new(semantic),
+                config.index_path("issues").as_ref(),
                 config.buffer_size,
                 config.max_threads,
             )?,
@@ -96,7 +106,11 @@ impl Indexes {
         debug!(id, "lock acquired");
 
         Ok(GlobalWriteHandle {
-            handles: vec![self.repo.write_handle()?, self.file.write_handle()?],
+            handles: vec![
+                self.repo.write_handle()?,
+                self.file.write_handle()?,
+                self.issues.write_handle()?,
+            ],
             _write_lock,
         })
     }
@@ -187,7 +201,7 @@ pub struct Indexer<T> {
 }
 
 impl<T: Indexable> Indexer<T> {
-    fn write_handle(&self) -> Result<IndexWriteHandle<'_>> {
+    pub fn write_handle(&self) -> Result<IndexWriteHandle<'_>> {
         Ok(IndexWriteHandle {
             source: &self.source,
             index: &self.index,

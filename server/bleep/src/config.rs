@@ -31,6 +31,9 @@ pub struct Configuration {
     /// Quit after indexing the specified repos
     pub index_only: bool,
 
+    #[clap(long)]
+    pub index_issues: Option<String>,
+
     #[clap(long, default_value_t = false)]
     #[serde(default)]
     /// Disable periodic reindexing, and `git pull` on remote repositories.
@@ -194,6 +197,8 @@ impl Configuration {
             index_dir: b.index_dir,
 
             index_only: b.index_only | a.index_only,
+
+            index_issues: b.index_issues.or(a.index_issues),
 
             disable_background: b.disable_background | a.disable_background,
 

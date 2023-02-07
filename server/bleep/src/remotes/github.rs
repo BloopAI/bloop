@@ -2,7 +2,8 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use jsonwebtoken::EncodingKey;
 use octocrab::{
-    models::{Installation, InstallationToken},
+    models::{issues::Comment, Installation, InstallationToken},
+    params::issues::Sort,
     Octocrab,
 };
 use secrecy::{ExposeSecret, SecretString};
@@ -150,4 +151,65 @@ pub(crate) async fn get_new_github_token(app: &Application) -> Result<BackendCre
     app.credentials.insert(Backend::Github, credential.clone());
 
     Ok(credential)
+}
+
+pub struct Issue {
+    pub number: u64,
+    pub title: String,
+    pub text: String,
+    pub comments: Vec<String>,
+}
+
+fn issue(
+    octocrab::models::issues::Issue {
+        number, // octocrab
+        title,
+        user,
+        body,
+        ..
+    }: octocrab::models::issues::Issue,
+) -> Issue {
+    Issue {
+        number: number as u64,
+        title,
+        text: user.login + ": " + &body.unwrap_or_default(),
+        comments: Vec::new(),
+    }
+}
+
+fn comment(Comment { body, user, .. }: Comment) -> String {
+    user.login + ": " + &body.unwrap_or_default()
+}
+
+#[allow(unused)]
+/// Fetch the issues as `String`, concatenating the issue title, text and comments
+pub async fn fetch_issues(owner: impl Into<String>, repo: impl Into<String>) -> Result<Vec<Issue>> {
+    //TOOD: Use auth to avoid rate limiting?
+    let octocrab = octocrab::instance();
+    let query = octocrab.issues(owner, repo); // maximum
+    let mut page = query
+        .list()
+        .sort(Sort::Created)
+        .per_page(100)
+        .send()
+        .await?;
+    let mut result: Vec<Issue> = page.take_items().into_iter().map(issue).collect();
+    while let Some(next) = octocrab.get_page(&page.next).await? {
+        page = next;
+        result.extend(page.take_items().into_iter().map(issue));
+    }
+    for issue in &mut result {
+        let comment_query = query.list_comments(issue.number);
+        let Ok(mut page) = comment_query.per_page(100).send().await else { continue };
+        issue
+            .comments
+            .extend(page.take_items().into_iter().map(comment));
+        while let Some(next) = octocrab.get_page(&page.next).await? {
+            page = next;
+            issue
+                .comments
+                .extend(page.take_items().into_iter().map(comment));
+        }
+    }
+    Ok(result)
 }

@@ -122,6 +122,22 @@ impl IndexWriter {
         self.sync_and_index(repos).await
     }
 
+    pub(crate) async fn index_issues(self, reporef: RepoRef) -> anyhow::Result<()> {
+        let Self(Application {
+            indexes, repo_pool, ..
+        }) = &self;
+
+        let repo = if let Some(repo) = repo_pool.get(&reporef) {
+            repo.value().clone()
+        } else {
+            Repository::local_from(&reporef)
+        };
+
+        let info = repo.get_head_info().await;
+        let writer = indexes.issues.write_handle()?;
+        writer.index(&reporef, &repo, &info)
+    }
+
     async fn index_repo(&self, reporef: &RepoRef) -> anyhow::Result<()> {
         use SyncStatus::*;
 
