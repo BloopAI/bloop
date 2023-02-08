@@ -3,10 +3,40 @@ import path from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import type { Plugin } from 'vite';
+import EnvironmentPlugin from 'vite-plugin-environment';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), reactVirtualized()],
+  envDir: '../.',
+  plugins: [
+    react(),
+    reactVirtualized(),
+    EnvironmentPlugin(
+      {
+        ANALYTICS_FE_WRITE_KEY_DEV: '',
+        ANALYTICS_FE_WRITE_KEY_PROD: '',
+        ANALYTICS_DATA_PLANE_URL: '',
+        SENTRY_DSN_FE: '',
+        SENTRY_DSN_BE: '',
+        ONBOARDING: '',
+        API_URL: '',
+        DEVICE_ID: '',
+      },
+      // [
+      //   'ANALYTICS_FE_WRITE_KEY_DEV',
+      //   'ANALYTICS_FE_WRITE_KEY_PROD',
+      //   'ANALYTICS_DATA_PLANE_URL',
+      //   'SENTRY_DSN_FE',
+      //   'SENTRY_DSN_BE',
+      //   'ONBOARDING',
+      //   'API_URL',
+      //   'DEVICE_ID',
+      // ],
+      {
+        defineOn: 'import.meta.env',
+      },
+    ),
+  ],
   define: {
     __APP_SESSION__: (Math.random() * 100000).toString(),
   },

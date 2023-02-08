@@ -67,6 +67,7 @@ const LOG_ENV_VAR: &str = "BLOOP_LOG";
 static LOGGER_INSTALLED: OnceCell<bool> = OnceCell::new();
 static SENTRY_GUARD: OnceCell<sentry::ClientInitGuard> = OnceCell::new();
 
+/// The global state
 #[derive(Clone)]
 pub struct Application {
     env: Environment,

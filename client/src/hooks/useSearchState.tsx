@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { usePersistentState } from './usePersistentState';
 
 export const useRouterSate = (router: any) => {
-  const FORCE_ONBOARDING = import.meta.env.VITE_ONBOARDING;
+  const FORCE_ONBOARDING = import.meta.env.ONBOARDING;
   const [routerState, setRouterState] = usePersistentState<string | null>(
     null,
     'routerState',

@@ -1,4 +1,4 @@
-name: Build&Push API docker container image with SHA tag
+name: Build and push docker container
 on: pull_request
 
 jobs:
@@ -7,10 +7,15 @@ jobs:
     with:
       repository: bloop
       tag: build-${{ github.sha }}
+      runner: docker
     secrets:
       awsRegion: ${{ secrets.AWS_REGION }}
       awsAccountID: ${{ secrets.AWS_ACCOUNT_ID }}
       slackBuildWebhook: ${{ secrets.SLACK_BUILD_WEBHOOK }}
+      build-args: |
+        ANALYTICS_FE_WRITE_KEY_PROD=${{ secrets.ANALYTICS_FE_WRITE_KEY_PROD }}
+        ANALYTICS_DATA_PLANE_URL=${{ secrets.ANALYTICS_DATA_PLANE_URL }}
+        SENTRY_DSN_FE=${{ secrets.SENTRY_DSN_FE }}
 
   validate_helm:
     uses: BloopAI/reusable-workflows/.github/workflows/validate-helm-chart.yml@main
