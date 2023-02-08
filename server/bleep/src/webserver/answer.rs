@@ -7,8 +7,9 @@ use tracing::{debug, error, info, warn};
 use utoipa::ToSchema;
 
 use crate::{
-    analytics::QueryEvent, indexes::reader::ContentDocument, query::parser, semantic::Semantic,
-    state::RepoRef, Application,
+    analytics::QueryEvent, indexes::reader::ContentDocument, intelligence::NodeKind, query::parser,
+    semantic::Semantic, snippet::Snipper, state::RepoRef, symbol::SymbolLocations,
+    text_range::TextRange, Application,
 };
 
 use super::ErrorKind;
@@ -212,11 +213,11 @@ pub async fn handle(
 
     // grow the snippet by 60 lines above and below, we have sufficient space
     // to grow this snippet by 10 times its original size (15 to 150)
+    let repo_ref = &relevant_snippet
+        .repo_ref
+        .parse::<RepoRef>()
+        .map_err(super::internal_error)?;
     let processed_snippet = {
-        let repo_ref = &relevant_snippet
-            .repo_ref
-            .parse::<RepoRef>()
-            .map_err(super::internal_error)?;
         let doc = app
             .indexes
             .file
@@ -249,7 +250,51 @@ pub async fn handle(
         }
     };
 
-    let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
+    // extract relevant functions from the processed snippet
+    let extract_prompt = answer_api_client.build_extract_prompt(&processed_snippet);
+    let related_docs = app
+        .indexes
+        .file
+        .by_repo(repo_ref, Some(&processed_snippet.lang))
+        .await;
+    info!(
+        "found {} docs with lang {}",
+        related_docs.len(),
+        processed_snippet.lang.as_str()
+    );
+    let related_identifiers: Vec<Location> = {
+        let start_file = processed_snippet.relative_path.as_str();
+        answer_api_client
+            .extract_from_snippet(&extract_prompt)
+            .await
+            .map_err(|e| super::error(ErrorKind::UpstreamService, e.to_string()))?
+            .text()
+            .await
+            .map_err(super::internal_error)?
+            .split(',') // relevant idents are comma-separated
+            .map(|i| i.trim()) // account for whitespace inserted by AI
+            .inspect(|i| info!("identifier {i}"))
+            .map(|ident| {
+                let l = locate(
+                    ident.as_bytes(),        // ident to look for
+                    related_docs.as_slice(), // docs to look in
+                    start_file,              // the original file (excluded from the search)
+                );
+                info!(
+                    "located {} items: {:?}",
+                    l.len(),
+                    l.iter().map(|l| l.token()).collect::<Vec<_>>()
+                );
+                l
+            })
+            .flatten()
+            .take(2) // take 2 of those files
+            .inspect(|i| info!("taking {}", i.token()))
+            .collect()
+    };
+
+    let explain_prompt =
+        answer_api_client.build_explain_prompt(&processed_snippet, &related_identifiers);
     let snippet_explanation = answer_api_client
         .explain_snippet(&explain_prompt)
         .await
@@ -315,6 +360,79 @@ fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
         .unwrap_or(content.len());
 
     content[new_start_byte..new_end_byte].to_owned()
+}
+
+struct Location<'a> {
+    range: TextRange,
+    document: &'a ContentDocument,
+}
+
+impl<'a> Location<'a> {
+    fn to_snippet(&self, context_before: usize, context_after: usize) -> String {
+        let text = self.document.content.as_str();
+        let range = self.range.into();
+        let line_ends = self.document.line_end_indices.as_slice();
+        Snipper::default()
+            .context(context_before, context_after)
+            .expand(range, text, line_ends)
+            .reify(text, &[])
+            .data
+    }
+
+    fn token(&self) -> &'a str {
+        let r: std::ops::Range<_> = self.range.into();
+        &self.document.content[r]
+    }
+}
+
+fn locate<'a>(
+    ident: &[u8],
+    all_docs: &'a [ContentDocument],
+    start_file: &str,
+) -> Vec<Location<'a>> {
+    info!(
+        "locating `{}` in {} docs",
+        std::str::from_utf8(ident).unwrap(),
+        all_docs.len()
+    );
+    all_docs
+        .iter()
+        .flat_map(|doc| match &doc.symbol_locations {
+            SymbolLocations::TreeSitter(sg) => {
+                let graph = &sg.graph;
+                let src = &doc.content;
+                let defs = graph
+                    .node_indices()
+                    .filter_map(|node_idx| {
+                        let NodeKind::Def(d) = &graph[node_idx] else {
+                            return None;
+                        };
+
+                        if !sg.is_top_level(node_idx) {
+                            return None;
+                        };
+
+                        if d.name(src.as_bytes()) != ident {
+                            return None;
+                        }
+
+                        if matches!(sg.symbol_name_of(node_idx), None | Some("unknown")) {
+                            return None;
+                        }
+
+                        Some(d)
+                    })
+                    .copied()
+                    .map(|d| Location {
+                        range: d.range,
+                        document: &doc,
+                    })
+                    .collect::<Vec<_>>();
+                defs
+            }
+            _ => vec![],
+        })
+        .collect()
 }
 
 #[derive(serde::Serialize)]
@@ -436,24 +554,69 @@ A:",
         prompt
     }
 
-    fn build_explain_prompt(&self, snippet: &api::Snippet) -> String {
+    /// Given a code snippet, extract the most important functions
+    fn build_extract_prompt(&self, snippet: &api::Snippet) -> String {
+        let prompt = format!(
+            "{}
+{DELIMITER}
+Above is a code snippet. Your job is to answer with the dependency tree of relevant functions from the snippet. \
+Your reply must be a list of comma separated identifiers.
+Q:Where do we update Kafka auth keys?
+A:configure_kafka,kafka_env_vars
+
+Q:Where do we submit payment requests?
+A:PaymentHandler,Button
+
+Q:{}
+A:",
+            snippet.text, self.query
+        );
+        prompt
+    }
+
+    fn build_explain_prompt(
+        &self,
+        snippet: &api::Snippet,
+        related_idents: &[Location<'_>],
+    ) -> String {
+        let related_idents_formatted = related_idents
+            .iter()
+            .map(|i| {
+                format!(
+                    "File: {}\n\n{}\n{DELIMITER}",
+                    i.document.relative_path,
+                    i.to_snippet(10, 30)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
         let prompt = format!(
             "You are an AI assistant for a repo. You are given an extract from a file and a question. \
 Use the file to write a detailed answer to the question. Copy relevant parts of the file into the answer and explain why they are relevant. \
-Do NOT include code that is not in the file. If the file doesn't contain enough information to answer the question, or you don't know the answer, just say \"Sorry, I'm not sure\". \
+Do NOT include code that is not in the file. Related files are also listed below the extract. Refer to these files in your explaination if \
+the are relevant. If the file doesn't contain enough information to answer the question, or you don't know the answer, just say \"Sorry, I'm not sure\". \
 Do NOT try to make up an answer. Format your response in GitHub markdown with code blocks annotated with programming language.
 Question: {}
 =========
 File: {}
+{}
 =========
+{related_idents_formatted}
 Answer in GitHub Markdown:",
-            self.query, snippet.text,
+            self.query, snippet.relative_path, snippet.text,
         );
         prompt
     }
 
     async fn select_snippet(&self, prompt: &str) -> Result<reqwest::Response, AnswerAPIError> {
         self.send_until_success(prompt, 1, 0.0).await
+    }
+
+    async fn extract_from_snippet(
+        &self,
+        prompt: &str,
+    ) -> Result<reqwest::Response, AnswerAPIError> {
+        self.send_until_success(prompt, 50, 0.5).await
     }
 
     async fn explain_snippet(&self, prompt: &str) -> Result<reqwest::Response, AnswerAPIError> {

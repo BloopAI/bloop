@@ -423,7 +423,7 @@ impl Indexer<File> {
             None => BooleanQuery::intersection(vec![path_query]),
         };
 
-        let collector = TopDocs::with_limit(100);
+        let collector = TopDocs::with_limit(200);
         searcher
             .search(&query, &collector)
             .expect("failed to search index")
