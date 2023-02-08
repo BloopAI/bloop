@@ -8,7 +8,7 @@ ARG SENTRY_DSN_FE
 WORKDIR /build
 RUN npm install -g pnpm && \
     pnpm -g config set store-dir /tmp/pnpm-store && \
-    pnpm -g config set global-dir /tmp/pnpm-store/global 
+    pnpm -g config set global-dir /tmp/pnpm-store/global
 COPY pnpm-lock.yaml ./
 RUN pnpm fetch
 COPY apps/ apps
