@@ -74,7 +74,8 @@ const RepositoriesSettings = () => {
       .filter(
         (r) =>
           r.provider === RepoProvider.GitHub &&
-          r.sync_status == SyncStatus.Done,
+          (r.sync_status == SyncStatus.Done ||
+            r.sync_status == SyncStatus.RemoteRemoved),
       )
       .map((r) => {
         const pathParts = splitPath(r.name);
