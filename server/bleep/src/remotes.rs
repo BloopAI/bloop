@@ -4,7 +4,7 @@ use std::{path::Path, process::Command};
 
 use chrono::{DateTime, Utc};
 use dashmap::mapref::one::Ref;
-use git2::{Cred, RemoteCallbacks};
+use git2::{Cred, CredentialType, RemoteCallbacks};
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
@@ -19,6 +19,12 @@ pub mod github;
 
 mod poll;
 pub(crate) use poll::*;
+
+type GitCreds = Box<
+    dyn FnMut(&str, Option<&str>, CredentialType) -> std::result::Result<Cred, git2::Error>
+        + Send
+        + 'static,
+>;
 
 pub(crate) type Result<T> = std::result::Result<T, RemoteError>;
 #[derive(thiserror::Error, Debug)]
@@ -51,7 +57,7 @@ pub(crate) enum RemoteError {
     GitHub(#[from] octocrab::Error),
 
     #[error("low-level code: {0:?}")]
-    UnspecifiedGit(git2::ErrorCode),
+    UnspecifiedGit(git2::Error),
 }
 
 impl From<git2::Error> for RemoteError {
@@ -61,66 +67,71 @@ impl From<git2::Error> for RemoteError {
         match value.code() {
             Auth => RemoteError::PermissionDenied,
             NotFound => RemoteError::RemoteNotFound,
-            val => RemoteError::UnspecifiedGit(val),
+            _ => RemoteError::UnspecifiedGit(value),
         }
     }
 }
 
-pub(in crate::remotes) fn git_clone(
-    auth: Box<git2::Credentials<'static>>,
-    url: &str,
-    target: &Path,
-) -> Result<()> {
-    let options = {
-        let mut callbacks = RemoteCallbacks::new();
-        callbacks.credentials(auth);
+async fn git_clone(auth: GitCreds, url: &str, target: &Path) -> Result<()> {
+    let url = url.to_owned();
+    let target = target.to_owned();
 
-        let mut fo = git2::FetchOptions::new();
-        fo.remote_callbacks(callbacks);
-        fo
-    };
+    tokio::task::spawn_blocking(move || {
+        let options = {
+            let mut callbacks = RemoteCallbacks::new();
+            callbacks.credentials(auth);
 
-    let mut builder = git2::build::RepoBuilder::new();
-    builder.fetch_options(options);
+            let mut fo = git2::FetchOptions::new();
+            fo.remote_callbacks(callbacks);
+            fo
+        };
 
-    builder.clone(url, target)?;
+        let mut builder = git2::build::RepoBuilder::new();
+        builder.fetch_options(options);
+        builder.clone(&url, &target)
+    })
+    .await
+    .expect("git failed")?;
 
     Ok(())
 }
 
-pub(in crate::remotes) fn git_pull(
-    auth: Box<git2::Credentials<'static>>,
-    repo: &Repository,
-) -> Result<()> {
-    let git = git2::Repository::open(&repo.disk_path)?;
-    let head = git.head()?;
-    let branch = head
-        .name()
-        .ok_or(RemoteError::InvalidLocalState)?
-        .split('/')
-        .last()
-        .ok_or(RemoteError::InvalidLocalState)?;
+async fn git_pull(auth: GitCreds, repo: &Repository) -> Result<()> {
+    let disk_path = repo.disk_path.to_owned();
 
-    let mut options = {
-        let mut callbacks = RemoteCallbacks::new();
-        callbacks.credentials(auth);
+    tokio::task::spawn_blocking(move || {
+        let git = git2::Repository::open(&disk_path)?;
+        let head = git.head()?;
+        let branch = head
+            .name()
+            .ok_or(RemoteError::InvalidLocalState)?
+            .split('/')
+            .last()
+            .ok_or(RemoteError::InvalidLocalState)?;
 
-        let mut fo = git2::FetchOptions::new();
-        fo.remote_callbacks(callbacks);
-        fo
-    };
+        let mut options = {
+            let mut callbacks = RemoteCallbacks::new();
+            callbacks.credentials(auth);
 
-    let mut remote = git.find_remote("origin")?;
-    remote.fetch(&[&branch], Some(&mut options), None)?;
+            let mut fo = git2::FetchOptions::new();
+            fo.remote_callbacks(callbacks);
+            fo
+        };
 
-    let fetch_head = git.find_reference("FETCH_HEAD")?;
-    let new_head = fetch_head.peel(git2::ObjectType::Commit)?;
+        let mut remote = git.find_remote("origin")?;
+        remote.fetch(&[&branch], Some(&mut options), None)?;
 
-    git.reset(
-        &new_head,
-        git2::ResetType::Hard,
-        Some(git2::build::CheckoutBuilder::new().force()),
-    )?;
+        let fetch_head = git.find_reference("FETCH_HEAD")?;
+        let new_head = fetch_head.peel(git2::ObjectType::Commit)?;
+
+        Ok::<_, RemoteError>(git.reset(
+            &new_head,
+            git2::ResetType::Hard,
+            Some(git2::build::CheckoutBuilder::new().force()),
+        )?)
+    })
+    .await
+    .expect("git failed")?;
 
     let mut git_gc = Command::new("git");
 

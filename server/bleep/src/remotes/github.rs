@@ -66,13 +66,13 @@ impl Auth {
 
 impl Auth {
     pub(crate) async fn clone_repo(&self, repo: &Repository, target: &Path) -> Result<()> {
-        self.check_repo(&repo).await?;
-        git_clone(self.git_cred(), &repo.remote.to_string(), target)
+        self.check_repo(repo).await?;
+        git_clone(self.git_cred(), &repo.remote.to_string(), target).await
     }
 
     pub(crate) async fn pull_repo(&self, repo: &Repository) -> Result<()> {
-        self.check_repo(&repo).await?;
-        git_pull(self.git_cred(), repo)
+        self.check_repo(repo).await?;
+        git_pull(self.git_cred(), repo).await
     }
 
     pub async fn check_repo(&self, repo: &Repository) -> Result<()> {
@@ -89,10 +89,13 @@ impl Auth {
         let response = self.client()?.repos(org, reponame).get().await;
         match response {
             Err(octocrab::Error::GitHub { ref source, .. }) => match source.message.as_str() {
+                // GitHub API will send 403 for API-level issues, not object-level permissions
+                // A user having had their permissions removed will receive 404.
                 "Not Found" => Err(RemoteError::RemoteNotFound),
                 _ => Ok(response.map(|_| ())?),
             },
-            // i'm leaving this here for completeness' sake, this likely isn't exercised
+            // I'm leaving this here for completeness' sake, this likely isn't exercised
+            // Octocrab seems to treat GitHub application-layer errors as higher priority
             Err(octocrab::Error::Http { ref source, .. }) => match source.status() {
                 Some(StatusCode::NOT_FOUND) => Err(RemoteError::RemoteNotFound),
                 Some(StatusCode::FORBIDDEN) => Err(RemoteError::PermissionDenied),
@@ -102,7 +105,7 @@ impl Auth {
         }
     }
 
-    fn git_cred(&self) -> Box<git2::Credentials<'static>> {
+    fn git_cred(&self) -> GitCreds {
         use Auth::*;
         match self.clone() {
             OAuth { access_token, .. } => {
