@@ -25,7 +25,9 @@ RUN apt-get update && apt-get -y install cmake python3 protobuf-compiler && apt-
 ENV RUSTC_WRAPPER="/usr/bin/sccache"
 
 FROM chef AS planner
-COPY . .
+COPY server server
+COPY apps/desktop/src-tauri apps/desktop/src-tauri
+COPY Cargo.lock Cargo.toml .
 RUN cargo --locked chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
