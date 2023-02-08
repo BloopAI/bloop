@@ -126,8 +126,8 @@ pub struct Configuration {
 
     #[clap(long)]
     #[serde(serialize_with = "State::serialize_secret_opt_str", default)]
-    /// SlackBot secret token
-    pub slackbot_secret: Option<SecretString>,
+    /// Bot secret token
+    pub bot_secret: Option<SecretString>,
 
     #[clap(long)]
     /// Key for analytics backend
@@ -250,7 +250,7 @@ impl Configuration {
 
             instance_domain: b.instance_domain.or(a.instance_domain),
 
-            slackbot_secret: b.slackbot_secret.or(a.slackbot_secret),
+            bot_secret: b.bot_secret.or(a.bot_secret),
 
             analytics_key: b.analytics_key.or(a.analytics_key),
 

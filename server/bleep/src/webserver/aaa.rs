@@ -365,15 +365,15 @@ async fn bot_auth(
     auth_header: Option<TypedHeader<Authorization<Bearer>>>,
     app: &Application,
 ) -> Result<()> {
-    let slackbot_secret = app
+    let bot_secret = app
         .config
-        .slackbot_secret
+        .bot_secret
         .as_ref()
-        .context("missing slackbot_secret configuration option")?;
+        .context("missing bot_secret configuration option")?;
     let TypedHeader(Authorization(bearer)) = auth_header.context("missing Bearer token")?;
 
-    if bearer.token() != slackbot_secret.expose_secret() {
-        bail!("slackbot secret token mismatch");
+    if bearer.token() != bot_secret.expose_secret() {
+        bail!("bot secret token mismatch");
     }
 
     Ok(())
