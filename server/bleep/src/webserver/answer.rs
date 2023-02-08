@@ -20,12 +20,22 @@ use super::ErrorKind;
 
 /// Mirrored from `answer_api/lib.rs` to avoid private dependency.
 pub mod api {
+    use serde::Deserialize;
+
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Request {
         pub prompt: String,
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
     }
+
+    #[derive(thiserror::Error, Debug, Deserialize)]
+    pub enum Error {
+        #[error("bad OpenAI request")]
+        BadOpenAiRequest,
+    }
+
+    pub type Result = std::result::Result<String, Error>;
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -297,12 +307,18 @@ pub(super) async fn handle(
         .map(Box::pin)?;
 
     let stream = async_stream::stream! {
-        yield anyhow::Result::<_>::Ok(initial_event);
+        yield Ok(initial_event);
 
         let mut explanation = String::new();
-        while let Some(s) = snippet_explanation.try_next().await? {
-            explanation += &s;
-            yield Ok(Event::default().data(s));
+        while let Some(result) = snippet_explanation.next().await {
+            yield Ok(Event::default()
+                .json_data(result.as_ref().map_err(|e| e.to_string()))
+                .unwrap());
+
+            match result {
+                Ok(s) => explanation += &s,
+                Err(e) => yield Err(e),
+            }
         }
 
         app.track_query(QueryEvent {
@@ -362,6 +378,12 @@ enum AnswerAPIError {
 
     #[error("failed to open stream")]
     StreamFail,
+
+    #[error("message deserialization error {0}")]
+    MessageFormat(#[from] serde_json::Error),
+
+    #[error("answer API error {0}")]
+    BadRequest(#[from] api::Error),
 }
 
 impl From<AnswerAPIError> for super::Error {
@@ -418,8 +440,8 @@ impl<'s> AnswerAPIClient<'s> {
 
         match stream.next().await {
             Some(Ok(reqwest_eventsource::Event::Open)) => {}
-            Some(Err(e)) => return Err(AnswerAPIError::EventSource(e)),
-            _ => return Err(AnswerAPIError::StreamFail),
+            Some(Err(e)) => Err(AnswerAPIError::EventSource(e))?,
+            _ => Err(AnswerAPIError::StreamFail)?,
         }
 
         Ok(stream
@@ -431,7 +453,11 @@ impl<'s> AnswerAPIClient<'s> {
                     Err(e) => Some(Err(e)),
                 }
             })
-            .map_err(AnswerAPIError::EventSource))
+            .map(|result| match result {
+                Ok(s) => Ok(serde_json::from_str::<api::Result>(&s)??),
+                Err(e) => Err(AnswerAPIError::EventSource(e)),
+            })
+            .map(|result: Result<String, AnswerAPIError>| result))
     }
 
     async fn send_until_success(
