@@ -22,6 +22,7 @@ RUN apt-get update && apt-get -y install cmake python3 protobuf-compiler && apt-
     curl -sLo sccache.tar.gz https://github.com/mozilla/sccache/releases/download/v0.3.3/sccache-v0.3.3-x86_64-unknown-linux-musl.tar.gz && \
     tar xzf sccache.tar.gz && \
     mv sccache-*/sccache /usr/bin/sccache
+ENV RUSTC_WRAPPER="/usr/bin/sccache"
 
 FROM chef AS planner
 COPY . .
@@ -31,7 +32,6 @@ FROM chef AS builder
 COPY --from=planner /build/recipe.json recipe.json
 
 # Build dependencies - this is the caching Docker layer!
-ENV RUSTC_WRAPPER="/usr/bin/sccache"
 RUN --mount=target=/root/.cache/sccache,type=cache --mount=target=/build/target,type=cache \
     cargo --locked chef cook -p bleep --release --recipe-path recipe.json
 
