@@ -4,10 +4,11 @@ use octocrab::{
     models::{Installation, InstallationToken},
     Octocrab,
 };
+use reqwest::StatusCode;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 
-use crate::state::{Backend, Repository};
+use crate::state::{Backend, GitRemote, RepoRemote, Repository};
 
 use super::*;
 
@@ -64,12 +65,41 @@ impl Auth {
 }
 
 impl Auth {
-    pub(crate) fn clone_repo(&self, url: &str, target: &Path) -> Result<()> {
-        git_clone(self.git_cred(), url, target)
+    pub(crate) async fn clone_repo(&self, repo: &Repository, target: &Path) -> Result<()> {
+        self.check_repo(&repo).await?;
+        git_clone(self.git_cred(), &repo.remote.to_string(), target)
     }
 
-    pub(crate) fn pull_repo(&self, repo: &Repository) -> Result<()> {
+    pub(crate) async fn pull_repo(&self, repo: &Repository) -> Result<()> {
+        self.check_repo(&repo).await?;
         git_pull(self.git_cred(), repo)
+    }
+
+    pub async fn check_repo(&self, repo: &Repository) -> Result<()> {
+        let RepoRemote::Git(GitRemote {
+	    ref address, ..
+	}) = repo.remote else {
+	    return Err(RemoteError::NotSupported("github without git backend"));
+	};
+
+        let (org, reponame) = address
+            .split_once('/')
+            .ok_or(RemoteError::NotSupported("invalid repo address"))?;
+
+        let response = self.client()?.repos(org, reponame).get().await;
+        match response {
+            Err(octocrab::Error::GitHub { ref source, .. }) => match source.message.as_str() {
+                "Not Found" => Err(RemoteError::RemoteNotFound),
+                _ => Ok(response.map(|_| ())?),
+            },
+            // i'm leaving this here for completeness' sake, this likely isn't exercised
+            Err(octocrab::Error::Http { ref source, .. }) => match source.status() {
+                Some(StatusCode::NOT_FOUND) => Err(RemoteError::RemoteNotFound),
+                Some(StatusCode::FORBIDDEN) => Err(RemoteError::PermissionDenied),
+                _ => Ok(response.map(|_| ())?),
+            },
+            _ => Ok(response.map(|_| ())?),
+        }
     }
 
     fn git_cred(&self) -> Box<git2::Credentials<'static>> {

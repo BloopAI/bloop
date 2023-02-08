@@ -224,13 +224,15 @@ impl IndexWriter {
         };
 
         let synced = creds.sync(app.clone(), repo.clone()).await;
-        if let Err(RemoteError::RemoteNotFound | RemoteError::PermissionDenied) = synced {
+        if let Err(RemoteError::RemoteNotFound) = synced {
             self.0
                 .repo_pool
                 .get_mut(&repo)
                 .unwrap()
                 .value_mut()
                 .sync_status = SyncStatus::RemoteRemoved;
+
+            error!(?repo, "remote repository removed; disabling local syncing");
 
             // we want indexing to pick this up later and handle the new state
             // all local cleanups are done, so everything should be consistent

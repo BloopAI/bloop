@@ -187,52 +187,45 @@ impl BackendCredential {
     }
 
     pub(crate) async fn sync(self, app: Application, repo_ref: RepoRef) -> Result<()> {
-        tokio::task::spawn_blocking(move || {
-            use BackendCredential::*;
+        use BackendCredential::*;
 
-            let existing = app.repo_pool.get_mut(&repo_ref);
-            let synced = match existing {
-                // if there's a parallel process already syncing, just return
-                Some(repo) if repo.sync_status == SyncStatus::Syncing => {
-                    return Err(RemoteError::SyncInProgress)
+        let existing = app.repo_pool.get_mut(&repo_ref);
+        let synced = match existing {
+            // if there's a parallel process already syncing, just return
+            Some(repo) if repo.sync_status == SyncStatus::Syncing => {
+                return Err(RemoteError::SyncInProgress)
+            }
+            Some(mut repo) => {
+                repo.value_mut().sync_status = SyncStatus::Syncing;
+                let repo = repo.downgrade();
+
+                match self {
+                    Github(gh) => gh.pull_repo(&repo).await,
                 }
-                Some(mut repo) => {
-                    repo.value_mut().sync_status = SyncStatus::Syncing;
-                    let repo = repo.downgrade();
+            }
+            None => {
+                let repo = create_repository(&app, &repo_ref);
 
-                    match self {
-                        Github(gh) => gh.pull_repo(&repo),
-                    }
+                match self {
+                    Github(gh) => gh.clone_repo(&repo, &repo.disk_path.clone()).await,
                 }
-                None => {
-                    let (disk_path, address) = {
-                        let repo = create_repository(&app, &repo_ref);
-                        (repo.disk_path.clone(), repo.remote.to_string())
-                    };
+            }
+        };
 
-                    match self {
-                        Github(gh) => gh.clone_repo(&address, &disk_path),
-                    }
-                }
-            };
+        let new_status = match synced {
+            Ok(_) => SyncStatus::Queued,
+            Err(ref err) => SyncStatus::Error {
+                message: err.to_string(),
+            },
+        };
 
-            let new_status = match synced {
-                Ok(_) => SyncStatus::Queued,
-                Err(ref err) => SyncStatus::Error {
-                    message: err.to_string(),
-                },
-            };
+        app.repo_pool
+            .get_mut(&repo_ref)
+            .unwrap()
+            .value_mut()
+            .sync_status = new_status;
 
-            app.repo_pool
-                .get_mut(&repo_ref)
-                .unwrap()
-                .value_mut()
-                .sync_status = new_status;
-
-            synced
-        })
-        .await
-        .expect("blocking task panic'd")
+        synced
     }
 
     pub(crate) fn expiry(&self) -> Option<DateTime<Utc>> {
