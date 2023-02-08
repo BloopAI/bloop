@@ -16,34 +16,20 @@ COPY client/ client
 COPY package.json pnpm-workspace.yaml playwright.config.js .
 RUN pnpm install -r --offline && pnpm run build-web
 
-FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
+FROM rust:slim as builder
 WORKDIR /build
-RUN apt-get update && apt-get -y install cmake python3 protobuf-compiler && apt-get -y clean && \
+RUN apt-get update && \
+    apt-get -y install build-essential curl cmake python3 protobuf-compiler pkg-config libssl1.1 libssl-dev git && \
+    apt-get -y clean && \
     curl -sLo sccache.tar.gz https://github.com/mozilla/sccache/releases/download/v0.3.3/sccache-v0.3.3-x86_64-unknown-linux-musl.tar.gz && \
     tar xzf sccache.tar.gz && \
     mv sccache-*/sccache /usr/bin/sccache
 ENV RUSTC_WRAPPER="/usr/bin/sccache"
-
-FROM chef AS planner
-COPY server server
-COPY apps/desktop/src-tauri apps/desktop/src-tauri
-COPY Cargo.lock Cargo.toml .
-RUN --mount=target=/root/.cache/sccache,type=cache --mount=target=/build/target,type=cache \
-    cargo --locked chef prepare --recipe-path recipe.json
-
-FROM chef AS builder
-COPY --from=planner /build/recipe.json recipe.json
-
-# Build dependencies - this is the caching Docker layer!
-RUN --mount=target=/root/.cache/sccache,type=cache --mount=target=/build/target,type=cache \
-    cargo --locked chef cook -p bleep --release --recipe-path recipe.json
-
 COPY server server
 COPY apps/desktop/src-tauri apps/desktop/src-tauri
 COPY Cargo.lock Cargo.toml .
 RUN --mount=target=/root/.cache/sccache,type=cache --mount=target=/build/target,type=cache  \
-    rm server/bleep/src/main.rs && \
-    cargo --locked --frozen --offline build -p bleep --release && \
+    cargo --locked build -p bleep --release && \
     cp /build/target/release/bleep / && \
     sccache --show-stats
 
