@@ -28,7 +28,8 @@ FROM chef AS planner
 COPY server server
 COPY apps/desktop/src-tauri apps/desktop/src-tauri
 COPY Cargo.lock Cargo.toml .
-RUN cargo --locked chef prepare --recipe-path recipe.json
+RUN --mount=target=/root/.cache/sccache,type=cache --mount=target=/build/target,type=cache \
+    cargo --locked chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
 COPY --from=planner /build/recipe.json recipe.json
