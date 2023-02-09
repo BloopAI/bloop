@@ -125,6 +125,11 @@ pub struct Configuration {
     pub instance_domain: Option<String>,
 
     #[clap(long)]
+    #[serde(serialize_with = "State::serialize_secret_opt_str", default)]
+    /// Bot secret token
+    pub bot_secret: Option<SecretString>,
+
+    #[clap(long)]
     /// Key for analytics backend
     pub analytics_key: Option<String>,
 
@@ -244,6 +249,8 @@ impl Configuration {
             github_app_private_key: b.github_app_private_key.or(a.github_app_private_key),
 
             instance_domain: b.instance_domain.or(a.instance_domain),
+
+            bot_secret: b.bot_secret.or(a.bot_secret),
 
             analytics_key: b.analytics_key.or(a.analytics_key),
 
