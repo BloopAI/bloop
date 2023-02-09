@@ -34,6 +34,7 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
   const [answer, setAnswer] = useState('');
+  const [error, setError] = useState('');
   const { trackUpvote } = useAnalytics();
 
   const highlightedAnswer = useMemo(() => md.render(answer), [answer]);
@@ -49,8 +50,11 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
       );
       let i = 0;
       eventSource.onmessage = (ev) => {
-        if (i !== 0) {
-          setAnswer((prev) => prev + ev.data);
+        const newData = JSON.parse(ev.data);
+        if (newData.Err) {
+          setError(newData.Err);
+        } else if (i !== 0) {
+          setAnswer((prev) => prev + newData.Ok);
         }
         i++;
       };
@@ -86,7 +90,15 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
     <div className="bg-gray-800 p-3 flex flex-row rounded-t relative">
       <div
         className="body-s w-full semantic-answer overflow-auto"
-        dangerouslySetInnerHTML={{ __html: highlightedAnswer }}
+        dangerouslySetInnerHTML={{
+          __html:
+            highlightedAnswer +
+            (error ? (
+              <p className="text-danger-500">An error occurred: {error}</p>
+            ) : (
+              ''
+            )),
+        }}
       ></div>
       <div className="flex flex-row">
         <Button
