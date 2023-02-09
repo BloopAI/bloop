@@ -8,7 +8,7 @@ use notify_debouncer_mini::{
 };
 use rand::{distributions, thread_rng, Rng};
 use tokio::time::sleep;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::{
     env::Feature,
@@ -37,7 +37,7 @@ pub(crate) async fn check_credentials(app: Application) {
                 Some(expiry) if expiry > Utc::now() + chrono::Duration::minutes(10) => {}
 
                 _ => {
-                    if let Err(e) = remotes::github::get_new_github_token(&app).await {
+                    if let Err(e) = remotes::github::refresh_github_installation_token(&app).await {
                         error!(?e, "failed to get GitHub token");
                     }
                 }
@@ -79,7 +79,12 @@ pub(crate) async fn check_repo_updates(app: Application) {
 
             match handles.get(&repo) {
                 None => {
-                    handles.insert(repo.clone(), tokio::spawn(periodic_repo_poll(app, reporef)));
+                    let (_, status) = check_repo(&app, &reporef).unwrap();
+
+                    if status.indexable() {
+                        handles
+                            .insert(repo.clone(), tokio::spawn(periodic_repo_poll(app, reporef)));
+                    }
                 }
                 Some(handle) => {
                     if handle.is_finished() {
@@ -104,7 +109,8 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
     loop {
         use SyncStatus::*;
         let (last_updated, status) = check_repo(&app, &reporef)?;
-        if matches!(status, Queued | Done | Error { .. }).not() {
+        if status.indexable().not() {
+            warn!(?status, "skipping indexing of repo");
             return None;
         }
 
@@ -118,6 +124,11 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
         }
 
         let (updated, status) = check_repo(&app, &reporef)?;
+        if status.indexable().not() {
+            warn!(?status, ?reporef, "terminating monitoring for repo");
+            return None;
+        }
+
         if last_updated == updated && status == Done {
             let poll_interval = poller.increase_interval();
 
