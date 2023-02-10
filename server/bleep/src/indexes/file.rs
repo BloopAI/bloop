@@ -281,12 +281,28 @@ impl Indexable for File {
 
         info!(?repo.disk_path, "file indexing finished, took {:?}", start.elapsed());
 
+        // files that are no longer tracked by the git index are to be removed
+        // from the tantivy & qdrant indices
         file_cache.retain(|k, v| {
             if v.fresh.not() {
+                // delete from tantivy
                 writer.delete_term(Term::from_field_text(
                     self.entry_disk_path,
                     &k.to_string_lossy(),
                 ));
+
+                // delete from qdrant
+                let relative_path = k.strip_prefix(&repo.disk_path);
+                if let (Some(semantic), Ok(relative_path)) = (&self.semantic, relative_path) {
+                    let semantic = semantic.clone();
+                    let reporef = reporef.to_string();
+                    let relative_path = relative_path.to_string_lossy().to_string();
+                    tokio::spawn(async move {
+                        semantic
+                            .delete_points_by_path(reporef.as_str(), relative_path.as_str())
+                            .await;
+                    });
+                }
             }
 
             v.fresh
