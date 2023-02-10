@@ -1,6 +1,9 @@
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
-use std::{path::Path, process::Command};
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use chrono::{DateTime, Utc};
 use dashmap::mapref::one::Ref;
@@ -154,7 +157,10 @@ async fn git_pull(auth: GitCreds, repo: &Repository) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn gather_repo_roots(path: impl AsRef<Path>) -> impl Iterator<Item = RepoRef> {
+pub(crate) fn gather_repo_roots(
+    path: impl AsRef<Path>,
+    exclude: Option<PathBuf>,
+) -> impl Iterator<Item = RepoRef> {
     const RECOGNIZED_VCS_DIRS: &[&str] = &[".git"];
 
     WalkBuilder::new(path)
@@ -163,6 +169,12 @@ pub(crate) fn gather_repo_roots(path: impl AsRef<Path>) -> impl Iterator<Item = 
         .git_ignore(true)
         .git_global(false)
         .git_exclude(false)
+        .filter_entry(move |entry| {
+            exclude
+                .as_ref()
+                .map(|path| !crate::canonicalize(entry.path()).unwrap().starts_with(path))
+                .unwrap_or(true)
+        })
         .build()
         .filter_map(|entry| {
             entry.ok().and_then(|de| match de.file_type() {
