@@ -50,6 +50,7 @@ mod language;
 mod remotes;
 mod webserver;
 
+pub mod answer;
 pub mod ctags;
 pub mod indexes;
 pub mod intelligence;
