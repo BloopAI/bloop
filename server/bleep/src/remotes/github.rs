@@ -1,19 +1,19 @@
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use jsonwebtoken::EncodingKey;
 use octocrab::{
     models::{Installation, InstallationToken},
     Octocrab,
 };
+use reqwest::StatusCode;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 
-use crate::state::{Backend, Repository};
+use crate::state::{Backend, GitRemote, RepoRemote, Repository};
 
 use super::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum Auth {
+pub(crate) enum Auth {
     /// Copy of [`octocrab::auth::OAuth`] that can be serialized
     OAuth {
         #[serde(serialize_with = "crate::state::serialize_secret_str")]
@@ -65,27 +65,59 @@ impl Auth {
 }
 
 impl Auth {
-    pub fn clone_repo(&self, url: &str, target: &Path) -> Result<()> {
-        git_clone(self.git_cred(), url, target)
+    pub(crate) async fn clone_repo(&self, repo: &Repository, target: &Path) -> Result<()> {
+        self.check_repo(repo).await?;
+        git_clone(self.git_cred(), &repo.remote.to_string(), target).await
     }
 
-    pub fn pull_repo(&self, repo: &Repository) -> Result<()> {
-        git_pull(self.git_cred(), repo)
+    pub(crate) async fn pull_repo(&self, repo: &Repository) -> Result<()> {
+        self.check_repo(repo).await?;
+        git_pull(self.git_cred(), repo).await
     }
 
-    fn git_cred(&self) -> Box<git2::Credentials<'static>> {
+    pub async fn check_repo(&self, repo: &Repository) -> Result<()> {
+        let RepoRemote::Git(GitRemote {
+	    ref address, ..
+	}) = repo.remote else {
+	    return Err(RemoteError::NotSupported("github without git backend"));
+	};
+
+        let (org, reponame) = address
+            .split_once('/')
+            .ok_or(RemoteError::NotSupported("invalid repo address"))?;
+
+        let response = self.client()?.repos(org, reponame).get().await;
+        match response {
+            Err(octocrab::Error::GitHub { ref source, .. }) => match source.message.as_str() {
+                // GitHub API will send 403 for API-level issues, not object-level permissions
+                // A user having had their permissions removed will receive 404.
+                "Not Found" => Err(RemoteError::RemoteNotFound),
+                _ => Ok(response.map(|_| ())?),
+            },
+            // I'm leaving this here for completeness' sake, this likely isn't exercised
+            // Octocrab seems to treat GitHub application-layer errors as higher priority
+            Err(octocrab::Error::Http { ref source, .. }) => match source.status() {
+                Some(StatusCode::NOT_FOUND) => Err(RemoteError::RemoteNotFound),
+                Some(StatusCode::FORBIDDEN) => Err(RemoteError::PermissionDenied),
+                _ => Ok(response.map(|_| ())?),
+            },
+            _ => Ok(response.map(|_| ())?),
+        }
+    }
+
+    fn git_cred(&self) -> GitCreds {
         use Auth::*;
         match self.clone() {
-            OAuth { access_token, .. } => Box::new(move |_, _, _| {
-                Cred::userpass_plaintext(access_token.expose_secret(), "ignored by github")
-            }),
+            OAuth { access_token, .. } => {
+                Box::new(move |_, _, _| Cred::userpass_plaintext(access_token.expose_secret(), ""))
+            }
             App { token, .. } => Box::new(move |_, _, _| {
                 Cred::userpass_plaintext("x-access-token", token.expose_secret())
             }),
         }
     }
 
-    pub fn client(&self) -> octocrab::Result<Octocrab> {
+    pub(crate) fn client(&self) -> octocrab::Result<Octocrab> {
         use Auth::*;
         match self.clone() {
             OAuth {
@@ -108,27 +140,28 @@ impl Auth {
     }
 }
 
-pub(crate) async fn get_new_github_token(app: &Application) -> Result<BackendCredential> {
+pub(crate) async fn refresh_github_installation_token(
+    app: &Application,
+) -> Result<BackendCredential> {
     let privkey = std::fs::read(
         app.config
             .github_app_private_key
             .as_ref()
-            .context("missing GitHub app private key")?,
+            .ok_or(RemoteError::Configuration("github_app_private_key"))?,
     )?;
 
     let install_id = app
         .config
         .github_app_install_id
-        .context("need GitHub App installation ID")?;
+        .ok_or(RemoteError::Configuration("github_app_install_id"))?;
 
     let octocrab = Octocrab::builder()
         .app(
             app.config
                 .github_app_id
-                .context("need GitHub App ID")?
+                .ok_or(RemoteError::Configuration("github_app_id"))?
                 .into(),
-            EncodingKey::from_rsa_pem(&privkey)
-                .context("invalid GitHub app private key, expected RSA PEM format")?,
+            EncodingKey::from_rsa_pem(&privkey)?,
         )
         .build()?;
 
@@ -136,14 +169,11 @@ pub(crate) async fn get_new_github_token(app: &Application) -> Result<BackendCre
         .get(format!("app/installations/{install_id}"), None::<&()>)
         .await?;
 
-    if installation
-        .target_type
-        .as_ref()
-        .context("installation is missing target_type")?
-        == "User"
-    {
-        bail!("app installation is only valid on organizations");
-    }
+    if !matches!(installation.target_type.as_deref(), Some("Organization")) {
+        return Err(RemoteError::NotSupported(
+            "installation target must be an organization",
+        ));
+    };
 
     let auth = remotes::github::Auth::from_installation(installation, install_id, octocrab).await?;
     let credential = BackendCredential::Github(auth);

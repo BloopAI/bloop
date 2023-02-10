@@ -16,13 +16,14 @@ type Props = {
 };
 
 const statusMap = {
-  error: { text: 'Error', color: 'bg-red-500' },
-  removed: { text: 'Removed', color: 'bg-red-500' },
-  uninitialized: { text: 'Not synced', color: 'bg-gray-700' },
-  queued: { text: 'Queued...', color: 'bg-gray-700' },
-  indexing: { text: 'Indexing...', color: 'bg-yellow-500' },
-  syncing: { text: 'Syncing...', color: 'bg-yellow-500' },
-  done: { text: 'Last updated ', color: 'bg-green-500' },
+  [SyncStatus.Error]: { text: 'Error', color: 'bg-red-500' },
+  [SyncStatus.Removed]: { text: 'Removed', color: 'bg-red-500' },
+  [SyncStatus.Uninitialized]: { text: 'Not synced', color: 'bg-gray-700' },
+  [SyncStatus.Queued]: { text: 'Queued...', color: 'bg-gray-700' },
+  [SyncStatus.Indexing]: { text: 'Indexing...', color: 'bg-yellow-500' },
+  [SyncStatus.Syncing]: { text: 'Syncing...', color: 'bg-yellow-500' },
+  [SyncStatus.Done]: { text: 'Last updated ', color: 'bg-green-500' },
+  [SyncStatus.RemoteRemoved]: { text: 'Remote removed ', color: 'bg-red-500' },
 };
 
 const RepoCard = ({

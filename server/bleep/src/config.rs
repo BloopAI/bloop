@@ -87,10 +87,9 @@ pub struct Configuration {
     //
     // External dependencies
     //
-    #[clap(long, default_value_t = default_qdrant_url())]
-    #[serde(default = "default_qdrant_url")]
+    #[clap(long)]
     /// URL for the qdrant server
-    pub qdrant_url: String,
+    pub qdrant_url: Option<String>,
 
     #[clap(long, default_value_t = default_answer_api_url())]
     #[serde(default = "default_answer_api_url")]
@@ -124,6 +123,11 @@ pub struct Configuration {
     #[clap(long)]
     /// Full instance domain, e.g. `foo.bloop.ai`
     pub instance_domain: Option<String>,
+
+    #[clap(long)]
+    #[serde(serialize_with = "State::serialize_secret_opt_str", default)]
+    /// Bot secret token
+    pub bot_secret: Option<SecretString>,
 
     #[clap(long)]
     /// Key for analytics backend
@@ -226,7 +230,7 @@ impl Configuration {
 
             frontend_dist: b.frontend_dist.or(a.frontend_dist),
 
-            qdrant_url: right_if_default!(b.qdrant_url, a.qdrant_url, default_qdrant_url()),
+            qdrant_url: b.qdrant_url.or(a.qdrant_url),
 
             answer_api_url: right_if_default!(
                 b.answer_api_url,
@@ -245,6 +249,8 @@ impl Configuration {
             github_app_private_key: b.github_app_private_key.or(a.github_app_private_key),
 
             instance_domain: b.instance_domain.or(a.instance_domain),
+
+            bot_secret: b.bot_secret.or(a.bot_secret),
 
             analytics_key: b.analytics_key.or(a.analytics_key),
 
@@ -288,10 +294,6 @@ const fn default_port() -> u16 {
 
 fn default_host() -> String {
     String::from("127.0.0.1")
-}
-
-fn default_qdrant_url() -> String {
-    String::from("http://127.0.0.1:6334")
 }
 
 fn default_answer_api_url() -> String {

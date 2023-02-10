@@ -1,9 +1,10 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Remarkable } from 'remarkable';
 import hljs from 'highlight.js';
+import { useRive } from '@rive-app/react-canvas';
 import 'highlight.js/styles/vs2015.css';
 import Button from '../../../Button';
-import { ArrowRotate, ThumbsDown, ThumbsUp } from '../../../../icons';
+import { ArrowRotate } from '../../../../icons';
 import { DeviceContext } from '../../../../context/deviceContext';
 import useAppNavigation from '../../../../hooks/useAppNavigation';
 import useAnalytics from '../../../../hooks/useAnalytics';
@@ -36,6 +37,14 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState('');
   const { trackUpvote } = useAnalytics();
+  const RiveUpvote = useRive({
+    src: '/like_button.riv',
+    autoplay: false,
+  });
+  const RiveDownvote = useRive({
+    src: '/like_button.riv',
+    autoplay: false,
+  });
 
   const highlightedAnswer = useMemo(() => md.render(answer), [answer]);
 
@@ -72,6 +81,22 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
 
   const handleUpvote = useCallback(
     (isUpvote: boolean) => {
+      if (RiveUpvote.rive) {
+        if (isUpvote) {
+          RiveUpvote.rive.play();
+        } else {
+          RiveUpvote.rive.reset();
+          RiveUpvote.rive.drawFrame();
+        }
+      }
+      if (RiveDownvote.rive) {
+        if (!isUpvote) {
+          RiveDownvote.rive.play();
+        } else {
+          RiveDownvote.rive.reset();
+          RiveDownvote.rive.drawFrame();
+        }
+      }
       setIsUpvote(isUpvote);
       setIsDownvote(!isUpvote);
       trackUpvote(isUpvote, query, answer, searchId);
@@ -83,7 +108,7 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
         text: answer,
       });
     },
-    [deviceId, query, answer],
+    [deviceId, query, answer, RiveUpvote, RiveDownvote],
   );
 
   return (
@@ -117,7 +142,7 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
           size="small"
           onClick={() => handleUpvote(true)}
         >
-          <ThumbsUp />
+          <RiveUpvote.RiveComponent className="w-4/5 h-4/5" />
         </Button>
         <Button
           onlyIcon
@@ -126,7 +151,7 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
           size="small"
           onClick={() => handleUpvote(false)}
         >
-          <ThumbsDown />
+          <RiveDownvote.RiveComponent className="w-4/5 h-4/5 transform rotate-180" />
         </Button>
       </div>
     </div>

@@ -72,7 +72,7 @@ const SearchPage = () => {
   }, []);
 
   useEffect(() => {
-    if (import.meta.env.VITE_ONBOARDING) {
+    if (import.meta.env.ONBOARDING) {
       if (
         getPlainFromStorage(SESSION_ID_KEY) !==
         window.__APP_SESSION__.toString()

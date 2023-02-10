@@ -56,7 +56,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
         let file = File::new(
             app.config.clone(),
-            Semantic::new(&model_dir, &app.config.qdrant_url, Arc::clone(&app.config))
+            Semantic::initialize(&model_dir, &app.config.qdrant_url, Arc::clone(&app.config))
                 .await
                 .unwrap(),
         );

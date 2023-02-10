@@ -422,18 +422,29 @@ impl StateSource {
         });
     }
 
+    pub(crate) fn repo_dir(&self) -> Option<PathBuf> {
+        self.directory.clone()
+    }
+
     pub(crate) fn initialize_pool(&self) -> Result<RepositoryPool, RepoError> {
         #[cfg(target = "windows")]
         use dunce::canonicalize;
         #[cfg(not(target = "windows"))]
         use std::fs::canonicalize;
         match (self.directory.as_ref(), self.state_file.as_ref()) {
-            (Some(root), None) => read_root(root),
             (None, Some(path)) => read_file_or_default(path).map(Arc::new),
+
+            (Some(root), None) => Ok(gather_repo_roots(root, None)
+                .map(|reporef| {
+                    let repo = Repository::local_from(&reporef);
+                    (reporef, repo)
+                })
+                .collect::<DashMap<_, _>>()
+                .into()),
 
             (Some(root), Some(path)) => {
                 let state: RepositoryPool = Arc::new(read_file_or_default(path)?);
-                let current_repos = gather_repo_roots(root).collect::<HashSet<_>>();
+                let current_repos = gather_repo_roots(root, None).collect::<HashSet<_>>();
                 let root = canonicalize(root)?;
 
                 // mark repositories from the index which are no longer present
@@ -585,16 +596,6 @@ pub fn read_file_or_default<T: Default + DeserializeOwned>(path: &Path) -> Resul
     Ok(serde_json::from_reader::<_, T>(file)?)
 }
 
-fn read_root(path: &Path) -> Result<RepositoryPool, RepoError> {
-    Ok(gather_repo_roots(path)
-        .map(|reporef| {
-            let repo = Repository::local_from(&reporef);
-            (reporef, repo)
-        })
-        .collect::<DashMap<_, _>>()
-        .into())
-}
-
 #[derive(Debug)]
 pub struct RepoHeadInfo {
     pub last_commit_unix_secs: u64,
@@ -618,7 +619,15 @@ pub enum SyncStatus {
     Syncing,
     Queued,
     Indexing,
+    RemoteRemoved,
     Done,
+}
+
+impl SyncStatus {
+    pub(crate) fn indexable(&self) -> bool {
+        use SyncStatus::*;
+        matches!(self, Queued | Done | Error { .. })
+    }
 }
 
 #[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug)]

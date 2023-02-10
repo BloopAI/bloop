@@ -2,6 +2,9 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "bloop.fullname" . }}
+  annotations:
+    configmap.reloader.stakater.com/reload: "{{ include "qdrant.fullname" . }}"
+    secret.reloader.stakater.com/reload: "{{ include "bloop.fullname" . }}"
   labels:
     {{- include "bloop.labels" . | nindent 4 }}
 spec:
@@ -54,12 +57,16 @@ spec:
           - --model-dir=/model
           - --frontend-dist=/frontend
           - --answer-api-url={{ .Values.bloop.answerApiUrl }}
+          - --qdrant-url={{ .Values.bloop.qdrantUrl }}
           - --instance-domain={{ .Values.bloop.instanceDomain }}
           - --github-app-id={{ .Values.bloop.githubAppId }}
           - --github-app-install-id={{ .Values.bloop.githubAppInstallId }}
           - --github-client-id={{ .Values.bloop.githubClientId }}
           - --github-client-secret={{ .Values.bloop.githubClientSecret }}
           - --github-app-private-key=/app/secrets/github-app-private-key.pem
+          - --analytics-key={{ .Values.bloop.analyticsKey }}
+          - --analytics-data-plane={{ .Values.bloop.analyticsDataPlane }}
+          - --sentry-dsn={{ .Values.bloop.sentryDsn }}
           env:
           - name: BLOOP_LOG
             value: info
@@ -75,6 +82,12 @@ spec:
                 fieldPath: metadata.namespace
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 7878
+            initialDelaySeconds: 20
+            periodSeconds: 5
           volumeMounts:
           - name: {{ include "bloop.fullname" . }}-storage
             mountPath: /data

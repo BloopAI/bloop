@@ -71,7 +71,11 @@ const CodeFull = ({
   const [foldedLines, setFoldedLines] = useState<Record<number, number>>({});
   const [blameLines, setBlameLines] = useState<Record<number, BlameLine>>({});
   const scrollLineNumber = useMemo(
-    () => Number(searchParams.get('scroll_line_index')),
+    () =>
+      searchParams
+        .get('scroll_line_index')
+        ?.split('_')
+        .map((i) => Number(i)),
     [searchParams],
   );
   const [scrollToIndex, setScrollToIndex] = useState(
@@ -152,16 +156,16 @@ const CodeFull = ({
   const onRefDefClick = useCallback(
     (item: TokenInfoItem, filePath: string) => {
       if (filePath === relativePath) {
-        setScrollToIndex(item.line);
+        setScrollToIndex([item.line, item.line]);
       } else {
         navigateRepoPath(repoName, filePath, {
-          scroll_line_index: item.line.toString(),
+          scroll_line_index: `${item.line}_${item.line}`,
         });
       }
     },
     [repoName, relativePath],
   );
-
+  console.log(scrollToIndex);
   return (
     <div className="w-full text-xs gap-10 flex flex-row">
       <div className={`${!minimap ? 'w-full' : ''}`} ref={codeRef}>
@@ -177,7 +181,7 @@ const CodeFull = ({
                 rowHeight={20}
                 rowCount={tokens.length}
                 rowGetter={({ index }) => tokens[index]}
-                scrollToIndex={scrollToIndex}
+                scrollToIndex={scrollToIndex?.[0]}
                 scrollToAlignment="center"
                 rowRenderer={(props) => (
                   <CodeLine
@@ -190,7 +194,11 @@ const CodeFull = ({
                     blameLine={blameLines[props.index]}
                     blame={!!metadata.blame?.length}
                     hoverEffect
-                    shouldHighlight={scrollToIndex === props.index}
+                    shouldHighlight={
+                      scrollToIndex &&
+                      props.index >= scrollToIndex[0] &&
+                      props.index <= scrollToIndex[1]
+                    }
                     stylesGenerated={{
                       ...props.style,
                       width: 'auto',

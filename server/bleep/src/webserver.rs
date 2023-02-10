@@ -306,4 +306,10 @@ pub mod openapi_yaml {
     }
 }
 
-async fn health() {}
+async fn health(Extension(app): Extension<Application>) {
+    if let Some(ref semantic) = app.semantic {
+        // panic is fine here, we don't need exact reporting of
+        // subsystem checks at this stage
+        semantic.health_check().await.unwrap()
+    }
+}
