@@ -275,7 +275,7 @@ pub(super) async fn scan_local(
         (
             StatusCode::OK,
             json(ReposResponse::List(
-                crate::remotes::gather_repo_roots(&root)
+                crate::remotes::gather_repo_roots(&root, app.config.source.repo_dir())
                     .map(|reporef| {
                         let mut repo = Repository::local_from(&reporef);
                         repo.sync_status = SyncStatus::Uninitialized;
