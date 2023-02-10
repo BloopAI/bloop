@@ -666,7 +666,7 @@ mod test {
         ];
 
         for (path, index) in tests {
-            assert_eq!(should_index(&Path::new(dbg!(path))), index);
+            assert_eq!(should_index(&Path::new(path)), index);
         }
     }
 }

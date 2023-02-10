@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
 use axum::{
     extract::Query,
@@ -12,8 +15,12 @@ use tracing::{debug, error, info, warn};
 use utoipa::ToSchema;
 
 use crate::{
-    analytics::QueryEvent, indexes::reader::ContentDocument, query::parser, semantic::Semantic,
-    state::RepoRef, Application,
+    analytics::{QueryEvent, Stage},
+    indexes::reader::ContentDocument,
+    query::parser,
+    semantic::Semantic,
+    state::RepoRef,
+    Application,
 };
 
 use super::ErrorKind;
@@ -96,12 +103,40 @@ pub(super) async fn handle(
     Query(params): Query<Params>,
     Extension(app): Extension<Application>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<super::Response<'static>>)> {
+    // create a new analytics event for this query
+    let mut event = QueryEvent::default();
+
+    // populate analytics event
+    let response = _handle(params, app.clone(), &mut event).await;
+
+    // send event to rudderstack
+    app.track_query(event);
+
+    response
+}
+
+async fn _handle(
+    params: Params,
+    app: Application,
+    analytics_event: &mut QueryEvent,
+) -> Result<impl IntoResponse, (StatusCode, Json<super::Response<'static>>)> {
+    let query_id = uuid::Uuid::new_v4();
+    let mut stop_watch = StopWatch::start();
+
     let semantic = app.semantic.clone().ok_or_else(|| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             super::error(ErrorKind::Configuration, "Qdrant not configured"),
         )
     })?;
+
+    analytics_event.user_id = params.user_id.clone();
+    analytics_event.query_id = query_id;
+    analytics_event.overlap_strategy = semantic.overlap_strategy();
+
+    analytics_event
+        .stages
+        .push(Stage::new("user query", params.q.clone()).with_time(stop_watch.lap()));
 
     let query = parser::parse_nl(&params.q).map_err(|e| {
         (
@@ -162,6 +197,10 @@ pub(super) async fn handle(
         })
         .collect();
 
+    analytics_event
+        .stages
+        .push(Stage::new("semantic results", all_snippets.clone()).with_time(stop_watch.lap()));
+
     let mut snippets = vec![];
     let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
 
@@ -199,6 +238,10 @@ pub(super) async fn handle(
         }
     }
 
+    analytics_event.stages.push(
+        Stage::new("filtered semantic results", snippets.clone()).with_time(stop_watch.lap()),
+    );
+
     if snippets.is_empty() {
         warn!("Semantic search returned no snippets");
         return Err((
@@ -213,6 +256,11 @@ pub(super) async fn handle(
     let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target, 5);
 
     let select_prompt = answer_api_client.build_select_prompt(&snippets);
+
+    analytics_event
+        .stages
+        .push(Stage::new("select prompt", select_prompt.clone()).with_time(stop_watch.lap()));
+
     let relevant_snippet_index = answer_api_client
         .select_snippet(&select_prompt)
         .await
@@ -226,6 +274,10 @@ pub(super) async fn handle(
     let mut relevant_snippet_index = relevant_snippet_index
         .parse::<usize>()
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))?;
+
+    analytics_event.stages.push(
+        Stage::new("relevant snippet index", relevant_snippet_index).with_time(stop_watch.lap()),
+    );
 
     if relevant_snippet_index == 0 {
         return Err((
@@ -284,8 +336,6 @@ pub(super) async fn handle(
     // reorder snippets
     snippets.swap(relevant_snippet_index, 0);
 
-    let query_id = uuid::Uuid::new_v4();
-
     // answering snippet is always at index 0
     let answer_path = snippets.get(0).unwrap().relative_path.to_string();
 
@@ -297,6 +347,10 @@ pub(super) async fn handle(
             answer_path,
         }))
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))?;
+
+    analytics_event
+        .stages
+        .push(Stage::new("explanation", "").with_time(stop_watch.lap()));
 
     let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
 
@@ -321,18 +375,6 @@ pub(super) async fn handle(
             }
         }
 
-        app.track_query(QueryEvent {
-            user_id: params.user_id,
-            query_id,
-            query: params.q.clone(),
-            semantic_results: all_snippets,
-            filtered_semantic_results: snippets,
-            select_prompt,
-            relevant_snippet_index,
-            explain_prompt,
-            explanation,
-            overlap_strategy: semantic.overlap_strategy(),
-        });
     };
 
     Ok(Sse::new(stream))
@@ -566,5 +608,31 @@ Answer in GitHub Markdown:",
         let max_tokens = max_tokens.clamp(1, 500);
         info!(%max_tokens, "clamping max tokens");
         self.send(prompt, max_tokens as u32, 0.9).await
+    }
+}
+
+// Measure time between instants statefully
+struct StopWatch {
+    start: Instant,
+}
+
+impl StopWatch {
+    // Start the watch
+    fn start() -> Self {
+        Self {
+            start: Instant::now(),
+        }
+    }
+
+    // Measure the time since start
+    fn measure(&self) -> Duration {
+        self.start.elapsed()
+    }
+
+    // Read the value since the last start, and zero the clock
+    fn lap(&mut self) -> Duration {
+        let duration = self.measure();
+        self.start = Instant::now();
+        duration
     }
 }
