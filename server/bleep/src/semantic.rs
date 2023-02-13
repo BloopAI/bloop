@@ -217,7 +217,8 @@ impl Semantic {
         buffer: &str,
         lang_str: &str,
     ) {
-        self.delete_points_by_path(repo_ref, relative_path).await;
+        self.delete_points_by_path(repo_ref, std::iter::once(relative_path))
+            .await;
 
         let chunks = chunk::by_tokens(
             repo_name,
@@ -273,13 +274,14 @@ impl Semantic {
         }
     }
 
-    pub async fn delete_points_by_path(&self, repo_ref: &str, relative_path: &str) {
-        let conditions = vec![
-            make_kv_filter("repo_ref", repo_ref).into(),
-            make_kv_filter("relative_path", relative_path).into(),
-        ];
+    pub async fn delete_points_by_path(&self, repo_ref: &str, paths: impl Iterator<Item = &str>) {
+        let repo_filter = make_kv_filter("repo_ref", repo_ref).into();
+        let file_filter = paths
+            .map(|p| make_kv_filter("relative_path", p).into())
+            .collect::<Vec<_>>();
         let selector = Filter {
-            must: conditions,
+            must: vec![repo_filter],
+            should: file_filter,
             ..Default::default()
         }
         .into();

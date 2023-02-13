@@ -283,6 +283,7 @@ impl Indexable for File {
 
         // files that are no longer tracked by the git index are to be removed
         // from the tantivy & qdrant indices
+        let mut qdrant_remove_list = vec![];
         file_cache.retain(|k, v| {
             if v.fresh.not() {
                 // delete from tantivy
@@ -292,21 +293,29 @@ impl Indexable for File {
                 ));
 
                 // delete from qdrant
-                let relative_path = k.strip_prefix(&repo.disk_path);
-                if let (Some(semantic), Ok(relative_path)) = (&self.semantic, relative_path) {
-                    let semantic = semantic.clone();
-                    let reporef = reporef.to_string();
-                    let relative_path = relative_path.to_string_lossy().to_string();
-                    tokio::spawn(async move {
-                        semantic
-                            .delete_points_by_path(reporef.as_str(), relative_path.as_str())
-                            .await;
-                    });
+                if let Ok(relative_path) = k.strip_prefix(&repo.disk_path) {
+                    qdrant_remove_list.push(relative_path.to_string_lossy().to_string());
                 }
             }
 
             v.fresh
         });
+
+        // batch-delete points from qdrant index
+        if !qdrant_remove_list.is_empty() {
+            if let Some(semantic) = &self.semantic {
+                let semantic = semantic.clone();
+                let reporef = reporef.to_string();
+                tokio::spawn(async move {
+                    semantic
+                        .delete_points_by_path(
+                            reporef.as_str(),
+                            qdrant_remove_list.iter().map(|t| t.as_str()),
+                        )
+                        .await;
+                });
+            }
+        }
 
         repo.save_file_cache(&self.config.index_dir, file_cache)?;
         Ok(())
@@ -581,16 +590,19 @@ impl File {
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
         let last_commit = repo_info.last_commit_unix_secs;
 
-        if let Some(semantic) = &self.semantic {
-            tokio::task::block_in_place(|| {
-                Handle::current().block_on(semantic.insert_points_for_buffer(
-                    repo_name,
-                    &repo_ref,
-                    &relative_path.to_string_lossy(),
-                    &buffer,
-                    lang_str,
-                ))
-            });
+        // produce vectors for this document if it is a file
+        if entry_disk_path.is_file() {
+            if let Some(semantic) = &self.semantic {
+                tokio::task::block_in_place(|| {
+                    Handle::current().block_on(semantic.insert_points_for_buffer(
+                        repo_name,
+                        &repo_ref,
+                        &relative_path.to_string_lossy(),
+                        &buffer,
+                        lang_str,
+                    ))
+                });
+            }
         }
 
         trace!("writing document");
