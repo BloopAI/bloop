@@ -18,7 +18,7 @@ import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
 import { Range, TokenInfoItem } from '../../../types/results';
 import CodeLine from '../Code/CodeLine';
-import { hashCode } from '../../../utils';
+import { copyToClipboard, hashCode } from '../../../utils';
 import { Commit } from '../../../types';
 import { Token as TokenType } from '../../../types/prism';
 import useAppNavigation from '../../../hooks/useAppNavigation';
@@ -70,6 +70,9 @@ const CodeFull = ({
   const [searchParams] = useSearchParams();
   const [foldedLines, setFoldedLines] = useState<Record<number, number>>({});
   const [blameLines, setBlameLines] = useState<Record<number, BlameLine>>({});
+  const [currentSelection, setCurrentSelection] = useState<
+    [[number, number], [number, number]] | [[number, number]] | []
+  >([]);
   const scrollLineNumber = useMemo(
     () =>
       searchParams
@@ -165,12 +168,59 @@ const CodeFull = ({
     },
     [repoName, relativePath],
   );
-  console.log(scrollToIndex);
+
+  const onMouseSelectStart = useCallback((lineNum: number, charNum: number) => {
+    setCurrentSelection([[lineNum, charNum]]);
+  }, []);
+
+  const onMouseSelectEnd = useCallback((lineNum: number, charNum: number) => {
+    setCurrentSelection((prev) =>
+      prev[0] ? [prev[0], [lineNum, charNum]] : [],
+    );
+  }, []);
+
+  const handleCopy = useCallback(
+    (e: React.ClipboardEvent<HTMLPreElement>) => {
+      if (currentSelection.length === 2) {
+        e.preventDefault();
+        const lines = code.split('\n');
+        const startsAtTop =
+          currentSelection[0][0] <= currentSelection[1][0] &&
+          currentSelection[0][1] < currentSelection[1][1];
+
+        const [startLine, startChar] = startsAtTop
+          ? currentSelection[0]
+          : currentSelection[1];
+        const [endLine, endChar] = startsAtTop
+          ? currentSelection[1]
+          : currentSelection[0];
+
+        let textToCopy = lines[startLine].slice(startChar, endChar);
+        if (startLine !== endLine) {
+          const firstLine = lines[startLine].slice(startChar);
+          const lastLine = lines[endLine].slice(0, endChar + 1);
+          const textBetween = lines
+            .slice(startLine + 1, endLine - 1)
+            .join('\n');
+          textToCopy =
+            firstLine +
+            '\n' +
+            (textBetween ? textBetween + '\n' : '') +
+            lastLine;
+        }
+
+        copyToClipboard(textToCopy);
+      }
+    },
+    [currentSelection],
+  );
+
   return (
     <div className="w-full text-xs gap-10 flex flex-row">
       <div className={`${!minimap ? 'w-full' : ''}`} ref={codeRef}>
         <pre
           className={`prism-code language-${lang} bg-gray-900 my-0 w-full h-full`}
+          onCopy={handleCopy}
         >
           <AutoSizer>
             {({ height, width }) => (
@@ -194,6 +244,8 @@ const CodeFull = ({
                     blameLine={blameLines[props.index]}
                     blame={!!metadata.blame?.length}
                     hoverEffect
+                    onMouseSelectStart={onMouseSelectStart}
+                    onMouseSelectEnd={onMouseSelectEnd}
                     shouldHighlight={
                       scrollToIndex &&
                       props.index >= scrollToIndex[0] &&
