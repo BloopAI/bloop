@@ -209,15 +209,9 @@ export interface NLSnippet {
   start_line: number;
 }
 
-export interface NLResponseSelection {
-  index: number;
-  answer: string;
-  id: string;
-}
-
 export interface NLSearchResponse {
   query_id: string;
-  selection: NLResponseSelection;
+  answer_path: string;
   snippets: NLSnippet[];
   user_id: string;
 }
