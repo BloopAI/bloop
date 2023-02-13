@@ -2,6 +2,7 @@ use crate::{env::Feature, snippet, state, Application};
 
 use axum::middleware;
 use axum::{http::StatusCode, response::IntoResponse, routing::get, Extension, Json};
+use std::sync::Arc;
 use std::{borrow::Cow, net::SocketAddr};
 use tower::Service;
 use tower_http::services::{ServeDir, ServeFile};
@@ -63,7 +64,10 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         // misc
         .route("/file/*ref", get(file::handle))
         .route("/semantic/chunks", get(semantic::raw_chunks))
-        .route("/answer", get(answer::handle));
+        .route(
+            "/answer",
+            get(answer::handle).with_state(Arc::new(answer::AnswerState::default())),
+        );
 
     if app.env.allow(Feature::GithubDeviceFlow) {
         api = api
