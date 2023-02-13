@@ -8,7 +8,7 @@ use rudderanalytics::{
 };
 use serde_json::{json, Value};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct QueryEvent {
     pub user_id: String,
     pub query_id: uuid::Uuid,
@@ -17,7 +17,7 @@ pub struct QueryEvent {
 }
 
 /// Represents a single stage of the Answer API pipeline
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, Clone)]
 pub struct Stage {
     /// The name of this stage, e.g.: "filtered semantic results"
     pub name: &'static str,

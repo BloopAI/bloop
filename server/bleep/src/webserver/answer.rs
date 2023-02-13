@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -11,6 +12,7 @@ use axum::{
 };
 use futures::{Stream, StreamExt, TryStreamExt};
 use thiserror::Error;
+use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 use utoipa::ToSchema;
 
@@ -104,13 +106,18 @@ pub(super) async fn handle(
     Extension(app): Extension<Application>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<super::Response<'static>>)> {
     // create a new analytics event for this query
-    let mut event = QueryEvent::default();
+    let event = Arc::new(RwLock::new(QueryEvent::default()));
 
     // populate analytics event
-    let response = _handle(params, app.clone(), &mut event).await;
+    let response = _handle(params, app.clone(), Arc::clone(&event)).await;
 
-    // send event to rudderstack
-    app.track_query(event);
+    if response.is_err() {
+        // send event to rudderstack
+        let event = event.read().await;
+        app.track_query(&*event);
+    } else {
+        // the analytics event is fired when the stream is consumed
+    }
 
     response
 }
@@ -118,7 +125,7 @@ pub(super) async fn handle(
 async fn _handle(
     params: Params,
     app: Application,
-    analytics_event: &mut QueryEvent,
+    event: Arc<RwLock<QueryEvent>>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<super::Response<'static>>)> {
     let query_id = uuid::Uuid::new_v4();
     let mut stop_watch = StopWatch::start();
@@ -129,6 +136,8 @@ async fn _handle(
             super::error(ErrorKind::Configuration, "Qdrant not configured"),
         )
     })?;
+
+    let mut analytics_event = event.write().await;
 
     analytics_event.user_id = params.user_id.clone();
     analytics_event.query_id = query_id;
@@ -348,10 +357,6 @@ async fn _handle(
         }))
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))?;
 
-    analytics_event
-        .stages
-        .push(Stage::new("explanation", "").with_time(stop_watch.lap()));
-
     let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
 
     let mut snippet_explanation = answer_api_client
@@ -359,6 +364,11 @@ async fn _handle(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))
         .map(Box::pin)?;
+
+    drop(analytics_event);
+
+    let analytics_event = Arc::clone(&event);
+    let c_app = app.clone();
 
     let stream = async_stream::stream! {
         yield Ok(initial_event);
@@ -375,6 +385,13 @@ async fn _handle(
             }
         }
 
+        let mut event = analytics_event.write().await;
+
+        event
+            .stages
+            .push(Stage::new("explanation", explanation).with_time(stop_watch.lap()));
+
+        c_app.clone().track_query(&*event);
     };
 
     Ok(Sse::new(stream))
