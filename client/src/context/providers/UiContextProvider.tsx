@@ -1,6 +1,14 @@
-import React, { PropsWithChildren, useMemo, useState } from 'react';
+import React, {
+  PropsWithChildren,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { UIContext } from '../uiContext';
 import { usePersistentState } from '../../hooks/usePersistentState';
+import { DeviceContext } from '../deviceContext';
+import { gitHubStatus } from '../../services/api';
 
 export const UIContextProvider = ({ children }: PropsWithChildren) => {
   const [isSettingsOpen, setSettingsOpen] = useState(false);
@@ -11,6 +19,17 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
     {},
     'onBoardingState',
   );
+  const { isSelfServe } = useContext(DeviceContext);
+  const [isGithubConnected, setGithubConnected] = useState(isSelfServe);
+
+  useEffect(() => {
+    if (!isSelfServe) {
+      gitHubStatus().then((d) => {
+        setGithubConnected(d.status === 'ok');
+      });
+    }
+  }, []);
+
   const uiContextValue = useMemo(
     () => ({
       isSettingsOpen,
@@ -23,6 +42,8 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       setOnBoardingState,
       isBugReportModalOpen,
       setBugReportModalOpen,
+      isGithubConnected,
+      setGithubConnected,
     }),
     [
       isSettingsOpen,
@@ -30,6 +51,7 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       settingsSection,
       onBoardingState,
       isBugReportModalOpen,
+      isGithubConnected,
     ],
   );
   return (

@@ -3,6 +3,7 @@ import TextField from '../../TextField';
 import { CheckIcon, TrashCan } from '../../../icons';
 import Button from '../../Button';
 import { MenuItemType } from '../../../types/general';
+import Tooltip from '../../Tooltip';
 
 export type ItemProps = {
   text: string;
@@ -11,13 +12,27 @@ export type ItemProps = {
   onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
   onDelete?: () => void;
   type: MenuItemType;
+  disabled?: boolean;
+  tooltip?: string;
 };
 
-const Item = ({ onClick, text, icon, type, onDelete, href }: ItemProps) => {
+const Item = ({
+  onClick,
+  text,
+  icon,
+  type,
+  onDelete,
+  href,
+  disabled,
+  tooltip,
+}: ItemProps) => {
   const [selected, setSelected] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (disabled) {
+      return;
+    }
     if (type === MenuItemType.DANGER && !showConfirmation) {
       setShowConfirmation(true);
     } else if (type === MenuItemType.SELECTABLE) {
@@ -35,12 +50,17 @@ const Item = ({ onClick, text, icon, type, onDelete, href }: ItemProps) => {
       ? (props: any) => <a {...props} href={href} />
       : (props: any) => <span {...props} />;
 
-  return (
+  const item = (
     <Comp
-      className={`p-2.5 group hover:bg-gray-700 text-gray-300 flex items-center justify-between rounded ${
+      className={`p-2.5 group ${
+        disabled
+          ? 'text-gray-500 cursor-default'
+          : 'hover:bg-gray-700 text-gray-300 cursor-pointer'
+      }  flex items-center justify-between rounded ${
         type === MenuItemType.DANGER ? 'text-danger-600' : ''
-      } cursor-pointer text-sm duration-100`}
+      } text-sm duration-100`}
       onClick={handleClick}
+      disabled={disabled}
     >
       {showConfirmation ? (
         <>
@@ -74,6 +94,14 @@ const Item = ({ onClick, text, icon, type, onDelete, href }: ItemProps) => {
         </span>
       )}
     </Comp>
+  );
+
+  return tooltip ? (
+    <Tooltip text={tooltip} placement="top">
+      {item}
+    </Tooltip>
+  ) : (
+    item
   );
 };
 export default Item;

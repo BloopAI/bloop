@@ -14,6 +14,8 @@ export type ContextMenuLinkItem = {
   text?: string;
   href?: string;
   onDelete?: () => void;
+  disabled?: boolean;
+  tooltip?: string;
 };
 
 export type ContextMenuItem =
@@ -26,6 +28,8 @@ export type ContextMenuItem =
       annotations?: number;
       removable?: boolean;
       onDelete?: () => void;
+      disabled?: boolean;
+      tooltip?: string;
     };
 
 type Props = {
@@ -71,6 +75,8 @@ const ContextMenu = ({
             text={item.text!}
             type={item.type}
             onDelete={item.onDelete}
+            disabled={item.disabled}
+            tooltip={item.tooltip}
           />
         );
       case ExtendedMenuItemType.DIVIDER:

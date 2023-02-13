@@ -1,8 +1,14 @@
-import React, { PropsWithChildren, useEffect, useMemo, useState } from 'react';
+import React, {
+  PropsWithChildren,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { FilterType, SearchType } from '../../types/general';
-import { getJsonFromStorage, SEARCH_HISTORY_KEY } from '../../services/storage';
 import { SearchContext } from '../searchContext';
 import useAppNavigation from '../../hooks/useAppNavigation';
+import { UIContext } from '../uiContext';
 
 type Props = {
   initialSearchHistory?: string[];
@@ -20,13 +26,20 @@ export const SearchContextProvider = ({
   const [lastQueryTime, setLastQueryTime] = useState(3);
   const [globalRegex, setGlobalRegex] = useState(false);
   const { navigatedItem } = useAppNavigation();
+  const { isGithubConnected } = useContext(UIContext);
   const [searchType, setSearchType] = useState(
-    navigatedItem?.searchType ?? SearchType.NL,
+    isGithubConnected
+      ? navigatedItem?.searchType ?? SearchType.NL
+      : SearchType.REGEX,
   );
 
   useEffect(() => {
-    setSearchType(navigatedItem?.searchType ?? SearchType.NL);
-  }, [navigatedItem?.searchType]);
+    setSearchType(
+      isGithubConnected
+        ? navigatedItem?.searchType ?? SearchType.NL
+        : SearchType.REGEX,
+    );
+  }, [navigatedItem?.searchType, isGithubConnected]);
 
   const searchContextValue = useMemo(
     () => ({
