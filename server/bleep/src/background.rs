@@ -146,8 +146,9 @@ impl IndexWriter {
             Removed => {
                 let deleted = self.delete_repo_indexes(&repo, &writers).await;
                 if deleted.is_ok() {
-                    writers.rollback()?;
+                    writers.commit().await?;
                     repo_pool.remove(reporef);
+                    config.source.save_pool(repo_pool.clone())?;
                 }
                 return deleted;
             }
