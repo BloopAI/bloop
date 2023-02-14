@@ -1,4 +1,10 @@
-import React, { ChangeEvent, useCallback, useContext, useState } from 'react';
+import React, {
+  ChangeEvent,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import Button from '../../../../components/Button';
 import DialogText from '../DialogText';
 import GoBackButton from '../GoBackButton';
@@ -7,6 +13,8 @@ import {
   IS_ANALYTICS_ALLOWED_KEY,
   savePlainToStorage,
 } from '../../../../services/storage';
+import { UIContext } from '../../../../context/uiContext';
+import { DeviceContext } from '../../../../context/deviceContext';
 import PrivacyCard from './PrivacyCard';
 
 type Props = {
@@ -14,10 +22,19 @@ type Props = {
   handleBack: (e?: any) => void;
 };
 
+const STEP_KEY = 'STEP_REMOTE_SERVICES';
+
 const RemoteServicesStep = ({ handleNext, handleBack }: Props) => {
   const [hasOptedIn, setHasOptedIn] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
   const { setIsAnalyticsAllowed } = useContext(AnalyticsContext);
+  const { onBoardingState, setOnBoardingState } = useContext(UIContext);
+
+  useEffect(() => {
+    const savedForm = onBoardingState[STEP_KEY];
+
+    setHasOptedIn(savedForm ? savedForm.hasOptedIn : true);
+  }, []);
 
   const handleSubmit = useCallback(
     (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
@@ -30,6 +47,10 @@ const RemoteServicesStep = ({ handleNext, handleBack }: Props) => {
           IS_ANALYTICS_ALLOWED_KEY,
           hasOptedIn ? 'true' : 'false',
         );
+        setOnBoardingState((prev) => ({
+          ...prev,
+          [STEP_KEY]: { hasOptedIn },
+        }));
         setIsAnalyticsAllowed(hasOptedIn);
       }
     },

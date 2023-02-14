@@ -20,6 +20,7 @@ import ContextMenu from '../ContextMenu';
 import { MenuItemType, SearchType } from '../../types/general';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
+import { AnalyticsContext } from '../../context/analyticsContext';
 
 type Props = {
   value: string;
@@ -86,6 +87,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
   const [searchCtxMenuVisible, setSearchCtxMenuVisible] = useState(false);
   const { isSelfServe } = useContext(DeviceContext);
   const { isGithubConnected } = useContext(UIContext);
+  const { isAnalyticsAllowed } = useContext(AnalyticsContext);
 
   const handleEnter = (
     e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -127,10 +129,15 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
               {
                 text: 'Natural language',
                 type: MenuItemType.LINK,
-                disabled: !isSelfServe && !isGithubConnected,
+                disabled:
+                  !isSelfServe && (!isAnalyticsAllowed || !isGithubConnected),
                 tooltip:
-                  !isSelfServe && !isGithubConnected
-                    ? 'Connect GitHub to use natural language search'
+                  !isSelfServe && (!isAnalyticsAllowed || !isGithubConnected)
+                    ? `${
+                        !isAnalyticsAllowed
+                          ? 'Opt-in to remote services'
+                          : 'Connect GitHub'
+                      } to use natural language search`
                     : undefined,
                 onClick: () => onSearchTypeChanged(SearchType.NL),
                 icon: <NaturalLanguage />,

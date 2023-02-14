@@ -9,11 +9,14 @@ import { UIContext } from '../uiContext';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { DeviceContext } from '../deviceContext';
 import { gitHubStatus } from '../../services/api';
+import { SettingSections } from '../../components/Settings';
 
 export const UIContextProvider = ({ children }: PropsWithChildren) => {
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isBugReportModalOpen, setBugReportModalOpen] = useState(false);
-  const [settingsSection, setSettingsSection] = useState(0);
+  const [settingsSection, setSettingsSection] = useState(
+    SettingSections.GENERAL,
+  );
   const [symbolsCollapsed, setSymbolsCollapsed] = useState(true);
   const [onBoardingState, setOnBoardingState] = usePersistentState(
     {},

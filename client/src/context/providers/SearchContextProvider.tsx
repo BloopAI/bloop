@@ -9,6 +9,7 @@ import { FilterType, SearchType } from '../../types/general';
 import { SearchContext } from '../searchContext';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import { UIContext } from '../uiContext';
+import { AnalyticsContext } from '../analyticsContext';
 
 type Props = {
   initialSearchHistory?: string[];
@@ -27,19 +28,20 @@ export const SearchContextProvider = ({
   const [globalRegex, setGlobalRegex] = useState(false);
   const { navigatedItem } = useAppNavigation();
   const { isGithubConnected } = useContext(UIContext);
+  const { isAnalyticsAllowed } = useContext(AnalyticsContext);
   const [searchType, setSearchType] = useState(
-    isGithubConnected
+    isGithubConnected && isAnalyticsAllowed
       ? navigatedItem?.searchType ?? SearchType.NL
       : SearchType.REGEX,
   );
 
   useEffect(() => {
     setSearchType(
-      isGithubConnected
+      isGithubConnected && isAnalyticsAllowed
         ? navigatedItem?.searchType ?? SearchType.NL
         : SearchType.REGEX,
     );
-  }, [navigatedItem?.searchType, isGithubConnected]);
+  }, [navigatedItem?.searchType, isGithubConnected, isAnalyticsAllowed]);
 
   const searchContextValue = useMemo(
     () => ({

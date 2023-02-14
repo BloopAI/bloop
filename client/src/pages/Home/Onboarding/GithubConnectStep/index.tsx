@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import DialogText from '../DialogText';
 import Button from '../../../../components/Button';
 import {
@@ -10,6 +10,7 @@ import {
 import { useGitHubAuth } from '../../../../hooks/useGitHubAuth';
 import GoBackButton from '../GoBackButton';
 import TextField from '../../../../components/TextField';
+import { AnalyticsContext } from '../../../../context/analyticsContext';
 
 type Props = {
   handleNext: (e?: any, skipOne?: boolean) => void;
@@ -28,6 +29,7 @@ const Step3 = ({ handleNext, handleBack }: Props) => {
     tokenExpireIn,
     generateNewCode,
   } = useGitHubAuth(handleNext);
+  const { isAnalyticsAllowed } = useContext(AnalyticsContext);
 
   const [showRelaunch, setShowRelaunch] = useState(false);
 
@@ -144,14 +146,18 @@ const Step3 = ({ handleNext, handleBack }: Props) => {
       </span>
       <div className="flex flex-col gap-4">
         {getButton()}
-        <div className="flex items-center">
-          <span className="flex-1 h-px bg-gray-800" />
-          <span className="text-gray-600 mx-3">or</span>
-          <span className="flex-1 h-px bg-gray-800" />
-        </div>
-        <Button variant="secondary" onClick={handleSkip}>
-          Setup later <ArrowRight />
-        </Button>
+        {!isAnalyticsAllowed && (
+          <>
+            <div className="flex items-center">
+              <span className="flex-1 h-px bg-gray-800" />
+              <span className="text-gray-600 mx-3">or</span>
+              <span className="flex-1 h-px bg-gray-800" />
+            </div>
+            <Button variant="secondary" onClick={handleSkip}>
+              Setup later <ArrowRight />
+            </Button>
+          </>
+        )}
       </div>
       <GoBackButton handleBack={handleBack} />
       {tokenExpireIn ? (

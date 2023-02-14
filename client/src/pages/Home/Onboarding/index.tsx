@@ -24,16 +24,16 @@ enum Steps {
   DATA_FORM,
   FEATURES,
   REMOTE_SERVICES,
-  FOLDER_SELECT,
-  LOCAL_REPOS_SELECT,
   GITHUB_CONNECT,
   GITHUB_REPOS_SELECT,
+  FOLDER_SELECT,
+  LOCAL_REPOS_SELECT,
   FINISHED,
 }
 
 const Onboarding = ({ onFinish }: Props) => {
   const [step, setStep] = useState(Steps.DATA_FORM);
-  const { onBoardingState } = useContext(UIContext);
+  const { onBoardingState, isGithubConnected } = useContext(UIContext);
   const { isSelfServe } = useContext(DeviceContext);
 
   useEffect(() => {
@@ -63,36 +63,39 @@ const Onboarding = ({ onFinish }: Props) => {
         return (
           <RemoteServicesStep handleNext={handleNext} handleBack={handlePrev} />
         );
-      case Steps.FOLDER_SELECT:
-        return (
-          <FolderSelectStep handleNext={handleNext} handleBack={handlePrev} />
-        );
-      case Steps.LOCAL_REPOS_SELECT:
-        return (
-          <LocalReposStep handleNext={handleNext} handleBack={handlePrev} />
-        );
       case Steps.GITHUB_CONNECT:
         return (
-          <GithubConnectStep
-            handleNext={handleNext}
-            handleBack={(e) =>
-              handlePrev(e, onBoardingState.indexFolder ? 1 : 2)
-            }
-          />
+          <GithubConnectStep handleNext={handleNext} handleBack={handlePrev} />
         );
       case Steps.GITHUB_REPOS_SELECT:
         return (
           <GithubReposStep
             handleNext={handleNext}
-            handleBack={(e) =>
-              handlePrev(e, onBoardingState.indexFolder ? 2 : 3)
-            }
+            handleBack={(e) => handlePrev(e, 2)}
           />
+        );
+      case Steps.FOLDER_SELECT:
+        return (
+          <FolderSelectStep
+            handleNext={handleNext}
+            handleBack={(e) => handlePrev(e, isGithubConnected ? 1 : 2)}
+          />
+        );
+      case Steps.LOCAL_REPOS_SELECT:
+        return (
+          <LocalReposStep handleNext={handleNext} handleBack={handlePrev} />
         );
       default:
         return null;
     }
-  }, [isSelfServe, step, onBoardingState.indexFolder, handleNext, handlePrev]);
+  }, [
+    isSelfServe,
+    step,
+    onBoardingState.indexFolder,
+    handleNext,
+    handlePrev,
+    isGithubConnected,
+  ]);
 
   return (
     <div className="fixed top-0 bottom-0 left-0 right-0 my-16 bg-[url('/onboarding-background.png')] bg-cover z-50">
