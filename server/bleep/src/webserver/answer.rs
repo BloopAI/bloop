@@ -114,7 +114,7 @@ pub(super) async fn handle(
     if response.is_err() {
         // send event to rudderstack
         let event = event.read().await;
-        app.track_query(&*event);
+        app.track_query(&event);
     } else {
         // the analytics event is fired when the stream is consumed
     }
@@ -368,8 +368,6 @@ async fn _handle(
     drop(analytics_event);
 
     let analytics_event = Arc::clone(&event);
-    let c_app = app.clone();
-
     let stream = async_stream::stream! {
         yield Ok(initial_event);
 
@@ -391,7 +389,7 @@ async fn _handle(
             .stages
             .push(Stage::new("explanation", explanation).with_time(stop_watch.lap()));
 
-        c_app.clone().track_query(&*event);
+        app.track_query(&event);
     };
 
     Ok(Sse::new(stream))
