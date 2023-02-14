@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    ops::Range,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -79,6 +80,38 @@ pub struct Snippet {
     pub score: f32,
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+pub struct SnippetResponse {
+    pub lang: String,
+    pub repo_name: String,
+    pub repo_ref: String,
+    pub relative_path: String,
+    pub sub_snippets: Vec<SubSnippet>,
+    pub score: f32,
+}
+
+impl From<Snippet> for SnippetResponse {
+    fn from(value: Snippet) -> Self {
+        Self {
+            lang: value.lang,
+            repo_name: value.repo_name,
+            repo_ref: value.repo_ref,
+            relative_path: value.relative_path,
+            sub_snippets: vec![SubSnippet {
+                text: value.text,
+                range: value.start_line..value.end_line,
+            }],
+            score: value.score,
+        }
+    }
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+pub struct SubSnippet {
+    pub text: String,
+    pub range: Range<usize>,
+}
+
 fn default_limit() -> u64 {
     10
 }
@@ -100,7 +133,7 @@ pub struct Params {
 pub struct AnswerResponse {
     pub user_id: String,
     pub query_id: uuid::Uuid,
-    pub snippets: Vec<Snippet>,
+    pub snippets: Vec<SnippetResponse>,
     pub answer_path: String,
 }
 
@@ -228,7 +261,7 @@ async fn _handle(
         .push(Stage::new("semantic results", &all_snippets).with_time(stop_watch.lap()));
 
     let mut snippets = vec![];
-    let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
+    let mut chunk_ranges_by_file: HashMap<String, Vec<Range<usize>>> = HashMap::new();
 
     for snippet in all_snippets.clone().into_iter() {
         if snippets.len() > SNIPPET_COUNT {
@@ -255,7 +288,7 @@ async fn _handle(
                 chunk_ranges_by_file
                     .entry(path.to_string())
                     .or_insert_with(Vec::new)
-                    .push(std::ops::Range {
+                    .push(Range {
                         start: snippet.start_line,
                         end: snippet.end_line,
                     });
@@ -386,15 +419,6 @@ async fn _handle(
     // answering snippet is always at index 0
     let answer_path = snippets.get(0).unwrap().relative_path.to_string();
 
-    let initial_event = Event::default()
-        .json_data(super::Response::<'static>::from(AnswerResponse {
-            snippets: snippets.clone(),
-            query_id,
-            user_id: params.user_id.clone(),
-            answer_path,
-        }))
-        .map_err(Error::internal)?;
-
     let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
 
     analytics_event
@@ -411,12 +435,79 @@ async fn _handle(
 
     let analytics_event = Arc::clone(&event);
     let stream = async_stream::stream! {
-        yield Ok(initial_event);
-
         let mut explanation = String::new();
-        while let Some(result) = snippet_explanation.next().await {
+        let mut line = 0;
+        let mut first_line = String::new();
+        let mut is_bullet_point_stripped = false;
+        'stream: while let Some(result) = snippet_explanation.next().await {
+            match result.as_ref().map(|o| o.as_str()) {
+                Ok("\n") => line += 1,
+                _ => {}
+            };
+
+            if line == 0 {
+                // collect the first line
+                first_line.push_str(result.as_ref().map(|o| o.as_str()).unwrap_or(""));
+                // do not send events from the first line
+                continue 'stream;
+
+            } else if line == 1 {
+                // we have hit L2, L1 contains json by now
+                let line_nrs = serde_json::from_str::<Vec<Vec<usize>>>(
+                    first_line.trim_start_matches(|c: char| c.is_numeric() || c == '\n' || c == '.' || c == ' '),
+                ).unwrap();
+
+                info!("selected line numbers `{:?}`", line_nrs);
+
+                let mut ai_gen_snippet: SnippetResponse = processed_snippet.clone().into();
+                let lines = processed_snippet
+                    .text
+                    .lines()
+                    .collect::<Vec<_>>();
+                ai_gen_snippet.sub_snippets = line_nrs
+                    .into_iter()
+                    .map(|range| SubSnippet {
+                        text: lines[range[0]..range[1]].join("\n"),
+                        range: range[0]..range[1]
+                    })
+                    .collect::<Vec<_>>();
+                let mut snippets: Vec<SnippetResponse> = snippets
+                    .clone()
+                    .into_iter()
+                    .map(|s| s.into())
+                    .collect();
+                snippets[0] = ai_gen_snippet;
+
+                let initial_event = Event::default()
+                    .json_data(super::Response::<'static>::from(AnswerResponse {
+                        snippets,
+                        query_id,
+                        user_id: params.user_id.clone(),
+                        answer_path: answer_path.clone(),
+                    }))
+                    .map_err(|_| AnswerAPIError::StreamFail)?;
+
+
+                yield Ok(initial_event);
+
+                line = 2;
+            } else if !is_bullet_point_stripped {
+                // we are streaming the explanation here, omit the bullet point:
+                // - the response contains "2. The answer is ..."
+                // - we want just "The answer is ..."
+                // - omit the first two events, "2" and "."
+                if matches!(result.as_ref().map(|o| o.as_str()), Ok("2")) {
+                    continue 'stream;
+                }
+                if matches!(result.as_ref().map(|o| o.as_str()), Ok(".")) {
+                    is_bullet_point_stripped = true;
+                    continue 'stream;
+                }
+            }
+
             yield Ok(Event::default()
                 .json_data(result.as_ref().map_err(|e| e.to_string()))
+                //.json_data(result.as_ref().unwrap())
                 .unwrap());
 
             match result {
@@ -639,16 +730,32 @@ Index:",
     }
 
     fn build_explain_prompt(&self, snippet: &Snippet) -> String {
+        let snippet_with_nr = snippet
+            .text
+            .lines()
+            .zip(1..)
+            .map(|(line, line_nr)| format!("{line_nr}. {line}\n"))
+            .collect::<String>();
         let prompt = format!(
-            "You are an AI assistant for a repo. Answer the question using above in a sentence. Do NOT try to make up an answer.
+            "{}
+=========
+
+You are an AI assistant for a repo. Your job is to respond in the following format:
+1. Find the line number ranges that answer the question, respond in JSON, maximum of 5 lines
+2. Complete the sentence \"The answer is...\"
+
+=========
+
+Question: Where do we connect to Kafka?
+Answer:
+1. [[1,4],[55,56]]
+2. The answer is that startKafka is a utility function to help maintain connections with a Kafka instance.
+
+=========
+
 Question: {}
-=========
-Path: {}
-File: {}
-=========
-Answer:",
-            self.query, snippet.relative_path, snippet.text,
-        );
+Answer:
+", snippet_with_nr , self.query);
         prompt
     }
 
