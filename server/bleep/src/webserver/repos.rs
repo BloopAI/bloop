@@ -14,7 +14,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
-use super::{error, json, ErrorKind};
+use super::prelude::*;
 
 #[derive(Serialize, ToSchema, Debug)]
 pub(super) struct Repo {
@@ -113,24 +113,17 @@ pub(super) async fn indexed(Extension(app): Extension<Application>) -> impl Into
 pub(super) async fn get_by_id(
     Path(path): Path<Vec<String>>,
     Extension(app): Extension<Application>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse> {
     let Ok(reporef) = RepoRef::from_components(&app.config.source.directory(), path) else {
-	return (StatusCode::NOT_FOUND,
-		error(ErrorKind::NotFound, "Can't find repository"))
+        return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
     };
 
     match app.repo_pool.get(&reporef) {
-        Some(result) => (
-            StatusCode::OK,
-            json(ReposResponse::Item(Repo::from((
-                result.key(),
-                result.value(),
-            )))),
-        ),
-        None => (
-            StatusCode::NOT_FOUND,
-            error(ErrorKind::NotFound, "Can't find repository"),
-        ),
+        Some(result) => Ok(json(ReposResponse::Item(Repo::from((
+            result.key(),
+            result.value(),
+        ))))),
+        None => Err(Error::new(ErrorKind::NotFound, "Can't find repository")),
     }
 }
 
@@ -148,19 +141,15 @@ pub(super) async fn delete_by_id(
     Extension(app): Extension<Application>,
 ) -> impl IntoResponse {
     let Ok(reporef) = RepoRef::from_components(&app.config.source.directory(), path) else {
-	return (StatusCode::NOT_FOUND,
-		error(ErrorKind::NotFound, "Can't find repository"))
+        return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
     };
 
     match app.repo_pool.get_mut(&reporef) {
         Some(mut result) => {
             result.value_mut().delete();
-            (StatusCode::OK, json(ReposResponse::Deleted))
+            Ok(json(ReposResponse::Deleted))
         }
-        None => (
-            StatusCode::NOT_FOUND,
-            error(ErrorKind::NotFound, "Can't find repository"),
-        ),
+        None => Err(Error::new(ErrorKind::NotFound, "Can't find repository")),
     }
 }
 
@@ -177,12 +166,11 @@ pub(super) async fn sync(
     Extension(app): Extension<Application>,
 ) -> impl IntoResponse {
     let Ok(reporef) = RepoRef::from_components(&app.config.source.directory(), path) else {
-	return (StatusCode::NOT_FOUND,
-		error(ErrorKind::NotFound, "Can't find repository"))
+        return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
     };
 
     app.write_index().queue_sync_and_index(vec![reporef]);
-    (StatusCode::OK, json(ReposResponse::SyncQueued))
+    Ok(json(ReposResponse::SyncQueued))
 }
 
 /// List all repositories that are either indexed, or available for indexing
@@ -247,7 +235,8 @@ pub(super) async fn set_indexed(
     for repo in new {
         app.write_index().queue_sync_and_index(vec![repo]);
     }
-    (StatusCode::OK, json(ReposResponse::SyncQueued))
+
+    json(ReposResponse::SyncQueued)
 }
 
 #[derive(Deserialize, IntoParams)]
@@ -272,23 +261,17 @@ pub(super) async fn scan_local(
     let root = std::path::Path::new(&scan_request.path);
 
     if app.allow_path(root) {
-        (
-            StatusCode::OK,
-            json(ReposResponse::List(
-                crate::remotes::gather_repo_roots(&root, app.config.source.repo_dir())
-                    .map(|reporef| {
-                        let mut repo = Repository::local_from(&reporef);
-                        repo.sync_status = SyncStatus::Uninitialized;
+        Ok(json(ReposResponse::List(
+            crate::remotes::gather_repo_roots(&root, app.config.source.repo_dir())
+                .map(|reporef| {
+                    let mut repo = Repository::local_from(&reporef);
+                    repo.sync_status = SyncStatus::Uninitialized;
 
-                        (&reporef, &repo).into()
-                    })
-                    .collect(),
-            )),
-        )
+                    (&reporef, &repo).into()
+                })
+                .collect(),
+        )))
     } else {
-        (
-            StatusCode::UNAUTHORIZED,
-            error(ErrorKind::User, "scanning not allowed"),
-        )
+        Err(Error::user("scanning not allowed").with_status(StatusCode::UNAUTHORIZED))
     }
 }

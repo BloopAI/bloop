@@ -47,23 +47,17 @@ pub(super) async fn raw_chunks(
 
         if let Err(err) = result {
             error!(?err, "qdrant query failed");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                error(ErrorKind::UpstreamService, "error"),
-            );
+            return Err(Error::new(ErrorKind::UpstreamService, "error"));
         };
 
-        (
-            StatusCode::OK,
-            json(SemanticResponse {
-                chunks: result.unwrap(),
-            }),
-        )
+        Ok(json(SemanticResponse {
+            chunks: result.unwrap(),
+        }))
     } else {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            error(ErrorKind::Configuration, "Qdrant not configured"),
-        );
+        Err(Error::new(
+            ErrorKind::Configuration,
+            "Qdrant not configured",
+        ))
     }
 }
 

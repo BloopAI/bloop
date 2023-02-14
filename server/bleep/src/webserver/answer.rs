@@ -6,9 +6,8 @@ use std::{
 
 use axum::{
     extract::Query,
-    http::StatusCode,
     response::{sse::Event, IntoResponse, Sse},
-    Extension, Json,
+    Extension,
 };
 use futures::{Stream, StreamExt, TryStreamExt};
 use thiserror::Error;
@@ -25,7 +24,7 @@ use crate::{
     Application,
 };
 
-use super::ErrorKind;
+use super::prelude::*;
 
 /// Mirrored from `answer_api/lib.rs` to avoid private dependency.
 pub mod api {
@@ -104,7 +103,7 @@ const SNIPPET_COUNT: usize = 13;
 pub(super) async fn handle(
     Query(params): Query<Params>,
     Extension(app): Extension<Application>,
-) -> Result<impl IntoResponse, (StatusCode, Json<super::Response<'static>>)> {
+) -> Result<impl IntoResponse> {
     // create a new analytics event for this query
     let event = Arc::new(RwLock::new(QueryEvent::default()));
 
@@ -126,16 +125,14 @@ async fn _handle(
     params: Params,
     app: Application,
     event: Arc<RwLock<QueryEvent>>,
-) -> Result<impl IntoResponse, (StatusCode, Json<super::Response<'static>>)> {
+) -> Result<impl IntoResponse> {
     let query_id = uuid::Uuid::new_v4();
     let mut stop_watch = StopWatch::start();
 
-    let semantic = app.semantic.clone().ok_or_else(|| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            super::error(ErrorKind::Configuration, "Qdrant not configured"),
-        )
-    })?;
+    let semantic = app
+        .semantic
+        .clone()
+        .ok_or_else(|| Error::new(ErrorKind::Configuration, "Qdrant not configured"))?;
 
     let mut analytics_event = event.write().await;
 
@@ -147,28 +144,15 @@ async fn _handle(
         .stages
         .push(Stage::new("user query", &params.q).with_time(stop_watch.lap()));
 
-    let query = parser::parse_nl(&params.q).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            super::error(ErrorKind::User, e.to_string()),
-        )
-    })?;
-    let target = query.target().ok_or_else(|| {
-        (
-            StatusCode::BAD_REQUEST,
-            super::error(ErrorKind::User, "missing search target".to_owned()),
-        )
-    })?;
+    let query = parser::parse_nl(&params.q).map_err(Error::user)?;
+    let target = query
+        .target()
+        .ok_or_else(|| Error::user("missing search target"))?;
 
     let all_snippets: Vec<Snippet> = semantic
         .search(&query, 4 * SNIPPET_COUNT as u64) // heuristic
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                super::error(ErrorKind::Internal, e.to_string()),
-            )
-        })?
+        .map_err(Error::internal)?
         .into_iter()
         .map(|r| {
             use qdrant_client::qdrant::{value::Kind, Value};
@@ -253,10 +237,7 @@ async fn _handle(
 
     if snippets.is_empty() {
         warn!("Semantic search returned no snippets");
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            (super::internal_error("semantic search returned no snippets")),
-        ));
+        return Err(Error::internal("semantic search returned no snippets"));
     } else {
         info!("Semantic search returned {} snippets", snippets.len());
     }
@@ -272,8 +253,7 @@ async fn _handle(
 
     let relevant_snippet_index = answer_api_client
         .select_snippet(&select_prompt)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?
+        .await?
         .trim()
         .to_string()
         .clone();
@@ -282,26 +262,22 @@ async fn _handle(
 
     let mut relevant_snippet_index = relevant_snippet_index
         .parse::<usize>()
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))?;
+        .map_err(Error::internal)?;
 
     analytics_event.stages.push(
         Stage::new("relevant snippet index", &relevant_snippet_index).with_time(stop_watch.lap()),
     );
 
     if relevant_snippet_index == 0 {
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            super::internal_error("None of the snippets help answer the question"),
+        return Err(Error::internal(
+            "None of the snippets help answer the question",
         ));
     }
 
     relevant_snippet_index -= 1; // return to 0-indexing
-    let relevant_snippet = snippets.get(relevant_snippet_index).ok_or_else(|| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            super::internal_error("answer-api returned out-of-bounds index"),
-        )
-    })?;
+    let relevant_snippet = snippets
+        .get(relevant_snippet_index)
+        .ok_or_else(|| Error::internal("answer-api returned out-of-bounds index"))?;
 
     // grow the snippet by 60 lines above and below, we have sufficient space
     // to grow this snippet by 10 times its original size (15 to 150)
@@ -309,13 +285,13 @@ async fn _handle(
         let repo_ref = &relevant_snippet
             .repo_ref
             .parse::<RepoRef>()
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))?;
+            .map_err(Error::internal)?;
         let doc = app
             .indexes
             .file
             .by_path(repo_ref, &relevant_snippet.relative_path)
             .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))?;
+            .map_err(Error::internal)?;
 
         let mut grow_size = 40;
         let grown_text = loop {
@@ -355,14 +331,14 @@ async fn _handle(
             user_id: params.user_id.clone(),
             answer_path,
         }))
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))?;
+        .map_err(Error::internal)?;
 
     let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
 
     let mut snippet_explanation = answer_api_client
         .explain_snippet(&explain_prompt)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))
+        .map_err(Error::internal)
         .map(Box::pin)?;
 
     drop(analytics_event);
@@ -443,13 +419,13 @@ enum AnswerAPIError {
     BadRequest(#[from] api::Error),
 }
 
-impl From<AnswerAPIError> for super::Error {
-    fn from(e: AnswerAPIError) -> super::Error {
+impl From<AnswerAPIError> for Error {
+    fn from(e: AnswerAPIError) -> Error {
         sentry::capture_message(
             format!("answer-api failed to respond: {e}").as_str(),
             sentry::Level::Error,
         );
-        super::error(ErrorKind::UpstreamService, e.to_string())
+        Error::new(ErrorKind::UpstreamService, e.to_string())
     }
 }
 
@@ -497,8 +473,8 @@ impl<'s> AnswerAPIClient<'s> {
 
         match stream.next().await {
             Some(Ok(reqwest_eventsource::Event::Open)) => {}
-            Some(Err(e)) => Err(AnswerAPIError::EventSource(e))?,
-            _ => Err(AnswerAPIError::StreamFail)?,
+            Some(Err(e)) => return Err(AnswerAPIError::EventSource(e)),
+            _ => return Err(AnswerAPIError::StreamFail),
         }
 
         Ok(stream
@@ -513,8 +489,7 @@ impl<'s> AnswerAPIClient<'s> {
             .map(|result| match result {
                 Ok(s) => Ok(serde_json::from_str::<api::Result>(&s)??),
                 Err(e) => Err(AnswerAPIError::EventSource(e)),
-            })
-            .map(|result: Result<String, AnswerAPIError>| result))
+            }))
     }
 
     async fn send_until_success(
@@ -596,13 +571,13 @@ Answer in GitHub Markdown:",
         prompt
     }
 
-    async fn select_snippet(&self, prompt: &str) -> super::Result<String> {
+    async fn select_snippet(&self, prompt: &str) -> Result<String> {
         self.send_until_success(prompt, 1, 0.0).await.map_err(|e| {
             sentry::capture_message(
                 format!("answer-api failed to respond: {e}").as_str(),
                 sentry::Level::Error,
             );
-            super::error(ErrorKind::UpstreamService, e.to_string())
+            Error::new(ErrorKind::UpstreamService, e.to_string())
         })
     }
 
