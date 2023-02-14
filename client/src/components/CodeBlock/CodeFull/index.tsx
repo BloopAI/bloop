@@ -185,8 +185,9 @@ const CodeFull = ({
         e.preventDefault();
         const lines = code.split('\n');
         const startsAtTop =
-          currentSelection[0][0] <= currentSelection[1][0] &&
-          currentSelection[0][1] < currentSelection[1][1];
+          currentSelection[0][0] <= currentSelection[1][0] ||
+          (currentSelection[0][0] === currentSelection[1][0] &&
+            currentSelection[0][1] < currentSelection[1][1]);
 
         const [startLine, startChar] = startsAtTop
           ? currentSelection[0]
@@ -199,9 +200,7 @@ const CodeFull = ({
         if (startLine !== endLine) {
           const firstLine = lines[startLine].slice(startChar);
           const lastLine = lines[endLine].slice(0, endChar + 1);
-          const textBetween = lines
-            .slice(startLine + 1, endLine - 1)
-            .join('\n');
+          const textBetween = lines.slice(startLine + 1, endLine).join('\n');
           textToCopy =
             firstLine +
             '\n' +
@@ -214,6 +213,29 @@ const CodeFull = ({
     },
     [currentSelection],
   );
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
+        // Prevent the default action (i.e. selecting all text in the browser)
+        event.preventDefault();
+        setCurrentSelection([
+          [0, 0],
+          [tokens.length - 1, tokens[tokens.length - 1].length],
+        ]);
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(codeRef.current || document.body);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+    };
+    document.addEventListener('keydown', handler);
+
+    return () => {
+      document.removeEventListener('keydown', handler);
+    };
+  }, []);
 
   return (
     <div className="w-full text-xs gap-10 flex flex-row">
