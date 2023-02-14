@@ -128,17 +128,13 @@ where
     Json(Response::from(val))
 }
 
-pub(crate) fn error<'a>(kind: ErrorKind, message: impl Into<Cow<'a, str>>) -> Json<Response<'a>> {
+pub(in crate::webserver) fn error<'a>(
+    kind: ErrorKind,
+    message: impl Into<Cow<'a, str>>,
+) -> Json<Response<'a>> {
     Json(Response::from(EndpointError {
         kind,
         message: message.into(),
-    }))
-}
-
-pub(crate) fn internal_error<'a, S: std::fmt::Display>(message: S) -> Json<Response<'a>> {
-    Json(Response::from(EndpointError {
-        kind: ErrorKind::Internal,
-        message: message.to_string().into(),
     }))
 }
 

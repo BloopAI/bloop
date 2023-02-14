@@ -15,7 +15,7 @@ use crate::{
     Application,
 };
 
-struct AnswerAPIClient<'s> {
+pub struct AnswerAPIClient<'s> {
     client: reqwest::Client,
     host: String,
     query: String,
@@ -24,7 +24,7 @@ struct AnswerAPIClient<'s> {
 }
 
 #[derive(Error, Debug)]
-enum AnswerAPIError {
+pub enum AnswerAPIError {
     #[error("max retry attempts reached {0}")]
     MaxAttemptsReached(usize),
 
@@ -60,13 +60,6 @@ struct OpenAIRequest {
     prompt: String,
     max_tokens: u32,
     temperature: f32,
-}
-
-enum InitialAction {
-    TechnicalQuestion = 1,
-    BloopInfo = 2,
-    Intro = 3,
-    CannotHelp = 4,
 }
 
 impl Semantic {
@@ -136,23 +129,6 @@ A: 0
 {DELIMITER}
 Q: {query}
 A:"#,
-    )
-}
-
-fn build_no_answer_prompt(query: &str) -> String {
-    format!(
-        r#"bloop is a AI agent designed to help developers navigate codebases and ship to production faster. Unfortunately you can't answer every question. For a given question, explain that you can't answer it in a polite and helpful way. Suggest that the user asks a technical question about the codebase, or tries asking their question again in a different way. Do NOT answer the question.
-Q: What color are bananas?
-A: I'm sorry, I can't answer that question. Please make sure your question is related to the codebase.
-Q: fshkfjjf
-A: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
-Q: What is the meaning of life?
-A: I'm sorry, I can't answer that question. Please make sure your question is related to the codebase.
-
-{DELIMITER}
-
-Q: {query}
-A:"#
     )
 }
 
@@ -365,8 +341,7 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> String {
     content[new_start_byte..new_end_byte].to_owned()
 }
 
-const MAX_TOKENS: usize = 4096;
-
+#[derive(Debug)]
 pub enum AnswerError {
     Configuration(&'static str),
     User(String),
@@ -397,15 +372,14 @@ pub async fn answer(
 
     // we keep the borrow on the store short to avoid contention
     // TODO: Add a maximum of prior history entries (e.g. 20)
-    let rephrase_query: Option<String> =
-        match (*app.prior_conversation_store).fetch_prior_conversation(user_id) {
-            [] => None,
-            // check how much history we can afford to create up to the token limit
-            history => {
-                let n = history.len().saturating_sub(20);
-                Some(build_rephrase_query_prompt(target, &history[n..]))
-            }
-        };
+    let rephrase_query: Option<String> = (*app.prior_conversation_store).with_prior_conversation(
+        user_id,
+        // check how much history we can afford to create up to the token limit
+        |history| {
+            let n = history.len().saturating_sub(20);
+            build_rephrase_query_prompt(target, &history[n..])
+        },
+    );
     //TODO: Reuse the client, perhaps as part of the app, set up on startup?
     let answer_api_host = format!("{}/q", app.config.answer_api_url);
     let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target, 5);
@@ -619,6 +593,7 @@ async fn fetch_snippets(
 }
 
 /// We store the previous queries and responses
+#[allow(unused)]
 pub struct PriorConversationEntry {
     query: String,
     response: String,
@@ -626,7 +601,7 @@ pub struct PriorConversationEntry {
 
 impl std::fmt::Display for PriorConversationEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { query, response } = self;
+        let Self { query, response: _ } = self;
         write!(f, "{query}") //TODO: add the response to the history string?
     }
 }
@@ -640,15 +615,19 @@ pub struct PriorConversationStore {
 impl PriorConversationStore {
     /// This gets the prior conversation. Be sure to drop the borrow before calling
     /// [`add_conversation_entry`], lest we deadlock.
-    pub fn fetch_prior_conversation(&self, user_id: &str) -> &[PriorConversationEntry] {
-        self.conversations.get(user_id).map_or(&[], |e| e.value())
+    pub fn with_prior_conversation<T>(
+        &self,
+        user_id: &str,
+        f: impl Fn(&[PriorConversationEntry]) -> T,
+    ) -> Option<T> {
+        self.conversations.get(user_id).map(|r| f(&r.value()[..]))
     }
 
     /// add a new conversation entry to the store
     pub fn add_conversation_entry(&self, user_id: String, query: String, response: String) {
         let entry = PriorConversationEntry { query, response };
         match self.conversations.entry(user_id) {
-            Entry::Occupied(o) => o.get_mut().push(entry),
+            Entry::Occupied(mut o) => o.get_mut().push(entry),
             Entry::Vacant(v) => {
                 v.insert(vec![entry]);
             }
