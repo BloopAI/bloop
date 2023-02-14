@@ -1,28 +1,42 @@
 {
   description = "bloop";
 
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-22.11";
-  inputs.flake-utils.url = "github:numtide/flake-utils";
+  inputs = rec {
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-22.11";
+    flake-utils.url = "github:numtide/flake-utils";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.flake-utils = flake-utils;
+      inputs.nixpkgs = nixpkgs;
+    };
+  };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem
-      (system:
-        let
-          pkgs = import nixpkgs { inherit system; };
-          pkgsStatic = pkgs.pkgsStatic;
-          lib = pkgs.lib;
-          clang = pkgs.llvmPackages_14.clang;
-          libclang = pkgs.llvmPackages_14.libclang;
-        in
-        {
-          devShell = pkgs.mkShell {
-            shellHook = ''
-              rustup default stable >&2
-              pnpm install >&2
-            '';
-            buildInputs = with pkgs; ([
+  outputs = { self, nixpkgs, flake-utils, rust-overlay }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        overlays = [ (import rust-overlay) ];
+        pkgs = import nixpkgs { inherit system overlays; };
+        pkgsStatic = pkgs.pkgsStatic;
+        lib = pkgs.lib;
+
+        llvm = pkgs.llvmPackages_14;
+        clang = llvm.clang;
+        libclang = llvm.libclang;
+        stdenv = llvm.stdenv;
+
+        # Get a specific rust version
+        rust = pkgs.rust-bin.stable.latest.default;
+      in {
+        devShell = pkgs.mkShell {
+          shellHook = ''
+            pnpm install >&2
+          '';
+          buildInputs = with pkgs;
+            ([
+              rust
+              sccache
               git-lfs
-              llvmPackages_14.stdenv
+              stdenv
               libclang
               clang
               rustup
@@ -36,6 +50,7 @@
               automake
               autoconf
               rocksdb
+              universal-ctags
             ] ++ lib.optionals pkgs.stdenv.isLinux [
               dbus.dev
               libsoup.dev
@@ -50,15 +65,17 @@
               darwin.apple_sdk.frameworks.AppKit
             ]);
 
-            ROCKSDB_LIB_DIR = "${pkgs.rocksdb}/lib";
-            ROCKSDB_INCLUDE_DIR = "${pkgs.rocksdb}/include";
-            LIBCLANG_PATH = "${libclang.lib}/lib";
-          };
+          SCCACHE_DIR = "/Users/user/Code/bloop/bloop/sccache";
+          RUSTC_WRAPPER = "${pkgs.sccache}/bin/sccache";
+          ROCKSDB_LIB_DIR = "${pkgs.rocksdb}/lib";
+          ROCKSDB_INCLUDE_DIR = "${pkgs.rocksdb}/include";
+          LIBCLANG_PATH = "${libclang.lib}/lib";
+        };
 
-          packages.my-ctags = pkgsStatic.universal-ctags.overrideAttrs (old: {
-            nativeBuildInputs = old.nativeBuildInputs ++ [ pkgsStatic.pkg-config ];
-          });
-        }
-      );
+        packages.my-ctags = pkgsStatic.universal-ctags.overrideAttrs (old: {
+          nativeBuildInputs = old.nativeBuildInputs
+            ++ [ pkgsStatic.pkg-config ];
+        });
+      });
 }
 
