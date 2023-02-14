@@ -177,24 +177,11 @@ impl Semantic {
             anyhow::bail!("no search target for query");
         };
 
-        let make_kv_filter = |key, value| {
-            FieldCondition {
-                key,
-                r#match: Some(Match {
-                    match_value: MatchValue::Text(value).into(),
-                }),
-                ..Default::default()
-            }
-            .into()
-        };
-
         let repo_filter = nl_query
             .repo()
-            .map(|r| make_kv_filter("repo_name".to_string(), r.to_string()));
+            .map(|r| make_kv_filter("repo_name", r).into());
 
-        let lang_filter = nl_query
-            .lang()
-            .map(|l| make_kv_filter("lang".to_string(), l.to_string()));
+        let lang_filter = nl_query.lang().map(|l| make_kv_filter("lang", l).into());
 
         let filters = [repo_filter, lang_filter]
             .into_iter()
@@ -230,6 +217,9 @@ impl Semantic {
         buffer: &str,
         lang_str: &str,
     ) {
+        self.delete_points_by_path(repo_ref, std::iter::once(relative_path))
+            .await;
+
         let chunks = chunk::by_tokens(
             repo_name,
             relative_path,
@@ -241,6 +231,7 @@ impl Semantic {
         );
         let repo_plus_file = repo_name.to_owned() + "\t" + relative_path + "\n";
         debug!(chunk_count = chunks.len(), "found chunks");
+
         let datapoints = chunks
             .par_iter()
             .filter_map(
@@ -283,6 +274,20 @@ impl Semantic {
         }
     }
 
+    pub async fn delete_points_by_path(&self, repo_ref: &str, paths: impl Iterator<Item = &str>) {
+        let repo_filter = make_kv_filter("repo_ref", repo_ref).into();
+        let file_filter = paths
+            .map(|p| make_kv_filter("relative_path", p).into())
+            .collect::<Vec<_>>();
+        let selector = Filter {
+            must: vec![repo_filter],
+            should: file_filter,
+            ..Default::default()
+        }
+        .into();
+        let _ = self.qdrant.delete_points(COLLECTION_NAME, &selector).await;
+    }
+
     pub fn gpt2_token_count(&self, input: &str) -> usize {
         self.gpt2_tokenizer
             .encode(input, false)
@@ -292,5 +297,17 @@ impl Semantic {
 
     pub fn overlap_strategy(&self) -> chunk::OverlapStrategy {
         self.config.overlap.unwrap_or_default()
+    }
+}
+
+fn make_kv_filter(key: &str, value: &str) -> FieldCondition {
+    let key = key.to_owned();
+    let value = value.to_owned();
+    FieldCondition {
+        key,
+        r#match: Some(Match {
+            match_value: MatchValue::Text(value).into(),
+        }),
+        ..Default::default()
     }
 }
