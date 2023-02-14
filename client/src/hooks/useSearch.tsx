@@ -24,6 +24,8 @@ interface SearchResponse<T> extends Status<T> {
   ) => void;
 }
 
+let prevEventSource: EventSource;
+
 export const useSearch = <T,>(
   query?: string,
   page: number = 0,
@@ -50,12 +52,14 @@ export const useSearch = <T,>(
 
     switch (currentSearchType) {
       case SearchType.NL:
+        prevEventSource?.close();
         const eventSource = new EventSource(
           `${apiUrl.replace(
             'https:',
             '',
           )}/answer?q=${query}&user_id=${deviceId}`,
         );
+        prevEventSource = eventSource;
         eventSource.onmessage = (ev) => {
           const queryTime = Date.now() - startTime;
           setLastQueryTime(queryTime);

@@ -35,6 +35,7 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
   const [answer, setAnswer] = useState('');
+  const [relevantCode, setRelevantCode] = useState('');
   const [error, setError] = useState('');
   const { trackUpvote } = useAnalytics();
   const RiveUpvote = useRive({
@@ -47,6 +48,10 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
   });
 
   const highlightedAnswer = useMemo(() => md.render(answer), [answer]);
+  const highlightedCode = useMemo(
+    () => md.render(relevantCode),
+    [relevantCode],
+  );
 
   useEffect(() => {
     let eventSource: EventSource;
@@ -63,7 +68,11 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
         if (newData.Err) {
           setError(newData.Err);
         } else if (i !== 0) {
-          setAnswer((prev) => prev + newData.Ok);
+          if (i === 1) {
+            setRelevantCode(newData.Ok);
+          } else {
+            setAnswer((prev) => prev + newData.Ok);
+          }
         }
         i++;
       };
@@ -118,6 +127,7 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
         dangerouslySetInnerHTML={{
           __html:
             highlightedAnswer +
+            (highlightedCode || '') +
             (error ? (
               <p className="text-danger-500">An error occurred: {error}</p>
             ) : (
