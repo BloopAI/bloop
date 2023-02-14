@@ -128,19 +128,14 @@ where
     Json(Response::from(val))
 }
 
-pub(in crate::webserver) fn error<'a>(
-    kind: ErrorKind,
-    message: impl Into<Cow<'a, str>>,
-) -> Json<Response<'a>> {
+pub(crate) fn error<'a>(kind: ErrorKind, message: impl Into<Cow<'a, str>>) -> Json<Response<'a>> {
     Json(Response::from(EndpointError {
         kind,
         message: message.into(),
     }))
 }
 
-pub(in crate::webserver) fn internal_error<'a, S: std::fmt::Display>(
-    message: S,
-) -> Json<Response<'a>> {
+pub(crate) fn internal_error<'a, S: std::fmt::Display>(message: S) -> Json<Response<'a>> {
     Json(Response::from(EndpointError {
         kind: ErrorKind::Internal,
         message: message.to_string().into(),
@@ -177,7 +172,7 @@ impl<'a> EndpointError<'a> {
 #[derive(serde::Serialize, PartialEq, Eq, ToSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
-pub(in crate::webserver) enum ErrorKind {
+pub(crate) enum ErrorKind {
     User,
     Unknown,
     NotFound,

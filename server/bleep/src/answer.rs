@@ -1,6 +1,19 @@
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap};
 
-use crate::semantic::Semantic;
+use dashmap::{mapref::entry::Entry, DashMap};
+use reqwest::StatusCode;
+use thiserror::Error;
+use tracing::{debug, error, info, warn};
+use uuid::Uuid;
+
+use crate::{
+    analytics::QueryEvent,
+    indexes::reader::ContentDocument,
+    query::parser::{self, NLQuery},
+    semantic::Semantic,
+    state::RepoRef,
+    Application,
+};
 
 struct AnswerAPIClient<'s> {
     client: reqwest::Client,
@@ -77,79 +90,52 @@ const DELIMITER: &str = "=========";
 
 fn build_action_selection_prompt(query: &str) -> String {
     format!(
-        r#"You're a customer support agent named bloop, and you're helping a company's developers answer questions about the codebase. Your job is to categorise user questions into the following categories. Reply with an integer value of one of the following categories:
-1. A question about the codebase or product
-2. A question about the bloop support agent
-3. An introduction or welcome message
-4. Something else
-Your reply MUST be a single integer.
+        r#"You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.
+
+- bloop works by searching your codebase for relevant files using proprietary trained models, and leverages the power of GPT to provide rich explanations.
+- The company behind bloop is a startup founded in 2021, based in Farringdon, London. They are a Y Combinator company.
+- bloop cannot answer questions unrelated to your codebase.
+- bloop does not have feelings or opinions.
+- Further information about bloop can be found on the website https://bloop.ai
+
+Your response depends on the type of query that the user has asked. There are four query categories. For each of the four, respond according to the corresponding instruction:
+
+1. If the query is about the codebase or product reply with 0. Your answer MUST be the single integer 0.
+2. If the query is about the bloop support agent, answer the query in the first person in a polite and helpful way using only the information above.
+3. If the query is an introduction or welcome message respond to the user by introducing yourself in the first person, in a polite and helpful way using only the information above.
+4. If the query is something else explain that you can't answer it in a polite and helpful way. Suggest that the user asks a technical question about the codebase, or tries asking their question again in a different way. Do NOT answer the question.
+
+For example:
+
 Q: Hey bloop, do we pin js version numbers?
-A: 1
+A: 0
 Q: When's your birthday @bloop?
-A: 2
+A: I do not know my birthday. The company that started bloop is a startup founded in 2021, based in Farringdon, London.
 Q: What color are avocados?
-A: 4
+A: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
 Q: Where do we test if GitHub login works?
-A: 1
+A: 0
 Q: How do we balance eggs on a spoon?
-A: 4
+A: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
 Q: What is bloop?
-A: 2
-Q: Introduce yourself.
-A: 3
-Q: It's great to meet you.
-A: 4
-Q: How does bloop work?
-A: 2
-Q: Where do we check if Kafka is running?
-A: 1
-{DELIMITER}
-Q: {query}
-A:"#,
-    )
-}
-
-fn build_info_prompt(query: &str) -> String {
-    format!(
-        r#"bloop is a AI agent designed to help developers navigate codebases and ship to production faster. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.
-bloop works by searching your codebase for relevant files using proprietary trained models, and leverages the power of GPT to provide rich explanations.
-The company behind bloop is a startup founded in 2021, based in Farringdon, London. They are a Y Combinator company.
-bloop cannot answer questions unrelated to your codebase.
-bloop does not have feelings or opinions.
-To use bloop, ask a question mentioning @bloop and it will do its best to answer. Follow up questions are not supported yet.
-Further information about bloop can be found on the website https://bloop.ai
-{DELIMITER}
-You're a customer support agent called bloop. Respond to the user in the first person, in a polite and helpful way using only the information above.
-
-Q: What does bloop do?
-A: bloop is a AI agent designed to help developers with many tasks. You can think of bloop as like having an intern sitting next.
-Q: Who runs bloop?
-A: The company behind bloop is a startup founded in 2021, based in Farringdon, London.
-Q: Which investors have invested in bloop?
-A: Y Combinator has invested in bloop.
-Q: {query}
-A:"#
-    )
-}
-
-fn build_intro_prompt(query: &str) -> String {
-    format!(
-        r#"bloop is a AI agent designed to help developers navigate codebases and ship to production faster. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.
-bloop works by searching your codebase for relevant files using proprietary trained models, and leverages the power of GPT to provide rich explanations.
-The company behind bloop is a startup founded in 2021, based in Farringdon, London. They are a Y Combinator company.
-bloop cannot answer questions unrelated to your codebase.
-bloop does not have feelings or opinions.
-To use bloop, ask a question mentioning @bloop and it will do its best to answer. Follow up questions are not supported yet.
-Further information about bloop can be found on the website https://bloop.ai
-{DELIMITER}
-You're a customer support agent called bloop. Respond to the user by introducing yourself in the first person, in a polite and helpful way using only the information above.
-
+A: bloop is a AI agent designed to help developers with many tasks. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.
 Q: Introduce yourself.
 A: It's great to meet you! I'm an AI agent, here to help you find code from your codebase and ship to production faster.
 Q: It's great to meet you.
 A: Nice to meet you too! I'm looking forward to helping you with your everyday tasks and menial work!
+Q: How does bloop work?
+A: bloop works by searching your codebase for relevant files using proprietary trained models, and leverages the power of GPT to provide rich explanations.
+Q: Where do we check if Kafka is running?
+A: 0
+Q: Which investors have invested in bloop?
+A: Y Combinator has invested in bloop.
+Q: What's the best way to update the search icon @bloop?
+A: 0
+Q: Hey bloop, I have a question - Where do we test if GitHub login works?
+A: 0
+{DELIMITER}
 Q: {query}
-A:"#
+A:"#,
     )
 }
 
@@ -162,14 +148,21 @@ Q: fshkfjjf
 A: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
 Q: What is the meaning of life?
 A: I'm sorry, I can't answer that question. Please make sure your question is related to the codebase.
+
+{DELIMITER}
+
 Q: {query}
 A:"#
     )
 }
 
-fn build_rephrase_query_prompt(query: &str, history: &[PriorConversationEntry]) {
+fn build_rephrase_query_prompt(query: &str, history: &[PriorConversationEntry]) -> String {
     debug_assert!(!history.is_empty());
-    let history = history.map(ToString::to_string).join(", ");
+    let history = history
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join(", ");
     format!(
         r#"You are a customer support agent called bloop. Given a question and an optional conversational history, extract a standalone question. IGNORE any information in the conversational history which is not relevant to the question. \
 H: []
@@ -195,6 +188,8 @@ A: Where is there a Jest test for GitHub login?
 H: [I love bananas, Where do we test if GitHub login works?, No that's not a unit test]
 Q: With Jest
 A: Where is there a Jest test for GitHub login?
+
+{DELIMITER}
 
 H: [{history}]
 Q: {query}
@@ -238,7 +233,7 @@ impl<'s> AnswerAPIClient<'s> {
         Err(AnswerAPIError::MaxAttemptsReached(self.max_attempts))
     }
 
-    pub(crate) fn build_select_prompt(&self, snippets: &[api::Snippet]) -> String {
+    pub(crate) fn build_select_prompt(&self, snippets: &[Snippet]) -> String {
         // snippets are 1-indexed so we can use index 0 where no snippets are relevant
         let mut prompt = snippets
             .iter()
@@ -277,7 +272,7 @@ A:",
         prompt
     }
 
-    fn build_explain_prompt(&self, snippet: &api::Snippet) -> String {
+    fn build_explain_prompt(&self, snippet: &Snippet) -> String {
         let prompt = format!(
             "You are an AI assistant for a repo. You are given an extract from a file and a question. \
 Use the file to write a detailed answer to the question. Copy relevant parts of the file into the answer and explain why they are relevant. \
@@ -303,7 +298,7 @@ Answer in GitHub Markdown:",
         let max_tokens = 4096usize.saturating_sub(tokens_used);
         if max_tokens == 0 {
             // our prompt has overshot the token count, log an error for now
-            // TODO: this should propagte to sentry
+            // TODO: this should propagate to sentry
             error!(%tokens_used, "prompt overshot token limit");
         }
 
@@ -315,7 +310,7 @@ Answer in GitHub Markdown:",
     }
 }
 
-fn deduplicate_snippets(all_snippets: Vec<api::Snippet>, limit: usize) -> Vec<api::Snippet> {
+fn deduplicate_snippets(all_snippets: &[Snippet], limit: usize) -> Vec<Snippet> {
     let mut snippets = vec![];
     let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
 
@@ -349,7 +344,7 @@ fn deduplicate_snippets(all_snippets: Vec<api::Snippet>, limit: usize) -> Vec<ap
 }
 
 // grow the text of this snippet by `size` and return the new text
-fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
+fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> String {
     let content = &doc.content;
 
     // skip upwards `size` number of lines
@@ -370,47 +365,99 @@ fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
     content[new_start_byte..new_end_byte].to_owned()
 }
 
-pub fn answer(
+const MAX_TOKENS: usize = 4096;
+
+pub enum AnswerError {
+    Configuration(&'static str),
+    User(String),
+    Internal(Cow<'static, str>),
+    UpstreamService(AnswerAPIError),
+}
+
+fn internal(e: impl Into<Cow<'static, str>>) -> AnswerError {
+    AnswerError::Internal(e.into())
+}
+
+pub async fn answer(
     q: &str,
     user_id: &str,
-    limit: usize,
+    limit: u64,
     app: Application,
     query_id: Uuid,
-) -> amyhow::Result<(Vec<api::Snippet>, String)> {
-    //TODO: refactor errors ^^^
+) -> Result<(Vec<Snippet>, String), AnswerError> {
     let semantic = app
         .semantic
         .as_ref()
-        .ok_or_else(|| super::error(ErrorKind::Configuration, "Qdrant not configured"))?;
+        .ok_or_else(|| AnswerError::Configuration("qdrant not configured"))?;
 
-    let query = parser::parse_nl(q).map_err(|e| super::error(ErrorKind::User, e.to_string()))?;
+    let query = parser::parse_nl(q).map_err(|e| AnswerError::User(e.to_string()))?;
     let target = query
         .target()
-        .ok_or_else(|| super::error(ErrorKind::User, "missing search target".to_owned()))?;
+        .ok_or_else(|| AnswerError::User("missing search target".to_owned()))?;
 
-    let rephrase_query: Option<String> = match app.prior_conversation_store.get(user_id) {
-        [] => None,
-        history => Some(build_rephrase_query_prompt(query, &history)),
-    };
+    // we keep the borrow on the store short to avoid contention
+    // TODO: Add a maximum of prior history entries (e.g. 20)
+    let rephrase_query: Option<String> =
+        match (*app.prior_conversation_store).fetch_prior_conversation(user_id) {
+            [] => None,
+            // check how much history we can afford to create up to the token limit
+            history => {
+                let n = history.len().saturating_sub(20);
+                Some(build_rephrase_query_prompt(target, &history[n..]))
+            }
+        };
     //TODO: Reuse the client, perhaps as part of the app, set up on startup?
     let answer_api_host = format!("{}/q", app.config.answer_api_url);
     let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target, 5);
 
+    let rephrase_answer;
     //if rephrased_query-is_none(), select action
-    if let Some(q) = rephrase_query {
-        //let rephrased_query = answer_api_client.
+    let query = if let Some(q) = rephrase_query {
+        rephrase_answer = answer_api_client
+            .send_until_success(&q, 2000, 0.0)
+            .await
+            .map_err(|e| {
+                sentry::capture_message(
+                    format!("answer-api failed to respond: {e}").as_str(),
+                    sentry::Level::Error,
+                );
+                AnswerError::UpstreamService(e)
+            })?
+            .text()
+            .await
+            .map_err(|e| internal(e.to_string()))?;
+        parser::parse_nl(&&rephrase_answer).map_err(|e| internal(e.to_string()))?
     } else {
-        //TODO
-    }
+        // select action
+        let response = answer_api_client
+            .send_until_success(&build_action_selection_prompt(&target), 2000, 0.0)
+            .await
+            .map_err(|e| {
+                sentry::capture_message(
+                    format!("answer-api failed to respond: {e}").as_str(),
+                    sentry::Level::Error,
+                );
+                AnswerError::UpstreamService(e)
+            })?;
+        let text = response.text().await.map_err(|_| internal("no answer"))?;
+        if text == "0" {
+            query // this was a real question, so go on
+        } else {
+            // introduction or info without snippets
+            return Ok((Vec::new(), text));
+        }
+    };
 
-    let all_snippets = fetch_snippets(&semantic, query).await?;
-    let snippets = deduplicate_snippets(all_snippets, limit);
+    let all_snippets = fetch_snippets(&semantic, &query, limit)
+        .await
+        .map_err(|e| internal(e.to_string()))?;
+    let mut snippets = deduplicate_snippets(&all_snippets, limit as _);
 
     if snippets.is_empty() {
         warn!("Semantic search returned no snippets");
-        return Err(super::internal_error(
+        return Err(AnswerError::Internal(Cow::Borrowed(
             "semantic search returned no snippets",
-        ));
+        )));
     } else {
         info!("Semantic search returned {} snippets", snippets.len());
     }
@@ -424,11 +471,11 @@ pub fn answer(
                 format!("answer-api failed to respond: {e}").as_str(),
                 sentry::Level::Error,
             );
-            super::error(ErrorKind::UpstreamService, e.to_string())
+            AnswerError::UpstreamService(e)
         })?
         .text()
         .await
-        .map_err(super::internal_error)?
+        .map_err(|e| internal(e.to_string()))?
         .trim()
         .to_string()
         .clone();
@@ -437,18 +484,16 @@ pub fn answer(
 
     let mut relevant_snippet_index = relevant_snippet_index
         .parse::<usize>()
-        .map_err(super::internal_error)?;
+        .map_err(|e| internal(e.to_string()))?;
 
     if relevant_snippet_index == 0 {
-        return Err(super::internal_error(
-            "None of the snippets help answer the question",
-        ));
+        return Err(internal("None of the snippets help answer the question"));
     }
 
     relevant_snippet_index -= 1; // return to 0-indexing
     let relevant_snippet = snippets
         .get(relevant_snippet_index)
-        .ok_or_else(|| super::internal_error("answer-api returned out-of-bounds index"))?;
+        .ok_or_else(|| internal("answer-api returned out-of-bounds index"))?;
 
     // grow the snippet by 60 lines above and below, we have sufficient space
     // to grow this snippet by 10 times its original size (15 to 150)
@@ -456,13 +501,13 @@ pub fn answer(
         let repo_ref = &relevant_snippet
             .repo_ref
             .parse::<RepoRef>()
-            .map_err(super::internal_error)?;
+            .map_err(|e| internal(e.to_string()))?;
         let doc = app
             .indexes
             .file
             .by_path(repo_ref, &relevant_snippet.relative_path)
             .await
-            .map_err(super::internal_error)?;
+            .map_err(|e| internal(e.to_string()))?;
 
         let mut grow_size = 40;
         let grown_text = loop {
@@ -474,7 +519,7 @@ pub fn answer(
             }
             grow_size += 10;
         };
-        api::Snippet {
+        Snippet {
             lang: relevant_snippet.lang.clone(),
             repo_name: relevant_snippet.repo_name.clone(),
             repo_ref: relevant_snippet.repo_ref.clone(),
@@ -497,19 +542,19 @@ pub fn answer(
                 format!("answer-api failed to respond: {e}").as_str(),
                 sentry::Level::Error,
             );
-            super::error(ErrorKind::UpstreamService, e.to_string())
+            AnswerError::UpstreamService(e)
         })?
         .text()
         .await
-        .map_err(super::internal_error)?;
+        .map_err(|e| internal(e.to_string()))?;
 
     // reorder snippets
     snippets.swap(relevant_snippet_index, 0);
 
     app.track_query(QueryEvent {
-        user_id: user_id.clone(),
+        user_id: user_id.to_owned(),
         query_id,
-        query: q.clone(),
+        query: q.to_owned(),
         semantic_results: all_snippets,
         filtered_semantic_results: snippets.clone(),
         select_prompt,
@@ -519,14 +564,25 @@ pub fn answer(
         overlap_strategy: semantic.overlap_strategy(),
     });
 
+    // add to history
+    app.prior_conversation_store.add_conversation_entry(
+        user_id.to_owned(),
+        q.to_owned(),
+        snippet_explanation.clone(),
+    );
+
     Ok((snippets, snippet_explanation))
 }
 
-async fn fetch_snippets(semantic: &Semantic, query: &str) -> Result<Vec<Snippet>> {
+async fn fetch_snippets(
+    semantic: &Semantic,
+    query: &NLQuery<'_>,
+    limit: u64,
+) -> anyhow::Result<Vec<Snippet>> {
     Ok(semantic
-        .search(&query, 4 * SNIPPET_COUNT as u64) // heuristic
-        .await
-        .map_err(|e| super::error(ErrorKind::Internal, e.to_string()))?
+        .search(query, 4 * limit) // heuristic
+        .await?
+        //.map_err(|e| error(ErrorKind::Internal, e.to_string()))?
         .into_iter()
         .map(|r| {
             use qdrant_client::qdrant::{value::Kind, Value};
@@ -592,8 +648,10 @@ impl PriorConversationStore {
     pub fn add_conversation_entry(&self, user_id: String, query: String, response: String) {
         let entry = PriorConversationEntry { query, response };
         match self.conversations.entry(user_id) {
-            Occupied(o) => o.get_mut().push(entry),
-            Vacant(v) => v.insert(vec![entry^]),
+            Entry::Occupied(o) => o.get_mut().push(entry),
+            Entry::Vacant(v) => {
+                v.insert(vec![entry]);
+            }
         }
     }
 

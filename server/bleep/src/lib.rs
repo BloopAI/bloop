@@ -10,6 +10,7 @@
 )]
 #![allow(elided_lifetimes_in_paths)]
 
+use answer::PriorConversationStore;
 #[cfg(any(bench, test))]
 use criterion as _;
 
@@ -80,6 +81,7 @@ pub struct Application {
     credentials: Arc<DashMap<Backend, BackendCredential>>,
     pub analytics_client: Arc<Option<RudderAnalytics>>,
     cookie_key: axum_extra::extract::cookie::Key,
+    prior_conversation_store: Arc<PriorConversationStore>,
 }
 
 impl Application {
@@ -151,6 +153,7 @@ impl Application {
             config,
             analytics_client,
             env,
+            prior_conversation_store: Arc::default(),
         })
     }
 
