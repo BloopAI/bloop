@@ -24,7 +24,7 @@ use crate::{
     Application,
 };
 
-use super::{Error, ErrorKind};
+use super::prelude::*;
 
 /// Mirrored from `answer_api/lib.rs` to avoid private dependency.
 pub mod api {
@@ -103,7 +103,7 @@ const SNIPPET_COUNT: usize = 13;
 pub(super) async fn handle(
     Query(params): Query<Params>,
     Extension(app): Extension<Application>,
-) -> super::Result<impl IntoResponse> {
+) -> Result<impl IntoResponse> {
     // create a new analytics event for this query
     let event = Arc::new(RwLock::new(QueryEvent::default()));
 
@@ -125,7 +125,7 @@ async fn _handle(
     params: Params,
     app: Application,
     event: Arc<RwLock<QueryEvent>>,
-) -> super::Result<impl IntoResponse> {
+) -> Result<impl IntoResponse> {
     let query_id = uuid::Uuid::new_v4();
     let mut stop_watch = StopWatch::start();
 
@@ -571,7 +571,7 @@ Answer in GitHub Markdown:",
         prompt
     }
 
-    async fn select_snippet(&self, prompt: &str) -> super::Result<String> {
+    async fn select_snippet(&self, prompt: &str) -> Result<String> {
         self.send_until_success(prompt, 1, 0.0).await.map_err(|e| {
             sentry::capture_message(
                 format!("answer-api failed to respond: {e}").as_str(),

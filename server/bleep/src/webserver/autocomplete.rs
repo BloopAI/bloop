@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::{json, Error, Result};
+use super::prelude::*;
 use crate::{
     indexes::{
         reader::{ContentReader, FileReader, RepoReader},

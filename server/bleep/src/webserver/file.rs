@@ -6,7 +6,7 @@ use axum::{
     Extension,
 };
 
-use super::{json, prelude::Indexes, Error};
+use super::prelude::*;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct Params {

@@ -26,7 +26,7 @@ pub type Router<S = Application> = axum::Router<S>;
 
 #[allow(unused)]
 pub(in crate::webserver) mod prelude {
-    pub(in crate::webserver) use super::{json, EndpointError, Error, ErrorKind};
+    pub(in crate::webserver) use super::{json, EndpointError, Error, ErrorKind, Result};
     pub(in crate::webserver) use crate::indexes::Indexes;
     pub(in crate::webserver) use axum::{
         extract::Query, http::StatusCode, response::IntoResponse, Extension,
