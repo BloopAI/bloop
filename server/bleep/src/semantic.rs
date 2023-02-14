@@ -296,9 +296,7 @@ impl Semantic {
     }
 
     pub fn overlap_strategy(&self) -> chunk::OverlapStrategy {
-        self.config
-            .overlap
-            .unwrap_or(chunk::OverlapStrategy::Partial(0.5))
+        self.config.overlap.unwrap_or_default()
     }
 }
 

@@ -192,9 +192,9 @@ impl Application {
         LOGGER_INSTALLED.set(true).unwrap();
     }
 
-    pub fn track_query(&self, event: analytics::QueryEvent) {
+    pub fn track_query(&self, event: &analytics::QueryEvent) {
         if let Some(client) = &*self.analytics_client {
-            tokio::task::block_in_place(|| client.track_query(event));
+            tokio::task::block_in_place(|| client.track_query(event.clone()));
         }
     }
 

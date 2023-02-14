@@ -149,6 +149,12 @@ impl OverlapStrategy {
     }
 }
 
+impl Default for OverlapStrategy {
+    fn default() -> Self {
+        Self::Partial(0.5)
+    }
+}
+
 /// This should take care of [CLS], [SEP] etc. which could be introduced during per-chunk tokenization
 pub const DEDUCT_SPECIAL_TOKENS: usize = 2;
 
