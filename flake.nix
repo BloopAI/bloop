@@ -8,7 +8,7 @@
     flake-utils.lib.eachDefaultSystem
       (system:
         let
-          pkgs = nixpkgs.legacyPackages.${system};
+          pkgs = import nixpkgs { inherit system; };
           pkgsStatic = pkgs.pkgsStatic;
           lib = pkgs.lib;
           clang = pkgs.llvmPackages_14.clang;
@@ -21,7 +21,7 @@
               pnpm install >&2
             '';
             buildInputs = with pkgs; ([
-	      git-lfs
+              git-lfs
               llvmPackages_14.stdenv
               libclang
               clang
@@ -35,22 +35,24 @@
               protobuf
               automake
               autoconf
+              rocksdb
             ] ++ lib.optionals pkgs.stdenv.isLinux [
               dbus.dev
               libsoup.dev
-	      gtk3.dev
-	      webkitgtk
-	      dmidecode
-	      appimage-run
-	      appimagekit
-	    ] ++ lib.optionals pkgs.stdenv.isDarwin [
+              gtk3.dev
+              webkitgtk
+              dmidecode
+              appimage-run
+              appimagekit
+            ] ++ lib.optionals pkgs.stdenv.isDarwin [
               darwin.apple_sdk.frameworks.Carbon
               darwin.apple_sdk.frameworks.WebKit
               darwin.apple_sdk.frameworks.AppKit
-	    ]);
+            ]);
 
+            ROCKSDB_LIB_DIR = "${pkgs.rocksdb}/lib";
+            ROCKSDB_INCLUDE_DIR = "${pkgs.rocksdb}/include";
             LIBCLANG_PATH = "${libclang.lib}/lib";
-            BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${libclang.lib}/lib/clang/${lib.getVersion clang}/include";
           };
 
           packages.my-ctags = pkgsStatic.universal-ctags.overrideAttrs (old: {
