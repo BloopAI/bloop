@@ -14,12 +14,11 @@ import {
   savePlainToStorage,
 } from '../../../../services/storage';
 import { UIContext } from '../../../../context/uiContext';
-import { DeviceContext } from '../../../../context/deviceContext';
 import PrivacyCard from './PrivacyCard';
 
 type Props = {
   handleNext: (e?: any) => void;
-  handleBack: (e?: any) => void;
+  handleBack?: (e?: any) => void;
 };
 
 const STEP_KEY = 'STEP_REMOTE_SERVICES';
@@ -108,7 +107,7 @@ const RemoteServicesStep = ({ handleNext, handleBack }: Props) => {
           )}
         </div>
       </div>
-      <GoBackButton handleBack={handleBack} />
+      {handleBack ? <GoBackButton handleBack={handleBack} /> : null}
     </>
   );
 };

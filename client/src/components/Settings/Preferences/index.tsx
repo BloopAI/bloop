@@ -8,11 +8,15 @@ import {
   IS_ANALYTICS_ALLOWED_KEY,
   savePlainToStorage,
 } from '../../../services/storage';
+import Button from '../../Button';
+import SeparateOnboardingStep from '../../SeparateOnboardingStep';
+import RemoteServicesStep from '../../../pages/Home/Onboarding/RemoteServicesStep';
 
 const Preferences = () => {
   const [theme, setTheme] = useState('dark');
   const { isAnalyticsAllowed, setIsAnalyticsAllowed } =
     useContext(AnalyticsContext);
+  const [isModalOpen, setModalOpen] = useState(false);
 
   const onThemeChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setTheme(e.target.value);
@@ -124,19 +128,24 @@ const Preferences = () => {
         {/*</div>*/}
         <SettingsRow>
           <SettingsText
-            title="Telemetry"
-            subtitle="Help us improve bloop by sharing telemetry"
+            title={`Remote services: ${isAnalyticsAllowed ? 'on' : 'off'}`}
+            subtitle={`Natural language search is ${
+              isAnalyticsAllowed ? 'enabled' : 'disabled'
+            }`}
           />
           <div className="flex-1">
-            <Checkbox
-              checked={isAnalyticsAllowed}
-              label="Allow usage data sharing with bloop"
-              description="All data is anonymized and is not associated with you or your account."
-              onChange={onTelemetryChange}
-            />
+            <Button variant="secondary" onClick={() => setModalOpen(true)}>
+              Change
+            </Button>
           </div>
         </SettingsRow>
       </div>
+      <SeparateOnboardingStep
+        isVisible={isModalOpen}
+        onClose={() => setModalOpen(false)}
+      >
+        <RemoteServicesStep handleNext={() => setModalOpen(false)} />
+      </SeparateOnboardingStep>
     </div>
   );
 };
