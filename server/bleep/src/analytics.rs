@@ -1,4 +1,4 @@
-use crate::{semantic::chunk::OverlapStrategy, webserver::answer::api::Snippet};
+use crate::{semantic::chunk::OverlapStrategy, webserver::answer::Snippet};
 use rudderanalytics::{
     client::RudderAnalytics,
     message::{Message, Track},

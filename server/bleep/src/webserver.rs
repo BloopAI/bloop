@@ -1,6 +1,5 @@
 use crate::{env::Feature, snippet, state, Application};
 
-use anyhow::Result;
 use axum::middleware;
 use axum::{response::IntoResponse, routing::get, Extension, Json};
 use std::{borrow::Cow, net::SocketAddr};
@@ -37,7 +36,7 @@ pub(in crate::webserver) mod prelude {
     pub(in crate::webserver) use utoipa::{IntoParams, ToSchema};
 }
 
-pub async fn start(app: Application) -> Result<()> {
+pub async fn start(app: Application) -> anyhow::Result<()> {
     let bind = SocketAddr::new(app.config.host.parse()?, app.config.port);
 
     let mut api = Router::new()
@@ -128,19 +127,17 @@ where
     Json(Response::from(val))
 }
 
-pub(in crate::webserver) fn error<'a>(
-    kind: ErrorKind,
-    message: impl Into<Cow<'a, str>>,
-) -> Json<Response<'a>> {
+pub(in crate::webserver) type Result<T, E = Error> = std::result::Result<T, E>;
+pub(in crate::webserver) type Error = Json<Response<'static>>;
+
+pub(in crate::webserver) fn error(kind: ErrorKind, message: impl Into<Cow<'static, str>>) -> Error {
     Json(Response::from(EndpointError {
         kind,
         message: message.into(),
     }))
 }
 
-pub(in crate::webserver) fn internal_error<'a, S: std::fmt::Display>(
-    message: S,
-) -> Json<Response<'a>> {
+pub(in crate::webserver) fn internal_error<S: std::fmt::Display>(message: S) -> Error {
     Json(Response::from(EndpointError {
         kind: ErrorKind::Internal,
         message: message.to_string().into(),
