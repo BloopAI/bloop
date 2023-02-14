@@ -145,7 +145,7 @@ async fn _handle(
 
     analytics_event
         .stages
-        .push(Stage::new("user query", params.q.clone()).with_time(stop_watch.lap()));
+        .push(Stage::new("user query", &params.q).with_time(stop_watch.lap()));
 
     let query = parser::parse_nl(&params.q).map_err(|e| {
         (
@@ -208,7 +208,7 @@ async fn _handle(
 
     analytics_event
         .stages
-        .push(Stage::new("semantic results", all_snippets.clone()).with_time(stop_watch.lap()));
+        .push(Stage::new("semantic results", &all_snippets).with_time(stop_watch.lap()));
 
     let mut snippets = vec![];
     let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
@@ -247,9 +247,9 @@ async fn _handle(
         }
     }
 
-    analytics_event.stages.push(
-        Stage::new("filtered semantic results", snippets.clone()).with_time(stop_watch.lap()),
-    );
+    analytics_event
+        .stages
+        .push(Stage::new("filtered semantic results", &snippets).with_time(stop_watch.lap()));
 
     if snippets.is_empty() {
         warn!("Semantic search returned no snippets");
@@ -268,7 +268,7 @@ async fn _handle(
 
     analytics_event
         .stages
-        .push(Stage::new("select prompt", select_prompt.clone()).with_time(stop_watch.lap()));
+        .push(Stage::new("select prompt", &select_prompt).with_time(stop_watch.lap()));
 
     let relevant_snippet_index = answer_api_client
         .select_snippet(&select_prompt)
@@ -285,7 +285,7 @@ async fn _handle(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, super::internal_error(e)))?;
 
     analytics_event.stages.push(
-        Stage::new("relevant snippet index", relevant_snippet_index).with_time(stop_watch.lap()),
+        Stage::new("relevant snippet index", &relevant_snippet_index).with_time(stop_watch.lap()),
     );
 
     if relevant_snippet_index == 0 {
@@ -387,7 +387,7 @@ async fn _handle(
 
         event
             .stages
-            .push(Stage::new("explanation", explanation).with_time(stop_watch.lap()));
+            .push(Stage::new("explanation", &explanation).with_time(stop_watch.lap()));
 
         app.track_query(&event);
     };
