@@ -144,7 +144,7 @@ impl IndexWriter {
         let (state, indexed) = match repo.sync_status {
             Uninitialized | Syncing | Indexing => return Ok(()),
             Removed => {
-                let deleted = self.delete_repo_indexes(&repo, &writers).await;
+                let deleted = self.delete_repo_indexes(reporef, &repo, &writers).await;
                 if deleted.is_ok() {
                     writers.commit().await?;
                     repo_pool.remove(reporef);
@@ -245,10 +245,19 @@ impl IndexWriter {
 
     async fn delete_repo_indexes(
         &self,
+        reporef: &RepoRef,
         repo: &Repository,
         writers: &indexes::GlobalWriteHandleRef<'_>,
     ) -> anyhow::Result<()> {
-        let IndexWriter(Application { config, .. }) = self;
+        let IndexWriter(Application {
+            config, semantic, ..
+        }) = self;
+
+        if let Some(semantic) = semantic {
+            semantic
+                .delete_points_by_path(&reporef.to_string(), std::iter::empty())
+                .await;
+        }
 
         repo.delete_file_cache(&config.index_dir)?;
         if !matches!(repo.remote, RepoRemote::None) {
