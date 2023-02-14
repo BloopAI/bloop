@@ -20,7 +20,7 @@ type Props = {
   handleBack?: (e: any) => void;
 };
 
-const STEP_KEY = 'STEP_4';
+const STEP_KEY = 'STEP_GITHUB_REPOS';
 
 const Step4 = ({ handleNext, handleBack }: Props) => {
   const [activeTab, setActiveTab] = useState(1);
@@ -49,7 +49,7 @@ const Step4 = ({ handleNext, handleBack }: Props) => {
       trackReposSelected({
         githubRepos: reposToSync.length,
         localRepos: localRepos.length,
-        where: 'onboarding_step_4',
+        where: 'onboarding_step_github_repos',
       });
       syncRepos([...reposToSync, ...localRepos]).then(console.log);
       handleNext();

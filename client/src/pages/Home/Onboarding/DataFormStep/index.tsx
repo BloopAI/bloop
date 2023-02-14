@@ -19,7 +19,7 @@ type Props = {
   handleNext: (e?: any) => void;
 };
 
-const STEP_KEY = 'STEP_0';
+const STEP_KEY = 'STEP_DATA_FORM';
 const Step0 = ({ handleNext }: Props) => {
   const [form, setForm] = useState<Form>({
     firstName: '',

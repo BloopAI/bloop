@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import Step2 from '../../../../pages/Home/Onboarding/Step2';
-import Step4 from '../../../../pages/Home/Onboarding/Step4';
+import Step2 from '../../../../pages/Home/Onboarding/LocalReposStep';
+import Step4 from '../../../../pages/Home/Onboarding/GithubReposStep';
 import { MODAL_SIDEBAR_APPEAR_ANIMATION } from '../../../../consts/animations';
-import Step1 from '../../../../pages/Home/Onboarding/Step1';
+import Step1 from '../../../../pages/Home/Onboarding/FolderSelectStep';
 
 type Props = {
   addRepos: null | 'local' | 'github';

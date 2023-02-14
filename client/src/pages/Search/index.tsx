@@ -51,7 +51,7 @@ let onboardingFinished = false;
 const SearchPage = () => {
   const { setInputValue, globalRegex, searchType, setSearchType } =
     useContext(SearchContext);
-  const { isRepoManagementAllowed } = useContext(DeviceContext);
+  const { isSelfServe } = useContext(DeviceContext);
   const [shouldShowWelcome, setShouldShowWelcome] = useState(
     !getPlainFromStorage(ONBOARDING_DONE_KEY),
   );
@@ -86,13 +86,15 @@ const SearchPage = () => {
   }, []);
 
   useEffect(() => {
-    getRepos()
-      .then(() => {
-        closeOnboarding();
-      })
-      .catch(() => {
-        setShouldShowWelcome(true);
-      });
+    if (isSelfServe) {
+      getRepos()
+        .then(() => {
+          closeOnboarding();
+        })
+        .catch(() => {
+          setShouldShowWelcome(true);
+        });
+    }
   }, []);
 
   useEffect(() => {
