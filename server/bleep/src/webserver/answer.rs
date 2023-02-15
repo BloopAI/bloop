@@ -77,3 +77,32 @@ pub async fn handle(
         },
     )))
 }
+
+// This endpoint returns the prior conversation for debugging purposes
+// TODO: This does not check any authentication, it just takes the user ID
+pub async fn get_conversation(
+    Query(user_id): Query<String>,
+    Extension(app): Extension<Application>,
+) -> Result<impl IntoResponse, impl IntoResponse> {
+    Ok::<String, StatusCode>(
+        app.prior_conversation_store
+            .with_prior_conversation(&user_id, |c| {
+                c.iter()
+                    .map(|c| c.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n===\n")
+            })
+            .unwrap_or(String::new()),
+    )
+}
+
+// This endpoint purges the prior conversation for this user.
+// TODO: This does not check any authentication, it just takes the user ID
+pub async fn reset_conversation(
+    Query(user_id): Query<String>,
+    Extension(app): Extension<Application>,
+) -> Result<impl IntoResponse, impl IntoResponse> {
+    app.prior_conversation_store
+        .purge_prior_conversation(&user_id);
+    Ok::<_, StatusCode>(StatusCode::FOUND)
+}

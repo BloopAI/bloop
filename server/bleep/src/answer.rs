@@ -400,11 +400,11 @@ pub async fn answer(
             .text()
             .await
             .map_err(|e| internal(e.to_string()))?;
-        parser::parse_nl(&&rephrase_answer).map_err(|e| internal(e.to_string()))?
+        parser::parse_nl(&rephrase_answer).map_err(|e| internal(e.to_string()))?
     } else {
         // select action
         let response = answer_api_client
-            .send_until_success(&build_action_selection_prompt(&target), 2000, 0.0)
+            .send_until_success(&build_action_selection_prompt(target), 2000, 0.0)
             .await
             .map_err(|e| {
                 sentry::capture_message(
@@ -422,7 +422,7 @@ pub async fn answer(
         }
     };
 
-    let all_snippets = fetch_snippets(&semantic, &query, limit)
+    let all_snippets = fetch_snippets(semantic, &query, limit)
         .await
         .map_err(|e| internal(e.to_string()))?;
     let mut snippets = deduplicate_snippets(&all_snippets, limit as _);

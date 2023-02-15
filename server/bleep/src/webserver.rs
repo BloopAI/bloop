@@ -43,6 +43,10 @@ pub async fn start(app: Application) -> Result<()> {
     let mut api = Router::new()
         // querying
         .route("/q", get(query::handle))
+        .route(
+            "/conversation",
+            get(answer::get_conversation).delete(answer::reset_conversation),
+        )
         // autocomplete
         .route("/autocomplete", get(autocomplete::handle))
         // indexing
