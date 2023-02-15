@@ -33,14 +33,9 @@ jobs:
 
       - name: Rust fmt
         run: nix develop -c bash -c 'cargo --locked fmt -p bleep -- --check'
-        env:
-          SCCACHE_DIR: /sccache
-
 
       - name: Rust fmt
         run: nix develop -c bash -c 'cargo --locked clippy -p bleep --all-features --manifest-path Cargo.toml'
-        env:
-          SCCACHE_DIR: /sccache
 
   test:
     runs-on: nixos
@@ -52,8 +47,6 @@ jobs:
 
       - name: Tests
         run: nix develop -c bash -c 'cargo --locked test -p bleep --all-features'
-        env:
-          SCCACHE_DIR: /sccache
 
   # benchmark:
   #   runs-on: [self-hosted, benchmark]
