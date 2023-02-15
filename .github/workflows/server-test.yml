@@ -32,10 +32,10 @@ jobs:
         run: touch apps/desktop/src-tauri/bin/qdrant-x86_64-unknown-linux-gnu
 
       - name: rustfmt
-        run: nix develop -c bash -c 'cargo --locked fmt -p bleep -- --check'
+        run: nix develop --no-update-lock-file -c bash -c 'cargo --locked fmt -p bleep -- --check'
 
       - name: Clippy
-        run: nix develop -c bash -c 'cargo --locked clippy -p bleep --all-features --manifest-path Cargo.toml'
+        run: nix develop --no-update-lock-file -c bash -c 'cargo --locked clippy -p bleep --all-features --manifest-path Cargo.toml'
 
   test:
     runs-on: nixos
@@ -46,7 +46,7 @@ jobs:
           lfs: true
 
       - name: Tests
-        run: nix develop -c bash -c 'cargo --locked test -p bleep --all-features'
+        run: nix develop --no-update-lock-file -c bash -c 'cargo --locked test -p bleep --all-features'
 
   # benchmark:
   #   runs-on: [self-hosted, benchmark]
