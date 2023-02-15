@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use super::{json, EndpointError, ErrorKind};
+use super::prelude::*;
 use crate::{indexes::Indexes, state::RepoRef, symbol::SymbolLocations, text_range::TextRange};
 
-use axum::{extract::Query, http::StatusCode, response::IntoResponse, Extension};
+use axum::{extract::Query, response::IntoResponse, Extension};
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
@@ -23,38 +23,6 @@ pub(super) struct HoverableResponse {
     ranges: Vec<TextRange>,
 }
 
-impl HoverableRequest {
-    async fn handle(
-        &self,
-        indexes: Arc<Indexes>,
-    ) -> Result<HoverableResponse, EndpointError<'static>> {
-        let repo_ref = &self
-            .repo_ref
-            .parse::<RepoRef>()
-            .map_err(|err| EndpointError::user(err.to_string().into()))?;
-
-        let document = match indexes.file.by_path(repo_ref, &self.relative_path).await {
-            Ok(doc) => doc,
-            Err(e) => {
-                return Err(EndpointError {
-                    kind: ErrorKind::User,
-                    message: e.to_string().into(),
-                })
-            }
-        };
-        let ranges = match document.symbol_locations {
-            SymbolLocations::TreeSitter(graph) => graph.hoverable_ranges().collect(),
-            _ => {
-                return Err(EndpointError {
-                    kind: ErrorKind::User,
-                    message: "Intelligence is unavailable for this language".into(),
-                })
-            }
-        };
-        Ok(HoverableResponse { ranges })
-    }
-}
-
 #[utoipa::path(
     get,
     path = "/hoverable",
@@ -69,12 +37,17 @@ pub(super) async fn handle(
     Query(payload): Query<HoverableRequest>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> impl IntoResponse {
-    let response = payload.handle(indexes).await;
-    match response {
-        Ok(r) => (StatusCode::OK, json(r)),
-        Err(e) if e.kind == ErrorKind::User => (StatusCode::BAD_REQUEST, json(e)),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, json(e)),
-    }
+    let repo_ref = &payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
+
+    let document = match indexes.file.by_path(repo_ref, &payload.relative_path).await {
+        Ok(doc) => doc,
+        Err(e) => return Err(Error::user(e)),
+    };
+    let ranges = match document.symbol_locations {
+        SymbolLocations::TreeSitter(graph) => graph.hoverable_ranges().collect(),
+        _ => return Err(Error::user("Intelligence is unavailable for this language")),
+    };
+    Ok(json(HoverableResponse { ranges }))
 }
 
 #[cfg(test)]
