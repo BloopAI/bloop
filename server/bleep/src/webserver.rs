@@ -180,6 +180,12 @@ impl Error {
     }
 }
 
+impl From<anyhow::Error> for Error {
+    fn from(value: anyhow::Error) -> Self {
+        Error::internal(value.to_string())
+    }
+}
+
 impl IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
         (self.status, self.body).into_response()

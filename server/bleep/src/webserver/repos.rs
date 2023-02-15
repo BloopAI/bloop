@@ -1,4 +1,4 @@
-use std::{collections::HashSet, ops::Not};
+use std::collections::HashSet;
 
 use crate::{
     state::{Backend, RepoRef, Repository, SyncStatus},
@@ -144,14 +144,7 @@ pub(super) async fn delete_by_id(
         return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
     };
 
-    match app.repo_pool.get_mut(&reporef) {
-        Some(mut result) => {
-            result.value_mut().delete();
-            app.write_index().queue_sync_and_index(vec![reporef]);
-            Ok(json(ReposResponse::Deleted))
-        }
-        None => Err(Error::new(ErrorKind::NotFound, "Can't find repository")),
-    }
+    Ok(reporef.delete(&app).map(|_| json(ReposResponse::Deleted))?)
 }
 
 /// Synchronize a repo by its id
@@ -221,21 +214,17 @@ pub(super) async fn set_indexed(
     Extension(app): Extension<Application>,
     Json(new_list): Json<SetIndexed>,
 ) -> impl IntoResponse {
-    let repo_list = new_list.indexed.into_iter().collect::<HashSet<_>>();
+    let mut repo_list = new_list.indexed.into_iter().collect::<HashSet<_>>();
 
     for mut existing in app.repo_pool.iter_mut() {
-        if repo_list.contains(existing.key()).not() {
-            existing.value_mut().delete();
+        if !repo_list.contains(existing.key()) {
+            existing.value_mut().mark_removed();
+            repo_list.insert(existing.key().to_owned());
         }
     }
 
-    let new = repo_list
-        .into_iter()
-        .filter(|k| app.repo_pool.contains_key(k).not());
-
-    for repo in new {
-        app.write_index().queue_sync_and_index(vec![repo]);
-    }
+    app.write_index()
+        .queue_sync_and_index(repo_list.into_iter().collect());
 
     json(ReposResponse::SyncQueued)
 }
