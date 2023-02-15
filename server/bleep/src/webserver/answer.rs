@@ -68,7 +68,7 @@ pub struct Snippet {
 }
 
 fn default_limit() -> u64 {
-    10
+    50
 }
 
 fn default_user_id() -> String {
@@ -97,8 +97,6 @@ impl From<AnswerResponse> for super::Response<'static> {
         super::Response::Answer(res)
     }
 }
-
-const SNIPPET_COUNT: usize = 13;
 
 pub(super) async fn handle(
     Query(params): Query<Params>,
@@ -150,7 +148,7 @@ async fn _handle(
         .ok_or_else(|| Error::user("missing search target"))?;
 
     let all_snippets: Vec<Snippet> = semantic
-        .search(&query, 4 * SNIPPET_COUNT as u64) // heuristic
+        .search(&query, 4 * params.limit) // heuristic
         .await
         .map_err(Error::internal)?
         .into_iter()
@@ -198,7 +196,7 @@ async fn _handle(
     let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
 
     for snippet in all_snippets.clone().into_iter() {
-        if snippets.len() > SNIPPET_COUNT {
+        if snippets.len() > params.limit as usize {
             break;
         }
 
