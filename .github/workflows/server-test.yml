@@ -15,14 +15,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-client:
-    runs-on: ubuntu-latest
-    steps:
-      - run: 'echo "No checks required" '
-
-  fmt-clippy-build:
+  clippy-test:
     runs-on: nixos
-
     steps:
       - uses: actions/checkout@v3
         with:
@@ -36,14 +30,6 @@ jobs:
 
       - name: Clippy
         run: nix develop --no-update-lock-file -c bash -c 'cargo --locked clippy -p bleep --all-features --release'
-
-  test:
-    runs-on: nixos
-
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          lfs: true
 
       - name: Tests
         run: nix develop --no-update-lock-file -c bash -c 'cargo --locked test -p bleep --all-features --release'
