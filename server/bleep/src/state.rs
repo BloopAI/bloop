@@ -3,8 +3,9 @@ use crate::{
     indexes,
     language::{get_language_info, LanguageInfo},
     remotes::{gather_repo_roots, BackendCredential},
+    Application,
 };
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::Args;
 use dashmap::DashMap;
 use rand::Rng;
@@ -100,6 +101,10 @@ impl RepoRef {
         &self.1
     }
 
+    pub fn is_local(&self) -> bool {
+        self.0 == Backend::Local
+    }
+
     pub fn indexed_name(&self) -> String {
         // Local repos indexed as: dirname
         // Github repos indexed as: github.com/org/repo
@@ -126,6 +131,17 @@ impl RepoRef {
         match self.0 {
             Backend::Local => Some(PathBuf::from(&self.1)),
             _ => None,
+        }
+    }
+
+    pub fn delete(self, app: &Application) -> Result<()> {
+        match app.repo_pool.get_mut(&self) {
+            Some(mut result) => {
+                result.value_mut().mark_removed();
+                app.write_index().queue_sync_and_index(vec![self]);
+                Ok(())
+            }
+            None => bail!("Repo not found"),
         }
     }
 }
@@ -327,7 +343,9 @@ impl Repository {
         Ok(info)
     }
 
-    pub(crate) fn delete(&mut self) {
+    /// Marks the repository for removal on the next sync
+    /// Does not initiate a new sync.
+    pub(crate) fn mark_removed(&mut self) {
         self.sync_status = SyncStatus::Removed;
     }
 
@@ -456,7 +474,7 @@ impl StateSource {
                         #[allow(clippy::needless_borrow)]
                         if path.starts_with(&root) && !current_repos.contains(k) {
                             debug!(reporef=%k, "repo scheduled to be removed;");
-                            elem.value_mut().delete();
+                            elem.value_mut().mark_removed();
                         }
                     }
 
