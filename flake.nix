@@ -29,7 +29,6 @@
         buildDeps = with pkgs;
           ([
             rust
-            sccache
             git-lfs
             stdenv
             libclang
@@ -61,7 +60,6 @@
           ]);
 
         buildEnv = {
-          RUSTC_WRAPPER = "${pkgs.sccache}/bin/sccache";
           ROCKSDB_LIB_DIR = "${pkgs.rocksdb}/lib";
           ROCKSDB_INCLUDE_DIR = "${pkgs.rocksdb}/include";
           LIBCLANG_PATH = "${libclang.lib}/lib";

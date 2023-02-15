@@ -31,10 +31,10 @@ jobs:
       - name: Dummy Qdrant binary
         run: touch apps/desktop/src-tauri/bin/qdrant-x86_64-unknown-linux-gnu
 
-      - name: Rust fmt
+      - name: rustfmt
         run: nix develop -c bash -c 'cargo --locked fmt -p bleep -- --check'
 
-      - name: Rust fmt
+      - name: Clippy
         run: nix develop -c bash -c 'cargo --locked clippy -p bleep --all-features --manifest-path Cargo.toml'
 
   test:
