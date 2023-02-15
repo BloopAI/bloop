@@ -4,7 +4,7 @@ use tracing::{debug, error, info};
 use crate::{
     indexes,
     remotes::RemoteError,
-    state::{RepoRef, RepoRemote, Repository, SyncStatus},
+    state::{RepoRef, Repository, SyncStatus},
     Application, Configuration,
 };
 
@@ -260,7 +260,7 @@ impl IndexWriter {
         }
 
         repo.delete_file_cache(&config.index_dir)?;
-        if !matches!(repo.remote, RepoRemote::None) {
+        if !reporef.is_local() {
             tokio::fs::remove_dir_all(&repo.disk_path).await?;
         }
 
