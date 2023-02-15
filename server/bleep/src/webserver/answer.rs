@@ -542,10 +542,10 @@ with a single number indicating the index of the snippet in the list. \
 If none of the snippets are relevant, reply with \"0\". Do NOT return a non-numeric answer.
 
 Q:What icon do we use to clear search history?
-A:3
+Index:3
 
 Q:{}
-A:",
+Index:",
             snippets.len(),
             self.query,
         );
@@ -563,10 +563,11 @@ Do NOT include code that is not in the file. If the file doesn't contain enough 
 Do NOT try to make up an answer. Format your response in GitHub markdown with code blocks annotated with programming language.
 Question: {}
 =========
+Path: {}
 File: {}
 =========
 Answer in GitHub Markdown:",
-            self.query, snippet.text,
+            self.query, snippet.relative_path, snippet.text,
         );
         prompt
     }
