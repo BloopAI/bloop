@@ -9,10 +9,10 @@ use axum::{
     response::{sse::Event, IntoResponse, Sse},
     Extension,
 };
-use futures::{Stream, StreamExt, TryStreamExt};
+use futures::{Stream, StreamExt};
 use thiserror::Error;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 use utoipa::ToSchema;
 
 use crate::{
@@ -68,7 +68,7 @@ pub struct Snippet {
 }
 
 fn default_limit() -> u64 {
-    50
+    25
 }
 
 fn default_user_id() -> String {
@@ -240,39 +240,29 @@ async fn _handle(
         info!("Semantic search returned {} snippets", snippets.len());
     }
 
-    let answer_api_host = format!("{}/q", app.config.answer_api_url);
-    let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target, 5);
+    // score each result
+    let snippet_scores = snippets
+        .iter()
+        .filter_map(|snippet| semantic.score(&params.q, snippet.text.as_str()).ok())
+        .collect::<Vec<f32>>();
 
-    let select_prompt = answer_api_client.build_select_prompt(&snippets);
+    tracing::info!("{:?}", &snippets);
+    tracing::info!("{:?}", &snippet_scores);
 
-    analytics_event
-        .stages
-        .push(Stage::new("select prompt", &select_prompt).with_time(stop_watch.lap()));
-
-    let relevant_snippet_index = answer_api_client
-        .select_snippet(&select_prompt)
-        .await?
-        .trim()
-        .to_string()
-        .clone();
-
-    info!("Relevant snippet index: {}", &relevant_snippet_index);
-
-    let mut relevant_snippet_index = relevant_snippet_index
-        .parse::<usize>()
-        .map_err(Error::internal)?;
+    let relevant_snippet_index = snippet_scores
+        .iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| a.total_cmp(b))
+        .map(|(index, _)| index)
+        .unwrap();
 
     analytics_event.stages.push(
         Stage::new("relevant snippet index", &relevant_snippet_index).with_time(stop_watch.lap()),
     );
 
-    if relevant_snippet_index == 0 {
-        return Err(Error::internal(
-            "None of the snippets help answer the question",
-        ));
-    }
+    let answer_api_host = format!("{}/q", app.config.answer_api_url);
+    let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target);
 
-    relevant_snippet_index -= 1; // return to 0-indexing
     let relevant_snippet = snippets
         .get(relevant_snippet_index)
         .ok_or_else(|| Error::internal("answer-api returned out-of-bounds index"))?;
@@ -396,14 +386,10 @@ struct AnswerAPIClient<'s> {
     host: String,
     query: String,
     semantic: &'s Semantic,
-    max_attempts: usize,
 }
 
 #[derive(Error, Debug)]
 enum AnswerAPIError {
-    #[error("max retry attempts reached {0}")]
-    MaxAttemptsReached(usize),
-
     #[error("event source error {0}")]
     EventSource(#[from] reqwest_eventsource::Error),
 
@@ -428,18 +414,12 @@ impl From<AnswerAPIError> for Error {
 }
 
 impl Semantic {
-    fn build_answer_api_client<'s>(
-        &'s self,
-        host: &str,
-        query: &str,
-        max_attempts: usize,
-    ) -> AnswerAPIClient<'s> {
+    fn build_answer_api_client<'s>(&'s self, host: &str, query: &str) -> AnswerAPIClient<'s> {
         AnswerAPIClient {
             client: reqwest::Client::new(),
             host: host.to_owned(),
             query: query.to_owned(),
             semantic: self,
-            max_attempts,
         }
     }
 }
@@ -489,70 +469,9 @@ impl<'s> AnswerAPIClient<'s> {
                 Err(e) => Err(AnswerAPIError::EventSource(e)),
             }))
     }
-
-    async fn send_until_success(
-        &self,
-        prompt: &str,
-        max_tokens: u32,
-        temperature: f32,
-    ) -> Result<String, AnswerAPIError> {
-        for attempt in 0..self.max_attempts {
-            let result = self
-                .send(prompt, max_tokens, temperature)
-                .await?
-                .try_collect::<String>()
-                .await;
-
-            match result {
-                Ok(r) => return Ok(r),
-                Err(e) => warn!(%attempt, "answer-api returned {e:?} ... retrying"),
-            }
-        }
-        Err(AnswerAPIError::MaxAttemptsReached(self.max_attempts))
-    }
 }
 
-const DELIMITER: &str = "=========";
 impl<'a> AnswerAPIClient<'a> {
-    fn build_select_prompt(&self, snippets: &[Snippet]) -> String {
-        // snippets are 1-indexed so we can use index 0 where no snippets are relevant
-        let mut prompt = snippets
-            .iter()
-            .enumerate()
-            .map(|(i, snippet)| {
-                format!(
-                    "Repository: {}\nPath: {}\nLanguage: {}\nIndex: {}\n\n{}\n{DELIMITER}\n",
-                    snippet.repo_name,
-                    snippet.relative_path,
-                    snippet.lang,
-                    i + 1,
-                    snippet.text
-                )
-            })
-            .collect::<String>();
-
-        // the example question/answer pair helps reinforce that we want exactly a single
-        // number in the output, with no spaces or punctuation such as fullstops.
-        prompt += &format!(
-            "Above are {} code snippets separated by \"{DELIMITER}\". \
-Your job is to select the snippet that best answers the question. Reply \
-with a single number indicating the index of the snippet in the list. \
-If none of the snippets are relevant, reply with \"0\". Do NOT return a non-numeric answer.
-
-Q:What icon do we use to clear search history?
-Index:3
-
-Q:{}
-Index:",
-            snippets.len(),
-            self.query,
-        );
-
-        let tokens_used = self.semantic.gpt2_token_count(&prompt);
-        debug!(%tokens_used, "select prompt token count");
-        prompt
-    }
-
     fn build_explain_prompt(&self, snippet: &Snippet) -> String {
         let prompt = format!(
             "You are an AI assistant for a repo. You are given an extract from a file and a question. \
@@ -568,16 +487,6 @@ Answer in GitHub Markdown:",
             self.query, snippet.relative_path, snippet.text,
         );
         prompt
-    }
-
-    async fn select_snippet(&self, prompt: &str) -> Result<String> {
-        self.send_until_success(prompt, 1, 0.0).await.map_err(|e| {
-            sentry::capture_message(
-                format!("answer-api failed to respond: {e}").as_str(),
-                sentry::Level::Error,
-            );
-            Error::new(ErrorKind::UpstreamService, e.to_string())
-        })
     }
 
     async fn explain_snippet(
