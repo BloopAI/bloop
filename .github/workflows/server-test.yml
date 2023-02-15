@@ -35,7 +35,7 @@ jobs:
         run: nix develop --no-update-lock-file -c bash -c 'cargo --locked fmt -p bleep -- --check'
 
       - name: Clippy
-        run: nix develop --no-update-lock-file -c bash -c 'cargo --locked clippy -p bleep --all-features --manifest-path Cargo.toml --release'
+        run: nix develop --no-update-lock-file -c bash -c 'cargo --locked clippy -p bleep --all-features --release'
 
   test:
     runs-on: nixos
