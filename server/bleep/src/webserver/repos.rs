@@ -147,6 +147,7 @@ pub(super) async fn delete_by_id(
     match app.repo_pool.get_mut(&reporef) {
         Some(mut result) => {
             result.value_mut().delete();
+            app.write_index().queue_sync_and_index(vec![reporef]);
             Ok(json(ReposResponse::Deleted))
         }
         None => Err(Error::new(ErrorKind::NotFound, "Can't find repository")),
