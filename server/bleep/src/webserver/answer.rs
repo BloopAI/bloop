@@ -210,7 +210,7 @@ async fn _handle(
                 .or_insert_with(Vec::new);
         }
 
-        if chunk_ranges_by_file.get(path).unwrap().len() <= 2 {
+        if chunk_ranges_by_file.get(path).unwrap().len() <= 4 {
             // check if line ranges of any added chunk overlap with current chunk
             let any_overlap = chunk_ranges_by_file
                 .get(path)
@@ -602,7 +602,7 @@ Answer in GitHub Markdown:",
         // do not let the completion cross 500 tokens
         let max_tokens = max_tokens.clamp(1, 100);
         info!(%max_tokens, "clamping max tokens");
-        self.send(prompt, max_tokens as u32, 0.9,"openai").await
+        self.send(prompt, max_tokens as u32, 0.9,"anthropic").await
     }
 }
 
