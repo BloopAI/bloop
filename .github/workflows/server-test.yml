@@ -34,6 +34,9 @@ jobs:
       - name: Tests
         run: nix develop --no-update-lock-file -c bash -c 'cargo --locked test -p bleep --all-features --release'
 
+      - name: Sccache stats
+        run: sccache --show-stats
+
   # benchmark:
   #   runs-on: [self-hosted, benchmark]
   #   steps:
