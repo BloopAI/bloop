@@ -33,6 +33,7 @@ pub mod api {
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Request {
         pub prompt: String,
+        pub provider: String,
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
     }
@@ -75,6 +76,10 @@ fn default_user_id() -> String {
     String::from("test_user")
 }
 
+fn default_llm_provider() -> String {
+    String::from("anthropic")
+}
+
 #[derive(Debug, serde::Deserialize)]
 pub struct Params {
     pub q: String,
@@ -82,6 +87,8 @@ pub struct Params {
     pub limit: u64,
     #[serde(default = "default_user_id")]
     pub user_id: String,
+    #[serde(default = "default_llm_provider")]
+    pub provider: String,
 }
 
 #[derive(serde::Serialize, ToSchema, Debug)]
@@ -243,7 +250,8 @@ async fn _handle(
     }
 
     let answer_api_host = format!("{}/q", app.config.answer_api_url);
-    let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target, 5);
+    let answer_api_client =
+        semantic.build_answer_api_client(answer_api_host.as_str(), target, &params.provider, 5);
 
     let select_prompt = answer_api_client.build_select_prompt(&snippets);
 
@@ -398,6 +406,7 @@ struct AnswerAPIClient<'s> {
     host: String,
     query: String,
     semantic: &'s Semantic,
+    provider: String,
     max_attempts: usize,
 }
 
@@ -434,12 +443,14 @@ impl Semantic {
         &'s self,
         host: &str,
         query: &str,
+        provider: &str,
         max_attempts: usize,
     ) -> AnswerAPIClient<'s> {
         AnswerAPIClient {
             client: reqwest::Client::new(),
             host: host.to_owned(),
             query: query.to_owned(),
+            provider: provider.to_owned(),
             semantic: self,
             max_attempts,
         }
@@ -457,6 +468,7 @@ impl<'s> AnswerAPIClient<'s> {
             reqwest_eventsource::EventSource::new(self.client.post(self.host.as_str()).json(
                 &api::Request {
                     prompt: prompt.to_string(),
+                    provider: self.provider.clone(),
                     max_tokens: Some(max_tokens),
                     temperature: Some(temperature),
                 },
