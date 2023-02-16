@@ -9,7 +9,7 @@ export type ItemProps = {
   text: string;
   href?: string;
   icon?: React.ReactElement;
-  onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   onDelete?: () => void;
   type: MenuItemType;
   disabled?: boolean;
@@ -29,7 +29,7 @@ const Item = ({
   const [selected, setSelected] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
+  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     if (disabled) {
       return;
     }

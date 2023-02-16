@@ -9,7 +9,7 @@ export const MenuListItemType = { ...MenuItemType, ...ExtendedMenuItemType };
 
 export type ContextMenuLinkItem = {
   type: MenuItemType.LINK;
-  onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   icon?: React.ReactElement;
   text?: string;
   href?: string;
@@ -24,7 +24,7 @@ export type ContextMenuItem =
       icon?: React.ReactElement;
       text?: string;
       type: MenuItemType | ExtendedMenuItemType;
-      onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
+      onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
       annotations?: number;
       removable?: boolean;
       onDelete?: () => void;

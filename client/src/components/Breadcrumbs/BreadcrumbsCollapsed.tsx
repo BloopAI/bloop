@@ -16,7 +16,6 @@ const BreadcrumbsCollapsed = ({ items }: Props) => {
         text: part.label,
         onClick: part?.onClick,
         type: MenuItemType.LINK,
-        href: part?.link || '#',
       })),
     [items],
   );
