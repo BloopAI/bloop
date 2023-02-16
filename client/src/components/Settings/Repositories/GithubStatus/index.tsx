@@ -70,8 +70,8 @@ const GithubStatus = ({
               variant="secondary"
               size="small"
               onClick={() => {
-                handleClick();
                 openLink(loginUrl);
+                handleClick();
               }}
               disabled={buttonClicked || !loginUrl}
             >

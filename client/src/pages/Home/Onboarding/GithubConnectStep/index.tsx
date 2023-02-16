@@ -14,7 +14,7 @@ import { AnalyticsContext } from '../../../../context/analyticsContext';
 
 type Props = {
   handleNext: (e?: any, skipOne?: boolean) => void;
-  handleBack: (e: any) => void;
+  handleBack?: (e: any) => void;
 };
 
 const Step3 = ({ handleNext, handleBack }: Props) => {
@@ -68,22 +68,15 @@ const Step3 = ({ handleNext, handleBack }: Props) => {
     }
     if (showRelaunch && !authenticationFailed) {
       return (
-        <a
-          href={loginUrl}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="w-full flex flex-col"
+        <Button
+          variant="secondary"
+          onClick={() => {
+            handleClick();
+            callRelaunch();
+          }}
         >
-          <Button
-            variant="secondary"
-            onClick={() => {
-              handleClick();
-              callRelaunch();
-            }}
-          >
-            Relaunch GitHub authentication
-          </Button>
-        </a>
+          Relaunch GitHub authentication
+        </Button>
       );
     }
     if (buttonClicked) {
@@ -159,7 +152,7 @@ const Step3 = ({ handleNext, handleBack }: Props) => {
           </>
         )}
       </div>
-      <GoBackButton handleBack={handleBack} />
+      {handleBack ? <GoBackButton handleBack={handleBack} /> : null}
       {tokenExpireIn ? (
         <TextField
           value={`Code expires in ${tokenExpireIn}`}

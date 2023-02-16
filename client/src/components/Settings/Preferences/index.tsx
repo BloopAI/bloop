@@ -1,8 +1,6 @@
 import { useCallback, useState, ChangeEvent, useContext } from 'react';
 import SettingsText from '../SettingsText';
-import { CheckIcon } from '../../../icons';
 import SettingsRow from '../SettingsRow';
-import Checkbox from '../../Checkbox';
 import { AnalyticsContext } from '../../../context/analyticsContext';
 import {
   IS_ANALYTICS_ALLOWED_KEY,
@@ -11,12 +9,17 @@ import {
 import Button from '../../Button';
 import SeparateOnboardingStep from '../../SeparateOnboardingStep';
 import RemoteServicesStep from '../../../pages/Home/Onboarding/RemoteServicesStep';
+import { UIContext } from '../../../context/uiContext';
+import GithubConnectStep from '../../../pages/Home/Onboarding/GithubConnectStep';
+import GithubReposStep from '../../../pages/Home/Onboarding/GithubReposStep';
 
 const Preferences = () => {
   const [theme, setTheme] = useState('dark');
   const { isAnalyticsAllowed, setIsAnalyticsAllowed } =
     useContext(AnalyticsContext);
+  const { isGithubConnected } = useContext(UIContext);
   const [isModalOpen, setModalOpen] = useState(false);
+  const [step, setStep] = useState(0);
 
   const onThemeChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setTheme(e.target.value);
@@ -134,7 +137,13 @@ const Preferences = () => {
             }`}
           />
           <div className="flex-1">
-            <Button variant="secondary" onClick={() => setModalOpen(true)}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setModalOpen(true);
+                setStep(0);
+              }}
+            >
               Change
             </Button>
           </div>
@@ -144,7 +153,17 @@ const Preferences = () => {
         isVisible={isModalOpen}
         onClose={() => setModalOpen(false)}
       >
-        <RemoteServicesStep handleNext={() => setModalOpen(false)} />
+        {step === 0 ? (
+          <RemoteServicesStep
+            handleNext={() =>
+              isGithubConnected ? setModalOpen(false) : setStep(1)
+            }
+          />
+        ) : step === 1 ? (
+          <GithubConnectStep handleNext={() => setStep(2)} />
+        ) : (
+          <GithubReposStep handleNext={() => setModalOpen(false)} />
+        )}
       </SeparateOnboardingStep>
     </div>
   );
