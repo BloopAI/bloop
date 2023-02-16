@@ -9,6 +9,7 @@ import { MoreHorizontal } from '../../../icons';
 import { getFileManagerName, isWindowsPath, splitPath } from '../../../utils';
 import { DeviceContext } from '../../../context/deviceContext';
 import { MenuItemType } from '../../../types/general';
+import { FileTreeFileType } from '../../../types';
 
 type Props = {
   snippets: Snippet[];
@@ -76,7 +77,13 @@ const CodeBlockSearch = ({
       <div className="w-full flex justify-between bg-gray-800 py-1 px-3 h-11.5 border-b border-gray-700 gap-2 select-none">
         <div className="flex items-center gap-2 max-w-[calc(100%-120px)] w-full">
           <FileIcon filename={filePath} />
-          <BreadcrumbsPath path={filePath} repo={repoName} />
+          <BreadcrumbsPath
+            path={filePath}
+            repo={repoName}
+            onClick={(path, type) =>
+              type === FileTreeFileType.FILE ? handleMouseUp() : {}
+            }
+          />
         </div>
         <div className="flex gap-2 items-center text-gray-500 flex-shrink-0">
           {/*<div className="flex items-center gap-2">*/}
