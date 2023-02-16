@@ -32,7 +32,7 @@ where
         &configuration.analytics_key,
         &configuration.analytics_data_plane,
     ) {
-        initialize_rudder_analytics(key.to_owned(), data_plane.to_owned())
+        initialize_rudder_analytics(key.to_owned(), data_plane.to_owned());
     }
 
     let app = app.handle();

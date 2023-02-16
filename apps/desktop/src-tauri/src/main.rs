@@ -79,7 +79,7 @@ fn initialize_sentry(dsn: String, environment: String) {
     _ = SENTRY.set(guard);
 }
 
-pub async fn initialize_rudder_analytics(key: String, data_plane: String) {
+pub fn initialize_rudder_analytics(key: String, data_plane: String) {
     if analytics::RudderHub::get().is_some() {
         info!("analytics has already been initialized");
         return;
