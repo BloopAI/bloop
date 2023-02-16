@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use super::{json, EndpointError, ErrorKind};
+use super::prelude::*;
 use crate::{
     collector::{BytesFilterCollector, FrequencyCollector},
     indexes::{
@@ -15,11 +15,8 @@ use crate::{
     snippet::{HighlightedString, SnippedFile, Snipper},
 };
 
-use anyhow::Result;
 use async_trait::async_trait;
-use axum::{
-    extract::Query, http::StatusCode, response::IntoResponse as IntoAxumResponse, Extension,
-};
+use axum::{extract::Query, response::IntoResponse as IntoAxumResponse, Extension};
 use regex::{
     bytes::{Regex as ByteRegex, RegexBuilder as ByteRegexBuilder},
     Regex,
@@ -82,12 +79,8 @@ impl ApiQuery {
         self.page_size * self.page
     }
 
-    async fn query(
-        self: Arc<Self>,
-        indexes: Arc<Indexes>,
-    ) -> Result<QueryResponse, EndpointError<'static>> {
-        let queries =
-            parser::parse(&self.q).map_err(|e| EndpointError::user(e.to_string().into()))?;
+    async fn query(self: Arc<Self>, indexes: Arc<Indexes>) -> Result<QueryResponse> {
+        let queries = parser::parse(&self.q).map_err(Error::user)?;
 
         // FIXME: this for-loop prevents us from ever producing heterogenous
         // results.
@@ -118,26 +111,26 @@ impl ApiQuery {
                 return ContentReader
                     .execute(&indexes.file, &queries, &self)
                     .await
-                    .map_err(|e| EndpointError::internal(e.to_string().into()));
+                    .map_err(Error::internal);
             } else if RepoReader.query_matches(q) {
                 return RepoReader
                     .execute(&indexes.repo, &queries, &self)
                     .await
-                    .map_err(|e| EndpointError::internal(e.to_string().into()));
+                    .map_err(Error::internal);
             } else if FileReader.query_matches(q) {
                 return FileReader
                     .execute(&indexes.file, &queries, &self)
                     .await
-                    .map_err(|e| EndpointError::internal(e.to_string().into()));
+                    .map_err(Error::internal);
             } else if OpenReader.query_matches(q) {
                 return OpenReader
                     .execute(&indexes.file, &queries, &self)
                     .await
-                    .map_err(|e| EndpointError::internal(e.to_string().into()));
+                    .map_err(Error::internal);
             }
         }
 
-        return Err(EndpointError::user("mangled query".into()));
+        Err(Error::user("mangled query"))
     }
 }
 
@@ -155,12 +148,7 @@ pub(super) async fn handle(
     Query(api_params): Query<ApiQuery>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> impl IntoAxumResponse {
-    let response = Arc::new(api_params).query(indexes).await;
-    match response {
-        Ok(r) => (StatusCode::OK, json(r)),
-        Err(e) if e.kind == ErrorKind::User => (StatusCode::BAD_REQUEST, json(e)),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, json(e)),
-    }
+    Arc::new(api_params).query(indexes).await.map(json)
 }
 
 #[derive(Serialize, ToSchema)]
@@ -316,7 +304,7 @@ pub trait ExecuteQuery {
         indexer: &Indexer<Self::Index>,
         queries: &[parser::Query<'_>],
         q: &ApiQuery,
-    ) -> Result<QueryResponse>;
+    ) -> anyhow::Result<QueryResponse>;
 }
 
 #[async_trait]
@@ -328,7 +316,7 @@ impl ExecuteQuery for ContentReader {
         indexer: &Indexer<Self::Index>,
         queries: &[parser::Query<'_>],
         q: &ApiQuery,
-    ) -> Result<QueryResponse> {
+    ) -> anyhow::Result<QueryResponse> {
         // queries that produce content results
         let relevant_queries = queries.iter().filter(|q| self.query_matches(q));
 
@@ -437,7 +425,7 @@ impl ExecuteQuery for FileReader {
         indexer: &Indexer<File>,
         queries: &[parser::Query<'_>],
         q: &ApiQuery,
-    ) -> Result<QueryResponse> {
+    ) -> anyhow::Result<QueryResponse> {
         let (filter_regexes, byte_filter_regexes): (Vec<_>, Vec<_>) = queries
             .iter()
             .filter(|q| self.query_matches(q))
@@ -518,7 +506,7 @@ impl ExecuteQuery for RepoReader {
         indexer: &Indexer<Self::Index>,
         queries: &[parser::Query<'_>],
         q: &ApiQuery,
-    ) -> Result<QueryResponse> {
+    ) -> anyhow::Result<QueryResponse> {
         let (filter_regexes, byte_filter_regexes): (Vec<_>, Vec<_>) = queries
             .iter()
             .filter(|q| self.query_matches(q))
@@ -591,7 +579,7 @@ impl ExecuteQuery for OpenReader {
         indexer: &Indexer<Self::Index>,
         queries: &[parser::Query<'_>],
         _q: &ApiQuery,
-    ) -> Result<QueryResponse> {
+    ) -> anyhow::Result<QueryResponse> {
         #[derive(Debug)]
         struct Directive<'a> {
             relative_path: &'a str,

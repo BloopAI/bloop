@@ -60,6 +60,7 @@ const SearchPage = () => {
     searchQuery: nlSearchQuery,
     data: nlData,
     loading: nlLoading,
+    query: nlQuery,
   } = useSearch<NLSearchResponse>();
   const { updateCurrentTabName } = useContext(TabsContext);
 
@@ -203,12 +204,13 @@ const SearchPage = () => {
             loading={nlLoading}
             resultsData={nlData}
             handleRetry={handleRetry}
+            nlQuery={nlQuery}
           />
         );
       default:
         return <HomePage />;
     }
-  }, [data, loading, nlLoading, nlData, handleRetry, navigatedItem]);
+  }, [data, loading, nlLoading, nlData, handleRetry, navigatedItem, nlQuery]);
 
   return shouldShowWelcome ? (
     <div className="text-gray-200">

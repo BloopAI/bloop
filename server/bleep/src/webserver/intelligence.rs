@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::{json, EndpointError, ErrorKind};
+use super::prelude::*;
 use crate::{
     indexes::{reader::ContentDocument, Indexes},
     intelligence::{code_navigation, NodeKind, ScopeGraph},
@@ -10,7 +10,7 @@ use crate::{
     text_range::TextRange,
 };
 
-use axum::{extract::Query, http::StatusCode, response::IntoResponse, Extension};
+use axum::{extract::Query, response::IntoResponse, Extension};
 use petgraph::graph::NodeIndex;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
@@ -72,111 +72,6 @@ pub(super) struct SymbolOccurrence {
 
     /// A few lines of surrounding context
     pub(super) snippet: Snippet,
-}
-
-impl TokenInfoRequest {
-    async fn handle(
-        &self,
-        indexes: Arc<Indexes>,
-    ) -> Result<TokenInfoResponse, EndpointError<'static>> {
-        let repo_ref = &self
-            .repo_ref
-            .parse::<RepoRef>()
-            .map_err(|err| EndpointError::user(err.to_string().into()))?;
-
-        let content = indexes
-            .file
-            .by_path(repo_ref, &self.relative_path)
-            .await
-            .map_err(|e| EndpointError {
-                kind: ErrorKind::User,
-                message: e.to_string().into(),
-            })?;
-
-        let scope_graph = match content.symbol_locations {
-            SymbolLocations::TreeSitter(ref graph) => graph,
-            _ => {
-                return Err(EndpointError {
-                    kind: ErrorKind::User,
-                    message: "Intelligence is unavailable for this language".into(),
-                })
-            }
-        };
-
-        let node = scope_graph.node_by_range(self.start, self.end);
-
-        let idx = match node {
-            None => {
-                return Err(EndpointError {
-                    kind: ErrorKind::User,
-                    message: "provided range is not a valid token".into(),
-                })
-            }
-            Some(idx) => idx,
-        };
-
-        let src = &content.content;
-        let current_file = &content.relative_path;
-        let kind = scope_graph.symbol_name_of(idx);
-        let lang = content.lang.as_deref();
-        let all_docs = indexes.file.by_repo(repo_ref, lang).await;
-
-        match &scope_graph.graph[idx] {
-            // we are already at a def
-            // - find refs from the current file
-            // - find refs from other files
-            NodeKind::Def(d) => {
-                // fetch local references with scope-graphs
-                let local_references = handle_definition_local(scope_graph, idx, &content);
-
-                // fetch repo-wide references with trivial search, only if the def is
-                // a top-level def (typically functions, ADTs, consts)
-                let repo_wide_references = if scope_graph.is_top_level(idx) {
-                    let token = d.name(src.as_bytes());
-                    handle_definition_repo_wide(token, kind, current_file, &all_docs)
-                } else {
-                    vec![]
-                };
-
-                // merge the two
-                let references = merge([local_references], repo_wide_references);
-
-                Ok(TokenInfoResponse::Definition { references })
-            }
-
-            // we are at a reference:
-            // - find def from the current file
-            // - find defs from other files
-            // - find refs from the current file
-            // - find refs from other files
-            //
-            // the ordering here prefers occurrences from the current file, over occurrences
-            // from other files.
-            NodeKind::Ref(r) => {
-                // fetch local (defs, refs) with scope-graphs
-                let (local_definitions, local_references) =
-                    handle_reference_local(scope_graph, idx, &content);
-
-                // fetch repo-wide (defs, refs) with trivial search
-                let token = r.name(src.as_bytes());
-                let (repo_wide_definitions, repo_wide_references) =
-                    handle_reference_repo_wide(token, kind, current_file, &all_docs);
-
-                // merge the two
-                let definitions = merge([local_definitions], repo_wide_definitions);
-                let references = merge([local_references], repo_wide_references);
-
-                Ok(TokenInfoResponse::Reference {
-                    definitions,
-                    references,
-                })
-            }
-            _ => Err(EndpointError {
-                kind: ErrorKind::User,
-                message: "provided range is not eligible for intelligence".into(),
-            }),
-        }
-    }
 }
 
 fn handle_definition_local(
@@ -335,12 +230,86 @@ fn merge(
 pub(super) async fn handle(
     Query(payload): Query<TokenInfoRequest>,
     Extension(indexes): Extension<Arc<Indexes>>,
-) -> impl IntoResponse {
-    let response = payload.handle(indexes).await;
-    match response {
-        Ok(r) => (StatusCode::OK, json(r)),
-        Err(e) if e.kind == ErrorKind::User => (StatusCode::BAD_REQUEST, json(e)),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, json(e)),
+) -> Result<impl IntoResponse> {
+    let repo_ref = &payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
+
+    let content = indexes
+        .file
+        .by_path(repo_ref, &payload.relative_path)
+        .await
+        .map_err(Error::user)?;
+
+    let scope_graph = match content.symbol_locations {
+        SymbolLocations::TreeSitter(ref graph) => graph,
+        _ => return Err(Error::user("Intelligence is unavailable for this language")),
+    };
+
+    let node = scope_graph.node_by_range(payload.start, payload.end);
+
+    let idx = match node {
+        None => return Err(Error::user("provided range is not a valid token")),
+        Some(idx) => idx,
+    };
+
+    let src = &content.content;
+    let current_file = &content.relative_path;
+    let kind = scope_graph.symbol_name_of(idx);
+    let lang = content.lang.as_deref();
+    let all_docs = indexes.file.by_repo(repo_ref, lang).await;
+
+    match &scope_graph.graph[idx] {
+        // we are already at a def
+        // - find refs from the current file
+        // - find refs from other files
+        NodeKind::Def(d) => {
+            // fetch local references with scope-graphs
+            let local_references = handle_definition_local(scope_graph, idx, &content);
+
+            // fetch repo-wide references with trivial search, only if the def is
+            // a top-level def (typically functions, ADTs, consts)
+            let repo_wide_references = if scope_graph.is_top_level(idx) {
+                let token = d.name(src.as_bytes());
+                handle_definition_repo_wide(token, kind, current_file, &all_docs)
+            } else {
+                vec![]
+            };
+
+            // merge the two
+            let references = merge([local_references], repo_wide_references);
+
+            Ok(json(TokenInfoResponse::Definition { references }))
+        }
+
+        // we are at a reference:
+        // - find def from the current file
+        // - find defs from other files
+        // - find refs from the current file
+        // - find refs from other files
+        //
+        // the ordering here prefers occurrences from the current file, over occurrences
+        // from other files.
+        NodeKind::Ref(r) => {
+            // fetch local (defs, refs) with scope-graphs
+            let (local_definitions, local_references) =
+                handle_reference_local(scope_graph, idx, &content);
+
+            // fetch repo-wide (defs, refs) with trivial search
+            let token = r.name(src.as_bytes());
+            let (repo_wide_definitions, repo_wide_references) =
+                handle_reference_repo_wide(token, kind, current_file, &all_docs);
+
+            // merge the two
+            let definitions = merge([local_definitions], repo_wide_definitions);
+            let references = merge([local_references], repo_wide_references);
+
+            Ok(json(TokenInfoResponse::Reference {
+                definitions,
+                references,
+            }))
+        }
+        _ => Err(Error::user(
+            "provided range is not eligible for intelligence",
+        )),
     }
 }
 

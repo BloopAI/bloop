@@ -219,7 +219,7 @@ export const SemanticSearchSnippets = () => {
             lang: 'JavaScript',
           },
         ]}
-        answer="Some nice answer"
+        nlQuery="Some nice answer"
         onClick={(e) => {
           // e.preventDefault();
         }}

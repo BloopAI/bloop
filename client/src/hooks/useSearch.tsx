@@ -12,6 +12,7 @@ interface Status<T> {
   loading: boolean;
   error?: Error;
   data?: T;
+  query?: string;
 }
 
 interface SearchResponse<T> extends Status<T> {
@@ -30,7 +31,7 @@ export const useSearch = <T,>(
   const [status, setStatus] = useState<Status<T>>({
     loading: false,
   });
-  const { deviceId } = useContext(DeviceContext);
+  const { deviceId, apiUrl } = useContext(DeviceContext);
 
   const { setLastQueryTime, searchType } = useContext(SearchContext);
   const { trackSearch } = useAnalytics();
@@ -49,16 +50,27 @@ export const useSearch = <T,>(
 
     switch (currentSearchType) {
       case SearchType.NL:
-        nlSearchApiCall(query, deviceId)
-          .then((data) => {
-            const queryTime = Date.now() - startTime;
-            setLastQueryTime(queryTime);
-            trackSearch(queryTime);
-            setStatus({ loading: false, data: data as any });
-          })
-          .catch((error: Error) => {
-            setStatus({ loading: false, error });
+        const eventSource = new EventSource(
+          `${apiUrl.replace(
+            'https:',
+            '',
+          )}/answer?q=${query}&user_id=${deviceId}`,
+        );
+        eventSource.onmessage = (ev) => {
+          const queryTime = Date.now() - startTime;
+          setLastQueryTime(queryTime);
+          trackSearch(queryTime);
+          setStatus({ loading: false, data: JSON.parse(ev.data), query });
+          // close connection after first message containing JSON, the rest will be accepted in Answer comp
+          eventSource.close();
+        };
+        eventSource.onerror = (err) => {
+          console.error('EventSource failed:', err);
+          setStatus({
+            loading: false,
+            error: { name: 'Error', message: 'Oops' },
           });
+        };
         break;
       case SearchType.REGEX:
         searchApiCall(query, page, undefined, globalRegex)

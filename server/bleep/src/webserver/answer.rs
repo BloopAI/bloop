@@ -1,46 +1,74 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
-use axum::{extract::Query, response::IntoResponse, Extension, Json};
-use reqwest::StatusCode;
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    response::{sse::Event, IntoResponse, Sse},
+    Extension,
+};
+use futures::{Stream, StreamExt, TryStreamExt};
+use secrecy::ExposeSecret;
 use thiserror::Error;
+use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 use utoipa::ToSchema;
 
 use crate::{
-    analytics::QueryEvent, indexes::reader::ContentDocument, query::parser, semantic::Semantic,
-    state::RepoRef, Application,
+    analytics::{QueryEvent, Stage},
+    env::Feature,
+    indexes::reader::ContentDocument,
+    query::parser,
+    remotes::{self, BackendCredential},
+    semantic::Semantic,
+    state::{Backend, RepoRef},
+    Application,
 };
 
-use super::ErrorKind;
+use super::prelude::*;
 
 /// Mirrored from `answer_api/lib.rs` to avoid private dependency.
 pub mod api {
+    use serde::Deserialize;
+
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Request {
-        pub query: String,
-        pub snippets: Vec<Snippet>,
-        pub user_id: String,
+        pub prompt: String,
+        pub max_tokens: Option<u32>,
+        pub temperature: Option<f32>,
     }
 
-    #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
-    pub struct Snippet {
-        pub lang: String,
-        pub repo_name: String,
-        pub repo_ref: String,
-        pub relative_path: String,
-        pub text: String,
-        pub start_line: usize,
-        pub end_line: usize,
-        pub start_byte: usize,
-        pub end_byte: usize,
-        pub score: f32,
+    #[derive(thiserror::Error, Debug, Deserialize)]
+    pub enum Error {
+        #[error("bad OpenAI request")]
+        BadOpenAiRequest,
     }
 
-    #[derive(Debug, serde::Serialize, serde::Deserialize)]
-    pub struct Response {
-        pub answer: String,
-        pub answer_path: String,
-    }
+    pub type Result = std::result::Result<String, Error>;
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct Request {
+    pub query: String,
+    pub snippets: Vec<Snippet>,
+    pub user_id: String,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+pub struct Snippet {
+    pub lang: String,
+    pub repo_name: String,
+    pub repo_ref: String,
+    pub relative_path: String,
+    pub text: String,
+    pub start_line: usize,
+    pub end_line: usize,
+    pub start_byte: usize,
+    pub end_byte: usize,
+    pub score: f32,
 }
 
 fn default_limit() -> u64 {
@@ -60,35 +88,94 @@ pub struct Params {
     pub user_id: String,
 }
 
-#[derive(serde::Serialize, ToSchema)]
+#[derive(serde::Serialize, ToSchema, Debug)]
 pub struct AnswerResponse {
     pub user_id: String,
     pub query_id: uuid::Uuid,
-    pub snippets: Vec<api::Snippet>,
-    pub selection: api::Response,
+    pub snippets: Vec<Snippet>,
+    pub answer_path: String,
+}
+
+impl From<AnswerResponse> for super::Response<'static> {
+    fn from(res: AnswerResponse) -> super::Response<'static> {
+        super::Response::Answer(res)
+    }
 }
 
 const SNIPPET_COUNT: usize = 13;
 
-pub async fn handle(
+pub(super) struct AnswerState {
+    client: reqwest::Client,
+}
+
+impl Default for AnswerState {
+    fn default() -> Self {
+        Self {
+            client: reqwest::Client::builder()
+                .cookie_store(true)
+                .build()
+                // This should never fail, the only default properties we change are enabling
+                // cookies.
+                .unwrap(),
+        }
+    }
+}
+
+pub(super) async fn handle(
     Query(params): Query<Params>,
+    State(state): State<Arc<AnswerState>>,
     Extension(app): Extension<Application>,
-) -> Result<impl IntoResponse, impl IntoResponse> {
+) -> Result<impl IntoResponse> {
+    // create a new analytics event for this query
+    let event = Arc::new(RwLock::new(QueryEvent::default()));
+
+    // populate analytics event
+    let response = _handle(&state, params, app.clone(), Arc::clone(&event)).await;
+
+    if response.is_err() {
+        // send event to rudderstack
+        let event = event.read().await;
+        app.track_query(&event);
+    } else {
+        // the analytics event is fired when the stream is consumed
+    }
+
+    response
+}
+
+async fn _handle(
+    state: &AnswerState,
+    params: Params,
+    app: Application,
+    event: Arc<RwLock<QueryEvent>>,
+) -> Result<impl IntoResponse> {
+    let query_id = uuid::Uuid::new_v4();
+    let mut stop_watch = StopWatch::start();
+
     let semantic = app
         .semantic
-        .as_ref()
-        .ok_or_else(|| super::error(ErrorKind::Configuration, "Qdrant not configured"))?;
+        .clone()
+        .ok_or_else(|| Error::new(ErrorKind::Configuration, "Qdrant not configured"))?;
 
-    let query =
-        parser::parse_nl(&params.q).map_err(|e| super::error(ErrorKind::User, e.to_string()))?;
+    let mut analytics_event = event.write().await;
+
+    analytics_event.user_id = params.user_id.clone();
+    analytics_event.query_id = query_id;
+    analytics_event.overlap_strategy = semantic.overlap_strategy();
+
+    analytics_event
+        .stages
+        .push(Stage::new("user query", &params.q).with_time(stop_watch.lap()));
+
+    let query = parser::parse_nl(&params.q).map_err(Error::user)?;
     let target = query
         .target()
-        .ok_or_else(|| super::error(ErrorKind::User, "missing search target".to_owned()))?;
+        .ok_or_else(|| Error::user("missing search target"))?;
 
-    let all_snippets: Vec<api::Snippet> = semantic
+    let all_snippets: Vec<Snippet> = semantic
         .search(&query, 4 * SNIPPET_COUNT as u64) // heuristic
         .await
-        .map_err(|e| super::error(ErrorKind::Internal, e.to_string()))?
+        .map_err(Error::internal)?
         .into_iter()
         .map(|r| {
             use qdrant_client::qdrant::{value::Kind, Value};
@@ -102,7 +189,7 @@ pub async fn handle(
 
             let mut s = r.payload;
 
-            api::Snippet {
+            Snippet {
                 lang: value_to_string(s.remove("lang").unwrap()),
                 repo_name: value_to_string(s.remove("repo_name").unwrap()),
                 repo_ref: value_to_string(s.remove("repo_ref").unwrap()),
@@ -125,6 +212,10 @@ pub async fn handle(
             }
         })
         .collect();
+
+    analytics_event
+        .stages
+        .push(Stage::new("semantic results", &all_snippets).with_time(stop_watch.lap()));
 
     let mut snippets = vec![];
     let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
@@ -163,32 +254,59 @@ pub async fn handle(
         }
     }
 
+    analytics_event
+        .stages
+        .push(Stage::new("filtered semantic results", &snippets).with_time(stop_watch.lap()));
+
     if snippets.is_empty() {
         warn!("Semantic search returned no snippets");
-        return Err(super::internal_error(
-            "semantic search returned no snippets",
-        ));
+        return Err(Error::internal("semantic search returned no snippets"));
     } else {
         info!("Semantic search returned {} snippets", snippets.len());
     }
 
+    let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
+        let Some(cred) = app.credentials.get(&Backend::Github) else {
+            return Err(Error::user(
+                "missing Github token",
+            ).with_status(StatusCode::UNAUTHORIZED));
+        };
+
+        match &*cred {
+            BackendCredential::Github(remotes::github::Auth::OAuth {
+                access_token: token,
+                ..
+            }) => Some(token.expose_secret().clone()),
+
+            BackendCredential::Github(remotes::github::Auth::App { .. }) => {
+                return Err(
+                    Error::user("cannot connect to answer API using installation token")
+                        .with_status(StatusCode::UNAUTHORIZED),
+                )
+            }
+        }
+    } else {
+        None
+    };
+
     let answer_api_host = format!("{}/q", app.config.answer_api_url);
-    let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target, 5);
+    let answer_api_client = semantic.build_answer_api_client(
+        state,
+        answer_api_host.as_str(),
+        target,
+        5,
+        answer_bearer.clone(),
+    );
 
     let select_prompt = answer_api_client.build_select_prompt(&snippets);
+
+    analytics_event
+        .stages
+        .push(Stage::new("select prompt", &select_prompt).with_time(stop_watch.lap()));
+
     let relevant_snippet_index = answer_api_client
         .select_snippet(&select_prompt)
-        .await
-        .map_err(|e| {
-            sentry::capture_message(
-                format!("answer-api failed to respond: {e}").as_str(),
-                sentry::Level::Error,
-            );
-            super::error(ErrorKind::UpstreamService, e.to_string())
-        })?
-        .text()
-        .await
-        .map_err(super::internal_error)?
+        .await?
         .trim()
         .to_string()
         .clone();
@@ -197,10 +315,14 @@ pub async fn handle(
 
     let mut relevant_snippet_index = relevant_snippet_index
         .parse::<usize>()
-        .map_err(super::internal_error)?;
+        .map_err(Error::internal)?;
+
+    analytics_event.stages.push(
+        Stage::new("relevant snippet index", &relevant_snippet_index).with_time(stop_watch.lap()),
+    );
 
     if relevant_snippet_index == 0 {
-        return Err(super::internal_error(
+        return Err(Error::internal(
             "None of the snippets help answer the question",
         ));
     }
@@ -208,7 +330,7 @@ pub async fn handle(
     relevant_snippet_index -= 1; // return to 0-indexing
     let relevant_snippet = snippets
         .get(relevant_snippet_index)
-        .ok_or_else(|| super::internal_error("answer-api returned out-of-bounds index"))?;
+        .ok_or_else(|| Error::internal("answer-api returned out-of-bounds index"))?;
 
     // grow the snippet by 60 lines above and below, we have sufficient space
     // to grow this snippet by 10 times its original size (15 to 150)
@@ -216,13 +338,13 @@ pub async fn handle(
         let repo_ref = &relevant_snippet
             .repo_ref
             .parse::<RepoRef>()
-            .map_err(super::internal_error)?;
+            .map_err(Error::internal)?;
         let doc = app
             .indexes
             .file
             .by_path(repo_ref, &relevant_snippet.relative_path)
             .await
-            .map_err(super::internal_error)?;
+            .map_err(Error::internal)?;
 
         let mut grow_size = 40;
         let grown_text = loop {
@@ -235,7 +357,7 @@ pub async fn handle(
                 grow_size += 10;
             }
         };
-        api::Snippet {
+        Snippet {
             lang: relevant_snippet.lang.clone(),
             repo_name: relevant_snippet.repo_name.clone(),
             repo_ref: relevant_snippet.repo_ref.clone(),
@@ -249,54 +371,61 @@ pub async fn handle(
         }
     };
 
-    let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
-    let snippet_explanation = answer_api_client
-        .explain_snippet(&explain_prompt)
-        .await
-        .map_err(|e| {
-            sentry::capture_message(
-                format!("answer-api failed to respond: {e}").as_str(),
-                sentry::Level::Error,
-            );
-            super::error(ErrorKind::UpstreamService, e.to_string())
-        })?
-        .text()
-        .await
-        .map_err(super::internal_error)?;
-
     // reorder snippets
     snippets.swap(relevant_snippet_index, 0);
-
-    let query_id = uuid::Uuid::new_v4();
-    app.track_query(QueryEvent {
-        user_id: params.user_id.clone(),
-        query_id,
-        query: params.q.clone(),
-        semantic_results: all_snippets,
-        filtered_semantic_results: snippets.clone(),
-        select_prompt,
-        relevant_snippet_index,
-        explain_prompt,
-        explanation: snippet_explanation.clone(),
-        overlap_strategy: semantic.overlap_strategy(),
-    });
 
     // answering snippet is always at index 0
     let answer_path = snippets.get(0).unwrap().relative_path.to_string();
 
-    Ok::<_, Json<super::Response<'static>>>(Json(super::Response::Answer(AnswerResponse {
-        snippets,
-        query_id,
-        user_id: params.user_id,
-        selection: api::Response {
-            answer: snippet_explanation,
+    let initial_event = Event::default()
+        .json_data(super::Response::<'static>::from(AnswerResponse {
+            snippets: snippets.clone(),
+            query_id,
+            user_id: params.user_id.clone(),
             answer_path,
-        },
-    })))
+        }))
+        .map_err(Error::internal)?;
+
+    let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
+
+    let mut snippet_explanation = answer_api_client
+        .explain_snippet(&explain_prompt)
+        .await
+        .map_err(Error::internal)
+        .map(Box::pin)?;
+
+    drop(analytics_event);
+
+    let analytics_event = Arc::clone(&event);
+    let stream = async_stream::stream! {
+        yield Ok(initial_event);
+
+        let mut explanation = String::new();
+        while let Some(result) = snippet_explanation.next().await {
+            yield Ok(Event::default()
+                .json_data(result.as_ref().map_err(|e| e.to_string()))
+                .unwrap());
+
+            match result {
+                Ok(s) => explanation += &s,
+                Err(e) => yield Err(e),
+            }
+        }
+
+        let mut event = analytics_event.write().await;
+
+        event
+            .stages
+            .push(Stage::new("explanation", &explanation).with_time(stop_watch.lap()));
+
+        app.track_query(&event);
+    };
+
+    Ok(Sse::new(stream))
 }
 
 // grow the text of this snippet by `size` and return the new text
-fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
+fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> String {
     let content = &doc.content;
 
     // skip upwards `size` number of lines
@@ -317,19 +446,13 @@ fn grow(doc: &ContentDocument, snippet: &api::Snippet, size: usize) -> String {
     content[new_start_byte..new_end_byte].to_owned()
 }
 
-#[derive(serde::Serialize)]
-struct OpenAIRequest {
-    prompt: String,
-    max_tokens: u32,
-    temperature: f32,
-}
-
 struct AnswerAPIClient<'s> {
-    client: reqwest::Client,
     host: String,
     query: String,
     semantic: &'s Semantic,
     max_attempts: usize,
+    bearer_token: Option<String>,
+    client: reqwest::Client,
 }
 
 #[derive(Error, Debug)]
@@ -337,23 +460,47 @@ enum AnswerAPIError {
     #[error("max retry attempts reached {0}")]
     MaxAttemptsReached(usize),
 
-    #[error("fatal error {0}")]
-    Fatal(reqwest::Error),
+    #[error("event source error {0}")]
+    EventSource(#[from] reqwest_eventsource::Error),
+
+    #[error("failed to open stream")]
+    StreamFail,
+
+    #[error("message deserialization error {0}")]
+    MessageFormat(#[from] serde_json::Error),
+
+    #[error("answer API error {0}")]
+    BadRequest(#[from] api::Error),
+}
+
+impl From<AnswerAPIError> for Error {
+    fn from(e: AnswerAPIError) -> Error {
+        sentry::capture_message(
+            format!("answer-api failed to respond: {e}").as_str(),
+            sentry::Level::Error,
+        );
+        Error::new(ErrorKind::UpstreamService, e.to_string())
+    }
 }
 
 impl Semantic {
     fn build_answer_api_client<'s>(
         &'s self,
+        state: &AnswerState,
         host: &str,
         query: &str,
         max_attempts: usize,
+        bearer_token: Option<String>,
     ) -> AnswerAPIClient<'s> {
         AnswerAPIClient {
-            client: reqwest::Client::new(),
             host: host.to_owned(),
             query: query.to_owned(),
             semantic: self,
             max_attempts,
+            // Internally, cookies are shared between `reqwest` client instances via a shared lock.
+            // Cloning the client here just creates a new handle to the same lock.
+            client: state.client.clone(),
+            bearer_token,
         }
     }
 }
@@ -364,16 +511,50 @@ impl<'s> AnswerAPIClient<'s> {
         prompt: &str,
         max_tokens: u32,
         temperature: f32,
-    ) -> Result<reqwest::Response, reqwest::Error> {
-        self.client
-            .post(self.host.as_str())
-            .json(&OpenAIRequest {
-                prompt: prompt.to_string(),
-                max_tokens,
-                temperature,
+    ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
+        let mut stream = Box::pin(
+            reqwest_eventsource::EventSource::new({
+                let mut builder = self.client.post(self.host.as_str());
+
+                if let Some(bearer) = &self.bearer_token {
+                    builder = builder.bearer_auth(bearer);
+                }
+
+                builder.json(&api::Request {
+                    prompt: prompt.to_string(),
+                    max_tokens: Some(max_tokens),
+                    temperature: Some(temperature),
+                })
             })
-            .send()
-            .await
+            // We don't have a `Stream` body so this can't fail.
+            .expect("couldn't clone requestbuilder")
+            // `reqwest_eventsource` returns an error to signify a stream end, instead of simply ending
+            // the stream. So we catch the error here and close the stream.
+            .take_while(|result| {
+                let is_end = matches!(result, Err(reqwest_eventsource::Error::StreamEnded));
+                async move { !is_end }
+            }),
+        );
+
+        match stream.next().await {
+            Some(Ok(reqwest_eventsource::Event::Open)) => {}
+            Some(Err(e)) => return Err(AnswerAPIError::EventSource(e)),
+            _ => return Err(AnswerAPIError::StreamFail),
+        }
+
+        Ok(stream
+            .filter_map(|result| async move {
+                match result {
+                    Ok(reqwest_eventsource::Event::Message(msg)) => Some(Ok(msg.data)),
+                    Ok(reqwest_eventsource::Event::Open) => None,
+                    Err(reqwest_eventsource::Error::StreamEnded) => None,
+                    Err(e) => Some(Err(e)),
+                }
+            })
+            .map(|result| match result {
+                Ok(s) => Ok(serde_json::from_str::<api::Result>(&s)??),
+                Err(e) => Err(AnswerAPIError::EventSource(e)),
+            }))
     }
 
     async fn send_until_success(
@@ -381,15 +562,18 @@ impl<'s> AnswerAPIClient<'s> {
         prompt: &str,
         max_tokens: u32,
         temperature: f32,
-    ) -> Result<reqwest::Response, AnswerAPIError> {
+    ) -> Result<String, AnswerAPIError> {
         for attempt in 0..self.max_attempts {
-            let response = self.send(prompt, max_tokens, temperature).await;
-            match response {
-                Ok(r) if r.status() == StatusCode::OK => return Ok(r),
-                Err(e) => return Err(AnswerAPIError::Fatal(e)),
-                _ => (),
-            };
-            warn!(%attempt, "answer-api returned {} ... retrying", response.unwrap().status());
+            let result = self
+                .send(prompt, max_tokens, temperature)
+                .await?
+                .try_collect::<String>()
+                .await;
+
+            match result {
+                Ok(r) => return Ok(r),
+                Err(e) => warn!(%attempt, "answer-api returned {e:?} ... retrying"),
+            }
         }
         Err(AnswerAPIError::MaxAttemptsReached(self.max_attempts))
     }
@@ -397,7 +581,7 @@ impl<'s> AnswerAPIClient<'s> {
 
 const DELIMITER: &str = "=========";
 impl<'a> AnswerAPIClient<'a> {
-    fn build_select_prompt(&self, snippets: &[api::Snippet]) -> String {
+    fn build_select_prompt(&self, snippets: &[Snippet]) -> String {
         // snippets are 1-indexed so we can use index 0 where no snippets are relevant
         let mut prompt = snippets
             .iter()
@@ -436,7 +620,7 @@ A:",
         prompt
     }
 
-    fn build_explain_prompt(&self, snippet: &api::Snippet) -> String {
+    fn build_explain_prompt(&self, snippet: &Snippet) -> String {
         let prompt = format!(
             "You are an AI assistant for a repo. You are given an extract from a file and a question. \
 Use the file to write a detailed answer to the question. Copy relevant parts of the file into the answer and explain why they are relevant. \
@@ -452,11 +636,20 @@ Answer in GitHub Markdown:",
         prompt
     }
 
-    async fn select_snippet(&self, prompt: &str) -> Result<reqwest::Response, AnswerAPIError> {
-        self.send_until_success(prompt, 1, 0.0).await
+    async fn select_snippet(&self, prompt: &str) -> Result<String> {
+        self.send_until_success(prompt, 1, 0.0).await.map_err(|e| {
+            sentry::capture_message(
+                format!("answer-api failed to respond: {e}").as_str(),
+                sentry::Level::Error,
+            );
+            Error::new(ErrorKind::UpstreamService, e.to_string())
+        })
     }
 
-    async fn explain_snippet(&self, prompt: &str) -> Result<reqwest::Response, AnswerAPIError> {
+    async fn explain_snippet(
+        &self,
+        prompt: &str,
+    ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
         let tokens_used = self.semantic.gpt2_token_count(prompt);
         info!(%tokens_used, "input prompt token count");
         let max_tokens = 4096usize.saturating_sub(tokens_used);
@@ -469,7 +662,32 @@ Answer in GitHub Markdown:",
         // do not let the completion cross 500 tokens
         let max_tokens = max_tokens.clamp(1, 500);
         info!(%max_tokens, "clamping max tokens");
-        self.send_until_success(prompt, max_tokens as u32, 0.9)
-            .await
+        self.send(prompt, max_tokens as u32, 0.9).await
+    }
+}
+
+// Measure time between instants statefully
+struct StopWatch {
+    start: Instant,
+}
+
+impl StopWatch {
+    // Start the watch
+    fn start() -> Self {
+        Self {
+            start: Instant::now(),
+        }
+    }
+
+    // Measure the time since start
+    fn measure(&self) -> Duration {
+        self.start.elapsed()
+    }
+
+    // Read the value since the last start, and zero the clock
+    fn lap(&mut self) -> Duration {
+        let duration = self.measure();
+        self.start = Instant::now();
+        duration
     }
 }
