@@ -67,10 +67,10 @@ export const useSearch = <T,>(
             const newData = JSON.parse(ev.data);
 
             if (i === 0) {
+              const queryTime = Date.now() - startTime;
+              setLastQueryTime(queryTime);
+              trackSearch(queryTime);
               if (newData.Err) {
-                const queryTime = Date.now() - startTime;
-                setLastQueryTime(queryTime);
-                trackSearch(queryTime);
                 setStatus((prev) => ({
                   ...prev,
                   loading: false,
