@@ -45,7 +45,7 @@ pub struct RudderHub {
 
 #[derive(Default)]
 pub struct HubOptions {
-    event_filter: Option<Arc<dyn Fn(QueryEvent) -> Option<QueryEvent> + Send + Sync + 'static>>,
+    pub event_filter: Option<Arc<dyn Fn(QueryEvent) -> Option<QueryEvent> + Send + Sync + 'static>>,
 }
 
 impl RudderHub {
@@ -55,7 +55,7 @@ impl RudderHub {
             client,
             options: None,
         };
-        HUB.set(Arc::new(hub));
+        let _ = HUB.set(Arc::new(hub));
         RudderHub::get().unwrap()
     }
 
@@ -65,7 +65,7 @@ impl RudderHub {
             client,
             options: Some(options),
         };
-        HUB.set(Arc::new(hub));
+        let _ = HUB.set(Arc::new(hub));
         RudderHub::get().unwrap()
     }
 

@@ -1,6 +1,8 @@
 use bleep::{Application, Configuration, Environment};
 
-use super::{plugin, relative_command_path, App, Manager, Payload, Runtime};
+use super::{
+    initialize_rudder_analytics, plugin, relative_command_path, App, Manager, Payload, Runtime,
+};
 
 pub(super) fn bleep<R>(app: &mut App<R>) -> plugin::Result<()>
 where
@@ -25,6 +27,13 @@ where
 
     let cache_dir = app.path_resolver().app_cache_dir().unwrap();
     configuration.index_dir = cache_dir.join("bleep");
+
+    if let (Some(key), Some(data_plane)) = (
+        &configuration.analytics_key,
+        &configuration.analytics_data_plane,
+    ) {
+        initialize_rudder_analytics(key.to_owned(), data_plane.to_owned())
+    }
 
     let app = app.handle();
     tokio::spawn(async move {

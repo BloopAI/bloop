@@ -22,7 +22,6 @@ use dunce::canonicalize;
 use std::fs::canonicalize;
 
 use crate::{
-    analytics::QueryAnalyticsSource,
     background::BackgroundExecutor,
     indexes::Indexes,
     remotes::BackendCredential,
@@ -35,13 +34,11 @@ use axum::extract::FromRef;
 use dashmap::DashMap;
 use once_cell::sync::OnceCell;
 use relative_path::RelativePath;
-use rudderanalytics::client::RudderAnalytics;
 
 use std::{path::Path, sync::Arc};
 use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 
-mod analytics;
 mod background;
 mod collector;
 mod config;
@@ -50,6 +47,7 @@ mod language;
 mod remotes;
 mod webserver;
 
+pub mod analytics;
 pub mod ctags;
 pub mod indexes;
 pub mod intelligence;
@@ -66,7 +64,6 @@ pub use env::Environment;
 const LOG_ENV_VAR: &str = "BLOOP_LOG";
 static LOGGER_INSTALLED: OnceCell<bool> = OnceCell::new();
 static SENTRY_GUARD: OnceCell<sentry::ClientInitGuard> = OnceCell::new();
-static RUDDER_CLIENT: OnceCell<RudderAnalytics> = OnceCell::new();
 
 /// The global state
 #[derive(Clone)]

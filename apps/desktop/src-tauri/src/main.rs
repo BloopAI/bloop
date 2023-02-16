@@ -6,12 +6,14 @@
 mod backend;
 mod qdrant;
 
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    sync::{Arc, RwLock},
+};
 
 use bleep::{analytics, Application};
 use once_cell::sync::OnceCell;
 use sentry::ClientInitGuard;
-use std::sync::{Arc, RwLock};
 pub use tauri::{plugin, App, Manager, Runtime};
 use tracing::info;
 
@@ -51,7 +53,6 @@ async fn main() {
             enable_telemetry,
             disable_telemetry,
             initialize_sentry,
-            initialize_rudder_analytics
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri application");
@@ -60,7 +61,7 @@ async fn main() {
 #[tauri::command]
 fn initialize_sentry(dsn: String, environment: String) {
     if sentry::Hub::current().client().is_some() {
-        info!("Sentry has already been initialized");
+        tracing::info!("Sentry has already been initialized");
         return;
     }
     let guard = sentry::init((
@@ -78,22 +79,19 @@ fn initialize_sentry(dsn: String, environment: String) {
     _ = SENTRY.set(guard);
 }
 
-#[tauri::command]
-fn initialize_rudder_analytics(key: String, data_plane: String) {
+pub fn initialize_rudder_analytics(key: String, data_plane: String) {
     if analytics::RudderHub::get().is_some() {
         info!("analytics has already been initialized");
         return;
     }
     info!("initializing analytics");
     let options = analytics::HubOptions {
-        event_filter: Some(Arc::new(Arc::new(|event| {
-            match *TELEMETRY.read().unwrap() {
-                true => Some(event),
-                false => None,
-            }
-        }))),
+        event_filter: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
+            true => Some(event),
+            false => None,
+        })),
     };
-    analytics::RudderHub::new_with_options(key, data_plane)
+    analytics::RudderHub::new_with_options(key, data_plane, options);
 }
 
 #[tauri::command]
