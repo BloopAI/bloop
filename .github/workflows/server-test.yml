@@ -25,6 +25,9 @@ jobs:
       - name: Dummy Qdrant binary
         run: touch apps/desktop/src-tauri/bin/qdrant-x86_64-unknown-linux-gnu
 
+      - name: Restore cache
+        run: cp -r /sccache/cargo_target target || true
+
       - name: Rustfmt
         run: nix develop --no-update-lock-file -c bash -c 'cargo --locked fmt -p bleep -- --check'
 
@@ -36,6 +39,9 @@ jobs:
 
       - name: Sccache stats
         run: sccache --show-stats
+
+      - name: Store cache
+        run: rm -rf /sccache/cargo_target && cp -r target /sccache/cargo_target
 
   # benchmark:
   #   runs-on: [self-hosted, benchmark]
