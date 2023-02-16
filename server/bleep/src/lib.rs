@@ -205,7 +205,7 @@ impl Application {
     }
 
     pub fn track_query(&self, event: &analytics::QueryEvent) {
-        analytics::RudderHub::track_query(event.clone())
+        tokio::task::block_in_place(|| analytics::RudderHub::track_query(event.clone()))
     }
 
     pub async fn run(self) -> Result<()> {
