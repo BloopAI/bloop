@@ -602,7 +602,7 @@ Answer in GitHub Markdown:",
         // do not let the completion cross 500 tokens
         let max_tokens = max_tokens.clamp(1, 100);
         info!(%max_tokens, "clamping max tokens");
-        self.send(prompt, max_tokens as u32, 0.9,"anthropic").await
+        self.send(prompt, max_tokens as u32, 0.9,"openai").await
     }
 }
 
