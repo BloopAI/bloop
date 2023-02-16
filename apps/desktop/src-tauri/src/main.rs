@@ -79,7 +79,7 @@ fn initialize_sentry(dsn: String, environment: String) {
     _ = SENTRY.set(guard);
 }
 
-pub fn initialize_rudder_analytics(key: String, data_plane: String) {
+pub async fn initialize_rudder_analytics(key: String, data_plane: String) {
     if analytics::RudderHub::get().is_some() {
         info!("analytics has already been initialized");
         return;
@@ -91,7 +91,9 @@ pub fn initialize_rudder_analytics(key: String, data_plane: String) {
             false => None,
         })),
     };
-    analytics::RudderHub::new_with_options(key, data_plane, options);
+    tokio::task::block_in_place(|| {
+        analytics::RudderHub::new_with_options(key, data_plane, options)
+    });
 }
 
 #[tauri::command]
