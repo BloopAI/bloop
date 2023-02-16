@@ -15,7 +15,7 @@ type Props = {
   provider: 'local' | 'github';
 };
 
-const statusMap = {
+export const STATUS_MAP = {
   [SyncStatus.Error]: { text: 'Error', color: 'bg-red-500' },
   [SyncStatus.Removed]: { text: 'Removed', color: 'bg-red-500' },
   [SyncStatus.Uninitialized]: { text: 'Not synced', color: 'bg-gray-700' },
@@ -60,12 +60,12 @@ const RepoCard = ({
         </div>
         <span
           className={`w-2 h-2 ${
-            statusMap[typeof sync_status === 'string' ? sync_status : 'error']
+            STATUS_MAP[typeof sync_status === 'string' ? sync_status : 'error']
               ?.color || 'bg-yellow-500'
           } rounded-full`}
         />
         <p className="select-none">
-          {statusMap[typeof sync_status === 'string' ? sync_status : 'error']
+          {STATUS_MAP[typeof sync_status === 'string' ? sync_status : 'error']
             ?.text || sync_status}
           {sync_status === 'done' && timeAgo(last_update)}
         </p>
