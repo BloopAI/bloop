@@ -50,7 +50,8 @@ async fn main() {
             get_device_id,
             enable_telemetry,
             disable_telemetry,
-            initialize_sentry
+            initialize_sentry,
+            initialize_rudder_analytics
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri application");
