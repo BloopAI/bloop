@@ -81,14 +81,14 @@ const RemoteServicesStep = ({ handleNext, handleBack, onSubmit }: Props) => {
               you agree to the{' '}
               <button
                 onClick={() => openLink('https://bloop.ai/terms')}
-                className="underline text-primary-400"
+                className="text-primary-300"
               >
                 terms
               </button>{' '}
               and{' '}
               <button
                 onClick={() => openLink('https://bloop.ai/privacy')}
-                className="underline text-primary-400"
+                className="text-primary-300"
               >
                 privacy policy
               </button>
