@@ -35,6 +35,7 @@ pub mod api {
         pub prompt: String,
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
+        pub provider: String,
     }
 
     #[derive(thiserror::Error, Debug, Deserialize)]
@@ -368,7 +369,7 @@ async fn _handle(
         app.track_query(&event);
     };
 
-    Ok(Sse::new(stream))
+    Ok(Sse::new(stream.chain(futures::stream::once(async { Ok(Event::default().data("[DONE]")) }))))
 }
 
 // grow the text of this snippet by `size` and return the new text
@@ -452,6 +453,7 @@ impl<'s> AnswerAPIClient<'s> {
         prompt: &str,
         max_tokens: u32,
         temperature: f32,
+        provider: &str,
     ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
         let mut stream = Box::pin(
             reqwest_eventsource::EventSource::new(self.client.post(self.host.as_str()).json(
@@ -459,6 +461,7 @@ impl<'s> AnswerAPIClient<'s> {
                     prompt: prompt.to_string(),
                     max_tokens: Some(max_tokens),
                     temperature: Some(temperature),
+                    provider: provider.to_string(),
                 },
             ))
             // We don't have a `Stream` body so this can't fail.
@@ -497,10 +500,11 @@ impl<'s> AnswerAPIClient<'s> {
         prompt: &str,
         max_tokens: u32,
         temperature: f32,
+        provider: &str,
     ) -> Result<String, AnswerAPIError> {
         for attempt in 0..self.max_attempts {
             let result = self
-                .send(prompt, max_tokens, temperature)
+                .send(prompt, max_tokens, temperature, provider)
                 .await?
                 .try_collect::<String>()
                 .await;
@@ -573,7 +577,7 @@ Answer in GitHub Markdown:",
     }
 
     async fn select_snippet(&self, prompt: &str) -> Result<String> {
-        self.send_until_success(prompt, 1, 0.0).await.map_err(|e| {
+        self.send_until_success(prompt, 1, 0.0, "openai").await.map_err(|e| {
             sentry::capture_message(
                 format!("answer-api failed to respond: {e}").as_str(),
                 sentry::Level::Error,
@@ -596,9 +600,9 @@ Answer in GitHub Markdown:",
         }
 
         // do not let the completion cross 500 tokens
-        let max_tokens = max_tokens.clamp(1, 500);
+        let max_tokens = max_tokens.clamp(1, 100);
         info!(%max_tokens, "clamping max tokens");
-        self.send(prompt, max_tokens as u32, 0.9).await
+        self.send(prompt, max_tokens as u32, 0.9,"anthropic").await
     }
 }
 
