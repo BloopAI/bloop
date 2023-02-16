@@ -14,19 +14,22 @@ import {
   savePlainToStorage,
 } from '../../../../services/storage';
 import { UIContext } from '../../../../context/uiContext';
+import { DeviceContext } from '../../../../context/deviceContext';
 import PrivacyCard from './PrivacyCard';
 
 type Props = {
   handleNext: (e?: any) => void;
   handleBack?: (e?: any) => void;
+  onSubmit?: (isOptedIn: boolean) => void;
 };
 
-const STEP_KEY = 'STEP_REMOTE_SERVICES';
+export const STEP_KEY = 'STEP_REMOTE_SERVICES';
 
-const RemoteServicesStep = ({ handleNext, handleBack }: Props) => {
+const RemoteServicesStep = ({ handleNext, handleBack, onSubmit }: Props) => {
   const [hasOptedIn, setHasOptedIn] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
   const { setIsAnalyticsAllowed } = useContext(AnalyticsContext);
+  const { openLink } = useContext(DeviceContext);
   const { onBoardingState, setOnBoardingState } = useContext(UIContext);
 
   useEffect(() => {
@@ -41,16 +44,20 @@ const RemoteServicesStep = ({ handleNext, handleBack }: Props) => {
       if (!hasOptedIn && !showConfirm) {
         setShowConfirm(true);
       } else {
-        handleNext();
-        savePlainToStorage(
-          IS_ANALYTICS_ALLOWED_KEY,
-          hasOptedIn ? 'true' : 'false',
-        );
-        setOnBoardingState((prev) => ({
-          ...prev,
-          [STEP_KEY]: { hasOptedIn },
-        }));
-        setIsAnalyticsAllowed(hasOptedIn);
+        if (onSubmit) {
+          onSubmit(hasOptedIn);
+        } else {
+          handleNext();
+          savePlainToStorage(
+            IS_ANALYTICS_ALLOWED_KEY,
+            hasOptedIn ? 'true' : 'false',
+          );
+          setOnBoardingState((prev) => ({
+            ...prev,
+            [STEP_KEY]: { hasOptedIn },
+          }));
+          setIsAnalyticsAllowed(hasOptedIn);
+        }
       }
     },
     [hasOptedIn, showConfirm],
@@ -65,9 +72,29 @@ const RemoteServicesStep = ({ handleNext, handleBack }: Props) => {
       <DialogText
         title={showConfirm ? 'Are you sure?' : 'Remote services'}
         description={
-          showConfirm
-            ? 'Opting-out of remote services will disable natural language search.'
-            : 'Natural language search requires an internet connection and shares code snippets with bloop and OpenAI during search. By continuing you agree to the terms and privacy policy.'
+          showConfirm ? (
+            'Opting-out of remote services will disable natural language search.'
+          ) : (
+            <>
+              Natural language search requires an internet connection and shares
+              code snippets with bloop and OpenAI during search. By continuing
+              you agree to the{' '}
+              <button
+                onClick={() => openLink('https://bloop.ai/terms')}
+                className="underline text-primary-400"
+              >
+                terms
+              </button>{' '}
+              and{' '}
+              <button
+                onClick={() => openLink('https://bloop.ai/privacy')}
+                className="underline text-primary-400"
+              >
+                privacy policy
+              </button>
+              .
+            </>
+          )
         }
       />
       <div className="flex flex-col gap-4">

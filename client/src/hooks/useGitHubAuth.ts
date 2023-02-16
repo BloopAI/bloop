@@ -52,7 +52,7 @@ export const useGitHubAuth = (
     setAuthenticationFailed(false);
     setButtonClicked(true);
     openLink(loginUrl);
-  }, []);
+  }, [loginUrl]);
 
   const generateNewCode = useCallback(() => {
     gitHubDeviceLogin().then((data) => {
