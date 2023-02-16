@@ -45,20 +45,20 @@ const CodeBlockSearch = ({
   const [isExpanded, setExpanded] = useState(false);
   const { os, openFolderInExplorer } = useContext(DeviceContext);
 
-  const handleMouseUp = useCallback(() => {
-    if (!document.getSelection()?.toString()) {
-      onClick?.(
-        repoName,
-        filePath,
-        snippets[0].lineStart
-          ? [
-              snippets[0].lineStart,
-              snippets[0].lineStart + snippets[0].code.split('\n').length - 1,
-            ]
-          : undefined,
-      );
-    }
-  }, [onClick]);
+  const handleMouseUp = useCallback(
+    (startLine?: number, endLine?: number) => {
+      if (!document.getSelection()?.toString()) {
+        onClick?.(
+          repoName,
+          filePath,
+          startLine !== undefined && endLine !== undefined
+            ? [startLine, endLine]
+            : undefined,
+        );
+      }
+    },
+    [onClick],
+  );
 
   const totalMatches = useMemo(() => {
     return countHighlights(snippets);
@@ -126,10 +126,20 @@ const CodeBlockSearch = ({
           collapsed ? 'py-2' : 'py-4'
         } ${onClick ? 'cursor-pointer' : ''} w-full overflow-auto`}
       >
-        <div onMouseUp={handleMouseUp}>
+        <div>
           {(isExpanded ? snippets : snippets.slice(0, PREVIEW_NUM)).map(
             (snippet, index) => (
-              <span key={index}>
+              <span
+                key={index}
+                onMouseUp={() =>
+                  handleMouseUp(
+                    snippet.lineStart,
+                    snippet.lineStart !== undefined
+                      ? snippet.lineStart + snippet.code.split('\n').length
+                      : undefined,
+                  )
+                }
+              >
                 <Code
                   lineStart={snippet.lineStart}
                   code={snippet.code}
