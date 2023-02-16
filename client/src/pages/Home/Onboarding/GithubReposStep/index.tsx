@@ -23,7 +23,7 @@ type Props = {
 
 const STEP_KEY = 'STEP_GITHUB_REPOS';
 
-const Step4 = ({ handleNext, handleBack, disableSkip }: Props) => {
+const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
   const [activeTab, setActiveTab] = useState(1);
   const [userRepos, setUserRepos] = useState<RepoType[]>([]);
   const [repos, setRepos] = useState<RepoUi[]>([]);
@@ -138,4 +138,4 @@ const Step4 = ({ handleNext, handleBack, disableSkip }: Props) => {
   );
 };
 
-export default Step4;
+export default GithubReposStep;

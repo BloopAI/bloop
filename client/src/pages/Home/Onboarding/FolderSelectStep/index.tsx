@@ -16,7 +16,7 @@ type Props = {
   handleBack?: (e: any) => void;
 };
 
-const Step1 = ({ handleNext, handleBack }: Props) => {
+const FolderSelectStep = ({ handleNext, handleBack }: Props) => {
   const { homeDir, chooseFolder } = useContext(DeviceContext);
   const { setOnBoardingState } = useContext(UIContext);
   const [searchParams] = useSearchParams();
@@ -83,4 +83,4 @@ const Step1 = ({ handleNext, handleBack }: Props) => {
   );
 };
 
-export default Step1;
+export default FolderSelectStep;

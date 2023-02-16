@@ -20,7 +20,7 @@ type Props = {
 };
 
 const STEP_KEY = 'STEP_DATA_FORM';
-const Step0 = ({ handleNext }: Props) => {
+const DataFormStep = ({ handleNext }: Props) => {
   const [form, setForm] = useState<Form>({
     firstName: '',
     lastName: '',
@@ -141,4 +141,4 @@ const Step0 = ({ handleNext }: Props) => {
   );
 };
 
-export default Step0;
+export default DataFormStep;

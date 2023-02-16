@@ -18,7 +18,7 @@ type Props = {
   forceAnalyticsAllowed?: boolean;
 };
 
-const Step3 = ({ handleNext, handleBack, forceAnalyticsAllowed }: Props) => {
+const GithubConnectStep = ({ handleNext, handleBack, forceAnalyticsAllowed }: Props) => {
   const {
     code,
     codeCopied,
@@ -164,4 +164,4 @@ const Step3 = ({ handleNext, handleBack, forceAnalyticsAllowed }: Props) => {
   );
 };
 
-export default Step3;
+export default GithubConnectStep;

@@ -23,7 +23,7 @@ type Props = {
 
 const STEP_KEY = 'STEP_LOCAL_REPOS';
 
-const Step2 = ({ handleNext, handleBack }: Props) => {
+const LocalReposStep = ({ handleNext, handleBack }: Props) => {
   const [activeTab, setActiveTab] = useState(1);
   const [userRepos, setUserRepos] = useState<RepoType[]>([]);
   const [repos, setRepos] = useState<RepoUi[]>([]);
@@ -160,4 +160,4 @@ const Step2 = ({ handleNext, handleBack }: Props) => {
   );
 };
 
-export default Step2;
+export default LocalReposStep;
