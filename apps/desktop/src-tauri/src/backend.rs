@@ -1,8 +1,9 @@
-use bleep::{Application, Configuration, Environment};
+use std::sync::Arc;
 
-use super::{
-    initialize_rudder_analytics, plugin, relative_command_path, App, Manager, Payload, Runtime,
-};
+use super::{plugin, relative_command_path, App, Manager, Payload, Runtime, TELEMETRY};
+
+use bleep::{analytics, Application, Configuration, Environment};
+use tracing::info;
 
 pub(super) fn bleep<R>(app: &mut App<R>) -> plugin::Result<()>
 where
@@ -62,4 +63,21 @@ where
     });
 
     Ok(())
+}
+
+pub fn initialize_rudder_analytics(key: String, data_plane: String) {
+    if analytics::RudderHub::get().is_some() {
+        info!("analytics has already been initialized");
+        return;
+    }
+    info!("initializing analytics");
+    let options = analytics::HubOptions {
+        event_filter: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
+            true => Some(event),
+            false => None,
+        })),
+    };
+    tokio::task::block_in_place(|| {
+        analytics::RudderHub::new_with_options(key, data_plane, options)
+    });
 }

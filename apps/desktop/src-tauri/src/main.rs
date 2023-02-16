@@ -11,13 +11,12 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use bleep::{analytics, Application};
+use bleep::Application;
 use once_cell::sync::OnceCell;
 use sentry::ClientInitGuard;
 pub use tauri::{plugin, App, Manager, Runtime};
-use tracing::info;
 
-static TELEMETRY: RwLock<bool> = RwLock::new(false);
+pub static TELEMETRY: RwLock<bool> = RwLock::new(false);
 static SENTRY: OnceCell<ClientInitGuard> = OnceCell::new();
 
 // the payload type must implement `Serialize` and `Clone`.
@@ -77,23 +76,6 @@ fn initialize_sentry(dsn: String, environment: String) {
         },
     ));
     _ = SENTRY.set(guard);
-}
-
-pub fn initialize_rudder_analytics(key: String, data_plane: String) {
-    if analytics::RudderHub::get().is_some() {
-        info!("analytics has already been initialized");
-        return;
-    }
-    info!("initializing analytics");
-    let options = analytics::HubOptions {
-        event_filter: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
-            true => Some(event),
-            false => None,
-        })),
-    };
-    tokio::task::block_in_place(|| {
-        analytics::RudderHub::new_with_options(key, data_plane, options)
-    });
 }
 
 #[tauri::command]
