@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { SearchContext } from '../../context/searchContext';
 import { FileTreeFileType, Repository, RepoSource } from '../../types';
 import Skeleton from '../Skeleton';
@@ -9,6 +9,8 @@ import Filters from '../../components/Filters';
 import { arrayUnique } from '../../utils';
 import { getRepoSource } from '../../utils/file';
 import { GitHubLogo, Repository as RepositoryIcon } from '../../icons';
+import { RepositoriesContext } from '../../context/repositoriesContext';
+import { STATUS_MAP } from '../../components/RepoCard';
 import RepositoryOverview from './RepositoryOverview';
 
 type Props = {
@@ -19,10 +21,19 @@ const RepositoryPage = ({ repositoryData }: Props) => {
   const [repository, setRepository] = useState<Repository | undefined>();
   const [initialLoad, setInitialLoad] = useState(true);
   const { setFilters } = useContext(SearchContext);
+  const { repositories } = useContext(RepositoriesContext);
 
   useEffect(() => {
     setInitialLoad(false);
   }, []);
+
+  const repoStatus = useMemo(() => {
+    return (
+      repositories.find(
+        (r) => r.ref === repositoryData?.data?.[0]?.data.repo_ref,
+      )?.sync_status || 'done'
+    );
+  }, [repositories]);
 
   useEffect(() => {
     if (!repositoryData) {
@@ -73,6 +84,11 @@ const RepositoryPage = ({ repositoryData }: Props) => {
     ]);
   }, [repository]);
 
+  const statusTextColor = useMemo(
+    () => STATUS_MAP[typeof repoStatus === 'string' ? repoStatus : 'error'],
+    [repoStatus],
+  );
+
   return !repository || initialLoad ? (
     <Skeleton />
   ) : (
@@ -91,9 +107,15 @@ const RepositoryPage = ({ repositoryData }: Props) => {
               <span className="flex flex-col">
                 <span>{repository.name}</span>
                 <span className={`flex items-center gap-2 `}>
-                  <div className={`w-2 h-2 rounded-xl bg-success-600`} />
+                  <div
+                    className={`w-2 h-2 rounded-xl ${
+                      statusTextColor?.color || 'bg-yellow-500'
+                    }`}
+                  />
                   <span className="ellipsis text-gray-500 text-xs select-none">
-                    Synced
+                    {statusTextColor?.text === 'Last updated '
+                      ? 'Synced'
+                      : statusTextColor?.text || repoStatus}
                   </span>
                 </span>
               </span>
