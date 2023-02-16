@@ -84,7 +84,15 @@ fn initialize_rudder_analytics(key: String, data_plane: String) {
         return;
     }
     info!("initializing analytics");
-    analytics::RudderHub::new(key, data_plane)
+    let options = analytics::HubOptions {
+        event_filter: Some(Arc::new(Arc::new(|event| {
+            match *TELEMETRY.read().unwrap() {
+                true => Some(event),
+                false => None,
+            }
+        }))),
+    };
+    analytics::RudderHub::new_with_options(key, data_plane)
 }
 
 #[tauri::command]
