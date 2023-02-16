@@ -6,13 +6,16 @@
 mod backend;
 mod qdrant;
 
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    sync::{Arc, RwLock},
+};
 
-use bleep::Application;
+use bleep::{analytics, Application};
 use once_cell::sync::OnceCell;
 use sentry::ClientInitGuard;
-use std::sync::{Arc, RwLock};
 pub use tauri::{plugin, App, Manager, Runtime};
+use tracing::info;
 
 static TELEMETRY: RwLock<bool> = RwLock::new(false);
 static SENTRY: OnceCell<ClientInitGuard> = OnceCell::new();
@@ -49,7 +52,7 @@ async fn main() {
             get_device_id,
             enable_telemetry,
             disable_telemetry,
-            initialize_sentry
+            initialize_sentry,
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri application");
@@ -74,6 +77,23 @@ fn initialize_sentry(dsn: String, environment: String) {
         },
     ));
     _ = SENTRY.set(guard);
+}
+
+pub fn initialize_rudder_analytics(key: String, data_plane: String) {
+    if analytics::RudderHub::get().is_some() {
+        info!("analytics has already been initialized");
+        return;
+    }
+    info!("initializing analytics");
+    let options = analytics::HubOptions {
+        event_filter: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
+            true => Some(event),
+            false => None,
+        })),
+    };
+    tokio::task::block_in_place(|| {
+        analytics::RudderHub::new_with_options(key, data_plane, options)
+    });
 }
 
 #[tauri::command]

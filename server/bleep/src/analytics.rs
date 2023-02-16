@@ -1,12 +1,15 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::semantic::chunk::OverlapStrategy;
 
+use once_cell::sync::OnceCell;
 use rudderanalytics::{
     client::RudderAnalytics,
     message::{Message, Track},
 };
 use serde_json::{json, Value};
+use tracing::info;
 
 #[derive(Debug, Default, Clone)]
 pub struct QueryEvent {
@@ -31,6 +34,68 @@ pub struct Stage {
 
     /// Time taken for this stage in milliseconds
     pub time_elapsed: Option<u128>,
+}
+
+static HUB: OnceCell<Arc<RudderHub>> = OnceCell::new();
+
+pub struct RudderHub {
+    options: Option<HubOptions>,
+    client: RudderAnalytics,
+}
+
+#[derive(Default)]
+pub struct HubOptions {
+    pub event_filter: Option<Arc<dyn Fn(QueryEvent) -> Option<QueryEvent> + Send + Sync + 'static>>,
+}
+
+impl RudderHub {
+    pub fn new(key: String, data_plane: String) -> Arc<Self> {
+        let client = RudderAnalytics::load(key, data_plane);
+        let hub = Self {
+            client,
+            options: None,
+        };
+        let _ = HUB.set(Arc::new(hub));
+        RudderHub::get().unwrap()
+    }
+
+    pub fn new_with_options(key: String, data_plane: String, options: HubOptions) -> Arc<Self> {
+        let client = RudderAnalytics::load(key, data_plane);
+        let hub = Self {
+            client,
+            options: Some(options),
+        };
+        let _ = HUB.set(Arc::new(hub));
+        RudderHub::get().unwrap()
+    }
+
+    pub fn get() -> Option<Arc<Self>> {
+        HUB.get().map(Arc::clone)
+    }
+
+    pub fn track_query(event: QueryEvent) {
+        if let Some(hub) = Self::get() {
+            if let Some(options) = &hub.options {
+                if let Some(filter) = &options.event_filter {
+                    if let Some(ev) = (filter)(event) {
+                        if let Err(e) = hub.client.send(&Message::Track(Track {
+                            user_id: Some(ev.user_id),
+                            event: "openai query".to_owned(),
+                            properties: Some(json!({
+                                "query_id": ev.query_id,
+                                "overlap_strategy": ev.overlap_strategy,
+                                "stages": ev.stages,
+                            })),
+                            ..Default::default()
+                        })) {
+                            info!("failed to send analytics event: {:?}", e);
+                        }
+                    }
+                }
+            }
+        }
+        info!("sent analytics event ...");
+    }
 }
 
 impl Stage {

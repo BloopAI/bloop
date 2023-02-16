@@ -22,7 +22,6 @@ use dunce::canonicalize;
 use std::fs::canonicalize;
 
 use crate::{
-    analytics::QueryAnalyticsSource,
     background::BackgroundExecutor,
     indexes::Indexes,
     remotes::BackendCredential,
@@ -35,13 +34,11 @@ use axum::extract::FromRef;
 use dashmap::DashMap;
 use once_cell::sync::OnceCell;
 use relative_path::RelativePath;
-use rudderanalytics::client::RudderAnalytics;
 
 use std::{path::Path, sync::Arc};
 use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 
-mod analytics;
 mod background;
 mod collector;
 mod config;
@@ -50,6 +47,7 @@ mod language;
 mod remotes;
 mod webserver;
 
+pub mod analytics;
 pub mod ctags;
 pub mod indexes;
 pub mod intelligence;
@@ -77,7 +75,6 @@ pub struct Application {
     semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
     credentials: Arc<DashMap<Backend, BackendCredential>>,
-    pub analytics_client: Arc<Option<RudderAnalytics>>,
     cookie_key: axum_extra::extract::cookie::Key,
 }
 
@@ -118,20 +115,20 @@ impl Application {
             }
         };
 
-        let analytics_client = if let (Some(key), Some(data_plane)) =
-            (&config.analytics_key, &config.analytics_data_plane)
-        {
-            let key = key.to_string();
-            let data_plane = data_plane.to_string();
-            info!("initializing analytics");
-            let handle =
-                tokio::task::spawn_blocking(move || RudderAnalytics::load(key, data_plane));
-            Some(handle.await.unwrap())
-        } else {
-            warn!("could not find analytics key ... skipping initialization");
-            None
-        };
-        let analytics_client = Arc::new(analytics_client);
+        // let analytics_client = if let (Some(key), Some(data_plane)) =
+        //     (&config.analytics_key, &config.analytics_data_plane)
+        // {
+        //     let key = key.to_string();
+        //     let data_plane = data_plane.to_string();
+        //     info!("initializing analytics");
+        //     let handle =
+        //         tokio::task::spawn_blocking(move || RudderAnalytics::load(key, data_plane));
+        //     Some(handle.await.unwrap())
+        // } else {
+        //     warn!("could not find analytics key ... skipping initialization");
+        //     None
+        // };
+        // let analytics_client = Arc::new(analytics_client);
 
         let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
         let env = if config.github_app_id.is_some() {
@@ -148,7 +145,7 @@ impl Application {
             cookie_key: config.source.initialize_cookie_key()?,
             semantic,
             config,
-            analytics_client,
+            // analytics_client,
             env,
         })
     }
@@ -176,6 +173,21 @@ impl Application {
         _ = SENTRY_GUARD.set(guard);
     }
 
+    pub fn install_analytics(&self) {
+        let Some(key) = &self.config.analytics_key else {
+            warn!("analytics key missing; skipping initialization");
+            return;
+        };
+
+        let Some(data_plane) = &self.config.analytics_data_plane else {
+            warn!("analytics data plane url missing; skipping initialization");
+            return;
+        };
+
+        info!("initializing analytics ...");
+        analytics::RudderHub::new(key.to_owned(), data_plane.to_owned());
+    }
+
     pub fn install_logging() {
         if let Some(true) = LOGGER_INSTALLED.get() {
             return;
@@ -193,9 +205,7 @@ impl Application {
     }
 
     pub fn track_query(&self, event: &analytics::QueryEvent) {
-        if let Some(client) = &*self.analytics_client {
-            tokio::task::block_in_place(|| client.track_query(event.clone()));
-        }
+        analytics::RudderHub::track_query(event.clone())
     }
 
     pub async fn run(self) -> Result<()> {
