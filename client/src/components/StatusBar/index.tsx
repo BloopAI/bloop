@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import Button from '../Button';
 import { PowerPlug, Thunder } from '../../icons';
 import { SearchContext } from '../../context/searchContext';
@@ -8,6 +8,25 @@ import StatusItem from './StatusItem';
 const StatusBar = () => {
   const { lastQueryTime } = useContext(SearchContext);
   const { setBugReportModalOpen } = useContext(UIContext);
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    const setOffline = () => {
+      setIsOnline(false);
+    };
+    const setOnline = () => {
+      setIsOnline(true);
+    };
+    window.addEventListener('offline', setOffline);
+
+    window.addEventListener('online', setOnline);
+
+    return () => {
+      window.removeEventListener('offline', setOffline);
+      window.removeEventListener('online', setOnline);
+    };
+  }, []);
+
   return (
     <div
       className={`h-16 flex items-center justify-between gap-8 px-8 bg-gray-900 select-none
@@ -17,8 +36,8 @@ const StatusBar = () => {
         <StatusItem
           icon={<PowerPlug />}
           textMain={'Status'}
-          textSecondary={'Online'}
-          secondaryColor={'ok'}
+          textSecondary={isOnline ? 'Online' : 'Offline'}
+          secondaryColor={isOnline ? 'ok' : 'error'}
         />
         {/*<StatusItem*/}
         {/*  icon={<Persons />}*/}
