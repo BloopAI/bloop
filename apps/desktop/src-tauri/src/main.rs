@@ -8,11 +8,12 @@ mod qdrant;
 
 use std::path::PathBuf;
 
-use bleep::Application;
+use bleep::{analytics, Application};
 use once_cell::sync::OnceCell;
 use sentry::ClientInitGuard;
 use std::sync::{Arc, RwLock};
 pub use tauri::{plugin, App, Manager, Runtime};
+use tracing::info;
 
 static TELEMETRY: RwLock<bool> = RwLock::new(false);
 static SENTRY: OnceCell<ClientInitGuard> = OnceCell::new();
@@ -58,7 +59,7 @@ async fn main() {
 #[tauri::command]
 fn initialize_sentry(dsn: String, environment: String) {
     if sentry::Hub::current().client().is_some() {
-        tracing::info!("Sentry has already been initialized");
+        info!("Sentry has already been initialized");
         return;
     }
     let guard = sentry::init((
@@ -74,6 +75,16 @@ fn initialize_sentry(dsn: String, environment: String) {
         },
     ));
     _ = SENTRY.set(guard);
+}
+
+#[tauri::command]
+fn initialize_rudder_analytics(key: String, data_plane: String) {
+    if analytics::RudderHub::get().is_some() {
+        info!("analytics has already been initialized");
+        return;
+    }
+    info!("initializing analytics");
+    analytics::RudderHub::new(key, data_plane)
 }
 
 #[tauri::command]
