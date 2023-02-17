@@ -116,6 +116,7 @@ const ResultsPage = ({ resultsData, loading, handleRetry, nlQuery }: Props) => {
           repoName: item.repo_name,
           lang: item.lang,
           line: item.start_line,
+          subSnippets: item.sub_snippets,
         }))}
         searchId={resultsData.query_id}
         nlQuery={nlQuery}

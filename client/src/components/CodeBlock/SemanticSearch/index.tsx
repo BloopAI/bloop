@@ -9,6 +9,7 @@ type Props = {
     repoName: string;
     lang: string;
     line: number;
+    subSnippets: { text: string; range: { start: number; end: number } }[];
   }[];
   onClick: ResultClick;
   handleRetry: () => void;
@@ -29,9 +30,11 @@ const SemanticSearch = ({
       {snippets.map((item, index) => (
         <span key={index} className={`${index ? 'mt-5' : ''}`}>
           <CodeBlockSearch
-            snippets={[
-              { code: item.code, highlights: [], lineStart: item.line },
-            ]}
+            snippets={item.subSnippets.map((ss) => ({
+              code: ss.text,
+              highlights: [],
+              lineStart: ss.range.start,
+            }))}
             language={item.lang}
             filePath={item.path}
             branch={''}
