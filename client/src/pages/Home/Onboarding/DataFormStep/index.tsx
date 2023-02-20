@@ -78,10 +78,7 @@ const DataFormStep = ({ handleNext }: Props) => {
     <>
       <DialogText
         title="Setup bloop"
-        description="Tell us a little bit more about yourself. We are using this
-          information to learn more about our users in the Beta release. We
-          might use your email to let you know when the full version of the app
-          is released"
+        description="We'd love to know who you are! We're using this information to learn more about early users, and we might send you an email to let you know when the full version of the app is released"
         isCentered={false}
       />
       <form className="flex flex-col gap-4">
