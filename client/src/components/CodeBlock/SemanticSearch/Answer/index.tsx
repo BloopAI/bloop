@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useMemo, useState } from 'react';
 import { Remarkable } from 'remarkable';
 import hljs from 'highlight.js';
 import { useRive } from '@rive-app/react-canvas';
@@ -26,16 +26,15 @@ const md = new Remarkable({
 type Props = {
   handleRetry: () => void;
   searchId: string;
-  nlQuery?: string;
+  answer?: string;
+  error?: string;
 };
 
-const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
-  const { deviceId, apiUrl } = useContext(DeviceContext);
+const Answer = ({ handleRetry, searchId, answer, error }: Props) => {
+  const { deviceId } = useContext(DeviceContext);
   const { query } = useAppNavigation();
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
-  const [answer, setAnswer] = useState('');
-  const [error, setError] = useState('');
   const { trackUpvote } = useAnalytics();
   const RiveUpvote = useRive({
     src: '/like_button.riv',
@@ -46,38 +45,10 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
     autoplay: false,
   });
 
-  const highlightedAnswer = useMemo(() => md.render(answer), [answer]);
-
-  useEffect(() => {
-    let eventSource: EventSource;
-    if (nlQuery) {
-      eventSource = new EventSource(
-        `${apiUrl.replace(
-          'https:',
-          '',
-        )}/answer?q=${nlQuery}&user_id=${deviceId}`,
-      );
-      let i = 0;
-      eventSource.onmessage = (ev) => {
-        const newData = JSON.parse(ev.data);
-        if (newData.Err) {
-          setError(newData.Err);
-        } else if (i !== 0) {
-          setAnswer((prev) => prev + newData.Ok);
-        }
-        i++;
-      };
-      eventSource.onerror = (err) => {
-        console.log('Event source error:', err);
-        eventSource.close();
-      };
-    }
-    return () => {
-      if (eventSource) {
-        eventSource.close();
-      }
-    };
-  }, [nlQuery, deviceId]);
+  const highlightedAnswer = useMemo(
+    () => (answer ? md.render(answer) : ''),
+    [answer],
+  );
 
   const handleUpvote = useCallback(
     (isUpvote: boolean) => {
@@ -99,13 +70,13 @@ const Answer = ({ handleRetry, nlQuery, searchId }: Props) => {
       }
       setIsUpvote(isUpvote);
       setIsDownvote(!isUpvote);
-      trackUpvote(isUpvote, query, answer, searchId);
+      trackUpvote(isUpvote, query, answer || '', searchId);
       return saveUpvote({
         unique_id: deviceId,
         is_upvote: isUpvote,
         query: query,
         snippet_id: searchId,
-        text: answer,
+        text: answer || '',
       });
     },
     [deviceId, query, answer, RiveUpvote, RiveDownvote],

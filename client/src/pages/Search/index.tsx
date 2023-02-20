@@ -33,7 +33,6 @@ import {
   savePlainToStorage,
   SESSION_ID_KEY,
 } from '../../services/storage';
-import { DeviceContext } from '../../context/deviceContext';
 import StatusBar from '../../components/StatusBar';
 import Onboarding from '../Home/Onboarding';
 import NavBar from '../../components/NavBar';
@@ -60,6 +59,8 @@ const SearchPage = () => {
     data: nlData,
     loading: nlLoading,
     query: nlQuery,
+    nlAnswer,
+    error: nlError,
   } = useSearch<NLSearchResponse>();
   const { updateCurrentTabName } = useContext(TabsContext);
 
@@ -201,13 +202,24 @@ const SearchPage = () => {
             loading={nlLoading}
             resultsData={nlData}
             handleRetry={handleRetry}
-            nlQuery={nlQuery}
+            nlAnswer={nlAnswer}
+            nlError={typeof nlError === 'string' ? nlError : ''}
           />
         );
       default:
         return <HomePage />;
     }
-  }, [data, loading, nlLoading, nlData, handleRetry, navigatedItem, nlQuery]);
+  }, [
+    data,
+    loading,
+    nlLoading,
+    nlData,
+    handleRetry,
+    navigatedItem,
+    nlQuery,
+    nlAnswer,
+    nlError,
+  ]);
 
   return shouldShowWelcome ? (
     <div className="text-gray-200">
