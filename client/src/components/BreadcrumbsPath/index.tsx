@@ -20,14 +20,20 @@ const BreadcrumbsPath = ({ path, onClick, repo, ...rest }: Props) => {
   const { navigateRepoPath } = useAppNavigation();
   const mapPath = useCallback(() => {
     return splitPathForBreadcrumbs(path, (e, item, index, pParts) => {
+      const isLastPart = index === pParts.length - 1;
       const newPath = breadcrumbsItemPath(
         pParts,
         index,
         isWindowsPath(path),
-        index === pParts.length - 1,
+        isLastPart,
       );
-      onClick?.(newPath, FileTreeFileType.DIR);
-      navigateRepoPath(repo, newPath);
+      onClick?.(
+        newPath,
+        isLastPart ? FileTreeFileType.FILE : FileTreeFileType.DIR,
+      );
+      if (!isLastPart) {
+        navigateRepoPath(repo, newPath);
+      }
     });
   }, [path]);
 

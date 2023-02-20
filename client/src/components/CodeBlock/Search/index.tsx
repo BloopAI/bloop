@@ -9,6 +9,7 @@ import { MoreHorizontal } from '../../../icons';
 import { getFileManagerName, isWindowsPath, splitPath } from '../../../utils';
 import { DeviceContext } from '../../../context/deviceContext';
 import { MenuItemType } from '../../../types/general';
+import { FileTreeFileType } from '../../../types';
 
 type Props = {
   snippets: Snippet[];
@@ -46,20 +47,20 @@ const CodeBlockSearch = ({
   const [isExpanded, setExpanded] = useState(false);
   const { os, openFolderInExplorer } = useContext(DeviceContext);
 
-  const handleMouseUp = useCallback(() => {
-    if (!document.getSelection()?.toString()) {
-      onClick?.(
-        repoName,
-        filePath,
-        snippets[0].lineStart
-          ? [
-              snippets[0].lineStart,
-              snippets[0].lineStart + snippets[0].code.split('\n').length - 1,
-            ]
-          : undefined,
-      );
-    }
-  }, [onClick]);
+  const handleMouseUp = useCallback(
+    (startLine?: number, endLine?: number) => {
+      if (!document.getSelection()?.toString()) {
+        onClick?.(
+          repoName,
+          filePath,
+          startLine !== undefined && endLine !== undefined
+            ? [startLine, endLine]
+            : undefined,
+        );
+      }
+    },
+    [onClick],
+  );
 
   const totalMatches = useMemo(() => {
     return countHighlights(snippets);
@@ -77,7 +78,13 @@ const CodeBlockSearch = ({
       <div className="w-full flex justify-between bg-gray-800 py-1 px-3 h-11.5 border-b border-gray-700 gap-2 select-none">
         <div className="flex items-center gap-2 max-w-[calc(100%-120px)] w-full">
           <FileIcon filename={filePath} />
-          <BreadcrumbsPath path={filePath} repo={repoName} />
+          <BreadcrumbsPath
+            path={filePath}
+            repo={repoName}
+            onClick={(path, type) =>
+              type === FileTreeFileType.FILE ? handleMouseUp() : {}
+            }
+          />
         </div>
         <div className="flex gap-2 items-center text-gray-500 flex-shrink-0">
           {/*<div className="flex items-center gap-2">*/}
@@ -127,10 +134,20 @@ const CodeBlockSearch = ({
           collapsed ? 'py-2' : 'py-4'
         } ${onClick ? 'cursor-pointer' : ''} w-full overflow-auto`}
       >
-        <div onMouseUp={handleMouseUp}>
+        <div>
           {(isExpanded ? snippets : snippets.slice(0, PREVIEW_NUM)).map(
             (snippet, index) => (
-              <span key={index}>
+              <span
+                key={index}
+                onMouseUp={() =>
+                  handleMouseUp(
+                    snippet.lineStart,
+                    snippet.lineStart !== undefined
+                      ? snippet.lineStart + snippet.code.split('\n').length
+                      : undefined,
+                  )
+                }
+              >
                 <Code
                   lineStart={snippet.lineStart}
                   code={snippet.code}
