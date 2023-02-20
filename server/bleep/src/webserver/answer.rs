@@ -378,13 +378,13 @@ async fn _handle(
                 _ => {}
             };
 
-            if line == 1 {
+            if line == 0 {
                 // collect the first line
                 first_line.push_str(result.as_ref().map(|o| o.as_str()).unwrap_or(""));
                 // do not send events from the first line
                 continue 'stream;
 
-            } else if line == 2 {
+            } else if line == 1 {
                 // we have hit L2, L1 contains json by now
                 let line_nrs = serde_json::from_str::<Vec<Vec<usize>>>(
                     first_line.trim_start_matches(|c: char| c.is_numeric() || c == '\n' || c == '.' || c == ' '),
@@ -423,7 +423,7 @@ async fn _handle(
 
                 yield Ok(initial_event);
 
-                line = 3;
+                line = 2;
             }
 
             yield Ok(Event::default()
@@ -658,6 +658,7 @@ Answer:
 =========
 
 Question: {}
+Answer:
 ", snippet_with_nr , self.query);
         prompt
     }
