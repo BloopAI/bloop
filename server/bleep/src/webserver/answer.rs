@@ -561,23 +561,20 @@ Index:",
 
     fn build_explain_prompt(&self, snippet: &Snippet) -> String {
         let prompt = format!(
-            "You are an AI assistant for a repo. You are given an extract from a file and a question. \
-Use the file to write a detailed answer to the question. Copy relevant parts of the file into the answer and explain why they are relevant. \
-Do NOT include code that is not in the file. If the file doesn't contain enough information to answer the question, or you don't know the answer, just say \"Sorry, I'm not sure\". \
-Do NOT try to make up an answer. Format your response in GitHub markdown with code blocks annotated with programming language.
+            "You are an AI assistant for a repo. Answer the question using above in a sentence. Do NOT try to make up an answer.
 Question: {}
 =========
 Path: {}
 File: {}
 =========
-Answer in GitHub Markdown:",
+Answer:",
             self.query, snippet.relative_path, snippet.text,
         );
         prompt
     }
 
     async fn select_snippet(&self, prompt: &str) -> Result<String> {
-        self.send_until_success(prompt, 1, 0.0, "openai").await.map_err(|e| {
+        self.send_until_success(prompt, 1, 0.0, "anthropic").await.map_err(|e| {
             sentry::capture_message(
                 format!("answer-api failed to respond: {e}").as_str(),
                 sentry::Level::Error,
@@ -600,9 +597,9 @@ Answer in GitHub Markdown:",
         }
 
         // do not let the completion cross 500 tokens
-        let max_tokens = max_tokens.clamp(1, 100);
+        let max_tokens = max_tokens.clamp(1, 200);
         info!(%max_tokens, "clamping max tokens");
-        self.send(prompt, max_tokens as u32, 0.9,"anthropic").await
+        self.send(prompt, max_tokens as u32, 0.0,"anthropic").await
     }
 }
 
