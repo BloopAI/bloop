@@ -9,7 +9,7 @@ repositories with natural language, regex and filtered queries.
 ## Features
 
 - Super-fast code search
-- AI-powered natural langauge search
+- AI-powered natural language search
 - Sync your local and GitHub repositories (support for more code hosts coming soon!)
 - Search with regex queries
 - Sophisticated query filters so you can narrow down your results
