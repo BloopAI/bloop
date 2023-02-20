@@ -77,10 +77,10 @@ impl Auth {
 
     pub async fn check_repo(&self, repo: &Repository) -> Result<()> {
         let RepoRemote::Git(GitRemote {
-	    ref address, ..
-	}) = repo.remote else {
-	    return Err(RemoteError::NotSupported("github without git backend"));
-	};
+            ref address, ..
+        }) = repo.remote else {
+            return Err(RemoteError::NotSupported("github without git backend"));
+        };
 
         let (org, reponame) = address
             .split_once('/')
