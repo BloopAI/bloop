@@ -53,7 +53,7 @@ const SearchPage = () => {
     useContext(SearchContext);
   const { isSelfServe } = useContext(DeviceContext);
   const [shouldShowWelcome, setShouldShowWelcome] = useState(
-    !getPlainFromStorage(ONBOARDING_DONE_KEY),
+    !getPlainFromStorage(ONBOARDING_DONE_KEY)
   );
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
   const {
@@ -61,6 +61,8 @@ const SearchPage = () => {
     data: nlData,
     loading: nlLoading,
     query: nlQuery,
+    nlAnswer,
+    error: nlError,
   } = useSearch<NLSearchResponse>();
   const { updateCurrentTabName } = useContext(TabsContext);
 
@@ -115,13 +117,13 @@ const SearchPage = () => {
         updateCurrentTabName(
           navigatedItem.type === 'repo'
             ? navigatedItem.repo!
-            : navigatedItem.path!,
+            : navigatedItem.path!
         );
         searchQuery(
           buildRepoQuery(navigatedItem.repo, navigatedItem.path),
           0,
           false,
-          SearchType.REGEX,
+          SearchType.REGEX
         );
         break;
       case 'home':
@@ -204,13 +206,24 @@ const SearchPage = () => {
             loading={nlLoading}
             resultsData={nlData}
             handleRetry={handleRetry}
-            nlQuery={nlQuery}
+            nlAnswer={nlAnswer}
+            nlError={typeof nlError === 'string' ? nlError : ''}
           />
         );
       default:
         return <HomePage />;
     }
-  }, [data, loading, nlLoading, nlData, handleRetry, navigatedItem, nlQuery]);
+  }, [
+    data,
+    loading,
+    nlLoading,
+    nlData,
+    handleRetry,
+    navigatedItem,
+    nlQuery,
+    nlAnswer,
+    nlError,
+  ]);
 
   return shouldShowWelcome ? (
     <div className="text-gray-200">

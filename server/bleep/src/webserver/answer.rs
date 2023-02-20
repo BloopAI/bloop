@@ -34,11 +34,19 @@ use super::prelude::*;
 pub mod api {
     use serde::Deserialize;
 
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    #[serde(rename_all = "lowercase")]
+    pub enum Provider {
+        OpenAi,
+        Anthropic,
+    }
+
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Request {
         pub prompt: String,
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
+        pub provider: Provider,
     }
 
     #[derive(thiserror::Error, Debug, Deserialize)]
@@ -232,7 +240,7 @@ async fn _handle(
                 .or_insert_with(Vec::new);
         }
 
-        if chunk_ranges_by_file.get(path).unwrap().len() <= 2 {
+        if chunk_ranges_by_file.get(path).unwrap().len() <= 4 {
             // check if line ranges of any added chunk overlap with current chunk
             let any_overlap = chunk_ranges_by_file
                 .get(path)
@@ -421,7 +429,9 @@ async fn _handle(
         app.track_query(&event);
     };
 
-    Ok(Sse::new(stream))
+    Ok(Sse::new(stream.chain(futures::stream::once(async {
+        Ok(Event::default().data("[DONE]"))
+    }))))
 }
 
 // grow the text of this snippet by `size` and return the new text
@@ -511,6 +521,7 @@ impl<'s> AnswerAPIClient<'s> {
         prompt: &str,
         max_tokens: u32,
         temperature: f32,
+        provider: api::Provider,
     ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
         let mut stream = Box::pin(
             reqwest_eventsource::EventSource::new({
@@ -524,6 +535,7 @@ impl<'s> AnswerAPIClient<'s> {
                     prompt: prompt.to_string(),
                     max_tokens: Some(max_tokens),
                     temperature: Some(temperature),
+                    provider,
                 })
             })
             // We don't have a `Stream` body so this can't fail.
@@ -562,10 +574,11 @@ impl<'s> AnswerAPIClient<'s> {
         prompt: &str,
         max_tokens: u32,
         temperature: f32,
+        provider: api::Provider,
     ) -> Result<String, AnswerAPIError> {
         for attempt in 0..self.max_attempts {
             let result = self
-                .send(prompt, max_tokens, temperature)
+                .send(prompt, max_tokens, temperature, provider.clone())
                 .await?
                 .try_collect::<String>()
                 .await;
@@ -622,29 +635,28 @@ Index:",
 
     fn build_explain_prompt(&self, snippet: &Snippet) -> String {
         let prompt = format!(
-            "You are an AI assistant for a repo. You are given an extract from a file and a question. \
-Use the file to write a detailed answer to the question. Copy relevant parts of the file into the answer and explain why they are relevant. \
-Do NOT include code that is not in the file. If the file doesn't contain enough information to answer the question, or you don't know the answer, just say \"Sorry, I'm not sure\". \
-Do NOT try to make up an answer. Format your response in GitHub markdown with code blocks annotated with programming language.
+            "You are an AI assistant for a repo. Answer the question using above in a sentence. Do NOT try to make up an answer.
 Question: {}
 =========
 Path: {}
 File: {}
 =========
-Answer in GitHub Markdown:",
+Answer:",
             self.query, snippet.relative_path, snippet.text,
         );
         prompt
     }
 
     async fn select_snippet(&self, prompt: &str) -> Result<String> {
-        self.send_until_success(prompt, 1, 0.0).await.map_err(|e| {
-            sentry::capture_message(
-                format!("answer-api failed to respond: {e}").as_str(),
-                sentry::Level::Error,
-            );
-            Error::new(ErrorKind::UpstreamService, e.to_string())
-        })
+        self.send_until_success(prompt, 1, 0.0, api::Provider::Anthropic)
+            .await
+            .map_err(|e| {
+                sentry::capture_message(
+                    format!("answer-api failed to respond: {e}").as_str(),
+                    sentry::Level::Error,
+                );
+                Error::new(ErrorKind::UpstreamService, e.to_string())
+            })
     }
 
     async fn explain_snippet(
@@ -660,10 +672,11 @@ Answer in GitHub Markdown:",
             error!(%tokens_used, "prompt overshot token limit");
         }
 
-        // do not let the completion cross 500 tokens
-        let max_tokens = max_tokens.clamp(1, 500);
+        // do not let the completion cross 200 tokens
+        let max_tokens = max_tokens.clamp(1, 200);
         info!(%max_tokens, "clamping max tokens");
-        self.send(prompt, max_tokens as u32, 0.9).await
+        self.send(prompt, max_tokens as u32, 0.0, api::Provider::Anthropic)
+            .await
     }
 }
 
