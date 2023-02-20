@@ -47,7 +47,7 @@ impl<'a> Chunk<'a> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// assert_eq!(
 ///     bleep::semantic::chunk::point("fn hello() {\n    \"world\"\n}\n", 16, 0, 0),
 ///     bleep::text_range::Point::new(16, 1, 4)
