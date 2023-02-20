@@ -185,7 +185,7 @@ export const CodeSearchPath = () => {
           highlights={[{ start: 12, end: 15 }]}
           lines={12}
           repoName={'bloop'}
-          onFileClick={() => {}}
+          onFileClick={() => { }}
         />
       </div>
     </MemoryRouter>
@@ -219,11 +219,11 @@ export const SemanticSearchSnippets = () => {
             lang: 'JavaScript',
           },
         ]}
-        nlQuery="Some nice answer"
+        // nlQuery="Some nice answer"
         onClick={(e) => {
           // e.preventDefault();
         }}
-        handleRetry={() => {}}
+        handleRetry={() => { }}
       />
     </div>
   );
