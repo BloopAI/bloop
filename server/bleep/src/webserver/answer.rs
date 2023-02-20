@@ -5,11 +5,13 @@ use std::{
 };
 
 use axum::{
-    extract::Query,
+    extract::{Query, State},
+    http::StatusCode,
     response::{sse::Event, IntoResponse, Sse},
     Extension,
 };
 use futures::{Stream, StreamExt, TryStreamExt};
+use secrecy::ExposeSecret;
 use thiserror::Error;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
@@ -17,10 +19,12 @@ use utoipa::ToSchema;
 
 use crate::{
     analytics::{QueryEvent, Stage},
+    env::Feature,
     indexes::reader::ContentDocument,
     query::parser,
+    remotes::{self, BackendCredential},
     semantic::Semantic,
-    state::RepoRef,
+    state::{Backend, RepoRef},
     Application,
 };
 
@@ -108,15 +112,33 @@ impl From<AnswerResponse> for super::Response<'static> {
 
 const SNIPPET_COUNT: usize = 13;
 
+pub(super) struct AnswerState {
+    client: reqwest::Client,
+}
+
+impl Default for AnswerState {
+    fn default() -> Self {
+        Self {
+            client: reqwest::Client::builder()
+                .cookie_store(true)
+                .build()
+                // This should never fail, the only default properties we change are enabling
+                // cookies.
+                .unwrap(),
+        }
+    }
+}
+
 pub(super) async fn handle(
     Query(params): Query<Params>,
+    State(state): State<Arc<AnswerState>>,
     Extension(app): Extension<Application>,
 ) -> Result<impl IntoResponse> {
     // create a new analytics event for this query
     let event = Arc::new(RwLock::new(QueryEvent::default()));
 
     // populate analytics event
-    let response = _handle(params, app.clone(), Arc::clone(&event)).await;
+    let response = _handle(&state, params, app.clone(), Arc::clone(&event)).await;
 
     if response.is_err() {
         // send event to rudderstack
@@ -130,6 +152,7 @@ pub(super) async fn handle(
 }
 
 async fn _handle(
+    state: &AnswerState,
     params: Params,
     app: Application,
     event: Arc<RwLock<QueryEvent>>,
@@ -250,8 +273,38 @@ async fn _handle(
         info!("Semantic search returned {} snippets", snippets.len());
     }
 
+    let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
+        let Some(cred) = app.credentials.get(&Backend::Github) else {
+            return Err(Error::user(
+                "missing Github token",
+            ).with_status(StatusCode::UNAUTHORIZED));
+        };
+
+        match &*cred {
+            BackendCredential::Github(remotes::github::Auth::OAuth {
+                access_token: token,
+                ..
+            }) => Some(token.expose_secret().clone()),
+
+            BackendCredential::Github(remotes::github::Auth::App { .. }) => {
+                return Err(
+                    Error::user("cannot connect to answer API using installation token")
+                        .with_status(StatusCode::UNAUTHORIZED),
+                )
+            }
+        }
+    } else {
+        None
+    };
+
     let answer_api_host = format!("{}/q", app.config.answer_api_url);
-    let answer_api_client = semantic.build_answer_api_client(answer_api_host.as_str(), target, 5);
+    let answer_api_client = semantic.build_answer_api_client(
+        state,
+        answer_api_host.as_str(),
+        target,
+        5,
+        answer_bearer.clone(),
+    );
 
     let select_prompt = answer_api_client.build_select_prompt(&snippets);
 
@@ -404,11 +457,12 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> String {
 }
 
 struct AnswerAPIClient<'s> {
-    client: reqwest::Client,
     host: String,
     query: String,
     semantic: &'s Semantic,
     max_attempts: usize,
+    bearer_token: Option<String>,
+    client: reqwest::Client,
 }
 
 #[derive(Error, Debug)]
@@ -442,16 +496,21 @@ impl From<AnswerAPIError> for Error {
 impl Semantic {
     fn build_answer_api_client<'s>(
         &'s self,
+        state: &AnswerState,
         host: &str,
         query: &str,
         max_attempts: usize,
+        bearer_token: Option<String>,
     ) -> AnswerAPIClient<'s> {
         AnswerAPIClient {
-            client: reqwest::Client::new(),
             host: host.to_owned(),
             query: query.to_owned(),
             semantic: self,
             max_attempts,
+            // Internally, cookies are shared between `reqwest` client instances via a shared lock.
+            // Cloning the client here just creates a new handle to the same lock.
+            client: state.client.clone(),
+            bearer_token,
         }
     }
 }
@@ -465,14 +524,20 @@ impl<'s> AnswerAPIClient<'s> {
         provider: api::Provider,
     ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
         let mut stream = Box::pin(
-            reqwest_eventsource::EventSource::new(self.client.post(self.host.as_str()).json(
-                &api::Request {
+            reqwest_eventsource::EventSource::new({
+                let mut builder = self.client.post(self.host.as_str());
+
+                if let Some(bearer) = &self.bearer_token {
+                    builder = builder.bearer_auth(bearer);
+                }
+
+                builder.json(&api::Request {
                     prompt: prompt.to_string(),
                     max_tokens: Some(max_tokens),
                     temperature: Some(temperature),
                     provider,
-                },
-            ))
+                })
+            })
             // We don't have a `Stream` body so this can't fail.
             .expect("couldn't clone requestbuilder")
             // `reqwest_eventsource` returns an error to signify a stream end, instead of simply ending
