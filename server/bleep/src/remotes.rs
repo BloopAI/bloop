@@ -257,7 +257,6 @@ pub(crate) fn gather_repo_roots(
 ) -> impl Iterator<Item = RepoRef> {
     const RECOGNIZED_VCS_DIRS: &[&str] = &[".git"];
 
-    // TODO: Reuse this WalkBuilder config
     WalkBuilder::new(path)
         .ignore(true)
         .hidden(false)

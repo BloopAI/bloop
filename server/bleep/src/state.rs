@@ -80,7 +80,6 @@ impl StateSource {
         get_relative_path(dir, std::env::current_dir().unwrap())
     }
 
-    // TODO: Is this necessary?
     pub(crate) fn repo_path_for_name(&self, name: &str) -> PathBuf {
         self.directory.as_ref().unwrap().join(name)
     }
@@ -127,7 +126,7 @@ impl StateSource {
 
                     // in case the app terminated during indexing, make sure to re-queue it
                     if elem.sync_status == SyncStatus::Indexing {
-                        elem.value_mut().sync_status = SyncStatus::Queued;
+                        elem.value_mut().mark_queued();
                     }
                 }
 

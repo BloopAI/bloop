@@ -33,7 +33,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
     fn from((key, repo): (&RepoRef, &Repository)) -> Self {
         Repo {
             provider: key.backend(),
-            name: format!("{}", key), // TODO: Why does this use display name rather than indexed name? (e.g. org/repo vs. github.com/org/repo)
+            name: format!("{}", key),
             repo_ref: key.clone(),
             sync_status: repo.sync_status.clone(),
             local_duplicates: vec![],

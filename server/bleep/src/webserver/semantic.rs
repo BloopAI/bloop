@@ -1,5 +1,5 @@
 use super::prelude::*;
-use crate::{query::parser, semantic::Semantic};
+use crate::semantic::Semantic;
 use tracing::error;
 
 use qdrant_client::qdrant::value::Kind;
@@ -31,8 +31,7 @@ pub(super) async fn raw_chunks(
 ) -> impl IntoResponse {
     if let Some(semantic) = semantic {
         let Args { ref query, limit } = args;
-        let query = parser::parse_nl(query).unwrap();
-        let result = semantic.search(&query, limit).await.and_then(|raw| {
+        let result = semantic.search(query, limit).await.and_then(|raw| {
             raw.into_iter()
                 .map(|v| {
                     v.payload

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, ops::Not, path::Path, sync::Arc};
 
-use crate::{query::parser::NLQuery, Configuration};
+use crate::{query::parser, Configuration};
 
 use ndarray::Axis;
 use ort::{
@@ -18,7 +18,7 @@ use qdrant_client::{
 };
 use rayon::prelude::*;
 use thiserror::Error;
-use tracing::{debug, trace};
+use tracing::{debug, trace, warn};
 
 pub mod chunk;
 
@@ -132,14 +132,14 @@ impl Semantic {
         Ok(())
     }
 
-    pub fn embed(&self, chunk: &str) -> anyhow::Result<Vec<f32>> {
-        let tokenizer_output = self.tokenizer.encode(chunk, true).unwrap();
+    pub fn embed(&self, sequence: &str) -> anyhow::Result<Vec<f32>> {
+        let tokenizer_output = self.tokenizer.encode(sequence, true).unwrap();
 
         let input_ids = tokenizer_output.get_ids();
         let attention_mask = tokenizer_output.get_attention_mask();
         let token_type_ids = tokenizer_output.get_type_ids();
         let length = input_ids.len();
-        trace!("embedding {} tokens {:?}", length, chunk);
+        trace!("embedding {} tokens {:?}", length, sequence);
 
         let inputs_ids_array = ndarray::Array::from_shape_vec(
             (1, length),
@@ -168,20 +168,20 @@ impl Semantic {
         Ok(pooled.to_owned().as_slice().unwrap().to_vec())
     }
 
-    pub async fn search<'a>(
-        &self,
-        nl_query: &NLQuery<'a>,
-        limit: u64,
-    ) -> anyhow::Result<Vec<ScoredPoint>> {
-        let Some(query) = nl_query.target() else {
-            anyhow::bail!("no search target for query");
+    pub async fn search(&self, query: &str, limit: u64) -> anyhow::Result<Vec<ScoredPoint>> {
+        let parsed_query = parser::parse_nl(query).expect("Failed to parse query");
+
+        let Some(query) = parsed_query.target() else {
+            anyhow::bail!("No search target for query");
         };
 
-        let repo_filter = nl_query
+        let repo_filter = parsed_query
             .repo()
             .map(|r| make_kv_filter("repo_name", r).into());
 
-        let lang_filter = nl_query.lang().map(|l| make_kv_filter("lang", l).into());
+        let lang_filter = parsed_query
+            .lang()
+            .map(|l| make_kv_filter("lang", l).into());
 
         let filters = [repo_filter, lang_filter]
             .into_iter()
@@ -217,6 +217,7 @@ impl Semantic {
         buffer: &str,
         lang_str: &str,
     ) {
+        // Delete all points corresponding to the same path
         self.delete_points_by_path(repo_ref, std::iter::once(relative_path))
             .await;
 
@@ -229,13 +230,15 @@ impl Semantic {
             15,
             self.overlap_strategy(),
         );
-        let repo_plus_file = repo_name.to_owned() + "\t" + relative_path + "\n";
         debug!(chunk_count = chunks.len(), "found chunks");
+
+        // Prepend all chunks with `repo_name   relative_path`
+        let chunk_prefix = repo_name.to_owned() + "\t" + relative_path + "\n";
 
         let datapoints = chunks
             .par_iter()
             .filter_map(
-                |chunk| match self.embed(&(repo_plus_file.clone() + chunk.data)) {
+                |chunk| match self.embed(&(chunk_prefix.clone() + chunk.data)) {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
@@ -258,7 +261,7 @@ impl Semantic {
                         ]),
                     }),
                     Err(err) => {
-                        trace!(?err, "embedding failed");
+                        warn!(?err, "embedding failed");
                         None
                     }
                 },

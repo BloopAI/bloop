@@ -65,7 +65,6 @@ impl RepoRef {
                     return Err(RepoError::NonAbsoluteLocal);
                 }
 
-                // TODO: What does this do?
                 for component in path.components() {
                     use std::path::Component::*;
                     match component {
@@ -257,6 +256,12 @@ impl Repository {
         self.sync_status = SyncStatus::Removed;
     }
 
+    /// Marks the repository for indexing on the next sync
+    /// Does not initiate a new sync.
+    pub(crate) fn mark_queued(&mut self) {
+        self.sync_status = SyncStatus::Queued;
+    }
+
     pub(crate) fn sync_done_with(&mut self, info: Arc<RepoMetadata>) {
         self.last_index_unix_secs = get_unix_time(SystemTime::now());
         self.last_commit_unix_secs = info.last_commit_unix_secs;
@@ -406,7 +411,7 @@ mod test {
             "local//tmp/repository".parse::<RepoRef>().unwrap(),
             RepoRef::new(Backend::Local, "/tmp/repository").unwrap()
         );
-        if let Ok(_) = "repository".parse::<RepoRef>() {
+        if "repository".parse::<RepoRef>().is_ok() {
             panic!("non-absolute local allowed")
         }
     }
