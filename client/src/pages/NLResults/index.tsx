@@ -28,6 +28,7 @@ type Props = {
   handleRetry: () => void;
   nlAnswer?: string;
   nlError?: string;
+  relevantCode?: string;
 };
 
 const mockQuerySuggestions = [
@@ -44,6 +45,7 @@ const ResultsPage = ({
   handleRetry,
   nlError,
   nlAnswer,
+  relevantCode,
 }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
@@ -122,6 +124,7 @@ const ResultsPage = ({
         repoName: item.repo_name,
         lang: item.lang,
         line: item.start_line,
+        subSnippets: item.sub_snippets,
       })) || [],
     [resultsData?.snippets],
   );
@@ -141,6 +144,7 @@ const ResultsPage = ({
         handleRetry={handleRetry}
         answer={nlAnswer}
         error={nlError}
+        relevantCode={relevantCode}
       />
     );
   };

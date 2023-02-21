@@ -10,12 +10,14 @@ type Props = {
     repoName: string;
     lang: string;
     line: number;
+    subSnippets: { text: string; range: { start: number; end: number } }[];
   }[];
   onClick: ResultClick;
   handleRetry: () => void;
   searchId: string;
   answer?: string;
   error?: string;
+  relevantCode?: string;
 };
 
 const SemanticSearch = ({
@@ -25,12 +27,17 @@ const SemanticSearch = ({
   searchId,
   answer,
   error,
+  relevantCode,
 }: Props) => {
   const renderedSnippets = useMemo(() => {
     return snippets.map((item, index) => (
       <span key={index} className={`${index ? 'mt-5' : ''}`}>
         <CodeBlockSearch
-          snippets={[{ code: item.code, highlights: [], lineStart: item.line }]}
+          snippets={item.subSnippets.map((ss) => ({
+            code: ss.text,
+            highlights: [],
+            lineStart: ss.range.start,
+          }))}
           language={item.lang}
           filePath={item.path}
           branch={''}
@@ -50,6 +57,7 @@ const SemanticSearch = ({
         handleRetry={handleRetry}
         answer={answer}
         error={error}
+        relevantCode={relevantCode}
       />
       {renderedSnippets}
     </div>

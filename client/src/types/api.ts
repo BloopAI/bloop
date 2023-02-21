@@ -207,6 +207,7 @@ export interface NLSnippet {
   text: string;
   lang: string;
   start_line: number;
+  sub_snippets: { text: string; range: { start: number; end: number } }[];
 }
 
 export interface NLSearchResponse {

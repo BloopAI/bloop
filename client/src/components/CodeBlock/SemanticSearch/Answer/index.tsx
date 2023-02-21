@@ -28,9 +28,16 @@ type Props = {
   searchId: string;
   answer?: string;
   error?: string;
+  relevantCode?: string;
 };
 
-const Answer = ({ handleRetry, searchId, answer, error }: Props) => {
+const Answer = ({
+  handleRetry,
+  searchId,
+  answer,
+  error,
+  relevantCode,
+}: Props) => {
   const { deviceId } = useContext(DeviceContext);
   const { query } = useAppNavigation();
   const [isUpvote, setIsUpvote] = useState(false);
@@ -48,6 +55,10 @@ const Answer = ({ handleRetry, searchId, answer, error }: Props) => {
   const highlightedAnswer = useMemo(
     () => (answer ? md.render(answer) : ''),
     [answer],
+  );
+  const highlightedCode = useMemo(
+    () => (relevantCode ? md.render(relevantCode) : ''),
+    [relevantCode],
   );
 
   const handleUpvote = useCallback(
@@ -89,6 +100,7 @@ const Answer = ({ handleRetry, searchId, answer, error }: Props) => {
         dangerouslySetInnerHTML={{
           __html:
             highlightedAnswer +
+            (highlightedCode || '') +
             (error ? (
               <p className="text-danger-500">An error occurred: {error}</p>
             ) : (

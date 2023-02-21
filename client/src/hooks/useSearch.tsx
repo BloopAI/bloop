@@ -11,6 +11,7 @@ interface Status<T> {
   data?: T;
   query?: string;
   nlAnswer?: string;
+  relevantCode?: string;
 }
 
 interface SearchResponse<T> extends Status<T> {
@@ -62,6 +63,10 @@ export const useSearch = <T,>(
         eventSource.onmessage = (ev) => {
           if (ev.data === '[DONE]') {
             eventSource.close();
+            setStatus((prev) => ({
+              ...prev,
+              loading: false,
+            }));
             prevEventSource = undefined;
           } else {
             const newData = JSON.parse(ev.data);
@@ -77,8 +82,13 @@ export const useSearch = <T,>(
                   error: newData.Err,
                 }));
               } else {
-                setStatus({ loading: false, data: JSON.parse(ev.data), query });
+                setStatus({ loading: false, data: newData, query });
               }
+            } else if (i === 1) {
+              setStatus((prev) => ({
+                ...prev,
+                relevantCode: newData.Ok,
+              }));
             } else {
               setStatus((prev) => ({
                 ...prev,
