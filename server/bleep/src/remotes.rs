@@ -1,8 +1,10 @@
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::{
+    fmt::{self, Display},
     path::{Path, PathBuf},
     process::Command,
+    str::FromStr,
 };
 
 use chrono::{DateTime, Utc};
@@ -11,10 +13,11 @@ use git2::{Cred, CredentialType, RemoteCallbacks};
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
+use utoipa::ToSchema;
 
 use crate::{
     remotes,
-    state::{RepoRef, Repository, SyncStatus},
+    repo::{Backend, RepoRef, Repository, SyncStatus},
     Application,
 };
 
@@ -28,6 +31,91 @@ type GitCreds = Box<
         + Send
         + 'static,
 >;
+
+#[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct GitRemote {
+    /// protocol to use during git operations
+    pub protocol: GitProtocol,
+    /// Hostname of provider
+    pub host: String,
+    /// any kind of `protocol` and [`Backend`]-dependent address
+    pub address: String,
+}
+
+#[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum GitProtocol {
+    Https,
+    Ssh,
+}
+
+#[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum RepoRemote {
+    Git(GitRemote),
+    None,
+}
+
+impl<T: AsRef<RepoRef>> From<T> for RepoRemote {
+    fn from(reporef: T) -> Self {
+        match reporef.as_ref() {
+            RepoRef(Backend::Github, name) => RepoRemote::Git(GitRemote {
+                protocol: GitProtocol::Https,
+                host: "github.com".to_owned(),
+                address: name.to_owned(),
+            }),
+            RepoRef(Backend::Local, _name) => RepoRemote::None,
+        }
+    }
+}
+
+impl Display for RepoRemote {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RepoRemote::Git(GitRemote {
+                protocol,
+                host,
+                address,
+            }) => match protocol {
+                GitProtocol::Https => write!(f, "https://{host}/{address}.git"),
+                GitProtocol::Ssh => write!(f, "git@{host}:{address}.git"),
+            },
+            RepoRemote::None => write!(f, "none"),
+        }
+    }
+}
+
+impl FromStr for RepoRemote {
+    type Err = ();
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        if let Some(stripped) = value.strip_prefix("https://github.com/") {
+            return Ok(RepoRemote::Git(GitRemote {
+                protocol: GitProtocol::Https,
+                host: "github.com".to_owned(),
+                address: stripped
+                    .trim_end_matches('/')
+                    .trim_end_matches(".git")
+                    .to_owned(),
+            }));
+        }
+
+        if let Some(stripped) = value.strip_prefix("git@github.com:") {
+            return Ok(RepoRemote::Git(GitRemote {
+                protocol: GitProtocol::Ssh,
+                host: "github.com".to_owned(),
+                address: stripped
+                    .trim_start_matches('/')
+                    .trim_end_matches('/')
+                    .trim_end_matches(".git")
+                    .to_owned(),
+            }));
+        }
+
+        Err(())
+    }
+}
 
 pub(crate) type Result<T> = std::result::Result<T, RemoteError>;
 #[derive(thiserror::Error, Debug)]
@@ -280,4 +368,33 @@ fn create_repository<'a>(app: &'a Application, reporef: &RepoRef) -> Ref<'a, Rep
             most_common_lang: None,
         })
         .downgrade()
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_reporemote() {
+        let https = RepoRemote::Git(GitRemote {
+            host: "github.com".into(),
+            address: "org/repo".into(),
+            protocol: GitProtocol::Https,
+        });
+
+        let ssh = RepoRemote::Git(GitRemote {
+            host: "github.com".into(),
+            address: "org/repo".into(),
+            protocol: GitProtocol::Ssh,
+        });
+
+        assert_eq!(https, "https://github.com/org/repo".parse().unwrap());
+        assert_eq!(https, "https://github.com/org/repo.git".parse().unwrap());
+        assert_eq!(ssh, "git@github.com:/org/repo.git".parse().unwrap());
+        assert_eq!(ssh, "git@github.com:/org/repo".parse().unwrap());
+        assert_eq!(ssh, "git@github.com:org/repo".parse().unwrap());
+        assert_eq!(ssh, "git@github.com:org/repo.git".parse().unwrap());
+        assert_eq!(ssh, "git@github.com:org/repo.git/".parse().unwrap());
+        assert_eq!(ssh, "git@github.com:/org/repo.git/".parse().unwrap());
+    }
 }

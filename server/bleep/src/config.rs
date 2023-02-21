@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 
 use secrecy::{ExposeSecret, SecretString};
-use serde::Deserialize;
+use serde::{Deserialize, Serializer};
 use std::path::{Path, PathBuf};
 
 #[derive(Deserialize, Parser, Debug)]
@@ -115,13 +115,13 @@ pub struct Configuration {
     // Installation-specific values
     //
     #[clap(long)]
-    #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
+    #[serde(serialize_with = "serialize_secret_opt_str", default)]
     /// Github Client ID for OAuth connection to private repos
     pub github_client_id: Option<SecretString>,
 
     // What is this used for? Why does syncing work when this is not set?
     #[clap(long)]
-    #[serde(serialize_with = "State::serialize_secret_opt_str", default)]
+    #[serde(serialize_with = "serialize_secret_opt_str", default)]
     pub github_client_secret: Option<SecretString>,
 
     #[clap(long)]
@@ -137,7 +137,7 @@ pub struct Configuration {
     pub github_app_private_key: Option<PathBuf>,
 
     #[clap(long)]
-    #[serde(serialize_with = "State::serialize_secret_opt_str", default)]
+    #[serde(serialize_with = "serialize_secret_opt_str", default)]
     /// Bot secret token
     pub bot_secret: Option<SecretString>,
 
@@ -272,6 +272,29 @@ impl Configuration {
     }
 }
 
+pub fn serialize_secret_opt_str<S>(
+    opt_secstr: &Option<SecretString>,
+    ser: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match opt_secstr {
+        Some(secstr) => ser.serialize_some(secstr.expose_secret()),
+        None => ser.serialize_none(),
+    }
+}
+
+pub fn serialize_secret_str<S>(secstr: &SecretString, ser: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    ser.serialize_str(secstr.expose_secret())
+}
+
+//
+// Configuration defaults
+//
 fn default_index_path() -> PathBuf {
     match directories::ProjectDirs::from("ai", "bloop", "bleep") {
         Some(dirs) => dirs.cache_dir().to_owned(),

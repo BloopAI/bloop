@@ -33,7 +33,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
     fn from((key, repo): (&RepoRef, &Repository)) -> Self {
         Repo {
             provider: key.backend(),
-            name: key.display_name(),
+            name: format!("{}", key), // TODO: Why does this use display name rather than indexed name? (e.g. org/repo vs. github.com/org/repo)
             repo_ref: key.clone(),
             sync_status: repo.sync_status.clone(),
             local_duplicates: vec![],
@@ -143,7 +143,7 @@ pub(super) async fn delete_by_id(
     let Ok(reporef) = RepoRef::from_components(&app.config.source.directory(), path) else {
         return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
     };
-
+    // Lookup in Repository and delete
     Ok(reporef.delete(&app).map(|_| json(ReposResponse::Deleted))?)
 }
 

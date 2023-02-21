@@ -48,6 +48,7 @@ mod config;
 mod env;
 mod language;
 mod remotes;
+mod repo;
 mod webserver;
 
 pub mod ctags;
