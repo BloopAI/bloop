@@ -372,6 +372,7 @@ async fn _handle(
         let mut explanation = String::new();
         let mut line = 0;
         let mut first_line = String::new();
+        let mut is_bullet_point_stripped = false;
         'stream: while let Some(result) = snippet_explanation.next().await {
             match result.as_ref().map(|o| o.as_str()) {
                 Ok("\n") => line += 1,
@@ -424,6 +425,18 @@ async fn _handle(
                 yield Ok(initial_event);
 
                 line = 2;
+            } else if !is_bullet_point_stripped {
+                // we are streaming the explanation here, omit the bullet point:
+                // - the response contains "2. The answer is ..."
+                // - we want just "The answer is ..."
+                // - omit the first two events, "2" and "."
+                if matches!(result.as_ref().map(|o| o.as_str()), Ok("2")) {
+                    continue 'stream;
+                }
+                if matches!(result.as_ref().map(|o| o.as_str()), Ok(".")) {
+                    is_bullet_point_stripped = true;
+                    continue 'stream;
+                }
             }
 
             yield Ok(Event::default()
