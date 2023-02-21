@@ -31,6 +31,7 @@
             rust
             git-lfs
             rustup
+            rocksdb
             nodePackages.pnpm
             pkg-config
             openssl
@@ -58,6 +59,8 @@
           ]);
 
         buildEnv = {
+          ROCKSDB_LIB_DIR = "${pkgs.rocksdb}/lib";
+          ROCKSDB_INCLUDE_DIR = "${pkgs.rocksdb}/include";
           LIBCLANG_PATH = "${libclang.lib}/lib";
         };
       in rec {
