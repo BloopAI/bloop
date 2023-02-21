@@ -122,22 +122,3 @@ impl Stage {
         self
     }
 }
-
-pub trait QueryAnalyticsSource {
-    fn track_query(&self, event: QueryEvent);
-}
-
-impl QueryAnalyticsSource for RudderAnalytics {
-    fn track_query(&self, event: QueryEvent) {
-        let _ = self.send(&Message::Track(Track {
-            user_id: Some(event.user_id),
-            event: "openai query".to_owned(),
-            properties: Some(json!({
-                "query_id": event.query_id,
-                "overlap_strategy": event.overlap_strategy,
-                "stages": event.stages,
-            })),
-            ..Default::default()
-        }));
-    }
-}

@@ -115,21 +115,6 @@ impl Application {
             }
         };
 
-        // let analytics_client = if let (Some(key), Some(data_plane)) =
-        //     (&config.analytics_key, &config.analytics_data_plane)
-        // {
-        //     let key = key.to_string();
-        //     let data_plane = data_plane.to_string();
-        //     info!("initializing analytics");
-        //     let handle =
-        //         tokio::task::spawn_blocking(move || RudderAnalytics::load(key, data_plane));
-        //     Some(handle.await.unwrap())
-        // } else {
-        //     warn!("could not find analytics key ... skipping initialization");
-        //     None
-        // };
-        // let analytics_client = Arc::new(analytics_client);
-
         let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
         let env = if config.github_app_id.is_some() {
             Environment::private_server()
@@ -145,7 +130,6 @@ impl Application {
             cookie_key: config.source.initialize_cookie_key()?,
             semantic,
             config,
-            // analytics_client,
             env,
         })
     }
