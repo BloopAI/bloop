@@ -38,6 +38,13 @@ const fn default_true() -> bool {
     true
 }
 
+// FIXME: use usize::div_ceil soon
+fn div_ceil(a: usize, b: usize) -> usize {
+    let d = a / b;
+    let r = a % b;
+    d + usize::from(r > 0)
+}
+
 #[derive(Debug, Deserialize, IntoParams)]
 pub struct ApiQuery {
     /// A query written in the bloop query language
@@ -185,7 +192,7 @@ impl PagingMetadata {
         Self {
             page,
             page_size,
-            page_count: total_count.map(|t| crate::div_ceil(t, page_size)),
+            page_count: total_count.map(|t| div_ceil(t, page_size)),
             total_count,
         }
     }

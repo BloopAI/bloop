@@ -70,15 +70,15 @@ static SENTRY_GUARD: OnceCell<sentry::ClientInitGuard> = OnceCell::new();
 /// The global state
 #[derive(Clone)]
 pub struct Application {
-    env: Environment,
+    env: Environment, // What's this?
     pub config: Arc<Configuration>,
-    repo_pool: RepositoryPool,
-    background: BackgroundExecutor,
-    semantic: Option<Semantic>,
+    repo_pool: RepositoryPool,      // What's this?
+    background: BackgroundExecutor, // What's this?
+    semantic: Option<Semantic>,     // This could be renamed
     indexes: Arc<Indexes>,
-    credentials: Arc<DashMap<Backend, BackendCredential>>,
+    credentials: Arc<DashMap<Backend, BackendCredential>>, // What's this?
     pub analytics_client: Arc<Option<RudderAnalytics>>,
-    cookie_key: axum_extra::extract::cookie::Key,
+    cookie_key: axum_extra::extract::cookie::Key, // Is this needed here?
 }
 
 impl Application {
@@ -88,7 +88,7 @@ impl Application {
             Some(ref path) => Configuration::read(path)?,
         };
 
-        config.max_threads = config.max_threads.max(minimum_parallelism());
+        config.max_threads = config.max_threads.max(minimum_parallelism()); // Can this be reused in src-tauri/backend.rs?
         let threads = config.max_threads;
 
         // 3MiB buffer size is minimum for Tantivy
@@ -96,16 +96,20 @@ impl Application {
         config.repo_buffer_size = config.repo_buffer_size.max(threads * 3_000_000);
         config.source.set_default_dir(&config.index_dir);
 
+        let config = Arc::new(config);
+
+        // Set path to Ctags binary
         if let Some(ref executable) = config.ctags_path {
             ctags::CTAGS_BINARY
                 .set(executable.clone())
                 .map_err(|existing| anyhow!("ctags binary already set: {existing:?}"))?;
         }
 
-        let config = Arc::new(config);
+        // Initialise Semantic index if `qdrant_url` set in config
         let semantic = match config.qdrant_url {
             Some(ref url) => {
                 match Semantic::initialize(&config.model_dir, url, Arc::clone(&config)).await {
+                    // Why do we pass model_dir AND config?
                     Ok(semantic) => Some(semantic),
                     Err(e) => {
                         bail!("Qdrant initialization failed: {}", e);
@@ -113,7 +117,7 @@ impl Application {
                 }
             }
             None => {
-                warn!("Qdrant not initialized because `qdrant_url` is not provided. Starting without semantic search!");
+                warn!("Semantic search disabled because `qdrant_url` is not provided. Starting without.");
                 None
             }
         };
@@ -123,25 +127,26 @@ impl Application {
         {
             let key = key.to_string();
             let data_plane = data_plane.to_string();
-            info!("initializing analytics");
+            info!("Initializing analytics");
             let handle =
                 tokio::task::spawn_blocking(move || RudderAnalytics::load(key, data_plane));
             Some(handle.await.unwrap())
         } else {
-            warn!("could not find analytics key ... skipping initialization");
+            warn!("Could not find analytics key ... skipping initialization");
             None
         };
         let analytics_client = Arc::new(analytics_client);
 
-        let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
+        // If GitHub App ID configured start in private server mode
         let env = if config.github_app_id.is_some() {
+            info!("Starting bleep in private server mode");
             Environment::private_server()
         } else {
             env
         };
 
         Ok(Self {
-            indexes,
+            indexes: Arc::new(Indexes::new(config.clone(), semantic.clone())?),
             credentials: Arc::new(config.source.initialize_credentials()?),
             background: BackgroundExecutor::start(config.clone()),
             repo_pool: config.source.initialize_pool()?,
@@ -153,18 +158,18 @@ impl Application {
         })
     }
 
-    pub fn install_sentry(&self) {
+    pub fn initialize_sentry(&self) {
         let Some(ref dsn) = self.config.sentry_dsn else {
-            info!("sentry DSN missing, skipping initialization");
+            info!("Sentry DSN missing, skipping initialization");
             return;
         };
 
         if sentry::Hub::current().client().is_some() {
-            warn!("sentry has already been initialized");
+            warn!("Sentry has already been initialized");
             return;
         }
 
-        info!("initializing sentry ...");
+        info!("Initializing sentry ...");
         let guard = sentry::init((
             dsn.to_string(),
             sentry::ClientOptions {
@@ -276,11 +281,4 @@ fn tracing_subscribe() -> bool {
         .with(env_filter)
         .try_init()
         .is_ok()
-}
-
-// FIXME: use usize::div_ceil soon
-fn div_ceil(a: usize, b: usize) -> usize {
-    let d = a / b;
-    let r = a % b;
-    d + usize::from(r > 0)
 }

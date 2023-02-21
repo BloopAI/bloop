@@ -440,8 +440,21 @@ impl StateSource {
         });
     }
 
+    // TODO: Do we need both of these methods?
     pub(crate) fn repo_dir(&self) -> Option<PathBuf> {
         self.directory.clone()
+    }
+
+    pub fn directory(&self) -> PathBuf {
+        let dir = self.directory.as_deref().unwrap();
+        RelativePath::from_path(dir)
+            .map(|p| p.to_logical_path(std::env::current_dir().unwrap()))
+            .unwrap_or_else(|_| dir.to_owned())
+    }
+
+    // TODO: Is this necessary?
+    pub(crate) fn repo_path_for_name(&self, name: &str) -> PathBuf {
+        self.directory.as_ref().unwrap().join(name)
     }
 
     pub(crate) fn initialize_pool(&self) -> Result<RepositoryPool, RepoError> {
@@ -449,9 +462,12 @@ impl StateSource {
         use dunce::canonicalize;
         #[cfg(not(target = "windows"))]
         use std::fs::canonicalize;
+
         match (self.directory.as_ref(), self.state_file.as_ref()) {
+            // Load RepositoryPool from path
             (None, Some(path)) => read_file_or_default(path).map(Arc::new),
 
+            // Initialze RepositoryPool from repos under `root`
             (Some(root), None) => Ok(gather_repo_roots(root, None)
                 .map(|reporef| {
                     let repo = Repository::local_from(&reporef);
@@ -460,8 +476,11 @@ impl StateSource {
                 .collect::<DashMap<_, _>>()
                 .into()),
 
+            // Update RepositoryPool with repos under `root`
             (Some(root), Some(path)) => {
+                // Load RepositoryPool from path
                 let state: RepositoryPool = Arc::new(read_file_or_default(path)?);
+
                 let current_repos = gather_repo_roots(root, None).collect::<HashSet<_>>();
                 let root = canonicalize(root)?;
 
@@ -470,7 +489,7 @@ impl StateSource {
                     let k = elem.key();
 
                     if let Some(path) = k.local_path() {
-                        // clippy suggestion causes the code to break, revisit after 1.66
+                        // Clippy suggestion causes the code to break, revisit after 1.66
                         #[allow(clippy::needless_borrow)]
                         if path.starts_with(&root) && !current_repos.contains(k) {
                             debug!(reporef=%k, "repo scheduled to be removed;");
@@ -514,16 +533,6 @@ impl StateSource {
         }
     }
 
-    pub fn index_version_mismatch(&self) -> bool {
-        let current: String = read_file_or_default(self.version_file.as_ref().unwrap()).unwrap();
-
-        !current.is_empty() && current != SCHEMA_VERSION
-    }
-
-    pub fn save_index_version(&self) -> Result<(), RepoError> {
-        pretty_write_file(self.version_file.as_ref().unwrap(), SCHEMA_VERSION)
-    }
-
     pub fn save_pool(&self, pool: RepositoryPool) -> Result<(), RepoError> {
         match self.state_file {
             None => Err(RepoError::NoSourceGiven),
@@ -547,15 +556,14 @@ impl StateSource {
         }
     }
 
-    pub(crate) fn repo_path_for_name(&self, name: &str) -> PathBuf {
-        self.directory.as_ref().unwrap().join(name)
+    pub fn index_version_mismatch(&self) -> bool {
+        let current: String = read_file_or_default(self.version_file.as_ref().unwrap()).unwrap();
+
+        !current.is_empty() && current != SCHEMA_VERSION
     }
 
-    pub fn directory(&self) -> PathBuf {
-        let dir = self.directory.as_deref().unwrap();
-        RelativePath::from_path(dir)
-            .map(|p| p.to_logical_path(std::env::current_dir().unwrap()))
-            .unwrap_or_else(|_| dir.to_owned())
+    pub fn save_index_version(&self) -> Result<(), RepoError> {
+        pretty_write_file(self.version_file.as_ref().unwrap(), SCHEMA_VERSION)
     }
 
     pub fn initialize_cookie_key(&self) -> Result<axum_extra::extract::cookie::Key> {

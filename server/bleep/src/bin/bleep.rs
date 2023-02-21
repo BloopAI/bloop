@@ -10,6 +10,6 @@ async fn main() -> Result<()> {
     )
     .await?;
 
-    app.install_sentry();
+    app.initialize_sentry();
     app.run().await
 }
