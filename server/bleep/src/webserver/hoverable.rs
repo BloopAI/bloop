@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::prelude::*;
-use crate::{indexes::Indexes, state::RepoRef, symbol::SymbolLocations, text_range::TextRange};
+use crate::{indexes::Indexes, repo::RepoRef, symbol::SymbolLocations, text_range::TextRange};
 
 use axum::{extract::Query, response::IntoResponse, Extension};
 use serde::{Deserialize, Serialize};

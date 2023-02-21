@@ -1,4 +1,4 @@
-use crate::{env::Feature, snippet, state, Application};
+use crate::{env::Feature, snippet, Application};
 
 use axum::middleware;
 use axum::{http::StatusCode, response::IntoResponse, routing::get, Extension, Json};
@@ -320,9 +320,9 @@ impl<'a> From<EndpointError<'a>> for Response<'a> {
         repos::ReposResponse,
         repos::Repo,
         repos::SetIndexed,
-        state::Backend,
-        state::RepoRemote,
-        state::SyncStatus,
+        crate::repo::Backend,
+        crate::remotes::RepoRemote,
+        crate::repo::SyncStatus,
         github::GithubResponse,
         github::GithubCredentialStatus,
     ))

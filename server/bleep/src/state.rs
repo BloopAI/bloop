@@ -77,9 +77,7 @@ impl StateSource {
 
     pub fn directory(&self) -> PathBuf {
         let dir = self.directory.as_deref().unwrap();
-        RelativePath::from_path(dir)
-            .map(|p| p.to_logical_path(std::env::current_dir().unwrap()))
-            .unwrap_or_else(|_| dir.to_owned())
+        get_relative_path(dir, std::env::current_dir().unwrap())
     }
 
     // TODO: Is this necessary?
@@ -250,6 +248,15 @@ pub fn read_file_or_default<T: Default + DeserializeOwned>(path: &Path) -> Resul
 
     let file = std::fs::File::open(path)?;
     Ok(serde_json::from_reader::<_, T>(file)?)
+}
+
+pub fn get_relative_path<P>(path: &Path, base: P) -> PathBuf
+where
+    P: AsRef<Path>,
+{
+    RelativePath::from_path(path)
+        .map(|rp| rp.to_logical_path(base))
+        .unwrap_or_else(|_| path.to_owned())
 }
 
 #[cfg(test)]

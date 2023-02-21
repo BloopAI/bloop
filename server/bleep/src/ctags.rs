@@ -22,7 +22,7 @@ use tokio::{io::AsyncWriteExt, process::Command};
 use tracing::{debug, warn};
 
 pub static CTAGS_BINARY: OnceCell<PathBuf> = OnceCell::new();
-pub type SymbolMap = HashMap<PathBuf, Vec<Symbol>>;
+pub type CtagSymbolMap = HashMap<PathBuf, Vec<Symbol>>;
 
 #[derive(Debug, Deserialize)]
 struct RawSymbol {
@@ -118,7 +118,10 @@ async fn call_ctags(paths: Vec<String>, exclude_langs_list: &[&str]) -> Result<S
     Ok(String::from_utf8(output.stdout)?)
 }
 
-pub async fn get_symbols(repo_disk_path: &Path, exclude_langs: &[&str]) -> SymbolMap {
+pub async fn get_symbols_with_ctags(
+    repo_disk_path: &Path,
+    exclude_langs: &[&str],
+) -> CtagSymbolMap {
     let paths = find_files(repo_disk_path);
 
     let threads = std::thread::available_parallelism()
@@ -138,7 +141,7 @@ pub async fn get_symbols(repo_disk_path: &Path, exclude_langs: &[&str]) -> Symbo
     parse_symbols(repo_disk_path, outputs)
 }
 
-fn parse_symbols(repo_disk_path: &Path, outputs: Vec<String>) -> SymbolMap {
+fn parse_symbols(repo_disk_path: &Path, outputs: Vec<String>) -> CtagSymbolMap {
     let mut cur_file = None;
     let symbol_map = outputs
         .iter()
@@ -222,7 +225,7 @@ mod tests {
     #[tokio::test]
     async fn run_ctags() {
         let path = crate::canonicalize(Path::new(".")).unwrap();
-        let symbols = get_symbols(&path, &[]).await;
+        let symbols = get_symbols_with_ctags(&path, &[]).await;
         assert!(!symbols.is_empty());
     }
 
@@ -249,15 +252,15 @@ mod tests {
         std::fs::write(&hs_file_path, hs_file_content).unwrap();
 
         // js files should be excluded
-        let symbols = get_symbols(&js_file_path, exclude_langs).await;
+        let symbols = get_symbols_with_ctags(&js_file_path, exclude_langs).await;
         assert!(symbols.is_empty());
 
         // go files should be excluded
-        let symbols = get_symbols(&go_file_path, exclude_langs).await;
+        let symbols = get_symbols_with_ctags(&go_file_path, exclude_langs).await;
         assert!(symbols.is_empty());
 
         // haskell files should be included
-        let symbols = get_symbols(&hs_file_path, exclude_langs).await;
+        let symbols = get_symbols_with_ctags(&hs_file_path, exclude_langs).await;
         assert_eq!(symbols.values().flatten().count(), 2);
     }
 

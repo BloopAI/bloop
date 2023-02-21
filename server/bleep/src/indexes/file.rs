@@ -37,8 +37,8 @@ use super::{
 };
 use crate::{
     intelligence::TreeSitterFile,
+    repo::{FileCache, RepoMetadata, RepoRef, Repository},
     semantic::Semantic,
-    state::{FileCache, RepoHeadInfo, RepoRef, Repository},
     symbol::SymbolLocations,
     Configuration,
 };
@@ -48,7 +48,7 @@ struct Workload<'a> {
     repo_disk_path: &'a Path,
     repo_ref: String,
     repo_name: &'a str,
-    repo_info: &'a RepoHeadInfo,
+    repo_info: &'a RepoMetadata,
     cache: &'a FileCache,
 }
 
@@ -239,7 +239,7 @@ impl Indexable for File {
         &self,
         reporef: &RepoRef,
         repo: &Repository,
-        repo_info: &RepoHeadInfo,
+        repo_info: &RepoMetadata,
         writer: &IndexWriter,
     ) -> Result<()> {
         let file_cache = repo.open_file_cache(&self.config.index_dir)?;

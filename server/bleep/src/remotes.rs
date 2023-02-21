@@ -50,73 +50,6 @@ pub enum GitProtocol {
     Ssh,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum RepoRemote {
-    Git(GitRemote),
-    None,
-}
-
-impl<T: AsRef<RepoRef>> From<T> for RepoRemote {
-    fn from(reporef: T) -> Self {
-        match reporef.as_ref() {
-            RepoRef(Backend::Github, name) => RepoRemote::Git(GitRemote {
-                protocol: GitProtocol::Https,
-                host: "github.com".to_owned(),
-                address: name.to_owned(),
-            }),
-            RepoRef(Backend::Local, _name) => RepoRemote::None,
-        }
-    }
-}
-
-impl Display for RepoRemote {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            RepoRemote::Git(GitRemote {
-                protocol,
-                host,
-                address,
-            }) => match protocol {
-                GitProtocol::Https => write!(f, "https://{host}/{address}.git"),
-                GitProtocol::Ssh => write!(f, "git@{host}:{address}.git"),
-            },
-            RepoRemote::None => write!(f, "none"),
-        }
-    }
-}
-
-impl FromStr for RepoRemote {
-    type Err = ();
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        if let Some(stripped) = value.strip_prefix("https://github.com/") {
-            return Ok(RepoRemote::Git(GitRemote {
-                protocol: GitProtocol::Https,
-                host: "github.com".to_owned(),
-                address: stripped
-                    .trim_end_matches('/')
-                    .trim_end_matches(".git")
-                    .to_owned(),
-            }));
-        }
-
-        if let Some(stripped) = value.strip_prefix("git@github.com:") {
-            return Ok(RepoRemote::Git(GitRemote {
-                protocol: GitProtocol::Ssh,
-                host: "github.com".to_owned(),
-                address: stripped
-                    .trim_start_matches('/')
-                    .trim_end_matches('/')
-                    .trim_end_matches(".git")
-                    .to_owned(),
-            }));
-        }
-
-        Err(())
-    }
-}
-
 pub(crate) type Result<T> = std::result::Result<T, RemoteError>;
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum RemoteError {
@@ -160,6 +93,79 @@ impl From<git2::Error> for RemoteError {
             NotFound => RemoteError::RemoteNotFound,
             _ => RemoteError::UnspecifiedGit(value),
         }
+    }
+}
+
+#[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum RepoRemote {
+    Git(GitRemote),
+    None,
+}
+
+impl<T: AsRef<RepoRef>> From<T> for RepoRemote {
+    fn from(reporef: T) -> Self {
+        match reporef.as_ref() {
+            RepoRef {
+                backend: Backend::Github,
+                name,
+            } => RepoRemote::Git(GitRemote {
+                protocol: GitProtocol::Https,
+                host: "github.com".to_owned(),
+                address: name.to_owned(),
+            }),
+            RepoRef {
+                backend: Backend::Local,
+                name: _name,
+            } => RepoRemote::None,
+        }
+    }
+}
+
+impl Display for RepoRemote {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RepoRemote::Git(GitRemote {
+                protocol,
+                host,
+                address,
+            }) => match protocol {
+                GitProtocol::Https => write!(f, "https://{host}/{address}.git"),
+                GitProtocol::Ssh => write!(f, "git@{host}:{address}.git"),
+            },
+            RepoRemote::None => write!(f, "none"),
+        }
+    }
+}
+
+impl FromStr for RepoRemote {
+    type Err = ();
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        if let Some(stripped) = value.strip_prefix("https://github.com/") {
+            return Ok(RepoRemote::Git(GitRemote {
+                protocol: GitProtocol::Https,
+                host: "github.com".to_owned(),
+                address: stripped
+                    .trim_end_matches('/')
+                    .trim_end_matches(".git")
+                    .to_owned(),
+            }));
+        }
+
+        if let Some(stripped) = value.strip_prefix("git@github.com:") {
+            return Ok(RepoRemote::Git(GitRemote {
+                protocol: GitProtocol::Ssh,
+                host: "github.com".to_owned(),
+                address: stripped
+                    .trim_start_matches('/')
+                    .trim_end_matches('/')
+                    .trim_end_matches(".git")
+                    .to_owned(),
+            }));
+        }
+
+        Err(())
     }
 }
 

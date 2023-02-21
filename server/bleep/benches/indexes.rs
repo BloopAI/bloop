@@ -11,7 +11,8 @@ use tantivy::doc;
 use tempdir::TempDir;
 
 async fn get_symbols() -> Vec<Symbol> {
-    let syms = bleep::ctags::get_symbols(&Path::new(".").canonicalize().unwrap(), &[]).await;
+    let syms =
+        bleep::ctags::get_symbols_with_ctags(&Path::new(".").canonicalize().unwrap(), &[]).await;
 
     syms.into_iter()
         .find(|(k, _)| {

@@ -1,7 +1,5 @@
-use anyhow::bail;
 use dashmap::DashMap;
-use relative_path::RelativePath;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
@@ -13,11 +11,11 @@ use tracing::debug;
 use utoipa::ToSchema;
 
 use crate::{
-    ctags::{get_symbols, SymbolMap},
+    ctags::{get_symbols_with_ctags, CtagSymbolMap},
     indexes,
     language::{get_language_info, LanguageInfo},
     remotes::RepoRemote,
-    state::pretty_write_file,
+    state::{get_relative_path, pretty_write_file},
 };
 
 pub(crate) type FileCache = Arc<DashMap<PathBuf, FreshValue<String>>>;
@@ -46,13 +44,20 @@ pub enum Backend {
 
 // Repository identifier
 #[derive(Hash, Eq, PartialEq, Debug, Clone)]
-pub struct RepoRef(Backend, String);
+pub struct RepoRef {
+    pub backend: Backend,
+    pub name: String,
+}
 
 impl RepoRef {
     pub fn new(backend: Backend, name: &(impl AsRef<str> + ?Sized)) -> Result<Self, RepoError> {
         use Backend::*;
+
         match backend {
-            Github => Ok(RepoRef(backend, name.as_ref().to_owned())),
+            Github => Ok(RepoRef {
+                backend,
+                name: name.as_ref().to_owned(),
+            }),
             Local => {
                 let path = Path::new(name.as_ref());
 
@@ -69,7 +74,10 @@ impl RepoRef {
                     }
                 }
 
-                Ok(RepoRef(backend, name.as_ref().to_owned()))
+                Ok(RepoRef {
+                    backend,
+                    name: name.as_ref().to_owned(),
+                })
             }
         }
     }
@@ -82,32 +90,27 @@ impl RepoRef {
             _ => &refstr,
         };
 
-        let path = Path::new(pathstr);
-        // TODO: This is used elsewhere?
-        let local_path = RelativePath::from_path(path)
-            .map(|rp| rp.to_logical_path(root))
-            .unwrap_or_else(|_| path.to_owned());
-
+        let local_path = get_relative_path(Path::new(pathstr), root);
         Self::new(Backend::Local, &local_path.to_string_lossy())
     }
 
     pub fn backend(&self) -> Backend {
-        self.0.clone()
+        self.backend.clone()
     }
 
     pub fn name(&self) -> &str {
-        &self.1
+        &self.name
     }
 
     pub fn is_local(&self) -> bool {
-        self.0 == Backend::Local
+        self.backend == Backend::Local
     }
 
     pub fn indexed_name(&self) -> String {
         // Local repos indexed as: dirname
         // Github repos indexed as: github.com/org/repo
-        match self.0 {
-            Backend::Local => Path::new(&self.1)
+        match self.backend {
+            Backend::Local => Path::new(&self.name)
                 .file_name()
                 .expect("last component is `..`")
                 .to_string_lossy()
@@ -117,21 +120,9 @@ impl RepoRef {
     }
 
     pub fn local_path(&self) -> Option<PathBuf> {
-        match self.0 {
-            Backend::Local => Some(PathBuf::from(&self.1)),
+        match self.backend {
+            Backend::Local => Some(PathBuf::from(&self.name)),
             _ => None,
-        }
-    }
-
-    // TODO: Shouldn't this be a method on some other object?
-    pub fn delete(self, app: &Application) -> anyhow::Result<()> {
-        match app.repo_pool.get_mut(&self) {
-            Some(mut result) => {
-                result.value_mut().mark_removed();
-                app.write_index().queue_sync_and_index(vec![self]);
-                Ok(())
-            }
-            None => bail!("Repo not found"),
         }
     }
 }
@@ -145,7 +136,10 @@ impl AsRef<RepoRef> for RepoRef {
 impl<P: AsRef<Path>> From<&P> for RepoRef {
     fn from(path: &P) -> Self {
         assert!(path.as_ref().is_absolute());
-        RepoRef(Backend::Local, path.as_ref().to_string_lossy().to_string())
+        RepoRef {
+            backend: Backend::Local,
+            name: path.as_ref().to_string_lossy().to_string(),
+        }
     }
 }
 
@@ -257,8 +251,6 @@ impl Repository {
         Ok(metadata)
     }
 
-    pub(crate) async fn delete(&self) {}
-
     /// Marks the repository for removal on the next sync
     /// Does not initiate a new sync.
     pub(crate) fn mark_removed(&mut self) {
@@ -308,7 +300,7 @@ fn get_unix_time(time: SystemTime) -> u64 {
 #[derive(Debug)]
 pub struct RepoMetadata {
     pub last_commit_unix_secs: u64,
-    pub symbols: SymbolMap,
+    pub symbols: CtagSymbolMap,
     pub langs: LanguageInfo,
 }
 
@@ -317,6 +309,9 @@ async fn get_repo_metadata(repo_disk_path: &PathBuf) -> Arc<RepoMetadata> {
         .and_then(|repo| Ok(repo.head()?.peel_to_commit()?.time().seconds() as u64))
         .unwrap_or(0);
 
+    // Extract symbols using Ctags for all languages which are not covered by a more
+    // precise form of symbol extraction.
+    //
     // There might be a way to generate this list from intelligence::ALL_LANGUAGES,
     // but not all lang_ids are valid ctags' languages though, so we hardcode some here:
     let exclude_langs = &[
@@ -340,7 +335,7 @@ async fn get_repo_metadata(repo_disk_path: &PathBuf) -> Arc<RepoMetadata> {
 
     RepoMetadata {
         last_commit_unix_secs: repo,
-        symbols: get_symbols(repo_disk_path, exclude_langs).await,
+        symbols: get_symbols_with_ctags(repo_disk_path, exclude_langs).await,
         langs: get_language_info(repo_disk_path),
     }
     .into()
@@ -401,15 +396,15 @@ mod test {
     fn parse_reporef() {
         assert_eq!(
             "github.com/bloopai/bloop".parse::<RepoRef>().unwrap(),
-            RepoRef(Backend::Github, "bloopai/bloop".to_string())
+            RepoRef::new(Backend::Github, "bloopai/bloop").unwrap()
         );
         assert_eq!(
             "local//tmp/repository".parse::<RepoRef>().unwrap(),
-            RepoRef(Backend::Local, "/tmp/repository".to_string())
+            RepoRef::new(Backend::Local, "/tmp/repository").unwrap()
         );
         assert_eq!(
             "local//tmp/repository".parse::<RepoRef>().unwrap(),
-            RepoRef(Backend::Local, "/tmp/repository".to_string())
+            RepoRef::new(Backend::Local, "/tmp/repository").unwrap()
         );
         if let Ok(_) = "repository".parse::<RepoRef>() {
             panic!("non-absolute local allowed")
@@ -420,11 +415,11 @@ mod test {
     fn serialize_reporef() {
         assert_eq!(
             r#""github.com/org/repo""#,
-            &serde_json::to_string(&RepoRef(Backend::Github, "org/repo".into())).unwrap()
+            &serde_json::to_string(&RepoRef::new(Backend::Github, "org/repo").unwrap()).unwrap()
         );
         assert_eq!(
             r#""local//org/repo""#,
-            &serde_json::to_string(&RepoRef(Backend::Local, "/org/repo".into())).unwrap()
+            &serde_json::to_string(&RepoRef::new(Backend::Local, "/org/repo").unwrap()).unwrap()
         );
     }
 }

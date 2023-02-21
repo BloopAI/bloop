@@ -23,8 +23,8 @@ use crate::{
     indexes::reader::ContentDocument,
     query::parser,
     remotes::{self, BackendCredential},
+    repo::{Backend, RepoRef},
     semantic::Semantic,
-    state::{Backend, RepoRef},
     Application,
 };
 

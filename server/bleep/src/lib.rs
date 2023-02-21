@@ -22,19 +22,14 @@ use dunce::canonicalize;
 use std::fs::canonicalize;
 
 use crate::{
-    analytics::QueryAnalyticsSource,
-    background::BackgroundExecutor,
-    indexes::Indexes,
-    remotes::BackendCredential,
-    semantic::Semantic,
-    state::{Backend, RepositoryPool},
+    analytics::QueryAnalyticsSource, background::BackgroundExecutor, indexes::Indexes,
+    remotes::BackendCredential, repo::Backend, semantic::Semantic, state::RepositoryPool,
 };
 use anyhow::{anyhow, bail, Result};
 use axum::extract::FromRef;
 
 use dashmap::DashMap;
 use once_cell::sync::OnceCell;
-use relative_path::RelativePath;
 use rudderanalytics::client::RudderAnalytics;
 
 use std::{path::Path, sync::Arc};
@@ -71,15 +66,15 @@ static SENTRY_GUARD: OnceCell<sentry::ClientInitGuard> = OnceCell::new();
 /// The global state
 #[derive(Clone)]
 pub struct Application {
-    env: Environment, // What's this?
+    env: Environment,
     pub config: Arc<Configuration>,
-    repo_pool: RepositoryPool,      // What's this?
-    background: BackgroundExecutor, // What's this?
-    semantic: Option<Semantic>,     // This could be renamed
+    repo_pool: RepositoryPool,
+    background: BackgroundExecutor,
+    semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
-    credentials: Arc<DashMap<Backend, BackendCredential>>, // What's this?
+    credentials: Arc<DashMap<Backend, BackendCredential>>,
     pub analytics_client: Arc<Option<RudderAnalytics>>,
-    cookie_key: axum_extra::extract::cookie::Key, // Is this needed here?
+    cookie_key: axum_extra::extract::cookie::Key,
 }
 
 impl Application {
@@ -237,10 +232,7 @@ impl Application {
 
         if self.env.allow(env::Feature::SafePathScan) {
             let source_dir = self.config.source.directory();
-            return RelativePath::from_path(&path)
-                .map(|p| p.to_logical_path(&source_dir))
-                .unwrap_or_else(|_| path.as_ref().to_owned())
-                .starts_with(&source_dir);
+            return state::get_relative_path(path.as_ref(), &source_dir).starts_with(&source_dir);
         }
 
         false

@@ -11,7 +11,7 @@ use tantivy::{
 use tracing::info;
 
 use super::Indexable;
-use crate::state::{RepoHeadInfo, RepoRef, Repository};
+use crate::repo::{RepoMetadata, RepoRef, Repository};
 
 pub struct Repo {
     schema: Schema,
@@ -70,7 +70,7 @@ impl Indexable for Repo {
         &self,
         repo_ref: &RepoRef,
         repo: &Repository,
-        _info: &RepoHeadInfo,
+        _info: &RepoMetadata,
         writer: &IndexWriter,
     ) -> Result<()> {
         // Make sure we delete any stale references to this repository when indexing.

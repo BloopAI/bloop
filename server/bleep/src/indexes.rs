@@ -21,8 +21,8 @@ use tracing::debug;
 
 use crate::{
     query::parser::Query,
+    repo::{RepoMetadata, RepoRef, Repository},
     semantic::Semantic,
-    state::{RepoHeadInfo, RepoRef, Repository},
     Configuration,
 };
 
@@ -108,7 +108,7 @@ pub trait Indexable: Send + Sync {
         &self,
         reporef: &RepoRef,
         repo: &Repository,
-        info: &RepoHeadInfo,
+        info: &RepoMetadata,
         writer: &IndexWriter,
     ) -> Result<()>;
 
@@ -157,7 +157,7 @@ impl<'a> IndexWriteHandle<'a> {
         self.source.delete_by_repo(&self.writer, repo)
     }
 
-    pub fn index(&self, reporef: &RepoRef, repo: &Repository, info: &RepoHeadInfo) -> Result<()> {
+    pub fn index(&self, reporef: &RepoRef, repo: &Repository, info: &RepoMetadata) -> Result<()> {
         self.source
             .index_repository(reporef, repo, info, &self.writer)
     }

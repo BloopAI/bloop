@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     remotes::{self, BackendCredential},
-    state::Backend,
+    repo::Backend,
 };
 
 use super::*;

@@ -4,7 +4,7 @@ use tracing::{debug, error, info};
 use crate::{
     indexes,
     remotes::RemoteError,
-    state::{RepoRef, Repository, SyncStatus},
+    repo::{RepoRef, Repository, SyncStatus},
     Application, Configuration,
 };
 
