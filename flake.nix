@@ -19,7 +19,7 @@
         pkgsStatic = pkgs.pkgsStatic;
         lib = pkgs.lib;
 
-        llvm = pkgs.llvmPackages_15;
+        llvm = pkgs.llvmPackages_14;
         libclang = llvm.libclang;
         stdenv = llvm.stdenv;
 
