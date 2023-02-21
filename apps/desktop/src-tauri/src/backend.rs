@@ -1,6 +1,12 @@
 use std::sync::Arc;
 
-use super::{plugin, relative_command_path, App, Manager, Payload, Runtime, TELEMETRY};
+use super::{plugin, relative_command_path, App, Manager, Payload, Runtime};
+
+// a hack to get server/bleep/tests/desktop to run correctly
+#[cfg(not(test))]
+use super::TELEMETRY;
+#[cfg(test)]
+static TELEMETRY: std::sync::RwLock<bool> = std::sync::RwLock::new(false);
 
 use bleep::{analytics, Application, Configuration, Environment};
 use tracing::info;
