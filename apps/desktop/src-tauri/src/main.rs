@@ -6,15 +6,17 @@
 mod backend;
 mod qdrant;
 
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    sync::{Arc, RwLock},
+};
 
 use bleep::Application;
 use once_cell::sync::OnceCell;
 use sentry::ClientInitGuard;
-use std::sync::{Arc, RwLock};
 pub use tauri::{plugin, App, Manager, Runtime};
 
-static TELEMETRY: RwLock<bool> = RwLock::new(false);
+pub static TELEMETRY: RwLock<bool> = RwLock::new(false);
 static SENTRY: OnceCell<ClientInitGuard> = OnceCell::new();
 
 // the payload type must implement `Serialize` and `Clone`.
@@ -49,7 +51,7 @@ async fn main() {
             get_device_id,
             enable_telemetry,
             disable_telemetry,
-            initialize_sentry
+            initialize_sentry,
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri application");

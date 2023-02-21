@@ -57,7 +57,7 @@ const SearchFile = ({
       });
       index += path.length - 1;
       index += 2;
-      pathPart.onClick = (e: MouseEvent<HTMLAnchorElement>) => {
+      pathPart.onClick = (e: MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
         onFileClick(
           repoName,

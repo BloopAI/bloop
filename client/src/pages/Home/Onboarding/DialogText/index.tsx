@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { ReactElement } from 'react';
 
 type Props = {
   title: string;
-  description: string;
+  description: string | ReactElement;
   isCentered?: boolean;
 };
 

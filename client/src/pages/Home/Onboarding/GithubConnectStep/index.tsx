@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import DialogText from '../DialogText';
 import Button from '../../../../components/Button';
 import {
@@ -10,13 +10,19 @@ import {
 import { useGitHubAuth } from '../../../../hooks/useGitHubAuth';
 import GoBackButton from '../GoBackButton';
 import TextField from '../../../../components/TextField';
+import { AnalyticsContext } from '../../../../context/analyticsContext';
 
 type Props = {
   handleNext: (e?: any, skipOne?: boolean) => void;
-  handleBack: (e: any) => void;
+  handleBack?: (e: any) => void;
+  forceAnalyticsAllowed?: boolean;
 };
 
-const Step3 = ({ handleNext, handleBack }: Props) => {
+const GithubConnectStep = ({
+  handleNext,
+  handleBack,
+  forceAnalyticsAllowed,
+}: Props) => {
   const {
     code,
     codeCopied,
@@ -28,6 +34,7 @@ const Step3 = ({ handleNext, handleBack }: Props) => {
     tokenExpireIn,
     generateNewCode,
   } = useGitHubAuth(handleNext);
+  const { isAnalyticsAllowed } = useContext(AnalyticsContext);
 
   const [showRelaunch, setShowRelaunch] = useState(false);
 
@@ -66,22 +73,15 @@ const Step3 = ({ handleNext, handleBack }: Props) => {
     }
     if (showRelaunch && !authenticationFailed) {
       return (
-        <a
-          href={loginUrl}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="w-full flex flex-col"
+        <Button
+          variant="secondary"
+          onClick={() => {
+            handleClick();
+            callRelaunch();
+          }}
         >
-          <Button
-            variant="secondary"
-            onClick={() => {
-              handleClick();
-              callRelaunch();
-            }}
-          >
-            Relaunch GitHub authentication
-          </Button>
-        </a>
+          Relaunch GitHub authentication
+        </Button>
       );
     }
     if (buttonClicked) {
@@ -99,16 +99,9 @@ const Step3 = ({ handleNext, handleBack }: Props) => {
     }
 
     return (
-      <a
-        href={loginUrl}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="w-full flex flex-col"
-      >
-        <Button variant="primary" onClick={handleClick} disabled={!loginUrl}>
-          <GitHubLogo /> Connect GitHub
-        </Button>
-      </a>
+      <Button variant="primary" onClick={handleClick} disabled={!loginUrl}>
+        <GitHubLogo /> Connect GitHub
+      </Button>
     );
   };
 
@@ -116,7 +109,11 @@ const Step3 = ({ handleNext, handleBack }: Props) => {
     <>
       <DialogText
         title="GitHub repositories"
-        description="You must log in to sync your GitHub repositories with bloop. GitHub credentials are stored locally and are never sent to our servers. Enter the code below, when prompted by GitHub."
+        description={
+          isAnalyticsAllowed || forceAnalyticsAllowed
+            ? 'You must be logged into a GitHub account to access remote services. You will also be able to index repos hosted in your GitHub account or GitHub organisations. Enter the code below, when prompted by GitHub.'
+            : `You must log in to sync your GitHub repositories with bloop. GitHub credentials are stored locally and are never sent to our servers. Enter the code below, when prompted by GitHub.`
+        }
       />
       <span className="subhead-l text-gray-300 justify-center items-center flex gap-1 -mt-2 h-5">
         {!authenticationFailed ? (
@@ -144,16 +141,20 @@ const Step3 = ({ handleNext, handleBack }: Props) => {
       </span>
       <div className="flex flex-col gap-4">
         {getButton()}
-        <div className="flex items-center">
-          <span className="flex-1 h-px bg-gray-800" />
-          <span className="text-gray-600 mx-3">or</span>
-          <span className="flex-1 h-px bg-gray-800" />
-        </div>
-        <Button variant="secondary" onClick={handleSkip}>
-          Setup later <ArrowRight />
-        </Button>
+        {!(isAnalyticsAllowed || forceAnalyticsAllowed) && (
+          <>
+            <div className="flex items-center">
+              <span className="flex-1 h-px bg-gray-800" />
+              <span className="text-gray-600 mx-3">or</span>
+              <span className="flex-1 h-px bg-gray-800" />
+            </div>
+            <Button variant="secondary" onClick={handleSkip}>
+              Setup later <ArrowRight />
+            </Button>
+          </>
+        )}
       </div>
-      <GoBackButton handleBack={handleBack} />
+      {handleBack ? <GoBackButton handleBack={handleBack} /> : null}
       {tokenExpireIn ? (
         <TextField
           value={`Code expires in ${tokenExpireIn}`}
@@ -167,4 +168,4 @@ const Step3 = ({ handleNext, handleBack }: Props) => {
   );
 };
 
-export default Step3;
+export default GithubConnectStep;

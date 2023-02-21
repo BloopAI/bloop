@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { gitHubDeviceLogin, gitHubStatus } from '../services/api';
 import { copyToClipboard } from '../utils';
+import { UIContext } from '../context/uiContext';
+import { DeviceContext } from '../context/deviceContext';
 
 const formatTime = (time: number) => {
   const seconds = Math.floor((time / 1000) % 60);
@@ -21,6 +23,8 @@ export const useGitHubAuth = (
   const [tokenExpireIn, setTokenExpireIn] = useState<string | null>(null);
   const [timer, setTimer] = useState(0);
   const [deadline] = useState(Date.now() + 10 * 60 * 1000);
+  const { setGithubConnected } = useContext(UIContext);
+  const { openLink } = useContext(DeviceContext);
 
   useEffect(() => {
     if (!disabled) {
@@ -47,7 +51,8 @@ export const useGitHubAuth = (
   const handleClick = useCallback(() => {
     setAuthenticationFailed(false);
     setButtonClicked(true);
-  }, []);
+    openLink(loginUrl);
+  }, [loginUrl]);
 
   const generateNewCode = useCallback(() => {
     gitHubDeviceLogin().then((data) => {
@@ -59,6 +64,7 @@ export const useGitHubAuth = (
 
   const checkGHAuth = () => {
     gitHubStatus().then((d) => {
+      setGithubConnected(d.status === 'ok');
       if (d.status === 'ok') {
         handleNext();
       }

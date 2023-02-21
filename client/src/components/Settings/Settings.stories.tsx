@@ -24,7 +24,7 @@ export const Default = () => {
           setSymbolsCollapsed: () => {},
           symbolsCollapsed: true,
           onBoardingState: {
-            STEP_0: {
+            STEP_DATA_FORM: {
               firstName: 'Anastasiia',
               lastName: 'Solop',
               email: 'anastasiia@bloop.ai',
@@ -33,6 +33,8 @@ export const Default = () => {
           setOnBoardingState: () => {},
           isBugReportModalOpen: false,
           setBugReportModalOpen: () => {},
+          isGithubConnected: false,
+          setGithubConnected: () => {},
         }}
       >
         <RepositoriesContext.Provider
@@ -64,7 +66,7 @@ export const ScanErrors = () => {
           setSymbolsCollapsed: () => {},
           symbolsCollapsed: true,
           onBoardingState: {
-            STEP_0: {
+            STEP_DATA_FORM: {
               firstName: 'Anastasiia',
               lastName: 'Solop',
               email: 'anastasiia@bloop.ai',
@@ -73,6 +75,8 @@ export const ScanErrors = () => {
           setOnBoardingState: () => {},
           isBugReportModalOpen: false,
           setBugReportModalOpen: () => {},
+          isGithubConnected: false,
+          setGithubConnected: () => {},
         }}
       >
         <RepositoriesContext.Provider
@@ -186,7 +190,7 @@ export const EmailConfirmedReposSynced = () => {
           setSymbolsCollapsed: () => {},
           symbolsCollapsed: true,
           onBoardingState: {
-            STEP_0: {
+            STEP_DATA_FORM: {
               firstName: 'Anastasiia',
               lastName: 'Solop',
               email: 'anastasiia@bloop.ai',
@@ -195,6 +199,8 @@ export const EmailConfirmedReposSynced = () => {
           setOnBoardingState: () => {},
           isBugReportModalOpen: false,
           setBugReportModalOpen: () => {},
+          isGithubConnected: true,
+          setGithubConnected: () => {},
         }}
       >
         <RepositoriesContext.Provider

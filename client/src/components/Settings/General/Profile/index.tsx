@@ -25,7 +25,7 @@ const ProfileSettings = () => {
   });
 
   useEffect(() => {
-    const savedForm = onBoardingState['STEP_0'];
+    const savedForm = onBoardingState['STEP_DATA_FORM'];
 
     setForm((prev) => ({
       ...prev,
@@ -51,7 +51,7 @@ const ProfileSettings = () => {
       }
       setOnBoardingState((prev) => ({
         ...prev,
-        ['STEP_0']: form,
+        ['STEP_DATA_FORM']: form,
       }));
       saveUserData({
         email: form.email,
@@ -141,9 +141,9 @@ const ProfileSettings = () => {
         className="absolute top-0 right-0"
         disabled={
           !!form.emailError ||
-          (form.email === onBoardingState['STEP_0']?.email &&
-            form.firstName === onBoardingState['STEP_0']?.firstName &&
-            form.lastName === onBoardingState['STEP_0']?.lastName)
+          (form.email === onBoardingState['STEP_DATA_FORM']?.email &&
+            form.firstName === onBoardingState['STEP_DATA_FORM']?.firstName &&
+            form.lastName === onBoardingState['STEP_DATA_FORM']?.lastName)
         }
         onClick={handleSubmit}
       >

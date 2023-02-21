@@ -18,11 +18,12 @@ import { splitPath } from '../../../../utils';
 type Props = {
   handleNext: (e?: any) => void;
   handleBack?: (e: any) => void;
+  disableSkip?: boolean;
 };
 
-const STEP_KEY = 'STEP_4';
+const STEP_KEY = 'STEP_GITHUB_REPOS';
 
-const Step4 = ({ handleNext, handleBack }: Props) => {
+const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
   const [activeTab, setActiveTab] = useState(1);
   const [userRepos, setUserRepos] = useState<RepoType[]>([]);
   const [repos, setRepos] = useState<RepoUi[]>([]);
@@ -49,7 +50,7 @@ const Step4 = ({ handleNext, handleBack }: Props) => {
       trackReposSelected({
         githubRepos: reposToSync.length,
         localRepos: localRepos.length,
-        where: 'onboarding_step_4',
+        where: 'onboarding_step_github_repos',
       });
       syncRepos([...reposToSync, ...localRepos]).then(console.log);
       handleNext();
@@ -124,7 +125,7 @@ const Step4 = ({ handleNext, handleBack }: Props) => {
           >
             Sync repositories
           </Button>
-          {handleBack ? (
+          {!disableSkip ? (
             <Button variant="secondary" onClick={handleSkip}>
               Skip this step
               <ArrowRight />
@@ -137,4 +138,4 @@ const Step4 = ({ handleNext, handleBack }: Props) => {
   );
 };
 
-export default Step4;
+export default GithubReposStep;

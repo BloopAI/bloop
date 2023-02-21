@@ -70,7 +70,7 @@ export const splitPath = (path: string) =>
 export const splitPathForBreadcrumbs = (
   path: string,
   onClick?: (
-    e: MouseEvent<HTMLAnchorElement>,
+    e: MouseEvent<HTMLButtonElement>,
     item: string,
     index: number,
     arr: string[],
@@ -80,7 +80,7 @@ export const splitPathForBreadcrumbs = (
     .filter((p) => p !== '/')
     .map((item, index, arr) => ({
       label: item,
-      onClick: (e: MouseEvent<HTMLAnchorElement>) => {
+      onClick: (e: MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
         onClick?.(e, item, index, arr);
       },

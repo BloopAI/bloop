@@ -1,30 +1,43 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { UIContext } from '../../../context/uiContext';
-import TelemetryPopup from '../TelemetryPopup';
 import { DeviceContext } from '../../../context/deviceContext';
-import Step0 from './Step0';
-import Step1 from './Step1';
-import Step2 from './Step2';
-import Step3 from './Step3';
-import Step4 from './Step4';
-import SelfServeStep0 from './SelfServeStep0';
+import DataFormStep from './DataFormStep';
+import FolderSelectStep from './FolderSelectStep';
+import LocalReposStep from './LocalReposStep';
+import GithubConnectStep from './GithubConnectStep';
+import GithubReposStep from './GithubReposStep';
+import SelfServeStep from './SelfServeStep';
+import FeaturesStep from './FeaturesStep';
+import RemoteServicesStep from './RemoteServicesStep';
 
 type Props = {
   onFinish: () => void;
 };
 
-const Onboarding = ({ onFinish }: Props) => {
-  const [step, setStep] = useState(0);
-  const { onBoardingState } = useContext(UIContext);
-  const { isSelfServe } = useContext(DeviceContext);
-  const [shouldShowTelemetry, setShouldShowTelemetry] = useState(true);
+enum Steps {
+  DATA_FORM,
+  FEATURES,
+  REMOTE_SERVICES,
+  GITHUB_CONNECT,
+  GITHUB_REPOS_SELECT,
+  FOLDER_SELECT,
+  LOCAL_REPOS_SELECT,
+  FINISHED,
+}
 
-  const closeTelemetry = useCallback(() => {
-    setShouldShowTelemetry(false);
-  }, []);
+const Onboarding = ({ onFinish }: Props) => {
+  const [step, setStep] = useState(Steps.DATA_FORM);
+  const { onBoardingState, isGithubConnected } = useContext(UIContext);
+  const { isSelfServe } = useContext(DeviceContext);
 
   useEffect(() => {
-    if (isSelfServe ? step === 1 : step === 5) {
+    if (isSelfServe ? step === 1 : step === Steps.FINISHED) {
       onFinish();
     }
   }, [step, isSelfServe]);
@@ -37,42 +50,61 @@ const Onboarding = ({ onFinish }: Props) => {
     setStep((prev) => prev - skip);
   }, []);
 
+  const currentStep = useMemo(() => {
+    if (isSelfServe) {
+      return <SelfServeStep />;
+    }
+    switch (step) {
+      case Steps.DATA_FORM:
+        return <DataFormStep handleNext={handleNext} />;
+      case Steps.FEATURES:
+        return <FeaturesStep handleNext={handleNext} handleBack={handlePrev} />;
+      case Steps.REMOTE_SERVICES:
+        return (
+          <RemoteServicesStep handleNext={handleNext} handleBack={handlePrev} />
+        );
+      case Steps.GITHUB_CONNECT:
+        return (
+          <GithubConnectStep handleNext={handleNext} handleBack={handlePrev} />
+        );
+      case Steps.GITHUB_REPOS_SELECT:
+        return (
+          <GithubReposStep
+            handleNext={handleNext}
+            handleBack={(e) => handlePrev(e, 2)}
+          />
+        );
+      case Steps.FOLDER_SELECT:
+        return (
+          <FolderSelectStep
+            handleNext={handleNext}
+            handleBack={(e) => handlePrev(e, isGithubConnected ? 1 : 2)}
+          />
+        );
+      case Steps.LOCAL_REPOS_SELECT:
+        return (
+          <LocalReposStep handleNext={handleNext} handleBack={handlePrev} />
+        );
+      default:
+        return null;
+    }
+  }, [
+    isSelfServe,
+    step,
+    onBoardingState.indexFolder,
+    handleNext,
+    handlePrev,
+    isGithubConnected,
+  ]);
+
   return (
     <div className="fixed top-0 bottom-0 left-0 right-0 my-16 bg-[url('/onboarding-background.png')] bg-cover z-50">
       <div className="absolute top-0 bottom-0 left-0 right-0 flex justify-center items-start overflow-auto bg-gray-900 bg-opacity-75">
-        <TelemetryPopup
-          onClose={closeTelemetry}
-          visible={shouldShowTelemetry}
-        />
-        {!shouldShowTelemetry && (
-          <div className="flex flex-col items-center max-w-md2 w-full">
-            <div className="mt-8 bg-gray-900 border border-gray-800 rounded-lg shadow-big p-6 flex flex-col gap-8 w-full max-w-md2 w-full relative max-h-[calc(100vh-12rem)]">
-              {isSelfServe ? (
-                <SelfServeStep0 />
-              ) : step === 0 ? (
-                <Step0 handleNext={handleNext} />
-              ) : step === 1 ? (
-                <Step1 handleNext={handleNext} handleBack={handlePrev} />
-              ) : step === 2 ? (
-                <Step2 handleNext={handleNext} handleBack={handlePrev} />
-              ) : step === 3 ? (
-                <Step3
-                  handleNext={handleNext}
-                  handleBack={(e) =>
-                    handlePrev(e, onBoardingState.indexFolder ? 1 : 2)
-                  }
-                />
-              ) : step === 4 ? (
-                <Step4
-                  handleNext={handleNext}
-                  handleBack={(e) =>
-                    handlePrev(e, onBoardingState.indexFolder ? 2 : 3)
-                  }
-                />
-              ) : null}
-            </div>
+        <div className="flex flex-col items-center max-w-md2 w-full">
+          <div className="mt-8 bg-gray-900 border border-gray-800 rounded-lg shadow-big p-6 flex flex-col gap-8 w-full max-w-md2 w-full relative max-h-[calc(100vh-12rem)]">
+            {currentStep}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

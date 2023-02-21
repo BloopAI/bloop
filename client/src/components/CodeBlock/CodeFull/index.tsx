@@ -165,7 +165,7 @@ const CodeFull = ({
     },
     [repoName, relativePath],
   );
-  console.log(scrollToIndex);
+
   return (
     <div className="w-full text-xs gap-10 flex flex-row">
       <div className={`${!minimap ? 'w-full' : ''}`} ref={codeRef}>
