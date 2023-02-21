@@ -53,7 +53,7 @@ const SearchPage = () => {
     useContext(SearchContext);
   const { isSelfServe } = useContext(DeviceContext);
   const [shouldShowWelcome, setShouldShowWelcome] = useState(
-    !getPlainFromStorage(ONBOARDING_DONE_KEY)
+    !getPlainFromStorage(ONBOARDING_DONE_KEY),
   );
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
   const {
@@ -117,13 +117,13 @@ const SearchPage = () => {
         updateCurrentTabName(
           navigatedItem.type === 'repo'
             ? navigatedItem.repo!
-            : navigatedItem.path!
+            : navigatedItem.path!,
         );
         searchQuery(
           buildRepoQuery(navigatedItem.repo, navigatedItem.path),
           0,
           false,
-          SearchType.REGEX
+          SearchType.REGEX,
         );
         break;
       case 'home':
