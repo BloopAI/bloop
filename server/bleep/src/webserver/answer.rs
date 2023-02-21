@@ -441,7 +441,7 @@ async fn _handle(
         let mut is_bullet_point_stripped = false;
         'stream: while let Some(result) = snippet_explanation.next().await {
             match result.as_ref().map(|o| o.as_str()) {
-                Ok("\n") => line += 1,
+                Ok(text) if text.contains('\n') => line += 1,
                 _ => {}
             };
 
