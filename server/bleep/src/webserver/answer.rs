@@ -167,7 +167,10 @@ async fn _handle(
 
     let mut analytics_event = event.write().await;
 
-    analytics_event.user_id = params.user_id.clone();
+    analytics_event.user_id = github_user_id(&app)
+        .await
+        .unwrap_or_else(|| params.user_id.clone());
+
     analytics_event.query_id = query_id;
     analytics_event.overlap_strategy = semantic.overlap_strategy();
 
@@ -687,6 +690,25 @@ Answer:",
         self.send(prompt, max_tokens as u32, 0.0, api::Provider::Anthropic)
             .await
     }
+}
+
+async fn github_user_id(app: &Application) -> Option<String> {
+    let cred = app.credentials.get(&Backend::Github)?;
+    let oauth: octocrab::auth::OAuth = match &*cred {
+        BackendCredential::Github(remotes::github::Auth::OAuth {
+            access_token,
+            token_type,
+            scope,
+        }) => octocrab::auth::OAuth {
+            access_token: access_token.clone(),
+            token_type: token_type.clone(),
+            scope: scope.clone(),
+        },
+        _ => return None,
+    };
+    let octocrab = octocrab::Octocrab::builder().oauth(oauth).build().ok()?;
+    let current = octocrab.current();
+    current.user().await.ok().map(|user| user.login)
 }
 
 // Measure time between instants statefully
