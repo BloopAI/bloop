@@ -43,7 +43,6 @@ const CodeBlockSearch = ({
   hideDropdown,
   hideMatchCounter,
 }: Props) => {
-  console.log('CodeBlockSearch render', filePath, repoName);
   const [isExpanded, setExpanded] = useState(false);
   const { os, openFolderInExplorer } = useContext(DeviceContext);
 
