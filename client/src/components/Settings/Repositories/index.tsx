@@ -8,12 +8,7 @@ import React, {
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { MenuItemType, RepoProvider, SyncStatus } from '../../../types/general';
 import { PlusSignInBubble, Repository } from '../../../icons';
-import {
-  deleteRepo,
-  getRepos,
-  gitHubLogout,
-  gitHubStatus,
-} from '../../../services/api';
+import { deleteRepo, getRepos, gitHubLogout } from '../../../services/api';
 import { UIContext } from '../../../context/uiContext';
 import RepoList from '../../RepoList';
 import { getCommonFolder, splitPath } from '../../../utils';
@@ -32,7 +27,8 @@ const dropdownIcon = (
 
 const RepositoriesSettings = () => {
   const { repositories, setRepositories } = useContext(RepositoriesContext);
-  const { onBoardingState } = useContext(UIContext);
+  const { onBoardingState, isGithubConnected, setGithubConnected } =
+    useContext(UIContext);
   const { isSelfServe } = useContext(DeviceContext);
   const [isAddReposOpen, setAddReposOpen] = useState<null | 'local' | 'github'>(
     null,
@@ -94,12 +90,7 @@ const RepositoriesSettings = () => {
     setGitHubAuth(!githubRepos.length);
   }, [githubRepos.length]);
 
-  const [isGithubConnected, setGitHubConnected] = useState(isSelfServe);
-
   useEffect(() => {
-    gitHubStatus().then((r) => {
-      setGitHubConnected(r.status === 'ok');
-    });
     getRepos().then((data) => {
       setRepositories(data.list || []);
     });
@@ -141,7 +132,7 @@ const RepositoriesSettings = () => {
 
   const onLogout = useCallback(() => {
     gitHubLogout().then(() => {
-      setGitHubConnected(false);
+      setGithubConnected(false);
     });
   }, []);
 
@@ -161,7 +152,7 @@ const RepositoriesSettings = () => {
           {!isSelfServe && (
             <GithubStatus
               setGitHubAuth={setGitHubAuth}
-              setGitHubConnected={setGitHubConnected}
+              setGitHubConnected={setGithubConnected}
               githubAuth={githubAuth}
               isConnected={isGithubConnected}
               onLogout={onLogout}

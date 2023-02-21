@@ -35,7 +35,7 @@ docker run -p 6333:6333 -p 6334:6334 \
 
 You can run `bleep` without linking it to a `Qdrant` instance but calls to the `/answer` endpoint will return an error.
 
-You'll also need to run a local instance of `answer_api` (`bleep` expects it on port 7879 by default) which handles requests to the OpenAI API.
+You'll also need to run a local instance of `answer_api` (`bleep` expects it on port 7879 by default) which handles requests to the explanation API.
 
 ### Build
 

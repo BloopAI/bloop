@@ -6,7 +6,7 @@ import Button from '../../Button';
 export type ItemProps = {
   text: string;
   icon?: React.ReactElement;
-  onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   onDelete?: () => void;
   removable?: boolean;
   annotations: number;

@@ -20,7 +20,7 @@ export const TooltipCodeDefault = () => {
             data={{
               references: [
                 {
-                  path: '/src/root/service/longFolderName/oneMoreNestedFolder/index.ts',
+                  path: '/src/root/service/longFolderName/oneMoreNestedFolder/index.tsx',
                   items: [
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',

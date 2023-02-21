@@ -2,16 +2,14 @@ import { MouseEvent, ReactElement } from 'react';
 import { Range } from '../../types/results';
 
 type Props = {
-  href: string;
   icon?: ReactElement<any, any>;
   label: string;
-  onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   isLast?: boolean;
   highlight?: Range;
 };
 
 const BreadcrumbSection = ({
-  href,
   icon,
   label,
   onClick,
@@ -36,8 +34,7 @@ const BreadcrumbSection = ({
     return label;
   };
   return (
-    <a
-      href={href}
+    <button
       className={`flex items-center gap-1 hover:text-sky-500 cursor-pointer active:text-sky-500 ${
         isLast ? 'text-gray-200' : 'text-gray-500'
       }  transition-all duration-300 ease-in-bounce flex-shrink-0`}
@@ -45,7 +42,7 @@ const BreadcrumbSection = ({
     >
       {icon}
       <span className="whitespace-nowrap">{getHighlight()}</span>
-    </a>
+    </button>
   );
 };
 

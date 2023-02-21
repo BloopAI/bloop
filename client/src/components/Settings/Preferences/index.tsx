@@ -1,26 +1,35 @@
-import { useCallback, useState, ChangeEvent, useContext } from 'react';
+import { useCallback, useState, useContext } from 'react';
 import SettingsText from '../SettingsText';
-import { CheckIcon } from '../../../icons';
 import SettingsRow from '../SettingsRow';
-import Checkbox from '../../Checkbox';
 import { AnalyticsContext } from '../../../context/analyticsContext';
 import {
   IS_ANALYTICS_ALLOWED_KEY,
   savePlainToStorage,
 } from '../../../services/storage';
+import Button from '../../Button';
+import SeparateOnboardingStep from '../../SeparateOnboardingStep';
+import RemoteServicesStep, {
+  STEP_KEY,
+} from '../../../pages/Home/Onboarding/RemoteServicesStep';
+import { UIContext } from '../../../context/uiContext';
+import GithubConnectStep from '../../../pages/Home/Onboarding/GithubConnectStep';
+import GithubReposStep from '../../../pages/Home/Onboarding/GithubReposStep';
 
 const Preferences = () => {
-  const [theme, setTheme] = useState('dark');
   const { isAnalyticsAllowed, setIsAnalyticsAllowed } =
     useContext(AnalyticsContext);
+  const { isGithubConnected, setOnBoardingState } = useContext(UIContext);
+  const [isModalOpen, setModalOpen] = useState(false);
+  const [step, setStep] = useState(0);
+  const [hasOptedIn, setHasOptedIn] = useState(isAnalyticsAllowed);
 
-  const onThemeChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    setTheme(e.target.value);
-  }, []);
-
-  const onTelemetryChange = useCallback((b: boolean) => {
-    setIsAnalyticsAllowed(b);
-    savePlainToStorage(IS_ANALYTICS_ALLOWED_KEY, b.toString());
+  const saveOptIn = useCallback((optIn: boolean) => {
+    savePlainToStorage(IS_ANALYTICS_ALLOWED_KEY, optIn ? 'true' : 'false');
+    setOnBoardingState((prev) => ({
+      ...prev,
+      [STEP_KEY]: { hasOptedIn: optIn },
+    }));
+    setIsAnalyticsAllowed(optIn);
   }, []);
 
   return (
@@ -124,19 +133,55 @@ const Preferences = () => {
         {/*</div>*/}
         <SettingsRow>
           <SettingsText
-            title="Telemetry"
-            subtitle="Help us improve bloop by sharing telemetry"
+            title={`Remote services: ${isAnalyticsAllowed ? 'on' : 'off'}`}
+            subtitle={`Natural language search is ${
+              isAnalyticsAllowed ? 'enabled' : 'disabled'
+            }`}
           />
           <div className="flex-1">
-            <Checkbox
-              checked={isAnalyticsAllowed}
-              label="Allow usage data sharing with bloop"
-              description="All data is anonymized and is not associated with you or your account."
-              onChange={onTelemetryChange}
-            />
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setModalOpen(true);
+                setStep(0);
+              }}
+            >
+              Change
+            </Button>
           </div>
         </SettingsRow>
       </div>
+      <SeparateOnboardingStep
+        isVisible={isModalOpen}
+        onClose={() => setModalOpen(false)}
+      >
+        {step === 0 ? (
+          <RemoteServicesStep
+            handleNext={() => {}}
+            onSubmit={(optIn) => {
+              setHasOptedIn(optIn);
+              if (isGithubConnected || !optIn) {
+                setModalOpen(false);
+                saveOptIn(optIn);
+              } else {
+                setStep(1);
+              }
+            }}
+          />
+        ) : step === 1 ? (
+          <GithubConnectStep
+            handleNext={() => setStep(2)}
+            forceAnalyticsAllowed={hasOptedIn}
+          />
+        ) : (
+          <GithubReposStep
+            handleNext={() => {
+              setModalOpen(false);
+              saveOptIn(hasOptedIn);
+            }}
+          />
+        )}
+      </SeparateOnboardingStep>
     </div>
   );
 };

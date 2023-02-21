@@ -19,8 +19,8 @@ type Props = {
   handleNext: (e?: any) => void;
 };
 
-const STEP_KEY = 'STEP_0';
-const Step0 = ({ handleNext }: Props) => {
+const STEP_KEY = 'STEP_DATA_FORM';
+const DataFormStep = ({ handleNext }: Props) => {
   const [form, setForm] = useState<Form>({
     firstName: '',
     lastName: '',
@@ -78,10 +78,7 @@ const Step0 = ({ handleNext }: Props) => {
     <>
       <DialogText
         title="Setup bloop"
-        description="Tell us a little bit more about yourself. We are using this
-          information to learn more about our users in the Beta release. We
-          might use your email to let you know when the full version of the app
-          is released"
+        description="We'd love to know who you are! We're using this information to learn more about early users, and we might send you an email to let you know when the full version of the app is released"
         isCentered={false}
       />
       <form className="flex flex-col gap-4">
@@ -141,4 +138,4 @@ const Step0 = ({ handleNext }: Props) => {
   );
 };
 
-export default Step0;
+export default DataFormStep;

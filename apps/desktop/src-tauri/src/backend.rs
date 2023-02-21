@@ -1,6 +1,15 @@
-use bleep::{Application, Configuration, Environment};
+use std::sync::Arc;
 
 use super::{plugin, relative_command_path, App, Manager, Payload, Runtime};
+
+// a hack to get server/bleep/tests/desktop to run correctly
+#[cfg(not(test))]
+use super::TELEMETRY;
+#[cfg(test)]
+static TELEMETRY: std::sync::RwLock<bool> = std::sync::RwLock::new(false);
+
+use bleep::{analytics, Application, Configuration, Environment};
+use tracing::info;
 
 pub(super) fn bleep<R>(app: &mut App<R>) -> plugin::Result<()>
 where
@@ -25,6 +34,13 @@ where
 
     let cache_dir = app.path_resolver().app_cache_dir().unwrap();
     configuration.index_dir = cache_dir.join("bleep");
+
+    if let (Some(key), Some(data_plane)) = (
+        &configuration.analytics_key,
+        &configuration.analytics_data_plane,
+    ) {
+        initialize_rudder_analytics(key.to_owned(), data_plane.to_owned());
+    }
 
     let app = app.handle();
     tokio::spawn(async move {
@@ -53,4 +69,21 @@ where
     });
 
     Ok(())
+}
+
+pub fn initialize_rudder_analytics(key: String, data_plane: String) {
+    if analytics::RudderHub::get().is_some() {
+        info!("analytics has already been initialized");
+        return;
+    }
+    info!("initializing analytics");
+    let options = analytics::HubOptions {
+        event_filter: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
+            true => Some(event),
+            false => None,
+        })),
+    };
+    tokio::task::block_in_place(|| {
+        analytics::RudderHub::new_with_options(key, data_plane, options)
+    });
 }
