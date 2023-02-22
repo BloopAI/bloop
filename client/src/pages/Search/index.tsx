@@ -63,7 +63,6 @@ const SearchPage = () => {
     query: nlQuery,
     nlAnswer,
     error: nlError,
-    relevantCode,
   } = useSearch<NLSearchResponse>();
   const { updateCurrentTabName } = useContext(TabsContext);
 
@@ -209,7 +208,6 @@ const SearchPage = () => {
             handleRetry={handleRetry}
             nlAnswer={nlAnswer}
             nlError={typeof nlError === 'string' ? nlError : ''}
-            relevantCode={relevantCode}
           />
         );
       default:
@@ -225,7 +223,6 @@ const SearchPage = () => {
     nlQuery,
     nlAnswer,
     nlError,
-    relevantCode,
   ]);
 
   return shouldShowWelcome ? (

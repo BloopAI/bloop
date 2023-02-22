@@ -17,7 +17,6 @@ type Props = {
   searchId: string;
   answer?: string;
   error?: string;
-  relevantCode?: string;
 };
 
 const SemanticSearch = ({
@@ -27,7 +26,6 @@ const SemanticSearch = ({
   searchId,
   answer,
   error,
-  relevantCode,
 }: Props) => {
   const renderedSnippets = useMemo(() => {
     return snippets.map((item, index) => (
@@ -57,7 +55,6 @@ const SemanticSearch = ({
         handleRetry={handleRetry}
         answer={answer}
         error={error}
-        relevantCode={relevantCode}
       />
       {renderedSnippets}
     </div>

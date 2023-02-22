@@ -11,7 +11,6 @@ interface Status<T> {
   data?: T;
   query?: string;
   nlAnswer?: string;
-  relevantCode?: string;
 }
 
 interface SearchResponse<T> extends Status<T> {
@@ -84,11 +83,6 @@ export const useSearch = <T,>(
               } else {
                 setStatus({ loading: false, data: newData, query });
               }
-            } else if (i === 1) {
-              setStatus((prev) => ({
-                ...prev,
-                relevantCode: newData.Ok,
-              }));
             } else {
               setStatus((prev) => ({
                 ...prev,
