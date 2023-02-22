@@ -82,7 +82,7 @@ impl Application {
             Some(ref path) => Configuration::read(path)?,
         };
 
-        config.max_threads = config.max_threads.max(minimum_parallelism()); // Can this be reused in src-tauri/backend.rs?
+        config.max_threads = config.max_threads.max(minimum_parallelism());
         let threads = config.max_threads;
 
         // 3MiB buffer size is minimum for Tantivy
@@ -103,7 +103,6 @@ impl Application {
         let semantic = match config.qdrant_url {
             Some(ref url) => {
                 match Semantic::initialize(&config.model_dir, url, Arc::clone(&config)).await {
-                    // Why do we pass model_dir AND config?
                     Ok(semantic) => Some(semantic),
                     Err(e) => {
                         bail!("Qdrant initialization failed: {}", e);

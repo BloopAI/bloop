@@ -70,7 +70,6 @@ impl StateSource {
         });
     }
 
-    // TODO: Do we need both of these methods?
     pub(crate) fn repo_dir(&self) -> Option<PathBuf> {
         self.directory.clone()
     }
