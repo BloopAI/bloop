@@ -491,24 +491,23 @@ async fn _handle(
                 yield Ok(initial_event);
 
                 line = 2;
-            } else if !is_bullet_point_stripped {
-                // we are streaming the explanation here, omit the bullet point:
-                // - the response contains "2. The answer is ..."
-                // - we want just "The answer is ..."
-                // - omit the first two events, "2" and "."
-                if matches!(result.as_ref().map(|o| o.as_str()), Ok("2")) {
-                    continue 'stream;
-                }
-                if matches!(result.as_ref().map(|o| o.as_str()), Ok(".")) {
-                    is_bullet_point_stripped = true;
-                    continue 'stream;
-                }
             }
 
-            yield Ok(Event::default()
-                .json_data(result.as_ref().map_err(|e| e.to_string()))
-                //.json_data(result.as_ref().unwrap())
-                .unwrap());
+            if !is_bullet_point_stripped {
+                if let Ok(r) = result.as_ref().map(|o| o.as_str()) {
+                    if let Some(stripped) = r.trim_start().strip_prefix("2. ") {
+                        is_bullet_point_stripped = true;
+                        yield Ok(Event::default()
+                            .json_data(Ok::<String, String>(stripped.to_owned()))
+                            .unwrap());
+                        continue 'stream;
+                    }
+                }
+            } else {
+                yield Ok(Event::default()
+                    .json_data(result.as_ref().map_err(|e| e.to_string()))
+                    .unwrap());
+            }
 
             match result {
                 Ok(s) => explanation += &s,
