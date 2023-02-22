@@ -25,8 +25,8 @@ jobs:
       - name: Dummy Qdrant binary
         run: touch apps/desktop/src-tauri/bin/qdrant-x86_64-unknown-linux-gnu
 
-      # - name: Restore cache
-      #   run: cp -r /sccache/target target || echo "failed to restore target cache"
+      - name: Restore cache
+        run: cp -r /sccache/target target || echo "failed to restore target cache"
 
       - name: Rustfmt
         run: nix develop -c bash -c 'cargo --locked fmt -p bleep -- --check'
@@ -40,8 +40,8 @@ jobs:
       - name: Sccache stats
         run: nix develop -c bash -c 'sccache --show-stats'
 
-      # - name: Store cache
-      #   run: cp -r target /sccache || echo "storing cache failed"
+      - name: Store cache
+        run: cp -r target /sccache || echo "storing cache failed"
 
   # benchmark:
   #   runs-on: [self-hosted, benchmark]
