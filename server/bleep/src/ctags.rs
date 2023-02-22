@@ -49,12 +49,8 @@ fn find_files(path: &Path) -> Vec<String> {
             }
         })
         .filter(|de| matches!(de.file_type(), Some(ft) if ft.is_file()))
-        .map(|de| {
-            crate::canonicalize(de.path())
-                .unwrap()
-                .to_string_lossy()
-                .to_string()
-        })
+        .filter_map(|de| crate::canonicalize(de.path()).ok())
+        .map(|path| path.to_string_lossy().to_string())
         .collect()
 }
 

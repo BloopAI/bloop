@@ -256,7 +256,7 @@ impl Indexable for File {
             })
             // Preliminarily ignore files that are very large, without reading the contents.
             .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
-            .map(|de| crate::canonicalize(de.into_path()).unwrap())
+            .filter_map(|de| crate::canonicalize(de.into_path()).ok())
             .filter(|p| should_index(&p.strip_prefix(&repo.disk_path).unwrap()))
             .collect::<Vec<PathBuf>>();
 

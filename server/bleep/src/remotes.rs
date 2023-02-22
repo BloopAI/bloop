@@ -266,7 +266,11 @@ pub(crate) fn gather_repo_roots(
         .filter_entry(move |entry| {
             exclude
                 .as_ref()
-                .map(|path| !crate::canonicalize(entry.path()).unwrap().starts_with(path))
+                .and_then(|path| {
+                    crate::canonicalize(entry.path())
+                        .ok()
+                        .map(|canonical_path| !canonical_path.starts_with(path))
+                })
                 .unwrap_or(true)
         })
         .build()
