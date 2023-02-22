@@ -22,6 +22,7 @@ RUN apt-get update && \
     tar xzf sccache.tar.gz && \
     mv sccache-*/sccache /usr/bin/sccache
 ENV RUSTC_WRAPPER="/usr/bin/sccache"
+ENV PYTHON /usr/bin/python3
 COPY server server
 COPY apps/desktop/src-tauri apps/desktop/src-tauri
 COPY Cargo.lock Cargo.toml .
