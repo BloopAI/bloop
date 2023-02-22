@@ -13,7 +13,7 @@ COPY client/ client
 COPY playwright.config.js .
 RUN npm run build-web
 
-FROM rust:slim as builder
+FROM rust:slim-bookworm as builder
 WORKDIR /build
 RUN apt-get update && \
     apt-get -y install build-essential curl cmake python3 protobuf-compiler pkg-config libssl1.1 libssl-dev git && \
@@ -31,7 +31,7 @@ RUN --mount=target=/root/.cache/sccache,type=cache --mount=target=/build/target,
     cp /build/target/release/bleep / && \
     sccache --show-stats
 
-FROM debian:stable-slim
+FROM debian:bookworm-slim
 VOLUME ["/repos", "/data"]
 RUN apt-get update && apt-get -y install universal-ctags openssl ca-certificates && apt-get clean
 COPY model /model
