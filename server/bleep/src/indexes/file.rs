@@ -48,7 +48,7 @@ struct Workload<'a> {
     repo_disk_path: &'a Path,
     repo_ref: String,
     repo_name: &'a str,
-    repo_info: &'a RepoMetadata,
+    repo_metadata: &'a RepoMetadata,
     cache: &'a FileCache,
 }
 
@@ -239,7 +239,7 @@ impl Indexable for File {
         &self,
         reporef: &RepoRef,
         repo: &Repository,
-        repo_info: &RepoMetadata,
+        repo_metadata: &RepoMetadata,
         writer: &IndexWriter,
     ) -> Result<()> {
         let file_cache = repo.open_file_cache(&self.config.index_dir)?;
@@ -270,7 +270,7 @@ impl Indexable for File {
                 repo_ref: reporef.to_string(),
                 repo_name: &repo_name,
                 cache: &file_cache,
-                repo_info,
+                repo_metadata,
             };
 
             debug!(?entry_disk_path, "queueing entry");
@@ -471,7 +471,7 @@ impl File {
             repo_ref,
             repo_disk_path,
             repo_name,
-            repo_info,
+            repo_metadata,
             cache,
         } = workload;
 

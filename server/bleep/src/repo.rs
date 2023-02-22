@@ -11,8 +11,7 @@ use tracing::debug;
 use utoipa::ToSchema;
 
 use crate::{
-    ctags::{get_symbols_with_ctags, CtagSymbolMap},
-    indexes,
+    ctags, indexes,
     language::{get_language_info, LanguageInfo},
     remotes::RepoRemote,
     state::{get_relative_path, pretty_write_file},
@@ -262,11 +261,11 @@ impl Repository {
         self.sync_status = SyncStatus::Queued;
     }
 
-    pub(crate) fn sync_done_with(&mut self, info: Arc<RepoMetadata>) {
+    pub(crate) fn sync_done_with(&mut self, metadata: Arc<RepoMetadata>) {
         self.last_index_unix_secs = get_unix_time(SystemTime::now());
-        self.last_commit_unix_secs = info.last_commit_unix_secs;
+        self.last_commit_unix_secs = metadata.last_commit_unix_secs;
         self.sync_status = SyncStatus::Done;
-        self.most_common_lang = info.langs.most_common_lang.map(|l| l.to_string());
+        self.most_common_lang = metadata.langs.most_common_lang.map(|l| l.to_string());
     }
 
     fn file_cache_path(&self, index_dir: &Path) -> PathBuf {
@@ -305,7 +304,7 @@ fn get_unix_time(time: SystemTime) -> u64 {
 #[derive(Debug)]
 pub struct RepoMetadata {
     pub last_commit_unix_secs: u64,
-    pub symbols: CtagSymbolMap,
+    pub symbols: ctags::SymbolMap,
     pub langs: LanguageInfo,
 }
 
@@ -340,7 +339,7 @@ async fn get_repo_metadata(repo_disk_path: &PathBuf) -> Arc<RepoMetadata> {
 
     RepoMetadata {
         last_commit_unix_secs: repo,
-        symbols: get_symbols_with_ctags(repo_disk_path, exclude_langs).await,
+        symbols: ctags::get_symbols(repo_disk_path, exclude_langs).await,
         langs: get_language_info(repo_disk_path),
     }
     .into()

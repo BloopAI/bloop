@@ -108,7 +108,7 @@ pub trait Indexable: Send + Sync {
         &self,
         reporef: &RepoRef,
         repo: &Repository,
-        info: &RepoMetadata,
+        metadata: &RepoMetadata,
         writer: &IndexWriter,
     ) -> Result<()>;
 
@@ -157,9 +157,14 @@ impl<'a> IndexWriteHandle<'a> {
         self.source.delete_by_repo(&self.writer, repo)
     }
 
-    pub fn index(&self, reporef: &RepoRef, repo: &Repository, info: &RepoMetadata) -> Result<()> {
+    pub fn index(
+        &self,
+        reporef: &RepoRef,
+        repo: &Repository,
+        metadata: &RepoMetadata,
+    ) -> Result<()> {
         self.source
-            .index_repository(reporef, repo, info, &self.writer)
+            .index_repository(reporef, repo, metadata, &self.writer)
     }
 
     pub async fn commit(&mut self) -> Result<()> {

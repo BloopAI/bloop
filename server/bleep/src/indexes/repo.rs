@@ -70,7 +70,7 @@ impl Indexable for Repo {
         &self,
         repo_ref: &RepoRef,
         repo: &Repository,
-        _info: &RepoMetadata,
+        _metadata: &RepoMetadata,
         writer: &IndexWriter,
     ) -> Result<()> {
         // Make sure we delete any stale references to this repository when indexing.

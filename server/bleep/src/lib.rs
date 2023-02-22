@@ -22,8 +22,8 @@ use dunce::canonicalize;
 use std::fs::canonicalize;
 
 use crate::{
-    background::BackgroundExecutor, indexes::Indexes,
-    remotes::BackendCredential, repo::Backend, semantic::Semantic, state::RepositoryPool,
+    background::BackgroundExecutor, indexes::Indexes, remotes::BackendCredential, repo::Backend,
+    semantic::Semantic, state::RepositoryPool,
 };
 use anyhow::{anyhow, bail, Result};
 use axum::extract::FromRef;
