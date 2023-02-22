@@ -20,7 +20,6 @@
         lib = pkgs.lib;
 
         llvm = pkgs.llvmPackages_14;
-        clang = llvm.clang;
         libclang = llvm.libclang;
         stdenv = llvm.stdenv;
 
@@ -28,24 +27,24 @@
         rust = pkgs.rust-bin.stable.latest.default;
         buildDeps = with pkgs;
           ([
+            stdenv.cc.cc.lib
             rust
             git-lfs
-            stdenv
-            libclang
-            clang
             rustup
+            rocksdb
             nodePackages.pnpm
             pkg-config
             openssl
+            openssl.dev
             glib.dev
             cmake
             python3
             protobuf
             automake
             autoconf
-            rocksdb
             universal-ctags
           ] ++ lib.optionals pkgs.stdenv.isLinux [
+            perl
             dbus.dev
             libsoup.dev
             gtk3.dev
