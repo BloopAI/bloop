@@ -33,7 +33,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
     fn from((key, repo): (&RepoRef, &Repository)) -> Self {
         Repo {
             provider: key.backend(),
-            name: format!("{}", key),
+            name: key.to_string(),
             repo_ref: key.clone(),
             sync_status: repo.sync_status.clone(),
             local_duplicates: vec![],
