@@ -3638,7 +3638,7 @@ dependencies = [
 [[package]]
 name = "ort"
 version = "1.14.0-beta.0"
-source = "git+https://github.com/bloopai/ort?branch=merge-upstream#6545acdad44f58d9e2a42ca6310771f11d57f84c"
+source = "git+https://github.com/bloopai/ort?branch=merge-upstream#df575a42ba8fc46e99304cc186c330262853b76d"
 dependencies = [
  "casey",
  "flate2",
