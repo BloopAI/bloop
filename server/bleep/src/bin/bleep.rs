@@ -11,6 +11,6 @@ async fn main() -> Result<()> {
     .await?;
 
     app.initialize_sentry();
-    app.install_analytics();
+    app.initialize_analytics();
     app.run().await
 }

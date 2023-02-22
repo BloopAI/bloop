@@ -8,10 +8,7 @@ use reqwest::StatusCode;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    remotes::{GitRemote, RepoRemote},
-    repo::{Backend, Repository},
-};
+use crate::repo::{Backend, GitRemote, RepoRemote, Repository};
 
 use super::*;
 

@@ -14,7 +14,7 @@ pub struct Configuration {
     //
     #[clap(short, long)]
     #[serde(skip)]
-    /// Optional config file containing values
+    /// If a config file is given, it will override _all_ command line parameters!
     pub config_file: Option<PathBuf>,
 
     #[clap(flatten)]
@@ -87,7 +87,7 @@ pub struct Configuration {
     pub analytics_data_plane: Option<String>,
 
     #[clap(long)]
-    /// Analytics data plane identifier
+    /// Sentry Data Source Name
     pub sentry_dsn: Option<String>,
 
     //
@@ -116,10 +116,10 @@ pub struct Configuration {
     //
     #[clap(long)]
     #[serde(serialize_with = "serialize_secret_opt_str", default)]
-    /// Github Client ID for OAuth connection to private repos
+    /// Github Client ID for either OAuth or GitHub Apps
     pub github_client_id: Option<SecretString>,
 
-    // What is this used for? Why does syncing work when this is not set?
+    // Github client secret
     #[clap(long)]
     #[serde(serialize_with = "serialize_secret_opt_str", default)]
     pub github_client_secret: Option<SecretString>,

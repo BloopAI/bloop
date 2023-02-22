@@ -321,7 +321,7 @@ impl<'a> From<EndpointError<'a>> for Response<'a> {
         repos::Repo,
         repos::SetIndexed,
         crate::repo::Backend,
-        crate::remotes::RepoRemote,
+        crate::repo::RepoRemote,
         crate::repo::SyncStatus,
         github::GithubResponse,
         github::GithubCredentialStatus,

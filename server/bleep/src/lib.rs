@@ -158,7 +158,7 @@ impl Application {
         _ = SENTRY_GUARD.set(guard);
     }
 
-    pub fn install_analytics(&self) {
+    pub fn initialize_analytics(&self) {
         let Some(key) = &self.config.analytics_key else {
             warn!("analytics key missing; skipping initialization");
             return;

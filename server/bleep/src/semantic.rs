@@ -2,6 +2,7 @@ use std::{collections::HashMap, ops::Not, path::Path, sync::Arc};
 
 use crate::{query::parser, Configuration};
 
+use anyhow::bail;
 use ndarray::Axis;
 use ort::{
     tensor::{FromArray, InputTensor, OrtOwnedTensor},
@@ -169,7 +170,9 @@ impl Semantic {
     }
 
     pub async fn search(&self, query: &str, limit: u64) -> anyhow::Result<Vec<ScoredPoint>> {
-        let parsed_query = parser::parse_nl(query).expect("Failed to parse query");
+        let Ok(parsed_query) = parser::parse_nl(query) else {
+            bail!("Failed to parse query");
+        };
 
         let Some(query) = parsed_query.target() else {
             anyhow::bail!("No search target for query");
@@ -233,7 +236,7 @@ impl Semantic {
         debug!(chunk_count = chunks.len(), "found chunks");
 
         // Prepend all chunks with `repo_name   relative_path`
-        let chunk_prefix = repo_name.to_owned() + "\t" + relative_path + "\n";
+        let chunk_prefix = format!("{repo_name}\t{relative_path}\n");
 
         let datapoints = chunks
             .par_iter()

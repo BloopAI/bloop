@@ -524,7 +524,7 @@ impl File {
         trace!("added cache entry");
 
         let lang_str = if entry_disk_path.is_file() {
-            repo_info
+            repo_metadata
                 .langs
                 .path_map
                 .get(&entry_disk_path)
@@ -549,7 +549,7 @@ impl File {
                 // no graph, try ctags instead
                 Err(err) => {
                     debug!(?err, %lang_str, "failed to build scope graph");
-                    match repo_info.symbols.get(relative_path) {
+                    match repo_metadata.symbols.get(relative_path) {
                         Some(syms) => SymbolLocations::Ctags(syms.clone()),
                         // no ctags either
                         _ => {
@@ -588,7 +588,7 @@ impl File {
         }
 
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
-        let last_commit = repo_info.last_commit_unix_secs;
+        let last_commit = repo_metadata.last_commit_unix_secs;
 
         // produce vectors for this document if it is a file
         if entry_disk_path.is_file() {
