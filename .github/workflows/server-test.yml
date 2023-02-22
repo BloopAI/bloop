@@ -26,22 +26,22 @@ jobs:
         run: touch apps/desktop/src-tauri/bin/qdrant-x86_64-unknown-linux-gnu
 
       - name: Restore cache
-        run: cp -r /sccache/cargo_target target || true
+        run: cp -r /sccache/target target || echo "failed to restore target cache"
 
       - name: Rustfmt
-        run: nix develop --no-update-lock-file -c bash -c 'cargo --locked fmt -p bleep -- --check'
+        run: nix develop --offline -c bash -c 'cargo --locked fmt -p bleep -- --check'
 
       - name: Clippy
-        run: nix develop --no-update-lock-file -c bash -c 'cargo --locked clippy -p bleep --all-features'
+        run: nix develop --offline -c bash -c 'cargo --locked clippy -p bleep --all-features'
 
       - name: Tests
-        run: nix develop --no-update-lock-file -c bash -c 'cargo --locked test -p bleep --all-features --release'
+        run: nix develop --offline -c bash -c 'cargo --locked test -p bleep --all-features --release'
 
       - name: Sccache stats
-        run: nix develop --no-update-lock-file -c bash -c 'sccache --show-stats'
+        run: nix develop --offline -c bash -c 'sccache --show-stats'
 
       - name: Store cache
-        run: rm -rf /sccache/cargo_target && cp -r target /sccache/cargo_target
+        run: cp -r target /sccache || echo "storing cache failed"
 
   # benchmark:
   #   runs-on: [self-hosted, benchmark]
