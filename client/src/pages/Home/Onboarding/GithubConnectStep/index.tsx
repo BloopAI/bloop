@@ -1,4 +1,10 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, {
+  ReactElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import DialogText from '../DialogText';
 import Button from '../../../../components/Button';
 import {
@@ -16,12 +22,16 @@ type Props = {
   handleNext: (e?: any, skipOne?: boolean) => void;
   handleBack?: (e: any) => void;
   forceAnalyticsAllowed?: boolean;
+  description?: string;
+  secondaryCTA?: ReactElement;
 };
 
 const GithubConnectStep = ({
   handleNext,
   handleBack,
   forceAnalyticsAllowed,
+  description,
+  secondaryCTA,
 }: Props) => {
   const {
     code,
@@ -108,11 +118,12 @@ const GithubConnectStep = ({
   return (
     <>
       <DialogText
-        title="GitHub repositories"
+        title="GitHub Login"
         description={
-          isAnalyticsAllowed || forceAnalyticsAllowed
+          description ||
+          (isAnalyticsAllowed || forceAnalyticsAllowed
             ? 'You must be logged into a GitHub account to access remote services. You will also be able to index repos hosted in your GitHub account or GitHub organisations. Enter the code below, when prompted by GitHub.'
-            : `You must log in to sync your GitHub repositories with bloop. GitHub credentials are stored locally and are never sent to our servers. Enter the code below, when prompted by GitHub.`
+            : `You must log in to sync your GitHub repositories with bloop. GitHub credentials are stored locally and are never sent to our servers. Enter the code below, when prompted by GitHub.`)
         }
       />
       <span className="subhead-l text-gray-300 justify-center items-center flex gap-1 -mt-2 h-5">
@@ -141,18 +152,20 @@ const GithubConnectStep = ({
       </span>
       <div className="flex flex-col gap-4">
         {getButton()}
-        {!(isAnalyticsAllowed || forceAnalyticsAllowed) && (
+        {!(isAnalyticsAllowed || forceAnalyticsAllowed) || secondaryCTA ? (
           <>
             <div className="flex items-center">
               <span className="flex-1 h-px bg-gray-800" />
               <span className="text-gray-600 mx-3">or</span>
               <span className="flex-1 h-px bg-gray-800" />
             </div>
-            <Button variant="secondary" onClick={handleSkip}>
-              Setup later <ArrowRight />
-            </Button>
+            {secondaryCTA || (
+              <Button variant="secondary" onClick={handleSkip}>
+                Setup later <ArrowRight />
+              </Button>
+            )}
           </>
-        )}
+        ) : null}
       </div>
       {handleBack ? <GoBackButton handleBack={handleBack} /> : null}
       {tokenExpireIn ? (
