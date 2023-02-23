@@ -6,8 +6,10 @@ default-run = "bleep"
 build = "build.rs"
 
 [features]
-default = []
+default = ["static-ort"]
 debug = ["console-subscriber", "histogram"]
+dynamic-ort = ["ort/use-system"]
+static-ort = ["ort/use-compile"]
 
 [[bin]]
 name = "bleep"

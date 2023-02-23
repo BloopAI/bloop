@@ -2,7 +2,7 @@
   description = "bloop";
 
   inputs = rec {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-22.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
@@ -20,20 +20,31 @@
         lib = pkgs.lib;
 
         llvm = pkgs.llvmPackages_14;
+        clang = llvm.clang;
         libclang = llvm.libclang;
         stdenv = llvm.stdenv;
 
-        # Get a specific rust version
         rust = pkgs.rust-bin.stable.latest.default;
+        rustPlatform = pkgs.makeRustPlatform {
+          cargo = rust;
+          rustc = rust;
+        };
+
+        runtimeDeps = with pkgs;
+          ([ openssl rocksdb universal-ctags git zlib ]
+            ++ lib.optionals pkgs.stdenv.isLinux [ onnxruntime ]);
+
         buildDeps = with pkgs;
           ([
+            git
+            perl
+            clang
             stdenv.cc.cc.lib
             rust
-            git-lfs
             rustup
-            rocksdb
             nodePackages.pnpm
             pkg-config
+            cacert
             openssl
             openssl.dev
             glib.dev
@@ -42,9 +53,15 @@
             protobuf
             automake
             autoconf
-            universal-ctags
-          ] ++ lib.optionals pkgs.stdenv.isLinux [
-            perl
+          ] ++ lib.optionals pkgs.stdenv.isDarwin [
+            darwin.apple_sdk.frameworks.Foundation
+            darwin.apple_sdk.frameworks.CoreFoundation
+            darwin.apple_sdk.frameworks.Security
+          ]);
+
+        guiDeps = with pkgs;
+          (lib.optionals pkgs.stdenv.isLinux [
+            zlib.dev
             dbus.dev
             libsoup.dev
             gtk3.dev
@@ -58,23 +75,75 @@
             darwin.apple_sdk.frameworks.AppKit
           ]);
 
-        buildEnv = {
+        envVars = {
           ROCKSDB_LIB_DIR = "${pkgs.rocksdb}/lib";
           ROCKSDB_INCLUDE_DIR = "${pkgs.rocksdb}/include";
           LIBCLANG_PATH = "${libclang.lib}/lib";
+          PYTHON = "${pkgs.python3}/bin/python3";
         };
-      in rec {
-        devShell = pkgs.mkShell ({
+
+        bleep = (rustPlatform.buildRustPackage {
+          meta = with pkgs.lib; {
+            description = "Search code. Fast.";
+            homepage = "https://bloop.ai";
+            license = licenses.asl20;
+            platforms = platforms.all;
+          };
+
+          name = "bleep";
+          pname = "bleep";
+          version = "0.2.1";
+          src = pkgs.lib.sources.cleanSource ./.;
+          cargoBuildFlags = "-p bleep";
+          doCheck = false;
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+            outputHashes = {
+              "hyperpolyglot-0.1.7" =
+                "sha256-NftH6P+DmT2hggFxpBmvyekA/lv/JhbCJY8iMABhHp8=";
+              "octocrab-0.17.0" =
+                "sha256-UoHqwsOhfx5VBrK6z94Jk5aKpCxswcSBhiCNZAyq5a8=";
+              "tree-sitter-cpp-0.20.0" =
+                "sha256-h6mJdmQzJlxYIcY+d5IiaFghraUgBGZwqFPKwB3E4pQ=";
+              "tree-sitter-go-0.19.1" =
+                "sha256-f885YTswEDH/QfRPUxcLp/1E2zXLKl25R9IyTGKb1eM=";
+              "tree-sitter-java-0.20.0" =
+                "sha256-gQzoWGV9wYiLibMFkLoY2sdEJg+ae9NnHt/GFfFzP8U=";
+              "ort-1.14.0-beta.0" =
+                "sha256-gG6Mv+7rNunurKSk53zMajqChZcNt9awhmQOqo+dsVM=";
+            };
+          };
+
+          nativeBuildInputs = buildDeps;
+          buildInputs = runtimeDeps;
+        }).overrideAttrs (old: envVars);
+      in {
+        packages = {
+          bleep = bleep;
+          default = bleep;
+          docker = pkgs.dockerTools.buildImage {
+            name = "bleep";
+            config = { Cmd = [ "${bleep}/bin/bleep" ]; };
+            extraCommands = ''
+              ln -s ${bleep}/bin/bleep /bleep
+            '';
+
+          };
+
+          my-ctags = pkgsStatic.universal-ctags.overrideAttrs (old: {
+            nativeBuildInputs = old.nativeBuildInputs
+              ++ [ pkgsStatic.pkg-config ];
+          });
+        };
+
+        devShell = (pkgs.mkShell {
           shellHook = ''
             pnpm install >&2
           '';
-          buildInputs = buildDeps;
-        } // buildEnv);
+          buildInputs = buildDeps ++ runtimeDeps ++ guiDeps
+            ++ (with pkgs; [ git-lfs ]);
+        }).overrideAttrs (old: envVars);
 
-        packages.my-ctags = pkgsStatic.universal-ctags.overrideAttrs (old: {
-          nativeBuildInputs = old.nativeBuildInputs
-            ++ [ pkgsStatic.pkg-config ];
-        });
       });
 }
 
