@@ -13,6 +13,7 @@ type ContextType = {
   setBugReportModalOpen: (b: boolean) => void;
   isGithubConnected: boolean;
   setGithubConnected: (b: boolean) => void;
+  isGithubChecked: boolean;
 };
 
 export const UIContext = createContext<ContextType>({
@@ -28,4 +29,5 @@ export const UIContext = createContext<ContextType>({
   setBugReportModalOpen: () => {},
   isGithubConnected: false,
   setGithubConnected: () => {},
+  isGithubChecked: false,
 });

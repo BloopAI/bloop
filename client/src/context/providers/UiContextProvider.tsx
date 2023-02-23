@@ -24,11 +24,13 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
   );
   const { isSelfServe } = useContext(DeviceContext);
   const [isGithubConnected, setGithubConnected] = useState(isSelfServe);
+  const [isGithubChecked, setGithubChecked] = useState(false);
 
   useEffect(() => {
     if (!isSelfServe) {
       gitHubStatus().then((d) => {
         setGithubConnected(d.status === 'ok');
+        setGithubChecked(true);
       });
     }
   }, []);
@@ -47,6 +49,7 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       setBugReportModalOpen,
       isGithubConnected,
       setGithubConnected,
+      isGithubChecked,
     }),
     [
       isSettingsOpen,
@@ -55,6 +58,7 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       onBoardingState,
       isBugReportModalOpen,
       isGithubConnected,
+      isGithubChecked,
     ],
   );
   return (

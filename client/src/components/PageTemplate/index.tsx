@@ -22,14 +22,20 @@ const PageTemplate = ({ children }: Props) => {
   const { isSelfServe } = useContext(DeviceContext);
   const { isAnalyticsAllowed, setIsAnalyticsAllowed } =
     useContext(AnalyticsContext);
-  const { isGithubConnected, setOnBoardingState } = useContext(UIContext);
+  const { isGithubConnected, setOnBoardingState, isGithubChecked } =
+    useContext(UIContext);
   const [isModalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
-    if (!isGithubConnected && isAnalyticsAllowed && !isSelfServe) {
+    if (
+      isGithubChecked &&
+      !isGithubConnected &&
+      isAnalyticsAllowed &&
+      !isSelfServe
+    ) {
       setModalOpen(true);
     }
-  }, []);
+  }, [isGithubChecked]);
 
   const saveOptIn = useCallback((optIn: boolean) => {
     savePlainToStorage(IS_ANALYTICS_ALLOWED_KEY, optIn ? 'true' : 'false');
