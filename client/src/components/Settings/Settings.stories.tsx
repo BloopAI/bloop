@@ -35,6 +35,7 @@ export const Default = () => {
           setBugReportModalOpen: () => {},
           isGithubConnected: false,
           setGithubConnected: () => {},
+          isGithubChecked: true,
         }}
       >
         <RepositoriesContext.Provider
@@ -77,6 +78,7 @@ export const ScanErrors = () => {
           setBugReportModalOpen: () => {},
           isGithubConnected: false,
           setGithubConnected: () => {},
+          isGithubChecked: true,
         }}
       >
         <RepositoriesContext.Provider
@@ -201,6 +203,7 @@ export const EmailConfirmedReposSynced = () => {
           setBugReportModalOpen: () => {},
           isGithubConnected: true,
           setGithubConnected: () => {},
+          isGithubChecked: true,
         }}
       >
         <RepositoriesContext.Provider
