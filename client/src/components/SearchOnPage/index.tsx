@@ -4,7 +4,6 @@ import React, {
   KeyboardEvent,
   SetStateAction,
   useCallback,
-  useState,
 } from 'react';
 import TextInput from '../TextInput';
 import { ChevronDown, ChevronUp } from '../../icons';
@@ -16,30 +15,30 @@ type Props = {
   currentResult: number;
   setCurrentResult: Dispatch<SetStateAction<number>>;
   onCancel?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  searchValue: string;
+  containerClassName: string;
 };
 
-const FullCodeSearch = ({
+const SearchOnPage = ({
   handleSearch,
   isSearchActive,
   resultNum,
   onCancel,
   currentResult,
   setCurrentResult,
+  searchValue,
+  containerClassName,
 }: Props) => {
-  const [searchValue, setSearchValue] = useState('');
-
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
-      const searchTerm = e.target.value;
-      setSearchValue(searchTerm);
-      handleSearch(searchTerm);
+      handleSearch(e.target.value);
     },
     [handleSearch],
   );
 
   return isSearchActive ? (
     <div
-      className="absolute top-0 -right-4 z-50 bg-gray-900 bg-opacity-80"
+      className={`z-50 bg-gray-900 bg-opacity-80 ${containerClassName}`}
       style={{
         backdropFilter: 'blur(1px)',
         WebkitBackdropFilter: 'blur(1px)',
@@ -92,4 +91,4 @@ const FullCodeSearch = ({
   ) : null;
 };
 
-export default FullCodeSearch;
+export default SearchOnPage;

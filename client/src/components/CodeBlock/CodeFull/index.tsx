@@ -22,7 +22,7 @@ import { hashCode } from '../../../utils';
 import { Commit } from '../../../types';
 import { Token as TokenType } from '../../../types/prism';
 import useAppNavigation from '../../../hooks/useAppNavigation';
-import FullCodeSearch from '../../FullCodeSearch';
+import SearchOnPage from '../../SearchOnPage';
 import Token from './Token';
 
 const Table = _Table as unknown as FC<TableProps>;
@@ -87,6 +87,7 @@ const CodeFull = ({
   const [isSearchActive, setSearchActive] = useState(false);
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const [currentResult, setCurrentResult] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const toggleSearch = (e: KeyboardEvent) => {
@@ -193,6 +194,7 @@ const CodeFull = ({
 
   const handleSearch = useCallback(
     (value: string) => {
+      setSearchTerm(value);
       if (value === '') {
         setSearchResults([]);
         setCurrentResult(0);
@@ -200,7 +202,7 @@ const CodeFull = ({
       }
       const lines = code.split('\n');
       const results = lines.reduce(function (prev: number[], cur, i) {
-        if (cur.includes(value)) {
+        if (cur.toLowerCase().includes(value.toLowerCase())) {
           prev.push(i);
         }
         return prev;
@@ -222,13 +224,18 @@ const CodeFull = ({
 
   return (
     <div className="code-full-view w-full text-xs gap-10 flex flex-row relative">
-      <FullCodeSearch
+      <SearchOnPage
         handleSearch={handleSearch}
         isSearchActive={isSearchActive}
         resultNum={searchResults.length}
-        onCancel={() => setSearchActive(false)}
+        onCancel={() => {
+          handleSearch('');
+          setSearchActive(false);
+        }}
         currentResult={currentResult}
         setCurrentResult={setCurrentResult}
+        searchValue={searchTerm}
+        containerClassName="absolute top-0 -right-4"
       />
       <div className={`${!minimap ? 'w-full' : ''}`} ref={codeRef}>
         <pre
@@ -261,6 +268,7 @@ const CodeFull = ({
                       props.index >= scrollToIndex[0] &&
                       props.index <= scrollToIndex[1]
                     }
+                    searchTerm={searchTerm}
                     stylesGenerated={{
                       ...props.style,
                       width: 'auto',
