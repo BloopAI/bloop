@@ -10,7 +10,7 @@ use dashmap::mapref::one::Ref;
 use git2::{Cred, CredentialType, RemoteCallbacks};
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
-use tracing::{warn, error};
+use tracing::{error, warn};
 
 use crate::{
     remotes,
