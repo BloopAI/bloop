@@ -74,6 +74,11 @@ impl AuthCookie {
         self.member_checked_at = Some(unix_time_sec());
     }
 
+    fn update_token(&mut self, github_token: GithubAuthToken) {
+        self.created_at = unix_time_sec();
+        self.github_token = github_token;
+    }
+
     fn to_cookie(&self) -> Cookie<'static> {
         let mut c = Cookie::new(
             AuthCookie::COOKIE_NAME,
@@ -298,8 +303,9 @@ async fn user_auth(
             .text()
             .await?;
 
-        auth_cookie.github_token =
+        let gh_token =
             serde_json::from_str(&oauth_json).context("failed to deserialize refresh token")?;
+        auth_cookie.update_token(gh_token);
     }
 
     if !member_checked {
