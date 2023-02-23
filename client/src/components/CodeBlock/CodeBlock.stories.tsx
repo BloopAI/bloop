@@ -217,6 +217,12 @@ export const SemanticSearchSnippets = () => {
             path: 'src/index.js',
             repoName: 'bloop',
             lang: 'JavaScript',
+            subSnippets: [
+              {
+                text: 'console.log("Hello world!");',
+                range: { start: 1, end: 1 },
+              },
+            ],
           },
         ]}
         // nlQuery="Some nice answer"
