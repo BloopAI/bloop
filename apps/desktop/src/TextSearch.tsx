@@ -90,7 +90,9 @@ const TextSearch = ({
 
   useEffect(() => {
     const toggleSearch = (e: KeyboardEvent) => {
-      if (e.code === 'KeyF' && e.metaKey) {
+      const fullCodeInView =
+        !!document.getElementsByClassName('code-full-view').length;
+      if (e.code === 'KeyF' && e.metaKey && !fullCodeInView) {
         setSearchActive((prev) => !prev);
       } else if (e.code === 'Escape') {
         setSearchActive((prev) => {
@@ -131,15 +133,15 @@ const TextSearch = ({
           document.getElementsByClassName(HIGHLIGHT_CLASSNAME);
         const resNum = allHighlights.length;
         setResultNum(resNum);
-        let prevIncedInNewHighlights = currentHighlightParent
+        let prevIndexInNewHighlights = currentHighlightParent
           ? [...allHighlights].findIndex((el) =>
               el.parentNode?.parentNode?.isSameNode(currentHighlightParent),
             )
           : -1;
         setCurrentResult((prev) => {
           const newR = resNum
-            ? prevIncedInNewHighlights >= 0
-              ? prevIncedInNewHighlights + 1
+            ? prevIndexInNewHighlights >= 0
+              ? prevIndexInNewHighlights + 1
               : 1
             : 0;
           if (prev === newR) {
@@ -204,6 +206,7 @@ const TextSearch = ({
           onChange={handleChange}
           forceClear
           inputClassName="pr-24"
+          onEscape={() => setSearchActive(false)}
         />
       </form>
       <div className="flex items-center absolute top-0.5 right-9 caption text-gray-300">
