@@ -397,6 +397,10 @@ async fn _handle(
 
     let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
 
+    analytics_event
+        .stages
+        .push(Stage::new("explain prompt", &explain_prompt).with_time(stop_watch.lap()));
+
     let mut snippet_explanation = answer_api_client
         .explain_snippet(&explain_prompt)
         .await
