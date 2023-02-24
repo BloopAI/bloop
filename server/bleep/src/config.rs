@@ -3,10 +3,10 @@ use anyhow::{Context, Result};
 use clap::Parser;
 
 use secrecy::{ExposeSecret, SecretString};
-use serde::{Deserialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use std::path::{Path, PathBuf};
 
-#[derive(Deserialize, Parser, Debug)]
+#[derive(Serialize, Deserialize, Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 pub struct Configuration {
     //
