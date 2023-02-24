@@ -1,8 +1,7 @@
 use std::{collections::HashMap, ops::Not, path::Path, sync::Arc};
 
-use crate::{query::parser, Configuration};
+use crate::{query::parser::NLQuery, Configuration};
 
-use anyhow::bail;
 use ndarray::Axis;
 use ort::{
     tensor::{FromArray, InputTensor, OrtOwnedTensor},
@@ -169,13 +168,13 @@ impl Semantic {
         Ok(pooled.to_owned().as_slice().unwrap().to_vec())
     }
 
-    pub async fn search(&self, query: &str, limit: u64) -> anyhow::Result<Vec<ScoredPoint>> {
-        let Ok(parsed_query) = parser::parse_nl(query) else {
-            bail!("Failed to parse query");
-        };
-
+    pub async fn search<'a>(
+        &self,
+        parsed_query: &NLQuery<'a>,
+        limit: u64,
+    ) -> anyhow::Result<Vec<ScoredPoint>> {
         let Some(query) = parsed_query.target() else {
-            anyhow::bail!("No search target for query");
+            anyhow::bail!("no search target for query");
         };
 
         let repo_filter = parsed_query
