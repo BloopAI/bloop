@@ -37,8 +37,8 @@ use super::{
 };
 use crate::{
     intelligence::TreeSitterFile,
+    repo::{FileCache, RepoMetadata, RepoRef, Repository},
     semantic::Semantic,
-    state::{FileCache, RepoHeadInfo, RepoRef, Repository},
     symbol::SymbolLocations,
     Configuration,
 };
@@ -48,7 +48,7 @@ struct Workload<'a> {
     repo_disk_path: &'a Path,
     repo_ref: String,
     repo_name: &'a str,
-    repo_info: &'a RepoHeadInfo,
+    repo_metadata: &'a RepoMetadata,
     cache: &'a FileCache,
 }
 
@@ -239,7 +239,7 @@ impl Indexable for File {
         &self,
         reporef: &RepoRef,
         repo: &Repository,
-        repo_info: &RepoHeadInfo,
+        repo_metadata: &RepoMetadata,
         writer: &IndexWriter,
     ) -> Result<()> {
         let file_cache = repo.open_file_cache(&self.config.index_dir)?;
@@ -270,7 +270,7 @@ impl Indexable for File {
                 repo_ref: reporef.to_string(),
                 repo_name: &repo_name,
                 cache: &file_cache,
-                repo_info,
+                repo_metadata,
             };
 
             debug!(?entry_disk_path, "queueing entry");
@@ -471,7 +471,7 @@ impl File {
             repo_ref,
             repo_disk_path,
             repo_name,
-            repo_info,
+            repo_metadata,
             cache,
         } = workload;
 
@@ -524,7 +524,7 @@ impl File {
         trace!("added cache entry");
 
         let lang_str = if entry_disk_path.is_file() {
-            repo_info
+            repo_metadata
                 .langs
                 .path_map
                 .get(&entry_disk_path)
@@ -549,7 +549,7 @@ impl File {
                 // no graph, try ctags instead
                 Err(err) => {
                     debug!(?err, %lang_str, "failed to build scope graph");
-                    match repo_info.symbols.get(relative_path) {
+                    match repo_metadata.symbols.get(relative_path) {
                         Some(syms) => SymbolLocations::Ctags(syms.clone()),
                         // no ctags either
                         _ => {
@@ -588,7 +588,7 @@ impl File {
         }
 
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
-        let last_commit = repo_info.last_commit_unix_secs;
+        let last_commit = repo_metadata.last_commit_unix_secs;
 
         // produce vectors for this document if it is a file
         if entry_disk_path.is_file() {

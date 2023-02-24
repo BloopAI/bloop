@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    state::{Backend, RepoRef, Repository, SyncStatus},
+    repo::{Backend, RepoRef, Repository, SyncStatus},
     Application,
 };
 use axum::{
@@ -144,7 +144,16 @@ pub(super) async fn delete_by_id(
         return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
     };
 
-    Ok(reporef.delete(&app).map(|_| json(ReposResponse::Deleted))?)
+    let deleted = match app.repo_pool.get_mut(&reporef) {
+        Some(mut result) => {
+            result.value_mut().mark_removed();
+            app.write_index().queue_sync_and_index(vec![reporef]);
+            Ok(())
+        }
+        None => Err(Error::new(ErrorKind::NotFound, "Repo not found")),
+    };
+
+    Ok(deleted.map(|_| json(ReposResponse::Deleted)))
 }
 
 /// Synchronize a repo by its id

@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     remotes::{self, BackendCredential},
-    state::Backend,
+    repo::Backend,
 };
 
 use super::*;
@@ -33,9 +33,9 @@ const MAX_PARALLEL_PENDING_LOGINS: usize = 512;
 #[derive(serde::Serialize, serde::Deserialize)]
 struct GithubAuthToken {
     expires_in: u64,
-    #[serde(serialize_with = "crate::state::serialize_secret_str")]
+    #[serde(serialize_with = "crate::config::serialize_secret_str")]
     refresh_token: SecretString,
-    #[serde(serialize_with = "crate::state::serialize_secret_str")]
+    #[serde(serialize_with = "crate::config::serialize_secret_str")]
     access_token: SecretString,
     // Ignore other fields here ...
 }

@@ -23,8 +23,8 @@ use crate::{
     indexes::reader::ContentDocument,
     query::parser,
     remotes::{self, BackendCredential},
+    repo::{Backend, RepoRef},
     semantic::Semantic,
-    state::{Backend, RepoRef},
     Application,
 };
 
@@ -175,19 +175,21 @@ async fn _handle(
         .stages
         .push(Stage::new("user query", &params.q).with_time(stop_watch.lap()));
 
-    let query = parser::parse_nl(&params.q).map_err(Error::user)?;
-    let target = query
+    // Parse the query for search filters
+    let parsed_query = parser::parse_nl(&params.q).map_err(Error::user)?;
+    let query = parsed_query
         .target()
         .ok_or_else(|| Error::user("missing search target"))?;
 
     let all_snippets: Vec<Snippet> = semantic
-        .search(&query, 4 * SNIPPET_COUNT as u64) // heuristic
+        .search(&parsed_query, 4 * SNIPPET_COUNT as u64) // heuristic
         .await
         .map_err(Error::internal)?
         .into_iter()
         .map(|r| {
             use qdrant_client::qdrant::{value::Kind, Value};
 
+            // TODO: Can we merge with webserver/semantic.rs:L63?
             fn value_to_string(value: Value) -> String {
                 match value.kind.unwrap() {
                     Kind::StringValue(s) => s,
@@ -297,11 +299,10 @@ async fn _handle(
         None
     };
 
-    let answer_api_host = format!("{}/q", app.config.answer_api_url);
     let answer_api_client = semantic.build_answer_api_client(
         state,
-        answer_api_host.as_str(),
-        target,
+        format!("{}/q", app.config.answer_api_url).as_str(),
+        query,
         5,
         answer_bearer.clone(),
     );

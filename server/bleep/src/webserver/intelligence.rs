@@ -4,8 +4,8 @@ use super::prelude::*;
 use crate::{
     indexes::{reader::ContentDocument, Indexes},
     intelligence::{code_navigation, NodeKind, ScopeGraph},
+    repo::RepoRef,
     snippet::{Snipper, Snippet},
-    state::RepoRef,
     symbol::SymbolLocations,
     text_range::TextRange,
 };

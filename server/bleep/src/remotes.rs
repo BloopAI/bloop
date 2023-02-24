@@ -14,7 +14,7 @@ use tracing::{error, warn};
 
 use crate::{
     remotes,
-    state::{RepoRef, Repository, SyncStatus},
+    repo::{RepoRef, Repository, SyncStatus},
     Application,
 };
 

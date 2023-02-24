@@ -3,19 +3,19 @@ use anyhow::{Context, Result};
 use clap::Parser;
 
 use secrecy::{ExposeSecret, SecretString};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize, Serializer};
 use std::path::{Path, PathBuf};
 
-#[derive(Deserialize, Parser, Debug)]
+#[derive(Serialize, Deserialize, Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 pub struct Configuration {
+    //
+    // Core configuration options
+    //
     #[clap(short, long)]
     #[serde(skip)]
     /// If a config file is given, it will override _all_ command line parameters!
     pub config_file: Option<PathBuf>,
-
-    #[serde(default)]
-    pub ctags_path: Option<PathBuf>,
 
     #[clap(flatten)]
     #[serde(default)]
@@ -66,6 +66,37 @@ pub struct Configuration {
     /// Bind the webserver to `<host>`
     pub port: u16,
 
+    //
+    // External dependencies
+    //
+    #[serde(default)]
+    /// Path to Ctags binary
+    pub ctags_path: Option<PathBuf>,
+
+    #[clap(long, default_value_t = default_answer_api_url())]
+    #[serde(default = "default_answer_api_url")]
+    /// URL for the answer-api
+    pub answer_api_url: String,
+
+    #[clap(long)]
+    /// Key for analytics backend
+    pub analytics_key: Option<String>,
+
+    #[clap(long)]
+    /// Analytics data plane identifier
+    pub analytics_data_plane: Option<String>,
+
+    #[clap(long)]
+    /// Sentry Data Source Name
+    pub sentry_dsn: Option<String>,
+
+    //
+    // Semantic values
+    //
+    #[clap(long)]
+    /// URL for the qdrant server
+    pub qdrant_url: Option<String>,
+
     #[clap(long, default_value_os_t = default_model_dir())]
     #[serde(default = "default_model_dir")]
     /// Path to the embedding model directory
@@ -80,32 +111,17 @@ pub struct Configuration {
     /// Chunking strategy
     pub overlap: Option<OverlapStrategy>,
 
-    /// Path to built front-end folder
-    #[clap(long)]
-    pub frontend_dist: Option<PathBuf>,
-
-    //
-    // External dependencies
-    //
-    #[clap(long)]
-    /// URL for the qdrant server
-    pub qdrant_url: Option<String>,
-
-    #[clap(long, default_value_t = default_answer_api_url())]
-    #[serde(default = "default_answer_api_url")]
-    /// URL for the answer-api
-    pub answer_api_url: String,
-
     //
     // Installation-specific values
     //
     #[clap(long)]
-    #[serde(serialize_with = "state::serialize_secret_opt_str", default)]
-    /// Github Client ID for OAuth connection to private repos
+    #[serde(serialize_with = "serialize_secret_opt_str", default)]
+    /// Github Client ID for either OAuth or GitHub Apps
     pub github_client_id: Option<SecretString>,
 
+    // Github client secret
     #[clap(long)]
-    #[serde(serialize_with = "State::serialize_secret_opt_str", default)]
+    #[serde(serialize_with = "serialize_secret_opt_str", default)]
     pub github_client_secret: Option<SecretString>,
 
     #[clap(long)]
@@ -113,7 +129,7 @@ pub struct Configuration {
     pub github_app_id: Option<u64>,
 
     #[clap(long)]
-    /// GitHub app installation ID
+    /// GitHub App installation ID
     pub github_app_install_id: Option<u64>,
 
     #[clap(long)]
@@ -121,25 +137,20 @@ pub struct Configuration {
     pub github_app_private_key: Option<PathBuf>,
 
     #[clap(long)]
-    /// Full instance domain, e.g. `foo.bloop.ai`
-    pub instance_domain: Option<String>,
-
-    #[clap(long)]
-    #[serde(serialize_with = "State::serialize_secret_opt_str", default)]
+    #[serde(serialize_with = "serialize_secret_opt_str", default)]
     /// Bot secret token
     pub bot_secret: Option<SecretString>,
 
+    //
+    // Cloud deployment values
+    //
     #[clap(long)]
-    /// Key for analytics backend
-    pub analytics_key: Option<String>,
+    /// Full instance domain, e.g. `foo.bloop.ai`
+    pub instance_domain: Option<String>,
 
+    /// Path to built front-end folder
     #[clap(long)]
-    /// Analytics data plane identifier
-    pub analytics_data_plane: Option<String>,
-
-    #[clap(long)]
-    /// Analytics data plane identifier
-    pub sentry_dsn: Option<String>,
+    pub frontend_dist: Option<PathBuf>,
 }
 
 macro_rules! right_if_default {
@@ -261,6 +272,29 @@ impl Configuration {
     }
 }
 
+pub fn serialize_secret_opt_str<S>(
+    opt_secstr: &Option<SecretString>,
+    ser: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match opt_secstr {
+        Some(secstr) => ser.serialize_some(secstr.expose_secret()),
+        None => ser.serialize_none(),
+    }
+}
+
+pub fn serialize_secret_str<S>(secstr: &SecretString, ser: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    ser.serialize_str(secstr.expose_secret())
+}
+
+//
+// Configuration defaults
+//
 fn default_index_path() -> PathBuf {
     match directories::ProjectDirs::from("ai", "bloop", "bleep") {
         Some(dirs) => dirs.cache_dir().to_owned(),
