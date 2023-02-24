@@ -6,7 +6,7 @@ jobs:
     uses: BloopAI/workflows/.github/workflows/build-container.yml@main
     with:
       repository: bloop
-      tag: build-${{ github.sha }}
+      tag: build-${{ github.event.pull_request.head.sha }}
       runner: docker
     secrets:
       awsRegion: ${{ secrets.AWS_REGION }}
