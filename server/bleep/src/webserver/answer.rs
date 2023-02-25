@@ -467,7 +467,7 @@ struct AnswerAPIClient<'s> {
 }
 
 #[derive(Error, Debug)]
-enum AnswerAPIError {
+pub enum AnswerAPIError {
     #[error("max retry attempts reached {0}")]
     MaxAttemptsReached(usize),
 

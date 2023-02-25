@@ -163,7 +163,7 @@ impl IndexWriter {
             }
             _ => {
                 repo_pool.get_mut(reporef).unwrap().value_mut().sync_status = Indexing;
-                let indexed = repo.index(&key, &writers).await;
+                let indexed = repo.index(&key, &writers, self.0.clone()).await;
                 let state = match &indexed {
                     Ok(state) => Some(state.clone()),
                     _ => None,
@@ -207,8 +207,8 @@ impl IndexWriter {
             Some(creds) => creds.clone(),
             None => {
                 let Some(path) = repo.local_path() else {
-		    bail!("no keys for backend {:?}", backend)
-		};
+                    bail!("no keys for backend {:?}", backend)
+                };
 
                 if !app.allow_path(path) {
                     bail!("path not authorized {repo:?}")

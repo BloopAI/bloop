@@ -8,6 +8,7 @@ use std::{
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use dashmap::mapref::entry::Entry;
+use futures::{StreamExt, TryStreamExt};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use smallvec::SmallVec;
@@ -41,6 +42,7 @@ use crate::{
     semantic::Semantic,
     symbol::SymbolLocations,
     Configuration,
+    Application,
 };
 
 struct Workload<'a> {
@@ -235,15 +237,18 @@ const MAX_FILE_LEN: u64 = AVG_LINE_LEN * MAX_LINE_COUNT;
 
 #[async_trait]
 impl Indexable for File {
-    fn index_repository(
+    async fn index_repository(
         &self,
         reporef: &RepoRef,
         repo: &Repository,
         repo_metadata: &RepoMetadata,
         writer: &IndexWriter,
+        app: Application,
     ) -> Result<()> {
         let file_cache = repo.open_file_cache(&self.config.index_dir)?;
         let repo_name = reporef.indexed_name();
+
+        let start = std::time::Instant::now();
 
         // note: this WILL observe .gitignore files for the respective repos.
         let walker = ignore::Walk::new(&repo.disk_path)
@@ -257,27 +262,31 @@ impl Indexable for File {
             // Preliminarily ignore files that are very large, without reading the contents.
             .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
             .filter_map(|de| crate::canonicalize(de.into_path()).ok())
-            .filter(|p| should_index(&p.strip_prefix(&repo.disk_path).unwrap()))
-            .collect::<Vec<PathBuf>>();
+            .filter(|p| should_index(&p.strip_prefix(&repo.disk_path).unwrap()));
 
-        let start = std::time::Instant::now();
+        let client = reqwest::Client::new();
 
-        use rayon::prelude::*;
-        walker.into_par_iter().for_each(|entry_disk_path| {
-            let workload = Workload {
-                entry_disk_path: entry_disk_path.clone(),
-                repo_disk_path: &repo.disk_path,
-                repo_ref: reporef.to_string(),
-                repo_name: &repo_name,
-                cache: &file_cache,
-                repo_metadata,
-            };
+        futures::stream::iter(walker)
+            .for_each_concurrent(10, |entry_disk_path| {
+                let workload = Workload {
+                    entry_disk_path: entry_disk_path.clone(),
+                    repo_disk_path: &repo.disk_path,
+                    repo_ref: reporef.to_string(),
+                    repo_name: &repo_name,
+                    cache: &file_cache,
+                    repo_metadata,
+                };
 
-            debug!(?entry_disk_path, "queueing entry");
-            if let Err(err) = self.worker(workload, writer) {
-                warn!(%err, ?entry_disk_path, "indexing failed; skipping");
-            }
-        });
+                let req = client.post(format!("{}/q", app.config.answer_api_url));
+
+                async move {
+                    debug!(?entry_disk_path, "queueing entry");
+                    if let Err(err) = self.worker(workload, writer, req).await {
+                        warn!(%err, ?entry_disk_path, "indexing failed; skipping");
+                    }
+                }
+            })
+            .await;
 
         info!(?repo.disk_path, "file indexing finished, took {:?}", start.elapsed());
 
@@ -465,7 +474,7 @@ impl Indexer<File> {
 
 impl File {
     #[tracing::instrument(fields(repo=%workload.repo_ref, entry_disk_path=?workload.entry_disk_path), skip_all)]
-    fn worker(&self, workload: Workload<'_>, writer: &IndexWriter) -> Result<()> {
+    async fn worker(&self, workload: Workload<'_>, writer: &IndexWriter, req: reqwest::RequestBuilder) -> Result<()> {
         let Workload {
             entry_disk_path,
             repo_ref,
@@ -504,6 +513,60 @@ impl File {
             hash.update(crate::state::SCHEMA_VERSION.as_bytes());
             hash.update(buffer.as_bytes());
             hash.finalize().to_hex().to_string()
+        };
+
+        trace!("retrieving LLM summary");
+
+        let summary = if entry_disk_path.is_file() {
+            use crate::webserver::answer::api;
+
+            const SUMMARY_LINES: usize = 50;
+            let input = buffer.get(..SUMMARY_LINES * AVG_LINE_LEN as usize).unwrap_or(&buffer);
+
+            let prompt = format!(
+                "{}\n\n\
+                =======\n\n\
+                Repository Path: {MAIN_SEPARATOR}{relative_path_str}\n\
+                What does this file do? What language is it for? One to two sentences:\n",
+                input,
+            );
+
+            let out = reqwest_eventsource::EventSource::new({
+                req.json(&api::Request {
+                    prompt,
+                    provider: api::Provider::Anthropic,
+                    temperature: None,
+                    max_tokens: None,
+                })
+            })
+            // We don't have a `Stream` body so this can't fail.
+            .expect("couldn't clone requestbuilder")
+            // `reqwest_eventsource` returns an error to signify a stream end, instead of simply ending
+            // the stream. So we catch the error here and close the stream.
+            .take_while(|result| {
+                let is_end = matches!(result, Err(reqwest_eventsource::Error::StreamEnded));
+                async move { !is_end }
+            })
+            // Skip the open message.
+            .skip(1)
+            .filter_map(|result| async move {
+                match result {
+                    Ok(reqwest_eventsource::Event::Message(msg)) => Some(Ok(msg.data)),
+                    Ok(reqwest_eventsource::Event::Open) => None,
+                    Err(reqwest_eventsource::Error::StreamEnded) => None,
+                    Err(e) => Some(Err(e)),
+                }
+            })
+            .map(|result| match result {
+                Ok(s) => Ok(serde_json::from_str::<api::Result>(&s)??),
+                Err(e) => Err(crate::webserver::answer::AnswerAPIError::EventSource(e)),
+            })
+            .try_collect::<String>()
+            .await?;
+
+            Some(dbg!(out))
+        } else {
+            None
         };
 
         trace!("adding cache entry");
@@ -598,6 +661,7 @@ impl File {
                         repo_name,
                         &repo_ref,
                         &relative_path.to_string_lossy(),
+                        summary.as_ref().map(String::as_str),
                         &buffer,
                         lang_str,
                     ))

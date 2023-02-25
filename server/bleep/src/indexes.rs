@@ -24,6 +24,7 @@ use crate::{
     repo::{RepoMetadata, RepoRef, Repository},
     semantic::Semantic,
     Configuration,
+    Application,
 };
 
 pub type GlobalWriteHandleRef<'a> = [IndexWriteHandle<'a>];
@@ -102,14 +103,16 @@ impl Indexes {
     }
 }
 
+#[async_trait::async_trait]
 pub trait Indexable: Send + Sync {
     /// This is where files are scanned and indexed.
-    fn index_repository(
+    async fn index_repository(
         &self,
         reporef: &RepoRef,
         repo: &Repository,
         metadata: &RepoMetadata,
         writer: &IndexWriter,
+        app: Application,
     ) -> Result<()>;
 
     fn delete_by_repo(&self, writer: &IndexWriter, repo: &Repository);
@@ -157,14 +160,16 @@ impl<'a> IndexWriteHandle<'a> {
         self.source.delete_by_repo(&self.writer, repo)
     }
 
-    pub fn index(
+    pub async fn index(
         &self,
         reporef: &RepoRef,
         repo: &Repository,
         metadata: &RepoMetadata,
+        app: Application,
     ) -> Result<()> {
         self.source
-            .index_repository(reporef, repo, metadata, &self.writer)
+            .index_repository(reporef, repo, metadata, &self.writer, app)
+            .await
     }
 
     pub async fn commit(&mut self) -> Result<()> {

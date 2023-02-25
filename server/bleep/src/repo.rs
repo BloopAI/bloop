@@ -1,4 +1,5 @@
 use dashmap::DashMap;
+use futures::{stream, StreamExt, TryStreamExt};
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt::{self, Display},
@@ -14,6 +15,7 @@ use crate::{
     ctags, indexes,
     language::{get_language_info, LanguageInfo},
     state::{get_relative_path, pretty_write_file},
+    Application,
 };
 
 pub(crate) type FileCache = Arc<DashMap<PathBuf, FreshValue<String>>>;
@@ -243,16 +245,14 @@ impl Repository {
         &self,
         reporef: &RepoRef,
         writers: &indexes::GlobalWriteHandleRef<'_>,
+        app: Application,
     ) -> Result<Arc<RepoMetadata>, RepoError> {
-        use rayon::prelude::*;
         let metadata = get_repo_metadata(&self.disk_path).await;
 
-        tokio::task::block_in_place(|| {
-            writers
-                .par_iter()
-                .map(|handle| handle.index(reporef, self, &metadata))
-                .collect::<Result<Vec<_>, _>>()
-        })?;
+        stream::iter(writers.iter())
+            .map(Ok)
+            .try_for_each_concurrent(1, |handle| handle.index(reporef, self, &metadata, app.clone()))
+            .await?;
 
         Ok(metadata)
     }

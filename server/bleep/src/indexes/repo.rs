@@ -11,7 +11,7 @@ use tantivy::{
 use tracing::info;
 
 use super::Indexable;
-use crate::repo::{RepoMetadata, RepoRef, Repository};
+use crate::{Application, repo::{RepoMetadata, RepoRef, Repository}};
 
 pub struct Repo {
     schema: Schema,
@@ -66,12 +66,13 @@ impl Repo {
 
 #[async_trait]
 impl Indexable for Repo {
-    fn index_repository(
+    async fn index_repository(
         &self,
         repo_ref: &RepoRef,
         repo: &Repository,
         _metadata: &RepoMetadata,
         writer: &IndexWriter,
+        app: Application,
     ) -> Result<()> {
         // Make sure we delete any stale references to this repository when indexing.
         self.delete_by_repo(writer, repo);

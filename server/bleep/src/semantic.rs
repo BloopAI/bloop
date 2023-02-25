@@ -216,6 +216,7 @@ impl Semantic {
         repo_name: &str,
         repo_ref: &str,
         relative_path: &str,
+        summary: Option<&str>,
         buffer: &str,
         lang_str: &str,
     ) {
@@ -228,19 +229,21 @@ impl Semantic {
             relative_path,
             buffer,
             &self.tokenizer,
-            50..self.config.max_chunk_tokens,
+            0..self.config.max_chunk_tokens,
             15,
             self.overlap_strategy(),
         );
         debug!(chunk_count = chunks.len(), "found chunks");
 
-        // Prepend all chunks with `repo_name   relative_path`
-        let chunk_prefix = format!("{repo_name}\t{relative_path}\n");
+        // Prepend all chunks with `repo_name   relative_path   file_description`
+        let summary = summary.map(|s| format!("\t{s}")).unwrap_or(String::new());
+        let chunk_prefix = format!("{repo_name}\t{relative_path}{summary}\n");
 
+        println!("CHUNK PREFIX {chunk_prefix}");
         let datapoints = chunks
             .par_iter()
             .filter_map(
-                |chunk| match self.embed(&(chunk_prefix.clone() + chunk.data)) {
+                |chunk| match self.embed(dbg!(&(chunk_prefix.clone() + chunk.data))) {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
