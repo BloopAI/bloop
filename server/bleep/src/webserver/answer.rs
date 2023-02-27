@@ -450,17 +450,24 @@ async fn _handle(
 
         let mut parse_state = ParseState::new();
         let mut finished_first_line = false;
+        let mut finished_second_line = false;
 
         while let Some(result) = snippet_explanation.next().await {
             if let Ok(r) = result {
                 if finished_first_line {
                     let mut remnants = std::mem::take(&mut parse_state.lines[1]);
                     remnants.push_str(r.as_str());
-                    // strip leading bullet point
-                    let stripped = remnants.trim_start_matches(|c: char| c.is_numeric() || "\n. ".contains(c));
+
+                    if !finished_second_line {
+                        // strip leading bullet point
+                        remnants = remnants.trim_start_matches(|c: char| c.is_numeric() || "\n. ".contains(c)).to_owned();
+                        finished_second_line = true;
+                    }
+
                     let ev = Event::default()
-                        .json_data(Ok::<String, String>(stripped.to_owned()))
+                        .json_data(Ok::<String, String>(remnants.to_owned()))
                         .map_err(|_| AnswerAPIError::StreamFail)?;
+
                     yield Ok::<Event, AnswerAPIError>(ev)
 
                 } else {
