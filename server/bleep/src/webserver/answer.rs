@@ -426,9 +426,9 @@ async fn _handle(
             snippets: snippets.into_iter().map(|s| s.into()).collect(),
             query_id,
             user_id: params.user_id.clone(),
-            answer_path: answer_path.clone(),
+            answer_path,
         }))
-        .map_err(|_| AnswerAPIError::StreamFail)?;
+        .map_err(Error::internal)?;
 
     let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
     analytics_event
@@ -439,8 +439,7 @@ async fn _handle(
 
     let analytics_event = Arc::clone(&event);
     let stream = async_stream::stream! {
-        yield Ok::<Event, AnswerAPIError>(initial_event);
-
+        yield Ok(initial_event);
 
         let mut snippet_explanation = answer_api_client
             .explain_snippet(&explain_prompt)
@@ -451,6 +450,7 @@ async fn _handle(
         let mut parse_state = ParseState::new();
         let mut finished_first_line = false;
         let mut finished_second_line = false;
+        let mut explanation = String::default();
 
         while let Some(result) = snippet_explanation.next().await {
             if let Ok(r) = result {
@@ -464,8 +464,10 @@ async fn _handle(
                         finished_second_line = true;
                     }
 
+                    explanation.push_str(remnants.as_str());
+
                     let ev = Event::default()
-                        .json_data(Ok::<String, String>(remnants.to_owned()))
+                        .json_data(Ok::<String, String>(remnants))
                         .map_err(|_| AnswerAPIError::StreamFail)?;
 
                     yield Ok::<Event, AnswerAPIError>(ev)
@@ -509,7 +511,6 @@ async fn _handle(
         }
 
         let mut event = analytics_event.write().await;
-        let explanation = "";
 
         event
             .stages
@@ -551,8 +552,7 @@ impl ParseState {
         self.lines
             .get(0)
             .map(|f| f.trim_start_matches(|c: char| c.is_numeric() || "\n. ".contains(c)))
-            .map(|f| serde_json::from_str::<Vec<Vec<usize>>>(f).ok())
-            .flatten()
+            .and_then(|f| serde_json::from_str::<Vec<Vec<usize>>>(f).ok())
     }
 
     fn parsed_explanation(&self) -> Option<String> {
@@ -773,20 +773,22 @@ Index:",
 
 You are an AI assistant for a repo. Your job is to respond in the following format:
 1. Find the line number ranges that answer the question, respond in JSON, maximum of 5 lines
-2. Complete the sentence \"The answer is...\"
+2. A response to the question, in no more than 200 words.
 
 =========
 
 Question: Where do we connect to Kafka?
 Answer:
 1. [[1,4],[55,56]]
-2. The answer is that startKafka is a utility function to help maintain connections with a Kafka instance.
+2. We connect to Kafka in the startKafka function. startKafka is a utility function to help maintain connections with a Kafka instance.
 
 =========
 
 Question: {}
 Answer:
-", snippet_with_nr , self.query);
+",
+            snippet_with_nr, self.query
+        );
         prompt
     }
 
