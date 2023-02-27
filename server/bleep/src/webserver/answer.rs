@@ -332,7 +332,8 @@ async fn _handle(
         None
     };
 
-    let answer_api_client = semantic.build_answer_api_client(
+    let answer_api_client = build_answer_api_client(
+        semantic.clone(),
         state,
         format!("{}/q", app.config.answer_api_url).as_str(),
         query,
@@ -419,103 +420,89 @@ async fn _handle(
     // answering snippet is always at index 0
     let answer_path = snippets.get(0).unwrap().relative_path.to_string();
 
-    let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
+    // initial event contains a list of snippets
+    let initial_event = Event::default()
+        .json_data(super::Response::<'static>::from(AnswerResponse {
+            snippets: snippets.into_iter().map(|s| s.into()).collect(),
+            query_id,
+            user_id: params.user_id.clone(),
+            answer_path: answer_path.clone(),
+        }))
+        .map_err(|_| AnswerAPIError::StreamFail)?;
 
+    let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
     analytics_event
         .stages
         .push(Stage::new("explain prompt", &explain_prompt).with_time(stop_watch.lap()));
-
-    let mut snippet_explanation = answer_api_client
-        .explain_snippet(&explain_prompt)
-        .await
-        .map_err(Error::internal)
-        .map(Box::pin)?;
 
     drop(analytics_event);
 
     let analytics_event = Arc::clone(&event);
     let stream = async_stream::stream! {
-        let mut explanation = String::new();
-        let mut line = 0;
-        let mut first_line = String::new();
-        let mut is_bullet_point_stripped = false;
-        'stream: while let Some(result) = snippet_explanation.next().await {
-            match result.as_ref().map(|o| o.as_str()) {
-                Ok(text) if text.contains('\n') => line += 1,
-                _ => {}
-            };
-
-            if line == 0 {
-                // collect the first line
-                first_line.push_str(result.as_ref().map(|o| o.as_str()).unwrap_or(""));
-                // do not send events from the first line
-                continue 'stream;
-
-            } else if line == 1 {
-                // we have hit L2, L1 contains json by now
-                let line_nrs = serde_json::from_str::<Vec<Vec<usize>>>(
-                    first_line.trim_start_matches(|c: char| c.is_numeric() || c == '\n' || c == '.' || c == ' '),
-                ).unwrap();
-
-                info!("selected line numbers `{:?}`", line_nrs);
-
-                let mut ai_gen_snippet: SnippetResponse = processed_snippet.clone().into();
-                let lines = processed_snippet
-                    .text
-                    .lines()
-                    .collect::<Vec<_>>();
-                ai_gen_snippet.sub_snippets = line_nrs
-                    .into_iter()
-                    .map(|range| SubSnippet {
-                        text: lines[range[0]..range[1]].join("\n"),
-                        range: range[0]..range[1]
-                    })
-                    .collect::<Vec<_>>();
-                let mut snippets: Vec<SnippetResponse> = snippets
-                    .clone()
-                    .into_iter()
-                    .map(|s| s.into())
-                    .collect();
-                snippets[0] = ai_gen_snippet;
-
-                let initial_event = Event::default()
-                    .json_data(super::Response::<'static>::from(AnswerResponse {
-                        snippets,
-                        query_id,
-                        user_id: params.user_id.clone(),
-                        answer_path: answer_path.clone(),
-                    }))
-                    .map_err(|_| AnswerAPIError::StreamFail)?;
+        yield Ok::<Event, AnswerAPIError>(initial_event);
 
 
-                yield Ok(initial_event);
+        let mut snippet_explanation = answer_api_client
+            .explain_snippet(&explain_prompt)
+            .await
+            .map_err(|_| AnswerAPIError::StreamFail)
+            .map(Box::pin)?;
 
-                line = 2;
-            }
+        let mut parse_state = ParseState::new();
+        let mut finished_first_line = false;
 
-            if !is_bullet_point_stripped {
-                if let Ok(r) = result.as_ref().map(|o| o.as_str()) {
-                    if let Some(stripped) = r.trim_start().strip_prefix("2. ") {
-                        is_bullet_point_stripped = true;
-                        yield Ok(Event::default()
-                            .json_data(Ok::<String, String>(stripped.to_owned()))
-                            .unwrap());
-                        continue 'stream;
+        while let Some(result) = snippet_explanation.next().await {
+            if let Ok(r) = result {
+                if finished_first_line {
+                    let mut remnants = std::mem::take(&mut parse_state.lines[1]);
+                    remnants.push_str(r.as_str());
+                    // strip leading bullet point
+                    let stripped = remnants.trim_start_matches(|c: char| c.is_numeric() || "\n. ".contains(c));
+                    let ev = Event::default()
+                        .json_data(Ok::<String, String>(stripped.to_owned()))
+                        .map_err(|_| AnswerAPIError::StreamFail)?;
+                    yield Ok::<Event, AnswerAPIError>(ev)
+
+                } else {
+                    for c in r.as_str().chars() {
+                        parse_state.consume(c);
+
+                        // check if we can parse the first line at this point
+                        if let Some(line_nrs) = parse_state.parsed_line_nrs() {
+                            if !finished_first_line {
+                                info!("selected line numbers `{:?}`", line_nrs);
+
+                                let mut ai_gen_snippet: SnippetResponse = processed_snippet.clone().into();
+                                let lines = processed_snippet
+                                    .text
+                                    .lines()
+                                    .collect::<Vec<_>>();
+                                ai_gen_snippet.sub_snippets = line_nrs
+                                    .into_iter()
+                                    .map(|range| SubSnippet {
+                                        text: lines[range[0]..range[1]].join("\n"),
+                                        range: range[0]..range[1]
+                                    })
+                                .collect::<Vec<_>>();
+
+                                // the second event; updates the top snippet
+                                let updated_top_snippet_event = Event::default()
+                                    .json_data(ai_gen_snippet)
+                                    .map_err(|_| AnswerAPIError::StreamFail)?;
+
+
+                                yield Ok(updated_top_snippet_event);
+
+                                finished_first_line = true;
+                            }
+                        }
                     }
                 }
-            } else {
-                yield Ok(Event::default()
-                    .json_data(result.as_ref().map_err(|e| e.to_string()))
-                    .unwrap());
-            }
-
-            match result {
-                Ok(s) => explanation += &s,
-                Err(e) => yield Err(e),
             }
         }
 
         let mut event = analytics_event.write().await;
+        let explanation = "";
 
         event
             .stages
@@ -527,6 +514,46 @@ async fn _handle(
     Ok(Sse::new(stream.chain(futures::stream::once(async {
         Ok(Event::default().data("[DONE]"))
     }))))
+}
+
+struct ParseState {
+    lines: Vec<String>,
+    current_line: usize,
+}
+
+impl ParseState {
+    fn new() -> Self {
+        Self {
+            lines: vec![String::default(); 5],
+            current_line: 0,
+        }
+    }
+
+    fn consume(&mut self, c: char) {
+        match c {
+            '\n' => {
+                self.current_line += 1;
+                self.lines.resize(self.current_line + 1, String::default());
+            }
+            _ => self.lines[self.current_line].push(c),
+        }
+    }
+
+    // extract line numbers if available
+    fn parsed_line_nrs(&self) -> Option<Vec<Vec<usize>>> {
+        self.lines
+            .get(0)
+            .map(|f| f.trim_start_matches(|c: char| c.is_numeric() || "\n. ".contains(c)))
+            .map(|f| serde_json::from_str::<Vec<Vec<usize>>>(f).ok())
+            .flatten()
+    }
+
+    fn parsed_explanation(&self) -> Option<String> {
+        self.lines
+            .get(1)
+            .map(|s| s.trim_start_matches(|c: char| c.is_numeric() || "\n. ".contains(c)))
+            .map(ToOwned::to_owned)
+    }
 }
 
 // grow the text of this snippet by `size` and return the new text
@@ -551,10 +578,10 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> String {
     content[new_start_byte..new_end_byte].to_owned()
 }
 
-struct AnswerAPIClient<'s> {
+struct AnswerAPIClient {
     host: String,
     query: String,
-    semantic: &'s Semantic,
+    semantic: Semantic,
     max_attempts: usize,
     bearer_token: Option<String>,
     client: reqwest::Client,
@@ -588,29 +615,27 @@ impl From<AnswerAPIError> for Error {
     }
 }
 
-impl Semantic {
-    fn build_answer_api_client<'s>(
-        &'s self,
-        state: &AnswerState,
-        host: &str,
-        query: &str,
-        max_attempts: usize,
-        bearer_token: Option<String>,
-    ) -> AnswerAPIClient<'s> {
-        AnswerAPIClient {
-            host: host.to_owned(),
-            query: query.to_owned(),
-            semantic: self,
-            max_attempts,
-            // Internally, cookies are shared between `reqwest` client instances via a shared lock.
-            // Cloning the client here just creates a new handle to the same lock.
-            client: state.client.clone(),
-            bearer_token,
-        }
+fn build_answer_api_client(
+    semantic: Semantic,
+    state: &AnswerState,
+    host: &str,
+    query: &str,
+    max_attempts: usize,
+    bearer_token: Option<String>,
+) -> AnswerAPIClient {
+    AnswerAPIClient {
+        host: host.to_owned(),
+        query: query.to_owned(),
+        semantic,
+        max_attempts,
+        // Internally, cookies are shared between `reqwest` client instances via a shared lock.
+        // Cloning the client here just creates a new handle to the same lock.
+        client: state.client.clone(),
+        bearer_token,
     }
 }
 
-impl<'s> AnswerAPIClient<'s> {
+impl AnswerAPIClient {
     async fn send(
         &self,
         prompt: &str,
@@ -688,7 +713,7 @@ impl<'s> AnswerAPIClient<'s> {
 }
 
 const DELIMITER: &str = "=========";
-impl<'a> AnswerAPIClient<'a> {
+impl AnswerAPIClient {
     fn build_select_prompt(&self, snippets: &[Snippet]) -> String {
         // snippets are 1-indexed so we can use index 0 where no snippets are relevant
         let mut prompt = snippets
