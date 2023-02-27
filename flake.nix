@@ -80,6 +80,7 @@
           ROCKSDB_INCLUDE_DIR = "${pkgs.rocksdb}/include";
           LIBCLANG_PATH = "${libclang.lib}/lib";
           PYTHON = "${pkgs.python3}/bin/python3";
+          ORT_LIB_LOCATION = "${onnxruntime-static}/lib";
         };
 
         bleep = (rustPlatform.buildRustPackage {
@@ -94,8 +95,13 @@
           pname = "bleep";
           version = "0.2.1";
           src = pkgs.lib.sources.cleanSource ./.;
+
+          buildNoDefaultFeatures = true;
+          buildFeatures = [ "dynamic-ort" ];
+
           cargoBuildFlags = "-p bleep";
           doCheck = false;
+
           cargoLock = {
             lockFile = ./Cargo.lock;
             outputHashes = {
@@ -117,9 +123,35 @@
           nativeBuildInputs = buildDeps;
           buildInputs = runtimeDeps;
         }).overrideAttrs (old: envVars);
+
+        onnxruntime-static = stdenv.mkDerivation rec {
+          name = "onnxruntime-static";
+          src = pkgs.fetchgit {
+            url = "https://github.com/microsoft/onnxruntime";
+            branchName = "v1.14.0";
+            fetchSubmodules = true;
+            sha256 = "sha256-kh9dQDLPTJzP3EzhR1LLyvngGQyr8ijOfAmSfySpey8=";
+          };
+
+          phases = [ "unpackPhase" "buildPhase" "installPhase" ];
+
+          buildPhase = ''
+            python3 tools/ci_build/build.py --build --build_dir=build --update --parallel --skip_tests --skip_submodule_sync --disable_rtti --config Release
+          '';
+
+          installPhase = ''
+            mkdir -p $out/lib
+            find build/Release \( -name \*.a -o -name \*.so \) -exec cp --parents \{\} $out/lib \;
+          '';
+
+          nativeBuildInputs = with pkgs;
+            [ cmake cacert python3 clang ] ++ lib.optionals pkgs.stdenv.isDarwin
+            [ darwin.apple_sdk.frameworks.Foundation ];
+        };
       in {
         packages = {
           bleep = bleep;
+          onnxruntime-static = onnxruntime-static;
           default = bleep;
           docker = pkgs.dockerTools.buildImage {
             name = "bleep";
