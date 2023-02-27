@@ -93,7 +93,6 @@
 
           name = "bleep";
           pname = "bleep";
-          version = "0.2.1";
           src = pkgs.lib.sources.cleanSource ./.;
 
           buildNoDefaultFeatures = true;
