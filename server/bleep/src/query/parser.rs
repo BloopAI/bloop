@@ -963,6 +963,21 @@ mod tests {
     }
 
     #[test]
+    fn test_nl_consume_flags() {
+        assert_eq!(
+            parse_nl(
+                "what is background color? lang:tsx repo:bloop org:bloop symbol:foo open:true"
+            )
+            .unwrap(),
+            NLQuery {
+                target: Some(Literal::Plain("what is background color?".into())),
+                lang: Some("tsx".into()),
+                repo: Some(Literal::Plain("bloop".into())),
+            },
+        );
+    }
+
+    #[test]
     fn escape_characters() {
         assert_eq!(
             parse("'foo\\'bar'").unwrap(),

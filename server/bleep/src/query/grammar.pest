@@ -52,4 +52,4 @@ group = !{ group_start ~ intersection ~ group_end }
 WHITESPACE = _{ " " }
 
 // natural language queries
-nl_query = _{ SOI ~ (label | literal)* ~ EOI }
+nl_query = _{ SOI ~ (label | mode | literal)* ~ EOI }
