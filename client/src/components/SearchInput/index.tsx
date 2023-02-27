@@ -247,7 +247,10 @@ function SearchInput() {
             }}
             regexEnabled={globalRegex}
             searchType={searchType}
-            onSearchTypeChanged={setSearchType}
+            onSearchTypeChanged={(st) => {
+              setSearchType(st);
+              setInputValue('');
+            }}
           />
         </div>
       </div>
