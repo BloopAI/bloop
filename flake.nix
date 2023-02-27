@@ -129,7 +129,7 @@
             url = "https://github.com/microsoft/onnxruntime";
             branchName = "v1.14.0";
             fetchSubmodules = true;
-            sha256 = "sha256-kh9dQDLPTJzP3EzhR1LLyvngGQyr8ijOfAmSfySpey8=";
+            sha256 = "sha256-UFdym5DYLGbfeslw9xZwe9mdwMJl5jfk2WIctO77jC8=";
           };
 
           phases = [ "unpackPhase" "buildPhase" "installPhase" ];
