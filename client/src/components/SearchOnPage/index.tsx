@@ -44,24 +44,17 @@ const SearchOnPage = ({
         WebkitBackdropFilter: 'blur(1px)',
       }}
     >
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          setCurrentResult((prev) => (prev < resultNum ? prev + 1 : 1));
-        }}
-      >
-        <TextInput
-          type="search"
-          id="app-search"
-          name="app-search"
-          autoFocus
-          value={searchValue}
-          onChange={handleChange}
-          forceClear
-          inputClassName="pr-24"
-          onEscape={onCancel}
-        />
-      </form>
+      <TextInput
+        type="search"
+        id="app-search"
+        name="app-search"
+        autoFocus
+        value={searchValue}
+        onChange={handleChange}
+        forceClear
+        inputClassName="pr-24"
+        onEscape={onCancel}
+      />
       <div className="flex items-center absolute top-0.5 right-9 caption text-gray-300">
         {resultNum ? (
           <span>

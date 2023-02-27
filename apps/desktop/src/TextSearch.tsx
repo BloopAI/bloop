@@ -25,6 +25,17 @@ const TextSearch = ({
         !!document.getElementsByClassName('code-full-view').length;
       if (e.code === 'KeyF' && e.metaKey && !fullCodeInView) {
         setSearchActive((prev) => !prev);
+      } else if (e.code === 'Enter') {
+        const isNext = !e.shiftKey;
+        setCurrentResult((prev) =>
+          isNext
+            ? prev < resultNum
+              ? prev + 1
+              : 1
+            : prev > 1
+            ? prev - 1
+            : resultNum,
+        );
       } else if (e.code === 'Escape') {
         setSearchActive((prev) => {
           if (prev) {
@@ -39,7 +50,7 @@ const TextSearch = ({
     return () => {
       window.removeEventListener('keypress', toggleSearch);
     };
-  }, []);
+  }, [resultNum]);
 
   useEffect(() => {
     if (!isSearchActive) {

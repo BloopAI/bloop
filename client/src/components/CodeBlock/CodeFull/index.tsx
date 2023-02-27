@@ -93,6 +93,17 @@ const CodeFull = ({
     const toggleSearch = (e: KeyboardEvent) => {
       if (e.code === 'KeyF' && e.metaKey) {
         setSearchActive((prev) => !prev);
+      } else if (e.code === 'Enter') {
+        const isNext = !e.shiftKey;
+        setCurrentResult((prev) =>
+          isNext
+            ? prev < searchResults.length
+              ? prev + 1
+              : 1
+            : prev > 1
+            ? prev - 1
+            : searchResults.length,
+        );
       } else if (e.code === 'Escape') {
         setSearchActive((prev) => {
           if (prev) {
@@ -107,7 +118,7 @@ const CodeFull = ({
     return () => {
       window.removeEventListener('keypress', toggleSearch);
     };
-  }, []);
+  }, [searchResults]);
 
   useEffect(() => {
     setScrollToIndex(scrollLineNumber || undefined);
