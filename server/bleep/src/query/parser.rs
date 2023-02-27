@@ -975,6 +975,17 @@ mod tests {
                 repo: Some(Literal::Plain("bloop".into())),
             },
         );
+
+        assert_eq!(
+            parse_nl("case:ignore why are languages excluded from ctags?").unwrap(),
+            NLQuery {
+                target: Some(Literal::Plain(
+                    "why are languages excluded from ctags?".into()
+                )),
+                lang: None,
+                repo: None,
+            },
+        );
     }
 
     #[test]
