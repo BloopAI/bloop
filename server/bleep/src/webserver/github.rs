@@ -1,7 +1,7 @@
 use super::{prelude::*, repos::Repo};
 use crate::{
     remotes::{self, BackendCredential},
-    state::Backend,
+    repo::Backend,
     Application,
 };
 

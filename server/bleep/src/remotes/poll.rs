@@ -13,7 +13,7 @@ use tracing::{debug, error, info, warn};
 use crate::{
     env::Feature,
     remotes,
-    state::{Backend, RepoRef, SyncStatus},
+    repo::{Backend, RepoRef, SyncStatus},
     Application,
 };
 

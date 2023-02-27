@@ -34,7 +34,7 @@ async fn index(index_dir: &Path) {
     let app = Application::initialize(Environment::server(), index_only)
         .await
         .unwrap();
-    _ = app.run().await.unwrap();
+    app.run().await.unwrap();
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {

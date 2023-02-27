@@ -8,7 +8,7 @@ use reqwest::StatusCode;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 
-use crate::state::{Backend, GitRemote, RepoRemote, Repository};
+use crate::repo::{Backend, GitRemote, RepoRemote, Repository};
 
 use super::*;
 
@@ -16,14 +16,14 @@ use super::*;
 pub(crate) enum Auth {
     /// Copy of [`octocrab::auth::OAuth`] that can be serialized
     OAuth {
-        #[serde(serialize_with = "crate::state::serialize_secret_str")]
+        #[serde(serialize_with = "crate::config::serialize_secret_str")]
         access_token: SecretString,
         token_type: String,
         scope: Vec<String>,
     },
     /// Github App installation token.
     App {
-        #[serde(serialize_with = "crate::state::serialize_secret_str")]
+        #[serde(serialize_with = "crate::config::serialize_secret_str")]
         /// Technically, serializing this doesn't make any sense,
         /// because it expires quickly, but the current code paths
         /// make this the most straightforward way to implement it
