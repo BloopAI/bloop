@@ -115,7 +115,7 @@
               "tree-sitter-java-0.20.0" =
                 "sha256-gQzoWGV9wYiLibMFkLoY2sdEJg+ae9NnHt/GFfFzP8U=";
               "ort-1.14.0-beta.0" =
-                "sha256-gG6Mv+7rNunurKSk53zMajqChZcNt9awhmQOqo+dsVM=";
+                "sha256-wdlbBFMkS8JYv1avcUS9j+qDn9XN2Q6OiliTblzAjLI=";
             };
           };
 
