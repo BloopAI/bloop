@@ -11,6 +11,9 @@ type ContextType = {
   setOnBoardingState: React.Dispatch<React.SetStateAction<Record<string, any>>>;
   isBugReportModalOpen: boolean;
   setBugReportModalOpen: (b: boolean) => void;
+  isGithubConnected: boolean;
+  setGithubConnected: (b: boolean) => void;
+  isGithubChecked: boolean;
 };
 
 export const UIContext = createContext<ContextType>({
@@ -24,4 +27,7 @@ export const UIContext = createContext<ContextType>({
   setOnBoardingState: (state: Record<string, any>) => {},
   isBugReportModalOpen: false,
   setBugReportModalOpen: () => {},
+  isGithubConnected: false,
+  setGithubConnected: () => {},
+  isGithubChecked: false,
 });

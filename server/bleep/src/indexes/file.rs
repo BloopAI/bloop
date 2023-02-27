@@ -37,8 +37,8 @@ use super::{
 };
 use crate::{
     intelligence::TreeSitterFile,
+    repo::{FileCache, RepoMetadata, RepoRef, Repository},
     semantic::Semantic,
-    state::{FileCache, RepoHeadInfo, RepoRef, Repository},
     symbol::SymbolLocations,
     Configuration,
 };
@@ -48,7 +48,7 @@ struct Workload<'a> {
     repo_disk_path: &'a Path,
     repo_ref: String,
     repo_name: &'a str,
-    repo_info: &'a RepoHeadInfo,
+    repo_metadata: &'a RepoMetadata,
     cache: &'a FileCache,
 }
 
@@ -239,7 +239,7 @@ impl Indexable for File {
         &self,
         reporef: &RepoRef,
         repo: &Repository,
-        repo_info: &RepoHeadInfo,
+        repo_metadata: &RepoMetadata,
         writer: &IndexWriter,
     ) -> Result<()> {
         let file_cache = repo.open_file_cache(&self.config.index_dir)?;
@@ -256,7 +256,7 @@ impl Indexable for File {
             })
             // Preliminarily ignore files that are very large, without reading the contents.
             .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
-            .map(|de| crate::canonicalize(de.into_path()).unwrap())
+            .filter_map(|de| crate::canonicalize(de.into_path()).ok())
             .filter(|p| should_index(&p.strip_prefix(&repo.disk_path).unwrap()))
             .collect::<Vec<PathBuf>>();
 
@@ -270,7 +270,7 @@ impl Indexable for File {
                 repo_ref: reporef.to_string(),
                 repo_name: &repo_name,
                 cache: &file_cache,
-                repo_info,
+                repo_metadata,
             };
 
             debug!(?entry_disk_path, "queueing entry");
@@ -281,16 +281,41 @@ impl Indexable for File {
 
         info!(?repo.disk_path, "file indexing finished, took {:?}", start.elapsed());
 
+        // files that are no longer tracked by the git index are to be removed
+        // from the tantivy & qdrant indices
+        let mut qdrant_remove_list = vec![];
         file_cache.retain(|k, v| {
             if v.fresh.not() {
+                // delete from tantivy
                 writer.delete_term(Term::from_field_text(
                     self.entry_disk_path,
                     &k.to_string_lossy(),
                 ));
+
+                // delete from qdrant
+                if let Ok(relative_path) = k.strip_prefix(&repo.disk_path) {
+                    qdrant_remove_list.push(relative_path.to_string_lossy().to_string());
+                }
             }
 
             v.fresh
         });
+
+        // batch-delete points from qdrant index
+        if !qdrant_remove_list.is_empty() {
+            if let Some(semantic) = &self.semantic {
+                let semantic = semantic.clone();
+                let reporef = reporef.to_string();
+                tokio::spawn(async move {
+                    semantic
+                        .delete_points_by_path(
+                            reporef.as_str(),
+                            qdrant_remove_list.iter().map(|t| t.as_str()),
+                        )
+                        .await;
+                });
+            }
+        }
 
         repo.save_file_cache(&self.config.index_dir, file_cache)?;
         Ok(())
@@ -446,7 +471,7 @@ impl File {
             repo_ref,
             repo_disk_path,
             repo_name,
-            repo_info,
+            repo_metadata,
             cache,
         } = workload;
 
@@ -499,7 +524,7 @@ impl File {
         trace!("added cache entry");
 
         let lang_str = if entry_disk_path.is_file() {
-            repo_info
+            repo_metadata
                 .langs
                 .path_map
                 .get(&entry_disk_path)
@@ -524,7 +549,7 @@ impl File {
                 // no graph, try ctags instead
                 Err(err) => {
                     debug!(?err, %lang_str, "failed to build scope graph");
-                    match repo_info.symbols.get(relative_path) {
+                    match repo_metadata.symbols.get(relative_path) {
                         Some(syms) => SymbolLocations::Ctags(syms.clone()),
                         // no ctags either
                         _ => {
@@ -563,18 +588,21 @@ impl File {
         }
 
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
-        let last_commit = repo_info.last_commit_unix_secs;
+        let last_commit = repo_metadata.last_commit_unix_secs;
 
-        if let Some(semantic) = &self.semantic {
-            tokio::task::block_in_place(|| {
-                Handle::current().block_on(semantic.insert_points_for_buffer(
-                    repo_name,
-                    &repo_ref,
-                    &relative_path.to_string_lossy(),
-                    &buffer,
-                    lang_str,
-                ))
-            });
+        // produce vectors for this document if it is a file
+        if entry_disk_path.is_file() {
+            if let Some(semantic) = &self.semantic {
+                tokio::task::block_in_place(|| {
+                    Handle::current().block_on(semantic.insert_points_for_buffer(
+                        repo_name,
+                        &repo_ref,
+                        &relative_path.to_string_lossy(),
+                        &buffer,
+                        lang_str,
+                    ))
+                });
+            }
         }
 
         trace!("writing document");
@@ -666,7 +694,7 @@ mod test {
         ];
 
         for (path, index) in tests {
-            assert_eq!(should_index(&Path::new(dbg!(path))), index);
+            assert_eq!(should_index(&Path::new(path)), index);
         }
     }
 }

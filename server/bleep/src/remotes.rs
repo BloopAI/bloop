@@ -10,11 +10,11 @@ use dashmap::mapref::one::Ref;
 use git2::{Cred, CredentialType, RemoteCallbacks};
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
-use tracing::warn;
+use tracing::{error, warn};
 
 use crate::{
     remotes,
-    state::{RepoRef, Repository, SyncStatus},
+    repo::{RepoRef, Repository, SyncStatus},
     Application,
 };
 
@@ -172,7 +172,11 @@ pub(crate) fn gather_repo_roots(
         .filter_entry(move |entry| {
             exclude
                 .as_ref()
-                .map(|path| !crate::canonicalize(entry.path()).unwrap().starts_with(path))
+                .and_then(|path| {
+                    crate::canonicalize(entry.path())
+                        .ok()
+                        .map(|canonical_path| !canonical_path.starts_with(path))
+                })
                 .unwrap_or(true)
         })
         .build()
@@ -205,7 +209,20 @@ impl BackendCredential {
         let BackendCredential::Github(auth) = self;
 
         let client = auth.client()?;
-        client.current().user().await?;
+
+        match client.current().user().await {
+            Ok(_) => {}
+            Err(e @ octocrab::Error::GitHub { .. }) => {
+                warn!(?e, "failed to validate GitHub token");
+                return Err(e)?;
+            }
+            Err(e) => {
+                // Don't return an error here - we want to swallow failure and try again on the
+                // next poll.
+                error!(?e, "failed to make GitHub user request");
+            }
+        }
+
         Ok(())
     }
 

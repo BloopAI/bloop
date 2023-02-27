@@ -1,14 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import DialogText from '../DialogText';
 import Button from '../../../../components/Button';
 import { GitHubLogo } from '../../../../icons';
-import { getRepos, githubWebLogin } from '../../../../services/api';
+import { githubWebLogin } from '../../../../services/api';
 
-type Props = {
-  handleNext: (e?: any, skipOne?: boolean) => void;
-};
-
-const SelfServeStep0 = () => {
+const SelfServeStep = () => {
   const [loginUrl, setLoginUrl] = useState('');
 
   useEffect(() => {
@@ -32,4 +28,4 @@ const SelfServeStep0 = () => {
   );
 };
 
-export default SelfServeStep0;
+export default SelfServeStep;

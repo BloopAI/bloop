@@ -1,7 +1,8 @@
-use crate::{env::Feature, snippet, state, Application};
+use crate::{env::Feature, snippet, Application};
 
 use axum::middleware;
-use axum::{response::IntoResponse, routing::get, Extension, Json};
+use axum::{http::StatusCode, response::IntoResponse, routing::get, Extension, Json};
+use std::sync::Arc;
 use std::{borrow::Cow, net::SocketAddr};
 use tower::Service;
 use tower_http::services::{ServeDir, ServeFile};
@@ -26,7 +27,7 @@ pub type Router<S = Application> = axum::Router<S>;
 
 #[allow(unused)]
 pub(in crate::webserver) mod prelude {
-    pub(in crate::webserver) use super::{error, json, EndpointError, ErrorKind};
+    pub(in crate::webserver) use super::{json, EndpointError, Error, ErrorKind, Result};
     pub(in crate::webserver) use crate::indexes::Indexes;
     pub(in crate::webserver) use axum::{
         extract::Query, http::StatusCode, response::IntoResponse, Extension,
@@ -63,7 +64,10 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         // misc
         .route("/file/*ref", get(file::handle))
         .route("/semantic/chunks", get(semantic::raw_chunks))
-        .route("/answer", get(answer::handle));
+        .route(
+            "/answer",
+            get(answer::handle).with_state(Arc::new(answer::AnswerState::default())),
+        );
 
     if app.env.allow(Feature::GithubDeviceFlow) {
         api = api
@@ -127,46 +131,79 @@ where
     Json(Response::from(val))
 }
 
-pub(in crate::webserver) type Result<T, E = Error> = std::result::Result<T, E>;
-pub(in crate::webserver) type Error = Json<Response<'static>>;
+type Result<T, E = Error> = std::result::Result<T, E>;
 
-pub(in crate::webserver) fn error(kind: ErrorKind, message: impl Into<Cow<'static, str>>) -> Error {
-    Json(Response::from(EndpointError {
-        kind,
-        message: message.into(),
-    }))
+struct Error {
+    status: StatusCode,
+    body: Json<Response<'static>>,
 }
 
-pub(in crate::webserver) fn internal_error<S: std::fmt::Display>(message: S) -> Error {
-    Json(Response::from(EndpointError {
-        kind: ErrorKind::Internal,
-        message: message.to_string().into(),
-    }))
+impl Error {
+    fn new(kind: ErrorKind, message: impl Into<Cow<'static, str>>) -> Error {
+        let status = match kind {
+            ErrorKind::Configuration
+            | ErrorKind::Unknown
+            | ErrorKind::UpstreamService
+            | ErrorKind::Internal
+            | ErrorKind::Custom => StatusCode::INTERNAL_SERVER_ERROR,
+            ErrorKind::User => StatusCode::BAD_REQUEST,
+            ErrorKind::NotFound => StatusCode::NOT_FOUND,
+        };
+
+        let body = Json(Response::from(EndpointError {
+            kind,
+            message: message.into(),
+        }));
+
+        Error { status, body }
+    }
+
+    fn with_status(mut self, status_code: StatusCode) -> Self {
+        self.status = status_code;
+        self
+    }
+
+    fn internal<S: std::fmt::Display>(message: S) -> Self {
+        Error {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            body: Json(Response::from(EndpointError {
+                kind: ErrorKind::Internal,
+                message: message.to_string().into(),
+            })),
+        }
+    }
+
+    fn user<S: std::fmt::Display>(message: S) -> Self {
+        Error {
+            status: StatusCode::BAD_REQUEST,
+            body: Json(Response::from(EndpointError {
+                kind: ErrorKind::User,
+                message: message.to_string().into(),
+            })),
+        }
+    }
+}
+
+impl From<anyhow::Error> for Error {
+    fn from(value: anyhow::Error) -> Self {
+        Error::internal(value.to_string())
+    }
+}
+
+impl IntoResponse for Error {
+    fn into_response(self) -> axum::response::Response {
+        (self.status, self.body).into_response()
+    }
 }
 
 /// The response upon encountering an error
 #[derive(serde::Serialize, PartialEq, Eq, ToSchema, Debug)]
-pub(in crate::webserver) struct EndpointError<'a> {
+struct EndpointError<'a> {
     /// The kind of this error
-    pub kind: ErrorKind,
+    kind: ErrorKind,
 
     /// A context aware message describing the error
-    pub message: Cow<'a, str>,
-}
-
-impl<'a> EndpointError<'a> {
-    fn user(message: Cow<'a, str>) -> Self {
-        Self {
-            kind: ErrorKind::User,
-            message,
-        }
-    }
-    fn internal(message: Cow<'a, str>) -> Self {
-        Self {
-            kind: ErrorKind::Internal,
-            message,
-        }
-    }
+    message: Cow<'a, str>,
 }
 
 /// The kind of an error
@@ -174,7 +211,7 @@ impl<'a> EndpointError<'a> {
 #[derive(serde::Serialize, PartialEq, Eq, ToSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
-pub(in crate::webserver) enum ErrorKind {
+enum ErrorKind {
     User,
     Unknown,
     NotFound,
@@ -283,9 +320,9 @@ impl<'a> From<EndpointError<'a>> for Response<'a> {
         repos::ReposResponse,
         repos::Repo,
         repos::SetIndexed,
-        state::Backend,
-        state::RepoRemote,
-        state::SyncStatus,
+        crate::repo::Backend,
+        crate::repo::RepoRemote,
+        crate::repo::SyncStatus,
         github::GithubResponse,
         github::GithubCredentialStatus,
     ))

@@ -22,34 +22,29 @@ use dunce::canonicalize;
 use std::fs::canonicalize;
 
 use crate::{
-    analytics::QueryAnalyticsSource,
-    background::BackgroundExecutor,
-    indexes::Indexes,
-    remotes::BackendCredential,
-    semantic::Semantic,
-    state::{Backend, RepositoryPool},
+    background::BackgroundExecutor, indexes::Indexes, remotes::BackendCredential, repo::Backend,
+    semantic::Semantic, state::RepositoryPool,
 };
 use anyhow::{anyhow, bail, Result};
 use axum::extract::FromRef;
 
 use dashmap::DashMap;
 use once_cell::sync::OnceCell;
-use relative_path::RelativePath;
-use rudderanalytics::client::RudderAnalytics;
 
 use std::{path::Path, sync::Arc};
 use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 
-mod analytics;
 mod background;
 mod collector;
 mod config;
 mod env;
 mod language;
 mod remotes;
+mod repo;
 mod webserver;
 
+pub mod analytics;
 pub mod ctags;
 pub mod indexes;
 pub mod intelligence;
@@ -77,7 +72,6 @@ pub struct Application {
     semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
     credentials: Arc<DashMap<Backend, BackendCredential>>,
-    pub analytics_client: Arc<Option<RudderAnalytics>>,
     cookie_key: axum_extra::extract::cookie::Key,
 }
 
@@ -96,13 +90,16 @@ impl Application {
         config.repo_buffer_size = config.repo_buffer_size.max(threads * 3_000_000);
         config.source.set_default_dir(&config.index_dir);
 
+        let config = Arc::new(config);
+
+        // Set path to Ctags binary
         if let Some(ref executable) = config.ctags_path {
             ctags::CTAGS_BINARY
                 .set(executable.clone())
                 .map_err(|existing| anyhow!("ctags binary already set: {existing:?}"))?;
         }
 
-        let config = Arc::new(config);
+        // Initialise Semantic index if `qdrant_url` set in config
         let semantic = match config.qdrant_url {
             Some(ref url) => {
                 match Semantic::initialize(&config.model_dir, url, Arc::clone(&config)).await {
@@ -113,58 +110,42 @@ impl Application {
                 }
             }
             None => {
-                warn!("Qdrant not initialized because `qdrant_url` is not provided. Starting without semantic search!");
+                warn!("Semantic search disabled because `qdrant_url` is not provided. Starting without.");
                 None
             }
         };
 
-        let analytics_client = if let (Some(key), Some(data_plane)) =
-            (&config.analytics_key, &config.analytics_data_plane)
-        {
-            let key = key.to_string();
-            let data_plane = data_plane.to_string();
-            info!("initializing analytics");
-            let handle =
-                tokio::task::spawn_blocking(move || RudderAnalytics::load(key, data_plane));
-            Some(handle.await.unwrap())
-        } else {
-            warn!("could not find analytics key ... skipping initialization");
-            None
-        };
-        let analytics_client = Arc::new(analytics_client);
-
-        let indexes = Arc::new(Indexes::new(config.clone(), semantic.clone())?);
         let env = if config.github_app_id.is_some() {
+            info!("Starting bleep in private server mode");
             Environment::private_server()
         } else {
             env
         };
 
         Ok(Self {
-            indexes,
+            indexes: Arc::new(Indexes::new(config.clone(), semantic.clone())?),
             credentials: Arc::new(config.source.initialize_credentials()?),
             background: BackgroundExecutor::start(config.clone()),
             repo_pool: config.source.initialize_pool()?,
             cookie_key: config.source.initialize_cookie_key()?,
             semantic,
             config,
-            analytics_client,
             env,
         })
     }
 
-    pub fn install_sentry(&self) {
+    pub fn initialize_sentry(&self) {
         let Some(ref dsn) = self.config.sentry_dsn else {
-            info!("sentry DSN missing, skipping initialization");
+            info!("Sentry DSN missing, skipping initialization");
             return;
         };
 
         if sentry::Hub::current().client().is_some() {
-            warn!("sentry has already been initialized");
+            warn!("Sentry has already been initialized");
             return;
         }
 
-        info!("initializing sentry ...");
+        info!("Initializing sentry ...");
         let guard = sentry::init((
             dsn.to_string(),
             sentry::ClientOptions {
@@ -174,6 +155,21 @@ impl Application {
         ));
 
         _ = SENTRY_GUARD.set(guard);
+    }
+
+    pub fn initialize_analytics(&self) {
+        let Some(key) = &self.config.analytics_key else {
+            warn!("analytics key missing; skipping initialization");
+            return;
+        };
+
+        let Some(data_plane) = &self.config.analytics_data_plane else {
+            warn!("analytics data plane url missing; skipping initialization");
+            return;
+        };
+
+        info!("initializing analytics ...");
+        analytics::RudderHub::new(key.to_owned(), data_plane.to_owned());
     }
 
     pub fn install_logging() {
@@ -192,10 +188,8 @@ impl Application {
         LOGGER_INSTALLED.set(true).unwrap();
     }
 
-    pub fn track_query(&self, event: analytics::QueryEvent) {
-        if let Some(client) = &*self.analytics_client {
-            tokio::task::block_in_place(|| client.track_query(event));
-        }
+    pub fn track_query(&self, event: &analytics::QueryEvent) {
+        tokio::task::block_in_place(|| analytics::RudderHub::track_query(event.clone()))
     }
 
     pub async fn run(self) -> Result<()> {
@@ -231,10 +225,7 @@ impl Application {
 
         if self.env.allow(env::Feature::SafePathScan) {
             let source_dir = self.config.source.directory();
-            return RelativePath::from_path(&path)
-                .map(|p| p.to_logical_path(&source_dir))
-                .unwrap_or_else(|_| path.as_ref().to_owned())
-                .starts_with(&source_dir);
+            return state::get_relative_path(path.as_ref(), &source_dir).starts_with(&source_dir);
         }
 
         false
@@ -276,11 +267,4 @@ fn tracing_subscribe() -> bool {
         .with(env_filter)
         .try_init()
         .is_ok()
-}
-
-// FIXME: use usize::div_ceil soon
-fn div_ceil(a: usize, b: usize) -> usize {
-    let d = a / b;
-    let r = a % b;
-    d + usize::from(r > 0)
 }

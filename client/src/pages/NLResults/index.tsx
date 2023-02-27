@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import * as Sentry from '@sentry/react';
 import { useNavigate } from 'react-router-dom';
 import { FullResult, ResultClick } from '../../types/results';
@@ -20,7 +26,8 @@ type Props = {
   resultsData?: NLSearchResponse;
   loading: boolean;
   handleRetry: () => void;
-  nlQuery?: string;
+  nlAnswer?: string;
+  nlError?: string;
 };
 
 const mockQuerySuggestions = [
@@ -31,7 +38,13 @@ const mockQuerySuggestions = [
   'lang:tsx apples',
 ];
 
-const ResultsPage = ({ resultsData, loading, handleRetry, nlQuery }: Props) => {
+const ResultsPage = ({
+  resultsData,
+  loading,
+  handleRetry,
+  nlError,
+  nlAnswer,
+}: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const [mode, setMode] = useState<FullResultModeEnum>(
@@ -101,6 +114,18 @@ const ResultsPage = ({ resultsData, loading, handleRetry, nlQuery }: Props) => {
     }
   }, [fileResultData]);
 
+  const mappedSnippets = useMemo(
+    () =>
+      resultsData?.snippets.map((item) => ({
+        path: item.relative_path,
+        code: item.text,
+        repoName: item.repo_name,
+        lang: item.lang,
+        line: item.start_line,
+      })) || [],
+    [resultsData?.snippets],
+  );
+
   const renderResults = () => {
     if (loading) {
       return <ResultsPreviewSkeleton />;
@@ -110,17 +135,12 @@ const ResultsPage = ({ resultsData, loading, handleRetry, nlQuery }: Props) => {
     }
     return (
       <SemanticSearch
-        snippets={resultsData.snippets.map((item) => ({
-          path: item.relative_path,
-          code: item.text,
-          repoName: item.repo_name,
-          lang: item.lang,
-          line: item.start_line,
-        }))}
+        snippets={mappedSnippets}
         searchId={resultsData.query_id}
-        nlQuery={nlQuery}
         onClick={onResultClick}
         handleRetry={handleRetry}
+        answer={nlAnswer}
+        error={nlError}
       />
     );
   };

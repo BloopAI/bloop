@@ -1,6 +1,6 @@
 import React, { useContext, useEffect } from 'react';
 import ListNavigation from '../IdeNavigation/ListNavigation';
-import { Person, Repository } from '../../icons';
+import { Person, Repository, TuneControls } from '../../icons';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import General from './General';
@@ -17,9 +17,15 @@ const backdropFilterInvisible = {
     'background-color 150ms linear 0s, visibility 0s linear 200ms, backdrop-filter 150ms linear 0ms',
 };
 
+export enum SettingSections {
+  GENERAL,
+  PREFERENCES,
+  REPOSITORIES,
+}
+
 const listNavigationItems = [
   { title: 'General', icon: <Person /> },
-  // { title: 'Preferences', icon: <TuneControls /> },
+  { title: 'Preferences', icon: <TuneControls /> },
   { title: 'Repositories', icon: <Repository /> },
 ];
 
@@ -47,7 +53,7 @@ const Settings = () => {
       style={isSettingsOpen ? backdropFilterVisible : backdropFilterInvisible}
       onClick={() => {
         setSettingsOpen(false);
-        setSettingsSection(0);
+        setSettingsSection(SettingSections.GENERAL);
       }}
     >
       <div
@@ -71,8 +77,10 @@ const Settings = () => {
         <div className="p-8 flex-1 overflow-y-auto flex flex-col">
           {isSelfServe ? (
             <RepositoriesSettings />
-          ) : settingsSection === 0 ? (
+          ) : settingsSection === SettingSections.GENERAL ? (
             <General />
+          ) : settingsSection === SettingSections.PREFERENCES ? (
+            <Preferences />
           ) : (
             <RepositoriesSettings />
           )}

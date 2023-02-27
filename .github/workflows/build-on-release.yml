@@ -1,0 +1,20 @@
+name: Build&Push bloop docker container image with release tag
+on:
+  release:
+    types: [published]
+
+jobs:
+  build_and_push:
+    uses: BloopAI/workflows/.github/workflows/build-container.yml@main
+    with:
+      repository: bloop
+      tag: ${{ github.event.release.tag_name }}
+      runner: docker
+    secrets:
+      awsRegion: ${{ secrets.AWS_REGION }}
+      awsAccountID: ${{ secrets.AWS_ACCOUNT_ID }}
+      slackBuildWebhook: ${{ secrets.SLACK_BUILD_WEBHOOK }}
+      build-args: |
+        ANALYTICS_FE_WRITE_KEY_PROD=${{ secrets.ANALYTICS_FE_WRITE_KEY_PROD }}
+        ANALYTICS_DATA_PLANE_URL=${{ secrets.ANALYTICS_DATA_PLANE_URL }}
+        SENTRY_DSN_FE=${{ secrets.SENTRY_DSN_FE }}

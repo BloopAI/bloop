@@ -15,80 +15,33 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-client:
-    runs-on: ubuntu-latest
-    steps:
-      - run: 'echo "No checks required" '
-
-  fmt-clippy-build:
-    runs-on: ubuntu-latest
-
+  clippy-test:
+    runs-on: nixos
     steps:
       - uses: actions/checkout@v3
         with:
           lfs: true
-
-      - name: Setup Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
 
       - name: Dummy Qdrant binary
         run: touch apps/desktop/src-tauri/bin/qdrant-x86_64-unknown-linux-gnu
 
-      - uses: cachix/install-nix-action@v18
-      - name: Install Universal Ctags
-        run: "nix profile --access-tokens ${{ secrets.GITHUB_TOKEN }} install nixpkgs#universal-ctags nixpkgs#protobuf"
+      # - name: Restore cache
+      #   run: cp -r /sccache/target target || echo "failed to restore target cache"
 
-      - name: Check ctags version
-        run: "which ctags; ctags --version"
+      - name: Rustfmt
+        run: nix develop -c bash -c 'cargo --locked fmt -p bleep -- --check'
 
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "bloop"
-          shared-key: "server-clippy"
-
-      - name: Rust fmt
-        run: cargo --locked fmt -p bleep -- --check
-
-      - uses: actions-rs/clippy-check@v1
-        with:
-          toolchain: stable
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --locked -p bleep --all-features --manifest-path Cargo.toml
-
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          lfs: true
-
-      - name: Setup Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - uses: cachix/install-nix-action@v18
-      - name: Install Universal Ctags
-        run: "nix profile --access-tokens ${{ secrets.GITHUB_TOKEN }} install nixpkgs#universal-ctags nixpkgs#protobuf"
-
-      - name: Check ctags version
-        run: "which ctags; ctags --version"
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "bloop"
-          shared-key: "server-test"
+      - name: Clippy
+        run: nix develop -c bash -c 'cargo --locked clippy -p bleep --all-features'
 
       - name: Tests
-        run: cargo --locked test -p bleep
+        run: nix develop -c bash -c 'cargo --locked test -p bleep --all-features --release'
+
+      - name: Sccache stats
+        run: nix develop -c bash -c 'sccache --show-stats'
+
+      # - name: Store cache
+      #   run: cp -r target /sccache || echo "storing cache failed"
 
   # benchmark:
   #   runs-on: [self-hosted, benchmark]

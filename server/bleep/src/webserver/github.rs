@@ -1,7 +1,7 @@
 use super::{prelude::*, repos::Repo};
 use crate::{
     remotes::{self, BackendCredential},
-    state::Backend,
+    repo::Backend,
     Application,
 };
 
@@ -61,10 +61,10 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
     let client_id = match app.config.github_client_id.as_ref() {
         Some(id) => id.clone(),
         None => {
-            return (
-                StatusCode::SERVICE_UNAVAILABLE,
-                error(ErrorKind::Configuration, "Github Client ID not available"),
-            )
+            return Err(
+                Error::new(ErrorKind::Configuration, "Github Client ID not available")
+                    .with_status(StatusCode::SERVICE_UNAVAILABLE),
+            );
         }
     };
 
@@ -87,13 +87,10 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
         app.clone(),
     ));
 
-    (
-        StatusCode::OK,
-        json(GithubResponse::AuthenticationNeeded {
-            url: codes.verification_uri,
-            code: codes.user_code,
-        }),
-    )
+    Ok(json(GithubResponse::AuthenticationNeeded {
+        url: codes.verification_uri,
+        code: codes.user_code,
+    }))
 }
 
 /// Remove Github OAuth credentials
@@ -111,16 +108,18 @@ pub(super) async fn logout(Extension(app): Extension<Application>) -> impl IntoR
         let saved = app.config.source.save_credentials(&app.credentials);
 
         if saved.is_ok() {
-            return json(GithubResponse::Status(GithubCredentialStatus::Ok));
+            return Ok(json(GithubResponse::Status(GithubCredentialStatus::Ok)));
         }
 
         if let Err(err) = saved {
             error!(?err, "Failed to delete credentials from disk");
-            return error(ErrorKind::Internal, "failed to save changes");
+            return Err(Error::internal("failed to save changes"));
         }
     }
 
-    json(GithubResponse::Status(GithubCredentialStatus::Missing))
+    Ok(json(GithubResponse::Status(
+        GithubCredentialStatus::Missing,
+    )))
 }
 
 async fn poll_for_oauth_token(

@@ -4,6 +4,7 @@ import {
   forwardRef,
   HTMLInputTypeAttribute,
   KeyboardEvent,
+  useContext,
   useRef,
   useState,
 } from 'react';
@@ -17,6 +18,9 @@ import ClearButton from '../ClearButton';
 import RegexButton from '../RegexButton';
 import ContextMenu from '../ContextMenu';
 import { MenuItemType, SearchType } from '../../types/general';
+import { UIContext } from '../../context/uiContext';
+import { DeviceContext } from '../../context/deviceContext';
+import { AnalyticsContext } from '../../context/analyticsContext';
 
 type Props = {
   value: string;
@@ -81,6 +85,9 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
 ) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchCtxMenuVisible, setSearchCtxMenuVisible] = useState(false);
+  const { isSelfServe } = useContext(DeviceContext);
+  const { isGithubConnected } = useContext(UIContext);
+  const { isAnalyticsAllowed } = useContext(AnalyticsContext);
 
   const handleEnter = (
     e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -122,6 +129,16 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
               {
                 text: 'Natural language',
                 type: MenuItemType.LINK,
+                disabled:
+                  !isSelfServe && (!isAnalyticsAllowed || !isGithubConnected),
+                tooltip:
+                  !isSelfServe && (!isAnalyticsAllowed || !isGithubConnected)
+                    ? `${
+                        !isAnalyticsAllowed
+                          ? 'Opt-in to remote services'
+                          : 'Connect GitHub'
+                      } to use natural language search`
+                    : undefined,
                 onClick: () => onSearchTypeChanged(SearchType.NL),
                 icon: <NaturalLanguage />,
               },
@@ -135,7 +152,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
             visible={searchCtxMenuVisible}
             title={'Search type'}
             handleClose={() => setSearchCtxMenuVisible(false)}
-            closeOnClickOutside={false}
+            closeOnClickOutside
           >
             <button
               className="flex items-center px-2 h-full bg-gray-700 rounded-l"

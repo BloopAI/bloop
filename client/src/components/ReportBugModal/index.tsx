@@ -51,7 +51,7 @@ const ReportBugModal = ({
   }, [errorBoundaryMessage]);
 
   useEffect(() => {
-    const savedForm = onBoardingState['STEP_0'];
+    const savedForm = onBoardingState['STEP_DATA_FORM'];
 
     setForm((prev) => ({
       ...prev,

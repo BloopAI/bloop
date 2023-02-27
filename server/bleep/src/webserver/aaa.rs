@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     remotes::{self, BackendCredential},
-    state::Backend,
+    repo::Backend,
 };
 
 use super::*;
@@ -33,9 +33,9 @@ const MAX_PARALLEL_PENDING_LOGINS: usize = 512;
 #[derive(serde::Serialize, serde::Deserialize)]
 struct GithubAuthToken {
     expires_in: u64,
-    #[serde(serialize_with = "crate::state::serialize_secret_str")]
+    #[serde(serialize_with = "crate::config::serialize_secret_str")]
     refresh_token: SecretString,
-    #[serde(serialize_with = "crate::state::serialize_secret_str")]
+    #[serde(serialize_with = "crate::config::serialize_secret_str")]
     access_token: SecretString,
     // Ignore other fields here ...
 }
@@ -72,6 +72,11 @@ impl AuthCookie {
 
     fn set_member_checked(&mut self) {
         self.member_checked_at = Some(unix_time_sec());
+    }
+
+    fn update_token(&mut self, github_token: GithubAuthToken) {
+        self.created_at = unix_time_sec();
+        self.github_token = github_token;
     }
 
     fn to_cookie(&self) -> Cookie<'static> {
@@ -298,8 +303,9 @@ async fn user_auth(
             .text()
             .await?;
 
-        auth_cookie.github_token =
+        let gh_token =
             serde_json::from_str(&oauth_json).context("failed to deserialize refresh token")?;
+        auth_cookie.update_token(gh_token);
     }
 
     if !member_checked {

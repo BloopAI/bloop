@@ -17,7 +17,7 @@ export type PathParts = {
   label: string;
   icon?: ReactElement<any, any>;
   link?: string;
-  onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   highlight?: Range;
 };
 
@@ -94,7 +94,6 @@ const Breadcrumbs = ({ pathParts, path }: Props) => {
           <Fragment key={i}>
             <span className="flex items-center gap-1 flex-shrink-0">
               <BreadcrumbSection
-                href={p.link || '#'}
                 icon={p.icon}
                 label={p.label}
                 onClick={p.onClick}
@@ -117,7 +116,6 @@ const Breadcrumbs = ({ pathParts, path }: Props) => {
           ) : (
             <span className="flex items-center gap-1 flex-shrink-0">
               <BreadcrumbSection
-                href={p.link || '#'}
                 icon={p.icon}
                 label={p.label}
                 onClick={p.onClick}

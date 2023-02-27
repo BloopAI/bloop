@@ -1,14 +1,14 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/schema.json",
   "build": {
-    "beforeBuildCommand": "./build.sh build",
-    "beforeDevCommand": "./build.sh dev",
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
     "devPath": "http://localhost:5173",
     "distDir": "../dist"
   },
   "package": {
     "productName": "bloop",
-    "version": "0.1.0"
+    "version": "0.2.2"
   },
   "tauri": {
     "allowlist": {

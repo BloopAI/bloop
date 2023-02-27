@@ -9,11 +9,13 @@ export const MenuListItemType = { ...MenuItemType, ...ExtendedMenuItemType };
 
 export type ContextMenuLinkItem = {
   type: MenuItemType.LINK;
-  onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   icon?: React.ReactElement;
   text?: string;
   href?: string;
   onDelete?: () => void;
+  disabled?: boolean;
+  tooltip?: string;
 };
 
 export type ContextMenuItem =
@@ -22,10 +24,12 @@ export type ContextMenuItem =
       icon?: React.ReactElement;
       text?: string;
       type: MenuItemType | ExtendedMenuItemType;
-      onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
+      onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
       annotations?: number;
       removable?: boolean;
       onDelete?: () => void;
+      disabled?: boolean;
+      tooltip?: string;
     };
 
 type Props = {
@@ -71,6 +75,8 @@ const ContextMenu = ({
             text={item.text!}
             type={item.type}
             onDelete={item.onDelete}
+            disabled={item.disabled}
+            tooltip={item.tooltip}
           />
         );
       case ExtendedMenuItemType.DIVIDER:

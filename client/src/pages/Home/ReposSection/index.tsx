@@ -7,6 +7,7 @@ import { RepoProvider, RepoType, SyncStatus } from '../../../types/general';
 import { UIContext } from '../../../context/uiContext';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { DeviceContext } from '../../../context/deviceContext';
+import { SettingSections } from '../../../components/Settings';
 
 type Props = {
   filter: number;
@@ -128,7 +129,7 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
           <Button
             variant="secondary"
             onClick={() => {
-              setSettingsSection(1);
+              setSettingsSection(SettingSections.REPOSITORIES);
               setSettingsOpen(true);
             }}
           >
@@ -158,7 +159,7 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
             </p>
             <div className="w-full flex flex-col gap-4">
               {textsMap[filter].buttons(() => {
-                setSettingsSection(1);
+                setSettingsSection(SettingSections.REPOSITORIES);
                 setSettingsOpen(true);
               })}
             </div>

@@ -18,7 +18,7 @@ use qdrant_client::{
 };
 use rayon::prelude::*;
 use thiserror::Error;
-use tracing::{debug, trace};
+use tracing::{debug, trace, warn};
 
 pub mod chunk;
 
@@ -132,14 +132,14 @@ impl Semantic {
         Ok(())
     }
 
-    pub fn embed(&self, chunk: &str) -> anyhow::Result<Vec<f32>> {
-        let tokenizer_output = self.tokenizer.encode(chunk, true).unwrap();
+    pub fn embed(&self, sequence: &str) -> anyhow::Result<Vec<f32>> {
+        let tokenizer_output = self.tokenizer.encode(sequence, true).unwrap();
 
         let input_ids = tokenizer_output.get_ids();
         let attention_mask = tokenizer_output.get_attention_mask();
         let token_type_ids = tokenizer_output.get_type_ids();
         let length = input_ids.len();
-        trace!("embedding {} tokens {:?}", length, chunk);
+        trace!("embedding {} tokens {:?}", length, sequence);
 
         let inputs_ids_array = ndarray::Array::from_shape_vec(
             (1, length),
@@ -170,31 +170,20 @@ impl Semantic {
 
     pub async fn search<'a>(
         &self,
-        nl_query: &NLQuery<'a>,
+        parsed_query: &NLQuery<'a>,
         limit: u64,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
-        let Some(query) = nl_query.target() else {
+        let Some(query) = parsed_query.target() else {
             anyhow::bail!("no search target for query");
         };
 
-        let make_kv_filter = |key, value| {
-            FieldCondition {
-                key,
-                r#match: Some(Match {
-                    match_value: MatchValue::Text(value).into(),
-                }),
-                ..Default::default()
-            }
-            .into()
-        };
-
-        let repo_filter = nl_query
+        let repo_filter = parsed_query
             .repo()
-            .map(|r| make_kv_filter("repo_name".to_string(), r.to_string()));
+            .map(|r| make_kv_filter("repo_name", r).into());
 
-        let lang_filter = nl_query
+        let lang_filter = parsed_query
             .lang()
-            .map(|l| make_kv_filter("lang".to_string(), l.to_string()));
+            .map(|l| make_kv_filter("lang", l).into());
 
         let filters = [repo_filter, lang_filter]
             .into_iter()
@@ -230,6 +219,10 @@ impl Semantic {
         buffer: &str,
         lang_str: &str,
     ) {
+        // Delete all points corresponding to the same path
+        self.delete_points_by_path(repo_ref, std::iter::once(relative_path))
+            .await;
+
         let chunks = chunk::by_tokens(
             repo_name,
             relative_path,
@@ -239,12 +232,15 @@ impl Semantic {
             15,
             self.overlap_strategy(),
         );
-        let repo_plus_file = repo_name.to_owned() + "\t" + relative_path + "\n";
         debug!(chunk_count = chunks.len(), "found chunks");
+
+        // Prepend all chunks with `repo_name   relative_path`
+        let chunk_prefix = format!("{repo_name}\t{relative_path}\n");
+
         let datapoints = chunks
             .par_iter()
             .filter_map(
-                |chunk| match self.embed(&(repo_plus_file.clone() + chunk.data)) {
+                |chunk| match self.embed(&(chunk_prefix.clone() + chunk.data)) {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
@@ -267,7 +263,7 @@ impl Semantic {
                         ]),
                     }),
                     Err(err) => {
-                        trace!(?err, "embedding failed");
+                        warn!(?err, "embedding failed");
                         None
                     }
                 },
@@ -283,6 +279,20 @@ impl Semantic {
         }
     }
 
+    pub async fn delete_points_by_path(&self, repo_ref: &str, paths: impl Iterator<Item = &str>) {
+        let repo_filter = make_kv_filter("repo_ref", repo_ref).into();
+        let file_filter = paths
+            .map(|p| make_kv_filter("relative_path", p).into())
+            .collect::<Vec<_>>();
+        let selector = Filter {
+            must: vec![repo_filter],
+            should: file_filter,
+            ..Default::default()
+        }
+        .into();
+        let _ = self.qdrant.delete_points(COLLECTION_NAME, &selector).await;
+    }
+
     pub fn gpt2_token_count(&self, input: &str) -> usize {
         self.gpt2_tokenizer
             .encode(input, false)
@@ -291,8 +301,18 @@ impl Semantic {
     }
 
     pub fn overlap_strategy(&self) -> chunk::OverlapStrategy {
-        self.config
-            .overlap
-            .unwrap_or(chunk::OverlapStrategy::Partial(0.5))
+        self.config.overlap.unwrap_or_default()
+    }
+}
+
+fn make_kv_filter(key: &str, value: &str) -> FieldCondition {
+    let key = key.to_owned();
+    let value = value.to_owned();
+    FieldCondition {
+        key,
+        r#match: Some(Match {
+            match_value: MatchValue::Text(value).into(),
+        }),
+        ..Default::default()
     }
 }
