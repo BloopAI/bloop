@@ -3,6 +3,7 @@ import { search as searchApiCall } from '../services/api';
 import { SearchContext } from '../context/searchContext';
 import { SearchType } from '../types/general';
 import { DeviceContext } from '../context/deviceContext';
+import { NLSearchResponse, NLSnippet } from '../types/api';
 import useAnalytics from './useAnalytics';
 
 interface Status<T> {
@@ -83,6 +84,18 @@ export const useSearch = <T,>(
               } else {
                 setStatus({ loading: false, data: newData, query });
               }
+            } else if (i === 1) {
+              // @ts-ignore
+              setStatus((prev) => {
+                const newSnippets = [
+                  newData as NLSnippet,
+                  ...((prev.data as NLSearchResponse).snippets.slice(1) || []),
+                ];
+                return {
+                  ...prev,
+                  data: { ...prev.data, snippets: newSnippets },
+                };
+              });
             } else {
               setStatus((prev) => ({
                 ...prev,
