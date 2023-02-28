@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+{{- if .Values.service.annotations }}
+  annotations:
+{{ tpl (toYaml .Values.service.annotations) . | indent 4 }}
+{{- end }}
+  name: {{ include "qdrant.fullname" . }}
+  labels:
+    {{- include "qdrant.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+  {{- range .Values.qdrant.service.ports }}
+    - name: {{ .name }}
+      port: {{ .targetPort }}
+      targetPort: {{ .targetPort }}
+  {{- end }}
+  selector:
+    {{- include "qdrant.selectorLabels" . | nindent 4 }}
