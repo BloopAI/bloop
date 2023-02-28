@@ -5,7 +5,6 @@ The bloop app is built using [Tauri](https://github.com/tauri-apps/tauri), a Rus
 ## Dependencies
 
 To build the Tauri app you need the following dependencies:
-- `pnpm`
 - `rustup`
 - `clang` `cmake` `wget`
 - `protobuf`
@@ -24,7 +23,7 @@ All commands should be run from the root directory unless specified otherwise.
 
 To install dependencies run:
 ```
-pnpm install
+npm install
 ```
 
 To build Qdrant run:

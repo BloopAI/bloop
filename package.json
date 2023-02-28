@@ -2,12 +2,15 @@
   "name": "@bloop/root",
   "private": true,
   "scripts": {
-    "start-app": "pnpm --filter @bloop/desktop run tauri-dev",
-    "start-web": "pnpm --filter @bloop/client run dev",
-    "build-app": "pnpm --filter @bloop/desktop run tauri-build",
-    "build-web": "pnpm --filter @bloop/client run build",
+    "start-app": "npm --prefix apps/desktop run tauri-dev",
+    "start-web": "npm --prefix client run dev",
+    "build-app": "npm --prefix apps/desktop run tauri-build",
+    "build-web": "npm --prefix client run build",
     "lint": "eslint client/src apps/**/src --ext ts --ext tsx --ext js --ext jsx --ext html",
-    "client-type-check": "pnpm --filter @bloop/client run type-check"
+    "client-type-check": "npm --prefix client run type-check",
+    "install:client": "cd client && npm install",
+    "install:app": "cd apps/desktop && npm install",
+    "postinstall": "run-p install:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.28.1",
@@ -24,7 +27,9 @@
     "eslint-plugin-prettier": "^4.2.1",
     "eslint-plugin-promise": "^6.0.0",
     "eslint-plugin-react": "^7.30.1",
-    "eslint-plugin-storybook": "^0.6.4"
+    "eslint-plugin-storybook": "^0.6.4",
+    "prettier": "^2.7.1",
+    "typescript": "^4.8.2"
   },
   "resolutions": {
     "react-virtualized": "git+https://git@github.com/remorses/react-virtualized-fixed-import.git#9.22.3"

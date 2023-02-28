@@ -29,20 +29,17 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v2.2.4
-        with:
-          version: 7.14.0
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 16
-          cache: "pnpm"
+          cache: "npm"
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci
       - name: Run lint
-        run: pnpm lint
+        run: npm run lint
       - name: Run type-check
-        run: pnpm client-type-check
+        run: npm run client-type-check
 #       - name: Publish to Chromatic
 #         uses: chromaui/action@v1
 #         with:

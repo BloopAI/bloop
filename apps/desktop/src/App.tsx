@@ -1,6 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import ClientApp from '@bloop/client/src/App';
-import '@bloop/client/src/index.css';
 import { invoke } from '@tauri-apps/api';
 import { open } from '@tauri-apps/api/shell';
 import { homeDir } from '@tauri-apps/api/path';
@@ -8,7 +6,9 @@ import { open as openDialog } from '@tauri-apps/api/dialog';
 import { listen } from '@tauri-apps/api/event';
 import * as tauriOs from '@tauri-apps/api/os';
 import { getVersion } from '@tauri-apps/api/app';
+import ClientApp from '../../../client/src/App';
 import TextSearch from './TextSearch';
+import '../../../client/src/index.css';
 
 function App() {
   const [homeDirectory, setHomeDir] = useState('');

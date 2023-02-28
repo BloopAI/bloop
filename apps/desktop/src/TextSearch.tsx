@@ -1,6 +1,6 @@
-import TextInput from '@bloop/client/src/components/TextInput';
 import React, { ChangeEvent, useCallback, useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp } from '@bloop/client/src/icons';
+import TextInput from '../../../client/src/components/TextInput';
+import { ChevronDown, ChevronUp } from '../../../client/src/icons';
 
 const HIGHLIGHT_CLASSNAME = 'search-highlight';
 const ACTIVE_HIGHLIGHT_CLASSNAME = 'search-highlight-active';
