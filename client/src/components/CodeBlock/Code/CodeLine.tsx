@@ -13,6 +13,7 @@ import SymbolIcon from '../../CodeSymbolIcon';
 import { SymbolType } from '../../../types/results';
 import { Commit } from '../../../types';
 import TooltipCommit from '../../TooltipCommit';
+import { markNode, unmark } from '../../../utils/textSearch';
 
 type Props = {
   lineNumber: number;
@@ -30,6 +31,7 @@ type Props = {
   };
   stylesGenerated?: any;
   shouldHighlight?: boolean;
+  searchTerm?: string;
   onMouseSelectStart?: (lineNum: number, charNum: number) => void;
   onMouseSelectEnd?: (lineNum: number, charNum: number) => void;
 };
@@ -47,11 +49,12 @@ const CodeLine = ({
   hoverEffect,
   stylesGenerated,
   shouldHighlight,
+  searchTerm,
   onMouseSelectStart,
   onMouseSelectEnd,
 }: Props) => {
   const [isHighlighted, setHighlighted] = useState(false);
-  const cellRef = useRef<HTMLTableCellElement>(null);
+  const codeRef = useRef<HTMLTableCellElement>(null);
 
   useEffect(() => {
     if (shouldHighlight) {
@@ -59,6 +62,17 @@ const CodeLine = ({
       setTimeout(() => setHighlighted(false), 2000);
     }
   }, [shouldHighlight]);
+
+  useEffect(() => {
+    if (codeRef.current && searchTerm) {
+      markNode(codeRef.current, new RegExp(searchTerm, 'gi'));
+    }
+    return () => {
+      if (codeRef.current) {
+        unmark(codeRef.current);
+      }
+    };
+  }, [searchTerm]);
 
   const blameStyle = useMemo(() => {
     if (blameLine?.start) {
@@ -231,7 +245,7 @@ const CodeLine = ({
         className={`pl-2 ${lineHidden ? 'p-0' : ''} ${
           isHighlighted ? 'animate-flash-highlight rounded-4 pr-2' : ''
         }`}
-        ref={cellRef}
+        ref={codeRef}
       >
         {children}
       </td>

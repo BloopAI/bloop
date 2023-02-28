@@ -11,7 +11,7 @@ take a look at our [code of conduct](./CODE_OF_CONDUCT.md).
 If you have a question about using
 [bloop](https://github.com/bloopai/bloop), please raise a ticket in
 the repository, or say hi on our [Discord
-server](https://discord-invite-address).
+server](https://discord.gg/kZEgj5pyjm).
 
 ## Would like to contribute?
 
