@@ -6,8 +6,8 @@ ARG ANALYTICS_DATA_PLANE_URL
 ARG SENTRY_DSN_FE
 
 WORKDIR /build
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json package-lock.json apps/desktop/package.json apps/desktop/package-lock.json client/package.json client/package-lock.json ./
+RUN npm ci --legacy-peer-deps
 COPY apps/ apps
 COPY client/ client
 COPY playwright.config.js .

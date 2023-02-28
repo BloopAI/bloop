@@ -8,7 +8,7 @@
     "build-web": "npm --prefix client run build",
     "lint": "eslint client/src apps/**/src --ext ts --ext tsx --ext js --ext jsx --ext html",
     "client-type-check": "npm --prefix client run type-check",
-    "install:client": "cd client && npm install",
+    "install:client": "cd client && npm install --legacy-peer-deps",
     "install:app": "cd apps/desktop && npm install",
     "postinstall": "run-p install:*"
   },
