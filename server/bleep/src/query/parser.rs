@@ -963,6 +963,32 @@ mod tests {
     }
 
     #[test]
+    fn test_nl_consume_flags() {
+        assert_eq!(
+            parse_nl(
+                "what is background color? lang:tsx repo:bloop org:bloop symbol:foo open:true"
+            )
+            .unwrap(),
+            NLQuery {
+                target: Some(Literal::Plain("what is background color?".into())),
+                lang: Some("tsx".into()),
+                repo: Some(Literal::Plain("bloop".into())),
+            },
+        );
+
+        assert_eq!(
+            parse_nl("case:ignore why are languages excluded from ctags?").unwrap(),
+            NLQuery {
+                target: Some(Literal::Plain(
+                    "why are languages excluded from ctags?".into()
+                )),
+                lang: None,
+                repo: None,
+            },
+        );
+    }
+
+    #[test]
     fn escape_characters() {
         assert_eq!(
             parse("'foo\\'bar'").unwrap(),
