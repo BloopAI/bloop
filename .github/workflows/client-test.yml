@@ -35,7 +35,7 @@ jobs:
           node-version: 16
           cache: "npm"
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
       - name: Run lint
         run: npm run lint
       - name: Run type-check

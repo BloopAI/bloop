@@ -132,7 +132,7 @@ jobs:
           cache: "npm"
 
       - name: Install app dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - uses: Swatinem/rust-cache@v2
         with:
