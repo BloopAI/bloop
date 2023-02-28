@@ -1,4 +1,11 @@
-import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { format } from 'timeago.js';
 import FoldButton from '../CodeFull/FoldButton';
 import Tooltip from '../../Tooltip';
@@ -25,6 +32,8 @@ type Props = {
   stylesGenerated?: any;
   shouldHighlight?: boolean;
   searchTerm?: string;
+  onMouseSelectStart?: (lineNum: number, charNum: number) => void;
+  onMouseSelectEnd?: (lineNum: number, charNum: number) => void;
 };
 
 const CodeLine = ({
@@ -41,9 +50,11 @@ const CodeLine = ({
   stylesGenerated,
   shouldHighlight,
   searchTerm,
+  onMouseSelectStart,
+  onMouseSelectEnd,
 }: Props) => {
   const [isHighlighted, setHighlighted] = useState(false);
-  const codeRef = useRef(null);
+  const codeRef = useRef<HTMLTableCellElement>(null);
 
   useEffect(() => {
     if (shouldHighlight) {
@@ -109,6 +120,53 @@ const CodeLine = ({
   );
   const [actualLineNumber] = useState(lineNumber);
 
+  const getCharIndex = useCallback((e: React.MouseEvent) => {
+    const cell = codeRef.current;
+    if (!cell) {
+      return 0;
+    }
+    const text = cell.innerText;
+    const cellRect = cell.getBoundingClientRect();
+    const mouseX = e.clientX;
+    const relativeX = mouseX - cellRect?.left;
+
+    const font = window.getComputedStyle(cell).font;
+
+    const temp = document.createElement('pre');
+    temp.style.font = font;
+    temp.style.paddingLeft = '0.5rem';
+    temp.style.position = 'fixed';
+    temp.style.left = '0';
+    temp.style.top = '80px';
+
+    text.split('').forEach((char) => {
+      const el = document.createElement('span');
+      el.innerText = char;
+      temp.appendChild(el);
+    });
+    document.body.appendChild(temp);
+
+    const range = document.createRange();
+    range.setStart(temp, 0);
+    range.setEnd(temp, temp.childNodes.length - 1);
+    const rects = Array.from(temp.childNodes).map((c) =>
+      (c as Element).getBoundingClientRect(),
+    );
+
+    let index = 0;
+    for (let i = 0; i < rects.length; i++) {
+      if (relativeX >= rects[i].left && relativeX < rects[i].right) {
+        index = relativeX - rects[i].left > rects[i].width / 2 ? i + 1 : i;
+        break;
+      }
+    }
+    if (relativeX > rects[rects.length - 1].left) {
+      index = rects.length - 1;
+    }
+    document.body.removeChild(temp);
+    return index;
+  }, []);
+
   return (
     <tr
       className={`transition-all duration-150 ease-in-bounce group hover:bg-transparent ${
@@ -117,6 +175,15 @@ const CodeLine = ({
         blameLine?.start && lineNumber !== 0 ? ' border-t border-gray-700' : ''
       }`}
       style={style}
+      onMouseDown={(e) => {
+        const index = getCharIndex(e);
+
+        onMouseSelectStart?.(lineNumber, index);
+      }}
+      onMouseUp={(e) => {
+        const index = getCharIndex(e);
+        onMouseSelectEnd?.(lineNumber, index);
+      }}
     >
       {renderBlameLine}
       {symbols?.length ? (
