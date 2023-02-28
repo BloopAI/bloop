@@ -9,7 +9,7 @@ build = "build.rs"
 default = ["static-ort"]
 debug = ["console-subscriber", "histogram"]
 dynamic-ort = ["ort/use-system"]
-static-ort = ["ort/use-compile"]
+static-ort = ["ort/use-compile", "ort/compile-static"]
 
 [[bin]]
 name = "bleep"
@@ -104,7 +104,7 @@ once_cell = "1.17.0"
 relative-path = "1.7.3"
 qdrant-client = { version = "0.11.6", default-features = false }
 tokenizers = "0.13.2"
-ort = { git = "https://github.com/bloopai/ort", branch = "merge-upstream",  features = ["compile-static"] }
+ort = { git = "https://github.com/bloopai/ort", branch = "merge-upstream" }
 ndarray = "0.15"
 uuid = { version = "1.2.2", features = ["v4", "fast-rng"] }
 jsonwebtoken = { version = "8.2.0", features = ["use_pem"] }
