@@ -60,7 +60,9 @@ const Tabs = ({
           className={`${divider ? '' : 'border-none'} ${variantMap[variant]} ${
             sizeMap[size]
           } focus:outline-none flex items-center p-0 gap-2 rounded-none ${
-            activeTab === i ? 'text-sky-500' : 'hover:text-gray-100'
+            activeTab === i
+              ? 'text-sky-500 focus:text-sky-400'
+              : 'hover:text-gray-100 focus:text-gray-100'
           } transition-all outline-none outline-0 bg-transparent ${
             fullWidth ? 'flex-1 justify-center' : ''
           }`}

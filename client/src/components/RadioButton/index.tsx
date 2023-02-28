@@ -18,7 +18,7 @@ const RadioButton = ({
   description,
 }: Props) => {
   return (
-    <label className="cursor-pointer flex gap-2 group items-start">
+    <label className="cursor-pointer flex gap-2 group items-start" tabIndex={0}>
       <input
         type="radio"
         className="hidden"
@@ -39,7 +39,7 @@ const RadioButton = ({
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
           className={`${
-            checked ? '' : 'invisible group-hover:visible'
+            checked ? '' : 'invisible group-hover:visible group-focus:visible'
           } transition-all`}
         >
           <circle cx="4" cy="4" r="4" fill="currentColor" />
