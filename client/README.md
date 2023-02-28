@@ -5,7 +5,7 @@
 You can use bloop in the browser, without running the Tauri app. First follow [the steps](./../server/README.md) to install and run the search server. Then, once the server is running, in the root directory run:
 
 ```
-npm install
+npm install --legacy-peer-deps
 npm run start-web
 ```
 
