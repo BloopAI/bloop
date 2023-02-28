@@ -77,6 +77,11 @@
           ORT_LIB_LOCATION = "${onnxruntime-static}/build";
         };
 
+        my-ctags = pkgsStatic.universal-ctags.overrideAttrs (old: {
+            nativeBuildInputs = old.nativeBuildInputs
+              ++ [ pkgsStatic.pkg-config ];
+          });
+
         bleep = (rustPlatform.buildRustPackage {
           meta = with pkgs.lib; {
             description = "Search code. Fast.";
@@ -89,7 +94,6 @@
           pname = "bleep";
           src = pkgs.lib.sources.cleanSource ./.;
 
-          buildNoDefaultFeatures = true;
           buildFeatures = [ "dynamic-ort" ];
 
           cargoBuildFlags = "-p bleep";
@@ -280,10 +284,7 @@
 
           };
 
-          my-ctags = pkgsStatic.universal-ctags.overrideAttrs (old: {
-            nativeBuildInputs = old.nativeBuildInputs
-              ++ [ pkgsStatic.pkg-config ];
-          });
+          my-ctags = my-ctags;
         };
 
         devShell = (pkgs.mkShell {
