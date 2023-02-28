@@ -121,7 +121,7 @@ const CodeLine = ({
   const [actualLineNumber] = useState(lineNumber);
 
   const getCharIndex = useCallback((e: React.MouseEvent) => {
-    const cell = cellRef.current;
+    const cell = codeRef.current;
     if (!cell) {
       return 0;
     }
