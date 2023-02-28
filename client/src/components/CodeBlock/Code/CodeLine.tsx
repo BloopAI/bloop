@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect, useMemo, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'timeago.js';
 import FoldButton from '../CodeFull/FoldButton';
 import Tooltip from '../../Tooltip';
@@ -6,6 +6,7 @@ import SymbolIcon from '../../CodeSymbolIcon';
 import { SymbolType } from '../../../types/results';
 import { Commit } from '../../../types';
 import TooltipCommit from '../../TooltipCommit';
+import { markNode, unmark } from '../../../utils/textSearch';
 
 type Props = {
   lineNumber: number;
@@ -23,6 +24,7 @@ type Props = {
   };
   stylesGenerated?: any;
   shouldHighlight?: boolean;
+  searchTerm?: string;
 };
 
 const CodeLine = ({
@@ -38,8 +40,10 @@ const CodeLine = ({
   hoverEffect,
   stylesGenerated,
   shouldHighlight,
+  searchTerm,
 }: Props) => {
   const [isHighlighted, setHighlighted] = useState(false);
+  const codeRef = useRef(null);
 
   useEffect(() => {
     if (shouldHighlight) {
@@ -47,6 +51,17 @@ const CodeLine = ({
       setTimeout(() => setHighlighted(false), 2000);
     }
   }, [shouldHighlight]);
+
+  useEffect(() => {
+    if (codeRef.current && searchTerm) {
+      markNode(codeRef.current, new RegExp(searchTerm, 'gi'));
+    }
+    return () => {
+      if (codeRef.current) {
+        unmark(codeRef.current);
+      }
+    };
+  }, [searchTerm]);
 
   const blameStyle = useMemo(() => {
     if (blameLine?.start) {
@@ -163,6 +178,7 @@ const CodeLine = ({
         className={`pl-2 ${lineHidden ? 'p-0' : ''} ${
           isHighlighted ? 'animate-flash-highlight rounded-4 pr-2' : ''
         }`}
+        ref={codeRef}
       >
         {children}
       </td>

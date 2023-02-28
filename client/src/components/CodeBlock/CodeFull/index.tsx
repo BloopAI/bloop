@@ -22,6 +22,7 @@ import { hashCode } from '../../../utils';
 import { Commit } from '../../../types';
 import { Token as TokenType } from '../../../types/prism';
 import useAppNavigation from '../../../hooks/useAppNavigation';
+import SearchOnPage from '../../SearchOnPage';
 import Token from './Token';
 
 const Table = _Table as unknown as FC<TableProps>;
@@ -82,6 +83,42 @@ const CodeFull = ({
     scrollLineNumber || undefined,
   );
   const { navigateRepoPath } = useAppNavigation();
+
+  const [isSearchActive, setSearchActive] = useState(false);
+  const [searchResults, setSearchResults] = useState<number[]>([]);
+  const [currentResult, setCurrentResult] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const toggleSearch = (e: KeyboardEvent) => {
+      if (e.code === 'KeyF' && e.metaKey) {
+        setSearchActive((prev) => !prev);
+      } else if (e.code === 'Enter') {
+        const isNext = !e.shiftKey;
+        setCurrentResult((prev) =>
+          isNext
+            ? prev < searchResults.length
+              ? prev + 1
+              : 1
+            : prev > 1
+            ? prev - 1
+            : searchResults.length,
+        );
+      } else if (e.code === 'Escape') {
+        setSearchActive((prev) => {
+          if (prev) {
+            e.preventDefault();
+          }
+          return false;
+        });
+      }
+    };
+    window.addEventListener('keypress', toggleSearch);
+
+    return () => {
+      window.removeEventListener('keypress', toggleSearch);
+    };
+  }, [searchResults]);
 
   useEffect(() => {
     setScrollToIndex(scrollLineNumber || undefined);
@@ -166,8 +203,51 @@ const CodeFull = ({
     [repoName, relativePath],
   );
 
+  const handleSearch = useCallback(
+    (value: string) => {
+      setSearchTerm(value);
+      if (value === '') {
+        setSearchResults([]);
+        setCurrentResult(0);
+        return;
+      }
+      const lines = code.split('\n');
+      const results = lines.reduce(function (prev: number[], cur, i) {
+        if (cur.toLowerCase().includes(value.toLowerCase())) {
+          prev.push(i);
+        }
+        return prev;
+      }, []);
+      const currentlyHighlightedLine = searchResults[currentResult - 1];
+      const indexInNewResults = results.indexOf(currentlyHighlightedLine);
+      setSearchResults(results);
+      setCurrentResult(indexInNewResults >= 0 ? indexInNewResults + 1 : 1);
+    },
+    [code, searchResults, currentResult],
+  );
+
+  useEffect(() => {
+    setScrollToIndex([
+      searchResults[currentResult - 1],
+      searchResults[currentResult - 1],
+    ]);
+  }, [currentResult]);
+
   return (
-    <div className="w-full text-xs gap-10 flex flex-row">
+    <div className="code-full-view w-full text-xs gap-10 flex flex-row relative">
+      <SearchOnPage
+        handleSearch={handleSearch}
+        isSearchActive={isSearchActive}
+        resultNum={searchResults.length}
+        onCancel={() => {
+          handleSearch('');
+          setSearchActive(false);
+        }}
+        currentResult={currentResult}
+        setCurrentResult={setCurrentResult}
+        searchValue={searchTerm}
+        containerClassName="absolute top-0 -right-4"
+      />
       <div className={`${!minimap ? 'w-full' : ''}`} ref={codeRef}>
         <pre
           className={`prism-code language-${lang} bg-gray-900 my-0 w-full h-full`}
@@ -199,6 +279,7 @@ const CodeFull = ({
                       props.index >= scrollToIndex[0] &&
                       props.index <= scrollToIndex[1]
                     }
+                    searchTerm={searchTerm}
                     stylesGenerated={{
                       ...props.style,
                       width: 'auto',
