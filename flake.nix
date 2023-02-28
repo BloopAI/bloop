@@ -22,7 +22,7 @@
         llvm = pkgs.llvmPackages_14;
         clang = llvm.clang;
         libclang = llvm.libclang;
-        stdenv = llvm.libcxxStdenv;
+        stdenv = llvm.stdenv;
 
         rust = pkgs.rust-bin.stable.latest.default;
         rustPlatform = pkgs.makeRustPlatform {
@@ -36,6 +36,7 @@
 
         buildDeps = with pkgs;
           ([
+            stdenv.cc.cc.lib
             glib.dev
             pkg-config
             openssl_1_1.out
@@ -113,7 +114,7 @@
               "tree-sitter-java-0.20.0" =
                 "sha256-gQzoWGV9wYiLibMFkLoY2sdEJg+ae9NnHt/GFfFzP8U=";
               "ort-1.14.0-beta.0" =
-                "sha256-VdR9yhyfUPwIAmMtU04bpvz973Sr4313lup7KFNtBac=";
+                "sha256-GLwCOtYOvJWg/tBAuqVqwREaxlxAhL1FJltwF+fWROk=";
             };
           };
 
