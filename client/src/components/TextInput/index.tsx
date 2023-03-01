@@ -24,6 +24,7 @@ type Props = {
   variant?: 'outlined' | 'filled';
   type?: HTMLInputTypeAttribute;
   onSubmit?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onEscape?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onRegexClick?: () => void;
   validate?: () => void;
   regexEnabled?: boolean;
@@ -80,6 +81,7 @@ const TextInput = forwardRef(function TextInputWithRef(
     autoFocus,
     inputClassName,
     forceClear,
+    onEscape,
   }: Props & (SingleLineProps | MultilineProps),
   ref: ForwardedRef<HTMLInputElement>,
 ) {
@@ -91,6 +93,8 @@ const TextInput = forwardRef(function TextInputWithRef(
     if (e.key === 'Enter' && onSubmit) {
       e.preventDefault();
       onSubmit(e);
+    } else if (e.key === 'Escape' && onEscape) {
+      onEscape(e);
     }
   };
 

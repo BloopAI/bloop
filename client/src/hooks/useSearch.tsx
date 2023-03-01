@@ -69,7 +69,7 @@ export const useSearch = <T,>(
             if (i === 0) {
               const queryTime = Date.now() - startTime;
               setLastQueryTime(queryTime);
-              trackSearch(queryTime);
+              trackSearch(queryTime, query, newData.query_id);
               if (newData.Err) {
                 setStatus((prev) => ({
                   ...prev,
@@ -77,7 +77,10 @@ export const useSearch = <T,>(
                   error: newData.Err,
                 }));
               } else {
-                setStatus({ loading: false, data: JSON.parse(ev.data), query });
+                const nlAnswer = newData.answer_path
+                  ? ''
+                  : 'One of the the results below could be relevant...';
+                setStatus({ loading: false, data: newData, query, nlAnswer });
               }
             } else {
               setStatus((prev) => ({
@@ -101,7 +104,7 @@ export const useSearch = <T,>(
           .then((res: any) => {
             const queryTime = Date.now() - startTime;
             setLastQueryTime(queryTime);
-            trackSearch(queryTime);
+            trackSearch(queryTime, query);
             setStatus({ loading: false, data: res });
           })
           .catch((error: Error) => {

@@ -95,6 +95,15 @@ qdrant:
   nameOverride: ""
   fullnameOverride: ""
 
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: ""
+
   # checks - Readiness and liveness checks can only be enabled for either rest or grpc (multiple checks not supported)
   # grpc checks are only available from k8s 1.24+ so as of per default we check rest
   service:

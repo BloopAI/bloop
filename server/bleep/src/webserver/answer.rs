@@ -101,7 +101,7 @@ pub struct AnswerResponse {
     pub user_id: String,
     pub query_id: uuid::Uuid,
     pub snippets: Vec<Snippet>,
-    pub answer_path: String,
+    pub answer_path: Option<String>,
 }
 
 impl From<AnswerResponse> for super::Response<'static> {
@@ -330,20 +330,15 @@ async fn _handle(
         Stage::new("relevant snippet index", &relevant_snippet_index).with_time(stop_watch.lap()),
     );
 
-    if relevant_snippet_index == 0 {
-        return Err(Error::internal(
-            "None of the snippets help answer the question",
-        ));
-    }
+    let (answer_path, stream) = if relevant_snippet_index > 0 {
+        relevant_snippet_index -= 1; // return to 0-indexing
+        let relevant_snippet = snippets
+            .get(relevant_snippet_index)
+            .ok_or_else(|| Error::internal("answer-api returned out-of-bounds index"))?;
 
-    relevant_snippet_index -= 1; // return to 0-indexing
-    let relevant_snippet = snippets
-        .get(relevant_snippet_index)
-        .ok_or_else(|| Error::internal("answer-api returned out-of-bounds index"))?;
+        // grow the snippet by 60 lines above and below, we have sufficient space
+        // to grow this snippet by 10 times its original size (15 to 150)
 
-    // grow the snippet by 60 lines above and below, we have sufficient space
-    // to grow this snippet by 10 times its original size (15 to 150)
-    let processed_snippet = {
         let repo_ref = &relevant_snippet
             .repo_ref
             .parse::<RepoRef>()
@@ -366,7 +361,8 @@ async fn _handle(
                 grow_size += 10;
             }
         };
-        Snippet {
+
+        let processed_snippet = Snippet {
             lang: relevant_snippet.lang.clone(),
             repo_name: relevant_snippet.repo_name.clone(),
             repo_ref: relevant_snippet.repo_ref.clone(),
@@ -377,14 +373,57 @@ async fn _handle(
             start_byte: relevant_snippet.start_byte,
             end_byte: relevant_snippet.end_byte,
             score: relevant_snippet.score,
-        }
+        };
+
+        // reorder snippets
+        snippets.swap(relevant_snippet_index, 0);
+
+        let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
+
+        analytics_event
+            .stages
+            .push(Stage::new("explain prompt", &explain_prompt).with_time(stop_watch.lap()));
+
+        let mut snippet_explanation = answer_api_client
+            .explain_snippet(&explain_prompt)
+            .await
+            .map_err(Error::internal)
+            .map(Box::pin)?;
+
+        drop(analytics_event);
+
+        let analytics_event = Arc::clone(&event);
+
+        let stream = async_stream::stream! {
+            let mut explanation = String::new();
+            while let Some(result) = snippet_explanation.next().await {
+                yield Ok(Event::default()
+                    .json_data(result.as_ref().map_err(|e| e.to_string()))
+                    .unwrap());
+
+                match result {
+                    Ok(s) => explanation += &s,
+                    Err(e) => yield Err(e),
+                }
+            }
+
+            let mut event = analytics_event.write().await;
+
+            event
+                .stages
+                .push(Stage::new("explanation", &explanation).with_time(stop_watch.lap()));
+
+            app.track_query(&event);
+        };
+
+        // answering snippet is always at index 0
+        let answer_path = snippets.get(0).unwrap().relative_path.to_string();
+
+        (Some(answer_path), stream.left_stream())
+    } else {
+        warn!("None of the snippets help answer the question");
+        (None, futures::stream::empty().right_stream())
     };
-
-    // reorder snippets
-    snippets.swap(relevant_snippet_index, 0);
-
-    // answering snippet is always at index 0
-    let answer_path = snippets.get(0).unwrap().relative_path.to_string();
 
     let initial_event = Event::default()
         .json_data(super::Response::<'static>::from(AnswerResponse {
@@ -395,48 +434,13 @@ async fn _handle(
         }))
         .map_err(Error::internal)?;
 
-    let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
-
-    analytics_event
-        .stages
-        .push(Stage::new("explain prompt", &explain_prompt).with_time(stop_watch.lap()));
-
-    let mut snippet_explanation = answer_api_client
-        .explain_snippet(&explain_prompt)
-        .await
-        .map_err(Error::internal)
-        .map(Box::pin)?;
-
-    drop(analytics_event);
-
-    let analytics_event = Arc::clone(&event);
-    let stream = async_stream::stream! {
-        yield Ok(initial_event);
-
-        let mut explanation = String::new();
-        while let Some(result) = snippet_explanation.next().await {
-            yield Ok(Event::default()
-                .json_data(result.as_ref().map_err(|e| e.to_string()))
-                .unwrap());
-
-            match result {
-                Ok(s) => explanation += &s,
-                Err(e) => yield Err(e),
-            }
-        }
-
-        let mut event = analytics_event.write().await;
-
-        event
-            .stages
-            .push(Stage::new("explanation", &explanation).with_time(stop_watch.lap()));
-
-        app.track_query(&event);
-    };
-
-    Ok(Sse::new(stream.chain(futures::stream::once(async {
-        Ok(Event::default().data("[DONE]"))
-    }))))
+    Ok(Sse::new({
+        futures::stream::once(async move { Ok(initial_event) })
+            .chain(stream)
+            .chain(futures::stream::once(async {
+                Ok(Event::default().data("[DONE]"))
+            }))
+    }))
 }
 
 // grow the text of this snippet by `size` and return the new text
