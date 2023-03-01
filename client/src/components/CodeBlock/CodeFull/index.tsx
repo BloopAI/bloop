@@ -283,7 +283,11 @@ const CodeFull = ({
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key === 'a' &&
+        (event.target as HTMLElement)?.tagName !== 'INPUT'
+      ) {
         // Prevent the default action (i.e. selecting all text in the browser)
         event.preventDefault();
         setCurrentSelection([
