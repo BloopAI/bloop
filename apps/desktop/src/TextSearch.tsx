@@ -4,8 +4,8 @@ import {
   HIGHLIGHT_CLASSNAME,
   markNode,
   unmark,
-} from '@bloop/client/src/utils/textSearch';
-import SearchOnPage from '@bloop/client/src/components/SearchOnPage';
+} from '../../../client/src/utils/textSearch';
+import SearchOnPage from '../../../client/src/components/SearchOnPage';
 
 const TextSearch = ({
   contentRoot,

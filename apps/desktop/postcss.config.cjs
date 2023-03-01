@@ -1,1 +1,6 @@
-module.exports = require('@bloop/client/postcss');
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}

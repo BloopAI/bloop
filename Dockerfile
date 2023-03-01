@@ -6,15 +6,12 @@ ARG ANALYTICS_DATA_PLANE_URL
 ARG SENTRY_DSN_FE
 
 WORKDIR /build
-RUN npm install -g pnpm && \
-    pnpm -g config set store-dir /tmp/pnpm-store && \
-    pnpm -g config set global-dir /tmp/pnpm-store/global
-COPY pnpm-lock.yaml ./
-RUN pnpm fetch
+COPY package.json package-lock.json ./
+RUN npm ci --legacy-peer-deps
 COPY apps/ apps
 COPY client/ client
-COPY package.json pnpm-workspace.yaml playwright.config.js .
-RUN pnpm install -r --offline && pnpm run build-web
+COPY playwright.config.js .
+RUN npm run build-web
 
 FROM rust:slim as builder
 WORKDIR /build

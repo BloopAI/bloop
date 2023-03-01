@@ -125,17 +125,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - uses: pnpm/action-setup@v2.2.4
-        with:
-          version: 7.14.0
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 16
-          cache: "pnpm"
+          cache: "npm"
 
       - name: Install app dependencies
-        run: pnpm install
+        run: npm ci --legacy-peer-deps
 
       - uses: Swatinem/rust-cache@v2
         with:

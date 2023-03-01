@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-const basicConfig = require("@bloop/client/tailwind.config");
+const basicConfig = require("../../client/tailwind.config.cjs");
 
 module.exports = {
   ...basicConfig,
