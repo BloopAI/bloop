@@ -28,7 +28,7 @@ use crate::{
 use anyhow::{anyhow, bail, Result};
 use axum::extract::FromRef;
 
-use dashmap::DashMap;
+use dashmap::{mapref::entry::Entry, DashMap};
 use once_cell::sync::OnceCell;
 
 use std::{path::Path, sync::Arc};
@@ -73,6 +73,7 @@ pub struct Application {
     indexes: Arc<Indexes>,
     credentials: Arc<DashMap<Backend, BackendCredential>>,
     cookie_key: axum_extra::extract::cookie::Key,
+    prior_conversational_store: Arc<DashMap<String, Vec<String>>>,
 }
 
 impl Application {
@@ -122,6 +123,8 @@ impl Application {
             env
         };
 
+        let prior_conversational_store = Arc::new(DashMap::new());
+
         Ok(Self {
             indexes: Arc::new(Indexes::new(config.clone(), semantic.clone())?),
             credentials: Arc::new(config.source.initialize_credentials()?),
@@ -131,6 +134,7 @@ impl Application {
             semantic,
             config,
             env,
+            prior_conversational_store,
         })
     }
 
@@ -239,6 +243,35 @@ impl Application {
     //
     pub(crate) fn write_index(&self) -> background::IndexWriter {
         background::IndexWriter(self.clone())
+    }
+
+    // dummy conversational store (we'll want to move this to the frontend)
+
+    /// This gets the prior conversation. Be sure to drop the borrow before calling
+    /// [`add_conversation_entry`], lest we deadlock.
+    pub fn with_prior_conversation<T>(
+        &self,
+        user_id: &str,
+        f: impl Fn(&[String]) -> T,
+    ) -> Option<T> {
+        self.prior_conversational_store
+            .get(user_id)
+            .map(|r| f(&r.value()[..]))
+    }
+
+    /// add a new conversation entry to the store
+    pub fn add_conversation_entry(&self, user_id: String, query: String) {
+        match self.prior_conversational_store.entry(user_id) {
+            Entry::Occupied(mut o) => o.get_mut().push(query),
+            Entry::Vacant(v) => {
+                v.insert(vec![query]);
+            }
+        }
+    }
+
+    /// clear the conversation history for a user
+    pub fn purge_prior_conversation(&self, user_id: &str) {
+        self.prior_conversational_store.remove(user_id);
     }
 }
 

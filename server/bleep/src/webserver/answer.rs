@@ -151,6 +151,14 @@ pub(super) async fn handle(
     response
 }
 
+fn parse_query(query: &str) -> Result<String, Error> {
+    Ok(parser::parse_nl(query)
+        .map_err(Error::user)?
+        .target()
+        .ok_or_else(|| Error::user("empty search"))?
+        .to_string())
+}
+
 async fn _handle(
     state: &AnswerState,
     params: Params,
@@ -158,6 +166,7 @@ async fn _handle(
     event: Arc<RwLock<QueryEvent>>,
 ) -> Result<impl IntoResponse> {
     let query_id = uuid::Uuid::new_v4();
+    let user_id = &params.user_id;
     let mut stop_watch = StopWatch::start();
 
     let semantic = app
@@ -176,53 +185,136 @@ async fn _handle(
         .push(Stage::new("user query", &params.q).with_time(stop_watch.lap()));
 
     // Parse the query for search filters
-    let parsed_query = parser::parse_nl(&params.q).map_err(Error::user)?;
-    let query = parsed_query
-        .target()
-        .ok_or_else(|| Error::user("missing search target"))?;
+    let mut query = parse_query(&params.q)?;
 
-    let all_snippets: Vec<Snippet> = semantic
-        .search(&parsed_query, 4 * SNIPPET_COUNT as u64) // heuristic
-        .await
-        .map_err(Error::internal)?
-        .into_iter()
-        .map(|r| {
-            use qdrant_client::qdrant::{value::Kind, Value};
+    // we keep the borrow on the store short to avoid contention
+    // TODO: Add a maximum of prior history entries (e.g. 20)
+    let rephrase_query: Option<String> = app.with_prior_conversation(
+        user_id,
+        // check how much history we can afford to create up to the token limit
+        |history| {
+            let n = history.len().saturating_sub(20);
+            build_rephrase_query_prompt(&query, &history[n..])
+        },
+    );
 
-            // TODO: Can we merge with webserver/semantic.rs:L63?
-            fn value_to_string(value: Value) -> String {
-                match value.kind.unwrap() {
-                    Kind::StringValue(s) => s,
-                    _ => panic!("got non-string value"),
+    let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
+        let Some(cred) = app.credentials.get(&Backend::Github) else {
+            return Err(Error::user(
+                "missing Github token",
+            ).with_status(StatusCode::UNAUTHORIZED));
+        };
+
+        match &*cred {
+            BackendCredential::Github(remotes::github::Auth::OAuth {
+                access_token: token,
+                ..
+            }) => Some(token.expose_secret().clone()),
+
+            BackendCredential::Github(remotes::github::Auth::App { .. }) => {
+                return Err(
+                    Error::user("cannot connect to answer API using installation token")
+                        .with_status(StatusCode::UNAUTHORIZED),
+                )
+            }
+        }
+    } else {
+        None
+    };
+
+    let answer_api_client = semantic.build_answer_api_client(
+        state,
+        format!("{}/q", app.config.answer_api_url).as_str(),
+        &query,
+        5,
+        answer_bearer.clone(),
+    );
+
+    let (rephrased_query, info_text);
+    if let Some(q) = rephrase_query {
+        info_text = None;
+        rephrased_query = answer_api_client
+            //TODO: Gabe: Fix this to anthropic
+            .send_until_success(&q, 2000, 0.0, api::Provider::OpenAi)
+            .await
+            .map_err(|e| {
+                sentry::capture_message(
+                    format!("answer-api failed to respond: {e}").as_str(),
+                    sentry::Level::Error,
+                );
+                Error::new(ErrorKind::UpstreamService, e.to_string())
+            })?;
+        query = parse_query(&rephrased_query)?;
+    } else {
+        // select action
+        let response = answer_api_client
+            .send_until_success(
+                &build_action_selection_prompt(&query),
+                2000,
+                0.0,
+                //TODO: @gabe get this to work with Anthropic
+                api::Provider::OpenAi,
+            )
+            .await
+            .map_err(|e| {
+                sentry::capture_message(
+                    format!("answer-api failed to respond: {e}").as_str(),
+                    sentry::Level::Error,
+                );
+                Error::new(ErrorKind::UpstreamService, e.to_string())
+            })?;
+        info!("action selection response {response}");
+        info_text = (response.trim() != "0").then_some(response);
+    };
+
+    let all_snippets: Vec<Snippet> = if info_text.is_some() {
+        Vec::new() // no need to fetch snippets
+    } else {
+        semantic
+            .search(
+                &parser::parse_nl(&params.q).map_err(Error::user)?,
+                4 * SNIPPET_COUNT as u64,
+            ) // heuristic
+            .await
+            .map_err(Error::internal)?
+            .into_iter()
+            .map(|r| {
+                use qdrant_client::qdrant::{value::Kind, Value};
+
+                // TODO: Can we merge with webserver/semantic.rs:L63?
+                fn value_to_string(value: Value) -> String {
+                    match value.kind.unwrap() {
+                        Kind::StringValue(s) => s,
+                        _ => panic!("got non-string value"),
+                    }
                 }
-            }
 
-            let mut s = r.payload;
+                let mut s = r.payload;
 
-            Snippet {
-                lang: value_to_string(s.remove("lang").unwrap()),
-                repo_name: value_to_string(s.remove("repo_name").unwrap()),
-                repo_ref: value_to_string(s.remove("repo_ref").unwrap()),
-                relative_path: value_to_string(s.remove("relative_path").unwrap()),
-                text: value_to_string(s.remove("snippet").unwrap()),
+                Snippet {
+                    lang: value_to_string(s.remove("lang").unwrap()),
+                    repo_name: value_to_string(s.remove("repo_name").unwrap()),
+                    repo_ref: value_to_string(s.remove("repo_ref").unwrap()),
+                    relative_path: value_to_string(s.remove("relative_path").unwrap()),
+                    text: value_to_string(s.remove("snippet").unwrap()),
 
-                start_line: value_to_string(s.remove("start_line").unwrap())
-                    .parse::<usize>()
-                    .unwrap(),
-                end_line: value_to_string(s.remove("end_line").unwrap())
-                    .parse::<usize>()
-                    .unwrap(),
-                start_byte: value_to_string(s.remove("start_byte").unwrap())
-                    .parse::<usize>()
-                    .unwrap(),
-                end_byte: value_to_string(s.remove("end_byte").unwrap())
-                    .parse::<usize>()
-                    .unwrap(),
-                score: r.score,
-            }
-        })
-        .collect();
-
+                    start_line: value_to_string(s.remove("start_line").unwrap())
+                        .parse::<usize>()
+                        .unwrap(),
+                    end_line: value_to_string(s.remove("end_line").unwrap())
+                        .parse::<usize>()
+                        .unwrap(),
+                    start_byte: value_to_string(s.remove("start_byte").unwrap())
+                        .parse::<usize>()
+                        .unwrap(),
+                    end_byte: value_to_string(s.remove("end_byte").unwrap())
+                        .parse::<usize>()
+                        .unwrap(),
+                    score: r.score,
+                }
+            })
+            .collect()
+    };
     analytics_event
         .stages
         .push(Stage::new("semantic results", &all_snippets).with_time(stop_watch.lap()));
@@ -264,167 +356,150 @@ async fn _handle(
         }
     }
 
-    analytics_event
-        .stages
-        .push(Stage::new("filtered semantic results", &snippets).with_time(stop_watch.lap()));
+    let mut snippet_explanation = None;
+    let mut initial_event = Event::default();
+    if info_text.is_none() {
+        app.add_conversation_entry(params.user_id.clone(), query.to_string());
+        analytics_event
+            .stages
+            .push(Stage::new("filtered semantic results", &snippets).with_time(stop_watch.lap()));
 
-    if snippets.is_empty() {
-        warn!("Semantic search returned no snippets");
-        return Err(Error::internal("semantic search returned no snippets"));
-    } else {
-        info!("Semantic search returned {} snippets", snippets.len());
-    }
+        if snippets.is_empty() {
+            warn!("Semantic search returned no snippets");
+            Err(Error::user("No code found."))?;
+        } else {
+            info!("Semantic search returned {} snippets", snippets.len());
+        }
 
-    let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
-        let Some(cred) = app.credentials.get(&Backend::Github) else {
-            return Err(Error::user(
-                "missing Github token",
-            ).with_status(StatusCode::UNAUTHORIZED));
+        let select_prompt = answer_api_client.build_select_prompt(&snippets);
+
+        analytics_event
+            .stages
+            .push(Stage::new("select prompt", &select_prompt).with_time(stop_watch.lap()));
+
+        let relevant_snippet_index = answer_api_client
+            .select_snippet(&select_prompt)
+            .await?
+            .trim()
+            .to_string()
+            .clone();
+
+        info!("Relevant snippet index: {}", &relevant_snippet_index);
+
+        let mut relevant_snippet_index = relevant_snippet_index
+            .parse::<usize>()
+            .map_err(Error::internal)?;
+
+        analytics_event.stages.push(
+            Stage::new("relevant snippet index", &relevant_snippet_index)
+                .with_time(stop_watch.lap()),
+        );
+
+        if relevant_snippet_index == 0 {
+            return Err(Error::internal(
+                "None of the snippets help answer the question",
+            ));
+        }
+
+        relevant_snippet_index -= 1; // return to 0-indexing
+        let relevant_snippet = snippets
+            .get(relevant_snippet_index)
+            .ok_or_else(|| Error::internal("answer-api returned out-of-bounds index"))?;
+
+        // grow the snippet by 60 lines above and below, we have sufficient space
+        // to grow this snippet by 10 times its original size (15 to 150)
+        let processed_snippet = {
+            let repo_ref = &relevant_snippet
+                .repo_ref
+                .parse::<RepoRef>()
+                .map_err(Error::internal)?;
+            let doc = app
+                .indexes
+                .file
+                .by_path(repo_ref, &relevant_snippet.relative_path)
+                .await
+                .map_err(Error::internal)?;
+
+            let mut grow_size = 40;
+            let grown_text = loop {
+                let grown_text = grow(&doc, relevant_snippet, grow_size);
+                let token_count = semantic.gpt2_token_count(&grown_text);
+                info!(%grow_size, %token_count, "growing ...");
+                if token_count > 2000 || grow_size > 100 {
+                    break grown_text;
+                } else {
+                    grow_size += 10;
+                }
+            };
+            Snippet {
+                lang: relevant_snippet.lang.clone(),
+                repo_name: relevant_snippet.repo_name.clone(),
+                repo_ref: relevant_snippet.repo_ref.clone(),
+                relative_path: relevant_snippet.relative_path.clone(),
+                text: grown_text,
+                start_line: relevant_snippet.start_line,
+                end_line: relevant_snippet.end_line,
+                start_byte: relevant_snippet.start_byte,
+                end_byte: relevant_snippet.end_byte,
+                score: relevant_snippet.score,
+            }
         };
 
-        match &*cred {
-            BackendCredential::Github(remotes::github::Auth::OAuth {
-                access_token: token,
-                ..
-            }) => Some(token.expose_secret().clone()),
+        // reorder snippets
+        snippets.swap(relevant_snippet_index, 0);
 
-            BackendCredential::Github(remotes::github::Auth::App { .. }) => {
-                return Err(
-                    Error::user("cannot connect to answer API using installation token")
-                        .with_status(StatusCode::UNAUTHORIZED),
-                )
-            }
-        }
-    } else {
-        None
-    };
+        // answering snippet is always at index 0
+        let answer_path = snippets.get(0).unwrap().relative_path.to_string();
 
-    let answer_api_client = semantic.build_answer_api_client(
-        state,
-        format!("{}/q", app.config.answer_api_url).as_str(),
-        query,
-        5,
-        answer_bearer.clone(),
-    );
-
-    let select_prompt = answer_api_client.build_select_prompt(&snippets);
-
-    analytics_event
-        .stages
-        .push(Stage::new("select prompt", &select_prompt).with_time(stop_watch.lap()));
-
-    let relevant_snippet_index = answer_api_client
-        .select_snippet(&select_prompt)
-        .await?
-        .trim()
-        .to_string()
-        .clone();
-
-    info!("Relevant snippet index: {}", &relevant_snippet_index);
-
-    let mut relevant_snippet_index = relevant_snippet_index
-        .parse::<usize>()
-        .map_err(Error::internal)?;
-
-    analytics_event.stages.push(
-        Stage::new("relevant snippet index", &relevant_snippet_index).with_time(stop_watch.lap()),
-    );
-
-    if relevant_snippet_index == 0 {
-        return Err(Error::internal(
-            "None of the snippets help answer the question",
-        ));
-    }
-
-    relevant_snippet_index -= 1; // return to 0-indexing
-    let relevant_snippet = snippets
-        .get(relevant_snippet_index)
-        .ok_or_else(|| Error::internal("answer-api returned out-of-bounds index"))?;
-
-    // grow the snippet by 60 lines above and below, we have sufficient space
-    // to grow this snippet by 10 times its original size (15 to 150)
-    let processed_snippet = {
-        let repo_ref = &relevant_snippet
-            .repo_ref
-            .parse::<RepoRef>()
+        initial_event = initial_event
+            .json_data(super::Response::<'static>::from(AnswerResponse {
+                snippets: snippets.clone(),
+                query_id,
+                user_id: params.user_id.clone(),
+                answer_path,
+            }))
             .map_err(Error::internal)?;
-        let doc = app
-            .indexes
-            .file
-            .by_path(repo_ref, &relevant_snippet.relative_path)
+
+        let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
+
+        analytics_event
+            .stages
+            .push(Stage::new("explain prompt", &explain_prompt).with_time(stop_watch.lap()));
+
+        let explanation = answer_api_client
+            .explain_snippet(&explain_prompt)
             .await
-            .map_err(Error::internal)?;
+            .map_err(Error::internal)
+            .map(Box::pin)?;
+        snippet_explanation = Some(explanation);
 
-        let mut grow_size = 40;
-        let grown_text = loop {
-            let grown_text = grow(&doc, relevant_snippet, grow_size);
-            let token_count = semantic.gpt2_token_count(&grown_text);
-            info!(%grow_size, %token_count, "growing ...");
-            if token_count > 2000 || grow_size > 100 {
-                break grown_text;
-            } else {
-                grow_size += 10;
-            }
-        };
-        Snippet {
-            lang: relevant_snippet.lang.clone(),
-            repo_name: relevant_snippet.repo_name.clone(),
-            repo_ref: relevant_snippet.repo_ref.clone(),
-            relative_path: relevant_snippet.relative_path.clone(),
-            text: grown_text,
-            start_line: relevant_snippet.start_line,
-            end_line: relevant_snippet.end_line,
-            start_byte: relevant_snippet.start_byte,
-            end_byte: relevant_snippet.end_byte,
-            score: relevant_snippet.score,
-        }
-    };
-
-    // reorder snippets
-    snippets.swap(relevant_snippet_index, 0);
-
-    // answering snippet is always at index 0
-    let answer_path = snippets.get(0).unwrap().relative_path.to_string();
-
-    let initial_event = Event::default()
-        .json_data(super::Response::<'static>::from(AnswerResponse {
-            snippets: snippets.clone(),
-            query_id,
-            user_id: params.user_id.clone(),
-            answer_path,
-        }))
-        .map_err(Error::internal)?;
-
-    let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
-
-    analytics_event
-        .stages
-        .push(Stage::new("explain prompt", &explain_prompt).with_time(stop_watch.lap()));
-
-    let mut snippet_explanation = answer_api_client
-        .explain_snippet(&explain_prompt)
-        .await
-        .map_err(Error::internal)
-        .map(Box::pin)?;
-
-    drop(analytics_event);
+        drop(analytics_event);
+    }
 
     let analytics_event = Arc::clone(&event);
     let stream = async_stream::stream! {
-        yield Ok(initial_event);
 
-        let mut explanation = String::new();
-        while let Some(result) = snippet_explanation.next().await {
-            yield Ok(Event::default()
-                .json_data(result.as_ref().map_err(|e| e.to_string()))
-                .unwrap());
+        let explanation = if let Some(text) = info_text {
+            // unwrapping should be OK here because we're only doing plain string to JSON
+            yield Ok(initial_event.json_data(&text).unwrap());
+            text
+        } else if let Some(mut explanation) = snippet_explanation {
+            yield Ok(initial_event);
+            let mut expl = String::new();
+            while let Some(result) = explanation.next().await {
+                yield Ok(Event::default()
+                    .json_data(result.as_ref().map_err(|e| e.to_string()))
+                    .unwrap());
 
-            match result {
-                Ok(s) => explanation += &s,
-                Err(e) => yield Err(e),
+                match result {
+                    Ok(s) => expl += &s,
+                    Err(e) => yield Err(e),
+                }
             }
-        }
-
+            expl
+        } else {
+            panic!("Either an info or a snippet explanation must be present")
+        };
         let mut event = analytics_event.write().await;
 
         event
@@ -683,6 +758,92 @@ Answer:",
         self.send(prompt, max_tokens as u32, 0.0, api::Provider::Anthropic)
             .await
     }
+}
+
+fn build_rephrase_query_prompt(query: &str, history: &[String]) -> String {
+    debug_assert!(!history.is_empty());
+    let history = history.join(", ");
+    format!(
+        r#"You are a customer support agent called bloop. Given a question and an optional conversational history, extract a standalone question. IGNORE any information in the conversational history which is not relevant to the question. \
+H: []
+Q: Hey bloop, do we pin js version numbers?
+A: do we pin js version numbers?
+
+H: []
+Q: Hey bloop, I have a question - Where do we test if GitHub login works?
+A: Where do we test if GitHub login works?
+
+H: []
+Q: What's the best way to update the search icon @bloop?
+A: What's the best way to update the search icon?
+
+H: [Where do we test if GitHub login works?]
+Q: No that's not a unit test
+A: Where is a unit test for GitHub login?
+
+H: [Where do we test if GitHub login works?, No that's not a unit test]
+Q: With Jest
+A: Where is there a Jest test for GitHub login?
+
+H: [I love bananas, Where do we test if GitHub login works?, No that's not a unit test]
+Q: With Jest
+A: Where is there a Jest test for GitHub login?
+
+{DELIMITER}
+
+H: [{history}]
+Q: {query}
+A:`"#
+    )
+}
+
+fn build_action_selection_prompt(query: &str) -> String {
+    format!(
+        r#""You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.
+- bloop works by searching your codebase for relevant files using proprietary trained models, and leverages the power of GPT to provide rich explanations.
+- The company behind bloop is a startup founded in 2021, based in Farringdon, London. They are a Y Combinator company.
+- bloop cannot answer questions unrelated to your codebase.
+- bloop does not have feelings or opinions.
+- Further information about bloop can be found on the website https://bloop.ai
+Categories to choose from:
+(1) If the query is about the codebase or product reply with 0. Your answer MUST be the single integer 0.
+(2) If the query is about the bloop support agent, answer the query in the first person in a polite and helpful way using only the information above. Your response should be a couple of sentences at the most.
+(3) If the query is an introduction or welcome message respond to the user by introducing yourself in the first person, in a polite and helpful way using only the information above. Your response should be a couple of sentences at the most.
+(4) If the query is something else explain that you can't answer it in a polite and helpful way. Suggest that the user asks a technical question about the codebase, or tries asking their question again in a different way. Your response should be a couple of sentences at the most. Do NOT answer the question.
+For example:
+Human: Hey bloop, do we pin js version numbers?
+Assistant: 0
+Human: When's your birthday @bloop?
+Assistant: I do not know my birthday. The company that started bloop is a startup founded in 2021, based in Farringdon, London.
+Human: What color are avocados?
+Assistant: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
+Human: Where do we test if GitHub login works?
+Assistant: 0
+Human: How do we balance eggs on a spoon?
+Assistant: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
+Human: What is bloop?
+Assistant: bloop is a AI agent designed to help developers with many tasks. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.
+Human: Introduce yourself.
+Assistant: It's great to meet you! I'm an AI agent, here to help you find code from your codebase and ship to production faster.
+Human: It's great to meet you.
+Assistant: Nice to meet you too! I'm looking forward to helping you with your everyday tasks and menial work!
+Human: How does bloop work?
+Assistant: bloop works by searching your codebase for relevant files using proprietary trained models, and leverages the power of GPT to provide rich explanations.
+Human: Where do we check if Kafka is running?
+Assistant: 0
+Human: Which investors have invested in bloop?
+Assistant: Y Combinator has invested in bloop.
+Human: fshkfjjf
+Assistant: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
+Human: What's the best way to update the search icon @bloop?
+Assistant: 0
+Human: Hey bloop, I have a question - Where do we test if GitHub login works?
+Assistant: 0
+{DELIMITER}
+Human: {}
+Assistant:"#,
+        query,
+    )
 }
 
 // Measure time between instants statefully
