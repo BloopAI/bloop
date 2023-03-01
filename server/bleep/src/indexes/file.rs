@@ -257,7 +257,12 @@ impl Indexable for File {
             // Preliminarily ignore files that are very large, without reading the contents.
             .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
             .filter_map(|de| crate::canonicalize(de.into_path()).ok())
-            .filter(|p| should_index(&p.strip_prefix(&repo.disk_path).unwrap()))
+            .filter(|p| {
+                p.strip_prefix(&repo.disk_path)
+                    .as_ref()
+                    .map(should_index)
+                    .unwrap_or_default()
+            })
             .collect::<Vec<PathBuf>>();
 
         let start = std::time::Instant::now();
