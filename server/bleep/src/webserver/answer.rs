@@ -1,5 +1,7 @@
+#![allow(unused)]
 use std::{
     collections::HashMap,
+    convert,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -47,6 +49,7 @@ pub mod api {
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
         pub provider: Provider,
+        pub extra_stop_sequences: Vec<String>,
     }
 
     #[derive(thiserror::Error, Debug, Deserialize)]
@@ -87,7 +90,7 @@ fn default_user_id() -> String {
     String::from("test_user")
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
     pub q: String,
     #[serde(default = "default_limit")]
@@ -100,8 +103,13 @@ pub struct Params {
 pub struct AnswerResponse {
     pub user_id: String,
     pub query_id: uuid::Uuid,
-    pub snippets: Vec<Snippet>,
-    pub answer_path: Option<String>,
+    pub snippets: Option<AnswerSnippets>,
+}
+
+#[derive(serde::Serialize, ToSchema, Debug)]
+pub struct AnswerSnippets {
+    pub matches: Vec<Snippet>,
+    pub answer_path: String,
 }
 
 impl From<AnswerResponse> for super::Response<'static> {
@@ -159,40 +167,64 @@ pub(super) async fn handle(
     response
 }
 
-async fn _handle(
-    state: &AnswerState,
-    params: Params,
-    app: Application,
-    event: Arc<RwLock<QueryEvent>>,
-) -> Result<impl IntoResponse> {
-    let query_id = uuid::Uuid::new_v4();
-    let mut stop_watch = StopWatch::start();
-
-    info!("Raw query: {:?}", &params.q);
-
-    let semantic = app
-        .semantic
-        .clone()
-        .ok_or_else(|| Error::new(ErrorKind::Configuration, "Qdrant not configured"))?;
-
-    let mut analytics_event = event.write().await;
-
-    analytics_event.user_id = params.user_id.clone();
-    analytics_event.query_id = query_id;
-    analytics_event.overlap_strategy = semantic.overlap_strategy();
-
-    analytics_event
-        .stages
-        .push(Stage::new("user query", &params.q).with_time(stop_watch.lap()));
-
-    // Parse the query for search filters
-    let parsed_query = parser::parse_nl(&params.q).map_err(Error::user)?;
-    let query = parsed_query
+fn parse_query(query: &str) -> Result<String, Error> {
+    Ok(parser::parse_nl(query)
+        .map_err(Error::user)?
         .target()
-        .ok_or_else(|| Error::user("missing search target"))?;
+        .ok_or_else(|| Error::user("empty search"))?
+        .to_string())
+}
 
+const MAX_HISTORY: usize = 7;
+
+enum AnswerProgress {
+    // Need to get info
+    GetInfo,
+    // Need to rephrase the query. The contained string is the prompt for rephrasing
+    Rephrase(String),
+    // Got a query to search
+    Search(String),
+    // Explain the results
+    Explain(String),
+}
+
+impl AnswerProgress {
+    fn to_stage(&self, stop_watch: &mut StopWatch, snippets: Option<&[Snippet]>) -> Stage {
+        match self {
+            AnswerProgress::GetInfo => Stage::new("get_info", ""),
+            AnswerProgress::Rephrase(s) => Stage::new("rephrase", s),
+            AnswerProgress::Search(_) => Stage::new("search", snippets),
+            AnswerProgress::Explain(expl) => Stage::new("explain", expl),
+        }
+        .with_time(stop_watch.lap())
+    }
+}
+
+fn build_rephrase_query_prompt_with_context(
+    query: &str,
+    user_id: &str,
+    app: &Application,
+) -> Option<String> {
+    app.with_prior_conversation(
+        user_id,
+        // check how much history we can afford to create up to the token limit
+        |history| {
+            if history.is_empty() {
+                None
+            } else {
+                let n = history.len().saturating_sub(MAX_HISTORY);
+                Some(build_rephrase_query_prompt(query, &history[n..]))
+            }
+        },
+    )
+}
+
+async fn search_snippets(semantic: &Semantic, query: &str) -> Result<Vec<Snippet>, Error> {
     let all_snippets: Vec<Snippet> = semantic
-        .search(&parsed_query, 4 * SNIPPET_COUNT as u64) // heuristic
+        .search(
+            &parser::parse_nl(query).map_err(Error::user)?,
+            4 * SNIPPET_COUNT as u64,
+        ) // heuristic
         .await
         .map_err(Error::internal)?
         .into_iter()
@@ -232,15 +264,10 @@ async fn _handle(
             }
         })
         .collect();
-
-    analytics_event
-        .stages
-        .push(Stage::new("semantic results", &all_snippets).with_time(stop_watch.lap()));
-
-    let mut snippets = vec![];
+    let mut snippets = Vec::new();
     let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
 
-    for snippet in all_snippets.clone().into_iter() {
+    for snippet in all_snippets.into_iter() {
         if snippets.len() > SNIPPET_COUNT {
             break;
         }
@@ -273,17 +300,80 @@ async fn _handle(
             }
         }
     }
+    Ok(snippets)
+}
 
-    analytics_event
-        .stages
-        .push(Stage::new("filtered semantic results", &snippets).with_time(stop_watch.lap()));
+// we use this internally to check whether the first token (skipping whitespace) is a
+// number or something else
+enum FirstToken {
+    Number(usize),
+    Other(String),
+    None,
+}
 
-    if snippets.is_empty() {
-        warn!("Semantic search returned no snippets");
-        return Err(Error::internal("semantic search returned no snippets"));
-    } else {
-        info!("Semantic search returned {} snippets", snippets.len());
-    }
+async fn grow_snippet(
+    relevant_snippet: &Snippet,
+    semantic: &Semantic,
+    app: &Application,
+) -> Result<Snippet, Error> {
+    // grow the snippet by 60 lines above and below, we have sufficient space
+    // to grow this snippet by 10 times its original size (15 to 150)
+    let repo_ref = &relevant_snippet
+        .repo_ref
+        .parse::<RepoRef>()
+        .map_err(Error::internal)?;
+
+    let doc = app
+        .indexes
+        .file
+        .by_path(repo_ref, &relevant_snippet.relative_path)
+        .await
+        .map_err(Error::internal)?;
+
+    let mut grow_size = 40;
+    let grown_text = loop {
+        if let Some(grown_text) = grow(&doc, relevant_snippet, grow_size) {
+            let token_count = semantic.gpt2_token_count(&grown_text);
+            info!(%grow_size, %token_count, "growing ...");
+            if token_count > 2000 || grow_size > 100 {
+                break grown_text;
+            } else {
+                grow_size += 10;
+            }
+        } else {
+            break relevant_snippet.text.clone();
+        }
+    };
+
+    Ok(Snippet {
+        lang: relevant_snippet.lang.clone(),
+        repo_name: relevant_snippet.repo_name.clone(),
+        repo_ref: relevant_snippet.repo_ref.clone(),
+        relative_path: relevant_snippet.relative_path.clone(),
+        text: grown_text,
+        start_line: relevant_snippet.start_line,
+        end_line: relevant_snippet.end_line,
+        start_byte: relevant_snippet.start_byte,
+        end_byte: relevant_snippet.end_byte,
+        score: relevant_snippet.score,
+    })
+}
+
+async fn handle_inner(
+    state: &AnswerState,
+    params: Arc<Params>,
+    app: Arc<Application>,
+    event: Arc<RwLock<QueryEvent>>,
+    mut stop_watch: StopWatch,
+) -> Result<(
+    Option<Vec<Snippet>>,
+    StopWatch,
+    String,
+    impl Stream<Item = Result<String, AnswerAPIError>>,
+)> {
+    let query = parse_query(&params.q)?;
+    let user_id = &params.user_id;
+    let mut snippets = None;
 
     let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
         let Some(cred) = app.credentials.get(&Backend::Github) else {
@@ -309,156 +399,231 @@ async fn _handle(
         None
     };
 
+    let semantic = app
+        .semantic
+        .clone()
+        .ok_or_else(|| Error::new(ErrorKind::Configuration, "Qdrant not configured"))?;
+
     let answer_api_client = semantic.build_answer_api_client(
         state,
         format!("{}/q", app.config.answer_api_url).as_str(),
-        query,
+        &query,
         5,
         answer_bearer.clone(),
     );
 
-    let select_prompt = answer_api_client.build_select_prompt(&snippets);
+    let mut progress = build_rephrase_query_prompt_with_context(&query, user_id, &app)
+        .map(AnswerProgress::Rephrase)
+        .unwrap_or(AnswerProgress::GetInfo);
 
-    analytics_event
+    event
+        .write()
+        .await
         .stages
-        .push(Stage::new("select prompt", &select_prompt).with_time(stop_watch.lap()));
+        .push(Stage::new("start", &query).with_time(stop_watch.lap()));
 
-    let relevant_snippet_index = answer_api_client
-        .select_snippet(&select_prompt)
-        .await?
-        .trim()
-        .to_string()
-        .clone();
+    loop {
+        // Here we ask anthropic for either action selection, rephrasing or explanation
+        // (depending on `progress`)
+        let stream_params = match &progress {
+            AnswerProgress::GetInfo => (
+                build_action_selection_prompt(&query),
+                100,
+                0.0,
+                vec!["</response>".into()],
+            ),
+            AnswerProgress::Rephrase(prompt) => {
+                let prompt = build_rephrase_query_prompt_with_context(prompt, user_id, &app)
+                    .unwrap_or_else(|| build_rephrase_query_prompt(prompt, &[]));
 
-    info!("Relevant snippet index: {}", &relevant_snippet_index);
+                (prompt, 100, 0.0, vec!["</question>".into()])
+            }
+            AnswerProgress::Search(prompt) => {
+                let s = search_snippets(&semantic, prompt).await?;
 
-    let mut relevant_snippet_index = relevant_snippet_index
-        .parse::<usize>()
-        .map_err(Error::internal)?;
+                // though we only need one token for the selection, we may get
+                // an apology for not finding a suitable one instead
+                let prompt = answer_api_client.build_select_prompt(&s);
+                snippets = Some(s);
+                (prompt, 100, 0.0, Vec::new())
+            }
+            AnswerProgress::Explain(query) => {
+                let prompt = if let Some(snippet) = snippets.as_ref().unwrap().first() {
+                    let grown = grow_snippet(snippet, &semantic, &app).await?;
 
-    analytics_event.stages.push(
-        Stage::new("relevant snippet index", relevant_snippet_index).with_time(stop_watch.lap()),
-    );
-
-    let (answer_path, stream) = if relevant_snippet_index > 0 {
-        relevant_snippet_index -= 1; // return to 0-indexing
-        let relevant_snippet = snippets
-            .get(relevant_snippet_index)
-            .ok_or_else(|| Error::internal("answer-api returned out-of-bounds index"))?;
-
-        // grow the snippet by 60 lines above and below, we have sufficient space
-        // to grow this snippet by 10 times its original size (15 to 150)
-
-        let repo_ref = &relevant_snippet
-            .repo_ref
-            .parse::<RepoRef>()
-            .map_err(Error::internal)?;
-        let doc = app
-            .indexes
-            .file
-            .by_path(repo_ref, &relevant_snippet.relative_path)
-            .await
-            .map_err(Error::internal)?;
-
-        let mut grow_size = 40;
-        let grown_text = loop {
-            if let Some(grown_text) = grow(&doc, relevant_snippet, grow_size) {
-                let token_count = semantic.gpt2_token_count(&grown_text);
-                info!(%grow_size, %token_count, "growing ...");
-                if token_count > 2000 || grow_size > 100 {
-                    break grown_text;
+                    app.with_prior_conversation(user_id, |conversation| {
+                        answer_api_client.build_explain_prompt(&grown, conversation, query)
+                    })
                 } else {
-                    grow_size += 10;
-                }
-            } else {
-                break relevant_snippet.text.clone();
-            };
+                    "Apologize for not finding a suitable code snippet, \
+                        while expressing hope that one of the snippets may still be useful"
+                        .to_string()
+                };
+
+                (prompt, 400, 0.0, vec!["</response>".to_owned()])
+            }
         };
 
-        let processed_snippet = Snippet {
-            lang: relevant_snippet.lang.clone(),
-            repo_name: relevant_snippet.repo_name.clone(),
-            repo_ref: relevant_snippet.repo_ref.clone(),
-            relative_path: relevant_snippet.relative_path.clone(),
-            text: grown_text,
-            start_line: relevant_snippet.start_line,
-            end_line: relevant_snippet.end_line,
-            start_byte: relevant_snippet.start_byte,
-            end_byte: relevant_snippet.end_byte,
-            score: relevant_snippet.score,
-        };
+        // This strange extraction of parameters from a tuple is due to lifetime issues. This
+        // function should probably be refactored, but at the time of writing this is left as-is
+        // due to time constraints.
+        let mut stream = Box::pin(
+            answer_api_client
+                .send(
+                    &stream_params.0,
+                    stream_params.1,
+                    stream_params.2,
+                    api::Provider::Anthropic,
+                    stream_params.3,
+                )
+                .await?,
+        );
 
-        // reorder snippets
-        snippets.swap(relevant_snippet_index, 0);
+        if let AnswerProgress::Rephrase(_) = &progress {
+            let rephrased_prompt = stream.try_collect().await?;
+            progress = AnswerProgress::Search(rephrased_prompt);
+            continue;
+        }
 
-        let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
+        let mut collected = FirstToken::None;
+        while let Some(token) = stream.try_next().await? {
+            if let Ok(i) = token.trim().parse::<usize>() {
+                collected = FirstToken::Number(i);
+                break;
+            } else if !token.bytes().all(|b| b.is_ascii_whitespace()) {
+                collected = FirstToken::Other(token);
+                break;
+            }
+        }
 
-        analytics_event
-            .stages
-            .push(Stage::new("explain prompt", &explain_prompt).with_time(stop_watch.lap()));
-
-        let mut snippet_explanation = answer_api_client
-            .explain_snippet(&explain_prompt)
+        event
+            .write()
             .await
-            .map_err(Error::internal)
-            .map(Box::pin)?;
+            .stages
+            .push(progress.to_stage(&mut stop_watch, snippets.as_deref()));
 
-        drop(analytics_event);
-
-        let analytics_event = Arc::clone(&event);
-
-        let stream = async_stream::stream! {
-            let mut explanation = String::new();
-            while let Some(result) = snippet_explanation.next().await {
-                yield Ok(Event::default()
-                    .json_data(result.as_ref().map_err(|e| e.to_string()))
-                    .unwrap());
-
-                match result {
-                    Ok(s) => explanation += &s,
-                    Err(e) => yield Err(e),
+        match collected {
+            FirstToken::Number(n) => {
+                progress = match progress {
+                    AnswerProgress::GetInfo => {
+                        if n == 0 {
+                            AnswerProgress::Rephrase(query.clone())
+                        } else {
+                            return Ok((snippets, stop_watch, n.to_string(), stream));
+                        }
+                    }
+                    AnswerProgress::Search(prompt) => {
+                        let Some(index) = n.checked_sub(1) else {
+                            todo!("handle wrong index");
+                        };
+                        snippets.as_mut().unwrap().swap(index, 0);
+                        AnswerProgress::Explain(prompt)
+                    }
+                    e => e,
                 }
             }
+            FirstToken::Other(token) => {
+                return Ok((snippets, stop_watch, token, stream));
+            }
+            FirstToken::None => {
+                // the stream is empty!?
+                return Err(Error::internal("empty stream"));
+            }
+        }
+    }
+}
 
-            let mut event = analytics_event.write().await;
+async fn _handle(
+    state: &AnswerState,
+    params: Params,
+    app: Application,
+    event: Arc<RwLock<QueryEvent>>,
+) -> Result<impl IntoResponse> {
+    let query_id = uuid::Uuid::new_v4();
 
-            event
-                .stages
-                .push(Stage::new("explanation", &explanation).with_time(stop_watch.lap()));
+    info!("Raw query: {:?}", &params.q);
 
-            app.track_query(&event);
-        };
+    {
+        let mut analytics_event = event.write().await;
+        analytics_event.user_id = params.user_id.clone();
+        analytics_event.query_id = query_id;
+        if let Some(semantic) = app.semantic.as_ref() {
+            analytics_event.overlap_strategy = semantic.overlap_strategy();
+        }
+    }
 
-        // answering snippet is always at index 0
-        let answer_path = snippets.get(0).unwrap().relative_path.to_string();
-
-        (Some(answer_path), stream.left_stream())
-    } else {
-        warn!("None of the snippets help answer the question");
-        (None, futures::stream::empty().right_stream())
-    };
-
+    let mut stop_watch = StopWatch::start();
+    let params = Arc::new(params);
+    let mut app = Arc::new(app);
+    let (snippets, mut stop_watch, first_token, mut text) = handle_inner(
+        state,
+        Arc::clone(&params),
+        Arc::clone(&app),
+        Arc::clone(&event),
+        stop_watch,
+    )
+    .await?;
+    Arc::make_mut(&mut app).add_conversation_entry(params.user_id.clone(), parse_query(&params.q)?);
     let initial_event = Event::default()
         .json_data(super::Response::<'static>::from(AnswerResponse {
-            snippets: snippets.clone(),
             query_id,
             user_id: params.user_id.clone(),
-            answer_path,
+            snippets: snippets.as_ref().map(|matches| AnswerSnippets {
+                matches: matches.clone(),
+                answer_path: matches
+                    .first()
+                    .map(|s| &s.relative_path)
+                    .cloned()
+                    .unwrap_or_default(),
+            }),
         }))
         .map_err(Error::internal)?;
 
-    Ok(Sse::new({
-        futures::stream::once(async move { Ok(initial_event) })
-            .chain(stream)
-            .chain(futures::stream::once(async {
-                Ok(Event::default().data("[DONE]"))
-            }))
-    }))
+    let mut expl = first_token.clone();
+
+    let wrapped_stream = async_stream::stream! {
+        yield Ok(initial_event);
+        yield Ok(Event::default().json_data(Ok::<_, ()>(first_token)).unwrap());
+        while let Some(result) = text.next().await {
+            if let Ok(fragment) = &result {
+                app.extend_conversation_answer(params.user_id.clone(), fragment)
+            }
+            yield Ok(Event::default()
+                .json_data(result.as_ref().map_err(|e| e.to_string()))
+                .unwrap());
+
+            match result {
+                Ok(s) => expl += &s,
+                Err(e) => yield Err(e),
+            }
+        }
+        let mut event = event.write().await;
+        event
+            .stages
+            .push(Stage::new("explanation", &expl).with_time(stop_watch.lap()));
+        app.track_query(&event);
+    };
+
+    Ok(Sse::new(wrapped_stream.chain(futures::stream::once(
+        async { Ok(Event::default().data("[DONE]")) },
+    ))))
 }
 
 // grow the text of this snippet by `size` and return the new text
 fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String> {
     let content = &doc.content;
+
+    // do not grow if this snippet contains incorrect byte ranges
+    if snippet.start_byte >= content.len() || snippet.end_byte >= content.len() {
+        error!(
+            repo = snippet.repo_name,
+            path = snippet.relative_path,
+            start = snippet.start_byte,
+            end = snippet.end_byte,
+            "invalid snippet bounds",
+        );
+        return None;
+    }
 
     // do not grow if this snippet contains incorrect byte ranges
     if snippet.start_byte >= content.len() || snippet.end_byte >= content.len() {
@@ -556,6 +721,7 @@ impl<'s> AnswerAPIClient<'s> {
         max_tokens: u32,
         temperature: f32,
         provider: api::Provider,
+        extra_stop_sequences: Vec<String>,
     ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
         let mut stream = Box::pin(
             reqwest_eventsource::EventSource::new({
@@ -570,6 +736,7 @@ impl<'s> AnswerAPIClient<'s> {
                     max_tokens: Some(max_tokens),
                     temperature: Some(temperature),
                     provider,
+                    extra_stop_sequences,
                 })
             })
             // We don't have a `Stream` body so this can't fail.
@@ -609,10 +776,17 @@ impl<'s> AnswerAPIClient<'s> {
         max_tokens: u32,
         temperature: f32,
         provider: api::Provider,
+        extra_stop_sequences: Vec<String>,
     ) -> Result<String, AnswerAPIError> {
         for attempt in 0..self.max_attempts {
             let result = self
-                .send(prompt, max_tokens, temperature, provider.clone())
+                .send(
+                    prompt,
+                    max_tokens,
+                    temperature,
+                    provider.clone(),
+                    extra_stop_sequences.clone(),
+                )
                 .await?
                 .try_collect::<String>()
                 .await;
@@ -651,7 +825,8 @@ impl<'a> AnswerAPIClient<'a> {
             "Above are {} code snippets separated by \"{DELIMITER}\". \
 Your job is to select the snippet that best answers the question. Reply \
 with a single number indicating the index of the snippet in the list. \
-If none of the snippets are relevant, reply with \"0\". Do NOT return a non-numeric answer.
+If there is any relevant snippet, do NOT return a non-numeric answer.
+If none of the snippets are relevant, return an apology for not being able to decide on a good snippet.
 
 Q:What icon do we use to clear search history?
 Index:3
@@ -667,22 +842,37 @@ Index:",
         prompt
     }
 
-    fn build_explain_prompt(&self, snippet: &Snippet) -> String {
-        let prompt = format!(
-            "You are an AI assistant for a repo. Answer the question using above in a sentence. Do NOT try to make up an answer.
-Question: {}
-=========
-Path: {}
-File: {}
-=========
-Answer:",
-            self.query, snippet.relative_path, snippet.text,
+    fn build_explain_prompt(
+        &self,
+        snippet: &Snippet,
+        conversation: &[(String, String)],
+        query: &str,
+    ) -> String {
+        let mut prompt = format!(
+            "Repo:{} Path:{}\n\
+            =========\n\
+            {}\n\
+            =========\n\
+            Human: You are bloop, an AI assistant for a codebase. Above, you have an extract from a code file. Below you have the last utterances of a conversation with a user (represented inside <conversation></conversation> XML tags). \
+            Use the code file to write a concise, precise answer to the question. Put your response inside XML tags, like this: <response></response>.\n\
+            - ONLY copy code into the answer if it helps answer the question.\n\
+            - Do format your response in GitHub markdown with code blocks annotated with programming language.\n\
+            - Do NOT include code that is not in the file. If the file doesn't contain enough information to answer the question, or you don't know the answer, just say \"Sorry, I'm not sure\".\n\
+            - Do NOT try to make up an answer.\n\
+            - The conversation history can provide context to the user's current question, but sometimes it contains irrelevant information. IGNORE information in the conversation which is irrelevant to the user's current question.\n\
+            <conversation>",
+            snippet.repo_name, snippet.relative_path, snippet.text,
         );
-        prompt
+        for (question, answer) in conversation {
+            prompt.extend(["\nperson: ", question, "\nbloop: ", answer]);
+        }
+        prompt += "\nperson: ";
+        prompt += query;
+        prompt + "\n</conversation>\n<response>"
     }
 
     async fn select_snippet(&self, prompt: &str) -> Result<String> {
-        self.send_until_success(prompt, 1, 0.0, api::Provider::Anthropic)
+        self.send_until_success(prompt, 1, 0.0, api::Provider::Anthropic, Vec::new())
             .await
             .map_err(|e| {
                 sentry::capture_message(
@@ -709,9 +899,160 @@ Answer:",
         // do not let the completion cross 200 tokens
         let max_tokens = max_tokens.clamp(1, 200);
         info!(%max_tokens, "clamping max tokens");
-        self.send(prompt, max_tokens as u32, 0.0, api::Provider::Anthropic)
-            .await
+        self.send(
+            prompt,
+            max_tokens as u32,
+            0.0,
+            api::Provider::Anthropic,
+            Vec::new(),
+        )
+        .await
     }
+}
+
+fn build_rephrase_query_prompt(query: &str, conversation: &[(String, String)]) -> String {
+    let mut prompt =
+        r#"Human: You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. Given a question and an optional conversational history between a person and yourself, (represented inside <conversation></conversation> XML tags), extract a standalone question, if any, from the last turn in the dialogue. Put the question you extract inside XML tags, like this: <question></question>. If there is no question, write "N/A" instead.
+
+IGNORE any information in the conversational history which is not relevant to the question
+Absolutely, positively do NOT answer the question
+Rephrase the question into a standalone question
+Your rephrased question should be short and should contain relevant keywords
+
+<conversation>
+Person: Hey bloop, do we pin js version numbers?
+</conversation>
+Assistant: <question>Do we pin js version numbers?</question>
+
+<conversation>
+Person: Hey bloop, I have a question - Where do we test if GitHub login works?
+bloop: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
+Person: which file?
+</conversation>
+Assistant: <question>In which file do we test if GitHub login works?</question>
+
+<conversation>
+Person: What's the best way to update the search icon @bloop?
+</conversation>
+Assistant: <question>What's the best way to update the search icon?</question>
+
+<conversation>
+Person: Where do we test if GitHub login works
+bloop: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
+Person: Are there unit tests?
+</conversation>
+Assistant: <question>Is there a unit test for GitHub login?</question>
+
+<conversation>
+Person: Where is the answer api called
+bloop: The answer API client is called in `server/bleep/webserver/answer.rs`. After building the prompt the `select_snippet` method belonging to the `answer_api_client` is called.
+Person: frontend
+</conversation>
+Assistant: <question>Where is the answer API called on the frontend?</question>
+
+<conversation>
+Person: Where do bug reports get sent?
+bloop: Bug reports get sent to the repo maintainers.
+Person: Which url
+</conversation>
+Assistant: <question>Which url do bug reports get sent to?</question>
+
+<conversation>
+Person: tailwind config
+bloop: The `tailwind.config.cjs` file configures Tailwind CSS for the desktop app by extending a basic configuration and adding additional content paths.
+Person: client config
+</conversation>
+Assistant: <question>Where is the client Tailwind config file?</question>
+
+<conversation>
+Person: I love bananas
+bloop: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
+Person: Which onnxruntime library do we use?
+</conversation>
+Assistant: <question>Which onnxruntime library do we use?</question>
+
+<conversation>
+Person: Where is the query parsing logic?
+bloop: The query parser is defined in the `parse` function in `server/bleep/src/query/parser.rs`.
+Person: Which libraries does it use?
+bloop: Sorry, the given code snippet does not contain enough context to determine which libraries the query parser uses.
+Person: Where's the delete repo endpoint?
+</conversation>
+Assistant: <question>Where's the delete repo endpoint?</question>
+
+<conversation>"#.to_string();
+    for (question, answer) in conversation {
+        prompt.extend(["\nPerson: ", question, "\nbloop: ", answer]);
+    }
+    prompt += "\nPerson: ";
+    prompt += query;
+    prompt + "\n</conversation>\nAssistant: <question>"
+}
+
+fn build_action_selection_prompt(query: &str) -> String {
+    format!(
+        r#"Human: You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.
+
+- bloop works by searching your codebase for relevant files using proprietary trained models, and leverages the power of GPT to provide rich explanations.
+- The company behind bloop is a startup founded in 2021, based in Farringdon, London. They are a Y Combinator company.
+- bloop cannot answer questions unrelated to your codebase.
+- bloop does not have feelings or opinions.
+- Further information about bloop can be found on the website https://bloop.ai
+
+Given a user question (represented inside <question></question> XML tags) classify which of the following categories the question corresponds to and make the corresponding response. Put your response inside XML tags, like this: <response></response>.
+
+Categories to choose from:
+(1) If the query is about the codebase or product reply with 0. Your answer MUST be the single integer 0.
+(2) If the query is about the bloop support agent, answer the query in the first person in a polite and helpful way using only the information above. Your response should be a couple of sentences at the most.
+(3) If the query is an introduction or welcome message respond to the user by introducing yourself in the first person, in a polite and helpful way using only the information above. Your response should be a couple of sentences at the most.
+(4) If the query is something else explain that you can't answer it in a polite and helpful way. Suggest that the user asks a technical question about the codebase, or tries asking their question again in a different way. Your response should be a couple of sentences at the most. Do NOT answer the question.
+
+<question>Hey bloop, do we pin js version numbers?</question>
+<response>0</response>
+
+<question>When's your birthday @bloop?</question>
+<response>I do not know my birthday. The company that started bloop is a startup founded in 2021, based in Farringdon, London.</response>
+
+<question>What color are avocados?</question>
+<response>I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.</response>
+
+<question>Where do we test if GitHub login works?</question>
+<response>0</response>
+
+<question>How do we balance eggs on a spoon?</question>
+<repsonse>I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.</response>
+
+<question>What is bloop?</question>
+<response>bloop is a AI agent designed to help developers with many tasks. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.</response>
+
+<question>Introduce yourself.</question>
+<response>It's great to meet you! I'm an AI agent, here to help you find code from your codebase and ship to production faster.</response>
+
+<question>It's great to meet you.</question>
+<response>Nice to meet you too! I'm looking forward to helping you with your everyday tasks and menial work!</response>
+
+<question>How does bloop work?</question>
+<response>bloop works by searching your codebase for relevant files using proprietary trained models, and leverages the power of GPT to provide rich explanations.</response>
+
+<question>Where do we check if Kafka is running?</question>
+<response>0</response>
+
+<question>Which investors have invested in bloop?</question>
+<response>Y Combinator has invested in bloop.</response>
+
+<question>fshkfjjf</question>
+<response>I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.</response>
+
+<question>What's the best way to update the search icon @bloop?</question>
+<response>0</response>
+
+<question>Hey bloop, I have a question - Where do we test if GitHub login works?</question>
+<response>0</response>
+
+<question>{}</question>
+<response>"#,
+        query,
+    )
 }
 
 // Measure time between instants statefully
