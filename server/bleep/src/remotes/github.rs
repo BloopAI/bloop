@@ -181,3 +181,11 @@ pub(crate) async fn refresh_github_installation_token(
 
     Ok(credential)
 }
+
+pub(crate) async fn user_id(app: &Application) -> Option<String> {
+    let cred = app.credentials.get(&Backend::Github)?;
+    let auth = cred.as_github()?;
+    let client = auth.client().ok()?;
+    let user = client.current().user().await.ok()?;
+    Some(user.login)
+}

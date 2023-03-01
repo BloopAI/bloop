@@ -274,6 +274,12 @@ impl BackendCredential {
             _ => None,
         }
     }
+
+    pub(crate) fn as_github(&self) -> Option<&github::Auth> {
+        match self {
+            Self::Github(auth) => Some(auth),
+        }
+    }
 }
 
 fn create_repository<'a>(app: &'a Application, reporef: &RepoRef) -> Ref<'a, RepoRef, Repository> {
