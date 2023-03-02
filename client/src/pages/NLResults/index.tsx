@@ -109,7 +109,14 @@ const ResultsPage = ({ query }: Props) => {
       )}/answer?q=${question}&user_id=${deviceId}`,
     );
     prevEventSource = eventSource;
-    setConversation((prev) => [...prev, { author: 'server', isLoading: true }]);
+    setConversation((prev) => {
+      const newConversation = prev?.slice(0, -1) || [];
+      const lastMessages =
+        prev?.slice(-1)[0]?.isLoading && prev?.slice(-1)[0]?.author === 'server'
+          ? [{ author: 'server' as const, isLoading: true }]
+          : [...prev.slice(-1), { author: 'server' as const, isLoading: true }];
+      return [...newConversation, ...lastMessages];
+    });
     let i = 0;
     eventSource.onmessage = (ev) => {
       if (ev.data === '[DONE]') {
@@ -174,14 +181,28 @@ const ResultsPage = ({ query }: Props) => {
     eventSource.onerror = (err) => {
       console.error('EventSource failed:', err);
       setIsLoading(false);
-      setConversation((prev) => [
-        ...prev,
-        {
-          author: 'server',
-          isLoading: false,
-          error: 'Sorry, something went wrong',
-        },
-      ]);
+      setConversation((prev) => {
+        const newConversation = prev.slice(0, -1);
+        const lastMessages =
+          prev?.slice(-1)[0]?.isLoading &&
+          prev?.slice(-1)[0]?.author === 'server'
+            ? [
+                {
+                  author: 'server' as const,
+                  isLoading: false,
+                  error: 'Sorry, something went wrong',
+                },
+              ]
+            : [
+                ...prev.slice(-1),
+                {
+                  author: 'server' as const,
+                  isLoading: false,
+                  error: 'Sorry, something went wrong',
+                },
+              ];
+        return [...newConversation, ...lastMessages];
+      });
     };
   }, []);
 
