@@ -4,6 +4,7 @@ import {
   forwardRef,
   HTMLInputTypeAttribute,
   KeyboardEvent,
+  ReactElement,
   useRef,
 } from 'react';
 import { CheckIcon, MagnifyTool, MailIcon } from '../../icons';
@@ -31,6 +32,9 @@ type Props = {
   autoFocus?: boolean;
   inputClassName?: string;
   forceClear?: boolean;
+  high?: boolean;
+  startIcon?: ReactElement;
+  endIcon?: ReactElement;
 };
 
 type SingleLineProps = Props & {
@@ -82,6 +86,9 @@ const TextInput = forwardRef(function TextInputWithRef(
     inputClassName,
     forceClear,
     onEscape,
+    startIcon,
+    endIcon,
+    high,
   }: Props & (SingleLineProps | MultilineProps),
   ref: ForwardedRef<HTMLInputElement>,
 ) {
@@ -122,8 +129,8 @@ const TextInput = forwardRef(function TextInputWithRef(
       ) : null}
       <div
         className={`group border ${
-          multiline ? 'p-2' : 'h-10'
-        } rounded flex box-border items-center ${
+          high ? 'h-12 rounded-xl' : multiline ? 'p-2 rounded' : 'h-10 rounded'
+        } flex box-border items-center ${
           disabled
             ? borderMap[variant].disabled
             : error
@@ -137,13 +144,13 @@ const TextInput = forwardRef(function TextInputWithRef(
             : ''
         } transition-all duration-300 ease-in-bounce relative`}
       >
-        {type === 'email' || type === 'search' ? (
+        {type === 'email' || type === 'search' || startIcon ? (
           <span
             className={`w-5 mx-2.5 ${
               disabled ? 'text-gray-500' : 'text-gray-400'
             } flex items-center group-focus-within:text-gray-100 flex-shrink-0 transition-all duration-300 ease-in-bounce`}
           >
-            {type === 'email' ? <MailIcon /> : <MagnifyTool />}
+            {startIcon || (type === 'email' ? <MailIcon /> : <MagnifyTool />)}
           </span>
         ) : null}
         {multiline ? (
@@ -158,7 +165,9 @@ const TextInput = forwardRef(function TextInputWithRef(
             onBlur={validate}
             autoComplete="off"
             spellCheck="false"
-            className={`bg-transparent resize-none border-none focus:outline-none w-full group-focus-within:placeholder:text-gray-100 disabled:placeholder:text-gray-500 transition-all duration-300 ease-in-bounce outline-none outline-0`}
+            className={`bg-transparent resize-none border-none focus:outline-none w-full 
+            group-focus-within:placeholder:text-gray-100 disabled:placeholder:text-gray-500 
+            transition-all duration-300 ease-in-bounce outline-none outline-0`}
             onKeyDown={handleEnter}
           />
         ) : (
@@ -174,14 +183,17 @@ const TextInput = forwardRef(function TextInputWithRef(
             onBlur={validate}
             autoComplete="off"
             spellCheck="false"
-            className={`bg-transparent border-none focus:outline-none w-full group-focus-within:placeholder:text-gray-100 disabled:placeholder:text-gray-500 ${
-              type === 'email' || type === 'search' ? 'px-1' : 'pl-2.5'
-            } transition-all duration-300 ease-in-bounce outline-none outline-0 pr-9 ${inputClassName}`}
+            className={`bg-transparent border-none focus:outline-none w-full  ${
+              type === 'email' || type === 'search' || startIcon
+                ? 'px-1'
+                : 'pl-2.5'
+            } transition-all duration-300 ease-in-bounce outline-none outline-0 pr-9 ${inputClassName}
+            group-focus-within:placeholder:text-gray-100 disabled:placeholder:text-gray-500`}
             onKeyDown={handleEnter}
             autoFocus={autoFocus}
           />
         )}
-        {(value || forceClear) && !multiline ? (
+        {(value || forceClear) && !multiline && !endIcon ? (
           <ClearButton
             tabIndex={-1}
             onClick={() => {
@@ -195,10 +207,14 @@ const TextInput = forwardRef(function TextInputWithRef(
           />
         ) : null}
         {success ? (
-          <span className="w-5 mr-2.5 flex items-center group-focus-within:hidden text-success-700 right-0 top-1/2 -translate-y-1/2 absolute">
+          <span
+            className="w-5 mr-2.5 flex items-center group-focus-within:hidden text-success-700 right-0
+          top-1/2 -translate-y-1/2 absolute"
+          >
             <CheckIcon />
           </span>
         ) : null}
+        {endIcon}
         {regex ? (
           <RegexButton
             onClick={handleRegex}

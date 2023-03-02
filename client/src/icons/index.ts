@@ -83,3 +83,5 @@ export { default as NaturalLanguage } from './NaturalLanguage';
 export { default as ArrowRotate } from './ArrowRotate';
 export { default as PointClick } from './PointClick';
 export { default as Magazine } from './Magazine';
+export { default as QuillIcon } from './Quill';
+export { default as SendIcon } from './Send';
