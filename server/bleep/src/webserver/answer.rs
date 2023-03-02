@@ -47,6 +47,7 @@ pub mod api {
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
         pub provider: Provider,
+        pub stop_sequences: Vec<String>,
     }
 
     #[derive(thiserror::Error, Debug, Deserialize)]
@@ -159,6 +160,8 @@ fn parse_query(query: &str) -> Result<String, Error> {
         .to_string())
 }
 
+const MAX_HISTORY: usize = 7;
+
 async fn _handle(
     state: &AnswerState,
     params: Params,
@@ -168,7 +171,7 @@ async fn _handle(
     let query_id = uuid::Uuid::new_v4();
     let user_id = &params.user_id;
     let mut stop_watch = StopWatch::start();
-
+    let stop_sequences = &["</response>".into()];
     let semantic = app
         .semantic
         .clone()
@@ -193,10 +196,18 @@ async fn _handle(
         user_id,
         // check how much history we can afford to create up to the token limit
         |history| {
-            let n = history.len().saturating_sub(20);
-            build_rephrase_query_prompt(&query, &history[n..])
+            if history.is_empty() {
+                None
+            } else {
+                let n = history.len().saturating_sub(MAX_HISTORY);
+                Some(build_rephrase_query_prompt(&query, &history[n..]))
+            }
         },
     );
+
+    if let Some(q) = rephrase_query.as_ref() {
+        info!("rephrase query: {q}");
+    }
 
     let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
         let Some(cred) = app.credentials.get(&Backend::Github) else {
@@ -235,7 +246,7 @@ async fn _handle(
         info_text = None;
         rephrased_query = answer_api_client
             //TODO: Gabe: Fix this to anthropic
-            .send_until_success(&q, 2000, 0.0, api::Provider::OpenAi)
+            .send_until_success(&q, 2000, 0.0, api::Provider::Anthropic, stop_sequences)
             .await
             .map_err(|e| {
                 sentry::capture_message(
@@ -245,6 +256,7 @@ async fn _handle(
                 Error::new(ErrorKind::UpstreamService, e.to_string())
             })?;
         query = parse_query(&rephrased_query)?;
+        info!("rephrased to: {query}");
     } else {
         // select action
         let response = answer_api_client
@@ -252,8 +264,8 @@ async fn _handle(
                 &build_action_selection_prompt(&query),
                 2000,
                 0.0,
-                //TODO: @gabe get this to work with Anthropic
-                api::Provider::OpenAi,
+                api::Provider::Anthropic,
+                stop_sequences,
             )
             .await
             .map_err(|e| {
@@ -378,7 +390,7 @@ async fn _handle(
             .push(Stage::new("select prompt", &select_prompt).with_time(stop_watch.lap()));
 
         let relevant_snippet_index = answer_api_client
-            .select_snippet(&select_prompt)
+            .select_snippet(&select_prompt, stop_sequences)
             .await?
             .trim()
             .to_string()
@@ -460,14 +472,16 @@ async fn _handle(
             }))
             .map_err(Error::internal)?;
 
-        let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
+        let explain_prompt = app.with_prior_conversation(user_id, |conversation| {
+            answer_api_client.build_explain_prompt(&processed_snippet, conversation)
+        });
 
         analytics_event
             .stages
             .push(Stage::new("explain prompt", &explain_prompt).with_time(stop_watch.lap()));
 
         let explanation = answer_api_client
-            .explain_snippet(&explain_prompt)
+            .explain_snippet(&explain_prompt, stop_sequences)
             .await
             .map_err(Error::internal)
             .map(Box::pin)?;
@@ -476,6 +490,7 @@ async fn _handle(
         drop(analytics_event);
     }
 
+    let user_id = user_id.to_string();
     let analytics_event = Arc::clone(&event);
     let stream = async_stream::stream! {
 
@@ -487,6 +502,9 @@ async fn _handle(
             yield Ok(initial_event);
             let mut expl = String::new();
             while let Some(result) = explanation.next().await {
+                if let Ok(fragment) = &result {
+                    app.extend_conversation_answer(user_id.clone(), fragment)
+                }
                 yield Ok(Event::default()
                     .json_data(result.as_ref().map_err(|e| e.to_string()))
                     .unwrap());
@@ -602,6 +620,7 @@ impl<'s> AnswerAPIClient<'s> {
         max_tokens: u32,
         temperature: f32,
         provider: api::Provider,
+        stop_sequences: &[String],
     ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
         let mut stream = Box::pin(
             reqwest_eventsource::EventSource::new({
@@ -616,6 +635,7 @@ impl<'s> AnswerAPIClient<'s> {
                     max_tokens: Some(max_tokens),
                     temperature: Some(temperature),
                     provider,
+                    stop_sequences: stop_sequences.to_vec(),
                 })
             })
             // We don't have a `Stream` body so this can't fail.
@@ -655,10 +675,17 @@ impl<'s> AnswerAPIClient<'s> {
         max_tokens: u32,
         temperature: f32,
         provider: api::Provider,
+        stop_sequences: &[String],
     ) -> Result<String, AnswerAPIError> {
         for attempt in 0..self.max_attempts {
             let result = self
-                .send(prompt, max_tokens, temperature, provider.clone())
+                .send(
+                    prompt,
+                    max_tokens,
+                    temperature,
+                    provider.clone(),
+                    stop_sequences,
+                )
                 .await?
                 .try_collect::<String>()
                 .await;
@@ -713,22 +740,35 @@ Index:",
         prompt
     }
 
-    fn build_explain_prompt(&self, snippet: &Snippet) -> String {
-        let prompt = format!(
-            "You are an AI assistant for a repo. Answer the question using above in a sentence. Do NOT try to make up an answer.
-Question: {}
-=========
-Path: {}
-File: {}
-=========
-Answer:",
-            self.query, snippet.relative_path, snippet.text,
+    fn build_explain_prompt(&self, snippet: &Snippet, conversation: &[(String, String)]) -> String {
+        let mut prompt = format!(
+            "Repo:{} Path:{}
+            =========
+            {}
+            =========
+            Human: You are bloop, an AI assistant for a codebase. Above, you have an extract from a code file. Below you have the last utterances of a conversation with a user (represented inside <conversation></conversation> XML tags). \
+            Use the code file to write a concise, precise answer to the question. Put your response inside XML tags, like this: <response></response>.  
+            - ONLY copy code into the answer if it helps answer the question.
+            - Do format your response in GitHub markdown with code blocks annotated with programming language.
+            - Do NOT include code that is not in the file. If the file doesn't contain enough information to answer the question, or you don't know the answer, just say \"Sorry, I'm not sure\".
+            - Do NOT try to make up an answer.
+            - The conversation history can provide context to the user's current question, but sometimes it contains irrelevant information. IGNORE information in the conversation which is irrelevant to the user's current question.
+            <conversation>",
+            snippet.repo_name, snippet.relative_path, snippet.text,
         );
-        prompt
+        for (question, answer) in conversation {
+            prompt += "\nperson: ";
+            prompt += question;
+            prompt += "\nbloop: ";
+            prompt += answer;
+        }
+        prompt += "\nperson: ";
+        prompt += &self.query;
+        prompt + "\n</conversation>\n<response>"
     }
 
-    async fn select_snippet(&self, prompt: &str) -> Result<String> {
-        self.send_until_success(prompt, 1, 0.0, api::Provider::Anthropic)
+    async fn select_snippet(&self, prompt: &str, stop_sequences: &[String]) -> Result<String> {
+        self.send_until_success(prompt, 1, 0.0, api::Provider::Anthropic, stop_sequences)
             .await
             .map_err(|e| {
                 sentry::capture_message(
@@ -742,6 +782,7 @@ Answer:",
     async fn explain_snippet(
         &self,
         prompt: &str,
+        stop_sequences: &[String],
     ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
         let tokens_used = self.semantic.gpt2_token_count(prompt);
         info!(%tokens_used, "input prompt token count");
@@ -755,93 +796,152 @@ Answer:",
         // do not let the completion cross 200 tokens
         let max_tokens = max_tokens.clamp(1, 200);
         info!(%max_tokens, "clamping max tokens");
-        self.send(prompt, max_tokens as u32, 0.0, api::Provider::Anthropic)
-            .await
+        self.send(
+            prompt,
+            max_tokens as u32,
+            0.0,
+            api::Provider::Anthropic,
+            stop_sequences,
+        )
+        .await
     }
 }
 
-fn build_rephrase_query_prompt(query: &str, history: &[String]) -> String {
-    debug_assert!(!history.is_empty());
-    let history = history.join(", ");
-    format!(
-        r#"You are a customer support agent called bloop. Given a question and an optional conversational history, extract a standalone question. IGNORE any information in the conversational history which is not relevant to the question. \
-H: []
-Q: Hey bloop, do we pin js version numbers?
-A: do we pin js version numbers?
+fn build_rephrase_query_prompt(query: &str, conversation: &[(String, String)]) -> String {
+    let mut prompt =
+        r#"Human: Given a question and an optional conversational history between a person and an AI agent named bloop, (represented inside <conversation></conversation> XML tags), extract a standalone question, if any, from the last turn in the dialogue. Put the question you extract inside XML tags, like this: <question></question>. If there is no question, write "N/A" instead.  
 
-H: []
-Q: Hey bloop, I have a question - Where do we test if GitHub login works?
-A: Where do we test if GitHub login works?
+IGNORE any information in the conversational history which is not relevant to the question
+Absolutely, positively do NOT answer the question
+Rephrase the question into a standalone question
+The standalone question should be short and should contain relevant keywords
 
-H: []
-Q: What's the best way to update the search icon @bloop?
-A: What's the best way to update the search icon?
+<conversation>
+Person: Hey bloop, do we pin js version numbers?
+</conversation>
+Assistant: <question>Do we pin js version numbers?</question>
 
-H: [Where do we test if GitHub login works?]
-Q: No that's not a unit test
-A: Where is a unit test for GitHub login?
+<conversation>
+Person: Hey bloop, I have a question - Where do we test if GitHub login works?
+bloop: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
+Person: which file?
+</conversation>
+Assistant: <question>In which file do we test if GitHub login works?</question>
 
-H: [Where do we test if GitHub login works?, No that's not a unit test]
-Q: With Jest
-A: Where is there a Jest test for GitHub login?
+<conversation>
+Person: What's the best way to update the search icon @bloop?
+</conversation>
+Assistant: <question>What's the best way to update the search icon?</question>
 
-H: [I love bananas, Where do we test if GitHub login works?, No that's not a unit test]
-Q: With Jest
-A: Where is there a Jest test for GitHub login?
+<conversation>
+Person: Where do we test if GitHub login works
+bloop: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
+Person: Are there unit tests?
+</conversation>
+Assistant: <question>Is there a unit test for GitHub login?</question>
 
-{DELIMITER}
+<conversation>
+Person: Where is the answer api called
+bloop: The answer API client is called in `server/bleep/webserver/answer.rs`. After building the prompt the `select_snippet` method belonging to the `answer_api_client` is called.
+Person: frontend
+</conversation>
+Assistant: <question>Where is the answer API called on the frontend?</question>
 
-H: [{history}]
-Q: {query}
-A:`"#
-    )
+<conversation>
+Person: Where do bug reports get sent?
+bloop: Bug reports get sent to the repo maintainers.
+Person: Which url
+</conversation>
+Assistant: <question>Which url do bug reports get sent to?</question>
+
+<conversation>
+Person: tailwind config
+bloop: The `tailwind.config.cjs` file configures Tailwind CSS for the desktop app by extending a basic configuration and adding additional content paths.
+Person: client config
+</conversation>
+Assistant: <question>Where is the client Tailwind config file?</question>
+
+<conversation>
+Person: I love bananas
+bloop: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
+Person: Which onnxruntime library do we use?
+</conversation>
+Assistant: <question>Which onnxruntime library do we use?</question>
+
+<conversation>"#.to_string();
+    for (question, answer) in conversation {
+        prompt += "\nperson: ";
+        prompt += question;
+        prompt += "\nbloop: ";
+        prompt += answer;
+    }
+    prompt += "\nperson: ";
+    prompt += &query;
+    prompt + "\n</conversation>\nAssistant: <question>"
 }
 
 fn build_action_selection_prompt(query: &str) -> String {
     format!(
-        r#""You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.
+        r#"Human: You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.
+
 - bloop works by searching your codebase for relevant files using proprietary trained models, and leverages the power of GPT to provide rich explanations.
 - The company behind bloop is a startup founded in 2021, based in Farringdon, London. They are a Y Combinator company.
 - bloop cannot answer questions unrelated to your codebase.
 - bloop does not have feelings or opinions.
 - Further information about bloop can be found on the website https://bloop.ai
+
+Given a user question (represented inside <question></question> XML tags) classify which of the following categories the question corresponds to and make the corresponding response. Put your response inside XML tags, like this: <response></response>.  
+
 Categories to choose from:
 (1) If the query is about the codebase or product reply with 0. Your answer MUST be the single integer 0.
 (2) If the query is about the bloop support agent, answer the query in the first person in a polite and helpful way using only the information above. Your response should be a couple of sentences at the most.
 (3) If the query is an introduction or welcome message respond to the user by introducing yourself in the first person, in a polite and helpful way using only the information above. Your response should be a couple of sentences at the most.
 (4) If the query is something else explain that you can't answer it in a polite and helpful way. Suggest that the user asks a technical question about the codebase, or tries asking their question again in a different way. Your response should be a couple of sentences at the most. Do NOT answer the question.
-For example:
-Human: Hey bloop, do we pin js version numbers?
-Assistant: 0
-Human: When's your birthday @bloop?
-Assistant: I do not know my birthday. The company that started bloop is a startup founded in 2021, based in Farringdon, London.
-Human: What color are avocados?
-Assistant: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
-Human: Where do we test if GitHub login works?
-Assistant: 0
-Human: How do we balance eggs on a spoon?
-Assistant: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
-Human: What is bloop?
-Assistant: bloop is a AI agent designed to help developers with many tasks. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.
-Human: Introduce yourself.
-Assistant: It's great to meet you! I'm an AI agent, here to help you find code from your codebase and ship to production faster.
-Human: It's great to meet you.
-Assistant: Nice to meet you too! I'm looking forward to helping you with your everyday tasks and menial work!
-Human: How does bloop work?
-Assistant: bloop works by searching your codebase for relevant files using proprietary trained models, and leverages the power of GPT to provide rich explanations.
-Human: Where do we check if Kafka is running?
-Assistant: 0
-Human: Which investors have invested in bloop?
-Assistant: Y Combinator has invested in bloop.
-Human: fshkfjjf
-Assistant: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
-Human: What's the best way to update the search icon @bloop?
-Assistant: 0
-Human: Hey bloop, I have a question - Where do we test if GitHub login works?
-Assistant: 0
-{DELIMITER}
-Human: {}
-Assistant:"#,
+
+<question>Hey bloop, do we pin js version numbers?</question>
+<response>0</response>
+
+<question>When's your birthday @bloop?</question>
+<response>I do not know my birthday. The company that started bloop is a startup founded in 2021, based in Farringdon, London.</response>
+
+<question>What color are avocados?</question>
+<response>I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.</response>
+
+<question>Where do we test if GitHub login works?</question>
+<response>0</response>
+
+<question>How do we balance eggs on a spoon?</question>
+<repsonse>I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.</response>
+
+<question>What is bloop?</question>
+<response>bloop is a AI agent designed to help developers with many tasks. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.</response>
+
+<question>Introduce yourself.</question>
+<response>It's great to meet you! I'm an AI agent, here to help you find code from your codebase and ship to production faster.</response>
+
+<question>It's great to meet you.</question>
+<response>Nice to meet you too! I'm looking forward to helping you with your everyday tasks and menial work!</response>
+
+<question>How does bloop work?</question>
+<response>bloop works by searching your codebase for relevant files using proprietary trained models, and leverages the power of GPT to provide rich explanations.</response>
+
+<question>Where do we check if Kafka is running?</question>
+<response>0</response>
+
+<question>Which investors have invested in bloop?</question>
+<response>Y Combinator has invested in bloop.</response>
+
+<question>fshkfjjf</question>
+<response>I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.</response>
+
+<question>What's the best way to update the search icon @bloop?</question>
+<response>0</response>
+
+<question>Hey bloop, I have a question - Where do we test if GitHub login works?</question>
+<response>0</response>
+
+<question>{}</question>
+<response>"#,
         query,
     )
 }

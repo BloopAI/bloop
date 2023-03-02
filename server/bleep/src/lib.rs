@@ -73,7 +73,7 @@ pub struct Application {
     indexes: Arc<Indexes>,
     credentials: Arc<DashMap<Backend, BackendCredential>>,
     cookie_key: axum_extra::extract::cookie::Key,
-    prior_conversational_store: Arc<DashMap<String, Vec<String>>>,
+    prior_conversational_store: Arc<DashMap<String, Vec<(String, String)>>>,
 }
 
 impl Application {
@@ -252,20 +252,34 @@ impl Application {
     pub fn with_prior_conversation<T>(
         &self,
         user_id: &str,
-        f: impl Fn(&[String]) -> T,
-    ) -> Option<T> {
+        f: impl Fn(&[(String, String)]) -> T,
+    ) -> T {
         self.prior_conversational_store
             .get(user_id)
             .map(|r| f(&r.value()[..]))
+            .unwrap_or_else(|| f(&[]))
     }
 
     /// add a new conversation entry to the store
     pub fn add_conversation_entry(&self, user_id: String, query: String) {
         match self.prior_conversational_store.entry(user_id) {
-            Entry::Occupied(mut o) => o.get_mut().push(query),
+            Entry::Occupied(mut o) => o.get_mut().push((query, String::new())),
             Entry::Vacant(v) => {
-                v.insert(vec![query]);
+                v.insert(vec![(query, String::new())]);
             }
+        }
+    }
+
+    /// extend the last answer for the session by the given fragment
+    pub fn extend_conversation_answer(&self, user_id: String, fragment: &str) {
+        if let Entry::Occupied(mut o) = self.prior_conversational_store.entry(user_id) {
+            if let Some((_, ref mut answer)) = o.get_mut().last_mut() {
+                answer.push_str(fragment);
+            } else {
+                error!("No answer to add {fragment} to");
+            }
+        } else {
+            error!("We should not answer if there is no question. Fragment {fragment}");
         }
     }
 
