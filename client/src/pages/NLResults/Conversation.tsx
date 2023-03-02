@@ -81,7 +81,7 @@ const Conversation = ({
               {message.text || message.error}
             </div>
             {message.isLoading ? (
-              'Still generating'
+              <span className="body-s text-white">Still generating</span>
             ) : message.author === 'server' ? (
               <div className="flex items-center justify-between mt-2">
                 {i === conversation.length - 1 && (
