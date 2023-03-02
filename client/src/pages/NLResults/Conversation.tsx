@@ -59,7 +59,7 @@ const Conversation = ({
   return (
     <div
       className={`p-4 w-96 bg-gray-900 border-l border-gray-800 relative 
-    before:absolute before:top-0 before-right-0 before:opacity-50 before:bg-[url('/dust.png')] 
+    before:absolute before:top-0 before:right-0 before:opacity-50 before:bg-[url('/dust.png')] 
     before:w-full before:h-full before:bg-repeat`}
     >
       <div
@@ -84,18 +84,21 @@ const Conversation = ({
               'Still generating'
             ) : message.author === 'server' ? (
               <div className="flex items-center justify-between mt-2">
-                <span className="flex gap-1 items-center text-success-600">
-                  <Checkmark />
-                  <span className="body-s text-white">Result ready</span>
-                </span>
-                {i !== currentlyViewedSnippets && (
-                  <button
-                    className="text-primary-300 body-s mr-2"
-                    onClick={() => onViewSnippetsClick(i)}
-                  >
-                    View
-                  </button>
+                {i === conversation.length - 1 && (
+                  <span className="flex gap-1 items-center text-success-600">
+                    <Checkmark />
+                    <span className="body-s text-white">Result ready</span>
+                  </span>
                 )}
+                {i !== currentlyViewedSnippets &&
+                  conversation[i]?.snippets?.length && (
+                    <button
+                      className="text-primary-300 body-s mr-2"
+                      onClick={() => onViewSnippetsClick(i)}
+                    >
+                      View
+                    </button>
+                  )}
               </div>
             ) : (
               ''
