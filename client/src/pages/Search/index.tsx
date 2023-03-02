@@ -11,7 +11,6 @@ import { useSearch } from '../../hooks/useSearch';
 import {
   DirectorySearchResponse,
   GeneralSearchResponse,
-  NLSearchResponse,
   SearchResponse,
 } from '../../types/api';
 import RepositoryPage from '../Repository';
@@ -56,14 +55,6 @@ const SearchPage = () => {
     !getPlainFromStorage(ONBOARDING_DONE_KEY),
   );
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
-  const {
-    searchQuery: nlSearchQuery,
-    data: nlData,
-    loading: nlLoading,
-    query: nlQuery,
-    nlAnswer,
-    error: nlError,
-  } = useSearch<NLSearchResponse>();
   const { updateCurrentTabName } = useContext(TabsContext);
 
   const { navigatedItem, query } = useAppNavigation();
@@ -131,17 +122,11 @@ const SearchPage = () => {
         break;
       default:
         updateCurrentTabName(navigatedItem.query!);
-        if ((navigatedItem.searchType ?? searchType) === SearchType.NL) {
-          nlSearchQuery(navigatedItem.query!, 0, false, SearchType.NL);
-        } else {
+        if ((navigatedItem.searchType ?? searchType) === SearchType.REGEX) {
           searchQuery(navigatedItem.query!, navigatedItem.page, globalRegex);
         }
     }
   }, [navigatedItem]);
-
-  const handleRetry = useCallback(() => {
-    nlSearchQuery(navigatedItem!.query!);
-  }, [navigatedItem?.query]);
 
   const getRenderPage = useCallback(() => {
     let renderPage:
@@ -182,7 +167,7 @@ const SearchPage = () => {
         renderPage = 'results';
     }
     return renderPage;
-  }, [navigatedItem, data, loading, nlData, nlLoading]);
+  }, [navigatedItem, data, loading]);
 
   const renderedPage = useMemo(() => {
     let renderPage = getRenderPage();
@@ -203,29 +188,11 @@ const SearchPage = () => {
       case 'full-result':
         return <ViewResult data={data} />;
       case 'nl-result':
-        return (
-          <NLResults
-            loading={nlLoading}
-            resultsData={nlData}
-            handleRetry={handleRetry}
-            nlAnswer={nlAnswer}
-            nlError={typeof nlError === 'string' ? nlError : ''}
-          />
-        );
+        return <NLResults query={query} key={query} />;
       default:
         return <HomePage />;
     }
-  }, [
-    data,
-    loading,
-    nlLoading,
-    nlData,
-    handleRetry,
-    navigatedItem,
-    nlQuery,
-    nlAnswer,
-    nlError,
-  ]);
+  }, [data, loading, navigatedItem, query]);
 
   return shouldShowWelcome ? (
     <div className="text-gray-200">

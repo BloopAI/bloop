@@ -1,4 +1,5 @@
 import React, { ReactElement } from 'react';
+import { NLSnippet } from './api';
 
 export enum MenuItemType {
   DEFAULT = 'default',
