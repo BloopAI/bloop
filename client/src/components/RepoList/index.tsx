@@ -82,7 +82,7 @@ const RepoList = ({
           />
         </div>
       )}
-      <div className={`fade-bottom relative overflow-auto`}>
+      <div className={`fade-bottom relative`}>
         <ul className="bg-gray-900 shadow-light overflow-y-auto pb-6">
           {repos.length ? (
             !filteredRepos.length ? (
