@@ -59,13 +59,14 @@ const SeparateOnboardingStep = ({
       <AnimatePresence>
         {isVisible && (
           <motion.div
-            className={`overflow-auto fixed flex flex-col rounded-md drop-shadow-light-bigger bg-gray-900 border border-gray-700 bg-opacity-75 z-70 backdrop-blur-8`}
+            className={`overflow-auto fixed flex flex-col rounded-md drop-shadow-light-bigger bg-gray-900 
+            border border-gray-700 bg-opacity-75 z-70 backdrop-blur-8 max-h-[calc(100%-3rem)]`}
             animate={modalAnimation(top)}
             initial={initialModalStyles(top)}
             exit={initialModalStyles(top)}
             transition={MODAL_SIDEBAR_APPEAR_ANIMATION}
           >
-            <div className="p-6 flex flex-col gap-8 w-99 relative max-h-[calc(100vh-13rem)] flex-1">
+            <div className="p-6 flex flex-col gap-8 w-99 relative flex-1 overflow-auto">
               {children}
             </div>
           </motion.div>
