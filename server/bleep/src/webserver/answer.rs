@@ -148,10 +148,11 @@ pub(super) async fn handle(
 
         // add error stage to pipeline
         let mut ev = event.write().await;
-        ev.stages.push(Stage::new("error", e.message()));
+        ev.stages
+            .push(Stage::new("error", &(e.status.as_u16(), e.message())));
 
         // send to rudderstack
-        app.track_query(dbg!(&ev));
+        app.track_query(&ev);
     } else {
         // the analytics event is fired when the stream is consumed
     }
