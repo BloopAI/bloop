@@ -1,5 +1,6 @@
 import * as console from 'console';
 import { expect, Page, test } from '@playwright/test';
+import { runOnboarding } from './onboarding';
 
 test.describe.serial('Search', () => {
   let page: Page;
@@ -10,41 +11,28 @@ test.describe.serial('Search', () => {
     await page.goto(
       `http://localhost:5173/?chosen_scan_folder=${process.env.SCAN_FOLDER}`,
     );
-    await page.getByRole('button', { name: "Don't share" }).click();
-    await page.getByRole('button', { name: 'Skip this step' }).click();
-    await page.getByRole('button', { name: 'Choose a folder' }).click();
-    await page.waitForSelector('.bg-skeleton', {
-      state: 'detached',
-      timeout: 60 * 1000,
-    });
-
-    await page
-      .locator('label')
-      .filter({ hasText: 'Select all' })
-      .getByRole('checkbox')
-      .click();
-
-    await page.getByRole('button', { name: 'Sync repositories' }).click();
-    await page.getByRole('button', { name: 'Setup later' }).click();
+    await runOnboarding(page, context);
   });
 
   test.beforeEach(async () => {
     await page.goto('http://localhost:5173/');
   });
 
-  test('Code search', async () => {
+  test('NL search', async () => {
     await page.getByPlaceholder('My search').click();
-    await page.getByPlaceholder('My search').fill('api');
+    await page.getByPlaceholder('My search').fill('hello');
     await page.getByPlaceholder('My search').press('Enter');
 
     await expect(
       page.locator('li > div > div:nth-child(2)').first(),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15000 });
   });
 
-  test('Code search snippet more matches', async () => {
+  test('Regex search snippet more matches', async () => {
+    await page.getByTitle('Search type').click();
+    await page.getByText('Regex').click();
     await page.getByPlaceholder('My search').click();
-    await page.getByPlaceholder('My search').fill('api');
+    await page.getByPlaceholder('My search').fill('const');
     await page.getByPlaceholder('My search').press('Enter');
     const bbCollapsed = await (
       await page.locator('li > div > div:nth-child(2)').first()
@@ -52,7 +40,7 @@ test.describe.serial('Search', () => {
     const bbCollapsedHeight = bbCollapsed.height;
 
     await page
-      .getByRole('button', { name: /Show\s\d*\smore\smatches/ })
+      .getByRole('button', { name: /Show\s\d*\smore\smatch/ })
       .first()
       .click();
     const bb = await (
@@ -61,9 +49,11 @@ test.describe.serial('Search', () => {
     expect(bbCollapsedHeight).not.toEqual(bb.height);
   });
 
-  test.skip('Code search pagination', async () => {
+  test('Regex search pagination', async () => {
+    await page.getByTitle('Search type').click();
+    await page.getByText('Regex').click();
     await page.getByPlaceholder('My search').click();
-    await page.getByPlaceholder('My search').fill('api');
+    await page.getByPlaceholder('My search').fill('a');
     await page.getByPlaceholder('My search').press('Enter');
     const firstItem = await page
       .locator('.flex.items-center.body-s.flex-shrink-0.gap-1')
@@ -72,6 +62,8 @@ test.describe.serial('Search', () => {
 
     console.log(firstItem);
     await page.locator('.mt-8 > div > div > button:nth-child(3)').click();
+
+    await new Promise((res) => setTimeout(() => res(1), 1000));
 
     const secondPageItem = await page
       .locator('.flex.items-center.body-s.flex-shrink-0.gap-1')
@@ -83,12 +75,15 @@ test.describe.serial('Search', () => {
 
   test('Code search result navigation', async () => {
     await page.getByPlaceholder('My search').click();
-    await page.getByPlaceholder('My search').fill('api');
+    await page.getByPlaceholder('My search').fill('a');
     await page.getByPlaceholder('My search').press('Enter');
 
     const firstItem = await page.locator('li > div > div > div').first();
+    await new Promise((res) => setTimeout(() => res(1), 10000));
 
+    console.log(await page.locator('li > div > div:nth-child(2)').first());
     await page.locator('li > div > div:nth-child(2)').first().click();
+    await new Promise((res) => setTimeout(() => res(1), 10000));
 
     await expect(page.locator('div:nth-child(4)').nth(1)).toBeVisible();
     await expect(page.locator('div:nth-child(4)').nth(1)).toHaveClass(
@@ -102,6 +97,8 @@ test.describe.serial('Search', () => {
     ).toEqual(firstItem.innerText());
 
     await page.getByRole('button', { name: 'Open in modal' }).click();
+    await new Promise((res) => setTimeout(() => res(1), 10000));
+
     await expect(page.locator('div:nth-child(4)').nth(1)).toHaveClass(
       'overflow-hidden fixed flex flex-col rounded-md drop-shadow-light-bigger bg-gray-900 border border-gray-700 bg-opacity-75 z-70 backdrop-blur-8 w-[60vw]',
     );
@@ -120,7 +117,7 @@ test.describe.serial('Search', () => {
 
   test('Autocomplete', async () => {
     await page.getByPlaceholder('My search').click();
-    await page.getByPlaceholder('My search').fill('ap');
+    await page.getByPlaceholder('My search').fill('a');
 
     const itemsCount = await page.locator('#downshift-1-menu').count();
     await page.getByRole('button', { name: 'View all results' }).click();
@@ -152,7 +149,7 @@ test.describe.serial('Search', () => {
 
   test('Code filters search', async () => {
     await page.getByPlaceholder('My search').click();
-    await page.getByPlaceholder('My search').fill('api');
+    await page.getByPlaceholder('My search').fill('a');
     await page.getByPlaceholder('My search').press('Enter');
 
     await expect(
@@ -179,7 +176,7 @@ test.describe.serial('Search', () => {
 
   test('Symbol search', async () => {
     await page.getByPlaceholder('My search').click();
-    await page.getByPlaceholder('My search').fill('symbol:get');
+    await page.getByPlaceholder('My search').fill('symbol:a');
     await page.getByPlaceholder('My search').press('Enter');
 
     await expect(

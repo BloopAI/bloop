@@ -28,7 +28,7 @@ const SemanticSearch = ({
 }: Props) => {
   const renderedSnippets = useMemo(() => {
     return snippets.map((item, index) => (
-      <span key={index} className={`${index ? 'mt-5' : ''}`}>
+      <li key={index} className={`${index ? 'mt-5' : ''}`}>
         <CodeBlockSearch
           snippets={[{ code: item.code, highlights: [], lineStart: item.line }]}
           language={item.lang}
@@ -40,7 +40,7 @@ const SemanticSearch = ({
           hideDropdown
           onClick={onClick}
         />
-      </span>
+      </li>
     ));
   }, [snippets, onClick]);
   return (
@@ -51,7 +51,7 @@ const SemanticSearch = ({
         answer={answer}
         error={error}
       />
-      {renderedSnippets}
+      <ul>{renderedSnippets}</ul>
     </div>
   );
 };
