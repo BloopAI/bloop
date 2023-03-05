@@ -110,7 +110,7 @@ impl From<AnswerResponse> for super::Response<'static> {
     }
 }
 
-const SNIPPET_COUNT: usize = 13;
+const SNIPPET_COUNT: usize = 6;
 
 pub(super) struct AnswerState {
     client: reqwest::Client,

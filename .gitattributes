@@ -1,8 +1,7 @@
-model/vocab.txt filter=lfs diff=lfs merge=lfs -text
-model/model.onnx filter=lfs diff=lfs merge=lfs -text
-model/special_tokens_map.json filter=lfs diff=lfs merge=lfs -text
-model/tokenizer.json filter=lfs diff=lfs merge=lfs -text
-model/tokenizer_config.json filter=lfs diff=lfs merge=lfs -text
+model/gtr/model.onnx filter=lfs diff=lfs merge=lfs -text
+model/gtr/special_tokens_map.json filter=lfs diff=lfs merge=lfs -text
+model/gtr/tokenizer.json filter=lfs diff=lfs merge=lfs -text
+model/gtr/tokenizer_config.json filter=lfs diff=lfs merge=lfs -text
 model/gpt-2/merges.txt filter=lfs diff=lfs merge=lfs -text
 model/gpt-2/special_tokens_map.json filter=lfs diff=lfs merge=lfs -text
 model/gpt-2/tokenizer_config.json filter=lfs diff=lfs merge=lfs -text
