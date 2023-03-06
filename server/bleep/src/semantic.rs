@@ -18,7 +18,7 @@ use qdrant_client::{
 };
 use rayon::prelude::*;
 use thiserror::Error;
-use tracing::{debug, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 pub mod chunk;
 
@@ -263,7 +263,7 @@ impl Semantic {
                         ]),
                     }),
                     Err(err) => {
-                        warn!(?err, "embedding failed");
+                        warn!(?err, %chunk_prefix, "embedding failed");
                         None
                     }
                 },
@@ -271,11 +271,22 @@ impl Semantic {
             .collect::<Vec<_>>();
 
         if !datapoints.is_empty() {
-            debug!(point_count = datapoints.len(), "updating docs");
+            let num_datapoints = datapoints.len();
+            debug!(point_count = num_datapoints, "updating docs");
             let upserted = self.qdrant.upsert_points(COLLECTION_NAME, datapoints).await;
             if upserted.is_ok() {
-                debug!("successful upsert");
+                info!(
+                    ?chunk_prefix,
+                    "Successfully upserted {:?} vectors", num_datapoints
+                );
+            } else {
+                warn!(
+                    ?chunk_prefix,
+                    "Failed to upsert {:?} vectors", num_datapoints
+                );
             }
+        } else {
+            warn!(?chunk_prefix, "No vectors to insert");
         }
     }
 

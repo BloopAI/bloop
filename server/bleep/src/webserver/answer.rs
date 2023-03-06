@@ -160,6 +160,8 @@ async fn _handle(
     let query_id = uuid::Uuid::new_v4();
     let mut stop_watch = StopWatch::start();
 
+    info!("Raw query: {:?}", &params.q);
+
     let semantic = app
         .semantic
         .clone()
