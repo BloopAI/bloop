@@ -99,7 +99,7 @@ impl RudderHub {
 }
 
 impl Stage {
-    pub fn new<T: serde::Serialize>(name: &'static str, data: &T) -> Self {
+    pub fn new<T: serde::Serialize>(name: &'static str, data: T) -> Self {
         let data = serde_json::to_value(data).unwrap();
         let _type = match data {
             Value::Null => "null",

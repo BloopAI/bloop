@@ -141,13 +141,21 @@ pub(super) async fn handle(
     let response = _handle(&state, params, app.clone(), Arc::clone(&event)).await;
 
     if response.is_err() {
-        // send event to rudderstack
-        let event = event.read().await;
-        app.track_query(&event);
+        // Result<impl IntoResponse> does not implement `Debug`, `unwrap_err` is unavailable
+        let Err(e) = response.as_ref() else {
+            unreachable!();
+        };
+
+        // add error stage to pipeline
+        let mut ev = event.write().await;
+        ev.stages
+            .push(Stage::new("error", &(e.status.as_u16(), e.message())));
+
+        // send to rudderstack
+        app.track_query(&ev);
     } else {
         // the analytics event is fired when the stream is consumed
     }
-
     response
 }
 
