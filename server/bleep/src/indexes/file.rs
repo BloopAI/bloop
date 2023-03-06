@@ -544,22 +544,31 @@ impl File {
 
         // calculate symbol locations
         let symbol_locations = if entry_disk_path.is_file() {
-            // build a syntax aware representation of the file
-            let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
-                .and_then(TreeSitterFile::scope_graph);
+            if let Ok(graph) = crate::intelligence::try_build_stack_graph(
+                buffer.as_str(),
+                lang_str,
+                &entry_disk_path,
+            ) {
+                SymbolLocations::StackGraph(graph.to_serializable())
+            } else {
+                debug!("failed to build stack-graph");
+                // build a syntax aware representation of the file
+                let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
+                    .and_then(TreeSitterFile::scope_graph);
 
-            match scope_graph {
-                // we have a graph, use that
-                Ok(graph) => SymbolLocations::TreeSitter(graph),
-                // no graph, try ctags instead
-                Err(err) => {
-                    warn!(?err, %lang_str, "failed to build scope graph");
-                    match repo_metadata.symbols.get(relative_path) {
-                        Some(syms) => SymbolLocations::Ctags(syms.clone()),
-                        // no ctags either
-                        _ => {
-                            warn!(%lang_str, ?entry_disk_path, "failed to build tags");
-                            SymbolLocations::Empty
+                match scope_graph {
+                    // we have a graph, use that
+                    Ok(graph) => SymbolLocations::TreeSitter(graph),
+                    // no graph, try ctags instead
+                    Err(err) => {
+                        debug!(?err, %lang_str, "failed to build scope graph");
+                        match repo_info.symbols.get(relative_path) {
+                            Some(syms) => SymbolLocations::Ctags(syms.clone()),
+                            // no ctags either
+                            _ => {
+                                debug!(%lang_str, ?entry_disk_path, "failed to build tags");
+                                SymbolLocations::Empty
+                            }
                         }
                     }
                 }

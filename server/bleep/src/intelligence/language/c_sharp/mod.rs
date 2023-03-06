@@ -20,6 +20,7 @@ pub static C_SHARP: TSLanguageConfig = TSLanguageConfig {
         // namespaces
         "namespace",
     ]],
+    stack_graph_config: None,
 };
 
 #[cfg(test)]

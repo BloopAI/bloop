@@ -1,6 +1,7 @@
 use crate::{intelligence::ScopeGraph, text_range::TextRange};
 
 use serde::{Deserialize, Serialize};
+use stack_graphs::serde::StackGraph;
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
@@ -19,6 +20,8 @@ pub enum SymbolLocations {
     /// tree-sitter powered symbol-locations (and more!)
     TreeSitter(ScopeGraph),
 
+    StackGraph(StackGraph),
+
     /// no symbol-locations for this file
     #[default]
     Empty,
@@ -29,7 +32,7 @@ impl SymbolLocations {
         match self {
             Self::Ctags(symbols) => symbols.to_vec(),
             Self::TreeSitter(graph) => graph.symbols(),
-            Self::Empty => Vec::new(),
+            Self::Empty | Self::StackGraph(_) => Vec::new(),
         }
     }
 }

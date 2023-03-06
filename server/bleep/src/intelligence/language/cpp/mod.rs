@@ -27,6 +27,7 @@ pub static CPP: TSLanguageConfig = TSLanguageConfig {
         "label",
         "alias",
     ]],
+    stack_graph_config: None,
 };
 
 #[cfg(test)]

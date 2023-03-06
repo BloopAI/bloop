@@ -12,6 +12,10 @@ mod typescript;
 mod test_utils;
 
 use once_cell::sync::OnceCell;
+use tree_sitter_stack_graphs::{
+    loader::{FileAnalyzers, LanguageConfiguration as StackGraphConfig, LoadError},
+    NoCancellation,
+};
 
 use super::NameSpaces;
 
@@ -58,6 +62,9 @@ pub struct TSLanguageConfig {
     /// Namespaces defined by this language,
     /// E.g.: type namespace, variable namespace, function namespace
     pub namespaces: NameSpaces,
+
+    /// Compiled tree-sitter stack-graphs for this language.
+    pub stack_graph_config: Option<MemoizedStackGraphConfig>,
 }
 
 #[derive(Debug)]
@@ -85,6 +92,52 @@ impl MemoizedQuery {
             .get_or_try_init(|| tree_sitter::Query::new(grammar(), self.scope_query))
     }
 }
+
+pub struct MemoizedStackGraphConfig {
+    slot: OnceCell<StackGraphConfig>,
+    ruleset: &'static str,
+}
+
+impl std::fmt::Debug for MemoizedStackGraphConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MemoizedStackGraphConfig").finish()
+    }
+}
+
+impl MemoizedStackGraphConfig {
+    pub const fn new(ruleset: &'static str) -> Self {
+        Self {
+            slot: OnceCell::new(),
+            ruleset,
+        }
+    }
+
+    // Get the underlying config
+    pub fn stack_graph_config(
+        &self,
+        grammar: fn() -> tree_sitter::Language,
+        file_extensions: &[&str],
+    ) -> Result<&StackGraphConfig, LoadError> {
+        self.slot.get_or_try_init(|| {
+            StackGraphConfig::from_tsg_str(
+                grammar(),
+                Some(String::from("source")),
+                None,
+                file_extensions
+                    .iter()
+                    .map(|t| t.to_string())
+                    .collect::<Vec<_>>(),
+                self.ruleset,
+                None,
+                None,
+                FileAnalyzers::new(),
+                &NoCancellation,
+            )
+        })
+    }
+}
+
+unsafe impl Sync for MemoizedStackGraphConfig {}
 
 pub type TSLanguage = Language<TSLanguageConfig>;
 

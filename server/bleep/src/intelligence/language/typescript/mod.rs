@@ -1,4 +1,4 @@
-use crate::intelligence::{MemoizedQuery, TSLanguageConfig};
+use crate::intelligence::{MemoizedQuery, MemoizedStackGraphConfig, TSLanguageConfig};
 
 pub static TYPESCRIPT: TSLanguageConfig = TSLanguageConfig {
     language_ids: &["TypeScript", "TSX"],
@@ -24,6 +24,7 @@ pub static TYPESCRIPT: TSLanguageConfig = TSLanguageConfig {
         // misc.
         "label",
     ]],
+    stack_graph_config: Some(MemoizedStackGraphConfig::new(include_str!("./ruleset.tsg"))),
 };
 
 #[cfg(test)]

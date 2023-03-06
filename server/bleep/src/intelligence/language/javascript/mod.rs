@@ -18,6 +18,7 @@ pub static JAVASCRIPT: TSLanguageConfig = TSLanguageConfig {
         // misc.
         "label",
     ]],
+    stack_graph_config: None,
 };
 
 #[cfg(test)]
