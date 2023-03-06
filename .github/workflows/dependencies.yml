@@ -146,7 +146,7 @@ jobs:
           target: ${{ matrix.target }}
 
       - uses: cachix/install-nix-action@v20
-        with: 
+        with:
           github_access_token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Install dependencies
