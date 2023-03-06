@@ -17,11 +17,15 @@ env:
 
 jobs:
   clippy-test:
-    runs-on: nixos
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           lfs: true
+
+      - uses: cachix/install-nix-action@v20
+        with:
+          github_access_token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Enable cachix
         uses: cachix/cachix-action@v12
