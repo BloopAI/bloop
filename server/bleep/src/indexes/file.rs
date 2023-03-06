@@ -284,7 +284,7 @@ impl Indexable for File {
             }
         });
 
-        info!(?repo.disk_path, "file indexing finished, took {:?}", start.elapsed());
+        info!(?repo.disk_path, "repo file indexing finished, took {:?}", start.elapsed());
 
         // files that are no longer tracked by the git index are to be removed
         // from the tantivy & qdrant indices
@@ -486,7 +486,7 @@ impl File {
         let mut buffer = if entry_disk_path.is_file() {
             match std::fs::read_to_string(&entry_disk_path) {
                 Err(err) => {
-                    debug!(%err, ?entry_disk_path, "read failed; skipping");
+                    warn!(%err, ?entry_disk_path, "read failed; skipping");
                     return Ok(());
                 }
                 Ok(buffer) => buffer,
@@ -553,12 +553,12 @@ impl File {
                 Ok(graph) => SymbolLocations::TreeSitter(graph),
                 // no graph, try ctags instead
                 Err(err) => {
-                    debug!(?err, %lang_str, "failed to build scope graph");
+                    warn!(?err, %lang_str, "failed to build scope graph");
                     match repo_metadata.symbols.get(relative_path) {
                         Some(syms) => SymbolLocations::Ctags(syms.clone()),
                         // no ctags either
                         _ => {
-                            debug!(%lang_str, ?entry_disk_path, "failed to build tags");
+                            warn!(%lang_str, ?entry_disk_path, "failed to build tags");
                             SymbolLocations::Empty
                         }
                     }

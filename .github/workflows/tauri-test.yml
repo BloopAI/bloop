@@ -16,61 +16,21 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-client:
-    runs-on: ubuntu-latest
-    steps:
-      - run: 'echo "No checks required" '
-  fmt-clippy-build:
-    runs-on: ubuntu-latest
-    steps:
-      - run: 'echo "No checks required" '
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: 'echo "No checks required" '
-
-  checks:
-    runs-on: ubuntu-latest
+  clippy-test:
+    runs-on: nixos
     steps:
       - uses: actions/checkout@v3
         with:
           lfs: true
 
-      - name: Install dependencies (ubuntu only)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf
+      - name: Rustfmt
+        run: nix develop -c bash -c 'cargo --locked fmt -p bloop -- --check'
 
-      - uses: cachix/install-nix-action@v18
-      - name: Install Universal Ctags
-        run: "nix profile --access-tokens ${{ secrets.GITHUB_TOKEN }} install nixpkgs#universal-ctags nixpkgs#protobuf"
+      - name: Clippy
+        run: nix develop -c bash -c 'cargo --locked clippy -p bloop'
 
-      - name: Dummy Qdrant binary
-        run: touch apps/desktop/src-tauri/bin/qdrant-x86_64-unknown-linux-gnu
+      - name: Tests
+        run: nix develop -c bash -c 'cargo --locked test -p bloop --release'
 
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "bloop"
-          shared-key: "tauri-test"
-
-      - name: Install Rust stable
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
-
-      - name: Check Formatting
-        run: |
-          cargo --locked fmt -p bloop -- --check 
-
-      - name: Run tests
-        run: |
-          cargo --locked test -p bloop --verbose
-
-      - uses: actions-rs/clippy-check@v1
-        with:
-          toolchain: stable
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --locked -p bloop --all-features --manifest-path Cargo.toml
+      - name: Sccache stats
+        run: nix develop -c bash -c 'sccache --show-stats'

@@ -8,6 +8,8 @@ build = "build.rs"
 [features]
 default = []
 debug = ["console-subscriber", "histogram"]
+dynamic-ort = ["ort/use-system"]
+static-ort = ["ort/use-compile", "ort/compile-static"]
 
 [[bin]]
 name = "bleep"
