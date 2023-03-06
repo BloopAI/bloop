@@ -22,12 +22,6 @@ jobs:
         with:
           lfs: true
 
-      - name: Enable cachix
-        uses: cachix/cachix-action@v12
-        with:
-          name: bloopai
-          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
-
       - name: Rustfmt
         run: nix develop -c bash -c 'cargo --locked fmt -p bleep -- --check'
 
