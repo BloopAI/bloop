@@ -149,7 +149,7 @@ pub(super) async fn handle(
         // add error stage to pipeline
         let mut ev = event.write().await;
         ev.stages
-            .push(Stage::new("error", &(e.status.as_u16(), e.message())));
+            .push(Stage::new("error", (e.status.as_u16(), e.message())));
 
         // send to rudderstack
         app.track_query(&ev);
@@ -337,7 +337,7 @@ async fn _handle(
         .map_err(Error::internal)?;
 
     analytics_event.stages.push(
-        Stage::new("relevant snippet index", &relevant_snippet_index).with_time(stop_watch.lap()),
+        Stage::new("relevant snippet index", relevant_snippet_index).with_time(stop_watch.lap()),
     );
 
     let (answer_path, stream) = if relevant_snippet_index > 0 {
