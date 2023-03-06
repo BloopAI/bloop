@@ -8,4 +8,4 @@ if [ -z "$ORT_LIB_LOCATION" ]; then
 fi
 
 echo $ORT_LIB_LOCATION
-tauri $1
+npm run tauri $1
