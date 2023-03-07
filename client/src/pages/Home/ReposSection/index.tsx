@@ -3,14 +3,20 @@ import RepoCard from '../../../components/RepoCard';
 import Button from '../../../components/Button';
 import { GitHubLogo } from '../../../icons';
 import { getRepos } from '../../../services/api';
-import { RepoProvider, RepoType, SyncStatus } from '../../../types/general';
+import {
+  RepoProvider,
+  ReposFilter,
+  RepoType,
+  SyncStatus,
+} from '../../../types/general';
 import { UIContext } from '../../../context/uiContext';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { DeviceContext } from '../../../context/deviceContext';
 import { SettingSections } from '../../../components/Settings';
+import SpinLoader from '../../../components/Loaders/SpinLoader';
 
 type Props = {
-  filter: number;
+  filter: ReposFilter;
   emptyRepos?: boolean; // only for storybook
 };
 
@@ -63,11 +69,44 @@ const textsMap = [
   },
 ];
 
+const filterRepositories = (filter: ReposFilter, repos?: RepoType[]) => {
+  switch (filter) {
+    case ReposFilter.ALL:
+      return (
+        repos?.filter(
+          (r) =>
+            r.sync_status !== SyncStatus.Uninitialized &&
+            r.sync_status !== SyncStatus.Removed,
+        ) || []
+      );
+    case ReposFilter.LOCAL:
+      return (
+        repos?.filter(
+          (r) =>
+            r.provider === RepoProvider.Local &&
+            r.sync_status !== SyncStatus.Uninitialized &&
+            r.sync_status !== SyncStatus.Removed,
+        ) || []
+      );
+    case ReposFilter.GITHUB:
+      return (
+        repos?.filter(
+          (r) =>
+            r.provider === RepoProvider.GitHub &&
+            r.sync_status !== SyncStatus.Uninitialized &&
+            r.sync_status !== SyncStatus.Removed,
+        ) || []
+      );
+  }
+};
+
 const ReposSection = ({ filter, emptyRepos }: Props) => {
-  const [reposToShow, setReposToShow] = useState<RepoType[]>([]);
   const { setSettingsSection, setSettingsOpen } = useContext(UIContext);
   const { isRepoManagementAllowed, isSelfServe } = useContext(DeviceContext);
   const { setRepositories, repositories } = useContext(RepositoriesContext);
+  const [reposToShow, setReposToShow] = useState<RepoType[]>(
+    filterRepositories(filter, repositories),
+  );
 
   useEffect(() => {
     if (!emptyRepos) {
@@ -86,86 +125,65 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
   }, [emptyRepos]);
 
   useEffect(() => {
-    switch (filter) {
-      case 0:
-        setReposToShow(
-          repositories.filter(
-            (r) =>
-              r.sync_status !== SyncStatus.Uninitialized &&
-              r.sync_status !== SyncStatus.Removed,
-          ),
-        );
-        break;
-      case 1:
-        setReposToShow(
-          repositories.filter(
-            (r) =>
-              r.provider === RepoProvider.Local &&
-              r.sync_status !== SyncStatus.Uninitialized &&
-              r.sync_status !== SyncStatus.Removed,
-          ),
-        );
-        break;
-      case 2:
-        setReposToShow(
-          repositories.filter(
-            (r) =>
-              r.provider === RepoProvider.GitHub &&
-              r.sync_status !== SyncStatus.Uninitialized &&
-              r.sync_status !== SyncStatus.Removed,
-          ),
-        );
-        break;
-    }
+    setReposToShow(filterRepositories(filter, repositories));
   }, [filter, repositories]);
 
   return (
-    <div className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content">
-      <div className="flex items-center justify-between">
-        <h4 className="">
-          {isSelfServe ? 'All repositories' : textsMap[filter].header}
-        </h4>
-        {isRepoManagementAllowed && (reposToShow.length || isSelfServe) ? (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setSettingsSection(SettingSections.REPOSITORIES);
-              setSettingsOpen(true);
-            }}
-          >
-            Manage repositories
-          </Button>
-        ) : null}
-      </div>
-
-      <div className="mt-10 grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3.5 w-full 2xl:justify-between relative items-start grid-rows-[min-content]">
-        {reposToShow.map(({ ref, ...r }, i) => (
-          <RepoCard
-            name={r.name}
-            sync_status={r.sync_status}
-            last_update={r.last_index}
-            lang={r.most_common_lang}
-            key={ref + i}
-            provider={r.provider}
-          />
-        ))}
-        {!reposToShow.length && !isSelfServe && (
-          <div className="absolute top-[10vh] left-1/2 transform -translate-x-1/2 text-center w-96">
-            <h5 className="select-none cursor-default">
-              {textsMap[filter].title}
-            </h5>
-            <p className="body-s text-gray-500 mt-3 mb-6">
-              {textsMap[filter].description}
-            </p>
-            <div className="w-full flex flex-col gap-4">
-              {textsMap[filter].buttons(() => {
-                setSettingsSection(SettingSections.REPOSITORIES);
-                setSettingsOpen(true);
-              })}
-            </div>
+    <div className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content relative">
+      {!repositories ? (
+        <div className="flex items-center justify-center flex-col absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+          <SpinLoader />
+          <p>Repositories loading</p>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between">
+            <h4 className="">
+              {isSelfServe ? 'All repositories' : textsMap[filter].header}
+            </h4>
+            {isRepoManagementAllowed && (reposToShow.length || isSelfServe) ? (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setSettingsSection(SettingSections.REPOSITORIES);
+                  setSettingsOpen(true);
+                }}
+              >
+                Manage repositories
+              </Button>
+            ) : null}
           </div>
-        )}
-      </div>
+
+          <div className="mt-10 grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3.5 w-full 2xl:justify-between relative items-start grid-rows-[min-content]">
+            {reposToShow.map(({ ref, ...r }, i) => (
+              <RepoCard
+                name={r.name}
+                sync_status={r.sync_status}
+                last_update={r.last_index}
+                lang={r.most_common_lang}
+                key={ref + i}
+                provider={r.provider}
+              />
+            ))}
+            {!reposToShow.length && !isSelfServe && (
+              <div className="absolute top-[10vh] left-1/2 transform -translate-x-1/2 text-center w-96">
+                <h5 className="select-none cursor-default">
+                  {textsMap[filter].title}
+                </h5>
+                <p className="body-s text-gray-500 mt-3 mb-6">
+                  {textsMap[filter].description}
+                </p>
+                <div className="w-full flex flex-col gap-4">
+                  {textsMap[filter].buttons(() => {
+                    setSettingsSection(SettingSections.REPOSITORIES);
+                    setSettingsOpen(true);
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };

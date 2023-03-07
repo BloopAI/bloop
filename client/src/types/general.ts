@@ -89,3 +89,9 @@ export type UITabType = {
   searchHistory?: string[];
   name: string;
 };
+
+export enum ReposFilter {
+  ALL,
+  LOCAL,
+  GITHUB,
+}

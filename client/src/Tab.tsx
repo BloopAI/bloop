@@ -20,7 +20,7 @@ type Props = {
 };
 
 function Tab({ deviceContextValue, isActive, tab }: Props) {
-  const [repositories, setRepositories] = useState<RepoType[]>([]);
+  const [repositories, setRepositories] = useState<RepoType[] | undefined>();
 
   const reposContextValue = useMemo(
     () => ({

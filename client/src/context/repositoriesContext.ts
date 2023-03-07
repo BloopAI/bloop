@@ -2,7 +2,7 @@ import { createContext } from 'react';
 import { RepoType } from '../types/general';
 
 type ContextType = {
-  repositories: RepoType[];
+  repositories?: RepoType[];
   setRepositories: (r: RepoType[]) => void;
   localSyncError: boolean;
   githubSyncError: boolean;
