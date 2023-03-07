@@ -12,6 +12,7 @@ mod typescript;
 mod test_utils;
 
 use once_cell::sync::OnceCell;
+use std::sync::{Arc, Mutex};
 use tree_sitter_stack_graphs::{
     loader::{FileAnalyzers, LanguageConfiguration as StackGraphConfig, LoadError},
     NoCancellation,
@@ -94,7 +95,7 @@ impl MemoizedQuery {
 }
 
 pub struct MemoizedStackGraphConfig {
-    slot: OnceCell<StackGraphConfig>,
+    slot: Arc<Mutex<OnceCell<StackGraphConfig>>>,
     ruleset: &'static str,
 }
 
@@ -105,9 +106,9 @@ impl std::fmt::Debug for MemoizedStackGraphConfig {
 }
 
 impl MemoizedStackGraphConfig {
-    pub const fn new(ruleset: &'static str) -> Self {
+    pub fn new(ruleset: &'static str) -> Self {
         Self {
-            slot: OnceCell::new(),
+            slot: Arc::new(Mutex::new(OnceCell::new())),
             ruleset,
         }
     }
@@ -117,23 +118,28 @@ impl MemoizedStackGraphConfig {
         &self,
         grammar: fn() -> tree_sitter::Language,
         file_extensions: &[&str],
-    ) -> Result<&StackGraphConfig, LoadError> {
-        self.slot.get_or_try_init(|| {
-            StackGraphConfig::from_tsg_str(
-                grammar(),
-                Some(String::from("source")),
-                None,
-                file_extensions
-                    .iter()
-                    .map(|t| t.to_string())
-                    .collect::<Vec<_>>(),
-                self.ruleset,
-                None,
-                None,
-                FileAnalyzers::new(),
-                &NoCancellation,
-            )
-        })
+    ) -> Result<&StackGraphConfig, ()> {
+        if let Ok(lock) = self.slot.try_lock() {
+            lock.get_or_try_init(|| {
+                StackGraphConfig::from_tsg_str(
+                    grammar(),
+                    Some(String::from("source")),
+                    None,
+                    file_extensions
+                        .iter()
+                        .map(|t| t.to_string())
+                        .collect::<Vec<_>>(),
+                    self.ruleset,
+                    None,
+                    None,
+                    FileAnalyzers::new(),
+                    &NoCancellation,
+                )
+            })
+            .map_err(|_| ())
+        } else {
+            Err(())
+        }
     }
 }
 

@@ -562,7 +562,7 @@ impl File {
                     // no graph, try ctags instead
                     Err(err) => {
                         debug!(?err, %lang_str, "failed to build scope graph");
-                        match repo_info.symbols.get(relative_path) {
+                        match repo_metadata.symbols.get(relative_path) {
                             Some(syms) => SymbolLocations::Ctags(syms.clone()),
                             // no ctags either
                             _ => {

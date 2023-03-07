@@ -104,7 +104,7 @@ pub fn try_build_stack_graph(
     let config = _c
         .stack_graph_config(language.grammar, language.file_extensions)
         .map_err(|e| {
-            tracing::info!("load error: {}", e);
+            tracing::info!("load error");
             TreeSitterFileError::LoadError
         })?;
 

@@ -85,6 +85,7 @@ impl RudderHub {
                                 "query_id": ev.query_id,
                                 "overlap_strategy": ev.overlap_strategy,
                                 "stages": ev.stages,
+                                "version": format!("{}{}", env!("CARGO_"))
                             })),
                             ..Default::default()
                         })) {
