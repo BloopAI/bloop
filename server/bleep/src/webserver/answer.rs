@@ -362,14 +362,17 @@ async fn _handle(
 
         let mut grow_size = 40;
         let grown_text = loop {
-            let grown_text = grow(&doc, relevant_snippet, grow_size);
-            let token_count = semantic.gpt2_token_count(&grown_text);
-            info!(%grow_size, %token_count, "growing ...");
-            if token_count > 2000 || grow_size > 100 {
-                break grown_text;
+            if let Some(grown_text) = grow(&doc, relevant_snippet, grow_size) {
+                let token_count = semantic.gpt2_token_count(&grown_text);
+                info!(%grow_size, %token_count, "growing ...");
+                if token_count > 2000 || grow_size > 100 {
+                    break grown_text;
+                } else {
+                    grow_size += 10;
+                }
             } else {
-                grow_size += 10;
-            }
+                break relevant_snippet.text.clone();
+            };
         };
 
         let processed_snippet = Snippet {
@@ -454,8 +457,20 @@ async fn _handle(
 }
 
 // grow the text of this snippet by `size` and return the new text
-fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> String {
+fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String> {
     let content = &doc.content;
+
+    // do not grow if this snippet contains incorrect byte ranges
+    if snippet.start_byte >= content.len() || snippet.end_byte >= content.len() {
+        error!(
+            repo = snippet.repo_name,
+            path = snippet.relative_path,
+            start = snippet.start_byte,
+            end = snippet.end_byte,
+            "invalid snippet bounds",
+        );
+        return None;
+    }
 
     // skip upwards `size` number of lines
     let new_start_byte = content[..snippet.start_byte]
@@ -472,7 +487,7 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> String {
         .map(|s| s.saturating_add(snippet.end_byte)) // the index is off by `snippet.end_byte`
         .unwrap_or(content.len());
 
-    content[new_start_byte..new_end_byte].to_owned()
+    Some(content[new_start_byte..new_end_byte].to_owned())
 }
 
 struct AnswerAPIClient<'s> {

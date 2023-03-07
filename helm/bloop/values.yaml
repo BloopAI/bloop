@@ -80,7 +80,7 @@ affinity: {}
 
 persistence:
   accessModes: ["ReadWriteOnce"]
-  size: 1Gi
+  size: 10Gi
   storageClassName: gp3
 
 qdrant:
@@ -161,7 +161,7 @@ qdrant:
 
   persistence:
     accessModes: ["ReadWriteOnce"]
-    size: 1Gi
+    size: 10Gi
     storageClassName: gp3
 
   #only supported for single node qdrant clusters.
