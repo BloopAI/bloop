@@ -39,6 +39,15 @@ Here's how to find your way around the repo:
 - `server/bleep`: The Rust backend which contains the core search and navigation logic
 - `client`: The React frontend
 
+We make extensive use of Git LFS for dependencies that are expensive to build.
+
+To make sure you have everything you need to start building, you'll need to
+install the `git-lfs` package for your favourite operating system, then run the
+following commands in this repo:
+
+    git lfs install
+    git lfs pull
+
 If you find a bug or have a feature request, [open an issue](https://github.com/BloopAI/bloop/issues)!
 
 ## Privacy
