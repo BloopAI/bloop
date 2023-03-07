@@ -452,6 +452,13 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String>
 
     // do not grow if this snippet contains incorrect byte ranges
     if snippet.start_byte >= content.len() || snippet.end_byte >= content.len() {
+        error!(
+            repo = snippet.repo_name,
+            path = snippet.relative_path,
+            start = snippet.start_byte,
+            end = snippet.end_byte,
+            "invalid snippet bounds",
+        );
         return None;
     }
 
