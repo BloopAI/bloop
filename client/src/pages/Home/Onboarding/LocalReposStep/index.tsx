@@ -38,23 +38,25 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
       const reposToSync = repos
         .filter((r) => (activeTab === 1 ? r.selected : r))
         .map((r) => r.ref);
-      const prevSyncedLocalRepos = repositories
-        .filter(
-          (r) =>
-            r.provider === RepoProvider.Local &&
-            r.sync_status == SyncStatus.Done &&
-            !repos.find((repo) => r.ref === repo.ref),
-        )
-        .map((r) => r.ref);
-      const githubRepos = repositories
-        .filter(
-          (r) =>
-            r.provider === RepoProvider.GitHub &&
-            ![SyncStatus.Uninitialized, SyncStatus.Removed].includes(
-              r.sync_status,
-            ),
-        )
-        .map((r) => r.ref);
+      const prevSyncedLocalRepos =
+        repositories
+          ?.filter(
+            (r) =>
+              r.provider === RepoProvider.Local &&
+              r.sync_status == SyncStatus.Done &&
+              !repos.find((repo) => r.ref === repo.ref),
+          )
+          .map((r) => r.ref) || [];
+      const githubRepos =
+        repositories
+          ?.filter(
+            (r) =>
+              r.provider === RepoProvider.GitHub &&
+              ![SyncStatus.Uninitialized, SyncStatus.Removed].includes(
+                r.sync_status,
+              ),
+          )
+          .map((r) => r.ref) || [];
       trackReposSelected({
         localRepos: reposToSync.length,
         githubRepos: githubRepos.length,
