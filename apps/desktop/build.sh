@@ -1,13 +1,11 @@
 #!/bin/sh -e
 
+git lfs install
+git lfs pull
 
-QDRANT_VERSION=v1.0.1
-ROOTDIR=src-tauri
-BINDIR=src-tauri/bin
-QDRANT_RELEASE=qdrant
+if [ -z "$ORT_LIB_LOCATION" ]; then
+    export ORT_LIB_LOCATION=$(readlink -f $(dirname $(readlink -f  $0))/../../lib/$(rustc -vV |awk '/host:/ { print $2 }')/onnxruntime)
+fi
 
-TARGET_TRIPLET="$(rustc -Vv |grep host |cut -d\  -f2)"
-QDRANT_LINK=qdrant-$TARGET_TRIPLET
-
-cargo install --git https://github.com/qdrant/qdrant --tag $QDRANT_VERSION --locked --root $ROOTDIR qdrant || true
-(cd $BINDIR; test -f $QDRANT_LINK || ln -sf $QDRANT_RELEASE $QDRANT_LINK)
+echo $ORT_LIB_LOCATION
+npm run tauri $1

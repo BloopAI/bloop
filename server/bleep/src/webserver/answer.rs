@@ -141,13 +141,21 @@ pub(super) async fn handle(
     let response = _handle(&state, params, app.clone(), Arc::clone(&event)).await;
 
     if response.is_err() {
-        // send event to rudderstack
-        let event = event.read().await;
-        app.track_query(&event);
+        // Result<impl IntoResponse> does not implement `Debug`, `unwrap_err` is unavailable
+        let Err(e) = response.as_ref() else {
+            unreachable!();
+        };
+
+        // add error stage to pipeline
+        let mut ev = event.write().await;
+        ev.stages
+            .push(Stage::new("error", (e.status.as_u16(), e.message())));
+
+        // send to rudderstack
+        app.track_query(&ev);
     } else {
         // the analytics event is fired when the stream is consumed
     }
-
     response
 }
 
@@ -159,6 +167,8 @@ async fn _handle(
 ) -> Result<impl IntoResponse> {
     let query_id = uuid::Uuid::new_v4();
     let mut stop_watch = StopWatch::start();
+
+    info!("Raw query: {:?}", &params.q);
 
     let semantic = app
         .semantic
@@ -327,7 +337,7 @@ async fn _handle(
         .map_err(Error::internal)?;
 
     analytics_event.stages.push(
-        Stage::new("relevant snippet index", &relevant_snippet_index).with_time(stop_watch.lap()),
+        Stage::new("relevant snippet index", relevant_snippet_index).with_time(stop_watch.lap()),
     );
 
     let (answer_path, stream) = if relevant_snippet_index > 0 {

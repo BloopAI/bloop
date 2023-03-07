@@ -1,0 +1,167 @@
+name: Dependency matrix
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - ".github/workflows/dependencies.yml"
+
+jobs:
+  ctags-onnx-nix:
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [ ctags, onnxruntime ]
+        target: [
+          x86_64-unknown-linux-gnu,
+          x86_64-darwin,
+          aarch64-darwin,
+        ]
+
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: false
+
+          - target: x86_64-darwin
+            os: macos-latest
+            cross: false
+
+          - target: aarch64-darwin
+            os: macos-latest
+            cross: true
+
+        # Requires python for the build, which in a proper mess
+        # Just build this on a real machine instead of cross
+        exclude:
+          - package: onnxruntime
+            target: aarch64-darwin
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Setting variables
+        uses: actions/github-script@v6
+        id: var
+        with:
+          script: |
+            const target = ${{ matrix.cross }} && '-${{ matrix.target }}' || ''
+            const package_name = '${{ matrix.package }}-static' + target
+            core.setOutput('package-name', package_name)
+
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
+
+      - run: env
+      - name: Setup nix
+        uses: cachix/install-nix-action@v20
+        with:
+          github_access_token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Enable cachix
+        uses: cachix/cachix-action@v12
+        with:
+          name: bloopai
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+
+      - name: Build package ${{matrix.package}}-${{matrix.target}}
+        env:
+          PACKAGE_NAME: ${{ steps.var.outputs.package-name }}
+        run: |
+          package=$(nix build -L --json .#${{ env.PACKAGE_NAME }})
+          package_path=$(echo $package | jq -r '.[0].outputs.out')
+          echo package_path=$package_path >> $GITHUB_ENV
+          mkdir ${{ env.PACKAGE_NAME }}_bundle
+          cp -r $package_path/* ${{ env.PACKAGE_NAME }}_bundle
+
+      - name: Copy macOS dynamic dependencies
+        if: matrix.os == 'macos-latest' && ( matrix.package == 'ctags' )
+        env:
+          PACKAGE_NAME: ${{ steps.var.outputs.package-name }}
+        run: |
+          copy_deps() {
+              local lib=$2/$(basename $1)
+
+              cp -n $1 $lib || true
+              chmod +w $lib
+
+              local deps="$(otool -L $lib |awk '/\/nix\/store\// { gsub(":", ""); print $1 }' | tr '\n' ' ')"
+              for dep in $(echo $deps);
+              do
+                if [ ! -f "$2/$(basename $dep)" ]
+                then
+                  copy_deps $dep $2 || true
+                fi
+              done
+
+              for dep in $(echo $deps);
+              do
+                echo install_name_tool -change $dep @executable_path/$(basename $dep) $lib
+                install_name_tool -change $dep @executable_path/$(basename $dep) $lib
+              done
+          }
+
+          copy_deps ${{ env.package_path }}/bin/${{ matrix.package }}  ${{ env.PACKAGE_NAME }}_bundle
+          ls ${{ env.PACKAGE_NAME }}_bundle
+
+      - name: Upload binaries
+        env:
+          PACKAGE_NAME: ${{ steps.var.outputs.package-name }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: "${{ matrix.package }}_${{ matrix.target }}"
+          path: ${{ env.PACKAGE_NAME }}_bundle
+
+  qdrant-rustup:
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [ qdrant ]
+        target: [
+          x86_64-unknown-linux-gnu,
+          x86_64-apple-darwin,
+          aarch64-apple-darwin,
+        ]
+
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: false
+
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            cross: false
+
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            cross: true
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Install Rust stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          target: ${{ matrix.target }}
+
+      - uses: cachix/install-nix-action@v20
+        with: 
+          github_access_token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Install dependencies
+        run: "nix profile install nixpkgs#protobuf"
+
+      - name: Build qdrant
+        env:
+          VERSION: 1.0.2
+        run: |
+          cargo install --target ${{ matrix.target }} --git https://github.com/qdrant/qdrant --tag v$VERSION --locked --root . qdrant
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: "${{ matrix.package }}_${{ matrix.target }}"
+          path: bin

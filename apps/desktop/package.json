@@ -9,8 +9,7 @@
     "build": "npm-run-all tsc vite-build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "build-qdrant": "./build.sh",
-    "tauri-dev": "npm-run-all build-qdrant \"tauri dev\"",
-    "tauri-build": "npm-run-all build-qdrant \"tauri build\""
+    "tauri-dev": "./build.sh dev",
+    "tauri-build": "./build.sh build"
   }
 }

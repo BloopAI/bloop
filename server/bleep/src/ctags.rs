@@ -1,4 +1,4 @@
-#[cfg(windows)]
+#[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 use std::{
     collections::HashMap,
