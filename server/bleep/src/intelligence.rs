@@ -6,7 +6,10 @@ mod scope_resolution;
 use std::path::Path;
 
 pub use {
-    language::{Language, MemoizedQuery, TSLanguage, TSLanguageConfig, ALL_LANGUAGES},
+    language::{
+        Language, MemoizedQuery, MemoizedStackGraphConfig, TSLanguage, TSLanguageConfig,
+        ALL_LANGUAGES,
+    },
     namespace::*,
     scope_resolution::{NodeKind, ScopeGraph},
 };
@@ -87,6 +90,38 @@ impl<'a> TreeSitterFile<'a> {
     }
 }
 
+// pub fn try_build_stack_graph(
+//     src: &str,
+//     lang_id: &str,
+//     source_path: &Path,
+// ) -> Result<StackGraph, TreeSitterFileError> {
+//     let language = match TSLanguage::from_id(lang_id) {
+//         Language::Supported(language) => Ok(language),
+//         Language::Unsupported => Err(TreeSitterFileError::UnsupportedLanguage),
+//     }?;
+//
+//     let mut graph = StackGraph::new();
+//     let handle = graph.add_file(&source_path.to_string_lossy()).unwrap();
+//
+//     let config = StackGraphConfig::from_tsg_str(
+//         tree_sitter_typescript::language_typescript(),
+//         Some(String::from("source")),
+//         None,
+//         vec![String::from("ts"), String::from("tsx")],
+//         include_str!("./intelligence/language/typescript/ruleset.tsg"),
+//         None,
+//         None,
+//         FileAnalyzers::new(),
+//         &NoCancellation,
+//     )
+//     .unwrap();
+//     let globals = Variables::new();
+//     config
+//         .sgl
+//         .build_stack_graph_into(&mut graph, handle, src, &globals, &NoCancellation);
+//     Ok(graph)
+// }
+
 pub fn try_build_stack_graph(
     src: &str,
     lang_id: &str,
@@ -97,21 +132,19 @@ pub fn try_build_stack_graph(
         Language::Unsupported => Err(TreeSitterFileError::UnsupportedLanguage),
     }?;
 
+    let _c = language
+        .stack_graph_config
+        .as_ref()
+        .ok_or(TreeSitterFileError::UnsupportedLanguage)?;
+    let config = _c
+        .stack_graph_config(language.grammar, language.file_extensions)
+        .map_err(|e| {
+            tracing::error!("load error: {}", e);
+            TreeSitterFileError::LoadError
+        })?;
+
     let mut graph = StackGraph::new();
     let handle = graph.add_file(&source_path.to_string_lossy()).unwrap();
-
-    let config = StackGraphConfig::from_tsg_str(
-        tree_sitter_typescript::language_typescript(),
-        Some(String::from("source")),
-        None,
-        vec![String::from("ts"), String::from("tsx")],
-        include_str!("./intelligence/language/typescript/ruleset.tsg"),
-        None,
-        None,
-        FileAnalyzers::new(),
-        &NoCancellation,
-    )
-    .unwrap();
     let globals = Variables::new();
     config
         .sgl
