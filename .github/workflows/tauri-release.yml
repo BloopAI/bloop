@@ -86,10 +86,6 @@ jobs:
       - name: Install app dependencies
         run: npm ci --legacy-peer-deps
 
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "bloop"
-          shared-key: "tauri-release"
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
