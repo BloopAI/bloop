@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { DeviceContextType } from './context/deviceContext';
 import './index.css';
+import './circleProgress.css';
 import Tab from './Tab';
 import { TabsContext } from './context/tabsContext';
 import { UITabType } from './types/general';

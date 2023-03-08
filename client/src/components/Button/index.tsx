@@ -33,7 +33,7 @@ const variantStylesMap = {
   secondary:
     'text-gray-300 hover:text-gray-100 focus:text-gray-100 bg-gray-800 border border-gray-700 hover:border-gray-600 focus:border-gray-600 active:border-gray-700 active:text-gray-200 disabled:border-none disabled:text-gray-500 shadow-light hover:shadow-none focus:shadow-none active:shadow-light disabled:shadow-none',
   tertiary:
-    'text-gray-500 bg-transparent hover:text-gray-300 focus:text-gray-300 hover:border-gray-800 focus:border-gray-800 active:text-gray-50 disabled:bg-gray-900 disabled:text-gray-500 disabled:hover:border-transparent',
+    'text-gray-500 bg-transparent hover:text-gray-300 active:text-gray-50 disabled:bg-gray-900 disabled:text-gray-500 disabled:hover:border-transparent',
   'tertiary-outlined':
     'text-gray-500 bg-transparent border border-gray-700 hover:bg-gray-700 focus:bg-gray-700 active:bg-transparent hover:text-gray-300  active:text-gray-50 disabled:bg-gray-900 disabled:text-gray-500 disabled:border-transparent disabled:hover:border-transparent',
 };

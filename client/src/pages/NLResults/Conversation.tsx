@@ -10,13 +10,15 @@ import { ConversationMessage } from '../../types/general';
 import { SearchContext } from '../../context/searchContext';
 import TextInput from '../../components/TextInput';
 import Button from '../../components/Button';
-import { Checkmark, QuillIcon, SendIcon } from '../../icons';
+import { QuillIcon, SendIcon } from '../../icons';
+import Message from './Message';
 
 type Props = {
   conversation: ConversationMessage[];
   onNewMessage: (m: string) => void;
   onViewSnippetsClick: (i: number) => void;
   currentlyViewedSnippets: number;
+  searchId: string;
 };
 
 const Conversation = ({
@@ -24,6 +26,7 @@ const Conversation = ({
   onNewMessage,
   onViewSnippetsClick,
   currentlyViewedSnippets,
+  searchId,
 }: Props) => {
   const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -67,43 +70,14 @@ const Conversation = ({
         ref={messagesRef}
       >
         {conversation.map((message, i) => (
-          <div
+          <Message
             key={i}
-            className={`max-w-[80%] w-fit ${
-              message.author === 'user' ? 'self-end' : 'self-start'
-            }`}
-          >
-            <div
-              className={`rounded-lg p-3 ${
-                message.author === 'user' ? 'bg-gray-700' : 'bg-primary-400'
-              }`}
-            >
-              {message.text || message.error}
-            </div>
-            {message.isLoading ? (
-              <span className="body-s text-white">Still generating</span>
-            ) : message.author === 'server' ? (
-              <div className="flex items-center justify-between mt-2">
-                {i === conversation.length - 1 && (
-                  <span className="flex gap-1 items-center text-success-600">
-                    <Checkmark />
-                    <span className="body-s text-white">Result ready</span>
-                  </span>
-                )}
-                {i !== currentlyViewedSnippets &&
-                  conversation[i]?.snippets?.length && (
-                    <button
-                      className="text-primary-300 body-s mr-2"
-                      onClick={() => onViewSnippetsClick(i)}
-                    >
-                      View
-                    </button>
-                  )}
-              </div>
-            ) : (
-              ''
-            )}
-          </div>
+            message={message}
+            onViewSnippetsClick={onViewSnippetsClick}
+            currentlyViewedSnippets={currentlyViewedSnippets}
+            searchId={searchId}
+            i={i}
+          />
         ))}
       </div>
       <form
@@ -119,14 +93,16 @@ const Conversation = ({
           variant="filled"
           high
           startIcon={
-            <span className="text-gray-500 w-5 h-5 relative after:-top-0.5 after:-bottom-0.5 after:absolute after:-right-1.5 after:w-0.5 after:bg-primary-300 after:rounded-full">
+            <span className="text-gray-500 w-5 h-5">
               <QuillIcon />
             </span>
           }
           endIcon={
-            <Button onlyIcon variant="tertiary" title="Send" type="submit">
-              <SendIcon />
-            </Button>
+            conversation[conversation.length - 1].isLoading ? undefined : (
+              <Button onlyIcon variant="tertiary" title="Send" type="submit">
+                <SendIcon />
+              </Button>
+            )
           }
         />
       </form>
