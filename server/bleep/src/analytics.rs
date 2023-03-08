@@ -36,6 +36,12 @@ pub struct Stage {
     pub time_elapsed: Option<u128>,
 }
 
+#[derive(Debug, serde::Serialize)]
+pub struct PackageMetadata {
+    pub name: &'static str,
+    pub version: &'static str,
+}
+
 static HUB: OnceCell<Arc<RudderHub>> = OnceCell::new();
 
 pub struct RudderHub {
@@ -46,6 +52,7 @@ pub struct RudderHub {
 #[derive(Default)]
 pub struct HubOptions {
     pub event_filter: Option<Arc<dyn Fn(QueryEvent) -> Option<QueryEvent> + Send + Sync + 'static>>,
+    pub package_metadata: Option<PackageMetadata>,
 }
 
 impl RudderHub {
@@ -85,16 +92,19 @@ impl RudderHub {
                                 "query_id": ev.query_id,
                                 "overlap_strategy": ev.overlap_strategy,
                                 "stages": ev.stages,
+                                "package_metadata": options.package_metadata,
                             })),
                             ..Default::default()
                         })) {
                             info!("failed to send analytics event: {:?}", e);
+                        } else {
+                            info!("sent analytics event ...");
+                            return;
                         }
                     }
                 }
             }
         }
-        info!("sent analytics event ...");
     }
 }
 
