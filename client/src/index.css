@@ -73,6 +73,8 @@
 @tailwind utilities;
 
 :root {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background-color: #131315;
   color: #F1F1F2;
   overflow: hidden;
