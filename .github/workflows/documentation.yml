@@ -1,14 +1,5 @@
 name: Update Documentation
 
-on:
-  push:
-    branches: [main]
-    paths:
-      - "server/**"
-      - ".github/workflows/server**"
-      - ".github/workflows/documentation.yml"
-      - "scripts/start-server.sh"
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
