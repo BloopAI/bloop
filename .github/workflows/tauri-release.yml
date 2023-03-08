@@ -1,59 +1,33 @@
 name: Tauri Release
 
 on:
+  workflow_dispatch:
   pull_request:
+    paths:
+      - ".github/workflows/tauri-release.yml"
+  release:
+    types:
+      [published, prereleased]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # checks:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         lfs: true
-
-  #     - name: Install dependencies (ubuntu only)
-  #       run: |
-  #         sudo apt-get update
-  #         sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf protobuf-compiler
-
-  #     - uses: Swatinem/rust-cache@v2
-  #       with:
-  #         prefix-key: "bloop"
-  #         shared-key: "tauri-checks"
-
-  #     - name: Install Rust stable
-  #       uses: actions-rs/toolchain@v1
-  #       with:
-  #         toolchain: stable
-
-  #     - name: Check Formatting
-  #       run: |
-  #         cargo --locked fmt -p bloop -- --check
-
-  #     - name: Run tests
-  #       run: |
-  #         cargo --locked test -p bloop --verbose
-
   build-and-sign-tauri:
-    # needs: [checks]
-
     strategy:
       fail-fast: false
       matrix:
         target: [
           x86_64-unknown-linux-gnu,
-          x86_64-darwin,
+          x86_64-apple-darwin,
         ]
 
         include:
           - target: x86_64-unknown-linux-gnu
             name: ubuntu-latest
 
-          - target: x86_64-darwin
+          - target: x86_64-apple-darwin
             name: macos-latest
 
     runs-on: ${{ matrix.name }}
@@ -84,6 +58,15 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          profile: minimal
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "bloop"
+
+      - name: Run tests
+        run: |
+          cargo --locked test --verbose --release -p bloop 
 
       - name: Download binaries (windows) (windows is disabled)
         if: matrix.name == 'windows-latest'
