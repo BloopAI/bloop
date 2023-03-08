@@ -29,17 +29,22 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 16
           cache: "npm"
+
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+
       - name: Run lint
         run: npm run lint
+
       - name: Run type-check
         run: npm run client-type-check
+
 #       - name: Publish to Chromatic
 #         uses: chromaui/action@v1
 #         with:

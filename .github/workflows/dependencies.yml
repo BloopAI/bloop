@@ -51,10 +51,8 @@ jobs:
             core.setOutput('package-name', package_name)
 
       - uses: actions/checkout@v3
-        with:
-          lfs: true
-
       - run: env
+
       - name: Setup nix
         uses: cachix/install-nix-action@v20
         with:

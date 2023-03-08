@@ -63,9 +63,8 @@ jobs:
 
     runs-on: ${{ matrix.name }}
     steps:
-      - uses: actions/checkout@v3
-        with:
-          lfs: true
+      - name: Checkout code
+        uses: nschloe/action-cached-lfs-checkout@v1
 
       - name: Setup nix
         uses: cachix/install-nix-action@v20
