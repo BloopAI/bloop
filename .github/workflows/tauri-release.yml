@@ -72,10 +72,10 @@ jobs:
         with:
           github_access_token: "${{ secrets.GITHUB_TOKEN }}"
 
-      - run: nix profile install nixpkgs#zlib.dev nixpkgs#protobuf
+      - run: nix profile install nixpkgs#protobuf
 
       - if: matrix.name == 'ubuntu-latest'
-        run: nix profile install nixpkgs#gtk3.dev nixpkgs#webkitgtk nixpkgs#dmidecode nixpkgs#appimage-run nixpkgs#appimagekit nixpkgs#pkg-config nixpkgs#libsoup.dev nixpkgs#patchelf nixpkgs#glib.dev
+        run: sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf protobuf-compiler
 
       - name: Use Node.js
         uses: actions/setup-node@v3
