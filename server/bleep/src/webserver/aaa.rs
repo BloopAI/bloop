@@ -303,8 +303,8 @@ async fn user_auth(
             .text()
             .await?;
 
-        let gh_token =
-            serde_json::from_str(&oauth_json).context("failed to deserialize refresh token")?;
+        let gh_token = serde_json::from_str(&oauth_json)
+            .context(format!("failed to deserialize refresh token: {oauth_json}"))?;
         auth_cookie.update_token(gh_token);
     }
 
