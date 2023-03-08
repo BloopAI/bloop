@@ -161,6 +161,7 @@ const ResultsPage = ({ query }: Props) => {
                     lang: item.lang,
                     line: item.start_line,
                   })) || [],
+                text: typeof newData === 'string' ? newData : '',
               };
               return [...newConversation, lastMessage];
             });
@@ -256,6 +257,7 @@ const ResultsPage = ({ query }: Props) => {
         onNewMessage={handleNewMessage}
         onViewSnippetsClick={setCurrentlyViewedSnippets}
         currentlyViewedSnippets={currentlyViewedSnippets}
+        searchId={searchId}
       />
 
       {openResult ? (
