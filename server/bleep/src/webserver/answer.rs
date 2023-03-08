@@ -51,8 +51,8 @@ pub mod api {
 
     #[derive(thiserror::Error, Debug, Deserialize)]
     pub enum Error {
-        #[error("bad OpenAI request")]
-        BadOpenAiRequest,
+        #[error("bad LLM request")]
+        BadLlmRequest,
     }
 
     pub type Result = std::result::Result<String, Error>;
