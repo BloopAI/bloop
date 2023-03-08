@@ -620,6 +620,12 @@ impl File {
                 });
             }
         }
+        let sym_serialized = bincode::serialize(&symbol_locations)?;
+        info!(
+            %lang_str,
+            "size of serialized symbol locations: {} bytes",
+            sym_serialized.len()
+        );
 
         trace!("writing document");
         #[cfg(feature = "debug")]
@@ -635,7 +641,7 @@ impl File {
             self.lang => lang_str.to_ascii_lowercase().as_bytes(),
             self.avg_line_length => lines_avg,
             self.last_commit_unix_seconds => last_commit,
-            self.symbol_locations => bincode::serialize(&symbol_locations)?,
+            self.symbol_locations => sym_serialized,
             self.symbols => symbols,
             self.raw_content => buffer.as_bytes(),
             self.raw_repo_name => repo_name.as_bytes(),

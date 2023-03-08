@@ -11,7 +11,7 @@ mod typescript;
 #[cfg(test)]
 mod test_utils;
 
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use std::sync::{Arc, Mutex};
 use tree_sitter_stack_graphs::{
     loader::{FileAnalyzers, LanguageConfiguration as StackGraphConfig, LoadError},
@@ -65,7 +65,7 @@ pub struct TSLanguageConfig {
     pub namespaces: NameSpaces,
 
     /// Compiled tree-sitter stack-graphs for this language.
-    pub stack_graph_config: Option<MemoizedStackGraphConfig>,
+    pub stack_graph_config: Option<()>,
 }
 
 #[derive(Debug)]
@@ -94,56 +94,56 @@ impl MemoizedQuery {
     }
 }
 
-pub struct MemoizedStackGraphConfig {
-    slot: Arc<Mutex<OnceCell<StackGraphConfig>>>,
-    ruleset: &'static str,
-}
-
-impl std::fmt::Debug for MemoizedStackGraphConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MemoizedStackGraphConfig").finish()
-    }
-}
-
-impl MemoizedStackGraphConfig {
-    pub fn new(ruleset: &'static str) -> Self {
-        Self {
-            slot: Arc::new(Mutex::new(OnceCell::new())),
-            ruleset,
-        }
-    }
-
-    // Get the underlying config
-    pub fn stack_graph_config(
-        &self,
-        grammar: fn() -> tree_sitter::Language,
-        file_extensions: &[&str],
-    ) -> Result<&StackGraphConfig, ()> {
-        if let Ok(lock) = self.slot.try_lock() {
-            lock.get_or_try_init(|| {
-                StackGraphConfig::from_tsg_str(
-                    grammar(),
-                    Some(String::from("source")),
-                    None,
-                    file_extensions
-                        .iter()
-                        .map(|t| t.to_string())
-                        .collect::<Vec<_>>(),
-                    self.ruleset,
-                    None,
-                    None,
-                    FileAnalyzers::new(),
-                    &NoCancellation,
-                )
-            })
-            .map_err(|_| ())
-        } else {
-            Err(())
-        }
-    }
-}
-
-unsafe impl Sync for MemoizedStackGraphConfig {}
+// pub struct MemoizedStackGraphConfig {
+//     slot: Arc<Mutex<OnceCell<StackGraphConfig>>>,
+//     ruleset: &'static str,
+// }
+//
+// impl std::fmt::Debug for MemoizedStackGraphConfig {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         f.debug_struct("MemoizedStackGraphConfig").finish()
+//     }
+// }
+//
+// impl MemoizedStackGraphConfig {
+//     pub fn new(ruleset: &'static str) -> Self {
+//         Self {
+//             slot: Arc::new(Mutex::new(OnceCell::new())),
+//             ruleset,
+//         }
+//     }
+//
+//     // Get the underlying config
+//     pub fn stack_graph_config(
+//         &self,
+//         grammar: fn() -> tree_sitter::Language,
+//         file_extensions: &[&str],
+//     ) -> Result<&StackGraphConfig, ()> {
+//         if let Ok(lock) = self.slot.try_lock() {
+//             lock.get_or_try_init(|| {
+//                 StackGraphConfig::from_tsg_str(
+//                     grammar(),
+//                     Some(String::from("source")),
+//                     None,
+//                     file_extensions
+//                         .iter()
+//                         .map(|t| t.to_string())
+//                         .collect::<Vec<_>>(),
+//                     self.ruleset,
+//                     None,
+//                     None,
+//                     FileAnalyzers::new(),
+//                     &NoCancellation,
+//                 )
+//             })
+//             .map_err(|_| ())
+//         } else {
+//             Err(())
+//         }
+//     }
+// }
+//
+// unsafe impl Sync for MemoizedStackGraphConfig {}
 
 pub type TSLanguage = Language<TSLanguageConfig>;
 
