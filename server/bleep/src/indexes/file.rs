@@ -543,7 +543,7 @@ impl File {
         };
 
         // calculate symbol locations
-        let symbol_locations = {
+        let symbol_locations = if entry_disk_path.is_file() {
             // build a syntax aware representation of the file
             let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
                 .and_then(TreeSitterFile::scope_graph);
@@ -564,6 +564,8 @@ impl File {
                     }
                 }
             }
+        } else {
+            SymbolLocations::Empty
         };
 
         // flatten the list of symbols into a string with just text
