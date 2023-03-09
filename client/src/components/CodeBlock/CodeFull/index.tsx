@@ -23,6 +23,7 @@ import { Commit } from '../../../types';
 import { Token as TokenType } from '../../../types/prism';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import SearchOnPage from '../../SearchOnPage';
+import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import Token from './Token';
 
 const Table = _Table as unknown as FC<TableProps>;
@@ -281,32 +282,26 @@ const CodeFull = ({
     [currentSelection],
   );
 
-  useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        event.key === 'a' &&
-        (event.target as HTMLElement)?.tagName !== 'INPUT'
-      ) {
-        // Prevent the default action (i.e. selecting all text in the browser)
-        event.preventDefault();
-        setCurrentSelection([
-          [0, 0],
-          [tokens.length - 1, tokens[tokens.length - 1].length],
-        ]);
-        const selection = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents(codeRef.current || document.body);
-        selection?.removeAllRanges();
-        selection?.addRange(range);
-      }
-    };
-    document.addEventListener('keydown', handler);
-
-    return () => {
-      document.removeEventListener('keydown', handler);
-    };
+  const handleKeyEvent = useCallback((event: KeyboardEvent) => {
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      event.key === 'a' &&
+      (event.target as HTMLElement)?.tagName !== 'INPUT'
+    ) {
+      // Prevent the default action (i.e. selecting all text in the browser)
+      event.preventDefault();
+      setCurrentSelection([
+        [0, 0],
+        [tokens.length - 1, tokens[tokens.length - 1].length],
+      ]);
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(codeRef.current || document.body);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
   }, []);
+  useKeyboardNavigation(handleKeyEvent);
 
   return (
     <div className="code-full-view w-full text-xs gap-10 flex flex-row relative">
