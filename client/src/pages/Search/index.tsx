@@ -159,13 +159,15 @@ const SearchPage = () => {
         !nlData?.snippets?.length &&
         !nlLoading) ||
       (navigatedItem?.searchType === SearchType.REGEX &&
-        !data?.data[0] &&
+        !data?.data?.[0] &&
         !loading)
     ) {
       return 'no-results';
     }
     const resultType =
-      navigatedItem?.searchType === SearchType.NL ? 'nl' : data?.data[0].kind;
+      navigatedItem?.searchType === SearchType.NL
+        ? 'nl'
+        : data?.data?.[0]?.kind;
     switch (resultType) {
       case 'dir':
         renderPage = 'repo';
