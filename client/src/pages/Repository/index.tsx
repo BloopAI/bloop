@@ -29,7 +29,7 @@ const RepositoryPage = ({ repositoryData }: Props) => {
 
   const repoStatus = useMemo(() => {
     return (
-      repositories.find(
+      repositories?.find(
         (r) => r.ref === repositoryData?.data?.[0]?.data.repo_ref,
       )?.sync_status || 'done'
     );

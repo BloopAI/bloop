@@ -3,14 +3,20 @@ import RepoCard from '../../../components/RepoCard';
 import Button from '../../../components/Button';
 import { GitHubLogo } from '../../../icons';
 import { getRepos } from '../../../services/api';
-import { RepoProvider, RepoType, SyncStatus } from '../../../types/general';
+import {
+  RepoProvider,
+  ReposFilter,
+  RepoType,
+  SyncStatus,
+} from '../../../types/general';
 import { UIContext } from '../../../context/uiContext';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { DeviceContext } from '../../../context/deviceContext';
 import { SettingSections } from '../../../components/Settings';
+import RepoCardSkeleton from '../../../components/RepoCard/RepoCardSkeleton';
 
 type Props = {
-  filter: number;
+  filter: ReposFilter;
   emptyRepos?: boolean; // only for storybook
 };
 
@@ -63,20 +69,55 @@ const textsMap = [
   },
 ];
 
+const filterRepositories = (filter: ReposFilter, repos?: RepoType[]) => {
+  switch (filter) {
+    case ReposFilter.ALL:
+      return (
+        repos?.filter(
+          (r) =>
+            r.sync_status !== SyncStatus.Uninitialized &&
+            r.sync_status !== SyncStatus.Removed,
+        ) || []
+      );
+    case ReposFilter.LOCAL:
+      return (
+        repos?.filter(
+          (r) =>
+            r.provider === RepoProvider.Local &&
+            r.sync_status !== SyncStatus.Uninitialized &&
+            r.sync_status !== SyncStatus.Removed,
+        ) || []
+      );
+    case ReposFilter.GITHUB:
+      return (
+        repos?.filter(
+          (r) =>
+            r.provider === RepoProvider.GitHub &&
+            r.sync_status !== SyncStatus.Uninitialized &&
+            r.sync_status !== SyncStatus.Removed,
+        ) || []
+      );
+  }
+};
+
 const ReposSection = ({ filter, emptyRepos }: Props) => {
-  const [reposToShow, setReposToShow] = useState<RepoType[]>([]);
   const { setSettingsSection, setSettingsOpen } = useContext(UIContext);
   const { isRepoManagementAllowed, isSelfServe } = useContext(DeviceContext);
   const { setRepositories, repositories } = useContext(RepositoriesContext);
+  const [reposToShow, setReposToShow] = useState<RepoType[]>(
+    filterRepositories(filter, repositories),
+  );
 
   useEffect(() => {
     if (!emptyRepos) {
       getRepos().then((data) => {
         setRepositories(data.list || []);
+        setReposToShow(filterRepositories(filter, data.list || []));
       });
       const intervalId = setInterval(() => {
         getRepos().then((data) => {
           setRepositories(data.list || []);
+          setReposToShow(filterRepositories(filter, data.list || []));
         });
       }, 10000);
       return () => {
@@ -86,41 +127,11 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
   }, [emptyRepos]);
 
   useEffect(() => {
-    switch (filter) {
-      case 0:
-        setReposToShow(
-          repositories.filter(
-            (r) =>
-              r.sync_status !== SyncStatus.Uninitialized &&
-              r.sync_status !== SyncStatus.Removed,
-          ),
-        );
-        break;
-      case 1:
-        setReposToShow(
-          repositories.filter(
-            (r) =>
-              r.provider === RepoProvider.Local &&
-              r.sync_status !== SyncStatus.Uninitialized &&
-              r.sync_status !== SyncStatus.Removed,
-          ),
-        );
-        break;
-      case 2:
-        setReposToShow(
-          repositories.filter(
-            (r) =>
-              r.provider === RepoProvider.GitHub &&
-              r.sync_status !== SyncStatus.Uninitialized &&
-              r.sync_status !== SyncStatus.Removed,
-          ),
-        );
-        break;
-    }
+    setReposToShow(filterRepositories(filter, repositories));
   }, [filter, repositories]);
 
   return (
-    <div className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content">
+    <div className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content relative">
       <div className="flex items-center justify-between">
         <h4 className="">
           {isSelfServe ? 'All repositories' : textsMap[filter].header}
@@ -149,7 +160,9 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
             provider={r.provider}
           />
         ))}
-        {!reposToShow.length && !isSelfServe && (
+        {!repositories ? (
+          new Array(6).fill('x').map((_, i) => <RepoCardSkeleton key={i} />)
+        ) : !reposToShow.length && !isSelfServe ? (
           <div className="absolute top-[10vh] left-1/2 transform -translate-x-1/2 text-center w-96">
             <h5 className="select-none cursor-default">
               {textsMap[filter].title}
@@ -164,7 +177,7 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
               })}
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

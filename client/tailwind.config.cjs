@@ -223,7 +223,7 @@ module.exports = {
         'light-bigger': '0px 6px 16px rgba(0, 0, 0, 0.25)'
       },
       backgroundImage: {
-        skeleton: 'linear-gradient(90deg, rgba(29, 29, 32, 0) 0%, rgba(29, 29, 32, 0) 33%, #1D1D20 60%, rgba(29, 29, 32, 0) 100%)',
+        skeleton: 'linear-gradient(90deg, rgba(29, 29, 32, .1) 0%, rgba(29, 29, 32, .1) 33%, #1D1D20 60%, rgba(29, 29, 32, .1) 100%)',
       },
       backgroundSize :{
         '50%': '50%',
@@ -234,48 +234,48 @@ module.exports = {
         80: 80,
         90: 90,
         100: 100,
+      },
+      animation: {
+        'spin-slow': 'spin 1.5s linear infinite',
+        'move-x': 'move-x 2.5s linear infinite',
+        'move-x-fast': 'move-bg 1.5s linear infinite',
+        'flash-highlight': 'flash-highlight 1.5s linear',
+      },
+      keyframes: {
+        'move-x': {
+          '0%': {
+            transform: 'translateX(-75%)',
+          },
+          '25%': {
+            transform: 'translateX(-25%)',
+          },
+          '50%': {
+            transform: 'translateX(25%)',
+          },
+          '100%': {
+            transform: 'translateX(75%)',
+          },
+        },
+        'move-bg' :{
+          '0%': {
+            backgroundPosition: '110% 0',
+          },
+          '100%':{
+            backgroundPosition: '0 0%'
+          }
+        },
+        'flash-highlight': {
+          '0%': { backgroundColor: 'transparent' },
+          '10%': { backgroundColor: '#FFFAE5' },
+          '25%': { backgroundColor: 'rgba(253,201,0,0.25)' },
+          '80%': { backgroundColor: 'rgba(253,201,0,0.25)' },
+          '100%': { backgroundColor: 'transparent' },
+        }
       }
     },
     fontFamily: {
       default: ['Inter', 'sans-serif'],
       code: ['Menlo', 'sans-serif'],
-    },
-    animation: {
-      'spin-slow': 'spin 1.5s linear infinite',
-      'move-x': 'move-x 2.5s linear infinite',
-      'move-x-fast': 'move-bg 1.5s linear infinite',
-      'flash-highlight': 'flash-highlight 1.5s linear',
-    },
-    keyframes: {
-      'move-x': {
-        '0%': {
-          transform: 'translateX(-75%)',
-        },
-        '25%': {
-          transform: 'translateX(-25%)',
-        },
-        '50%': {
-          transform: 'translateX(25%)',
-        },
-        '100%': {
-          transform: 'translateX(75%)',
-        },
-      },
-      'move-bg' :{
-        '0%': {
-          backgroundPosition: '110% 0',
-        },
-        '100%':{
-          backgroundPosition: '0 0%'
-        }
-      },
-      'flash-highlight': {
-        '0%': { backgroundColor: 'transparent' },
-        '10%': { backgroundColor: '#FFFAE5' },
-        '25%': { backgroundColor: 'rgba(253,201,0,0.25)' },
-        '80%': { backgroundColor: 'rgba(253,201,0,0.25)' },
-        '100%': { backgroundColor: 'transparent' },
-      }
     },
     namedGroups: ["tooltip","foo", "bar"],
   },

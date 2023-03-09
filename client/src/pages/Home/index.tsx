@@ -4,6 +4,7 @@ import ListNavigation from '../../components/IdeNavigation/ListNavigation';
 import { GitHubLogo, List, Repository } from '../../icons';
 import ErrorFallback from '../../components/ErrorFallback';
 import { DeviceContext } from '../../context/deviceContext';
+import { ReposFilter } from '../../types/general';
 import ReposSection from './ReposSection';
 
 type Props = {
@@ -17,7 +18,7 @@ const listNavigationItems = [
 ];
 
 const HomePage = ({ emptyRepos }: Props) => {
-  const [filter, setFilter] = useState(0);
+  const [filter, setFilter] = useState<ReposFilter>(ReposFilter.ALL);
   const { isSelfServe } = useContext(DeviceContext);
 
   return (

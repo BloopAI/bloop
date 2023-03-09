@@ -35,10 +35,11 @@ const RepositoriesSettings = () => {
   );
 
   const localRepos = useMemo(() => {
-    const localRepositories = repositories.filter(
-      (r) =>
-        r.provider === RepoProvider.Local && r.sync_status == SyncStatus.Done,
-    );
+    const localRepositories =
+      repositories?.filter(
+        (r) =>
+          r.provider === RepoProvider.Local && r.sync_status == SyncStatus.Done,
+      ) || [];
     const commonFolder =
       localRepositories.length > 1
         ? getCommonFolder(localRepositories.map((lr) => lr.ref))
@@ -66,23 +67,25 @@ const RepositoriesSettings = () => {
   }, [repositories]);
 
   const githubRepos = useMemo(() => {
-    return repositories
-      .filter(
-        (r) =>
-          r.provider === RepoProvider.GitHub &&
-          (r.sync_status == SyncStatus.Done ||
-            r.sync_status == SyncStatus.RemoteRemoved),
-      )
-      .map((r) => {
-        const pathParts = splitPath(r.name);
-        return {
-          ...r,
-          selected: true,
-          shortName: pathParts[pathParts.length - 1],
-          folderName: pathParts[0],
-        };
-      })
-      .sort((a, b) => (a.folderName > b.folderName ? 1 : -1));
+    return (
+      repositories
+        ?.filter(
+          (r) =>
+            r.provider === RepoProvider.GitHub &&
+            (r.sync_status == SyncStatus.Done ||
+              r.sync_status == SyncStatus.RemoteRemoved),
+        )
+        .map((r) => {
+          const pathParts = splitPath(r.name);
+          return {
+            ...r,
+            selected: true,
+            shortName: pathParts[pathParts.length - 1],
+            folderName: pathParts[0],
+          };
+        })
+        .sort((a, b) => (a.folderName > b.folderName ? 1 : -1)) || []
+    );
   }, [repositories]);
 
   const [githubAuth, setGitHubAuth] = useState(!githubRepos.length);
