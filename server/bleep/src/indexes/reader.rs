@@ -16,7 +16,7 @@ use crate::{
     symbol::SymbolLocations,
 };
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug)]
 pub struct ContentDocument {
     pub content: String,
     pub lang: Option<String>,

@@ -549,7 +549,7 @@ impl File {
                 lang_str,
                 &entry_disk_path,
             ) {
-                SymbolLocations::StackGraph(graph.to_serializable())
+                SymbolLocations::StackGraph(graph)
             } else {
                 debug!("failed to build stack-graph");
                 // build a syntax aware representation of the file

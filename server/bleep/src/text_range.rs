@@ -32,6 +32,39 @@ impl Point {
     pub fn new(byte: usize, line: usize, column: usize) -> Self {
         Self { byte, line, column }
     }
+
+    // Panics if `byte` is out of bounds of `src`.
+    pub fn from_byte(byte: usize, src: &str) -> Self {
+        // the line is the number of \n we have seen in the source so far
+        let line = src[..byte].chars().filter(|c| *c == '\n').count();
+        // the number of characters between the last newline and byte
+        let column = src[..byte]
+            .rmatch_indices('\n')
+            .next()
+            .map(|(last_newline, _)| byte.saturating_sub(last_newline))
+            .unwrap_or(0);
+        Self { byte, line, column }
+    }
+
+    pub fn from_line_column(line: usize, column: usize, src: &str) -> Self {
+        let byte = src
+            .match_indices('\n')
+            .skip(line)
+            .map(|(idx, _)| idx)
+            .next()
+            .unwrap()
+            .saturating_add(column);
+        Self { byte, line, column }
+    }
+}
+
+impl From<Point> for tree_sitter::Point {
+    fn from(value: Point) -> Self {
+        Self {
+            row: value.line,
+            column: value.column,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
@@ -74,6 +107,12 @@ impl TextRange {
 
     pub fn size(&self) -> usize {
         self.end.byte.saturating_sub(self.start.byte)
+    }
+
+    pub fn from_byte_range(range: std::ops::Range<usize>, src: &str) -> Self {
+        let start = Point::from_byte(range.start, src);
+        let end = Point::from_byte(range.end, src);
+        Self { start, end }
     }
 }
 

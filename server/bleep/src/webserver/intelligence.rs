@@ -7,12 +7,13 @@ use crate::{
     repo::RepoRef,
     snippet::{Snipper, Snippet},
     symbol::SymbolLocations,
-    text_range::TextRange,
+    text_range::{Point, TextRange},
 };
 
 use axum::{extract::Query, response::IntoResponse, Extension};
 use petgraph::graph::NodeIndex;
 use serde::{Deserialize, Serialize};
+use stack_graphs::{paths::Paths, NoCancellation};
 use utoipa::{IntoParams, ToSchema};
 
 /// The request made to the `local-intel` endpoint.
@@ -239,78 +240,153 @@ pub(super) async fn handle(
         .await
         .map_err(Error::user)?;
 
-    let scope_graph = match content.symbol_locations {
-        SymbolLocations::TreeSitter(ref graph) => graph,
+    let stack_graph = match &content.symbol_locations {
+        SymbolLocations::StackGraph(graph) => graph,
         _ => return Err(Error::user("Intelligence is unavailable for this language")),
     };
 
-    let node = scope_graph.node_by_range(payload.start, payload.end);
-
-    let idx = match node {
-        None => return Err(Error::user("provided range is not a valid token")),
-        Some(idx) => idx,
-    };
-
     let src = &content.content;
-    let current_file = &content.relative_path;
-    let kind = scope_graph.symbol_name_of(idx);
-    let lang = content.lang.as_deref();
-    let all_docs = indexes.file.by_repo(repo_ref, lang).await;
+    let payload_range = TextRange::from_byte_range(payload.start..payload.end, src);
 
-    match &scope_graph.graph[idx] {
-        // we are already at a def
-        // - find refs from the current file
-        // - find refs from other files
-        NodeKind::Def(d) => {
-            // fetch local references with scope-graphs
-            let local_references = handle_definition_local(scope_graph, idx, &content);
-
-            // fetch repo-wide references with trivial search, only if the def is
-            // a top-level def (typically functions, ADTs, consts)
-            let repo_wide_references = if scope_graph.is_top_level(idx) {
-                let token = d.name(src.as_bytes());
-                handle_definition_repo_wide(token, kind, current_file, &all_docs)
-            } else {
-                vec![]
+    let handle = stack_graph
+        .iter_nodes()
+        .find(|handle| {
+            let is_reference = stack_graph[*handle].is_reference();
+            let is_definition = stack_graph[*handle].is_definition();
+            let contains_payload = match stack_graph.source_info(*handle) {
+                Some(source_info) => {
+                    source_info.span.contains_point(&payload_range.start.into())
+                        && source_info.span.contains_point(&payload_range.end.into())
+                }
+                None => false,
             };
+            (is_reference || is_definition) && contains_payload
+        })
+        .ok_or_else(|| Error::user("provided range is not a valid token"))?;
 
-            // merge the two
-            let references = merge([local_references], repo_wide_references);
+    // we are looking at a reference, produce definitions
+    if stack_graph[handle].is_reference() {
+        let mut paths = Paths::new();
+        let mut definitions = Vec::new();
+        paths
+            .find_all_paths(
+                &stack_graph,
+                std::iter::once(handle),
+                &NoCancellation,
+                |graph, paths, path| {
+                    if path.is_complete(graph) && path.ends_at_definition(graph) {
+                        definitions.push(path.end_node);
+                    }
+                },
+            )
+            .expect("should never be cancelled");
 
-            Ok(json(TokenInfoResponse::Definition { references }))
-        }
-
-        // we are at a reference:
-        // - find def from the current file
-        // - find defs from other files
-        // - find refs from the current file
-        // - find refs from other files
-        //
-        // the ordering here prefers occurrences from the current file, over occurrences
-        // from other files.
-        NodeKind::Ref(r) => {
-            // fetch local (defs, refs) with scope-graphs
-            let (local_definitions, local_references) =
-                handle_reference_local(scope_graph, idx, &content);
-
-            // fetch repo-wide (defs, refs) with trivial search
-            let token = r.name(src.as_bytes());
-            let (repo_wide_definitions, repo_wide_references) =
-                handle_reference_repo_wide(token, kind, current_file, &all_docs);
-
-            // merge the two
-            let definitions = merge([local_definitions], repo_wide_definitions);
-            let references = merge([local_references], repo_wide_references);
-
-            Ok(json(TokenInfoResponse::Reference {
-                definitions,
-                references,
-            }))
-        }
-        _ => Err(Error::user(
-            "provided range is not eligible for intelligence",
-        )),
+        let file = content.relative_path.clone();
+        let data = definitions
+            .into_iter()
+            .filter_map(|d| match stack_graph.source_info(d) {
+                Some(source_info) => {
+                    let start = {
+                        let tree_sitter::Point { row, column } = source_info.span.start.as_point();
+                        Point::from_line_column(row, column, src)
+                    };
+                    let end = {
+                        let tree_sitter::Point { row, column } = source_info.span.end.as_point();
+                        Point::from_line_column(row, column, src)
+                    };
+                    Some(TextRange::new(start, end))
+                }
+                None => None,
+            })
+            // .map(|range| to_occurrence(&content, range))
+            .collect::<Vec<_>>();
+        return Ok(json(TokenInfoResponse::Reference {
+            definitions: vec![FileSymbols {
+                file,
+                data: data
+                    .into_iter()
+                    .map(|r| to_occurrence(&content, r))
+                    .collect(),
+            }],
+            references: vec![ /* todo */ ],
+        }));
+    } else if stack_graph[handle].is_definition() {
     }
+
+    Ok(json(TokenInfoResponse::Definition { references: vec![] }))
+
+    // let scope_graph = match content.symbol_locations {
+    //     SymbolLocations::TreeSitter(ref graph) => graph,
+    //     _ => return Err(Error::user("Intelligence is unavailable for this language")),
+    // };
+
+    // let node = scope_graph.node_by_range(payload.start, payload.end);
+
+    // let idx = match node {
+    //     None => return Err(Error::user("provided range is not a valid token")),
+    //     Some(idx) => idx,
+    // };
+
+    // let src = &content.content;
+    // let current_file = &content.relative_path;
+    // let kind = scope_graph.symbol_name_of(idx);
+    // let lang = content.lang.as_deref();
+    // let all_docs = indexes.file.by_repo(repo_ref, lang).await;
+
+    // match &scope_graph.graph[idx] {
+    //     // we are already at a def
+    //     // - find refs from the current file
+    //     // - find refs from other files
+    //     NodeKind::Def(d) => {
+    //         // fetch local references with scope-graphs
+    //         let local_references = handle_definition_local(scope_graph, idx, &content);
+
+    //         // fetch repo-wide references with trivial search, only if the def is
+    //         // a top-level def (typically functions, ADTs, consts)
+    //         let repo_wide_references = if scope_graph.is_top_level(idx) {
+    //             let token = d.name(src.as_bytes());
+    //             handle_definition_repo_wide(token, kind, current_file, &all_docs)
+    //         } else {
+    //             vec![]
+    //         };
+
+    //         // merge the two
+    //         let references = merge([local_references], repo_wide_references);
+
+    //         Ok(json(TokenInfoResponse::Definition { references }))
+    //     }
+
+    //     // we are at a reference:
+    //     // - find def from the current file
+    //     // - find defs from other files
+    //     // - find refs from the current file
+    //     // - find refs from other files
+    //     //
+    //     // the ordering here prefers occurrences from the current file, over occurrences
+    //     // from other files.
+    //     NodeKind::Ref(r) => {
+    //         // fetch local (defs, refs) with scope-graphs
+    //         let (local_definitions, local_references) =
+    //             handle_reference_local(scope_graph, idx, &content);
+
+    //         // fetch repo-wide (defs, refs) with trivial search
+    //         let token = r.name(src.as_bytes());
+    //         let (repo_wide_definitions, repo_wide_references) =
+    //             handle_reference_repo_wide(token, kind, current_file, &all_docs);
+
+    //         // merge the two
+    //         let definitions = merge([local_definitions], repo_wide_definitions);
+    //         let references = merge([local_references], repo_wide_references);
+
+    //         Ok(json(TokenInfoResponse::Reference {
+    //             definitions,
+    //             references,
+    //         }))
+    //     }
+    //     _ => Err(Error::user(
+    //         "provided range is not eligible for intelligence",
+    //     )),
+    // }
 }
 
 #[cfg(test)]
