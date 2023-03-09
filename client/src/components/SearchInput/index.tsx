@@ -176,11 +176,15 @@ function SearchInput() {
   });
 
   const onSubmit = useCallback(
-    (val: string) => {
-      navigateSearch(val, searchType);
+    (val: string, forceSearchType?: SearchType) => {
+      const newSearchType = forceSearchType ?? searchType;
+      navigateSearch(val, newSearchType);
       closeMenu();
       setSearchHistory((prev) => {
-        const newHistory = [val, ...prev].slice(0, 4);
+        const newHistory = [
+          { query: val, searchType: newSearchType },
+          ...prev,
+        ].slice(0, 4);
         saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
         return newHistory;
       });
@@ -196,11 +200,15 @@ function SearchInput() {
   const historyItems = useMemo(
     () => [
       ...searchHistory.map((s) => ({
-        text: s,
+        text: typeof s === 'string' ? s : s.query,
         type: MenuListItemType.DEFAULT,
         onClick: () => {
-          setInputValue(s);
-          onSubmit(s);
+          const isOlderItem = typeof s === 'string';
+          setInputValue(isOlderItem ? s : s.query);
+          onSubmit(
+            isOlderItem ? s : s.query,
+            isOlderItem ? undefined : s.searchType,
+          );
         },
       })),
       {

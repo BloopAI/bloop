@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { FilterType, SearchType } from '../../types/general';
+import { FilterType, SearchHistoryItem, SearchType } from '../../types/general';
 import { SearchContext } from '../searchContext';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import { UIContext } from '../uiContext';
@@ -21,7 +21,7 @@ export const SearchContextProvider = ({
 }: PropsWithChildren<Props>) => {
   const [inputValue, setInputValue] = useState('');
   const [filters, setFilters] = useState<FilterType[]>([]);
-  const [searchHistory, setSearchHistory] = useState<string[]>(
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>(
     initialSearchHistory || [],
   );
   const [lastQueryTime, setLastQueryTime] = useState(3);

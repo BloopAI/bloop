@@ -89,3 +89,7 @@ export type UITabType = {
   searchHistory?: string[];
   name: string;
 };
+
+export type SearchHistoryItem =
+  | string
+  | { query: string; searchType: SearchType };
