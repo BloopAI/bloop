@@ -1,6 +1,6 @@
 import React, { useCallback, useContext, useState } from 'react';
 import Button from '../../components/Button';
-import { ThumbsDown, ThumbsUp } from '../../icons';
+import { Checkmark, ThumbsDown, ThumbsUp } from '../../icons';
 import CircleProgressLoader from '../../components/Loaders/CircleProgressLoader';
 import { saveUpvote } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
@@ -76,13 +76,33 @@ const Message = ({
         </div>
       )}
 
-      {message.isLoading ? (
-        <span className="flex gap-2 items-center">
-          <span className="transform scale-90">
-            <CircleProgressLoader percent={50} />
+      {message.author === 'server' ? (
+        <div className="flex justify-between items-center mb-2">
+          <span className="flex gap-2 items-center">
+            {message.isLoading ? (
+              <span className="transform scale-90">
+                <CircleProgressLoader percent={50} />
+              </span>
+            ) : (
+              <span className="text-success-500 h-5">
+                <Checkmark />
+              </span>
+            )}
+            <p className="body-s">Searching</p>
           </span>
-          <p>Searching...</p>
-        </span>
+          {!message.isLoading &&
+          i !== currentlyViewedSnippets &&
+          !!message.snippets?.length ? (
+            <div className="flex items-center justify-end">
+              <button
+                className="text-primary-300 body-s mr-2"
+                onClick={() => onViewSnippetsClick(i)}
+              >
+                View
+              </button>
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {message.text || message.error ? (
@@ -94,20 +114,6 @@ const Message = ({
           {message.text || message.error}
         </div>
       ) : null}
-      {message.isLoading ? null : message.author === 'server' &&
-        i !== currentlyViewedSnippets &&
-        !!message.snippets?.length ? (
-        <div className="flex items-center justify-between mt-2">
-          <button
-            className="text-primary-300 body-s mr-2"
-            onClick={() => onViewSnippetsClick(i)}
-          >
-            View
-          </button>
-        </div>
-      ) : (
-        ''
-      )}
     </div>
   );
 };
