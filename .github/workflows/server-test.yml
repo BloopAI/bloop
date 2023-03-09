@@ -18,9 +18,8 @@ jobs:
   clippy-test:
     runs-on: nixos
     steps:
-      - uses: actions/checkout@v3
-        with:
-          lfs: true
+      - name: Checkout code
+        uses: nschloe/action-cached-lfs-checkout@v1
 
       - name: Rustfmt
         run: nix develop -c bash -c 'cargo --locked fmt -p bleep -- --check'

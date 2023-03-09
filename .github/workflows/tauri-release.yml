@@ -1,129 +1,56 @@
 name: Tauri Release
 
-on: workflow_dispatch
-
-env:
-  TAURI_BIN_PATH: apps/desktop/src-tauri/bin
-  TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-  TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/tauri-release.yml"
+  release:
+    types:
+      [published, prereleased]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  checks:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          lfs: true
-
-      - name: Install dependencies (ubuntu only)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "bloop"
-          shared-key: "tauri-checks"
-
-      - name: Install Rust stable
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Check Formatting
-        run: |
-          cargo --locked fmt -p bloop -- --check
-
-      - name: Run tests
-        run: |
-          cargo --locked test -p bloop --verbose
-
-  build-mac-linux-ctags:
-    strategy:
-      fail-fast: false
-      matrix:
-        name: [ubuntu-latest, macos-latest]
-
-    runs-on: ${{ matrix.name }}
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          lfs: true
-
-      - run: env
-      - name: Setup nix
-        uses: cachix/install-nix-action@v18
-      - name: Enable cachix
-        uses: cachix/cachix-action@v12
-        with:
-          name: bloopai
-          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
-
-      - name: Build universal-ctags
-        run: |
-          # ctags_path=$(nix-build -I channel:nixos-22.05 ./nix/universal-ctags)
-          ctags_path=$(nix build --json --access-tokens ${{ secrets.GITHUB_TOKEN }} .#my-ctags | jq -r '.[0].outputs.out')
-          echo ctags_path=$ctags_path >> $GITHUB_ENV
-          mkdir ctags_bundle
-          cp $ctags_path/bin/* ctags_bundle
-
-      - name: Copy macOS dynamic dependencies
-        if: matrix.name == 'macos-latest'
-        run: |
-          copy_deps() {
-              local lib=$2/$(basename $1)
-
-              cp -n $1 $lib || true
-              chmod +w $lib
-
-              local deps="$(otool -L $lib |awk '/\/nix\/store\// { gsub(":", ""); print $1 }' | tr '\n' ' ')"
-              for dep in $(echo $deps);
-              do
-                if [ ! -f "$2/$(basename $dep)" ]
-                then
-                  copy_deps $dep $2 || true
-                fi
-              done
-
-              for dep in $(echo $deps);
-              do
-                echo install_name_tool -change $dep @executable_path/$(basename $dep) $lib
-                install_name_tool -change $dep @executable_path/$(basename $dep) $lib
-              done
-          }
-
-          copy_deps ${{ env.ctags_path }}/bin/ctags  ctags_bundle
-          ls ctags_bundle
-
-      - name: Upload binaries
-        uses: actions/upload-artifact@v3
-        with:
-          name: "ctags_${{ matrix.name }}"
-          path: ctags_bundle
-
   build-and-sign-tauri:
-    needs: [checks, build-mac-linux-ctags]
-
     strategy:
       fail-fast: false
       matrix:
-        name: [macos-latest, ubuntu-latest, windows-latest]
+        target: [
+          x86_64-unknown-linux-gnu,
+          x86_64-apple-darwin,
+          aarch64-apple-darwin,
+        ]
+
+        include:
+          - target: x86_64-unknown-linux-gnu
+            name: ubuntu-latest
+
+          - target: x86_64-apple-darwin
+            name: macos-latest
+
+          - target: aarch64-apple-darwin
+            name: macos-latest
+
     runs-on: ${{ matrix.name }}
+    env:
+      ORT_LIB_LOCATION: ${{ github.workspace }}/lib/${{ matrix.target }}/onnxruntime
 
     steps:
-      - uses: actions/checkout@v3
-        with:
-          lfs: true
+      - name: Checkout code
+        uses: nschloe/action-cached-lfs-checkout@v1
 
-      - name: Install dependencies (ubuntu only)
-        if: matrix.name == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+      - name: Setup nix
+        uses: cachix/install-nix-action@v20
+        with:
+          github_access_token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - run: nix profile install nixpkgs#protobuf
+
+      - if: matrix.name == 'ubuntu-latest'
+        run: sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf protobuf-compiler
 
       - name: Use Node.js
         uses: actions/setup-node@v3
@@ -134,34 +61,22 @@ jobs:
       - name: Install app dependencies
         run: npm ci --legacy-peer-deps
 
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "bloop"
-          shared-key: "tauri-release"
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          profile: minimal
+          target: ${{ matrix.target }}
 
-      - name: Download binaries (mac/linux)
-        if: matrix.name == 'ubuntu-latest' || matrix.name == 'macos-latest'
-        uses: actions/download-artifact@v3
+      - uses: Swatinem/rust-cache@v2
         with:
-          name: "ctags_${{ matrix.name }}"
-          path: "${{ env.TAURI_BIN_PATH }}/ctags"
+          prefix-key: "bloop-tauri-release-1"
 
-      - name: Set permissions (mac/linux)
-        if: matrix.name == 'ubuntu-latest' || matrix.name == 'macos-latest'
+      - name: Run tests
         run: |
-          resdir=${{ env.TAURI_BIN_PATH }}
-          chmod +x $resdir/ctags/*
-          host=$(rustc -Vv |grep host |cut -d\  -f2)
-          rm $resdir/ctags-$host
-          mkdir $resdir/ctags-$host
-          mv $resdir/ctags/* $resdir/ctags-$host
-          ls -lR $resdir
+          cargo --locked test --verbose --release -p bloop 
 
-      - name: Download binaries (windows)
+      - name: Download binaries (windows) (windows is disabled)
         if: matrix.name == 'windows-latest'
         shell: bash
         run: |
@@ -175,14 +90,13 @@ jobs:
 
       - name: Check if Segment key exists
         env:
-          segment_key: ${{ secrets.ANALYTICS_WRITE_KEY_PROD }}
+          segment_key: ${{ secrets.ANALYTICS_FE_WRITE_KEY_PROD }}
           sentry_key_fe: ${{ secrets.SENTRY_DSN_FE }}
-          sentry_key_be: ${{ secrets.SENTRY_DSN_BE }}
-        if: ${{ env.segment_key == '' || env.sentry_key_fe == '' || env.sentry_key_be == '' }}
+        if: ${{ env.segment_key == '' || env.sentry_key_fe == '' }}
         run: exit 1
 
       - name: Set environment
-        run: echo "ANALYTICS_WRITE_KEY_PROD=${{ secrets.ANALYTICS_WRITE_KEY_PROD }}\nSENTRY_DSN_FE=${{ secrets.SENTRY_DSN_FE }}\nSENTRY_DSN_BE=${{ secrets.SENTRY_DSN_BE }}" >> apps/desktop/.env
+        run: echo "ANALYTICS_FE_WRITE_KEY_PROD=${{ secrets.ANALYTICS_FE_WRITE_KEY_PROD }}\nSENTRY_DSN_FE=${{ secrets.SENTRY_DSN_FE }}" >> apps/desktop/.env
 
       - name: Set providerShortName in tauri.conf.json
         uses: jossef/action-set-json-field@v2
@@ -198,8 +112,9 @@ jobs:
           field: tauri.bundle.macOS.signingIdentity
           value: ${{ secrets.APPLE_SIGNING_IDENTITY }}
 
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@dev
         env:
+          ORT_LIB_LOCATION: ${{ github.workspace }}/lib/${{ matrix.target }}/onnxruntime
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ENABLE_CODE_SIGNING: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -207,12 +122,15 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          TAURI_BIN_PATH: apps/desktop/src-tauri/bin
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          args: --locked -v -- -v
+          args: -- --target "${{ matrix.target }}" -v
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.name }}-app
-          path: target/release/bundle
+          path: target/${{ matrix.target }}/release/bundle
           retention-days: 5
