@@ -19,8 +19,8 @@ jobs:
       fail-fast: false
       matrix:
         target: [
-          #x86_64-unknown-linux-gnu,
-          #x86_64-apple-darwin,
+          x86_64-unknown-linux-gnu,
+          x86_64-apple-darwin,
           aarch64-apple-darwin,
         ]
 
@@ -112,7 +112,7 @@ jobs:
           field: tauri.bundle.macOS.signingIdentity
           value: ${{ secrets.APPLE_SIGNING_IDENTITY }}
 
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@dev
         env:
           ORT_LIB_LOCATION: ${{ github.workspace }}/lib/${{ matrix.target }}/onnxruntime
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -126,11 +126,11 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          args: -v -- -v --locked
+          args: -- --target "${{ matrix.target }}" -v
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.name }}-app
-          path: target/release/bundle
+          path: target/${{ matrix.target }}/release/bundle
           retention-days: 5
