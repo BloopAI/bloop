@@ -86,8 +86,8 @@ const TextSearch = ({
               ? prevIndexInNewHighlights + 1
               : 1
             : 0;
-          if (prev === newR) {
-            allHighlights[newR - 1].classList.add(ACTIVE_HIGHLIGHT_CLASSNAME);
+          if (prev === newR && allHighlights?.[newR - 1]) {
+            allHighlights[newR - 1].classList?.add(ACTIVE_HIGHLIGHT_CLASSNAME);
             setCurrentHighlightParent(
               allHighlights[newR - 1].parentNode as HTMLElement,
             );
