@@ -25,6 +25,8 @@ import { ResultsPreviewSkeleton } from '../Skeleton';
 import SemanticSearch from '../../components/CodeBlock/SemanticSearch';
 import { DeviceContext } from '../../context/deviceContext';
 import PageHeader from '../../components/ResultsPageHeader';
+import { generateUniqueId } from '../../utils';
+import useAnalytics from '../../hooks/useAnalytics';
 import Conversation from './Conversation';
 
 type Props = {
@@ -53,6 +55,8 @@ const ResultsPage = ({ query }: Props) => {
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
   const navigateBrowser = useNavigate();
+  const { trackSearch } = useAnalytics();
+  const threadId = useMemo(() => generateUniqueId(), []);
 
   const onResultClick = useCallback<ResultClick>((repo, path, lineNumber) => {
     setScrollToLine(lineNumber ? lineNumber.join('_') : undefined);
@@ -102,11 +106,12 @@ const ResultsPage = ({ query }: Props) => {
   const makeSearch = useCallback((question: string) => {
     setIsLoading(true);
     prevEventSource?.close();
+    const startTime = Date.now();
     const eventSource = new EventSource(
       `${apiUrl.replace(
         'https:',
         '',
-      )}/answer?q=${question}&user_id=${deviceId}`,
+      )}/answer?q=${question}&user_id=${deviceId}&thread_id=${threadId}`,
     );
     prevEventSource = eventSource;
     setConversation((prev) => {
@@ -134,6 +139,8 @@ const ResultsPage = ({ query }: Props) => {
         const newData = JSON.parse(ev.data);
 
         if (i === 0) {
+          const queryTime = Date.now() - startTime;
+          trackSearch(queryTime, query, threadId);
           if (newData.Err) {
             setIsLoading(false);
             setConversation((prev) => {
@@ -257,7 +264,7 @@ const ResultsPage = ({ query }: Props) => {
         onNewMessage={handleNewMessage}
         onViewSnippetsClick={setCurrentlyViewedSnippets}
         currentlyViewedSnippets={currentlyViewedSnippets}
-        searchId={searchId}
+        searchId={threadId}
       />
 
       {openResult ? (
