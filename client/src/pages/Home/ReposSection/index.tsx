@@ -112,10 +112,12 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
     if (!emptyRepos) {
       getRepos().then((data) => {
         setRepositories(data.list || []);
+        setReposToShow(filterRepositories(filter, data.list || []));
       });
       const intervalId = setInterval(() => {
         getRepos().then((data) => {
           setRepositories(data.list || []);
+          setReposToShow(filterRepositories(filter, data.list || []));
         });
       }, 10000);
       return () => {
