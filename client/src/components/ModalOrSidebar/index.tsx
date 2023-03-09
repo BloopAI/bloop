@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import React, { MouseEvent, PropsWithChildren } from 'react';
+import React, { MouseEvent, PropsWithChildren, useEffect } from 'react';
 import {
   MODAL_SIDEBAR_APPEAR_ANIMATION,
   MODAL_SIDEBAR_CHANGE_ANIMATION,
@@ -73,6 +73,22 @@ const ModalOrSidebar = ({
   fullOverlay,
   filtersOverlay,
 }: PropsWithChildren<Props>) => {
+  useEffect(() => {
+    const handleKeyEvent = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && shouldShow) {
+        e.stopPropagation();
+        e.preventDefault();
+        // @ts-ignore
+        onClose(e);
+      }
+    };
+    window.addEventListener('keydown', handleKeyEvent);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyEvent);
+    };
+  }, [shouldShow]);
+
   return (
     <>
       <AnimatePresence>

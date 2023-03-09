@@ -1,11 +1,11 @@
 import React, { createContext } from 'react';
-import { FilterType, SearchType } from '../types/general';
+import { FilterType, SearchHistoryItem, SearchType } from '../types/general';
 
 type ContextType = {
   inputValue: string;
   setInputValue: React.Dispatch<React.SetStateAction<string>>;
-  searchHistory: string[];
-  setSearchHistory: React.Dispatch<React.SetStateAction<string[]>>;
+  searchHistory: SearchHistoryItem[];
+  setSearchHistory: React.Dispatch<React.SetStateAction<SearchHistoryItem[]>>;
   filters: FilterType[];
   setFilters: React.Dispatch<React.SetStateAction<FilterType[]>>;
   lastQueryTime: number;

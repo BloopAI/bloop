@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchContext } from '../../context/searchContext';
 import { mockFiltersInitial } from '../../mocks';
-import { SearchType } from '../../types/general';
+import { SearchHistoryItem, SearchType } from '../../types/general';
 import SearchInput from './index';
 import '../../index.css';
 
@@ -14,7 +14,7 @@ export default {
 export const Default = () => {
   const [inputValue, setInputValue] = useState('');
   const [filters, setFilters] = useState(mockFiltersInitial);
-  const [searchHistory, setSearchHistory] = useState<string[]>([
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([
     'org:rust-lang cobra-ats error:no apples',
     'error:no apples',
     'error:no items',
@@ -56,7 +56,7 @@ export const Default = () => {
 export const MixedSuggestions = () => {
   const [inputValue, setInputValue] = useState('');
   const [filters, setFilters] = useState(mockFiltersInitial);
-  const [searchHistory, setSearchHistory] = useState<string[]>([
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([
     'org:rust-lang cobra-ats error:no apples',
     'error:no apples',
     'error:no items',

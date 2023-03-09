@@ -95,3 +95,7 @@ export enum ReposFilter {
   LOCAL,
   GITHUB,
 }
+
+export type SearchHistoryItem =
+  | string
+  | { query: string; searchType: SearchType };
