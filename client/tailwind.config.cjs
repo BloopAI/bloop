@@ -223,7 +223,7 @@ module.exports = {
         'light-bigger': '0px 6px 16px rgba(0, 0, 0, 0.25)'
       },
       backgroundImage: {
-        skeleton: 'linear-gradient(90deg, rgba(29, 29, 32, 0) 0%, rgba(29, 29, 32, 0) 33%, #1D1D20 60%, rgba(29, 29, 32, 0) 100%)',
+        skeleton: 'linear-gradient(90deg, rgba(29, 29, 32, .1) 0%, rgba(29, 29, 32, .1) 33%, #1D1D20 60%, rgba(29, 29, 32, .1) 100%)',
       },
       backgroundSize :{
         '50%': '50%',

@@ -13,7 +13,7 @@ import { UIContext } from '../../../context/uiContext';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { DeviceContext } from '../../../context/deviceContext';
 import { SettingSections } from '../../../components/Settings';
-import SpinLoader from '../../../components/Loaders/SpinLoader';
+import RepoCardSkeleton from '../../../components/RepoCard/RepoCardSkeleton';
 
 type Props = {
   filter: ReposFilter;
@@ -130,60 +130,53 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
 
   return (
     <div className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content relative">
-      {!repositories ? (
-        <div className="flex items-center justify-center flex-col absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-          <SpinLoader />
-          <p>Repositories loading</p>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <h4 className="">
-              {isSelfServe ? 'All repositories' : textsMap[filter].header}
-            </h4>
-            {isRepoManagementAllowed && (reposToShow.length || isSelfServe) ? (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setSettingsSection(SettingSections.REPOSITORIES);
-                  setSettingsOpen(true);
-                }}
-              >
-                Manage repositories
-              </Button>
-            ) : null}
-          </div>
+      <div className="flex items-center justify-between">
+        <h4 className="">
+          {isSelfServe ? 'All repositories' : textsMap[filter].header}
+        </h4>
+        {isRepoManagementAllowed && (reposToShow.length || isSelfServe) ? (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setSettingsSection(SettingSections.REPOSITORIES);
+              setSettingsOpen(true);
+            }}
+          >
+            Manage repositories
+          </Button>
+        ) : null}
+      </div>
 
-          <div className="mt-10 grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3.5 w-full 2xl:justify-between relative items-start grid-rows-[min-content]">
-            {reposToShow.map(({ ref, ...r }, i) => (
-              <RepoCard
-                name={r.name}
-                sync_status={r.sync_status}
-                last_update={r.last_index}
-                lang={r.most_common_lang}
-                key={ref + i}
-                provider={r.provider}
-              />
-            ))}
-            {!reposToShow.length && !isSelfServe && (
-              <div className="absolute top-[10vh] left-1/2 transform -translate-x-1/2 text-center w-96">
-                <h5 className="select-none cursor-default">
-                  {textsMap[filter].title}
-                </h5>
-                <p className="body-s text-gray-500 mt-3 mb-6">
-                  {textsMap[filter].description}
-                </p>
-                <div className="w-full flex flex-col gap-4">
-                  {textsMap[filter].buttons(() => {
-                    setSettingsSection(SettingSections.REPOSITORIES);
-                    setSettingsOpen(true);
-                  })}
-                </div>
-              </div>
-            )}
+      <div className="mt-10 grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3.5 w-full 2xl:justify-between relative items-start grid-rows-[min-content]">
+        {reposToShow.map(({ ref, ...r }, i) => (
+          <RepoCard
+            name={r.name}
+            sync_status={r.sync_status}
+            last_update={r.last_index}
+            lang={r.most_common_lang}
+            key={ref + i}
+            provider={r.provider}
+          />
+        ))}
+        {!repositories ? (
+          new Array(6).fill('x').map((_, i) => <RepoCardSkeleton key={i} />)
+        ) : !reposToShow.length && !isSelfServe ? (
+          <div className="absolute top-[10vh] left-1/2 transform -translate-x-1/2 text-center w-96">
+            <h5 className="select-none cursor-default">
+              {textsMap[filter].title}
+            </h5>
+            <p className="body-s text-gray-500 mt-3 mb-6">
+              {textsMap[filter].description}
+            </p>
+            <div className="w-full flex flex-col gap-4">
+              {textsMap[filter].buttons(() => {
+                setSettingsSection(SettingSections.REPOSITORIES);
+                setSettingsOpen(true);
+              })}
+            </div>
           </div>
-        </>
-      )}
+        ) : null}
+      </div>
     </div>
   );
 };
