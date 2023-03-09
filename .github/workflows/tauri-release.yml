@@ -31,6 +31,9 @@ jobs:
             name: macos-latest
 
     runs-on: ${{ matrix.name }}
+    env:
+      ORT_LIB_LOCATION: ${{ github.workspace }}/lib/${{ matrix.target }}/onnxruntime
+
     steps:
       - name: Checkout code
         uses: nschloe/action-cached-lfs-checkout@v1
@@ -62,7 +65,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "bloop"
+          prefix-key: "bloop-tauri-release-1"
 
       - name: Run tests
         run: |
