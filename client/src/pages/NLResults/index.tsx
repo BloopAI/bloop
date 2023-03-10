@@ -168,7 +168,10 @@ const ResultsPage = ({ query }: Props) => {
                     lang: item.lang,
                     line: item.start_line,
                   })) || [],
-                text: typeof newData === 'string' ? newData : '',
+                text:
+                  typeof newData === 'string' || newData.Ok
+                    ? newData.Ok || newData
+                    : '',
               };
               return [...newConversation, lastMessage];
             });
