@@ -42,18 +42,21 @@ impl Point {
             .rmatch_indices('\n')
             .next()
             .map(|(last_newline, _)| byte.saturating_sub(last_newline))
-            .unwrap_or(0);
+            .unwrap_or(byte);
         Self { byte, line, column }
     }
 
     pub fn from_line_column(line: usize, column: usize, src: &str) -> Self {
-        let byte = src
-            .match_indices('\n')
-            .skip(line)
-            .map(|(idx, _)| idx)
-            .next()
-            .unwrap()
-            .saturating_add(column);
+        let byte = if line == 0 {
+            column
+        } else {
+            src.match_indices('\n')
+                .skip(line - 1)
+                .map(|(idx, _)| idx)
+                .next()
+                .unwrap()
+                .saturating_add(column)
+        };
         Self { byte, line, column }
     }
 }

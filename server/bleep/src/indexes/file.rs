@@ -549,6 +549,8 @@ impl File {
                 lang_str,
                 &entry_disk_path,
             ) {
+                debug!("build stack graph");
+                debug!("graph nod count: {}", graph.iter_nodes().count());
                 SymbolLocations::StackGraph(graph)
             } else {
                 debug!("failed to build stack-graph");
@@ -620,7 +622,7 @@ impl File {
                 });
             }
         }
-        let sym_serialized = bincode::serialize(&symbol_locations)?;
+        let sym_serialized = serde_json::to_string(&symbol_locations)?;
         info!(
             %lang_str,
             "size of serialized symbol locations: {} bytes",

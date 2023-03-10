@@ -28,6 +28,7 @@ use crate::{
 use anyhow::{anyhow, bail, Result};
 use axum::extract::FromRef;
 
+use bincode as _;
 use dashmap::DashMap;
 use once_cell::sync::OnceCell;
 

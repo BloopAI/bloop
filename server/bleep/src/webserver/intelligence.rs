@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::BTreeSet, sync::Arc};
 
 use super::prelude::*;
 use crate::{
@@ -248,8 +248,11 @@ pub(super) async fn handle(
     let src = &content.content;
     let payload_range = TextRange::from_byte_range(payload.start..payload.end, src);
 
+    tracing::info!(?payload_range);
+
     let handle = stack_graph
         .iter_nodes()
+        // .inspect(|n| tracing::info!("node: `{}`", stack_graph[*n].display(stack_graph)))
         .find(|handle| {
             let is_reference = stack_graph[*handle].is_reference();
             let is_definition = stack_graph[*handle].is_definition();
@@ -260,32 +263,41 @@ pub(super) async fn handle(
                 }
                 None => false,
             };
+
+            if is_definition {
+                tracing::info!("node: `{}`", stack_graph[*handle].display(stack_graph));
+                tracing::info!(
+                    "info: `{:?}`",
+                    stack_graph.source_info(*handle).unwrap().span
+                );
+            }
             (is_reference || is_definition) && contains_payload
         })
         .ok_or_else(|| Error::user("provided range is not a valid token"))?;
 
     // we are looking at a reference, produce definitions
     if stack_graph[handle].is_reference() {
-        let mut paths = Paths::new();
-        let mut definitions = Vec::new();
-        paths
+        let mut definitions = BTreeSet::new();
+        let mut references = BTreeSet::new();
+        Paths::new()
             .find_all_paths(
                 &stack_graph,
                 std::iter::once(handle),
                 &NoCancellation,
                 |graph, paths, path| {
                     if path.is_complete(graph) && path.ends_at_definition(graph) {
-                        definitions.push(path.end_node);
+                        definitions.insert(path.end_node);
+                        references.insert(path.start_node);
                     }
                 },
             )
             .expect("should never be cancelled");
 
         let file = content.relative_path.clone();
-        let data = definitions
+        let def_data = definitions
             .into_iter()
-            .filter_map(|d| match stack_graph.source_info(d) {
-                Some(source_info) => {
+            .filter_map(|d| {
+                stack_graph.source_info(d).and_then(|source_info| {
                     let start = {
                         let tree_sitter::Point { row, column } = source_info.span.start.as_point();
                         Point::from_line_column(row, column, src)
@@ -295,25 +307,89 @@ pub(super) async fn handle(
                         Point::from_line_column(row, column, src)
                     };
                     Some(TextRange::new(start, end))
-                }
-                None => None,
+                })
             })
-            // .map(|range| to_occurrence(&content, range))
             .collect::<Vec<_>>();
+
+        let ref_data = references
+            .into_iter()
+            .filter_map(|d| {
+                stack_graph.source_info(d).and_then(|source_info| {
+                    let start = {
+                        let tree_sitter::Point { row, column } = source_info.span.start.as_point();
+                        Point::from_line_column(row, column, src)
+                    };
+                    let end = {
+                        let tree_sitter::Point { row, column } = source_info.span.end.as_point();
+                        Point::from_line_column(row, column, src)
+                    };
+                    Some(TextRange::new(start, end))
+                })
+            })
+            .collect::<Vec<_>>();
+
         return Ok(json(TokenInfoResponse::Reference {
             definitions: vec![FileSymbols {
-                file,
-                data: data
+                file: file.clone(),
+                data: def_data
                     .into_iter()
                     .map(|r| to_occurrence(&content, r))
                     .collect(),
             }],
-            references: vec![ /* todo */ ],
+            references: vec![FileSymbols {
+                file,
+                data: ref_data
+                    .into_iter()
+                    .map(|r| to_occurrence(&content, r))
+                    .collect(),
+            }],
         }));
     } else if stack_graph[handle].is_definition() {
-    }
+        let mut references = BTreeSet::new();
+        let file = content.relative_path.clone();
+        Paths::new()
+            .find_all_paths(
+                &stack_graph,
+                stack_graph
+                    .iter_nodes()
+                    .filter(|n| stack_graph[*n].is_reference()),
+                &NoCancellation,
+                |graph, paths, path| {
+                    if path.is_complete(graph) && path.end_node == handle {
+                        references.insert(path.start_node);
+                    }
+                },
+            )
+            .expect("should never be cancelled");
+        let ref_data = references
+            .into_iter()
+            .filter_map(|d| {
+                stack_graph.source_info(d).and_then(|source_info| {
+                    let start = {
+                        let tree_sitter::Point { row, column } = source_info.span.start.as_point();
+                        Point::from_line_column(row, column, src)
+                    };
+                    let end = {
+                        let tree_sitter::Point { row, column } = source_info.span.end.as_point();
+                        Point::from_line_column(row, column, src)
+                    };
+                    Some(TextRange::new(start, end))
+                })
+            })
+            .collect::<Vec<_>>();
 
-    Ok(json(TokenInfoResponse::Definition { references: vec![] }))
+        return Ok(json(TokenInfoResponse::Definition {
+            references: vec![FileSymbols {
+                file,
+                data: ref_data
+                    .into_iter()
+                    .map(|r| to_occurrence(&content, r))
+                    .collect(),
+            }],
+        }));
+    } else {
+        unreachable!("add back the check for (is_reference || is_definition), u muppet")
+    }
 
     // let scope_graph = match content.symbol_locations {
     //     SymbolLocations::TreeSitter(ref graph) => graph,

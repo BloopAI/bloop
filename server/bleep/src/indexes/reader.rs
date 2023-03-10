@@ -97,10 +97,10 @@ impl DocumentRead for ContentReader {
             .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
             .collect();
 
-        let symbol_locations = bincode::deserialize(
+        let symbol_locations = serde_json::from_str(
             doc.get_first(schema.symbol_locations)
                 .unwrap()
-                .as_bytes()
+                .as_text()
                 .unwrap(),
         )
         .unwrap_or_default();

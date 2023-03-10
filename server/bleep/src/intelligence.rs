@@ -148,6 +148,7 @@ pub fn try_build_stack_graph(
     let globals = Variables::new();
     config
         .sgl
-        .build_stack_graph_into(&mut graph, handle, src, &globals, &NoCancellation);
+        .build_stack_graph_into(&mut graph, handle, src, &globals, &NoCancellation)
+        .map_err(|_| TreeSitterFileError::LoadError)?;
     Ok(graph)
 }

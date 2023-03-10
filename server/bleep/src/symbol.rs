@@ -48,7 +48,7 @@ impl fmt::Debug for SymbolLocations {
 
 mod stack_graph {
 
-    use serde::{self, Deserialize, Deserializer, Serializer};
+    use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
     use stack_graphs::graph::StackGraph;
 
     pub fn serialize<S>(graph: &StackGraph, serializer: S) -> Result<S::Ok, S::Error>
@@ -56,14 +56,16 @@ mod stack_graph {
         S: Serializer,
     {
         let s = graph.to_serializable();
-        serializer.serialize_newtype_variant("SymbolLocations", 2, "StackGraph", &s)
+        println!("{:?}", s);
+        s.serialize(serializer)
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<StackGraph, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let s = stack_graphs::serde::StackGraph::deserialize(deserializer)?;
+        // let s = stack_graphs::serde::StackGraph::deserialize_any(deserializer)?;
+        let s = stack_graphs::serde::StackGraph::deserialize(deserializer).unwrap();
 
         let mut graph = StackGraph::new();
         s.load_into(&mut graph).unwrap();
