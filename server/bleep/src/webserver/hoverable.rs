@@ -1,7 +1,12 @@
 use std::sync::Arc;
 
 use super::prelude::*;
-use crate::{indexes::Indexes, repo::RepoRef, symbol::SymbolLocations, text_range::TextRange};
+use crate::{
+    indexes::Indexes,
+    repo::RepoRef,
+    symbol::SymbolLocations,
+    text_range::{Point, TextRange},
+};
 
 use axum::{extract::Query, response::IntoResponse, Extension};
 use serde::{Deserialize, Serialize};
@@ -43,7 +48,26 @@ pub(super) async fn handle(
         Ok(doc) => doc,
         Err(e) => return Err(Error::user(e)),
     };
+    let src = &document.content;
     let ranges = match document.symbol_locations {
+        SymbolLocations::StackGraph(graph) => graph
+            .iter_nodes()
+            .filter(|handle| graph[*handle].is_reference() || graph[*handle].is_definition())
+            .filter(|handle| !graph[*handle].is_root() || !graph[*handle].is_jump_to())
+            .filter_map(|d| {
+                graph.source_info(d).map(|source_info| {
+                    let start = {
+                        let tree_sitter::Point { row, column } = source_info.span.start.as_point();
+                        Point::from_line_column(row, column, src)
+                    };
+                    let end = {
+                        let tree_sitter::Point { row, column } = source_info.span.end.as_point();
+                        Point::from_line_column(row, column, src)
+                    };
+                    TextRange::new(start, end)
+                })
+            })
+            .collect::<Vec<_>>(),
         SymbolLocations::TreeSitter(graph) => graph.hoverable_ranges().collect(),
         _ => return Err(Error::user("Intelligence is unavailable for this language")),
     };

@@ -257,10 +257,7 @@ pub(super) async fn handle(
             let is_reference = stack_graph[*handle].is_reference();
             let is_definition = stack_graph[*handle].is_definition();
             let contains_payload = match stack_graph.source_info(*handle) {
-                Some(source_info) => {
-                    source_info.span.contains_point(&payload_range.start.into())
-                        && source_info.span.contains_point(&payload_range.end.into())
-                }
+                Some(source_info) => source_info.span.contains_point(&payload_range.start.into()),
                 None => false,
             };
 
