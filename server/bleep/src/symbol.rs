@@ -15,6 +15,7 @@ pub struct Symbol {
 /// Collection of symbol locations for *single* file
 #[derive(Default, Deserialize, Serialize)]
 #[non_exhaustive]
+#[allow(clippy::large_enum_variant)]
 pub enum SymbolLocations {
     /// ctags powered symbol-locations
     Ctags(Vec<Symbol>),

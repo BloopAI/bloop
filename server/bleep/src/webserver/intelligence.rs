@@ -281,7 +281,7 @@ pub(super) async fn handle(
         let mut references = BTreeSet::new();
         Paths::new()
             .find_all_paths(
-                &stack_graph,
+                stack_graph,
                 std::iter::once(handle),
                 &NoCancellation,
                 |graph, paths, path| {
@@ -297,7 +297,7 @@ pub(super) async fn handle(
         let def_data = definitions
             .into_iter()
             .filter_map(|d| {
-                stack_graph.source_info(d).and_then(|source_info| {
+                stack_graph.source_info(d).map(|source_info| {
                     let start = {
                         let tree_sitter::Point { row, column } = source_info.span.start.as_point();
                         Point::from_line_column(row, column, src)
@@ -306,7 +306,7 @@ pub(super) async fn handle(
                         let tree_sitter::Point { row, column } = source_info.span.end.as_point();
                         Point::from_line_column(row, column, src)
                     };
-                    Some(TextRange::new(start, end))
+                    TextRange::new(start, end)
                 })
             })
             .collect::<Vec<_>>();
@@ -314,7 +314,7 @@ pub(super) async fn handle(
         let ref_data = references
             .into_iter()
             .filter_map(|d| {
-                stack_graph.source_info(d).and_then(|source_info| {
+                stack_graph.source_info(d).map(|source_info| {
                     let start = {
                         let tree_sitter::Point { row, column } = source_info.span.start.as_point();
                         Point::from_line_column(row, column, src)
@@ -323,7 +323,7 @@ pub(super) async fn handle(
                         let tree_sitter::Point { row, column } = source_info.span.end.as_point();
                         Point::from_line_column(row, column, src)
                     };
-                    Some(TextRange::new(start, end))
+                    TextRange::new(start, end)
                 })
             })
             .collect::<Vec<_>>();
@@ -349,7 +349,7 @@ pub(super) async fn handle(
         let file = content.relative_path.clone();
         Paths::new()
             .find_all_paths(
-                &stack_graph,
+                stack_graph,
                 stack_graph
                     .iter_nodes()
                     .filter(|n| stack_graph[*n].is_reference()),
@@ -364,7 +364,7 @@ pub(super) async fn handle(
         let ref_data = references
             .into_iter()
             .filter_map(|d| {
-                stack_graph.source_info(d).and_then(|source_info| {
+                stack_graph.source_info(d).map(|source_info| {
                     let start = {
                         let tree_sitter::Point { row, column } = source_info.span.start.as_point();
                         Point::from_line_column(row, column, src)
@@ -373,7 +373,7 @@ pub(super) async fn handle(
                         let tree_sitter::Point { row, column } = source_info.span.end.as_point();
                         Point::from_line_column(row, column, src)
                     };
-                    Some(TextRange::new(start, end))
+                    TextRange::new(start, end)
                 })
             })
             .collect::<Vec<_>>();
