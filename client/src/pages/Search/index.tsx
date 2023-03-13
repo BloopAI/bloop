@@ -188,11 +188,17 @@ const SearchPage = () => {
       case 'full-result':
         return <ViewResult data={data} />;
       case 'nl-result':
-        return <NLResults query={query} key={query} />;
+        return (
+          <NLResults
+            query={query}
+            key={navigatedItem?.threadId}
+            threadId={navigatedItem?.threadId!}
+          />
+        );
       default:
         return <HomePage />;
     }
-  }, [data, loading, navigatedItem, query]);
+  }, [data, loading, navigatedItem, query, navigatedItem?.threadId]);
 
   return shouldShowWelcome ? (
     <div className="text-gray-200">
