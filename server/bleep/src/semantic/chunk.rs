@@ -225,6 +225,7 @@ pub fn by_tokens<'s>(
     };
 
     let offsets = encoding.get_offsets();
+    let special_tokens_mask = encoding.get_special_tokens_mask();
     // again, if we have less than our minimum number of tokens, we may skip the file
     if offsets.len() < min_tokens {
         return Vec::new();
@@ -249,13 +250,25 @@ pub fn by_tokens<'s>(
     let max_boundary_tokens = max_tokens * 7 / 8; //TODO: make this configurable
     debug!("max tokens reduced to {max_tokens}");
 
-    let offsets_len = offsets.len() - 1;
-    // remove the SEP token which has (0, 0) offsets for some reason
-    let offsets = if offsets[offsets_len].0 == 0 {
-        &offsets[..offsets_len]
-    } else {
-        offsets
+    // checks whether the token at the given index contains a newline character.
+    let has_nl = |&i: &usize| {
+        if special_tokens_mask[i] != 0 {
+            return false;
+        } else if i + 1 >= special_tokens_mask.len() || special_tokens_mask[i + 1] != 0 {
+            return src[offsets[i].0..offsets[i].1].contains('\n');
+        } else {
+            return src[offsets[i].0..offsets[i + 1].0].contains('\n');
+        }
     };
+
+    // checks whether the token immediately after the token at the given index is a partial-word.
+    let has_boundary = |&i| {
+        !tokenizer
+            .id_to_token(ids[i + 1])
+            .map_or(false, |s| s.starts_with("##"))
+    };
+
+    let offsets_len = offsets.len();
     let ids = encoding.get_ids();
     let mut chunks = Vec::new();
     let mut start = 0;
@@ -264,15 +277,11 @@ pub fn by_tokens<'s>(
         let next_limit = start + max_tokens;
         let end_limit = if next_limit >= offsets_len {
             offsets_len
-        } else if let Some(next_newline) = (start + max_newline_tokens..next_limit)
-            .rfind(|&i| src[offsets[i].0..offsets[i + 1].0].contains('\n'))
-        {
+        } else if let Some(next_newline) = (start + max_newline_tokens..next_limit).rfind(has_nl) {
             next_newline
-        } else if let Some(next_boundary) = (start + max_boundary_tokens..next_limit).rfind(|&i| {
-            !tokenizer
-                .id_to_token(ids[i + 1])
-                .map_or(false, |s| s.starts_with("##"))
-        }) {
+        } else if let Some(next_boundary) =
+            (start + max_boundary_tokens..next_limit).rfind(has_boundary)
+        {
             next_boundary
         } else {
             next_limit
@@ -294,10 +303,8 @@ pub fn by_tokens<'s>(
         let diff = strategy.next_subdivision(end_limit - start);
         let mid = start + diff;
         // find nearest newlines or boundaries, set start accordingly
-        let next_newline_diff =
-            (mid..end_limit).find(|&i| src[offsets[i].0..offsets[i + 1].0].contains('\n'));
-        let prev_newline_diff = (start + (diff / 2)..mid)
-            .rfind(|&i| src[offsets[i].0..offsets[i + 1].0].contains('\n'));
+        let next_newline_diff = (mid..end_limit).find(has_nl);
+        let prev_newline_diff = (start + (diff / 2)..mid).rfind(has_nl);
         start = match (next_newline_diff, prev_newline_diff) {
             (Some(n), None) | (None, Some(n)) => n,
             (Some(n), Some(p)) => {
@@ -307,13 +314,7 @@ pub fn by_tokens<'s>(
                     p
                 }
             }
-            (None, None) => (mid..end_limit)
-                .find(|&i| {
-                    !tokenizer
-                        .id_to_token(ids[i + 1])
-                        .map_or(false, |s| s.starts_with("##"))
-                })
-                .unwrap_or(mid),
+            (None, None) => (mid..end_limit).find(has_boundary).unwrap_or(mid),
         };
     }
 }
