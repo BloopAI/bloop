@@ -1,9 +1,5 @@
-use super::{prelude::*, repos::Repo};
-use crate::{
-    remotes::{self, BackendCredential},
-    repo::Backend,
-    Application,
-};
+use super::prelude::*;
+use crate::{remotes::BackendCredential, repo::Backend, Application};
 
 use either::Either;
 use octocrab::{auth::DeviceCodes, Octocrab};
@@ -172,84 +168,4 @@ async fn poll_for_oauth_token(
     if let Err(err) = saved {
         error!(?err, "Failed to save credentials to disk");
     }
-}
-
-async fn github_auth(app: &Application) -> Option<remotes::github::Auth> {
-    match app.credentials.get(&Backend::Github)?.clone() {
-        BackendCredential::Github(auth) => Some(auth),
-    }
-}
-
-pub(super) async fn list_repos(app: Application) -> Result<Vec<Repo>, EndpointError<'static>> {
-    let Some(auth) = github_auth(&app).await else {
-        return Err(EndpointError {
-            kind: ErrorKind::Configuration,
-            message: "No github authorization".into(),
-        });
-    };
-
-    let gh_client = auth.client().expect("failed to build github client");
-
-    let mut results = vec![];
-    for page in 1.. {
-        let mut resp = match auth {
-            remotes::github::Auth::OAuth { .. } => {
-                gh_client
-                    .current()
-                    .list_repos_for_authenticated_user()
-                    .per_page(100)
-                    .page(page)
-                    .send()
-                    .await
-            }
-            remotes::github::Auth::App { ref org, .. } => {
-                gh_client
-                    .orgs(org)
-                    .list_repos()
-                    .per_page(100)
-                    .page(page)
-                    .send()
-                    .await
-            }
-        }
-        .map_err(|err| EndpointError {
-            kind: ErrorKind::UpstreamService,
-            message: err.to_string().into(),
-        })?;
-
-        if resp.items.is_empty() {
-            break;
-        }
-
-        results.extend(resp.take_items().into_iter().map(|repo| {
-            let local_duplicates = app
-                .repo_pool
-                .iter()
-                .filter(|elem| {
-                    // either `ssh_url` or `clone_url` should match what we generate.
-                    //
-                    // also note that this is quite possibly not the
-                    // most efficient way of doing this, but the
-                    // number of repos should be small, so even n^2
-                    // should be fast.
-                    //
-                    // most of the time is spent in the network.
-                    [
-                        repo.ssh_url.as_deref().unwrap_or_default().to_lowercase(),
-                        repo.clone_url
-                            .as_ref()
-                            .map(|url| url.as_str())
-                            .unwrap_or_default()
-                            .to_lowercase(),
-                    ]
-                    .contains(&elem.remote.to_string().to_lowercase())
-                })
-                .map(|elem| elem.key().clone())
-                .collect();
-
-            Repo::from_github(local_duplicates, repo)
-        }))
-    }
-
-    Ok(results)
 }

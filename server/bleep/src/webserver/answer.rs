@@ -292,13 +292,21 @@ async fn _handle(
             ).with_status(StatusCode::UNAUTHORIZED));
         };
 
-        match &*cred {
-            BackendCredential::Github(remotes::github::Auth::OAuth {
-                access_token: token,
+        use remotes::github::{Auth, State};
+        match cred.value() {
+            BackendCredential::Github(State {
+                auth:
+                    Auth::OAuth {
+                        access_token: token,
+                        ..
+                    },
                 ..
             }) => Some(token.expose_secret().clone()),
 
-            BackendCredential::Github(remotes::github::Auth::App { .. }) => {
+            BackendCredential::Github(State {
+                auth: Auth::App { .. },
+                ..
+            }) => {
                 return Err(
                     Error::user("cannot connect to answer API using installation token")
                         .with_status(StatusCode::UNAUTHORIZED),

@@ -313,7 +313,7 @@ async fn user_auth(
             let BackendCredential::Github(cred) =
                 app.credentials.get(&Backend::Github).unwrap().clone();
 
-            match cred {
+            match cred.auth {
                 remotes::github::Auth::App { org, .. } => org,
                 _ => panic!("backend has invalid github credentials"),
             }

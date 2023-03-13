@@ -13,6 +13,33 @@ use crate::repo::{Backend, GitRemote, RepoRemote, Repository};
 use super::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub(crate) struct State {
+    pub auth: Auth,
+    pub repositories: Vec<octocrab::models::Repository>,
+}
+
+impl State {
+    fn with_auth(auth: Auth) -> Self {
+        Self {
+            auth,
+            repositories: vec![],
+        }
+    }
+
+    pub async fn get_repositories(&self) -> Result<Vec<octocrab::models::Repository>> {
+        self.auth.list_repos().await
+    }
+
+    pub fn update_repositories(&mut self, repos: Vec<octocrab::models::Repository>) {
+        self.repositories = repos;
+    }
+
+    pub fn client(&self) -> octocrab::Result<Octocrab> {
+        self.auth.client()
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) enum Auth {
     /// Copy of [`octocrab::auth::OAuth`] that can be serialized
     OAuth {
@@ -33,12 +60,15 @@ pub(crate) enum Auth {
     },
 }
 
-impl From<octocrab::auth::OAuth> for Auth {
+impl From<octocrab::auth::OAuth> for State {
     fn from(auth: octocrab::auth::OAuth) -> Self {
-        Self::OAuth {
-            access_token: auth.access_token,
-            token_type: auth.token_type,
-            scope: auth.scope,
+        Self {
+            repositories: vec![],
+            auth: Auth::OAuth {
+                access_token: auth.access_token,
+                token_type: auth.token_type,
+                scope: auth.scope,
+            },
         }
     }
 }
@@ -117,7 +147,7 @@ impl Auth {
         }
     }
 
-    pub(crate) fn client(&self) -> octocrab::Result<Octocrab> {
+    fn client(&self) -> octocrab::Result<Octocrab> {
         use Auth::*;
         match self.clone() {
             OAuth {
@@ -137,6 +167,41 @@ impl Auth {
                 .personal_token(token.expose_secret().to_string())
                 .build(),
         }
+    }
+
+    async fn list_repos(&self) -> Result<Vec<octocrab::models::Repository>> {
+        let gh_client = self.client().expect("failed to build github client");
+        let mut results = vec![];
+        for page in 1.. {
+            let mut resp = match self {
+                remotes::github::Auth::OAuth { .. } => {
+                    gh_client
+                        .current()
+                        .list_repos_for_authenticated_user()
+                        .per_page(100)
+                        .page(page)
+                        .send()
+                        .await
+                }
+                remotes::github::Auth::App { ref org, .. } => {
+                    gh_client
+                        .orgs(org)
+                        .list_repos()
+                        .per_page(100)
+                        .page(page)
+                        .send()
+                        .await
+                }
+            }?;
+
+            if resp.items.is_empty() {
+                break;
+            }
+
+            results.extend(resp.take_items())
+        }
+
+        Ok(results)
     }
 }
 
@@ -176,7 +241,7 @@ pub(crate) async fn refresh_github_installation_token(
     };
 
     let auth = remotes::github::Auth::from_installation(installation, install_id, octocrab).await?;
-    let credential = BackendCredential::Github(auth);
+    let credential = BackendCredential::Github(State::with_auth(auth));
     app.credentials.insert(Backend::Github, credential.clone());
 
     Ok(credential)

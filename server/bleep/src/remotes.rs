@@ -201,14 +201,13 @@ pub(crate) fn gather_repo_roots(
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) enum BackendCredential {
-    Github(github::Auth),
+    Github(github::State),
 }
 
 impl BackendCredential {
     pub(crate) async fn validate(&self) -> Result<()> {
-        let BackendCredential::Github(auth) = self;
-
-        let client = auth.client()?;
+        let BackendCredential::Github(github) = self;
+        let client = github.client()?;
 
         match client.current().user().await {
             Ok(_) => {}
@@ -240,14 +239,14 @@ impl BackendCredential {
                 let repo = repo.downgrade();
 
                 match self {
-                    Github(gh) => gh.pull_repo(&repo).await,
+                    Github(gh) => gh.auth.pull_repo(&repo).await,
                 }
             }
             None => {
                 let repo = create_repository(&app, &repo_ref);
 
                 match self {
-                    Github(gh) => gh.clone_repo(&repo, &repo.disk_path.clone()).await,
+                    Github(gh) => gh.auth.clone_repo(&repo, &repo.disk_path.clone()).await,
                 }
             }
         };
@@ -269,8 +268,12 @@ impl BackendCredential {
     }
 
     pub(crate) fn expiry(&self) -> Option<DateTime<Utc>> {
+        use remotes::github::*;
         match self {
-            Self::Github(remotes::github::Auth::App { expiry, .. }) => Some(*expiry),
+            Self::Github(State {
+                auth: Auth::App { expiry, .. },
+                ..
+            }) => Some(*expiry),
             _ => None,
         }
     }

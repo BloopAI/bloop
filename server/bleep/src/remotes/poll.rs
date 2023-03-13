@@ -17,6 +17,8 @@ use crate::{
     Application,
 };
 
+use super::BackendCredential;
+
 const POLL_INTERVAL_MINUTE: &[Duration] = &[
     Duration::from_secs(60),
     Duration::from_secs(3 * 60),
@@ -24,6 +26,37 @@ const POLL_INTERVAL_MINUTE: &[Duration] = &[
     Duration::from_secs(20 * 60),
     Duration::from_secs(30 * 60),
 ];
+
+pub(crate) async fn sync_repositories(app: Application) {
+    loop {
+        let repos = {
+            let Some(handle) = app.credentials.get(&Backend::Github) else {
+		continue;
+	    };
+
+            let BackendCredential::Github(github) = handle.value();
+            let Ok(repos) = github.get_repositories().await else {
+		continue;
+	    };
+
+            repos
+        };
+
+        // re-lock to minimize critical section
+        {
+            match app
+                .credentials
+                .get_mut(&Backend::Github)
+                .unwrap()
+                .value_mut()
+            {
+                BackendCredential::Github(github) => github.update_repositories(repos),
+            }
+        }
+
+        sleep(POLL_INTERVAL_MINUTE[1]).await;
+    }
+}
 
 pub(crate) async fn check_credentials(app: Application) {
     loop {
