@@ -213,6 +213,11 @@ pub fn by_tokens<'s>(
     max_lines: usize,
     strategy: OverlapStrategy,
 ) -> Vec<Chunk<'s>> {
+    if tokenizer.get_truncation().is_some() {
+        error!(
+            "tokenizer is truncating, turn off tokenization with `tokenizer.with_truncation(None)`"
+        )
+    }
     let min_tokens = token_bounds.start;
     // no need to even tokenize files too small to contain our min number of tokens
     if src.len() < min_tokens {
