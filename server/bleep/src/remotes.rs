@@ -7,7 +7,6 @@ use std::{
     sync::Arc,
 };
 
-
 use dashmap::{mapref::one::Ref, DashMap};
 use git2::{Cred, CredentialType, RemoteCallbacks};
 use ignore::WalkBuilder;

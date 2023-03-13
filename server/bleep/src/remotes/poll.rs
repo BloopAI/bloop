@@ -17,8 +17,6 @@ use crate::{
     Application,
 };
 
-
-
 const POLL_INTERVAL_MINUTE: &[Duration] = &[
     Duration::from_secs(60),
     Duration::from_secs(3 * 60),

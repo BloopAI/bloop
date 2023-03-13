@@ -22,12 +22,10 @@ use dunce::canonicalize;
 use std::fs::canonicalize;
 
 use crate::{
-    background::BackgroundExecutor, indexes::Indexes,
-    semantic::Semantic, state::RepositoryPool,
+    background::BackgroundExecutor, indexes::Indexes, semantic::Semantic, state::RepositoryPool,
 };
 use anyhow::{anyhow, bail, Result};
 use axum::extract::FromRef;
-
 
 use once_cell::sync::OnceCell;
 
