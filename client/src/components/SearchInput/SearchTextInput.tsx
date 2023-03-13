@@ -5,6 +5,7 @@ import {
   HTMLInputTypeAttribute,
   KeyboardEvent,
   useContext,
+  useImperativeHandle,
   useRef,
   useState,
 } from 'react';
@@ -84,6 +85,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
   ref: ForwardedRef<HTMLInputElement>,
 ) {
   const inputRef = useRef<HTMLInputElement>(null);
+  useImperativeHandle(ref, () => inputRef.current!);
   const [searchCtxMenuVisible, setSearchCtxMenuVisible] = useState(false);
   const { isSelfServe } = useContext(DeviceContext);
   const { isGithubConnected } = useContext(UIContext);
@@ -95,6 +97,11 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
     if (e.key === 'Enter' && onSubmit) {
       e.preventDefault();
       onSubmit(e);
+    }
+    if (e.key === 'Escape' && !value) {
+      e.stopPropagation();
+      e.preventDefault();
+      inputRef.current?.blur();
     }
   };
 
@@ -123,7 +130,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
             : ''
         } transition-all duration-300 ease-in-bounce relative`}
       >
-        <span className="relative h-full" ref={ref}>
+        <span className="relative h-full">
           <ContextMenu
             items={[
               {
@@ -199,7 +206,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
           name={name}
           type={type}
           disabled={disabled}
-          ref={ref || inputRef}
+          ref={inputRef}
           onBlur={validate}
           autoComplete="off"
           spellCheck="false"
@@ -215,8 +222,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
               onChange({
                 target: { value: '', name },
               } as ChangeEvent<HTMLInputElement>);
-              // @ts-ignore
-              (ref || inputRef).current?.focus();
+              inputRef.current?.focus();
             }}
             className={success ? 'group-focus-within:flex hidden' : 'flex'}
           />

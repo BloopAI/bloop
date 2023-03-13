@@ -18,7 +18,6 @@ import { UIContext } from '../../../context/uiContext';
 import Button from '../../Button';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import { TabsContext } from '../../../context/tabsContext';
-import { generateUniqueId } from '../../../utils';
 import { MenuItemType } from '../../../types/general';
 import { DeviceContext } from '../../../context/deviceContext';
 
@@ -66,12 +65,7 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
                   type: MenuListItemType.DEFAULT,
                   text: 'Add tab',
                   icon: <PlusSignInBubble />,
-                  onClick: () => {
-                    handleAddTab({
-                      key: generateUniqueId(),
-                      name: 'Home',
-                    });
-                  },
+                  onClick: handleAddTab,
                 },
               ]
             : [],
