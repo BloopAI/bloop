@@ -149,6 +149,9 @@ pub fn try_build_stack_graph(
     config
         .sgl
         .build_stack_graph_into(&mut graph, handle, src, &globals, &NoCancellation)
-        .map_err(|_| TreeSitterFileError::LoadError)?;
+        .map_err(|e| {
+            tracing::error!("stack-graphs: {e:?}");
+            TreeSitterFileError::LoadError
+        })?;
     Ok(graph)
 }

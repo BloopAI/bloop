@@ -9,11 +9,12 @@ use crate::{
     symbol::SymbolLocations,
     text_range::{Point, TextRange},
 };
+use lsp_positions as _;
 
 use axum::{extract::Query, response::IntoResponse, Extension};
 use petgraph::graph::NodeIndex;
 use serde::{Deserialize, Serialize};
-use stack_graphs::{paths::Paths, NoCancellation};
+use stack_graphs::{graph::StackGraph, paths::Paths, NoCancellation};
 use utoipa::{IntoParams, ToSchema};
 
 /// The request made to the `local-intel` endpoint.
@@ -240,8 +241,27 @@ pub(super) async fn handle(
         .await
         .map_err(Error::user)?;
 
+    let lang = content.lang.as_deref();
+    let all_docs = indexes.file.by_repo(repo_ref, lang).await;
+
+    // let all_docs = vec![];
+    let combined_graph = all_docs
+        .into_iter()
+        .fold(StackGraph::new(), |mut combined_graph, doc| {
+            match &doc.symbol_locations {
+                SymbolLocations::StackGraph(g) => combined_graph.add_from_graph(&g).unwrap(),
+                _ => {}
+            };
+            combined_graph
+        });
+
     let stack_graph = match &content.symbol_locations {
         SymbolLocations::StackGraph(graph) => graph,
+        SymbolLocations::TreeSitter(_) => {
+            return Err(Error::user(
+                "temporarily disabled, you shouldn't be seeing this",
+            ))
+        }
         _ => return Err(Error::user("Intelligence is unavailable for this language")),
     };
 
@@ -261,13 +281,6 @@ pub(super) async fn handle(
                 None => false,
             };
 
-            if is_definition {
-                tracing::info!("node: `{}`", stack_graph[*handle].display(stack_graph));
-                tracing::info!(
-                    "info: `{:?}`",
-                    stack_graph.source_info(*handle).unwrap().span
-                );
-            }
             (is_reference || is_definition) && contains_payload
         })
         .ok_or_else(|| Error::user("provided range is not a valid token"))?;
@@ -294,6 +307,7 @@ pub(super) async fn handle(
         let def_data = definitions
             .into_iter()
             .filter_map(|d| {
+                let file = stack_graph[d].file();
                 stack_graph.source_info(d).map(|source_info| {
                     let start = {
                         let tree_sitter::Point { row, column } = source_info.span.start.as_point();
@@ -404,7 +418,7 @@ pub(super) async fn handle(
     // let current_file = &content.relative_path;
     // let kind = scope_graph.symbol_name_of(idx);
     // let lang = content.lang.as_deref();
-    // let all_docs = indexes.file.by_repo(repo_ref, lang).await;
+    // let all_docs = indexes.file. by_repo(repo_ref, lang).await;
 
     // match &scope_graph.graph[idx] {
     //     // we are already at a def

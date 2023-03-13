@@ -414,6 +414,7 @@ dependencies = [
  "hyperpolyglot",
  "ignore",
  "jsonwebtoken",
+ "lsp-positions",
  "ndarray",
  "notify-debouncer-mini",
  "octocrab",
@@ -3090,7 +3091,6 @@ dependencies = [
 [[package]]
 name = "lsp-positions"
 version = "0.3.1"
-source = "git+https://github.com/nerdypepper/stack-graphs?branch=impl-deser-simple#f94387b1414cf850be22106d3b80d00a3739ad4b"
 dependencies = [
  "memchr",
  "serde",
@@ -5337,7 +5337,6 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 [[package]]
 name = "stack-graphs"
 version = "0.10.2"
-source = "git+https://github.com/nerdypepper/stack-graphs?branch=impl-deser-simple#f94387b1414cf850be22106d3b80d00a3739ad4b"
 dependencies = [
  "bitvec",
  "controlled-option",
@@ -6464,7 +6463,6 @@ dependencies = [
 [[package]]
 name = "tree-sitter-stack-graphs"
 version = "0.6.0"
-source = "git+https://github.com/nerdypepper/stack-graphs?branch=impl-deser-simple#f94387b1414cf850be22106d3b80d00a3739ad4b"
 dependencies = [
  "anyhow",
  "controlled-option",

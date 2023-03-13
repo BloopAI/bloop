@@ -544,32 +544,35 @@ impl File {
 
         // calculate symbol locations
         let symbol_locations = if entry_disk_path.is_file() {
-            if let Ok(graph) = crate::intelligence::try_build_stack_graph(
+            match crate::intelligence::try_build_stack_graph(
                 buffer.as_str(),
                 lang_str,
                 &entry_disk_path,
             ) {
-                debug!("build stack graph");
-                debug!("graph nod count: {}", graph.iter_nodes().count());
-                SymbolLocations::StackGraph(graph)
-            } else {
-                debug!("failed to build stack-graph");
-                // build a syntax aware representation of the file
-                let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
-                    .and_then(TreeSitterFile::scope_graph);
+                Ok(graph) => {
+                    debug!("build stack graph");
+                    debug!("graph node count: {}", graph.iter_nodes().count());
+                    SymbolLocations::StackGraph(graph)
+                }
+                Err(e) => {
+                    debug!("failed to build stack-graph: {e:?}");
+                    // build a syntax aware representation of the file
+                    let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
+                        .and_then(TreeSitterFile::scope_graph);
 
-                match scope_graph {
-                    // we have a graph, use that
-                    Ok(graph) => SymbolLocations::TreeSitter(graph),
-                    // no graph, try ctags instead
-                    Err(err) => {
-                        debug!(?err, %lang_str, "failed to build scope graph");
-                        match repo_metadata.symbols.get(relative_path) {
-                            Some(syms) => SymbolLocations::Ctags(syms.clone()),
-                            // no ctags either
-                            _ => {
-                                debug!(%lang_str, ?entry_disk_path, "failed to build tags");
-                                SymbolLocations::Empty
+                    match scope_graph {
+                        // we have a graph, use that
+                        Ok(graph) => SymbolLocations::TreeSitter(graph),
+                        // no graph, try ctags instead
+                        Err(err) => {
+                            debug!(?err, %lang_str, "failed to build scope graph");
+                            match repo_metadata.symbols.get(relative_path) {
+                                Some(syms) => SymbolLocations::Ctags(syms.clone()),
+                                // no ctags either
+                                _ => {
+                                    debug!(%lang_str, ?entry_disk_path, "failed to build tags");
+                                    SymbolLocations::Empty
+                                }
                             }
                         }
                     }
