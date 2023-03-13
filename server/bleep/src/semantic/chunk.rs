@@ -226,6 +226,7 @@ pub fn by_tokens<'s>(
 
     let offsets = encoding.get_offsets();
     let special_tokens_mask = encoding.get_special_tokens_mask();
+    let ids = encoding.get_ids();
     // again, if we have less than our minimum number of tokens, we may skip the file
     if offsets.len() < min_tokens {
         return Vec::new();
@@ -269,7 +270,6 @@ pub fn by_tokens<'s>(
     };
 
     let offsets_len = offsets.len();
-    let ids = encoding.get_ids();
     let mut chunks = Vec::new();
     let mut start = 0;
     let (mut last_line, mut last_byte) = (0, 0);
