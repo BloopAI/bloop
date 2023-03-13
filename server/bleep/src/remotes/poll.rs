@@ -17,7 +17,7 @@ use crate::{
     Application,
 };
 
-use super::BackendCredential;
+
 
 const POLL_INTERVAL_MINUTE: &[Duration] = &[
     Duration::from_secs(60),
@@ -29,30 +29,16 @@ const POLL_INTERVAL_MINUTE: &[Duration] = &[
 
 pub(crate) async fn sync_repositories(app: Application) {
     loop {
-        let repos = {
-            let Some(handle) = app.credentials.get(&Backend::Github) else {
-		continue;
-	    };
+        let Some(github) = app.credentials.github() else {
+	    continue;
+	};
 
-            let BackendCredential::Github(github) = handle.value();
-            let Ok(repos) = github.get_repositories().await else {
-		continue;
-	    };
+        let Ok(repos) = github.current_repo_list().await else {
+	    continue;
+	};
 
-            repos
-        };
-
-        // re-lock to minimize critical section
-        {
-            match app
-                .credentials
-                .get_mut(&Backend::Github)
-                .unwrap()
-                .value_mut()
-            {
-                BackendCredential::Github(github) => github.update_repositories(repos),
-            }
-        }
+        let new = github.update_repositories(repos);
+        app.credentials.set_github(new);
 
         sleep(POLL_INTERVAL_MINUTE[1]).await;
     }
@@ -61,11 +47,7 @@ pub(crate) async fn sync_repositories(app: Application) {
 pub(crate) async fn check_credentials(app: Application) {
     loop {
         if app.env.allow(Feature::GithubInstallation) {
-            match app
-                .credentials
-                .get(&Backend::Github)
-                .and_then(|c| c.expiry())
-            {
+            match app.credentials.github().and_then(|c| c.expiry()) {
                 // If we have a valid token, do nothing.
                 Some(expiry) if expiry > Utc::now() + chrono::Duration::minutes(10) => {}
 
@@ -78,7 +60,7 @@ pub(crate) async fn check_credentials(app: Application) {
         }
 
         if app.env.allow(Feature::GithubDeviceFlow) {
-            let expired = if let Some(github) = app.credentials.get(&Backend::Github) {
+            let expired = if let Some(github) = app.credentials.github() {
                 github.validate().await.is_err()
             } else {
                 true
@@ -87,7 +69,7 @@ pub(crate) async fn check_credentials(app: Application) {
             if expired && app.credentials.remove(&Backend::Github).is_some() {
                 app.config
                     .source
-                    .save_credentials(&app.credentials)
+                    .save_credentials(app.credentials.as_ref())
                     .unwrap();
                 debug!("github oauth is invalid; credentials removed");
             }

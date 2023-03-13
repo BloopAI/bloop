@@ -22,13 +22,13 @@ use dunce::canonicalize;
 use std::fs::canonicalize;
 
 use crate::{
-    background::BackgroundExecutor, indexes::Indexes, remotes::BackendCredential, repo::Backend,
+    background::BackgroundExecutor, indexes::Indexes,
     semantic::Semantic, state::RepositoryPool,
 };
 use anyhow::{anyhow, bail, Result};
 use axum::extract::FromRef;
 
-use dashmap::DashMap;
+
 use once_cell::sync::OnceCell;
 
 use std::{path::Path, sync::Arc};
@@ -71,7 +71,7 @@ pub struct Application {
     background: BackgroundExecutor,
     semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
-    credentials: Arc<DashMap<Backend, BackendCredential>>,
+    credentials: remotes::Backends,
     cookie_key: axum_extra::extract::cookie::Key,
 }
 
@@ -124,10 +124,10 @@ impl Application {
 
         Ok(Self {
             indexes: Arc::new(Indexes::new(config.clone(), semantic.clone())?),
-            credentials: Arc::new(config.source.initialize_credentials()?),
             background: BackgroundExecutor::start(config.clone()),
             repo_pool: config.source.initialize_pool()?,
             cookie_key: config.source.initialize_cookie_key()?,
+            credentials: config.source.initialize_credentials()?.into(),
             semantic,
             config,
             env,

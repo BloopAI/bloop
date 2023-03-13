@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use crate::{
-    remotes::BackendCredential,
     repo::{Backend, RepoRef, Repository, SyncStatus},
     Application,
 };
@@ -56,9 +55,9 @@ impl From<(&RepoRef, &Repository)> for Repo {
 impl Repo {
     pub(crate) fn from_github(
         local_duplicates: Vec<RepoRef>,
-        origin: octocrab::models::Repository,
+        origin: &octocrab::models::Repository,
     ) -> Self {
-        let name = origin.full_name.unwrap();
+        let name = origin.full_name.clone().unwrap();
         Repo {
             provider: Backend::Github,
             repo_ref: RepoRef::new(Backend::Github, &name).unwrap(),
@@ -189,13 +188,10 @@ pub(super) async fn sync(
 pub(super) async fn available(Extension(app): Extension<Application>) -> impl IntoResponse {
     let unknown_github = app
         .credentials
-        .get(&Backend::Github)
-        .map(|r| {
-            let BackendCredential::Github(gh) = r.value();
-            gh.repositories.clone()
-        })
+        .github()
+        .map(|gh| gh.repositories)
         .unwrap_or_default()
-        .into_iter()
+        .iter()
         .map(|repo| {
             let local_duplicates = app
                 .repo_pool
@@ -223,7 +219,8 @@ pub(super) async fn available(Extension(app): Extension<Application>) -> impl In
                 .collect();
 
             Repo::from_github(local_duplicates, repo)
-        });
+        })
+        .collect::<Vec<_>>();
 
     (
         StatusCode::OK,

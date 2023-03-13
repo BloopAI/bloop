@@ -1,12 +1,14 @@
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::{
+    borrow::Borrow,
     path::{Path, PathBuf},
     process::Command,
+    sync::Arc,
 };
 
-use chrono::{DateTime, Utc};
-use dashmap::mapref::one::Ref;
+
+use dashmap::{mapref::one::Ref, DashMap};
 use git2::{Cred, CredentialType, RemoteCallbacks};
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
@@ -14,7 +16,7 @@ use tracing::{error, warn};
 
 use crate::{
     remotes,
-    repo::{RepoRef, Repository, SyncStatus},
+    repo::{Backend, RepoRef, Repository, SyncStatus},
     Application,
 };
 
@@ -199,32 +201,59 @@ pub(crate) fn gather_repo_roots(
         })
 }
 
+#[derive(Clone)]
+pub struct Backends {
+    backends: Arc<DashMap<Backend, BackendCredential>>,
+}
+
+impl From<DashMap<Backend, BackendCredential>> for Backends {
+    fn from(value: DashMap<Backend, BackendCredential>) -> Self {
+        Self {
+            backends: Arc::new(value),
+        }
+    }
+}
+
+impl Backends {
+    pub(crate) fn for_repo(&self, repo: &RepoRef) -> Option<BackendCredential> {
+        let Some(handle) = self.backends.get(&repo.backend()) else {
+		return None;
+	    };
+
+        Some(handle.value().clone())
+    }
+
+    pub(crate) fn remove(&self, backend: impl Borrow<Backend>) -> Option<BackendCredential> {
+        self.backends.remove(backend.borrow()).map(|(_, v)| v)
+    }
+
+    pub(crate) fn github(&self) -> Option<github::State> {
+        let Some(handle) = self.backends.get(&Backend::Github) else {
+	    return None;
+	};
+
+        let BackendCredential::Github(ref github) = handle.value();
+        Some(github.clone())
+    }
+
+    pub(crate) fn set_github(&self, gh: github::State) {
+        self.backends
+            .insert(Backend::Github, BackendCredential::Github(gh));
+    }
+}
+
+impl AsRef<DashMap<Backend, BackendCredential>> for Backends {
+    fn as_ref(&self) -> &DashMap<Backend, BackendCredential> {
+        Arc::as_ref(&self.backends)
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) enum BackendCredential {
     Github(github::State),
 }
 
 impl BackendCredential {
-    pub(crate) async fn validate(&self) -> Result<()> {
-        let BackendCredential::Github(github) = self;
-        let client = github.client()?;
-
-        match client.current().user().await {
-            Ok(_) => {}
-            Err(e @ octocrab::Error::GitHub { .. }) => {
-                warn!(?e, "failed to validate GitHub token");
-                return Err(e)?;
-            }
-            Err(e) => {
-                // Don't return an error here - we want to swallow failure and try again on the
-                // next poll.
-                error!(?e, "failed to make GitHub user request");
-            }
-        }
-
-        Ok(())
-    }
-
     pub(crate) async fn sync(self, app: Application, repo_ref: RepoRef) -> Result<()> {
         use BackendCredential::*;
 
@@ -265,17 +294,6 @@ impl BackendCredential {
             .sync_status = new_status;
 
         synced
-    }
-
-    pub(crate) fn expiry(&self) -> Option<DateTime<Utc>> {
-        use remotes::github::*;
-        match self {
-            Self::Github(State {
-                auth: Auth::App { expiry, .. },
-                ..
-            }) => Some(*expiry),
-            _ => None,
-        }
     }
 }
 

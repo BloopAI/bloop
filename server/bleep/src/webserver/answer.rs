@@ -22,8 +22,8 @@ use crate::{
     env::Feature,
     indexes::reader::ContentDocument,
     query::parser,
-    remotes::{self, BackendCredential},
-    repo::{Backend, RepoRef},
+    remotes,
+    repo::RepoRef,
     semantic::Semantic,
     Application,
 };
@@ -286,27 +286,27 @@ async fn _handle(
     }
 
     let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
-        let Some(cred) = app.credentials.get(&Backend::Github) else {
+        let Some(cred) = app.credentials.github() else {
             return Err(Error::user(
                 "missing Github token",
             ).with_status(StatusCode::UNAUTHORIZED));
         };
 
         use remotes::github::{Auth, State};
-        match cred.value() {
-            BackendCredential::Github(State {
+        match cred {
+            State {
                 auth:
                     Auth::OAuth {
                         access_token: token,
                         ..
                     },
                 ..
-            }) => Some(token.expose_secret().clone()),
+            } => Some(token.expose_secret().clone()),
 
-            BackendCredential::Github(State {
+            State {
                 auth: Auth::App { .. },
                 ..
-            }) => {
+            } => {
                 return Err(
                     Error::user("cannot connect to answer API using installation token")
                         .with_status(StatusCode::UNAUTHORIZED),

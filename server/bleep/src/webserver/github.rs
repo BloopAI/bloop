@@ -1,5 +1,5 @@
 use super::prelude::*;
-use crate::{remotes::BackendCredential, repo::Backend, Application};
+use crate::{repo::Backend, Application};
 
 use either::Either;
 use octocrab::{auth::DeviceCodes, Octocrab};
@@ -36,10 +36,10 @@ pub(super) async fn status(Extension(app): Extension<Application>) -> impl IntoR
     (
         StatusCode::OK,
         json(GithubResponse::Status(
-            match app.credentials.get(&Backend::Github) {
-                Some(_) => GithubCredentialStatus::Ok,
-                None => GithubCredentialStatus::Missing,
-            },
+            app.credentials
+                .github()
+                .map(|_| GithubCredentialStatus::Ok)
+                .unwrap_or(GithubCredentialStatus::Missing),
         )),
     )
 }
@@ -101,7 +101,7 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
 pub(super) async fn logout(Extension(app): Extension<Application>) -> impl IntoResponse {
     let deleted = app.credentials.remove(&Backend::Github).is_some();
     if deleted {
-        let saved = app.config.source.save_credentials(&app.credentials);
+        let saved = app.config.source.save_credentials(app.credentials.as_ref());
 
         if saved.is_ok() {
             return Ok(json(GithubResponse::Status(GithubCredentialStatus::Ok)));
@@ -160,10 +160,8 @@ async fn poll_for_oauth_token(
         }
     };
 
-    app.credentials
-        .insert(Backend::Github, BackendCredential::Github(auth.into()));
-
-    let saved = app.config.source.save_credentials(&app.credentials);
+    app.credentials.set_github(auth.into());
+    let saved = app.config.source.save_credentials(app.credentials.as_ref());
 
     if let Err(err) = saved {
         error!(?err, "Failed to save credentials to disk");

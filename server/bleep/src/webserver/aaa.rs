@@ -3,10 +3,7 @@ use std::{
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
-use crate::{
-    remotes::{self, BackendCredential},
-    repo::Backend,
-};
+use crate::remotes;
 
 use super::*;
 use anyhow::{bail, Context, Result};
@@ -310,11 +307,9 @@ async fn user_auth(
 
     if !member_checked {
         let org_name = {
-            let BackendCredential::Github(cred) =
-                app.credentials.get(&Backend::Github).unwrap().clone();
-
+            let cred = app.credentials.github().unwrap();
             match cred.auth {
-                remotes::github::Auth::App { org, .. } => org,
+                remotes::github::Auth::App { org, .. } => org.clone(),
                 _ => panic!("backend has invalid github credentials"),
             }
         };
