@@ -14,6 +14,7 @@ import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { DeviceContext } from '../../../context/deviceContext';
 import { SettingSections } from '../../../components/Settings';
 import RepoCardSkeleton from '../../../components/RepoCard/RepoCardSkeleton';
+import { repositoriesSyncCache } from '../../../services/cache';
 
 type Props = {
   filter: ReposFilter;
@@ -102,7 +103,8 @@ const filterRepositories = (filter: ReposFilter, repos?: RepoType[]) => {
 
 const ReposSection = ({ filter, emptyRepos }: Props) => {
   const { setSettingsSection, setSettingsOpen } = useContext(UIContext);
-  const { isRepoManagementAllowed, isSelfServe } = useContext(DeviceContext);
+  const { isRepoManagementAllowed, isSelfServe, showNativeMessage } =
+    useContext(DeviceContext);
   const { setRepositories, repositories } = useContext(RepositoriesContext);
   const [reposToShow, setReposToShow] = useState<RepoType[]>(
     filterRepositories(filter, repositories),
@@ -129,6 +131,25 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
   useEffect(() => {
     setReposToShow(filterRepositories(filter, repositories));
   }, [filter, repositories]);
+
+  useEffect(() => {
+    if (repositoriesSyncCache.shouldNotifyWhenDone) {
+      if (
+        repositories?.find((r) => r.sync_status === SyncStatus.Done) &&
+        repositories?.every(
+          (r) =>
+            r.sync_status === SyncStatus.Done ||
+            r.sync_status === SyncStatus.Uninitialized,
+        )
+      ) {
+        showNativeMessage(
+          'All repositories are now indexed and ready for search!',
+          { title: 'Ready to search!' },
+        );
+        repositoriesSyncCache.shouldNotifyWhenDone = false;
+      }
+    }
+  }, [repositories]);
 
   return (
     <div className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content relative">

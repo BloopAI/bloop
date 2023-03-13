@@ -19,7 +19,7 @@
         "all": true
       },
       "dialog": {
-        "open": true
+        "all": true
       },
       "http": {
         "all": true

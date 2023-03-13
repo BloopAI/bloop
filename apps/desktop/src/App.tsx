@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api';
 import { open } from '@tauri-apps/api/shell';
 import { homeDir } from '@tauri-apps/api/path';
-import { open as openDialog } from '@tauri-apps/api/dialog';
+import { message, open as openDialog } from '@tauri-apps/api/dialog';
 import { listen } from '@tauri-apps/api/event';
 import * as tauriOs from '@tauri-apps/api/os';
 import { getVersion } from '@tauri-apps/api/app';
@@ -71,6 +71,7 @@ function App() {
       isRepoManagementAllowed: true,
       forceAnalytics: false,
       isSelfServe: false,
+      showNativeMessage: message,
     }),
     [homeDirectory, indexFolder, deviceId, os, release],
   );
