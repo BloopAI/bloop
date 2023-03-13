@@ -7,6 +7,7 @@ import {
   Person,
   PlusSignInBubble,
   Tab,
+  Magazine,
 } from '../../../icons';
 import DropdownWithIcon from '../../Dropdown/WithIcon';
 import Dropdown from '../../Dropdown/Normal';
@@ -28,7 +29,7 @@ type Props = {
 
 const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
   const { setSettingsOpen, setBugReportModalOpen } = useContext(UIContext);
-  const { isRepoManagementAllowed } = useContext(DeviceContext);
+  const { isRepoManagementAllowed, openLink } = useContext(DeviceContext);
   const { navigateBack, navigationHistory } = useAppNavigation();
   const { tabs, setActiveTab, handleAddTab, activeTab, handleRemoveTab } =
     useContext(TabsContext);
@@ -155,6 +156,12 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
                     icon: <Cog />,
                     type: MenuListItemType.DEFAULT,
                     onClick: () => setSettingsOpen(true),
+                  },
+                  {
+                    text: 'Documentation',
+                    icon: <Magazine />,
+                    type: MenuListItemType.DEFAULT,
+                    onClick: () => openLink('https://bloop.ai/docs'),
                   },
                   // {
                   //   text: 'My Collections',
