@@ -25,23 +25,26 @@ import { ResultsPreviewSkeleton } from '../Skeleton';
 import SemanticSearch from '../../components/CodeBlock/SemanticSearch';
 import { DeviceContext } from '../../context/deviceContext';
 import PageHeader from '../../components/ResultsPageHeader';
-import { generateUniqueId } from '../../utils';
 import useAnalytics from '../../hooks/useAnalytics';
+import { conversationsCache } from '../../services/cache';
 import Conversation from './Conversation';
 
 type Props = {
   query: string;
+  threadId: string;
 };
 
 let prevEventSource: EventSource | undefined;
 
-const ResultsPage = ({ query }: Props) => {
+const ResultsPage = ({ query, threadId }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const { deviceId, apiUrl } = useContext(DeviceContext);
   const [isLoading, setIsLoading] = useState(true);
-  const [conversation, setConversation] = useState<ConversationMessage[]>([
-    { author: 'user', text: query, isLoading: false },
-  ]);
+  const [conversation, setConversation] = useState<ConversationMessage[]>(
+    conversationsCache[threadId] || [
+      { author: 'user', text: query, isLoading: false },
+    ],
+  );
   const [searchId, setSearchId] = useState('');
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.MODAL,
@@ -56,7 +59,10 @@ const ResultsPage = ({ query }: Props) => {
     useSearch<FileSearchResponse>();
   const navigateBrowser = useNavigate();
   const { trackSearch } = useAnalytics();
-  const threadId = useMemo(() => generateUniqueId(), []);
+
+  useEffect(() => {
+    conversationsCache[threadId] = conversation;
+  }, [conversation]);
 
   const onResultClick = useCallback<ResultClick>((repo, path, lineNumber) => {
     setScrollToLine(lineNumber ? lineNumber.join('_') : undefined);
@@ -218,7 +224,12 @@ const ResultsPage = ({ query }: Props) => {
   }, []);
 
   useEffect(() => {
-    makeSearch(query);
+    if (
+      !conversationsCache[threadId] ||
+      conversationsCache[threadId].length === 1
+    ) {
+      makeSearch(query);
+    }
   }, [query]);
 
   const lastServerResponse = useMemo(() => {
