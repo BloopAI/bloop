@@ -1,12 +1,19 @@
-import React, { useCallback, useContext, useState } from 'react';
+import React, { useCallback, useContext, useMemo, useState } from 'react';
+import { useRive } from '@rive-app/react-canvas';
+import { Remarkable } from 'remarkable';
 import Button from '../../components/Button';
-import { Checkmark, ThumbsDown, ThumbsUp } from '../../icons';
-import CircleProgressLoader from '../../components/Loaders/CircleProgressLoader';
+import { Checkmark } from '../../icons';
+import ThreeDotsLoader from '../../components/Loaders/ThreeDotsLoader';
 import { saveUpvote } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import useAnalytics from '../../hooks/useAnalytics';
 import { ConversationMessage } from '../../types/general';
+
+const md = new Remarkable({
+  html: true,
+  linkTarget: '__blank',
+});
 
 type Props = {
   message: ConversationMessage;
@@ -28,9 +35,41 @@ const Message = ({
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
   const { trackUpvote } = useAnalytics();
+  const RiveUpvote = useRive({
+    src: '/like_button.riv',
+    autoplay: false,
+  });
+  const RiveDownvote = useRive({
+    src: '/like_button.riv',
+    autoplay: false,
+  });
+
+  const highlightedAnswer = useMemo(
+    () =>
+      message.author === 'server' && message.text
+        ? md.render(message.text)
+        : message.text,
+    [message],
+  );
 
   const handleUpvote = useCallback(
     (isUpvote: boolean, answer?: string) => {
+      if (RiveUpvote.rive) {
+        if (isUpvote) {
+          RiveUpvote.rive.play();
+        } else {
+          RiveUpvote.rive.reset();
+          RiveUpvote.rive.drawFrame();
+        }
+      }
+      if (RiveDownvote.rive) {
+        if (!isUpvote) {
+          RiveDownvote.rive.play();
+        } else {
+          RiveDownvote.rive.reset();
+          RiveDownvote.rive.drawFrame();
+        }
+      }
       setIsUpvote(isUpvote);
       setIsDownvote(!isUpvote);
       trackUpvote(isUpvote, query, answer || '', searchId);
@@ -42,7 +81,7 @@ const Message = ({
         text: answer || '',
       });
     },
-    [deviceId, query],
+    [deviceId, query, RiveUpvote, RiveDownvote],
   );
   return (
     <div
@@ -52,26 +91,35 @@ const Message = ({
     >
       {message.author === 'server' && !!message.text && (
         <div
-          className={`absolute top-1/2 -right-11 ml-2 transform -translate-y-1/2 
-              opacity-0 group-hover:opacity-100 transition-opacity`}
+          className={`absolute top-1/2 -right-11 ml-2 transform -translate-y-1/2 w-8`}
         >
           <Button
-            variant={isUpvote ? 'secondary' : 'tertiary'}
+            variant={'tertiary'}
             onlyIcon
             size="small"
             title="Upvote"
+            className={
+              isUpvote
+                ? ''
+                : 'opacity-0 group-hover:opacity-100 transition-opacity'
+            }
             onClick={() => handleUpvote(true, message.text)}
           >
-            <ThumbsUp />
+            <RiveUpvote.RiveComponent className="w-4/5 h-4/5 transform scale-1" />
           </Button>
           <Button
-            variant={isDownvote ? 'secondary' : 'tertiary'}
+            variant={'tertiary'}
             onlyIcon
             size="small"
             title="Downvote"
+            className={
+              isDownvote
+                ? ''
+                : 'opacity-0 group-hover:opacity-100 transition-opacity'
+            }
             onClick={() => handleUpvote(false, message.text)}
           >
-            <ThumbsDown />
+            <RiveDownvote.RiveComponent className="w-4/5 h-4/5 transform rotate-180" />
           </Button>
         </div>
       )}
@@ -80,8 +128,8 @@ const Message = ({
         <div className="flex justify-between items-center mb-2">
           <span className="flex gap-2 items-center">
             {message.isLoading ? (
-              <span className="transform scale-90">
-                <CircleProgressLoader percent={50} />
+              <span className="text-gray-300 text-xs">
+                <ThreeDotsLoader />
               </span>
             ) : (
               <span className="text-success-500 h-5">
@@ -107,12 +155,13 @@ const Message = ({
 
       {message.text || message.error ? (
         <div
-          className={`rounded-lg p-3 ${
+          className={`rounded-lg p-3 conversation-message ${
             message.author === 'user' ? 'bg-gray-700' : 'bg-primary-400'
           }`}
-        >
-          {message.text || message.error}
-        </div>
+          dangerouslySetInnerHTML={{
+            __html: highlightedAnswer || message.error || '',
+          }}
+        />
       ) : null}
     </div>
   );
