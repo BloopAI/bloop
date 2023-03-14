@@ -61,13 +61,6 @@ pub mod api {
     pub type Result = std::result::Result<String, Error>;
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct Request {
-    pub query: String,
-    pub snippets: Vec<Snippet>,
-    pub user_id: String,
-}
-
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct Snippet {
     pub lang: String,
@@ -93,10 +86,17 @@ fn default_user_id() -> String {
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
     pub q: String,
+    pub thread_id: String,
     #[serde(default = "default_limit")]
     pub limit: u64,
     #[serde(default = "default_user_id")]
     pub user_id: String,
+}
+
+impl Params {
+    fn thread_id(&self) -> String {
+        format!("{}-{}", self.user_id, self.thread_id)
+    }
 }
 
 #[derive(serde::Serialize, ToSchema, Debug)]
@@ -374,7 +374,7 @@ async fn handle_inner(
 )> {
     // TODO: If a query contains any search filters it should be interpreted as a technical question
     let query = parse_query(&params.q)?;
-    let user_id = &params.user_id;
+    let thread_id = params.thread_id();
     let mut snippets = None;
 
     let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
@@ -414,7 +414,7 @@ async fn handle_inner(
         answer_bearer.clone(),
     );
 
-    let mut progress = build_rephrase_query_prompt_with_context(&query, user_id, &app)
+    let mut progress = build_rephrase_query_prompt_with_context(&query, &thread_id, &app)
         .map(AnswerProgress::Rephrase)
         .unwrap_or(AnswerProgress::GetInfo);
 
@@ -433,7 +433,7 @@ async fn handle_inner(
                 (prompt, 100, 0.0, vec!["</response>".into()])
             }
             AnswerProgress::Rephrase(query) => {
-                let prompt = build_rephrase_query_prompt_with_context(query, user_id, &app)
+                let prompt = build_rephrase_query_prompt_with_context(query, &thread_id, &app)
                     .unwrap_or_else(|| build_rephrase_query_prompt(query, &[]));
                 (prompt, 100, 0.0, vec!["</question>".into()])
             }
@@ -448,7 +448,7 @@ async fn handle_inner(
                 let prompt = if let Some(snippet) = snippets.as_ref().unwrap().first() {
                     let grown = grow_snippet(snippet, &semantic, &app).await?;
                     info!("We are explaining");
-                    app.with_prior_conversation(user_id, |conversation| {
+                    app.with_prior_conversation(&thread_id, |conversation| {
                         answer_api_client.build_explain_prompt(&grown, conversation, query)
                     })
                 } else {
@@ -550,6 +550,8 @@ async fn _handle(
         }
     }
 
+    let thread_id = params.thread_id();
+
     let mut stop_watch = StopWatch::start();
     let params = Arc::new(params);
     let mut app = Arc::new(app);
@@ -561,7 +563,7 @@ async fn _handle(
         stop_watch,
     )
     .await?;
-    Arc::make_mut(&mut app).add_conversation_entry(params.user_id.clone(), parse_query(&params.q)?);
+    Arc::make_mut(&mut app).add_conversation_entry(thread_id.clone(), parse_query(&params.q)?);
     let initial_event = Event::default()
         .json_data(super::Response::<'static>::from(AnswerResponse {
             query_id,
@@ -584,7 +586,7 @@ async fn _handle(
         yield Ok(Event::default().json_data(Ok::<_, ()>(first_token)).unwrap());
         while let Some(result) = text.next().await {
             if let Ok(fragment) = &result {
-                app.extend_conversation_answer(params.user_id.clone(), fragment.trim_end())
+                app.extend_conversation_answer(thread_id.clone(), fragment.trim_end())
             }
             yield Ok(Event::default()
                 .json_data(result.as_ref().map_err(|e| e.to_string()))
