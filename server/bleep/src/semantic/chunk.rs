@@ -257,13 +257,13 @@ pub fn by_tokens<'s>(
     debug!("max tokens reduced to {max_tokens}");
 
     // checks whether the token at the given index contains a newline character.
-    let has_nl = |&i: &usize| {
+    let has_nl = |&i: &usize| -> bool {
         if special_tokens_mask[i] != 0 {
-            return false;
+            false
         } else if i + 1 >= special_tokens_mask.len() || special_tokens_mask[i + 1] != 0 {
-            return src[offsets[i].0..offsets[i].1].contains('\n');
+            src[offsets[i].0..offsets[i].1].contains('\n')
         } else {
-            return src[offsets[i].0..offsets[i + 1].0].contains('\n');
+            src[offsets[i].0..offsets[i + 1].0].contains('\n')
         }
     };
 
