@@ -506,7 +506,7 @@ async fn handle_inner(
                     AnswerProgress::Search(prompt) => {
                         let Some(index) = n.checked_sub(1) else {
                             let selection_fail_stream = Box::pin(futures::stream::once(async { Ok("I'm not sure. One of these snippets might be relevant".to_string()) }));
-                            return Ok((snippets, stop_watch, n.to_string(), selection_fail_stream));
+                            return Ok((snippets, stop_watch, String::new(), selection_fail_stream));
                         };
                         snippets.as_mut().unwrap().swap(index, 0);
                         AnswerProgress::Explain(prompt)
