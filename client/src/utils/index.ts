@@ -135,3 +135,7 @@ export const arrayUnique = (array: any[], property: string) => {
 export const generateUniqueId = (): string => {
   return hashCode(new Date().toISOString()).toString();
 };
+
+export const waitFor = async (milliseconds: number) => {
+  await new Promise((res) => setTimeout(res, milliseconds));
+};

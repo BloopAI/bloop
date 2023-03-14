@@ -34,6 +34,7 @@ type Props = {
   searchTerm?: string;
   onMouseSelectStart?: (lineNum: number, charNum: number) => void;
   onMouseSelectEnd?: (lineNum: number, charNum: number) => void;
+  inFullCode?: boolean;
 };
 
 const CodeLine = ({
@@ -52,6 +53,7 @@ const CodeLine = ({
   searchTerm,
   onMouseSelectStart,
   onMouseSelectEnd,
+  inFullCode,
 }: Props) => {
   const [isHighlighted, setHighlighted] = useState(false);
   const codeRef = useRef<HTMLTableCellElement>(null);
@@ -184,6 +186,7 @@ const CodeLine = ({
         const index = getCharIndex(e);
         onMouseSelectEnd?.(lineNumber, index);
       }}
+      data-line-number={inFullCode ? lineNumber : undefined}
     >
       {renderBlameLine}
       {symbols?.length ? (

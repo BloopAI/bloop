@@ -1,4 +1,4 @@
-import React, { createContext } from 'react';
+import React, { createContext, MutableRefObject } from 'react';
 
 type ContextType = {
   isSettingsOpen: boolean;
@@ -14,6 +14,21 @@ type ContextType = {
   isGithubConnected: boolean;
   setGithubConnected: (b: boolean) => void;
   isGithubChecked: boolean;
+  uiRefs: {
+    searchInputRef: MutableRefObject<HTMLInputElement | null>;
+    searchTypeSelectBtn: MutableRefObject<HTMLButtonElement | null>;
+    searchTypeRegexBtn: MutableRefObject<HTMLAnchorElement | null>;
+    searchTypeNLBtn: MutableRefObject<HTMLAnchorElement | null>;
+    coCursor: MutableRefObject<HTMLDivElement | null>;
+    fullCodeRef: MutableRefObject<HTMLDivElement | null>;
+    searchSubmitRef: MutableRefObject<() => void | null>;
+    codeSelectStartRef: MutableRefObject<
+      (lineNum: number, charNum: number) => void | null
+    >;
+    codeSelectEndRef: MutableRefObject<
+      (lineNum: number, charNum: number) => void | null
+    >;
+  };
 };
 
 export const UIContext = createContext<ContextType>({
@@ -30,4 +45,6 @@ export const UIContext = createContext<ContextType>({
   isGithubConnected: false,
   setGithubConnected: () => {},
   isGithubChecked: false,
+  // @ts-ignore
+  uiRefs: {},
 });

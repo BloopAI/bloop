@@ -5,6 +5,7 @@ import { SyncStatus } from '../../types/general';
 import FileIcon from '../FileIcon';
 import { getFileExtensionForLang } from '../../utils';
 import useAppNavigation from '../../hooks/useAppNavigation';
+import useCoCursor from '../../hooks/useCoCursor';
 
 type Props = {
   name: string;
@@ -43,8 +44,13 @@ const RepoCard = ({
   const handleClick = useCallback(() => {
     navigateRepoPath(`${isGh ? 'github.com/' : ''}${repoName}`);
   }, [repoName, provider]);
+
+  const { makeRegexSearch } = useCoCursor();
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-md p-4 w-full flex flex-col gap-6">
+    <div
+      className="bg-gray-900 border border-gray-800 rounded-md p-4 w-full flex flex-col gap-6"
+      onClick={() => makeRegexSearch('const')}
+    >
       <div className="flex items-start gap-4">
         <span className="h-6 flex items-center">
           <FileIcon filename={getFileExtensionForLang(lang)} />

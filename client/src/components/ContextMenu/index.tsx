@@ -1,4 +1,4 @@
-import React, { MouseEvent, PropsWithChildren, useRef } from 'react';
+import React, { MouseEvent, PropsWithChildren, RefObject, useRef } from 'react';
 import Tippy from '@tippyjs/react/headless';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
 import { ExtendedMenuItemType, MenuItemType } from '../../types/general';
@@ -16,6 +16,7 @@ export type ContextMenuLinkItem = {
   onDelete?: () => void;
   disabled?: boolean;
   tooltip?: string;
+  btnRef?: RefObject<HTMLAnchorElement>;
 };
 
 export type ContextMenuItem =
@@ -30,6 +31,7 @@ export type ContextMenuItem =
       onDelete?: () => void;
       disabled?: boolean;
       tooltip?: string;
+      btnRef?: RefObject<HTMLAnchorElement>;
     };
 
 type Props = {
@@ -77,6 +79,7 @@ const ContextMenu = ({
             onDelete={item.onDelete}
             disabled={item.disabled}
             tooltip={item.tooltip}
+            ref={item.btnRef}
           />
         );
       case ExtendedMenuItemType.DIVIDER:

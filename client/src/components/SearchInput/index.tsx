@@ -3,7 +3,6 @@ import React, {
   useCallback,
   useContext,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useCombobox } from 'downshift';
@@ -26,6 +25,7 @@ import { mapResults } from '../../mappers/results';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import { SearchType } from '../../types/general';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
+import { UIContext } from '../../context/uiContext';
 import AutocompleteMenu from './AutocompleteMenu';
 import SearchTextInput from './SearchTextInput';
 
@@ -54,7 +54,9 @@ function SearchInput() {
   } = useContext(SearchContext);
   const [options, setOptions] = useState<SuggestionType[]>([]);
   const [left, setLeft] = useState<number>(INPUT_POSITION_LEFT);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const {
+    uiRefs: { searchInputRef },
+  } = useContext(UIContext);
   const { globalRegex, setGlobalRegex, searchType, setSearchType } =
     useContext(SearchContext);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
@@ -68,7 +70,7 @@ function SearchInput() {
       if (e.key === 'l' && (e.metaKey || e.ctrlKey)) {
         e.stopPropagation();
         e.preventDefault();
-        inputRef.current?.focus();
+        searchInputRef.current?.focus();
       }
     },
     [inputValue],
@@ -139,7 +141,7 @@ function SearchInput() {
             navigateRepoPath(state.selectedItem.repository);
           }
         }
-        inputRef.current?.focus();
+        searchInputRef.current?.focus();
       } else if (state.type === useCombobox.stateChangeTypes.InputChange) {
         if (state.inputValue === '') {
           setInputValue(state.inputValue);
@@ -170,7 +172,7 @@ function SearchInput() {
             setFilters(newFilters);
           }
         }
-        const input = inputRef.current;
+        const input = searchInputRef.current;
         if (input) {
           if (input.getBoundingClientRect().left) {
             setLeft(input.getBoundingClientRect().left - 272);
@@ -262,7 +264,6 @@ function SearchInput() {
               },
               { suppressRefError: true },
             )}
-            ref={inputRef}
             onSubmit={() => onSubmit(inputValue)}
             onRegexClick={() => {
               setGlobalRegex(!globalRegex);

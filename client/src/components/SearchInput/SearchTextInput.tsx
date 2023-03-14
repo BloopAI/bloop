@@ -1,12 +1,9 @@
 import {
   ChangeEvent,
-  ForwardedRef,
-  forwardRef,
   HTMLInputTypeAttribute,
   KeyboardEvent,
   useContext,
-  useImperativeHandle,
-  useRef,
+  useEffect,
   useState,
 } from 'react';
 import {
@@ -36,7 +33,7 @@ type Props = {
   regex?: boolean;
   variant?: 'outlined' | 'filled';
   type?: HTMLInputTypeAttribute;
-  onSubmit?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onSubmit: () => void;
   onRegexClick?: () => void;
   validate?: () => void;
   regexEnabled?: boolean;
@@ -60,48 +57,54 @@ const borderMap = {
   },
 };
 
-const SearchTextInput = forwardRef(function TextInputWithRef(
-  {
-    value,
-    onChange,
-    placeholder,
-    label,
-    helperText,
-    id,
-    name,
-    error,
-    success,
-    disabled,
-    variant = 'outlined',
-    type,
-    onSubmit,
-    validate,
-    regex,
-    onRegexClick,
-    regexEnabled,
-    searchType,
-    onSearchTypeChanged,
-  }: Props,
-  ref: ForwardedRef<HTMLInputElement>,
-) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  useImperativeHandle(ref, () => inputRef.current!);
+const SearchTextInput = function TextInputWithRef({
+  value,
+  onChange,
+  placeholder,
+  id,
+  name,
+  error,
+  success,
+  disabled,
+  variant = 'outlined',
+  type,
+  onSubmit,
+  validate,
+  regex,
+  onRegexClick,
+  regexEnabled,
+  searchType,
+  onSearchTypeChanged,
+}: Props) {
   const [searchCtxMenuVisible, setSearchCtxMenuVisible] = useState(false);
   const { isSelfServe } = useContext(DeviceContext);
-  const { isGithubConnected } = useContext(UIContext);
+  const {
+    isGithubConnected,
+    uiRefs: {
+      searchInputRef,
+      searchTypeSelectBtn,
+      searchTypeNLBtn,
+      searchTypeRegexBtn,
+      searchSubmitRef,
+    },
+  } = useContext(UIContext);
   const { isAnalyticsAllowed } = useContext(AnalyticsContext);
 
-  const handleEnter = (
+  useEffect(() => {
+    searchSubmitRef.current = onSubmit;
+  }, [onSubmit]);
+
+  const handleKeyDown = (
     e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
-    if (e.key === 'Enter' && onSubmit) {
+    if (e.key === 'Enter') {
       e.preventDefault();
-      onSubmit(e);
+      onSubmit();
     }
     if (e.key === 'Escape' && !value) {
       e.stopPropagation();
       e.preventDefault();
-      inputRef.current?.blur();
+      searchInputRef.current?.blur();
     }
   };
 
@@ -147,12 +150,14 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
                       } to use natural language search`
                     : undefined,
                 onClick: () => onSearchTypeChanged(SearchType.NL),
+                btnRef: searchTypeNLBtn,
                 icon: <NaturalLanguage />,
               },
               {
                 text: 'Regex',
                 type: MenuItemType.LINK,
                 onClick: () => onSearchTypeChanged(SearchType.REGEX),
+                btnRef: searchTypeRegexBtn,
                 icon: <RegexIcon />,
               },
             ]}
@@ -162,12 +167,15 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
             closeOnClickOutside
           >
             <button
-              className="flex items-center px-2 h-full bg-gray-700 rounded-l"
+              className={`flex items-center px-2 h-full bg-gray-700 rounded-l hover:text-gray-200 focus:text-gray-200 ${
+                searchCtxMenuVisible ? 'text-gray-200' : 'text-gray-500'
+              }`}
               title="Search type"
               onClick={(e) => {
                 e.preventDefault();
                 setSearchCtxMenuVisible(!searchCtxMenuVisible);
               }}
+              ref={searchTypeSelectBtn}
             >
               <span
                 className={`w-5 h-5 group-hover:text-gray-200 ${
@@ -180,11 +188,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
                   <RegexIcon />
                 )}
               </span>
-              <span
-                className={`w-5 h-5 group-hover:text-gray-200 ${
-                  searchCtxMenuVisible ? 'text-gray-200' : 'text-gray-500'
-                }`}
-              >
+              <span className={`w-5 h-5`}>
                 {searchCtxMenuVisible ? (
                   <ChevronUpFilled />
                 ) : (
@@ -206,14 +210,14 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
           name={name}
           type={type}
           disabled={disabled}
-          ref={inputRef}
+          ref={searchInputRef}
           onBlur={validate}
           autoComplete="off"
           spellCheck="false"
           className={`bg-transparent border-none focus:outline-none w-full group-focus-within:placeholder:text-gray-100 disabled:placeholder:text-gray-500 ${
             type === 'email' ? 'px-1' : 'pl-2.5'
           } transition-all duration-300 ease-in-bounce outline-none outline-0 pr-9`}
-          onKeyDown={handleEnter}
+          onKeyDown={handleKeyDown}
         />
         {value ? (
           <ClearButton
@@ -222,7 +226,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
               onChange({
                 target: { value: '', name },
               } as ChangeEvent<HTMLInputElement>);
-              inputRef.current?.focus();
+              searchInputRef.current?.focus();
             }}
             className={success ? 'group-focus-within:flex hidden' : 'flex'}
           />
@@ -240,6 +244,6 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
       {error ? <span className="text-danger-500 caption">{error}</span> : null}
     </div>
   );
-});
+};
 
 export default SearchTextInput;

@@ -1,9 +1,9 @@
 import React, {
   FC,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import debounce from 'lodash.debounce';
@@ -24,6 +24,8 @@ import { Token as TokenType } from '../../../types/prism';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import SearchOnPage from '../../SearchOnPage';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
+import { UIContext } from '../../../context/uiContext';
+import useCoCursor from '../../../hooks/useCoCursor';
 import Token from './Token';
 
 const Table = _Table as unknown as FC<TableProps>;
@@ -92,6 +94,11 @@ const CodeFull = ({
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const [currentResult, setCurrentResult] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const {
+    uiRefs,
+    uiRefs: { fullCodeRef },
+  } = useContext(UIContext);
+  const { selectText } = useCoCursor();
 
   useEffect(() => {
     const toggleSearch = (e: KeyboardEvent) => {
@@ -176,7 +183,6 @@ const CodeFull = ({
   );
 
   const [scrollPosition, setScrollPosition] = useState(0);
-  const codeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = debounce((val) => {
@@ -247,6 +253,11 @@ const CodeFull = ({
     );
   }, []);
 
+  useEffect(() => {
+    uiRefs.codeSelectStartRef.current = onMouseSelectStart;
+    uiRefs.codeSelectEndRef.current = onMouseSelectEnd;
+  }, [onMouseSelectStart, onMouseSelectEnd]);
+
   const handleCopy = useCallback(
     (e: React.ClipboardEvent<HTMLPreElement>) => {
       if (currentSelection.length === 2) {
@@ -296,7 +307,7 @@ const CodeFull = ({
       ]);
       const selection = window.getSelection();
       const range = document.createRange();
-      range.selectNodeContents(codeRef.current || document.body);
+      range.selectNodeContents(fullCodeRef.current || document.body);
       selection?.removeAllRanges();
       selection?.addRange(range);
     }
@@ -318,10 +329,11 @@ const CodeFull = ({
         searchValue={searchTerm}
         containerClassName="absolute top-0 -right-4"
       />
-      <div className={`${!minimap ? 'w-full' : ''}`} ref={codeRef}>
+      <div className={`${!minimap ? 'w-full' : ''}`} ref={fullCodeRef}>
         <pre
           className={`prism-code language-${lang} bg-gray-900 my-0 w-full h-full`}
           onCopy={handleCopy}
+          onClick={() => selectText(2, 0, 6, 0)}
         >
           <AutoSizer>
             {({ height, width }) => (
@@ -352,6 +364,7 @@ const CodeFull = ({
                       props.index >= scrollToIndex[0] &&
                       props.index <= scrollToIndex[1]
                     }
+                    inFullCode
                     searchTerm={searchTerm}
                     stylesGenerated={{
                       ...props.style,
