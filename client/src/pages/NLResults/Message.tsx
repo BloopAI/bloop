@@ -1,6 +1,7 @@
 import React, { useCallback, useContext, useState } from 'react';
+import { useRive } from '@rive-app/react-canvas';
 import Button from '../../components/Button';
-import { Checkmark, ThumbsDown, ThumbsUp } from '../../icons';
+import { Checkmark } from '../../icons';
 import ThreeDotsLoader from '../../components/Loaders/ThreeDotsLoader';
 import { saveUpvote } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
@@ -28,9 +29,33 @@ const Message = ({
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
   const { trackUpvote } = useAnalytics();
+  const RiveUpvote = useRive({
+    src: '/like_button.riv',
+    autoplay: false,
+  });
+  const RiveDownvote = useRive({
+    src: '/like_button.riv',
+    autoplay: false,
+  });
 
   const handleUpvote = useCallback(
     (isUpvote: boolean, answer?: string) => {
+      if (RiveUpvote.rive) {
+        if (isUpvote) {
+          RiveUpvote.rive.play();
+        } else {
+          RiveUpvote.rive.reset();
+          RiveUpvote.rive.drawFrame();
+        }
+      }
+      if (RiveDownvote.rive) {
+        if (!isUpvote) {
+          RiveDownvote.rive.play();
+        } else {
+          RiveDownvote.rive.reset();
+          RiveDownvote.rive.drawFrame();
+        }
+      }
       setIsUpvote(isUpvote);
       setIsDownvote(!isUpvote);
       trackUpvote(isUpvote, query, answer || '', searchId);
@@ -42,7 +67,7 @@ const Message = ({
         text: answer || '',
       });
     },
-    [deviceId, query],
+    [deviceId, query, RiveUpvote, RiveDownvote],
   );
   return (
     <div
@@ -52,26 +77,35 @@ const Message = ({
     >
       {message.author === 'server' && !!message.text && (
         <div
-          className={`absolute top-1/2 -right-11 ml-2 transform -translate-y-1/2 
-              opacity-0 group-hover:opacity-100 transition-opacity`}
+          className={`absolute top-1/2 -right-11 ml-2 transform -translate-y-1/2 w-8`}
         >
           <Button
-            variant={isUpvote ? 'secondary' : 'tertiary'}
+            variant={'tertiary'}
             onlyIcon
             size="small"
             title="Upvote"
+            className={
+              isUpvote
+                ? ''
+                : 'opacity-0 group-hover:opacity-100 transition-opacity'
+            }
             onClick={() => handleUpvote(true, message.text)}
           >
-            <ThumbsUp />
+            <RiveUpvote.RiveComponent className="w-4/5 h-4/5 transform scale-1" />
           </Button>
           <Button
-            variant={isDownvote ? 'secondary' : 'tertiary'}
+            variant={'tertiary'}
             onlyIcon
             size="small"
             title="Downvote"
+            className={
+              isDownvote
+                ? ''
+                : 'opacity-0 group-hover:opacity-100 transition-opacity'
+            }
             onClick={() => handleUpvote(false, message.text)}
           >
-            <ThumbsDown />
+            <RiveDownvote.RiveComponent className="w-4/5 h-4/5 transform rotate-180" />
           </Button>
         </div>
       )}
