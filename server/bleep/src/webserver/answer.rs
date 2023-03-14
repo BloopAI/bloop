@@ -177,6 +177,7 @@ fn parse_query(query: &str) -> Result<String, Error> {
 
 const MAX_HISTORY: usize = 7;
 
+#[derive(Debug)]
 enum AnswerProgress {
     // Need to get info
     GetInfo,
@@ -369,8 +370,9 @@ async fn handle_inner(
     Option<Vec<Snippet>>,
     StopWatch,
     String,
-    impl Stream<Item = Result<String, AnswerAPIError>>,
+    std::pin::Pin<Box<dyn Stream<Item = Result<String, AnswerAPIError>> + Send>>,
 )> {
+    // TODO: If a query contains any search filters it should be interpreted as a technical question
     let query = parse_query(&params.q)?;
     let user_id = &params.user_id;
     let mut snippets = None;
@@ -426,31 +428,26 @@ async fn handle_inner(
         // Here we ask anthropic for either action selection, rephrasing or explanation
         // (depending on `progress`)
         let stream_params = match &progress {
-            AnswerProgress::GetInfo => (
-                build_action_selection_prompt(&query),
-                100,
-                0.0,
-                vec!["</response>".into()],
-            ),
-            AnswerProgress::Rephrase(prompt) => {
-                let prompt = build_rephrase_query_prompt_with_context(prompt, user_id, &app)
-                    .unwrap_or_else(|| build_rephrase_query_prompt(prompt, &[]));
-
+            AnswerProgress::GetInfo => {
+                let prompt = build_action_selection_prompt(&query);
+                (prompt, 100, 0.0, vec!["</response>".into()])
+            }
+            AnswerProgress::Rephrase(query) => {
+                let prompt = build_rephrase_query_prompt_with_context(query, user_id, &app)
+                    .unwrap_or_else(|| build_rephrase_query_prompt(query, &[]));
                 (prompt, 100, 0.0, vec!["</question>".into()])
             }
-            AnswerProgress::Search(prompt) => {
-                let s = search_snippets(&semantic, prompt).await?;
+            AnswerProgress::Search(rephrased_query) => {
+                let s = search_snippets(&semantic, rephrased_query).await?;
 
-                // though we only need one token for the selection, we may get
-                // an apology for not finding a suitable one instead
-                let prompt = answer_api_client.build_select_prompt(&s);
+                let prompt = answer_api_client.build_select_prompt(rephrased_query, &s);
                 snippets = Some(s);
-                (prompt, 100, 0.0, Vec::new())
+                (prompt, 50, 0.0, vec!["</index>".to_owned()])
             }
             AnswerProgress::Explain(query) => {
                 let prompt = if let Some(snippet) = snippets.as_ref().unwrap().first() {
                     let grown = grow_snippet(snippet, &semantic, &app).await?;
-
+                    info!("We are explaining");
                     app.with_prior_conversation(user_id, |conversation| {
                         answer_api_client.build_explain_prompt(&grown, conversation, query)
                     })
@@ -459,7 +456,6 @@ async fn handle_inner(
                         while expressing hope that one of the snippets may still be useful"
                         .to_string()
                 };
-
                 (prompt, 400, 0.0, vec!["</response>".to_owned()])
             }
         };
@@ -480,8 +476,9 @@ async fn handle_inner(
         );
 
         if let AnswerProgress::Rephrase(_) = &progress {
-            let rephrased_prompt = stream.try_collect().await?;
-            progress = AnswerProgress::Search(rephrased_prompt);
+            let rephrased_query = stream.try_collect().await?;
+            info!("Rephrased query: {:?}", &rephrased_query);
+            progress = AnswerProgress::Search(rephrased_query);
             continue;
         }
 
@@ -514,7 +511,8 @@ async fn handle_inner(
                     }
                     AnswerProgress::Search(prompt) => {
                         let Some(index) = n.checked_sub(1) else {
-                            todo!("handle wrong index");
+                            let selection_fail_stream = Box::pin(futures::stream::once(async { Ok("I'm not sure. One of these snippets might be relevant".to_string()) }));
+                            return Ok((snippets, stop_watch, n.to_string(), selection_fail_stream));
                         };
                         snippets.as_mut().unwrap().swap(index, 0);
                         AnswerProgress::Explain(prompt)
@@ -586,7 +584,7 @@ async fn _handle(
         yield Ok(Event::default().json_data(Ok::<_, ()>(first_token)).unwrap());
         while let Some(result) = text.next().await {
             if let Ok(fragment) = &result {
-                app.extend_conversation_answer(params.user_id.clone(), fragment)
+                app.extend_conversation_answer(params.user_id.clone(), fragment.trim_end())
             }
             yield Ok(Event::default()
                 .json_data(result.as_ref().map_err(|e| e.to_string()))
@@ -802,7 +800,7 @@ impl<'s> AnswerAPIClient<'s> {
 
 const DELIMITER: &str = "=========";
 impl<'a> AnswerAPIClient<'a> {
-    fn build_select_prompt(&self, snippets: &[Snippet]) -> String {
+    fn build_select_prompt(&self, query: &str, snippets: &[Snippet]) -> String {
         // snippets are 1-indexed so we can use index 0 where no snippets are relevant
         let mut prompt = snippets
             .iter()
@@ -822,19 +820,16 @@ impl<'a> AnswerAPIClient<'a> {
         // the example question/answer pair helps reinforce that we want exactly a single
         // number in the output, with no spaces or punctuation such as fullstops.
         prompt += &format!(
-            "Above are {} code snippets separated by \"{DELIMITER}\". \
-Your job is to select the snippet that best answers the question. Reply \
-with a single number indicating the index of the snippet in the list. \
-If there is any relevant snippet, do NOT return a non-numeric answer.
-If none of the snippets are relevant, return an apology for not being able to decide on a good snippet.
+            "Above are {} code snippets separated by \"{DELIMITER}\". Your job is to select the snippet that best answers the question. Reply with a single number indicating the index of the snippet in the list.
+If none of the snippets are relevant reply with the number 0. Wrap your response in <index></index> tags.
 
-Q:What icon do we use to clear search history?
-Index:3
+<question>What icon do we use to clear search history?</question>
+<index>3</index>
 
-Q:{}
-Index:",
+<question>{}</question>
+<index>",
             snippets.len(),
-            self.query,
+            query,
         );
 
         let tokens_used = self.semantic.gpt2_token_count(&prompt);
@@ -854,19 +849,18 @@ Index:",
             {}\n\
             =========\n\
             Human: You are bloop, an AI assistant for a codebase. Above, you have an extract from a code file. Below you have the last utterances of a conversation with a user (represented inside <conversation></conversation> XML tags). \
-            Use the code file to write a concise, precise answer to the question. Put your response inside XML tags, like this: <response></response>.\n\
-            - ONLY copy code into the answer if it helps answer the question.\n\
-            - Do format your response in GitHub markdown with code blocks annotated with programming language.\n\
-            - Do NOT include code that is not in the file. If the file doesn't contain enough information to answer the question, or you don't know the answer, just say \"Sorry, I'm not sure\".\n\
+            Use the code file to write a concise, precise answer to the question. Put your response inside XML tags, like this: <response></response>.\n\n\
+            - Your answer should be one sentence long.\n\
+            - If the file doesn't contain enough information to answer the question, or you don't know the answer, just say \"Sorry, I'm not sure\".\n\
             - Do NOT try to make up an answer.\n\
-            - The conversation history can provide context to the user's current question, but sometimes it contains irrelevant information. IGNORE information in the conversation which is irrelevant to the user's current question.\n\
+            - The conversation history can provide context to the user's current question, but sometimes it contains irrelevant information. IGNORE information in the conversation which is irrelevant to the user's current question.\n\n\
             <conversation>",
             snippet.repo_name, snippet.relative_path, snippet.text,
         );
         for (question, answer) in conversation {
-            prompt.extend(["\nperson: ", question, "\nbloop: ", answer]);
+            prompt.extend(["\nPerson: ", question, "\nbloop: ", answer]);
         }
-        prompt += "\nperson: ";
+        prompt += "\nPerson: ";
         prompt += query;
         prompt + "\n</conversation>\n<response>"
     }
@@ -912,7 +906,7 @@ Index:",
 
 fn build_rephrase_query_prompt(query: &str, conversation: &[(String, String)]) -> String {
     let mut prompt =
-        r#"Human: You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. Given a question and an optional conversational history between a person and yourself, (represented inside <conversation></conversation> XML tags), extract a standalone question, if any, from the last turn in the dialogue. Put the question you extract inside XML tags, like this: <question></question>. If there is no question, write "N/A" instead.
+        r#"Human: You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. Given a question and an optional conversational history between a person and yourself, (represented inside <conversation></conversation> XML tags), extract a standalone question, if any, from the last turn in the dialogue. Put the question you extract inside XML tags, like this: <question></question>.
 
 IGNORE any information in the conversational history which is not relevant to the question
 Absolutely, positively do NOT answer the question
@@ -922,54 +916,54 @@ Your rephrased question should be short and should contain relevant keywords
 <conversation>
 Person: Hey bloop, do we pin js version numbers?
 </conversation>
-Assistant: <question>Do we pin js version numbers?</question>
+<question>Do we pin js version numbers?</question>
 
 <conversation>
 Person: Hey bloop, I have a question - Where do we test if GitHub login works?
 bloop: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
 Person: which file?
 </conversation>
-Assistant: <question>In which file do we test if GitHub login works?</question>
+<question>In which file do we test if GitHub login works?</question>
 
 <conversation>
 Person: What's the best way to update the search icon @bloop?
 </conversation>
-Assistant: <question>What's the best way to update the search icon?</question>
+<question>What's the best way to update the search icon?</question>
 
 <conversation>
 Person: Where do we test if GitHub login works
 bloop: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
 Person: Are there unit tests?
 </conversation>
-Assistant: <question>Is there a unit test for GitHub login?</question>
+<question>Is there a unit test for GitHub login?</question>
 
 <conversation>
 Person: Where is the answer api called
 bloop: The answer API client is called in `server/bleep/webserver/answer.rs`. After building the prompt the `select_snippet` method belonging to the `answer_api_client` is called.
 Person: frontend
 </conversation>
-Assistant: <question>Where is the answer API called on the frontend?</question>
+<question>Where is the answer API called on the frontend?</question>
 
 <conversation>
 Person: Where do bug reports get sent?
 bloop: Bug reports get sent to the repo maintainers.
 Person: Which url
 </conversation>
-Assistant: <question>Which url do bug reports get sent to?</question>
+<question>Which url do bug reports get sent to?</question>
 
 <conversation>
 Person: tailwind config
 bloop: The `tailwind.config.cjs` file configures Tailwind CSS for the desktop app by extending a basic configuration and adding additional content paths.
 Person: client config
 </conversation>
-Assistant: <question>Where is the client Tailwind config file?</question>
+<question>Where is the client Tailwind config file?</question>
 
 <conversation>
 Person: I love bananas
 bloop: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
 Person: Which onnxruntime library do we use?
 </conversation>
-Assistant: <question>Which onnxruntime library do we use?</question>
+<question>Which onnxruntime library do we use?</question>
 
 <conversation>
 Person: Where is the query parsing logic?
@@ -978,7 +972,7 @@ Person: Which libraries does it use?
 bloop: Sorry, the given code snippet does not contain enough context to determine which libraries the query parser uses.
 Person: Where's the delete repo endpoint?
 </conversation>
-Assistant: <question>Where's the delete repo endpoint?</question>
+<question>Where's the delete repo endpoint?</question>
 
 <conversation>"#.to_string();
     for (question, answer) in conversation {
@@ -986,7 +980,8 @@ Assistant: <question>Where's the delete repo endpoint?</question>
     }
     prompt += "\nPerson: ";
     prompt += query;
-    prompt + "\n</conversation>\nAssistant: <question>"
+    prompt += "\n</conversation>\n<question>";
+    prompt
 }
 
 fn build_action_selection_prompt(query: &str) -> String {
