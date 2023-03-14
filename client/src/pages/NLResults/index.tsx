@@ -167,7 +167,7 @@ const ResultsPage = ({ query, threadId }: Props) => {
                 ...prev.slice(-1)[0],
                 isLoading: true,
                 snippets:
-                  newData?.snippets?.map((item: NLSnippet) => ({
+                  newData?.snippets?.matches?.map((item: NLSnippet) => ({
                     path: item.relative_path,
                     code: item.text,
                     repoName: item.repo_name,
