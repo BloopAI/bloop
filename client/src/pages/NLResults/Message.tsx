@@ -1,5 +1,6 @@
-import React, { useCallback, useContext, useState } from 'react';
+import React, { useCallback, useContext, useMemo, useState } from 'react';
 import { useRive } from '@rive-app/react-canvas';
+import { Remarkable } from 'remarkable';
 import Button from '../../components/Button';
 import { Checkmark } from '../../icons';
 import ThreeDotsLoader from '../../components/Loaders/ThreeDotsLoader';
@@ -8,6 +9,11 @@ import { DeviceContext } from '../../context/deviceContext';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import useAnalytics from '../../hooks/useAnalytics';
 import { ConversationMessage } from '../../types/general';
+
+const md = new Remarkable({
+  html: true,
+  linkTarget: '__blank',
+});
 
 type Props = {
   message: ConversationMessage;
@@ -37,6 +43,14 @@ const Message = ({
     src: '/like_button.riv',
     autoplay: false,
   });
+
+  const highlightedAnswer = useMemo(
+    () =>
+      message.author === 'server' && message.text
+        ? md.render(message.text)
+        : message.text,
+    [message],
+  );
 
   const handleUpvote = useCallback(
     (isUpvote: boolean, answer?: string) => {
@@ -141,12 +155,13 @@ const Message = ({
 
       {message.text || message.error ? (
         <div
-          className={`rounded-lg p-3 ${
+          className={`rounded-lg p-3 conversation-message ${
             message.author === 'user' ? 'bg-gray-700' : 'bg-primary-400'
           }`}
-        >
-          {message.text || message.error}
-        </div>
+          dangerouslySetInnerHTML={{
+            __html: highlightedAnswer || message.error || '',
+          }}
+        />
       ) : null}
     </div>
   );
