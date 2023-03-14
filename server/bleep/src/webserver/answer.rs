@@ -12,7 +12,7 @@ use axum::{
     response::{sse::Event, IntoResponse, Sse},
     Extension,
 };
-use futures::{Stream, StreamExt, TryStreamExt};
+use futures::{stream, Stream, StreamExt, TryStreamExt};
 use secrecy::ExposeSecret;
 use thiserror::Error;
 use tokio::sync::RwLock;
@@ -350,7 +350,6 @@ async fn handle_inner(
 ) -> Result<(
     Option<Vec<Snippet>>,
     StopWatch,
-    String,
     std::pin::Pin<Box<dyn Stream<Item = Result<String, AnswerAPIError>> + Send>>,
 )> {
     // TODO: If a query contains any search filters it should be interpreted as a technical question
@@ -421,13 +420,10 @@ async fn handle_inner(
                 (prompt, 100, 0.0, vec!["</response>".into()])
             }
             AnswerProgress::Rephrase(query) => {
-                let prompt = app.with_prior_conversation(
-                    &thread_id,
-                    |history| {
-                        let n = history.len().saturating_sub(MAX_HISTORY);
-                        build_rephrase_query_prompt(query, &history[n..])
-                    }
-                );
+                let prompt = app.with_prior_conversation(&thread_id, |history| {
+                    let n = history.len().saturating_sub(MAX_HISTORY);
+                    build_rephrase_query_prompt(query, &history[n..])
+                });
 
                 (prompt, 100, 0.0, vec!["</question>".into()])
             }
@@ -500,13 +496,21 @@ async fn handle_inner(
                         if n == 0 {
                             AnswerProgress::Rephrase(query.clone())
                         } else {
-                            return Ok((snippets, stop_watch, n.to_string(), stream));
+                            return Ok((
+                                snippets,
+                                stop_watch,
+                                Box::pin(
+                                    stream::once(async move { Ok(n.to_string()) }).chain(stream),
+                                ),
+                            ));
                         }
                     }
                     AnswerProgress::Search(prompt) => {
                         let Some(index) = n.checked_sub(1) else {
-                            let selection_fail_stream = Box::pin(futures::stream::once(async { Ok("I'm not sure. One of these snippets might be relevant".to_string()) }));
-                            return Ok((snippets, stop_watch, String::new(), selection_fail_stream));
+                            let selection_fail_stream = Box::pin(stream::once(async {
+                                Ok("I'm not sure. One of these snippets might be relevant".to_string())
+                            }));
+                            return Ok((snippets, stop_watch, selection_fail_stream));
                         };
                         snippets.as_mut().unwrap().swap(index, 0);
                         AnswerProgress::Explain(prompt)
@@ -515,7 +519,11 @@ async fn handle_inner(
                 }
             }
             FirstToken::Other(token) => {
-                return Ok((snippets, stop_watch, token, stream));
+                return Ok((
+                    snippets,
+                    stop_watch,
+                    Box::pin(stream::once(async move { Ok(token) }).chain(stream)),
+                ));
             }
             FirstToken::None => {
                 // the stream is empty!?
@@ -549,7 +557,7 @@ async fn _handle(
     let mut stop_watch = StopWatch::start();
     let params = Arc::new(params);
     let mut app = Arc::new(app);
-    let (snippets, mut stop_watch, first_token, mut text) = handle_inner(
+    let (snippets, mut stop_watch, mut text) = handle_inner(
         state,
         Arc::clone(&params),
         Arc::clone(&app),
@@ -573,11 +581,10 @@ async fn _handle(
         }))
         .map_err(Error::internal)?;
 
-    let mut expl = first_token.clone();
+    let mut expl = String::new();
 
     let wrapped_stream = async_stream::stream! {
         yield Ok(initial_event);
-        yield Ok(Event::default().json_data(Ok::<_, ()>(first_token)).unwrap());
         while let Some(result) = text.next().await {
             if let Ok(fragment) = &result {
                 app.extend_conversation_answer(thread_id.clone(), fragment.trim_end())
