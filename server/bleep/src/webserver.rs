@@ -42,7 +42,6 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
     let bind = SocketAddr::new(app.config.host.parse()?, app.config.port);
 
     let mut api = Router::new()
-        // querying
         .route("/config", get(config::handle))
         // querying
         .route("/q", get(query::handle))
