@@ -31,12 +31,21 @@ pub enum SymbolLocations {
     Empty,
 }
 
+unsafe impl Send for SymbolLocations {}
+
 impl SymbolLocations {
     pub fn list(&self) -> Vec<Symbol> {
         match self {
             Self::Ctags(symbols) => symbols.to_vec(),
             Self::TreeSitter(graph) => graph.symbols(),
             Self::Empty | Self::StackGraph(_) => Vec::new(),
+        }
+    }
+
+    pub fn stack_graph(&self) -> Option<&StackGraph> {
+        match self {
+            SymbolLocations::StackGraph(sg) => Some(&sg),
+            _ => None,
         }
     }
 }
@@ -57,7 +66,6 @@ mod stack_graph {
         S: Serializer,
     {
         let s = graph.to_serializable();
-        println!("{:?}", s);
         s.serialize(serializer)
     }
 

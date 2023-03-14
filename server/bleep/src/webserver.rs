@@ -63,11 +63,11 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/token-info", get(intelligence::handle))
         // misc
         .route("/file/*ref", get(file::handle))
-        .route("/semantic/chunks", get(semantic::raw_chunks));
-    // .route(
-    //     "/answer",
-    //     get(answer::handle).with_state(Arc::new(answer::AnswerState::default())),
-    // );
+        .route("/semantic/chunks", get(semantic::raw_chunks))
+        .route(
+            "/answer",
+            get(answer::handle).with_state(Arc::new(answer::AnswerState::default())),
+        );
 
     if app.env.allow(Feature::GithubDeviceFlow) {
         api = api

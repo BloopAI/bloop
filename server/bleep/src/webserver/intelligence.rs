@@ -1,4 +1,7 @@
-use std::{collections::BTreeSet, sync::Arc};
+use std::{
+    collections::{BTreeSet, HashMap},
+    sync::Arc,
+};
 
 use super::prelude::*;
 use crate::{
@@ -14,7 +17,13 @@ use lsp_positions as _;
 use axum::{extract::Query, response::IntoResponse, Extension};
 use petgraph::graph::NodeIndex;
 use serde::{Deserialize, Serialize};
-use stack_graphs::{graph::StackGraph, paths::Paths, NoCancellation};
+use stack_graphs::{
+    arena::Handle,
+    graph::{Node, StackGraph},
+    paths::Paths,
+    NoCancellation,
+};
+use tracing::info;
 use utoipa::{IntoParams, ToSchema};
 
 /// The request made to the `local-intel` endpoint.
@@ -233,41 +242,43 @@ pub(super) async fn handle(
     Query(payload): Query<TokenInfoRequest>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<impl IntoResponse> {
-    let repo_ref = &payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
+    let repo_ref = payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
 
     let content = indexes
         .file
-        .by_path(repo_ref, &payload.relative_path)
+        .by_path(&repo_ref, &payload.relative_path)
         .await
         .map_err(Error::user)?;
 
     let lang = content.lang.as_deref();
-    let all_docs = indexes.file.by_repo(repo_ref, lang).await;
+    let all_docs = indexes.file.by_repo(&repo_ref, lang).await;
 
-    // let all_docs = vec![];
-    let combined_graph = all_docs
-        .into_iter()
-        .fold(StackGraph::new(), |mut combined_graph, doc| {
-            match &doc.symbol_locations {
-                SymbolLocations::StackGraph(g) => combined_graph.add_from_graph(&g).unwrap(),
-                _ => {}
-            };
+    let doc_map = all_docs.iter().fold(HashMap::new(), |mut acc, x| {
+        acc.insert(x.relative_path.as_str(), x);
+        acc
+    });
+
+    let combined_graph: StackGraph = all_docs
+        .iter()
+        .filter_map(|doc| doc.symbol_locations.stack_graph())
+        .fold(StackGraph::new(), |mut combined_graph, graph| {
+            combined_graph.add_from_graph(graph);
+            info!(files = combined_graph.iter_files().count());
             combined_graph
         });
 
-    let stack_graph = match &content.symbol_locations {
+    let stack_graph = match content.symbol_locations {
         SymbolLocations::StackGraph(graph) => graph,
         SymbolLocations::TreeSitter(_) => {
             return Err(Error::user(
-                "temporarily disabled, you shouldn't be seeing this",
+                "temporarily disabled, you shouldn't be seeing this in prod",
             ))
         }
         _ => return Err(Error::user("Intelligence is unavailable for this language")),
     };
-
     let src = &content.content;
-    let payload_range = TextRange::from_byte_range(payload.start..payload.end, src);
 
+    let payload_range = TextRange::from_byte_range(payload.start..payload.end, src);
     tracing::info!(?payload_range);
 
     let handle = stack_graph
@@ -276,14 +287,57 @@ pub(super) async fn handle(
         .find(|handle| {
             let is_reference = stack_graph[*handle].is_reference();
             let is_definition = stack_graph[*handle].is_definition();
+            let is_scope = stack_graph[*handle].scope().is_some();
+            let is_root = stack_graph[*handle].is_root();
+            let is_jump_to = stack_graph[*handle].is_jump_to();
+
             let contains_payload = match stack_graph.source_info(*handle) {
                 Some(source_info) => source_info.span.contains_point(&payload_range.start.into()),
                 None => false,
             };
 
-            (is_reference || is_definition) && contains_payload
+            let source_info = &stack_graph.source_info(*handle).unwrap().span;
+            let condition = (is_reference || is_definition)
+                && contains_payload
+                && !is_root
+                && !is_jump_to
+                && !is_scope;
+            if condition {
+                info!(%is_reference, %is_definition, %is_scope, ?source_info, "found handle");
+            }
+            condition
         })
         .ok_or_else(|| Error::user("provided range is not a valid token"))?;
+
+    // repetitive code bunched under an uninspiring name
+    // TODO: refactor
+    let process = |handle: Handle<Node>, combined_graph: &StackGraph| {
+        let file_handle = combined_graph[handle].file()?;
+        let file = combined_graph[file_handle].name();
+        info!("finding doc... ");
+        let doc = all_docs.iter().find(|d| {
+            info!("{}", &d.relative_path);
+            info!("{}", &file);
+            file.ends_with(d.relative_path.as_str())
+        })?;
+        info!("found doc");
+        let src = &doc.content;
+
+        let range = combined_graph.source_info(handle).map(|source_info| {
+            let start = {
+                let pt = source_info.span.start.as_point();
+                Point::from_line_column(pt.row, pt.column, src)
+            };
+            let end = {
+                let pt = source_info.span.end.as_point();
+                Point::from_line_column(pt.row, pt.column, src)
+            };
+            TextRange::new(start, end)
+        })?;
+        tracing::info!("range of definiton: {:?}", range);
+        let occurrence = to_occurrence(&doc, range);
+        Some((doc.relative_path.as_str(), occurrence))
+    };
 
     // we are looking at a reference, produce definitions
     if stack_graph[handle].is_reference() {
@@ -291,10 +345,11 @@ pub(super) async fn handle(
         let mut references = BTreeSet::new();
         Paths::new()
             .find_all_paths(
-                stack_graph,
+                &combined_graph,
                 std::iter::once(handle),
                 &NoCancellation,
                 |graph, paths, path| {
+                    info!("traversing path: {}", path.display(graph, paths));
                     if path.is_complete(graph) && path.ends_at_definition(graph) {
                         definitions.insert(path.end_node);
                         references.insert(path.start_node);
@@ -306,66 +361,47 @@ pub(super) async fn handle(
         let file = content.relative_path.clone();
         let def_data = definitions
             .into_iter()
-            .filter_map(|d| {
-                let file = stack_graph[d].file();
-                stack_graph.source_info(d).map(|source_info| {
-                    let start = {
-                        let tree_sitter::Point { row, column } = source_info.span.start.as_point();
-                        Point::from_line_column(row, column, src)
-                    };
-                    let end = {
-                        let tree_sitter::Point { row, column } = source_info.span.end.as_point();
-                        Point::from_line_column(row, column, src)
-                    };
-                    TextRange::new(start, end)
-                })
-            })
-            .collect::<Vec<_>>();
+            .filter_map(|d| process(d, &combined_graph))
+            .fold(HashMap::new(), |mut acc, (path, occurrence)| {
+                acc.entry(path).or_insert_with(Vec::new).push(occurrence);
+                acc
+            });
 
         let ref_data = references
             .into_iter()
-            .filter_map(|d| {
-                stack_graph.source_info(d).map(|source_info| {
-                    let start = {
-                        let tree_sitter::Point { row, column } = source_info.span.start.as_point();
-                        Point::from_line_column(row, column, src)
-                    };
-                    let end = {
-                        let tree_sitter::Point { row, column } = source_info.span.end.as_point();
-                        Point::from_line_column(row, column, src)
-                    };
-                    TextRange::new(start, end)
-                })
-            })
-            .collect::<Vec<_>>();
+            .filter_map(|d| process(d, &combined_graph))
+            .fold(HashMap::new(), |mut acc, (path, occurrence)| {
+                acc.entry(path).or_insert_with(Vec::new).push(occurrence);
+                acc
+            });
 
         return Ok(json(TokenInfoResponse::Reference {
-            definitions: vec![FileSymbols {
-                file: file.clone(),
-                data: def_data
-                    .into_iter()
-                    .map(|r| to_occurrence(&content, r))
-                    .collect(),
-            }],
-            references: vec![FileSymbols {
-                file,
-                data: ref_data
-                    .into_iter()
-                    .map(|r| to_occurrence(&content, r))
-                    .collect(),
-            }],
+            definitions: def_data
+                .into_iter()
+                .map(|(key, data)| FileSymbols {
+                    file: key.to_owned(),
+                    data,
+                })
+                .collect::<Vec<_>>(),
+            references: ref_data
+                .into_iter()
+                .map(|(key, data)| FileSymbols {
+                    file: key.to_owned(),
+                    data,
+                })
+                .collect::<Vec<_>>(),
         }));
     } else if stack_graph[handle].is_definition() {
         let mut references = BTreeSet::new();
-        let file = content.relative_path.clone();
         Paths::new()
             .find_all_paths(
-                stack_graph,
+                &stack_graph,
                 stack_graph
                     .iter_nodes()
                     .filter(|n| stack_graph[*n].is_reference()),
                 &NoCancellation,
                 |graph, paths, path| {
+                    info!("traversing path: {}", path.display(graph, paths));
                     if path.is_complete(graph) && path.end_node == handle {
                         references.insert(path.start_node);
                     }
@@ -374,29 +410,20 @@ pub(super) async fn handle(
             .expect("should never be cancelled");
         let ref_data = references
             .into_iter()
-            .filter_map(|d| {
-                stack_graph.source_info(d).map(|source_info| {
-                    let start = {
-                        let tree_sitter::Point { row, column } = source_info.span.start.as_point();
-                        Point::from_line_column(row, column, src)
-                    };
-                    let end = {
-                        let tree_sitter::Point { row, column } = source_info.span.end.as_point();
-                        Point::from_line_column(row, column, src)
-                    };
-                    TextRange::new(start, end)
-                })
-            })
-            .collect::<Vec<_>>();
+            .filter_map(|d| process(d, &combined_graph))
+            .fold(HashMap::new(), |mut acc, (path, occurrence)| {
+                acc.entry(path).or_insert_with(Vec::new).push(occurrence);
+                acc
+            });
 
         return Ok(json(TokenInfoResponse::Definition {
-            references: vec![FileSymbols {
-                file,
-                data: ref_data
-                    .into_iter()
-                    .map(|r| to_occurrence(&content, r))
-                    .collect(),
-            }],
+            references: ref_data
+                .into_iter()
+                .map(|(key, data)| FileSymbols {
+                    file: key.to_owned(),
+                    data,
+                })
+                .collect::<Vec<_>>(),
         }));
     } else {
         unreachable!("add back the check for (is_reference || is_definition), u muppet")

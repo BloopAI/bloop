@@ -2,6 +2,7 @@ use std::path::MAIN_SEPARATOR;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use stack_graphs::graph::StackGraph;
 use tantivy::{
     schema::{Field, Value},
     Index,
