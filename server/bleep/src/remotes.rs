@@ -200,15 +200,32 @@ pub(crate) fn gather_repo_roots(
         })
 }
 
+struct BackendEntry {
+    inner: BackendCredential,
+    updated: flume::Receiver<()>,
+    updated_tx: flume::Sender<()>,
+}
+
+impl From<BackendCredential> for BackendEntry {
+    fn from(inner: BackendCredential) -> Self {
+        let (updated_tx, updated) = flume::unbounded();
+        BackendEntry {
+            inner,
+            updated_tx,
+            updated,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Backends {
-    backends: Arc<DashMap<Backend, BackendCredential>>,
+    backends: Arc<DashMap<Backend, BackendEntry>>,
 }
 
 impl From<DashMap<Backend, BackendCredential>> for Backends {
     fn from(value: DashMap<Backend, BackendCredential>) -> Self {
         Self {
-            backends: Arc::new(value),
+            backends: Arc::new(value.into_iter().map(|(k, v)| (k, v.into())).collect()),
         }
     }
 }
@@ -219,11 +236,11 @@ impl Backends {
 		return None;
 	    };
 
-        Some(handle.value().clone())
+        Some(handle.value().inner.clone())
     }
 
     pub(crate) fn remove(&self, backend: impl Borrow<Backend>) -> Option<BackendCredential> {
-        self.backends.remove(backend.borrow()).map(|(_, v)| v)
+        self.backends.remove(backend.borrow()).map(|(_, v)| v.inner)
     }
 
     pub(crate) fn github(&self) -> Option<github::State> {
@@ -231,19 +248,31 @@ impl Backends {
 	    return None;
 	};
 
-        let BackendCredential::Github(ref github) = handle.value();
+        let BackendCredential::Github(ref github) = handle.value().inner;
         Some(github.clone())
     }
 
     pub(crate) fn set_github(&self, gh: github::State) {
         self.backends
-            .insert(Backend::Github, BackendCredential::Github(gh));
+            .entry(Backend::Github)
+            .and_modify(|existing| {
+                existing.inner = BackendCredential::Github(gh.clone());
+                existing.updated_tx.send(()).unwrap();
+            })
+            .or_insert_with(|| BackendCredential::Github(gh).into());
     }
-}
 
-impl AsRef<DashMap<Backend, BackendCredential>> for Backends {
-    fn as_ref(&self) -> &DashMap<Backend, BackendCredential> {
-        Arc::as_ref(&self.backends)
+    pub(crate) fn github_updated(&self) -> Option<flume::Receiver<()>> {
+        self.backends
+            .get(&Backend::Github)
+            .map(|v| v.updated.clone())
+    }
+
+    pub(crate) fn serialize(&self) -> DashMap<Backend, BackendCredential> {
+        self.backends
+            .iter()
+            .map(|entry| (entry.key().clone(), entry.value().inner.clone()))
+            .collect()
     }
 }
 

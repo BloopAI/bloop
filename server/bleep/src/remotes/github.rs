@@ -27,22 +27,6 @@ impl State {
         }
     }
 
-    /// Get a representative list of repositories currently accessible
-    pub async fn current_repo_list(&self) -> Result<Vec<octocrab::models::Repository>> {
-        self.auth.list_repos().await
-    }
-
-    /// Create a new object with the updated repositories list
-    ///
-    /// This is a separate step from refreshing the repo list to avoid
-    /// async locking
-    pub fn update_repositories(self, repos: Vec<octocrab::models::Repository>) -> Self {
-        Self {
-            auth: self.auth,
-            repositories: repos.into(),
-        }
-    }
-
     pub fn client(&self) -> octocrab::Result<Octocrab> {
         self.auth.client()
     }
@@ -72,6 +56,22 @@ impl State {
             _ => None,
         }
     }
+
+    /// Get a representative list of repositories currently accessible
+    pub async fn current_repo_list(&self) -> Result<Vec<octocrab::models::Repository>> {
+        self.auth.list_repos().await
+    }
+
+    /// Create a new object with the updated repositories list
+    ///
+    /// This is a separate step from refreshing the repo list to avoid
+    /// async locking
+    pub fn update_repositories(self, repos: Vec<octocrab::models::Repository>) -> Self {
+        Self {
+            auth: self.auth,
+            repositories: repos.into(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -97,14 +97,11 @@ pub(crate) enum Auth {
 
 impl From<octocrab::auth::OAuth> for State {
     fn from(auth: octocrab::auth::OAuth) -> Self {
-        Self {
-            repositories: Arc::default(),
-            auth: Auth::OAuth {
-                access_token: auth.access_token,
-                token_type: auth.token_type,
-                scope: auth.scope,
-            },
-        }
+        Self::with_auth(Auth::OAuth {
+            access_token: auth.access_token,
+            token_type: auth.token_type,
+            scope: auth.scope,
+        })
     }
 }
 

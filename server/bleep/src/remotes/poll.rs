@@ -26,19 +26,36 @@ const POLL_INTERVAL_MINUTE: &[Duration] = &[
 ];
 
 pub(crate) async fn sync_repositories(app: Application) {
+    let timeout = || async {
+        sleep(POLL_INTERVAL_MINUTE[1]).await;
+    };
+
+    let timeout_or_update = |handle: flume::Receiver<()>| async move {
+        tokio::select! {
+                _ = timeout() => {
+                    debug!("timeout expired; refreshing repositories");
+                },
+                _ = handle.recv_async() => {
+                    debug!("github credentials changed; refreshing repositories");
+                }
+        }
+    };
+
     loop {
         let Some(github) = app.credentials.github() else {
+	    timeout().await;
 	    continue;
 	};
 
         let Ok(repos) = github.current_repo_list().await else {
+	    timeout().await;
 	    continue;
 	};
 
         let new = github.update_repositories(repos);
         app.credentials.set_github(new);
 
-        sleep(POLL_INTERVAL_MINUTE[1]).await;
+        timeout_or_update(app.credentials.github_updated().unwrap()).await;
     }
 }
 
@@ -67,7 +84,7 @@ pub(crate) async fn check_credentials(app: Application) {
             if expired && app.credentials.remove(&Backend::Github).is_some() {
                 app.config
                     .source
-                    .save_credentials(app.credentials.as_ref())
+                    .save_credentials(&app.credentials.serialize())
                     .unwrap();
                 debug!("github oauth is invalid; credentials removed");
             }

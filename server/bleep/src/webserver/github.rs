@@ -101,7 +101,10 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
 pub(super) async fn logout(Extension(app): Extension<Application>) -> impl IntoResponse {
     let deleted = app.credentials.remove(&Backend::Github).is_some();
     if deleted {
-        let saved = app.config.source.save_credentials(app.credentials.as_ref());
+        let saved = app
+            .config
+            .source
+            .save_credentials(&app.credentials.serialize());
 
         if saved.is_ok() {
             return Ok(json(GithubResponse::Status(GithubCredentialStatus::Ok)));
@@ -161,7 +164,10 @@ async fn poll_for_oauth_token(
     };
 
     app.credentials.set_github(auth.into());
-    let saved = app.config.source.save_credentials(app.credentials.as_ref());
+    let saved = app
+        .config
+        .source
+        .save_credentials(&app.credentials.serialize());
 
     if let Err(err) = saved {
         error!(?err, "Failed to save credentials to disk");
