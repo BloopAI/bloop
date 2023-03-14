@@ -201,25 +201,6 @@ impl AnswerProgress {
     }
 }
 
-fn build_rephrase_query_prompt_with_context(
-    query: &str,
-    user_id: &str,
-    app: &Application,
-) -> Option<String> {
-    app.with_prior_conversation(
-        user_id,
-        // check how much history we can afford to create up to the token limit
-        |history| {
-            if history.is_empty() {
-                None
-            } else {
-                let n = history.len().saturating_sub(MAX_HISTORY);
-                Some(build_rephrase_query_prompt(query, &history[n..]))
-            }
-        },
-    )
-}
-
 async fn search_snippets(semantic: &Semantic, query: &str) -> Result<Vec<Snippet>, Error> {
     let all_snippets: Vec<Snippet> = semantic
         .search(
@@ -414,7 +395,14 @@ async fn handle_inner(
         answer_bearer.clone(),
     );
 
-    let mut progress = build_rephrase_query_prompt_with_context(&query, &thread_id, &app)
+    let mut progress = app
+        .with_prior_conversation(&thread_id, |history| {
+            if history.is_empty() {
+                None
+            } else {
+                Some(query.clone())
+            }
+        })
         .map(AnswerProgress::Rephrase)
         .unwrap_or(AnswerProgress::GetInfo);
 
@@ -433,8 +421,14 @@ async fn handle_inner(
                 (prompt, 100, 0.0, vec!["</response>".into()])
             }
             AnswerProgress::Rephrase(query) => {
-                let prompt = build_rephrase_query_prompt_with_context(query, &thread_id, &app)
-                    .unwrap_or_else(|| build_rephrase_query_prompt(query, &[]));
+                let prompt = app.with_prior_conversation(
+                    &thread_id,
+                    |history| {
+                        let n = history.len().saturating_sub(MAX_HISTORY);
+                        build_rephrase_query_prompt(query, &history[n..])
+                    }
+                );
+
                 (prompt, 100, 0.0, vec!["</question>".into()])
             }
             AnswerProgress::Search(rephrased_query) => {
