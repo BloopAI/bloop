@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import debounce from 'lodash.debounce';
@@ -94,11 +95,8 @@ const CodeFull = ({
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const [currentResult, setCurrentResult] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const {
-    uiRefs,
-    uiRefs: { fullCodeRef },
-  } = useContext(UIContext);
-  const { selectText } = useCoCursor();
+  const { funcRefs } = useContext(UIContext);
+  const { makeRegexSearch } = useCoCursor();
 
   useEffect(() => {
     const toggleSearch = (e: KeyboardEvent) => {
@@ -183,6 +181,7 @@ const CodeFull = ({
   );
 
   const [scrollPosition, setScrollPosition] = useState(0);
+  const codeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = debounce((val) => {
@@ -254,8 +253,8 @@ const CodeFull = ({
   }, []);
 
   useEffect(() => {
-    uiRefs.codeSelectStartRef.current = onMouseSelectStart;
-    uiRefs.codeSelectEndRef.current = onMouseSelectEnd;
+    funcRefs.codeSelectStartRef.current = onMouseSelectStart;
+    funcRefs.codeSelectEndRef.current = onMouseSelectEnd;
   }, [onMouseSelectStart, onMouseSelectEnd]);
 
   const handleCopy = useCallback(
@@ -307,7 +306,7 @@ const CodeFull = ({
       ]);
       const selection = window.getSelection();
       const range = document.createRange();
-      range.selectNodeContents(fullCodeRef.current || document.body);
+      range.selectNodeContents(codeRef.current || document.body);
       selection?.removeAllRanges();
       selection?.addRange(range);
     }
@@ -329,11 +328,11 @@ const CodeFull = ({
         searchValue={searchTerm}
         containerClassName="absolute top-0 -right-4"
       />
-      <div className={`${!minimap ? 'w-full' : ''}`} ref={fullCodeRef}>
+      <div className={`${!minimap ? 'w-full' : ''}`} ref={codeRef}>
         <pre
           className={`prism-code language-${lang} bg-gray-900 my-0 w-full h-full`}
           onCopy={handleCopy}
-          onClick={() => selectText(2, 0, 6, 0)}
+          onClick={() => makeRegexSearch('func')}
         >
           <AutoSizer>
             {({ height, width }) => (

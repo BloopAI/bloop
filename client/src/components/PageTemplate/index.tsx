@@ -12,6 +12,8 @@ import {
   savePlainToStorage,
 } from '../../services/storage';
 import Button from '../Button';
+import { BLOOP_CURSOR, PAGE_TEMPLATE } from '../../consts/elementIds';
+import CursorActions from './CursorActions';
 
 type Props = {
   children: React.ReactNode;
@@ -22,12 +24,8 @@ const PageTemplate = ({ children }: Props) => {
   const { isSelfServe } = useContext(DeviceContext);
   const { isAnalyticsAllowed, setIsAnalyticsAllowed } =
     useContext(AnalyticsContext);
-  const {
-    isGithubConnected,
-    setOnBoardingState,
-    isGithubChecked,
-    uiRefs: { coCursor },
-  } = useContext(UIContext);
+  const { isGithubConnected, setOnBoardingState, isGithubChecked } =
+    useContext(UIContext);
   const [isModalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
@@ -51,11 +49,12 @@ const PageTemplate = ({ children }: Props) => {
   }, []);
 
   return (
-    <div className="text-gray-200">
+    <div className="text-gray-200" id={PAGE_TEMPLATE}>
       <div
-        ref={coCursor}
-        className="fixed z-60 -top-full -left-full w-4 h-4 bg-gray-100 rounded-full transition-all duration-700"
+        id={BLOOP_CURSOR}
+        className="fixed z-[10000] -top-full -left-full w-4 h-4 bg-gray-100 rounded-full transition-all duration-700 ease-out"
       />
+      <CursorActions />
       <SeparateOnboardingStep isVisible={isModalOpen} top={'5rem'}>
         <GithubConnectStep
           handleNext={() => {

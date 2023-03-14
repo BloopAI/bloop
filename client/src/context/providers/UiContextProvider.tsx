@@ -26,12 +26,6 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
   const { isSelfServe } = useContext(DeviceContext);
   const [isGithubConnected, setGithubConnected] = useState(isSelfServe);
   const [isGithubChecked, setGithubChecked] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const searchTypeSelectBtn = useRef<HTMLButtonElement>(null);
-  const searchTypeRegexBtn = useRef<HTMLAnchorElement>(null);
-  const searchTypeNLBtn = useRef<HTMLAnchorElement>(null);
-  const coCursor = useRef<HTMLDivElement>(null);
-  const fullCodeRef = useRef<HTMLDivElement>(null);
   const searchSubmitRef = useRef<() => void>(() => {});
   const codeSelectStartRef = useRef<(lineNum: number, charNum: number) => void>(
     () => {},
@@ -39,6 +33,7 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
   const codeSelectEndRef = useRef<(lineNum: number, charNum: number) => void>(
     () => {},
   );
+  const resultsClickHandlers = useRef([]);
 
   useEffect(() => {
     if (!isSelfServe) {
@@ -64,16 +59,11 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       isGithubConnected,
       setGithubConnected,
       isGithubChecked,
-      uiRefs: {
-        searchInputRef,
-        searchTypeSelectBtn,
-        searchTypeNLBtn,
-        searchTypeRegexBtn,
-        coCursor,
+      funcRefs: {
         searchSubmitRef,
         codeSelectStartRef,
         codeSelectEndRef,
-        fullCodeRef,
+        resultsClickHandlers,
       },
     }),
     [

@@ -3,97 +3,174 @@ import { SearchContext } from '../context/searchContext';
 import { SearchType } from '../types/general';
 import { UIContext } from '../context/uiContext';
 import { waitFor } from '../utils';
+import {
+  BLOOP_CURSOR,
+  CLOSE_RESULT_MODAL,
+  RESULTS_LIST,
+  SEARCH_INPUT,
+  SEARCH_TYPE_NL,
+  SEARCH_TYPE_REGEX,
+  SEARCH_TYPE_SELECT,
+} from '../consts/elementIds';
 
 const useCoCursor = () => {
   const { searchType, setInputValue } = useContext(SearchContext);
-  const { uiRefs } = useContext(UIContext);
+  const { funcRefs } = useContext(UIContext);
 
-  const moveCursorTo = async (top: number, left: number) => {
-    uiRefs.coCursor!.current!.style.top = top + 'px';
-    uiRefs.coCursor!.current!.style.left = left + 'px';
+  const moveCursorTo = useCallback(async (top: number, left: number) => {
+    const bloopCursor = document.getElementById(BLOOP_CURSOR);
+    if (!bloopCursor) {
+      return;
+    }
+    bloopCursor.style.top = top + 'px';
+    bloopCursor.style.left = left + 'px';
     await waitFor(
-      parseFloat(
-        getComputedStyle(uiRefs.coCursor!.current!).transitionDuration,
-      ) *
-        1000 +
-        100,
+      parseFloat(getComputedStyle(bloopCursor).transitionDuration) * 1000 + 100,
     );
-  };
+  }, []);
 
-  const makeRegexSearch = useCallback(
-    async (query: string) => {
-      if (searchType !== SearchType.REGEX) {
-        await moveCursorTo(
-          uiRefs.searchTypeSelectBtn.current!.getBoundingClientRect().top,
-          uiRefs.searchTypeSelectBtn.current!.getBoundingClientRect().left,
-        );
-        uiRefs.searchTypeSelectBtn?.current?.focus();
-        uiRefs.searchTypeSelectBtn?.current?.click();
-        await waitFor(500);
-        await moveCursorTo(
-          uiRefs.searchTypeRegexBtn.current!.getBoundingClientRect().top,
-          uiRefs.searchTypeRegexBtn.current!.getBoundingClientRect().left,
-        );
-        uiRefs.searchTypeRegexBtn?.current?.focus();
-        uiRefs.searchTypeRegexBtn?.current?.click();
-        await waitFor(500);
+  const setCursorSpeed = useCallback((seconds: number) => {
+    const bloopCursor = document.getElementById(BLOOP_CURSOR);
+    if (!bloopCursor) {
+      return;
+    }
+    bloopCursor.style.transitionDuration = seconds + 's';
+  }, []);
+
+  const switchSearchType = useCallback(
+    async (newSearchType: SearchType) => {
+      const searchTypeSelect = document.getElementById(SEARCH_TYPE_SELECT);
+      if (!searchTypeSelect) {
+        return;
       }
-      if (uiRefs.searchInputRef?.current) {
+      if (searchType !== newSearchType) {
         await moveCursorTo(
-          uiRefs.searchInputRef.current!.getBoundingClientRect().top,
-          uiRefs.searchInputRef.current!.getBoundingClientRect().left,
+          searchTypeSelect.getBoundingClientRect().top,
+          searchTypeSelect.getBoundingClientRect().left,
         );
-        uiRefs.searchInputRef.current.focus();
+        searchTypeSelect.focus();
+        await waitFor(100);
+        searchTypeSelect.click();
         await waitFor(500);
-        setInputValue('');
-        for (let char of query.split('')) {
-          setInputValue((prev) => prev + char);
-          await waitFor(200);
-        }
-        uiRefs.searchSubmitRef.current();
+        const searchTypeBtn = document.getElementById(
+          newSearchType === SearchType.REGEX
+            ? SEARCH_TYPE_REGEX
+            : SEARCH_TYPE_NL,
+        );
+        const searchTypeBtnBox = searchTypeBtn!.getBoundingClientRect();
+        await moveCursorTo(
+          searchTypeBtnBox.top + searchTypeBtnBox.height / 2,
+          searchTypeBtnBox.left + 4,
+        );
+        searchTypeBtn!.focus();
+        await waitFor(200);
+        searchTypeBtn!.click();
+        await waitFor(500);
       }
     },
     [searchType],
   );
 
-  const selectText = useCallback(
-    async (
-      lineStart: number,
-      charStart: number,
-      lineEnd: number,
-      charEnd: number,
-    ) => {
-      uiRefs.codeSelectStartRef.current(lineStart, charStart);
-      uiRefs.codeSelectEndRef.current(lineEnd, charEnd);
-      const selection = window.getSelection();
-      for (let i = lineStart; i <= lineEnd; i++) {
-        if (document.querySelector(`[data-line-number="${i}"]`)) {
-          await moveCursorTo(
-            document
-              .querySelector(`[data-line-number="${i}"]`)!
-              .getBoundingClientRect().top,
-            document
-              .querySelector(`[data-line-number="${i}"]`)!
-              .getBoundingClientRect().left + 30,
-          );
-        }
+  const inputQueryAndSearch = useCallback(async (query: string) => {
+    const searchInput = document.getElementById(SEARCH_INPUT);
+    if (!searchInput) {
+      return;
+    }
+    await moveCursorTo(
+      searchInput.getBoundingClientRect().top,
+      searchInput.getBoundingClientRect().left,
+    );
+    searchInput.focus();
+    await waitFor(500);
+    setInputValue('');
+    for (let char of query.split('')) {
+      setInputValue((prev) => prev + char);
+      await waitFor(200);
+    }
+    funcRefs.searchSubmitRef.current();
+  }, []);
+
+  const makeRegexSearch = useCallback(
+    async (query: string) => {
+      const closeResultModalBtn = document.getElementById(CLOSE_RESULT_MODAL);
+      if (closeResultModalBtn) {
+        closeResultModalBtn.click();
+      }
+      await switchSearchType(SearchType.REGEX);
+      await inputQueryAndSearch(query);
+    },
+    [searchType],
+  );
+
+  const makeNLSearch = useCallback(
+    async (query: string) => {
+      const closeResultModalBtn = document.getElementById(CLOSE_RESULT_MODAL);
+      if (closeResultModalBtn) {
+        closeResultModalBtn.click();
+      }
+      await switchSearchType(SearchType.NL);
+      await inputQueryAndSearch(query);
+    },
+    [searchType],
+  );
+
+  const openResult = useCallback(async (resultIndex: number) => {
+    const resultsList = document.getElementById(RESULTS_LIST);
+    if (resultsList?.children.length) {
+      const itemToClick = resultsList.children[resultIndex].firstChild
+        ?.childNodes[1]?.firstChild?.firstChild as HTMLElement;
+      if (itemToClick) {
+        await moveCursorTo(80, window.innerWidth / 2);
+        itemToClick.scrollIntoView({ inline: 'center', behavior: 'smooth' });
+        await waitFor(1000);
+        const box = itemToClick.getBoundingClientRect();
+        await moveCursorTo(box.top + box.height / 2, box.left + 50);
+        funcRefs.resultsClickHandlers.current[resultIndex]?.();
+      }
+    }
+  }, []);
+
+  const selectText = useCallback(async (lineStart: number, lineEnd: number) => {
+    funcRefs.codeSelectStartRef.current(lineStart, 0);
+    funcRefs.codeSelectEndRef.current(lineEnd, 0);
+    const firstLine = document.querySelector(
+      `[data-line-number="${lineStart}"]`,
+    );
+    const lastLine = document.querySelector(`[data-line-number="${lineEnd}"]`);
+    if (firstLine) {
+      await moveCursorTo(
+        firstLine.getBoundingClientRect().top,
+        firstLine.getBoundingClientRect().left + 30,
+      );
+    }
+    setCursorSpeed((lineEnd - lineStart + 1) * 0.1);
+    if (lastLine) {
+      moveCursorTo(
+        lastLine.getBoundingClientRect().bottom,
+        lastLine.getBoundingClientRect().left + 30,
+      );
+    }
+    const selection = window.getSelection();
+    for (let i = lineStart; i <= lineEnd; i++) {
+      const currLine = document.querySelector(`[data-line-number="${i}"]`);
+      if (currLine) {
         const range = document.createRange();
         range.setStartBefore(
-          document.querySelector(`[data-line-number="${lineStart}"]`) ||
-            document.body,
+          document.querySelector(`[data-line-number="${lineStart}"]`)!,
         );
-        range.setEndAfter(
-          document.querySelector(`[data-line-number="${i}"]`) || document.body,
-        );
+        range.setEndAfter(currLine);
         selection?.removeAllRanges();
         selection?.addRange(range);
+        await waitFor(90);
       }
-    },
-    [],
-  );
+    }
+    setCursorSpeed(0.7);
+  }, []);
 
   return {
     makeRegexSearch,
+    makeNLSearch,
+    openResult,
     selectText,
   };
 };

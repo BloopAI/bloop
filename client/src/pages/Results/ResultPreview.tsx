@@ -9,11 +9,12 @@ import useIsOnScreen from '../../hooks/useIsOnScreen';
 type Props = {
   result: ResultType;
   onClick: ResultClick;
+  index: number;
 };
 
 let wasRendered = false;
 
-const ResultPreview = ({ result, onClick }: Props) => {
+const ResultPreview = ({ result, onClick, index }: Props) => {
   const { symbolsCollapsed } = useContext(UIContext);
   const ref = useRef(null);
   const isOnScreen = useIsOnScreen(ref);
@@ -32,6 +33,7 @@ const ResultPreview = ({ result, onClick }: Props) => {
             onClick={onClick}
             repoName={result.repoName}
             repoPath={result.repoPath}
+            index={index}
           />
         );
       case ResultItemType.FILE:

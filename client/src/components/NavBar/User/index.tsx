@@ -20,6 +20,7 @@ import useAppNavigation from '../../../hooks/useAppNavigation';
 import { TabsContext } from '../../../context/tabsContext';
 import { MenuItemType } from '../../../types/general';
 import { DeviceContext } from '../../../context/deviceContext';
+import CursorActions from '../../PageTemplate/CursorActions';
 
 type Props = {
   shareFiles?: ShareFile[];

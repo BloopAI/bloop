@@ -1,4 +1,10 @@
-import React, { useCallback, useContext, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import FileIcon from '../../FileIcon';
 import Code from '../Code';
 import { ResultClick, Snippet } from '../../../types/results';
@@ -10,6 +16,7 @@ import { getFileManagerName, isWindowsPath, splitPath } from '../../../utils';
 import { DeviceContext } from '../../../context/deviceContext';
 import { MenuItemType } from '../../../types/general';
 import { FileTreeFileType } from '../../../types';
+import { UIContext } from '../../../context/uiContext';
 
 type Props = {
   snippets: Snippet[];
@@ -22,6 +29,7 @@ type Props = {
   onClick?: ResultClick;
   hideDropdown?: boolean;
   hideMatchCounter?: boolean;
+  index: number;
 };
 
 const PREVIEW_NUM = 3;
@@ -42,9 +50,13 @@ const CodeBlockSearch = ({
   repoPath,
   hideDropdown,
   hideMatchCounter,
+  index,
 }: Props) => {
   const [isExpanded, setExpanded] = useState(false);
   const { os, openFolderInExplorer } = useContext(DeviceContext);
+  const {
+    funcRefs: { resultsClickHandlers },
+  } = useContext(UIContext);
 
   const handleMouseUp = useCallback(
     (startLine?: number, endLine?: number) => {
@@ -60,6 +72,10 @@ const CodeBlockSearch = ({
     },
     [onClick],
   );
+
+  useEffect(() => {
+    resultsClickHandlers.current[index] = () => onClick?.(repoName, filePath);
+  }, [onClick]);
 
   const totalMatches = useMemo(() => {
     return countHighlights(snippets);

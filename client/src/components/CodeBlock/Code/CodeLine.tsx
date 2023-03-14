@@ -186,7 +186,7 @@ const CodeLine = ({
         const index = getCharIndex(e);
         onMouseSelectEnd?.(lineNumber, index);
       }}
-      data-line-number={inFullCode ? lineNumber : undefined}
+      data-line-number={inFullCode ? lineNumber + 1 : undefined}
     >
       {renderBlameLine}
       {symbols?.length ? (

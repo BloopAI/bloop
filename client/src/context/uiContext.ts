@@ -14,13 +14,7 @@ type ContextType = {
   isGithubConnected: boolean;
   setGithubConnected: (b: boolean) => void;
   isGithubChecked: boolean;
-  uiRefs: {
-    searchInputRef: MutableRefObject<HTMLInputElement | null>;
-    searchTypeSelectBtn: MutableRefObject<HTMLButtonElement | null>;
-    searchTypeRegexBtn: MutableRefObject<HTMLAnchorElement | null>;
-    searchTypeNLBtn: MutableRefObject<HTMLAnchorElement | null>;
-    coCursor: MutableRefObject<HTMLDivElement | null>;
-    fullCodeRef: MutableRefObject<HTMLDivElement | null>;
+  funcRefs: {
     searchSubmitRef: MutableRefObject<() => void | null>;
     codeSelectStartRef: MutableRefObject<
       (lineNum: number, charNum: number) => void | null
@@ -28,6 +22,7 @@ type ContextType = {
     codeSelectEndRef: MutableRefObject<
       (lineNum: number, charNum: number) => void | null
     >;
+    resultsClickHandlers: MutableRefObject<(() => void | null)[]>;
   };
 };
 
@@ -46,5 +41,5 @@ export const UIContext = createContext<ContextType>({
   setGithubConnected: () => {},
   isGithubChecked: false,
   // @ts-ignore
-  uiRefs: {},
+  funcRefs: {},
 });

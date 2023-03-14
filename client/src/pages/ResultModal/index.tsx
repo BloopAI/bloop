@@ -37,6 +37,7 @@ import {
 import { DropdownWithIcon } from '../../components/Dropdown';
 import { DeviceContext } from '../../context/deviceContext';
 import useAppNavigation from '../../hooks/useAppNavigation';
+import { CLOSE_RESULT_MODAL } from '../../consts/elementIds';
 
 type Props = {
   result: FullResult;
@@ -237,6 +238,7 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
               variant="tertiary"
               onClick={handleClose}
               title="Close"
+              id={CLOSE_RESULT_MODAL}
             >
               <CloseSign />
             </Button>
