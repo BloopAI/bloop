@@ -268,7 +268,7 @@ pub fn by_tokens<'s>(
     };
 
     // checks whether the token immediately after the token at the given index is a partial-word.
-    let has_boundary = |&i| {
+    let has_boundary = |&i: &usize| -> bool {
         !tokenizer
             .id_to_token(ids[i + 1])
             .map_or(false, |s| s.starts_with("##"))
