@@ -35,6 +35,7 @@ export const CodeBlockMultipleMatches = () => {
           filePath="src/components/main/index.js"
           repoName={'bloop'}
           repoPath={'Users/bloop/Project'}
+          index={0}
         />
       </div>
     </MemoryRouter>
@@ -58,6 +59,7 @@ export const CodeBlockSingleMatch = () => {
           filePath="src/components/main/index.js"
           repoName={'bloop'}
           repoPath={'Users/bloop/Project'}
+          index={0}
         />
       </div>
     </MemoryRouter>
@@ -112,6 +114,7 @@ export const CodeBlockHighlighted = () => {
           filePath="src/components/main/index.js"
           repoName={'bloop'}
           repoPath={'Users/bloop/Project'}
+          index={0}
         />
       </div>
     </MemoryRouter>
@@ -138,6 +141,7 @@ export const CodeBlockSymbolSearch = () => {
           filePath="src/components/main/index.js"
           repoName={'bloop'}
           repoPath={'Users/bloop/Project'}
+          index={0}
         />
       </div>
     </MemoryRouter>
@@ -170,6 +174,7 @@ export const CodeBlockSymbolSearchCollapsed = () => {
           collapsed
           repoName={'bloop'}
           repoPath={'Users/bloop/Project'}
+          index={0}
         />
       </div>
     </MemoryRouter>

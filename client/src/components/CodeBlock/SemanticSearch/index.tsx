@@ -39,6 +39,7 @@ const SemanticSearch = ({
           hideMatchCounter
           hideDropdown
           onClick={onClick}
+          index={index}
         />
       </li>
     ));

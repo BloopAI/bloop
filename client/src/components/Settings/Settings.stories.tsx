@@ -36,6 +36,12 @@ export const Default = () => {
           isGithubConnected: false,
           setGithubConnected: () => {},
           isGithubChecked: true,
+          funcRefs: {
+            searchSubmitRef: { current: () => {} },
+            resultsClickHandlers: { current: [] },
+            codeSelectEndRef: { current: () => {} },
+            codeSelectStartRef: { current: () => {} },
+          },
         }}
       >
         <RepositoriesContext.Provider
@@ -79,6 +85,12 @@ export const ScanErrors = () => {
           isGithubConnected: false,
           setGithubConnected: () => {},
           isGithubChecked: true,
+          funcRefs: {
+            searchSubmitRef: { current: () => {} },
+            resultsClickHandlers: { current: [] },
+            codeSelectEndRef: { current: () => {} },
+            codeSelectStartRef: { current: () => {} },
+          },
         }}
       >
         <RepositoriesContext.Provider
@@ -204,6 +216,12 @@ export const EmailConfirmedReposSynced = () => {
           isGithubConnected: true,
           setGithubConnected: () => {},
           isGithubChecked: true,
+          funcRefs: {
+            searchSubmitRef: { current: () => {} },
+            resultsClickHandlers: { current: [] },
+            codeSelectEndRef: { current: () => {} },
+            codeSelectStartRef: { current: () => {} },
+          },
         }}
       >
         <RepositoriesContext.Provider
