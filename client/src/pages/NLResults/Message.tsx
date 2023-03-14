@@ -1,7 +1,7 @@
 import React, { useCallback, useContext, useState } from 'react';
 import Button from '../../components/Button';
 import { Checkmark, ThumbsDown, ThumbsUp } from '../../icons';
-import CircleProgressLoader from '../../components/Loaders/CircleProgressLoader';
+import ThreeDotsLoader from '../../components/Loaders/ThreeDotsLoader';
 import { saveUpvote } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
 import useAppNavigation from '../../hooks/useAppNavigation';
@@ -80,8 +80,8 @@ const Message = ({
         <div className="flex justify-between items-center mb-2">
           <span className="flex gap-2 items-center">
             {message.isLoading ? (
-              <span className="transform scale-90">
-                <CircleProgressLoader percent={50} />
+              <span className="text-gray-300 text-xs">
+                <ThreeDotsLoader />
               </span>
             ) : (
               <span className="text-success-500 h-5">
