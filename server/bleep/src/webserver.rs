@@ -14,6 +14,7 @@ use utoipa::ToSchema;
 mod aaa;
 pub mod answer;
 mod autocomplete;
+mod config;
 mod file;
 mod github;
 mod hoverable;
@@ -41,6 +42,8 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
     let bind = SocketAddr::new(app.config.host.parse()?, app.config.port);
 
     let mut api = Router::new()
+        // querying
+        .route("/config", get(config::handle))
         // querying
         .route("/q", get(query::handle))
         // autocomplete
@@ -245,6 +248,7 @@ pub(in crate::webserver) enum Response<'a> {
     File(file::FileResponse),
     Semantic(semantic::SemanticResponse),
     Answer(answer::AnswerResponse),
+    Config(config::ConfigResponse),
     /// A blanket error response
     Error(EndpointError<'a>),
 }
@@ -294,6 +298,12 @@ impl<'a> From<file::FileResponse> for Response<'a> {
 impl<'a> From<semantic::SemanticResponse> for Response<'a> {
     fn from(r: semantic::SemanticResponse) -> Response<'a> {
         Response::Semantic(r)
+    }
+}
+
+impl<'a> From<config::ConfigResponse> for Response<'a> {
+    fn from(r: config::ConfigResponse) -> Response<'a> {
+        Response::Config(r)
     }
 }
 
