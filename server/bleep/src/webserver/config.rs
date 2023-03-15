@@ -8,6 +8,8 @@ pub(super) struct ConfigResponse {
     sentry_dsn_fe: Option<String>,
 }
 
+impl super::ApiResponse for ConfigResponse {}
+
 pub(super) async fn handle(Extension(app): Extension<Application>) -> impl IntoResponse {
     json(ConfigResponse {
         analytics_data_plane: app.config.analytics_data_plane.clone(),

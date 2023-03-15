@@ -80,6 +80,8 @@ pub(super) enum ReposResponse {
     Deleted,
 }
 
+impl super::ApiResponse for ReposResponse {}
+
 /// Retrieve all indexed repositories
 //
 #[utoipa::path(get, path = "/repos/indexed",

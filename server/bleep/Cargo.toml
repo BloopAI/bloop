@@ -113,6 +113,7 @@ jsonwebtoken = { version = "8.2.0", features = ["use_pem"] }
 sentry = "0.29.2"
 rudderanalytics = "1.1.2"
 async-stream = "0.3.3"
+erased-serde = "0.3.25"
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.3"
