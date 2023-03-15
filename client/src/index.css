@@ -396,4 +396,5 @@ h5, .h5 {
 
 .conversation-message code {
   background-color: #686DC3; /* secondary-500 with 25 opacity on primary-400 bg */
+  white-space: pre-wrap;
 }
