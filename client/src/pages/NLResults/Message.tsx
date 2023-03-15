@@ -47,7 +47,7 @@ const Message = ({
   const highlightedAnswer = useMemo(
     () =>
       message.author === 'server' && message.text
-        ? md.render(message.text.replaceAll('/', '/<wbr>'))
+        ? md.render(message.text)
         : message.text,
     [message],
   );
