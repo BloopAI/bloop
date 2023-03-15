@@ -76,7 +76,7 @@ pub struct Snippet {
 }
 
 fn default_limit() -> u64 {
-    10
+    20
 }
 
 fn default_user_id() -> String {
@@ -118,7 +118,7 @@ impl From<AnswerResponse> for super::Response<'static> {
     }
 }
 
-const SNIPPET_COUNT: usize = 13;
+const SNIPPET_COUNT: usize = 20;
 
 pub(super) struct AnswerState {
     client: reqwest::Client,
@@ -179,8 +179,6 @@ const MAX_HISTORY: usize = 7;
 
 #[derive(Debug)]
 enum AnswerProgress {
-    // Need to get info
-    GetInfo,
     // Need to rephrase the query. The contained string is the prompt for rephrasing
     Rephrase(String),
     // Got a query to search
@@ -192,7 +190,6 @@ enum AnswerProgress {
 impl AnswerProgress {
     fn to_stage(&self, stop_watch: &mut StopWatch, snippets: Option<&[Snippet]>) -> Stage {
         match self {
-            AnswerProgress::GetInfo => Stage::new("get_info", ""),
             AnswerProgress::Rephrase(s) => Stage::new("rephrase", s),
             AnswerProgress::Search(_) => Stage::new("search", snippets),
             AnswerProgress::Explain(expl) => Stage::new("explain", expl),
@@ -317,7 +314,7 @@ async fn grow_snippet(
         if let Some(grown_text) = grow(&doc, relevant_snippet, grow_size) {
             let token_count = semantic.gpt2_token_count(&grown_text);
             info!(%grow_size, %token_count, "growing ...");
-            if token_count > 2000 || grow_size > 100 {
+            if token_count > 6000 || grow_size > 100 {
                 break grown_text;
             } else {
                 grow_size += 10;
@@ -403,7 +400,7 @@ async fn handle_inner(
             }
         })
         .map(AnswerProgress::Rephrase)
-        .unwrap_or(AnswerProgress::GetInfo);
+        .unwrap_or(AnswerProgress::Rephrase(query.clone()));
 
     event
         .write()
@@ -415,10 +412,6 @@ async fn handle_inner(
         // Here we ask anthropic for either action selection, rephrasing or explanation
         // (depending on `progress`)
         let stream_params = match &progress {
-            AnswerProgress::GetInfo => {
-                let prompt = build_action_selection_prompt(&query);
-                (prompt, 100, 0.0, vec!["</response>".into()])
-            }
             AnswerProgress::Rephrase(query) => {
                 let prompt = app.with_prior_conversation(&thread_id, |history| {
                     let n = history.len().saturating_sub(MAX_HISTORY);
@@ -466,8 +459,17 @@ async fn handle_inner(
         );
 
         if let AnswerProgress::Rephrase(_) = &progress {
-            let rephrased_query = stream.try_collect().await?;
+            let rephrased_query: String = stream.try_collect().await?;
             info!("Rephrased query: {:?}", &rephrased_query);
+            if rephrased_query.trim() == "N/A" {
+                let rephrase_fail_stream = Box::pin(stream::once(async {
+                    Ok(
+                        "I'm not sure. Try asking a technical question about the codebase."
+                            .to_string(),
+                    )
+                }));
+                return Ok((None, stop_watch, rephrase_fail_stream));
+            }
             progress = AnswerProgress::Search(rephrased_query);
             continue;
         }
@@ -492,19 +494,6 @@ async fn handle_inner(
         match collected {
             FirstToken::Number(n) => {
                 progress = match progress {
-                    AnswerProgress::GetInfo => {
-                        if n == 0 {
-                            AnswerProgress::Rephrase(query.clone())
-                        } else {
-                            return Ok((
-                                snippets,
-                                stop_watch,
-                                Box::pin(
-                                    stream::once(async move { Ok(n.to_string()) }).chain(stream),
-                                ),
-                            ));
-                        }
-                    }
                     AnswerProgress::Search(prompt) => {
                         let Some(index) = n.checked_sub(1) else {
                             let selection_fail_stream = Box::pin(stream::once(async {
@@ -847,17 +836,22 @@ If none of the snippets are relevant reply with the number 0. Wrap your response
         query: &str,
     ) -> String {
         let mut prompt = format!(
-            "Repo:{} Path:{}\n\
-            =========\n\
-            {}\n\
-            =========\n\
-            Human: You are bloop, an AI assistant for a codebase. Above, you have an extract from a code file. Below you have the last utterances of a conversation with a user (represented inside <conversation></conversation> XML tags). \
-            Use the code file to write a concise, precise answer to the question. Put your response inside XML tags, like this: <response></response>.\n\n\
-            - Your answer should be one sentence long.\n\
-            - If the file doesn't contain enough information to answer the question, or you don't know the answer, just say \"Sorry, I'm not sure\".\n\
-            - Do NOT try to make up an answer.\n\
-            - The conversation history can provide context to the user's current question, but sometimes it contains irrelevant information. IGNORE information in the conversation which is irrelevant to the user's current question.\n\n\
-            <conversation>",
+            r#"Repo:{} Path:{}
+=========
+{}
+=========
+Human: You are bloop, an AI assistant for a codebase. Above, you have an extract from a code file. Below you have the last utterances of a conversation with a user (represented inside <conversation></conversation> XML tags).
+Use the code file to write a concise, precise answer to the question. Put your response inside XML tags, like this: <response></response>.
+
+- Format your response in GitHub Markdown. Paths, function names and code extracts should be enclosed in backticks.
+- Keep your response short. It should only be a few sentences long at the most.
+- Do NOT copy long chunks of code into the response.
+- If the file doesn't contain enough information to answer the question, or you don't know the answer, just say "Sorry, I'm not sure.".
+- Do NOT try to make up an answer or answer with regard to information that is not in the file.
+- Do NOT insert XML tags into your response.
+- The conversation history can provide context to the user's current question, but sometimes it contains irrelevant information. IGNORE information in the conversation which is irrelevant to the user's current question.
+
+<conversation>"#,
             snippet.repo_name, snippet.relative_path, snippet.text,
         );
         for (question, answer) in conversation {
@@ -865,7 +859,7 @@ If none of the snippets are relevant reply with the number 0. Wrap your response
         }
         prompt += "\nPerson: ";
         prompt += query;
-        prompt + "\n</conversation>\n<response>"
+        prompt + "\n</conversation>\nLet's think step by step. First carefully refer to the code above, then answer the question with reference to it.\n<response>"
     }
 
     async fn select_snippet(&self, prompt: &str) -> Result<String> {
@@ -886,7 +880,7 @@ If none of the snippets are relevant reply with the number 0. Wrap your response
     ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
         let tokens_used = self.semantic.gpt2_token_count(prompt);
         info!(%tokens_used, "input prompt token count");
-        let max_tokens = 4096usize.saturating_sub(tokens_used);
+        let max_tokens = 8000usize.saturating_sub(tokens_used);
         if max_tokens == 0 {
             // our prompt has overshot the token count, log an error for now
             // TODO: this should propagte to sentry
@@ -909,7 +903,7 @@ If none of the snippets are relevant reply with the number 0. Wrap your response
 
 fn build_rephrase_query_prompt(query: &str, conversation: &[(String, String)]) -> String {
     let mut prompt =
-        r#"Human: You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. Given a question and an optional conversational history between a person and yourself, (represented inside <conversation></conversation> XML tags), extract a standalone question, if any, from the last turn in the dialogue. Put the question you extract inside XML tags, like this: <question></question>.
+        r#"Human: You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. Given a question and an optional conversational history between a person and yourself, (represented inside <conversation></conversation> XML tags), extract a standalone question, if any, from the last turn in the dialogue. Put the question you extract inside XML tags, like this: <question></question>. If there is no question, write "N/A" instead."
 
 IGNORE any information in the conversational history which is not relevant to the question
 Absolutely, positively do NOT answer the question
@@ -985,72 +979,6 @@ Person: Where's the delete repo endpoint?
     prompt += query;
     prompt += "\n</conversation>\n<question>";
     prompt
-}
-
-fn build_action_selection_prompt(query: &str) -> String {
-    format!(
-        r#"Human: You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.
-
-- bloop works by searching your codebase for relevant files using proprietary trained models, and leverages the power of GPT to provide rich explanations.
-- The company behind bloop is a startup founded in 2021, based in Farringdon, London. They are a Y Combinator company.
-- bloop cannot answer questions unrelated to your codebase.
-- bloop does not have feelings or opinions.
-- Further information about bloop can be found on the website https://bloop.ai
-
-Given a user question (represented inside <question></question> XML tags) classify which of the following categories the question corresponds to and make the corresponding response. Put your response inside XML tags, like this: <response></response>.
-
-Categories to choose from:
-(1) If the query is about the codebase or product reply with 0. Your answer MUST be the single integer 0.
-(2) If the query is about the bloop support agent, answer the query in the first person in a polite and helpful way using only the information above. Your response should be a couple of sentences at the most.
-(3) If the query is an introduction or welcome message respond to the user by introducing yourself in the first person, in a polite and helpful way using only the information above. Your response should be a couple of sentences at the most.
-(4) If the query is something else explain that you can't answer it in a polite and helpful way. Suggest that the user asks a technical question about the codebase, or tries asking their question again in a different way. Your response should be a couple of sentences at the most. Do NOT answer the question.
-
-<question>Hey bloop, do we pin js version numbers?</question>
-<response>0</response>
-
-<question>When's your birthday @bloop?</question>
-<response>I do not know my birthday. The company that started bloop is a startup founded in 2021, based in Farringdon, London.</response>
-
-<question>What color are avocados?</question>
-<response>I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.</response>
-
-<question>Where do we test if GitHub login works?</question>
-<response>0</response>
-
-<question>How do we balance eggs on a spoon?</question>
-<repsonse>I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.</response>
-
-<question>What is bloop?</question>
-<response>bloop is a AI agent designed to help developers with many tasks. You can think of bloop as like having an intern sitting next to you, completing menial tasks on your behalf while you get on with solving complex problems and shipping products.</response>
-
-<question>Introduce yourself.</question>
-<response>It's great to meet you! I'm an AI agent, here to help you find code from your codebase and ship to production faster.</response>
-
-<question>It's great to meet you.</question>
-<response>Nice to meet you too! I'm looking forward to helping you with your everyday tasks and menial work!</response>
-
-<question>How does bloop work?</question>
-<response>bloop works by searching your codebase for relevant files using proprietary trained models, and leverages the power of GPT to provide rich explanations.</response>
-
-<question>Where do we check if Kafka is running?</question>
-<response>0</response>
-
-<question>Which investors have invested in bloop?</question>
-<response>Y Combinator has invested in bloop.</response>
-
-<question>fshkfjjf</question>
-<response>I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.</response>
-
-<question>What's the best way to update the search icon @bloop?</question>
-<response>0</response>
-
-<question>Hey bloop, I have a question - Where do we test if GitHub login works?</question>
-<response>0</response>
-
-<question>{}</question>
-<response>"#,
-        query,
-    )
 }
 
 // Measure time between instants statefully
