@@ -85,6 +85,7 @@ pub fn initialize_rudder_analytics(key: String, data_plane: String) {
         package_metadata: Some(analytics::PackageMetadata {
             name: env!("CARGO_CRATE_NAME"),
             version: env!("CARGO_PKG_VERSION"),
+            git_rev: git_version::git_version!(fallback = "unknown"),
         }),
     };
     tokio::task::block_in_place(|| {

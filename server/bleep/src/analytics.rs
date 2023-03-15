@@ -40,6 +40,7 @@ pub struct Stage {
 pub struct PackageMetadata {
     pub name: &'static str,
     pub version: &'static str,
+    pub git_rev: &'static str,
 }
 
 static HUB: OnceCell<Arc<RudderHub>> = OnceCell::new();
