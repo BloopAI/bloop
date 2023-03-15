@@ -395,5 +395,5 @@ h5, .h5 {
 }
 
 .conversation-message code {
-  background-color: rgba(253, 201, 0, 0.25);
+  background-color: #686DC3; /* secondary-500 with 25 opacity on primary-400 bg */
 }
