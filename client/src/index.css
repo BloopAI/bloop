@@ -390,6 +390,10 @@ h5, .h5 {
   background-color: rgba(255, 165, 0, 0.8);
 }
 
+.conversation-message {
+  overflow-wrap: break-word;
+}
+
 .conversation-message code {
   background-color: rgba(253, 201, 0, 0.25);
 }

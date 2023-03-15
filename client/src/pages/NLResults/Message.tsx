@@ -47,7 +47,7 @@ const Message = ({
   const highlightedAnswer = useMemo(
     () =>
       message.author === 'server' && message.text
-        ? md.render(message.text)
+        ? md.render(message.text.replaceAll('/', '/<wbr>'))
         : message.text,
     [message],
   );
@@ -89,41 +89,6 @@ const Message = ({
         message.author === 'user' ? 'self-end' : 'self-start'
       }`}
     >
-      {message.author === 'server' && !!message.text && (
-        <div
-          className={`absolute top-1/2 -right-11 ml-2 transform -translate-y-1/2 w-8`}
-        >
-          <Button
-            variant={'tertiary'}
-            onlyIcon
-            size="small"
-            title="Upvote"
-            className={
-              isUpvote
-                ? ''
-                : 'opacity-0 group-hover:opacity-100 transition-opacity'
-            }
-            onClick={() => handleUpvote(true, message.text)}
-          >
-            <RiveUpvote.RiveComponent className="w-4/5 h-4/5 transform scale-1" />
-          </Button>
-          <Button
-            variant={'tertiary'}
-            onlyIcon
-            size="small"
-            title="Downvote"
-            className={
-              isDownvote
-                ? ''
-                : 'opacity-0 group-hover:opacity-100 transition-opacity'
-            }
-            onClick={() => handleUpvote(false, message.text)}
-          >
-            <RiveDownvote.RiveComponent className="w-4/5 h-4/5 transform rotate-180" />
-          </Button>
-        </div>
-      )}
-
       {message.author === 'server' ? (
         <div className="flex justify-between items-center mb-2">
           <span className="flex gap-2 items-center">
@@ -153,16 +118,52 @@ const Message = ({
         </div>
       ) : null}
 
-      {message.text || message.error ? (
-        <div
-          className={`rounded-lg p-3 conversation-message ${
-            message.author === 'user' ? 'bg-gray-700' : 'bg-primary-400'
-          }`}
-          dangerouslySetInnerHTML={{
-            __html: highlightedAnswer || message.error || '',
-          }}
-        />
-      ) : null}
+      <div className="relative">
+        {message.text || message.error ? (
+          <div
+            className={`conversation-message rounded-lg p-3 ${
+              message.author === 'user' ? 'bg-gray-700' : 'bg-primary-400'
+            }`}
+            dangerouslySetInnerHTML={{
+              __html: highlightedAnswer || message.error || '',
+            }}
+          />
+        ) : null}
+        {message.author === 'server' && !!message.text && (
+          <div
+            className={`absolute top-1/2 -right-11 ml-2 transform -translate-y-1/2 w-8`}
+          >
+            <Button
+              variant={'tertiary'}
+              onlyIcon
+              size="small"
+              title="Upvote"
+              className={
+                isUpvote
+                  ? ''
+                  : 'opacity-0 group-hover:opacity-100 transition-opacity'
+              }
+              onClick={() => handleUpvote(true, message.text)}
+            >
+              <RiveUpvote.RiveComponent className="w-4/5 h-4/5 transform scale-1" />
+            </Button>
+            <Button
+              variant={'tertiary'}
+              onlyIcon
+              size="small"
+              title="Downvote"
+              className={
+                isDownvote
+                  ? ''
+                  : 'opacity-0 group-hover:opacity-100 transition-opacity'
+              }
+              onClick={() => handleUpvote(false, message.text)}
+            >
+              <RiveDownvote.RiveComponent className="w-4/5 h-4/5 transform rotate-180" />
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
