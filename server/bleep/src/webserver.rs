@@ -52,6 +52,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/index", get(index::handle))
         // repo management
         .route("/repos", get(repos::available))
+        .route("/repos/index-status", get(repos::index_status))
         .route(
             "/repos/indexed",
             get(repos::indexed).put(repos::set_indexed),

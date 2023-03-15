@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, future::Future, pin::Pin};
 
 use crate::{
     repo::{Backend, RepoRef, Repository, SyncStatus},
@@ -7,7 +7,7 @@ use crate::{
 use axum::{
     extract::{Path, Query},
     http::StatusCode,
-    response::IntoResponse,
+    response::{sse, IntoResponse, Sse},
     Extension, Json,
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -81,6 +81,31 @@ pub(super) enum ReposResponse {
 }
 
 impl super::ApiResponse for ReposResponse {}
+
+/// Get a stream of status notifications about the indexing of each repository
+/// This endpoint opens an SSE stream
+//
+#[utoipa::path(get, path = "/repos/index-status",
+    responses(
+        (status = 200, description = "Execute query successfully", body = Sse),
+        (status = 400, description = "Bad request", body = EndpointError),
+        (status = 500, description = "Server error", body = EndpointError),
+    ),
+)]
+pub(super) async fn index_status(Extension(app): Extension<Application>) -> impl IntoResponse {
+    let mut receiver = app.indexes.subscribe();
+
+    Sse::new(futures::stream::poll_fn(move |cx| {
+        Pin::new(&mut Box::pin(receiver.recv()))
+            .poll(cx)
+            .map(Result::ok)
+            .map(|event| {
+                Some(sse::Event::default().json_data(event).map_err(|err| {
+                    <_ as Into<Box<dyn std::error::Error + Send + Sync>>>::into(err)
+                }))
+            })
+    }))
+}
 
 /// Retrieve all indexed repositories
 //

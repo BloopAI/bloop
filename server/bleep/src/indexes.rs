@@ -62,6 +62,8 @@ pub struct Indexes {
     pub repo: Indexer<Repo>,
     pub file: Indexer<File>,
     write_mutex: tokio::sync::Mutex<()>,
+
+    progress: tokio::sync::broadcast::Sender<(RepoRef, u8, u8)>,
 }
 
 impl Indexes {
@@ -71,6 +73,8 @@ impl Indexes {
             std::fs::remove_dir_all(config.index_path("content"))?;
             config.source.save_index_version()?;
         }
+
+        let (progress, _) = tokio::sync::broadcast::channel(16);
 
         Ok(Self {
             repo: Indexer::create(
@@ -86,6 +90,7 @@ impl Indexes {
                 config.max_threads,
             )?,
             write_mutex: Default::default(),
+            progress,
         })
     }
 
@@ -99,6 +104,10 @@ impl Indexes {
             handles: vec![self.repo.write_handle()?, self.file.write_handle()?],
             _write_lock,
         })
+    }
+
+    pub fn subscribe(&self) -> tokio::sync::broadcast::Receiver<(RepoRef, u8, u8)> {
+        self.progress.subscribe()
     }
 }
 
