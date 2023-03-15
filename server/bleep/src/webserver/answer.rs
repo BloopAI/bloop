@@ -104,11 +104,7 @@ pub struct AnswerResponse {
     pub answer_path: Option<String>,
 }
 
-impl From<AnswerResponse> for super::Response<'static> {
-    fn from(res: AnswerResponse) -> super::Response<'static> {
-        super::Response::Answer(res)
-    }
-}
+impl super::ApiResponse for AnswerResponse {}
 
 const SNIPPET_COUNT: usize = 13;
 
