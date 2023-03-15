@@ -41,7 +41,7 @@ impl Point {
         let column = src[..byte]
             .rmatch_indices('\n')
             .next()
-            .map(|(last_newline, _)| byte.saturating_sub(last_newline))
+            .map(|(last_newline, _)| byte.saturating_sub(last_newline).saturating_sub(1))
             .unwrap_or(byte);
         Self { byte, line, column }
     }
@@ -53,9 +53,10 @@ impl Point {
             src.match_indices('\n')
                 .skip(line - 1)
                 .map(|(idx, _)| idx)
-                .next()
+                .next() // index of the last `\n` before the point we are looking for
                 .unwrap()
-                .saturating_add(column)
+                .saturating_add(column + 1) // add 1 here to jump over the `\n`, and then add
+                                            // `column` to get to the point
         };
         Self { byte, line, column }
     }

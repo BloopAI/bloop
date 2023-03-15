@@ -555,7 +555,7 @@ impl File {
                     SymbolLocations::StackGraph(graph)
                 }
                 Err(e) => {
-                    debug!("failed to build stack-graph: {e:?}");
+                    tracing::error!("failed to build stack-graph: {e:?}");
                     // build a syntax aware representation of the file
                     let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
                         .and_then(TreeSitterFile::scope_graph);

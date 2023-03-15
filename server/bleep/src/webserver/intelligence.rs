@@ -263,12 +263,11 @@ pub(super) async fn handle(
         .filter_map(|doc| doc.symbol_locations.stack_graph())
         .fold(StackGraph::new(), |mut combined_graph, graph| {
             combined_graph.add_from_graph(graph);
-            info!(files = combined_graph.iter_files().count());
             combined_graph
         });
 
-    let stack_graph = match content.symbol_locations {
-        SymbolLocations::StackGraph(graph) => graph,
+    match content.symbol_locations {
+        SymbolLocations::StackGraph(_) => {}
         SymbolLocations::TreeSitter(_) => {
             return Err(Error::user(
                 "temporarily disabled, you shouldn't be seeing this in prod",
@@ -276,36 +275,38 @@ pub(super) async fn handle(
         }
         _ => return Err(Error::user("Intelligence is unavailable for this language")),
     };
-    let src = &content.content;
 
+    let src = &content.content;
     let payload_range = TextRange::from_byte_range(payload.start..payload.end, src);
     tracing::info!(?payload_range);
 
-    let handle = stack_graph
+    let handle = combined_graph
         .iter_nodes()
         // .inspect(|n| tracing::info!("node: `{}`", stack_graph[*n].display(stack_graph)))
         .find(|handle| {
-            let is_reference = stack_graph[*handle].is_reference();
-            let is_definition = stack_graph[*handle].is_definition();
-            let is_scope = stack_graph[*handle].scope().is_some();
-            let is_root = stack_graph[*handle].is_root();
-            let is_jump_to = stack_graph[*handle].is_jump_to();
+            let is_reference = combined_graph[*handle].is_reference();
+            let is_definition = combined_graph[*handle].is_definition();
+            let is_scope = combined_graph[*handle].scope().is_some();
+            let is_root = combined_graph[*handle].is_root();
+            let is_jump_to = combined_graph[*handle].is_jump_to();
 
-            let contains_payload = match stack_graph.source_info(*handle) {
+            let present_in_target_file = combined_graph[*handle]
+                .file()
+                .map(|f_handle| combined_graph[f_handle].name())
+                .map(|file| file.ends_with(content.relative_path.as_str()))
+                .unwrap_or_default();
+
+            let contains_payload = match combined_graph.source_info(*handle) {
                 Some(source_info) => source_info.span.contains_point(&payload_range.start.into()),
                 None => false,
             };
 
-            let source_info = &stack_graph.source_info(*handle).unwrap().span;
-            let condition = (is_reference || is_definition)
+            (is_reference || is_definition)
                 && contains_payload
+                && present_in_target_file
                 && !is_root
                 && !is_jump_to
-                && !is_scope;
-            if condition {
-                info!(%is_reference, %is_definition, %is_scope, ?source_info, "found handle");
-            }
-            condition
+                && !is_scope
         })
         .ok_or_else(|| Error::user("provided range is not a valid token"))?;
 
@@ -340,7 +341,7 @@ pub(super) async fn handle(
     };
 
     // we are looking at a reference, produce definitions
-    if stack_graph[handle].is_reference() {
+    if combined_graph[handle].is_reference() {
         let mut definitions = BTreeSet::new();
         let mut references = BTreeSet::new();
         Paths::new()
@@ -349,9 +350,23 @@ pub(super) async fn handle(
                 std::iter::once(handle),
                 &NoCancellation,
                 |graph, paths, path| {
-                    info!("traversing path: {}", path.display(graph, paths));
                     if path.is_complete(graph) && path.ends_at_definition(graph) {
+                        info!("traversing path: {}", path.display(graph, paths));
                         definitions.insert(path.end_node);
+                    }
+                },
+            )
+            .expect("should never be cancelled");
+        Paths::new()
+            .find_all_paths(
+                &combined_graph,
+                combined_graph
+                    .iter_nodes()
+                    .filter(|n| combined_graph[*n].is_reference()),
+                &NoCancellation,
+                |graph, paths, path| {
+                    if path.is_complete(graph) && definitions.contains(&path.end_node) {
+                        info!("traversing path: {}", path.display(graph, paths));
                         references.insert(path.start_node);
                     }
                 },
@@ -391,18 +406,18 @@ pub(super) async fn handle(
                 })
                 .collect::<Vec<_>>(),
         }));
-    } else if stack_graph[handle].is_definition() {
+    } else if combined_graph[handle].is_definition() {
         let mut references = BTreeSet::new();
         Paths::new()
             .find_all_paths(
-                &stack_graph,
-                stack_graph
+                &combined_graph,
+                combined_graph
                     .iter_nodes()
-                    .filter(|n| stack_graph[*n].is_reference()),
+                    .filter(|n| combined_graph[*n].is_reference()),
                 &NoCancellation,
                 |graph, paths, path| {
-                    info!("traversing path: {}", path.display(graph, paths));
                     if path.is_complete(graph) && path.end_node == handle {
+                        info!("traversing path: {}", path.display(graph, paths));
                         references.insert(path.start_node);
                     }
                 },
