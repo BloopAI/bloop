@@ -242,7 +242,7 @@ impl Repository {
     pub(crate) async fn index(
         &self,
         reporef: &RepoRef,
-        writers: &indexes::GlobalWriteHandleRef<'_>,
+        writers: &indexes::GlobalWriteHandle<'_>,
     ) -> Result<Arc<RepoMetadata>, RepoError> {
         use rayon::prelude::*;
         let metadata = get_repo_metadata(&self.disk_path).await;
