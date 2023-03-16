@@ -84,6 +84,11 @@ pub fn initialize_analytics(key: String, data_plane: String) {
             true => Some(event),
             false => None,
         })),
+        package_metadata: Some(analytics::PackageMetadata {
+            name: env!("CARGO_CRATE_NAME"),
+            version: env!("CARGO_PKG_VERSION"),
+            git_rev: git_version::git_version!(fallback = "unknown"),
+        }),
     };
     tokio::task::block_in_place(|| {
         analytics::RudderHub::new_with_options(key, data_plane, options)
