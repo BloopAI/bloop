@@ -451,7 +451,7 @@ async fn handle_inner(
                     &stream_params.0,
                     stream_params.1,
                     stream_params.2,
-                    api::Provider::Anthropic,
+                    api::Provider::OpenAi,
                     stream_params.3,
                 )
                 .await?,
@@ -866,7 +866,7 @@ Use the code file to write a concise, precise answer to the question. Put your r
     }
 
     async fn select_snippet(&self, prompt: &str) -> Result<String> {
-        self.send_until_success(prompt, 1, 0.0, api::Provider::Anthropic, Vec::new())
+        self.send_until_success(prompt, 1, 0.0, api::Provider::OpenAi, Vec::new())
             .await
             .map_err(|e| {
                 sentry::capture_message(
@@ -897,7 +897,7 @@ Use the code file to write a concise, precise answer to the question. Put your r
             prompt,
             max_tokens as u32,
             0.0,
-            api::Provider::Anthropic,
+            api::Provider::OpenAi,
             Vec::new(),
         )
         .await
