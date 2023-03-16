@@ -1,5 +1,10 @@
 FROM node AS frontend
 
+# set frontend build args
+ARG ANALYTICS_FE_WRITE_KEY_PROD
+ARG ANALYTICS_DATA_PLANE_URL
+ARG SENTRY_DSN_FE
+
 WORKDIR /build
 COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps

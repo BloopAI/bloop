@@ -18,9 +18,9 @@ export const DeviceContextProvider = ({
     deviceContextValue.invokeTauriCommand(
       isAnalyticsAllowed ? 'enable_telemetry' : 'disable_telemetry',
     );
-    if (isAnalyticsAllowed && deviceContextValue.envConfig.sentry_dsn_fe) {
+    if (isAnalyticsAllowed && import.meta.env.SENTRY_DSN_FE) {
       initializeSentry(
-        deviceContextValue.envConfig.sentry_dsn_fe,
+        import.meta.env.SENTRY_DSN_FE,
         deviceContextValue.release,
       );
     } else {
@@ -29,11 +29,7 @@ export const DeviceContextProvider = ({
         client.close();
       }
     }
-  }, [
-    isAnalyticsAllowed,
-    deviceContextValue.invokeTauriCommand,
-    deviceContextValue.envConfig.sentry_dsn_fe,
-  ]);
+  }, [isAnalyticsAllowed, deviceContextValue.invokeTauriCommand]);
 
   return (
     <DeviceContext.Provider value={deviceContextValue}>
