@@ -336,7 +336,7 @@ pub(super) async fn handle(
             TextRange::new(start, end)
         })?;
         tracing::info!("range of definiton: {:?}", range);
-        let occurrence = to_occurrence(&doc, range);
+        let occurrence = to_occurrence(doc, range);
         Some((doc.relative_path.as_str(), occurrence))
     };
 

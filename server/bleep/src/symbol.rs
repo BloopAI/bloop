@@ -44,7 +44,7 @@ impl SymbolLocations {
 
     pub fn stack_graph(&self) -> Option<&StackGraph> {
         match self {
-            SymbolLocations::StackGraph(sg) => Some(&sg),
+            SymbolLocations::StackGraph(sg) => Some(sg),
             _ => None,
         }
     }
