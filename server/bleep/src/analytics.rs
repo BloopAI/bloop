@@ -100,7 +100,6 @@ impl RudderHub {
                             info!("failed to send analytics event: {:?}", e);
                         } else {
                             info!("sent analytics event ...");
-                            return;
                         }
                     }
                 }
