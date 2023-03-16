@@ -2,7 +2,10 @@ use std::{
     collections::{HashMap, HashSet},
     ops::Not,
     path::{Path, PathBuf, MAIN_SEPARATOR},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicU8, Ordering},
+        Arc,
+    },
 };
 
 use anyhow::{Context, Result};
@@ -241,6 +244,7 @@ impl Indexable for File {
         repo: &Repository,
         repo_metadata: &RepoMetadata,
         writer: &IndexWriter,
+        progress: &(dyn Fn(u8) + Sync),
     ) -> Result<()> {
         let file_cache = repo.open_file_cache(&self.config.index_dir)?;
         let repo_name = reporef.indexed_name();
@@ -265,10 +269,16 @@ impl Indexable for File {
             })
             .collect::<Vec<PathBuf>>();
 
-        let start = std::time::Instant::now();
+        let count = walker.len();
+        let processed = AtomicU8::new(0);
 
+        let start = std::time::Instant::now();
         use rayon::prelude::*;
+
         walker.into_par_iter().for_each(|entry_disk_path| {
+            let completed = processed.fetch_add(1, Ordering::Relaxed);
+            progress(((completed as f32 / count as f32) * 100f32) as u8);
+
             let workload = Workload {
                 entry_disk_path: entry_disk_path.clone(),
                 repo_disk_path: &repo.disk_path,
@@ -284,6 +294,7 @@ impl Indexable for File {
             }
         });
 
+        progress(100);
         info!(?repo.disk_path, "repo file indexing finished, took {:?}", start.elapsed());
 
         // files that are no longer tracked by the git index are to be removed
