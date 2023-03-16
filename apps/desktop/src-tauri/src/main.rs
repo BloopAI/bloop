@@ -8,16 +8,13 @@ mod qdrant;
 
 use std::{
     path::PathBuf,
-    sync::{Arc, RwLock},
+    sync::{RwLock},
 };
 
 use bleep::Application;
-use once_cell::sync::OnceCell;
-use sentry::ClientInitGuard;
 pub use tauri::{plugin, App, Manager, Runtime};
 
 pub static TELEMETRY: RwLock<bool> = RwLock::new(false);
-static SENTRY: OnceCell<ClientInitGuard> = OnceCell::new();
 
 // the payload type must implement `Serialize` and `Clone`.
 #[derive(Clone, serde::Serialize)]
@@ -51,31 +48,9 @@ async fn main() {
             get_device_id,
             enable_telemetry,
             disable_telemetry,
-            initialize_sentry,
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri application");
-}
-
-#[tauri::command]
-fn initialize_sentry(dsn: String, environment: String) {
-    if sentry::Hub::current().client().is_some() {
-        tracing::info!("Sentry has already been initialized");
-        return;
-    }
-    let guard = sentry::init((
-        dsn,
-        sentry::ClientOptions {
-            release: sentry::release_name!(),
-            environment: Some(environment.into()),
-            before_send: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
-                true => Some(event),
-                false => None,
-            })),
-            ..Default::default()
-        },
-    ));
-    _ = SENTRY.set(guard);
 }
 
 #[tauri::command]
