@@ -86,14 +86,12 @@ attribute node_symbol = node            => symbol = (source-text node), source_n
   node @comment.aliased_type
   node @comment.applied_type
   node @comment.arg
-  node @comment.arg_index
   node @comment.args
   node @comment.async_type
   node @comment.await_type
   node @comment.callable
   node @comment.coargs
   node @comment.cocallable
-  node @comment.comp_index
   node @comment.coparam
   node @comment.coparams
   node @comment.cotype
@@ -234,11 +232,11 @@ attribute node_symbol = node            => symbol = (source-text node), source_n
 
   ; import builtins
   node builtins_ref__ns
-  attr (builtins_ref__ns) symbol_reference = "%Proj"
+  attr (builtins_ref__ns) push_symbol = "%Proj"
   edge builtins_ref__ns -> ROOT_NODE
   ;
   node builtins_ref
-  attr (builtins_ref) symbol_reference = "<builtins>"
+  attr (builtins_ref) push_symbol = "<builtins>"
   edge builtins_ref -> builtins_ref__ns
   ;
   edge @prog.lexical_scope -> builtins_ref
@@ -435,6 +433,7 @@ attribute node_symbol = node            => symbol = (source-text node), source_n
     (generator_function_declaration)
     (hash_bang_line)
     (if_statement)
+    (import_alias)
     (import_statement)
     (interface_declaration)
     (internal_module)
@@ -2733,7 +2732,7 @@ if none @is_async {
 }
 
 
-;; Variables
+;; Variables / Identifiers
 
 ; x;
 
@@ -2743,6 +2742,8 @@ if none @is_async {
   (for_in_statement ["var" "let" "const"]?@is_def left:(identifier)@name)
   (assignment_expression left:(identifier)@name)
   (augmented_assignment_expression left:(identifier)@name)
+  (asserts (identifier)@name)
+  (type_predicate name:(identifier)@name)
   ; FIXME type_query has its own restricted expression production
   ;       we need to do this for every (identifier) inside a type query
   ;       this cannot be expressed, so we manually unroll three levels here
@@ -2790,6 +2791,8 @@ if none @is_def {
   (for_in_statement ["var" "let" "const"]?@is_def left:(identifier)@name)
   (assignment_expression left:(identifier)@name)
   (augmented_assignment_expression left:(identifier)@name)
+  (asserts (identifier)@name)
+  (type_predicate name:(identifier)@name)
   ; FIXME type_query has its own restricted expression production
   (type_query (identifier)@name)
   (type_query (member_expression object:(identifier)@name))
@@ -4973,9 +4976,6 @@ if none @is_acc {
 )@asserts {
   ; propagate lexical scope
   edge @type.lexical_scope -> @asserts.lexical_scope
-
-  ; type is type of inner
-  edge @asserts.type -> @type.type
 }
 
 
@@ -5120,9 +5120,8 @@ if none @is_acc {
   (_)@type
 )@type_pred {
   ; propagate lexical scope
+  edge @name.lexical_scope -> @type_pred.lexical_scope
   edge @type.lexical_scope -> @type_pred.lexical_scope
-
-  ; FIXME name is a expression reference
 }
 
 
@@ -5266,6 +5265,7 @@ if none @is_acc {
 
 (type_arguments)@type_args {
   node @type_args.type_args
+  attr (@type_args.type_args) is_exported
 }
 
 (type_arguments
@@ -5291,18 +5291,21 @@ if none @is_acc {
 ;   (_)@element_type
 ; )@type
 
-(array_type
-  (_)@element_type
-)@type {
+(array_type)@type {
   node @type.indexable
-
-  ; propagate lexical scope
-  edge @element_type.lexical_scope -> @type.lexical_scope
 
   ; type is indexable element type
   edge @type.type -> @type.indexable
   ;
   attr (@type.indexable) pop_symbol = "[]"
+}
+
+(array_type
+  (_)@element_type
+)@type {
+  ; propagate lexical scope
+  edge @element_type.lexical_scope -> @type.lexical_scope
+
   edge @type.indexable -> @element_type.type
 }
 
@@ -5844,26 +5847,6 @@ if none @is_acc {
   ;
   attr (@gen_decl.type_abs) pop_scoped_symbol = "<>"
   edge @gen_decl.type_abs -> @gen_decl.generic_inner_type
-
-  ; FIXME   This edge enables resolving to a member while dropping the type
-  ;       application from the scope stack. This is necessary to be able to
-  ;       resolve to a member inside a generic type without consuming its type.
-  ;       Consuming the type results in either DROP or JUMP. Resolving just to
-  ;       the field does not consume the scope on the scope stack, and is not
-  ;       considered a complete path.
-  ;         I think this is an example where a semantics that allows a non-
-  ;       empty scope stack, but not symbol stack, makes more sense than re-
-  ;       quiring the complete consumption of it. One of the effects of the strict
-  ;       semantics is that an intermediate path may not resolve on its own, but does
-  ;       resolve in the context of another path.
-  ;         An example can be found in the test `types/generic-interface.ts`, where
-  ;       in the expression `x.f.v`, the reference `.f` does not resolve on its own,
-  ;       while the reference `.v`, which depend on being able to resolve `.f` does
-  ;       resolve fine.
-  edge @gen_decl.type_abs -> @gen_decl.drop_type_abs
-  ;
-  attr (@gen_decl.drop_type_abs) type = "drop_scopes"
-  edge @gen_decl.drop_type_abs -> @gen_decl.generic_inner_type
 }
 
 ;; Attributes defined on generic applications
@@ -5900,6 +5883,7 @@ if none @is_acc {
 ]@gen_expr {
   node @gen_expr.type_app
   node @gen_expr.inferred_type_args
+  attr (@gen_expr.inferred_type_args) is_exported
 
   ; push inferred type arguments
   edge @gen_expr.applied_type -> @gen_expr.type_app
@@ -6118,6 +6102,7 @@ if none @is_acc {
   node @async.async_type__type_app
   node @async.async_type__type_arg
   node @async.async_type__type_args
+  attr (@async.async_type__type_args) is_exported
   node @async.async_type__promise_ref
   node @async.async_type__promise_ref__ns
   node @async.await_type

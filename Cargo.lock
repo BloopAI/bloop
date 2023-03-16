@@ -1331,6 +1331,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "darling"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b750cb3417fd1b327431a470f388520309479ab0bf5e323505daf0290cd3850"
+dependencies = [
+ "darling_core 0.14.4",
+ "darling_macro 0.14.4",
+]
+
+[[package]]
 name = "darling_core"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1359,6 +1369,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "darling_core"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "109c1ca6e6b7f82cc233a97004ea8ed7ca123a9af07a8230878fcfda9b158bf0"
+dependencies = [
+ "fnv",
+ "ident_case",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "darling_macro"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1376,6 +1399,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c972679f83bdf9c42bd905396b6c3588a843a17f0f16dfcfa3e2c5d57441835"
 dependencies = [
  "darling_core 0.13.4",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "darling_macro"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4aab4dbc9f7611d8b55048a3a16d2d010c2c8334e46304b40ac1cc14bf3b48e"
+dependencies = [
+ "darling_core 0.14.4",
  "quote",
  "syn",
 ]
@@ -1585,6 +1619,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071a31f4ee85403370b58aca746f01041ede6f0da2730960ad001edc2b71b394"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "enumset"
+version = "1.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "19be8061a06ab6f3a6cf21106c873578bf01bd42ad15e0311a9c76161cb1c753"
+dependencies = [
+ "enumset_derive",
+]
+
+[[package]]
+name = "enumset_derive"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03e7b551eba279bf0fa88b83a46330168c1560a52a94f5126f892f0b364ab3e0"
+dependencies = [
+ "darling 0.14.4",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -3091,6 +3146,7 @@ dependencies = [
 [[package]]
 name = "lsp-positions"
 version = "0.3.1"
+source = "git+https://github.com/nerdypepper/stack-graphs?branch=impl-deser-simple#5a1f6e814496bfa8fe6b6e113f2e4a0507b5d1fa"
 dependencies = [
  "memchr",
  "serde",
@@ -5337,10 +5393,12 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 [[package]]
 name = "stack-graphs"
 version = "0.10.2"
+source = "git+https://github.com/nerdypepper/stack-graphs?branch=impl-deser-simple#5a1f6e814496bfa8fe6b6e113f2e4a0507b5d1fa"
 dependencies = [
  "bitvec",
  "controlled-option",
  "either",
+ "enumset",
  "fxhash",
  "itertools 0.10.5",
  "libc",
@@ -6463,6 +6521,7 @@ dependencies = [
 [[package]]
 name = "tree-sitter-stack-graphs"
 version = "0.6.0"
+source = "git+https://github.com/nerdypepper/stack-graphs?branch=impl-deser-simple#5a1f6e814496bfa8fe6b6e113f2e4a0507b5d1fa"
 dependencies = [
  "anyhow",
  "controlled-option",
@@ -6493,8 +6552,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-typescript"
-version = "0.20.1"
-source = "git+https://github.com/tree-sitter/tree-sitter-typescript?rev=082da44a5263599186dadafd2c974c19f3a73d28#082da44a5263599186dadafd2c974c19f3a73d28"
+version = "0.20.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "079c695c32d39ad089101c66393aeaca30e967fba3486a91f573d2f0e12d290a"
 dependencies = [
  "cc",
  "tree-sitter",

@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use stack_graphs::{
     arena::Handle,
     graph::{Node, StackGraph},
-    paths::Paths,
+    partial::PartialPaths,
     NoCancellation,
 };
 use tracing::info;
@@ -344,8 +344,8 @@ pub(super) async fn handle(
     if combined_graph[handle].is_reference() {
         let mut definitions = BTreeSet::new();
         let mut references = BTreeSet::new();
-        Paths::new()
-            .find_all_paths(
+        PartialPaths::new()
+            .find_all_complete_paths(
                 &combined_graph,
                 std::iter::once(handle),
                 &NoCancellation,
@@ -357,8 +357,8 @@ pub(super) async fn handle(
                 },
             )
             .expect("should never be cancelled");
-        Paths::new()
-            .find_all_paths(
+        PartialPaths::new()
+            .find_all_complete_paths(
                 &combined_graph,
                 combined_graph
                     .iter_nodes()
@@ -408,8 +408,8 @@ pub(super) async fn handle(
         }));
     } else if combined_graph[handle].is_definition() {
         let mut references = BTreeSet::new();
-        Paths::new()
-            .find_all_paths(
+        PartialPaths::new()
+            .find_all_complete_paths(
                 &combined_graph,
                 combined_graph
                     .iter_nodes()
