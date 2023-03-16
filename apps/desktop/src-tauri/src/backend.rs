@@ -39,7 +39,9 @@ where
         &configuration.analytics_key,
         &configuration.analytics_data_plane,
     ) {
-        initialize_rudder_analytics(key.to_owned(), data_plane.to_owned());
+        initialize_analytics(key.to_owned(), data_plane.to_owned());
+    } else {
+        info!("Analytics not configured, skipping initialization...")
     }
 
     let app = app.handle();
@@ -71,7 +73,7 @@ where
     Ok(())
 }
 
-pub fn initialize_rudder_analytics(key: String, data_plane: String) {
+pub fn initialize_analytics(key: String, data_plane: String) {
     if analytics::RudderHub::get().is_some() {
         info!("analytics has already been initialized");
         return;

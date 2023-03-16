@@ -430,7 +430,6 @@ async fn handle_inner(
             AnswerProgress::Explain(query) => {
                 let prompt = if let Some(snippet) = snippets.as_ref().unwrap().first() {
                     let grown = grow_snippet(snippet, &semantic, &app).await?;
-                    info!("We are explaining");
                     app.with_prior_conversation(&thread_id, |conversation| {
                         answer_api_client.build_explain_prompt(&grown, conversation, query)
                     })
@@ -464,7 +463,7 @@ async fn handle_inner(
             if rephrased_query.trim() == "N/A" {
                 let rephrase_fail_stream = Box::pin(stream::once(async {
                     Ok(
-                        "I'm not sure. Try asking a technical question about the codebase."
+                        "I'm not sure what you mean. Try asking a technical question about the codebase."
                             .to_string(),
                     )
                 }));
@@ -515,8 +514,11 @@ async fn handle_inner(
                 ));
             }
             FirstToken::None => {
-                // the stream is empty!?
-                return Err(Error::internal("empty stream"));
+                return Ok((
+                    snippets,
+                    stop_watch,
+                    Box::pin(stream::once(async move { Ok("".to_string()) }).chain(stream)),
+                ));
             }
         }
     }

@@ -9,7 +9,7 @@ use rudderanalytics::{
     message::{Message, Track},
 };
 use serde_json::{json, Value};
-use tracing::info;
+use tracing::{info, warn};
 
 #[derive(Debug, Default, Clone)]
 pub struct QueryEvent {
@@ -88,13 +88,14 @@ impl RudderHub {
                             })),
                             ..Default::default()
                         })) {
-                            info!("failed to send analytics event: {:?}", e);
+                            warn!("failed to send analytics event: {:?}", e);
+                        } else {
+                            info!("sent analytics event ...");
                         }
                     }
                 }
             }
         }
-        info!("sent analytics event ...");
     }
 }
 
