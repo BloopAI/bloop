@@ -13,6 +13,7 @@ use axum::{
     Extension,
 };
 use futures::{stream, Stream, StreamExt, TryStreamExt};
+use rake::*;
 use secrecy::ExposeSecret;
 use thiserror::Error;
 use tokio::sync::RwLock;
@@ -36,6 +37,17 @@ use super::prelude::*;
 pub mod api {
     use serde::Deserialize;
 
+    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+    pub struct Message {
+        pub role: String,
+        pub content: String,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+    pub struct Messages {
+        pub messages: Vec<Message>,
+    }
+
     #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     #[serde(rename_all = "lowercase")]
     pub enum Provider {
@@ -45,7 +57,7 @@ pub mod api {
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Request {
-        pub prompt: String,
+        pub messages: Messages,
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
         pub provider: Provider,
@@ -421,7 +433,9 @@ async fn handle_inner(
                 (prompt, 100, 0.0, vec!["</question>".into()])
             }
             AnswerProgress::Search(rephrased_query) => {
-                let s = search_snippets(&semantic, rephrased_query).await?;
+                let keywords = get_keywords(rephrased_query);
+                info!("Keywords: {}", keywords);
+                let s = search_snippets(&semantic, &keywords).await?;
 
                 let prompt = answer_api_client.build_select_prompt(rephrased_query, &s);
                 snippets = Some(s);
@@ -434,13 +448,23 @@ async fn handle_inner(
                         answer_api_client.build_explain_prompt(&grown, conversation, query)
                     })
                 } else {
-                    "Apologize for not finding a suitable code snippet, \
+                    api::Messages {
+                        messages: vec![api::Message {
+                            role: "user".into(),
+                            content: "Apologize for not finding a suitable code snippet, \
                         while expressing hope that one of the snippets may still be useful"
-                        .to_string()
+                                .to_string(),
+                        }],
+                    }
                 };
                 (prompt, 400, 0.0, vec!["</response>".to_owned()])
             }
         };
+
+        dbg!(&progress);
+        dbg!("PROMPT");
+        dbg!(&stream_params.0);
+        dbg!("PROMPT");
 
         // This strange extraction of parameters from a tuple is due to lifetime issues. This
         // function should probably be refactored, but at the time of writing this is left as-is
@@ -448,7 +472,7 @@ async fn handle_inner(
         let mut stream = Box::pin(
             answer_api_client
                 .send(
-                    &stream_params.0,
+                    stream_params.0,
                     stream_params.1,
                     stream_params.2,
                     api::Provider::OpenAi,
@@ -648,6 +672,16 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String>
     Some(content[new_start_byte..new_end_byte].to_owned())
 }
 
+fn get_keywords(query: &str) -> String {
+    let stop_words_path = "../../../server/stopwords.txt";
+    let sw = StopWords::from_file(stop_words_path).unwrap();
+    let r = Rake::new(sw);
+    let keywords = r.run(query);
+
+    let keys: Vec<String> = keywords.into_iter().map(|score| score.keyword).collect();
+    keys.join(" ")
+}
+
 struct AnswerAPIClient<'s> {
     host: String,
     query: String,
@@ -710,7 +744,7 @@ impl Semantic {
 impl<'s> AnswerAPIClient<'s> {
     async fn send(
         &self,
-        prompt: &str,
+        messages: api::Messages,
         max_tokens: u32,
         temperature: f32,
         provider: api::Provider,
@@ -725,7 +759,7 @@ impl<'s> AnswerAPIClient<'s> {
                 }
 
                 builder.json(&api::Request {
-                    prompt: prompt.to_string(),
+                    messages,
                     max_tokens: Some(max_tokens),
                     temperature: Some(temperature),
                     provider,
@@ -765,7 +799,7 @@ impl<'s> AnswerAPIClient<'s> {
 
     async fn send_until_success(
         &self,
-        prompt: &str,
+        messages: api::Messages,
         max_tokens: u32,
         temperature: f32,
         provider: api::Provider,
@@ -774,7 +808,7 @@ impl<'s> AnswerAPIClient<'s> {
         for attempt in 0..self.max_attempts {
             let result = self
                 .send(
-                    prompt,
+                    messages.clone(),
                     max_tokens,
                     temperature,
                     provider.clone(),
@@ -795,9 +829,9 @@ impl<'s> AnswerAPIClient<'s> {
 
 const DELIMITER: &str = "=========";
 impl<'a> AnswerAPIClient<'a> {
-    fn build_select_prompt(&self, query: &str, snippets: &[Snippet]) -> String {
+    fn build_select_prompt(&self, query: &str, snippets: &[Snippet]) -> api::Messages {
         // snippets are 1-indexed so we can use index 0 where no snippets are relevant
-        let mut prompt = snippets
+        let mut system = snippets
             .iter()
             .enumerate()
             .map(|(i, snippet)| {
@@ -814,22 +848,28 @@ impl<'a> AnswerAPIClient<'a> {
 
         // the example question/answer pair helps reinforce that we want exactly a single
         // number in the output, with no spaces or punctuation such as fullstops.
-        prompt += &format!(
+        system += &format!(
             "Above are {} code snippets separated by \"{DELIMITER}\". Your job is to select the snippet that best answers the question. Reply with a single number indicating the index of the snippet in the list.
-If none of the snippets are relevant reply with the number 0. Wrap your response in <index></index> tags.
+If none of the snippets are relevant reply with the number 0.
 
-<question>What icon do we use to clear search history?</question>
-<index>3</index>
+User: What icon do we use to clear search history?
+Assistant:3
 
-<question>{}</question>
-<index>",
+User: {}
+Assistant:",
             snippets.len(),
-            query,
+            &query
         );
 
-        let tokens_used = self.semantic.gpt2_token_count(&prompt);
+        let messages = vec![api::Message {
+            role: "user".into(),
+            content: system.clone(),
+        }];
+
+        let tokens_used = self.semantic.gpt2_token_count(&system);
         debug!(%tokens_used, "select prompt token count");
-        prompt
+
+        api::Messages { messages }
     }
 
     fn build_explain_prompt(
@@ -837,36 +877,52 @@ If none of the snippets are relevant reply with the number 0. Wrap your response
         snippet: &Snippet,
         conversation: &[(String, String)],
         query: &str,
-    ) -> String {
-        let mut prompt = format!(
-            r#"Repo:{} Path:{}
+    ) -> api::Messages {
+        let system = format!(
+            r#"{}/{}
 =========
 {}
 =========
-Human: You are bloop, an AI assistant for a codebase. Above, you have an extract from a code file. Below you have the last utterances of a conversation with a user (represented inside <conversation></conversation> XML tags).
-Use the code file to write a concise, precise answer to the question. Put your response inside XML tags, like this: <response></response>.
+You are bloop, an AI assistant for a codebase. Above, you have an extract from a code file. This message will be followed by the last few utterances of a conversation with a user.
+Use the code file to write a concise, precise answer to the question.
 
 - Format your response in GitHub Markdown. Paths, function names and code extracts should be enclosed in backticks.
 - Keep your response short. It should only be a few sentences long at the most.
 - Do NOT copy long chunks of code into the response.
 - If the file doesn't contain enough information to answer the question, or you don't know the answer, just say "Sorry, I'm not sure.".
 - Do NOT try to make up an answer or answer with regard to information that is not in the file.
-- Do NOT insert XML tags into your response.
 - The conversation history can provide context to the user's current question, but sometimes it contains irrelevant information. IGNORE information in the conversation which is irrelevant to the user's current question.
 
-<conversation>"#,
+Let's think step by step. First carefully refer to the code above, then answer the question with reference to it."#,
             snippet.repo_name, snippet.relative_path, snippet.text,
         );
+
+        let mut messages = vec![api::Message {
+            role: "system".to_string(),
+            content: system,
+        }];
+
         for (question, answer) in conversation {
-            prompt.extend(["\nPerson: ", question, "\nbloop: ", answer]);
+            messages.push(api::Message {
+                role: "user".to_string(),
+                content: question.clone(),
+            });
+            messages.push(api::Message {
+                role: "assistant".to_string(),
+                content: answer.clone(),
+            });
         }
-        prompt += "\nPerson: ";
-        prompt += query;
-        prompt + "\n</conversation>\nLet's think step by step. First carefully refer to the code above, then answer the question with reference to it.\n<response>"
+
+        messages.push(api::Message {
+            role: "user".to_string(),
+            content: query.to_string(),
+        });
+
+        api::Messages { messages }
     }
 
-    async fn select_snippet(&self, prompt: &str) -> Result<String> {
-        self.send_until_success(prompt, 1, 0.0, api::Provider::OpenAi, Vec::new())
+    async fn select_snippet(&self, messages: api::Messages) -> Result<String> {
+        self.send_until_success(messages, 1, 0.0, api::Provider::OpenAi, Vec::new())
             .await
             .map_err(|e| {
                 sentry::capture_message(
@@ -879,9 +935,11 @@ Use the code file to write a concise, precise answer to the question. Put your r
 
     async fn explain_snippet(
         &self,
-        prompt: &str,
+        messages: api::Messages,
     ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
-        let tokens_used = self.semantic.gpt2_token_count(prompt);
+        let tokens_used = self
+            .semantic
+            .gpt2_token_count(&messages.messages.first().unwrap().content);
         info!(%tokens_used, "input prompt token count");
         let max_tokens = 8000usize.saturating_sub(tokens_used);
         if max_tokens == 0 {
@@ -894,7 +952,7 @@ Use the code file to write a concise, precise answer to the question. Put your r
         let max_tokens = max_tokens.clamp(1, 200);
         info!(%max_tokens, "clamping max tokens");
         self.send(
-            prompt,
+            messages,
             max_tokens as u32,
             0.0,
             api::Provider::OpenAi,
@@ -904,84 +962,84 @@ Use the code file to write a concise, precise answer to the question. Put your r
     }
 }
 
-fn build_rephrase_query_prompt(query: &str, conversation: &[(String, String)]) -> String {
-    let mut prompt =
-        r#"Human: You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. Given a question and an optional conversational history between a person and yourself, (represented inside <conversation></conversation> XML tags), extract a standalone question, if any, from the last turn in the dialogue. Put the question you extract inside XML tags, like this: <question></question>. If there is no question, write "N/A" instead."
+fn build_rephrase_query_prompt(query: &str, conversation: &[(String, String)]) -> api::Messages {
+    let system =
+        r#"You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. Given a question and an optional conversational history between a user and yourself, generate a standalone question. If there is no question, write "N/A" instead."
 
-IGNORE any information in the conversational history which is not relevant to the question
-Absolutely, positively do NOT answer the question
-Rephrase the question into a standalone question
-Your rephrased question should be short and should contain relevant keywords
+- IGNORE any information in the conversational history which is not relevant to the question
+- Absolutely, positively do NOT answer the question
+- Rephrase the question into a standalone question
+- The standalone question should be concise
+- Only add terms to the standalone question where absolutely necessary
 
-<conversation>
-Person: Hey bloop, do we pin js version numbers?
-</conversation>
-<question>Do we pin js version numbers?</question>
+User: Hey bloop, do we pin js version numbers?
+Assistant: Do we pin js version numbers?
 
-<conversation>
-Person: Hey bloop, I have a question - Where do we test if GitHub login works?
-bloop: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
-Person: which file?
-</conversation>
-<question>In which file do we test if GitHub login works?</question>
+User: Hey bloop, I have a question - Where do we test if GitHub login works?
+Assistant: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
+User: which file?
+Assistant: In which file do we test if GitHub login works?
 
-<conversation>
-Person: What's the best way to update the search icon @bloop?
-</conversation>
-<question>What's the best way to update the search icon?</question>
+User: What's the best way to update the search icon @bloop?
+Assistant: What's the best way to update the search icon?
 
-<conversation>
-Person: Where do we test if GitHub login works
-bloop: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
-Person: Are there unit tests?
-</conversation>
-<question>Is there a unit test for GitHub login?</question>
+User: Where do we test if GitHub login works
+Assistant: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
+User: Are there unit tests?
+Assistant: Is there a unit test for GitHub login?
 
-<conversation>
-Person: Where is the answer api called
-bloop: The answer API client is called in `server/bleep/webserver/answer.rs`. After building the prompt the `select_snippet` method belonging to the `answer_api_client` is called.
-Person: frontend
-</conversation>
-<question>Where is the answer API called on the frontend?</question>
+User: sdfkhsdkfh
+Assistant: N/A
 
-<conversation>
-Person: Where do bug reports get sent?
-bloop: Bug reports get sent to the repo maintainers.
-Person: Which url
-</conversation>
-<question>Which url do bug reports get sent to?</question>
+User: Where is the answer api called
+Assistant: The answer API client is called in `server/bleep/webserver/answer.rs`. After building the prompt the `select_snippet` method belonging to the `answer_api_client` is called.
+User: frontend
+Assistant: Where is the answer API called on the frontend?
 
-<conversation>
-Person: tailwind config
-bloop: The `tailwind.config.cjs` file configures Tailwind CSS for the desktop app by extending a basic configuration and adding additional content paths.
-Person: client config
-</conversation>
-<question>Where is the client Tailwind config file?</question>
+User: Where do bug reports get sent?
+Assistant: Bug reports get sent to the repo maintainers.
+User: Which url
+Assistant: Which url do bug reports get sent to?
 
-<conversation>
-Person: I love bananas
-bloop: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
-Person: Which onnxruntime library do we use?
-</conversation>
-<question>Which onnxruntime library do we use?</question>
+User: tailwind config
+Assistant: The `tailwind.config.cjs` file configures Tailwind CSS for the desktop app by extending a basic configuration and adding additional content paths.
+User: client config
+Assistant: Where is the client Tailwind config file?
 
-<conversation>
-Person: Where is the query parsing logic?
-bloop: The query parser is defined in the `parse` function in `server/bleep/src/query/parser.rs`.
-Person: Which libraries does it use?
-bloop: Sorry, the given code snippet does not contain enough context to determine which libraries the query parser uses.
-Person: Where's the delete repo endpoint?
-</conversation>
-<question>Where's the delete repo endpoint?</question>
+User: I love bananas
+Assistant: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
+User: Which onnxruntime library do we use?
+Assistant: Which onnxruntime library do we use?
 
-<conversation>"#.to_string();
+User: Where is the query parsing logic?
+Assistant: The query parser is defined in the `parse` function in `server/bleep/src/query/parser.rs`.
+User: Which libraries does it use?
+Assistant: Sorry, the given code snippet does not contain enough context to determine which libraries the query parser uses.
+User: Where's the delete repo endpoint?
+Assistant: Where's the delete repo endpoint?"#.to_string();
+
+    let mut messages = vec![api::Message {
+        role: "system".to_string(),
+        content: system,
+    }];
+
     for (question, answer) in conversation {
-        prompt.extend(["\nPerson: ", question, "\nbloop: ", answer]);
+        messages.push(api::Message {
+            role: "user".to_string(),
+            content: question.clone(),
+        });
+        messages.push(api::Message {
+            role: "assistant".to_string(),
+            content: answer.clone(),
+        });
     }
-    prompt += "\nPerson: ";
-    prompt += query;
-    prompt += "\n</conversation>\n<question>";
-    prompt
+
+    messages.push(api::Message {
+        role: "user".to_string(),
+        content: query.to_string(),
+    });
+
+    api::Messages { messages }
 }
 
 // Measure time between instants statefully

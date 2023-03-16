@@ -108,6 +108,7 @@ ort = { git = "https://github.com/bloopai/ort", branch = "merge-upstream" }
 ndarray = "0.15"
 uuid = { version = "1.2.2", features = ["v4", "fast-rng"] }
 jsonwebtoken = { version = "8.2.0", features = ["use_pem"] }
+rake = "0.1"
 
 # telemetry
 sentry = "0.29.2"
