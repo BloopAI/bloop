@@ -13,10 +13,8 @@ bloop:
   answerApiUrl: ""
   qdrantUrl: ""
   analyticsKey: ""
-  analyticsKeyFE: ""
   analyticsDataPlane: ""
   sentryDsn: ""
-  sentryDsnFE: ""
 
 image:
   repository: ""

@@ -25,7 +25,6 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         isRepoManagementAllowed: true,
         isSelfServe: true,
         forceAnalytics: true,
-        envConfig: {},
       }}
     />
   </React.StrictMode>,

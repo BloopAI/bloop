@@ -65,8 +65,6 @@ spec:
           - --analytics-key={{ .Values.bloop.analyticsKey }}
           - --analytics-data-plane={{ .Values.bloop.analyticsDataPlane }}
           - --sentry-dsn={{ .Values.bloop.sentryDsn }}
-          - --sentry-dsn-fe={{ .Values.bloop.sentryDsnFE }}
-          - --analytics-key-fe={{ .Values.bloop.analyticsKeyFE }}
           env:
           - name: BLOOP_LOG
             value: info
