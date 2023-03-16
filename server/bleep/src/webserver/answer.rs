@@ -102,6 +102,7 @@ impl Params {
 #[derive(serde::Serialize, ToSchema, Debug)]
 pub struct AnswerResponse {
     pub user_id: String,
+    pub session_id: String,
     pub query_id: uuid::Uuid,
     pub snippets: Option<AnswerSnippets>,
 }
@@ -349,7 +350,6 @@ async fn handle_inner(
     StopWatch,
     std::pin::Pin<Box<dyn Stream<Item = Result<String, AnswerAPIError>> + Send>>,
 )> {
-    // TODO: If a query contains any search filters it should be interpreted as a technical question
     let query = parse_query(&params.q)?;
     let thread_id = params.thread_id();
     let mut snippets = None;
@@ -560,6 +560,7 @@ async fn _handle(
     let initial_event = Event::default()
         .json_data(super::Response::<'static>::from(AnswerResponse {
             query_id,
+            session_id: thread_id.clone(),
             user_id: params.user_id.clone(),
             snippets: snippets.as_ref().map(|matches| AnswerSnippets {
                 matches: matches.clone(),

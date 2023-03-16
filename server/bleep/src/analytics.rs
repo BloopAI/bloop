@@ -14,6 +14,7 @@ use tracing::{info, warn};
 #[derive(Debug, Default, Clone)]
 pub struct QueryEvent {
     pub user_id: String,
+    pub session_id: String,
     pub query_id: uuid::Uuid,
     pub overlap_strategy: OverlapStrategy,
     pub stages: Vec<Stage>,
@@ -83,6 +84,7 @@ impl RudderHub {
                             event: "openai query".to_owned(),
                             properties: Some(json!({
                                 "query_id": ev.query_id,
+                                "session_id": ev.session_id,
                                 "overlap_strategy": ev.overlap_strategy,
                                 "stages": ev.stages,
                             })),
