@@ -427,7 +427,7 @@ async fn handle_inner(
         // (depending on `progress`)
         let stream_params = match &progress {
             AnswerProgress::Rephrase(query) => {
-                let prompt = app.with_prior_conversation(&thread_id, |history| {
+                let prompt = app.with_prior_conversation(thread_id, |history| {
                     let n = history.len().saturating_sub(MAX_HISTORY);
                     build_rephrase_query_prompt(query, &history[n..])
                 });
@@ -446,7 +446,7 @@ async fn handle_inner(
             AnswerProgress::Explain(query) => {
                 let prompt = if let Some(snippet) = snippets.as_ref().unwrap().first() {
                     let grown = grow_snippet(snippet, &semantic, &app).await?;
-                    app.with_prior_conversation(&thread_id, |conversation| {
+                    app.with_prior_conversation(thread_id, |conversation| {
                         answer_api_client.build_explain_prompt(&grown, conversation, query)
                     })
                 } else {
