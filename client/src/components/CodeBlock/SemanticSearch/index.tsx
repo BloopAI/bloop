@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import CodeBlockSearch from '../Search';
 import { ResultClick } from '../../../types/results';
-import Answer from './Answer';
 
 type Props = {
   snippets: {
@@ -12,20 +11,9 @@ type Props = {
     line: number;
   }[];
   onClick: ResultClick;
-  handleRetry: () => void;
-  searchId: string;
-  answer?: string;
-  error?: string;
 };
 
-const SemanticSearch = ({
-  snippets,
-  onClick,
-  handleRetry,
-  searchId,
-  answer,
-  error,
-}: Props) => {
+const SemanticSearch = ({ snippets, onClick }: Props) => {
   const renderedSnippets = useMemo(() => {
     return snippets.map((item, index) => (
       <li key={index} className={`${index ? 'mt-5' : ''}`}>
@@ -43,16 +31,6 @@ const SemanticSearch = ({
       </li>
     ));
   }, [snippets, onClick]);
-  return (
-    <div className="flex flex-col">
-      <Answer
-        searchId={searchId}
-        handleRetry={handleRetry}
-        answer={answer}
-        error={error}
-      />
-      <ul>{renderedSnippets}</ul>
-    </div>
-  );
+  return <ul className="flex flex-col">{renderedSnippets}</ul>;
 };
 export default SemanticSearch;
