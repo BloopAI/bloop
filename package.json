@@ -71,6 +71,7 @@
     "@tailwindcss/line-clamp": "^0.4.2",
     "@tauri-apps/api": "^1.2.0",
     "@tippyjs/react": "^4.2.6",
+    "@types/uuid": "^9.0.1",
     "axios": "^1.1.3",
     "chart.js": "^3.9.1",
     "date-fns": "^2.29.3",
@@ -93,7 +94,8 @@
     "remarkable": "^2.0.1",
     "rudder-sdk-js": "^2.22.3",
     "textarea-caret": "^3.1.0",
-    "timeago.js": "^4.0.2"
+    "timeago.js": "^4.0.2",
+    "uuid": "^9.0.0"
   },
   "volta": {
     "node": "16.17.0",

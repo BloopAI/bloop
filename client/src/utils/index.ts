@@ -1,4 +1,5 @@
 import { MouseEvent } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import langs from './langs.json';
 
 export const copyToClipboard = (value: string) => {
@@ -133,5 +134,5 @@ export const arrayUnique = (array: any[], property: string) => {
 };
 
 export const generateUniqueId = (): string => {
-  return hashCode(new Date().toISOString()).toString();
+  return uuidv4();
 };

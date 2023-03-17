@@ -103,12 +103,6 @@ pub struct Params {
     pub user_id: String,
 }
 
-impl Params {
-    fn thread_id(&self) -> String {
-        format!("{}-{}", self.user_id, self.thread_id)
-    }
-}
-
 #[derive(serde::Serialize, ToSchema, Debug)]
 pub struct AnswerResponse {
     pub user_id: String,
@@ -360,6 +354,7 @@ async fn grow_snippet(
 
 async fn handle_inner(
     query: &str,
+    thread_id: &str,
     state: &AnswerState,
     params: Arc<Params>,
     app: Arc<Application>,
@@ -370,8 +365,13 @@ async fn handle_inner(
     StopWatch,
     std::pin::Pin<Box<dyn Stream<Item = Result<String, AnswerAPIError>> + Send>>,
 )> {
-    let thread_id = params.thread_id();
     let query = query.to_string(); // TODO: Sort out query handling
+
+    event
+        .write()
+        .await
+        .stages
+        .push(Stage::new("parsed_query", &query).with_time(stop_watch.lap()));
 
     let mut snippets = None;
 
@@ -420,7 +420,7 @@ async fn handle_inner(
     );
 
     let mut progress = app
-        .with_prior_conversation(&thread_id, |history| {
+        .with_prior_conversation(thread_id, |history| {
             if history.is_empty() {
                 None
             } else {
@@ -430,18 +430,12 @@ async fn handle_inner(
         .map(AnswerProgress::Rephrase)
         .unwrap_or(AnswerProgress::Rephrase(query.clone()));
 
-    event
-        .write()
-        .await
-        .stages
-        .push(Stage::new("start", &query).with_time(stop_watch.lap()));
-
     loop {
         // Here we ask anthropic for either action selection, rephrasing or explanation
         // (depending on `progress`)
         let stream_params = match &progress {
             AnswerProgress::Rephrase(query) => {
-                let prompt = app.with_prior_conversation(&thread_id, |history| {
+                let prompt = app.with_prior_conversation(thread_id, |history| {
                     let n = history.len().saturating_sub(MAX_HISTORY);
                     build_rephrase_query_prompt(query, &history[n..])
                 });
@@ -460,7 +454,7 @@ async fn handle_inner(
             AnswerProgress::Explain(query) => {
                 let prompt = if let Some(snippet) = snippets.as_ref().unwrap().first() {
                     let grown = grow_snippet(snippet, &semantic, &app).await?;
-                    app.with_prior_conversation(&thread_id, |conversation| {
+                    app.with_prior_conversation(thread_id, |conversation| {
                         answer_api_client.build_explain_prompt(&grown, conversation, query)
                     })
                 } else {
@@ -489,6 +483,12 @@ async fn handle_inner(
                 (prompt, max_tokens, 0.9, vec![])
             }
         };
+
+        event
+            .write()
+            .await
+            .stages
+            .push(progress.to_stage(&mut stop_watch, snippets.as_deref()));
 
         // This strange extraction of parameters from a tuple is due to lifetime issues. This
         // function should probably be refactored, but at the time of writing this is left as-is
@@ -531,12 +531,6 @@ async fn handle_inner(
                 break;
             }
         }
-
-        event
-            .write()
-            .await
-            .stages
-            .push(progress.to_stage(&mut stop_watch, snippets.as_deref()));
 
         match collected {
             FirstToken::Number(n) => {
@@ -581,25 +575,29 @@ async fn _handle(
     let query_id = uuid::Uuid::new_v4();
 
     info!("Raw query: {:?}", &params.q);
-    let query = parse_query(&params.q)?;
-    info!("Parsed query target: {:?}", &query);
 
     {
         let mut analytics_event = event.write().await;
         analytics_event.user_id = params.user_id.clone();
         analytics_event.query_id = query_id;
+        analytics_event.session_id = params.thread_id.clone();
         if let Some(semantic) = app.semantic.as_ref() {
             analytics_event.overlap_strategy = semantic.overlap_strategy();
         }
+        analytics_event
+            .stages
+            .push(Stage::new("raw_query", &params.q));
     }
 
-    let thread_id = params.thread_id();
+    let query = parse_query(&params.q)?;
+    info!("Parsed query target: {:?}", &query);
 
     let stop_watch = StopWatch::start();
     let params = Arc::new(params);
     let mut app = Arc::new(app);
     let (snippets, mut stop_watch, mut text) = handle_inner(
         &query,
+        &params.thread_id,
         state,
         Arc::clone(&params),
         Arc::clone(&app),
@@ -607,11 +605,11 @@ async fn _handle(
         stop_watch,
     )
     .await?;
-    Arc::make_mut(&mut app).add_conversation_entry(thread_id.clone(), query);
+    Arc::make_mut(&mut app).add_conversation_entry(params.thread_id.clone(), query);
     let initial_event = Event::default()
         .json_data(super::Response::<'static>::from(AnswerResponse {
             query_id,
-            session_id: thread_id.clone(),
+            session_id: params.thread_id.clone(),
             user_id: params.user_id.clone(),
             snippets: snippets.as_ref().map(|matches| AnswerSnippets {
                 matches: matches.clone(),
@@ -630,7 +628,7 @@ async fn _handle(
         yield Ok(initial_event);
         while let Some(result) = text.next().await {
             if let Ok(fragment) = &result {
-                app.extend_conversation_answer(thread_id.clone(), fragment.trim_end())
+                app.extend_conversation_answer(params.thread_id.clone(), fragment.trim_end())
             }
             yield Ok(Event::default()
                 .json_data(result.as_ref().map_err(|e| e.to_string()))
@@ -644,7 +642,7 @@ async fn _handle(
         let mut event = event.write().await;
         event
             .stages
-            .push(Stage::new("explanation", &expl).with_time(stop_watch.lap()));
+            .push(Stage::new("answer", &expl).with_time(stop_watch.lap()));
         app.track_query(&event);
     };
 
