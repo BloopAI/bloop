@@ -130,7 +130,7 @@ curl "localhost:7878/answer?q=what%20does%20the%20query%20parser%20do?"
 
 You can check which repos are indexed and their status:
 ```
-$ curl -v "localhost:7878/repos/indexed" | jq
+$ curl -v "localhost:7878/api/repos/indexed" | jq
 ```
 
 ## OpenAPI
