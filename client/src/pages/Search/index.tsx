@@ -37,6 +37,7 @@ import { DeviceContext } from '../../context/deviceContext';
 import StatusBar from '../../components/StatusBar';
 import Onboarding from '../Home/Onboarding';
 import NavBar from '../../components/NavBar';
+import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 
 const mockQuerySuggestions = [
   'repo:cobra-ats  error:“no apples”',
@@ -66,7 +67,20 @@ const SearchPage = () => {
   } = useSearch<NLSearchResponse>();
   const { updateCurrentTabName } = useContext(TabsContext);
 
-  const { navigatedItem, query } = useAppNavigation();
+  const { navigatedItem, query, navigateBack } = useAppNavigation();
+
+  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
+    if (
+      e.key === 'Escape' &&
+      document.activeElement?.tagName !== 'INPUT' &&
+      !document.getElementsByClassName('modal-or-sidebar').length
+    ) {
+      e.stopPropagation();
+      e.preventDefault();
+      navigateBack();
+    }
+  }, []);
+  useKeyboardNavigation(handleKeyEvent);
 
   const closeOnboarding = useCallback(() => {
     setShouldShowWelcome(false);
