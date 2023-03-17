@@ -487,7 +487,7 @@ async fn handle_inner(
         // due to time constraints.
         let mut stream = Box::pin(
             answer_api_client
-                .send(
+                .send_until_success(
                     stream_params.0,
                     stream_params.1,
                     stream_params.2,
@@ -829,7 +829,7 @@ impl<'s> AnswerAPIClient<'s> {
         temperature: f32,
         provider: api::Provider,
         extra_stop_sequences: Vec<String>,
-    ) -> Result<String, AnswerAPIError> {
+    ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
         for attempt in 0..self.max_attempts {
             let result = self
                 .send(
@@ -839,8 +839,6 @@ impl<'s> AnswerAPIClient<'s> {
                     provider.clone(),
                     extra_stop_sequences.clone(),
                 )
-                .await?
-                .try_collect::<String>()
                 .await;
 
             match result {
