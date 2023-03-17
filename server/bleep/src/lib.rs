@@ -245,8 +245,6 @@ impl Application {
         background::IndexWriter(self.clone())
     }
 
-    // dummy conversational store (we'll want to move this to the frontend)
-
     /// This gets the prior conversation. Be sure to drop the borrow before calling
     /// [`add_conversation_entry`], lest we deadlock.
     pub fn with_prior_conversation<T>(

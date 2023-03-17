@@ -1,7 +1,5 @@
-#![allow(unused)]
 use std::{
     collections::HashMap,
-    convert,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -398,7 +396,6 @@ async fn handle_inner(
     let answer_api_client = semantic.build_answer_api_client(
         state,
         format!("{}/q", app.config.answer_api_url).as_str(),
-        &query,
         5,
         answer_bearer.clone(),
     );
@@ -430,16 +427,17 @@ async fn handle_inner(
                     build_rephrase_query_prompt(query, &history[n..])
                 });
 
-                (prompt, 100, 0.0, vec!["</question>".into()])
+                (prompt, 20, 0.0, vec![])
             }
             AnswerProgress::Search(rephrased_query) => {
                 let keywords = get_keywords(rephrased_query);
                 info!("Extracted keywords: {}", keywords);
                 let s = search_snippets(&semantic, &keywords).await?;
+                info!("Retrieved {} snippets", s.len());
 
                 let prompt = answer_api_client.build_select_prompt(rephrased_query, &s);
                 snippets = Some(s);
-                (prompt, 50, 0.0, vec!["</index>".to_owned()])
+                (prompt, 10, 0.0, vec!["</index>".into()])
             }
             AnswerProgress::Explain(query) => {
                 let prompt = if let Some(snippet) = snippets.as_ref().unwrap().first() {
@@ -457,7 +455,20 @@ async fn handle_inner(
                         }],
                     }
                 };
-                (prompt, 400, 0.0, vec!["</response>".to_owned()])
+                let tokens_used =
+                    semantic.gpt2_token_count(&prompt.messages.first().unwrap().content);
+                info!(%tokens_used, "input prompt token count");
+                let max_tokens = 8000u32.saturating_sub(tokens_used as u32);
+                if max_tokens == 0 {
+                    // our prompt has overshot the token count, log an error for now
+                    // TODO: this should propagte to sentry
+                    error!(%tokens_used, "prompt overshot token limit");
+                }
+                // do not let the completion cross 400 tokens
+                let max_tokens = max_tokens.clamp(1, 300);
+                info!(%max_tokens, "clamping max tokens");
+
+                (prompt, max_tokens, 0.9, vec![])
             }
         };
 
@@ -564,7 +575,7 @@ async fn _handle(
 
     let thread_id = params.thread_id();
 
-    let mut stop_watch = StopWatch::start();
+    let stop_watch = StopWatch::start();
     let params = Arc::new(params);
     let mut app = Arc::new(app);
     let (snippets, mut stop_watch, mut text) = handle_inner(
@@ -679,7 +690,6 @@ fn get_keywords(query: &str) -> String {
 
 struct AnswerAPIClient<'s> {
     host: String,
-    query: String,
     semantic: &'s Semantic,
     max_attempts: usize,
     bearer_token: Option<String>,
@@ -719,13 +729,11 @@ impl Semantic {
         &'s self,
         state: &AnswerState,
         host: &str,
-        query: &str,
         max_attempts: usize,
         bearer_token: Option<String>,
     ) -> AnswerAPIClient<'s> {
         AnswerAPIClient {
             host: host.to_owned(),
-            query: query.to_owned(),
             semantic: self,
             max_attempts,
             // Internally, cookies are shared between `reqwest` client instances via a shared lock.
@@ -792,6 +800,7 @@ impl<'s> AnswerAPIClient<'s> {
             }))
     }
 
+    #[allow(dead_code)]
     async fn send_until_success(
         &self,
         messages: api::Messages,
@@ -844,14 +853,14 @@ impl<'a> AnswerAPIClient<'a> {
         // the example question/answer pair helps reinforce that we want exactly a single
         // number in the output, with no spaces or punctuation such as fullstops.
         system += &format!(
-            "Above are {} code snippets separated by \"{DELIMITER}\". Your job is to select the snippet that best answers the question. Reply with a single number indicating the index of the snippet in the list.
-If none of the snippets are relevant reply with the number 0.
+            "Above are {} code snippets separated by \"{DELIMITER}\". Your job is to select the snippet that best answers the question. Reply with a single integer indicating the index of the snippet in the list.
+If none of the snippets are relevant reply with the number 0. Wrap your response in <index></index> XML tags.
 
-User: What icon do we use to clear search history?
-Assistant:3
+User:What icon do we use to clear search history?
+Assistant:<index>3</index>
 
-User: {}
-Assistant:",
+User:{}
+Assistant:<index>",
             snippets.len(),
             &query
         );
@@ -878,8 +887,7 @@ Assistant:",
 =========
 {}
 =========
-You are bloop, an AI assistant for a codebase. Above, you have an extract from a code file. This message will be followed by the last few utterances of a conversation with a user.
-Use the code file to write a concise, precise answer to the question.
+Above, you have an extract from a code file. This message will be followed by the last few utterances of a conversation with a user. Use the code file to write a concise, precise answer to the question.
 
 - Format your response in GitHub Markdown. Paths, function names and code extracts should be enclosed in backticks.
 - Keep your response short. It should only be a few sentences long at the most.
@@ -915,51 +923,11 @@ Let's think step by step. First carefully refer to the code above, then answer t
 
         api::Messages { messages }
     }
-
-    async fn select_snippet(&self, messages: api::Messages) -> Result<String> {
-        self.send_until_success(messages, 1, 0.0, api::Provider::OpenAi, Vec::new())
-            .await
-            .map_err(|e| {
-                sentry::capture_message(
-                    format!("answer-api failed to respond: {e}").as_str(),
-                    sentry::Level::Error,
-                );
-                Error::new(ErrorKind::UpstreamService, e.to_string())
-            })
-    }
-
-    async fn explain_snippet(
-        &self,
-        messages: api::Messages,
-    ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
-        let tokens_used = self
-            .semantic
-            .gpt2_token_count(&messages.messages.first().unwrap().content);
-        info!(%tokens_used, "input prompt token count");
-        let max_tokens = 8000usize.saturating_sub(tokens_used);
-        if max_tokens == 0 {
-            // our prompt has overshot the token count, log an error for now
-            // TODO: this should propagte to sentry
-            error!(%tokens_used, "prompt overshot token limit");
-        }
-
-        // do not let the completion cross 200 tokens
-        let max_tokens = max_tokens.clamp(1, 200);
-        info!(%max_tokens, "clamping max tokens");
-        self.send(
-            messages,
-            max_tokens as u32,
-            0.0,
-            api::Provider::OpenAi,
-            Vec::new(),
-        )
-        .await
-    }
 }
 
 fn build_rephrase_query_prompt(query: &str, conversation: &[(String, String)]) -> api::Messages {
     let system =
-        r#"You are bloop, an AI agent designed to help developers navigate codebases and ship to production faster. Given a question and an optional conversational history between a user and yourself, generate a standalone question. If there is no question, write "N/A" instead."
+        r#"Given a question and an optional conversational history between a user and yourself, generate a standalone question. If there is no question, write "N/A" instead."
 
 - IGNORE any information in the conversational history which is not relevant to the question
 - Absolutely, positively do NOT answer the question
