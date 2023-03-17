@@ -87,12 +87,13 @@ impl RudderHub {
             if let Some(options) = &hub.options {
                 if let Some(filter) = &options.event_filter {
                     if let Some(ev) = (filter)(event) {
+                        dbg!(&ev);
                         if let Err(e) = hub.client.send(&Message::Track(Track {
                             user_id: Some(ev.user_id),
                             event: "openai query".to_owned(),
                             properties: Some(json!({
                                 "query_id": ev.query_id,
-                                "search_session_id": ev.session_id,
+                                "session_id": ev.session_id,
                                 "overlap_strategy": ev.overlap_strategy,
                                 "stages": ev.stages,
                                 "package_metadata": options.package_metadata,

@@ -103,12 +103,6 @@ pub struct Params {
     pub user_id: String,
 }
 
-impl Params {
-    fn thread_id(&self) -> String {
-        format!("{}-{}", self.user_id, self.thread_id)
-    }
-}
-
 #[derive(serde::Serialize, ToSchema, Debug)]
 pub struct AnswerResponse {
     pub user_id: String,
@@ -360,6 +354,7 @@ async fn grow_snippet(
 
 async fn handle_inner(
     query: &str,
+    thread_id: &str,
     state: &AnswerState,
     params: Arc<Params>,
     app: Arc<Application>,
@@ -370,7 +365,6 @@ async fn handle_inner(
     StopWatch,
     std::pin::Pin<Box<dyn Stream<Item = Result<String, AnswerAPIError>> + Send>>,
 )> {
-    let thread_id = params.thread_id();
     let query = query.to_string(); // TODO: Sort out query handling
 
     let mut snippets = None;
@@ -412,7 +406,7 @@ async fn handle_inner(
     );
 
     let mut progress = app
-        .with_prior_conversation(&thread_id, |history| {
+        .with_prior_conversation(thread_id, |history| {
             if history.is_empty() {
                 None
             } else {
@@ -580,18 +574,18 @@ async fn _handle(
         let mut analytics_event = event.write().await;
         analytics_event.user_id = params.user_id.clone();
         analytics_event.query_id = query_id;
+        analytics_event.session_id = params.thread_id.clone();
         if let Some(semantic) = app.semantic.as_ref() {
             analytics_event.overlap_strategy = semantic.overlap_strategy();
         }
     }
-
-    let thread_id = params.thread_id();
 
     let stop_watch = StopWatch::start();
     let params = Arc::new(params);
     let mut app = Arc::new(app);
     let (snippets, mut stop_watch, mut text) = handle_inner(
         &query,
+        &params.thread_id,
         state,
         Arc::clone(&params),
         Arc::clone(&app),
@@ -599,11 +593,11 @@ async fn _handle(
         stop_watch,
     )
     .await?;
-    Arc::make_mut(&mut app).add_conversation_entry(thread_id.clone(), query);
+    Arc::make_mut(&mut app).add_conversation_entry(params.thread_id.clone(), query);
     let initial_event = Event::default()
         .json_data(super::Response::<'static>::from(AnswerResponse {
             query_id,
-            session_id: thread_id.clone(),
+            session_id: params.thread_id.clone(),
             user_id: params.user_id.clone(),
             snippets: snippets.as_ref().map(|matches| AnswerSnippets {
                 matches: matches.clone(),
@@ -622,7 +616,7 @@ async fn _handle(
         yield Ok(initial_event);
         while let Some(result) = text.next().await {
             if let Ok(fragment) = &result {
-                app.extend_conversation_answer(thread_id.clone(), fragment.trim_end())
+                app.extend_conversation_answer(params.thread_id.clone(), fragment.trim_end())
             }
             yield Ok(Event::default()
                 .json_data(result.as_ref().map_err(|e| e.to_string()))
