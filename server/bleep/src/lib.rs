@@ -13,6 +13,9 @@
 #[cfg(any(bench, test))]
 use criterion as _;
 
+#[cfg(any(bench, test))]
+use git_version as _;
+
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
 

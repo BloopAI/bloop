@@ -400,6 +400,7 @@ dependencies = [
  "expect-test",
  "flume",
  "futures",
+ "git-version",
  "git2",
  "histogram",
  "hyperpolyglot",
