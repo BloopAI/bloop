@@ -94,6 +94,7 @@ const TextInput = forwardRef(function TextInputWithRef(
       e.preventDefault();
       onSubmit(e);
     } else if (e.key === 'Escape' && onEscape) {
+      e.stopPropagation();
       onEscape(e);
     }
   };

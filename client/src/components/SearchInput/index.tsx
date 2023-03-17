@@ -25,6 +25,7 @@ import {
 import { mapResults } from '../../mappers/results';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import { SearchType } from '../../types/general';
+import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import AutocompleteMenu from './AutocompleteMenu';
 import SearchTextInput from './SearchTextInput';
 
@@ -61,6 +62,19 @@ function SearchInput() {
     selectors: 'input, .arrow-navigate',
     tabSelects: true,
   });
+
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'l' && (e.metaKey || e.ctrlKey)) {
+        e.stopPropagation();
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    },
+    [inputValue],
+  );
+  useKeyboardNavigation(handleKeyEvent);
+
   const {
     isOpen,
     getMenuProps,
