@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -691,14 +691,22 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String>
     Some(content[new_start_byte..new_end_byte].to_owned())
 }
 
-fn get_keywords(query: &str) -> String {
-    let stop_words_path = "../../../server/stopwords.txt";
-    let sw = StopWords::from_file(stop_words_path).unwrap();
-    let r = Rake::new(sw);
-    let keywords = r.run(query);
+static RAKE: once_cell::sync::Lazy<Rake> = once_cell::sync::Lazy::new(|| {
+    let stop_words = include_str!("../../../stopwords.txt");
+    let sw = stop_words
+        .lines()
+        .map(ToOwned::to_owned)
+        .collect::<HashSet<String>>()
+        .into();
+    Rake::new(sw)
+});
 
-    let keys: Vec<String> = keywords.into_iter().map(|score| score.keyword).collect();
-    keys.join(" ")
+fn get_keywords(query: &str) -> String {
+    RAKE.run(query)
+        .into_iter()
+        .map(|score| score.keyword)
+        .collect::<Vec<String>>()
+        .join(" ")
 }
 
 struct AnswerAPIClient<'s> {
