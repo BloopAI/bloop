@@ -406,7 +406,7 @@ async fn handle_inner(
 
     let answer_api_client = semantic.build_answer_api_client(
         state,
-        format!("{}/q", app.config.answer_api_url).as_str(),
+        format!("{}/v1/q", app.config.answer_api_url).as_str(),
         5,
         answer_bearer.clone(),
     );
