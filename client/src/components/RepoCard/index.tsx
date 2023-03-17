@@ -1,10 +1,12 @@
 import { format as timeAgo } from 'timeago.js';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useContext, useMemo } from 'react';
 import { GitHubLogo } from '../../icons';
-import { SyncStatus } from '../../types/general';
+import { SearchType, SyncStatus } from '../../types/general';
 import FileIcon from '../FileIcon';
 import { getFileExtensionForLang } from '../../utils';
 import useAppNavigation from '../../hooks/useAppNavigation';
+import { UIContext } from '../../context/uiContext';
+import { AnalyticsContext } from '../../context/analyticsContext';
 
 type Props = {
   name: string;
@@ -34,15 +36,22 @@ const RepoCard = ({
   lang,
   provider,
 }: Props) => {
+  const { isGithubConnected } = useContext(UIContext);
+  const { isAnalyticsAllowed } = useContext(AnalyticsContext);
   const isGh = useMemo(() => provider === 'github', [provider]);
   const repoName = useMemo(() => {
     return !isGh ? name.split('/').reverse()[0] : name;
   }, [name, provider]);
 
-  const { navigateRepoPath } = useAppNavigation();
+  const { navigateRepoPath, navigateSearch } = useAppNavigation();
   const handleClick = useCallback(() => {
-    navigateRepoPath(`${isGh ? 'github.com/' : ''}${repoName}`);
-  }, [repoName, provider]);
+    if (isGithubConnected && isAnalyticsAllowed) {
+      navigateSearch(`What does this repo do? repo:${repoName}`, SearchType.NL);
+    } else {
+      navigateRepoPath(`${isGh ? 'github.com/' : ''}${repoName}`);
+    }
+  }, [repoName, provider, isGithubConnected, isAnalyticsAllowed]);
+
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-md p-4 w-full flex flex-col gap-6">
       <div className="flex items-start gap-4">

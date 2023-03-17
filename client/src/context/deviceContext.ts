@@ -26,6 +26,7 @@ export type DeviceContextType = {
   isRepoManagementAllowed: boolean;
   forceAnalytics: boolean;
   isSelfServe: boolean;
+  showNativeMessage: (m: string, options?: any) => Promise<void> | void;
 };
 
 export const DeviceContext = createContext<DeviceContextType>({
@@ -47,4 +48,5 @@ export const DeviceContext = createContext<DeviceContextType>({
   isRepoManagementAllowed: true,
   forceAnalytics: false,
   isSelfServe: false,
+  showNativeMessage: () => Promise.resolve(),
 });

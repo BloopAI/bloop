@@ -4,7 +4,7 @@ import { UITabType } from '../types/general';
 type ContextType = {
   tabs: UITabType[];
   activeTab: string;
-  handleAddTab: (t: UITabType) => void;
+  handleAddTab: () => void;
   handleRemoveTab: (t: string) => void;
   setActiveTab: (t: string) => void;
   updateCurrentTabName: (n: string) => void;

@@ -19,7 +19,7 @@
         "all": true
       },
       "dialog": {
-        "open": true
+        "all": true
       },
       "http": {
         "all": true
@@ -31,6 +31,9 @@
         "all": true
       },
       "path": {
+        "all": true
+      },
+      "process": {
         "all": true
       }
     },

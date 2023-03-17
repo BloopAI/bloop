@@ -26,7 +26,7 @@ where
     );
     configuration.qdrant_url = Some("http://127.0.0.1:6334".into());
     configuration.ctags_path = relative_command_path("ctags");
-    configuration.max_threads = bleep::default_parallelism() / 4;
+    configuration.max_threads = bleep::default_parallelism() / 2;
     configuration.model_dir = app
         .path_resolver()
         .resolve_resource("model")
