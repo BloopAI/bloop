@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import Button from '../../components/Button';
 import Filters from '../../components/Filters';
-import PageHeader from './PageHeader';
+import PageHeader from '../../components/ResultsPageHeader';
 
 type Props = {
   suggestions: string[];

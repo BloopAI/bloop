@@ -209,7 +209,6 @@ export const SemanticSearchSnippets = () => {
   return (
     <div style={{ width: 1000 }} className="flex flex-col gap-4">
       <SemanticSearch
-        searchId={'myid'}
         snippets={[
           {
             line: 1,
@@ -223,7 +222,6 @@ export const SemanticSearchSnippets = () => {
         onClick={(e) => {
           // e.preventDefault();
         }}
-        handleRetry={() => {}}
       />
     </div>
   );

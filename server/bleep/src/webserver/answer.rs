@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -10,7 +10,8 @@ use axum::{
     response::{sse::Event, IntoResponse, Sse},
     Extension,
 };
-use futures::{Stream, StreamExt, TryStreamExt};
+use futures::{stream, Stream, StreamExt, TryStreamExt};
+use rake::*;
 use secrecy::ExposeSecret;
 use thiserror::Error;
 use tokio::sync::RwLock;
@@ -34,6 +35,17 @@ use super::prelude::*;
 pub mod api {
     use serde::Deserialize;
 
+    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+    pub struct Message {
+        pub role: String,
+        pub content: String,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+    pub struct Messages {
+        pub messages: Vec<Message>,
+    }
+
     #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     #[serde(rename_all = "lowercase")]
     pub enum Provider {
@@ -43,10 +55,11 @@ pub mod api {
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Request {
-        pub prompt: String,
+        pub messages: Messages,
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
         pub provider: Provider,
+        pub extra_stop_sequences: Vec<String>,
     }
 
     #[derive(thiserror::Error, Debug, Deserialize)]
@@ -56,13 +69,6 @@ pub mod api {
     }
 
     pub type Result = std::result::Result<String, Error>;
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct Request {
-    pub query: String,
-    pub snippets: Vec<Snippet>,
-    pub user_id: String,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
@@ -80,28 +86,41 @@ pub struct Snippet {
 }
 
 fn default_limit() -> u64 {
-    10
+    20
 }
 
 fn default_user_id() -> String {
     String::from("test_user")
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
     pub q: String,
+    pub thread_id: String,
     #[serde(default = "default_limit")]
     pub limit: u64,
     #[serde(default = "default_user_id")]
     pub user_id: String,
 }
 
+impl Params {
+    fn thread_id(&self) -> String {
+        format!("{}-{}", self.user_id, self.thread_id)
+    }
+}
+
 #[derive(serde::Serialize, ToSchema, Debug)]
 pub struct AnswerResponse {
     pub user_id: String,
+    pub session_id: String,
     pub query_id: uuid::Uuid,
-    pub snippets: Vec<Snippet>,
-    pub answer_path: Option<String>,
+    pub snippets: Option<AnswerSnippets>,
+}
+
+#[derive(serde::Serialize, ToSchema, Debug)]
+pub struct AnswerSnippets {
+    pub matches: Vec<Snippet>,
+    pub answer_path: String,
 }
 
 impl From<AnswerResponse> for super::Response<'static> {
@@ -110,7 +129,7 @@ impl From<AnswerResponse> for super::Response<'static> {
     }
 }
 
-const SNIPPET_COUNT: usize = 13;
+const SNIPPET_COUNT: usize = 20;
 
 pub(super) struct AnswerState {
     client: reqwest::Client,
@@ -159,40 +178,52 @@ pub(super) async fn handle(
     response
 }
 
-async fn _handle(
-    state: &AnswerState,
-    params: Params,
-    app: Application,
-    event: Arc<RwLock<QueryEvent>>,
-) -> Result<impl IntoResponse> {
-    let query_id = uuid::Uuid::new_v4();
-    let mut stop_watch = StopWatch::start();
-
-    info!("Raw query: {:?}", &params.q);
-
-    let semantic = app
-        .semantic
-        .clone()
-        .ok_or_else(|| Error::new(ErrorKind::Configuration, "Qdrant not configured"))?;
-
-    let mut analytics_event = event.write().await;
-
-    analytics_event.user_id = params.user_id.clone();
-    analytics_event.query_id = query_id;
-    analytics_event.overlap_strategy = semantic.overlap_strategy();
-
-    analytics_event
-        .stages
-        .push(Stage::new("user query", &params.q).with_time(stop_watch.lap()));
-
-    // Parse the query for search filters
-    let parsed_query = parser::parse_nl(&params.q).map_err(Error::user)?;
-    let query = parsed_query
+fn parse_query(query: &str) -> Result<String, Error> {
+    Ok(parser::parse_nl(query)
+        .map_err(Error::user)?
         .target()
-        .ok_or_else(|| Error::user("missing search target"))?;
+        .ok_or_else(|| Error::user("empty search"))?
+        .to_string())
+}
+
+const MAX_HISTORY: usize = 7;
+
+#[derive(Debug)]
+enum AnswerProgress {
+    // Need to rephrase the query. The contained string is the prompt for rephrasing
+    Rephrase(String),
+    // Got a query to search
+    Search(String),
+    // Explain the results
+    Explain(String),
+}
+
+impl AnswerProgress {
+    fn to_stage(&self, stop_watch: &mut StopWatch, snippets: Option<&[Snippet]>) -> Stage {
+        match self {
+            AnswerProgress::Rephrase(s) => Stage::new("rephrase", s),
+            AnswerProgress::Search(_) => Stage::new("search", snippets),
+            AnswerProgress::Explain(expl) => Stage::new("explain", expl),
+        }
+        .with_time(stop_watch.lap())
+    }
+}
+
+async fn search_snippets(
+    semantic: &Semantic,
+    raw_query: &str,
+    rephrased_query: &str,
+) -> Result<Vec<Snippet>, Error> {
+    let mut parsed_query = &mut parser::parse_nl(raw_query).map_err(Error::user)?;
+
+    // Extract keywords from the rephrased query
+    let keywords = get_keywords(rephrased_query);
+    info!("Extracted keywords: {}", keywords);
+
+    parsed_query.target = Some(parser::Literal::Plain(keywords.into()));
 
     let all_snippets: Vec<Snippet> = semantic
-        .search(&parsed_query, 4 * SNIPPET_COUNT as u64) // heuristic
+        .search(parsed_query, 4 * SNIPPET_COUNT as u64) // heuristic
         .await
         .map_err(Error::internal)?
         .into_iter()
@@ -232,15 +263,10 @@ async fn _handle(
             }
         })
         .collect();
-
-    analytics_event
-        .stages
-        .push(Stage::new("semantic results", &all_snippets).with_time(stop_watch.lap()));
-
-    let mut snippets = vec![];
+    let mut snippets = Vec::new();
     let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
 
-    for snippet in all_snippets.clone().into_iter() {
+    for snippet in all_snippets.into_iter() {
         if snippets.len() > SNIPPET_COUNT {
             break;
         }
@@ -273,17 +299,81 @@ async fn _handle(
             }
         }
     }
+    Ok(snippets)
+}
 
-    analytics_event
-        .stages
-        .push(Stage::new("filtered semantic results", &snippets).with_time(stop_watch.lap()));
+// we use this internally to check whether the first token (skipping whitespace) is a
+// number or something else
+enum FirstToken {
+    Number(usize),
+    Other(String),
+    None,
+}
 
-    if snippets.is_empty() {
-        warn!("Semantic search returned no snippets");
-        return Err(Error::internal("semantic search returned no snippets"));
-    } else {
-        info!("Semantic search returned {} snippets", snippets.len());
-    }
+async fn grow_snippet(
+    relevant_snippet: &Snippet,
+    semantic: &Semantic,
+    app: &Application,
+) -> Result<Snippet, Error> {
+    // grow the snippet by 60 lines above and below, we have sufficient space
+    // to grow this snippet by 10 times its original size (15 to 150)
+    let repo_ref = &relevant_snippet
+        .repo_ref
+        .parse::<RepoRef>()
+        .map_err(Error::internal)?;
+
+    let doc = app
+        .indexes
+        .file
+        .by_path(repo_ref, &relevant_snippet.relative_path)
+        .await
+        .map_err(Error::internal)?;
+
+    let mut grow_size = 40;
+    let grown_text = loop {
+        if let Some(grown_text) = grow(&doc, relevant_snippet, grow_size) {
+            let token_count = semantic.gpt2_token_count(&grown_text);
+            info!(%grow_size, %token_count, "growing ...");
+            if token_count > 6000 || grow_size > 100 {
+                break grown_text;
+            } else {
+                grow_size += 10;
+            }
+        } else {
+            break relevant_snippet.text.clone();
+        }
+    };
+
+    Ok(Snippet {
+        lang: relevant_snippet.lang.clone(),
+        repo_name: relevant_snippet.repo_name.clone(),
+        repo_ref: relevant_snippet.repo_ref.clone(),
+        relative_path: relevant_snippet.relative_path.clone(),
+        text: grown_text,
+        start_line: relevant_snippet.start_line,
+        end_line: relevant_snippet.end_line,
+        start_byte: relevant_snippet.start_byte,
+        end_byte: relevant_snippet.end_byte,
+        score: relevant_snippet.score,
+    })
+}
+
+async fn handle_inner(
+    query: &str,
+    state: &AnswerState,
+    params: Arc<Params>,
+    app: Arc<Application>,
+    event: Arc<RwLock<QueryEvent>>,
+    mut stop_watch: StopWatch,
+) -> Result<(
+    Option<Vec<Snippet>>,
+    StopWatch,
+    std::pin::Pin<Box<dyn Stream<Item = Result<String, AnswerAPIError>> + Send>>,
+)> {
+    let thread_id = params.thread_id();
+    let query = query.to_string(); // TODO: Sort out query handling
+
+    let mut snippets = None;
 
     let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
         let Some(cred) = app.credentials.get(&Backend::Github) else {
@@ -309,156 +399,267 @@ async fn _handle(
         None
     };
 
+    let semantic = app
+        .semantic
+        .clone()
+        .ok_or_else(|| Error::new(ErrorKind::Configuration, "Qdrant not configured"))?;
+
     let answer_api_client = semantic.build_answer_api_client(
         state,
-        format!("{}/q", app.config.answer_api_url).as_str(),
-        query,
+        format!("{}/v1/q", app.config.answer_api_url).as_str(),
         5,
         answer_bearer.clone(),
     );
 
-    let select_prompt = answer_api_client.build_select_prompt(&snippets);
-
-    analytics_event
-        .stages
-        .push(Stage::new("select prompt", &select_prompt).with_time(stop_watch.lap()));
-
-    let relevant_snippet_index = answer_api_client
-        .select_snippet(&select_prompt)
-        .await?
-        .trim()
-        .to_string()
-        .clone();
-
-    info!("Relevant snippet index: {}", &relevant_snippet_index);
-
-    let mut relevant_snippet_index = relevant_snippet_index
-        .parse::<usize>()
-        .map_err(Error::internal)?;
-
-    analytics_event.stages.push(
-        Stage::new("relevant snippet index", relevant_snippet_index).with_time(stop_watch.lap()),
-    );
-
-    let (answer_path, stream) = if relevant_snippet_index > 0 {
-        relevant_snippet_index -= 1; // return to 0-indexing
-        let relevant_snippet = snippets
-            .get(relevant_snippet_index)
-            .ok_or_else(|| Error::internal("answer-api returned out-of-bounds index"))?;
-
-        // grow the snippet by 60 lines above and below, we have sufficient space
-        // to grow this snippet by 10 times its original size (15 to 150)
-
-        let repo_ref = &relevant_snippet
-            .repo_ref
-            .parse::<RepoRef>()
-            .map_err(Error::internal)?;
-        let doc = app
-            .indexes
-            .file
-            .by_path(repo_ref, &relevant_snippet.relative_path)
-            .await
-            .map_err(Error::internal)?;
-
-        let mut grow_size = 40;
-        let grown_text = loop {
-            if let Some(grown_text) = grow(&doc, relevant_snippet, grow_size) {
-                let token_count = semantic.gpt2_token_count(&grown_text);
-                info!(%grow_size, %token_count, "growing ...");
-                if token_count > 2000 || grow_size > 100 {
-                    break grown_text;
-                } else {
-                    grow_size += 10;
-                }
+    let mut progress = app
+        .with_prior_conversation(&thread_id, |history| {
+            if history.is_empty() {
+                None
             } else {
-                break relevant_snippet.text.clone();
-            };
+                Some(query.clone())
+            }
+        })
+        .map(AnswerProgress::Rephrase)
+        .unwrap_or(AnswerProgress::Rephrase(query.clone()));
+
+    event
+        .write()
+        .await
+        .stages
+        .push(Stage::new("start", &query).with_time(stop_watch.lap()));
+
+    loop {
+        // Here we ask anthropic for either action selection, rephrasing or explanation
+        // (depending on `progress`)
+        let stream_params = match &progress {
+            AnswerProgress::Rephrase(query) => {
+                let prompt = app.with_prior_conversation(&thread_id, |history| {
+                    let n = history.len().saturating_sub(MAX_HISTORY);
+                    build_rephrase_query_prompt(query, &history[n..])
+                });
+
+                (prompt, 20, 0.0, vec![])
+            }
+            AnswerProgress::Search(rephrased_query) => {
+                // TODO: Clean up this query handling logic
+                let s = search_snippets(&semantic, &params.q, rephrased_query).await?;
+                info!("Retrieved {} snippets", s.len());
+
+                let prompt = answer_api_client.build_select_prompt(rephrased_query, &s);
+                snippets = Some(s);
+                (prompt, 10, 0.0, vec!["</index>".into()])
+            }
+            AnswerProgress::Explain(query) => {
+                let prompt = if let Some(snippet) = snippets.as_ref().unwrap().first() {
+                    let grown = grow_snippet(snippet, &semantic, &app).await?;
+                    app.with_prior_conversation(&thread_id, |conversation| {
+                        answer_api_client.build_explain_prompt(&grown, conversation, query)
+                    })
+                } else {
+                    api::Messages {
+                        messages: vec![api::Message {
+                            role: "user".into(),
+                            content: "Apologize for not finding a suitable code snippet, \
+                        while expressing hope that one of the snippets may still be useful"
+                                .to_string(),
+                        }],
+                    }
+                };
+                let tokens_used =
+                    semantic.gpt2_token_count(&prompt.messages.first().unwrap().content);
+                info!(%tokens_used, "input prompt token count");
+                let max_tokens = 8000u32.saturating_sub(tokens_used as u32);
+                if max_tokens == 0 {
+                    // our prompt has overshot the token count, log an error for now
+                    // TODO: this should propagte to sentry
+                    error!(%tokens_used, "prompt overshot token limit");
+                }
+                // do not let the completion cross 250 tokens
+                let max_tokens = max_tokens.clamp(1, 250);
+                info!(%max_tokens, "clamping max tokens");
+
+                (prompt, max_tokens, 0.9, vec![])
+            }
         };
 
-        let processed_snippet = Snippet {
-            lang: relevant_snippet.lang.clone(),
-            repo_name: relevant_snippet.repo_name.clone(),
-            repo_ref: relevant_snippet.repo_ref.clone(),
-            relative_path: relevant_snippet.relative_path.clone(),
-            text: grown_text,
-            start_line: relevant_snippet.start_line,
-            end_line: relevant_snippet.end_line,
-            start_byte: relevant_snippet.start_byte,
-            end_byte: relevant_snippet.end_byte,
-            score: relevant_snippet.score,
-        };
+        // This strange extraction of parameters from a tuple is due to lifetime issues. This
+        // function should probably be refactored, but at the time of writing this is left as-is
+        // due to time constraints.
+        let mut stream = Box::pin(
+            answer_api_client
+                .send_until_success(
+                    stream_params.0,
+                    stream_params.1,
+                    stream_params.2,
+                    api::Provider::OpenAi,
+                    stream_params.3,
+                )
+                .await?,
+        );
 
-        // reorder snippets
-        snippets.swap(relevant_snippet_index, 0);
+        if let AnswerProgress::Rephrase(_) = &progress {
+            let rephrased_query: String = stream.try_collect().await?;
+            info!("Rephrased query: {:?}", &rephrased_query);
+            if rephrased_query.trim() == "N/A" {
+                let rephrase_fail_stream = Box::pin(stream::once(async {
+                    Ok(
+                        "I'm not sure what you mean. Try asking a technical question about the codebase."
+                            .to_string(),
+                    )
+                }));
+                return Ok((None, stop_watch, rephrase_fail_stream));
+            }
+            progress = AnswerProgress::Search(rephrased_query);
+            continue;
+        }
 
-        let explain_prompt = answer_api_client.build_explain_prompt(&processed_snippet);
+        let mut collected = FirstToken::None;
+        while let Some(token) = stream.try_next().await? {
+            if let Ok(i) = token.trim().parse::<usize>() {
+                collected = FirstToken::Number(i);
+                break;
+            } else if !token.bytes().all(|b| b.is_ascii_whitespace()) {
+                collected = FirstToken::Other(token);
+                break;
+            }
+        }
 
-        analytics_event
-            .stages
-            .push(Stage::new("explain prompt", &explain_prompt).with_time(stop_watch.lap()));
-
-        let mut snippet_explanation = answer_api_client
-            .explain_snippet(&explain_prompt)
+        event
+            .write()
             .await
-            .map_err(Error::internal)
-            .map(Box::pin)?;
+            .stages
+            .push(progress.to_stage(&mut stop_watch, snippets.as_deref()));
 
-        drop(analytics_event);
-
-        let analytics_event = Arc::clone(&event);
-
-        let stream = async_stream::stream! {
-            let mut explanation = String::new();
-            while let Some(result) = snippet_explanation.next().await {
-                yield Ok(Event::default()
-                    .json_data(result.as_ref().map_err(|e| e.to_string()))
-                    .unwrap());
-
-                match result {
-                    Ok(s) => explanation += &s,
-                    Err(e) => yield Err(e),
+        match collected {
+            FirstToken::Number(n) => {
+                progress = match progress {
+                    AnswerProgress::Search(prompt) => {
+                        let Some(index) = n.checked_sub(1) else {
+                            let selection_fail_stream = Box::pin(stream::once(async {
+                                Ok("I'm not sure. One of these snippets might be relevant".to_string())
+                            }));
+                            return Ok((snippets, stop_watch, selection_fail_stream));
+                        };
+                        snippets.as_mut().unwrap().swap(index, 0);
+                        AnswerProgress::Explain(prompt)
+                    }
+                    e => e,
                 }
             }
+            FirstToken::Other(token) => {
+                return Ok((
+                    snippets,
+                    stop_watch,
+                    Box::pin(stream::once(async move { Ok(token) }).chain(stream)),
+                ));
+            }
+            FirstToken::None => {
+                return Ok((
+                    snippets,
+                    stop_watch,
+                    Box::pin(stream::once(async move { Ok("".to_string()) }).chain(stream)),
+                ));
+            }
+        }
+    }
+}
 
-            let mut event = analytics_event.write().await;
+async fn _handle(
+    state: &AnswerState,
+    params: Params,
+    app: Application,
+    event: Arc<RwLock<QueryEvent>>,
+) -> Result<impl IntoResponse> {
+    let query_id = uuid::Uuid::new_v4();
 
-            event
-                .stages
-                .push(Stage::new("explanation", &explanation).with_time(stop_watch.lap()));
+    info!("Raw query: {:?}", &params.q);
+    let query = parse_query(&params.q)?;
+    info!("Parsed query target: {:?}", &query);
 
-            app.track_query(&event);
-        };
+    {
+        let mut analytics_event = event.write().await;
+        analytics_event.user_id = params.user_id.clone();
+        analytics_event.query_id = query_id;
+        if let Some(semantic) = app.semantic.as_ref() {
+            analytics_event.overlap_strategy = semantic.overlap_strategy();
+        }
+    }
 
-        // answering snippet is always at index 0
-        let answer_path = snippets.get(0).unwrap().relative_path.to_string();
+    let thread_id = params.thread_id();
 
-        (Some(answer_path), stream.left_stream())
-    } else {
-        warn!("None of the snippets help answer the question");
-        (None, futures::stream::empty().right_stream())
-    };
-
+    let stop_watch = StopWatch::start();
+    let params = Arc::new(params);
+    let mut app = Arc::new(app);
+    let (snippets, mut stop_watch, mut text) = handle_inner(
+        &query,
+        state,
+        Arc::clone(&params),
+        Arc::clone(&app),
+        Arc::clone(&event),
+        stop_watch,
+    )
+    .await?;
+    Arc::make_mut(&mut app).add_conversation_entry(thread_id.clone(), query);
     let initial_event = Event::default()
         .json_data(super::Response::<'static>::from(AnswerResponse {
-            snippets: snippets.clone(),
             query_id,
+            session_id: thread_id.clone(),
             user_id: params.user_id.clone(),
-            answer_path,
+            snippets: snippets.as_ref().map(|matches| AnswerSnippets {
+                matches: matches.clone(),
+                answer_path: matches
+                    .first()
+                    .map(|s| &s.relative_path)
+                    .cloned()
+                    .unwrap_or_default(),
+            }),
         }))
         .map_err(Error::internal)?;
 
-    Ok(Sse::new({
-        futures::stream::once(async move { Ok(initial_event) })
-            .chain(stream)
-            .chain(futures::stream::once(async {
-                Ok(Event::default().data("[DONE]"))
-            }))
-    }))
+    let mut expl = String::new();
+
+    let wrapped_stream = async_stream::stream! {
+        yield Ok(initial_event);
+        while let Some(result) = text.next().await {
+            if let Ok(fragment) = &result {
+                app.extend_conversation_answer(thread_id.clone(), fragment.trim_end())
+            }
+            yield Ok(Event::default()
+                .json_data(result.as_ref().map_err(|e| e.to_string()))
+                .unwrap());
+
+            match result {
+                Ok(s) => expl += &s,
+                Err(e) => yield Err(e),
+            }
+        }
+        let mut event = event.write().await;
+        event
+            .stages
+            .push(Stage::new("explanation", &expl).with_time(stop_watch.lap()));
+        app.track_query(&event);
+    };
+
+    Ok(Sse::new(wrapped_stream.chain(futures::stream::once(
+        async { Ok(Event::default().data("[DONE]")) },
+    ))))
 }
 
 // grow the text of this snippet by `size` and return the new text
 fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String> {
     let content = &doc.content;
+
+    // do not grow if this snippet contains incorrect byte ranges
+    if snippet.start_byte >= content.len() || snippet.end_byte >= content.len() {
+        error!(
+            repo = snippet.repo_name,
+            path = snippet.relative_path,
+            start = snippet.start_byte,
+            end = snippet.end_byte,
+            "invalid snippet bounds",
+        );
+        return None;
+    }
 
     // do not grow if this snippet contains incorrect byte ranges
     if snippet.start_byte >= content.len() || snippet.end_byte >= content.len() {
@@ -490,9 +691,26 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String>
     Some(content[new_start_byte..new_end_byte].to_owned())
 }
 
+static RAKE: once_cell::sync::Lazy<Rake> = once_cell::sync::Lazy::new(|| {
+    let stop_words = include_str!("../../../stopwords.txt");
+    let sw = stop_words
+        .lines()
+        .map(ToOwned::to_owned)
+        .collect::<HashSet<String>>()
+        .into();
+    Rake::new(sw)
+});
+
+fn get_keywords(query: &str) -> String {
+    RAKE.run(query)
+        .into_iter()
+        .map(|score| score.keyword)
+        .collect::<Vec<String>>()
+        .join(" ")
+}
+
 struct AnswerAPIClient<'s> {
     host: String,
-    query: String,
     semantic: &'s Semantic,
     max_attempts: usize,
     bearer_token: Option<String>,
@@ -532,13 +750,11 @@ impl Semantic {
         &'s self,
         state: &AnswerState,
         host: &str,
-        query: &str,
         max_attempts: usize,
         bearer_token: Option<String>,
     ) -> AnswerAPIClient<'s> {
         AnswerAPIClient {
             host: host.to_owned(),
-            query: query.to_owned(),
             semantic: self,
             max_attempts,
             // Internally, cookies are shared between `reqwest` client instances via a shared lock.
@@ -552,10 +768,11 @@ impl Semantic {
 impl<'s> AnswerAPIClient<'s> {
     async fn send(
         &self,
-        prompt: &str,
+        messages: api::Messages,
         max_tokens: u32,
         temperature: f32,
         provider: api::Provider,
+        extra_stop_sequences: Vec<String>,
     ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
         let mut stream = Box::pin(
             reqwest_eventsource::EventSource::new({
@@ -566,10 +783,11 @@ impl<'s> AnswerAPIClient<'s> {
                 }
 
                 builder.json(&api::Request {
-                    prompt: prompt.to_string(),
+                    messages,
                     max_tokens: Some(max_tokens),
                     temperature: Some(temperature),
                     provider,
+                    extra_stop_sequences,
                 })
             })
             // We don't have a `Stream` body so this can't fail.
@@ -603,18 +821,24 @@ impl<'s> AnswerAPIClient<'s> {
             }))
     }
 
+    #[allow(dead_code)]
     async fn send_until_success(
         &self,
-        prompt: &str,
+        messages: api::Messages,
         max_tokens: u32,
         temperature: f32,
         provider: api::Provider,
-    ) -> Result<String, AnswerAPIError> {
+        extra_stop_sequences: Vec<String>,
+    ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
         for attempt in 0..self.max_attempts {
             let result = self
-                .send(prompt, max_tokens, temperature, provider.clone())
-                .await?
-                .try_collect::<String>()
+                .send(
+                    messages.clone(),
+                    max_tokens,
+                    temperature,
+                    provider.clone(),
+                    extra_stop_sequences.clone(),
+                )
                 .await;
 
             match result {
@@ -628,9 +852,9 @@ impl<'s> AnswerAPIClient<'s> {
 
 const DELIMITER: &str = "=========";
 impl<'a> AnswerAPIClient<'a> {
-    fn build_select_prompt(&self, snippets: &[Snippet]) -> String {
+    fn build_select_prompt(&self, query: &str, snippets: &[Snippet]) -> api::Messages {
         // snippets are 1-indexed so we can use index 0 where no snippets are relevant
-        let mut prompt = snippets
+        let mut system = snippets
             .iter()
             .enumerate()
             .map(|(i, snippet)| {
@@ -647,71 +871,157 @@ impl<'a> AnswerAPIClient<'a> {
 
         // the example question/answer pair helps reinforce that we want exactly a single
         // number in the output, with no spaces or punctuation such as fullstops.
-        prompt += &format!(
-            "Above are {} code snippets separated by \"{DELIMITER}\". \
-Your job is to select the snippet that best answers the question. Reply \
-with a single number indicating the index of the snippet in the list. \
-If none of the snippets are relevant, reply with \"0\". Do NOT return a non-numeric answer.
+        system += &format!(
+            "Above are {} code snippets separated by \"{DELIMITER}\". Your job is to select the snippet that best answers the question. Reply with a single integer indicating the index of the snippet in the list.
+If none of the snippets are relevant reply with the number 0. Wrap your response in <index></index> XML tags.
 
-Q:What icon do we use to clear search history?
-Index:3
+User:What icon do we use to clear search history?
+Assistant:<index>3</index>
 
-Q:{}
-Index:",
+User:{}
+Assistant:<index>",
             snippets.len(),
-            self.query,
+            &query
         );
 
-        let tokens_used = self.semantic.gpt2_token_count(&prompt);
+        let messages = vec![api::Message {
+            role: "user".into(),
+            content: system.clone(),
+        }];
+
+        let tokens_used = self.semantic.gpt2_token_count(&system);
         debug!(%tokens_used, "select prompt token count");
-        prompt
+
+        api::Messages { messages }
     }
 
-    fn build_explain_prompt(&self, snippet: &Snippet) -> String {
-        let prompt = format!(
-            "You are an AI assistant for a repo. Answer the question using above in a sentence. Do NOT try to make up an answer.
-Question: {}
-=========
-Path: {}
-File: {}
-=========
-Answer:",
-            self.query, snippet.relative_path, snippet.text,
-        );
-        prompt
-    }
-
-    async fn select_snippet(&self, prompt: &str) -> Result<String> {
-        self.send_until_success(prompt, 1, 0.0, api::Provider::Anthropic)
-            .await
-            .map_err(|e| {
-                sentry::capture_message(
-                    format!("answer-api failed to respond: {e}").as_str(),
-                    sentry::Level::Error,
-                );
-                Error::new(ErrorKind::UpstreamService, e.to_string())
-            })
-    }
-
-    async fn explain_snippet(
+    fn build_explain_prompt(
         &self,
-        prompt: &str,
-    ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
-        let tokens_used = self.semantic.gpt2_token_count(prompt);
-        info!(%tokens_used, "input prompt token count");
-        let max_tokens = 4096usize.saturating_sub(tokens_used);
-        if max_tokens == 0 {
-            // our prompt has overshot the token count, log an error for now
-            // TODO: this should propagte to sentry
-            error!(%tokens_used, "prompt overshot token limit");
+        snippet: &Snippet,
+        conversation: &[(String, String)],
+        query: &str,
+    ) -> api::Messages {
+        let system = format!(
+            r#"{}/{}
+=========
+{}
+=========
+Above, you have an extract from a code file. This message will be followed by the last few utterances of a conversation with a user. Use the code file to write a concise, precise answer to the question.
+
+- Format your response in GitHub Markdown. Paths, function names and code extracts should be enclosed in backticks.
+- Keep your response short. It should only be a few sentences long at the most.
+- Do NOT copy long chunks of code into the response.
+- If the file doesn't contain enough information to answer the question, or you don't know the answer, just say "Sorry, I'm not sure.".
+- Do NOT try to make up an answer or answer with regard to information that is not in the file.
+- The conversation history can provide context to the user's current question, but sometimes it contains irrelevant information. IGNORE information in the conversation which is irrelevant to the user's current question.
+
+Let's think step by step. First carefully refer to the code above, then answer the question with reference to it."#,
+            snippet.repo_name, snippet.relative_path, snippet.text,
+        );
+
+        let mut messages = vec![api::Message {
+            role: "system".to_string(),
+            content: system,
+        }];
+
+        for (question, answer) in conversation {
+            messages.push(api::Message {
+                role: "user".to_string(),
+                content: question.clone(),
+            });
+            messages.push(api::Message {
+                role: "assistant".to_string(),
+                content: answer.clone(),
+            });
         }
 
-        // do not let the completion cross 200 tokens
-        let max_tokens = max_tokens.clamp(1, 200);
-        info!(%max_tokens, "clamping max tokens");
-        self.send(prompt, max_tokens as u32, 0.0, api::Provider::Anthropic)
-            .await
+        messages.push(api::Message {
+            role: "user".to_string(),
+            content: query.to_string(),
+        });
+
+        api::Messages { messages }
     }
+}
+
+fn build_rephrase_query_prompt(query: &str, conversation: &[(String, String)]) -> api::Messages {
+    let system =
+        r#"Given a question and an optional conversational history between a user and yourself, generate a standalone question. If there is no question, write "N/A" instead."
+
+- IGNORE any information in the conversational history which is not relevant to the question
+- Absolutely, positively do NOT answer the question
+- Rephrase the question into a standalone question
+- The standalone question should be concise
+- Only add terms to the standalone question where absolutely necessary
+
+User: Hey bloop, do we pin js version numbers?
+Assistant: Do we pin js version numbers?
+
+User: Hey bloop, I have a question - Where do we test if GitHub login works?
+Assistant: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
+User: which file?
+Assistant: In which file do we test if GitHub login works?
+
+User: What's the best way to update the search icon @bloop?
+Assistant: What's the best way to update the search icon?
+
+User: Where do we test if GitHub login works
+Assistant: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
+User: Are there unit tests?
+Assistant: Is there a unit test for GitHub login?
+
+User: sdfkhsdkfh
+Assistant: N/A
+
+User: Where is the answer api called
+Assistant: The answer API client is called in `server/bleep/webserver/answer.rs`. After building the prompt the `select_snippet` method belonging to the `answer_api_client` is called.
+User: frontend
+Assistant: Where is the answer API called on the frontend?
+
+User: Where do bug reports get sent?
+Assistant: Bug reports get sent to the repo maintainers.
+User: Which url
+Assistant: Which url do bug reports get sent to?
+
+User: tailwind config
+Assistant: The `tailwind.config.cjs` file configures Tailwind CSS for the desktop app by extending a basic configuration and adding additional content paths.
+User: client config
+Assistant: Where is the client Tailwind config file?
+
+User: I love bananas
+Assistant: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
+User: Which onnxruntime library do we use?
+Assistant: Which onnxruntime library do we use?
+
+User: Where is the query parsing logic?
+Assistant: The query parser is defined in the `parse` function in `server/bleep/src/query/parser.rs`.
+User: Which libraries does it use?
+Assistant: Sorry, the given code snippet does not contain enough context to determine which libraries the query parser uses.
+User: Where's the delete repo endpoint?
+Assistant: Where's the delete repo endpoint?"#.to_string();
+
+    let mut messages = vec![api::Message {
+        role: "system".to_string(),
+        content: system,
+    }];
+
+    for (question, answer) in conversation {
+        messages.push(api::Message {
+            role: "user".to_string(),
+            content: question.clone(),
+        });
+        messages.push(api::Message {
+            role: "assistant".to_string(),
+            content: answer.clone(),
+        });
+    }
+
+    messages.push(api::Message {
+        role: "user".to_string(),
+        content: query.to_string(),
+    });
+
+    api::Messages { messages }
 }
 
 // Measure time between instants statefully
