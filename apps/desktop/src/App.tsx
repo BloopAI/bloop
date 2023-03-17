@@ -103,11 +103,11 @@ function App() {
     ]).then(([arch, type, platform, version, appVersion]) => {
       setOs({ arch, type, platform, version });
       setRelease(appVersion);
-      checkUpdateAndInstall(appVersion);
-      intervalId = window.setInterval(
-        () => checkUpdateAndInstall(appVersion),
-        1000 * 60 * 60,
-      );
+      // checkUpdateAndInstall(appVersion);
+      // intervalId = window.setInterval(
+      //   () => checkUpdateAndInstall(appVersion),
+      //   1000 * 60 * 60,
+      // );
     });
     if (import.meta.env.SENTRY_DSN_BE) {
       invoke('initialize_sentry', {
