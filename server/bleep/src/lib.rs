@@ -25,8 +25,7 @@ use dunce::canonicalize;
 use std::fs::canonicalize;
 
 use crate::{
-    background::BackgroundExecutor, indexes::Indexes, remotes::BackendCredential, repo::Backend,
-    semantic::Semantic, state::RepositoryPool,
+    background::BackgroundExecutor, indexes::Indexes, semantic::Semantic, state::RepositoryPool,
 };
 use anyhow::{anyhow, bail, Result};
 use axum::extract::FromRef;
@@ -74,7 +73,7 @@ pub struct Application {
     background: BackgroundExecutor,
     semantic: Option<Semantic>,
     indexes: Arc<Indexes>,
-    credentials: Arc<DashMap<Backend, BackendCredential>>,
+    credentials: remotes::Backends,
     cookie_key: axum_extra::extract::cookie::Key,
     prior_conversational_store: Arc<DashMap<String, Vec<(String, String)>>>,
 }
@@ -130,10 +129,10 @@ impl Application {
 
         Ok(Self {
             indexes: Arc::new(Indexes::new(config.clone(), semantic.clone())?),
-            credentials: Arc::new(config.source.initialize_credentials()?),
             background: BackgroundExecutor::start(config.clone()),
             repo_pool: config.source.initialize_pool()?,
             cookie_key: config.source.initialize_cookie_key()?,
+            credentials: config.source.initialize_credentials()?.into(),
             semantic,
             config,
             env,
@@ -208,6 +207,7 @@ impl Application {
             joins.spawn(self.write_index().startup_scan());
         } else {
             if !self.config.disable_background {
+                tokio::spawn(remotes::sync_repositories(self.clone()));
                 tokio::spawn(remotes::check_credentials(self.clone()));
                 tokio::spawn(remotes::check_repo_updates(self.clone()));
             }
