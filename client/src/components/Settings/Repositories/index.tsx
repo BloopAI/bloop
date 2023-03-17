@@ -27,8 +27,12 @@ const dropdownIcon = (
 
 const RepositoriesSettings = () => {
   const { repositories, setRepositories } = useContext(RepositoriesContext);
-  const { onBoardingState, isGithubConnected, setGithubConnected } =
-    useContext(UIContext);
+  const {
+    onBoardingState,
+    isGithubConnected,
+    setGithubConnected,
+    setSettingsOpen,
+  } = useContext(UIContext);
   const { isSelfServe } = useContext(DeviceContext);
   const [isAddReposOpen, setAddReposOpen] = useState<null | 'local' | 'github'>(
     null,
@@ -188,7 +192,12 @@ const RepositoriesSettings = () => {
       </div>
       <AddRepos
         addRepos={isAddReposOpen}
-        onClose={() => setAddReposOpen(null)}
+        onClose={(isSubmitted) => {
+          setAddReposOpen(null);
+          if (isSubmitted) {
+            setSettingsOpen(false);
+          }
+        }}
       />
     </>
   );
