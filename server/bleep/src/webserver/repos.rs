@@ -1,4 +1,4 @@
-use std::{collections::HashSet, future::Future, pin::Pin};
+use std::{collections::HashSet, time::Duration};
 
 use crate::{
     repo::{Backend, RepoRef, Repository, SyncStatus},
@@ -95,16 +95,18 @@ impl super::ApiResponse for ReposResponse {}
 pub(super) async fn index_status(Extension(app): Extension<Application>) -> impl IntoResponse {
     let mut receiver = app.indexes.subscribe();
 
-    Sse::new(futures::stream::poll_fn(move |cx| {
-        Pin::new(&mut Box::pin(receiver.recv()))
-            .poll(cx)
-            .map(Result::ok)
-            .map(|event| {
-                Some(sse::Event::default().json_data(event).map_err(|err| {
-                    <_ as Into<Box<dyn std::error::Error + Send + Sync>>>::into(err)
-                }))
-            })
-    }))
+    Sse::new(async_stream::stream! {
+        while let Ok(event) = receiver.recv().await {
+            yield sse::Event::default().json_data(event).map_err(|err| {
+                <_ as Into<Box<dyn std::error::Error + Send + Sync>>>::into(err)
+            });
+        }
+    })
+    .keep_alive(
+        sse::KeepAlive::new()
+            .interval(Duration::from_secs(5))
+            .event(sse::Event::default().event("heartbeat")),
+    )
 }
 
 /// Retrieve all indexed repositories
