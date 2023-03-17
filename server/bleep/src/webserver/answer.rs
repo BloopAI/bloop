@@ -434,7 +434,7 @@ async fn handle_inner(
             }
             AnswerProgress::Search(rephrased_query) => {
                 let keywords = get_keywords(rephrased_query);
-                info!("Keywords: {}", keywords);
+                info!("Extracted keywords: {}", keywords);
                 let s = search_snippets(&semantic, &keywords).await?;
 
                 let prompt = answer_api_client.build_select_prompt(rephrased_query, &s);
@@ -460,11 +460,6 @@ async fn handle_inner(
                 (prompt, 400, 0.0, vec!["</response>".to_owned()])
             }
         };
-
-        dbg!(&progress);
-        dbg!("PROMPT");
-        dbg!(&stream_params.0);
-        dbg!("PROMPT");
 
         // This strange extraction of parameters from a tuple is due to lifetime issues. This
         // function should probably be refactored, but at the time of writing this is left as-is
