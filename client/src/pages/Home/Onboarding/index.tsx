@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { UIContext } from '../../../context/uiContext';
 import { DeviceContext } from '../../../context/deviceContext';
+import { repositoriesSyncCache } from '../../../services/cache';
 import DataFormStep from './DataFormStep';
 import FolderSelectStep from './FolderSelectStep';
 import LocalReposStep from './LocalReposStep';
@@ -39,6 +40,9 @@ const Onboarding = ({ onFinish }: Props) => {
   useEffect(() => {
     if (isSelfServe ? step === 1 : step === Steps.FINISHED) {
       onFinish();
+      if (!isSelfServe) {
+        repositoriesSyncCache.shouldNotifyWhenDone = true;
+      }
     }
   }, [step, isSelfServe]);
 

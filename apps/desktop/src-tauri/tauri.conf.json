@@ -19,7 +19,7 @@
         "all": true
       },
       "dialog": {
-        "open": true
+        "all": true
       },
       "http": {
         "all": true
@@ -84,7 +84,7 @@
       "endpoints": [
         "https://api.bloop.ai/releases/{{target}}/{{current_version}}"
       ],
-      "dialog": false,
+      "dialog": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNGQkQ2RjRBNEM3OURFQ0IKUldUTDNubE1TbSs5UDVIMms5dTU2cVk4cGt4Zzl3bkRXU2UvSzliZktUQTQ5TXFWcmpwb1RvYXMK"
     },
     "windows": [
