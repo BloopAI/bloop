@@ -92,7 +92,7 @@ impl RudderHub {
                             event: "openai query".to_owned(),
                             properties: Some(json!({
                                 "query_id": ev.query_id,
-                                "session_id": ev.session_id,
+                                "search_session_id": ev.session_id,
                                 "overlap_strategy": ev.overlap_strategy,
                                 "stages": ev.stages,
                                 "package_metadata": options.package_metadata,
