@@ -442,7 +442,7 @@ async fn handle_inner(
             }
             AnswerProgress::Search(rephrased_query) => {
                 // TODO: Clean up this query handling logic
-                let s = search_snippets(&semantic, &params.q, &rephrased_query).await?;
+                let s = search_snippets(&semantic, &params.q, rephrased_query).await?;
                 info!("Retrieved {} snippets", s.len());
 
                 let prompt = answer_api_client.build_select_prompt(rephrased_query, &s);
