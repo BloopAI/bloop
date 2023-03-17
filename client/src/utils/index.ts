@@ -1,6 +1,6 @@
 import { MouseEvent } from 'react';
-import langs from './langs.json';
 import { v4 as uuidv4 } from 'uuid';
+import langs from './langs.json';
 
 export const copyToClipboard = (value: string) => {
   navigator.clipboard.writeText(value).then();
