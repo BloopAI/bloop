@@ -1,4 +1,8 @@
-use std::{collections::HashMap, ops::Not, time::Duration};
+use std::{
+    collections::HashMap,
+    ops::Not,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use chrono::Utc;
 use notify_debouncer_mini::{
@@ -26,36 +30,51 @@ const POLL_INTERVAL_MINUTE: &[Duration] = &[
 ];
 
 pub(crate) async fn sync_repositories(app: Application) {
+    const POLL_PERIOD: Duration = POLL_INTERVAL_MINUTE[1];
+    const LIVENESS: Duration = Duration::from_secs(3);
+
     let timeout = || async {
-        sleep(POLL_INTERVAL_MINUTE[1]).await;
+        sleep(LIVENESS).await;
     };
 
-    let timeout_or_update = |handle: flume::Receiver<()>| async move {
-        tokio::select! {
-                _ = timeout() => {
+    let timeout_or_update = |last_poll: SystemTime, handle: flume::Receiver<()>| async move {
+        loop {
+            tokio::select! {
+                _ = sleep(POLL_PERIOD) => {
                     debug!("timeout expired; refreshing repositories");
+                    return SystemTime::now();
                 },
-                _ = handle.recv_async() => {
-                    debug!("github credentials changed; refreshing repositories");
-                }
+                result = handle.recv_async() => {
+                    let now = SystemTime::now();
+                    if result.is_ok() && now.duration_since(last_poll).unwrap() > POLL_PERIOD {
+                        debug!("github credentials changed; refreshing repositories");
+                        return now;
+                    }
+                },
+            }
         }
     };
 
+    let mut last_poll = UNIX_EPOCH;
     loop {
         let Some(github) = app.credentials.github() else {
-	    timeout().await;
-	    continue;
+            timeout().await;
+            continue;
 	};
 
         let Ok(repos) = github.current_repo_list().await else {
-	    timeout().await;
-	    continue;
+            timeout().await;
+            continue;
 	};
 
+        let updated = app.credentials.github_updated().unwrap();
         let new = github.update_repositories(repos);
+
         app.credentials.set_github(new);
 
-        timeout_or_update(app.credentials.github_updated().unwrap()).await;
+        // swallow the event that's generated from this update
+        _ = updated.recv_async().await;
+        last_poll = timeout_or_update(last_poll, updated).await;
     }
 }
 
