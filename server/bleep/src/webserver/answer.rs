@@ -367,6 +367,12 @@ async fn handle_inner(
 )> {
     let query = query.to_string(); // TODO: Sort out query handling
 
+    event
+        .write()
+        .await
+        .stages
+        .push(Stage::new("parsed_query", &query).with_time(stop_watch.lap()));
+
     let mut snippets = None;
 
     let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
@@ -415,12 +421,6 @@ async fn handle_inner(
         })
         .map(AnswerProgress::Rephrase)
         .unwrap_or(AnswerProgress::Rephrase(query.clone()));
-
-    event
-        .write()
-        .await
-        .stages
-        .push(Stage::new("start", &query).with_time(stop_watch.lap()));
 
     loop {
         // Here we ask anthropic for either action selection, rephrasing or explanation
@@ -476,6 +476,12 @@ async fn handle_inner(
             }
         };
 
+        event
+            .write()
+            .await
+            .stages
+            .push(progress.to_stage(&mut stop_watch, snippets.as_deref()));
+
         // This strange extraction of parameters from a tuple is due to lifetime issues. This
         // function should probably be refactored, but at the time of writing this is left as-is
         // due to time constraints.
@@ -517,12 +523,6 @@ async fn handle_inner(
                 break;
             }
         }
-
-        event
-            .write()
-            .await
-            .stages
-            .push(progress.to_stage(&mut stop_watch, snippets.as_deref()));
 
         match collected {
             FirstToken::Number(n) => {
@@ -567,8 +567,6 @@ async fn _handle(
     let query_id = uuid::Uuid::new_v4();
 
     info!("Raw query: {:?}", &params.q);
-    let query = parse_query(&params.q)?;
-    info!("Parsed query target: {:?}", &query);
 
     {
         let mut analytics_event = event.write().await;
@@ -578,7 +576,13 @@ async fn _handle(
         if let Some(semantic) = app.semantic.as_ref() {
             analytics_event.overlap_strategy = semantic.overlap_strategy();
         }
+        analytics_event
+            .stages
+            .push(Stage::new("raw_query", &params.q));
     }
+
+    let query = parse_query(&params.q)?;
+    info!("Parsed query target: {:?}", &query);
 
     let stop_watch = StopWatch::start();
     let params = Arc::new(params);
@@ -630,7 +634,7 @@ async fn _handle(
         let mut event = event.write().await;
         event
             .stages
-            .push(Stage::new("explanation", &expl).with_time(stop_watch.lap()));
+            .push(Stage::new("answer", &expl).with_time(stop_watch.lap()));
         app.track_query(&event);
     };
 
