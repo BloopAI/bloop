@@ -9,11 +9,12 @@ use rudderanalytics::{
     message::{Message, Track},
 };
 use serde_json::{json, Value};
-use tracing::info;
+use tracing::{info, warn};
 
 #[derive(Debug, Default, Clone)]
 pub struct QueryEvent {
     pub user_id: String,
+    pub session_id: String,
     pub query_id: uuid::Uuid,
     pub overlap_strategy: OverlapStrategy,
     pub stages: Vec<Stage>,
@@ -36,6 +37,13 @@ pub struct Stage {
     pub time_elapsed: Option<u128>,
 }
 
+#[derive(Debug, serde::Serialize)]
+pub struct PackageMetadata {
+    pub name: &'static str,
+    pub version: &'static str,
+    pub git_rev: &'static str,
+}
+
 static HUB: OnceCell<Arc<RudderHub>> = OnceCell::new();
 
 pub struct RudderHub {
@@ -46,6 +54,7 @@ pub struct RudderHub {
 #[derive(Default)]
 pub struct HubOptions {
     pub event_filter: Option<Arc<dyn Fn(QueryEvent) -> Option<QueryEvent> + Send + Sync + 'static>>,
+    pub package_metadata: Option<PackageMetadata>,
 }
 
 impl RudderHub {
@@ -83,18 +92,21 @@ impl RudderHub {
                             event: "openai query".to_owned(),
                             properties: Some(json!({
                                 "query_id": ev.query_id,
+                                "search_session_id": ev.session_id,
                                 "overlap_strategy": ev.overlap_strategy,
                                 "stages": ev.stages,
+                                "package_metadata": options.package_metadata,
                             })),
                             ..Default::default()
                         })) {
-                            info!("failed to send analytics event: {:?}", e);
+                            warn!("failed to send analytics event: {:?}", e);
+                        } else {
+                            info!("sent analytics event ...");
                         }
                     }
                 }
             }
         }
-        info!("sent analytics event ...");
     }
 }
 

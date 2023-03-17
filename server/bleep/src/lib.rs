@@ -13,6 +13,9 @@
 #[cfg(any(bench, test))]
 use criterion as _;
 
+#[cfg(any(bench, test))]
+use git_version as _;
+
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
 
@@ -27,6 +30,7 @@ use crate::{
 use anyhow::{anyhow, bail, Result};
 use axum::extract::FromRef;
 
+use dashmap::{mapref::entry::Entry, DashMap};
 use once_cell::sync::OnceCell;
 
 use std::{path::Path, sync::Arc};
@@ -71,6 +75,7 @@ pub struct Application {
     indexes: Arc<Indexes>,
     credentials: remotes::Backends,
     cookie_key: axum_extra::extract::cookie::Key,
+    prior_conversational_store: Arc<DashMap<String, Vec<(String, String)>>>,
 }
 
 impl Application {
@@ -120,6 +125,8 @@ impl Application {
             env
         };
 
+        let prior_conversational_store = Arc::new(DashMap::new());
+
         Ok(Self {
             indexes: Arc::new(Indexes::new(config.clone(), semantic.clone())?),
             background: BackgroundExecutor::start(config.clone()),
@@ -129,6 +136,7 @@ impl Application {
             semantic,
             config,
             env,
+            prior_conversational_store,
         })
     }
 
@@ -238,6 +246,47 @@ impl Application {
     //
     pub(crate) fn write_index(&self) -> background::IndexWriter {
         background::IndexWriter(self.clone())
+    }
+
+    /// This gets the prior conversation. Be sure to drop the borrow before calling
+    /// [`add_conversation_entry`], lest we deadlock.
+    pub fn with_prior_conversation<T>(
+        &self,
+        user_id: &str,
+        f: impl Fn(&[(String, String)]) -> T,
+    ) -> T {
+        self.prior_conversational_store
+            .get(user_id)
+            .map(|r| f(&r.value()[..]))
+            .unwrap_or_else(|| f(&[]))
+    }
+
+    /// add a new conversation entry to the store
+    pub fn add_conversation_entry(&self, user_id: String, query: String) {
+        match self.prior_conversational_store.entry(user_id) {
+            Entry::Occupied(mut o) => o.get_mut().push((query, String::new())),
+            Entry::Vacant(v) => {
+                v.insert(vec![(query, String::new())]);
+            }
+        }
+    }
+
+    /// extend the last answer for the session by the given fragment
+    pub fn extend_conversation_answer(&self, user_id: String, fragment: &str) {
+        if let Entry::Occupied(mut o) = self.prior_conversational_store.entry(user_id) {
+            if let Some((_, ref mut answer)) = o.get_mut().last_mut() {
+                answer.push_str(fragment);
+            } else {
+                error!("No answer to add {fragment} to");
+            }
+        } else {
+            error!("We should not answer if there is no question. Fragment {fragment}");
+        }
+    }
+
+    /// clear the conversation history for a user
+    pub fn purge_prior_conversation(&self, user_id: &str) {
+        self.prior_conversational_store.remove(user_id);
     }
 }
 
