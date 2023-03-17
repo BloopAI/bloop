@@ -87,7 +87,6 @@ impl RudderHub {
             if let Some(options) = &hub.options {
                 if let Some(filter) = &options.event_filter {
                     if let Some(ev) = (filter)(event) {
-                        dbg!(&ev);
                         if let Err(e) = hub.client.send(&Message::Track(Track {
                             user_id: Some(ev.user_id),
                             event: "openai query".to_owned(),
