@@ -209,12 +209,21 @@ impl AnswerProgress {
     }
 }
 
-async fn search_snippets(semantic: &Semantic, query: &str) -> Result<Vec<Snippet>, Error> {
+async fn search_snippets(
+    semantic: &Semantic,
+    raw_query: &str,
+    rephrased_query: &str,
+) -> Result<Vec<Snippet>, Error> {
+    let mut parsed_query = &mut parser::parse_nl(raw_query).map_err(Error::user)?;
+
+    // Extract keywords from the rephrased query
+    let keywords = get_keywords(rephrased_query);
+    info!("Extracted keywords: {}", keywords);
+
+    parsed_query.target = Some(parser::Literal::Plain(keywords.into()));
+
     let all_snippets: Vec<Snippet> = semantic
-        .search(
-            &parser::parse_nl(query).map_err(Error::user)?,
-            4 * SNIPPET_COUNT as u64,
-        ) // heuristic
+        .search(parsed_query, 4 * SNIPPET_COUNT as u64) // heuristic
         .await
         .map_err(Error::internal)?
         .into_iter()
@@ -350,6 +359,7 @@ async fn grow_snippet(
 }
 
 async fn handle_inner(
+    query: &str,
     state: &AnswerState,
     params: Arc<Params>,
     app: Arc<Application>,
@@ -360,8 +370,9 @@ async fn handle_inner(
     StopWatch,
     std::pin::Pin<Box<dyn Stream<Item = Result<String, AnswerAPIError>> + Send>>,
 )> {
-    let query = parse_query(&params.q)?;
     let thread_id = params.thread_id();
+    let query = query.to_string(); // TODO: Sort out query handling
+
     let mut snippets = None;
 
     let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
@@ -430,9 +441,8 @@ async fn handle_inner(
                 (prompt, 20, 0.0, vec![])
             }
             AnswerProgress::Search(rephrased_query) => {
-                let keywords = get_keywords(rephrased_query);
-                info!("Extracted keywords: {}", keywords);
-                let s = search_snippets(&semantic, &keywords).await?;
+                // TODO: Clean up this query handling logic
+                let s = search_snippets(&semantic, &params.q, &rephrased_query).await?;
                 info!("Retrieved {} snippets", s.len());
 
                 let prompt = answer_api_client.build_select_prompt(rephrased_query, &s);
@@ -464,8 +474,8 @@ async fn handle_inner(
                     // TODO: this should propagte to sentry
                     error!(%tokens_used, "prompt overshot token limit");
                 }
-                // do not let the completion cross 400 tokens
-                let max_tokens = max_tokens.clamp(1, 300);
+                // do not let the completion cross 250 tokens
+                let max_tokens = max_tokens.clamp(1, 250);
                 info!(%max_tokens, "clamping max tokens");
 
                 (prompt, max_tokens, 0.9, vec![])
@@ -563,6 +573,8 @@ async fn _handle(
     let query_id = uuid::Uuid::new_v4();
 
     info!("Raw query: {:?}", &params.q);
+    let query = parse_query(&params.q)?;
+    info!("Parsed query target: {:?}", &query);
 
     {
         let mut analytics_event = event.write().await;
@@ -579,6 +591,7 @@ async fn _handle(
     let params = Arc::new(params);
     let mut app = Arc::new(app);
     let (snippets, mut stop_watch, mut text) = handle_inner(
+        &query,
         state,
         Arc::clone(&params),
         Arc::clone(&app),
@@ -586,7 +599,7 @@ async fn _handle(
         stop_watch,
     )
     .await?;
-    Arc::make_mut(&mut app).add_conversation_entry(thread_id.clone(), parse_query(&params.q)?);
+    Arc::make_mut(&mut app).add_conversation_entry(thread_id.clone(), query);
     let initial_event = Event::default()
         .json_data(super::Response::<'static>::from(AnswerResponse {
             query_id,
