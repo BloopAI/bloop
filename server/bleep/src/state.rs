@@ -93,7 +93,7 @@ impl StateSource {
             // Load RepositoryPool from path
             (None, Some(path)) => read_file_or_default(path).map(Arc::new),
 
-            // Initialze RepositoryPool from repos under `root`
+            // Initialize RepositoryPool from repos under `root`
             (Some(root), None) => Ok(gather_repo_roots(root, None)
                 .map(|reporef| {
                     let repo = Repository::local_from(&reporef);
