@@ -192,17 +192,6 @@ enum AnswerProgress {
     Explain(String),
 }
 
-impl AnswerProgress {
-    fn to_stage(&self, stop_watch: &mut StopWatch, snippets: Option<&[Snippet]>) -> Stage {
-        match self {
-            AnswerProgress::Rephrase(s) => Stage::new("rephrase", s),
-            AnswerProgress::Search(_) => Stage::new("search", snippets),
-            AnswerProgress::Explain(expl) => Stage::new("explain", expl),
-        }
-        .with_time(stop_watch.lap())
-    }
-}
-
 async fn search_snippets(
     semantic: &Semantic,
     raw_query: &str,
@@ -447,8 +436,21 @@ async fn handle_inner(
                 let s = search_snippets(&semantic, &params.q, rephrased_query).await?;
                 info!("Retrieved {} snippets", s.len());
 
+                event
+                    .write()
+                    .await
+                    .stages
+                    .push(Stage::new("semantic_results", &s).with_time(stop_watch.lap()));
+
                 let prompt = answer_api_client.build_select_prompt(rephrased_query, &s);
                 snippets = Some(s);
+
+                event
+                    .write()
+                    .await
+                    .stages
+                    .push(Stage::new("select_prompt", &prompt).with_time(stop_watch.lap()));
+
                 (prompt, 10, 0.0, vec!["</index>".into()])
             }
             AnswerProgress::Explain(query) => {
@@ -480,15 +482,15 @@ async fn handle_inner(
                 let max_tokens = max_tokens.clamp(1, 250);
                 info!(%max_tokens, "clamping max tokens");
 
+                event
+                    .write()
+                    .await
+                    .stages
+                    .push(Stage::new("explain_prompt", &prompt).with_time(stop_watch.lap()));
+
                 (prompt, max_tokens, 0.9, vec![])
             }
         };
-
-        event
-            .write()
-            .await
-            .stages
-            .push(progress.to_stage(&mut stop_watch, snippets.as_deref()));
 
         // This strange extraction of parameters from a tuple is due to lifetime issues. This
         // function should probably be refactored, but at the time of writing this is left as-is
@@ -517,6 +519,11 @@ async fn handle_inner(
                 }));
                 return Ok((None, stop_watch, rephrase_fail_stream));
             }
+            event
+                .write()
+                .await
+                .stages
+                .push(Stage::new("rephrased_query", &rephrased_query));
             progress = AnswerProgress::Search(rephrased_query);
             continue;
         }
@@ -654,18 +661,6 @@ async fn _handle(
 // grow the text of this snippet by `size` and return the new text
 fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String> {
     let content = &doc.content;
-
-    // do not grow if this snippet contains incorrect byte ranges
-    if snippet.start_byte >= content.len() || snippet.end_byte >= content.len() {
-        error!(
-            repo = snippet.repo_name,
-            path = snippet.relative_path,
-            start = snippet.start_byte,
-            end = snippet.end_byte,
-            "invalid snippet bounds",
-        );
-        return None;
-    }
 
     // do not grow if this snippet contains incorrect byte ranges
     if snippet.start_byte >= content.len() || snippet.end_byte >= content.len() {
