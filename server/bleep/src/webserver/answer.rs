@@ -438,7 +438,12 @@ async fn handle_inner(
 
                 if s.is_empty() {
                     warn!("Semantic search returned no snippets");
-                    return Err(Error::internal("semantic search returned no snippets"));
+                    let selection_fail_stream = Box::pin(stream::once(async {
+                        Ok("Sorry, I could not find any results matching your query. \
+                            Please try again with different keywords or refine your search."
+                            .to_string())
+                    }));
+                    return Ok((snippets, stop_watch, selection_fail_stream));
                 }
 
                 event
