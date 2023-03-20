@@ -36,7 +36,7 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
       const timeout = setTimeout(() => {
         reject(new Error('Failed to initialize analytics'));
         Sentry.captureException('Failed to initialize analytics');
-      }, 5000);
+      }, 15000);
 
       analytics.load(WRITE_KEY, import.meta.env.ANALYTICS_DATA_PLANE_URL, {
         logLevel: 'DEBUG',
