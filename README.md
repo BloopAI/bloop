@@ -3,31 +3,31 @@
   <img alt="bloop logo" src="https://assets.bloop.ai/bloop_github_logo_light.png">
 </picture>
 
-bloop is a fast code-search engine written in Rust and Typescript. Search both your local and remote
-repositories with natural language, regex and filtered queries.
+bloop is a code-search engine that uses GPT-4 to answer questions about your code. Search both your local and remote repositories with natural language, regex and filtered queries.
 
 ## Features
 
-- Super-fast code search
-- AI-powered natural language search
+- GPT-4 based conversational search
+- Blazing fast regex search 
 - Sync your local and GitHub repositories (support for more code hosts coming soon!)
-- Search with regex queries
 - Sophisticated query filters so you can narrow down your results
 - Find functions, variables or traits with symbol search
-- Precise code navigation (go-to-reference and go-to-definition) for 10+ of the most popular languages
+- Precise code navigation (go-to-reference and go-to-definition) for 10+ of the most popular languages built with [Tree-sitter](https://tree-sitter.github.io/tree-sitter/)
 
-bloop stands on the shoulders of the Rust ecosystem. Our search indexing is powered by [Tantivy](https://github.com/quickwit-oss/tantivy), our multi-platform app is built with [Tauri](https://github.com/tauri-apps/tauri), and we use [Qdrant](https://github.com/qdrant/qdrant) for natural language search.
+bloop stands on the shoulders of the Rust ecosystem. Our search indexes are powered by [Tantivy](https://github.com/quickwit-oss/tantivy) and [Qdrant](https://github.com/qdrant/qdrant), and our multi-platform app is built with [Tauri](https://github.com/tauri-apps/tauri).
 
 ![code search demo](https://assets.bloop.ai/short_gif_for_github_code.gif)
 
 ## Get Started
 
-The simplest way to get started with bloop is to [download the app](https://github.com/BloopAI/bloop/releases) and follow the onboarding steps. Checkout our [getting started guide](https://bloop.ai/docs/getting-started) and our [query language reference](https://bloop.ai/docs/writing-queries).
+The simplest way to get started with bloop is to [download the app](https://github.com/BloopAI/bloop/releases) and follow the onboarding steps. Checkout our [getting started guide](https://bloop.ai/docs/getting-started) and our references for [conversational](https://bloop.ai/docs/natural-language-queries) and [regex](https://bloop.ai/docs/regex-queries) search.
 
 For instructions on how to build from source or run bloop from the command line, check out these pages:
 
 - [Build bloop app from source](./apps/desktop/README.md)
 - [Run bloop from the command line](./server/README.md)
+
+Note that it is currently _not_ possible to run conversational GPT-4 search where bloop has been built from source (we're working on this). You can run regex searches and use code-navigation.
 
 ## Contributing
 
