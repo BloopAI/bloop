@@ -436,6 +436,11 @@ async fn handle_inner(
                 let s = search_snippets(&semantic, &params.q, rephrased_query).await?;
                 info!("Retrieved {} snippets", s.len());
 
+                if s.is_empty() {
+                    warn!("Semantic search returned no snippets");
+                    return Err(Error::internal("semantic search returned no snippets"));
+                }
+
                 event
                     .write()
                     .await
