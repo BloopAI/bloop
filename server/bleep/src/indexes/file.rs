@@ -3,7 +3,7 @@ use std::{
     ops::Not,
     path::{Path, PathBuf, MAIN_SEPARATOR},
     sync::{
-        atomic::{AtomicU8, Ordering},
+        atomic::{AtomicU64, Ordering},
         Arc,
     },
 };
@@ -270,7 +270,7 @@ impl Indexable for File {
             .collect::<Vec<PathBuf>>();
 
         let count = walker.len();
-        let processed = &AtomicU8::new(0);
+        let processed = &AtomicU64::new(0);
 
         let start = std::time::Instant::now();
         use rayon::prelude::*;
@@ -294,7 +294,6 @@ impl Indexable for File {
             }
         });
 
-        progress(100);
         info!(?repo.disk_path, "repo file indexing finished, took {:?}", start.elapsed());
 
         // files that are no longer tracked by the git index are to be removed
@@ -333,6 +332,7 @@ impl Indexable for File {
             }
         }
 
+        progress(100);
         repo.save_file_cache(&self.config.index_dir, file_cache)?;
         Ok(())
     }
