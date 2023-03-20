@@ -21,18 +21,16 @@ Linux users need to ensure that the following are present:
 
 All commands should be run from the root directory unless specified otherwise.
 
-To install dependencies run:
+First make sure dependencies have been downloaded and installed:
 ```
-npm install
-```
+git lfs install
+git lfs pull
 
-To build Qdrant run:
-```
-cd app/desktop
-./build.sh build
-```
+npm install --legacy-peer-deps
+``` 
 
-Then, to build the bloop app locally:
+Then to build the app locally:
+
 ```
 npm run build-app
 ```
@@ -41,5 +39,3 @@ Alternatively, to run the app in dev mode:
 ```
 npm run start-app
 ```
-
-If the build fails, delete all `node_modules` directories and try again.
