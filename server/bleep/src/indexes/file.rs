@@ -270,7 +270,7 @@ impl Indexable for File {
             .collect::<Vec<PathBuf>>();
 
         let count = walker.len();
-        let processed = AtomicU8::new(0);
+        let processed = &AtomicU8::new(0);
 
         let start = std::time::Instant::now();
         use rayon::prelude::*;
