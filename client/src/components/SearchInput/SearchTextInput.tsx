@@ -98,7 +98,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
     e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     if (e.key === 'Enter' && onSubmit) {
-      if(composing) return;
+      if (composing) return;
       e.preventDefault();
       onSubmit(e);
     }
