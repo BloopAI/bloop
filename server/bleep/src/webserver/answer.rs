@@ -831,19 +831,17 @@ impl<'s> AnswerAPIClient<'s> {
         provider: api::Provider,
         extra_stop_sequences: Vec<String>,
     ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
-        // delays are [2, 4, 8, 16], with a max delay of 2 + 4 + 8 + 16 = 30s
-        fn delay(attempt: u64) -> u64 {
-            if attempt == 0 {
-                0
-            } else {
-                2_u64.pow(attempt as u32)
-            }
-        }
+        const DELAY: [Duration; 5] = [
+            Duration::from_secs(0),
+            Duration::from_secs(2),
+            Duration::from_secs(4),
+            Duration::from_secs(8),
+            Duration::from_secs(16),
+        ];
 
         for attempt in 0..self.max_attempts {
-            let delay_secs = delay(attempt);
-            warn!(%attempt, "delaying by {} seconds", delay_secs);
-            tokio::time::sleep(Duration::from_secs(delay_secs)).await;
+            warn!(%attempt, "delaying by {:?}", DELAY[attempt as usize % 5]);
+            tokio::time::sleep(DELAY[attempt as usize % 5]).await;
 
             let result = self
                 .send(
