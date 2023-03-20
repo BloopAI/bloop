@@ -713,7 +713,7 @@ fn get_keywords(query: &str) -> String {
 struct AnswerAPIClient<'s> {
     host: String,
     semantic: &'s Semantic,
-    max_attempts: usize,
+    max_attempts: u64,
     bearer_token: Option<String>,
     client: reqwest::Client,
 }
@@ -721,7 +721,7 @@ struct AnswerAPIClient<'s> {
 #[derive(Error, Debug)]
 enum AnswerAPIError {
     #[error("max retry attempts reached {0}")]
-    MaxAttemptsReached(usize),
+    MaxAttemptsReached(u64),
 
     #[error("event source error {0}")]
     EventSource(#[from] reqwest_eventsource::Error),
@@ -751,7 +751,7 @@ impl Semantic {
         &'s self,
         state: &AnswerState,
         host: &str,
-        max_attempts: usize,
+        max_attempts: u64,
         bearer_token: Option<String>,
     ) -> AnswerAPIClient<'s> {
         AnswerAPIClient {
@@ -831,7 +831,20 @@ impl<'s> AnswerAPIClient<'s> {
         provider: api::Provider,
         extra_stop_sequences: Vec<String>,
     ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
+        // delays are [2, 4, 8, 16], with a max delay of 2 + 4 + 8 + 16 = 30s
+        fn delay(attempt: u64) -> u64 {
+            if attempt == 0 {
+                0
+            } else {
+                2_u64.pow(attempt as u32)
+            }
+        }
+
         for attempt in 0..self.max_attempts {
+            let delay_secs = delay(attempt);
+            warn!(%attempt, "delaying by {} seconds", delay_secs);
+            tokio::time::sleep(Duration::from_secs(delay_secs)).await;
+
             let result = self
                 .send(
                     messages.clone(),
