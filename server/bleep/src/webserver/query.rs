@@ -170,6 +170,8 @@ pub struct QueryResponse {
     stats: ResultStats,
 }
 
+impl super::ApiResponse for QueryResponse {}
+
 /// Metadata pertaining to the query response, such as paging info
 #[derive(Default, Serialize, ToSchema)]
 pub(super) struct PagingMetadata {

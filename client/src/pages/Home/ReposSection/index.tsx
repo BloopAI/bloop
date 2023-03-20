@@ -101,14 +101,21 @@ const filterRepositories = (filter: ReposFilter, repos?: RepoType[]) => {
   }
 };
 
+let eventSource: EventSource;
+
 const ReposSection = ({ filter, emptyRepos }: Props) => {
   const { setSettingsSection, setSettingsOpen } = useContext(UIContext);
-  const { isRepoManagementAllowed, isSelfServe, showNativeMessage } =
+  const { isRepoManagementAllowed, isSelfServe, apiUrl, showNativeMessage } =
     useContext(DeviceContext);
   const { setRepositories, repositories } = useContext(RepositoriesContext);
   const [reposToShow, setReposToShow] = useState<RepoType[]>(
     filterRepositories(filter, repositories),
   );
+  const [currentlySyncingRepo, setCurrentlySyncingRepo] = useState<{
+    repoRef: string;
+    indexStep: number;
+    percentage: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!emptyRepos) {
@@ -127,6 +134,30 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
       };
     }
   }, [emptyRepos]);
+
+  useEffect(() => {
+    eventSource?.close();
+    eventSource = new EventSource(
+      `${apiUrl.replace('https:', '')}/repos/index-status`,
+    );
+    eventSource.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        setCurrentlySyncingRepo({
+          repoRef: data[0],
+          indexStep: data[1],
+          percentage: data[2],
+        });
+      } catch {}
+    };
+    eventSource.onerror = (err) => {
+      console.error('EventSource failed:', err);
+      setCurrentlySyncingRepo(null);
+    };
+    return () => {
+      eventSource?.close();
+    };
+  }, [currentlySyncingRepo]);
 
   useEffect(() => {
     setReposToShow(filterRepositories(filter, repositories));
@@ -179,6 +210,12 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
             lang={r.most_common_lang}
             key={ref + i}
             provider={r.provider}
+            isSyncing={
+              currentlySyncingRepo?.repoRef === ref &&
+              (currentlySyncingRepo?.indexStep !== 1 ||
+                currentlySyncingRepo?.percentage !== 100)
+            }
+            syncStatus={currentlySyncingRepo}
           />
         ))}
         {!repositories ? (

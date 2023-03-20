@@ -9,14 +9,16 @@ use tracing::{error, warn};
 
 use std::time::{Duration, Instant};
 
-#[derive(Serialize, Deserialize, ToSchema)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum GithubResponse {
     AuthenticationNeeded { url: String, code: String },
     Status(GithubCredentialStatus),
 }
 
-#[derive(Serialize, Deserialize, ToSchema)]
+impl super::ApiResponse for GithubResponse {}
+
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum GithubCredentialStatus {
     Ok,

@@ -5,6 +5,7 @@ import { SearchType, SyncStatus } from '../../types/general';
 import FileIcon from '../FileIcon';
 import { getFileExtensionForLang } from '../../utils';
 import useAppNavigation from '../../hooks/useAppNavigation';
+import BarLoader from '../Loaders/BarLoader';
 import { UIContext } from '../../context/uiContext';
 import { AnalyticsContext } from '../../context/analyticsContext';
 
@@ -15,6 +16,8 @@ type Props = {
   last_update: string;
   lang: string;
   provider: 'local' | 'github';
+  isSyncing?: boolean;
+  syncStatus?: { indexStep: number; percentage: number } | null;
 };
 
 export const STATUS_MAP = {
@@ -30,11 +33,12 @@ export const STATUS_MAP = {
 
 const RepoCard = ({
   name,
-  description,
   sync_status,
   last_update,
   lang,
   provider,
+  isSyncing,
+  syncStatus,
 }: Props) => {
   const { isGithubConnected } = useContext(UIContext);
   const { isAnalyticsAllowed } = useContext(AnalyticsContext);
@@ -44,7 +48,11 @@ const RepoCard = ({
   }, [name, provider]);
 
   const { navigateRepoPath, navigateSearch } = useAppNavigation();
+
   const handleClick = useCallback(() => {
+    if (isSyncing) {
+      return;
+    }
     if (isGithubConnected && isAnalyticsAllowed) {
       navigateSearch(
         `What does this repo do? repo:${repoName} lang:markdown`,
@@ -53,10 +61,10 @@ const RepoCard = ({
     } else {
       navigateRepoPath(`${isGh ? 'github.com/' : ''}${repoName}`);
     }
-  }, [repoName, provider, isGithubConnected, isAnalyticsAllowed]);
+  }, [repoName, provider, isGithubConnected, isAnalyticsAllowed, isSyncing]);
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-md p-4 w-full flex flex-col gap-6">
+    <div className="bg-gray-900 border border-gray-800 rounded-md p-4 w-full flex flex-col justify-between h-36">
       <div className="flex items-start gap-4">
         <span className="h-6 flex items-center">
           <FileIcon filename={getFileExtensionForLang(lang)} />
@@ -65,23 +73,39 @@ const RepoCard = ({
           {repoName}
         </p>
       </div>
-      <p className="body-s text-gray-500">{description}</p>
-      <div className="flex items-center gap-2 caption text-gray-500">
-        <div className="w-4 h-4 ">
-          <GitHubLogo raw />
+      {isSyncing &&
+      (sync_status === SyncStatus.Indexing ||
+        sync_status === SyncStatus.Syncing) &&
+      syncStatus &&
+      (syncStatus.indexStep === 0 || syncStatus.percentage < 100) ? (
+        <div className="flex flex-col gap-2">
+          <p className="body-s text-gray-200">Syncing...</p>
+          <BarLoader
+            percentage={syncStatus.indexStep === 1 ? syncStatus.percentage : 1}
+          />
+          <p className="caption text-gray-500">
+            {syncStatus.indexStep === 1 ? syncStatus.percentage : 1}% complete
+          </p>
         </div>
-        <span
-          className={`w-2 h-2 ${
-            STATUS_MAP[typeof sync_status === 'string' ? sync_status : 'error']
-              ?.color || 'bg-yellow-500'
-          } rounded-full`}
-        />
-        <p className="select-none">
-          {STATUS_MAP[typeof sync_status === 'string' ? sync_status : 'error']
-            ?.text || sync_status}
-          {sync_status === 'done' && timeAgo(last_update)}
-        </p>
-      </div>
+      ) : (
+        <div className="flex items-center gap-2 caption text-gray-500">
+          <div className="w-4 h-4 ">
+            <GitHubLogo raw />
+          </div>
+          <span
+            className={`w-2 h-2 ${
+              STATUS_MAP[
+                typeof sync_status === 'string' ? sync_status : 'error'
+              ]?.color || 'bg-yellow-500'
+            } rounded-full`}
+          />
+          <p className="select-none">
+            {STATUS_MAP[typeof sync_status === 'string' ? sync_status : 'error']
+              ?.text || sync_status}
+            {sync_status === 'done' && timeAgo(last_update)}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

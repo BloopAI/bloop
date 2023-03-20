@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Duration};
 
 use crate::{
     repo::{Backend, RepoRef, Repository, SyncStatus},
@@ -7,7 +7,7 @@ use crate::{
 use axum::{
     extract::{Path, Query},
     http::StatusCode,
-    response::IntoResponse,
+    response::{sse, IntoResponse, Sse},
     Extension, Json,
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -78,6 +78,35 @@ pub(super) enum ReposResponse {
     Item(Repo),
     SyncQueued,
     Deleted,
+}
+
+impl super::ApiResponse for ReposResponse {}
+
+/// Get a stream of status notifications about the indexing of each repository
+/// This endpoint opens an SSE stream
+//
+#[utoipa::path(get, path = "/repos/index-status",
+    responses(
+        (status = 200, description = "Execute query successfully", body = Sse),
+        (status = 400, description = "Bad request", body = EndpointError),
+        (status = 500, description = "Server error", body = EndpointError),
+    ),
+)]
+pub(super) async fn index_status(Extension(app): Extension<Application>) -> impl IntoResponse {
+    let mut receiver = app.indexes.subscribe();
+
+    Sse::new(async_stream::stream! {
+        while let Ok(event) = receiver.recv().await {
+            yield sse::Event::default().json_data(event).map_err(|err| {
+                <_ as Into<Box<dyn std::error::Error + Send + Sync>>>::into(err)
+            });
+        }
+    })
+    .keep_alive(
+        sse::KeepAlive::new()
+            .interval(Duration::from_secs(5))
+            .event(sse::Event::default().event("heartbeat")),
+    )
 }
 
 /// Retrieve all indexed repositories

@@ -49,6 +49,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/index", get(index::handle))
         // repo management
         .route("/repos", get(repos::available))
+        .route("/repos/index-status", get(repos::index_status))
         .route(
             "/repos/indexed",
             get(repos::indexed).put(repos::set_indexed),
@@ -124,7 +125,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(in crate::webserver) fn json<'a, T>(val: T) -> Json<Response<'a>>
+fn json<'a, T>(val: T) -> Json<Response<'a>>
 where
     Response<'a>: From<T>,
 {
@@ -231,75 +232,27 @@ enum ErrorKind {
     Custom,
 }
 
+trait ApiResponse: erased_serde::Serialize {}
+erased_serde::serialize_trait_object!(ApiResponse);
+
 /// Every endpoint exposes a Response type
 #[derive(serde::Serialize)]
 #[serde(untagged)]
 #[non_exhaustive]
-pub(in crate::webserver) enum Response<'a> {
-    Github(github::GithubResponse),
-    Repositories(repos::ReposResponse),
-    Query(query::QueryResponse),
-    Autocomplete(autocomplete::AutocompleteResponse),
-    Hoverable(hoverable::HoverableResponse),
-    Intelligence(intelligence::TokenInfoResponse),
-    File(file::FileResponse),
-    Semantic(semantic::SemanticResponse),
-    Answer(answer::AnswerResponse),
-    /// A blanket error response
+enum Response<'a> {
+    Ok(Box<dyn erased_serde::Serialize + Send + Sync + 'static>),
     Error(EndpointError<'a>),
 }
 
-impl<'a> From<github::GithubResponse> for Response<'a> {
-    fn from(r: github::GithubResponse) -> Response<'a> {
-        Response::Github(r)
-    }
-}
-
-impl<'a> From<repos::ReposResponse> for Response<'a> {
-    fn from(r: repos::ReposResponse) -> Response<'a> {
-        Response::Repositories(r)
-    }
-}
-
-impl<'a> From<query::QueryResponse> for Response<'a> {
-    fn from(r: query::QueryResponse) -> Response<'a> {
-        Response::Query(r)
-    }
-}
-
-impl<'a> From<autocomplete::AutocompleteResponse> for Response<'a> {
-    fn from(r: autocomplete::AutocompleteResponse) -> Response<'a> {
-        Response::Autocomplete(r)
-    }
-}
-
-impl<'a> From<hoverable::HoverableResponse> for Response<'a> {
-    fn from(r: hoverable::HoverableResponse) -> Response<'a> {
-        Response::Hoverable(r)
-    }
-}
-
-impl<'a> From<intelligence::TokenInfoResponse> for Response<'a> {
-    fn from(r: intelligence::TokenInfoResponse) -> Response<'a> {
-        Response::Intelligence(r)
-    }
-}
-
-impl<'a> From<file::FileResponse> for Response<'a> {
-    fn from(r: file::FileResponse) -> Response<'a> {
-        Response::File(r)
-    }
-}
-
-impl<'a> From<semantic::SemanticResponse> for Response<'a> {
-    fn from(r: semantic::SemanticResponse) -> Response<'a> {
-        Response::Semantic(r)
+impl<T: ApiResponse + Send + Sync + 'static> From<T> for Response<'static> {
+    fn from(value: T) -> Self {
+        Self::Ok(Box::new(value))
     }
 }
 
 impl<'a> From<EndpointError<'a>> for Response<'a> {
-    fn from(r: EndpointError<'a>) -> Response<'a> {
-        Response::Error(r)
+    fn from(value: EndpointError<'a>) -> Self {
+        Self::Error(value)
     }
 }
 

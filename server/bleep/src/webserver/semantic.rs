@@ -16,6 +16,8 @@ pub(super) struct SemanticResponse {
     chunks: Vec<serde_json::Value>,
 }
 
+impl super::ApiResponse for SemanticResponse {}
+
 /// Get details of an indexed repository based on their id
 //
 #[utoipa::path(get, path = "/repos/indexed/:ref",

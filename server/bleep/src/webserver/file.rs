@@ -18,6 +18,8 @@ pub struct FileResponse {
     contents: String,
 }
 
+impl super::ApiResponse for FileResponse {}
+
 pub async fn handle(
     Path(path): Path<String>,
     Query(params): Query<Params>,
