@@ -33,7 +33,6 @@ export const STATUS_MAP = {
 
 const RepoCard = ({
   name,
-  description,
   sync_status,
   last_update,
   lang,
@@ -62,7 +61,7 @@ const RepoCard = ({
   }, [repoName, provider, isGithubConnected, isAnalyticsAllowed, isSyncing]);
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-md p-4 w-full flex flex-col gap-6">
+    <div className="bg-gray-900 border border-gray-800 rounded-md p-4 w-full flex flex-col justify-between h-36">
       <div className="flex items-start gap-4">
         <span className="h-6 flex items-center">
           <FileIcon filename={getFileExtensionForLang(lang)} />
@@ -71,7 +70,6 @@ const RepoCard = ({
           {repoName}
         </p>
       </div>
-      <p className="body-s text-gray-500">{description}</p>
       {isSyncing &&
       syncStatus &&
       (syncStatus.indexStep === 0 || syncStatus.percentage < 100) ? (

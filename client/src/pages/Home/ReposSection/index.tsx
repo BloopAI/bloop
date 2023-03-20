@@ -141,12 +141,14 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
       `${apiUrl.replace('https:', '')}/repos/index-status`,
     );
     eventSource.onmessage = (ev) => {
-      const data = JSON.parse(ev.data);
-      setCurrentlySyncingRepo({
-        repoRef: data[0],
-        indexStep: data[1],
-        percentage: data[2],
-      });
+      try {
+        const data = JSON.parse(ev.data);
+        setCurrentlySyncingRepo({
+          repoRef: data[0],
+          indexStep: data[1],
+          percentage: data[2],
+        });
+      } catch {}
     };
     eventSource.onerror = (err) => {
       console.error('EventSource failed:', err);
