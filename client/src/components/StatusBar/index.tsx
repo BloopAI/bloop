@@ -60,16 +60,15 @@ const StatusBar = () => {
           textSecondary={lastQueryTime + 'ms'}
         />
       </span>
-      <span className="flex gap-4">
-        <button
-          className="flex gap-2 items-center text-gray-500"
+      <span className="flex gap-3">
+        <Button
+          size="small"
+          variant="secondary"
           onClick={() => openLink(discordLink)}
         >
-          <div className="w-4 h-4">
-            <DiscordLogo raw />
-          </div>
-          <span className="caption">Join Discord channel</span>
-        </button>
+          <DiscordLogo />
+          Discord
+        </Button>
         <Button
           size="small"
           variant="secondary"
