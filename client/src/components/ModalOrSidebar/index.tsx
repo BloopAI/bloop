@@ -16,10 +16,11 @@ type Props = {
   containerClassName?: string;
   fullOverlay?: boolean;
   filtersOverlay?: boolean;
+  top?: string;
 };
 
-const modalAnimation = (shouldStretch: boolean) => ({
-  top: '5rem',
+const modalAnimation = (top: string, shouldStretch: boolean) => ({
+  top,
   ...(shouldStretch ? { bottom: '5rem' } : {}),
   right: '50%',
   transform: 'translate(50%, 0%)',
@@ -34,8 +35,8 @@ const sidebarAnimation = (shouldStretch: boolean) => ({
   opacity: 1,
 });
 
-const initialModalStyles = (shouldStretch: boolean) => ({
-  top: '5rem',
+const initialModalStyles = (top: string, shouldStretch: boolean) => ({
+  top,
   ...(shouldStretch ? { bottom: '5rem' } : {}),
   right: '50%',
   transform: 'translate(50%, 1rem)',
@@ -73,6 +74,7 @@ const ModalOrSidebar = ({
   shouldStretch = true,
   fullOverlay,
   filtersOverlay,
+  top = '5rem',
 }: PropsWithChildren<Props>) => {
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape' && shouldShow) {
@@ -83,6 +85,11 @@ const ModalOrSidebar = ({
     }
   }, []);
   useKeyboardNavigation(handleKeyEvent);
+
+  const handleClick = useCallback((e: MouseEvent) => {
+    e.stopPropagation();
+    onClose(e);
+  }, []);
 
   return (
     <>
@@ -97,7 +104,7 @@ const ModalOrSidebar = ({
             initial={backdropHidden}
             animate={backdropVisible}
             exit={backdropHidden}
-            onClick={onClose}
+            onClick={handleClick}
             transition={MODAL_SIDEBAR_APPEAR_ANIMATION}
           />
         )}
@@ -117,17 +124,17 @@ const ModalOrSidebar = ({
             animate={
               isSidebar
                 ? sidebarAnimation(shouldStretch)
-                : modalAnimation(shouldStretch)
+                : modalAnimation(top, shouldStretch)
             }
             initial={
               isSidebar
                 ? initialSidebarStyles(shouldStretch)
-                : initialModalStyles(shouldStretch)
+                : initialModalStyles(top, shouldStretch)
             }
             exit={
               isSidebar
                 ? initialSidebarStyles(shouldStretch)
-                : initialModalStyles(shouldStretch)
+                : initialModalStyles(top, shouldStretch)
             }
             transition={
               isModalSidebarTransition
