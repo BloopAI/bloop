@@ -16,7 +16,7 @@ bloop is a code-search engine that uses GPT-4 to answer questions about your cod
 
 bloop stands on the shoulders of the Rust ecosystem. Our search indexes are powered by [Tantivy](https://github.com/quickwit-oss/tantivy) and [Qdrant](https://github.com/qdrant/qdrant), and our multi-platform app is built with [Tauri](https://github.com/tauri-apps/tauri).
 
-![code search demo](https://assets.bloop.ai/bloop_gpt4.gif)
+![code search demo](https://assets.bloop.ai/bloop_gpt4_short.gif)
 
 ## Get Started
 
