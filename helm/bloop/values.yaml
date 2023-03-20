@@ -129,7 +129,7 @@ qdrant:
   livenessProbe:
     enabled: true
     initialDelaySeconds: 50
-    periodSeconds: 30
+    periodSeconds: 10
     timeoutSeconds: 1
     failureThreshold: 3
     successThreshold: 1
@@ -137,7 +137,7 @@ qdrant:
   readinessProbe:
     enabled: true
     initialDelaySeconds: 60
-    periodSeconds: 30
+    periodSeconds: 10
     timeoutSeconds: 1
     failureThreshold: 3
     successThreshold: 1
