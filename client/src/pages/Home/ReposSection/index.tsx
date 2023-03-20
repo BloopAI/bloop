@@ -152,8 +152,12 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
     };
     eventSource.onerror = (err) => {
       console.error('EventSource failed:', err);
+      setCurrentlySyncingRepo(null);
     };
-  }, []);
+    return () => {
+      eventSource?.close();
+    };
+  }, [currentlySyncingRepo]);
 
   useEffect(() => {
     setReposToShow(filterRepositories(filter, repositories));
