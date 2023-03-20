@@ -204,7 +204,11 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
             lang={r.most_common_lang}
             key={ref + i}
             provider={r.provider}
-            isSyncing={currentlySyncingRepo?.repoRef === ref}
+            isSyncing={
+              currentlySyncingRepo?.repoRef === ref &&
+              (currentlySyncingRepo?.indexStep !== 1 ||
+                currentlySyncingRepo?.percentage !== 100)
+            }
             syncStatus={currentlySyncingRepo}
           />
         ))}

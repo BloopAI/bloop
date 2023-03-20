@@ -49,13 +49,17 @@ const RepoCard = ({
   }, [name, provider]);
 
   const { navigateRepoPath, navigateSearch } = useAppNavigation();
+
   const handleClick = useCallback(() => {
+    if (isSyncing) {
+      return;
+    }
     if (isGithubConnected && isAnalyticsAllowed) {
       navigateSearch(`What does this repo do? repo:${repoName}`, SearchType.NL);
     } else {
       navigateRepoPath(`${isGh ? 'github.com/' : ''}${repoName}`);
     }
-  }, [repoName, provider, isGithubConnected, isAnalyticsAllowed]);
+  }, [repoName, provider, isGithubConnected, isAnalyticsAllowed, isSyncing]);
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-md p-4 w-full flex flex-col gap-6">
