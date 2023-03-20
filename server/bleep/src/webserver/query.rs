@@ -519,7 +519,6 @@ impl ExecuteQuery for RepoReader {
         let (filter_regexes, byte_filter_regexes): (Vec<_>, Vec<_>) = queries
             .iter()
             .filter(|q| self.query_matches(q))
-            .into_iter()
             .filter_map(|q| {
                 let regex_str = q.repo.as_ref()?.regex_str();
                 let regex = Regex::new(&regex_str).ok()?;

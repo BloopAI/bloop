@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { buildRepoQuery } from '../utils';
+import { buildRepoQuery, generateUniqueId } from '../utils';
 import { SearchType } from '../types/general';
 
 interface NavigationItem {
@@ -12,6 +12,7 @@ interface NavigationItem {
   loaded?: boolean;
   searchType?: SearchType;
   pathParams?: Record<string, string>;
+  threadId?: string;
 }
 
 type ContextType = {
@@ -114,7 +115,13 @@ export const AppNavigationProvider = (prop: {
     searchType: SearchType,
     page?: number,
   ) => {
-    saveState({ type: 'search', page, query, searchType });
+    saveState({
+      type: 'search',
+      page,
+      query,
+      searchType,
+      ...(searchType === SearchType.NL ? { threadId: generateUniqueId() } : {}),
+    });
   };
 
   const navigateRepoPath = (

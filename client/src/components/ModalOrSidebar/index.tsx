@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import React, { MouseEvent, PropsWithChildren, useEffect } from 'react';
+import React, { MouseEvent, PropsWithChildren, useCallback } from 'react';
 import {
   MODAL_SIDEBAR_APPEAR_ANIMATION,
   MODAL_SIDEBAR_CHANGE_ANIMATION,
 } from '../../consts/animations';
+import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 
 type Props = {
   isSidebar: boolean;
@@ -73,21 +74,15 @@ const ModalOrSidebar = ({
   fullOverlay,
   filtersOverlay,
 }: PropsWithChildren<Props>) => {
-  useEffect(() => {
-    const handleKeyEvent = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && shouldShow) {
-        e.stopPropagation();
-        e.preventDefault();
-        // @ts-ignore
-        onClose(e);
-      }
-    };
-    window.addEventListener('keydown', handleKeyEvent);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyEvent);
-    };
-  }, [shouldShow]);
+  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && shouldShow) {
+      e.stopPropagation();
+      e.preventDefault();
+      // @ts-ignore
+      onClose(e);
+    }
+  }, []);
+  useKeyboardNavigation(handleKeyEvent);
 
   return (
     <>
@@ -116,7 +111,7 @@ const ModalOrSidebar = ({
       <AnimatePresence>
         {shouldShow && (
           <motion.div
-            className={`overflow-hidden fixed flex flex-col ${
+            className={`modal-or-sidebar overflow-hidden fixed flex flex-col ${
               isSidebar ? `border-y-0` : `rounded-md drop-shadow-light-bigger`
             } bg-gray-900 border border-gray-700 bg-opacity-75 z-70 backdrop-blur-8 ${containerClassName}`}
             animate={

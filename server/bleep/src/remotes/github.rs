@@ -8,9 +8,71 @@ use reqwest::StatusCode;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 
-use crate::repo::{Backend, GitRemote, RepoRemote, Repository};
+use crate::repo::{GitRemote, RepoRemote, Repository};
 
 use super::*;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub(crate) struct State {
+    pub auth: Auth,
+    #[serde(skip)]
+    pub repositories: Arc<Vec<octocrab::models::Repository>>,
+}
+
+impl State {
+    fn with_auth(auth: Auth) -> Self {
+        Self {
+            auth,
+            repositories: Arc::default(),
+        }
+    }
+
+    pub fn client(&self) -> octocrab::Result<Octocrab> {
+        self.auth.client()
+    }
+
+    pub(crate) async fn validate(&self) -> Result<()> {
+        let client = self.client()?;
+
+        match client.current().user().await {
+            Ok(_) => {}
+            Err(e @ octocrab::Error::GitHub { .. }) => {
+                warn!(?e, "failed to validate GitHub token");
+                return Err(e)?;
+            }
+            Err(e) => {
+                // Don't return an error here - we want to swallow failure and try again on the
+                // next poll.
+                error!(?e, "failed to make GitHub user request");
+            }
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn expiry(&self) -> Option<DateTime<Utc>> {
+        match self.auth {
+            Auth::App { expiry, .. } => Some(expiry),
+            _ => None,
+        }
+    }
+
+    /// Get a representative list of repositories currently accessible
+    pub async fn current_repo_list(&self) -> Result<Vec<octocrab::models::Repository>> {
+        self.auth.list_repos().await
+    }
+
+    /// Create a new object with the updated repositories list
+    ///
+    /// This is a separate step from refreshing the repo list to avoid
+    /// async locking
+    pub fn update_repositories(self, repos: Vec<octocrab::models::Repository>) -> Self {
+        Self {
+            auth: self.auth,
+            repositories: repos.into(),
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) enum Auth {
@@ -33,13 +95,13 @@ pub(crate) enum Auth {
     },
 }
 
-impl From<octocrab::auth::OAuth> for Auth {
+impl From<octocrab::auth::OAuth> for State {
     fn from(auth: octocrab::auth::OAuth) -> Self {
-        Self::OAuth {
+        Self::with_auth(Auth::OAuth {
             access_token: auth.access_token,
             token_type: auth.token_type,
             scope: auth.scope,
-        }
+        })
     }
 }
 
@@ -117,7 +179,7 @@ impl Auth {
         }
     }
 
-    pub(crate) fn client(&self) -> octocrab::Result<Octocrab> {
+    fn client(&self) -> octocrab::Result<Octocrab> {
         use Auth::*;
         match self.clone() {
             OAuth {
@@ -138,11 +200,44 @@ impl Auth {
                 .build(),
         }
     }
+
+    async fn list_repos(&self) -> Result<Vec<octocrab::models::Repository>> {
+        let gh_client = self.client().expect("failed to build github client");
+        let mut results = vec![];
+        for page in 1.. {
+            let mut resp = match self {
+                remotes::github::Auth::OAuth { .. } => {
+                    gh_client
+                        .current()
+                        .list_repos_for_authenticated_user()
+                        .per_page(100)
+                        .page(page)
+                        .send()
+                        .await
+                }
+                remotes::github::Auth::App { ref org, .. } => {
+                    gh_client
+                        .orgs(org)
+                        .list_repos()
+                        .per_page(100)
+                        .page(page)
+                        .send()
+                        .await
+                }
+            }?;
+
+            if resp.items.is_empty() {
+                break;
+            }
+
+            results.extend(resp.take_items())
+        }
+
+        Ok(results)
+    }
 }
 
-pub(crate) async fn refresh_github_installation_token(
-    app: &Application,
-) -> Result<BackendCredential> {
+pub(crate) async fn refresh_github_installation_token(app: &Application) -> Result<()> {
     let privkey = std::fs::read(
         app.config
             .github_app_private_key
@@ -176,8 +271,7 @@ pub(crate) async fn refresh_github_installation_token(
     };
 
     let auth = remotes::github::Auth::from_installation(installation, install_id, octocrab).await?;
-    let credential = BackendCredential::Github(auth);
-    app.credentials.insert(Backend::Github, credential.clone());
 
-    Ok(credential)
+    app.credentials.set_github(State::with_auth(auth));
+    Ok(())
 }

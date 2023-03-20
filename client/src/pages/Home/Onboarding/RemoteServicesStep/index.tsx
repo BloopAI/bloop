@@ -77,7 +77,7 @@ const RemoteServicesStep = ({ handleNext, handleBack, onSubmit }: Props) => {
           ) : (
             <>
               Natural language search requires an internet connection and shares
-              code snippets with bloop and Anthropic to generate search results.
+              code snippets with bloop and OpenAI to generate search results.
               By continuing you agree to the{' '}
               <button
                 onClick={() => openLink('https://bloop.ai/terms')}

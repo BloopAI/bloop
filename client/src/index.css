@@ -389,3 +389,12 @@ h5, .h5 {
 .search-highlight-active {
   background-color: rgba(255, 165, 0, 0.8);
 }
+
+.conversation-message {
+  overflow-wrap: break-word;
+}
+
+.conversation-message code {
+  background-color: #686DC3; /* secondary-500 with 25 opacity on primary-400 bg */
+  white-space: pre-wrap !important; /* sometimes overridden by styles from prism.js */
+}

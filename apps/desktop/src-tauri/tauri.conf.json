@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "bloop",
-    "version": "0.2.3"
+    "version": "0.3.0"
   },
   "tauri": {
     "allowlist": {
@@ -31,6 +31,9 @@
         "all": true
       },
       "path": {
+        "all": true
+      },
+      "process": {
         "all": true
       }
     },

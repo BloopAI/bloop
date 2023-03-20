@@ -6,7 +6,7 @@ import SeparateOnboardingStep from '../../../SeparateOnboardingStep';
 
 type Props = {
   addRepos: null | 'local' | 'github';
-  onClose: () => void;
+  onClose: (submitted: boolean) => void;
 };
 
 const AddRepos = ({ addRepos, onClose }: Props) => {
@@ -16,18 +16,21 @@ const AddRepos = ({ addRepos, onClose }: Props) => {
   }, []);
   const handleClose = () => {
     setFolderChosen(false);
-    onClose();
+    onClose(false);
+  };
+  const handleSubmit = () => {
+    onClose(true);
   };
   return (
     <SeparateOnboardingStep isVisible={!!addRepos} onClose={handleClose}>
       {addRepos === 'local' ? (
         isFolderChosen ? (
-          <LocalReposStep handleNext={onClose} />
+          <LocalReposStep handleNext={handleSubmit} />
         ) : (
           <FolderSelectStep handleNext={onFolderChosen} />
         )
       ) : (
-        <GithubReposStep handleNext={onClose} disableSkip />
+        <GithubReposStep handleNext={handleSubmit} disableSkip />
       )}
     </SeparateOnboardingStep>
   );
