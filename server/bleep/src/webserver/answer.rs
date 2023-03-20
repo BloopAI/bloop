@@ -426,7 +426,7 @@ async fn handle_inner(
             AnswerProgress::Rephrase(query) => {
                 let prompt = app.with_prior_conversation(thread_id, |history| {
                     let n = history.len().saturating_sub(MAX_HISTORY);
-                    build_rephrase_query_prompt(query, &history[n..])
+                    build_rephrase_query_prompt(query, history.get(n..).unwrap_or_default())
                 });
 
                 (prompt, 20, 0.0, vec![])
@@ -435,6 +435,16 @@ async fn handle_inner(
                 // TODO: Clean up this query handling logic
                 let s = search_snippets(&semantic, &params.q, rephrased_query).await?;
                 info!("Retrieved {} snippets", s.len());
+
+                if s.is_empty() {
+                    warn!("Semantic search returned no snippets");
+                    let selection_fail_stream = Box::pin(stream::once(async {
+                        Ok("Sorry, I could not find any results matching your query. \
+                            Please try again with different keywords or refine your search."
+                            .to_string())
+                    }));
+                    return Ok((snippets, stop_watch, selection_fail_stream));
+                }
 
                 event
                     .write()
@@ -675,21 +685,25 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String>
     }
 
     // skip upwards `size` number of lines
-    let new_start_byte = content[..snippet.start_byte]
+    let new_start_byte = content
+        .get(..snippet.start_byte)?
         .rmatch_indices('\n')
         .map(|(idx, _)| idx)
         .nth(size)
         .unwrap_or(0);
 
     // skip downwards `size` number of lines
-    let new_end_byte = content[snippet.end_byte..]
+    let new_end_byte = content
+        .get(snippet.end_byte..)?
         .match_indices('\n')
         .map(|(idx, _)| idx)
         .nth(size)
         .map(|s| s.saturating_add(snippet.end_byte)) // the index is off by `snippet.end_byte`
         .unwrap_or(content.len());
 
-    Some(content[new_start_byte..new_end_byte].to_owned())
+    content
+        .get(new_start_byte..new_end_byte)
+        .map(ToOwned::to_owned)
 }
 
 static RAKE: once_cell::sync::Lazy<Rake> = once_cell::sync::Lazy::new(|| {
