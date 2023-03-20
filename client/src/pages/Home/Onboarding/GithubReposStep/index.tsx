@@ -22,6 +22,7 @@ type Props = {
 };
 
 const STEP_KEY = 'STEP_GITHUB_REPOS';
+let intervalId: number;
 
 const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
   const [activeTab, setActiveTab] = useState(1);
@@ -77,7 +78,7 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
     [],
   );
 
-  useEffect(() => {
+  const fetchRepos = useCallback(() => {
     getRepos().then((data) => {
       const githubRepos: RepoType[] = data.list.filter(
         (r: RepoType) => r.provider === RepoProvider.GitHub,
@@ -101,6 +102,24 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
       );
     });
   }, []);
+
+  useEffect(() => {
+    fetchRepos();
+    intervalId = window.setInterval(() => {
+      fetchRepos();
+    }, 2000);
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (repos.length && intervalId) {
+      clearInterval(intervalId);
+    }
+  }, [repos]);
 
   return (
     <>
