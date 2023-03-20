@@ -54,7 +54,10 @@ const RepoCard = ({
       return;
     }
     if (isGithubConnected && isAnalyticsAllowed) {
-      navigateSearch(`What does this repo do? repo:${repoName}`, SearchType.NL);
+      navigateSearch(
+        `What does this repo do? repo:${repoName} lang:markdown`,
+        SearchType.NL,
+      );
     } else {
       navigateRepoPath(`${isGh ? 'github.com/' : ''}${repoName}`);
     }

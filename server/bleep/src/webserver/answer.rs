@@ -188,17 +188,6 @@ enum AnswerProgress {
     Explain(String),
 }
 
-impl AnswerProgress {
-    fn to_stage(&self, stop_watch: &mut StopWatch, snippets: Option<&[Snippet]>) -> Stage {
-        match self {
-            AnswerProgress::Rephrase(s) => Stage::new("rephrase", s),
-            AnswerProgress::Search(_) => Stage::new("search", snippets),
-            AnswerProgress::Explain(expl) => Stage::new("explain", expl),
-        }
-        .with_time(stop_watch.lap())
-    }
-}
-
 async fn search_snippets(
     semantic: &Semantic,
     raw_query: &str,
@@ -433,7 +422,7 @@ async fn handle_inner(
             AnswerProgress::Rephrase(query) => {
                 let prompt = app.with_prior_conversation(thread_id, |history| {
                     let n = history.len().saturating_sub(MAX_HISTORY);
-                    build_rephrase_query_prompt(query, &history[n..])
+                    build_rephrase_query_prompt(query, history.get(n..).unwrap_or_default())
                 });
 
                 (prompt, 20, 0.0, vec![])
@@ -443,8 +432,31 @@ async fn handle_inner(
                 let s = search_snippets(&semantic, &params.q, rephrased_query).await?;
                 info!("Retrieved {} snippets", s.len());
 
+                if s.is_empty() {
+                    warn!("Semantic search returned no snippets");
+                    let selection_fail_stream = Box::pin(stream::once(async {
+                        Ok("Sorry, I could not find any results matching your query. \
+                            Please try again with different keywords or refine your search."
+                            .to_string())
+                    }));
+                    return Ok((snippets, stop_watch, selection_fail_stream));
+                }
+
+                event
+                    .write()
+                    .await
+                    .stages
+                    .push(Stage::new("semantic_results", &s).with_time(stop_watch.lap()));
+
                 let prompt = answer_api_client.build_select_prompt(rephrased_query, &s);
                 snippets = Some(s);
+
+                event
+                    .write()
+                    .await
+                    .stages
+                    .push(Stage::new("select_prompt", &prompt).with_time(stop_watch.lap()));
+
                 (prompt, 10, 0.0, vec!["</index>".into()])
             }
             AnswerProgress::Explain(query) => {
@@ -476,15 +488,15 @@ async fn handle_inner(
                 let max_tokens = max_tokens.clamp(1, 250);
                 info!(%max_tokens, "clamping max tokens");
 
+                event
+                    .write()
+                    .await
+                    .stages
+                    .push(Stage::new("explain_prompt", &prompt).with_time(stop_watch.lap()));
+
                 (prompt, max_tokens, 0.9, vec![])
             }
         };
-
-        event
-            .write()
-            .await
-            .stages
-            .push(progress.to_stage(&mut stop_watch, snippets.as_deref()));
 
         // This strange extraction of parameters from a tuple is due to lifetime issues. This
         // function should probably be refactored, but at the time of writing this is left as-is
@@ -513,6 +525,11 @@ async fn handle_inner(
                 }));
                 return Ok((None, stop_watch, rephrase_fail_stream));
             }
+            event
+                .write()
+                .await
+                .stages
+                .push(Stage::new("rephrased_query", &rephrased_query));
             progress = AnswerProgress::Search(rephrased_query);
             continue;
         }
@@ -663,34 +680,26 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String>
         return None;
     }
 
-    // do not grow if this snippet contains incorrect byte ranges
-    if snippet.start_byte >= content.len() || snippet.end_byte >= content.len() {
-        error!(
-            repo = snippet.repo_name,
-            path = snippet.relative_path,
-            start = snippet.start_byte,
-            end = snippet.end_byte,
-            "invalid snippet bounds",
-        );
-        return None;
-    }
-
     // skip upwards `size` number of lines
-    let new_start_byte = content[..snippet.start_byte]
+    let new_start_byte = content
+        .get(..snippet.start_byte)?
         .rmatch_indices('\n')
         .map(|(idx, _)| idx)
         .nth(size)
         .unwrap_or(0);
 
     // skip downwards `size` number of lines
-    let new_end_byte = content[snippet.end_byte..]
+    let new_end_byte = content
+        .get(snippet.end_byte..)?
         .match_indices('\n')
         .map(|(idx, _)| idx)
         .nth(size)
         .map(|s| s.saturating_add(snippet.end_byte)) // the index is off by `snippet.end_byte`
         .unwrap_or(content.len());
 
-    Some(content[new_start_byte..new_end_byte].to_owned())
+    content
+        .get(new_start_byte..new_end_byte)
+        .map(ToOwned::to_owned)
 }
 
 static RAKE: once_cell::sync::Lazy<Rake> = once_cell::sync::Lazy::new(|| {
@@ -714,7 +723,7 @@ fn get_keywords(query: &str) -> String {
 struct AnswerAPIClient<'s> {
     host: String,
     semantic: &'s Semantic,
-    max_attempts: usize,
+    max_attempts: u64,
     bearer_token: Option<String>,
     client: reqwest::Client,
 }
@@ -722,7 +731,7 @@ struct AnswerAPIClient<'s> {
 #[derive(Error, Debug)]
 enum AnswerAPIError {
     #[error("max retry attempts reached {0}")]
-    MaxAttemptsReached(usize),
+    MaxAttemptsReached(u64),
 
     #[error("event source error {0}")]
     EventSource(#[from] reqwest_eventsource::Error),
@@ -752,7 +761,7 @@ impl Semantic {
         &'s self,
         state: &AnswerState,
         host: &str,
-        max_attempts: usize,
+        max_attempts: u64,
         bearer_token: Option<String>,
     ) -> AnswerAPIClient<'s> {
         AnswerAPIClient {
@@ -832,7 +841,18 @@ impl<'s> AnswerAPIClient<'s> {
         provider: api::Provider,
         extra_stop_sequences: Vec<String>,
     ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
+        const DELAY: [Duration; 5] = [
+            Duration::from_secs(0),
+            Duration::from_secs(2),
+            Duration::from_secs(4),
+            Duration::from_secs(8),
+            Duration::from_secs(16),
+        ];
+
         for attempt in 0..self.max_attempts {
+            warn!(%attempt, "delaying by {:?}", DELAY[attempt as usize % 5]);
+            tokio::time::sleep(DELAY[attempt as usize % 5]).await;
+
             let result = self
                 .send(
                     messages.clone(),

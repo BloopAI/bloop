@@ -94,6 +94,9 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
   const { isSelfServe } = useContext(DeviceContext);
   const { isGithubConnected } = useContext(UIContext);
   const { isAnalyticsAllowed } = useContext(AnalyticsContext);
+  const [composing, setComposition] = useState(false);
+  const startComposition = () => setComposition(true);
+  const endComposition = () => setComposition(false);
   const { repositories } = useContext(RepositoriesContext);
   const [showModal, setShowModal] = useState(false);
 
@@ -106,6 +109,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
     e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     if (e.key === 'Enter' && onSubmit) {
+      if (composing) return;
       e.preventDefault();
       onSubmit(e);
     }
@@ -235,6 +239,8 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
             type === 'email' ? 'px-1' : 'pl-2.5'
           } transition-all duration-300 ease-in-bounce outline-none outline-0 pr-9`}
           onKeyDown={handleEnter}
+          onCompositionStart={startComposition}
+          onCompositionEnd={endComposition}
         />
         {value ? (
           <ClearButton

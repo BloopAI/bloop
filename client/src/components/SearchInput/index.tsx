@@ -252,7 +252,7 @@ function SearchInput() {
         <div {...getComboboxProps()}>
           <SearchTextInput
             type="search"
-            placeholder="Eg: What does this repo do?"
+            placeholder="What does this repo do?"
             regex
             {...getInputProps(
               {
