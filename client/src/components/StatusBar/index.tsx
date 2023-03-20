@@ -1,14 +1,24 @@
 import { useContext, useEffect, useState } from 'react';
 import Button from '../Button';
-import { PowerPlug, Thunder } from '../../icons';
+import { DiscordLogo, PowerPlug, Thunder } from '../../icons';
 import { SearchContext } from '../../context/searchContext';
 import { UIContext } from '../../context/uiContext';
+import { DeviceContext } from '../../context/deviceContext';
+import { getDiscordLink } from '../../services/api';
 import StatusItem from './StatusItem';
 
 const StatusBar = () => {
   const { lastQueryTime } = useContext(SearchContext);
   const { setBugReportModalOpen } = useContext(UIContext);
+  const { openLink } = useContext(DeviceContext);
   const [isOnline, setIsOnline] = useState(true);
+  const [discordLink, setDiscordLink] = useState(
+    'https://discord.com/invite/kZEgj5pyjm',
+  );
+
+  useEffect(() => {
+    getDiscordLink().then(setDiscordLink);
+  }, []);
 
   useEffect(() => {
     const setOffline = () => {
@@ -50,7 +60,16 @@ const StatusBar = () => {
           textSecondary={lastQueryTime + 'ms'}
         />
       </span>
-      <span className="flex gap-2 ">
+      <span className="flex gap-4">
+        <button
+          className="flex gap-2 items-center text-gray-500"
+          onClick={() => openLink(discordLink)}
+        >
+          <div className="w-4 h-4">
+            <DiscordLogo raw />
+          </div>
+          <span className="caption">Join Discord channel</span>
+        </button>
         <Button
           size="small"
           variant="secondary"
