@@ -148,5 +148,8 @@ export const getUpvote = (params: {
   query: string;
 }) => axios.get(`${DB_API}/upvote`, { params }).then((r) => r.data);
 
+export const getDiscordLink = () =>
+  axios.get(`${DB_API}/discord-url`).then((r) => r.data);
+
 export const githubWebLogin = () =>
   http.get('/auth/login/start').then((r) => r.data);
