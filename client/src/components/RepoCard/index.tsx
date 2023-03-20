@@ -5,6 +5,7 @@ import { SyncStatus } from '../../types/general';
 import FileIcon from '../FileIcon';
 import { getFileExtensionForLang } from '../../utils';
 import useAppNavigation from '../../hooks/useAppNavigation';
+import BarLoader from '../Loaders/BarLoader';
 
 type Props = {
   name: string;
@@ -13,6 +14,8 @@ type Props = {
   last_update: string;
   lang: string;
   provider: 'local' | 'github';
+  isSyncing?: boolean;
+  syncStatus?: { indexStep: number; percentage: number } | null;
 };
 
 export const STATUS_MAP = {
@@ -33,6 +36,8 @@ const RepoCard = ({
   last_update,
   lang,
   provider,
+  isSyncing,
+  syncStatus,
 }: Props) => {
   const isGh = useMemo(() => provider === 'github', [provider]);
   const repoName = useMemo(() => {
@@ -54,22 +59,37 @@ const RepoCard = ({
         </p>
       </div>
       <p className="body-s text-gray-500">{description}</p>
-      <div className="flex items-center gap-2 caption text-gray-500">
-        <div className="w-4 h-4 ">
-          <GitHubLogo raw />
+      {isSyncing &&
+      syncStatus &&
+      (syncStatus.indexStep === 0 || syncStatus.percentage < 100) ? (
+        <div className="flex flex-col gap-2">
+          <p className="body-s text-gray-200">Syncing...</p>
+          <BarLoader
+            percentage={syncStatus.indexStep === 1 ? syncStatus.percentage : 1}
+          />
+          <p className="caption text-gray-500">
+            {syncStatus.indexStep === 1 ? syncStatus.percentage : 1}% complete
+          </p>
         </div>
-        <span
-          className={`w-2 h-2 ${
-            STATUS_MAP[typeof sync_status === 'string' ? sync_status : 'error']
-              ?.color || 'bg-yellow-500'
-          } rounded-full`}
-        />
-        <p className="select-none">
-          {STATUS_MAP[typeof sync_status === 'string' ? sync_status : 'error']
-            ?.text || sync_status}
-          {sync_status === 'done' && timeAgo(last_update)}
-        </p>
-      </div>
+      ) : (
+        <div className="flex items-center gap-2 caption text-gray-500">
+          <div className="w-4 h-4 ">
+            <GitHubLogo raw />
+          </div>
+          <span
+            className={`w-2 h-2 ${
+              STATUS_MAP[
+                typeof sync_status === 'string' ? sync_status : 'error'
+              ]?.color || 'bg-yellow-500'
+            } rounded-full`}
+          />
+          <p className="select-none">
+            {STATUS_MAP[typeof sync_status === 'string' ? sync_status : 'error']
+              ?.text || sync_status}
+            {sync_status === 'done' && timeAgo(last_update)}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
