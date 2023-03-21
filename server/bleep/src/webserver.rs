@@ -252,12 +252,6 @@ impl<T: ApiResponse + Send + Sync + 'static> From<T> for Response<'static> {
     }
 }
 
-impl<'a> From<config::ConfigResponse> for Response<'a> {
-    fn from(r: config::ConfigResponse) -> Response<'a> {
-        Response::Config(r)
-    }
-}
-
 impl<'a> From<EndpointError<'a>> for Response<'a> {
     fn from(value: EndpointError<'a>) -> Self {
         Self::Error(value)
