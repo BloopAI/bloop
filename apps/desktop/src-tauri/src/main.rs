@@ -6,10 +6,7 @@
 mod backend;
 mod qdrant;
 
-use std::{
-    path::PathBuf,
-    sync::{RwLock},
-};
+use std::{path::PathBuf, sync::RwLock};
 
 use bleep::Application;
 pub use tauri::{plugin, App, Manager, Runtime};
