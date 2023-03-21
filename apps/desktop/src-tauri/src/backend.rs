@@ -26,7 +26,7 @@ where
     );
     configuration.qdrant_url = Some("http://127.0.0.1:6334".into());
     configuration.ctags_path = relative_command_path("ctags");
-    configuration.max_threads = bleep::default_parallelism() / 4;
+    configuration.max_threads = bleep::default_parallelism() / 2;
     configuration.model_dir = app
         .path_resolver()
         .resolve_resource("model")
@@ -39,7 +39,9 @@ where
         &configuration.analytics_key,
         &configuration.analytics_data_plane,
     ) {
-        initialize_rudder_analytics(key.to_owned(), data_plane.to_owned());
+        initialize_analytics(key.to_owned(), data_plane.to_owned());
+    } else {
+        info!("Analytics not configured, skipping initialization...")
     }
 
     let app = app.handle();
@@ -71,7 +73,7 @@ where
     Ok(())
 }
 
-pub fn initialize_rudder_analytics(key: String, data_plane: String) {
+pub fn initialize_analytics(key: String, data_plane: String) {
     if analytics::RudderHub::get().is_some() {
         info!("analytics has already been initialized");
         return;

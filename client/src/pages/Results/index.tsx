@@ -26,7 +26,7 @@ import { useSearch } from '../../hooks/useSearch';
 import { FileSearchResponse, GeneralSearchResponse } from '../../types/api';
 import ErrorFallback from '../../components/ErrorFallback';
 import { getHoverables } from '../../services/api';
-import PageHeader from './PageHeader';
+import PageHeader from '../../components/ResultsPageHeader';
 import ResultsList from './ResultsList';
 
 type Props = {

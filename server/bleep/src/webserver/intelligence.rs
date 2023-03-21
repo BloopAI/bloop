@@ -47,6 +47,8 @@ pub(super) enum TokenInfoResponse {
     },
 }
 
+impl super::ApiResponse for TokenInfoResponse {}
+
 #[derive(Debug, Serialize, ToSchema)]
 pub(super) struct FileSymbols {
     // FIXME: choose a better name

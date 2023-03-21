@@ -23,6 +23,8 @@ pub(super) struct HoverableResponse {
     ranges: Vec<TextRange>,
 }
 
+impl super::ApiResponse for HoverableResponse {}
+
 #[utoipa::path(
     get,
     path = "/hoverable",

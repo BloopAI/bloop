@@ -1,4 +1,5 @@
 import React, { ReactElement } from 'react';
+import { NLSnippet } from './api';
 
 export enum MenuItemType {
   DEFAULT = 'default',
@@ -99,3 +100,17 @@ export enum ReposFilter {
 export type SearchHistoryItem =
   | string
   | { query: string; searchType: SearchType };
+
+export type ConversationMessage = {
+  author: 'user' | 'server';
+  text?: string;
+  isLoading: boolean;
+  snippets?: {
+    path: string;
+    code: string;
+    repoName: string;
+    lang: string;
+    line: number;
+  }[];
+  error?: string;
+};

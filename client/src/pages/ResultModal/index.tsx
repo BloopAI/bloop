@@ -107,6 +107,8 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
               repoName={result.repoName}
               metadata={metadata}
               scrollElement={null}
+              containerWidth={window.innerWidth * 0.6}
+              containerHeight={window.innerHeight - 15 * 16 - 32}
             />
           </div>
         );
@@ -127,6 +129,8 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
                 blame: mockGitBlame,
               }}
               scrollElement={null}
+              containerWidth={window.innerWidth * 0.6}
+              containerHeight={window.innerHeight - 15 * 16}
             />
           </div>
         );
@@ -296,7 +300,21 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
           {/*    tabs={tabs}*/}
           {/*  />*/}
           {/*</div>*/}
-          {getContent(result)}
+          <div
+            className={`flex px-2 py-4 bg-gray-900 h-[calc(100vh-15rem)] overflow-y-auto p-3 pr-12`}
+          >
+            <CodeFull
+              code={result.code}
+              language={result.language}
+              relativePath={result.relativePath}
+              repoPath={result.repoPath}
+              repoName={result.repoName}
+              metadata={metadata}
+              scrollElement={null}
+              containerWidth={window.innerWidth * 0.6 - 56}
+              containerHeight={window.innerHeight - 15 * 16 - 32}
+            />
+          </div>
         </div>
       </ModalOrSidebar>
       <ShareFileModal

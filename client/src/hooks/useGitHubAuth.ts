@@ -92,10 +92,10 @@ export const useGitHubAuth = (
   }, [loginUrl]);
 
   useEffect(() => {
-    if (!disabled && buttonClicked) {
+    if (!disabled && loginUrl) {
       checkGHAuth();
     }
-  }, [loginUrl, disabled, buttonClicked, timer]);
+  }, [loginUrl, disabled, timer]);
 
   useEffect(() => {
     if (!disabled) {

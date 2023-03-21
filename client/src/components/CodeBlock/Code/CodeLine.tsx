@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  memo,
 } from 'react';
 import { format } from 'timeago.js';
 import FoldButton from '../CodeFull/FoldButton';
@@ -14,6 +15,7 @@ import { SymbolType } from '../../../types/results';
 import { Commit } from '../../../types';
 import TooltipCommit from '../../TooltipCommit';
 import { markNode, unmark } from '../../../utils/textSearch';
+import { propsAreShallowEqual } from '../../../utils';
 
 type Props = {
   lineNumber: number;
@@ -87,7 +89,7 @@ const CodeLine = ({
     if (blame) {
       if (blameLine?.commit && blameLine?.start) {
         return (
-          <td className="p-0 pt-1 pl-2">
+          <div className="p-0 pt-1 pl-2">
             <span className="flex flex-row items-center gap-2">
               <TooltipCommit
                 position={'left'}
@@ -107,11 +109,11 @@ const CodeLine = ({
                 {format(blameLine.commit.datetime)}
               </span>
             </span>
-          </td>
+          </div>
         );
       }
     }
-    return <td className={`p-0 ${blameStyle}`}></td>;
+    return <div className={`p-0 ${blameStyle}`}></div>;
   }, [blame, blameLine]);
 
   const style = useMemo(
@@ -168,8 +170,8 @@ const CodeLine = ({
   }, []);
 
   return (
-    <tr
-      className={`transition-all duration-150 ease-in-bounce group hover:bg-transparent ${
+    <div
+      className={`flex transition-all duration-150 ease-in-bounce group hover:bg-transparent ${
         lineHidden ? 'opacity-0' : ''
       } ${
         blameLine?.start && lineNumber !== 0 ? ' border-t border-gray-700' : ''
@@ -187,7 +189,7 @@ const CodeLine = ({
     >
       {renderBlameLine}
       {symbols?.length ? (
-        <td
+        <div
           className={`peer text-center text-purple ${lineHidden ? 'p-0' : ''}`}
         >
           <span className="flex flex-row gap-1">
@@ -216,21 +218,21 @@ const CodeLine = ({
               </Tooltip>
             )}
           </span>
-        </td>
+        </div>
       ) : (
-        <td className={`px-1 text-center ${lineHidden ? 'p-0' : ''}`} />
+        <div className={`px-1 text-center ${lineHidden ? 'p-0' : ''}`} />
       )}
       {showLineNumbers && (
-        <td
+        <div
           data-line={lineNumber + 1}
           className={`text-gray-500 min-w-6 text-right select-none pr-0 leading-5 ${blameStyle} ${
             lineHidden ? 'p-0' : ''
           } ${hoverEffect ? 'group-hover:text-gray-300' : ''}
            ${lineHidden ? '' : 'before:content-[attr(data-line)]'}
           `}
-        ></td>
+        ></div>
       )}
-      <td className={`text-gray-500 ${lineHidden ? 'p-0' : ''} ${blameStyle}`}>
+      <div className={`text-gray-500 ${lineHidden ? 'p-0' : ''} ${blameStyle}`}>
         {lineFoldable && (
           <FoldButton
             onClick={(folded: boolean) => {
@@ -240,19 +242,19 @@ const CodeLine = ({
             }}
           />
         )}
-      </td>
-      <td
+      </div>
+      <div
         className={`pl-2 ${lineHidden ? 'p-0' : ''} ${
           isHighlighted ? 'animate-flash-highlight rounded-4 pr-2' : ''
         }`}
         ref={codeRef}
       >
         {children}
-      </td>
-      <td>
+      </div>
+      <div>
         <br />
-      </td>
-    </tr>
+      </div>
+    </div>
   );
 };
-export default CodeLine;
+export default memo(CodeLine, propsAreShallowEqual);

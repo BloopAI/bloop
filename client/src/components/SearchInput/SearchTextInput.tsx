@@ -5,6 +5,8 @@ import {
   HTMLInputTypeAttribute,
   KeyboardEvent,
   useContext,
+  useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -17,10 +19,13 @@ import {
 import ClearButton from '../ClearButton';
 import RegexButton from '../RegexButton';
 import ContextMenu from '../ContextMenu';
-import { MenuItemType, SearchType } from '../../types/general';
+import { MenuItemType, SearchType, SyncStatus } from '../../types/general';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { AnalyticsContext } from '../../context/analyticsContext';
+import { RepositoriesContext } from '../../context/repositoriesContext';
+import ModalOrSidebar from '../ModalOrSidebar';
+import Button from '../Button';
 
 type Props = {
   value: string;
@@ -84,17 +89,34 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
   ref: ForwardedRef<HTMLInputElement>,
 ) {
   const inputRef = useRef<HTMLInputElement>(null);
+  useImperativeHandle(ref, () => inputRef.current!);
   const [searchCtxMenuVisible, setSearchCtxMenuVisible] = useState(false);
   const { isSelfServe } = useContext(DeviceContext);
   const { isGithubConnected } = useContext(UIContext);
   const { isAnalyticsAllowed } = useContext(AnalyticsContext);
+  const [composing, setComposition] = useState(false);
+  const startComposition = () => setComposition(true);
+  const endComposition = () => setComposition(false);
+  const { repositories } = useContext(RepositoriesContext);
+  const [showModal, setShowModal] = useState(false);
+
+  const isDisabled = useMemo(
+    () => !repositories?.find((r) => r.sync_status === SyncStatus.Done),
+    [repositories],
+  );
 
   const handleEnter = (
     e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     if (e.key === 'Enter' && onSubmit) {
+      if (composing) return;
       e.preventDefault();
       onSubmit(e);
+    }
+    if (e.key === 'Escape' && !value) {
+      e.stopPropagation();
+      e.preventDefault();
+      inputRef.current?.blur();
     }
   };
 
@@ -102,15 +124,22 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
     onRegexClick?.();
   };
 
+  const handleInputClick = () => {
+    if (isDisabled) {
+      setShowModal(true);
+    }
+  };
+
   return (
     <div
       className={`flex flex-col gap-1 w-full ${
         disabled ? 'text-gray-500' : 'text-gray-100'
       } body-s`}
+      onClick={handleInputClick}
     >
       <div
         className={`group border h-10 rounded flex box-border items-center ${
-          disabled
+          disabled || isDisabled
             ? borderMap[variant].disabled
             : error
             ? borderMap[variant].error
@@ -123,7 +152,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
             : ''
         } transition-all duration-300 ease-in-bounce relative`}
       >
-        <span className="relative h-full" ref={ref}>
+        <span className="relative h-full">
           <ContextMenu
             items={[
               {
@@ -157,14 +186,21 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
             <button
               className="flex items-center px-2 h-full bg-gray-700 rounded-l"
               title="Search type"
+              disabled={isDisabled}
               onClick={(e) => {
                 e.preventDefault();
                 setSearchCtxMenuVisible(!searchCtxMenuVisible);
               }}
             >
               <span
-                className={`w-5 h-5 group-hover:text-gray-200 ${
-                  searchCtxMenuVisible ? 'text-gray-200' : 'text-gray-300'
+                className={`w-5 h-5 ${
+                  isDisabled ? '' : 'group-hover:text-gray-200'
+                } ${
+                  searchCtxMenuVisible
+                    ? 'text-gray-200'
+                    : isDisabled
+                    ? 'text-gray-500'
+                    : 'text-gray-300'
                 }`}
               >
                 {searchType === SearchType.NL ? (
@@ -174,9 +210,9 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
                 )}
               </span>
               <span
-                className={`w-5 h-5 group-hover:text-gray-200 ${
-                  searchCtxMenuVisible ? 'text-gray-200' : 'text-gray-500'
-                }`}
+                className={`w-5 h-5 ${
+                  isDisabled ? '' : 'group-hover:text-gray-200'
+                } ${searchCtxMenuVisible ? 'text-gray-200' : 'text-gray-500'}`}
               >
                 {searchCtxMenuVisible ? (
                   <ChevronUpFilled />
@@ -187,10 +223,6 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
             </button>
           </ContextMenu>
         </span>
-        {/*<span>*/}
-
-        {/*</span>*/}
-
         <input
           value={value}
           onChange={onChange}
@@ -198,8 +230,8 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
           id={id}
           name={name}
           type={type}
-          disabled={disabled}
-          ref={ref || inputRef}
+          disabled={disabled || isDisabled}
+          ref={inputRef}
           onBlur={validate}
           autoComplete="off"
           spellCheck="false"
@@ -207,6 +239,8 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
             type === 'email' ? 'px-1' : 'pl-2.5'
           } transition-all duration-300 ease-in-bounce outline-none outline-0 pr-9`}
           onKeyDown={handleEnter}
+          onCompositionStart={startComposition}
+          onCompositionEnd={endComposition}
         />
         {value ? (
           <ClearButton
@@ -215,13 +249,12 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
               onChange({
                 target: { value: '', name },
               } as ChangeEvent<HTMLInputElement>);
-              // @ts-ignore
-              (ref || inputRef).current?.focus();
+              inputRef.current?.focus();
             }}
             className={success ? 'group-focus-within:flex hidden' : 'flex'}
           />
         ) : null}
-        {regex && searchType === SearchType.REGEX ? (
+        {regex && searchType === SearchType.REGEX && !isDisabled ? (
           <RegexButton
             onClick={handleRegex}
             clasName={'mr-2'}
@@ -232,6 +265,40 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
         )}
       </div>
       {error ? <span className="text-danger-500 caption">{error}</span> : null}
+      <ModalOrSidebar
+        shouldStretch={false}
+        isSidebar={false}
+        shouldShow={showModal}
+        onClose={() => setShowModal(false)}
+        isModalSidebarTransition={false}
+        setIsModalSidebarTransition={() => {}}
+        top="7rem"
+      >
+        <div className="w-[484px]">
+          <img
+            src="/wait-for-repos-to-sync.png"
+            alt="Wait for repos to sync"
+            className="w-full"
+          />
+          <div className="flex flex-col gap-8 p-6">
+            <div className="flex flex-col gap-3 text-center">
+              <h4 className="text-gray-200">Your repos are still syncing</h4>
+              <p className="body-s text-gray-500">
+                At least one repository needs to be synced to access Search. We
+                will send you a notification when it’s ready.
+              </p>
+            </div>
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowModal(false);
+              }}
+            >
+              Got it
+            </Button>
+          </div>
+        </div>
+      </ModalOrSidebar>
     </div>
   );
 });

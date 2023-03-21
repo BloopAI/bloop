@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Duration};
 
 use crate::{
     repo::{Backend, RepoRef, Repository, SyncStatus},
@@ -7,7 +7,7 @@ use crate::{
 use axum::{
     extract::{Path, Query},
     http::StatusCode,
-    response::IntoResponse,
+    response::{sse, IntoResponse, Sse},
     Extension, Json,
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -55,9 +55,9 @@ impl From<(&RepoRef, &Repository)> for Repo {
 impl Repo {
     pub(crate) fn from_github(
         local_duplicates: Vec<RepoRef>,
-        origin: octocrab::models::Repository,
+        origin: &octocrab::models::Repository,
     ) -> Self {
-        let name = origin.full_name.unwrap();
+        let name = origin.full_name.clone().unwrap();
         Repo {
             provider: Backend::Github,
             repo_ref: RepoRef::new(Backend::Github, &name).unwrap(),
@@ -78,6 +78,35 @@ pub(super) enum ReposResponse {
     Item(Repo),
     SyncQueued,
     Deleted,
+}
+
+impl super::ApiResponse for ReposResponse {}
+
+/// Get a stream of status notifications about the indexing of each repository
+/// This endpoint opens an SSE stream
+//
+#[utoipa::path(get, path = "/repos/index-status",
+    responses(
+        (status = 200, description = "Execute query successfully", body = Sse),
+        (status = 400, description = "Bad request", body = EndpointError),
+        (status = 500, description = "Server error", body = EndpointError),
+    ),
+)]
+pub(super) async fn index_status(Extension(app): Extension<Application>) -> impl IntoResponse {
+    let mut receiver = app.indexes.subscribe();
+
+    Sse::new(async_stream::stream! {
+        while let Ok(event) = receiver.recv().await {
+            yield sse::Event::default().json_data(event).map_err(|err| {
+                <_ as Into<Box<dyn std::error::Error + Send + Sync>>>::into(err)
+            });
+        }
+    })
+    .keep_alive(
+        sse::KeepAlive::new()
+            .interval(Duration::from_secs(5))
+            .event(sse::Event::default().event("heartbeat")),
+    )
 }
 
 /// Retrieve all indexed repositories
@@ -186,11 +215,41 @@ pub(super) async fn sync(
     ),
 )]
 pub(super) async fn available(Extension(app): Extension<Application>) -> impl IntoResponse {
-    let unknown_github = super::github::list_repos(app.clone())
-        .await
+    let unknown_github = app
+        .credentials
+        .github()
+        .map(|gh| gh.repositories)
         .unwrap_or_default()
-        .into_iter()
-        .filter(|repo| !app.repo_pool.contains_key(&repo.repo_ref));
+        .iter()
+        .map(|repo| {
+            let local_duplicates = app
+                .repo_pool
+                .iter()
+                .filter(|elem| {
+                    // either `ssh_url` or `clone_url` should match what we generate.
+                    //
+                    // also note that this is quite possibly not the
+                    // most efficient way of doing this, but the
+                    // number of repos should be small, so even n^2
+                    // should be fast.
+                    //
+                    // most of the time is spent in the network.
+                    [
+                        repo.ssh_url.as_deref().unwrap_or_default().to_lowercase(),
+                        repo.clone_url
+                            .as_ref()
+                            .map(|url| url.as_str())
+                            .unwrap_or_default()
+                            .to_lowercase(),
+                    ]
+                    .contains(&elem.remote.to_string().to_lowercase())
+                })
+                .map(|elem| elem.key().clone())
+                .collect();
+
+            Repo::from_github(local_duplicates, repo)
+        })
+        .collect::<Vec<_>>();
 
     (
         StatusCode::OK,

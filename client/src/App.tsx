@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DeviceContextType } from './context/deviceContext';
 import './index.css';
+import './circleProgress.css';
 import Tab from './Tab';
 import { TabsContext } from './context/tabsContext';
 import { UITabType } from './types/general';
 import { getJsonFromStorage, SEARCH_HISTORY_KEY } from './services/storage';
 import { getConfig, initApi } from './services/api';
 import { useComponentWillMount } from './hooks/useComponentWillMount';
+import useKeyboardNavigation from './hooks/useKeyboardNavigation';
+import { generateUniqueId } from './utils';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -34,10 +37,23 @@ function App({ deviceContextValue }: Props) {
   ]);
   const [activeTab, setActiveTab] = useState('initial');
 
-  const handleAddTab = useCallback((newTab: UITabType) => {
+  const handleAddTab = useCallback(() => {
+    const newTab = {
+      key: generateUniqueId(),
+      name: 'Home',
+    };
     setTabs((prev) => [...prev, newTab]);
     setActiveTab(newTab.key);
   }, []);
+
+  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
+    if (e.key === 't' && (e.metaKey || e.ctrlKey)) {
+      e.stopPropagation();
+      e.preventDefault();
+      handleAddTab();
+    }
+  }, []);
+  useKeyboardNavigation(handleKeyEvent);
 
   const updateCurrentTabName = useCallback(
     (newName: string) => {

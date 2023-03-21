@@ -26,6 +26,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         isSelfServe: true,
         forceAnalytics: true,
         envConfig: {},
+        showNativeMessage: alert,
       }}
     />
   </React.StrictMode>,

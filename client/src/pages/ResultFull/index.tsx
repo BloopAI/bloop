@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import FileIcon from '../../components/FileIcon';
 import Breadcrumbs from '../../components/Breadcrumbs';
@@ -24,6 +23,13 @@ import { getFileName } from '../../utils/file';
 type Props = {
   data: any;
 };
+
+const SIDEBAR_WIDTH = 324;
+const HEADER_HEIGHT = 64;
+const FOOTER_HEIGHT = 64;
+const HORIZONTAL_PADDINGS = 64;
+const VERTICAL_PADDINGS = 32;
+const BREADCRUMBS_HEIGHT = 47;
 
 const ResultFull = ({ data }: Props) => {
   // const [activeTab, setActiveTab] = useState(0);
@@ -174,10 +180,19 @@ const ResultFull = ({ data }: Props) => {
                     lexicalBlocks: [],
                   }}
                   scrollElement={null}
+                  containerWidth={
+                    window.innerWidth - SIDEBAR_WIDTH - HORIZONTAL_PADDINGS
+                  }
+                  containerHeight={
+                    window.innerHeight -
+                    HEADER_HEIGHT -
+                    FOOTER_HEIGHT -
+                    VERTICAL_PADDINGS -
+                    BREADCRUMBS_HEIGHT
+                  }
                   repoName={result.repoName}
                 />
               </div>
-              {/*) : null}*/}
             </div>
           </div>
         </div>

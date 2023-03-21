@@ -20,6 +20,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: nschloe/action-cached-lfs-checkout@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Git LFS
+        run: git lfs install && git lfs pull
 
       - name: Rustfmt
         run: nix develop -c bash -c 'cargo --locked fmt -p bleep -- --check'

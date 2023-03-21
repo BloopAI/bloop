@@ -69,6 +69,8 @@ const ShareFileModal = ({
         )}
         <CodeFull
           code={result?.code || ''}
+          containerWidth={window.innerWidth * 0.6}
+          containerHeight={window.innerHeight - 64 * 2}
           language={'javascript'}
           repoPath={result?.repoPath || ''}
           relativePath={result?.relativePath || ''}

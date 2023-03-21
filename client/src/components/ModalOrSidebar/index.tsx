@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import React, { MouseEvent, PropsWithChildren, useEffect } from 'react';
+import React, { MouseEvent, PropsWithChildren, useCallback } from 'react';
 import {
   MODAL_SIDEBAR_APPEAR_ANIMATION,
   MODAL_SIDEBAR_CHANGE_ANIMATION,
 } from '../../consts/animations';
+import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 
 type Props = {
   isSidebar: boolean;
@@ -15,10 +16,11 @@ type Props = {
   containerClassName?: string;
   fullOverlay?: boolean;
   filtersOverlay?: boolean;
+  top?: string;
 };
 
-const modalAnimation = (shouldStretch: boolean) => ({
-  top: '5rem',
+const modalAnimation = (top: string, shouldStretch: boolean) => ({
+  top,
   ...(shouldStretch ? { bottom: '5rem' } : {}),
   right: '50%',
   transform: 'translate(50%, 0%)',
@@ -33,8 +35,8 @@ const sidebarAnimation = (shouldStretch: boolean) => ({
   opacity: 1,
 });
 
-const initialModalStyles = (shouldStretch: boolean) => ({
-  top: '5rem',
+const initialModalStyles = (top: string, shouldStretch: boolean) => ({
+  top,
   ...(shouldStretch ? { bottom: '5rem' } : {}),
   right: '50%',
   transform: 'translate(50%, 1rem)',
@@ -72,28 +74,29 @@ const ModalOrSidebar = ({
   shouldStretch = true,
   fullOverlay,
   filtersOverlay,
+  top = '5rem',
 }: PropsWithChildren<Props>) => {
-  useEffect(() => {
-    const handleKeyEvent = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && shouldShow) {
-        e.stopPropagation();
-        e.preventDefault();
-        // @ts-ignore
-        onClose(e);
-      }
-    };
-    window.addEventListener('keydown', handleKeyEvent);
+  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && shouldShow) {
+      e.stopPropagation();
+      e.preventDefault();
+      // @ts-ignore
+      onClose(e);
+    }
+  }, []);
+  useKeyboardNavigation(handleKeyEvent);
 
-    return () => {
-      window.removeEventListener('keydown', handleKeyEvent);
-    };
-  }, [shouldShow]);
+  const handleClick = useCallback((e: MouseEvent) => {
+    e.stopPropagation();
+    onClose(e);
+  }, []);
 
   return (
     <>
       <AnimatePresence>
         {shouldShow && !isSidebar && (
           <motion.div
+            key="overlay"
             className={`fixed top-0 ${
               fullOverlay ? '' : 'mt-16'
             } bottom-0 left-0 right-0 bg-gray-900 bg-opacity-75 cursor-alias ${
@@ -102,7 +105,7 @@ const ModalOrSidebar = ({
             initial={backdropHidden}
             animate={backdropVisible}
             exit={backdropHidden}
-            onClick={onClose}
+            onClick={handleClick}
             transition={MODAL_SIDEBAR_APPEAR_ANIMATION}
           />
         )}
@@ -116,23 +119,24 @@ const ModalOrSidebar = ({
       <AnimatePresence>
         {shouldShow && (
           <motion.div
-            className={`overflow-hidden fixed flex flex-col ${
+            key="modal"
+            className={`modal-or-sidebar overflow-hidden fixed flex flex-col ${
               isSidebar ? `border-y-0` : `rounded-md drop-shadow-light-bigger`
             } bg-gray-900 border border-gray-700 bg-opacity-75 z-70 backdrop-blur-8 ${containerClassName}`}
             animate={
               isSidebar
                 ? sidebarAnimation(shouldStretch)
-                : modalAnimation(shouldStretch)
+                : modalAnimation(top, shouldStretch)
             }
             initial={
               isSidebar
                 ? initialSidebarStyles(shouldStretch)
-                : initialModalStyles(shouldStretch)
+                : initialModalStyles(top, shouldStretch)
             }
             exit={
               isSidebar
                 ? initialSidebarStyles(shouldStretch)
-                : initialModalStyles(shouldStretch)
+                : initialModalStyles(top, shouldStretch)
             }
             transition={
               isModalSidebarTransition

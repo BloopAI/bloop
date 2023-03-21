@@ -117,6 +117,8 @@ pub(super) struct AutocompleteResponse {
     data: Vec<QueryResult>,
 }
 
+impl super::ApiResponse for AutocompleteResponse {}
+
 const QUERY_FLAGS: &[&str; 8] = &[
     "repo", "path", "content", "symbol", "lang", "case", "or", "open",
 ];

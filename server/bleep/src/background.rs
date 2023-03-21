@@ -203,8 +203,8 @@ impl IndexWriter {
 
         let repo = repo.clone();
         let backend = repo.backend();
-        let creds = match app.credentials.get(&repo.backend()) {
-            Some(creds) => creds.clone(),
+        let creds = match app.credentials.for_repo(&repo) {
+            Some(creds) => creds,
             None => {
                 let Some(path) = repo.local_path() else {
 		    bail!("no keys for backend {:?}", backend)

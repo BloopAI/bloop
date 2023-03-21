@@ -1,8 +1,30 @@
 import { MouseEvent } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import langs from './langs.json';
 
 export const copyToClipboard = (value: string) => {
-  navigator.clipboard.writeText(value).then();
+  // navigator clipboard api needs a secure context (https)
+  if (
+    navigator.clipboard &&
+    typeof navigator.clipboard.writeText === 'function' &&
+    window.isSecureContext
+  ) {
+    return navigator.clipboard.writeText(value).then();
+  } else {
+    let textArea = document.createElement('textarea');
+    textArea.value = value;
+    // make the textarea out of viewport
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    return new Promise((res, rej) => {
+      document.execCommand('copy') ? res(true) : rej();
+      textArea.remove();
+    });
+  }
 };
 
 /**
@@ -133,5 +155,15 @@ export const arrayUnique = (array: any[], property: string) => {
 };
 
 export const generateUniqueId = (): string => {
-  return hashCode(new Date().toISOString()).toString();
+  return uuidv4();
 };
+
+export const propsAreShallowEqual = <P>(
+  prevProps: Readonly<P>,
+  nextProps: Readonly<P>,
+) =>
+  Object.keys(prevProps).every(
+    (k) =>
+      prevProps[k as keyof typeof prevProps] ===
+      nextProps[k as keyof typeof nextProps],
+  );

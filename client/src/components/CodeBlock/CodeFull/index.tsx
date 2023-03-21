@@ -1,5 +1,4 @@
 import React, {
-  FC,
   useCallback,
   useEffect,
   useMemo,
@@ -7,28 +6,18 @@ import React, {
   useState,
 } from 'react';
 import debounce from 'lodash.debounce';
-import {
-  Table as _Table,
-  AutoSizer as _AutoSizer,
-  AutoSizerProps,
-  TableProps,
-} from 'react-virtualized';
 import { useSearchParams } from 'react-router-dom';
 import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
 import { Range, TokenInfoItem } from '../../../types/results';
-import CodeLine from '../Code/CodeLine';
-import { copyToClipboard, hashCode } from '../../../utils';
+import { copyToClipboard } from '../../../utils';
 import { Commit } from '../../../types';
-import { Token as TokenType } from '../../../types/prism';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import SearchOnPage from '../../SearchOnPage';
-import Token from './Token';
+import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
+import CodeContainer from './CodeContainer';
 
-const Table = _Table as unknown as FC<TableProps>;
-const AutoSizer = _AutoSizer as unknown as FC<AutoSizerProps>;
-
-interface BlameLine {
+export interface BlameLine {
   start: boolean;
   commit?: Commit;
 }
@@ -38,7 +27,7 @@ interface GitBlame {
   commit: Commit;
 }
 
-interface Metadata {
+export interface Metadata {
   lexicalBlocks: Range[];
   hoverableRanges: Record<number, Range[]>;
   blame?: GitBlame[];
@@ -53,6 +42,8 @@ type Props = {
   relativePath: string;
   repoPath: string;
   repoName: string;
+  containerWidth: number;
+  containerHeight: number;
 };
 
 const CodeFull = ({
@@ -64,6 +55,8 @@ const CodeFull = ({
   relativePath,
   repoPath,
   repoName,
+  containerWidth,
+  containerHeight,
 }: Props) => {
   const [foldableRanges, setFoldableRanges] = useState<Record<number, number>>(
     {},
@@ -188,11 +181,6 @@ const CodeFull = ({
 
   const tokens = useMemo(() => tokenizeCode(code, lang), [code, lang]);
 
-  const pathHash = useMemo(
-    () => (relativePath ? hashCode(relativePath) : ''),
-    [relativePath],
-  ); // To tell if code has changed
-
   const onRefDefClick = useCallback(
     (item: TokenInfoItem, filePath: string) => {
       if (filePath === relativePath) {
@@ -230,21 +218,13 @@ const CodeFull = ({
   );
 
   useEffect(() => {
-    setScrollToIndex([
-      searchResults[currentResult - 1],
-      searchResults[currentResult - 1],
-    ]);
-  }, [currentResult]);
-
-  const onMouseSelectStart = useCallback((lineNum: number, charNum: number) => {
-    setCurrentSelection([[lineNum, charNum]]);
-  }, []);
-
-  const onMouseSelectEnd = useCallback((lineNum: number, charNum: number) => {
-    setCurrentSelection((prev) =>
-      prev[0] ? [prev[0], [lineNum, charNum]] : [],
-    );
-  }, []);
+    if (searchResults[currentResult - 1]) {
+      setScrollToIndex([
+        searchResults[currentResult - 1],
+        searchResults[currentResult - 1],
+      ]);
+    }
+  }, [currentResult, searchResults]);
 
   const handleCopy = useCallback(
     (e: React.ClipboardEvent<HTMLPreElement>) => {
@@ -281,32 +261,26 @@ const CodeFull = ({
     [currentSelection],
   );
 
-  useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        event.key === 'a' &&
-        (event.target as HTMLElement)?.tagName !== 'INPUT'
-      ) {
-        // Prevent the default action (i.e. selecting all text in the browser)
-        event.preventDefault();
-        setCurrentSelection([
-          [0, 0],
-          [tokens.length - 1, tokens[tokens.length - 1].length],
-        ]);
-        const selection = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents(codeRef.current || document.body);
-        selection?.removeAllRanges();
-        selection?.addRange(range);
-      }
-    };
-    document.addEventListener('keydown', handler);
-
-    return () => {
-      document.removeEventListener('keydown', handler);
-    };
+  const handleKeyEvent = useCallback((event: KeyboardEvent) => {
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      event.key === 'a' &&
+      (event.target as HTMLElement)?.tagName !== 'INPUT'
+    ) {
+      // Prevent the default action (i.e. selecting all text in the browser)
+      event.preventDefault();
+      setCurrentSelection([
+        [0, 0],
+        [tokens.length - 1, tokens[tokens.length - 1].length],
+      ]);
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(codeRef.current || document.body);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
   }, []);
+  useKeyboardNavigation(handleKeyEvent);
 
   return (
     <div className="code-full-view w-full text-xs gap-10 flex flex-row relative">
@@ -328,60 +302,25 @@ const CodeFull = ({
           className={`prism-code language-${lang} bg-gray-900 my-0 w-full h-full`}
           onCopy={handleCopy}
         >
-          <AutoSizer>
-            {({ height, width }) => (
-              <Table
-                width={width}
-                height={height}
-                headerHeight={0}
-                rowHeight={20}
-                rowCount={tokens.length}
-                rowGetter={({ index }) => tokens[index]}
-                scrollToIndex={scrollToIndex?.[0]}
-                scrollToAlignment="center"
-                rowRenderer={(props) => (
-                  <CodeLine
-                    key={pathHash + '-' + props.index.toString()}
-                    lineNumber={props.index}
-                    lineFoldable={!!foldableRanges[props.index]}
-                    handleFold={toggleBlock}
-                    showLineNumbers={true}
-                    lineHidden={!!foldedLines[props.index]}
-                    blameLine={blameLines[props.index]}
-                    blame={!!metadata.blame?.length}
-                    hoverEffect
-                    onMouseSelectStart={onMouseSelectStart}
-                    onMouseSelectEnd={onMouseSelectEnd}
-                    shouldHighlight={
-                      scrollToIndex &&
-                      props.index >= scrollToIndex[0] &&
-                      props.index <= scrollToIndex[1]
-                    }
-                    searchTerm={searchTerm}
-                    stylesGenerated={{
-                      ...props.style,
-                      width: 'auto',
-                      minWidth: width,
-                      overflow: 'auto',
-                    }}
-                  >
-                    {props.rowData.map((token: TokenType, key: string) => (
-                      <Token
-                        key={key}
-                        lineHoverRanges={metadata.hoverableRanges[props.index]}
-                        language={language}
-                        token={token}
-                        repoName={repoName}
-                        relativePath={relativePath}
-                        repoPath={repoPath}
-                        onRefDefClick={onRefDefClick}
-                      />
-                    ))}
-                  </CodeLine>
-                )}
-              ></Table>
-            )}
-          </AutoSizer>
+          <CodeContainer
+            width={containerWidth}
+            height={containerHeight}
+            language={language}
+            metadata={metadata}
+            scrollElement={scrollElement}
+            relativePath={relativePath}
+            repoPath={repoPath}
+            repoName={repoName}
+            tokens={tokens}
+            foldableRanges={foldableRanges}
+            foldedLines={foldedLines}
+            blameLines={blameLines}
+            toggleBlock={toggleBlock}
+            setCurrentSelection={setCurrentSelection}
+            searchTerm={searchTerm}
+            onRefDefClick={onRefDefClick}
+            scrollToIndex={scrollToIndex}
+          />
         </pre>
       </div>
       {minimap && (

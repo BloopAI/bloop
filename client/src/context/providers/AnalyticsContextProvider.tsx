@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import * as analytics from 'rudder-sdk-js';
-import * as Sentry from '@sentry/react';
 import { AnalyticsContext } from '../analyticsContext';
 import {
   getPlainFromStorage,
@@ -37,11 +36,6 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
     ) {
       return;
     }
-    return new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Failed to initialize analytics'));
-        Sentry.captureException('Failed to initialize analytics');
-      }, 5000);
 
       analytics.load(
         envConfig.analytics_key_fe!,
@@ -52,12 +46,9 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
         },
       );
 
-      analytics.ready(() => {
-        setAnalyticsLoaded(true);
-        analytics.track('Launch');
-        clearTimeout(timeout);
-        resolve();
-      });
+    analytics.ready(() => {
+      setAnalyticsLoaded(true);
+      analytics.track('Launch');
     });
   };
 
@@ -69,7 +60,7 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
 
   useEffect(() => {
     if (isAnalyticsAllowed) {
-      loadAnalytics().catch(console.log);
+      loadAnalytics();
     } else {
       setAnalyticsLoaded(false);
     }

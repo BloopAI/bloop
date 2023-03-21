@@ -26,11 +26,11 @@ jobs:
             cross: false
 
           - target: x86_64-darwin
-            os: macos-latest
+            os: macos-11
             cross: false
 
           - target: aarch64-darwin
-            os: macos-latest
+            os: macos-11
             cross: true
 
         # Requires python for the build, which in a proper mess
@@ -75,7 +75,7 @@ jobs:
           cp -r $package_path/* ${{ env.PACKAGE_NAME }}_bundle
 
       - name: Copy macOS dynamic dependencies
-        if: matrix.os == 'macos-latest' && ( matrix.package == 'ctags' )
+        if: matrix.os == 'macos-11' && ( matrix.package == 'ctags' )
         env:
           PACKAGE_NAME: ${{ steps.var.outputs.package-name }}
         run: |
@@ -129,11 +129,11 @@ jobs:
             cross: false
 
           - target: x86_64-apple-darwin
-            os: macos-latest
+            os: macos-11
             cross: false
 
           - target: aarch64-apple-darwin
-            os: macos-latest
+            os: macos-11
             cross: true
 
     runs-on: ${{ matrix.os }}
@@ -146,7 +146,7 @@ jobs:
           target: ${{ matrix.target }}
 
       - uses: cachix/install-nix-action@v20
-        with: 
+        with:
           github_access_token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Install dependencies

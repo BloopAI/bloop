@@ -108,11 +108,13 @@ ort = { git = "https://github.com/bloopai/ort", branch = "merge-upstream" }
 ndarray = "0.15"
 uuid = { version = "1.2.2", features = ["v4", "fast-rng"] }
 jsonwebtoken = { version = "8.2.0", features = ["use_pem"] }
+rake = "0.1"
 
 # telemetry
 sentry = "0.29.2"
 rudderanalytics = "1.1.2"
 async-stream = "0.3.3"
+erased-serde = "0.3.25"
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.3"
@@ -123,6 +125,7 @@ pretty_assertions = "1.3.0"
 tempdir = "0.3.7"
 expect-test = "1.4.0"
 reqwest = { version = "0.11.14", features = ["blocking"] }
+git-version = "0.3.5"
 
 [build-dependencies]
 phf_codegen = "0.11.1"

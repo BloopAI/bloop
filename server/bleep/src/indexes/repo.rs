@@ -72,6 +72,7 @@ impl Indexable for Repo {
         repo: &Repository,
         _metadata: &RepoMetadata,
         writer: &IndexWriter,
+        progress: &(dyn Fn(u8) + Sync),
     ) -> Result<()> {
         // Make sure we delete any stale references to this repository when indexing.
         self.delete_by_repo(writer, repo);
@@ -84,6 +85,8 @@ impl Indexable for Repo {
             self.raw_name => repo_ref.indexed_name().as_bytes(),
             self.repo_ref => repo_ref.to_string(),
         ))?;
+
+        progress(100);
 
         info!(
             ?repo.disk_path,
