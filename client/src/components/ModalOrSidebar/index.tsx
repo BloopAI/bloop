@@ -96,6 +96,7 @@ const ModalOrSidebar = ({
       <AnimatePresence>
         {shouldShow && !isSidebar && (
           <motion.div
+            key="overlay"
             className={`fixed top-0 ${
               fullOverlay ? '' : 'mt-16'
             } bottom-0 left-0 right-0 bg-gray-900 bg-opacity-75 cursor-alias ${
@@ -118,6 +119,7 @@ const ModalOrSidebar = ({
       <AnimatePresence>
         {shouldShow && (
           <motion.div
+            key="modal"
             className={`modal-or-sidebar overflow-hidden fixed flex flex-col ${
               isSidebar ? `border-y-0` : `rounded-md drop-shadow-light-bigger`
             } bg-gray-900 border border-gray-700 bg-opacity-75 z-70 backdrop-blur-8 ${containerClassName}`}

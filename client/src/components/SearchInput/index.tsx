@@ -173,7 +173,7 @@ function SearchInput() {
         const input = inputRef.current;
         if (input) {
           if (input.getBoundingClientRect().left) {
-            setLeft(input.getBoundingClientRect().left - 272);
+            setLeft(input.getBoundingClientRect().left - 250);
           }
         }
       }
