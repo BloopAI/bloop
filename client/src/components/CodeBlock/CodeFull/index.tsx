@@ -1,5 +1,4 @@
 import React, {
-  FC,
   useCallback,
   useEffect,
   useMemo,
@@ -7,29 +6,19 @@ import React, {
   useState,
 } from 'react';
 import debounce from 'lodash.debounce';
-import {
-  Table as _Table,
-  AutoSizer as _AutoSizer,
-  AutoSizerProps,
-  TableProps,
-} from 'react-virtualized';
 import { useSearchParams } from 'react-router-dom';
+import AutoSizer from 'react-virtualized-auto-sizer';
 import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
 import { Range, TokenInfoItem } from '../../../types/results';
-import CodeLine from '../Code/CodeLine';
-import { copyToClipboard, hashCode } from '../../../utils';
+import { copyToClipboard } from '../../../utils';
 import { Commit } from '../../../types';
-import { Token as TokenType } from '../../../types/prism';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import SearchOnPage from '../../SearchOnPage';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
-import Token from './Token';
+import CodeContainer from './CodeContainer';
 
-const Table = _Table as unknown as FC<TableProps>;
-const AutoSizer = _AutoSizer as unknown as FC<AutoSizerProps>;
-
-interface BlameLine {
+export interface BlameLine {
   start: boolean;
   commit?: Commit;
 }
@@ -39,7 +28,7 @@ interface GitBlame {
   commit: Commit;
 }
 
-interface Metadata {
+export interface Metadata {
   lexicalBlocks: Range[];
   hoverableRanges: Record<number, Range[]>;
   blame?: GitBlame[];
@@ -189,11 +178,6 @@ const CodeFull = ({
 
   const tokens = useMemo(() => tokenizeCode(code, lang), [code, lang]);
 
-  const pathHash = useMemo(
-    () => (relativePath ? hashCode(relativePath) : ''),
-    [relativePath],
-  ); // To tell if code has changed
-
   const onRefDefClick = useCallback(
     (item: TokenInfoItem, filePath: string) => {
       if (filePath === relativePath) {
@@ -231,21 +215,13 @@ const CodeFull = ({
   );
 
   useEffect(() => {
-    setScrollToIndex([
-      searchResults[currentResult - 1],
-      searchResults[currentResult - 1],
-    ]);
-  }, [currentResult]);
-
-  const onMouseSelectStart = useCallback((lineNum: number, charNum: number) => {
-    setCurrentSelection([[lineNum, charNum]]);
-  }, []);
-
-  const onMouseSelectEnd = useCallback((lineNum: number, charNum: number) => {
-    setCurrentSelection((prev) =>
-      prev[0] ? [prev[0], [lineNum, charNum]] : [],
-    );
-  }, []);
+    if (searchResults[currentResult - 1]) {
+      setScrollToIndex([
+        searchResults[currentResult - 1],
+        searchResults[currentResult - 1],
+      ]);
+    }
+  }, [currentResult, searchResults]);
 
   const handleCopy = useCallback(
     (e: React.ClipboardEvent<HTMLPreElement>) => {
@@ -325,56 +301,25 @@ const CodeFull = ({
         >
           <AutoSizer>
             {({ height, width }) => (
-              <Table
+              <CodeContainer
                 width={width}
                 height={height}
-                headerHeight={0}
-                rowHeight={20}
-                rowCount={tokens.length}
-                rowGetter={({ index }) => tokens[index]}
-                scrollToIndex={scrollToIndex?.[0]}
-                scrollToAlignment="center"
-                rowRenderer={(props) => (
-                  <CodeLine
-                    key={pathHash + '-' + props.index.toString()}
-                    lineNumber={props.index}
-                    lineFoldable={!!foldableRanges[props.index]}
-                    handleFold={toggleBlock}
-                    showLineNumbers={true}
-                    lineHidden={!!foldedLines[props.index]}
-                    blameLine={blameLines[props.index]}
-                    blame={!!metadata.blame?.length}
-                    hoverEffect
-                    onMouseSelectStart={onMouseSelectStart}
-                    onMouseSelectEnd={onMouseSelectEnd}
-                    shouldHighlight={
-                      scrollToIndex &&
-                      props.index >= scrollToIndex[0] &&
-                      props.index <= scrollToIndex[1]
-                    }
-                    searchTerm={searchTerm}
-                    stylesGenerated={{
-                      ...props.style,
-                      width: 'auto',
-                      minWidth: width,
-                      overflow: 'auto',
-                    }}
-                  >
-                    {props.rowData.map((token: TokenType, key: string) => (
-                      <Token
-                        key={key}
-                        lineHoverRanges={metadata.hoverableRanges[props.index]}
-                        language={language}
-                        token={token}
-                        repoName={repoName}
-                        relativePath={relativePath}
-                        repoPath={repoPath}
-                        onRefDefClick={onRefDefClick}
-                      />
-                    ))}
-                  </CodeLine>
-                )}
-              ></Table>
+                language={language}
+                metadata={metadata}
+                scrollElement={scrollElement}
+                relativePath={relativePath}
+                repoPath={repoPath}
+                repoName={repoName}
+                tokens={tokens}
+                foldableRanges={foldableRanges}
+                foldedLines={foldedLines}
+                blameLines={blameLines}
+                toggleBlock={toggleBlock}
+                setCurrentSelection={setCurrentSelection}
+                searchTerm={searchTerm}
+                onRefDefClick={onRefDefClick}
+                scrollToIndex={scrollToIndex}
+              />
             )}
           </AutoSizer>
         </pre>

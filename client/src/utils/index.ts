@@ -136,3 +136,13 @@ export const arrayUnique = (array: any[], property: string) => {
 export const generateUniqueId = (): string => {
   return uuidv4();
 };
+
+export const propsAreShallowEqual = <P>(
+  prevProps: Readonly<P>,
+  nextProps: Readonly<P>,
+) =>
+  Object.keys(prevProps).every(
+    (k) =>
+      prevProps[k as keyof typeof prevProps] ===
+      nextProps[k as keyof typeof nextProps],
+  );
