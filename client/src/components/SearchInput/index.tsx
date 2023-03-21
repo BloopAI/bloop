@@ -75,119 +75,113 @@ function SearchInput() {
   );
   useKeyboardNavigation(handleKeyEvent);
 
-  const {
-    isOpen,
-    getMenuProps,
-    getInputProps,
-    getComboboxProps,
-    getItemProps,
-    closeMenu,
-  } = useCombobox({
-    inputValue,
-    onStateChange: async (state) => {
-      if (state.type === useCombobox.stateChangeTypes.ItemClick) {
-        if (state.selectedItem?.type === ResultItemType.FLAG) {
-          const words = inputValue.split(' ');
-          words[words.length - 1] =
-            state.selectedItem?.data || words[words.length - 1];
-          const newInputValue = words.join(' ') + ':';
-          setInputValue(newInputValue);
-          if (state.selectedItem?.data) {
-            const [filterName, filterValue] =
-              state.selectedItem.data.split(':');
-            setFilters((prev) => {
-              const newFilters = [...prev];
-              const sectionIndex = newFilters.findIndex(
-                (f) => f.name === filterName,
-              );
-              if (sectionIndex >= 0) {
-                const newItems = [...newFilters[sectionIndex].items];
-                const itemIndex = newItems.findIndex(
-                  (i) => i.label === filterValue,
+  const { isOpen, getMenuProps, getInputProps, getItemProps, closeMenu } =
+    useCombobox({
+      inputValue,
+      onStateChange: async (state) => {
+        if (state.type === useCombobox.stateChangeTypes.ItemClick) {
+          if (state.selectedItem?.type === ResultItemType.FLAG) {
+            const words = inputValue.split(' ');
+            words[words.length - 1] =
+              state.selectedItem?.data || words[words.length - 1];
+            const newInputValue = words.join(' ') + ':';
+            setInputValue(newInputValue);
+            if (state.selectedItem?.data) {
+              const [filterName, filterValue] =
+                state.selectedItem.data.split(':');
+              setFilters((prev) => {
+                const newFilters = [...prev];
+                const sectionIndex = newFilters.findIndex(
+                  (f) => f.name === filterName,
                 );
-                if (itemIndex >= 0) {
-                  newItems[itemIndex] = {
-                    ...newItems[itemIndex],
-                    checked: true,
-                  };
-                  newFilters[sectionIndex] = {
-                    ...newFilters[sectionIndex],
-                    items: newItems,
-                  };
+                if (sectionIndex >= 0) {
+                  const newItems = [...newFilters[sectionIndex].items];
+                  const itemIndex = newItems.findIndex(
+                    (i) => i.label === filterValue,
+                  );
+                  if (itemIndex >= 0) {
+                    newItems[itemIndex] = {
+                      ...newItems[itemIndex],
+                      checked: true,
+                    };
+                    newFilters[sectionIndex] = {
+                      ...newFilters[sectionIndex],
+                      items: newItems,
+                    };
+                  }
                 }
-              }
-              return newFilters;
-            });
-          }
-        } else if (state.selectedItem?.type === ResultItemType.LANG) {
-          setInputValue(
-            (prev) =>
-              prev.split(':').slice(0, -1).join(':') +
-              ':' +
-              (state.selectedItem as LangResult)?.data,
-          );
-        } else {
-          if (
-            state.selectedItem?.type === ResultItemType.FILE ||
-            state.selectedItem?.type === ResultItemType.CODE
-          ) {
-            navigateRepoPath(
-              state.selectedItem.repoName,
-              state.selectedItem.relativePath,
+                return newFilters;
+              });
+            }
+          } else if (state.selectedItem?.type === ResultItemType.LANG) {
+            setInputValue(
+              (prev) =>
+                prev.split(':').slice(0, -1).join(':') +
+                ':' +
+                (state.selectedItem as LangResult)?.data,
             );
-          } else if (state.selectedItem?.type === ResultItemType.REPO) {
-            navigateRepoPath(state.selectedItem.repository);
+          } else {
+            if (
+              state.selectedItem?.type === ResultItemType.FILE ||
+              state.selectedItem?.type === ResultItemType.CODE
+            ) {
+              navigateRepoPath(
+                state.selectedItem.repoName,
+                state.selectedItem.relativePath,
+              );
+            } else if (state.selectedItem?.type === ResultItemType.REPO) {
+              navigateRepoPath(state.selectedItem.repository);
+            }
           }
-        }
-        inputRef.current?.focus();
-      } else if (state.type === useCombobox.stateChangeTypes.InputChange) {
-        if (state.inputValue === '') {
-          setInputValue(state.inputValue);
-          setOptions([]);
-          return;
-        }
-        if (!state.inputValue) {
-          setFilters([]);
-          return;
-        }
-        if (searchType === SearchType.REGEX) {
-          getAutocompleteThrottled(state.inputValue, setOptions);
-        } else if (searchType === SearchType.NL) {
-          setOptions([]);
-          return;
-        }
-        const parsedFilters = parseFilters(state.inputValue);
-        if (Object.entries(parsedFilters).some((filters) => filters.length)) {
-          const newFilters = filters.map((filterItem) => ({
-            ...filterItem,
-            items: filterItem.items.map((item) => ({
-              ...item,
-              checked: parsedFilters[filterItem.name]?.includes(item.label),
-            })),
-          }));
+          inputRef.current?.focus();
+        } else if (state.type === useCombobox.stateChangeTypes.InputChange) {
+          if (state.inputValue === '') {
+            setInputValue(state.inputValue);
+            setOptions([]);
+            return;
+          }
+          if (!state.inputValue) {
+            setFilters([]);
+            return;
+          }
+          if (searchType === SearchType.REGEX) {
+            getAutocompleteThrottled(state.inputValue, setOptions);
+          } else if (searchType === SearchType.NL) {
+            setOptions([]);
+            return;
+          }
+          const parsedFilters = parseFilters(state.inputValue);
+          if (Object.entries(parsedFilters).some((filters) => filters.length)) {
+            const newFilters = filters.map((filterItem) => ({
+              ...filterItem,
+              items: filterItem.items.map((item) => ({
+                ...item,
+                checked: parsedFilters[filterItem.name]?.includes(item.label),
+              })),
+            }));
 
-          if (JSON.stringify(newFilters) !== JSON.stringify(filters)) {
-            setFilters(newFilters);
+            if (JSON.stringify(newFilters) !== JSON.stringify(filters)) {
+              setFilters(newFilters);
+            }
+          }
+          const input = inputRef.current;
+          if (input) {
+            if (input.getBoundingClientRect().left) {
+              setLeft(input.getBoundingClientRect().left - 272);
+            }
           }
         }
-        const input = inputRef.current;
-        if (input) {
-          if (input.getBoundingClientRect().left) {
-            setLeft(input.getBoundingClientRect().left - 250);
-          }
-        }
-      }
-    },
-    items: options,
-    itemToString(item) {
-      return (
-        (item?.type === ResultItemType.FLAG ||
-        item?.type === ResultItemType.LANG
-          ? item?.data
-          : '') || ''
-      );
-    },
-  });
+      },
+      items: options,
+      itemToString(item) {
+        return (
+          (item?.type === ResultItemType.FLAG ||
+          item?.type === ResultItemType.LANG
+            ? item?.data
+            : '') || ''
+        );
+      },
+    });
 
   const onSubmit = useCallback(
     (val: string, forceSearchType?: SearchType) => {
@@ -249,32 +243,30 @@ function SearchInput() {
         <Clipboard />
       </Button>
       <div className="flex-1 max-w-3xl">
-        <div {...getComboboxProps()}>
-          <SearchTextInput
-            type="search"
-            placeholder="What does this repo do?"
-            regex
-            {...getInputProps(
-              {
-                onChange: (e: ChangeEvent<HTMLInputElement>) => {
-                  setInputValue(e.target.value);
-                },
+        <SearchTextInput
+          type="search"
+          placeholder="What does this repo do?"
+          regex
+          {...getInputProps(
+            {
+              onChange: (e: ChangeEvent<HTMLInputElement>) => {
+                setInputValue(e.target.value);
               },
-              { suppressRefError: true },
-            )}
-            ref={inputRef}
-            onSubmit={() => onSubmit(inputValue)}
-            onRegexClick={() => {
-              setGlobalRegex(!globalRegex);
-            }}
-            regexEnabled={globalRegex}
-            searchType={searchType}
-            onSearchTypeChanged={(st) => {
-              setSearchType(st);
-              setInputValue('');
-            }}
-          />
-        </div>
+            },
+            { suppressRefError: true },
+          )}
+          ref={inputRef}
+          onSubmit={() => onSubmit(inputValue)}
+          onRegexClick={() => {
+            setGlobalRegex(!globalRegex);
+          }}
+          regexEnabled={globalRegex}
+          searchType={searchType}
+          onSearchTypeChanged={(st) => {
+            setSearchType(st);
+            setInputValue('');
+          }}
+        />
       </div>
 
       <AutocompleteMenu

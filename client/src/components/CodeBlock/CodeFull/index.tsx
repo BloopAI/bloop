@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import debounce from 'lodash.debounce';
 import { useSearchParams } from 'react-router-dom';
-import AutoSizer from 'react-virtualized-auto-sizer';
 import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
 import { Range, TokenInfoItem } from '../../../types/results';
@@ -43,6 +42,8 @@ type Props = {
   relativePath: string;
   repoPath: string;
   repoName: string;
+  containerWidth: number;
+  containerHeight: number;
 };
 
 const CodeFull = ({
@@ -54,6 +55,8 @@ const CodeFull = ({
   relativePath,
   repoPath,
   repoName,
+  containerWidth,
+  containerHeight,
 }: Props) => {
   const [foldableRanges, setFoldableRanges] = useState<Record<number, number>>(
     {},
@@ -299,29 +302,25 @@ const CodeFull = ({
           className={`prism-code language-${lang} bg-gray-900 my-0 w-full h-full`}
           onCopy={handleCopy}
         >
-          <AutoSizer>
-            {({ height, width }) => (
-              <CodeContainer
-                width={width}
-                height={height}
-                language={language}
-                metadata={metadata}
-                scrollElement={scrollElement}
-                relativePath={relativePath}
-                repoPath={repoPath}
-                repoName={repoName}
-                tokens={tokens}
-                foldableRanges={foldableRanges}
-                foldedLines={foldedLines}
-                blameLines={blameLines}
-                toggleBlock={toggleBlock}
-                setCurrentSelection={setCurrentSelection}
-                searchTerm={searchTerm}
-                onRefDefClick={onRefDefClick}
-                scrollToIndex={scrollToIndex}
-              />
-            )}
-          </AutoSizer>
+          <CodeContainer
+            width={containerWidth}
+            height={containerHeight}
+            language={language}
+            metadata={metadata}
+            scrollElement={scrollElement}
+            relativePath={relativePath}
+            repoPath={repoPath}
+            repoName={repoName}
+            tokens={tokens}
+            foldableRanges={foldableRanges}
+            foldedLines={foldedLines}
+            blameLines={blameLines}
+            toggleBlock={toggleBlock}
+            setCurrentSelection={setCurrentSelection}
+            searchTerm={searchTerm}
+            onRefDefClick={onRefDefClick}
+            scrollToIndex={scrollToIndex}
+          />
         </pre>
       </div>
       {minimap && (

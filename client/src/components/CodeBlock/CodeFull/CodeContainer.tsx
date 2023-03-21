@@ -66,7 +66,8 @@ const CodeContainer = ({
       let multiline = scrollToIndex[1] && scrollToIndex[0] !== scrollToIndex[1];
       if (multiline && scrollToIndex[1] - scrollToIndex[0] < 8) {
         scrollToItem =
-          scrollToIndex[0] + (scrollToIndex[1] - scrollToIndex[0]) / 2;
+          scrollToIndex[0] +
+          Math.floor((scrollToIndex[1] - scrollToIndex[0]) / 2);
       } else if (multiline) {
         align = 'start';
       }
