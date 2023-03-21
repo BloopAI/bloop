@@ -157,9 +157,7 @@ const Code = ({
           removePaddings ? '' : 'px-2'
         } ${onlySymbolLines ? 'overflow-hidden' : ''}`}
       >
-        <table>
-          <tbody>{codeLines}</tbody>
-        </table>
+        <div>{codeLines}</div>
       </pre>
     </div>
   );

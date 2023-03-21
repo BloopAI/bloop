@@ -89,6 +89,8 @@ export const CodeBlockFull = () => {
           repoPath={''}
           relativePath={''}
           repoName={'bloop'}
+          containerWidth={window.innerWidth * 0.6}
+          containerHeight={window.innerHeight}
           metadata={{
             lexicalBlocks: [
               { start: 4, end: 27 },
@@ -140,6 +142,8 @@ client2.registerChannel('client2', {
           code={code}
           language={'typescript'}
           scrollElement={scrollElem}
+          containerWidth={window.innerWidth * 0.6}
+          containerHeight={window.innerHeight}
           repoPath={''}
           relativePath={''}
           repoName={'bloop'}

@@ -7,7 +7,7 @@ ARG SENTRY_DSN_FE
 
 WORKDIR /build
 COPY package.json package-lock.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm ci
 COPY apps/ apps
 COPY client/ client
 COPY playwright.config.js .

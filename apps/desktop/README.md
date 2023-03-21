@@ -26,7 +26,7 @@ First make sure dependencies have been downloaded and installed:
 git lfs install
 git lfs pull
 
-npm install --legacy-peer-deps
+npm install
 ``` 
 
 Then to build the app locally:
