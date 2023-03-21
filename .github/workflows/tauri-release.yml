@@ -59,7 +59,7 @@ jobs:
           cache: "npm"
 
       - name: Install app dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
