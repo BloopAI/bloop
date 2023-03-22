@@ -157,7 +157,7 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
     return () => {
       eventSource?.close();
     };
-  }, [currentlySyncingRepo]);
+  }, []);
 
   useEffect(() => {
     setReposToShow(filterRepositories(filter, repositories));
