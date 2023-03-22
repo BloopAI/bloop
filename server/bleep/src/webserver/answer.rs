@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -11,6 +10,7 @@ use axum::{
     Extension,
 };
 use futures::{stream, Stream, StreamExt, TryStreamExt};
+use qdrant_client::qdrant::{vectors, ScoredPoint};
 use secrecy::ExposeSecret;
 use thiserror::Error;
 use tokio::sync::RwLock;
@@ -24,7 +24,7 @@ use crate::{
     query::parser,
     remotes,
     repo::RepoRef,
-    semantic::Semantic,
+    semantic::{self, Semantic},
     Application,
 };
 
@@ -79,7 +79,7 @@ pub mod api {
     pub type Result = std::result::Result<String, Error>;
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Default)]
 pub struct Snippet {
     pub lang: String,
     pub repo_name: String,
@@ -91,6 +91,12 @@ pub struct Snippet {
     pub start_byte: usize,
     pub end_byte: usize,
     pub score: f32,
+
+    /// the vector embeddings for each chunk.
+    ///
+    /// this is used to eliminate duplicate chunks using MMR, see semantic::deduplicate_with_mmr
+    #[serde(skip)]
+    pub embedding: Vec<f32>,
 }
 
 fn default_limit() -> u64 {
@@ -221,6 +227,17 @@ async fn search_snippets(
                 }
             }
 
+            fn extract_vector(point: &ScoredPoint) -> Vec<f32> {
+                if let Some(vectors) = &point.vectors {
+                    if let Some(vectors::VectorsOptions::Vector(v)) = &vectors.vectors_options {
+                        return v.data.clone();
+                    }
+                }
+                panic!("got non-vector value");
+            }
+
+            let embedding = extract_vector(&r);
+
             let mut s = r.payload;
 
             Snippet {
@@ -243,6 +260,7 @@ async fn search_snippets(
                     .parse::<usize>()
                     .unwrap(),
                 score: r.score,
+                embedding,
             }
         })
         .collect();
@@ -250,42 +268,19 @@ async fn search_snippets(
     Ok(all_snippets)
 }
 
-fn deduplicate_snippets(all_snippets: Vec<Snippet>) -> Vec<Snippet> {
-    let mut snippets = Vec::new();
-    let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
-
-    for snippet in all_snippets.into_iter() {
-        if snippets.len() > SNIPPET_COUNT {
-            break;
-        }
-
-        let path = &snippet.relative_path;
-        if !chunk_ranges_by_file.contains_key(path) {
-            chunk_ranges_by_file
-                .entry(path.to_string())
-                .or_insert_with(Vec::new);
-        }
-
-        if chunk_ranges_by_file.get(path).unwrap().len() <= 4 {
-            // check if line ranges of any added chunk overlap with current chunk
-            let any_overlap = chunk_ranges_by_file
-                .get(path)
-                .unwrap()
-                .iter()
-                .any(|r| (snippet.start_line <= r.end) && (r.start <= snippet.end_line));
-
-            // no overlap, add snippet
-            if !any_overlap {
-                chunk_ranges_by_file
-                    .entry(path.to_string())
-                    .or_insert_with(Vec::new)
-                    .push(std::ops::Range {
-                        start: snippet.start_line,
-                        end: snippet.end_line,
-                    });
-                snippets.push(snippet);
-            }
-        }
+fn deduplicate_snippets(all_snippets: Vec<Snippet>, query_embedding: Vec<f32>) -> Vec<Snippet> {
+    let lambda = 0.5;
+    let k = SNIPPET_COUNT; // number of snippets
+    let embeddings = all_snippets
+        .iter()
+        .map(|s| s.embedding.as_slice())
+        .collect::<Vec<_>>();
+    let idxs = semantic::deduplicate_with_mmr(&query_embedding, &embeddings, lambda, k);
+    let mut snippets = vec![];
+    info!("preserved idxs after MMR are {:?}", idxs);
+    for i in idxs {
+        let item = all_snippets[i].clone();
+        snippets.push(item);
     }
     snippets
 }
@@ -343,6 +338,7 @@ async fn grow_snippet(
         start_byte: relevant_snippet.start_byte,
         end_byte: relevant_snippet.end_byte,
         score: relevant_snippet.score,
+        embedding: relevant_snippet.embedding.clone(),
     })
 }
 
@@ -442,7 +438,16 @@ async fn handle_inner(
                     Stage::new("semantic_results", &all_snippets).with_time(stop_watch.lap()),
                 );
 
-                let filtered_snippets = deduplicate_snippets(all_snippets);
+                let query_embedding = semantic.embed(rephrased_query).map_err(|e| {
+                    error!("failed to embed query: {}", e);
+                    Error::internal(e)
+                })?;
+                let filtered_snippets = deduplicate_snippets(all_snippets, query_embedding);
+
+                event.write().await.stages.push(
+                    Stage::new("filtered_semantic_results", &filtered_snippets)
+                        .with_time(stop_watch.lap()),
+                );
 
                 if filtered_snippets.is_empty() {
                     warn!("Semantic search returned no snippets");
@@ -453,11 +458,6 @@ async fn handle_inner(
                     }));
                     return Ok((snippets, stop_watch, selection_fail_stream));
                 }
-
-                event.write().await.stages.push(
-                    Stage::new("filtered_semantic_results", &filtered_snippets)
-                        .with_time(stop_watch.lap()),
-                );
 
                 let prompt =
                     answer_api_client.build_select_prompt(rephrased_query, &filtered_snippets);
