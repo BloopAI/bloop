@@ -237,7 +237,11 @@ impl Poller {
             debouncer
                 .watcher()
                 .watch(&git_path, RecursiveMode::Recursive)
-                .unwrap();
+                .map_err(|e| {
+                    let d = git_path.display();
+                    error!(error = %e, path = %d, "path does not exist anymore");
+                })
+                .ok()?;
             _debouncer = Some(debouncer);
 
             info!(?reporef, ?git_path, "will reindex repo on git changes");
@@ -304,7 +308,11 @@ fn debounced_events(tx: flume::Sender<()>) -> Debouncer<RecommendedWatcher> {
         Duration::from_secs(5),
         None,
         move |event: DebounceEventResult| match event {
-            Ok(events) if events.is_empty().not() => tx.send(()).unwrap(),
+            Ok(events) if events.is_empty().not() => {
+                if let Err(e) = tx.send(()) {
+                    error!("{e}");
+                }
+            }
             Ok(_) => debug!("no events received from debouncer"),
             Err(err) => {
                 error!(?err, "repository monitoring");
