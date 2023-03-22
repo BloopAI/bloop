@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react';
 import { BrowserTracing } from '@sentry/tracing';
+import { ExtraErrorData } from '@sentry/integrations';
 import { useEffect } from 'react';
 import {
   createRoutesFromChildren,
@@ -24,6 +25,7 @@ export const initializeSentry = (dsn: string, release: string) => {
           matchRoutes,
         ),
       }),
+      new ExtraErrorData(),
     ],
     environment: import.meta.env.MODE,
     release,

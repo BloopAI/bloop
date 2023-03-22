@@ -69,6 +69,7 @@
   },
   "dependencies": {
     "@rive-app/react-canvas": "^3.0.38",
+    "@sentry/integrations": "^7.44.2",
     "@sentry/react": "^7.44.1",
     "@sentry/tracing": "^7.44.1",
     "@tauri-apps/api": "^1.2.0",
