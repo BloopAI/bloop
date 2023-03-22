@@ -274,7 +274,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
         setIsModalSidebarTransition={() => {}}
         top="7rem"
       >
-        <div className="w-[484px]">
+        <div className="w-[484px] bg-gray-900">
           <img
             src="/wait-for-repos-to-sync.png"
             alt="Wait for repos to sync"
