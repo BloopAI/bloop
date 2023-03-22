@@ -126,7 +126,7 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
     <>
       <DialogText
         title="Sync local repositories"
-        description="Select the folders you want to add to bloop. You can always sync, unsync or removed unwanted repositories later."
+        description="Select the folders you want to add to bloop. You can always sync, unsync or remove unwanted repositories later."
       />
       <div className="flex flex-col overflow-auto h-full">
         <SearchableRepoList

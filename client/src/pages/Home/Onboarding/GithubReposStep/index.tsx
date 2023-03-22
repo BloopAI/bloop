@@ -125,7 +125,7 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
     <>
       <DialogText
         title="Sync GitHub repositories"
-        description="Select the GitHub repositories you want to add to bloop. You can always sync, unsync or removed unwanted repositories later."
+        description="Select the GitHub repositories you want to add to bloop. You can always sync, unsync or remove unwanted repositories later."
       />
       <div className="flex flex-col overflow-auto">
         <SearchableRepoList
