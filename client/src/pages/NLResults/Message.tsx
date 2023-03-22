@@ -11,7 +11,7 @@ import useAnalytics from '../../hooks/useAnalytics';
 import { ConversationMessage } from '../../types/general';
 
 const md = new Remarkable({
-  html: true,
+  html: false,
   linkTarget: '__blank',
 });
 
