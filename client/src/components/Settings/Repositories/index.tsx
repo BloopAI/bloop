@@ -105,6 +105,8 @@ const RepositoriesSettings = () => {
 
   const handleRemoveOne = useCallback(async (repoRef: string) => {
     await deleteRepo(repoRef);
+    const data = await getRepos();
+    setRepositories(data.list || []);
   }, []);
 
   const addReposMenuItems = useMemo(

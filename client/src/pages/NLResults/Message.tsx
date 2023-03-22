@@ -11,7 +11,7 @@ import useAnalytics from '../../hooks/useAnalytics';
 import { ConversationMessage } from '../../types/general';
 
 const md = new Remarkable({
-  html: true,
+  html: false,
   linkTarget: '__blank',
 });
 
@@ -119,11 +119,13 @@ const Message = ({
       ) : null}
 
       <div className="relative">
-        {message.text || message.error ? (
+        {message.author === 'user' ? (
+          <div className="conversation-message rounded-lg p-3 bg-gray-700">
+            {message.author === 'user' ? message.text : null}
+          </div>
+        ) : message.text || message.error ? (
           <div
-            className={`conversation-message rounded-lg p-3 ${
-              message.author === 'user' ? 'bg-gray-700' : 'bg-primary-400'
-            }`}
+            className="conversation-message rounded-lg p-3 bg-primary-400"
             dangerouslySetInnerHTML={{
               __html: highlightedAnswer || message.error || '',
             }}
