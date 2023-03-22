@@ -11,8 +11,8 @@ type Props = {
   shouldShow: boolean;
   onClose: (e: MouseEvent) => void;
   shouldStretch?: boolean;
-  isModalSidebarTransition: boolean;
-  setIsModalSidebarTransition: (b: boolean) => void;
+  isModalSidebarTransition?: boolean;
+  setIsModalSidebarTransition?: (b: boolean) => void;
   containerClassName?: string;
   fullOverlay?: boolean;
   filtersOverlay?: boolean;
@@ -143,7 +143,7 @@ const ModalOrSidebar = ({
                 ? MODAL_SIDEBAR_CHANGE_ANIMATION
                 : MODAL_SIDEBAR_APPEAR_ANIMATION
             }
-            onAnimationComplete={() => setIsModalSidebarTransition(false)}
+            onAnimationComplete={() => setIsModalSidebarTransition?.(false)}
           >
             {children}
           </motion.div>
