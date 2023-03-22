@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -11,7 +11,6 @@ use axum::{
     Extension,
 };
 use futures::{stream, Stream, StreamExt, TryStreamExt};
-use rake::*;
 use secrecy::ExposeSecret;
 use thiserror::Error;
 use tokio::sync::RwLock;
@@ -195,11 +194,7 @@ async fn search_snippets(
 ) -> Result<Vec<Snippet>, Error> {
     let mut parsed_query = &mut parser::parse_nl(raw_query).map_err(Error::user)?;
 
-    // Extract keywords from the rephrased query
-    let keywords = get_keywords(rephrased_query);
-    info!("Extracted keywords: {}", keywords);
-
-    parsed_query.target = Some(parser::Literal::Plain(keywords.into()));
+    parsed_query.target = Some(parser::Literal::Plain(rephrased_query.into()));
 
     let all_snippets: Vec<Snippet> = semantic
         .search(parsed_query, 4 * SNIPPET_COUNT as u64) // heuristic
@@ -424,8 +419,8 @@ async fn handle_inner(
                     let n = history.len().saturating_sub(MAX_HISTORY);
                     build_rephrase_query_prompt(query, history.get(n..).unwrap_or_default())
                 });
-
-                (prompt, 20, 0.0, vec![])
+                dbg!(&prompt);
+                (prompt, 20, 0.3, vec![])
             }
             AnswerProgress::Search(rephrased_query) => {
                 // TODO: Clean up this query handling logic
@@ -475,6 +470,7 @@ async fn handle_inner(
                         }],
                     }
                 };
+                dbg!(&prompt);
                 let tokens_used =
                     semantic.gpt2_token_count(&prompt.messages.first().unwrap().content);
                 info!(%tokens_used, "input prompt token count");
@@ -548,7 +544,7 @@ async fn handle_inner(
         match collected {
             FirstToken::Number(n) => {
                 progress = match progress {
-                    AnswerProgress::Search(prompt) => {
+                    AnswerProgress::Search(_) => {
                         let Some(index) = n.checked_sub(1) else {
                             let selection_fail_stream = Box::pin(stream::once(async {
                                 Ok("I'm not sure. One of these snippets might be relevant".to_string())
@@ -556,7 +552,7 @@ async fn handle_inner(
                             return Ok((snippets, stop_watch, selection_fail_stream));
                         };
                         snippets.as_mut().unwrap().swap(index, 0);
-                        AnswerProgress::Explain(prompt)
+                        AnswerProgress::Explain(query.clone())
                     }
                     e => e,
                 }
@@ -700,24 +696,6 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String>
     content
         .get(new_start_byte..new_end_byte)
         .map(ToOwned::to_owned)
-}
-
-static RAKE: once_cell::sync::Lazy<Rake> = once_cell::sync::Lazy::new(|| {
-    let stop_words = include_str!("../../../stopwords.txt");
-    let sw = stop_words
-        .lines()
-        .map(ToOwned::to_owned)
-        .collect::<HashSet<String>>()
-        .into();
-    Rake::new(sw)
-});
-
-fn get_keywords(query: &str) -> String {
-    RAKE.run(query)
-        .into_iter()
-        .map(|score| score.keyword)
-        .collect::<Vec<String>>()
-        .join(" ")
 }
 
 struct AnswerAPIClient<'s> {
@@ -924,13 +902,12 @@ Assistant:<index>",
         query: &str,
     ) -> api::Messages {
         let system = format!(
-            r#"{}/{}
+            r#"{}
 =========
-{}
-=========
-Above, you have an extract from a code file. This message will be followed by the last few utterances of a conversation with a user. Use the code file to write a concise, precise answer to the question.
+Above, you have an extract from a the {} file in the {} repo. This message will be followed by the last few utterances of a conversation with a user. Use the code file to write a concise, precise answer to the question.
 
 - Format your response in GitHub Markdown. Paths, function names and code extracts should be enclosed in backticks.
+- Use markdown bullet points to format lists
 - Keep your response short. It should only be a few sentences long at the most.
 - Do NOT copy long chunks of code into the response.
 - If the file doesn't contain enough information to answer the question, or you don't know the answer, just say "Sorry, I'm not sure.".
@@ -967,81 +944,89 @@ Let's think step by step. First carefully refer to the code above, then answer t
 }
 
 fn build_rephrase_query_prompt(query: &str, conversation: &[(String, String)]) -> api::Messages {
-    let system =
-        r#"Given a question and an optional conversational history between a user and yourself, generate a standalone question. If there is no question, write "N/A" instead."
+    let mut system =
+        r#"You are a tool for generating search queries. Given a series of past interactions between a user and an assistant generate a search query to pass to a search engine that might answer the most recent user question. Follow these instructions:
 
-- IGNORE any information in the conversational history which is not relevant to the question
-- Absolutely, positively do NOT answer the question
-- Rephrase the question into a standalone question
-- The standalone question should be concise
-- Only add terms to the standalone question where absolutely necessary
+- Generate a search query which consists of relevant keywords
+- If necessary rephrase the keywords in the query into ones which are more likely to be retrieved by a code search engine
+- Ignore any prior interactions between the user and the assistant which are irrelevant to the most recent user question 
+- Do NOT answer any of the user's queries
+- Your keywords query should be concise
+- Only add terms where you think they'll help the search engine retrieve a relevant result
+- If the user has not asked a question reply with "N/A"
+
+Here are some examples:
 
 User: Hey bloop, do we pin js version numbers?
-Assistant: Do we pin js version numbers?
+Query: pin js version numbers dependencies config
 
 User: Hey bloop, I have a question - Where do we test if GitHub login works?
 Assistant: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
 User: which file?
-Assistant: In which file do we test if GitHub login works?
+Query: test GitHub login
 
 User: What's the best way to update the search icon @bloop?
-Assistant: What's the best way to update the search icon?
+Query: update search icon
 
 User: Where do we test if GitHub login works
 Assistant: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
 User: Are there unit tests?
-Assistant: Is there a unit test for GitHub login?
+Query: unit test GitHub login
 
 User: sdfkhsdkfh
-Assistant: N/A
+Query: N/A
 
 User: Where is the answer api called
 Assistant: The answer API client is called in `server/bleep/webserver/answer.rs`. After building the prompt the `select_snippet` method belonging to the `answer_api_client` is called.
 User: frontend
-Assistant: Where is the answer API called on the frontend?
+Query: answer API frontend
 
 User: Where do bug reports get sent?
 Assistant: Bug reports get sent to the repo maintainers.
 User: Which url
-Assistant: Which url do bug reports get sent to?
+Query: url bug reports
+
+User: You're the best 
+Query: N/A
 
 User: tailwind config
 Assistant: The `tailwind.config.cjs` file configures Tailwind CSS for the desktop app by extending a basic configuration and adding additional content paths.
 User: client config
-Assistant: Where is the client Tailwind config file?
+Query: client Tailwind config
+
+User: Hey bloop
+Query: N/A
+
+User: Where do we test if GitHub login works
+Assistant: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
+User: Nice to meet you
+Query: N/A
 
 User: I love bananas
 Assistant: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
 User: Which onnxruntime library do we use?
-Assistant: Which onnxruntime library do we use?
+Query: onnxruntime library dependencies
 
 User: Where is the query parsing logic?
 Assistant: The query parser is defined in the `parse` function in `server/bleep/src/query/parser.rs`.
 User: Which libraries does it use?
 Assistant: Sorry, the given code snippet does not contain enough context to determine which libraries the query parser uses.
 User: Where's the delete repo endpoint?
-Assistant: Where's the delete repo endpoint?"#.to_string();
+Query: delete repo endpoint
 
-    let mut messages = vec![api::Message {
+"#.to_string();
+
+    for (question, answer) in conversation {
+        system.push_str(&format!("User: {}\n", question.clone()));
+        system.push_str(&format!("Assistant: {}\n", answer.clone()));
+    }
+    system.push_str(&format!("User: {}\n", query));
+    system.push_str("Query: ");
+
+    let messages = vec![api::Message {
         role: "system".to_string(),
         content: system,
     }];
-
-    for (question, answer) in conversation {
-        messages.push(api::Message {
-            role: "user".to_string(),
-            content: question.clone(),
-        });
-        messages.push(api::Message {
-            role: "assistant".to_string(),
-            content: answer.clone(),
-        });
-    }
-
-    messages.push(api::Message {
-        role: "user".to_string(),
-        content: query.to_string(),
-    });
 
     api::Messages { messages }
 }
