@@ -14,6 +14,7 @@ use utoipa::ToSchema;
 mod aaa;
 pub mod answer;
 mod autocomplete;
+mod config;
 mod file;
 mod github;
 mod hoverable;
@@ -41,6 +42,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
     let bind = SocketAddr::new(app.config.host.parse()?, app.config.port);
 
     let mut api = Router::new()
+        .route("/config", get(config::handle))
         // querying
         .route("/q", get(query::handle))
         // autocomplete

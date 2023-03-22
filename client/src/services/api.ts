@@ -153,3 +153,5 @@ export const getDiscordLink = () =>
 
 export const githubWebLogin = () =>
   http.get('/auth/login/start').then((r) => r.data);
+
+export const getConfig = () => http.get('/config').then((r) => r.data);

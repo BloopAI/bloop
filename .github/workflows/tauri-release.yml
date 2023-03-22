@@ -96,7 +96,10 @@ jobs:
         run: exit 1
 
       - name: Set environment
-        run: echo "ANALYTICS_FE_WRITE_KEY_PROD=${{ secrets.ANALYTICS_FE_WRITE_KEY_PROD }}\nSENTRY_DSN_FE=${{ secrets.SENTRY_DSN_FE }}" >> apps/desktop/.env
+        run: echo "{\"analytics_key\":\"${{ secrets.ANALYTICS_BE_WRITE_KEY_PROD }}\",\"analytics_data_plane\":\"${{ secrets.ANALYTICS_DATA_PLANE }}\",\"sentry_dsn_fe\":\"${{ secrets.SENTRY_DSN_FE }}\",\"analytics_key_fe\":\"${{ secrets.ANALYTICS_FE_WRITE_KEY_PROD }}\",\"github_client_id\":\"${{ secrets.APP_GITHUB_CLIENT_ID }}\",\"answer_api_url\":\"${{ secrets.ANSWER_API_URL }}\"}" > apps/desktop/src-tauri/config.json
+
+      - name: Check environment is set
+        run: du -h apps/desktop/src-tauri/config.json
 
       - name: Set providerShortName in tauri.conf.json
         uses: jossef/action-set-json-field@v2
@@ -131,6 +134,6 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.name }}-app
+          name: ${{ matrix.target }}-app
           path: target/${{ matrix.target }}/release/bundle
           retention-days: 5

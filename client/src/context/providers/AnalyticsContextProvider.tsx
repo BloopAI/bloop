@@ -10,17 +10,18 @@ interface AnalyticsProviderProps {
   children: React.ReactNode;
   deviceId?: string;
   forceAnalytics?: boolean;
+  envConfig: {
+    analytics_data_plane?: string;
+    analytics_key_fe?: string;
+  };
 }
 
 export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   children,
   deviceId,
   forceAnalytics,
+  envConfig,
 }) => {
-  const WRITE_KEY = import.meta.env.PROD
-    ? import.meta.env.ANALYTICS_FE_WRITE_KEY_PROD
-    : import.meta.env.ANALYTICS_FE_WRITE_KEY_DEV;
-
   const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
 
   const [isAnalyticsAllowed, setIsAnalyticsAllowed] = useState(
@@ -28,14 +29,22 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   );
 
   const loadAnalytics = async () => {
-    if (!WRITE_KEY || analyticsLoaded) {
+    if (
+      !envConfig.analytics_key_fe ||
+      !envConfig.analytics_data_plane ||
+      analyticsLoaded
+    ) {
       return;
     }
 
-    analytics.load(WRITE_KEY, import.meta.env.ANALYTICS_DATA_PLANE_URL, {
-      logLevel: 'DEBUG',
-      integrations: { All: true },
-    });
+      analytics.load(
+        envConfig.analytics_key_fe!,
+        envConfig.analytics_data_plane!,
+        {
+          logLevel: 'DEBUG',
+          integrations: { All: true },
+        },
+      );
 
     analytics.ready(() => {
       setAnalyticsLoaded(true);
@@ -55,7 +64,7 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
     } else {
       setAnalyticsLoaded(false);
     }
-  }, [WRITE_KEY, isAnalyticsAllowed]);
+  }, [envConfig.analytics_key_fe, isAnalyticsAllowed]);
 
   const analyticsContextValue = useMemo(
     () => ({ setIsAnalyticsAllowed, isAnalyticsAllowed, analyticsLoaded }),
