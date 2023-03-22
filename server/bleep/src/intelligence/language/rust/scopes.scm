@@ -326,7 +326,7 @@
 ;; if let _ = a {}
 ;;
 ;; the ident following the `=` is a ref
-;; the ident preceeding the `=` is a def
+;; the ident preceding the `=` is a def
 ;; while let _ = a {}
 (let_condition 
   "="
