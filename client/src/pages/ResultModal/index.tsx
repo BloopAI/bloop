@@ -5,7 +5,7 @@ import React, {
   useState,
   useContext,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import FileIcon from '../../components/FileIcon';
 import {
   ChevronDoubleIntersected,
@@ -55,6 +55,7 @@ const tabs = [
 */
 
 const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(0);
   const [isShareOpen, setShareOpen] = useState(false);
   const { os, openFolderInExplorer, openLink } = useContext(DeviceContext);
@@ -204,7 +205,10 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
             <SelectToggleButton
               onlyIcon
               onClick={() =>
-                navigateFullResult(result.repoName, result.relativePath)
+                navigateFullResult(result.repoName, result.relativePath, {
+                  scroll_line_index:
+                    searchParams.get('scroll_line_index') || '',
+                })
               }
               selected={false}
               title="Open in full view"
