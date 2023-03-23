@@ -28,6 +28,7 @@ mod test {
         assert_eq!(parse_alias("cpp".into()), "c++");
         assert_eq!(parse_alias("as3".into()), "actionscript");
         assert_eq!(parse_alias("bat".into()), "batchfile");
+        assert_eq!(parse_alias("md".into()), "markdown");
     }
 
     #[test]

@@ -67,7 +67,10 @@ fn process_languages() {
     let mut ext_map = phf_codegen::Map::new();
     let mut case_map = phf_codegen::Map::new();
 
-    for (name, data) in langs.into_iter().filter(|(_, d)| d.r#type == "programming") {
+    for (name, data) in langs
+        .into_iter()
+        .filter(|(_, d)| d.r#type == "programming" || d.r#type == "prose")
+    {
         let name_lower = name.to_ascii_lowercase();
 
         for alias in data.aliases.unwrap_or_default() {

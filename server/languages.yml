@@ -3881,6 +3881,7 @@ Markdown:
   color: "#083fa1"
   aliases:
   - pandoc
+  - md
   ace_mode: markdown
   codemirror_mode: gfm
   codemirror_mime_type: text/x-gfm
