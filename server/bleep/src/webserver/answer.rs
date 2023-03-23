@@ -175,7 +175,7 @@ fn parse_query(query: &str) -> Result<String, Error> {
         .to_string())
 }
 
-const MAX_HISTORY: usize = 7;
+const MAX_HISTORY: usize = 3;
 
 #[derive(Debug)]
 enum AnswerProgress {
@@ -411,16 +411,13 @@ async fn handle_inner(
         .unwrap_or(AnswerProgress::Rephrase(query.clone()));
 
     loop {
-        // Here we ask anthropic for either action selection, rephrasing or explanation
-        // (depending on `progress`)
         let stream_params = match &progress {
             AnswerProgress::Rephrase(query) => {
                 let prompt = app.with_prior_conversation(thread_id, |history| {
                     let n = history.len().saturating_sub(MAX_HISTORY);
                     build_rephrase_query_prompt(query, history.get(n..).unwrap_or_default())
                 });
-                dbg!(&prompt);
-                (prompt, 20, 0.3, vec![])
+                (prompt, 20, 0.0, vec![])
             }
             AnswerProgress::Search(rephrased_query) => {
                 // TODO: Clean up this query handling logic
@@ -470,7 +467,6 @@ async fn handle_inner(
                         }],
                     }
                 };
-                dbg!(&prompt);
                 let tokens_used =
                     semantic.gpt2_token_count(&prompt.messages.first().unwrap().content);
                 info!(%tokens_used, "input prompt token count");
@@ -906,13 +902,13 @@ Assistant:<index>",
 =========
 Above, you have an extract from a the {} file in the {} repo. This message will be followed by the last few utterances of a conversation with a user. Use the code file to write a concise, precise answer to the question.
 
-- Format your response in GitHub Markdown. Paths, function names and code extracts should be enclosed in backticks.
+- Format your response in GitHub Markdown. Paths, function names and code extracts should be enclosed in backticks
 - Use markdown bullet points to format lists
-- Keep your response short. It should only be a few sentences long at the most.
-- Do NOT copy long chunks of code into the response.
-- If the file doesn't contain enough information to answer the question, or you don't know the answer, just say "Sorry, I'm not sure.".
-- Do NOT try to make up an answer or answer with regard to information that is not in the file.
-- The conversation history can provide context to the user's current question, but sometimes it contains irrelevant information. IGNORE information in the conversation which is irrelevant to the user's current question.
+- Keep your response short. It should only be a few sentences long at the most
+- Do NOT copy long chunks of code into the response
+- If the file doesn't contain enough information to answer the question, or you don't know the answer, just say "Sorry, I'm not sure."
+- Do NOT try to make up an answer or answer with regard to information that is not in the file
+- The conversation history can provide context to the user's current question, but sometimes it contains irrelevant information. IGNORE information in the conversation which is irrelevant to the user's current question
 
 Let's think step by step. First carefully refer to the code above, then answer the question with reference to it."#,
             snippet.repo_name, snippet.relative_path, snippet.text,
@@ -1002,10 +998,16 @@ Assistant: To test GitHub login, you would:\n\n- Call `handleClick()` to initiat
 User: Nice to meet you
 Query: N/A
 
+User: Is OAuth supported
+Query: OAuth authentication
+
 User: I love bananas
 Assistant: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
 User: Which onnxruntime library do we use?
 Query: onnxruntime library dependencies
+
+User: How is the conversational history stored
+Query: conversation history store
 
 User: Where is the query parsing logic?
 Assistant: The query parser is defined in the `parse` function in `server/bleep/src/query/parser.rs`.
@@ -1013,6 +1015,26 @@ User: Which libraries does it use?
 Assistant: Sorry, the given code snippet does not contain enough context to determine which libraries the query parser uses.
 User: Where's the delete repo endpoint?
 Query: delete repo endpoint
+
+User: Would it make sense to refactor ClientAuth as an async function
+Query: ClientAuth
+
+User: Can you explain to me in detail how the build process works?
+Query: build process
+
+User: Where is the query parsing logic?
+Assistant: The query parser is defined in the `parse` function in `server/bleep/src/query/parser.rs`.
+User: Which filters?
+Assistant: The query parser supports the following filters:\n\nrepo: to filter by repository\norg: to filter by organization\npath: to filter by file path\nlang: to filter by programming language\nopen: to filter by open or closed files\nglobal_regex: to use global regular expressions in the search query\ntarget: to filter by content, symbol, or commit.\n
+User: What does target do
+Query: target query filter
+
+User: Where is the query parsing logic?
+Assistant: The query parser is defined in the `parse` function in `server/bleep/src/query/parser.rs`.
+User: Which filters?
+Assistant: The query parser supports the following filters:\n\nrepo: to filter by repository\norg: to filter by organization\npath: to filter by file path\nlang: to filter by programming language\nopen: to filter by open or closed files\nglobal_regex: to use global regular expressions in the search query\ntarget: to filter by content, symbol, or commit.\n
+User: Can you explain to me the advantages of scope queries over ctags
+Query: scope queries ctags
 
 "#.to_string();
 

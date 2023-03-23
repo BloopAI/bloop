@@ -232,8 +232,6 @@ impl Application {
 
         if self.env.allow(env::Feature::SafePathScan) {
             let source_dir = self.config.source.directory();
-            dbg!(&source_dir);
-            dbg!(state::get_relative_path(path.as_ref(), &source_dir));
             return state::get_relative_path(path.as_ref(), &source_dir).starts_with(&source_dir);
         }
 
