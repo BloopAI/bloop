@@ -922,7 +922,7 @@ Above, you have an extract from the {} file in the {} repo. This message will be
 - The conversation history can provide context to the user's current question, but sometimes it contains irrelevant information. IGNORE information in the conversation which is irrelevant to the user's current question
 
 Let's think step by step. First carefully refer to the code above, then answer the question with reference to it."#,
-            snippet.repo_name, snippet.relative_path, snippet.text,
+            snippet.text, snippet.relative_path, snippet.repo_name,
         );
 
         let mut messages = vec![api::Message {
