@@ -3,10 +3,6 @@ name: Dependency matrix
 on:
   pull_request:
     branches: [main]
-    paths:
-      - "flake.nix"
-      - "flake.lock"
-      - ".github/workflows/dependencies.yml"
 
 jobs:
   ctags-onnx-nix:
@@ -57,6 +53,7 @@ jobs:
         uses: cachix/install-nix-action@v20
         with:
           github_access_token: "${{ secrets.GITHUB_TOKEN }}"
+          nix_path: nixpkgs=channel:nixos-22.11
 
       - name: Enable cachix
         uses: cachix/cachix-action@v12
@@ -65,6 +62,7 @@ jobs:
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
 
       - name: Build package ${{matrix.package}}-${{matrix.target}}
+        if: matrix.os != 'macos-11' && matrix.package != 'ctags'
         env:
           PACKAGE_NAME: ${{ steps.var.outputs.package-name }}
         run: |
@@ -75,34 +73,12 @@ jobs:
           cp -r $package_path/* ${{ env.PACKAGE_NAME }}_bundle
 
       - name: Copy macOS dynamic dependencies
-        if: matrix.os == 'macos-11' && ( matrix.package == 'ctags' )
+        if: matrix.os == 'macos-11' && matrix.package == 'ctags'
         env:
           PACKAGE_NAME: ${{ steps.var.outputs.package-name }}
         run: |
-          copy_deps() {
-              local lib=$2/$(basename $1)
-
-              cp -n $1 $lib || true
-              chmod +w $lib
-
-              local deps="$(otool -L $lib |awk '/\/nix\/store\// { gsub(":", ""); print $1 }' | tr '\n' ' ')"
-              for dep in $(echo $deps);
-              do
-                if [ ! -f "$2/$(basename $dep)" ]
-                then
-                  copy_deps $dep $2 || true
-                fi
-              done
-
-              for dep in $(echo $deps);
-              do
-                echo install_name_tool -change $dep @executable_path/$(basename $dep) $lib
-                install_name_tool -change $dep @executable_path/$(basename $dep) $lib
-              done
-          }
-
-          copy_deps ${{ env.package_path }}/bin/${{ matrix.package }}  ${{ env.PACKAGE_NAME }}_bundle
-          ls ${{ env.PACKAGE_NAME }}_bundle
+          nix-build -E 'with import <nixpkgs> {}; callPackage nix/nix-bundle-exe {} "${universal-ctags}/bin/ctags"' -o ${{ env.PACKAGE_NAME }}_bundle
+          ls -lR ${{ env.PACKAGE_NAME }}_bundle
 
       - name: Upload binaries
         env:
