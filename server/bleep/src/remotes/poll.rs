@@ -46,11 +46,19 @@ pub(crate) async fn sync_repositories(app: Application) {
                 },
                 result = handle.recv_async() => {
                     let now = SystemTime::now();
-                    if result.is_ok() && now.duration_since(last_poll).unwrap() > POLL_PERIOD {
-                        debug!("github credentials changed; refreshing repositories");
-                        return now;
-                    }
-                },
+                    match result {
+                        Ok(_) if now.duration_since(last_poll).unwrap() > POLL_PERIOD => {
+                            debug!("github credentials changed; refreshing repositories");
+                            return now;
+                        }
+                        Ok(_) => {
+                            continue;
+                        }
+                        Err(flume::RecvError::Disconnected) => {
+                            return SystemTime::now();
+                        }
+                    };
+                }
             }
         }
     };
