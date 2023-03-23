@@ -77,8 +77,9 @@ jobs:
         env:
           PACKAGE_NAME: ${{ steps.var.outputs.package-name }}
         run: |
-          nix-build -E 'with import <nixpkgs> {}; callPackage nix/nix-bundle-exe {} "${universal-ctags}/bin/ctags"' -o ${{ env.PACKAGE_NAME }}_bundle
-          ls -lR ${{ env.PACKAGE_NAME }}_bundle
+          nix-build -E 'with import <nixpkgs> {}; callPackage nix/nix-bundle-exe {} "${universal-ctags}/bin/ctags"' 
+          mkdir ${{ env.PACKAGE_NAME }}_bundle
+          cp -r result/* ${{ env.PACKAGE_NAME }}_bundle
 
       - name: Upload binaries
         env:
