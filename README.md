@@ -29,6 +29,8 @@ For instructions on how to build from source or run bloop from the command line,
 
 Note that it is currently _not_ possible to run conversational GPT-4 search where bloop has been built from source (we're working on this). You can run regex searches and use code-navigation.
 
+If you encounter any index issues you can wipe the bloop cache and reindex. Instructions on how to do this on different platforms [are here](./apps/desktop/README.md).
+
 ## Contributing
 
 We welcome contributions big and small! Before jumping in please read [our contributors guide](./CONTRIBUTING.md) and [our code of conduct](./CODE_OF_CONDUCT.md).
