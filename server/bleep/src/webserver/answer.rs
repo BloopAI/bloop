@@ -911,7 +911,7 @@ Assistant:<index>",
         let system = format!(
             r#"{}
 =========
-Above, you have an extract from the {} file in the {} repo. This message will be followed by the last few utterances of a conversation with a user. Use the code file to write a concise, precise answer to the question.
+Above, you have an extract from the `{}` file in the `{}` repo. This message will be followed by the last few utterances of a conversation with a user. Use the code file to write a concise, precise answer to the question.
 
 - Format your response in GitHub Markdown. Paths, function names and code extracts should be enclosed in backticks
 - Use markdown bullet points to format lists
