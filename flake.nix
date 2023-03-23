@@ -53,7 +53,7 @@
           ]);
 
         guiDeps = with pkgs;
-          [ nodePackages.pnpm ] ++ (lib.optionals stdenv.isLinux [
+          [ nodePackages.npm nodejs ] ++ (lib.optionals stdenv.isLinux [
             zlib.dev
             dbus.dev
             libsoup.dev

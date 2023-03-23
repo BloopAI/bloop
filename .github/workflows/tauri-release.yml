@@ -29,10 +29,10 @@ jobs:
             name: ubuntu-latest
 
           - target: x86_64-apple-darwin
-            name: macos-latest
+            name: macos-11
 
           - target: aarch64-apple-darwin
-            name: macos-latest
+            name: macos-11
 
     runs-on: ${{ matrix.name }}
     env:
