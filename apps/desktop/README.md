@@ -39,3 +39,13 @@ Alternatively, to run the app in dev mode:
 ```
 npm run start-app
 ```
+
+## Wiping an index
+
+Deleting the bloop cache directory and re-indexing can fix a corrupted index. You can find the bloop cache here:
+
+| OS      | Cache Path |
+| ----------- | ----------- |
+| MacOS      | `~/Library/Caches/ai.bloop.bloop`       |
+| Windows   | `%LOCALAPPDATA%\ai.bloop.bloop`        |
+| Linux   | `~/.cache/ai.bloop.bloop`        |
