@@ -12,6 +12,7 @@ import CodeLine from '../Code/CodeLine';
 import { Token as TokenType } from '../../../types/prism';
 import { hashCode, propsAreShallowEqual } from '../../../utils';
 import { TokenInfoItem } from '../../../types/results';
+import { getOffsetForIndexAndAlignment } from '../../../utils/scrollUtils';
 import Token from './Token';
 import { Metadata, BlameLine } from './index';
 
@@ -58,9 +59,18 @@ const CodeContainer = ({
   height,
 }: Props) => {
   const ref = useRef<FixedSizeList>(null);
+  const listProps = useMemo(
+    () => ({
+      width,
+      height,
+      itemSize: 20,
+      itemCount: tokens.length,
+    }),
+    [width, height, tokens.length],
+  );
 
   useEffect(() => {
-    if (scrollToIndex) {
+    if (scrollToIndex && ref.current) {
       let scrollToItem = scrollToIndex[0];
       let align: Align = 'center';
       let multiline = scrollToIndex[1] && scrollToIndex[0] !== scrollToIndex[1];
@@ -71,9 +81,16 @@ const CodeContainer = ({
       } else if (multiline) {
         align = 'start';
       }
-      ref.current?.scrollToItem(scrollToItem, align);
+      scrollToItem = Math.max(0, Math.min(scrollToItem, tokens.length - 1));
+      const scrollOffset = getOffsetForIndexAndAlignment(
+        listProps,
+        scrollToItem,
+        align,
+        0,
+      );
+      ref.current.scrollTo(scrollOffset);
     }
-  }, [scrollToIndex]);
+  }, [scrollToIndex, listProps]);
 
   const pathHash = useMemo(
     () => (relativePath ? hashCode(relativePath) : ''),
@@ -91,13 +108,7 @@ const CodeContainer = ({
   }, []);
 
   return (
-    <FixedSizeList
-      ref={ref}
-      width={width}
-      height={height}
-      itemSize={20}
-      itemCount={tokens.length}
-    >
+    <FixedSizeList ref={ref} {...listProps}>
       {({ index, style }) => (
         <CodeLine
           key={pathHash + '-' + index.toString()}
