@@ -37,7 +37,11 @@ type ContextType = {
     searchType: SearchType,
     page?: number,
   ) => void;
-  navigateFullResult: (repo: string, path: string) => void;
+  navigateFullResult: (
+    repo: string,
+    path: string,
+    pathParams?: Record<string, string>,
+  ) => void;
   query: string;
 };
 
@@ -145,12 +149,17 @@ export const AppNavigationProvider = (prop: {
     });
   };
 
-  const navigateFullResult = (repo: string, path: string) => {
+  const navigateFullResult = (
+    repo: string,
+    path: string,
+    pathParams?: Record<string, string>,
+  ) => {
     saveState({
       type: 'full-result',
       repo,
       path,
       searchType: SearchType.REGEX,
+      pathParams,
     });
   };
 
