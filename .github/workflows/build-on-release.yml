@@ -1,7 +1,7 @@
 name: Build&Push bloop docker container image with release tag
 on:
   release:
-    types: [published]
+    types: [published, prereleased]
 
 jobs:
   build_and_push:
