@@ -62,7 +62,7 @@ jobs:
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
 
       - name: Build package ${{matrix.package}}-${{matrix.target}}
-        if: matrix.os != 'macos-11' && matrix.package != 'ctags'
+        if: matrix.os != 'macos-11' || matrix.package != 'ctags'
         env:
           PACKAGE_NAME: ${{ steps.var.outputs.package-name }}
         run: |
