@@ -242,6 +242,11 @@ async fn search_snippets(
             }
         })
         .collect();
+
+    Ok(all_snippets)
+}
+
+fn deduplicate_snippets(all_snippets: Vec<Snippet>) -> Vec<Snippet> {
     let mut snippets = Vec::new();
     let mut chunk_ranges_by_file: HashMap<String, Vec<std::ops::Range<usize>>> = HashMap::new();
 
@@ -278,7 +283,7 @@ async fn search_snippets(
             }
         }
     }
-    Ok(snippets)
+    snippets
 }
 
 // we use this internally to check whether the first token (skipping whitespace) is a
@@ -429,10 +434,16 @@ async fn handle_inner(
             }
             AnswerProgress::Search(rephrased_query) => {
                 // TODO: Clean up this query handling logic
-                let s = search_snippets(&semantic, &params.q, rephrased_query).await?;
-                info!("Retrieved {} snippets", s.len());
+                let all_snippets = search_snippets(&semantic, &params.q, rephrased_query).await?;
+                info!("Retrieved {} snippets", all_snippets.len());
 
-                if s.is_empty() {
+                event.write().await.stages.push(
+                    Stage::new("semantic_results", &all_snippets).with_time(stop_watch.lap()),
+                );
+
+                let filtered_snippets = deduplicate_snippets(all_snippets);
+
+                if filtered_snippets.is_empty() {
                     warn!("Semantic search returned no snippets");
                     let selection_fail_stream = Box::pin(stream::once(async {
                         Ok("Sorry, I could not find any results matching your query. \
@@ -442,14 +453,14 @@ async fn handle_inner(
                     return Ok((snippets, stop_watch, selection_fail_stream));
                 }
 
-                event
-                    .write()
-                    .await
-                    .stages
-                    .push(Stage::new("semantic_results", &s).with_time(stop_watch.lap()));
+                event.write().await.stages.push(
+                    Stage::new("filtered_semantic_results", &filtered_snippets)
+                        .with_time(stop_watch.lap()),
+                );
 
-                let prompt = answer_api_client.build_select_prompt(rephrased_query, &s);
-                snippets = Some(s);
+                let prompt =
+                    answer_api_client.build_select_prompt(rephrased_query, &filtered_snippets);
+                snippets = Some(filtered_snippets);
 
                 event
                     .write()
