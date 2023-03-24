@@ -26,7 +26,7 @@ jobs:
 
         include:
           - target: x86_64-unknown-linux-gnu
-            name: ubuntu-latest
+            name: ubuntu-20.04
 
           - target: x86_64-apple-darwin
             name: macos-11
