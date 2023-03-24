@@ -423,6 +423,7 @@ dependencies = [
  "reqwest",
  "reqwest-eventsource",
  "rudderanalytics",
+ "scc",
  "secrecy",
  "sentry",
  "serde",
@@ -4761,6 +4762,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "scc"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69b38fc76c8648e3b314d4c3a83e9fa6e68948b2ed2209242366e2a15c6e5675"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

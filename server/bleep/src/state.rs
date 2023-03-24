@@ -172,13 +172,10 @@ impl StateSource {
         read_file_or_default(self.credentials.as_ref().unwrap())
     }
 
-    pub(crate) fn save_credentials(
-        &self,
-        creds: &DashMap<Backend, BackendCredential>,
-    ) -> Result<(), RepoError> {
+    pub(crate) fn save_credentials(&self, creds: impl Serialize) -> Result<(), RepoError> {
         match self.credentials {
             None => Err(RepoError::NoSourceGiven),
-            Some(ref path) => pretty_write_file(path, creds),
+            Some(ref path) => pretty_write_file(path, &creds),
         }
     }
 

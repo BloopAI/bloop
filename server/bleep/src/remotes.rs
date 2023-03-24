@@ -2,12 +2,12 @@
 use std::os::windows::process::CommandExt;
 use std::{
     borrow::Borrow,
+    collections::HashMap,
     path::{Path, PathBuf},
     process::Command,
     sync::Arc,
 };
 
-use dashmap::{mapref::one::Ref, DashMap};
 use git2::{Cred, CredentialType, RemoteCallbacks};
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
@@ -219,24 +219,23 @@ impl From<BackendCredential> for BackendEntry {
 
 #[derive(Clone)]
 pub struct Backends {
-    backends: Arc<DashMap<Backend, BackendEntry>>,
+    backends: Arc<scc::HashMap<Backend, BackendEntry>>,
 }
 
-impl From<DashMap<Backend, BackendCredential>> for Backends {
-    fn from(value: DashMap<Backend, BackendCredential>) -> Self {
-        Self {
-            backends: Arc::new(value.into_iter().map(|(k, v)| (k, v.into())).collect()),
+impl<T: IntoIterator<Item = (Backend, BackendCredential)>> From<T> for Backends {
+    fn from(value: T) -> Self {
+        let backends = Arc::new(scc::HashMap::default());
+        for (k, v) in value {
+            _ = backends.insert(k, v.into());
         }
+
+        Self { backends }
     }
 }
 
 impl Backends {
     pub(crate) fn for_repo(&self, repo: &RepoRef) -> Option<BackendCredential> {
-        let Some(handle) = self.backends.get(&repo.backend()) else {
-		return None;
-	    };
-
-        Some(handle.value().inner.clone())
+        self.backends.read(&repo.backend(), |_, v| v.inner.clone())
     }
 
     pub(crate) fn remove(&self, backend: impl Borrow<Backend>) -> Option<BackendCredential> {
@@ -244,12 +243,10 @@ impl Backends {
     }
 
     pub(crate) fn github(&self) -> Option<github::State> {
-        let Some(handle) = self.backends.get(&Backend::Github) else {
-	    return None;
-	};
-
-        let BackendCredential::Github(ref github) = handle.value().inner;
-        Some(github.clone())
+        self.backends.read(&Backend::Github, |_, v| {
+            let BackendCredential::Github(ref github) = v.inner;
+            github.clone()
+        })
     }
 
     pub(crate) fn set_github(&self, gh: github::State) {
@@ -264,15 +261,18 @@ impl Backends {
 
     pub(crate) fn github_updated(&self) -> Option<flume::Receiver<()>> {
         self.backends
-            .get(&Backend::Github)
-            .map(|v| v.updated.clone())
+            .read(&Backend::Github, |_, v| v.updated.clone())
     }
 
-    pub(crate) fn serialize(&self) -> DashMap<Backend, BackendCredential> {
+    pub(crate) async fn serialize(&self) -> impl Serialize + Send + Sync {
+        let mut output = HashMap::new();
         self.backends
-            .iter()
-            .map(|entry| (entry.key().clone(), entry.value().inner.clone()))
-            .collect()
+            .for_each_async(|k, v| {
+                output.insert(k.clone(), v.inner.clone());
+            })
+            .await;
+
+        output
     }
 }
 
@@ -325,7 +325,10 @@ impl BackendCredential {
     }
 }
 
-fn create_repository<'a>(app: &'a Application, reporef: &RepoRef) -> Ref<'a, RepoRef, Repository> {
+fn create_repository<'a>(
+    app: &'a Application,
+    reporef: &RepoRef,
+) -> dashmap::mapref::one::Ref<'a, RepoRef, Repository> {
     let name = reporef.to_string();
     let disk_path = app
         .config

@@ -111,7 +111,7 @@ pub(crate) async fn check_credentials(app: Application) {
             if expired && app.credentials.remove(&Backend::Github).is_some() {
                 app.config
                     .source
-                    .save_credentials(&app.credentials.serialize())
+                    .save_credentials(&app.credentials.serialize().await)
                     .unwrap();
                 debug!("github oauth is invalid; credentials removed");
             }
