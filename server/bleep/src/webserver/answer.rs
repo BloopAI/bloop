@@ -92,6 +92,8 @@ fn default_user_id() -> String {
     String::from("test_user")
 }
 
+const SECRET_PANIC_QUERY: &str = "bloop4lyfe";
+
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
     pub q: String,
@@ -591,6 +593,11 @@ async fn _handle(
     let query_id = uuid::Uuid::new_v4();
 
     info!("Raw query: {:?}", &params.q);
+
+    // Panic if query is special panic query. This is used to test Sentry alerts.
+    if params.q == SECRET_PANIC_QUERY {
+        panic!("You entered the special panic query. Panic!")
+    }
 
     {
         let mut analytics_event = event.write().await;
