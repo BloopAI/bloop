@@ -38,6 +38,7 @@ function Tab({ deviceContextValue, isActive, tab }: Props) {
         <AnalyticsContextProvider
           deviceId={deviceContextValue.deviceId}
           forceAnalytics={deviceContextValue.forceAnalytics}
+          isSelfServe={deviceContextValue.isSelfServe}
         >
           <DeviceContextProvider deviceContextValue={deviceContextValue}>
             <UIContextProvider>

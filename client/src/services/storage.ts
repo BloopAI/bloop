@@ -22,3 +22,4 @@ export const SEARCH_HISTORY_KEY = 'search_history';
 export const ONBOARDING_DONE_KEY = 'onboarding_done';
 export const IS_ANALYTICS_ALLOWED_KEY = 'is_analytics_allowed';
 export const SESSION_ID_KEY = 'session_id';
+export const DEVICE_ID = 'device_id';
