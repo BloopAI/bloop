@@ -1,6 +1,7 @@
 import React, { useCallback, useContext, useMemo, useState } from 'react';
 import { useRive } from '@rive-app/react-canvas';
 import { Remarkable } from 'remarkable';
+import hljs from 'highlight.js';
 import Button from '../../components/Button';
 import { Checkmark } from '../../icons';
 import ThreeDotsLoader from '../../components/Loaders/ThreeDotsLoader';
@@ -13,6 +14,14 @@ import { ConversationMessage } from '../../types/general';
 const md = new Remarkable({
   html: false,
   linkTarget: '__blank',
+  highlight(str: string, lang: string): string {
+    try {
+      const langSubset = lang ? [lang] : undefined;
+      return hljs.highlightAuto(str, langSubset).value;
+    } catch (e) {
+      return str;
+    }
+  },
 });
 
 type Props = {
