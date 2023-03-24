@@ -50,7 +50,10 @@ const Conversation = ({
   const handleSubmit = useCallback(
     (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      if (conversation[conversation.length - 1].isLoading || !newMessage) {
+      if (
+        conversation[conversation.length - 1].isLoading ||
+        !newMessage.trim()
+      ) {
         return;
       }
       setNewMessage('');

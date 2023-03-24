@@ -185,6 +185,9 @@ function SearchInput() {
 
   const onSubmit = useCallback(
     (val: string, forceSearchType?: SearchType) => {
+      if (!val.trim()) {
+        return;
+      }
       const newSearchType = forceSearchType ?? searchType;
       navigateSearch(val, newSearchType);
       closeMenu();
