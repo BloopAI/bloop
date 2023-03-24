@@ -70,7 +70,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "bloop-tauri-release-1"
+          prefix-key: "bloop-tauri-release-2"
 
       - name: Run tests
         run: |
