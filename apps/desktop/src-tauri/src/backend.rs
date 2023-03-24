@@ -1,15 +1,20 @@
 use std::sync::Arc;
 
+use bleep::{analytics, Application, Configuration, Environment};
+use once_cell::sync::OnceCell;
+use sentry::ClientInitGuard;
+use tracing::info;
+
 use super::{plugin, relative_command_path, App, Manager, Payload, Runtime};
 
 // a hack to get server/bleep/tests/desktop to run correctly
 #[cfg(not(test))]
 use super::TELEMETRY;
+
 #[cfg(test)]
 static TELEMETRY: std::sync::RwLock<bool> = std::sync::RwLock::new(false);
 
-use bleep::{analytics, Application, Configuration, Environment};
-use tracing::info;
+static SENTRY: OnceCell<ClientInitGuard> = OnceCell::new();
 
 pub(super) fn bleep<R>(app: &mut App<R>) -> plugin::Result<()>
 where
@@ -44,6 +49,10 @@ where
         info!("Analytics not configured, skipping initialization...")
     }
 
+    if let Some(dsn) = &configuration.sentry_dsn {
+        initialize_sentry(dsn);
+    }
+
     let app = app.handle();
     tokio::spawn(async move {
         let initialized =
@@ -71,6 +80,25 @@ where
     });
 
     Ok(())
+}
+
+fn initialize_sentry(dsn: &str) {
+    if sentry::Hub::current().client().is_some() {
+        tracing::info!("Sentry has already been initialized");
+        return;
+    }
+    let guard = sentry::init((
+        dsn,
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            before_send: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
+                true => Some(event),
+                false => None,
+            })),
+            ..Default::default()
+        },
+    ));
+    _ = SENTRY.set(guard);
 }
 
 pub fn initialize_analytics(key: String, data_plane: String) {

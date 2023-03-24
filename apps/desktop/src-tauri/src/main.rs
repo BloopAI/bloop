@@ -3,13 +3,14 @@
     windows_subsystem = "windows"
 )]
 
+use bleep::Application;
+
 mod backend;
 mod qdrant;
 
-use std::{path::PathBuf, sync::RwLock};
-
-use bleep::Application;
 pub use tauri::{plugin, App, Manager, Runtime};
+
+use std::{path::PathBuf, sync::RwLock};
 
 pub static TELEMETRY: RwLock<bool> = RwLock::new(false);
 
