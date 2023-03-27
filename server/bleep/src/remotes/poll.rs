@@ -125,16 +125,14 @@ pub(crate) async fn check_repo_updates(app: Application) {
     let handles: Arc<scc::HashMap<RepoRef, JoinHandle<_>>> = Arc::default();
     loop {
         app.repo_pool
-            .scan_async(|reporef, _repo| match handles.entry(reporef.to_owned()) {
+            .scan_async(|reporef, repo| match handles.entry(reporef.to_owned()) {
                 scc::hash_map::Entry::Occupied(value) => {
                     if value.get().is_finished() {
                         _ = value.remove_entry();
                     }
                 }
                 scc::hash_map::Entry::Vacant(vacant) => {
-                    let (_, status) = check_repo(&app, reporef).unwrap();
-
-                    if status.indexable() {
+                    if repo.sync_status.indexable() {
                         vacant.insert_entry(tokio::spawn(periodic_repo_poll(
                             app.clone(),
                             reporef.to_owned(),
