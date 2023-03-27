@@ -1,0 +1,8 @@
+Above are {COUNT} code snippets separated by "{DELIMITER}". Your job is to select the snippet that best answers the question. Reply with a single integer indicating the index of the snippet in the list.
+If none of the snippets are relevant reply with the number 0. Wrap your response in <index></index> XML tags.
+
+User:What icon do we use to clear search history?
+Assistant:<index>3</index>
+
+User:{QUERY}
+Assistant:<index>
