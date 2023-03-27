@@ -50,7 +50,7 @@ const RepoCard = ({
   const { navigateRepoPath, navigateSearch } = useAppNavigation();
 
   const handleClick = useCallback(() => {
-    if (isSyncing) {
+    if (sync_status !== SyncStatus.Done) {
       return;
     }
     if (isGithubConnected && isAnalyticsAllowed) {
@@ -61,7 +61,7 @@ const RepoCard = ({
     } else {
       navigateRepoPath(`${isGh ? 'github.com/' : ''}${repoName}`);
     }
-  }, [repoName, provider, isGithubConnected, isAnalyticsAllowed, isSyncing]);
+  }, [repoName, provider, isGithubConnected, isAnalyticsAllowed, sync_status]);
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-md p-4 w-full flex flex-col justify-between h-36">
