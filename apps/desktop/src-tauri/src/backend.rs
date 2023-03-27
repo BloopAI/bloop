@@ -9,10 +9,15 @@ use super::{plugin, relative_command_path, App, Manager, Payload, Runtime};
 
 // a hack to get server/bleep/tests/desktop to run correctly
 #[cfg(not(test))]
-use super::TELEMETRY;
+use super::{get_device_id, TELEMETRY};
 
 #[cfg(test)]
 static TELEMETRY: std::sync::RwLock<bool> = std::sync::RwLock::new(false);
+
+#[cfg(test)]
+fn get_device_id() -> String {
+    String::default()
+}
 
 static SENTRY: OnceCell<ClientInitGuard> = OnceCell::new();
 
@@ -87,6 +92,21 @@ fn initialize_sentry(dsn: &str) {
         tracing::info!("Sentry has already been initialized");
         return;
     }
+
+    let unique_device_id = format!(
+        "{target}-{id}",
+        target = std::env::consts::OS,
+        id = get_device_id()
+    );
+    let user = Some(sentry::protocol::User {
+        id: Some(unique_device_id),
+        ..Default::default()
+    });
+
+    sentry::configure_scope(|scope| {
+        scope.set_user(user);
+    });
+
     let guard = sentry::init((
         dsn,
         sentry::ClientOptions {
