@@ -10,9 +10,9 @@ use std::{
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use dashmap::mapref::entry::Entry;
 use once_cell::sync::Lazy;
 use regex::Regex;
+use scc::hash_map::Entry;
 use smallvec::SmallVec;
 use tantivy::{
     collector::TopDocs,
@@ -524,17 +524,17 @@ impl File {
 
         trace!("adding cache entry");
 
-        match cache.entry(entry_disk_path.clone()) {
+        match cache.entry(entry_disk_path.to_owned()) {
             Entry::Occupied(mut val) if val.get().value == content_hash => {
                 // skip processing if contents are up-to-date in the cache
                 val.get_mut().fresh = true;
                 return Ok(());
             }
             Entry::Occupied(mut val) => {
-                val.insert(content_hash.into());
+                _ = val.insert(content_hash.into());
             }
             Entry::Vacant(val) => {
-                val.insert(content_hash.into());
+                _ = val.insert_entry(content_hash.into());
             }
         }
         trace!("added cache entry");

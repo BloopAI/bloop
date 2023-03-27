@@ -1,4 +1,3 @@
-use dashmap::DashMap;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt::{self, Display},
@@ -16,7 +15,7 @@ use crate::{
     state::{get_relative_path, pretty_write_file},
 };
 
-pub(crate) type FileCache = Arc<DashMap<PathBuf, FreshValue<String>>>;
+pub(crate) type FileCache = Arc<scc::HashMap<PathBuf, FreshValue<String>>>;
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct FreshValue<T> {

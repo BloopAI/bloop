@@ -16,7 +16,6 @@ use axum::{
     TypedHeader,
 };
 use axum_extra::extract::cookie::{Cookie, PrivateCookieJar, SameSite};
-use dashmap::DashMap;
 use futures::future;
 use octocrab::Octocrab;
 use rand::{distributions::Alphanumeric, Rng};
@@ -136,7 +135,10 @@ pub(super) async fn login(
          &redirect_uri={redirect_uri}",
     );
 
-    auth_layer.initialized_login.insert(state, Instant::now());
+    _ = auth_layer
+        .initialized_login
+        .entry(state)
+        .insert_entry(Instant::now());
     serde_json::json!({ "oauth_url": github_oauth_url }).to_string()
 }
 
@@ -219,7 +221,7 @@ pub(crate) struct AuthLayer {
     /// Logins that have been initiated, but not completed.
     ///
     /// Maps to the time this login attempt was created.
-    initialized_login: DashMap<State, Instant>,
+    initialized_login: scc::HashMap<State, Instant>,
 
     /// The HTTP client.
     client: reqwest::Client,
