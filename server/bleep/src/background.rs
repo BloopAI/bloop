@@ -119,7 +119,9 @@ impl IndexWriter {
     pub(crate) async fn startup_scan(self) -> anyhow::Result<()> {
         let Self(Application { repo_pool, .. }) = &self;
 
-        let repos = repo_pool.iter().map(|elem| elem.key().clone()).collect();
+        let mut repos = vec![];
+        repo_pool.scan_async(|k, _| repos.push(k.clone())).await;
+
         self.sync_and_index(repos).await
     }
 
@@ -134,14 +136,12 @@ impl IndexWriter {
         }) = &self;
 
         let writers = indexes.writers().await?;
-        let (key, repo) = {
-            let ptr = repo_pool.get(reporef).unwrap();
-            let key = ptr.key().clone();
-            let repo = ptr.value().clone();
-            (key, repo)
-        };
+        let (key, repo) = repo_pool
+            .read_async(reporef, |k, v| (k.clone(), v.clone()))
+            .await
+            .unwrap();
 
-        let (state, indexed) = match repo.sync_status {
+        let indexed = match repo.sync_status {
             Uninitialized | Syncing | Indexing => return Ok(()),
             Removed => {
                 let deleted = self.delete_repo_indexes(reporef, &repo, &writers).await;
@@ -162,33 +162,33 @@ impl IndexWriter {
                 return Ok(());
             }
             _ => {
-                repo_pool.get_mut(reporef).unwrap().value_mut().sync_status = Indexing;
-                let indexed = repo.index(&key, &writers).await;
-                let state = match &indexed {
-                    Ok(state) => Some(state.clone()),
-                    _ => None,
-                };
+                repo_pool
+                    .update_async(reporef, |_, v| v.sync_status = Indexing)
+                    .await
+                    .unwrap();
 
-                (state, indexed.map(|_| ()))
+                repo.index(&key, &writers).await
             }
         };
 
         writers.commit().await?;
         config.source.save_pool(repo_pool.clone())?;
 
-        let mut repo = repo_pool.get_mut(reporef).unwrap();
-        match indexed {
-            Ok(()) => {
-                repo.value_mut().sync_done_with(state.unwrap());
-                info!("commit complete; indexing done");
-            }
-            Err(err) => {
-                repo.value_mut().sync_status = Error {
-                    message: err.to_string(),
-                };
-                error!(?err, ?reporef, "failed to index repository");
-            }
-        }
+        repo_pool
+            .update_async(reporef, move |_k, repo| match indexed {
+                Ok(state) => {
+                    repo.sync_done_with(state);
+                    info!("commit complete; indexing done");
+                }
+                Err(err) => {
+                    repo.sync_status = Error {
+                        message: err.to_string(),
+                    };
+                    error!(?err, ?reporef, "failed to index repository");
+                }
+            })
+            .await
+            .unwrap();
 
         Ok(())
     }
@@ -216,7 +216,8 @@ impl IndexWriter {
 
                 self.0
                     .repo_pool
-                    .entry(repo.to_owned())
+                    .entry_async(repo.to_owned())
+                    .await
                     .or_insert_with(|| Repository::local_from(&repo));
 
                 // we _never_ touch the git repositories of local repos
@@ -228,10 +229,9 @@ impl IndexWriter {
         if let Err(RemoteError::RemoteNotFound) = synced {
             self.0
                 .repo_pool
-                .get_mut(&repo)
-                .unwrap()
-                .value_mut()
-                .sync_status = SyncStatus::RemoteRemoved;
+                .update_async(&repo, |_, v| v.sync_status = SyncStatus::RemoteRemoved)
+                .await
+                .unwrap();
 
             error!(?repo, "remote repository removed; disabling local syncing");
 

@@ -222,10 +222,10 @@ pub struct Backends {
     backends: Arc<scc::HashMap<Backend, BackendEntry>>,
 }
 
-impl<T: IntoIterator<Item = (Backend, BackendCredential)>> From<T> for Backends {
-    fn from(value: T) -> Self {
+impl From<HashMap<Backend, BackendCredential>> for Backends {
+    fn from(mut value: HashMap<Backend, BackendCredential>) -> Self {
         let backends = Arc::new(scc::HashMap::default());
-        for (k, v) in value {
+        for (k, v) in value.drain() {
             _ = backends.insert(k, v.into());
         }
 
@@ -267,7 +267,7 @@ impl Backends {
     pub(crate) async fn serialize(&self) -> impl Serialize + Send + Sync {
         let mut output = HashMap::new();
         self.backends
-            .for_each_async(|k, v| {
+            .scan_async(|k, v| {
                 output.insert(k.clone(), v.inner.clone());
             })
             .await;
@@ -285,26 +285,35 @@ impl BackendCredential {
     pub(crate) async fn sync(self, app: Application, repo_ref: RepoRef) -> Result<()> {
         use BackendCredential::*;
 
-        let existing = app.repo_pool.get_mut(&repo_ref);
-        let synced = match existing {
-            // if there's a parallel process already syncing, just return
-            Some(repo) if repo.sync_status == SyncStatus::Syncing => {
-                return Err(RemoteError::SyncInProgress)
-            }
-            Some(mut repo) => {
-                repo.value_mut().sync_status = SyncStatus::Syncing;
-                let repo = repo.downgrade();
-
-                match self {
-                    Github(gh) => gh.auth.pull_repo(&repo).await,
+        let existing = app
+            .repo_pool
+            .update_async(&repo_ref, |_k, repo| {
+                if repo.sync_status == SyncStatus::Syncing {
+                    Err(RemoteError::SyncInProgress)
+                } else {
+                    repo.sync_status = SyncStatus::Syncing;
+                    Ok(())
                 }
+            })
+            .await;
+
+        let Github(gh) = self;
+        let synced = match existing {
+            Some(Err(err)) => return Err(err),
+            Some(Ok(_)) => {
+                app.repo_pool
+                    .update_async(&repo_ref, |_k, repo| gh.auth.pull_repo(repo.clone()))
+                    .await
+                    .unwrap()
+                    .await
             }
             None => {
-                let repo = create_repository(&app, &repo_ref);
-
-                match self {
-                    Github(gh) => gh.auth.clone_repo(&repo, &repo.disk_path.clone()).await,
-                }
+                create_repository(&app, &repo_ref).await;
+                app.repo_pool
+                    .update_async(&repo_ref, |_k, repo| gh.auth.clone_repo(repo.clone()))
+                    .await
+                    .unwrap()
+                    .await
             }
         };
 
@@ -316,19 +325,15 @@ impl BackendCredential {
         };
 
         app.repo_pool
-            .get_mut(&repo_ref)
-            .unwrap()
-            .value_mut()
-            .sync_status = new_status;
+            .update_async(&repo_ref, |_k, v| v.sync_status = new_status)
+            .await
+            .unwrap();
 
         synced
     }
 }
 
-fn create_repository<'a>(
-    app: &'a Application,
-    reporef: &RepoRef,
-) -> dashmap::mapref::one::Ref<'a, RepoRef, Repository> {
+async fn create_repository<'a>(app: &'a Application, reporef: &RepoRef) {
     let name = reporef.to_string();
     let disk_path = app
         .config
@@ -338,7 +343,8 @@ fn create_repository<'a>(
     let remote = reporef.as_ref().into();
 
     app.repo_pool
-        .entry(reporef.clone())
+        .entry_async(reporef.clone())
+        .await
         .or_insert_with(|| Repository {
             disk_path,
             remote,
@@ -346,6 +352,5 @@ fn create_repository<'a>(
             last_index_unix_secs: 0,
             last_commit_unix_secs: 0,
             most_common_lang: None,
-        })
-        .downgrade()
+        });
 }
