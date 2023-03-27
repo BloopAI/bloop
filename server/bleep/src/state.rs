@@ -95,13 +95,9 @@ impl StateSource {
             // Initialize RepositoryPool from repos under `root`
             (Some(root), None) => {
                 let out = scc::HashMap::default();
-                let repos = gather_repo_roots(root, None).map(|reporef| {
+                for reporef in gather_repo_roots(root, None) {
                     let repo = Repository::local_from(&reporef);
-                    (reporef, repo)
-                });
-
-                for (k, v) in repos {
-                    _ = out.insert(k, v);
+                    _ = out.insert(reporef, repo);
                 }
 
                 Ok(out.into())
