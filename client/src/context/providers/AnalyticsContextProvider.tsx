@@ -39,14 +39,14 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
       return;
     }
 
-      analytics.load(
-        envConfig.analytics_key_fe!,
-        envConfig.analytics_data_plane!,
-        {
-          logLevel: 'DEBUG',
-          integrations: { All: true },
-        },
-      );
+    analytics.load(
+      envConfig.analytics_key_fe!,
+      envConfig.analytics_data_plane!,
+      {
+        logLevel: 'DEBUG',
+        integrations: { All: true },
+      },
+    );
 
     analytics.ready(() => {
       setAnalyticsLoaded(true);
