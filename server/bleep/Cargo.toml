@@ -114,6 +114,7 @@ sentry = "0.29.2"
 rudderanalytics = "1.1.2"
 async-stream = "0.3.3"
 erased-serde = "0.3.25"
+sentry-tracing = "0.30.0"
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.3"
