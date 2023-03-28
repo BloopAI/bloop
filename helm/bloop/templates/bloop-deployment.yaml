@@ -94,34 +94,22 @@ spec:
           - mountPath: "/app/secrets"
             name: {{ include "bloop.fullname" . }}
             readOnly: true
-      {{- with .Values.qdrant.nodeSelector }}
+      {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.qdrant.affinity }}
+      {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.qdrant.tolerations }}
+      {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-        - name: qdrant-config
-          configMap:
-            name: {{ include "qdrant.fullname" . }}
-            defaultMode: 0755
         - name: {{ include "bloop.fullname" . }}
           secret:
             secretName: {{ include "bloop.fullname" . }}
         - name: {{ include "bloop.fullname" . }}-storage
           persistentVolumeClaim:
             claimName: {{ include "bloop.fullname" . }}-storage
-        - name: {{ include "qdrant.fullname" . }}-storage
-          persistentVolumeClaim:
-            claimName: {{ include "qdrant.fullname" . }}-storage
-        {{- if .Values.qdrant.snapshotRestoration.enabled }}
-        - name: qdrant-snapshots
-          persistentVolumeClaim:
-            claimName: {{ .Values.qdrant.snapshotRestoration.pvcName }}
-        {{- end }}
