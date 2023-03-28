@@ -1,6 +1,6 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext } from 'react';
 import { Collapsed, Expanded } from '../../icons';
-import { MenuListItemType } from '../../components/ContextMenu';
+import { MenuListItemType } from '../ContextMenu';
 import Tabs from '../../components/Tabs';
 import SkeletonItem from '../../components/SkeletonItem';
 import { UIContext } from '../../context/uiContext';

@@ -159,7 +159,7 @@ export const TooltipCodeDefault = () => {
               ],
             }}
           >
-            <span>Tooltip rigth</span>
+            <span>Tooltip right</span>
           </TooltipCode>
         </div>
       </div>

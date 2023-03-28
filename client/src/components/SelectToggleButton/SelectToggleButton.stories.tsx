@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 import { MailIcon } from '../../icons';
 import SelectToggleButton from './index';
 import '../../index.css';
