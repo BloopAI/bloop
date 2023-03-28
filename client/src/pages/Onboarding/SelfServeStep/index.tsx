@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import DialogText from '../DialogText';
-import Button from '../../../../components/Button';
-import { GitHubLogo } from '../../../../icons';
-import { githubWebLogin } from '../../../../services/api';
+import Button from '../../../components/Button';
+import { GitHubLogo } from '../../../icons';
+import { githubWebLogin } from '../../../services/api';
 
 const SelfServeStep = () => {
   const [loginUrl, setLoginUrl] = useState('');
