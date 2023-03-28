@@ -10,6 +10,7 @@ interface AnalyticsProviderProps {
   children: React.ReactNode;
   deviceId?: string;
   forceAnalytics?: boolean;
+  isSelfServe?: boolean;
   envConfig: {
     analytics_data_plane?: string;
     analytics_key_fe?: string;
@@ -20,6 +21,7 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   children,
   deviceId,
   forceAnalytics,
+  isSelfServe,
   envConfig,
 }) => {
   const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
@@ -54,7 +56,9 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
 
   useEffect(() => {
     if (analyticsLoaded && deviceId) {
-      analytics.identify(deviceId);
+      analytics.identify(deviceId, {
+        isSelfServe: isSelfServe,
+      });
     }
   }, [analyticsLoaded, deviceId]);
 

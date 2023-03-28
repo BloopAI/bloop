@@ -7,8 +7,14 @@ import { listen } from '@tauri-apps/api/event';
 import * as tauriOs from '@tauri-apps/api/os';
 import { getVersion } from '@tauri-apps/api/app';
 import ClientApp from '../../../client/src/App';
-import TextSearch from './TextSearch';
 import '../../../client/src/index.css';
+import {
+  DEVICE_ID,
+  getPlainFromStorage,
+  savePlainToStorage,
+} from '../../../client/src/services/storage';
+import { generateUniqueId } from '../../../client/src/utils';
+import TextSearch from './TextSearch';
 
 // let askedToUpdate = false;
 // let intervalId: number;
@@ -89,6 +95,13 @@ function App() {
       .then((res) => {
         if (res) {
           setDeviceId(res.toString().trim());
+        } else {
+          let generatedId = getPlainFromStorage(DEVICE_ID);
+          if (!generatedId) {
+            generatedId = generateUniqueId();
+            savePlainToStorage(DEVICE_ID, generatedId);
+          }
+          setDeviceId(generatedId);
         }
       })
       .catch(console.log);

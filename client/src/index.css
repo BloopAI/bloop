@@ -398,3 +398,14 @@ h5, .h5 {
   background-color: #686DC3; /* secondary-500 with 25 opacity on primary-400 bg */
   white-space: pre-wrap !important; /* sometimes overridden by styles from prism.js */
 }
+
+.conversation-message pre:has(code[class*="language-"]) {
+  background-color: rgba(19, 19, 21, 0.8); /* primary-900 */
+  border-radius: 4px;
+  white-space: pre-wrap !important; /* sometimes overridden by styles from prism.js */
+  padding: 4px;
+}
+
+.conversation-message pre:has(code[class*="language-"]) code {
+  background-color: unset;
+}
