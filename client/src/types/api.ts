@@ -1,4 +1,4 @@
-import { SymbolType, Range, FileResult } from './results';
+import { SymbolType, Range } from './results';
 
 export interface RangeLine {
   byte: number;
@@ -154,7 +154,7 @@ export interface FiltersResponse {
   languages: FiltersItem[];
 }
 
-export interface HoverablesRespone {
+export interface HoverablesResponse {
   ranges: {
     start: { byte: number; line: number; column: number };
     end: { byte: number; line: number; column: number };

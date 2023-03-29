@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import {
-  HoverablesRespone,
+  HoverablesResponse,
   NLSearchResponse,
   SearchResponse,
   SuggestionsResponse,
@@ -54,7 +54,7 @@ export const nlSearch = (
 export const getHoverables = async (
   path: string,
   repoId: string,
-): Promise<HoverablesRespone> => {
+): Promise<HoverablesResponse> => {
   try {
     const { data } = await http.get('/hoverable', {
       params: { relative_path: path, repo_ref: repoId },

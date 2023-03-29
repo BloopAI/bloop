@@ -10,7 +10,7 @@ import ReportBugModal from './components/ReportBugModal';
 import { UIContextProvider } from './context/providers/UiContextProvider';
 import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
 import { AppNavigationProvider } from './hooks/useAppNavigation';
-import SearchPage from './pages/Search';
+import ContentContainer from './pages';
 import { SearchContextProvider } from './context/providers/SearchContextProvider';
 
 type Props = {
@@ -47,7 +47,7 @@ function Tab({ deviceContextValue, isActive, tab }: Props) {
                 <SearchContextProvider initialSearchHistory={tab.searchHistory}>
                   <RepositoriesContext.Provider value={reposContextValue}>
                     <Routes>
-                      <Route path="*" element={<SearchPage />} />
+                      <Route path="*" element={<ContentContainer />} />
                     </Routes>
                     <Settings />
                     <ReportBugModal />

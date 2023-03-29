@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { SearchContext } from '../../context/searchContext';
 import { FileTreeFileType, Repository, RepoSource } from '../../types';
-import Skeleton from '../Skeleton';
+import Skeleton from '../../components/Skeleton';
 import { mapDirResult } from '../../mappers/results';
 import { DirectorySearchResponse } from '../../types/api';
 import FileIcon from '../../components/FileIcon';

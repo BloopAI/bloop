@@ -10,10 +10,10 @@ import Button from '../../Button';
 import SeparateOnboardingStep from '../../SeparateOnboardingStep';
 import RemoteServicesStep, {
   STEP_KEY,
-} from '../../../pages/Home/Onboarding/RemoteServicesStep';
+} from '../../../pages/Onboarding/RemoteServicesStep';
 import { UIContext } from '../../../context/uiContext';
-import GithubConnectStep from '../../../pages/Home/Onboarding/GithubConnectStep';
-import GithubReposStep from '../../../pages/Home/Onboarding/GithubReposStep';
+import GithubConnectStep from '../../../pages/Onboarding/GithubConnectStep';
+import GithubReposStep from '../../../pages/Onboarding/GithubReposStep';
 
 const Preferences = () => {
   const { isAnalyticsAllowed, setIsAnalyticsAllowed } =

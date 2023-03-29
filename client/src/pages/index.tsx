@@ -1,42 +1,26 @@
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useContext, useEffect, useMemo } from 'react';
 import * as Sentry from '@sentry/react';
-import { SearchContext } from '../../context/searchContext';
-import { useSearch } from '../../hooks/useSearch';
+import { SearchContext } from '../context/searchContext';
+import { useSearch } from '../hooks/useSearch';
 import {
   DirectorySearchResponse,
   GeneralSearchResponse,
   SearchResponse,
-} from '../../types/api';
-import RepositoryPage from '../Repository';
-import PageTemplate from '../../components/PageTemplate';
-import ErrorFallback from '../../components/ErrorFallback';
-import useAppNavigation from '../../hooks/useAppNavigation';
-import { buildRepoQuery } from '../../utils';
-import ResultsPage from '../Results';
-import ViewResult from '../ResultFull';
-import { SearchType } from '../../types/general';
-import NLResults from '../NLResults';
-import NoResults from '../Results/NoResults';
-import HomePage from '../Home';
-import { TabsContext } from '../../context/tabsContext';
-import { getRepos } from '../../services/api';
-import {
-  getPlainFromStorage,
-  ONBOARDING_DONE_KEY,
-  savePlainToStorage,
-  SESSION_ID_KEY,
-} from '../../services/storage';
-import { DeviceContext } from '../../context/deviceContext';
-import StatusBar from '../../components/StatusBar';
-import Onboarding from '../Home/Onboarding';
-import NavBar from '../../components/NavBar';
-import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
+} from '../types/api';
+import PageTemplate from '../components/PageTemplate';
+import ErrorFallback from '../components/ErrorFallback';
+import useAppNavigation from '../hooks/useAppNavigation';
+import { buildRepoQuery } from '../utils';
+import { SearchType } from '../types/general';
+import { TabsContext } from '../context/tabsContext';
+import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
+import RepositoryPage from './Repository';
+import ResultsPage from './Results';
+import ViewResult from './ResultFull';
+import NLResults from './NLResults';
+import NoResults from './Results/NoResults';
+import HomePage from './Home';
+import Onboarding from './Onboarding';
 
 const mockQuerySuggestions = [
   'repo:cobra-ats  error:“no apples”',
@@ -46,15 +30,9 @@ const mockQuerySuggestions = [
   'lang:tsx apples',
 ];
 
-let onboardingFinished = false;
-
-const SearchPage = () => {
+const ContentContainer = () => {
   const { setInputValue, globalRegex, searchType, setSearchType } =
     useContext(SearchContext);
-  const { isSelfServe } = useContext(DeviceContext);
-  const [shouldShowWelcome, setShouldShowWelcome] = useState(
-    !getPlainFromStorage(ONBOARDING_DONE_KEY),
-  );
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
   const { updateCurrentTabName } = useContext(TabsContext);
 
@@ -73,36 +51,8 @@ const SearchPage = () => {
   }, []);
   useKeyboardNavigation(handleKeyEvent);
 
-  const closeOnboarding = useCallback(() => {
-    setShouldShowWelcome(false);
-    onboardingFinished = true; // to avoid showing onboarding twice per session when using VITE_ONBOARDING=true
-    savePlainToStorage(ONBOARDING_DONE_KEY, 'true');
-  }, []);
-
   useEffect(() => {
-    if (import.meta.env.ONBOARDING) {
-      if (
-        getPlainFromStorage(SESSION_ID_KEY) !==
-        window.__APP_SESSION__.toString()
-      ) {
-        localStorage.removeItem(ONBOARDING_DONE_KEY);
-        savePlainToStorage(SESSION_ID_KEY, window.__APP_SESSION__.toString());
-        setShouldShowWelcome(true);
-      }
-    }
     setInputValue('');
-  }, []);
-
-  useEffect(() => {
-    if (isSelfServe) {
-      getRepos()
-        .then(() => {
-          closeOnboarding();
-        })
-        .catch(() => {
-          setShouldShowWelcome(true);
-        });
-    }
   }, []);
 
   useEffect(() => {
@@ -211,21 +161,14 @@ const SearchPage = () => {
     }
   }, [data, loading, navigatedItem, query, navigatedItem?.threadId]);
 
-  return shouldShowWelcome ? (
-    <div className="text-gray-200">
-      <NavBar userSigned isSkeleton />
-      <div
-        className={`flex justify-center items-start mt-16 w-screen overflow-auto relative h-[calc(100vh-8rem)]`}
-      >
-        <Onboarding onFinish={closeOnboarding} />
-      </div>
-      <StatusBar />
-    </div>
-  ) : (
-    <PageTemplate>{renderedPage}</PageTemplate>
+  return (
+    <>
+      <Onboarding />
+      <PageTemplate>{renderedPage}</PageTemplate>
+    </>
   );
 };
 
-export default Sentry.withErrorBoundary(SearchPage, {
+export default Sentry.withErrorBoundary(ContentContainer, {
   fallback: (props) => <ErrorFallback {...props} />,
 });

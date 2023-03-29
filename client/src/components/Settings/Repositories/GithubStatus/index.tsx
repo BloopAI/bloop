@@ -11,7 +11,7 @@ import {
   IS_ANALYTICS_ALLOWED_KEY,
   savePlainToStorage,
 } from '../../../../services/storage';
-import { STEP_KEY } from '../../../../pages/Home/Onboarding/RemoteServicesStep';
+import { STEP_KEY } from '../../../../pages/Onboarding/RemoteServicesStep';
 
 type Props = {
   setGitHubAuth: (b: boolean) => void;

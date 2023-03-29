@@ -1,5 +1,5 @@
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import Skeleton from './../Skeleton';
+import Skeleton from './index';
 
 export default {
   title: 'pages/SkeletonResults',

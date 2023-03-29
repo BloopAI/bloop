@@ -15,7 +15,7 @@ import {
   splitPathForBreadcrumbs,
 } from '../../utils';
 import ErrorFallback from '../../components/ErrorFallback';
-import Skeleton from '../Skeleton';
+import Skeleton from '../../components/Skeleton';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import { FileTreeFileType } from '../../types';
 import { getFileName } from '../../utils/file';
