@@ -1,20 +1,20 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import DialogText from '../DialogText';
-import Button from '../../../../components/Button';
-import { ArrowRight } from '../../../../icons';
-import SearchableRepoList from '../../../../components/RepoList/SearchableRepoList';
-import { scanLocalRepos, syncRepos } from '../../../../services/api';
+import Button from '../../../components/Button';
+import { ArrowRight } from '../../../icons';
+import SearchableRepoList from '../../../components/RepoList/SearchableRepoList';
+import { scanLocalRepos, syncRepos } from '../../../services/api';
 import {
   RepoProvider,
   RepoType,
   RepoUi,
   SyncStatus,
-} from '../../../../types/general';
+} from '../../../types/general';
 import GoBackButton from '../GoBackButton';
-import { UIContext } from '../../../../context/uiContext';
-import useAnalytics from '../../../../hooks/useAnalytics';
-import { splitPath } from '../../../../utils';
-import { RepositoriesContext } from '../../../../context/repositoriesContext';
+import { UIContext } from '../../../context/uiContext';
+import useAnalytics from '../../../hooks/useAnalytics';
+import { splitPath } from '../../../utils';
+import { RepositoriesContext } from '../../../context/repositoriesContext';
 
 type Props = {
   handleNext: (e?: any) => void;

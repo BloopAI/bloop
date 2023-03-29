@@ -5,16 +5,16 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import Button from '../../../../components/Button';
+import Button from '../../../components/Button';
 import DialogText from '../DialogText';
 import GoBackButton from '../GoBackButton';
-import { AnalyticsContext } from '../../../../context/analyticsContext';
+import { AnalyticsContext } from '../../../context/analyticsContext';
 import {
   IS_ANALYTICS_ALLOWED_KEY,
   savePlainToStorage,
-} from '../../../../services/storage';
-import { UIContext } from '../../../../context/uiContext';
-import { DeviceContext } from '../../../../context/deviceContext';
+} from '../../../services/storage';
+import { UIContext } from '../../../context/uiContext';
+import { DeviceContext } from '../../../context/deviceContext';
 import PrivacyCard from './PrivacyCard';
 
 type Props = {

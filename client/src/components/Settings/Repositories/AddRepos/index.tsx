@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import LocalReposStep from '../../../../pages/Home/Onboarding/LocalReposStep';
-import GithubReposStep from '../../../../pages/Home/Onboarding/GithubReposStep';
-import FolderSelectStep from '../../../../pages/Home/Onboarding/FolderSelectStep';
+import LocalReposStep from '../../../../pages/Onboarding/LocalReposStep';
+import GithubReposStep from '../../../../pages/Onboarding/GithubReposStep';
+import FolderSelectStep from '../../../../pages/Onboarding/FolderSelectStep';
 import SeparateOnboardingStep from '../../../SeparateOnboardingStep';
 
 type Props = {

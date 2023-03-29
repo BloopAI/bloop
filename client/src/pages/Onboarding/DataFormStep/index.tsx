@@ -1,12 +1,12 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import TextInput from '../../../../components/TextInput';
-import Button from '../../../../components/Button';
-import { ArrowRight } from '../../../../icons';
+import TextInput from '../../../components/TextInput';
+import Button from '../../../components/Button';
+import { ArrowRight } from '../../../icons';
 import DialogText from '../DialogText';
-import { UIContext } from '../../../../context/uiContext';
-import { saveUserData } from '../../../../services/api';
-import { DeviceContext } from '../../../../context/deviceContext';
-import { EMAIL_REGEX } from '../../../../consts/validations';
+import { UIContext } from '../../../context/uiContext';
+import { saveUserData } from '../../../services/api';
+import { DeviceContext } from '../../../context/deviceContext';
+import { EMAIL_REGEX } from '../../../consts/validations';
 
 type Form = {
   firstName: string;

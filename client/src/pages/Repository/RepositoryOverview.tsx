@@ -7,7 +7,6 @@ import RepositoryFiles from '../../components/RepositoryFiles';
 import { useSearch } from '../../hooks/useSearch';
 import { FileSearchResponse } from '../../types/api';
 import { cleanRepoName, sortFiles } from '../../utils/file';
-import { isWindowsPath } from '../../utils';
 import { highlightCode } from '../../utils/prism';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import { DeviceContext } from '../../context/deviceContext';

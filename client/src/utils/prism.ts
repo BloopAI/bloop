@@ -197,7 +197,7 @@ const normalizeTokens = (
       }
     }
 
-    // Decreate the stack depth
+    // Decrease the stack depth
     stackIndex--;
     typeArrStack.pop();
     tokenArrStack.pop();

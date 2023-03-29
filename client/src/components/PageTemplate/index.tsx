@@ -4,8 +4,8 @@ import StatusBar from '../StatusBar';
 import { DeviceContext } from '../../context/deviceContext';
 import { AnalyticsContext } from '../../context/analyticsContext';
 import { UIContext } from '../../context/uiContext';
-import { STEP_KEY } from '../../pages/Home/Onboarding/RemoteServicesStep';
-import GithubConnectStep from '../../pages/Home/Onboarding/GithubConnectStep';
+import { STEP_KEY } from '../../pages/Onboarding/RemoteServicesStep';
+import GithubConnectStep from '../../pages/Onboarding/GithubConnectStep';
 import SeparateOnboardingStep from '../SeparateOnboardingStep';
 import {
   IS_ANALYTICS_ALLOWED_KEY,

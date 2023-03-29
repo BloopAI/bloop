@@ -6,17 +6,12 @@ import React, {
   useState,
 } from 'react';
 import DialogText from '../DialogText';
-import Button from '../../../../components/Button';
-import {
-  ArrowRight,
-  Chronometer,
-  Clipboard,
-  GitHubLogo,
-} from '../../../../icons';
-import { useGitHubAuth } from '../../../../hooks/useGitHubAuth';
+import Button from '../../../components/Button';
+import { ArrowRight, Chronometer, Clipboard, GitHubLogo } from '../../../icons';
+import { useGitHubAuth } from '../../../hooks/useGitHubAuth';
 import GoBackButton from '../GoBackButton';
-import TextField from '../../../../components/TextField';
-import { AnalyticsContext } from '../../../../context/analyticsContext';
+import TextField from '../../../components/TextField';
+import { AnalyticsContext } from '../../../context/analyticsContext';
 
 type Props = {
   handleNext: (e?: any, skipOne?: boolean) => void;

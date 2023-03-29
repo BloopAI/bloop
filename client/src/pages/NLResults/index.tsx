@@ -21,7 +21,7 @@ import { useSearch } from '../../hooks/useSearch';
 import { FileSearchResponse, NLSnippet } from '../../types/api';
 import ErrorFallback from '../../components/ErrorFallback';
 import { getHoverables } from '../../services/api';
-import { ResultsPreviewSkeleton } from '../Skeleton';
+import { ResultsPreviewSkeleton } from '../../components/Skeleton';
 import SemanticSearch from '../../components/CodeBlock/SemanticSearch';
 import { DeviceContext } from '../../context/deviceContext';
 import PageHeader from '../../components/ResultsPageHeader';

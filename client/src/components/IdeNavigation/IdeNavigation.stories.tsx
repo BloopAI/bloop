@@ -61,7 +61,7 @@ export const IdeNavigationPanel = () => {
             children: [],
           },
           {
-            name: '.gitognore',
+            name: '.gitignore',
             type: FileTreeFileType.FILE,
             path: '/',
             children: [],
