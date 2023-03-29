@@ -26,6 +26,11 @@ export type DeviceContextType = {
   isRepoManagementAllowed: boolean;
   forceAnalytics: boolean;
   isSelfServe: boolean;
+  envConfig: {
+    analytics_data_plane?: string;
+    analytics_key_fe?: string;
+    sentry_dsn_fe?: string;
+  };
   showNativeMessage: (m: string, options?: any) => Promise<void> | void;
 };
 
@@ -48,5 +53,6 @@ export const DeviceContext = createContext<DeviceContextType>({
   isRepoManagementAllowed: true,
   forceAnalytics: false,
   isSelfServe: false,
+  envConfig: {},
   showNativeMessage: () => Promise.resolve(),
 });

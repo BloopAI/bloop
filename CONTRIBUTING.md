@@ -38,7 +38,7 @@ A quick list of things maintainers will check during review.
 The following 2 steps are requirements for all PRs:
 
  * Don't break public APIs.
- * Make sure you use `rustfmt`, follow `clippy`, and check tests, or you PR will fail the CI!
+ * Make sure you use `rustfmt`, follow `clippy`, and check tests, or your PR will fail the CI!
  
 Additionally, please pay attention to the following points as it helps
 with our review. However, these are _not_ required:

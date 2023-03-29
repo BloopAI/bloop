@@ -120,12 +120,6 @@ function App() {
       //   1000 * 60 * 60,
       // );
     });
-    if (import.meta.env.SENTRY_DSN_BE) {
-      invoke('initialize_sentry', {
-        dsn: import.meta.env.SENTRY_DSN_BE,
-        environment: import.meta.env.MODE,
-      });
-    }
   }, []);
 
   const deviceContextValue = useMemo(
@@ -149,6 +143,7 @@ function App() {
       isRepoManagementAllowed: true,
       forceAnalytics: false,
       isSelfServe: false,
+      envConfig: {},
       showNativeMessage: message,
     }),
     [homeDirectory, indexFolder, deviceId, os, release],

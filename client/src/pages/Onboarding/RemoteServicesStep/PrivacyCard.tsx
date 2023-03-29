@@ -1,5 +1,5 @@
 import { ChangeEvent } from 'react';
-import RadioButton from '../../../../components/RadioButton';
+import RadioButton from '../../../components/RadioButton';
 
 type Props = {
   title: string;

@@ -371,7 +371,7 @@ impl ExecuteQuery for ContentReader {
         // filtered by the target regex
         let collector = BytesFilterCollector::new(
             raw_content,
-            move |b| byte_regexes.iter().any(|r| r.is_match(b)), // a doc is accepted if it contains atleast 1 target
+            move |b| byte_regexes.iter().any(|r| r.is_match(b)), // a doc is accepted if it contains at least 1 target
             (top_k, metadata_collector),
         );
 
@@ -463,7 +463,7 @@ impl ExecuteQuery for FileReader {
 
         let collector = BytesFilterCollector::new(
             path_field,
-            move |b| byte_filter_regexes.iter().any(|r| r.is_match(b)), // a doc is accepted if it contains atleast 1 target
+            move |b| byte_filter_regexes.iter().any(|r| r.is_match(b)), // a doc is accepted if it contains at least 1 target
             (top_k, metadata_collector),
         );
 
@@ -539,7 +539,7 @@ impl ExecuteQuery for RepoReader {
 
         let collector = BytesFilterCollector::new(
             name_field,
-            move |b| byte_filter_regexes.iter().any(|r| r.is_match(b)), // a doc is accepted if it contains atleast 1 target
+            move |b| byte_filter_regexes.iter().any(|r| r.is_match(b)), // a doc is accepted if it contains at least 1 target
             (top_k, metadata_collector),
         );
 

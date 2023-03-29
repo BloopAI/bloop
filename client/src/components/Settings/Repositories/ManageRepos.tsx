@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Breadcrumbs from '../../Breadcrumbs';
 import { Repository } from '../../../icons';
-import RepoList from '../../RepoList';
 import Button from '../../Button';
 import { RepoType, RepoUi, SyncStatus } from '../../../types/general';
 import { splitPath } from '../../../utils';

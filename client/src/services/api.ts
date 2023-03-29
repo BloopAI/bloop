@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import {
-  HoverablesRespone,
+  HoverablesResponse,
   NLSearchResponse,
   SearchResponse,
   SuggestionsResponse,
@@ -54,7 +54,7 @@ export const nlSearch = (
 export const getHoverables = async (
   path: string,
   repoId: string,
-): Promise<HoverablesRespone> => {
+): Promise<HoverablesResponse> => {
   try {
     const { data } = await http.get('/hoverable', {
       params: { relative_path: path, repo_ref: repoId },
@@ -153,3 +153,5 @@ export const getDiscordLink = () =>
 
 export const githubWebLogin = () =>
   http.get('/auth/login/start').then((r) => r.data);
+
+export const getConfig = () => http.get('/config').then((r) => r.data);

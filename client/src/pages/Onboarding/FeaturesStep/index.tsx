@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
-import Button from '../../../../components/Button';
-import { ChatBubble, PointClick, RegexIcon } from '../../../../icons';
+import Button from '../../../components/Button';
+import { ChatBubble, PointClick, RegexIcon } from '../../../icons';
 import DialogText from '../DialogText';
 import GoBackButton from '../GoBackButton';
 import Feature from './Feature';

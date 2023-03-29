@@ -1,7 +1,7 @@
 import React from 'react';
-import NavBar from '../../components/NavBar';
-import StatusBar from '../../components/StatusBar';
-import SkeletonItem from '../../components/SkeletonItem';
+import NavBar from '../NavBar';
+import StatusBar from '../StatusBar';
+import SkeletonItem from '../SkeletonItem';
 
 export const ResultsPreviewSkeleton = () => {
   return (

@@ -33,8 +33,9 @@ use axum::extract::FromRef;
 
 use once_cell::sync::OnceCell;
 
+use sentry_tracing::{EventFilter, SentryLayer};
 use std::{path::Path, sync::Arc};
-use tracing::{error, info, warn};
+use tracing::{error, info, warn, Level};
 use tracing_subscriber::EnvFilter;
 
 mod background;
@@ -299,6 +300,7 @@ fn tracing_subscribe() -> bool {
     let env_filter = fmt::layer().with_filter(EnvFilter::from_env(LOG_ENV_VAR));
     tracing_subscriber::registry()
         .with(env_filter)
+        .with(sentry_layer())
         .with(console_subscriber::spawn())
         .try_init()
         .is_ok()
@@ -310,6 +312,27 @@ fn tracing_subscribe() -> bool {
     let env_filter = fmt::layer().with_filter(EnvFilter::from_env(LOG_ENV_VAR));
     tracing_subscriber::registry()
         .with(env_filter)
+        .with(sentry_layer())
         .try_init()
         .is_ok()
+}
+
+/// Create a new sentry layer that captures `debug!`, `info!`, `warn!`, and `error!` messages.
+fn sentry_layer<S>() -> SentryLayer<S>
+where
+    S: tracing::Subscriber,
+    S: for<'a> tracing_subscriber::registry::LookupSpan<'a>,
+{
+    SentryLayer::default()
+        .span_filter(|meta| {
+            matches!(
+                *meta.level(),
+                Level::DEBUG | Level::INFO | Level::WARN | Level::ERROR
+            )
+        })
+        .event_filter(|meta| match *meta.level() {
+            Level::ERROR => EventFilter::Exception,
+            Level::DEBUG | Level::INFO | Level::WARN => EventFilter::Breadcrumb,
+            Level::TRACE => EventFilter::Ignore,
+        })
 }

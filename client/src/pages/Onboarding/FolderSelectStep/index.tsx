@@ -1,15 +1,15 @@
 import React, { useCallback, useContext, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import DialogText from '../DialogText';
-import Button from '../../../../components/Button';
-import { ArrowRight } from '../../../../icons';
+import Button from '../../../components/Button';
+import { ArrowRight } from '../../../icons';
 import GoBackButton from '../GoBackButton';
-import { DeviceContext } from '../../../../context/deviceContext';
-import { UIContext } from '../../../../context/uiContext';
+import { DeviceContext } from '../../../context/deviceContext';
+import { UIContext } from '../../../context/uiContext';
 import {
   CHOSEN_SCAN_FOLDER_KEY,
   savePlainToStorage,
-} from '../../../../services/storage';
+} from '../../../services/storage';
 
 type Props = {
   handleNext: (e?: any, skipOne?: boolean) => void;
