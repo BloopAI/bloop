@@ -119,16 +119,12 @@ pub(super) async fn index_status(Extension(app): Extension<Application>) -> impl
     ),
 )]
 pub(super) async fn indexed(Extension(app): Extension<Application>) -> impl IntoResponse {
-    (
-        StatusCode::OK,
-        Json(ReposResponse::List(
-            app.repo_pool
-                .iter()
-                .map(|elem| Repo::from((elem.key(), elem.value())))
-                .collect(),
-        ))
-        .into_response(),
-    )
+    let mut repos = vec![];
+    app.repo_pool
+        .scan_async(|k, v| repos.push(Repo::from((k, v))))
+        .await;
+
+    json(ReposResponse::List(repos))
 }
 
 /// Get details of an indexed repository based on their id
@@ -147,11 +143,14 @@ pub(super) async fn get_by_id(
         return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
     };
 
-    match app.repo_pool.get(&reporef) {
-        Some(result) => Ok(json(ReposResponse::Item(Repo::from((
-            result.key(),
-            result.value(),
-        ))))),
+    match app
+        .repo_pool
+        .read_async(&reporef, |k, v| {
+            json(ReposResponse::Item(Repo::from((k, v))))
+        })
+        .await
+    {
+        Some(result) => Ok(result),
         None => Err(Error::new(ErrorKind::NotFound, "Can't find repository")),
     }
 }
@@ -173,16 +172,17 @@ pub(super) async fn delete_by_id(
         return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
     };
 
-    let deleted = match app.repo_pool.get_mut(&reporef) {
-        Some(mut result) => {
-            result.value_mut().mark_removed();
-            app.write_index().queue_sync_and_index(vec![reporef]);
-            Ok(())
-        }
+    match app
+        .repo_pool
+        .update_async(&reporef, |k, value| {
+            value.mark_removed();
+            app.write_index().queue_sync_and_index(vec![k.clone()]);
+        })
+        .await
+    {
+        Some(_) => Ok(json(ReposResponse::Deleted)),
         None => Err(Error::new(ErrorKind::NotFound, "Repo not found")),
-    };
-
-    Ok(deleted.map(|_| json(ReposResponse::Deleted)))
+    }
 }
 
 /// Synchronize a repo by its id
@@ -222,45 +222,41 @@ pub(super) async fn available(Extension(app): Extension<Application>) -> impl In
         .unwrap_or_default()
         .iter()
         .map(|repo| {
-            let local_duplicates = app
-                .repo_pool
-                .iter()
-                .filter(|elem| {
-                    // either `ssh_url` or `clone_url` should match what we generate.
-                    //
-                    // also note that this is quite possibly not the
-                    // most efficient way of doing this, but the
-                    // number of repos should be small, so even n^2
-                    // should be fast.
-                    //
-                    // most of the time is spent in the network.
-                    [
-                        repo.ssh_url.as_deref().unwrap_or_default().to_lowercase(),
-                        repo.clone_url
-                            .as_ref()
-                            .map(|url| url.as_str())
-                            .unwrap_or_default()
-                            .to_lowercase(),
-                    ]
-                    .contains(&elem.remote.to_string().to_lowercase())
-                })
-                .map(|elem| elem.key().clone())
-                .collect();
+            let mut local_duplicates = vec![];
+            app.repo_pool.scan(|k, v| {
+                // either `ssh_url` or `clone_url` should match what we generate.
+                //
+                // also note that this is quite possibly not the
+                // most efficient way of doing this, but the
+                // number of repos should be small, so even n^2
+                // should be fast.
+                //
+                // most of the time is spent in the network.
+                if [
+                    repo.ssh_url.as_deref().unwrap_or_default().to_lowercase(),
+                    repo.clone_url
+                        .as_ref()
+                        .map(|url| url.as_str())
+                        .unwrap_or_default()
+                        .to_lowercase(),
+                ]
+                .contains(&v.remote.to_string().to_lowercase())
+                {
+                    local_duplicates.push(k.clone())
+                }
+            });
 
             Repo::from_github(local_duplicates, repo)
         })
         .collect::<Vec<_>>();
 
-    (
-        StatusCode::OK,
-        Json(ReposResponse::List(
-            app.repo_pool
-                .iter()
-                .map(|elem| Repo::from((elem.key(), elem.value())))
-                .chain(unknown_github)
-                .collect(),
-        )),
-    )
+    let mut repos = vec![];
+    app.repo_pool
+        .scan_async(|k, v| repos.push(Repo::from((k, v))))
+        .await;
+    repos.extend(unknown_github);
+
+    (StatusCode::OK, Json(ReposResponse::List(repos)))
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Debug)]
@@ -284,12 +280,14 @@ pub(super) async fn set_indexed(
 ) -> impl IntoResponse {
     let mut repo_list = new_list.indexed.into_iter().collect::<HashSet<_>>();
 
-    for mut existing in app.repo_pool.iter_mut() {
-        if !repo_list.contains(existing.key()) {
-            existing.value_mut().mark_removed();
-            repo_list.insert(existing.key().to_owned());
-        }
-    }
+    app.repo_pool
+        .for_each_async(|k, existing| {
+            if !repo_list.contains(k) {
+                existing.mark_removed();
+                repo_list.insert(k.to_owned());
+            }
+        })
+        .await;
 
     app.write_index()
         .queue_sync_and_index(repo_list.into_iter().collect());

@@ -1,6 +1,6 @@
 use std::{
-    collections::HashMap,
     ops::Not,
+    sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -11,7 +11,7 @@ use notify_debouncer_mini::{
     DebounceEventResult, Debouncer,
 };
 use rand::{distributions, thread_rng, Rng};
-use tokio::time::sleep;
+use tokio::{task::JoinHandle, time::sleep};
 use tracing::{debug, error, info, warn};
 
 use crate::{
@@ -111,7 +111,7 @@ pub(crate) async fn check_credentials(app: Application) {
             if expired && app.credentials.remove(&Backend::Github).is_some() {
                 app.config
                     .source
-                    .save_credentials(&app.credentials.serialize())
+                    .save_credentials(&app.credentials.serialize().await)
                     .unwrap();
                 debug!("github oauth is invalid; credentials removed");
             }
@@ -122,34 +122,25 @@ pub(crate) async fn check_credentials(app: Application) {
 }
 
 pub(crate) async fn check_repo_updates(app: Application) {
-    let mut handles = HashMap::new();
+    let handles: Arc<scc::HashMap<RepoRef, JoinHandle<_>>> = Arc::default();
     loop {
-        let repos = app
-            .repo_pool
-            .iter()
-            .map(|elem| elem.key().clone())
-            .collect::<Vec<_>>();
-
-        for repo in repos {
-            let app = app.clone();
-            let reporef = repo.clone();
-
-            match handles.get(&repo) {
-                None => {
-                    let (_, status) = check_repo(&app, &reporef).unwrap();
-
-                    if status.indexable() {
-                        handles
-                            .insert(repo.clone(), tokio::spawn(periodic_repo_poll(app, reporef)));
+        app.repo_pool
+            .scan_async(|reporef, repo| match handles.entry(reporef.to_owned()) {
+                scc::hash_map::Entry::Occupied(value) => {
+                    if value.get().is_finished() {
+                        _ = value.remove_entry();
                     }
                 }
-                Some(handle) => {
-                    if handle.is_finished() {
-                        handles.remove(&repo);
+                scc::hash_map::Entry::Vacant(vacant) => {
+                    if repo.sync_status.indexable() {
+                        vacant.insert_entry(tokio::spawn(periodic_repo_poll(
+                            app.clone(),
+                            reporef.to_owned(),
+                        )));
                     }
                 }
-            }
-        }
+            })
+            .await;
 
         sleep(Duration::from_secs(10)).await
     }
@@ -238,8 +229,7 @@ impl Poller {
         if app.config.disable_fsevents.not() && reporef.backend() == Backend::Local {
             let git_path = app
                 .repo_pool
-                .get(reporef)
-                .map(|repo| repo.value().disk_path.join(".git"))?;
+                .read(reporef, |_, v| v.disk_path.join(".git"))?;
 
             let mut debouncer = debounced_events(tx);
             debouncer
@@ -305,8 +295,7 @@ impl Poller {
 }
 
 fn check_repo(app: &Application, reporef: &RepoRef) -> Option<(u64, SyncStatus)> {
-    app.repo_pool.get(reporef).map(|elem| {
-        let repo = elem.value();
+    app.repo_pool.read(reporef, |_, repo| {
         (repo.last_commit_unix_secs, repo.sync_status.clone())
     })
 }

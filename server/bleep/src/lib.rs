@@ -21,6 +21,7 @@ use console_subscriber as _;
 
 #[cfg(target_os = "windows")]
 use dunce::canonicalize;
+use scc::hash_map::Entry;
 #[cfg(not(target_os = "windows"))]
 use std::fs::canonicalize;
 
@@ -30,7 +31,6 @@ use crate::{
 use anyhow::{anyhow, bail, Result};
 use axum::extract::FromRef;
 
-use dashmap::{mapref::entry::Entry, DashMap};
 use once_cell::sync::OnceCell;
 
 use sentry_tracing::{EventFilter, SentryLayer};
@@ -76,7 +76,7 @@ pub struct Application {
     indexes: Arc<Indexes>,
     credentials: remotes::Backends,
     cookie_key: axum_extra::extract::cookie::Key,
-    prior_conversational_store: Arc<DashMap<String, Vec<(String, String)>>>,
+    prior_conversational_store: Arc<scc::HashMap<String, Vec<(String, String)>>>,
 }
 
 impl Application {
@@ -126,18 +126,16 @@ impl Application {
             env
         };
 
-        let prior_conversational_store = Arc::new(DashMap::new());
-
         Ok(Self {
             indexes: Arc::new(Indexes::new(config.clone(), semantic.clone())?),
             background: BackgroundExecutor::start(config.clone()),
             repo_pool: config.source.initialize_pool()?,
             cookie_key: config.source.initialize_cookie_key()?,
             credentials: config.source.initialize_credentials()?.into(),
+            prior_conversational_store: Arc::default(),
             semantic,
             config,
             env,
-            prior_conversational_store,
         })
     }
 
@@ -257,8 +255,7 @@ impl Application {
         f: impl Fn(&[(String, String)]) -> T,
     ) -> T {
         self.prior_conversational_store
-            .get(user_id)
-            .map(|r| f(&r.value()[..]))
+            .read(user_id, |_, v| f(&v[..]))
             .unwrap_or_else(|| f(&[]))
     }
 
@@ -267,7 +264,7 @@ impl Application {
         match self.prior_conversational_store.entry(user_id) {
             Entry::Occupied(mut o) => o.get_mut().push((query, String::new())),
             Entry::Vacant(v) => {
-                v.insert(vec![(query, String::new())]);
+                v.insert_entry(vec![(query, String::new())]);
             }
         }
     }

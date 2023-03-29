@@ -106,7 +106,7 @@ pub(super) async fn logout(Extension(app): Extension<Application>) -> impl IntoR
         let saved = app
             .config
             .source
-            .save_credentials(&app.credentials.serialize());
+            .save_credentials(&app.credentials.serialize().await);
 
         if saved.is_ok() {
             return Ok(json(GithubResponse::Status(GithubCredentialStatus::Ok)));
@@ -169,7 +169,7 @@ async fn poll_for_oauth_token(
     let saved = app
         .config
         .source
-        .save_credentials(&app.credentials.serialize());
+        .save_credentials(&app.credentials.serialize().await);
 
     if let Err(err) = saved {
         error!(?err, "Failed to save credentials to disk");

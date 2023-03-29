@@ -91,8 +91,7 @@ regex-syntax = "0.6.28"
 smallvec = { version = "1.10.0", features = ["serde"]}
 async-trait = "0.1.63"
 flume = "0.10.14"
-dashmap = { version = "5.4.0", features = ["serde"] }
-either = "1.8.0"
+either = "1.8.1"
 compact_str = "0.6.1"
 bincode = "1.3.3"
 directories = "4.0.1"
@@ -114,6 +113,7 @@ sentry = "0.29.2"
 rudderanalytics = "1.1.2"
 async-stream = "0.3.3"
 erased-serde = "0.3.25"
+scc = { version= "1.2.0", features = ["serde"] }
 sentry-tracing = "0.30.0"
 
 [target.'cfg(windows)'.dependencies]

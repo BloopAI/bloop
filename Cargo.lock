@@ -423,7 +423,6 @@ dependencies = [
  "compact_str",
  "console-subscriber",
  "criterion",
- "dashmap",
  "directories",
  "dunce",
  "either",
@@ -457,6 +456,7 @@ dependencies = [
  "reqwest",
  "reqwest-eventsource",
  "rudderanalytics",
+ "scc",
  "secrecy",
  "sentry",
  "sentry-tracing",
@@ -1393,20 +1393,6 @@ dependencies = [
  "darling_core 0.13.4",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "dashmap"
-version = "5.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "907076dfda823b0b36d2a1bb5f90c96660a5bbcd7729e10727f07858f22c4edc"
-dependencies = [
- "cfg-if",
- "hashbrown",
- "lock_api",
- "once_cell",
- "parking_lot_core",
- "serde",
 ]
 
 [[package]]
@@ -4802,6 +4788,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "scc"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a83e3a5d0ddb38f854c69b8387fda1ffb87bb845b88928c66653bed16fccd11"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

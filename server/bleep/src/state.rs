@@ -4,7 +4,6 @@ use crate::{
 };
 use anyhow::Result;
 use clap::Args;
-use dashmap::DashMap;
 use rand::Rng;
 use relative_path::RelativePath;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -17,7 +16,7 @@ use tracing::debug;
 
 include!(concat!(env!("OUT_DIR"), "/schema_version.rs"));
 
-pub(crate) type RepositoryPool = Arc<DashMap<RepoRef, Repository>>;
+pub(crate) type RepositoryPool = Arc<scc::HashMap<RepoRef, Repository>>;
 
 #[derive(Serialize, Deserialize, Args, Debug, Clone, Default, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -94,14 +93,15 @@ impl StateSource {
             (None, Some(path)) => read_file_or_default(path).map(Arc::new),
 
             // Initialize RepositoryPool from repos under `root`
-            (Some(root), None) => Ok(gather_repo_roots(root, None)
-                .map(|reporef| {
+            (Some(root), None) => {
+                let out = scc::HashMap::default();
+                for reporef in gather_repo_roots(root, None) {
                     let repo = Repository::local_from(&reporef);
-                    (reporef, repo)
-                })
-                .collect::<DashMap<_, _>>()
-                .into()),
+                    _ = out.insert(reporef, repo);
+                }
 
+                Ok(out.into())
+            }
             // Update RepositoryPool with repos under `root`
             (Some(root), Some(path)) => {
                 // Load RepositoryPool from path
@@ -111,34 +111,27 @@ impl StateSource {
                 let root = canonicalize(root)?;
 
                 // mark repositories from the index which are no longer present
-                for mut elem in state.iter_mut() {
-                    let k = elem.key();
-
+                state.for_each(|k, repo| {
                     if let Some(path) = k.local_path() {
                         // Clippy suggestion causes the code to break, revisit after 1.66
                         #[allow(clippy::needless_borrow)]
                         if path.starts_with(&root) && !current_repos.contains(k) {
                             debug!(reporef=%k, "repo scheduled to be removed;");
-                            elem.value_mut().mark_removed();
+                            repo.mark_removed();
                         }
                     }
 
                     // in case the app terminated during indexing, make sure to re-queue it
-                    if elem.sync_status == SyncStatus::Indexing {
-                        elem.value_mut().mark_queued();
+                    if repo.sync_status == SyncStatus::Indexing {
+                        repo.mark_queued();
                     }
-                }
+                });
 
                 // then add anything new that's appeared
-                let per_path = state
-                    .iter()
-                    .map(|elem| {
-                        (
-                            elem.disk_path.to_string_lossy().to_string(),
-                            elem.key().clone(),
-                        )
-                    })
-                    .collect::<DashMap<_, _>>();
+                let mut per_path = std::collections::HashMap::new();
+                state.scan(|k, v| {
+                    per_path.insert(v.disk_path.to_string_lossy().to_string(), k.clone());
+                });
 
                 for reporef in current_repos {
                     // skip all paths that are already in the index,
@@ -168,17 +161,14 @@ impl StateSource {
 
     pub(crate) fn initialize_credentials(
         &self,
-    ) -> Result<DashMap<Backend, BackendCredential>, RepoError> {
+    ) -> Result<std::collections::HashMap<Backend, BackendCredential>, RepoError> {
         read_file_or_default(self.credentials.as_ref().unwrap())
     }
 
-    pub(crate) fn save_credentials(
-        &self,
-        creds: &DashMap<Backend, BackendCredential>,
-    ) -> Result<(), RepoError> {
+    pub(crate) fn save_credentials(&self, creds: impl Serialize) -> Result<(), RepoError> {
         match self.credentials {
             None => Err(RepoError::NoSourceGiven),
-            Some(ref path) => pretty_write_file(path, creds),
+            Some(ref path) => pretty_write_file(path, &creds),
         }
     }
 
@@ -301,10 +291,8 @@ mod test {
         .initialize_pool()
         .unwrap();
 
-        let mut found_repos = repo_pool
-            .iter()
-            .map(|repo| repo.disk_path.to_str().unwrap().to_string())
-            .collect::<Vec<_>>();
+        let mut found_repos = vec![];
+        repo_pool.scan(|_k, repo| found_repos.push(repo.disk_path.to_str().unwrap().to_string()));
         found_repos.sort();
 
         let repo = |subdir| {
