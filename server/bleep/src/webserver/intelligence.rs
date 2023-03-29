@@ -1,18 +1,34 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use super::prelude::*;
 use crate::{
+    env::Feature,
     indexes::{reader::ContentDocument, Indexes},
     intelligence::{code_navigation, NodeKind, ScopeGraph},
+    remotes,
     repo::RepoRef,
+    semantic::Semantic,
     snippet::{Snipper, Snippet},
     symbol::SymbolLocations,
     text_range::TextRange,
+    Application,
 };
 
-use axum::{extract::Query, response::IntoResponse, Extension};
+use super::answer::api;
+use super::answer::{AnswerAPIClient, AnswerAPIError, AnswerState};
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    response::{sse::Event, IntoResponse, Sse},
+    Extension,
+};
+use futures::{stream, Stream, StreamExt, TryStreamExt};
 use petgraph::graph::NodeIndex;
+use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use tokio::sync::RwLock;
+use tracing::{debug, error, info, warn};
 use utoipa::{IntoParams, ToSchema};
 
 /// The request made to the `local-intel` endpoint.
@@ -30,7 +46,7 @@ pub(super) struct TokenInfoRequest {
 }
 
 /// The response from the `local-intel` endpoint.
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize, ToSchema, Clone)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub(super) enum TokenInfoResponse {
     /// The response returned when the input range is a definition
@@ -49,7 +65,7 @@ pub(super) enum TokenInfoResponse {
 
 impl super::ApiResponse for TokenInfoResponse {}
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, Clone)]
 pub(super) struct FileSymbols {
     // FIXME: choose a better name
     /// The file to which the following occurrences belong
@@ -66,7 +82,7 @@ impl FileSymbols {
 }
 
 /// An occurrence of a single symbol in a document, along with some context
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, Clone)]
 pub(super) struct SymbolOccurrence {
     /// The precise range of this symbol
     #[serde(flatten)]
@@ -231,11 +247,13 @@ fn merge(
 )]
 pub(super) async fn handle(
     Query(payload): Query<TokenInfoRequest>,
-    Extension(indexes): Extension<Arc<Indexes>>,
+    State(state): State<Arc<AnswerState>>,
+    Extension(app): Extension<Application>,
 ) -> Result<impl IntoResponse> {
     let repo_ref = &payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
 
-    let content = indexes
+    let indexes = Arc::clone(&app.indexes);
+    let content = &indexes
         .file
         .by_path(repo_ref, &payload.relative_path)
         .await
@@ -304,8 +322,22 @@ pub(super) async fn handle(
             let definitions = merge([local_definitions], repo_wide_definitions);
             let references = merge([local_references], repo_wide_references);
 
+            tracing::info!("calling gpt handler");
+            let selections = gpt_handler(&app, Arc::clone(&state), &definitions).await;
+            let selected_defs = if selections.is_empty() {
+                definitions.clone()
+            } else {
+                let mut tmp = vec![];
+                for idx in selections {
+                    if let Some(t) = definitions.get(idx - 1) {
+                        tmp.push(t.clone())
+                    }
+                }
+                tmp
+            };
+
             Ok(json(TokenInfoResponse::Reference {
-                definitions,
+                definitions: selected_defs,
                 references,
             }))
         }
@@ -313,6 +345,112 @@ pub(super) async fn handle(
             "provided range is not eligible for intelligence",
         )),
     }
+}
+
+const DELIMITER: &str = "=====";
+async fn gpt_filter(file_symbols: &[FileSymbols]) -> api::Messages {
+    let symbols = file_symbols
+        .iter()
+        .zip(1..)
+        .flat_map(|(fs, idx)| {
+            fs.data
+                .iter()
+                .map(|occurrence| {
+                    let name = occurrence.snippet.highlight_strs()[0];
+                    format!(
+                        "{}. definition of `{}` in file `{}`:\n{}\n=====\n",
+                        idx, name, fs.file, occurrence.snippet.data
+                    )
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect::<String>();
+    let mut prompt = r#"Below are a list of snippets separated by `=====`. Your job is to find which one of these snippets
+contains a valid definition. Output list of indices of valid definitions in the format of a JSON array. Do not include snippets which look like
+imports. You must select at least one index.
+
+For example, if given the following list of snippets:
+
+1. definition of `HashMap` in file `src/main.rs`
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::collections::BTreeSet;
+
+2. definition of `HashMap` in file `src/map.rs`
+struct HashMap<T> {
+    bucket: Vec<T>,
+    capacity: usize
+
+3. definition of `HashMap` in file `src/util.rs`
+use crate::map::HashMap;
+
+Output:[2]
+
+Now, complete the answer for the given snippets:
+
+"#.to_string();
+    prompt.push_str(&symbols);
+    prompt.push_str("\nOutput:");
+
+    let messages = vec![api::Message {
+        role: "user".into(),
+        content: prompt,
+    }];
+
+    api::Messages { messages }
+}
+
+async fn gpt_handler(
+    app: &Application,
+    state: Arc<AnswerState>,
+    file_symbols: &[FileSymbols],
+) -> Vec<usize> {
+    let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
+        let Some(cred) = app.credentials.github() else {
+            panic!("no gh token");
+        };
+
+        use remotes::github::{Auth, State};
+        match cred {
+            State {
+                auth:
+                    Auth::OAuth {
+                        access_token: token,
+                        ..
+                    },
+                ..
+            } => Some(token.expose_secret().clone()),
+
+            State {
+                auth: Auth::App { .. },
+                ..
+            } => {
+                panic!("cannot connect to answer API using installation token")
+            }
+        }
+    } else {
+        None
+    };
+
+    let semantic = app.semantic.clone().expect("qdrant not configured");
+
+    let answer_api_client = semantic.build_answer_api_client(
+        &*state,
+        format!("{}/v1/q", app.config.answer_api_url).as_str(),
+        5,
+        answer_bearer.clone(),
+    );
+
+    let prompt = gpt_filter(file_symbols).await;
+    let answer = answer_api_client
+        .send(prompt, 50, 0.9, api::Provider::OpenAi, vec![])
+        .await
+        .unwrap()
+        .try_collect::<String>()
+        .await
+        .unwrap();
+    let selections = serde_json::from_str(&answer).unwrap_or_else(|_| Vec::new());
+    selections
 }
 
 #[cfg(test)]

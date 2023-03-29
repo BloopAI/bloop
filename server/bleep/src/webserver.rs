@@ -63,7 +63,10 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/repos/sync/*path", get(repos::sync))
         // intelligence
         .route("/hoverable", get(hoverable::handle))
-        .route("/token-info", get(intelligence::handle))
+        .route(
+            "/token-info",
+            get(intelligence::handle).with_state(Arc::new(answer::AnswerState::default())),
+        )
         // misc
         .route("/file/*ref", get(file::handle))
         .route("/semantic/chunks", get(semantic::raw_chunks))

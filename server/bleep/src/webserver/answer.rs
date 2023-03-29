@@ -135,7 +135,7 @@ impl super::ApiResponse for AnswerResponse {}
 
 const SNIPPET_COUNT: usize = 20;
 
-pub(super) struct AnswerState {
+pub struct AnswerState {
     client: reqwest::Client,
 }
 
@@ -714,7 +714,7 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String>
         .map(ToOwned::to_owned)
 }
 
-struct AnswerAPIClient<'s> {
+pub struct AnswerAPIClient<'s> {
     host: String,
     semantic: &'s Semantic,
     max_attempts: u64,
@@ -723,7 +723,7 @@ struct AnswerAPIClient<'s> {
 }
 
 #[derive(Error, Debug)]
-enum AnswerAPIError {
+pub enum AnswerAPIError {
     #[error("max retry attempts reached {0}")]
     MaxAttemptsReached(u64),
 
@@ -751,7 +751,7 @@ impl From<AnswerAPIError> for Error {
 }
 
 impl Semantic {
-    fn build_answer_api_client<'s>(
+    pub fn build_answer_api_client<'s>(
         &'s self,
         state: &AnswerState,
         host: &str,
@@ -771,7 +771,7 @@ impl Semantic {
 }
 
 impl<'s> AnswerAPIClient<'s> {
-    async fn send(
+    pub async fn send(
         &self,
         messages: api::Messages,
         max_tokens: u32,
@@ -827,7 +827,7 @@ impl<'s> AnswerAPIClient<'s> {
     }
 
     #[allow(dead_code)]
-    async fn send_until_success(
+    pub async fn send_until_success(
         &self,
         messages: api::Messages,
         max_tokens: u32,

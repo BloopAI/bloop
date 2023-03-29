@@ -16,12 +16,21 @@ pub struct SnippedFile {
     pub snippets: Vec<Snippet>,
 }
 
-#[derive(Serialize, ToSchema, Debug, PartialEq, Eq)]
+#[derive(Serialize, ToSchema, Debug, PartialEq, Eq, Clone)]
 pub struct Snippet {
     pub data: String,
     pub highlights: Vec<Range<usize>>,
     pub symbols: Vec<Symbol>,
     pub line_range: Range<usize>,
+}
+
+impl Snippet {
+    pub fn highlight_strs(&self) -> Vec<&str> {
+        self.highlights
+            .iter()
+            .map(|range| &self.data[range.start..range.end])
+            .collect()
+    }
 }
 
 /// A marker indicating a subset of some source text, with a list of highlighted ranges.
