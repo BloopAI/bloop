@@ -52,6 +52,15 @@ pub mod api {
         Anthropic,
     }
 
+    impl Provider {
+        pub fn token_limit(&self) -> usize {
+            match self {
+                Self::OpenAi => 8192,
+                Self::Anthropic => 8000,
+            }
+        }
+    }
+
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Request {
         pub messages: Messages,
@@ -861,6 +870,9 @@ const DELIMITER: &str = "=========";
 impl<'a> AnswerAPIClient<'a> {
     fn build_select_prompt(&self, query: &str, snippets: &[Snippet]) -> api::Messages {
         // snippets are 1-indexed so we can use index 0 where no snippets are relevant
+        let token_count = self
+            .semantic
+            .gpt2_token_count(include_str!("../prompt/select.txt"));
         let mut system = snippets
             .iter()
             .enumerate()
@@ -874,21 +886,28 @@ impl<'a> AnswerAPIClient<'a> {
                     snippet.text
                 )
             })
-            .collect::<String>();
+            .fold(
+                (token_count, String::default()),
+                |(count, mut prompt), entry| {
+                    let new_count = count + self.semantic.gpt2_token_count(&entry);
+                    if new_count < api::Provider::OpenAi.token_limit() {
+                        prompt.push_str(&entry);
+                        (new_count, prompt)
+                    } else {
+                        debug!("evicting a snippet!");
+                        (count, prompt)
+                    }
+                },
+            )
+            .1;
 
         // the example question/answer pair helps reinforce that we want exactly a single
         // number in the output, with no spaces or punctuation such as fullstops.
         system += &format!(
-            "Above are {} code snippets separated by \"{DELIMITER}\". Your job is to select the snippet that best answers the question. Reply with a single integer indicating the index of the snippet in the list.
-If none of the snippets are relevant reply with the number 0. Wrap your response in <index></index> XML tags.
-
-User:What icon do we use to clear search history?
-Assistant:<index>3</index>
-
-User:{}
-Assistant:<index>",
-            snippets.len(),
-            &query
+            include_str!("../prompt/select.txt"),
+            COUNT = snippets.len(),
+            QUERY = &query,
+            DELIMITER = DELIMITER,
         );
 
         let messages = vec![api::Message {
@@ -909,20 +928,10 @@ Assistant:<index>",
         query: &str,
     ) -> api::Messages {
         let system = format!(
-            r#"{}
-=========
-Above, you have an extract from the `{}` file in the `{}` repo. This message will be followed by the last few utterances of a conversation with a user. Use the code file to write a concise, precise answer to the question.
-
-- Format your response in GitHub Markdown. Paths, function names and code extracts should be enclosed in backticks
-- Use markdown bullet points to format lists
-- Keep your response short. It should only be a few sentences long at the most
-- Do NOT copy long chunks of code into the response
-- If the file doesn't contain enough information to answer the question, or you don't know the answer, just say "Sorry, I'm not sure."
-- Do NOT try to make up an answer or answer with regard to information that is not in the file
-- The conversation history can provide context to the user's current question, but sometimes it contains irrelevant information. IGNORE information in the conversation which is irrelevant to the user's current question
-
-Let's think step by step. First carefully refer to the code above, then answer the question with reference to it."#,
-            snippet.text, snippet.relative_path, snippet.repo_name,
+            include_str!("../prompt/explain.txt"),
+            TEXT = snippet.text,
+            PATH = snippet.relative_path,
+            REPO = snippet.repo_name,
         );
 
         let mut messages = vec![api::Message {
@@ -951,106 +960,7 @@ Let's think step by step. First carefully refer to the code above, then answer t
 }
 
 fn build_rephrase_query_prompt(query: &str, conversation: &[(String, String)]) -> api::Messages {
-    let mut system =
-        r#"You are a tool for generating search queries. Given a series of past interactions between a user and an assistant generate a search query to pass to a search engine that might answer the most recent user question. Follow these instructions:
-
-- Generate a search query which consists of relevant keywords
-- If necessary rephrase the keywords in the query into ones which are more likely to be retrieved by a code search engine
-- Ignore any prior interactions between the user and the assistant which are irrelevant to the most recent user question 
-- Do NOT answer any of the user's queries
-- Your keywords query should be concise
-- Only add terms where you think they'll help the search engine retrieve a relevant result
-- If the user has not asked a question reply with "N/A"
-
-Here are some examples:
-
-User: Hey bloop, do we pin js version numbers?
-Query: pin js version numbers dependencies config
-
-User: Hey bloop, I have a question - Where do we test if GitHub login works?
-Assistant: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
-User: which file?
-Query: test GitHub login
-
-User: What's the best way to update the search icon @bloop?
-Query: update search icon
-
-User: Where do we test if GitHub login works
-Assistant: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
-User: Are there unit tests?
-Query: unit test GitHub login
-
-User: sdfkhsdkfh
-Query: N/A
-
-User: Where is the answer api called
-Assistant: The answer API client is called in `server/bleep/webserver/answer.rs`. After building the prompt the `select_snippet` method belonging to the `answer_api_client` is called.
-User: frontend
-Query: answer API frontend
-
-User: Where do bug reports get sent?
-Assistant: Bug reports get sent to the repo maintainers.
-User: Which url
-Query: url bug reports
-
-User: You're the best 
-Query: N/A
-
-User: tailwind config
-Assistant: The `tailwind.config.cjs` file configures Tailwind CSS for the desktop app by extending a basic configuration and adding additional content paths.
-User: client config
-Query: client Tailwind config
-
-User: Hey bloop
-Query: N/A
-
-User: What does this repo do?
-Query: repo purpose
-
-User: Where do we test if GitHub login works
-Assistant: To test GitHub login, you would:\n\n- Call `handleClick()` to initiate the login flow\n- Check for the presence of a `loginUrl` to see if the login was successful\n- Check for the `authenticationFailed` state to see if the login failed
-User: Nice to meet you
-Query: N/A
-
-User: Is OAuth supported
-Query: OAuth authentication
-
-User: I love bananas
-Assistant: I'm sorry, I don't understand what you mean. Please ask a question that's related to the codebase.
-User: Which onnxruntime library do we use?
-Query: onnxruntime library dependencies
-
-User: How is the conversational history stored
-Query: conversation history store
-
-User: Where is the query parsing logic?
-Assistant: The query parser is defined in the `parse` function in `server/bleep/src/query/parser.rs`.
-User: Which libraries does it use?
-Assistant: Sorry, the given code snippet does not contain enough context to determine which libraries the query parser uses.
-User: Where's the delete repo endpoint?
-Query: delete repo endpoint
-
-User: Would it make sense to refactor ClientAuth as an async function
-Query: ClientAuth
-
-User: Can you explain to me in detail how the build process works?
-Query: build process
-
-User: Where is the query parsing logic?
-Assistant: The query parser is defined in the `parse` function in `server/bleep/src/query/parser.rs`.
-User: Which filters?
-Assistant: The query parser supports the following filters:\n\nrepo: to filter by repository\norg: to filter by organization\npath: to filter by file path\nlang: to filter by programming language\nopen: to filter by open or closed files\nglobal_regex: to use global regular expressions in the search query\ntarget: to filter by content, symbol, or commit.\n
-User: What does target do
-Query: target query filter
-
-User: Where is the query parsing logic?
-Assistant: The query parser is defined in the `parse` function in `server/bleep/src/query/parser.rs`.
-User: Which filters?
-Assistant: The query parser supports the following filters:\n\nrepo: to filter by repository\norg: to filter by organization\npath: to filter by file path\nlang: to filter by programming language\nopen: to filter by open or closed files\nglobal_regex: to use global regular expressions in the search query\ntarget: to filter by content, symbol, or commit.\n
-User: Can you explain to me the advantages of scope queries over ctags
-Query: scope queries ctags
-
-"#.to_string();
+    let mut system = include_str!("../prompt/rephrase.txt").to_string();
 
     for (question, answer) in conversation {
         system.push_str(&format!("User: {}\n", question.clone()));
