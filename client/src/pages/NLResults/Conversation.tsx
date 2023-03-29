@@ -31,6 +31,7 @@ const Conversation = ({
   const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [newMessage, setNewMessage] = useState('');
+  const [width, setWidth] = useState(384);
 
   const { setInputValue } = useContext(SearchContext);
 
@@ -62,12 +63,41 @@ const Conversation = ({
     [newMessage, conversation],
   );
 
+  const handleResize = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const startWidth = width;
+    const startPosition = e.pageX;
+
+    function onMouseMove(mouseMoveEvent: MouseEvent) {
+      mouseMoveEvent.preventDefault();
+      setWidth(() =>
+        Math.min(
+          Math.max(startWidth + startPosition - mouseMoveEvent.pageX, 200),
+          window.innerWidth - 200,
+        ),
+      );
+    }
+    function onMouseUp(e: MouseEvent) {
+      e.stopPropagation();
+      document.body.removeEventListener('mousemove', onMouseMove);
+      document.body.removeEventListener('mouseup', onMouseUp, true);
+    }
+
+    document.body.addEventListener('mousemove', onMouseMove);
+    document.body.addEventListener('mouseup', onMouseUp, true);
+  };
+
   return (
     <div
-      className={`p-4 w-96 bg-gray-900 border-l border-gray-800 relative 
+      className={`p-4 bg-gray-900 border-l border-gray-800 relative 
     before:absolute before:top-0 before:right-0 before:opacity-50 before:bg-[url('/dust.png')] 
     before:w-full before:h-full before:bg-repeat`}
+      style={{ width }}
     >
+      <div
+        className="absolute top-0 left-0 w-1 h-full cursor-w-resize"
+        onMouseDown={handleResize}
+      />
       <div
         className="relative flex flex-col gap-5 max-h-full pb-20 overflow-auto"
         ref={messagesRef}
