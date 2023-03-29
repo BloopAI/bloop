@@ -47,9 +47,11 @@ use crate::{
 };
 
 struct Workload<'a> {
-    entry_disk_path: PathBuf,
+    file_type: FileType,
+    entry_disk_path: String,
     repo_disk_path: &'a Path,
     repo_ref: String,
+    buffer: String,
     repo_name: &'a str,
     repo_metadata: &'a RepoMetadata,
     cache: &'a FileCache,
@@ -249,33 +251,13 @@ impl Indexable for File {
         let file_cache = repo.open_file_cache(&self.config.index_dir)?;
         let repo_name = reporef.indexed_name();
 
-        // note: this WILL observe .gitignore files for the respective repos.
-        let walker = ignore::Walk::new(&repo.disk_path)
-            .filter_map(|de| match de {
-                Ok(de) => Some(de),
-                Err(err) => {
-                    warn!(%err, "access failure; skipping");
-                    None
-                }
-            })
-            // Preliminarily ignore files that are very large, without reading the contents.
-            .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
-            .filter_map(|de| crate::canonicalize(de.into_path()).ok())
-            .filter(|p| {
-                p.strip_prefix(&repo.disk_path)
-                    .as_ref()
-                    .map(should_index)
-                    .unwrap_or_default()
-            })
-            .collect::<Vec<PathBuf>>();
-
+        let walker = FileWalker::index_directory(&repo.disk_path);
         let count = walker.len();
         let processed = &AtomicU64::new(0);
 
         let start = std::time::Instant::now();
-        use rayon::prelude::*;
 
-        walker.into_par_iter().for_each(|entry_disk_path| {
+        walker.for_each(|entry_disk_path, buffer, file_type| {
             let completed = processed.fetch_add(1, Ordering::Relaxed);
             progress(((completed as f32 / count as f32) * 100f32) as u8);
 
@@ -286,6 +268,8 @@ impl Indexable for File {
                 repo_name: &repo_name,
                 cache: &file_cache,
                 repo_metadata,
+                file_type,
+                buffer,
             };
 
             debug!(?entry_disk_path, "queueing entry");
@@ -489,28 +473,19 @@ impl File {
             repo_name,
             repo_metadata,
             cache,
+            file_type,
+            mut buffer,
         } = workload;
 
         #[cfg(feature = "debug")]
         let start = Instant::now();
 
-        let mut buffer = if entry_disk_path.is_file() {
-            match std::fs::read_to_string(&entry_disk_path) {
-                Err(err) => {
-                    warn!(%err, ?entry_disk_path, "read failed; skipping");
-                    return Ok(());
-                }
-                Ok(buffer) => buffer,
-            }
+        let entry_pathbuf = PathBuf::from(&entry_disk_path);
+        let relative_path = entry_pathbuf.strip_prefix(repo_disk_path)?;
+        let relative_path_str = if matches!(file_type, FileType::Dir) {
+            format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy())
         } else {
-            String::new()
-        };
-
-        let relative_path = entry_disk_path.strip_prefix(repo_disk_path)?;
-        let relative_path_str = if entry_disk_path.is_dir() {
-            format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy()).into()
-        } else {
-            relative_path.to_string_lossy()
+            relative_path.to_string_lossy().to_string()
         };
 
         trace!("processing file");
@@ -524,7 +499,7 @@ impl File {
 
         trace!("adding cache entry");
 
-        match cache.entry(entry_disk_path.to_owned()) {
+        match cache.entry(entry_pathbuf.clone()) {
             Entry::Occupied(mut val) if val.get().value == content_hash => {
                 // skip processing if contents are up-to-date in the cache
                 val.get_mut().fresh = true;
@@ -539,11 +514,11 @@ impl File {
         }
         trace!("added cache entry");
 
-        let lang_str = if entry_disk_path.is_file() {
+        let lang_str = if matches!(file_type, FileType::File) {
             repo_metadata
                 .langs
                 .path_map
-                .get(&entry_disk_path)
+                .get(&entry_pathbuf)
                 .unwrap_or_else(|| {
                     warn!("Path not found in language map");
                     &Some("")
@@ -554,7 +529,7 @@ impl File {
         };
 
         // calculate symbol locations
-        let symbol_locations = if entry_disk_path.is_file() {
+        let symbol_locations = if matches!(file_type, FileType::File) {
             // build a syntax aware representation of the file
             let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
                 .and_then(TreeSitterFile::scope_graph);
@@ -602,13 +577,13 @@ impl File {
         let last_commit = repo_metadata.last_commit_unix_secs;
 
         // produce vectors for this document if it is a file
-        if entry_disk_path.is_file() {
+        if matches!(file_type, FileType::File) {
             if let Some(semantic) = &self.semantic {
                 tokio::task::block_in_place(|| {
                     Handle::current().block_on(semantic.insert_points_for_buffer(
                         repo_name,
                         &repo_ref,
-                        &relative_path.to_string_lossy(),
+                        &relative_path_str,
                         &buffer,
                         lang_str,
                     ))
@@ -620,9 +595,12 @@ impl File {
         #[cfg(feature = "debug")]
         let buf_size = buffer.len();
         writer.add_document(doc!(
+            self.raw_content => buffer.as_bytes(),
+            self.raw_repo_name => repo_name.as_bytes(),
+            self.raw_relative_path => relative_path_str.as_bytes(),
             self.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-            self.entry_disk_path => entry_disk_path.to_string_lossy().as_ref(),
-            self.relative_path => relative_path_str.as_ref(),
+            self.entry_disk_path => entry_disk_path,
+            self.relative_path => relative_path_str,
             self.repo_ref => repo_ref,
             self.repo_name => repo_name,
             self.content => buffer.as_str(),
@@ -632,9 +610,6 @@ impl File {
             self.last_commit_unix_seconds => last_commit,
             self.symbol_locations => bincode::serialize(&symbol_locations)?,
             self.symbols => symbols,
-            self.raw_content => buffer.as_bytes(),
-            self.raw_repo_name => repo_name.as_bytes(),
-            self.raw_relative_path => relative_path_str.as_ref().as_bytes(),
         ))?;
 
         trace!("document written");
@@ -668,6 +643,87 @@ impl File {
         }
 
         Ok(())
+    }
+}
+
+enum FileType {
+    File,
+    Dir,
+    Other,
+}
+
+trait FileSource {
+    fn len(&self) -> usize;
+    fn for_each(self, iterator: impl Fn(String, String, FileType) + Sync + Send);
+}
+
+struct FileWalker {
+    file_list: Vec<PathBuf>,
+}
+
+impl FileWalker {
+    fn index_directory(dir: impl AsRef<Path>) -> Self {
+        // note: this WILL observe .gitignore files for the respective repos.
+        let file_list = ignore::Walk::new(&dir)
+            .filter_map(|de| match de {
+                Ok(de) => Some(de),
+                Err(err) => {
+                    warn!(%err, "access failure; skipping");
+                    None
+                }
+            })
+            // Preliminarily ignore files that are very large, without reading the contents.
+            .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
+            .filter_map(|de| crate::canonicalize(de.into_path()).ok())
+            .filter(|p| {
+                p.strip_prefix(&dir)
+                    .as_ref()
+                    .map(should_index)
+                    .unwrap_or_default()
+            })
+            .collect();
+
+        Self { file_list }
+    }
+}
+
+impl FileSource for FileWalker {
+    fn len(&self) -> usize {
+        self.file_list.len()
+    }
+
+    fn for_each(self, iterator: impl Fn(String, String, FileType) + Sync + Send) {
+        use rayon::prelude::*;
+        self.file_list
+            .into_par_iter()
+            .filter_map(|entry_disk_path| {
+                let buffer = if entry_disk_path.is_file() {
+                    match std::fs::read_to_string(&entry_disk_path) {
+                        Err(err) => {
+                            warn!(%err, ?entry_disk_path, "read failed; skipping");
+                            return None;
+                        }
+                        Ok(buffer) => buffer,
+                    }
+                } else {
+                    String::new()
+                };
+
+                let file_type = if entry_disk_path.is_dir() {
+                    FileType::Dir
+                } else if entry_disk_path.is_file() {
+                    FileType::File
+                } else {
+                    FileType::Other
+                };
+
+                Some((
+                    entry_disk_path.to_string_lossy().to_string(),
+                    buffer,
+                    file_type,
+                ))
+            })
+            .for_each(|(path, buf, typ)| iterator(path, buf, typ));
     }
 }
 
