@@ -62,8 +62,10 @@ function App({ deviceContextValue }: Props) {
     (tabKey: string) => {
       setActiveTab((prev) => {
         const prevIndex = tabs.findIndex((t) => t.key === prev);
-        if (tabKey === prev && tabs.findIndex((t) => t.key === tabKey) !== 0) {
-          return tabs[prevIndex - 1].key;
+        if (tabKey === prev) {
+          return prevIndex > 0
+            ? tabs[prevIndex - 1].key
+            : tabs[prevIndex + 1].key;
         }
         return prev;
       });
