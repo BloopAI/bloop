@@ -47,14 +47,12 @@ use crate::{
 };
 
 struct Workload<'a> {
-    file_type: FileType,
-    entry_disk_path: String,
     repo_disk_path: &'a Path,
     repo_ref: String,
-    buffer: String,
     repo_name: &'a str,
     repo_metadata: &'a RepoMetadata,
     cache: &'a FileCache,
+    file: RepoFile,
 }
 
 #[derive(Clone)]
@@ -257,24 +255,24 @@ impl Indexable for File {
 
         let start = std::time::Instant::now();
 
-        walker.for_each(|entry_disk_path, buffer, file_type| {
+        walker.for_each(|file| {
             let completed = processed.fetch_add(1, Ordering::Relaxed);
             progress(((completed as f32 / count as f32) * 100f32) as u8);
 
+            let entry_disk_path = file.path.clone();
+
             let workload = Workload {
-                entry_disk_path: entry_disk_path.clone(),
                 repo_disk_path: &repo.disk_path,
                 repo_ref: reporef.to_string(),
                 repo_name: &repo_name,
                 cache: &file_cache,
                 repo_metadata,
-                file_type,
-                buffer,
+                file,
             };
 
-            debug!(?entry_disk_path, "queueing entry");
+            debug!(entry_disk_path, "queueing entry");
             if let Err(err) = self.worker(workload, writer) {
-                warn!(%err, ?entry_disk_path, "indexing failed; skipping");
+                warn!(%err, entry_disk_path, "indexing failed; skipping");
             }
         });
 
@@ -464,25 +462,23 @@ impl Indexer<File> {
 }
 
 impl File {
-    #[tracing::instrument(fields(repo=%workload.repo_ref, entry_disk_path=?workload.entry_disk_path), skip_all)]
+    #[tracing::instrument(fields(repo=%workload.repo_ref, entry_disk_path=?workload.file.path), skip_all)]
     fn worker(&self, workload: Workload<'_>, writer: &IndexWriter) -> Result<()> {
         let Workload {
-            entry_disk_path,
             repo_ref,
             repo_disk_path,
             repo_name,
             repo_metadata,
             cache,
-            file_type,
-            mut buffer,
+            mut file,
         } = workload;
 
         #[cfg(feature = "debug")]
         let start = Instant::now();
 
-        let entry_pathbuf = PathBuf::from(&entry_disk_path);
+        let entry_pathbuf = PathBuf::from(&file.path);
         let relative_path = entry_pathbuf.strip_prefix(repo_disk_path)?;
-        let relative_path_str = if matches!(file_type, FileType::Dir) {
+        let relative_path_str = if matches!(file.kind, FileType::Dir) {
             format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy())
         } else {
             relative_path.to_string_lossy().to_string()
@@ -493,7 +489,7 @@ impl File {
         let content_hash = {
             let mut hash = blake3::Hasher::new();
             hash.update(crate::state::SCHEMA_VERSION.as_bytes());
-            hash.update(buffer.as_bytes());
+            hash.update(file.buffer.as_bytes());
             hash.finalize().to_hex().to_string()
         };
 
@@ -514,7 +510,7 @@ impl File {
         }
         trace!("added cache entry");
 
-        let lang_str = if matches!(file_type, FileType::File) {
+        let lang_str = if matches!(file.kind, FileType::File) {
             repo_metadata
                 .langs
                 .path_map
@@ -529,9 +525,9 @@ impl File {
         };
 
         // calculate symbol locations
-        let symbol_locations = if matches!(file_type, FileType::File) {
+        let symbol_locations = if matches!(file.kind, FileType::File) {
             // build a syntax aware representation of the file
-            let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
+            let scope_graph = TreeSitterFile::try_build(file.buffer.as_bytes(), lang_str)
                 .and_then(TreeSitterFile::scope_graph);
 
             match scope_graph {
@@ -551,18 +547,19 @@ impl File {
         let symbols = symbol_locations
             .list()
             .iter()
-            .map(|sym| buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
+            .map(|sym| file.buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
             .collect::<HashSet<_>>()
             .into_iter()
             .collect::<Vec<_>>()
             .join("\n");
 
         // add an NL if this file is not NL-terminated
-        if !buffer.ends_with('\n') {
-            buffer += "\n";
+        if !file.buffer.ends_with('\n') {
+            file.buffer += "\n";
         }
 
-        let line_end_indices = buffer
+        let line_end_indices = file
+            .buffer
             .match_indices('\n')
             .flat_map(|(i, _)| u32::to_le_bytes(i as u32))
             .collect::<Vec<_>>();
@@ -573,18 +570,18 @@ impl File {
             return Ok(());
         }
 
-        let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
+        let lines_avg = file.buffer.len() as f64 / file.buffer.lines().count() as f64;
         let last_commit = repo_metadata.last_commit_unix_secs;
 
         // produce vectors for this document if it is a file
-        if matches!(file_type, FileType::File) {
+        if matches!(file.kind, FileType::File) {
             if let Some(semantic) = &self.semantic {
                 tokio::task::block_in_place(|| {
                     Handle::current().block_on(semantic.insert_points_for_buffer(
                         repo_name,
                         &repo_ref,
                         &relative_path_str,
-                        &buffer,
+                        &file.buffer,
                         lang_str,
                     ))
                 });
@@ -595,15 +592,15 @@ impl File {
         #[cfg(feature = "debug")]
         let buf_size = buffer.len();
         writer.add_document(doc!(
-            self.raw_content => buffer.as_bytes(),
+            self.raw_content => file.buffer.as_bytes(),
             self.raw_repo_name => repo_name.as_bytes(),
             self.raw_relative_path => relative_path_str.as_bytes(),
             self.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-            self.entry_disk_path => entry_disk_path,
+            self.entry_disk_path => file.path,
             self.relative_path => relative_path_str,
             self.repo_ref => repo_ref,
             self.repo_name => repo_name,
-            self.content => buffer.as_str(),
+            self.content => file.buffer,
             self.line_end_indices => line_end_indices,
             self.lang => lang_str.to_ascii_lowercase().as_bytes(),
             self.avg_line_length => lines_avg,
@@ -646,6 +643,13 @@ impl File {
     }
 }
 
+struct RepoFile {
+    path: String,
+    buffer: String,
+    kind: FileType,
+    branches: Vec<String>,
+}
+
 enum FileType {
     File,
     Dir,
@@ -654,7 +658,7 @@ enum FileType {
 
 trait FileSource {
     fn len(&self) -> usize;
-    fn for_each(self, iterator: impl Fn(String, String, FileType) + Sync + Send);
+    fn for_each(self, iterator: impl Fn(RepoFile) + Sync + Send);
 }
 
 struct FileWalker {
@@ -692,7 +696,7 @@ impl FileSource for FileWalker {
         self.file_list.len()
     }
 
-    fn for_each(self, iterator: impl Fn(String, String, FileType) + Sync + Send) {
+    fn for_each(self, iterator: impl Fn(RepoFile) + Sync + Send) {
         use rayon::prelude::*;
         self.file_list
             .into_par_iter()
@@ -717,13 +721,14 @@ impl FileSource for FileWalker {
                     FileType::Other
                 };
 
-                Some((
-                    entry_disk_path.to_string_lossy().to_string(),
+                Some(RepoFile {
                     buffer,
-                    file_type,
-                ))
+                    path: entry_disk_path.to_string_lossy().to_string(),
+                    kind: file_type,
+                    branches: vec!["head".into()],
+                })
             })
-            .for_each(|(path, buf, typ)| iterator(path, buf, typ));
+            .for_each(iterator);
     }
 }
 
