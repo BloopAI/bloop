@@ -88,7 +88,7 @@ const Button = forwardRef<
         } transition-all duration-300 ease-in-bounce select-none`,
       [variant, className, size, onlyIcon],
     );
-    return onlyIcon ? (
+    return onlyIcon && !rest.disabled ? (
       <Tooltip text={title} placement={tooltipPlacement}>
         <button {...rest} ref={ref} className={buttonClassName}>
           {children}
