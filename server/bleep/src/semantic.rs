@@ -377,7 +377,7 @@ pub fn deduplicate_with_mmr(
             let first_part = cosine_similarity(query_embedding, emb);
             let mut second_part = 0.;
             for j in idxs.iter() {
-                let cos_sim = cosine_similarity(emb, &embeddings[*j]);
+                let cos_sim = cosine_similarity(emb, embeddings[*j]);
                 if cos_sim > second_part {
                     second_part = cos_sim;
                 }
