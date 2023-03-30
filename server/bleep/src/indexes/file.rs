@@ -478,7 +478,7 @@ impl File {
 
         let entry_pathbuf = PathBuf::from(&file.path);
         let relative_path = entry_pathbuf.strip_prefix(repo_disk_path)?;
-        let relative_path_str = if matches!(file.kind, FileType::Dir) {
+        let relative_path_str = if file.kind.is_dir() {
             format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy())
         } else {
             relative_path.to_string_lossy().to_string()
@@ -510,7 +510,7 @@ impl File {
         }
         trace!("added cache entry");
 
-        let lang_str = if matches!(file.kind, FileType::File) {
+        let lang_str = if file.kind.is_file() {
             repo_metadata
                 .langs
                 .path_map
@@ -525,7 +525,7 @@ impl File {
         };
 
         // calculate symbol locations
-        let symbol_locations = if matches!(file.kind, FileType::File) {
+        let symbol_locations = if file.kind.is_file() {
             // build a syntax aware representation of the file
             let scope_graph = TreeSitterFile::try_build(file.buffer.as_bytes(), lang_str)
                 .and_then(TreeSitterFile::scope_graph);
@@ -574,7 +574,7 @@ impl File {
         let last_commit = repo_metadata.last_commit_unix_secs;
 
         // produce vectors for this document if it is a file
-        if matches!(file.kind, FileType::File) {
+        if file.kind.is_file() {
             if let Some(semantic) = &self.semantic {
                 tokio::task::block_in_place(|| {
                     Handle::current().block_on(semantic.insert_points_for_buffer(
@@ -654,6 +654,15 @@ enum FileType {
     File,
     Dir,
     Other,
+}
+
+impl FileType {
+    fn is_dir(&self) -> bool {
+        matches!(self, Self::Dir)
+    }
+    fn is_file(&self) -> bool {
+        matches!(self, Self::File)
+    }
 }
 
 trait FileSource {
