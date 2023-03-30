@@ -243,6 +243,16 @@ const CodeFull = ({
           ? currentSelection[1]
           : currentSelection[0];
 
+        if (
+          startLine === 0 &&
+          startChar === 0 &&
+          endLine === lines.length - 1 &&
+          endChar === lines[lines.length - 1].length
+        ) {
+          copyToClipboard(code);
+          return;
+        }
+
         let textToCopy = lines[startLine].slice(startChar, endChar);
         if (startLine !== endLine) {
           const firstLine = lines[startLine].slice(startChar);
@@ -258,28 +268,31 @@ const CodeFull = ({
         copyToClipboard(textToCopy);
       }
     },
-    [currentSelection],
+    [currentSelection, code],
   );
 
-  const handleKeyEvent = useCallback((event: KeyboardEvent) => {
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      event.key === 'a' &&
-      (event.target as HTMLElement)?.tagName !== 'INPUT'
-    ) {
-      // Prevent the default action (i.e. selecting all text in the browser)
-      event.preventDefault();
-      setCurrentSelection([
-        [0, 0],
-        [tokens.length - 1, tokens[tokens.length - 1].length],
-      ]);
-      const selection = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(codeRef.current || document.body);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-    }
-  }, []);
+  const handleKeyEvent = useCallback(
+    (event: KeyboardEvent) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key === 'a' &&
+        (event.target as HTMLElement)?.tagName !== 'INPUT'
+      ) {
+        // Prevent the default action (i.e. selecting all text in the browser)
+        event.preventDefault();
+        setCurrentSelection([
+          [0, 0],
+          [tokens.length - 1, tokens[tokens.length - 1].length],
+        ]);
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(codeRef.current || document.body);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+    },
+    [tokens],
+  );
   useKeyboardNavigation(handleKeyEvent);
 
   return (
