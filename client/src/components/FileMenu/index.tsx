@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { DropdownWithIcon } from '../../components/Dropdown';
+import { DropdownWithIcon } from '../Dropdown';
 import { MenuItemType } from '../../types/general';
 import { getFileManagerName, isWindowsPath, splitPath } from '../../utils';
 import { MoreHorizontal } from '../../icons';
