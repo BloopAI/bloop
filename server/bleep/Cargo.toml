@@ -116,6 +116,7 @@ erased-serde = "0.3.25"
 scc = { version= "1.2.0", features = ["serde"] }
 sentry-tracing = "0.30.0"
 git-version = "0.3.5"
+gix = { version = "0.43.0", features = ["async-network-client", "pack-cache-lru-static"] }
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.3"
