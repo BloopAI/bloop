@@ -8,6 +8,7 @@ import {
   PlusSignInBubble,
   Tab,
   Magazine,
+  ArrowRight,
 } from '../../../icons';
 import DropdownWithIcon from '../../Dropdown/WithIcon';
 import Dropdown from '../../Dropdown/Normal';
@@ -29,13 +30,22 @@ type Props = {
 const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
   const { setSettingsOpen, setBugReportModalOpen } = useContext(UIContext);
   const { isRepoManagementAllowed, openLink } = useContext(DeviceContext);
-  const { navigateBack, navigationHistory } = useAppNavigation();
+  const {
+    navigateBack,
+    navigationHistory,
+    navigateForward,
+    forwardNavigation,
+  } = useAppNavigation();
   const { tabs, setActiveTab, handleAddTab, activeTab, handleRemoveTab } =
     useContext(TabsContext);
 
   const backButtonHandler = useCallback(() => {
     navigateBack();
-  }, []);
+  }, [navigateBack]);
+
+  const forwardButtonHandler = useCallback(() => {
+    navigateForward();
+  }, [navigateForward]);
 
   const tabItems = useMemo(
     () =>
@@ -84,6 +94,16 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
         onClick={backButtonHandler}
       >
         <ArrowLeft />
+      </Button>
+      <Button
+        variant={'tertiary'}
+        onlyIcon
+        title={'Forward'}
+        disabled={!forwardNavigation.length}
+        className={!forwardNavigation.length ? 'opacity-0' : ''}
+        onClick={forwardButtonHandler}
+      >
+        <ArrowRight />
       </Button>
       {!isSkeleton && (
         <Dropdown

@@ -1,4 +1,10 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { buildRepoQuery, generateUniqueId } from '../utils';
 import { SearchType } from '../types/general';
@@ -17,6 +23,7 @@ interface NavigationItem {
 
 type ContextType = {
   navigationHistory: NavigationItem[];
+  forwardNavigation: NavigationItem[];
   navigatedItem?: NavigationItem;
   navigate: (
     type: NavigationItem['type'],
@@ -26,6 +33,7 @@ type ContextType = {
     page?: number,
   ) => void;
   navigateBack: () => void;
+  navigateForward: () => void;
   navigateHome: () => void;
   navigateRepoPath: (
     repo: string,
@@ -47,8 +55,10 @@ type ContextType = {
 
 const AppNavigationContext = createContext<ContextType>({
   navigationHistory: [],
+  forwardNavigation: [],
   navigate: (type) => {},
   navigateBack: () => {},
+  navigateForward: () => {},
   navigateHome: () => {},
   navigateRepoPath: (repo, path) => {},
   navigateSearch: (query, page) => {},
@@ -61,6 +71,9 @@ export const AppNavigationProvider = (prop: {
   children: JSX.Element | JSX.Element[];
 }) => {
   const [navigation, setNavigation] = useState<NavigationItem[]>([]);
+  const [forwardNavigation, setForwardNavigation] = useState<NavigationItem[]>(
+    [],
+  );
   const navigateBrowser = useNavigate();
 
   const navigatedItem = useMemo(
@@ -88,95 +101,110 @@ export const AppNavigationProvider = (prop: {
     return buildQuery(navigatedItem);
   }, [navigatedItem]);
 
-  const saveState = (navigationItem: NavigationItem) => {
-    setNavigation((prevState) => [...prevState, navigationItem]);
-    if (navigationItem.type === 'home') {
-      navigateBrowser('/');
-      return;
-    }
-    navigateBrowser(
-      '/search' +
-        (navigationItem.pathParams
-          ? '?' + new URLSearchParams(navigationItem.pathParams).toString()
-          : '') +
-        '#' +
-        buildQuery(navigationItem),
-    );
-  };
+  const saveState = useCallback(
+    (navigationItem: NavigationItem) => {
+      setNavigation((prevState) => [...prevState, navigationItem]);
+      setForwardNavigation([]);
+      if (navigationItem.type === 'home') {
+        navigateBrowser('/');
+        return;
+      }
+      navigateBrowser(
+        '/search' +
+          (navigationItem.pathParams
+            ? '?' + new URLSearchParams(navigationItem.pathParams).toString()
+            : '') +
+          '#' +
+          buildQuery(navigationItem),
+      );
+    },
+    [navigateBrowser],
+  );
 
-  const navigate = (
-    type: NavigationItem['type'],
-    query?: string,
-    repo?: string,
-    path?: string,
-    page?: number,
-  ) => {
-    saveState({ type, query, repo, path, page });
-  };
+  const navigate = useCallback(
+    (
+      type: NavigationItem['type'],
+      query?: string,
+      repo?: string,
+      path?: string,
+      page?: number,
+    ) => {
+      saveState({ type, query, repo, path, page });
+    },
+    [],
+  );
 
-  const navigateSearch = (
-    query: string,
-    searchType: SearchType,
-    page?: number,
-  ) => {
-    saveState({
-      type: 'search',
-      page,
-      query,
-      searchType,
-      ...(searchType === SearchType.NL ? { threadId: generateUniqueId() } : {}),
-    });
-  };
+  const navigateSearch = useCallback(
+    (query: string, searchType: SearchType, page?: number) => {
+      saveState({
+        type: 'search',
+        page,
+        query,
+        searchType,
+        ...(searchType === SearchType.NL
+          ? { threadId: generateUniqueId() }
+          : {}),
+      });
+    },
+    [],
+  );
 
-  const navigateRepoPath = (
-    repo: string,
-    path?: string,
-    pathParams?: Record<string, string>,
-  ) => {
-    /*
-     * Handling root path for navigation
-     * */
-    if (path === '/') {
-      path = undefined;
-    }
+  const navigateRepoPath = useCallback(
+    (repo: string, path?: string, pathParams?: Record<string, string>) => {
+      /*
+       * Handling root path for navigation
+       * */
+      if (path === '/') {
+        path = undefined;
+      }
 
-    saveState({
-      type: 'repo',
-      repo,
-      path,
-      searchType: SearchType.REGEX,
-      pathParams,
-    });
-  };
+      saveState({
+        type: 'repo',
+        repo,
+        path,
+        searchType: SearchType.REGEX,
+        pathParams,
+      });
+    },
+    [],
+  );
 
-  const navigateFullResult = (
-    repo: string,
-    path: string,
-    pathParams?: Record<string, string>,
-  ) => {
-    saveState({
-      type: 'full-result',
-      repo,
-      path,
-      searchType: SearchType.REGEX,
-      pathParams,
-    });
-  };
+  const navigateFullResult = useCallback(
+    (repo: string, path: string, pathParams?: Record<string, string>) => {
+      saveState({
+        type: 'full-result',
+        repo,
+        path,
+        searchType: SearchType.REGEX,
+        pathParams,
+      });
+    },
+    [],
+  );
 
-  const navigateBack = () => {
+  const navigateBack = useCallback(() => {
     setNavigation((prevState) => {
+      setForwardNavigation((prev) => [...prev, prevState.slice(-1)[0]]);
       return prevState.slice(0, -1);
     });
-  };
+  }, []);
 
-  const navigateHome = () => {
+  const navigateForward = useCallback(() => {
+    setNavigation((prevState) => {
+      setForwardNavigation((prev) => prev.slice(0, -1));
+      return [...prevState, forwardNavigation.slice(-1)[0]];
+    });
+  }, [forwardNavigation]);
+
+  const navigateHome = useCallback(() => {
     saveState({ type: 'home' });
-  };
+  }, []);
 
   return (
     <AppNavigationContext.Provider
       value={{
         navigationHistory: navigation,
+        forwardNavigation,
         navigate,
         navigateBack,
         navigatedItem,
@@ -184,6 +212,7 @@ export const AppNavigationProvider = (prop: {
         navigateFullResult,
         navigateSearch,
         navigateHome,
+        navigateForward,
         query: query || '',
       }}
     >
