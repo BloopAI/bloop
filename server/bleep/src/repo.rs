@@ -1,3 +1,4 @@
+use anyhow::Context;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt::{self, Display},
@@ -250,7 +251,7 @@ impl Repository {
         writers: &indexes::GlobalWriteHandle<'_>,
     ) -> Result<Arc<RepoMetadata>, RepoError> {
         use rayon::prelude::*;
-        let metadata = get_repo_metadata(&self.disk_path).await;
+        let metadata = self.get_repo_metadata().await;
 
         tokio::task::block_in_place(|| {
             writers
@@ -260,6 +261,21 @@ impl Repository {
         })?;
 
         Ok(metadata)
+    }
+
+    /// Pre-scan the repository to provide supporting metadata for a
+    /// new indexing operation
+    async fn get_repo_metadata(&self) -> Arc<RepoMetadata> {
+        let last_commit_unix_secs = gix::open(&self.disk_path)
+            .context("failed to open git repo")
+            .and_then(|repo| Ok(repo.head()?.peel_to_commit_in_place()?.time()?.seconds()))
+            .unwrap_or(0) as u64;
+
+        RepoMetadata {
+            last_commit_unix_secs,
+            langs: language::aggregate(iterator::FileWalker::index_directory(&self.disk_path)),
+        }
+        .into()
     }
 
     /// Marks the repository for removal on the next sync
@@ -318,18 +334,6 @@ fn get_unix_time(time: SystemTime) -> u64 {
 pub struct RepoMetadata {
     pub last_commit_unix_secs: u64,
     pub langs: language::LanguageInfo,
-}
-
-async fn get_repo_metadata(repo_disk_path: &PathBuf) -> Arc<RepoMetadata> {
-    let repo = git2::Repository::open(repo_disk_path)
-        .and_then(|repo| Ok(repo.head()?.peel_to_commit()?.time().seconds() as u64))
-        .unwrap_or(0);
-
-    RepoMetadata {
-        last_commit_unix_secs: repo,
-        langs: language::aggregate(iterator::FileWalker::index_directory(repo_disk_path)),
-    }
-    .into()
 }
 
 #[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug, Hash)]
