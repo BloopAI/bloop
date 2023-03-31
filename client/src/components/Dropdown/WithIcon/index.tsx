@@ -13,6 +13,8 @@ type Props = {
   btnVariant?: 'primary' | 'secondary' | 'tertiary';
   btnSize?: 'small' | 'medium' | 'large';
   btnOnlyIcon?: boolean;
+  lastItemFixed?: boolean;
+  isWide?: boolean;
 };
 
 const Dropdown = ({
@@ -24,6 +26,8 @@ const Dropdown = ({
   btnVariant = 'tertiary',
   btnSize = 'medium',
   btnOnlyIcon,
+  lastItemFixed,
+  isWide,
 }: Props) => {
   const [visible, setVisibility] = useState(false);
   const ref = useRef(null);
@@ -37,6 +41,8 @@ const Dropdown = ({
         title={hint}
         handleClose={() => setVisibility(false)}
         closeOnClickOutside={false}
+        lastItemFixed={lastItemFixed}
+        isWide={isWide}
       >
         <Button
           variant={btnVariant}

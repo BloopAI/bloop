@@ -81,7 +81,10 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
     setFilters(newFilters);
     navigateSearch(result, searchType);
     setSearchHistory((prev) => {
-      const newHistory = [result, ...prev].slice(0, 4);
+      const newHistory = [
+        { searchType, query: result, timestamp: new Date().toISOString() },
+        ...prev,
+      ].slice(0, 29);
       saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
       return newHistory;
     });
