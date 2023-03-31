@@ -7,9 +7,10 @@ use bleep::Application;
 
 mod backend;
 mod qdrant;
+pub use tauri::{plugin, App, Manager, Runtime, WindowEvent};
+use window_ext::WindowExt;
 
-pub use tauri::{plugin, App, Manager, Runtime};
-
+mod window_ext;
 use std::{path::PathBuf, sync::RwLock};
 
 pub static TELEMETRY: RwLock<bool> = RwLock::new(false);
@@ -39,6 +40,18 @@ async fn main() {
     Application::install_logging();
 
     tauri::Builder::default()
+        .setup(|app| {
+            let win = app.get_window("main").unwrap();
+            win.set_transparent_titlebar(true);
+            win.position_traffic_lights(30.0, 30.0);
+            Ok(())
+        })
+        .on_window_event(|e| {
+            if let WindowEvent::Resized(..) = e.event() {
+                let win = e.window();
+                win.position_traffic_lights(30., 30.);
+            }
+        })
         .plugin(qdrant::QdrantSupervisor::default())
         .setup(backend::bleep)
         .invoke_handler(tauri::generate_handler![

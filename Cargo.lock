@@ -509,6 +509,7 @@ version = "0.3.3"
 dependencies = [
  "anyhow",
  "bleep",
+ "cocoa",
  "color-eyre",
  "git-version",
  "nix",
