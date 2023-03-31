@@ -60,9 +60,6 @@ impl<'a> CurrentFileHandler<'a> {
                 },
             );
 
-        // remove the currently hovered ref from the list
-        refs.remove(&self.scope_graph.graph[self.idx].range());
-
         let defs = defs.into_iter().collect::<Vec<_>>();
         let refs = refs.into_iter().collect::<Vec<_>>();
         (defs, refs)

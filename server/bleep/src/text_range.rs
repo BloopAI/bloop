@@ -61,19 +61,39 @@ impl TextRange {
         Self { start, end }
     }
 
-    pub fn contains(&self, other: TextRange) -> bool {
+    pub fn contains(&self, other: Self) -> bool {
         // (self.start ... [other.start ... other.end] ... self.end)
         self.start <= other.start && other.end <= self.end
     }
 
     #[allow(unused)]
-    pub fn contains_strict(&self, other: TextRange) -> bool {
+    pub fn contains_strict(&self, other: Self) -> bool {
         // (self.start ... (other.start ... other.end) ... self.end)
         self.start < other.start && other.end <= self.end
     }
 
     pub fn size(&self) -> usize {
         self.end.byte.saturating_sub(self.start.byte)
+    }
+
+    // minimal range that covers both self and other
+    //
+    // `cover' is commutative, a `cover` b = b `cover` a
+    pub fn cover(self, other: TextRange) -> Self {
+        let lower = if self.start < other.start {
+            self.start
+        } else {
+            other.start
+        };
+        let upper = if self.end > other.end {
+            self.end
+        } else {
+            other.end
+        };
+        Self {
+            start: lower,
+            end: upper,
+        }
     }
 }
 

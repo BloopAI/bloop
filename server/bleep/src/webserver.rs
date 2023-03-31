@@ -23,6 +23,7 @@ mod intelligence;
 mod query;
 mod repos;
 mod semantic;
+mod trace;
 
 pub type Router<S = Application> = axum::Router<S>;
 
@@ -66,6 +67,10 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route(
             "/token-info",
             get(intelligence::handle).with_state(Arc::new(answer::AnswerState::default())),
+        )
+        .route(
+            "/trace",
+            get(trace::handle).with_state(Arc::new(answer::AnswerState::default())),
         )
         // misc
         .route("/file/*ref", get(file::handle))
