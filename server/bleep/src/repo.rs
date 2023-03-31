@@ -102,6 +102,10 @@ impl RepoRef {
         self.backend == Backend::Local
     }
 
+    pub fn is_remote(&self) -> bool {
+        self.backend != Backend::Local
+    }
+
     pub fn indexed_name(&self) -> String {
         // Local repos indexed as: dirname
         // Github repos indexed as: github.com/org/repo

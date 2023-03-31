@@ -41,7 +41,7 @@ use super::{
 };
 use crate::{
     intelligence::TreeSitterFile,
-    repo::{FileCache, RepoMetadata, RepoRef, Repository},
+    repo::{FileCache, RepoMetadata, RepoRef, RepoRemote, Repository},
     semantic::Semantic,
     symbol::SymbolLocations,
     Configuration,
@@ -98,6 +98,9 @@ pub struct File {
     pub raw_content: Field,
     pub raw_repo_name: Field,
     pub raw_relative_path: Field,
+
+    // list of branches in which this file can be found
+    pub branches: Field,
 }
 
 impl File {
@@ -119,9 +122,11 @@ impl File {
         let line_end_indices =
             builder.add_bytes_field("line_end_indices", BytesOptions::default().set_stored());
 
-        let symbols = builder.add_text_field("symbols", trigram);
+        let symbols = builder.add_text_field("symbols", trigram.clone());
         let symbol_locations =
             builder.add_bytes_field("symbol_locations", BytesOptions::default().set_stored());
+
+        let branches = builder.add_text_field("branches", trigram);
 
         let lang = builder.add_bytes_field(
             "lang",
@@ -153,6 +158,7 @@ impl File {
             raw_content,
             raw_repo_name,
             raw_relative_path,
+            branches,
 
             #[cfg(feature = "debug")]
             histogram: Arc::new(Histogram::builder().build().unwrap().into()),
@@ -249,33 +255,41 @@ impl Indexable for File {
     ) -> Result<()> {
         let file_cache = repo.open_file_cache(&self.config.index_dir)?;
         let repo_name = reporef.indexed_name();
-
-        let walker = FileWalker::index_directory(&repo.disk_path);
-        let count = walker.len();
         let processed = &AtomicU64::new(0);
 
-        let start = std::time::Instant::now();
+        let file_worker = |count: usize| {
+            let file_cache = file_cache.clone();
+            move |file: RepoFile| {
+                let completed = processed.fetch_add(1, Ordering::Relaxed);
+                progress(((completed as f32 / count as f32) * 100f32) as u8);
 
-        walker.for_each(|file| {
-            let completed = processed.fetch_add(1, Ordering::Relaxed);
-            progress(((completed as f32 / count as f32) * 100f32) as u8);
+                let entry_disk_path = file.path.clone();
+                let workload = Workload {
+                    repo_disk_path: &repo.disk_path,
+                    repo_ref: reporef.to_string(),
+                    repo_name: &repo_name,
+                    cache: &file_cache,
+                    repo_metadata,
+                    file,
+                };
 
-            let entry_disk_path = file.path.clone();
-
-            let workload = Workload {
-                repo_disk_path: &repo.disk_path,
-                repo_ref: reporef.to_string(),
-                repo_name: &repo_name,
-                cache: &file_cache,
-                repo_metadata,
-                file,
-            };
-
-            debug!(entry_disk_path, "queueing entry");
-            if let Err(err) = self.worker(workload, writer) {
-                warn!(%err, entry_disk_path, "indexing failed; skipping");
+                debug!(entry_disk_path, "queueing entry");
+                if let Err(err) = self.worker(workload, writer) {
+                    warn!(%err, entry_disk_path, "indexing failed; skipping");
+                }
             }
-        });
+        };
+
+        let start = std::time::Instant::now();
+        if reporef.is_remote() && matches!(repo.remote, RepoRemote::Git { .. }) {
+            let walker = GitWalker::open_repository(&repo.disk_path, None)?;
+            let count = walker.len();
+            walker.for_each(file_worker(count));
+        } else {
+            let walker = FileWalker::index_directory(&repo.disk_path);
+            let count = walker.len();
+            walker.for_each(file_worker(count));
+        };
 
         info!(?repo.disk_path, "repo file indexing finished, took {:?}", start.elapsed());
 
@@ -484,7 +498,6 @@ impl File {
         } else {
             relative_path.to_string_lossy().to_string()
         };
-
         trace!("processing file");
 
         let content_hash = {
@@ -493,7 +506,6 @@ impl File {
             hash.update(file.buffer.as_bytes());
             hash.finalize().to_hex().to_string()
         };
-
         trace!("adding cache entry");
 
         match cache.entry(entry_pathbuf.clone()) {
@@ -554,6 +566,8 @@ impl File {
             .collect::<Vec<_>>()
             .join("\n");
 
+        let branches = file.branches.join("\n");
+
         // add an NL if this file is not NL-terminated
         if !file.buffer.ends_with('\n') {
             file.buffer += "\n";
@@ -608,6 +622,7 @@ impl File {
             self.last_commit_unix_seconds => last_commit,
             self.symbol_locations => bincode::serialize(&symbol_locations)?,
             self.symbols => symbols,
+            self.branches => branches,
         ))?;
 
         trace!("document written");
@@ -677,7 +692,7 @@ struct FileWalker {
 }
 
 impl FileWalker {
-    fn index_directory(dir: impl AsRef<Path>) -> Self {
+    fn index_directory(dir: impl AsRef<Path>) -> impl FileSource {
         // note: this WILL observe .gitignore files for the respective repos.
         let file_list = ignore::Walk::new(&dir)
             .filter_map(|de| match de {
@@ -772,7 +787,7 @@ impl GitWalker {
     fn open_repository(
         dir: impl AsRef<Path>,
         filter: impl Into<Option<BranchFilter>>,
-    ) -> Result<Self> {
+    ) -> Result<impl FileSource> {
         let branches = filter.into().unwrap_or_default();
         let git = gix::open::Options::isolated()
             .filter_config_section(|_| false)
@@ -791,8 +806,12 @@ impl GitWalker {
             .filter_map(Result::ok)
             .map(|r| (human_readable_branch_name(&r), r))
             .filter(|(name, _)| branches.filter(name))
-            .filter_map(|(branch, r)| {
-                let full_name = r.name().to_owned();
+            .filter_map(|(branch, r)| -> Option<_> {
+                let is_head = head
+                    .as_ref()
+                    .map(|head| head.as_ref() == r.name())
+                    .unwrap_or_default();
+
                 let tree = r
                     .into_fully_peeled_id()
                     .ok()?
@@ -801,29 +820,19 @@ impl GitWalker {
                     .peel_to_tree()
                     .ok()?;
 
-                let is_head = head
-                    .as_ref()
-                    .map(|head| head.as_ref() == full_name.as_ref())
-                    .unwrap_or_default();
+                let files = tree.traverse().breadthfirst.files().unwrap().into_iter();
 
-                Some(
-                    tree.traverse()
-                        .breadthfirst
-                        .files()
-                        .unwrap()
-                        .into_iter()
-                        .map(move |entry| {
-                            (
-                                is_head,
-                                branch.clone(),
-                                String::from_utf8_lossy(entry.filepath.as_ref()).to_string(),
-                                entry.mode,
-                                entry.oid,
-                            )
-                        }),
-                )
+                Some(files.map(move |entry| {
+                    (
+                        is_head,
+                        branch.clone(),
+                        String::from_utf8_lossy(entry.filepath.as_ref()).to_string(),
+                        entry.mode,
+                        entry.oid,
+                    )
+                }))
             })
-            .flat_map(|entry| entry)
+            .flatten()
             .fold(
                 HashMap::new(),
                 |mut acc, (is_head, branch, file, mode, oid)| {
@@ -835,7 +844,7 @@ impl GitWalker {
                         FileType::Other
                     };
 
-                    let branches = acc.entry((file, kind, oid)).or_insert_with(|| vec![]);
+                    let branches = acc.entry((file, kind, oid)).or_insert_with(Vec::new);
                     if is_head {
                         branches.push("head".to_string());
                     }
