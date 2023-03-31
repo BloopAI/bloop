@@ -93,7 +93,10 @@
         "height": 900,
         "resizable": true,
         "title": "bloop",
-        "width": 1200
+        "width": 1200,
+        "hiddenTitle": true,
+        "theme": "Dark",
+        "titleBarStyle": "Overlay"
       }
     ]
   }
