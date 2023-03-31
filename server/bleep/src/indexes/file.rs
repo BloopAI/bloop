@@ -491,8 +491,15 @@ impl File {
         #[cfg(feature = "debug")]
         let start = Instant::now();
 
-        let entry_pathbuf = PathBuf::from(&file.path);
-        let relative_path = entry_pathbuf.strip_prefix(repo_disk_path)?;
+        let relative_path = {
+            let entry_srcpath = PathBuf::from(&file.path);
+            entry_srcpath
+                .strip_prefix(repo_disk_path)
+                .map(ToOwned::to_owned)
+                .unwrap_or(entry_srcpath)
+        };
+        let entry_pathbuf = repo_disk_path.join(&relative_path);
+
         let relative_path_str = if file.kind.is_dir() {
             format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy())
         } else {
@@ -529,7 +536,7 @@ impl File {
                 .path_map
                 .get(&entry_pathbuf)
                 .unwrap_or_else(|| {
-                    warn!("Path not found in language map");
+                    warn!(?entry_pathbuf, "Path not found in language map");
                     &Some("")
                 })
                 .unwrap_or("")
@@ -612,7 +619,7 @@ impl File {
             self.raw_repo_name => repo_name.as_bytes(),
             self.raw_relative_path => relative_path_str.as_bytes(),
             self.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-            self.entry_disk_path => file.path,
+            self.entry_disk_path => entry_pathbuf.to_string_lossy().as_ref(),
             self.relative_path => relative_path_str,
             self.repo_ref => repo_ref,
             self.repo_name => repo_name,
