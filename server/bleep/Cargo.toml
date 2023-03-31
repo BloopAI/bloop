@@ -79,7 +79,7 @@ secrecy = { version = "0.8.0", features = ["serde"] }
 
 # file processing
 ignore = "0.4.18"
-hyperpolyglot = { git = "https://github.com/bloopai/hyperpolyglot", branch = "remove-pcre" }
+hyperpolyglot = { git = "https://github.com/bloopai/hyperpolyglot" }
 blake3 = "1.3.3"
 notify-debouncer-mini = { version = "0.2.1", default-features = false }
 
