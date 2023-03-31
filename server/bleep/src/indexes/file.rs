@@ -453,10 +453,10 @@ impl File {
             repo_metadata
                 .langs
                 .path_map
-                .get(&entry_pathbuf)
+                .read(&entry_pathbuf, |_, v| *v)
                 .unwrap_or_else(|| {
                     warn!(?entry_pathbuf, "Path not found in language map");
-                    &Some("")
+                    Some("")
                 })
                 .unwrap_or("")
         } else {

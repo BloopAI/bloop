@@ -1,70 +1,46 @@
-use hyperpolyglot::detect;
-use ignore::WalkBuilder;
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use hyperpolyglot::detect_buffer;
+use std::{io::Cursor, path::PathBuf};
+
+use super::FileSource;
 
 #[derive(Debug)]
 pub struct LanguageInfo {
-    pub path_map: HashMap<PathBuf, Option<&'static str>>,
+    pub path_map: scc::HashMap<PathBuf, Option<&'static str>>,
     pub most_common_lang: Option<&'static str>,
 }
 
-pub fn aggregate<P: AsRef<Path>>(path: P) -> LanguageInfo {
-    let threads = std::thread::available_parallelism()
-        .expect("Can't get available threads")
-        .get();
+pub fn aggregate(iterator: impl FileSource) -> LanguageInfo {
+    let path_map = scc::HashMap::default();
+    let counts = scc::HashMap::<&'static str, usize>::default();
 
-    // Logic taken from https://github.com/monkslc/hyperpolyglot/blob/master/src/lib.rs.
-    // Sadly Hyperpolyglot's `get_language_breakdown` function is hardcoded to ignore
-    // documentation and vendored code, so we reimplement its functionality here.
-    let walker = WalkBuilder::new(path)
-        .ignore(true)
-        .git_ignore(true)
-        .hidden(false)
-        .threads(threads)
-        .build_parallel();
+    iterator.for_each(|file| {
+        let path = PathBuf::from(&file.path);
+        if file.kind.is_file() {
+            let detection = match detect_buffer(&path, |_| Ok(Cursor::new(&file.buffer))) {
+                Ok(d) => d,
+                _ => None,
+            };
 
-    let (tx, rx) = flume::unbounded();
+            let lang = detection.map(|d| d.language());
 
-    walker.run(|| {
-        let tx = tx.clone();
-        Box::new(move |result| {
-            use ignore::WalkState::*;
+            // ignore duplicate files that come from the iterator
+            _ = path_map.insert(path, lang);
 
-            if let Ok(path) = result {
-                let path = path.into_path();
-                if !path.is_dir() {
-                    let detection = match detect(&path) {
-                        Ok(d) => d,
-                        _ => None,
-                    };
-                    tx.send((path, detection)).unwrap();
-                }
+            if let Some(l) = lang {
+                *counts.entry(l).or_default().get_mut() += 1;
             }
-            Continue
-        })
+        }
     });
 
-    drop(tx);
-
-    let mut path_map = HashMap::new();
-    let mut counts = HashMap::<&'static str, usize>::new();
-    for (path, detection) in rx {
-        let lang = detection.map(|d| d.language());
-        path_map.insert(path, lang);
-
-        // count recognized langs
-        if let Some(l) = lang {
-            *counts.entry(l).or_default() += 1;
+    let (mut max_k, mut max_v) = (None, 0);
+    counts.scan(|k, v| {
+        if *v > max_v {
+            (max_k, max_v) = (Some(*k), *v)
         }
-    }
-
-    let most_common_lang = counts.into_iter().max_by_key(|(_, v)| *v).map(|(k, _)| k);
+    });
 
     LanguageInfo {
         path_map,
-        most_common_lang,
+        most_common_lang: max_k,
     }
 }
