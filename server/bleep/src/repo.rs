@@ -11,9 +11,11 @@ use utoipa::ToSchema;
 
 use crate::{
     indexes,
-    language::{get_language_info, LanguageInfo},
     state::{get_relative_path, pretty_write_file},
 };
+
+pub(crate) mod iterator;
+use iterator::language;
 
 pub(crate) type FileCache = Arc<scc::HashMap<PathBuf, FreshValue<String>>>;
 
@@ -315,7 +317,7 @@ fn get_unix_time(time: SystemTime) -> u64 {
 #[derive(Debug)]
 pub struct RepoMetadata {
     pub last_commit_unix_secs: u64,
-    pub langs: LanguageInfo,
+    pub langs: language::LanguageInfo,
 }
 
 async fn get_repo_metadata(repo_disk_path: &PathBuf) -> Arc<RepoMetadata> {
@@ -325,7 +327,7 @@ async fn get_repo_metadata(repo_disk_path: &PathBuf) -> Arc<RepoMetadata> {
 
     RepoMetadata {
         last_commit_unix_secs: repo,
-        langs: get_language_info(repo_disk_path),
+        langs: language::aggregate(repo_disk_path),
     }
     .into()
 }

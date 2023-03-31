@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     ops::Not,
     path::{Path, PathBuf, MAIN_SEPARATOR},
     sync::{
@@ -10,11 +10,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use gix::ThreadSafeRepository;
-use once_cell::sync::Lazy;
-use regex::Regex;
 use scc::hash_map::Entry;
-use smallvec::SmallVec;
 use tantivy::{
     collector::TopDocs,
     doc,
@@ -27,7 +23,7 @@ use tantivy::{
 };
 use tokenizers as _;
 use tokio::runtime::Handle;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 #[cfg(feature = "debug")]
 use {
@@ -41,7 +37,7 @@ use super::{
 };
 use crate::{
     intelligence::TreeSitterFile,
-    repo::{FileCache, RepoMetadata, RepoRef, RepoRemote, Repository},
+    repo::{iterator::*, FileCache, RepoMetadata, RepoRef, RepoRemote, Repository},
     semantic::Semantic,
     symbol::SymbolLocations,
     Configuration,
@@ -165,83 +161,6 @@ impl File {
         }
     }
 }
-
-fn should_index<P: AsRef<Path>>(p: &P) -> bool {
-    let path = p.as_ref();
-
-    #[rustfmt::skip]
-    const EXT_BLACKLIST: &[&str] = &[
-        // graphics
-        "png", "jpg", "jpeg", "ico", "bmp", "bpg", "eps", "pcx", "ppm", "tga", "tiff", "wmf", "xpm",
-        "svg",
-        // fonts
-        "ttf", "woff2", "fnt", "fon", "otf",
-        // documents
-        "pdf", "ps", "doc", "dot", "docx", "dotx", "xls", "xlsx", "xlt", "odt", "ott", "ods", "ots", "dvi", "pcl",
-        // media
-        "mp3", "ogg", "ac3", "aac", "mod", "mp4", "mkv", "avi", "m4v", "mov", "flv",
-        // compiled
-        "jar", "pyc", "war", "ear",
-        // compression
-        "tar", "gz", "bz2", "xz", "7z", "bin", "apk", "deb", "rpm",
-        // executable
-        "com", "exe", "out", "coff", "obj", "dll", "app", "class",
-        // misc.
-        "log", "wad", "bsp", "bak", "sav", "dat", "lock",
-    ];
-
-    let Some(ext) = path.extension() else {
-        return true;
-    };
-
-    let ext = ext.to_string_lossy();
-    if EXT_BLACKLIST.contains(&&*ext) {
-        return false;
-    }
-
-    static VENDOR_PATTERNS: Lazy<HashMap<&'static str, SmallVec<[Regex; 1]>>> = Lazy::new(|| {
-        let patterns: &[(&[&str], &[&str])] = &[
-            (
-                &["go", "proto"],
-                &["^(vendor|third_party)/.*\\.\\w+$", "\\w+\\.pb\\.go$"],
-            ),
-            (
-                &["js", "jsx", "ts", "tsx", "css", "md", "json", "txt", "conf"],
-                &["^(node_modules|vendor|dist)/.*\\.\\w+$"],
-            ),
-        ];
-
-        patterns
-            .iter()
-            .flat_map(|(exts, rxs)| exts.iter().map(move |&e| (e, rxs)))
-            .map(|(ext, rxs)| {
-                let regexes = rxs
-                    .iter()
-                    .filter_map(|source| match Regex::new(source) {
-                        Ok(r) => Some(r),
-                        Err(e) => {
-                            warn!(%e, "failed to compile vendor regex {source:?}");
-                            None
-                        }
-                    })
-                    .collect();
-
-                (ext, regexes)
-            })
-            .collect()
-    });
-
-    match VENDOR_PATTERNS.get(&*ext) {
-        None => true,
-        Some(rxs) => !rxs.iter().any(|r| r.is_match(&path.to_string_lossy())),
-    }
-}
-
-// Empirically calculated using:
-//     cat **/*.rs | awk '{SUM+=length;N+=1}END{print SUM/N}'
-const AVG_LINE_LEN: u64 = 30;
-const MAX_LINE_COUNT: u64 = 20000;
-const MAX_FILE_LEN: u64 = AVG_LINE_LEN * MAX_LINE_COUNT;
 
 #[async_trait]
 impl Indexable for File {
@@ -664,278 +583,5 @@ impl File {
         }
 
         Ok(())
-    }
-}
-
-struct RepoFile {
-    path: String,
-    buffer: String,
-    kind: FileType,
-    branches: Vec<String>,
-}
-
-#[derive(Hash, Eq, PartialEq)]
-enum FileType {
-    File,
-    Dir,
-    Other,
-}
-
-impl FileType {
-    fn is_dir(&self) -> bool {
-        matches!(self, Self::Dir)
-    }
-    fn is_file(&self) -> bool {
-        matches!(self, Self::File)
-    }
-}
-
-trait FileSource {
-    fn len(&self) -> usize;
-    fn for_each(self, iterator: impl Fn(RepoFile) + Sync + Send);
-}
-
-struct FileWalker {
-    file_list: Vec<PathBuf>,
-}
-
-impl FileWalker {
-    fn index_directory(dir: impl AsRef<Path>) -> impl FileSource {
-        // note: this WILL observe .gitignore files for the respective repos.
-        let file_list = ignore::Walk::new(&dir)
-            .filter_map(|de| match de {
-                Ok(de) => Some(de),
-                Err(err) => {
-                    warn!(%err, "access failure; skipping");
-                    None
-                }
-            })
-            // Preliminarily ignore files that are very large, without reading the contents.
-            .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
-            .filter_map(|de| crate::canonicalize(de.into_path()).ok())
-            .filter(|p| {
-                p.strip_prefix(&dir)
-                    .as_ref()
-                    .map(should_index)
-                    .unwrap_or_default()
-            })
-            .collect();
-
-        Self { file_list }
-    }
-}
-
-impl FileSource for FileWalker {
-    fn len(&self) -> usize {
-        self.file_list.len()
-    }
-
-    fn for_each(self, iterator: impl Fn(RepoFile) + Sync + Send) {
-        use rayon::prelude::*;
-        self.file_list
-            .into_par_iter()
-            .filter_map(|entry_disk_path| {
-                let buffer = if entry_disk_path.is_file() {
-                    match std::fs::read_to_string(&entry_disk_path) {
-                        Err(err) => {
-                            warn!(%err, ?entry_disk_path, "read failed; skipping");
-                            return None;
-                        }
-                        Ok(buffer) => buffer,
-                    }
-                } else {
-                    String::new()
-                };
-
-                let file_type = if entry_disk_path.is_dir() {
-                    FileType::Dir
-                } else if entry_disk_path.is_file() {
-                    FileType::File
-                } else {
-                    FileType::Other
-                };
-
-                Some(RepoFile {
-                    buffer,
-                    path: entry_disk_path.to_string_lossy().to_string(),
-                    kind: file_type,
-                    branches: vec!["head".into()],
-                })
-            })
-            .for_each(iterator);
-    }
-}
-
-enum BranchFilter {
-    All,
-    Select(Vec<Regex>),
-}
-
-impl BranchFilter {
-    fn filter(&self, branch: &str) -> bool {
-        match self {
-            BranchFilter::All => true,
-            BranchFilter::Select(patterns) => patterns.iter().any(|r| r.is_match(branch)),
-        }
-    }
-}
-
-impl Default for BranchFilter {
-    fn default() -> Self {
-        Self::All
-    }
-}
-
-struct GitWalker {
-    git: ThreadSafeRepository,
-    entries: HashMap<(String, FileType, gix::ObjectId), Vec<String>>,
-}
-
-impl GitWalker {
-    fn open_repository(
-        dir: impl AsRef<Path>,
-        filter: impl Into<Option<BranchFilter>>,
-    ) -> Result<impl FileSource> {
-        let branches = filter.into().unwrap_or_default();
-        let git = gix::open::Options::isolated()
-            .filter_config_section(|_| false)
-            .open(dir.as_ref())?;
-
-        let local_git = git.to_thread_local();
-        let head = local_git
-            .head()?
-            .try_into_referent()
-            .map(|r| r.name().to_owned());
-
-        let refs = local_git.references()?;
-        let entries = refs
-            .prefixed("refs/heads")?
-            .peeled()
-            .filter_map(Result::ok)
-            .map(|r| (human_readable_branch_name(&r), r))
-            .filter(|(name, _)| branches.filter(name))
-            .filter_map(|(branch, r)| -> Option<_> {
-                let is_head = head
-                    .as_ref()
-                    .map(|head| head.as_ref() == r.name())
-                    .unwrap_or_default();
-
-                let tree = r
-                    .into_fully_peeled_id()
-                    .ok()?
-                    .object()
-                    .ok()?
-                    .peel_to_tree()
-                    .ok()?;
-
-                let files = tree.traverse().breadthfirst.files().unwrap().into_iter();
-
-                Some(files.map(move |entry| {
-                    (
-                        is_head,
-                        branch.clone(),
-                        String::from_utf8_lossy(entry.filepath.as_ref()).to_string(),
-                        entry.mode,
-                        entry.oid,
-                    )
-                }))
-            })
-            .flatten()
-            .fold(
-                HashMap::new(),
-                |mut acc, (is_head, branch, file, mode, oid)| {
-                    let kind = if mode.is_tree() {
-                        FileType::Dir
-                    } else if mode.is_blob() {
-                        FileType::File
-                    } else {
-                        FileType::Other
-                    };
-
-                    let branches = acc.entry((file, kind, oid)).or_insert_with(Vec::new);
-                    if is_head {
-                        branches.push("head".to_string());
-                    }
-
-                    branches.push(branch);
-                    acc
-                },
-            );
-
-        Ok(Self { git, entries })
-    }
-}
-
-fn human_readable_branch_name(r: &gix::Reference<'_>) -> String {
-    use gix::bstr::ByteSlice;
-    r.name().shorten().to_str_lossy().to_string()
-}
-
-impl FileSource for GitWalker {
-    fn len(&self) -> usize {
-        self.entries.len()
-    }
-
-    fn for_each(self, iterator: impl Fn(RepoFile) + Sync + Send) {
-        use rayon::prelude::*;
-        self.entries
-            .into_par_iter()
-            .filter_map(|((file, kind, oid), branches)| {
-                let git = self.git.to_thread_local();
-
-                let Ok(Some(object)) = git.try_find_object(oid) else {
-		    error!(?file, ?branches, "can't find object for file");
-		    return None;
-		};
-
-                let buffer = String::from_utf8_lossy(&object.data).to_string();
-
-                Some(RepoFile {
-                    path: file,
-                    kind,
-                    branches,
-                    buffer,
-                })
-            })
-            .for_each(iterator)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_should_index() {
-        let tests = [
-            // Ignore these extensions completely.
-            ("image.png", false),
-            ("image.jpg", false),
-            ("image.jpeg", false),
-            ("font.ttf", false),
-            ("font.otf", false),
-            ("font.woff2", false),
-            ("icon.ico", false),
-            // Simple paths that should be indexed.
-            ("foo.js", true),
-            ("bar.ts", true),
-            ("quux/fred.ts", true),
-            // Typical vendored paths.
-            ("vendor/jquery.js", false),
-            ("dist/react.js", false),
-            ("vendor/github.com/Microsoft/go-winio/file.go", false),
-            (
-                "third_party/protobuf/google/protobuf/descriptor.proto",
-                false,
-            ),
-            ("src/defs.pb.go", false),
-            // These are not typically vendored in Rust.
-            ("dist/main.rs", true),
-            ("vendor/foo.rs", true),
-        ];
-
-        for (path, index) in tests {
-            assert_eq!(should_index(&Path::new(path)), index);
-        }
     }
 }

@@ -11,7 +11,7 @@ pub struct LanguageInfo {
     pub most_common_lang: Option<&'static str>,
 }
 
-pub fn get_language_info<P: AsRef<Path>>(path: P) -> LanguageInfo {
+pub fn aggregate<P: AsRef<Path>>(path: P) -> LanguageInfo {
     let threads = std::thread::available_parallelism()
         .expect("Can't get available threads")
         .get();
