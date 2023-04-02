@@ -8,6 +8,8 @@ metadata:
     {{- include "bloop.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "bloop.selectorLabels" . | nindent 6 }}
