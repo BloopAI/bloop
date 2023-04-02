@@ -8,6 +8,7 @@ metadata:
     {{- include "bloop.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 1
   selector:
     matchLabels:
       {{- include "bloop.selectorLabels" . | nindent 6 }}
