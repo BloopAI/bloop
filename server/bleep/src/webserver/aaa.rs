@@ -16,7 +16,6 @@ use axum::{
     TypedHeader,
 };
 use axum_extra::extract::cookie::{Cookie, PrivateCookieJar, SameSite};
-use futures::future;
 use octocrab::Octocrab;
 use rand::{distributions::Alphanumeric, Rng};
 use secrecy::{ExposeSecret, SecretString};
@@ -243,22 +242,34 @@ async fn authenticate_authorize_reissue<B>(
     request: Request<B>,
     next: Next<B>,
 ) -> impl IntoResponse {
-    let unauthorized = || StatusCode::UNAUTHORIZED.into_response();
+    // For better logging, we use some heuristics here to determine what the request type is. We
+    // know that user requests authorize through a cookie, and bot requests authorize with the
+    // `Authorization` header.
+    let result = if jar.get(AuthCookie::COOKIE_NAME).is_some() {
+        user_auth(jar, &app, &auth_layer.client)
+            .await
+            .context("failed to authenticate user request")
+    } else if auth_header.is_some() {
+        bot_auth(auth_header, &app)
+            .await
+            .context("failed to authenticate bot request")
+            .map(|()| jar)
+    } else {
+        Err(anyhow::anyhow!(
+            "request had no auth cookie or `Authorization` header"
+        ))
+    };
 
-    let user_fut = user_auth(jar, &app, &auth_layer.client);
-    let bearer_fut = bot_auth(auth_header, &app);
-
-    let new_cookies = match future::join(user_fut, bearer_fut).await {
-        (Ok(new_cookies), _) => Some(new_cookies),
-        (_, Ok(_)) => None,
-        (Err(e1), Err(e2)) => {
-            error!(?e1, ?e2, "failed to authenticate request");
-            return unauthorized();
+    let jar = match result {
+        Ok(new_cookies) => new_cookies,
+        Err(e) => {
+            error!("{}", e);
+            return StatusCode::UNAUTHORIZED.into_response();
         }
     };
 
     let body = next.run(request).await;
-    (new_cookies, body).into_response()
+    (jar, body).into_response()
 }
 
 async fn user_auth(
