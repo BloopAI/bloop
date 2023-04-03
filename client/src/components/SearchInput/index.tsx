@@ -8,13 +8,20 @@ import React, {
 } from 'react';
 import { useCombobox } from 'downshift';
 import throttle from 'lodash.throttle';
-import { ArrowRevert, Clipboard, TrashCan } from '../../icons';
+import { format, isToday, isYesterday } from 'date-fns';
+import {
+  ArrowRevert,
+  Clipboard,
+  NaturalLanguage,
+  RegexIcon,
+  TrashCan,
+} from '../../icons';
 import { DropdownWithIcon } from '../Dropdown';
 import { useArrowKeyNavigation } from '../../hooks/useArrowNavigationHook';
 import { SearchContext } from '../../context/searchContext';
 import Button from '../Button';
 import { copyToClipboard, parseFilters } from '../../utils';
-import { MenuListItemType } from '../ContextMenu';
+import { ContextMenuItem, MenuListItemType } from '../ContextMenu';
 import { saveJsonToStorage, SEARCH_HISTORY_KEY } from '../../services/storage';
 import { getAutocomplete } from '../../services/api';
 import {
@@ -24,7 +31,11 @@ import {
 } from '../../types/results';
 import { mapResults } from '../../mappers/results';
 import useAppNavigation from '../../hooks/useAppNavigation';
-import { SearchType } from '../../types/general';
+import {
+  ExtendedMenuItemType,
+  SearchHistoryItem,
+  SearchType,
+} from '../../types/general';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import AutocompleteMenu from './AutocompleteMenu';
 import SearchTextInput from './SearchTextInput';
@@ -193,9 +204,13 @@ function SearchInput() {
       closeMenu();
       setSearchHistory((prev) => {
         const newHistory = [
-          { query: val, searchType: newSearchType },
+          {
+            query: val,
+            searchType: newSearchType,
+            timestamp: new Date().toISOString(),
+          },
           ...prev,
-        ].slice(0, 4);
+        ].slice(0, 29);
         saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
         return newHistory;
       });
@@ -208,29 +223,65 @@ function SearchInput() {
     saveJsonToStorage(SEARCH_HISTORY_KEY, []);
   }, []);
 
-  const historyItems = useMemo(
-    () => [
-      ...searchHistory.map((s) => ({
-        text: typeof s === 'string' ? s : s.query,
-        type: MenuListItemType.DEFAULT,
-        onClick: () => {
-          const isOlderItem = typeof s === 'string';
-          setInputValue(isOlderItem ? s : s.query);
-          onSubmit(
-            isOlderItem ? s : s.query,
-            isOlderItem ? undefined : s.searchType,
-          );
-        },
-      })),
+  const historyItems = useMemo(() => {
+    const historyByDay: Record<string, SearchHistoryItem[]> = {};
+    searchHistory.forEach((search) => {
+      const day =
+        typeof search === 'string' || !search.timestamp
+          ? 'Previous'
+          : isToday(new Date(search.timestamp))
+          ? 'Today'
+          : isYesterday(new Date(search.timestamp))
+          ? 'Yesterday'
+          : format(new Date(search.timestamp), 'EEEE, MMM d');
+      if (historyByDay[day]) {
+        historyByDay[day].push(search);
+      } else {
+        historyByDay[day] = [search];
+      }
+    });
+    const items: ContextMenuItem[] = [];
+    Object.entries(historyByDay).forEach(([day, searches]) => {
+      items.push({ type: ExtendedMenuItemType.DIVIDER_WITH_TEXT, text: day });
+      searches.forEach((s) => {
+        const isOlderItem = typeof s === 'string';
+        items.push({
+          text: isOlderItem ? (
+            s
+          ) : (
+            <div className="flex justify-between items-center w-full">
+              <span>{s.query}</span>
+              <span>
+                {s.timestamp ? format(new Date(s.timestamp), 'HH:mm') : ''}
+              </span>
+            </div>
+          ),
+          type: MenuListItemType.DEFAULT,
+          icon: isOlderItem ? undefined : s.searchType === SearchType.NL ? (
+            <NaturalLanguage />
+          ) : (
+            <RegexIcon />
+          ),
+          onClick: () => {
+            setInputValue(isOlderItem ? s : s.query);
+            onSubmit(
+              isOlderItem ? s : s.query,
+              isOlderItem ? undefined : s.searchType,
+            );
+          },
+        });
+      });
+    });
+    return [
+      ...items,
       {
         text: 'Clear search history',
         type: MenuListItemType.DANGER,
         icon: <TrashCan />,
         onClick: handleClearHistory,
       },
-    ],
-    [searchHistory, onSubmit, handleClearHistory],
-  );
+    ];
+  }, [searchHistory, onSubmit, handleClearHistory]);
 
   return (
     <div
@@ -283,7 +334,8 @@ function SearchInput() {
       <DropdownWithIcon
         items={historyItems}
         icon={<ArrowRevert />}
-        hint="Search history"
+        lastItemFixed
+        isWide
       />
     </div>
   );

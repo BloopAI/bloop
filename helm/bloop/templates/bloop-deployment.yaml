@@ -9,6 +9,8 @@ metadata:
 spec:
   replicas: {{ .Values.replicaCount }}
   revisionHistoryLimit: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "bloop.selectorLabels" . | nindent 6 }}

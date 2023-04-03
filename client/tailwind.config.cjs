@@ -173,6 +173,7 @@ module.exports = {
         "90": "20.25rem",
         "98": "26.5rem",
         '99': '29.625rem',
+        '100': '32rem'
       },
       borderRadius: {
         'px': '1px',
