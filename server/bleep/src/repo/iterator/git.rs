@@ -42,6 +42,7 @@ impl GitWalker {
         dir: impl AsRef<Path>,
         filter: impl Into<Option<BranchFilter>>,
     ) -> Result<impl FileSource> {
+        let root_dir = dir.as_ref();
         let branches = filter.into().unwrap_or_default();
         let git = gix::open::Options::isolated()
             .filter_config_section(|_| false)
@@ -77,10 +78,12 @@ impl GitWalker {
                 let files = tree.traverse().breadthfirst.files().unwrap().into_iter();
 
                 Some(files.map(move |entry| {
+                    let strpath = String::from_utf8_lossy(entry.filepath.as_ref());
+                    let full_path = root_dir.join(strpath.as_ref());
                     (
                         is_head,
                         branch.clone(),
-                        String::from_utf8_lossy(entry.filepath.as_ref()).to_string(),
+                        full_path.to_string_lossy().to_string(),
                         entry.mode,
                         entry.oid,
                     )
