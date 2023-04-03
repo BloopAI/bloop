@@ -56,8 +56,7 @@ impl GitWalker {
 
         let refs = local_git.references()?;
         let entries = refs
-            .prefixed("refs/heads")?
-            .peeled()
+            .all()?
             .filter_map(Result::ok)
             .map(|r| (human_readable_branch_name(&r), r))
             .filter(|(name, _)| branches.filter(name))
