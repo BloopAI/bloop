@@ -11,6 +11,7 @@ export enum MenuItemType {
 export enum ExtendedMenuItemType {
   SHARED = 'shared',
   DIVIDER = 'divider',
+  DIVIDER_WITH_TEXT = 'divider_with_text',
 }
 
 export type SearchHistoryType = {
@@ -98,7 +99,7 @@ export enum ReposFilter {
 
 export type SearchHistoryItem =
   | string
-  | { query: string; searchType: SearchType };
+  | { query: string; searchType: SearchType; timestamp?: string };
 
 export type ConversationMessage = {
   author: 'user' | 'server';

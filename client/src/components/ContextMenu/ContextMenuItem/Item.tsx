@@ -6,7 +6,7 @@ import { MenuItemType } from '../../../types/general';
 import Tooltip from '../../Tooltip';
 
 export type ItemProps = {
-  text: string;
+  text: string | React.ReactElement;
   href?: string;
   icon?: React.ReactElement;
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
@@ -55,24 +55,22 @@ const Item = ({
       className={`p-2.5 group ${
         disabled
           ? 'text-gray-500 cursor-default'
+          : type === MenuItemType.DANGER
+          ? 'hover:bg-gray-700 text-danger-600 cursor-pointer'
           : 'hover:bg-gray-700 text-gray-300 cursor-pointer'
-      }  flex items-center justify-between rounded ${
-        type === MenuItemType.DANGER ? 'text-danger-600' : ''
-      } text-sm duration-100`}
+      } flex items-center justify-between rounded text-sm duration-100`}
       onClick={handleClick}
       disabled={disabled}
     >
       {showConfirmation ? (
-        <>
-          <TextField value="Confirm" icon={<CheckIcon />} />
-        </>
+        <TextField value="Confirm" icon={<CheckIcon />} />
       ) : (
         <span
           className={
             'overflow-x-hidden flex items-center justify-between w-full'
           }
         >
-          <TextField value={text} icon={icon} className="ellipsis" />
+          <TextField value={text} icon={icon} className="ellipsis w-full" />
           {type === MenuItemType.REMOVABLE ? (
             <Button
               size={'small'}
