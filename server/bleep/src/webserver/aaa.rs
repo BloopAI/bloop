@@ -25,6 +25,8 @@ use tracing::error;
 
 const MAX_PARALLEL_PENDING_LOGINS: usize = 512;
 
+pub struct User(Option<String>);
+
 #[derive(serde::Serialize, serde::Deserialize)]
 struct GithubAuthToken {
     expires_in: u64,
@@ -37,6 +39,7 @@ struct GithubAuthToken {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct AuthCookie {
+    user_id: String,
     github_token: GithubAuthToken,
     created_at: u64,
     member_checked_at: Option<u64>,
@@ -45,8 +48,9 @@ struct AuthCookie {
 impl AuthCookie {
     const COOKIE_NAME: &str = "auth_cookie";
 
-    fn new(github_token: GithubAuthToken) -> Self {
+    fn new(github_token: GithubAuthToken, user_id: String) -> Self {
         Self {
+            user_id,
             github_token,
             created_at: unix_time_sec(),
             member_checked_at: None,
@@ -191,8 +195,13 @@ pub(super) async fn authorized(
         .await
         .unwrap();
 
+    let octocrab = make_octocrab(&gh_token).expect("bad token received from github");
+    let user_name = get_username(&octocrab)
+        .await
+        .expect("can't retrieve user name");
+
     (
-        jar.add(AuthCookie::new(gh_token).to_cookie()),
+        jar.add(AuthCookie::new(gh_token, user_name).to_cookie()),
         Redirect::to("/"),
     )
 }
@@ -239,7 +248,7 @@ async fn authenticate_authorize_reissue<B>(
     Extension(auth_layer): Extension<Arc<AuthLayer>>,
     auth_header: Option<TypedHeader<Authorization<Bearer>>>,
     jar: PrivateCookieJar,
-    request: Request<B>,
+    mut request: Request<B>,
     next: Next<B>,
 ) -> impl IntoResponse {
     // For better logging, we use some heuristics here to determine what the request type is. We
@@ -253,14 +262,14 @@ async fn authenticate_authorize_reissue<B>(
         bot_auth(auth_header, &app)
             .await
             .context("failed to authenticate bot request")
-            .map(|()| jar)
+            .map(|()| (User(None), jar))
     } else {
         Err(anyhow::anyhow!(
             "request had no auth cookie or `Authorization` header"
         ))
     };
 
-    let jar = match result {
+    let (user, jar) = match result {
         Ok(new_cookies) => new_cookies,
         Err(e) => {
             error!("{}", e);
@@ -268,6 +277,7 @@ async fn authenticate_authorize_reissue<B>(
         }
     };
 
+    request.extensions_mut().insert(user);
     let body = next.run(request).await;
     (jar, body).into_response()
 }
@@ -276,7 +286,7 @@ async fn user_auth(
     jar: PrivateCookieJar,
     app: &Application,
     client: &reqwest::Client,
-) -> Result<PrivateCookieJar> {
+) -> Result<(User, PrivateCookieJar)> {
     let mut auth_cookie: AuthCookie = serde_json::from_str(
         jar.get(AuthCookie::COOKIE_NAME)
             .context("missing auth cookie")?
@@ -288,7 +298,7 @@ async fn user_auth(
     let need_refresh = auth_cookie.need_refresh();
 
     if member_checked && !need_refresh {
-        return Ok(jar);
+        return Ok((User(Some(auth_cookie.user_id.clone())), jar));
     }
 
     if need_refresh {
@@ -318,7 +328,7 @@ async fn user_auth(
         auth_cookie.update_token(gh_token);
     }
 
-    if !member_checked {
+    let user_name = if !member_checked {
         let org_name = {
             let cred = app.credentials.github().unwrap();
             match cred.auth {
@@ -328,23 +338,8 @@ async fn user_auth(
         };
 
         // An octocrab instance based on the user's access token.
-        let octocrab = Octocrab::builder()
-            .personal_token(
-                auth_cookie
-                    .github_token
-                    .access_token
-                    .expose_secret()
-                    .clone(),
-            )
-            .build()
-            .context("failed to build octocrab instance")?;
-
-        let user_name: String = octocrab
-            .current()
-            .user()
-            .await
-            .context("failed to get user")?
-            .login;
+        let octocrab = make_octocrab(&auth_cookie.github_token)?;
+        let user_name = get_username(&octocrab).await?;
 
         // https://docs.github.com/en/rest/orgs/members?apiVersion=2022-11-28#check-organization-membership-for-a-user
         let is_member = octocrab
@@ -361,8 +356,12 @@ async fn user_auth(
             bail!("{user_name} is not a member of the {org_name} organization");
         }
 
+        auth_cookie.user_id = user_name.clone();
         auth_cookie.set_member_checked();
-    }
+        user_name
+    } else {
+        auth_cookie.user_id.clone()
+    };
 
     // We set SameSite to Strict to avoid CSRF. Specifically, this is *not* done when the cookie is
     // initially created as part of the OAuth process, as OAuth redirects would not work. The
@@ -372,7 +371,24 @@ async fn user_auth(
     cookie.set_same_site(SameSite::Strict);
     cookie.set_secure(true);
 
-    Ok(jar.add(cookie))
+    Ok((User(Some(user_name)), jar.add(cookie)))
+}
+
+async fn get_username(octocrab: &Octocrab) -> Result<String, anyhow::Error> {
+    Ok(octocrab
+        .current()
+        .user()
+        .await
+        .context("failed to get user")?
+        .login)
+}
+
+fn make_octocrab(github_token: &GithubAuthToken) -> Result<Octocrab, anyhow::Error> {
+    let octocrab = Octocrab::builder()
+        .personal_token(github_token.access_token.expose_secret().clone())
+        .build()
+        .context("failed to build octocrab instance")?;
+    Ok(octocrab)
 }
 
 async fn bot_auth(
