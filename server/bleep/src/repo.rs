@@ -251,7 +251,7 @@ impl Repository {
         writers: &indexes::GlobalWriteHandle<'_>,
     ) -> Result<Arc<RepoMetadata>, RepoError> {
         use rayon::prelude::*;
-        let metadata = self.get_repo_metadata().await;
+        let metadata = self.get_repo_metadata().await?;
 
         tokio::task::block_in_place(|| {
             writers
@@ -265,17 +265,26 @@ impl Repository {
 
     /// Pre-scan the repository to provide supporting metadata for a
     /// new indexing operation
-    async fn get_repo_metadata(&self) -> Arc<RepoMetadata> {
+    async fn get_repo_metadata(&self) -> Result<Arc<RepoMetadata>, RepoError> {
         let last_commit_unix_secs = gix::open(&self.disk_path)
             .context("failed to open git repo")
             .and_then(|repo| Ok(repo.head()?.peel_to_commit_in_place()?.time()?.seconds()))
             .unwrap_or(0) as u64;
 
-        RepoMetadata {
+        let langs = match self.remote {
+            RepoRemote::Git { .. } => {
+                language::aggregate(iterator::GitWalker::open_repository(&self.disk_path, None)?)
+            }
+            RepoRemote::None => {
+                language::aggregate(iterator::FileWalker::index_directory(&self.disk_path))
+            }
+        };
+
+        Ok(RepoMetadata {
             last_commit_unix_secs,
-            langs: language::aggregate(iterator::FileWalker::index_directory(&self.disk_path)),
+            langs,
         }
-        .into()
+        .into())
     }
 
     /// Marks the repository for removal on the next sync
