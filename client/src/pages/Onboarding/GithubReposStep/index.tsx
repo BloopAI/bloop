@@ -21,7 +21,7 @@ type Props = {
   disableSkip?: boolean;
 };
 
-const STEP_KEY = 'STEP_GITHUB_REPOS';
+export const STEP_KEY = 'STEP_GITHUB_REPOS';
 let intervalId: number;
 
 const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {

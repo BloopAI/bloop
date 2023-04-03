@@ -3,9 +3,10 @@ import LocalReposStep from '../../../../pages/Onboarding/LocalReposStep';
 import GithubReposStep from '../../../../pages/Onboarding/GithubReposStep';
 import FolderSelectStep from '../../../../pages/Onboarding/FolderSelectStep';
 import SeparateOnboardingStep from '../../../SeparateOnboardingStep';
+import PublicGithubReposStep from '../../../../pages/Onboarding/PublicGithubReposStep';
 
 type Props = {
-  addRepos: null | 'local' | 'github';
+  addRepos: null | 'local' | 'github' | 'public';
   onClose: (submitted: boolean) => void;
 };
 
@@ -29,8 +30,10 @@ const AddRepos = ({ addRepos, onClose }: Props) => {
         ) : (
           <FolderSelectStep handleNext={onFolderChosen} />
         )
-      ) : (
+      ) : addRepos === 'github' ? (
         <GithubReposStep handleNext={handleSubmit} disableSkip />
+      ) : (
+        <PublicGithubReposStep handleNext={handleSubmit} disableSkip />
       )}
     </SeparateOnboardingStep>
   );

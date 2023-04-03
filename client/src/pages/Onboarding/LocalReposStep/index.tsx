@@ -15,13 +15,15 @@ import { UIContext } from '../../../context/uiContext';
 import useAnalytics from '../../../hooks/useAnalytics';
 import { splitPath } from '../../../utils';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
+import { STEP_KEY as GITHUB_STEP_KEY } from '../GithubReposStep';
+import { STEP_KEY as PUBLIC_GITHUB_STEP_KEY } from '../PublicGithubReposStep';
 
 type Props = {
   handleNext: (e?: any) => void;
   handleBack?: (e: any) => void;
 };
 
-const STEP_KEY = 'STEP_LOCAL_REPOS';
+export const STEP_KEY = 'STEP_LOCAL_REPOS';
 
 const LocalReposStep = ({ handleNext, handleBack }: Props) => {
   const [activeTab, setActiveTab] = useState(1);
@@ -47,24 +49,19 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
               !repos.find((repo) => r.ref === repo.ref),
           )
           .map((r) => r.ref) || [];
-      const githubRepos =
-        repositories
-          ?.filter(
-            (r) =>
-              r.provider === RepoProvider.GitHub &&
-              ![SyncStatus.Uninitialized, SyncStatus.Removed].includes(
-                r.sync_status,
-              ),
-          )
-          .map((r) => r.ref) || [];
+      const githubRepos = onBoardingState[GITHUB_STEP_KEY];
+      const publicGithubRepos = onBoardingState[PUBLIC_GITHUB_STEP_KEY];
       trackReposSelected({
         localRepos: reposToSync.length,
         githubRepos: githubRepos.length,
         where: 'onboarding_step_local_repos',
       });
-      syncRepos([...prevSyncedLocalRepos, ...reposToSync, ...githubRepos]).then(
-        console.log,
-      );
+      syncRepos([
+        ...prevSyncedLocalRepos,
+        ...reposToSync,
+        ...githubRepos,
+        ...publicGithubRepos,
+      ]);
       handleNext();
     },
     [repos, userRepos, repositories],

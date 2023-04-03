@@ -34,9 +34,9 @@ const RepositoriesSettings = () => {
     setSettingsOpen,
   } = useContext(UIContext);
   const { isSelfServe } = useContext(DeviceContext);
-  const [isAddReposOpen, setAddReposOpen] = useState<null | 'local' | 'github'>(
-    null,
-  );
+  const [isAddReposOpen, setAddReposOpen] = useState<
+    null | 'local' | 'github' | 'public'
+  >(null);
 
   const localRepos = useMemo(() => {
     const localRepositories =
@@ -131,6 +131,18 @@ const RepositoriesSettings = () => {
               type: MenuItemType.DEFAULT,
               onClick: () => {
                 setAddReposOpen('github');
+              },
+            },
+          ]
+        : []),
+      ...(isGithubConnected
+        ? [
+            {
+              text: 'Public repo',
+              icon: <GitHubIcon />,
+              type: MenuItemType.DEFAULT,
+              onClick: () => {
+                setAddReposOpen('public');
               },
             },
           ]

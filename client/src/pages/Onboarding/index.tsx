@@ -25,6 +25,7 @@ import GithubReposStep from './GithubReposStep';
 import SelfServeStep from './SelfServeStep';
 import FeaturesStep from './FeaturesStep';
 import RemoteServicesStep from './RemoteServicesStep';
+import PublicGithubReposStep from './PublicGithubReposStep';
 
 enum Steps {
   DATA_FORM,
@@ -32,6 +33,7 @@ enum Steps {
   REMOTE_SERVICES,
   GITHUB_CONNECT,
   GITHUB_REPOS_SELECT,
+  PUBLIC_GITHUB_REPOS,
   FOLDER_SELECT,
   LOCAL_REPOS_SELECT,
   FINISHED,
@@ -87,8 +89,8 @@ const Onboarding = () => {
     }
   }, [step, isSelfServe]);
 
-  const handleNext = useCallback((e: any, skipOne = false) => {
-    setStep((prev) => prev + (skipOne ? 2 : 1));
+  const handleNext = useCallback((e: any, skip: number = 1) => {
+    setStep((prev) => prev + skip);
   }, []);
 
   const handlePrev = useCallback((e: any, skip: number = 1) => {
@@ -117,6 +119,13 @@ const Onboarding = () => {
           <GithubReposStep
             handleNext={handleNext}
             handleBack={(e) => handlePrev(e, 2)}
+          />
+        );
+      case Steps.PUBLIC_GITHUB_REPOS:
+        return (
+          <PublicGithubReposStep
+            handleNext={handleNext}
+            handleBack={handlePrev}
           />
         );
       case Steps.FOLDER_SELECT:

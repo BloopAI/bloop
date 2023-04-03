@@ -12,7 +12,7 @@ import {
 } from '../../../services/storage';
 
 type Props = {
-  handleNext: (e?: any, skipOne?: boolean) => void;
+  handleNext: (e?: any, skip?: number) => void;
   handleBack?: (e: any) => void;
 };
 
@@ -31,7 +31,7 @@ const FolderSelectStep = ({ handleNext, handleBack }: Props) => {
   const handleSkip = useCallback(
     (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
       e.preventDefault();
-      handleNext(e, true);
+      handleNext(e, 2);
     },
     [],
   );

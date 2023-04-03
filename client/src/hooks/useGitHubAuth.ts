@@ -77,7 +77,6 @@ export const useGitHubAuth = (
       intervalId = window.setInterval(() => {
         setTimer((prevState) => prevState + 0.5);
       }, 500);
-      checkGHAuth();
       setTimeout(() => {
         clearInterval(intervalId);
         setAuthenticationFailed(true);

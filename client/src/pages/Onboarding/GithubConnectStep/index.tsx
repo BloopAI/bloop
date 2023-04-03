@@ -14,7 +14,7 @@ import TextField from '../../../components/TextField';
 import { AnalyticsContext } from '../../../context/analyticsContext';
 
 type Props = {
-  handleNext: (e?: any, skipOne?: boolean) => void;
+  handleNext: (e?: any, skip?: number) => void;
   handleBack?: (e: any) => void;
   forceAnalyticsAllowed?: boolean;
   description?: string;
@@ -59,7 +59,7 @@ const GithubConnectStep = ({
   const handleSkip = useCallback(
     (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
       e.preventDefault();
-      handleNext(e, true);
+      handleNext(e, 3);
     },
     [],
   );
