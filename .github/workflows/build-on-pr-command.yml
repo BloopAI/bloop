@@ -13,10 +13,31 @@ jobs:
       env:
        GITHUB_CONTEXT: ${{ toJson(github) }}
 
+  permissions:
+    runs-on: ubuntu-latest
+    name: Validate user is the member of BloopAI organization
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/build')
+    outputs:
+      is-member: ${{ steps.membership.outputs.is-member }}
+    steps:
+      - name: Validation
+        id: membership
+        env:
+          ACTOR: ${{ github.triggering_actor }}
+        run: |
+          if curl -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.BLOOP_DEVOPS_PAT}}"\
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/orgs/BloopAI/members | jq -r ".[] .login" | grep ${ACTOR}; then
+            echo "is-member=true" >> $GITHUB_OUTPUT
+          fi
+
   build_tag:
     runs-on: ubuntu-latest
     name: Run container build on comment
-    if: github.event.issue.pull_request && contains(github.event.comment.body, '/build')
+    needs: [permissions]
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/build') && needs.permissions.outputs.is-member == 'true'
     outputs:
       tag: build-${{ steps.comment-branch.outputs.head_sha }}
       ref: ${{ steps.comment-branch.outputs.head_ref }}
@@ -32,7 +53,8 @@ jobs:
 
   build_and_push:
     uses: BloopAI/workflows/.github/workflows/build-container.yml@main
-    needs: [build_tag]
+    if: needs.permissions.outputs.is-member == 'true'
+    needs: [permissions, build_tag]
     with:
       repository: bloop
       tag: ${{ needs.build_tag.outputs.tag }}
@@ -45,7 +67,8 @@ jobs:
   report_status:
     runs-on: ubuntu-latest
     name: Report status of the build
-    if: always()
+    needs: [permissions]
+    if: always() && needs.permissions.outputs.is-member == 'true'
     needs: [build_tag, build_and_push]
     steps:
       - name: pr
