@@ -22,6 +22,7 @@ use console_subscriber as _;
 #[cfg(target_os = "windows")]
 use dunce::canonicalize;
 use scc::hash_map::Entry;
+use state::PersistedState;
 #[cfg(not(target_os = "windows"))]
 use std::fs::canonicalize;
 
@@ -68,19 +69,47 @@ static SENTRY_GUARD: OnceCell<sentry::ClientInitGuard> = OnceCell::new();
 /// The global state
 #[derive(Clone)]
 pub struct Application {
+    /// Environmental restrictions on the app
     env: Environment,
+
+    /// User-provided configuration
     pub config: Arc<Configuration>,
+
+    /// Repositories managed by Bloop
     repo_pool: RepositoryPool,
+
+    /// Background & maintenance tasks are executed on a separate
+    /// executor
     background: BackgroundExecutor,
+
+    /// Semantic search subsystem
     semantic: Option<Semantic>,
+
+    /// Tantivy indexes
     indexes: Arc<Indexes>,
+
+    /// Remote backend credentials
     credentials: remotes::Backends,
+
+    /// Main cookie encryption keypair
     cookie_key: axum_extra::extract::cookie::Key,
+
+    /// Conversational store cache
     prior_conversational_store: Arc<scc::HashMap<String, Vec<(String, String)>>>,
+
+    /// User-specific store
+    user_store: PersistedState<scc::HashMap<String, state::UserState>>,
+
+    /// Application-wide tracking seed
+    tracking_seed: PersistedState<state::ApplicationSeed>,
 }
 
 impl Application {
-    pub async fn initialize(env: Environment, config: Configuration) -> Result<Application> {
+    pub async fn initialize(
+        env: Environment,
+        config: Configuration,
+        tracking_seed: impl Into<Option<String>>,
+    ) -> Result<Application> {
         let mut config = match config.config_file {
             None => config,
             Some(ref path) => Configuration::read(path)?,
@@ -129,10 +158,14 @@ impl Application {
         Ok(Self {
             indexes: Arc::new(Indexes::new(config.clone(), semantic.clone())?),
             background: BackgroundExecutor::start(config.clone()),
+            prior_conversational_store: Arc::default(),
             repo_pool: config.source.initialize_pool()?,
             cookie_key: config.source.initialize_cookie_key()?,
             credentials: config.source.initialize_credentials()?.into(),
-            prior_conversational_store: Arc::default(),
+            user_store: config.source.load_or_default("user_store")?,
+            tracking_seed: config
+                .source
+                .load_state_or("application_seed", tracking_seed.into())?,
             semantic,
             config,
             env,
