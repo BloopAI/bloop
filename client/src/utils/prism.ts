@@ -241,6 +241,7 @@ export const tokenizeCode = (code: string, lang: string) => {
     code,
     Prism.languages[lang] || Prism.languages.plaintext,
   );
+
   return normalizeTokens(tokens, lineEndings!);
 };
 

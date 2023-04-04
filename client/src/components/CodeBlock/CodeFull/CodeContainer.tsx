@@ -11,7 +11,6 @@ import React, {
 import CodeLine from '../Code/CodeLine';
 import { Token as TokenType } from '../../../types/prism';
 import { hashCode, propsAreShallowEqual } from '../../../utils';
-import { TokenInfoItem } from '../../../types/results';
 import { getOffsetForIndexAndAlignment } from '../../../utils/scrollUtils';
 import Token from './Token';
 import { Metadata, BlameLine } from './index';
@@ -35,7 +34,7 @@ type Props = {
   >;
   scrollToIndex?: number[];
   searchTerm: string;
-  onRefDefClick: (item: TokenInfoItem, filePath: string) => void;
+  onRefDefClick: (line: number, filePath: string) => void;
   width: number;
   height: number;
 };

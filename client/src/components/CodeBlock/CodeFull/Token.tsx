@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import Tippy, { TippyProps } from '@tippyjs/react';
 import TooltipCode from '../../TooltipCode';
 import CodeToken from '../Code/CodeToken';
 import { Token as TokenType } from '../../../types/prism';
-import { Range, TokenInfo, TokenInfoItem } from '../../../types/results';
+import { Range } from '../../../types/results';
 import { getTokenInfo } from '../../../services/api';
-import { mapTokenInfoData } from '../../../mappers/results';
+import { TokenInfoResponse } from '../../../types/api';
 
 type Props = {
   language: string;
@@ -14,7 +13,7 @@ type Props = {
   repoName: string;
   lineHoverRanges: Range[];
   repoPath: string;
-  onRefDefClick: (item: TokenInfoItem, filePath: string) => void;
+  onRefDefClick: (line: number, filePath: string) => void;
 };
 
 const tokenHoverable = (tokenPosition: Range, ranges: Range[]) => {
@@ -31,8 +30,6 @@ const tokenHoverable = (tokenPosition: Range, ranges: Range[]) => {
   }
 };
 
-let prevEventSource: EventSource;
-
 const Token = ({
   language,
   token,
@@ -45,54 +42,20 @@ const Token = ({
   const [hoverableRange, setHoverableRange] = useState(
     tokenHoverable(token.byteRange, lineHoverRanges),
   );
-  const [info, setInfo] = useState('');
+  const [tokenInfo, setTokenInfo] = useState<TokenInfoResponse | undefined>();
 
-  const [tokenInfo, setTokenInfo] = useState<TokenInfo>({
-    definitions: [],
-    references: [],
-  });
-
-  const getHoverableContent = useCallback(
-    (hoverableRange: Range) => {
-      if (hoverableRange && relativePath) {
-        // getTokenInfo(
-        //   relativePath,
-        //   repoPath,
-        //   hoverableRange.start,
-        //   hoverableRange.end,
-        // ).then((data) => {
-        //   setTokenInfo(mapTokenInfoData(data));
-        // });
-        prevEventSource?.close();
-        prevEventSource = new EventSource(
-          `http://localhost:7878/api/trace?relative_path=${encodeURIComponent(
-            relativePath,
-          )}&repo_ref=${encodeURIComponent(repoPath)}&start=${
-            hoverableRange.start
-          }&end=${hoverableRange.end}`,
-        );
-        prevEventSource.onmessage = (resp) => {
-          console.log(resp.data);
-          if (resp.data === '[DONE]') {
-            prevEventSource.close();
-            return;
-          }
-          const data = JSON.parse(resp.data);
-          if (data.Ok) {
-            setInfo((prev) => prev + data.Ok);
-          }
-        };
-        prevEventSource.onerror = console.log;
-      }
-    },
-    [relativePath],
-  );
-
-  useEffect(() => {
-    return () => {
-      prevEventSource?.close();
-    };
-  }, []);
+  const getHoverableContent = useCallback(() => {
+    if (hoverableRange && relativePath) {
+      getTokenInfo(
+        relativePath,
+        repoPath,
+        hoverableRange.start,
+        hoverableRange.end,
+      ).then((data) => {
+        setTokenInfo(data);
+      });
+    }
+  }, [relativePath, hoverableRange]);
 
   useEffect(() => {
     setHoverableRange(tokenHoverable(token.byteRange, lineHoverRanges));
@@ -100,38 +63,31 @@ const Token = ({
 
   const onHover = useCallback(() => {
     if (!document.getSelection()?.toString()) {
-      getHoverableContent(hoverableRange!);
+      getHoverableContent();
     }
-  }, [hoverableRange]);
+  }, [getHoverableContent]);
 
-  const handleRefsDefsClick = useCallback(
-    (item: TokenInfoItem, filePath: string) => {
-      setTokenInfo({
-        definitions: [],
-        references: [],
-      });
-      onRefDefClick(item, filePath);
-    },
-    [],
-  );
+  const handleRefsDefsClick = useCallback((line: number, filePath: string) => {
+    setTokenInfo(undefined);
+    onRefDefClick(line, filePath);
+  }, []);
 
   return hoverableRange ? (
-    <Tippy
-      interactive
-      trigger="click"
-      appendTo={(ref) => ref.ownerDocument.body}
-      onShow={onHover}
-      hideOnClick="toggle"
-      render={() => (
-        <div className="max-w-[300px] bg-gray-900 p-4 border border-gray-700 caption">
-          <pre className="whitespace-pre-wrap">{info}</pre>
-        </div>
-      )}
+    <TooltipCode
+      language={language}
+      data={tokenInfo}
+      position={'left'}
+      onHover={onHover}
+      repoName={repoName}
+      onRefDefClick={handleRefsDefsClick}
+      queryParams={`relative_path=${encodeURIComponent(
+        relativePath,
+      )}&repo_ref=${encodeURIComponent(repoPath)}&start=${
+        hoverableRange.start
+      }&end=${hoverableRange.end}`}
     >
-      <span className={'cursor-pointer'}>
-        <CodeToken token={token} />
-      </span>
-    </Tippy>
+      <CodeToken token={token} />
+    </TooltipCode>
   ) : (
     <CodeToken token={token} />
   );

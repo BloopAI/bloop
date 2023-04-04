@@ -8,7 +8,7 @@ import CodeFull from '../../components/CodeBlock/CodeFull';
 import { getHoverables } from '../../services/api';
 import { mapFileResult, mapRanges } from '../../mappers/results';
 import ShareFileModal from '../../components/ShareFileModal';
-import { FullResult } from '../../types/results';
+import { FullResult, Range } from '../../types/results';
 import {
   breadcrumbsItemPath,
   isWindowsPath,
@@ -40,6 +40,9 @@ const ResultFull = ({ data }: Props) => {
   const [isShareOpen, setShareOpen] = useState(false);
   const { navigateFullResult, navigateRepoPath } = useAppNavigation();
   const [result, setResult] = useState<FullResult | null>(null);
+  const [hoverableRanges, setHoverableRanges] = useState<
+    Record<number, Range[]>
+  >({});
 
   useEffect(() => {
     if (!data) {
@@ -67,10 +70,7 @@ const ResultFull = ({ data }: Props) => {
     });
     setResult(mappedResult);
     getHoverables(item.data.relative_path, item.data.repo_ref).then((data) => {
-      setResult((prevState) => ({
-        ...prevState!,
-        hoverableRanges: mapRanges(data.ranges),
-      }));
+      setHoverableRanges(mapRanges(data.ranges));
     });
   }, [data]);
 
@@ -181,7 +181,7 @@ const ResultFull = ({ data }: Props) => {
                   repoPath={result.repoPath}
                   relativePath={result.relativePath}
                   metadata={{
-                    hoverableRanges: result.hoverableRanges,
+                    hoverableRanges,
                     lexicalBlocks: [],
                   }}
                   scrollElement={null}

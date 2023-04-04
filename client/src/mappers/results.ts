@@ -8,6 +8,7 @@ import {
   RepoItem,
   SuggestionsResponse,
   TokenInfoItem,
+  TokenInfoNormalized,
   TokenInfoResponse,
 } from '../types/api';
 import {
@@ -156,26 +157,5 @@ export const mapFileResult = (fileItem: FileItem) => {
       fileItem.data.siblings || [],
       fileItem.data.relative_path,
     ),
-  };
-};
-
-const mapTokenInfo = (tokenInfoItem: TokenInfoItem[]): TokenInfoFile[] => {
-  return tokenInfoItem?.map((definition) => {
-    return {
-      path: definition.file,
-      items: definition.data.map((item) => ({
-        code: item.snippet.data.replace('\n', '').trim(),
-        line: item.start.line,
-      })),
-    };
-  });
-};
-
-export const mapTokenInfoData = (tokenInfo: TokenInfoResponse): TokenInfo => {
-  return {
-    definitions: tokenInfo.definitions
-      ? mapTokenInfo(tokenInfo.definitions)
-      : [],
-    references: tokenInfo.references ? mapTokenInfo(tokenInfo.references) : [],
   };
 };

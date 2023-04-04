@@ -1,18 +1,35 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Tippy, { TippyProps } from '@tippyjs/react/headless';
-import Tabs from '../Tabs';
 import Code from '../CodeBlock/Code';
-import { TokenInfo, TokenInfoFile, TokenInfoItem } from '../../types/results';
 import BreadcrumbsPath from '../BreadcrumbsPath';
+import { TokenInfoResponse } from '../../types/api';
+import Button from '../Button';
+import Sparkle from '../../icons/Sparkle';
+import Badge from './Badge';
 
 type Props = {
   language: string;
-  data: TokenInfo;
+  data?: TokenInfoResponse;
   position: 'left' | 'center' | 'right';
   children: React.ReactNode;
   onHover: () => void;
   repoName: string;
-  onRefDefClick: (item: TokenInfoItem, filePath: string) => void;
+  queryParams: string;
+  onRefDefClick: (lineNum: number, filePath: string) => void;
+};
+
+export enum Type {
+  REF = 'ref',
+  DEF = 'def',
+  MOD = 'mod',
+  RET = 'ret',
+}
+
+const colorMap = {
+  ref: 'text-danger-400',
+  def: 'text-success-400',
+  mod: 'text-violet-400',
+  ret: 'text-sky-500',
 };
 
 const positionMapping = {
@@ -41,6 +58,8 @@ const tailStyles = {
   },
 };
 
+let prevEventSource: EventSource;
+
 const TooltipCode = ({
   data,
   position,
@@ -49,26 +68,54 @@ const TooltipCode = ({
   onHover,
   repoName,
   onRefDefClick,
+  queryParams,
 }: Props) => {
-  const [activeTab, setActiveTab] = useState(0);
+  const [filters, setFilters] = useState<Type[]>([
+    Type.REF,
+    Type.DEF,
+    Type.MOD,
+    Type.RET,
+  ]);
+  const [isExplanationOpen, setExplanationOpen] = useState(false);
+  const [explanation, setExplanation] = useState('');
 
-  const tabs = useMemo(() => {
-    if (data.definitions?.length && data.references?.length) {
-      return [{ title: 'References' }, { title: 'Definitions' }];
-    }
-    if (data.references?.length) {
-      return [{ title: 'References' }];
-    }
-    if (data.definitions?.length) {
-      return [{ title: 'Definitions' }];
-    }
-    return [];
-  }, [data]);
+  const toggleFilter = useCallback((type: Type) => {
+    setFilters((prev) => {
+      if (prev.includes(type)) {
+        return prev.filter((t) => t !== type);
+      } else {
+        return [...prev, type];
+      }
+    });
+  }, []);
 
-  const countItems = useCallback((items: TokenInfoFile[]) => {
-    return items.reduce((acc: number, item) => {
-      return acc + item.items.length;
-    }, 0);
+  const onExplain = useCallback(() => {
+    setExplanationOpen(true);
+    if (explanation) {
+      return;
+    }
+    prevEventSource?.close();
+    prevEventSource = new EventSource(
+      `http://localhost:7878/api/trace?${queryParams}`,
+    );
+    prevEventSource.onmessage = (resp) => {
+      console.log(resp.data);
+      if (resp.data === '[DONE]') {
+        prevEventSource.close();
+        return;
+      }
+      const data = JSON.parse(resp.data);
+      if (data.Ok) {
+        setExplanation((prev) => prev + data.Ok);
+      }
+    };
+    prevEventSource.onerror = console.log;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      prevEventSource?.close();
+    };
   }, []);
 
   const getTailPosition = (
@@ -90,7 +137,7 @@ const TooltipCode = ({
   const renderTooltip = (attrs: {
     'data-placement': TippyProps['placement'];
   }) => {
-    if (!(data.definitions?.length || data.references?.length)) {
+    if (!(data?.data?.length || data?.data?.length)) {
       return '';
     }
     const tailPosition = getTailPosition(attrs['data-placement']);
@@ -105,7 +152,7 @@ const TooltipCode = ({
           } transform rotate-45 box-border z-[-1] rounded-sm`}
         />
 
-        <div className="flex flex-col w-96 rounded border border-gray-600 z-10">
+        <div className="flex flex-col w-96 rounded border border-gray-600 z-10 bg-gray-800 backdrop-blur-6">
           <span
             className={`absolute ${
               positionMap[tailPosition.horizontal].fixBorder
@@ -113,78 +160,116 @@ const TooltipCode = ({
               tailStyles[tailPosition.vertical].fixture
             } border-l-[1px] border-r-[1px] border-b-transparent border-l-gray-600 border-r-gray-600`}
           />
-          <span className="bg-gray-700 px-3 pt-2 rounded-t">
-            <Tabs
-              tabs={tabs}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-            />
-          </span>
-          <span className="bg-gray-800 rounded-b text-xs">
-            {[data.references, data.definitions]
-              .filter((s) => s?.length)
-              .map((items, index) => (
-                <React.Fragment key={index}>
-                  {items?.length ? (
-                    <span
-                      key={index}
-                      className={`${
-                        activeTab === index ? 'visible' : 'hidden'
-                      } flex flex-col divide-y divide-gray-600 max-h-72 overflow-x-hidden pt-1`}
-                    >
-                      {items.length > 1 && (
-                        <span className="pl-4 py-1 text-gray-400">
-                          Found{' '}
-                          <span className="text-gray-200">
-                            {countItems(items)}{' '}
-                            {tabs[activeTab]?.title.toLowerCase()}
-                          </span>{' '}
-                          in{' '}
-                          <span className="text-gray-200">
-                            {items.length} files
-                          </span>
-                        </span>
-                      )}
-                      {items.map((fileItem, i) => (
-                        <React.Fragment
-                          key={'snippet' + fileItem.path + index + i}
+          <div className="bg-gray-700/50 pl-3 pb-3 pt-2 pr-2 rounded-t border-b border-gray-700 flex items-center justify-between gap-2">
+            <div className="flex gap-2">
+              <Badge
+                type={Type.REF}
+                onClick={toggleFilter}
+                active={filters.includes(Type.REF)}
+                disabled={
+                  !data.data.some((d) =>
+                    d.data.some((dd) => dd.kind.startsWith(Type.REF)),
+                  )
+                }
+              />
+              <Badge
+                type={Type.DEF}
+                onClick={toggleFilter}
+                active={filters.includes(Type.DEF)}
+                disabled={
+                  !data.data.some((d) =>
+                    d.data.some((dd) => dd.kind.startsWith(Type.DEF)),
+                  )
+                }
+              />
+              <Badge
+                type={Type.MOD}
+                onClick={toggleFilter}
+                active={filters.includes(Type.MOD)}
+                disabled={
+                  !data.data.some((d) =>
+                    d.data.some((dd) => dd.kind.startsWith(Type.MOD)),
+                  )
+                }
+              />
+              <Badge
+                type={Type.RET}
+                onClick={toggleFilter}
+                active={filters.includes(Type.RET)}
+                disabled={
+                  !data.data.some((d) =>
+                    d.data.some((dd) => dd.kind.startsWith(Type.RET)),
+                  )
+                }
+              />
+            </div>
+            {!isExplanationOpen && (
+              <Button size="small" onClick={onExplain}>
+                <Sparkle />
+                Explain
+              </Button>
+            )}
+          </div>
+          {isExplanationOpen && (
+            <div className="bg-gray-700 py-2 px-3 body-s">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">bloop</span>
+                <button
+                  className="text-primary-300"
+                  onClick={() => setExplanationOpen(false)}
+                >
+                  Hide
+                </button>
+              </div>
+              <p className="text-gray-50">{explanation}</p>
+            </div>
+          )}
+          <span className="overflow-auto max-h-40">
+            {data.data
+              .filter(
+                (d) =>
+                  d.data.filter((dd) =>
+                    filters.includes(dd.kind.slice(0, 3) as Type),
+                  ).length,
+              )
+              .map((d, i) => (
+                <div className="border-b border-gray-700" key={d.file + i}>
+                  <div className="px-3 pt-2">
+                    <BreadcrumbsPath
+                      path={d.file}
+                      repo={repoName}
+                      activeStyle="secondary"
+                    />
+                  </div>
+                  {d.data
+                    .filter((dd) =>
+                      filters.includes(dd.kind.slice(0, 3) as Type),
+                    )
+                    .map((line, i) => (
+                      <div
+                        key={i}
+                        className="py-2 px-3 code-s flex gap-1 cursor-pointer"
+                        onClick={() =>
+                          onRefDefClick(line.snippet.line_range.start, d.file)
+                        }
+                      >
+                        <div
+                          className={`uppercase caption w-8 flex-shrink-0 flex-grow-0 ${
+                            colorMap[line.kind.slice(0, 3) as Type]
+                          }`}
                         >
-                          <span className="pl-3 text-xs">
-                            <BreadcrumbsPath
-                              path={fileItem.path}
-                              repo={repoName}
-                              activeStyle="secondary"
-                            />
-                          </span>
-                          {fileItem.items.map((item, j) => (
-                            <span
-                              key={
-                                'snippet' +
-                                fileItem.path +
-                                item.line +
-                                index +
-                                i +
-                                j
-                              }
-                              className="py-1 overflow-x-auto hide-scrollbar pr-3 flex-shrink-0 cursor-pointer"
-                              onClick={() => onRefDefClick(item, fileItem.path)}
-                            >
-                              <Code
-                                code={item.code}
-                                lineStart={item.line}
-                                language={language}
-                                removePaddings
-                                lineHoverEffect
-                              />
-                            </span>
-                          ))}
-                        </React.Fragment>
-                      ))}
-                    </span>
-                  ) : (
-                    ''
-                  )}
-                </React.Fragment>
+                          {line.kind.slice(0, 3)}
+                        </div>
+                        <Code
+                          code={line.snippet.data}
+                          lineStart={line.snippet.line_range.start}
+                          language={language}
+                          removePaddings
+                          lineHoverEffect
+                        />
+                      </div>
+                    ))}
+                </div>
               ))}
           </span>
         </div>

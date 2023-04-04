@@ -9,7 +9,7 @@ import debounce from 'lodash.debounce';
 import { useSearchParams } from 'react-router-dom';
 import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
-import { Range, TokenInfoItem } from '../../../types/results';
+import { Range } from '../../../types/results';
 import { copyToClipboard } from '../../../utils';
 import { Commit } from '../../../types';
 import useAppNavigation from '../../../hooks/useAppNavigation';
@@ -182,12 +182,12 @@ const CodeFull = ({
   const tokens = useMemo(() => tokenizeCode(code, lang), [code, lang]);
 
   const onRefDefClick = useCallback(
-    (item: TokenInfoItem, filePath: string) => {
+    (line: number, filePath: string) => {
       if (filePath === relativePath) {
-        setScrollToIndex([item.line, item.line]);
+        setScrollToIndex([line, line]);
       } else {
         navigateRepoPath(repoName, filePath, {
-          scroll_line_index: `${item.line}_${item.line}`,
+          scroll_line_index: `${line}_${line}`,
         });
       }
     },
