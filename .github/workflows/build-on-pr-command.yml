@@ -69,7 +69,7 @@ jobs:
     name: Report status of the build
     needs: [permissions]
     if: always() && needs.permissions.outputs.is-member == 'true'
-    needs: [build_tag, build_and_push]
+    needs: [permissions, build_tag, build_and_push]
     steps:
       - name: pr
         id: pr
