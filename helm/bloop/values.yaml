@@ -3,6 +3,8 @@ replicaCount: 1
 bloop:
   githubOrgName: ""
   githubOrgOwnerEmail: ""
+  githubOrgOwnerFirstName: ""
+  githubOrgOwnerLastName: ""
   loopsAPIKey: ""
   loopsEventName: ""
   githubAppPrivateKey: ""
@@ -17,6 +19,7 @@ bloop:
   analyticsDataPlane: ""
   sentryDsn: ""
   sentryDsnFE: ""
+  slackWebhook: ""
 
 image:
   repository: ""
