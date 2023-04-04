@@ -67,9 +67,8 @@ jobs:
   report_status:
     runs-on: ubuntu-latest
     name: Report status of the build
-    needs: [permissions]
-    if: always() && needs.permissions.outputs.is-member == 'true'
     needs: [permissions, build_tag, build_and_push]
+    if: always() && needs.permissions.outputs.is-member == 'true'
     steps:
       - name: pr
         id: pr
