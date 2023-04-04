@@ -103,7 +103,12 @@ pub(crate) async fn check_credentials(app: Application) {
 
         if app.env.allow(Feature::GithubDeviceFlow) {
             let expired = if let Some(github) = app.credentials.github() {
-                github.validate().await.is_err()
+                let username = github.validate().await;
+                if let Ok(Some(ref user)) = username {
+                    app.credentials.set_user(user.into()).await;
+                }
+
+                username.is_err()
             } else {
                 true
             };

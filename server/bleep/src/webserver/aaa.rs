@@ -3,16 +3,17 @@ use std::{
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
-use crate::remotes;
+use crate::{remotes, Application};
 
-use super::*;
+use super::{middleware::User, prelude::*};
 use anyhow::{bail, Context, Result};
 use axum::{
     extract::Query,
     headers::{authorization::Bearer, Authorization},
     http::{Request, StatusCode},
-    middleware::Next,
+    middleware::{from_fn_with_state, Next},
     response::Redirect,
+    routing::get,
     TypedHeader,
 };
 use axum_extra::extract::cookie::{Cookie, PrivateCookieJar, SameSite};
@@ -24,8 +25,6 @@ use time::Duration;
 use tracing::error;
 
 const MAX_PARALLEL_PENDING_LOGINS: usize = 512;
-
-pub struct User(Option<String>);
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct GithubAuthToken {
@@ -162,7 +161,7 @@ pub(super) struct AuthorizedParams {
     ),
 )]
 pub(super) async fn authorized(
-    Extension(app): Extension<Application>,
+    axum::extract::State(app): axum::extract::State<Application>,
     Extension(auth_layer): Extension<Arc<AuthLayer>>,
     Query(params): Query<AuthorizedParams>,
     jar: PrivateCookieJar,
@@ -215,10 +214,7 @@ fn unix_time_sec() -> u64 {
 
 pub(super) fn router(router: Router, app: Application) -> Router {
     router
-        .layer(middleware::from_fn_with_state(
-            app,
-            authenticate_authorize_reissue,
-        ))
+        .layer(from_fn_with_state(app, authenticate_authorize_reissue))
         .route("/auth/login/complete", get(authorized))
         .route("/auth/login/start", get(login))
         .layer(Extension(Arc::new(AuthLayer::default())))
@@ -244,7 +240,7 @@ impl AuthLayer {
 }
 
 async fn authenticate_authorize_reissue<B>(
-    Extension(app): Extension<Application>,
+    axum::extract::State(app): axum::extract::State<Application>,
     Extension(auth_layer): Extension<Arc<AuthLayer>>,
     auth_header: Option<TypedHeader<Authorization<Bearer>>>,
     jar: PrivateCookieJar,

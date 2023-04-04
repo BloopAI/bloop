@@ -31,11 +31,11 @@ impl State {
         self.auth.client()
     }
 
-    pub(crate) async fn validate(&self) -> Result<()> {
+    pub(crate) async fn validate(&self) -> Result<Option<String>> {
         let client = self.client()?;
 
-        match client.current().user().await {
-            Ok(_) => {}
+        let username = match client.current().user().await {
+            Ok(user) => Some(user.login),
             Err(e @ octocrab::Error::GitHub { .. }) => {
                 warn!(?e, "failed to validate GitHub token");
                 return Err(e)?;
@@ -44,10 +44,11 @@ impl State {
                 // Don't return an error here - we want to swallow failure and try again on the
                 // next poll.
                 error!(?e, "failed to make GitHub user request");
+                None
             }
-        }
+        };
 
-        Ok(())
+        Ok(username)
     }
 
     pub(crate) fn expiry(&self) -> Option<DateTime<Utc>> {
