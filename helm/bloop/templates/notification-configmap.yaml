@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: {{ include "bloop.fullname" . }}-notification-script
 data:
-  notification-script-user.sh: |
+  notification-script.sh: |
     printf 'Waiting for environment to become ready'
     until $(curl --output /dev/null --silent --head --fail http://{{ include "bloop.fullname" . }}:{{ .Values.service.port }}/repos); do
       printf '.'
