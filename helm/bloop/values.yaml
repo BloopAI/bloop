@@ -19,7 +19,6 @@ bloop:
   analyticsDataPlane: ""
   sentryDsn: ""
   sentryDsnFE: ""
-  slackWebhook: ""
 
 image:
   repository: ""
