@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use super::prelude::*;
 use crate::{
@@ -47,20 +47,8 @@ pub(super) struct TokenInfoRequest {
 
 /// The response from the `local-intel` endpoint.
 #[derive(Serialize, ToSchema, Clone)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub(super) enum TokenInfoResponse {
-    /// The response returned when the input range is a definition
-    Definition {
-        /// A file-wise grouping of references, across this repo
-        references: Vec<FileSymbols>,
-    },
-    /// The response returned when the input range is a reference
-    Reference {
-        /// The original definition(s) for this reference
-        definitions: Vec<FileSymbols>,
-        /// The other references in this document
-        references: Vec<FileSymbols>,
-    },
+pub(super) struct TokenInfoResponse {
+    data: Vec<FileSymbols>,
 }
 
 impl super::ApiResponse for TokenInfoResponse {}
@@ -79,6 +67,13 @@ impl FileSymbols {
     fn is_populated(&self) -> bool {
         !self.data.is_empty()
     }
+    fn flatten(&self) -> Vec<(String, SymbolOccurrence)> {
+        let mut data = vec![];
+        for item in &self.data {
+            data.push((self.file.clone(), item.clone()))
+        }
+        data
+    }
 }
 
 /// An occurrence of a single symbol in a document, along with some context
@@ -90,6 +85,36 @@ pub(super) struct SymbolOccurrence {
 
     /// A few lines of surrounding context
     pub(super) snippet: Snippet,
+
+    pub(super) kind: Option<OccurrenceKind>,
+}
+
+impl SymbolOccurrence {
+    fn set_kind(&mut self, kind: OccurrenceKind) {
+        self.kind = Some(kind);
+    }
+}
+
+#[derive(Debug, Serialize, ToSchema, Copy, Clone)]
+#[serde(rename_all = "lowercase")]
+pub(super) enum OccurrenceKind {
+    Definition,
+    Reference,
+    Modification,
+    Return,
+}
+
+impl TryFrom<usize> for OccurrenceKind {
+    type Error = ();
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::Definition),
+            2 => Ok(Self::Reference),
+            3 => Ok(Self::Modification),
+            4 => Ok(Self::Return),
+            _ => Err(()),
+        }
+    }
 }
 
 fn handle_definition_local(
@@ -221,7 +246,11 @@ fn to_occurrence(doc: &ContentDocument, range: TextRange) -> SymbolOccurrence {
         .expand(highlight, src, line_end_indices)
         .reify(src, &[]);
 
-    SymbolOccurrence { range, snippet }
+    SymbolOccurrence {
+        range,
+        snippet,
+        kind: None,
+    }
 }
 
 // helper to merge two sets of file-symbols and omit the empty results
@@ -297,7 +326,32 @@ pub(super) async fn handle(
             // merge the two
             let references = merge([local_references], repo_wide_references);
 
-            Ok(json(TokenInfoResponse::Definition { references }))
+            let selections = gpt_handler(&app, Arc::clone(&state), &references).await;
+            let flattened = references
+                .into_iter()
+                .flat_map(|fs| fs.flatten())
+                .collect::<Vec<_>>();
+            let mut selected = vec![];
+
+            for (selected_idx, kind) in selections {
+                let (item_path, mut item) = flattened[selected_idx - 1].clone();
+                if let Some(kind) = OccurrenceKind::try_from(kind).ok() {
+                    item.set_kind(kind);
+                };
+                selected.push((item_path, item));
+            }
+
+            let file_symbols: Vec<FileSymbols> = selected
+                .into_iter()
+                .fold(HashMap::new(), |mut map, (item_path, item)| {
+                    map.entry(item_path).or_insert_with(Vec::new).push(item);
+                    map
+                })
+                .into_iter()
+                .map(|(k, v)| FileSymbols { file: k, data: v })
+                .collect::<Vec<_>>();
+
+            Ok(json(TokenInfoResponse { data: file_symbols }))
         }
 
         // we are at a reference:
@@ -323,23 +377,35 @@ pub(super) async fn handle(
             let references = merge([local_references], repo_wide_references);
 
             tracing::info!("calling gpt handler");
-            let selections = gpt_handler(&app, Arc::clone(&state), &definitions).await;
-            let selected_defs = if selections.is_empty() {
-                definitions.clone()
-            } else {
-                let mut tmp = vec![];
-                for idx in selections {
-                    if let Some(t) = definitions.get(idx - 1) {
-                        tmp.push(t.clone())
-                    }
-                }
-                tmp
-            };
+            let all_symbols = merge(definitions, references);
 
-            Ok(json(TokenInfoResponse::Reference {
-                definitions: selected_defs,
-                references,
-            }))
+            let selections = gpt_handler(&app, Arc::clone(&state), &all_symbols).await;
+            let flattened = all_symbols
+                .into_iter()
+                .flat_map(|fs| fs.flatten())
+                .collect::<Vec<_>>();
+            let mut selected = vec![];
+
+            for (selected_idx, kind) in selections {
+                let (item_path, mut item) = flattened[selected_idx - 1].clone();
+                if let Some(kind) = OccurrenceKind::try_from(kind).ok() {
+                    item.set_kind(kind);
+                };
+                println!("{item_path} ({:?}): `{}`", item.kind, item.snippet.data);
+                selected.push((item_path, item));
+            }
+
+            let file_symbols: Vec<FileSymbols> = selected
+                .into_iter()
+                .fold(HashMap::new(), |mut map, (item_path, item)| {
+                    map.entry(item_path).or_insert_with(Vec::new).push(item);
+                    map
+                })
+                .into_iter()
+                .map(|(k, v)| FileSymbols { file: k, data: v })
+                .collect::<Vec<_>>();
+
+            Ok(json(TokenInfoResponse { data: file_symbols }))
         }
         _ => Err(Error::user(
             "provided range is not eligible for intelligence",
@@ -351,40 +417,45 @@ const DELIMITER: &str = "=====";
 async fn gpt_filter(file_symbols: &[FileSymbols]) -> api::Messages {
     let symbols = file_symbols
         .iter()
+        .flat_map(|fs| fs.flatten())
         .zip(1..)
-        .flat_map(|(fs, idx)| {
-            fs.data
-                .iter()
-                .map(|occurrence| {
-                    let name = occurrence.snippet.highlight_strs()[0];
-                    format!(
-                        "{}. definition of `{}` in file `{}`:\n{}\n=====\n",
-                        idx, name, fs.file, occurrence.snippet.data
-                    )
-                })
-                .collect::<Vec<_>>()
+        .map(|((file, occurrence), idx)| {
+            let name = occurrence.snippet.highlight_strs()[0];
+            format!(
+                "{}. `{}` in file `{}`:\n{}\n=====\n",
+                idx, name, file, occurrence.snippet.data
+            )
         })
         .collect::<String>();
-    let mut prompt = r#"Below are a list of snippets separated by `=====`. Your job is to find which one of these snippets
-contains a valid definition. Output list of indices of valid definitions in the format of a JSON array. Do not include snippets which look like
-imports. You must select at least one index.
+    let mut prompt = r#"Below are a list of snippets separated by `=====`. Your job is to annotate these snippets as one 
+of the following: 1 for Definition, 2 for Reference, 3 for Modification and 4 for Returned, from the perspective of the 
+SUBJECT in the snippet:
+- Definition: the SUBJECT is being defined in this snippet
+- Reference: the SUBJECT is being referenced in this snippet
+- Modification: the SUBJECT is being modified in this snippet
+- Returned: the SUBJECT is being returned in this snippet
 
-For example, if given the following list of snippets:
+Also filter out those snippets which are irrelevant, such as imports of the SUBJECT.
 
-1. definition of `HashMap` in file `src/main.rs`
+For example, if given the following list of snippets, with `HashMap` as the SUBJECT:
+
+1. `HashMap` in file `src/main.rs`
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::BTreeSet;
 
-2. definition of `HashMap` in file `src/map.rs`
+2. `HashMap` in file `src/map.rs`
 struct HashMap<T> {
     bucket: Vec<T>,
     capacity: usize
 
-3. definition of `HashMap` in file `src/util.rs`
+3. `HashMap` in file `src/util.rs`
 use crate::map::HashMap;
 
-Output:[2]
+4. `HashMap` in file `src/util.rs`
+let util: HashMap<T, V> = HashMap::new();
+
+Output:[[2,1],[4,2]]
 
 Now, complete the answer for the given snippets:
 
@@ -404,7 +475,7 @@ async fn gpt_handler(
     app: &Application,
     state: Arc<AnswerState>,
     file_symbols: &[FileSymbols],
-) -> Vec<usize> {
+) -> Vec<(usize, usize)> {
     let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
         let Some(cred) = app.credentials.github() else {
             panic!("no gh token");
@@ -443,13 +514,14 @@ async fn gpt_handler(
 
     let prompt = gpt_filter(file_symbols).await;
     let answer = answer_api_client
-        .send(prompt, 50, 0.9, api::Provider::OpenAi, vec![])
+        .send(prompt, 50, 0.0, api::Provider::OpenAi, vec![])
         .await
         .unwrap()
         .try_collect::<String>()
         .await
         .unwrap();
-    let selections = serde_json::from_str(&answer).unwrap_or_else(|_| Vec::new());
+    let selections: Vec<(usize, usize)> =
+        serde_json::from_str(&answer).unwrap_or_else(|_| Vec::new());
     selections
 }
 
