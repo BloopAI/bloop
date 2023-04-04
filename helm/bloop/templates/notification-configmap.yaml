@@ -14,6 +14,6 @@ data:
     curl -X POST https://app.loops.so/api/v1/events/send \
       -H "Content-Type: application/json; charset=utf-8" \
       -H "Authorization: Bearer {{ .Values.bloop.loopsAPIKey }}" \
-      --data '{"email": "{{ .Values.bloop.githubOrgOwnerEmail }}", "firstName": "{{ .Values.bloop.githubOrgOwnerFirstname }}", "lastName": "{{ .Values.bloop.githubOrgOwnerLastName }}", "eventName": "{{ .Values.bloop.loopsEventName }}", "instanceUrl": "{{ .Values.bloop.githubOrgName }}.bloop.ai"}'
+      --data '{"email": "{{ .Values.bloop.githubOrgOwnerEmail }}", "firstName": "{{ .Values.bloop.githubOrgOwnerFirstName }}", "lastName": "{{ .Values.bloop.githubOrgOwnerLastName }}", "eventName": "{{ .Values.bloop.loopsEventName }}", "instanceUrl": "{{ .Values.bloop.githubOrgName }}.bloop.ai"}'
     echo
     echo "Done"
