@@ -25,6 +25,7 @@ pub struct ContentDocument {
     pub repo_ref: String,
     pub line_end_indices: Vec<u32>,
     pub symbol_locations: SymbolLocations,
+    pub branches: Option<String>,
 }
 
 pub struct FileDocument {
@@ -71,6 +72,7 @@ impl DocumentRead for ContentReader {
             .priority(&[schema.relative_path])
             .literal(schema.relative_path, |q| q.path.clone())
             .literal(schema.repo_name, |q| q.repo.clone())
+            .literal(schema.branches, |q| q.branch.clone())
             .byte_string(schema.lang, |q| q.lang.as_ref())
             .literal(schema.symbols, |q| {
                 q.target.as_ref().and_then(Target::symbol).cloned()
@@ -87,6 +89,7 @@ impl DocumentRead for ContentReader {
         let repo_name = read_text_field(&doc, schema.repo_name);
         let content = read_text_field(&doc, schema.content);
         let lang = read_lang_field(&doc, schema.lang);
+        let branches = read_lang_field(&doc, schema.branches);
 
         let line_end_indices = doc
             .get_first(schema.line_end_indices)
@@ -113,6 +116,7 @@ impl DocumentRead for ContentReader {
             symbol_locations,
             line_end_indices,
             lang,
+            branches,
         }
     }
 }

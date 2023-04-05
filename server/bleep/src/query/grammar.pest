@@ -23,13 +23,14 @@ regex_quoted_literal  = @{ (!(regex_quote | "\\") ~ ANY)* ~ (escape ~ regex_quot
 escape  = @{ "\\" ~ ANY }
 
 // Labels are broken out to rules so we can add arguments and options.
-label = _{ content | repo | org | symbol | path | lang }
+label = _{ content | repo | org | symbol | path | lang | branch }
 
 content = ${ "content:" ~ literal }
 repo = ${ "repo:" ~ literal }
 org = ${ "org:" ~ literal }
 symbol = ${ "symbol:" ~ literal }
 path = ${ "path:" ~ literal }
+branch = ${ "branch:" ~ literal }
 lang = ${ "lang:" ~ unquoted_literal }
 
 mode = _{ case | open | global_regex }
