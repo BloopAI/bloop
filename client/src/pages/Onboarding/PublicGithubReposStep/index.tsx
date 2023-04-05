@@ -32,7 +32,6 @@ const PublicGithubReposStep = ({
   const { trackReposSelected } = useAnalytics();
   const [isVerifying, setVerifying] = useState(false);
   const [errorVerifying, setErrorVerifying] = useState(false);
-  const [isVerified, setVerified] = useState(false);
 
   const handleSubmit = useCallback(
     (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
@@ -72,51 +71,46 @@ const PublicGithubReposStep = ({
   const handleAddRepo = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
-      if (!isVerified) {
-        setVerifying(true);
-        const cleanRef = newRepoValue
-          .replace('https://', '')
-          .replace('github.com/', '')
-          .replace(/\/$/, '');
-        setNewRepoValue(cleanRef);
-        axios(`https://api.github.com/repos/${cleanRef}`)
-          .then((resp) => {
-            if (resp?.data?.visibility === 'public') {
-              setVerified(true);
-            } else {
-              setErrorVerifying(true);
-            }
-          })
-          .catch((err) => {
-            console.log(err);
+      setVerifying(true);
+      const cleanRef = newRepoValue
+        .replace('https://', '')
+        .replace('github.com/', '')
+        .replace(/\/$/, '');
+      setNewRepoValue(cleanRef);
+      axios(`https://api.github.com/repos/${cleanRef}`)
+        .then((resp) => {
+          if (resp?.data?.visibility === 'public') {
+            const [orgName, repoName] = cleanRef.split('/');
+            setRepos((prev) => [
+              ...prev,
+              {
+                folderName: orgName,
+                name: newRepoValue,
+                shortName: repoName,
+                last_index: '',
+                last_update: '',
+                local_duplicates: [],
+                most_common_lang: '',
+                ref: `github.com/${newRepoValue}`,
+                selected: true,
+                provider: RepoProvider.GitHub,
+                sync_status: SyncStatus.Uninitialized,
+              },
+            ]);
+            setNewRepoValue('');
+          } else {
             setErrorVerifying(true);
-          })
-          .finally(() => {
-            setVerifying(false);
-          });
-      } else {
-        const [orgName, repoName] = newRepoValue.split('/');
-        setRepos((prev) => [
-          ...prev,
-          {
-            folderName: orgName,
-            name: newRepoValue,
-            shortName: repoName,
-            last_index: '',
-            last_update: '',
-            local_duplicates: [],
-            most_common_lang: '',
-            ref: `github.com/${newRepoValue}`,
-            selected: true,
-            provider: RepoProvider.GitHub,
-            sync_status: SyncStatus.Uninitialized,
-          },
-        ]);
-        setNewRepoValue('');
-        setVerified(false);
-      }
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+          setErrorVerifying(true);
+        })
+        .finally(() => {
+          setVerifying(false);
+        });
     },
-    [newRepoValue, isVerified],
+    [newRepoValue],
   );
 
   return (
@@ -133,7 +127,6 @@ const PublicGithubReposStep = ({
               name="new-repo"
               onChange={(e) => {
                 setErrorVerifying(false);
-                setVerified(false);
                 setNewRepoValue(e.target.value);
               }}
               variant="outlined"
@@ -143,17 +136,12 @@ const PublicGithubReposStep = ({
                   ? "This repository isn't public  / We couldn't find this repository"
                   : undefined
               }
-              success={isVerified}
             />
             <Button
               type="submit"
               disabled={!newRepoValue || errorVerifying || isVerifying}
             >
-              {isVerifying
-                ? 'Verifying access...'
-                : newRepoValue && !isVerified
-                ? 'Verify'
-                : 'Add'}
+              {isVerifying ? 'Verifying access...' : 'Add'}
             </Button>
           </form>
           {!!repos.length && (
@@ -162,6 +150,10 @@ const PublicGithubReposStep = ({
               setRepos={() => {}}
               source={'GitHub'}
               activeTab={0}
+              removable
+              handleRemoveOne={(repoRef) =>
+                setRepos((prev) => prev.filter((r) => r.ref !== repoRef))
+              }
             />
           )}
         </div>
