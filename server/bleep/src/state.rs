@@ -114,8 +114,7 @@ impl ToString for ApplicationSeed {
 
 impl Default for ApplicationSeed {
     fn default() -> Self {
-        let seed: [u8; 32] = rand::random();
-        Self(blake3::hash(&seed).to_string())
+        Self(uuid::Uuid::new_v4().to_string())
     }
 }
 
@@ -123,19 +122,19 @@ impl Default for ApplicationSeed {
 #[derive(Serialize, Deserialize)]
 pub struct UserState {
     #[serde(default)]
-    seed: [u8; 32],
+    tracking_id: String,
 }
 
 impl UserState {
     pub fn tracking_id(&self) -> String {
-        blake3::hash(&self.seed).to_string()
+        self.tracking_id.clone()
     }
 }
 
 impl Default for UserState {
     fn default() -> Self {
-        let seed = rand::random();
-        Self { seed }
+        let tracking_id = uuid::Uuid::new_v4().to_string();
+        Self { tracking_id }
     }
 }
 
