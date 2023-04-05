@@ -48,6 +48,8 @@ pub struct StateSource {
     cookie_key: Option<PathBuf>,
 }
 
+/// Unified wrapper to persist state in the central state-store.
+/// Every model is stored in its own file as a pretty-printed json.
 pub struct PersistedState<T> {
     path: PathBuf,
     state: Arc<T>,
