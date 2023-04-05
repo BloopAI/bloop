@@ -44,9 +44,9 @@ const PublicGithubReposStep = ({
         [STEP_KEY]: reposToSync,
       }));
 
-      const githubRepos = onBoardingState[GITHUB_STEP_KEY];
+      const githubRepos = onBoardingState[GITHUB_STEP_KEY] || [];
 
-      const localRepos = onBoardingState[LOCAL_STEP_KEY];
+      const localRepos = onBoardingState[LOCAL_STEP_KEY] || [];
 
       trackReposSelected({
         githubRepos: githubRepos.length,

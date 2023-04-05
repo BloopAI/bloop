@@ -49,7 +49,7 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
               !repos.find((repo) => r.ref === repo.ref),
           )
           .map((r) => r.ref) || [];
-      const githubRepos = onBoardingState[GITHUB_STEP_KEY];
+      const githubRepos = onBoardingState[GITHUB_STEP_KEY] || [];
       const publicGithubRepos = onBoardingState[PUBLIC_GITHUB_STEP_KEY];
       trackReposSelected({
         localRepos: reposToSync.length,
