@@ -36,12 +36,15 @@ const textsMap = [
         >
           <GitHubLogo /> Connect GitHub
         </Button>
+        <Button variant="secondary" key="sync public" onClick={openSettings}>
+          <GitHubLogo /> Add public repo
+        </Button>
         <div className="flex items-center">
           <span className="flex-1 h-px bg-gray-800" />
           <span className="text-gray-600 mx-3">or</span>
           <span className="flex-1 h-px bg-gray-800" />
         </div>
-        <Button variant="secondary" key="sync local" onClick={openSettings}>
+        <Button variant="tertiary" key="sync local" onClick={openSettings}>
           Sync Local repos
         </Button>
       </>
@@ -63,9 +66,14 @@ const textsMap = [
     title: 'No repositories',
     description: 'Connect a GitHub account to sync your code to bloop',
     buttons: (openSettings: () => void) => (
-      <Button variant="secondary" key="connect github" onClick={openSettings}>
-        <GitHubLogo /> Connect GitHub
-      </Button>
+      <>
+        <Button variant="primary" key="connect github" onClick={openSettings}>
+          <GitHubLogo /> Connect GitHub
+        </Button>
+        <Button variant="secondary" key="sync public" onClick={openSettings}>
+          <GitHubLogo /> Add public repo
+        </Button>
+      </>
     ),
   },
 ];
