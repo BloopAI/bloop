@@ -16,43 +16,34 @@ export const TooltipCodeDefault = () => {
             language={'javascript'}
             onHover={() => {}}
             repoName={'bloop'}
+            queryParams={''}
             onRefDefClick={() => {}}
             data={{
-              references: [
+              data: [
                 {
-                  path: '/src/root/service/longFolderName/oneMoreNestedFolder/index.tsx',
-                  items: [
+                  file: '/src/root/service/longFolderName/oneMoreNestedFolder/index.tsx',
+                  data: [
                     {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                    },
-                  ],
-                },
-              ],
-              definitions: [
-                {
-                  path: '/src/root/service',
-                  items: [
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                    },
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                    },
-                  ],
-                },
-                {
-                  path: '/src/root/controller',
-                  items: [
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                    },
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
+                      kind: 'reference',
+                      start: {
+                        byte: 0,
+                        line: 1,
+                        column: 1,
+                      },
+                      end: {
+                        byte: 3,
+                        line: 1,
+                        column: 3,
+                      },
+                      snippet: {
+                        data: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
+                        highlights: [{ start: 0, end: 3 }],
+                        symbols: [],
+                        line_range: {
+                          start: 12,
+                          end: 12,
+                        },
+                      },
                     },
                   ],
                 },
@@ -66,43 +57,34 @@ export const TooltipCodeDefault = () => {
             language={'javascript'}
             onHover={() => {}}
             onRefDefClick={() => {}}
+            queryParams={''}
             repoName={'bloop'}
             data={{
-              references: [
+              data: [
                 {
-                  path: '/src/root/service',
-                  items: [
+                  file: '/src/root/service/longFolderName/oneMoreNestedFolder/index.tsx',
+                  data: [
                     {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                    },
-                  ],
-                },
-              ],
-              definitions: [
-                {
-                  path: '/src/root/service',
-                  items: [
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                    },
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                    },
-                  ],
-                },
-                {
-                  path: '/src/root/controller',
-                  items: [
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                    },
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
+                      kind: 'reference',
+                      start: {
+                        byte: 0,
+                        line: 1,
+                        column: 1,
+                      },
+                      end: {
+                        byte: 3,
+                        line: 1,
+                        column: 3,
+                      },
+                      snippet: {
+                        data: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
+                        highlights: [{ start: 0, end: 3 }],
+                        symbols: [],
+                        line_range: {
+                          start: 12,
+                          end: 12,
+                        },
+                      },
                     },
                   ],
                 },
@@ -116,43 +98,34 @@ export const TooltipCodeDefault = () => {
             language={'javascript'}
             onHover={() => {}}
             onRefDefClick={() => {}}
+            queryParams={''}
             repoName={'bloop'}
             data={{
-              references: [
+              data: [
                 {
-                  path: '/src/root/service',
-                  items: [
+                  file: '/src/root/service/longFolderName/oneMoreNestedFolder/index.tsx',
+                  data: [
                     {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                    },
-                  ],
-                },
-              ],
-              definitions: [
-                {
-                  path: '/src/root/service',
-                  items: [
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                    },
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                    },
-                  ],
-                },
-                {
-                  path: '/src/root/controller',
-                  items: [
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                    },
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
+                      kind: 'reference',
+                      start: {
+                        byte: 0,
+                        line: 1,
+                        column: 1,
+                      },
+                      end: {
+                        byte: 3,
+                        line: 1,
+                        column: 3,
+                      },
+                      snippet: {
+                        data: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
+                        highlights: [{ start: 0, end: 3 }],
+                        symbols: [],
+                        line_range: {
+                          start: 12,
+                          end: 12,
+                        },
+                      },
                     },
                   ],
                 },
