@@ -436,6 +436,85 @@ impl Indexer<File> {
         }
     }
 
+    pub async fn fuzzy_path(&self, query_str: &str) -> Vec<tantivy::Document> {
+        use tantivy::collector::TopDocs;
+        use tantivy::query::{BooleanQuery, FuzzyTermQuery, QueryParser, TermQuery, TermSetQuery};
+        use tantivy::schema::*;
+        use tantivy::tokenizer::NgramTokenizer;
+        use tantivy::Term;
+        use tantivy::{doc, Index};
+
+        let reader = self.reader.read().await;
+        let searcher = reader.searcher();
+
+        let file_index = searcher.index();
+        let file_source = &self.source;
+
+        fn trigrams(s: &str) -> impl Iterator<Item = String> {
+            let mut chars = s.chars().collect::<Vec<_>>();
+
+            std::iter::from_fn(move || match chars.len() {
+                0 => None,
+                1 | 2 | 3 => Some(std::mem::take(&mut chars).into_iter().collect()),
+                _ => {
+                    let out = chars.iter().take(3).collect();
+                    chars.remove(0);
+                    Some(out)
+                }
+            })
+        }
+
+        let collector = TopDocs::with_limit(100);
+        let mut hits = trigrams(&query_str)
+            .map(|token| Term::from_field_text(self.source.relative_path, dbg!(&token)))
+            .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
+            .flat_map(|term_query| {
+                let score = term_query.term().as_str().unwrap().len();
+                searcher
+                    .search(&term_query, &collector)
+                    .expect("failed to search index")
+                    .into_iter()
+                    .map(move |(_, addr)| (addr, score))
+            })
+            .fold(HashMap::new(), |mut map, (hit, score)| {
+                *map.entry(hit).or_insert(0) += score;
+                map
+            })
+            .into_iter()
+            .collect::<Vec<_>>();
+
+        hits.sort_by(|(_, a), (_, b)| b.cmp(a));
+
+        hits.into_iter()
+            .map(|(addr, score)| {
+                let retrieved_doc = searcher
+                    .doc(addr)
+                    .expect("failed to get document by address");
+                retrieved_doc
+            })
+            .collect()
+        // query the `relative_path` field of the `File` index, using tantivy's query language
+        //
+        // XXX: can we use the bloop query language here instead?
+        // let term =
+        //     tantivy::Term::from_field_bytes(self.source.raw_relative_path, query_str.as_bytes());
+        // let query = crate::query::fuzzy::BytesFuzzyTermQuery::new(term, 1, true);
+
+        // searcher
+        //     .search(&query, &collector)
+        //     .expect("failed to search index")
+        //     .into_iter()
+        //     .map(|(_, doc_addr)| {
+        //         let retrieved_doc = searcher
+        //             .doc(doc_addr)
+        //             .expect("failed to get document by address");
+        //         let result = ContentReader.read_document(&self.source, retrieved_doc);
+        //         println!("{}", result.relative_path);
+        //         result
+        //     })
+        //     .collect()
+    }
+
     // Produce all files in a repo
     //
     // TODO: Look at this again when:

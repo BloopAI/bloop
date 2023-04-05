@@ -435,48 +435,54 @@ impl ExecuteQuery for FileReader {
         queries: &[parser::Query<'_>],
         q: &ApiQuery,
     ) -> anyhow::Result<QueryResponse> {
-        let (filter_regexes, byte_filter_regexes): (Vec<_>, Vec<_>) = queries
+        let path_query = queries
             .iter()
             .filter(|q| self.query_matches(q))
-            .filter_map(|q| {
-                let regex_str = q.path.as_ref()?.regex_str();
-                let regex = Regex::new(&regex_str).ok()?;
-                let byte_regex = ByteRegex::new(&regex_str).ok()?;
-                Some((regex, byte_regex))
-            })
-            .unzip();
+            .filter_map(|q| Some(q.path.as_ref()?.regex_str().to_string()))
+            .collect::<Vec<_>>();
 
-        let top_k = TopDocs::with_limit(q.limit()).and_offset(q.offset());
+        let docs = indexer.fuzzy_path(&path_query[0]).await;
 
-        let path_field = indexer.source.raw_relative_path;
-        let repo_field = indexer.source.raw_repo_name;
-        let lang_field = indexer.source.lang;
+        // let (filter_regexes, byte_filter_regexes): (Vec<_>, Vec<_>) = queries
+        //     .iter()
+        //     .filter(|q| self.query_matches(q))
+        //     .filter_map(|q| {
+        //         let regex_str = q.path.as_ref()?.regex_str();
+        //         let regex = Regex::new(&regex_str).ok()?;
+        //         let byte_regex = ByteRegex::new(&regex_str).ok()?;
+        //         Some((regex, byte_regex))
+        //     })
+        //     .unzip();
 
-        let total_count_collector = tantivy::collector::Count;
-        let lang_stats_collector = FrequencyCollector(lang_field);
-        let repo_stats_collector = FrequencyCollector(repo_field);
+        // let top_k = TopDocs::with_limit(q.limit()).and_offset(q.offset());
 
-        let mut metadata_collector = MultiCollector::new();
-        let total_count_handle = metadata_collector.add_collector(total_count_collector);
-        let lang_stats_handle = metadata_collector.add_collector(lang_stats_collector);
-        let repo_stats_handle = metadata_collector.add_collector(repo_stats_collector);
+        // let path_field = indexer.source.raw_relative_path;
+        // let repo_field = indexer.source.raw_repo_name;
+        // let lang_field = indexer.source.lang;
 
-        let collector = BytesFilterCollector::new(
-            path_field,
-            move |b| byte_filter_regexes.iter().any(|r| r.is_match(b)), // a doc is accepted if it contains at least 1 target
-            (top_k, metadata_collector),
-        );
+        // let total_count_collector = tantivy::collector::Count;
+        // let lang_stats_collector = FrequencyCollector(lang_field);
+        // let repo_stats_collector = FrequencyCollector(repo_field);
 
-        let mut results = indexer.query(queries.iter(), self, collector).await?;
+        // let mut metadata_collector = MultiCollector::new();
+        // let total_count_handle = metadata_collector.add_collector(total_count_collector);
+        // let lang_stats_handle = metadata_collector.add_collector(lang_stats_collector);
+        // let repo_stats_handle = metadata_collector.add_collector(repo_stats_collector);
 
-        let data = results
-            .docs
+        // let collector = BytesFilterCollector::new(
+        //     path_field,
+        //     move |b| byte_filter_regexes.iter().any(|r| r.is_match(b)), // a doc is accepted if it contains at least 1 target
+        //     (top_k, metadata_collector),
+        // );
+
+        // let mut results = indexer.query(queries.iter(), self, collector).await?;
+
+        // let data = results
+        let data = docs
+            .into_iter()
+            .map(|d| self.read_document(&indexer.source, d))
             .map(|f| {
                 let mut relative_path = HighlightedString::new(f.relative_path);
-
-                for regex in &filter_regexes {
-                    relative_path.apply_regex(regex);
-                }
 
                 QueryResult::FileResult(FileResultData {
                     relative_path,
@@ -487,11 +493,12 @@ impl ExecuteQuery for FileReader {
             })
             .collect::<Vec<QueryResult>>();
 
-        let total_count = total_count_handle.extract(&mut results.metadata);
+        // let total_count = total_count_handle.extract(&mut results.metadata);
+        let total_count = 0;
 
-        let stats = ResultStats::default()
-            .with_lang_freqs(lang_stats_handle.extract(&mut results.metadata))
-            .with_repo_freqs(repo_stats_handle.extract(&mut results.metadata));
+        let stats = ResultStats::default();
+        //     .with_lang_freqs(lang_stats_handle.extract(&mut results.metadata))
+        //     .with_repo_freqs(repo_stats_handle.extract(&mut results.metadata));
 
         let metadata = PagingMetadata::new(q.page, q.page_size, Some(total_count));
 

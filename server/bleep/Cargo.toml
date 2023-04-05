@@ -108,6 +108,10 @@ ndarray = "0.15"
 uuid = { version = "1.2.2", features = ["v4", "fast-rng"] }
 jsonwebtoken = { version = "8.2.0", features = ["use_pem"] }
 
+# bytes fuzzy filter
+levenshtein_automata = "0.2.1"
+tantivy-fst = "0.4.0"
+
 # telemetry
 sentry = "0.29.2"
 rudderanalytics = "1.1.2"

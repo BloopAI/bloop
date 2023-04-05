@@ -16,6 +16,7 @@ pub mod answer;
 mod autocomplete;
 mod config;
 mod file;
+mod fuzzy;
 mod github;
 mod hoverable;
 mod index;
@@ -66,6 +67,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/token-info", get(intelligence::handle))
         // misc
         .route("/file/*ref", get(file::handle))
+        .route("/fuzzy", get(fuzzy::handle))
         .route("/semantic/chunks", get(semantic::raw_chunks))
         .route(
             "/answer",
