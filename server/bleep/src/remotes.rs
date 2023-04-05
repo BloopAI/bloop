@@ -15,7 +15,7 @@ use tracing::{error, warn};
 
 use crate::{
     remotes,
-    repo::{Backend, RepoRef, Repository, SyncStatus},
+    repo::{Backend, RepoError, RepoRef, Repository, SyncStatus},
     Application,
 };
 
@@ -50,6 +50,9 @@ pub(crate) enum RemoteError {
 
     #[error("operation not supported: {0}")]
     NotSupported(&'static str),
+
+    #[error("persistence error: {0}")]
+    Repo(#[from] RepoError),
 
     #[error("IO error: {0}")]
     IO(#[from] std::io::Error),
@@ -329,6 +332,7 @@ impl BackendCredential {
             .await
             .unwrap();
 
+        app.config.source.save_pool(app.repo_pool.clone())?;
         synced
     }
 }
