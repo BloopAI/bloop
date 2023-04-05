@@ -146,6 +146,7 @@ impl StateSource {
                         .or_insert_with(|| Repository::local_from(&reporef));
                 }
 
+                self.save_pool(state.clone())?;
                 Ok(state)
             }
             (None, None) => Err(RepoError::NoSourceGiven),
