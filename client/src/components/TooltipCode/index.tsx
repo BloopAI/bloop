@@ -204,7 +204,7 @@ const TooltipCode = ({
               />
             </div>
             {!isExplanationOpen && (
-              <Button size="small" onClick={onExplain}>
+              <Button size="small" onClick={onExplain} disabled>
                 <Sparkle />
                 Explain
               </Button>
@@ -248,7 +248,7 @@ const TooltipCode = ({
                     .map((line, i) => (
                       <div
                         key={i}
-                        className="py-2 px-3 code-s flex gap-1 cursor-pointer"
+                        className="py-2 px-3 code-s flex gap-1 cursor-pointer overflow-auto"
                         onClick={() =>
                           onRefDefClick(line.snippet.line_range.start, d.file)
                         }
@@ -261,7 +261,7 @@ const TooltipCode = ({
                           {line.kind.slice(0, 3)}
                         </div>
                         <Code
-                          code={line.snippet.data}
+                          code={line.snippet.data.trim()}
                           lineStart={line.snippet.line_range.start}
                           language={language}
                           removePaddings
