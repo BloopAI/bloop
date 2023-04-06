@@ -31,7 +31,7 @@ export const useSearch = <T,>(
   const [status, setStatus] = useState<Status<T>>({
     loading: false,
   });
-  const { deviceId, apiUrl } = useContext(DeviceContext);
+  const { envConfig, apiUrl } = useContext(DeviceContext);
 
   const { setLastQueryTime, searchType } = useContext(SearchContext);
   const { trackSearch } = useAnalytics();
@@ -52,10 +52,9 @@ export const useSearch = <T,>(
       case SearchType.NL:
         prevEventSource?.close();
         const eventSource = new EventSource(
-          `${apiUrl.replace(
-            'https:',
-            '',
-          )}/answer?q=${query}&user_id=${deviceId}`,
+          `${apiUrl.replace('https:', '')}/answer?q=${query}&user_id=${
+            envConfig.tracking_id
+          }`,
         );
         prevEventSource = eventSource;
         let i = 0;

@@ -39,7 +39,7 @@ const Message = ({
   currentlyViewedSnippets,
   onViewSnippetsClick,
 }: Props) => {
-  const { deviceId } = useContext(DeviceContext);
+  const { envConfig } = useContext(DeviceContext);
   const { query } = useAppNavigation();
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
@@ -83,15 +83,16 @@ const Message = ({
       setIsDownvote(!isUpvote);
       trackUpvote(isUpvote, query, answer || '', searchId);
       return saveUpvote({
-        unique_id: deviceId,
+        unique_id: envConfig.tracking_id || '',
         is_upvote: isUpvote,
         query: query,
         snippet_id: searchId,
         text: answer || '',
       });
     },
-    [deviceId, query, RiveUpvote, RiveDownvote],
+    [envConfig.tracking_id, query, RiveUpvote, RiveDownvote],
   );
+
   return (
     <div
       className={`max-w-[80%] w-fit relative group ${

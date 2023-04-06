@@ -28,7 +28,7 @@ const DataFormStep = ({ handleNext }: Props) => {
     emailError: null,
   });
   const { onBoardingState, setOnBoardingState } = useContext(UIContext);
-  const { deviceId } = useContext(DeviceContext);
+  const { envConfig } = useContext(DeviceContext);
 
   useEffect(() => {
     const savedForm = onBoardingState[STEP_KEY];
@@ -49,12 +49,12 @@ const DataFormStep = ({ handleNext }: Props) => {
           email: form.email,
           first_name: form.firstName,
           last_name: form.lastName,
-          unique_id: deviceId,
+          unique_id: envConfig.tracking_id || '',
         });
         handleNext();
       }
     },
-    [form, deviceId],
+    [form, envConfig.tracking_id],
   );
 
   const handleSkip = useCallback(

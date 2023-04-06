@@ -9,7 +9,6 @@ export type DeviceContextType = {
     multiple?: boolean;
   }) => Promise<null | string | string[]>;
   homeDir: string;
-  deviceId: string;
   listen: (
     e: string,
     cb: (event: { payload: { message: string } }) => void,
@@ -30,6 +29,10 @@ export type DeviceContextType = {
     analytics_data_plane?: string;
     analytics_key_fe?: string;
     sentry_dsn_fe?: string;
+    user_login?: string | null;
+    org_name?: string | null;
+    tracking_id?: string;
+    device_id?: string;
   };
   showNativeMessage: (m: string, options?: any) => Promise<void> | void;
 };
@@ -39,7 +42,6 @@ export const DeviceContext = createContext<DeviceContextType>({
   openLink: (p) => {},
   chooseFolder: (conf) => Promise.resolve(null),
   homeDir: '$HOME',
-  deviceId: '',
   listen: () => {},
   os: {
     arch: '',

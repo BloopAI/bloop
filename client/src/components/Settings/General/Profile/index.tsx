@@ -16,7 +16,7 @@ import { DeviceContext } from '../../../../context/deviceContext';
 
 const ProfileSettings = () => {
   const { onBoardingState, setOnBoardingState } = useContext(UIContext);
-  const { deviceId } = useContext(DeviceContext);
+  const { envConfig } = useContext(DeviceContext);
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -57,10 +57,10 @@ const ProfileSettings = () => {
         email: form.email,
         first_name: form.firstName,
         last_name: form.lastName,
-        unique_id: deviceId,
+        unique_id: envConfig.tracking_id || '',
       });
     },
-    [form],
+    [form, envConfig.tracking_id],
   );
 
   return (

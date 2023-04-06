@@ -8,18 +8,20 @@ import {
 
 interface AnalyticsProviderProps {
   children: React.ReactNode;
-  deviceId?: string;
   forceAnalytics?: boolean;
   isSelfServe?: boolean;
   envConfig: {
     analytics_data_plane?: string;
     analytics_key_fe?: string;
+    user_login?: string | null;
+    org_name?: string | null;
+    tracking_id?: string;
+    device_id?: string;
   };
 }
 
 export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   children,
-  deviceId,
   forceAnalytics,
   isSelfServe,
   envConfig,
@@ -55,12 +57,20 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   };
 
   useEffect(() => {
-    if (analyticsLoaded && deviceId) {
-      analytics.identify(deviceId, {
-        isSelfServe: isSelfServe,
-      });
+    if (analyticsLoaded && envConfig.tracking_id) {
+      analytics.identify(
+        envConfig.tracking_id,
+        {
+          isSelfServe: isSelfServe,
+          githubUsername: envConfig.user_login || '',
+          orgName: envConfig.org_name || '',
+          deviceId: envConfig.device_id?.trim(),
+        },
+        {},
+        () => {},
+      );
     }
-  }, [analyticsLoaded, deviceId]);
+  }, [analyticsLoaded, envConfig.tracking_id]);
 
   useEffect(() => {
     if (isAnalyticsAllowed) {

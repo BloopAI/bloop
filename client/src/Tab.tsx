@@ -36,7 +36,6 @@ function Tab({ deviceContextValue, isActive, tab }: Props) {
     <div className={`${isActive ? '' : 'hidden'} `}>
       <BrowserRouter>
         <AnalyticsContextProvider
-          deviceId={deviceContextValue.deviceId}
           forceAnalytics={deviceContextValue.forceAnalytics}
           isSelfServe={deviceContextValue.isSelfServe}
           envConfig={deviceContextValue.envConfig}
