@@ -450,6 +450,7 @@ impl Indexer<File> {
         let file_index = searcher.index();
         let file_source = &self.source;
 
+        // lifted from query::compiler
         fn trigrams(s: &str) -> impl Iterator<Item = String> {
             let mut chars = s.chars().collect::<Vec<_>>();
 
@@ -465,19 +466,21 @@ impl Indexer<File> {
         }
 
         let collector = TopDocs::with_limit(100);
+
+        // hits is a mapping between a document address and the number of trigrams in it that
+        // matched the query
         let mut hits = trigrams(&query_str)
-            .map(|token| Term::from_field_text(self.source.relative_path, dbg!(&token)))
+            .map(|token| Term::from_field_text(self.source.relative_path, &token))
             .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
             .flat_map(|term_query| {
-                let score = term_query.term().as_str().unwrap().len();
                 searcher
                     .search(&term_query, &collector)
                     .expect("failed to search index")
                     .into_iter()
-                    .map(move |(_, addr)| (addr, score))
+                    .map(move |(_, addr)| addr)
             })
-            .fold(HashMap::new(), |mut map, (hit, score)| {
-                *map.entry(hit).or_insert(0) += score;
+            .fold(HashMap::new(), |mut map: HashMap<_, usize>, hit| {
+                *map.entry(hit).or_insert(0) += 1;
                 map
             })
             .into_iter()
@@ -486,33 +489,13 @@ impl Indexer<File> {
         hits.sort_by(|(_, a), (_, b)| b.cmp(a));
 
         hits.into_iter()
-            .map(|(addr, score)| {
+            .map(|(addr, _)| {
                 let retrieved_doc = searcher
                     .doc(addr)
                     .expect("failed to get document by address");
                 retrieved_doc
             })
             .collect()
-        // query the `relative_path` field of the `File` index, using tantivy's query language
-        //
-        // XXX: can we use the bloop query language here instead?
-        // let term =
-        //     tantivy::Term::from_field_bytes(self.source.raw_relative_path, query_str.as_bytes());
-        // let query = crate::query::fuzzy::BytesFuzzyTermQuery::new(term, 1, true);
-
-        // searcher
-        //     .search(&query, &collector)
-        //     .expect("failed to search index")
-        //     .into_iter()
-        //     .map(|(_, doc_addr)| {
-        //         let retrieved_doc = searcher
-        //             .doc(doc_addr)
-        //             .expect("failed to get document by address");
-        //         let result = ContentReader.read_document(&self.source, retrieved_doc);
-        //         println!("{}", result.relative_path);
-        //         result
-        //     })
-        //     .collect()
     }
 
     // Produce all files in a repo

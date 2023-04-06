@@ -441,7 +441,8 @@ impl ExecuteQuery for FileReader {
             .filter_map(|q| Some(q.path.as_ref()?.regex_str().to_string()))
             .collect::<Vec<_>>();
 
-        let docs = indexer.fuzzy_path(&path_query[0]).await;
+        let query = &path_query[0];
+        let docs = indexer.fuzzy_path(query).await;
 
         // let (filter_regexes, byte_filter_regexes): (Vec<_>, Vec<_>) = queries
         //     .iter()
@@ -478,18 +479,40 @@ impl ExecuteQuery for FileReader {
         // let mut results = indexer.query(queries.iter(), self, collector).await?;
 
         // let data = results
+
+        // permit replacement one character with another character or ''
+
+        let replacements = (0..query.len()).map(|idx| {
+            let mut s = query.to_owned();
+            s.remove(idx);
+            s.insert_str(idx, ".?");
+            s
+        });
+
+        // permit one character between each character
+        let additions = (0..=query.len()).map(|idx| {
+            let mut s = query.to_owned();
+            s.insert(idx, '.');
+            s
+        });
+
+        let regex_filter = regex::RegexSet::new(replacements.chain(additions)).unwrap();
+
         let data = docs
             .into_iter()
             .map(|d| self.read_document(&indexer.source, d))
-            .map(|f| {
-                let mut relative_path = HighlightedString::new(f.relative_path);
-
-                QueryResult::FileResult(FileResultData {
-                    relative_path,
-                    repo_name: f.repo_name,
-                    repo_ref: f.repo_ref,
-                    lang: f.lang,
-                })
+            .filter_map(|f| {
+                if regex_filter.is_match(&f.relative_path) {
+                    let mut relative_path = HighlightedString::new(f.relative_path);
+                    return Some(QueryResult::FileResult(FileResultData {
+                        relative_path,
+                        repo_name: f.repo_name,
+                        repo_ref: f.repo_ref,
+                        lang: f.lang,
+                    }));
+                } else {
+                    None
+                }
             })
             .collect::<Vec<QueryResult>>();
 
