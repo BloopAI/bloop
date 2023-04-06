@@ -98,10 +98,20 @@ impl IndexWriter {
 
     async fn sync_and_index_call(self, reporef: RepoRef) -> anyhow::Result<()> {
         debug!(?reporef, "syncing repo");
+        let Self(Application { ref repo_pool, .. }) = self;
 
-        if let Err(err) = self.sync_repo(&reporef).await {
-            error!(?err, ?reporef, "failed to sync repository");
-            return Err(err);
+        // skip indexing if the repo has been marked as removed
+        // if the ref is non-existent, sync it and add it to the pool
+        let removed = repo_pool
+            .read_async(&reporef, |_k, v| v.sync_status == SyncStatus::Removed)
+            .await
+            .unwrap_or(false);
+
+        if !removed {
+            if let Err(err) = self.sync_repo(&reporef).await {
+                error!(?err, ?reporef, "failed to sync repository");
+                return Err(err);
+            }
         }
 
         if let Err(err) = self.index_repo(&reporef).await {
@@ -144,10 +154,10 @@ impl IndexWriter {
         let indexed = match repo.sync_status {
             Uninitialized | Syncing | Indexing => return Ok(()),
             Removed => {
+                repo_pool.remove(reporef);
                 let deleted = self.delete_repo_indexes(reporef, &repo, &writers).await;
                 if deleted.is_ok() {
                     writers.commit().await?;
-                    repo_pool.remove(reporef);
                     config.source.save_pool(repo_pool.clone())?;
                 }
                 return deleted;

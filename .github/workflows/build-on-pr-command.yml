@@ -1,0 +1,95 @@
+name: Build Bloop container with latest PR commit tag on build command
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+    - name: $github
+      run:   echo "$GITHUB_CONTEXT"
+      env:
+       GITHUB_CONTEXT: ${{ toJson(github) }}
+
+  permissions:
+    runs-on: ubuntu-latest
+    name: Validate user is the member of BloopAI organization
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/build')
+    outputs:
+      is-member: ${{ steps.membership.outputs.is-member }}
+    steps:
+      - name: Validation
+        id: membership
+        env:
+          ACTOR: ${{ github.triggering_actor }}
+        run: |
+          if curl -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.BLOOP_DEVOPS_PAT}}"\
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/orgs/BloopAI/members | jq -r ".[] .login" | grep ${ACTOR}; then
+            echo "is-member=true" >> $GITHUB_OUTPUT
+          fi
+
+  build_tag:
+    runs-on: ubuntu-latest
+    name: Run container build on comment
+    needs: [permissions]
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/build') && needs.permissions.outputs.is-member == 'true'
+    outputs:
+      tag: build-${{ steps.comment-branch.outputs.head_sha }}
+      ref: ${{ steps.comment-branch.outputs.head_ref }}
+    steps:
+      - name: Get PR branch
+        uses: xt0rted/pull-request-comment-branch@v1
+        id: comment-branch
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.comment-branch.outputs.head_ref }}
+
+  build_and_push:
+    uses: BloopAI/workflows/.github/workflows/build-container.yml@main
+    if: needs.permissions.outputs.is-member == 'true'
+    needs: [permissions, build_tag]
+    with:
+      repository: bloop
+      tag: ${{ needs.build_tag.outputs.tag }}
+      runner: docker
+    secrets:
+      awsRegion: ${{ secrets.AWS_REGION }}
+      awsAccountID: ${{ secrets.AWS_ACCOUNT_ID }}
+      slackBuildWebhook: ${{ secrets.SLACK_BUILD_WEBHOOK }}
+
+  report_status:
+    runs-on: ubuntu-latest
+    name: Report status of the build
+    needs: [permissions, build_tag, build_and_push]
+    if: always() && needs.permissions.outputs.is-member == 'true'
+    steps:
+      - name: pr
+        id: pr
+        run: |
+          PR_NUMBER=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
+          echo "number=${PR_NUMBER}" >> ${GITHUB_OUTPUT}
+
+      - name: Comment failure build
+        if: ${{ contains(needs.*.result, 'failure') }}
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          message: |
+            :red_circle: Bloop container with `${{ needs.build_tag.outputs.tag }}` tag failed!
+            :link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          pr_number: ${{ steps.pr.outputs.number }}
+
+      - name: Comment success build
+        if: ${{ !contains(needs.*.result, 'failure') }}
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          message: |
+            :green_circle: Bloop container with `${{ needs.build_tag.outputs.tag }}` tag is ready!
+            :link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          pr_number: ${{ steps.pr.outputs.number }}

@@ -3,6 +3,8 @@ replicaCount: 1
 bloop:
   githubOrgName: ""
   githubOrgOwnerEmail: ""
+  githubOrgOwnerFirstName: ""
+  githubOrgOwnerLastName: ""
   loopsAPIKey: ""
   loopsEventName: ""
   githubAppPrivateKey: ""
