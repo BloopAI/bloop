@@ -24,9 +24,7 @@ const BreadcrumbSection = ({
       return (
         <span>
           {left}
-          <span className="before:block before:absolute before:-inset-0.5 before:right-0 before:left-0 before:bg-secondary-500/25 relative before:rounded-l before:left-[-1.5px] before:rounded-r before:right-[-2px]">
-            {search}
-          </span>
+          <span className="bg-secondary-500/25 rounded-4">{search}</span>
           {right}
         </span>
       );
