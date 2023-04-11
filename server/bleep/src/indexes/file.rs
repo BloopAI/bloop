@@ -491,20 +491,58 @@ impl Indexer<File> {
         // quer.y
         // query.
         let regex_filter = {
-            // permit replacement or deletion of a character
-            let replacements = (0..query_str.len()).map(|idx| {
-                let mut s = query_str.to_owned();
-                s.remove(idx);
-                s.insert_str(idx, ".?");
-                s
-            });
-            // permit one character between each character
-            let additions = (0..=query_str.len()).map(|idx| {
-                let mut s = query_str.to_owned();
-                s.insert(idx, '.');
-                s
-            });
-            regex::RegexSet::new(replacements.chain(additions)).unwrap()
+            fn additions(s: &str, i: usize, j: usize) -> String {
+                if i > j {
+                    return additions(s, j, i);
+                } else {
+                    let mut s = s.to_owned();
+                    s.insert_str(j, ".?");
+                    s.insert_str(i, ".?");
+                    s
+                }
+            }
+
+            fn replacements(s: &str, i: usize, j: usize) -> String {
+                if i > j {
+                    return replacements(s, j, i);
+                } else {
+                    let mut s = s.to_owned();
+                    s.remove(j);
+                    s.insert_str(j, ".?");
+
+                    s.remove(i);
+                    s.insert_str(i, ".?");
+
+                    s
+                }
+            }
+
+            fn one_of_each(s: &str, i: usize, j: usize) -> String {
+                if i > j {
+                    return replacements(s, j, i);
+                } else {
+                    let mut s = s.to_owned();
+                    s.remove(j);
+                    s.insert_str(j, ".?");
+
+                    s.insert_str(i, ".?");
+                    s
+                }
+            }
+
+            let all_regexes = (0..=query_str.len())
+                .flat_map(|i| (0..=query_str.len()).map(move |j| (i, j)))
+                .filter(|(i, j)| i <= j)
+                .flat_map(|(i, j)| {
+                    let mut v = vec![];
+                    if j != query_str.len() {
+                        v.push(one_of_each(query_str, i, j));
+                        v.push(replacements(query_str, i, j));
+                    }
+                    v.push(additions(query_str, i, j));
+                    v
+                });
+            regex::RegexSet::new(all_regexes).unwrap()
         };
 
         hits.into_iter()
