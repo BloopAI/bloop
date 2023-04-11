@@ -215,7 +215,7 @@ export type TokenInfoResponse = {
   data: {
     file: string;
     data: {
-      kind: 'reference' | 'definition' | 'modification' | 'retention';
+      kind: 'reference' | 'definition' | 'modification' | 'return';
       start: {
         byte: number;
         line: number;

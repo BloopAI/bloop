@@ -5,6 +5,7 @@ import BreadcrumbsPath from '../BreadcrumbsPath';
 import { TokenInfoResponse } from '../../types/api';
 import Button from '../Button';
 import Sparkle from '../../icons/Sparkle';
+import SkeletonItem from '../SkeletonItem';
 import Badge from './Badge';
 
 type Props = {
@@ -16,6 +17,7 @@ type Props = {
   repoName: string;
   queryParams: string;
   onRefDefClick: (lineNum: number, filePath: string) => void;
+  isLoading: boolean;
 };
 
 export enum Type {
@@ -69,6 +71,7 @@ const TooltipCode = ({
   repoName,
   onRefDefClick,
   queryParams,
+  isLoading,
 }: Props) => {
   const [filters, setFilters] = useState<Type[]>([
     Type.REF,
@@ -137,7 +140,7 @@ const TooltipCode = ({
   const renderTooltip = (attrs: {
     'data-placement': TippyProps['placement'];
   }) => {
-    if (!(data?.data?.length || data?.data?.length)) {
+    if (!(data?.data?.length || data?.data?.length) && !isLoading) {
       return '';
     }
     const tailPosition = getTailPosition(attrs['data-placement']);
@@ -160,57 +163,72 @@ const TooltipCode = ({
               tailStyles[tailPosition.vertical].fixture
             } border-l-[1px] border-r-[1px] border-b-transparent border-l-gray-600 border-r-gray-600`}
           />
-          <div className="bg-gray-700/50 pl-3 pb-3 pt-2 pr-2 rounded-t border-b border-gray-700 flex items-center justify-between gap-2">
-            <div className="flex gap-2">
-              <Badge
-                type={Type.REF}
-                onClick={toggleFilter}
-                active={filters.includes(Type.REF)}
-                disabled={
-                  !data.data.some((d) =>
-                    d.data.some((dd) => dd.kind.startsWith(Type.REF)),
-                  )
-                }
-              />
-              <Badge
-                type={Type.DEF}
-                onClick={toggleFilter}
-                active={filters.includes(Type.DEF)}
-                disabled={
-                  !data.data.some((d) =>
-                    d.data.some((dd) => dd.kind.startsWith(Type.DEF)),
-                  )
-                }
-              />
-              <Badge
-                type={Type.MOD}
-                onClick={toggleFilter}
-                active={filters.includes(Type.MOD)}
-                disabled={
-                  !data.data.some((d) =>
-                    d.data.some((dd) => dd.kind.startsWith(Type.MOD)),
-                  )
-                }
-              />
-              <Badge
-                type={Type.RET}
-                onClick={toggleFilter}
-                active={filters.includes(Type.RET)}
-                disabled={
-                  !data.data.some((d) =>
-                    d.data.some((dd) => dd.kind.startsWith(Type.RET)),
-                  )
-                }
-              />
-            </div>
-            {!isExplanationOpen && (
-              <Button size="small" onClick={onExplain} disabled>
-                <Sparkle />
-                Explain
-              </Button>
+          <div className="bg-gray-700/50 px-3 py-2 rounded-t border-b border-gray-700 flex items-center justify-between gap-2">
+            {isLoading ? (
+              <div className="w-full h-6 my-1">
+                <SkeletonItem />
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <Badge
+                    type={Type.REF}
+                    onClick={toggleFilter}
+                    active={filters.includes(Type.REF)}
+                    disabled={
+                      !data?.data.some((d) =>
+                        d.data.some((dd) => dd.kind.startsWith(Type.REF)),
+                      )
+                    }
+                    tooltipText="The line of code where the identifier is defined"
+                  />
+                  <Badge
+                    type={Type.DEF}
+                    onClick={toggleFilter}
+                    active={filters.includes(Type.DEF)}
+                    disabled={
+                      !data?.data.some((d) =>
+                        d.data.some((dd) => dd.kind.startsWith(Type.DEF)),
+                      )
+                    }
+                    tooltipText="The line of code where identifier is modified"
+                  />
+                  <Badge
+                    type={Type.MOD}
+                    onClick={toggleFilter}
+                    active={filters.includes(Type.MOD)}
+                    disabled={
+                      !data?.data.some((d) =>
+                        d.data.some((dd) => dd.kind.startsWith(Type.MOD)),
+                      )
+                    }
+                    tooltipText="The line of code where the identifier is referenced"
+                  />
+                  <Badge
+                    type={Type.RET}
+                    onClick={toggleFilter}
+                    active={filters.includes(Type.RET)}
+                    disabled={
+                      !data?.data.some((d) =>
+                        d.data.some((dd) => dd.kind.startsWith(Type.RET)),
+                      )
+                    }
+                    tooltipText="The line of code where the identifier is returned"
+                  />
+                </div>
+                {!isExplanationOpen && (
+                  <Button size="tiny" onClick={onExplain} disabled>
+                    <span className="w-4 h-4 inline-block">
+                      <Sparkle raw />
+                    </span>
+                    Explain
+                  </Button>
+                )}
+              </>
             )}
           </div>
-          {isExplanationOpen && (
+
+          {isExplanationOpen && !isLoading && (
             <div className="bg-gray-700 py-2 px-3 body-s">
               <div className="flex items-center justify-between">
                 <span className="text-gray-400">bloop</span>
@@ -225,52 +243,73 @@ const TooltipCode = ({
             </div>
           )}
           <span className="overflow-auto max-h-40">
-            {data.data
-              .filter(
-                (d) =>
-                  d.data.filter((dd) =>
-                    filters.includes(dd.kind.slice(0, 3) as Type),
-                  ).length,
-              )
-              .map((d, i) => (
-                <div className="border-b border-gray-700" key={d.file + i}>
-                  <div className="px-3 pt-2">
-                    <BreadcrumbsPath
-                      path={d.file}
-                      repo={repoName}
-                      activeStyle="secondary"
-                    />
-                  </div>
-                  {d.data
-                    .filter((dd) =>
-                      filters.includes(dd.kind.slice(0, 3) as Type),
-                    )
-                    .map((line, i) => (
-                      <div
-                        key={i}
-                        className="py-2 px-3 code-s flex gap-1 cursor-pointer overflow-auto"
-                        onClick={() =>
-                          onRefDefClick(line.snippet.line_range.start, d.file)
-                        }
-                      >
-                        <div
-                          className={`uppercase caption w-8 flex-shrink-0 flex-grow-0 ${
-                            colorMap[line.kind.slice(0, 3) as Type]
-                          }`}
-                        >
-                          {line.kind.slice(0, 3)}
-                        </div>
-                        <Code
-                          code={line.snippet.data.trim()}
-                          lineStart={line.snippet.line_range.start}
-                          language={language}
-                          removePaddings
-                          lineHoverEffect
-                        />
-                      </div>
-                    ))}
+            {isLoading && (
+              <div className="bg-gray-700 h-40">
+                <div className="w-1/2 h-7 pt-2 px-3">
+                  <SkeletonItem />
                 </div>
-              ))}
+                <div className="w-4/5 h-9 py-2 px-3">
+                  <SkeletonItem />
+                </div>
+                <div className="w-1/2 h-7 pt-2 px-3">
+                  <SkeletonItem />
+                </div>
+                <div className="w-3/5 h-7 pt-2 px-3">
+                  <SkeletonItem />
+                </div>
+                <div className="w-4/5 h-9 py-2 px-3">
+                  <SkeletonItem />
+                </div>
+              </div>
+            )}
+            {!isLoading &&
+              data?.data.length &&
+              data.data
+                .filter(
+                  (d) =>
+                    d.data.filter((dd) =>
+                      filters.includes(dd.kind.slice(0, 3) as Type),
+                    ).length,
+                )
+                .map((d, i) => (
+                  <div className="border-b border-gray-700" key={d.file + i}>
+                    <div className="px-3 pt-2">
+                      <BreadcrumbsPath
+                        path={d.file}
+                        repo={repoName}
+                        activeStyle="secondary"
+                      />
+                    </div>
+                    {d.data
+                      .filter((dd) =>
+                        filters.includes(dd.kind.slice(0, 3) as Type),
+                      )
+                      .map((line, i) => (
+                        <div
+                          key={i}
+                          className="py-2 px-3 code-s flex gap-1 cursor-pointer overflow-auto"
+                          onClick={() =>
+                            onRefDefClick(line.snippet.line_range.start, d.file)
+                          }
+                        >
+                          <div
+                            className={`uppercase caption w-8 flex-shrink-0 flex-grow-0 ${
+                              colorMap[line.kind.slice(0, 3) as Type]
+                            }`}
+                          >
+                            {line.kind.slice(0, 3)}
+                          </div>
+                          <Code
+                            code={line.snippet.data.trim()}
+                            lineStart={line.snippet.line_range.start}
+                            language={language}
+                            removePaddings
+                            lineHoverEffect
+                          />
+                        </div>
+                      ))}
+                  </div>
+                ))}
           </span>
         </div>
       </div>

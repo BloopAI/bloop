@@ -1,3 +1,4 @@
+import Tooltip from '../Tooltip';
 import { Type } from './index';
 
 type Props = {
@@ -5,6 +6,7 @@ type Props = {
   onClick: (type: Type) => void;
   active?: boolean;
   disabled?: boolean;
+  tooltipText: string;
 };
 
 const colorMap = {
@@ -14,27 +16,35 @@ const colorMap = {
   ret: 'bg-sky-500',
 };
 
-const TooltipCodeBadge = ({ type, onClick, active, disabled }: Props) => {
+const TooltipCodeBadge = ({
+  type,
+  onClick,
+  active,
+  disabled,
+  tooltipText,
+}: Props) => {
   return (
-    <div
-      className={`flex items-center justify-center gap-1 px-2 py-1 rounded-4 border border-gray-600 ${
-        disabled || !active ? 'bg-transparent' : 'bg-gray-600'
-      } ${disabled ? 'cursor-default' : 'cursor-pointer'} select-none`}
-      onClick={() => onClick(type)}
-    >
+    <Tooltip text={tooltipText} placement={'top'}>
       <div
-        className={`w-1.5 h-1.5 rounded-full ${
-          disabled || !active ? 'bg-gray-500' : colorMap[type]
-        }`}
-      />
-      <span
-        className={`uppercase caption ${
-          disabled || !active ? 'text-gray-500' : 'text-gray-50'
-        }`}
+        className={`flex items-center justify-center gap-1 px-2 py-1 rounded-4 border border-gray-600 ${
+          disabled || !active ? 'bg-transparent' : 'bg-gray-600'
+        } ${disabled ? 'cursor-default' : 'cursor-pointer'} select-none`}
+        onClick={() => onClick(type)}
       >
-        {type}
-      </span>
-    </div>
+        <div
+          className={`w-1.5 h-1.5 rounded-full ${
+            disabled || !active ? 'bg-gray-500' : colorMap[type]
+          }`}
+        />
+        <span
+          className={`uppercase caption ${
+            disabled || !active ? 'text-gray-500' : 'text-gray-50'
+          }`}
+        >
+          {type}
+        </span>
+      </div>
+    </Tooltip>
   );
 };
 
