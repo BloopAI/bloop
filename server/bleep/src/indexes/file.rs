@@ -437,19 +437,6 @@ impl Indexer<File> {
     }
 
     pub async fn fuzzy_path(&self, query_str: &str) -> Vec<tantivy::Document> {
-        use tantivy::collector::TopDocs;
-        use tantivy::query::{BooleanQuery, FuzzyTermQuery, QueryParser, TermQuery, TermSetQuery};
-        use tantivy::schema::*;
-        use tantivy::tokenizer::NgramTokenizer;
-        use tantivy::Term;
-        use tantivy::{doc, Index};
-
-        let reader = self.reader.read().await;
-        let searcher = reader.searcher();
-
-        let file_index = searcher.index();
-        let file_source = &self.source;
-
         // lifted from query::compiler
         fn trigrams(s: &str) -> impl Iterator<Item = String> {
             let mut chars = s.chars().collect::<Vec<_>>();
@@ -465,6 +452,8 @@ impl Indexer<File> {
             })
         }
 
+        let reader = self.reader.read().await;
+        let searcher = reader.searcher();
         let collector = TopDocs::with_limit(100);
 
         // hits is a mapping between a document address and the number of trigrams in it that
@@ -486,7 +475,37 @@ impl Indexer<File> {
             .into_iter()
             .collect::<Vec<_>>();
 
+        // decsending order of number of matched trigrams
         hits.sort_by(|(_, a), (_, b)| b.cmp(a));
+
+        // creates regexes of the form:
+        // .?uery
+        // q.?ery
+        // qu.?ry
+        // que.?y
+        // quer.?
+        // .query
+        // q.uery
+        // qu.ery
+        // que.ry
+        // quer.y
+        // query.
+        let regex_filter = {
+            // permit replacement or deletion of a character
+            let replacements = (0..query_str.len()).map(|idx| {
+                let mut s = query_str.to_owned();
+                s.remove(idx);
+                s.insert_str(idx, ".?");
+                s
+            });
+            // permit one character between each character
+            let additions = (0..=query_str.len()).map(|idx| {
+                let mut s = query_str.to_owned();
+                s.insert(idx, '.');
+                s
+            });
+            regex::RegexSet::new(replacements.chain(additions)).unwrap()
+        };
 
         hits.into_iter()
             .map(|(addr, _)| {
@@ -494,6 +513,14 @@ impl Indexer<File> {
                     .doc(addr)
                     .expect("failed to get document by address");
                 retrieved_doc
+            })
+            .filter(|doc| {
+                let relative_path = doc
+                    .get_first(self.source.relative_path)
+                    .unwrap()
+                    .as_text()
+                    .unwrap();
+                regex_filter.is_match(relative_path)
             })
             .collect()
     }
