@@ -1,4 +1,5 @@
 use super::prelude::*;
+use axum::response::IntoResponse as IntoAxumResponse;
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize)]
@@ -9,8 +10,19 @@ pub(super) struct PayLoad {
 pub(super) async fn handle(
     Query(payload): Query<PayLoad>,
     Extension(indexes): Extension<Arc<Indexes>>,
-) -> impl IntoResponse {
-    let docs = indexes.file.fuzzy_path(&payload.q).await;
-    println!("{}", docs.len());
-    Err::<String, Error>(Error::user("unsupported endpoitn"))
+) -> impl IntoAxumResponse {
+    let data = indexes
+        .file
+        .fuzzy_path(&payload.q)
+        .await
+        .into_iter()
+        .map(|d| {
+            d.get_first(indexes.file.source.relative_path)
+                .unwrap()
+                .as_text()
+                .unwrap()
+                .to_owned()
+        })
+        .collect::<Vec<_>>();
+    axum::Json(data)
 }
