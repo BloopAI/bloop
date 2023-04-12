@@ -434,6 +434,12 @@ SUBJECT in the snippet:
 - Modification: the SUBJECT is being modified in this snippet
 - Returned: the SUBJECT is being returned in this snippet
 
+Typically a definition occurs on the LHS of an equal-to sign ('='), or occurs in a declaration such as a class declaration.
+Typically, a modification is a situation where the SUBJECT is being mutated. Things like method calls upon the SUBJECT may 
+be considered to be modifications, whereas, passing the SUBJECT into a function may be considered a plain reference. 
+You may classify a snippet as a return if the SUBJECT is prefixed by a return keyword, or if the SUBJECT occurs as the last 
+statement in the execution of that function.
+
 Also filter out those snippets which are irrelevant, such as imports of the SUBJECT.
 
 For example, if given the following list of snippets, with `HashMap` as the SUBJECT:
