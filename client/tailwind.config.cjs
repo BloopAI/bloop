@@ -157,23 +157,22 @@ module.exports = {
         'light': '0px 1px 6px rgba(0, 0, 0, 0.25)',
         'lighter': '0px 1px 3px rgba(62, 70, 85, 0.12)',
         'light-bigger': '0px 6px 16px rgba(0, 0, 0, 0.25)',
+        'small': '0px 8px 12px rgba(14, 14, 15, 0.75)',
         'big': '0px 16px 34px rgba(0, 0, 0, 0.5)',
         'medium': '0px 16px 24px rgba(0, 0, 0, 0.25)'
       },
-      height: {
-        "11.5": "2.875rem",
-        '13': '3.375rem',
-        85: '21.25rem',
-      },
-      width: {
+      spacing: {
         "11.5": "2.875rem",
         '13': '3.375rem',
         "30": "7.5rem",
         "68": "17.75rem",
         "90": "20.25rem",
+        "95": "23.75rem",
+        "97": "25.75rem",
         "98": "26.5rem",
         '99': '29.625rem',
-        '100': '32rem'
+        '100': '32rem',
+        85: '21.25rem',
       },
       borderRadius: {
         'px': '1px',
