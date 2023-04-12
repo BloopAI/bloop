@@ -45,7 +45,6 @@
         "depends": []
       },
       "externalBin": [
-        "bin/ctags",
         "bin/qdrant"
       ],
       "icon": [
