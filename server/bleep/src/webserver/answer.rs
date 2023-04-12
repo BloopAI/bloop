@@ -666,6 +666,8 @@ async fn _handle(
                 Err(e) => yield Err(e),
             }
         }
+
+        debug!("answer complete, closing SSE");
         let mut event = event.write().await;
         event
             .stages
