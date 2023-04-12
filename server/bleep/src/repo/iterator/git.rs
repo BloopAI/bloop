@@ -2,21 +2,21 @@ use super::*;
 
 use anyhow::Result;
 use gix::ThreadSafeRepository;
-use regex::Regex;
+use regex::RegexSet;
 use tracing::error;
 
 use std::{collections::HashMap, path::Path};
 
 pub enum BranchFilter {
     All,
-    Select(Vec<Regex>),
+    Select(RegexSet),
 }
 
 impl BranchFilter {
     fn filter(&self, branch: &str) -> bool {
         match self {
             BranchFilter::All => true,
-            BranchFilter::Select(patterns) => patterns.iter().any(|r| r.is_match(branch)),
+            BranchFilter::Select(patterns) => patterns.is_match(branch),
         }
     }
 }
@@ -56,7 +56,7 @@ impl GitWalker {
 
         let refs = local_git.references()?;
         let entries = refs
-            .prefixed("refs/heads")
+            .local_branches()
             .unwrap()
             .peeled()
             .filter_map(Result::ok)

@@ -1043,11 +1043,12 @@ mod tests {
         );
 
         assert_eq!(
-            parse_nl("case:ignore why are languages excluded from ctags?").unwrap(),
+            parse_nl("case:ignore why are languages excluded from ctags? branch:main").unwrap(),
             NLQuery {
                 target: Some(Literal::Plain(
                     "why are languages excluded from ctags?".into()
                 )),
+                branch: [Literal::Plain("main".into())].into(),
                 ..Default::default()
             },
         );
