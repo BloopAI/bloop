@@ -206,8 +206,16 @@ impl Application {
             return;
         };
 
+        let options = analytics::HubOptions {
+            event_filter: Some(Arc::new(Some)),
+            package_metadata: None,
+        };
+
         info!("initializing analytics ...");
-        analytics::RudderHub::new(key.to_owned(), data_plane.to_owned());
+        tokio::task::block_in_place(|| {
+            analytics::RudderHub::new_with_options(key.clone(), data_plane.clone(), options)
+        });
+        info!("RudderHub::new has run through");
     }
 
     pub fn install_logging() {
