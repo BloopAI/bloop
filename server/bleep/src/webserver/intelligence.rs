@@ -243,6 +243,7 @@ fn to_occurrence(doc: &ContentDocument, range: TextRange) -> SymbolOccurrence {
     let line_end_indices = &doc.line_end_indices;
     let highlight = range.start.byte..range.end.byte;
     let snippet = Snipper::default()
+        .context(0, 3)
         .expand(highlight, src, line_end_indices)
         .reify(src, &[]);
 
@@ -376,7 +377,6 @@ pub(super) async fn handle(
             let definitions = merge([local_definitions], repo_wide_definitions);
             let references = merge([local_references], repo_wide_references);
 
-            tracing::info!("calling gpt handler");
             let all_symbols = merge(definitions, references);
 
             let selections = gpt_handler(&app, Arc::clone(&state), &all_symbols).await;
@@ -391,7 +391,6 @@ pub(super) async fn handle(
                 if let Some(kind) = OccurrenceKind::try_from(kind).ok() {
                     item.set_kind(kind);
                 };
-                println!("{item_path} ({:?}): `{}`", item.kind, item.snippet.data);
                 selected.push((item_path, item));
             }
 
