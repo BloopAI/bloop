@@ -28,7 +28,7 @@ use std::fs::canonicalize;
 use crate::{
     background::BackgroundExecutor, indexes::Indexes, semantic::Semantic, state::RepositoryPool,
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use axum::extract::FromRef;
 
 use once_cell::sync::OnceCell;
@@ -48,7 +48,6 @@ mod repo;
 mod webserver;
 
 pub mod analytics;
-pub mod ctags;
 pub mod indexes;
 pub mod intelligence;
 pub mod query;
@@ -95,13 +94,6 @@ impl Application {
         config.source.set_default_dir(&config.index_dir);
 
         let config = Arc::new(config);
-
-        // Set path to Ctags binary
-        if let Some(ref executable) = config.ctags_path {
-            ctags::CTAGS_BINARY
-                .set(executable.clone())
-                .map_err(|existing| anyhow!("ctags binary already set: {existing:?}"))?;
-        }
 
         // Initialise Semantic index if `qdrant_url` set in config
         let semantic = match config.qdrant_url {

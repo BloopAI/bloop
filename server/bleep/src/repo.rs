@@ -10,7 +10,7 @@ use tracing::debug;
 use utoipa::ToSchema;
 
 use crate::{
-    ctags, indexes,
+    indexes,
     language::{get_language_info, LanguageInfo},
     state::{get_relative_path, pretty_write_file},
 };
@@ -311,7 +311,6 @@ fn get_unix_time(time: SystemTime) -> u64 {
 #[derive(Debug)]
 pub struct RepoMetadata {
     pub last_commit_unix_secs: u64,
-    pub symbols: ctags::SymbolMap,
     pub langs: LanguageInfo,
 }
 
@@ -325,7 +324,7 @@ async fn get_repo_metadata(repo_disk_path: &PathBuf) -> Arc<RepoMetadata> {
     //
     // There might be a way to generate this list from intelligence::ALL_LANGUAGES,
     // but not all lang_ids are valid ctags' languages though, so we hardcode some here:
-    let exclude_langs = &[
+    let _exclude_langs = &[
         "javascript",
         "typescript",
         "python",
@@ -346,7 +345,6 @@ async fn get_repo_metadata(repo_disk_path: &PathBuf) -> Arc<RepoMetadata> {
 
     RepoMetadata {
         last_commit_unix_secs: repo,
-        symbols: ctags::get_symbols(repo_disk_path, exclude_langs).await,
         langs: get_language_info(repo_disk_path),
     }
     .into()

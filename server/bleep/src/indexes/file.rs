@@ -562,17 +562,10 @@ impl File {
             match scope_graph {
                 // we have a graph, use that
                 Ok(graph) => SymbolLocations::TreeSitter(graph),
-                // no graph, try ctags instead
+                // no graph, it's empty
                 Err(err) => {
                     warn!(?err, %lang_str, "failed to build scope graph");
-                    match repo_metadata.symbols.get(relative_path) {
-                        Some(syms) => SymbolLocations::Ctags(syms.clone()),
-                        // no ctags either
-                        _ => {
-                            warn!(%lang_str, ?entry_disk_path, "failed to build tags");
-                            SymbolLocations::Empty
-                        }
-                    }
+                    SymbolLocations::Empty
                 }
             }
         } else {
