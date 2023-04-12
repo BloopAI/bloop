@@ -76,18 +76,6 @@ jobs:
         run: |
           cargo --locked test --verbose --release -p bloop 
 
-      - name: Download binaries (windows) (windows is disabled)
-        if: matrix.name == 'windows-latest'
-        shell: bash
-        run: |
-          dirname=2022-12-05%2Fp5.9.20221204.0-5-gf9d21e7
-          filename=ctags-2022-12-05_p5.9.20221204.0-5-gf9d21e7-clang-x64.zip
-          curl -LO https://github.com/universal-ctags/ctags-win32/releases/download/$dirname/$filename
-          echo "7c7b7e2645347d092474a942f988988ee12e045d1d8e65ae7ced68ecaf672130 $filename" |sha256sum -c - 
-
-          unzip $filename || true
-          mv ctags.exe ${{ env.TAURI_BIN_PATH }}/ctags-$(rustc -Vv |grep host |cut -d\  -f2).exe
-
       - name: Check if Segment key exists
         env:
           segment_key: ${{ secrets.ANALYTICS_FE_WRITE_KEY_PROD }}
