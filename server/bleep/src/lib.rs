@@ -211,11 +211,10 @@ impl Application {
             package_metadata: None,
         };
 
-        info!("initializing analytics ...");
+        info!("configuring analytics ...");
         tokio::task::block_in_place(|| {
             analytics::RudderHub::new_with_options(key.clone(), data_plane.clone(), options)
         });
-        info!("RudderHub::new has run through");
     }
 
     pub fn install_logging() {
@@ -235,7 +234,6 @@ impl Application {
     }
 
     pub fn track_query(&self, event: &analytics::QueryEvent) {
-        info!(?event, "tracking event sent");
         tokio::task::block_in_place(|| analytics::RudderHub::track_query(event.clone()))
     }
 

@@ -60,7 +60,6 @@ pub struct HubOptions {
 impl RudderHub {
     pub fn new(key: String, data_plane: String) -> Arc<Self> {
         let client = RudderAnalytics::load(key, data_plane);
-        info!("Rudder analytics has loaded");
         let hub = Self {
             client,
             options: None,
