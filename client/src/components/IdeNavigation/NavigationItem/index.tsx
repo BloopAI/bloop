@@ -6,7 +6,7 @@ type Props = {
   value: string;
   active?: boolean;
   dense?: boolean;
-  variant: 'default' | 'light';
+  variant?: 'default' | 'light';
   onClick?: () => void;
 };
 
@@ -20,7 +20,7 @@ const NavigationItem = ({
   value,
   active = false,
   dense,
-  variant,
+  variant = 'default',
   onClick,
 }: Props) => {
   return (
