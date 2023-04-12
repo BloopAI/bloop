@@ -273,6 +273,11 @@ h5, .h5 {
   -webkit-backdrop-filter: blur(2px);
 }
 
+.backdrop-blur-4 {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
 .backdrop-blur-6 {
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
