@@ -28,7 +28,7 @@ use crate::{
     Application,
 };
 
-use super::prelude::*;
+use super::{middleware::User, prelude::*};
 
 /// Mirrored from `answer_api/lib.rs` to avoid private dependency.
 pub mod api {
@@ -113,8 +113,6 @@ pub struct Params {
     pub thread_id: String,
     #[serde(default = "default_limit")]
     pub limit: u64,
-    #[serde(default = "default_user_id")]
-    pub user_id: String,
 }
 
 #[derive(serde::Serialize, ToSchema, Debug)]
@@ -156,12 +154,15 @@ pub(super) async fn handle(
     Query(params): Query<Params>,
     State(state): State<Arc<AnswerState>>,
     Extension(app): Extension<Application>,
+    Extension(user): Extension<User>,
 ) -> Result<impl IntoResponse> {
     // create a new analytics event for this query
     let event = Arc::new(RwLock::new(QueryEvent::default()));
 
+    let user = user.0.unwrap_or_else(default_user_id);
+
     // populate analytics event
-    let response = _handle(&state, params, app.clone(), Arc::clone(&event)).await;
+    let response = _handle(&state, params, app.clone(), Arc::clone(&event), user).await;
 
     if response.is_err() {
         // Result<impl IntoResponse> does not implement `Debug`, `unwrap_err` is unavailable
@@ -596,6 +597,7 @@ async fn _handle(
     params: Params,
     app: Application,
     event: Arc<RwLock<QueryEvent>>,
+    user: String,
 ) -> Result<impl IntoResponse> {
     let query_id = uuid::Uuid::new_v4();
 
@@ -603,7 +605,7 @@ async fn _handle(
 
     {
         let mut analytics_event = event.write().await;
-        analytics_event.user_id = params.user_id.clone();
+        analytics_event.user_id = user.clone();
         analytics_event.query_id = query_id;
         analytics_event.session_id = params.thread_id.clone();
         if let Some(semantic) = app.semantic.as_ref() {
@@ -635,7 +637,7 @@ async fn _handle(
         .json_data(super::Response::<'static>::from(AnswerResponse {
             query_id,
             session_id: params.thread_id.clone(),
-            user_id: params.user_id.clone(),
+            user_id: user.clone(),
             snippets: snippets.as_ref().map(|matches| AnswerSnippets {
                 matches: matches.clone(),
                 answer_path: matches
