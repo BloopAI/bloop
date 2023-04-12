@@ -7,6 +7,7 @@ async fn main() -> Result<()> {
     let app = Application::initialize(
         Environment::server(),
         Configuration::cli_overriding_config_file()?,
+        None,
     )
     .await?;
 

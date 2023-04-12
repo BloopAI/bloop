@@ -38,7 +38,7 @@ let prevEventSource: EventSource | undefined;
 
 const ResultsPage = ({ query, threadId }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
-  const { deviceId, apiUrl } = useContext(DeviceContext);
+  const { apiUrl } = useContext(DeviceContext);
   const [isLoading, setIsLoading] = useState(true);
   const [conversation, setConversation] = useState<ConversationMessage[]>(
     conversationsCache[threadId] || [
@@ -117,7 +117,7 @@ const ResultsPage = ({ query, threadId }: Props) => {
       `${apiUrl.replace(
         'https:',
         '',
-      )}/answer?q=${question}&user_id=${deviceId}&thread_id=${threadId}`,
+      )}/answer?q=${question}&thread_id=${threadId}`,
     );
     prevEventSource = eventSource;
     setConversation((prev) => {

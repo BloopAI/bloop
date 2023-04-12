@@ -34,7 +34,7 @@ const ReportBugModal = ({
   const [serverCrashedMessage, setServerCrashedMessage] = useState('');
   const { onBoardingState, isBugReportModalOpen, setBugReportModalOpen } =
     useContext(UIContext);
-  const { deviceId, listen, os } = useContext(DeviceContext);
+  const { envConfig, listen, os } = useContext(DeviceContext);
 
   useEffect(() => {
     listen('server-crashed', (event) => {
@@ -76,13 +76,13 @@ const ReportBugModal = ({
     if (serverCrashedMessage) {
       saveCrashReport({
         text: form.text,
-        unique_id: deviceId,
+        unique_id: envConfig.tracking_id || '',
         info: serverCrashedMessage,
         metadata: JSON.stringify(os),
       });
     } else {
       const { emailError, ...values } = form;
-      saveBugReport({ ...values, unique_id: deviceId });
+      saveBugReport({ ...values, unique_id: envConfig.tracking_id || '' });
     }
     setSubmitted(true);
     setServerCrashedMessage('');

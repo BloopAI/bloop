@@ -11,7 +11,6 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         openLink: (p) => window.open(p),
         chooseFolder: (conf) => Promise.resolve(null),
         homeDir: '$HOME',
-        deviceId: import.meta.env.DEVICE_ID || '',
         listen: () => {},
         os: {
           arch: '',

@@ -9,6 +9,7 @@ use relative_path::RelativePath;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::HashSet,
+    ops::Deref,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -47,6 +48,96 @@ pub struct StateSource {
     cookie_key: Option<PathBuf>,
 }
 
+/// Unified wrapper to persist state in the central state-store.
+/// Every model is stored in its own file as a pretty-printed json.
+pub struct PersistedState<T> {
+    path: PathBuf,
+    state: Arc<T>,
+}
+
+impl<T: Serialize + DeserializeOwned + Default + Send + Sync> PersistedState<T> {
+    fn load_or_default(name: &'static str, source: &StateSource) -> Result<Self> {
+        let path = source.directory().join(name).with_extension("json");
+        Ok(Self {
+            state: Arc::new(read_file_or_default(&path)?),
+            path,
+        })
+    }
+
+    fn load_or(name: &'static str, source: &StateSource, val: T) -> Self {
+        let path = source.directory().join(name).with_extension("json");
+        Self {
+            state: Arc::new(read_file(&path).unwrap_or(val)),
+            path,
+        }
+    }
+
+    pub fn store(&self) -> Result<()> {
+        Ok(pretty_write_file(&self.path, self.state.as_ref())?)
+    }
+}
+
+impl<T> Deref for PersistedState<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<T> Clone for PersistedState<T> {
+    fn clone(&self) -> Self {
+        Self {
+            path: self.path.clone(),
+            state: self.state.clone(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ApplicationSeed(String);
+
+impl From<Option<String>> for ApplicationSeed {
+    fn from(value: Option<String>) -> Self {
+        match value {
+            Some(val) => ApplicationSeed(val),
+            None => Self::default(),
+        }
+    }
+}
+
+impl ToString for ApplicationSeed {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
+impl Default for ApplicationSeed {
+    fn default() -> Self {
+        Self(uuid::Uuid::new_v4().to_string())
+    }
+}
+
+/// User-specific configuration
+#[derive(Serialize, Deserialize)]
+pub struct UserState {
+    #[serde(default)]
+    tracking_id: String,
+}
+
+impl UserState {
+    pub fn tracking_id(&self) -> String {
+        self.tracking_id.clone()
+    }
+}
+
+impl Default for UserState {
+    fn default() -> Self {
+        let tracking_id = uuid::Uuid::new_v4().to_string();
+        Self { tracking_id }
+    }
+}
+
 impl StateSource {
     pub(crate) fn set_default_dir(&mut self, dir: &Path) {
         self.state_file
@@ -67,6 +158,23 @@ impl StateSource {
 
             target
         });
+    }
+
+    pub(crate) fn load_or_default<T: Serialize + DeserializeOwned + Default + Send + Sync>(
+        &self,
+        name: &'static str,
+    ) -> Result<PersistedState<T>> {
+        PersistedState::load_or_default(name, self)
+    }
+
+    pub(crate) fn load_state_or<T: Serialize + DeserializeOwned + Default + Send + Sync>(
+        &self,
+        name: &'static str,
+        val: impl Into<T>,
+    ) -> Result<PersistedState<T>> {
+        let val = PersistedState::load_or(name, self, val.into());
+        val.store()?;
+        Ok(val)
     }
 
     pub(crate) fn repo_dir(&self) -> Option<PathBuf> {
@@ -228,6 +336,11 @@ pub fn pretty_write_file<T: Serialize + ?Sized>(
     std::fs::rename(tmpfile, path)?;
 
     Ok(())
+}
+
+pub fn read_file<T: Default + DeserializeOwned>(path: &Path) -> Result<T, RepoError> {
+    let file = std::fs::File::open(path)?;
+    Ok(serde_json::from_reader::<_, T>(file)?)
 }
 
 pub fn read_file_or_default<T: Default + DeserializeOwned>(path: &Path) -> Result<T, RepoError> {

@@ -31,7 +31,7 @@ type Props = {
 };
 
 const Answer = ({ handleRetry, searchId, answer, error }: Props) => {
-  const { deviceId } = useContext(DeviceContext);
+  const { envConfig } = useContext(DeviceContext);
   const { query } = useAppNavigation();
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
@@ -72,14 +72,14 @@ const Answer = ({ handleRetry, searchId, answer, error }: Props) => {
       setIsDownvote(!isUpvote);
       trackUpvote(isUpvote, query, answer || '', searchId);
       return saveUpvote({
-        unique_id: deviceId,
+        unique_id: envConfig.tracking_id || '',
         is_upvote: isUpvote,
         query: query,
         snippet_id: searchId,
         text: answer || '',
       });
     },
-    [deviceId, query, answer, RiveUpvote, RiveDownvote],
+    [envConfig.tracking_id, query, answer, RiveUpvote, RiveDownvote],
   );
 
   return (
