@@ -227,7 +227,7 @@ impl Application {
     }
 
     pub fn track_query(&self, event: &analytics::QueryEvent) {
-        tracing::debug!(?event, "tracking event sent");
+        info!(?event, "tracking event sent");
         tokio::task::block_in_place(|| analytics::RudderHub::track_query(event.clone()))
     }
 
