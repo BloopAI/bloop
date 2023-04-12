@@ -12,6 +12,7 @@ import {
   savePlainToStorage,
 } from '../../services/storage';
 import Button from '../Button';
+import Chat from '../Chat';
 
 type Props = {
   children: React.ReactNode;
@@ -79,6 +80,7 @@ const PageTemplate = ({ children }: Props) => {
         style={mainContainerStyle}
       >
         {children}
+        <Chat />
       </div>
       <StatusBar />
     </div>
