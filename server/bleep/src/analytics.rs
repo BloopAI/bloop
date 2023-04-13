@@ -133,13 +133,13 @@ impl RudderHub {
         }
     }
 
-    pub fn identify(&self, self_serve: bool, org_name: Option<&str>, remote_login: &str) {
+    pub fn identify(&self, cloud: bool, org_name: Option<&str>, github_username: &str) {
         let event = Identify {
-            user_id: Some(self.tracking_id(&User(Some(remote_login.to_string())))),
+            user_id: Some(self.tracking_id(&User(Some(github_username.to_string())))),
             anonymous_id: None,
             traits: Some(json!( {
-            "isSelfServe": self_serve,
-            "githubUsername": remote_login,
+            "isSelfServe": cloud,
+            "githubUsername": github_username,
             "orgName": org_name,
             "deviceId": self.device_id(),
             })),
