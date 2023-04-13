@@ -59,6 +59,7 @@ const ResultsPage = ({ query, threadId }: Props) => {
     useSearch<FileSearchResponse>();
   const navigateBrowser = useNavigate();
   const { trackSearch } = useAnalytics();
+  const [scopeRepos, setScopeRepos] = useState<string[]>([]);
 
   useEffect(() => {
     conversationsCache[threadId] = conversation;
@@ -109,119 +110,129 @@ const ResultsPage = ({ query, threadId }: Props) => {
     }
   }, [fileResultData]);
 
-  const makeSearch = useCallback((question: string) => {
-    setIsLoading(true);
-    prevEventSource?.close();
-    const startTime = Date.now();
-    const eventSource = new EventSource(
-      `${apiUrl.replace(
-        'https:',
-        '',
-      )}/answer?q=${question}&thread_id=${threadId}`,
-    );
-    prevEventSource = eventSource;
-    setConversation((prev) => {
-      const newConversation = prev?.slice(0, -1) || [];
-      const lastMessages =
-        prev?.slice(-1)[0]?.isLoading && prev?.slice(-1)[0]?.author === 'server'
-          ? [{ author: 'server' as const, isLoading: true }]
-          : [...prev.slice(-1), { author: 'server' as const, isLoading: true }];
-      return [...newConversation, ...lastMessages];
-    });
-    let i = 0;
-    eventSource.onmessage = (ev) => {
-      if (ev.data === '[DONE]') {
-        eventSource.close();
-        setConversation((prev) => {
-          const newConversation = prev.slice(0, -1);
-          const lastMessage = {
-            ...prev.slice(-1)[0],
-            isLoading: false,
-          };
-          return [...newConversation, lastMessage];
-        });
-        prevEventSource = undefined;
-      } else {
-        const newData = JSON.parse(ev.data);
-
-        if (i === 0) {
-          const queryTime = Date.now() - startTime;
-          trackSearch(queryTime, query, threadId);
-          if (newData.Err) {
-            setIsLoading(false);
-            setConversation((prev) => {
-              const newConversation = prev.slice(0, -1);
-              const lastMessage = {
-                ...prev.slice(-1)[0],
-                isLoading: false,
-                error: newData.Err,
-              };
-              return [...newConversation, lastMessage];
-            });
-          } else {
-            setIsLoading(false);
-            setSearchId(newData?.query_id);
-            setConversation((prev) => {
-              const newConversation = prev.slice(0, -1);
-              const lastMessage = {
-                ...prev.slice(-1)[0],
-                isLoading: true,
-                snippets:
-                  newData?.snippets?.matches?.map((item: NLSnippet) => ({
-                    path: item.relative_path,
-                    code: item.text,
-                    repoName: item.repo_name,
-                    lang: item.lang,
-                    line: item.start_line,
-                  })) || [],
-                text:
-                  typeof newData === 'string' || newData.Ok
-                    ? newData.Ok || newData
-                    : '',
-              };
-              return [...newConversation, lastMessage];
-            });
-          }
-        } else {
+  const makeSearch = useCallback(
+    (question: string) => {
+      setIsLoading(true);
+      prevEventSource?.close();
+      const startTime = Date.now();
+      const eventSource = new EventSource(
+        `${apiUrl.replace('https:', '')}/answer?q=${encodeURIComponent(
+          `${question} ${scopeRepos.map((r) => `repo:${r}`).join(' ')}`,
+        )}&thread_id=${threadId}`,
+      );
+      prevEventSource = eventSource;
+      const matches = Array.from(question.matchAll(/\srepo:(\S+)/gim));
+      setScopeRepos((prev) =>
+        Array.from(new Set([...prev, ...matches.map((m) => m[1])])),
+      );
+      setConversation((prev) => {
+        const newConversation = prev?.slice(0, -1) || [];
+        const lastMessages =
+          prev?.slice(-1)[0]?.isLoading &&
+          prev?.slice(-1)[0]?.author === 'server'
+            ? [{ author: 'server' as const, isLoading: true }]
+            : [
+                ...prev.slice(-1),
+                { author: 'server' as const, isLoading: true },
+              ];
+        return [...newConversation, ...lastMessages];
+      });
+      let i = 0;
+      eventSource.onmessage = (ev) => {
+        if (ev.data === '[DONE]') {
+          eventSource.close();
           setConversation((prev) => {
             const newConversation = prev.slice(0, -1);
             const lastMessage = {
               ...prev.slice(-1)[0],
-              text: (prev.slice(-1)[0].text || '') + newData.Ok,
+              isLoading: false,
             };
             return [...newConversation, lastMessage];
           });
+          prevEventSource = undefined;
+        } else {
+          const newData = JSON.parse(ev.data);
+
+          if (i === 0) {
+            const queryTime = Date.now() - startTime;
+            trackSearch(queryTime, query, threadId);
+            if (newData.Err) {
+              setIsLoading(false);
+              setConversation((prev) => {
+                const newConversation = prev.slice(0, -1);
+                const lastMessage = {
+                  ...prev.slice(-1)[0],
+                  isLoading: false,
+                  error: newData.Err,
+                };
+                return [...newConversation, lastMessage];
+              });
+            } else {
+              setIsLoading(false);
+              setSearchId(newData?.query_id);
+              setConversation((prev) => {
+                const newConversation = prev.slice(0, -1);
+                const lastMessage = {
+                  ...prev.slice(-1)[0],
+                  isLoading: true,
+                  snippets:
+                    newData?.snippets?.matches?.map((item: NLSnippet) => ({
+                      path: item.relative_path,
+                      code: item.text,
+                      repoName: item.repo_name,
+                      lang: item.lang,
+                      line: item.start_line,
+                    })) || [],
+                  text:
+                    typeof newData === 'string' || newData.Ok
+                      ? newData.Ok || newData
+                      : '',
+                };
+                return [...newConversation, lastMessage];
+              });
+            }
+          } else {
+            setConversation((prev) => {
+              const newConversation = prev.slice(0, -1);
+              const lastMessage = {
+                ...prev.slice(-1)[0],
+                text: (prev.slice(-1)[0].text || '') + newData.Ok,
+              };
+              return [...newConversation, lastMessage];
+            });
+          }
+          i++;
         }
-        i++;
-      }
-    };
-    eventSource.onerror = (err) => {
-      console.error('EventSource failed:', err);
-      setIsLoading(false);
-      setConversation((prev) => {
-        const newConversation = prev.slice(0, -1);
-        const lastMessages =
-          prev?.slice(-1)[0]?.isLoading &&
-          prev?.slice(-1)[0]?.author === 'server'
-            ? [
-                {
-                  author: 'server' as const,
-                  isLoading: false,
-                  error: 'Sorry, something went wrong',
-                },
-              ]
-            : [
-                ...prev.slice(-1),
-                {
-                  author: 'server' as const,
-                  isLoading: false,
-                  error: 'Sorry, something went wrong',
-                },
-              ];
-        return [...newConversation, ...lastMessages];
-      });
-    };
-  }, []);
+      };
+      eventSource.onerror = (err) => {
+        console.error('EventSource failed:', err);
+        setIsLoading(false);
+        setConversation((prev) => {
+          const newConversation = prev.slice(0, -1);
+          const lastMessages =
+            prev?.slice(-1)[0]?.isLoading &&
+            prev?.slice(-1)[0]?.author === 'server'
+              ? [
+                  {
+                    author: 'server' as const,
+                    isLoading: false,
+                    error: 'Sorry, something went wrong',
+                  },
+                ]
+              : [
+                  ...prev.slice(-1),
+                  {
+                    author: 'server' as const,
+                    isLoading: false,
+                    error: 'Sorry, something went wrong',
+                  },
+                ];
+          return [...newConversation, ...lastMessages];
+        });
+      };
+    },
+    [scopeRepos],
+  );
 
   useEffect(() => {
     if (
