@@ -64,7 +64,7 @@ const RepoCard = ({
   }, [repoName, provider, isGithubConnected, isAnalyticsAllowed, sync_status]);
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-md p-4 w-full flex flex-col justify-between h-36">
+    <div className="bg-gray-900 border border-gray-800 rounded-md p-4 w-60 flex-shrink-0 flex flex-col justify-between h-36">
       <div className="flex items-start gap-4">
         <span className="h-6 flex items-center">
           <FileIcon filename={getFileExtensionForLang(lang)} />

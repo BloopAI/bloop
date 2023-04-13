@@ -32,6 +32,7 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
   const [shouldShowWelcome, setShouldShowWelcome] = useState(
     !getPlainFromStorage(ONBOARDING_DONE_KEY),
   );
+  const [isRightPanelOpen, setRightPanelOpen] = useState(false);
 
   useEffect(() => {
     if (!isSelfServe) {
@@ -59,6 +60,8 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       isGithubChecked,
       shouldShowWelcome,
       setShouldShowWelcome,
+      isRightPanelOpen,
+      setRightPanelOpen,
     }),
     [
       isSettingsOpen,
@@ -69,6 +72,7 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       isGithubConnected,
       isGithubChecked,
       shouldShowWelcome,
+      isRightPanelOpen,
     ],
   );
   return (

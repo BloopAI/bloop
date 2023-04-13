@@ -1,13 +1,14 @@
-import { useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
 import { CloseSign, List } from '../../icons';
+import { UIContext } from '../../context/uiContext';
 import NLInput from './NLInput';
 import ChipButton from './ChipButton';
 import AllConversations from './AllCoversations';
 
 const Chat = () => {
+  const { isRightPanelOpen, setRightPanelOpen } = useContext(UIContext);
   const [isActive, setActive] = useState(false);
-  const [isHistoryOpen, setHistoryOpen] = useState(false);
   const chatRef = useRef(null);
   useOnClickOutside(chatRef, () => setActive(false));
 
@@ -15,7 +16,7 @@ const Chat = () => {
     <>
       <button
         className={`fixed z-50 bottom-20 w-13 h-13 rounded-full cursor-pointer ${
-          isActive || isHistoryOpen ? '-right-full' : 'right-8'
+          isActive || isRightPanelOpen ? '-right-full' : 'right-8'
         } border border-gray-600 bg-gray-700 transition-all duration-300 ease-out-slow`}
         onClick={() => setActive(true)}
       >
@@ -24,7 +25,7 @@ const Chat = () => {
       <div
         ref={chatRef}
         className={`fixed z-50 bottom-20 rounded-xl group ${
-          !isActive || isHistoryOpen ? '-right-full' : 'right-8'
+          !isActive || isRightPanelOpen ? '-right-full' : 'right-8'
         } backdrop-blur-6 shadow-small bg-gray-800/50 transition-all duration-300 ease-out-slow`}
       >
         <div className="w-full max-h-0 group-hover:max-h-96 transition-all duration-200 overflow-hidden">
@@ -32,7 +33,7 @@ const Chat = () => {
             <div className="flex justify-between gap-1 items-center">
               <ChipButton
                 onClick={() => {
-                  setHistoryOpen(true);
+                  setRightPanelOpen(true);
                 }}
               >
                 <List /> All conversations
@@ -43,13 +44,15 @@ const Chat = () => {
             </div>
           </div>
         </div>
-        <div className="flex flex-col p-4 gap-3 group relative">
-          <NLInput />
+        <div className="p-4">
+          <div className="flex flex-col w-95">
+            <NLInput />
+          </div>
         </div>
       </div>
       <AllConversations
-        setHistoryOpen={setHistoryOpen}
-        isHistoryOpen={isHistoryOpen}
+        setHistoryOpen={setRightPanelOpen}
+        isHistoryOpen={isRightPanelOpen}
         setActive={setActive}
       />
     </>
