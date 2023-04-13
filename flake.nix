@@ -4,19 +4,12 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
-      inputs.flake-utils.follows = "flake-utils";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, rust-overlay }:
+  outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        overlays = [ (import rust-overlay) ];
-        pkgs = import nixpkgs { inherit system overlays; };
+        pkgs = import nixpkgs { inherit system; };
         pkgsStatic = pkgs.pkgsStatic;
         lib = pkgs.lib;
 
@@ -25,10 +18,9 @@
         libclang = llvm.libclang;
         stdenv = llvm.stdenv;
 
-        rust = pkgs.rust-bin.stable.latest.default;
         rustPlatform = pkgs.makeRustPlatform {
-          cargo = rust;
-          rustc = rust;
+          cargo = pkgs.cargo;
+          rustc = pkgs.rustc;
         };
 
         runtimeDeps =
@@ -42,7 +34,6 @@
             openssl_1_1.out
             openssl_1_1.dev
 
-            rust
 
             protobuf
             onnxruntime-static
