@@ -18,21 +18,19 @@ impl super::ApiResponse for ConfigResponse {}
 
 pub(super) async fn handle(
     State(app): State<Application>,
-    Extension(User(user)): Extension<User>,
+    Extension(user): Extension<User>,
 ) -> impl IntoResponse {
-    let tracking_id = match user {
-        Some(ref username) => {
-            let id = app
-                .user_store
-                .entry(username.clone())
-                .or_default()
-                .get()
-                .tracking_id();
-            _ = app.user_store.store();
-            id
-        }
-        None => app.tracking_seed.to_string(),
-    };
+    let tracking_id = app
+        .analytics
+        .as_ref()
+        .map(|a| a.tracking_id(&user))
+        .unwrap_or_default();
+
+    let device_id = app
+        .analytics
+        .as_ref()
+        .map(|a| a.device_id())
+        .unwrap_or_default();
 
     let org_name = {
         let cred = app.credentials.github().unwrap();
@@ -46,8 +44,8 @@ pub(super) async fn handle(
         analytics_data_plane: app.config.analytics_data_plane.clone(),
         analytics_key_fe: app.config.analytics_key_fe.clone(),
         sentry_dsn_fe: app.config.sentry_dsn_fe.clone(),
-        device_id: app.tracking_seed.to_string(),
-        user_login: user,
+        user_login: user.0,
+        device_id,
         org_name,
         tracking_id,
     })
