@@ -32,7 +32,7 @@
         };
 
         runtimeDeps =
-          with pkgs; ([ openssl_1_1.out rocksdb universal-ctags git zlib ]);
+          with pkgs; ([ openssl_1_1.out rocksdb git zlib ]);
 
         buildDeps = with pkgs;
           ([
@@ -133,20 +133,6 @@
             '';
 
           };
-
-          ctags-static = pkgsStatic.universal-ctags.overrideAttrs (old: {
-            nativeBuildInputs = with pkgs; [ autoreconfHook perl pkg-config ];
-            doCheck = false;
-            checkFlags = [ ];
-          });
-
-          ctags-static-aarch64-darwin =
-            pkgs.pkgsCross.aarch64-darwin.pkgsStatic.universal-ctags.overrideAttrs
-            (old: {
-              nativeBuildInputs = with pkgs; [ autoreconfHook perl pkg-config ];
-              doCheck = false;
-              checkFlags = [ ];
-            });
 
           onnxruntime-static = onnxruntime-static;
         };
