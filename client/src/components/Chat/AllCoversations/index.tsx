@@ -1,14 +1,24 @@
 import React, { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import ChipButton from '../ChipButton';
-import { ArrowLeft, CheckIcon, Checkmark, CloseSign } from '../../../icons';
+import { ArrowLeft, Checkmark, CloseSign } from '../../../icons';
 import ConversationMessage from '../ConversationMessage';
 import NLInput from '../NLInput';
+import { CONVERSATIONS_SIDEBAR_ANIMATION } from '../../../consts/animations';
 import ConversationListItem from './ConversationListItem';
 
 type Props = {
   isHistoryOpen: boolean;
   setHistoryOpen: (b: boolean) => void;
   setActive: (b: boolean) => void;
+};
+
+const sidebarHidden = {
+  transform: 'translate(412px, 0)',
+};
+
+const sidebarVisible = {
+  transform: 'translate(0, 0)',
 };
 
 const AllConversations = ({
@@ -19,7 +29,7 @@ const AllConversations = ({
   const [openItem, setOpenItem] = useState<number | null>(null);
   return (
     <div
-      className={`w-97 border-l border-gray-800 h-full flex flex-col relative ${
+      className={`w-97 border-l border-gray-800 h-full flex flex-col overflow-hidden ${
         isHistoryOpen ? 'mr-0' : '-mr-97'
       } transition-all duration-300 ease-out-slow`}
     >
@@ -47,9 +57,57 @@ const AllConversations = ({
         </ChipButton>
       </div>
       {!openItem && (
-        <div className="flex flex-col gap-1 py-4 overflow-auto">
+        <div className="flex flex-col gap-1 py-4 overflow-auto flex-1">
           <ConversationListItem
             title="Where are ctags?"
+            subtitle="Monday, July 12, 2:36 PM"
+            onClick={() => setOpenItem(1)}
+            onDelete={() => {}}
+          />
+          <ConversationListItem
+            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
+            subtitle="Monday, July 12, 2:36 PM"
+            onClick={() => setOpenItem(1)}
+            onDelete={() => {}}
+          />
+          <ConversationListItem
+            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
+            subtitle="Monday, July 12, 2:36 PM"
+            onClick={() => setOpenItem(1)}
+            onDelete={() => {}}
+          />
+          <ConversationListItem
+            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
+            subtitle="Monday, July 12, 2:36 PM"
+            onClick={() => setOpenItem(1)}
+            onDelete={() => {}}
+          />
+          <ConversationListItem
+            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
+            subtitle="Monday, July 12, 2:36 PM"
+            onClick={() => setOpenItem(1)}
+            onDelete={() => {}}
+          />
+          <ConversationListItem
+            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
+            subtitle="Monday, July 12, 2:36 PM"
+            onClick={() => setOpenItem(1)}
+            onDelete={() => {}}
+          />
+          <ConversationListItem
+            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
+            subtitle="Monday, July 12, 2:36 PM"
+            onClick={() => setOpenItem(1)}
+            onDelete={() => {}}
+          />
+          <ConversationListItem
+            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
+            subtitle="Monday, July 12, 2:36 PM"
+            onClick={() => setOpenItem(1)}
+            onDelete={() => {}}
+          />
+          <ConversationListItem
+            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
             subtitle="Monday, July 12, 2:36 PM"
             onClick={() => setOpenItem(1)}
             onDelete={() => {}}
@@ -125,9 +183,9 @@ const AllConversations = ({
           />
         </div>
       )}
-      <div className="backdrop-blur-6 bg-gray-900/75 absolute bottom-0 left-0">
+      <div className="backdrop-blur-6 bg-gray-900/75 -mt-10">
         <div
-          className="flex flex-col p-4 gap-3 group relative"
+          className="p-4"
           onClick={() => {
             setActive(true);
             setHistoryOpen(false);
