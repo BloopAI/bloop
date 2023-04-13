@@ -1,4 +1,4 @@
-import { useContext, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
 import { CloseSign, List } from '../../icons';
 import { UIContext } from '../../context/uiContext';
@@ -11,6 +11,12 @@ const Chat = () => {
   const [isActive, setActive] = useState(false);
   const chatRef = useRef(null);
   useOnClickOutside(chatRef, () => setActive(false));
+
+  useEffect(() => {
+    if (isActive) {
+      document.getElementById('question-input')?.focus();
+    }
+  }, [isActive]);
 
   return (
     <>
@@ -46,7 +52,7 @@ const Chat = () => {
         </div>
         <div className="p-4">
           <div className="flex flex-col w-95">
-            <NLInput />
+            <NLInput id="question-input" />
           </div>
         </div>
       </div>

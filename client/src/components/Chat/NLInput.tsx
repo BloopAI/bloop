@@ -1,6 +1,10 @@
 import { QuillIcon } from '../../icons';
 
-const NLInput = () => {
+type Props = {
+  id?: string;
+};
+
+const NLInput = ({ id }: Props) => {
   return (
     <div
       className={`w-full flex items-center gap-2 bg-gray-800 rounded-lg disabled:border-transparent disabled:text-gray-500
@@ -12,6 +16,7 @@ const NLInput = () => {
         className={`w-full p-4 pl-0 bg-transparent rounded-lg outline-none focus:outline-0 
         placeholder:text-current transition-all ease-out duration-150`}
         placeholder="Anything I can help you with?"
+        id={id}
       />
     </div>
   );

@@ -1,24 +1,14 @@
 import React, { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import ChipButton from '../ChipButton';
 import { ArrowLeft, Checkmark, CloseSign } from '../../../icons';
 import ConversationMessage from '../ConversationMessage';
 import NLInput from '../NLInput';
-import { CONVERSATIONS_SIDEBAR_ANIMATION } from '../../../consts/animations';
 import ConversationListItem from './ConversationListItem';
 
 type Props = {
   isHistoryOpen: boolean;
   setHistoryOpen: (b: boolean) => void;
   setActive: (b: boolean) => void;
-};
-
-const sidebarHidden = {
-  transform: 'translate(412px, 0)',
-};
-
-const sidebarVisible = {
-  transform: 'translate(0, 0)',
 };
 
 const AllConversations = ({
@@ -133,7 +123,7 @@ const AllConversations = ({
         </div>
       )}
       {!!openItem && (
-        <div className="p-4 flex flex-col gap-3 overflow-auto flex-1 pb-24">
+        <div className="p-4 flex flex-col gap-3 overflow-auto flex-1 pb-12">
           <ConversationMessage author="user" message="Where are the ctags?" />
           <div className="flex gap-2 px-4 items-center">
             <div className="text-success-500 h-5">
@@ -187,6 +177,7 @@ const AllConversations = ({
         <div
           className="p-4"
           onClick={() => {
+            document.getElementById('question-input')?.focus();
             setActive(true);
             setHistoryOpen(false);
           }}
