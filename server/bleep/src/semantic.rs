@@ -326,7 +326,7 @@ fn make_kv_filter(key: &str, value: &str) -> FieldCondition {
     FieldCondition {
         key,
         r#match: Some(Match {
-            match_value: MatchValue::Text(value).into(),
+            match_value: MatchValue::Keyword(value).into(),
         }),
         ..Default::default()
     }
