@@ -101,7 +101,13 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
   const [showModal, setShowModal] = useState(false);
 
   const isDisabled = useMemo(
-    () => !repositories?.find((r) => r.sync_status === SyncStatus.Done),
+    () =>
+      !repositories?.find(
+        (r) =>
+          r.last_index &&
+          r.last_index !== '1970-01-01T00:00:00Z' &&
+          r.sync_status !== SyncStatus.Removed,
+      ),
     [repositories],
   );
 
