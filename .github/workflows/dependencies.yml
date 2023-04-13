@@ -29,16 +29,6 @@ jobs:
             os: macos-11
             cross: false
 
-          - target: aarch64-darwin
-            os: macos-11
-            cross: true
-
-        # Requires python for the build, which in a proper mess
-        # Just build this on a real machine instead of cross
-        exclude:
-          - package: onnxruntime
-            target: aarch64-darwin
-
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setting variables
