@@ -41,12 +41,15 @@ impl From<(&RepoRef, &Repository)> for Repo {
                 .unwrap()
                 .and_local_timezone(Utc)
                 .unwrap(),
-            last_index: Some(
-                NaiveDateTime::from_timestamp_opt(repo.last_index_unix_secs as i64, 0)
-                    .unwrap()
-                    .and_local_timezone(Utc)
-                    .unwrap(),
-            ),
+            last_index: match repo.last_index_unix_secs {
+                0 => None,
+                other => Some(
+                    NaiveDateTime::from_timestamp_opt(other as i64, 0)
+                        .unwrap()
+                        .and_local_timezone(Utc)
+                        .unwrap(),
+                ),
+            },
             most_common_lang: repo.most_common_lang.clone(),
         }
     }
