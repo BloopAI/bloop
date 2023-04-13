@@ -128,11 +128,18 @@ export const getFileManagerName = (os: string) => {
 };
 
 export function groupReposByParentFolder(repos: RepoType[]): RepoUi[] {
+  const isWindows = repos?.[0]?.ref ? isWindowsPath(repos[0].ref) : false;
   // Extract unique parent folders
   const parentFolders = Array.from(
-    new Set(repos.map((obj) => obj.ref.split('/').slice(0, -1).join('/'))),
+    new Set(
+      repos.map((obj) =>
+        obj.ref
+          .split(isWindows ? '\\' : '/')
+          .slice(0, -1)
+          .join(isWindows ? '\\' : '/'),
+      ),
+    ),
   );
-  console.log('parentFolders', parentFolders);
 
   // Group repos by parent folder
   const groupedObjects: {
@@ -143,7 +150,6 @@ export function groupReposByParentFolder(repos: RepoType[]): RepoUi[] {
       .filter((obj) => obj.ref.startsWith(parentFolder + '/'))
       .map((r) => r.ref);
   }
-  console.log('groupedObjects', groupedObjects);
 
   // Add folderName property to each repo
   const objectsWithFolderName: RepoUi[] = repos.map((r) => {
@@ -151,7 +157,9 @@ export function groupReposByParentFolder(repos: RepoType[]): RepoUi[] {
       Object.entries(groupedObjects)
         .filter(([folder, repos]) => repos.includes(r.ref))
         .sort((a, b) => (a[0].length < b[0].length ? -1 : 1))
-        .pop()?.[0] || '/';
+        .pop()?.[0] || isWindows
+        ? '\\'
+        : '/';
     return {
       ...r,
       folderName,
@@ -163,9 +171,9 @@ export function groupReposByParentFolder(repos: RepoType[]): RepoUi[] {
   const commonFolder = getCommonFolder(
     objectsWithFolderName.map((lr) => lr.folderName),
   )
-    .split('/')
+    .split(isWindows ? '\\' : '/')
     .slice(0, -1)
-    .join('/');
+    .join(isWindows ? '\\' : '/');
 
   return objectsWithFolderName.map((r) => ({
     ...r,
