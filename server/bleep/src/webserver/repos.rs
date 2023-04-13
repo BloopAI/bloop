@@ -1,4 +1,4 @@
-use std::{collections::HashSet, time::Duration};
+use std::{collections::HashSet, hash::Hash, time::Duration};
 
 use crate::{
     repo::{Backend, RepoRef, Repository, SyncStatus},
@@ -16,7 +16,7 @@ use utoipa::{IntoParams, ToSchema};
 
 use super::prelude::*;
 
-#[derive(Serialize, ToSchema, Debug)]
+#[derive(Serialize, ToSchema, Debug, Eq)]
 pub(super) struct Repo {
     pub(super) provider: Backend,
     pub(super) name: String,
@@ -71,6 +71,18 @@ impl Repo {
             last_index: None,
             most_common_lang: None,
         }
+    }
+}
+
+impl Hash for Repo {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.repo_ref.hash(state)
+    }
+}
+
+impl PartialEq for Repo {
+    fn eq(&self, other: &Self) -> bool {
+        self.repo_ref == other.repo_ref
     }
 }
 
@@ -253,13 +265,18 @@ pub(super) async fn available(Extension(app): Extension<Application>) -> impl In
         })
         .collect::<Vec<_>>();
 
-    let mut repos = vec![];
+    let mut repos = HashSet::new();
     app.repo_pool
-        .scan_async(|k, v| repos.push(Repo::from((k, v))))
+        .scan_async(|k, v| {
+            repos.insert(Repo::from((k, v)));
+        })
         .await;
     repos.extend(unknown_github);
 
-    (StatusCode::OK, Json(ReposResponse::List(repos)))
+    (
+        StatusCode::OK,
+        Json(ReposResponse::List(repos.into_iter().collect())),
+    )
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Debug)]

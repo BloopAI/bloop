@@ -326,7 +326,7 @@ async fn get_repo_metadata(repo_disk_path: &PathBuf) -> Arc<RepoMetadata> {
     .into()
 }
 
-#[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug)]
+#[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum SyncStatus {
     Error { message: String },
