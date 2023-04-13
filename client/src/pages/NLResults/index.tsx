@@ -63,6 +63,16 @@ const ResultsPage = ({ query, threadId }: Props) => {
 
   useEffect(() => {
     conversationsCache[threadId] = conversation;
+    const allRepoFlags: Set<string> = new Set();
+    conversation.forEach((m) => {
+      if (m.author === 'user') {
+        const matches = Array.from(m.text?.matchAll(/\srepo:(\S+)/gim) || []);
+        matches.forEach((m) => {
+          allRepoFlags.add(m[1]);
+        });
+      }
+    });
+    setScopeRepos(Array.from(allRepoFlags));
   }, [conversation]);
 
   const onResultClick = useCallback<ResultClick>((repo, path, lineNumber) => {
@@ -121,10 +131,6 @@ const ResultsPage = ({ query, threadId }: Props) => {
         )}&thread_id=${threadId}`,
       );
       prevEventSource = eventSource;
-      const matches = Array.from(question.matchAll(/\srepo:(\S+)/gim));
-      setScopeRepos((prev) =>
-        Array.from(new Set([...prev, ...matches.map((m) => m[1])])),
-      );
       setConversation((prev) => {
         const newConversation = prev?.slice(0, -1) || [];
         const lastMessages =
