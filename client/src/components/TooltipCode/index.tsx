@@ -180,7 +180,7 @@ const TooltipCode = ({
                         d.data.some((dd) => dd.kind.startsWith(Type.DEF)),
                       )
                     }
-                    tooltipText="The line of code where identifier is modified"
+                    tooltipText="The line of code where identifier is defined"
                   />
                   <Badge
                     type={Type.REF}
@@ -191,7 +191,7 @@ const TooltipCode = ({
                         d.data.some((dd) => dd.kind.startsWith(Type.REF)),
                       )
                     }
-                    tooltipText="The line of code where the identifier is defined"
+                    tooltipText="The line of code where the identifier is referenced"
                   />
                   <Badge
                     type={Type.MOD}
@@ -202,7 +202,7 @@ const TooltipCode = ({
                         d.data.some((dd) => dd.kind.startsWith(Type.MOD)),
                       )
                     }
-                    tooltipText="The line of code where the identifier is referenced"
+                    tooltipText="The line of code where the identifier is modified"
                   />
                   <Badge
                     type={Type.RET}
