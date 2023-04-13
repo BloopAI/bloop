@@ -5,6 +5,7 @@ import { GitHubLogo, List, Repository } from '../../icons';
 import ErrorFallback from '../../components/ErrorFallback';
 import { DeviceContext } from '../../context/deviceContext';
 import { ReposFilter } from '../../types/general';
+import { UIContext } from '../../context/uiContext';
 import ReposSection from './ReposSection';
 
 type Props = {
@@ -20,11 +21,16 @@ const listNavigationItems = [
 const HomePage = ({ emptyRepos }: Props) => {
   const [filter, setFilter] = useState<ReposFilter>(ReposFilter.ALL);
   const { isSelfServe } = useContext(DeviceContext);
+  const { isRightPanelOpen } = useContext(UIContext);
 
   return (
     <>
       {isSelfServe ? null : (
-        <div className="w-90 text-gray-300 border-r border-gray-800 flex-shrink-0 h-full">
+        <div
+          className={`w-90 text-gray-300 border-r border-gray-800 flex-shrink-0 h-full ${
+            isRightPanelOpen ? '-ml-90' : ''
+          } transition-all duration-300 ease-out-slow`}
+        >
           <ListNavigation
             title=" "
             items={listNavigationItems}
