@@ -4,7 +4,6 @@ use bleep::{analytics, Application, Configuration, Environment};
 use once_cell::sync::OnceCell;
 use sentry::ClientInitGuard;
 
-
 use super::{plugin, App, Manager, Payload, Runtime};
 
 // a hack to get server/bleep/tests/desktop to run correctly
