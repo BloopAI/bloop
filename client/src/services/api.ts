@@ -65,12 +65,19 @@ export const getHoverables = async (
   }
 };
 
+const getTokenInfoCache: Record<string, TokenInfoResponse> = {};
+
 export const getTokenInfo = async (
   path: string,
   repoRef: string,
   start: number,
   end: number,
 ): Promise<TokenInfoResponse> => {
+  if (getTokenInfoCache[`${path}-${repoRef}-${start}-${end}`]) {
+    return Promise.resolve(
+      getTokenInfoCache[`${path}-${repoRef}-${start}-${end}`],
+    );
+  }
   return http
     .get('/token-info', {
       params: {
@@ -80,7 +87,13 @@ export const getTokenInfo = async (
         end,
       },
     })
-    .then((r) => r.data);
+    .then((r) => {
+      getTokenInfoCache[`${path}-${repoRef}-${start}-${end}`] = r.data;
+      setTimeout(() => {
+        delete getTokenInfoCache[`${path}-${repoRef}-${start}-${end}`];
+      }, 60 * 60 * 1000); // invalidate cache in an hour
+      return r.data;
+    });
 };
 
 export const getAutocomplete = async (
