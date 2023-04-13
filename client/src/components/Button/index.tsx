@@ -40,15 +40,15 @@ const variantStylesMap = {
 
 const sizeMap = {
   small: {
-    default: 'h-8 px-2 gap-1 caption-strong',
+    default: 'h-8 px-2 gap-1 caption-strong min-w-[70px]',
     square: 'h-8 w-8 justify-center p-0',
   },
   medium: {
-    default: 'h-10 px-2.5 gap-2 callout',
+    default: 'h-10 px-2.5 gap-2 callout min-w-[84px]',
     square: 'h-10 w-10 justify-center p-0',
   },
   large: {
-    default: 'h-11.5 px-3.5 gap-2 callout',
+    default: 'h-11.5 px-3.5 gap-2 callout min-w-[84px]',
     square: 'h-11.5 w-11.5 justify-center p-0',
   },
 };
@@ -84,7 +84,7 @@ const Button = forwardRef<
         } ${onlyIcon ? sizeMap[size].square : sizeMap[size].default} ${
           className || ''
         } ${
-          onlyIcon ? '' : 'min-w-[84px] justify-center'
+          onlyIcon ? '' : 'justify-center'
         } transition-all duration-300 ease-in-bounce select-none`,
       [variant, className, size, onlyIcon],
     );
