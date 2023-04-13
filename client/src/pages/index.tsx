@@ -14,6 +14,7 @@ import { buildRepoQuery } from '../utils';
 import { SearchType } from '../types/general';
 import { TabsContext } from '../context/tabsContext';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
+import { conversationsCache } from '../services/cache';
 import RepositoryPage from './Repository';
 import ResultsPage from './Results';
 import ViewResult from './ResultFull';
@@ -21,6 +22,7 @@ import NLResults from './NLResults';
 import NoResults from './Results/NoResults';
 import HomePage from './Home';
 import Onboarding from './Onboarding';
+import ConversationResult from './ConversationResult';
 
 const mockQuerySuggestions = [
   'repo:cobra-ats  error:“no apples”',
@@ -99,9 +101,13 @@ const ContentContainer = () => {
       | 'full-result'
       | 'nl-result'
       | 'no-results'
-      | 'home';
+      | 'home'
+      | 'conversation-result';
     if (!navigatedItem || navigatedItem.type === 'home') {
       return 'home';
+    }
+    if (navigatedItem.type === 'conversation-result') {
+      return 'conversation-result';
     }
     if (
       navigatedItem?.searchType === SearchType.REGEX &&
@@ -156,6 +162,8 @@ const ContentContainer = () => {
             threadId={navigatedItem?.threadId!}
           />
         );
+      case 'conversation-result':
+        return <ConversationResult recordId={navigatedItem?.recordId!} />;
       default:
         return <HomePage />;
     }

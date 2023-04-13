@@ -10,7 +10,7 @@ import { buildRepoQuery, generateUniqueId } from '../utils';
 import { SearchType } from '../types/general';
 
 interface NavigationItem {
-  type: 'search' | 'repo' | 'full-result' | 'home';
+  type: 'search' | 'repo' | 'full-result' | 'home' | 'conversation-result';
   query?: string;
   repo?: string;
   path?: string;
@@ -19,6 +19,7 @@ interface NavigationItem {
   searchType?: SearchType;
   pathParams?: Record<string, string>;
   threadId?: string;
+  recordId?: string;
 }
 
 type ContextType = {
@@ -50,6 +51,7 @@ type ContextType = {
     path: string,
     pathParams?: Record<string, string>,
   ) => void;
+  navigateConversationResults: (recordId: string) => void;
   query: string;
 };
 
@@ -63,6 +65,7 @@ const AppNavigationContext = createContext<ContextType>({
   navigateRepoPath: (repo, path) => {},
   navigateSearch: (query, page) => {},
   navigateFullResult: (repo, path) => {},
+  navigateConversationResults: (recordId) => {},
   query: '',
 });
 
@@ -169,6 +172,13 @@ export const AppNavigationProvider = (prop: {
     [],
   );
 
+  const navigateConversationResults = useCallback((recordId: string) => {
+    saveState({
+      type: 'conversation-result',
+      recordId,
+    });
+  }, []);
+
   const navigateFullResult = useCallback(
     (repo: string, path: string, pathParams?: Record<string, string>) => {
       saveState({
@@ -213,6 +223,7 @@ export const AppNavigationProvider = (prop: {
         navigateSearch,
         navigateHome,
         navigateForward,
+        navigateConversationResults,
         query: query || '',
       }}
     >
