@@ -319,30 +319,6 @@ async fn get_repo_metadata(repo_disk_path: &PathBuf) -> Arc<RepoMetadata> {
         .and_then(|repo| Ok(repo.head()?.peel_to_commit()?.time().seconds() as u64))
         .unwrap_or(0);
 
-    // Extract symbols using Ctags for all languages which are not covered by a more
-    // precise form of symbol extraction.
-    //
-    // There might be a way to generate this list from intelligence::ALL_LANGUAGES,
-    // but not all lang_ids are valid ctags' languages though, so we hardcode some here:
-    let _exclude_langs = &[
-        "javascript",
-        "typescript",
-        "python",
-        "go",
-        "c",
-        "rust",
-        "c++",
-        "c#",
-        "java",
-        // misc languages
-        "json",
-        "markdown",
-        "rmarkdown",
-        "iniconf",
-        "man",
-        "protobuf",
-    ];
-
     RepoMetadata {
         last_commit_unix_secs: repo,
         langs: get_language_info(repo_disk_path),
