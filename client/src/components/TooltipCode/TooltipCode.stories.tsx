@@ -18,6 +18,7 @@ export const TooltipCodeDefault = () => {
             repoName={'bloop'}
             queryParams={''}
             onRefDefClick={() => {}}
+            isLoading={false}
             data={{
               data: [
                 {
@@ -59,6 +60,7 @@ export const TooltipCodeDefault = () => {
             onRefDefClick={() => {}}
             queryParams={''}
             repoName={'bloop'}
+            isLoading={false}
             data={{
               data: [
                 {
@@ -100,6 +102,7 @@ export const TooltipCodeDefault = () => {
             onRefDefClick={() => {}}
             queryParams={''}
             repoName={'bloop'}
+            isLoading={false}
             data={{
               data: [
                 {
