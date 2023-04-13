@@ -11,7 +11,7 @@ import { PlusSignInBubble, Repository } from '../../../icons';
 import { deleteRepo, getRepos, gitHubLogout } from '../../../services/api';
 import { UIContext } from '../../../context/uiContext';
 import RepoList from '../../RepoList';
-import { getCommonFolder, splitPath } from '../../../utils';
+import { groupReposByParentFolder, splitPath } from '../../../utils';
 import { DropdownWithIcon } from '../../Dropdown';
 import GitHubIcon from '../../../icons/GitHubIcon';
 import { DeviceContext } from '../../../context/deviceContext';
@@ -44,30 +44,9 @@ const RepositoriesSettings = () => {
         (r) =>
           r.provider === RepoProvider.Local && r.sync_status == SyncStatus.Done,
       ) || [];
-    const commonFolder =
-      localRepositories.length > 1
-        ? getCommonFolder(localRepositories.map((lr) => lr.ref))
-        : '';
-    return localRepositories
-      .map((r) => {
-        const folderName =
-          localRepositories.length > 1
-            ? r.ref.replace(commonFolder, '')
-            : `/${r.ref
-                .slice(
-                  r.ref.indexOf(
-                    splitPath(onBoardingState.indexFolder).pop() || '',
-                  ),
-                )
-                .slice(0, -r.name.length - 1)}`;
-        return {
-          ...r,
-          selected: true,
-          shortName: r.name,
-          folderName,
-        };
-      })
-      .sort((a, b) => (a.folderName > b.folderName ? 1 : -1));
+    return groupReposByParentFolder(localRepositories).sort((a, b) =>
+      a.folderName > b.folderName ? 1 : -1,
+    );
   }, [repositories]);
 
   const githubRepos = useMemo(() => {

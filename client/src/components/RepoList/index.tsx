@@ -11,19 +11,13 @@ import { GitHubLogo, Repository } from '../../icons';
 import Checkbox from '../Checkbox';
 import Button from '../Button';
 import SkeletonItem from '../SkeletonItem';
-import { RepoType } from '../../types/general';
+import { RepoUi } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
 import { getFileManagerName } from '../../utils';
 
-type RepoSelectType = RepoType & {
-  selected: boolean;
-  shortName: string;
-  folderName: string;
-};
-
 type Props = {
-  repos: RepoSelectType[];
-  setRepos: Dispatch<SetStateAction<RepoSelectType[]>>;
+  repos: RepoUi[];
+  setRepos: Dispatch<SetStateAction<RepoUi[]>>;
   source: 'local' | 'GitHub';
   activeTab: number;
   removable?: boolean;

@@ -1,5 +1,6 @@
 import { MouseEvent } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { RepoType, RepoUi } from '../types/general';
 import langs from './langs.json';
 
 export const copyToClipboard = (value: string) => {
@@ -125,6 +126,52 @@ export const getFileManagerName = (os: string) => {
       return 'File manager';
   }
 };
+
+export function groupReposByParentFolder(repos: RepoType[]): RepoUi[] {
+  // Extract unique parent folders
+  const parentFolders = Array.from(
+    new Set(repos.map((obj) => obj.ref.split('/').slice(0, -1).join('/'))),
+  );
+  console.log('parentFolders', parentFolders);
+
+  // Group repos by parent folder
+  const groupedObjects: {
+    [parentFolder: string]: string[];
+  } = {};
+  for (const parentFolder of parentFolders) {
+    groupedObjects[parentFolder] = repos
+      .filter((obj) => obj.ref.startsWith(parentFolder + '/'))
+      .map((r) => r.ref);
+  }
+  console.log('groupedObjects', groupedObjects);
+
+  // Add folderName property to each repo
+  const objectsWithFolderName: RepoUi[] = repos.map((r) => {
+    const folderName =
+      Object.entries(groupedObjects)
+        .filter(([folder, repos]) => repos.includes(r.ref))
+        .sort((a, b) => (a[0].length < b[0].length ? -1 : 1))
+        .pop()?.[0] || '/';
+    return {
+      ...r,
+      folderName,
+      selected: true,
+      shortName: r.name,
+    };
+  });
+
+  const commonFolder = getCommonFolder(
+    objectsWithFolderName.map((lr) => lr.folderName),
+  )
+    .split('/')
+    .slice(0, -1)
+    .join('/');
+
+  return objectsWithFolderName.map((r) => ({
+    ...r,
+    folderName: r.folderName.replace(commonFolder, ''),
+  }));
+}
 
 export const getCommonFolder = (paths: string[]) => {
   const pathParts = paths
