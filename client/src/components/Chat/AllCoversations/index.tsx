@@ -3,6 +3,8 @@ import ChipButton from '../ChipButton';
 import { ArrowLeft, Checkmark, CloseSign } from '../../../icons';
 import ConversationMessage from '../ConversationMessage';
 import NLInput from '../NLInput';
+import useAppNavigation from '../../../hooks/useAppNavigation';
+import { conversationsCache } from '../../../services/cache';
 import ConversationListItem from './ConversationListItem';
 
 type Props = {
@@ -17,6 +19,7 @@ const AllConversations = ({
   setActive,
 }: Props) => {
   const [openItem, setOpenItem] = useState<number | null>(null);
+  const { navigateConversationResults } = useAppNavigation();
   return (
     <div
       className={`w-97 border-l border-gray-800 h-full flex flex-col overflow-hidden ${
@@ -152,7 +155,30 @@ const AllConversations = ({
             <p className="caption text-gray-400 flex-1">Answer Ready</p>
             <button
               className="text-primary-300 caption mr-2"
-              onClick={() => {}}
+              onClick={() => {
+                const recordId = 'xyz';
+                conversationsCache[recordId] = {
+                  type: 'new-code',
+                  data: [
+                    {
+                      code:
+                        'const trackUpvote = useCallback(\n' +
+                        '    (isUpvote: boolean, query: string, answer: string, searchId: string) => {\n' +
+                        "      analytics?.track('Upvote', {\n" +
+                        '        isUpvote,\n' +
+                        '        query,\n' +
+                        '        answer,\n' +
+                        '        searchId,\n' +
+                        '      });\n' +
+                        '    },\n' +
+                        '    [analytics],\n' +
+                        '  );',
+                      language: 'TypeScript',
+                    },
+                  ],
+                };
+                navigateConversationResults(recordId);
+              }}
             >
               Show
             </button>

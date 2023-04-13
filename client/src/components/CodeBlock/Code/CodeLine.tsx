@@ -220,7 +220,11 @@ const CodeLine = ({
           </span>
         </div>
       ) : (
-        <div className={`px-1 text-center ${lineHidden ? 'p-0' : ''}`} />
+        <div
+          className={`${showLineNumbers ? 'px-1' : ''} text-center ${
+            lineHidden ? 'p-0' : ''
+          }`}
+        />
       )}
       {showLineNumbers && (
         <div
@@ -244,9 +248,9 @@ const CodeLine = ({
         )}
       </div>
       <div
-        className={`pl-2 ${lineHidden ? 'p-0' : ''} ${
-          isHighlighted ? 'animate-flash-highlight rounded-4 pr-2' : ''
-        }`}
+        className={`${showLineNumbers ? 'pl-2' : ''} ${
+          lineHidden ? 'p-0' : ''
+        } ${isHighlighted ? 'animate-flash-highlight rounded-4 pr-2' : ''}`}
         ref={codeRef}
       >
         {children}
