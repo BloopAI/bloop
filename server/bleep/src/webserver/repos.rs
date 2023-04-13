@@ -230,7 +230,7 @@ pub(super) async fn sync(
     ),
 )]
 pub(super) async fn available(Extension(app): Extension<Application>) -> impl IntoResponse {
-    let unknown_github = app
+    let mut repos = app
         .credentials
         .github()
         .map(|gh| gh.repositories)
@@ -263,15 +263,19 @@ pub(super) async fn available(Extension(app): Extension<Application>) -> impl In
 
             Repo::from_github(local_duplicates, repo)
         })
-        .collect::<Vec<_>>();
+        .collect::<HashSet<_>>();
 
-    let mut repos = HashSet::new();
     app.repo_pool
         .scan_async(|k, v| {
-            repos.insert(Repo::from((k, v)));
+            // this will hash to the same thing as another object due
+            // to `Hash` proxying to `repo_ref`, so stay on the safe
+            // side and check like good citizens
+            let repo = Repo::from((k, v));
+            if !repos.contains(&repo) {
+                repos.insert(repo);
+            }
         })
         .await;
-    repos.extend(unknown_github);
 
     (
         StatusCode::OK,
