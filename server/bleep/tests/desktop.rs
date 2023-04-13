@@ -61,10 +61,6 @@ impl AppHandle {
     }
 }
 
-fn relative_command_path(_: impl AsRef<str>) -> Option<PathBuf> {
-    None
-}
-
 pub mod plugin {
     pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 }

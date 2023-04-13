@@ -1,7 +1,8 @@
 use bleep::{
     indexes::{reader::ContentReader, DocumentRead, File},
+    intelligence::TreeSitterFile,
     semantic::Semantic,
-    symbol::{Symbol, SymbolLocations},
+    symbol::SymbolLocations,
     Application, Configuration, Environment,
 };
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
@@ -10,16 +11,13 @@ use std::{path::Path, sync::Arc};
 use tantivy::doc;
 use tempdir::TempDir;
 
-async fn get_symbols() -> Vec<Symbol> {
-    let syms = bleep::ctags::get_symbols(&Path::new(".").canonicalize().unwrap(), &[]).await;
+async fn get_symbols() -> SymbolLocations {
+    let file = std::fs::read_to_string("./js-sample-big-symbols.js").unwrap();
+    let scope_graph = TreeSitterFile::try_build(file.as_bytes(), "javascript")
+        .and_then(TreeSitterFile::scope_graph)
+        .unwrap();
 
-    syms.into_iter()
-        .find(|(k, _)| {
-            k.components()
-                .any(|c| c.as_os_str() == "js-sample-big-symbols.js")
-        })
-        .map(|(_, v)| v)
-        .unwrap()
+    SymbolLocations::TreeSitter(scope_graph)
 }
 
 async fn index(index_dir: &Path) {
@@ -83,7 +81,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     file.lang => &b"JavaScript"[..],
                     file.avg_line_length => 42.0,
                     file.last_commit_unix_seconds => 42.0,
-                    file.symbol_locations => bincode::serialize(&SymbolLocations::Ctags(symbols.clone())).unwrap(),
+                    file.symbol_locations => bincode::serialize(&symbols).unwrap(),
                 }
             },
             |tantivy_doc| ContentReader.read_document(black_box(&file), black_box(tantivy_doc)),

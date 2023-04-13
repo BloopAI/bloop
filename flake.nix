@@ -4,19 +4,12 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
-      inputs.flake-utils.follows = "flake-utils";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, rust-overlay }:
+  outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        overlays = [ (import rust-overlay) ];
-        pkgs = import nixpkgs { inherit system overlays; };
+        pkgs = import nixpkgs { inherit system; };
         pkgsStatic = pkgs.pkgsStatic;
         lib = pkgs.lib;
 
@@ -25,14 +18,13 @@
         libclang = llvm.libclang;
         stdenv = llvm.stdenv;
 
-        rust = pkgs.rust-bin.stable.latest.default;
         rustPlatform = pkgs.makeRustPlatform {
-          cargo = rust;
-          rustc = rust;
+          cargo = pkgs.cargo;
+          rustc = pkgs.rustc;
         };
 
         runtimeDeps =
-          with pkgs; ([ openssl_1_1.out rocksdb universal-ctags git zlib ]);
+          with pkgs; ([ openssl_1_1.out rocksdb git zlib ]);
 
         buildDeps = with pkgs;
           ([
@@ -41,8 +33,6 @@
             pkg-config
             openssl_1_1.out
             openssl_1_1.dev
-
-            rust
 
             protobuf
             onnxruntime-static
@@ -134,26 +124,12 @@
 
           };
 
-          ctags-static = pkgsStatic.universal-ctags.overrideAttrs (old: {
-            nativeBuildInputs = with pkgs; [ autoreconfHook perl pkg-config ];
-            doCheck = false;
-            checkFlags = [ ];
-          });
-
-          ctags-static-aarch64-darwin =
-            pkgs.pkgsCross.aarch64-darwin.pkgsStatic.universal-ctags.overrideAttrs
-            (old: {
-              nativeBuildInputs = with pkgs; [ autoreconfHook perl pkg-config ];
-              doCheck = false;
-              checkFlags = [ ];
-            });
-
           onnxruntime-static = onnxruntime-static;
         };
 
         devShell = (pkgs.mkShell {
           buildInputs = buildDeps ++ runtimeDeps ++ guiDeps
-            ++ (with pkgs; [ git-lfs ]);
+            ++ (with pkgs; [ git-lfs cargo rustc rustfmt clippy ]);
         }).overrideAttrs (old: envVars);
 
       });

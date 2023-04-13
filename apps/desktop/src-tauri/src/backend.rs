@@ -5,7 +5,7 @@ use once_cell::sync::OnceCell;
 use sentry::ClientInitGuard;
 use tracing::info;
 
-use super::{plugin, relative_command_path, App, Manager, Payload, Runtime};
+use super::{plugin, App, Manager, Payload, Runtime};
 
 // a hack to get server/bleep/tests/desktop to run correctly
 #[cfg(not(test))]
@@ -35,7 +35,6 @@ where
         Configuration::from_cli().unwrap(),
     );
     configuration.qdrant_url = Some("http://127.0.0.1:6334".into());
-    configuration.ctags_path = relative_command_path("ctags");
     configuration.max_threads = bleep::default_parallelism() / 2;
     configuration.model_dir = app
         .path_resolver()
