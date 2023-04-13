@@ -172,17 +172,6 @@ const TooltipCode = ({
               <>
                 <div className="flex gap-2">
                   <Badge
-                    type={Type.REF}
-                    onClick={toggleFilter}
-                    active={filters.includes(Type.REF)}
-                    disabled={
-                      !data?.data.some((d) =>
-                        d.data.some((dd) => dd.kind.startsWith(Type.REF)),
-                      )
-                    }
-                    tooltipText="The line of code where the identifier is defined"
-                  />
-                  <Badge
                     type={Type.DEF}
                     onClick={toggleFilter}
                     active={filters.includes(Type.DEF)}
@@ -192,6 +181,17 @@ const TooltipCode = ({
                       )
                     }
                     tooltipText="The line of code where identifier is modified"
+                  />
+                  <Badge
+                    type={Type.REF}
+                    onClick={toggleFilter}
+                    active={filters.includes(Type.REF)}
+                    disabled={
+                      !data?.data.some((d) =>
+                        d.data.some((dd) => dd.kind.startsWith(Type.REF)),
+                      )
+                    }
+                    tooltipText="The line of code where the identifier is defined"
                   />
                   <Badge
                     type={Type.MOD}
@@ -216,14 +216,14 @@ const TooltipCode = ({
                     tooltipText="The line of code where the identifier is returned"
                   />
                 </div>
-                {!isExplanationOpen && (
-                  <Button size="tiny" onClick={onExplain} disabled>
-                    <span className="w-4 h-4 inline-block">
-                      <Sparkle raw />
-                    </span>
-                    Explain
-                  </Button>
-                )}
+                {/*{!isExplanationOpen && (*/}
+                {/*  <Button size="tiny" onClick={onExplain} disabled>*/}
+                {/*    <span className="w-4 h-4 inline-block">*/}
+                {/*      <Sparkle raw />*/}
+                {/*    </span>*/}
+                {/*    Explain*/}
+                {/*  </Button>*/}
+                {/*)}*/}
               </>
             )}
           </div>
@@ -242,7 +242,7 @@ const TooltipCode = ({
               <p className="text-gray-50">{explanation}</p>
             </div>
           )}
-          <span className="overflow-auto max-h-40">
+          <span className="overflow-auto max-h-80">
             {isLoading && (
               <div className="bg-gray-700 h-40">
                 <div className="w-1/2 h-7 pt-2 px-3">
