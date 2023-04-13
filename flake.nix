@@ -34,7 +34,6 @@
             openssl_1_1.out
             openssl_1_1.dev
 
-
             protobuf
             onnxruntime-static
           ] ++ lib.optionals stdenv.isDarwin [
@@ -130,7 +129,7 @@
 
         devShell = (pkgs.mkShell {
           buildInputs = buildDeps ++ runtimeDeps ++ guiDeps
-            ++ (with pkgs; [ git-lfs ]);
+            ++ (with pkgs; [ git-lfs cargo rustc rustfmt clippy ]);
         }).overrideAttrs (old: envVars);
 
       });
