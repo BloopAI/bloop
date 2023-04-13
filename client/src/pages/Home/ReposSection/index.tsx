@@ -201,7 +201,7 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
         ) : null}
       </div>
 
-      <div className="mt-10 grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3.5 w-full 2xl:justify-between relative items-start grid-rows-[min-content]">
+      <div className="mt-10 flex flex-wrap gap-3.5 w-full relative items-start">
         {reposToShow.map(({ ref, ...r }, i) => (
           <RepoCard
             name={r.name}
