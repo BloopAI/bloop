@@ -4,11 +4,13 @@ use std::time::Duration;
 use crate::{
     semantic::chunk::OverlapStrategy,
     state::{PersistedState, StateSource},
+    webserver::middleware::User,
 };
 
+use chrono::Utc;
 use rudderanalytics::{
     client::RudderAnalytics,
-    message::{Message, Track},
+    message::{Identify, Message, Track},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -21,6 +23,14 @@ pub struct QueryEvent {
     pub overlap_strategy: OverlapStrategy,
     pub stages: Vec<Stage>,
 }
+
+pub enum AnalyticsEvent {
+    Query(QueryEvent),
+    Identify(Identify),
+}
+
+pub type EventFilter =
+    Arc<dyn Fn(AnalyticsEvent) -> Option<AnalyticsEvent> + Send + Sync + 'static>;
 
 /// Represents a single stage of the Answer API pipeline
 #[derive(Debug, serde::Serialize, Clone)]
@@ -62,7 +72,7 @@ pub struct RudderHub {
 
 #[derive(Default)]
 pub struct HubOptions {
-    pub event_filter: Option<Arc<dyn Fn(QueryEvent) -> Option<QueryEvent> + Send + Sync + 'static>>,
+    pub event_filter: Option<EventFilter>,
     pub package_metadata: Option<PackageMetadata>,
 }
 
@@ -107,7 +117,7 @@ impl RudderHub {
         self.tracking_seed.to_string()
     }
 
-    pub fn tracking_id(&self, user: &crate::webserver::middleware::User) -> String {
+    pub fn tracking_id(&self, user: &User) -> String {
         match user.0 {
             Some(ref username) => {
                 let id = self
@@ -123,11 +133,39 @@ impl RudderHub {
         }
     }
 
-    pub fn track_query(&self, user: &crate::webserver::middleware::User, event: QueryEvent) {
+    pub fn identify(&self, self_serve: bool, org_name: Option<&str>, remote_login: &str) {
+        let event = Identify {
+            user_id: Some(self.tracking_id(&User(Some(remote_login.to_string())))),
+            anonymous_id: None,
+            traits: Some(json!( {
+            "isSelfServe": self_serve,
+            "githubUsername": remote_login,
+            "orgName": org_name,
+            "deviceId": self.device_id(),
+            })),
+            original_timestamp: Some(Utc::now()),
+            context: None,
+            integrations: None,
+        };
+
         if let Some(options) = &self.options {
             if let Some(filter) = &options.event_filter {
-                if let Some(ev) = (filter)(event) {
-                    if let Err(e) = self.client.send(&Message::Track(Track {
+                if let Some(AnalyticsEvent::Identify(event)) =
+                    (filter)(AnalyticsEvent::Identify(event))
+                {
+                    if let Err(err) = self.client.send(&Message::Identify(event)) {
+                        warn!(?err, "failed to send `identify` call")
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn track_query(&self, user: &User, event: QueryEvent) {
+        if let Some(options) = &self.options {
+            if let Some(filter) = &options.event_filter {
+                if let Some(AnalyticsEvent::Query(ev)) = (filter)(AnalyticsEvent::Query(event)) {
+                    if let Err(err) = self.client.send(&Message::Track(Track {
                         user_id: Some(self.tracking_id(user)),
                         event: "openai query".to_owned(),
                         properties: Some(json!({
@@ -139,9 +177,9 @@ impl RudderHub {
                         })),
                         ..Default::default()
                     })) {
-                        warn!("failed to send analytics event: {:?}", e);
+                        warn!(?err, "failed to send analytics event");
                     } else {
-                        info!("sent analytics event ...");
+                        info!("sent analytics event...");
                     }
                 }
             }
