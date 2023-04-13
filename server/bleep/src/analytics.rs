@@ -56,8 +56,8 @@ pub struct RudderHub {
     /// User-specific store
     user_store: PersistedState<scc::HashMap<String, UserState>>,
 
-    /// Application-wide tracking seed
-    tracking_seed: PersistedState<ApplicationSeed>,
+    /// Device-specific unique identifier
+    device_id: PersistedState<DeviceId>,
 }
 
 #[derive(Default)]
@@ -67,7 +67,7 @@ pub struct HubOptions {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct ApplicationSeed(String);
+pub struct DeviceId(String);
 
 /// User-specific configuration
 #[derive(Serialize, Deserialize)]
@@ -77,18 +77,9 @@ pub struct UserState {
 }
 
 impl RudderHub {
-    pub fn new(
-        state: &StateSource,
-        tracking_seed: impl Into<Option<String>>,
-        key: String,
-        data_plane: String,
-    ) -> anyhow::Result<Arc<Self>> {
-        Self::new_with_options(state, tracking_seed, key, data_plane, None)
-    }
-
     pub fn new_with_options(
         state: &StateSource,
-        tracking_seed: impl Into<Option<String>>,
+        device_id: impl Into<Option<String>>,
         key: String,
         data_plane: String,
         options: impl Into<Option<HubOptions>>,
@@ -98,13 +89,13 @@ impl RudderHub {
             client,
             options: options.into(),
             user_store: state.load_or_default("user_tracking")?,
-            tracking_seed: state.load_state_or("application_seed", tracking_seed.into())?,
+            device_id: state.load_state_or("device_id", device_id.into())?,
         }
         .into())
     }
 
     pub fn device_id(&self) -> String {
-        self.tracking_seed.to_string()
+        self.device_id.to_string()
     }
 
     pub fn tracking_id(&self, user: &crate::webserver::middleware::User) -> String {
@@ -119,7 +110,7 @@ impl RudderHub {
                 _ = self.user_store.store();
                 id
             }
-            None => self.tracking_seed.to_string(),
+            None => self.device_id.to_string(),
         }
     }
 
@@ -174,22 +165,22 @@ impl Stage {
     }
 }
 
-impl From<Option<String>> for ApplicationSeed {
+impl From<Option<String>> for DeviceId {
     fn from(value: Option<String>) -> Self {
         match value {
-            Some(val) => ApplicationSeed(val),
+            Some(val) => DeviceId(val),
             None => Self::default(),
         }
     }
 }
 
-impl ToString for ApplicationSeed {
+impl ToString for DeviceId {
     fn to_string(&self) -> String {
         self.0.to_string()
     }
 }
 
-impl Default for ApplicationSeed {
+impl Default for DeviceId {
     fn default() -> Self {
         Self(uuid::Uuid::new_v4().to_string())
     }
