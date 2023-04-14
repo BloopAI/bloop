@@ -129,7 +129,7 @@ impl RudderHub {
             user_id: Some(self.tracking_id(&User(Some(github_username.to_string())))),
             anonymous_id: None,
             traits: Some(json!( {
-                "isSelfServe": cloud,
+                "isCloud": cloud,
                 "githubUsername": github_username,
                 "orgName": org_name.unwrap_or_default(),
                 "deviceId": self.device_id().trim(),
