@@ -165,25 +165,7 @@ async fn poll_for_oauth_token(
         }
     };
 
-    let cred: crate::remotes::github::State = auth.into();
-    let Ok(Some(remote_login)) = cred.validate().await else {
-	error!("Can't log in with fresh credentials!");
-	return;
-    };
-
-    if let Some(analytics) = app.analytics.as_ref() {
-        let self_serve = app.env.allow(crate::env::Feature::GithubInstallation);
-        let org_name = {
-            match cred.auth {
-                crate::remotes::github::Auth::App { ref org, .. } => Some(org.as_str()),
-                _ => None,
-            }
-        };
-
-        analytics.identify(self_serve, org_name, &remote_login)
-    }
-
-    app.credentials.set_github(cred);
+    app.credentials.set_github(auth.into());
     let saved = app
         .config
         .source
