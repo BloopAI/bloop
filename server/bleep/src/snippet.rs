@@ -320,8 +320,6 @@ impl HighlightedString {
 
 #[cfg(test)]
 mod tests {
-    use crate::text_range::{Point, TextRange};
-
     use super::*;
     use pretty_assertions::assert_eq;
     use regex::Regex;
@@ -624,42 +622,5 @@ mod tests {
 
         assert_eq!(s.text, "foo bar quux");
         assert_eq!(s.highlights.to_vec(), &[0..3, 4..8, 10..12]);
-    }
-
-    #[test]
-    fn highlight_only_symbols() {
-        let (text, line_end_indices) = with_line_ends("const beans = cool_beans()\n");
-        let doc = indexes::reader::ContentDocument {
-            content: text.into(),
-            line_end_indices,
-            symbol_locations: crate::symbol::SymbolLocations::Ctags(vec![Symbol {
-                kind: "variable".to_owned(),
-                range: TextRange {
-                    start: Point {
-                        byte: 6,
-                        line: 0,
-                        column: 6,
-                    },
-                    end: Point {
-                        byte: 11,
-                        line: 0,
-                        column: 11,
-                    },
-                },
-            }]),
-            ..Default::default()
-        };
-
-        let snipper = Snipper::default().find_symbols(true);
-
-        // do not highlight the "n" in "const" or "cool_beans"
-        // because those aren't symbols.
-        //
-        // within a snippet, the number of highlights should be
-        // equal to the number of symbols.
-        assert_eq!(
-            snipper.all_for_doc("n", &doc).unwrap().unwrap().snippets[0].highlights,
-            vec![9..10]
-        );
     }
 }

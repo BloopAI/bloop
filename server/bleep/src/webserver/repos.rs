@@ -370,36 +370,40 @@ mod test {
     #[tokio::test]
     async fn unique_repos_only() {
         let repo_pool = RepositoryPool::default();
-        repo_pool.insert(
-            RepoRef::try_from("github.com/test/test").unwrap(),
-            Repository {
-                disk_path: "/repo".into(),
-                remote: Git(GitRemote {
-                    protocol: GitProtocol::Https,
-                    host: "github.com".into(),
-                    address: "test/test".into(),
-                }),
-                sync_status: SyncStatus::Done,
-                last_commit_unix_secs: 123456,
-                last_index_unix_secs: 123456,
-                most_common_lang: None,
-            },
-        );
-        repo_pool.insert(
-            RepoRef::try_from("local//code/test2").unwrap(),
-            Repository {
-                disk_path: "/repo2".into(),
-                remote: Git(GitRemote {
-                    protocol: GitProtocol::Https,
-                    host: "github.com".into(),
-                    address: "test/test2".into(),
-                }),
-                sync_status: SyncStatus::Done,
-                last_commit_unix_secs: 123456,
-                last_index_unix_secs: 123456,
-                most_common_lang: None,
-            },
-        );
+        repo_pool
+            .insert(
+                RepoRef::try_from("github.com/test/test").unwrap(),
+                Repository {
+                    disk_path: "/repo".into(),
+                    remote: Git(GitRemote {
+                        protocol: GitProtocol::Https,
+                        host: "github.com".into(),
+                        address: "test/test".into(),
+                    }),
+                    sync_status: SyncStatus::Done,
+                    last_commit_unix_secs: 123456,
+                    last_index_unix_secs: 123456,
+                    most_common_lang: None,
+                },
+            )
+            .unwrap();
+        repo_pool
+            .insert(
+                RepoRef::try_from("local//code/test2").unwrap(),
+                Repository {
+                    disk_path: "/repo2".into(),
+                    remote: Git(GitRemote {
+                        protocol: GitProtocol::Https,
+                        host: "github.com".into(),
+                        address: "test/test2".into(),
+                    }),
+                    sync_status: SyncStatus::Done,
+                    last_commit_unix_secs: 123456,
+                    last_index_unix_secs: 123456,
+                    most_common_lang: None,
+                },
+            )
+            .unwrap();
 
         let mut gh_list = HashSet::new();
         gh_list.insert(

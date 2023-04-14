@@ -152,13 +152,15 @@ impl Application {
             }
         };
 
+        let repo_pool = config.source.initialize_pool()?;
+
         Ok(Self {
-            indexes: Arc::new(Indexes::new(config.clone(), semantic.clone())?),
+            indexes: Indexes::new(repo_pool.clone(), config.clone(), semantic.clone())?.into(),
             background: BackgroundExecutor::start(config.clone()),
             prior_conversational_store: Arc::default(),
-            repo_pool: config.source.initialize_pool()?,
             cookie_key: config.source.initialize_cookie_key()?,
             credentials: config.source.initialize_credentials()?.into(),
+            repo_pool,
             analytics,
             semantic,
             config,
