@@ -10,6 +10,7 @@ pub(super) struct ConfigResponse {
     sentry_dsn_fe: Option<String>,
     user_login: Option<String>,
     org_name: Option<String>,
+    schema_version: String,
     tracking_id: String,
     device_id: String,
 }
@@ -42,6 +43,7 @@ pub(super) async fn handle(
         analytics_key_fe: app.config.analytics_key_fe.clone(),
         sentry_dsn_fe: app.config.sentry_dsn_fe.clone(),
         user_login: user.0,
+        schema_version: crate::state::SCHEMA_VERSION.into(),
         device_id,
         org_name,
         tracking_id,
