@@ -199,15 +199,6 @@ pub(super) async fn authorized(
         .await
         .expect("can't retrieve user name");
 
-    if let Some(analytics) = app.analytics.as_ref() {
-        let org_name = app.credentials.github().and_then(|cred| match cred.auth {
-            remotes::github::Auth::App { org, .. } => Some(org),
-            _ => None,
-        });
-
-        analytics.identify(true, org_name.as_deref(), &user_name)
-    }
-
     (
         jar.add(AuthCookie::new(gh_token, user_name).to_cookie()),
         Redirect::to("/"),
