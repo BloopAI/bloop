@@ -172,7 +172,6 @@ async fn poll_for_oauth_token(
     };
 
     if let Some(analytics) = app.analytics.as_ref() {
-        let self_serve = app.env.allow(crate::env::Feature::GithubInstallation);
         let org_name = {
             match cred.auth {
                 crate::remotes::github::Auth::App { ref org, .. } => Some(org.as_str()),
@@ -180,7 +179,7 @@ async fn poll_for_oauth_token(
             }
         };
 
-        analytics.identify(self_serve, org_name, &remote_login)
+        analytics.identify(false, org_name, &remote_login)
     }
 
     app.credentials.set_github(cred);
