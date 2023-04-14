@@ -29,7 +29,7 @@ async fn index(index_dir: &Path) {
 
     index_only.index_only = true;
 
-    let app = Application::initialize(Environment::server(), index_only, None)
+    let app = Application::initialize(Environment::server(), index_only, None, None)
         .await
         .unwrap();
     app.run().await.unwrap();
@@ -48,6 +48,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             "index_dir": index_dir.path()
             }))
             .unwrap(),
+            None,
             None,
         )
         .await
