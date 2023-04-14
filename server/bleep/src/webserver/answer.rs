@@ -103,10 +103,6 @@ fn default_limit() -> u64 {
     20
 }
 
-fn default_user_id() -> String {
-    String::from("test_user")
-}
-
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
     pub q: String,
@@ -117,7 +113,6 @@ pub struct Params {
 
 #[derive(serde::Serialize, ToSchema, Debug)]
 pub struct AnswerResponse {
-    pub user_id: String,
     pub session_id: String,
     pub query_id: uuid::Uuid,
     pub snippets: Option<AnswerSnippets>,
@@ -159,10 +154,15 @@ pub(super) async fn handle(
     // create a new analytics event for this query
     let event = Arc::new(RwLock::new(QueryEvent::default()));
 
-    let user = user.0.unwrap_or_else(default_user_id);
-
     // populate analytics event
-    let response = _handle(&state, params, app.clone(), Arc::clone(&event), user).await;
+    let response = _handle(
+        &state,
+        params,
+        app.clone(),
+        Arc::clone(&event),
+        user.clone(),
+    )
+    .await;
 
     if response.is_err() {
         // Result<impl IntoResponse> does not implement `Debug`, `unwrap_err` is unavailable
@@ -176,7 +176,7 @@ pub(super) async fn handle(
             .push(Stage::new("error", (e.status.as_u16(), e.message())));
 
         // send to rudderstack
-        app.track_query(&ev);
+        app.track_query(&user, &ev);
     } else {
         // the analytics event is fired when the stream is consumed
     }
@@ -597,7 +597,7 @@ async fn _handle(
     params: Params,
     app: Application,
     event: Arc<RwLock<QueryEvent>>,
-    user: String,
+    user: User,
 ) -> Result<impl IntoResponse> {
     let query_id = uuid::Uuid::new_v4();
 
@@ -605,7 +605,6 @@ async fn _handle(
 
     {
         let mut analytics_event = event.write().await;
-        analytics_event.user_id = user.clone();
         analytics_event.query_id = query_id;
         analytics_event.session_id = params.thread_id.clone();
         if let Some(semantic) = app.semantic.as_ref() {
@@ -637,7 +636,6 @@ async fn _handle(
         .json_data(super::Response::<'static>::from(AnswerResponse {
             query_id,
             session_id: params.thread_id.clone(),
-            user_id: user.clone(),
             snippets: snippets.as_ref().map(|matches| AnswerSnippets {
                 matches: matches.clone(),
                 answer_path: matches
@@ -672,7 +670,7 @@ async fn _handle(
         event
             .stages
             .push(Stage::new("answer", &expl).with_time(stop_watch.lap()));
-        app.track_query(&event);
+        app.track_query(&user, &event);
     };
 
     Ok(Sse::new(wrapped_stream.chain(futures::stream::once(

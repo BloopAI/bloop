@@ -27,6 +27,7 @@ import { DeviceContext } from '../../context/deviceContext';
 import PageHeader from '../../components/ResultsPageHeader';
 import useAnalytics from '../../hooks/useAnalytics';
 import { conversationsCache } from '../../services/cache';
+import { SearchContext } from '../../context/searchContext';
 import Conversation from './Conversation';
 
 type Props = {
@@ -39,6 +40,7 @@ let prevEventSource: EventSource | undefined;
 const ResultsPage = ({ query, threadId }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const { apiUrl } = useContext(DeviceContext);
+  const { setLastQueryTime } = useContext(SearchContext);
   const [isLoading, setIsLoading] = useState(true);
   const [conversation, setConversation] = useState<ConversationMessage[]>(
     conversationsCache[threadId] || [
@@ -146,6 +148,7 @@ const ResultsPage = ({ query, threadId }: Props) => {
 
         if (i === 0) {
           const queryTime = Date.now() - startTime;
+          setLastQueryTime(queryTime);
           trackSearch(queryTime, query, threadId);
           if (newData.Err) {
             setIsLoading(false);
