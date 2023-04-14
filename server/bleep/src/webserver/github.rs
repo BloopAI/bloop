@@ -76,7 +76,7 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
     let codes = github
         .authenticate_as_device(&client_id, ["public_repo", "repo", "read:org"])
         .await
-        .map_err(|_| Error::internal("failed to authenticate as device"))?;
+        .map_err(|e| Error::internal(format!("failed to authenticate as device: {e:?}")))?;
 
     tokio::spawn(poll_for_oauth_token(
         github,

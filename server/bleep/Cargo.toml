@@ -115,6 +115,7 @@ async-stream = "0.3.3"
 erased-serde = "0.3.25"
 scc = { version= "1.2.0", features = ["serde"] }
 sentry-tracing = "0.30.0"
+tokio-stream = "0.1.12"
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.3"
