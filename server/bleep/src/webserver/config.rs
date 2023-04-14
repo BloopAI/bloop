@@ -32,13 +32,10 @@ pub(super) async fn handle(
         .map(|a| a.device_id())
         .unwrap_or_default();
 
-    let org_name = {
-        let cred = app.credentials.github().unwrap();
-        match cred.auth {
-            remotes::github::Auth::App { org, .. } => Some(org),
-            _ => None,
-        }
-    };
+    let org_name = app.credentials.github().and_then(|cred| match cred.auth {
+        remotes::github::Auth::App { org, .. } => Some(org),
+        _ => None,
+    });
 
     json(ConfigResponse {
         analytics_data_plane: app.config.analytics_data_plane.clone(),
