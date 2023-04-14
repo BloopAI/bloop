@@ -18,7 +18,7 @@ pub fn rectify_json(input: &str) -> (Cow<str>, &str) {
         '"' => rectify_str(input),
         '[' => rectify_array(input),
         '{' => rectify_object(input),
-        d if input.trim().starts_with(|c: char| c.is_ascii_digit()) => rectify_number(input),
+        _d if input.trim().starts_with(|c: char| c.is_ascii_digit()) => rectify_number(input),
         c => panic!("malformed JSON value: `{c}`"),
     }
 }
@@ -202,6 +202,12 @@ fn rectify_object(input: &str) -> (Cow<str>, &str) {
             }
             _ => panic!("malformed JSON object"),
         }
+        rest = consume_whitespace(rest);
+
+        if rest.is_empty() {
+            buf += "}";
+            break;
+        }
     }
 
     (buf.into(), rest)
@@ -347,6 +353,14 @@ mod tests {
 
         let (value, rest) = rectify_json("{\"oldFileName\": \"config.rs\",\n\"new\"");
         assert_eq!(value, "{\"oldFileName\":\"config.rs\",\"new\":null}");
+        assert_eq!(rest, "");
+
+        let (value, rest) = rectify_json("[{\"oldFileName\": \"config.rs\",\n\"ne");
+        assert_eq!(value, "[{\"oldFileName\":\"config.rs\",\"ne\":null}]");
+        assert_eq!(rest, "");
+
+        let (value, rest) = rectify_json("[{\"oldFileName\": \"config.rs\",\n\"new\":null,");
+        assert_eq!(value, "[{\"oldFileName\":\"config.rs\",\"new\":null}]");
         assert_eq!(rest, "");
     }
 }
