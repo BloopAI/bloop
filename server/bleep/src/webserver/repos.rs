@@ -2,6 +2,7 @@ use std::{collections::HashSet, hash::Hash, time::Duration};
 
 use crate::{
     repo::{Backend, RepoRef, Repository, SyncStatus},
+    state::RepositoryPool,
     Application,
 };
 use axum::{
@@ -230,7 +231,7 @@ pub(super) async fn sync(
     ),
 )]
 pub(super) async fn available(Extension(app): Extension<Application>) -> impl IntoResponse {
-    let mut repos = app
+    let unknown_github = app
         .credentials
         .github()
         .map(|gh| gh.repositories)
@@ -265,22 +266,8 @@ pub(super) async fn available(Extension(app): Extension<Application>) -> impl In
         })
         .collect::<HashSet<_>>();
 
-    app.repo_pool
-        .scan_async(|k, v| {
-            // this will hash to the same thing as another object due
-            // to `Hash` proxying to `repo_ref`, so stay on the safe
-            // side and check like good citizens
-            let repo = Repo::from((k, v));
-            if !repos.contains(&repo) {
-                repos.insert(repo);
-            }
-        })
-        .await;
-
-    (
-        StatusCode::OK,
-        Json(ReposResponse::List(repos.into_iter().collect())),
-    )
+    let repos = list_unique_repos(app.repo_pool.clone(), unknown_github).await;
+    (StatusCode::OK, Json(ReposResponse::List(repos)))
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Debug)]
@@ -353,5 +340,119 @@ pub(super) async fn scan_local(
         )))
     } else {
         Err(Error::user("scanning not allowed").with_status(StatusCode::UNAUTHORIZED))
+    }
+}
+
+async fn list_unique_repos(repo_pool: RepositoryPool, other: HashSet<Repo>) -> Vec<Repo> {
+    let mut repos = HashSet::new();
+    repo_pool
+        .scan_async(|k, v| {
+            // this will hash to the same thing as another object due
+            // to `Hash` proxying to `repo_ref`, so stay on the safe
+            // side and check like good citizens
+            let repo = Repo::from((k, v));
+            repos.insert(repo);
+        })
+        .await;
+
+    repos.extend(other);
+    repos.into_iter().collect()
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::HashSet;
+
+    use crate::repo::{GitProtocol, GitRemote, RepoRef, RepoRemote::Git, Repository, SyncStatus};
+
+    use super::{list_unique_repos, Repo, RepositoryPool};
+
+    #[tokio::test]
+    async fn unique_repos_only() {
+        let repo_pool = RepositoryPool::default();
+        repo_pool.insert(
+            RepoRef::try_from("github.com/test/test").unwrap(),
+            Repository {
+                disk_path: "/repo".into(),
+                remote: Git(GitRemote {
+                    protocol: GitProtocol::Https,
+                    host: "github.com".into(),
+                    address: "test/test".into(),
+                }),
+                sync_status: SyncStatus::Done,
+                last_commit_unix_secs: 123456,
+                last_index_unix_secs: 123456,
+                most_common_lang: None,
+            },
+        );
+        repo_pool.insert(
+            RepoRef::try_from("local//code/test2").unwrap(),
+            Repository {
+                disk_path: "/repo2".into(),
+                remote: Git(GitRemote {
+                    protocol: GitProtocol::Https,
+                    host: "github.com".into(),
+                    address: "test/test2".into(),
+                }),
+                sync_status: SyncStatus::Done,
+                last_commit_unix_secs: 123456,
+                last_index_unix_secs: 123456,
+                most_common_lang: None,
+            },
+        );
+
+        let mut gh_list = HashSet::new();
+        gh_list.insert(
+            (
+                &RepoRef::try_from("github.com/test/test").unwrap(),
+                &Repository {
+                    disk_path: "/unused".into(),
+                    remote: Git(GitRemote {
+                        protocol: GitProtocol::Https,
+                        host: "github.com".into(),
+                        address: "test/test".into(),
+                    }),
+                    sync_status: SyncStatus::Uninitialized,
+                    last_commit_unix_secs: 123456,
+                    last_index_unix_secs: 0,
+                    most_common_lang: None,
+                },
+            )
+                .into(),
+        );
+
+        let mut ghrepo_2: Repo = (
+            &RepoRef::try_from("github.com/test/test2").unwrap(),
+            &Repository {
+                disk_path: "/unused".into(),
+                remote: Git(GitRemote {
+                    protocol: GitProtocol::Https,
+                    host: "github.com".into(),
+                    address: "test/test2".into(),
+                }),
+                sync_status: SyncStatus::Uninitialized,
+                last_commit_unix_secs: 123456,
+                last_index_unix_secs: 0,
+                most_common_lang: None,
+            },
+        )
+            .into();
+
+        ghrepo_2.local_duplicates = vec![RepoRef::try_from("local//code/test2").unwrap()];
+        gh_list.insert(ghrepo_2);
+
+        let unique = list_unique_repos(repo_pool, gh_list)
+            .await
+            .into_iter()
+            .map(|repo| repo.repo_ref)
+            .collect::<HashSet<_>>();
+        assert_eq!(
+            HashSet::from([
+                RepoRef::try_from("local//code/test2").unwrap(),
+                RepoRef::try_from("github.com/test/test").unwrap(),
+                RepoRef::try_from("github.com/test/test2").unwrap(),
+            ]),
+            unique
+        );
     }
 }
