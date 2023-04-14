@@ -356,7 +356,7 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
 //  k: the number of embeddings to select
 pub fn deduplicate_with_mmr(
     query_embedding: &[f32],
-    embeddings: &[&[f32]],
+    embeddings: &[(&[f32], &str)],
     lambda: f32,
     k: usize,
 ) -> Vec<usize> {
@@ -366,18 +366,24 @@ pub fn deduplicate_with_mmr(
         return (0..embeddings.len()).collect();
     }
 
+    let mut markdown_lang_count = 0;
+    let markdown_lang_limit = k / 2;
+
     while idxs.len() < k {
         let mut best_score = f32::NEG_INFINITY;
         let mut idx_to_add = None;
 
-        for (i, emb) in embeddings.iter().enumerate() {
-            if idxs.contains(&i) {
+        for (i, (emb, lang)) in embeddings.iter().enumerate() {
+            markdown_lang_count += if lang == &"markdown" { 1 } else { 0 };
+
+            if idxs.contains(&i) || markdown_lang_count > markdown_lang_limit {
                 continue;
             }
+
             let first_part = cosine_similarity(query_embedding, emb);
             let mut second_part = 0.;
             for j in idxs.iter() {
-                let cos_sim = cosine_similarity(emb, embeddings[*j]);
+                let cos_sim = cosine_similarity(emb, embeddings[*j].0);
                 if cos_sim > second_part {
                     second_part = cos_sim;
                 }

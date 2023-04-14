@@ -272,11 +272,11 @@ async fn search_snippets(
 fn deduplicate_snippets(all_snippets: Vec<Snippet>, query_embedding: Vec<f32>) -> Vec<Snippet> {
     let lambda = 0.5;
     let k = SNIPPET_COUNT; // number of snippets
-    let embeddings = all_snippets
+    let embeddings_with_lang = all_snippets
         .iter()
-        .map(|s| s.embedding.as_slice())
+        .map(|s| (s.embedding.as_slice(), s.lang.as_str()))
         .collect::<Vec<_>>();
-    let idxs = semantic::deduplicate_with_mmr(&query_embedding, &embeddings, lambda, k);
+    let idxs = semantic::deduplicate_with_mmr(&query_embedding, &embeddings_with_lang, lambda, k);
     let mut snippets = vec![];
     info!("preserved idxs after MMR are {:?}", idxs);
     for i in idxs {
