@@ -632,7 +632,7 @@ mod tests {
         let doc = indexes::reader::ContentDocument {
             content: text.into(),
             line_end_indices,
-            symbol_locations: crate::symbol::SymbolLocations::Ctags(vec![Symbol {
+            symbol_locations: crate::symbol::SymbolLocations::TreeSitter(vec![Symbol {
                 kind: "variable".to_owned(),
                 range: TextRange {
                     start: Point {
