@@ -69,10 +69,6 @@ pub struct Configuration {
     //
     // External dependencies
     //
-    #[serde(default)]
-    /// Path to Ctags binary
-    pub ctags_path: Option<PathBuf>,
-
     #[clap(long, default_value_t = default_answer_api_url())]
     #[serde(default = "default_answer_api_url")]
     /// URL for the answer-api
@@ -210,8 +206,6 @@ impl Configuration {
         // original `Configuration` declaration
         Self {
             config_file: b.config_file.or(a.config_file),
-
-            ctags_path: b.ctags_path.or(a.ctags_path),
 
             source: right_if_default!(b.source, a.source, Default::default()),
 
