@@ -147,17 +147,19 @@ impl Application {
             env
         };
 
+        let repo_pool = config.source.initialize_pool()?;
+
         Ok(Self {
-            indexes: Arc::new(Indexes::new(config.clone(), semantic.clone())?),
+            indexes: Indexes::new(repo_pool.clone(), config.clone(), semantic.clone())?.into(),
             background: BackgroundExecutor::start(config.clone()),
             prior_conversational_store: Arc::default(),
-            repo_pool: config.source.initialize_pool()?,
             cookie_key: config.source.initialize_cookie_key()?,
             credentials: config.source.initialize_credentials()?.into(),
             user_store: config.source.load_or_default("user_store")?,
             tracking_seed: config
                 .source
                 .load_state_or("application_seed", tracking_seed.into())?,
+            repo_pool,
             semantic,
             config,
             env,
