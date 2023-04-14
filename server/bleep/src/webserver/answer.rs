@@ -424,6 +424,7 @@ async fn handle_inner(
     loop {
         let stream_params = match &progress {
             AnswerProgress::Rephrase(query) => {
+                info!(%query, "rephrasing query");
                 let prompt = app.with_prior_conversation(thread_id, |history| {
                     let n = history.len().saturating_sub(MAX_HISTORY);
                     build_rephrase_query_prompt(query, history.get(n..).unwrap_or_default())
@@ -432,6 +433,7 @@ async fn handle_inner(
             }
             AnswerProgress::Search(rephrased_query) => {
                 // TODO: Clean up this query handling logic
+                info!("begin searching");
                 let all_snippets = search_snippets(&semantic, &params.q, rephrased_query).await?;
                 info!("Retrieved {} snippets", all_snippets.len());
 

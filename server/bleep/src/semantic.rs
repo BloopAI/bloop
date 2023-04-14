@@ -369,14 +369,23 @@ pub fn deduplicate_with_mmr(
     let mut markdown_lang_count = 0;
     let markdown_lang_limit = k / 2;
 
-    while idxs.len() < k {
+    'while_loop: while idxs.len() < k {
         let mut best_score = f32::NEG_INFINITY;
         let mut idx_to_add = None;
 
-        for (i, (emb, lang)) in embeddings.iter().enumerate() {
-            markdown_lang_count += if lang == &"markdown" { 1 } else { 0 };
+        for (i, (emb, _)) in embeddings.iter().enumerate() {
+            if idxs.contains(&i) {
+                continue;
+            }
 
-            if idxs.contains(&i) || markdown_lang_count > markdown_lang_limit {
+            let across_limit = markdown_lang_count > markdown_lang_limit;
+            let no_more_files = embeddings[i..].iter().all(|(_, lang)| lang == &"markdown");
+
+            if across_limit && no_more_files {
+                info!(?idxs, %markdown_lang_count, %markdown_lang_limit, "no more non-md files");
+                break 'while_loop;
+            } else if across_limit {
+                info!(%markdown_lang_count, %markdown_lang_limit, "supressing md file, exceeded limit");
                 continue;
             }
 
@@ -395,6 +404,8 @@ pub fn deduplicate_with_mmr(
             }
         }
         if let Some(i) = idx_to_add {
+            let lang = embeddings[i].1;
+            markdown_lang_count += if lang == "markdown" { 1 } else { 0 };
             idxs.push(i);
         }
     }
