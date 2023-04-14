@@ -366,7 +366,11 @@ fn initialize_analytics(
 
     let options = options.into().unwrap_or_else(|| analytics::HubOptions {
         event_filter: Some(Arc::new(Some)),
-        package_metadata: None,
+        package_metadata: Some(analytics::PackageMetadata {
+            name: env!("CARGO_CRATE_NAME"),
+            version: env!("CARGO_PKG_VERSION"),
+            git_rev: git_version::git_version!(fallback = "unknown"),
+        }),
     });
 
     info!("configuring analytics ...");
