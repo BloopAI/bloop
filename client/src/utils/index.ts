@@ -1,5 +1,6 @@
 import { MouseEvent } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { RepoType, RepoUi } from '../types/general';
 import langs from './langs.json';
 
 export const copyToClipboard = (value: string) => {
@@ -125,6 +126,60 @@ export const getFileManagerName = (os: string) => {
       return 'File manager';
   }
 };
+
+export function groupReposByParentFolder(repos: RepoType[]): RepoUi[] {
+  const isWindows = repos?.[0]?.ref ? isWindowsPath(repos[0].ref) : false;
+  // Extract unique parent folders
+  const parentFolders = Array.from(
+    new Set(
+      repos.map((obj) =>
+        obj.ref
+          .split(isWindows ? '\\' : '/')
+          .slice(0, -1)
+          .join(isWindows ? '\\' : '/'),
+      ),
+    ),
+  );
+
+  // Group repos by parent folder
+  const groupedObjects: {
+    [parentFolder: string]: string[];
+  } = {};
+  for (const parentFolder of parentFolders) {
+    groupedObjects[parentFolder] = repos
+      .filter((obj) => obj.ref.startsWith(parentFolder + '/'))
+      .map((r) => r.ref);
+  }
+
+  // Add folderName property to each repo
+  const objectsWithFolderName: RepoUi[] = repos.map((r) => {
+    const folderName =
+      Object.entries(groupedObjects)
+        .filter(([folder, repos]) => repos.includes(r.ref))
+        .sort((a, b) => (a[0].length < b[0].length ? -1 : 1))
+        .pop()?.[0] || isWindows
+        ? '\\'
+        : '/';
+    return {
+      ...r,
+      folderName,
+      selected: true,
+      shortName: r.name,
+    };
+  });
+
+  const commonFolder = getCommonFolder(
+    objectsWithFolderName.map((lr) => lr.folderName),
+  )
+    .split(isWindows ? '\\' : '/')
+    .slice(0, -1)
+    .join(isWindows ? '\\' : '/');
+
+  return objectsWithFolderName.map((r) => ({
+    ...r,
+    folderName: r.folderName.replace(commonFolder, ''),
+  }));
+}
 
 export const getCommonFolder = (paths: string[]) => {
   const pathParts = paths
