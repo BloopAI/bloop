@@ -1,4 +1,9 @@
-use std::{borrow::Cow, collections::HashMap, mem, sync::Arc};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+    mem,
+    sync::Arc,
+};
 
 use anyhow::{anyhow, bail, Context, Result};
 use axum::{
@@ -198,14 +203,50 @@ impl Conversation {
             }
 
             Action::Path(search) => {
-                let paths = ctx
+                // First, perform a lexical search for the path
+                // TODO: This should be fuzzy
+                let mut paths = ctx
                     .app
                     .indexes
                     .file
                     .partial_path_match(&self.repo_ref, &search)
                     .await
                     .map(|c| c.relative_path)
-                    .map(|p| format!("{}, {p}", self.path_alias(&p)));
+                    .map(|p| format!("{}, {p}", self.path_alias(&p)))
+                    .collect::<Vec<_>>();
+
+                // If there are no lexical results, perform a semantic search.
+                if paths.is_empty() {
+                    // TODO: Semantic search should accept unparsed queries
+                    let nl_query = NLQuery {
+                        target: Some(parser::Literal::Plain(Cow::Owned(search))),
+                        ..Default::default()
+                    };
+
+                    let mut semantic_paths: Vec<String> = ctx
+                        .app
+                        .semantic
+                        .as_ref()
+                        .context("semantic search is not enabled")?
+                        .search(&nl_query, 10)
+                        .await?
+                        .into_iter()
+                        .map(|v| {
+                            v.payload
+                                .into_iter()
+                                .map(|(k, v)| (k, super::semantic::kind_to_value(v.kind)))
+                                .collect::<HashMap<_, _>>()
+                        })
+                        .map(|chunk| {
+                            let relative_path = chunk["relative_path"].as_str().unwrap();
+                            format!("{}, {relative_path}", self.path_alias(relative_path))
+                        })
+                        .collect::<HashSet<_>>()
+                        .into_iter()
+                        .collect();
+
+                    paths.append(&mut semantic_paths);
+                }
 
                 Some("§alias, path".to_owned())
                     .into_iter()
