@@ -182,6 +182,9 @@ export function groupReposByParentFolder(repos: RepoType[]): RepoUi[] {
 }
 
 export const getCommonFolder = (paths: string[]) => {
+  if (!paths?.length) {
+    return '/';
+  }
   const pathParts = paths
     .map((p) => splitPath(p))
     .sort((a, b) => a.length - b.length);
