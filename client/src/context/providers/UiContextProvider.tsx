@@ -10,6 +10,10 @@ import { usePersistentState } from '../../hooks/usePersistentState';
 import { DeviceContext } from '../deviceContext';
 import { gitHubStatus } from '../../services/api';
 import { SettingSections } from '../../components/Settings';
+import {
+  getPlainFromStorage,
+  ONBOARDING_DONE_KEY,
+} from '../../services/storage';
 
 export const UIContextProvider = ({ children }: PropsWithChildren) => {
   const [isSettingsOpen, setSettingsOpen] = useState(false);
@@ -25,6 +29,9 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
   const { isSelfServe } = useContext(DeviceContext);
   const [isGithubConnected, setGithubConnected] = useState(isSelfServe);
   const [isGithubChecked, setGithubChecked] = useState(false);
+  const [shouldShowWelcome, setShouldShowWelcome] = useState(
+    !getPlainFromStorage(ONBOARDING_DONE_KEY),
+  );
 
   useEffect(() => {
     if (!isSelfServe) {
@@ -50,6 +57,8 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       isGithubConnected,
       setGithubConnected,
       isGithubChecked,
+      shouldShowWelcome,
+      setShouldShowWelcome,
     }),
     [
       isSettingsOpen,
@@ -59,6 +68,7 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       isBugReportModalOpen,
       isGithubConnected,
       isGithubChecked,
+      shouldShowWelcome,
     ],
   );
   return (

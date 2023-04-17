@@ -158,15 +158,13 @@ const RepositoriesSettings = () => {
           />
         </div>
         <div className="flex flex-col gap-3.5">
-          {!isSelfServe && (
-            <GithubStatus
-              setGitHubAuth={setGitHubAuth}
-              setGitHubConnected={setGithubConnected}
-              githubAuth={githubAuth}
-              isConnected={isGithubConnected}
-              onLogout={onLogout}
-            />
-          )}
+          <GithubStatus
+            setGitHubAuth={setGitHubAuth}
+            setGitHubConnected={setGithubConnected}
+            githubAuth={githubAuth}
+            isConnected={isGithubConnected}
+            onLogout={onLogout}
+          />
         </div>
         <div className="mt-6 overflow-auto">
           <p className="text-gray-500 caption">Added repositories</p>

@@ -12,6 +12,7 @@ import {
   savePlainToStorage,
 } from '../../../../services/storage';
 import { STEP_KEY } from '../../../../pages/Onboarding/RemoteServicesStep';
+import { DeviceContext } from '../../../../context/deviceContext';
 
 type Props = {
   setGitHubAuth: (b: boolean) => void;
@@ -29,8 +30,14 @@ const GithubStatus = ({
 }: Props) => {
   const { isAnalyticsAllowed, setIsAnalyticsAllowed } =
     useContext(AnalyticsContext);
-  const { settingsSection, isSettingsOpen, setOnBoardingState } =
-    useContext(UIContext);
+  const {
+    settingsSection,
+    isSettingsOpen,
+    setOnBoardingState,
+    setSettingsOpen,
+    setShouldShowWelcome,
+  } = useContext(UIContext);
+  const { isSelfServe } = useContext(DeviceContext);
   const [isConfirmOpen, setConfirmOpen] = useState(false);
 
   const { code, loginUrl, handleClick, handleCopy, codeCopied, buttonClicked } =
@@ -40,6 +47,12 @@ const GithubStatus = ({
     }, !isSettingsOpen || settingsSection !== SettingSections.REPOSITORIES || isConnected);
 
   const handleLogout = useCallback(() => {
+    if (isSelfServe) {
+      onLogout();
+      setSettingsOpen(false);
+      setShouldShowWelcome(true);
+      return;
+    }
     if (!isAnalyticsAllowed) {
       onLogout();
     } else {
