@@ -9,6 +9,7 @@ import {
   Tab,
   Magazine,
   ArrowRight,
+  DoorRight,
 } from '../../../icons';
 import DropdownWithIcon from '../../Dropdown/WithIcon';
 import Dropdown from '../../Dropdown/Normal';
@@ -21,6 +22,7 @@ import useAppNavigation from '../../../hooks/useAppNavigation';
 import { TabsContext } from '../../../context/tabsContext';
 import { MenuItemType } from '../../../types/general';
 import { DeviceContext } from '../../../context/deviceContext';
+import { deleteAuthCookie } from '../../../utils';
 
 type Props = {
   shareFiles?: ShareFile[];
@@ -28,8 +30,14 @@ type Props = {
 };
 
 const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
-  const { setSettingsOpen, setBugReportModalOpen } = useContext(UIContext);
-  const { isRepoManagementAllowed, openLink } = useContext(DeviceContext);
+  const {
+    setSettingsOpen,
+    setBugReportModalOpen,
+    setShouldShowWelcome,
+    setGithubConnected,
+  } = useContext(UIContext);
+  const { isRepoManagementAllowed, openLink, isSelfServe } =
+    useContext(DeviceContext);
   const {
     navigateBack,
     navigationHistory,
@@ -188,11 +196,20 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
                     type: MenuListItemType.DEFAULT,
                     onClick: () => setBugReportModalOpen(true),
                   },
-                  // {
-                  //   text: 'Sign out',
-                  //   icon: <DoorRight />,
-                  //   type: MenuListItemType.DEFAULT,
-                  // },
+                  ...(isSelfServe
+                    ? [
+                        {
+                          text: 'Sign out',
+                          icon: <DoorRight />,
+                          type: MenuListItemType.DEFAULT,
+                          onClick: () => {
+                            setShouldShowWelcome(true);
+                            deleteAuthCookie();
+                            setGithubConnected(false);
+                          },
+                        },
+                      ]
+                    : []),
                 ]}
                 icon={<Person />}
                 dropdownBtnClassName="-mr-4"

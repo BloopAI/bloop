@@ -41,11 +41,13 @@ let onboardingFinished = false;
 
 const Onboarding = () => {
   const [step, setStep] = useState(Steps.DATA_FORM);
-  const { onBoardingState, isGithubConnected } = useContext(UIContext);
+  const {
+    onBoardingState,
+    isGithubConnected,
+    shouldShowWelcome,
+    setShouldShowWelcome,
+  } = useContext(UIContext);
   const { isSelfServe } = useContext(DeviceContext);
-  const [shouldShowWelcome, setShouldShowWelcome] = useState(
-    !getPlainFromStorage(ONBOARDING_DONE_KEY),
-  );
 
   const closeOnboarding = useCallback(() => {
     setShouldShowWelcome(false);
