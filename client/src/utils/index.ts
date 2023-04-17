@@ -167,3 +167,7 @@ export const propsAreShallowEqual = <P>(
       prevProps[k as keyof typeof prevProps] ===
       nextProps[k as keyof typeof nextProps],
   );
+
+export const deleteAuthCookie = () => {
+  document.cookie = 'auth_cookie=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+};

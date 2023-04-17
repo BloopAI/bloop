@@ -22,7 +22,7 @@ import useAppNavigation from '../../../hooks/useAppNavigation';
 import { TabsContext } from '../../../context/tabsContext';
 import { MenuItemType } from '../../../types/general';
 import { DeviceContext } from '../../../context/deviceContext';
-import { gitHubLogout } from '../../../services/api';
+import { deleteAuthCookie } from '../../../utils';
 
 type Props = {
   shareFiles?: ShareFile[];
@@ -204,9 +204,8 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
                           type: MenuListItemType.DEFAULT,
                           onClick: () => {
                             setShouldShowWelcome(true);
-                            gitHubLogout().then(() => {
-                              setGithubConnected(false);
-                            });
+                            deleteAuthCookie();
+                            setGithubConnected(false);
                           },
                         },
                       ]

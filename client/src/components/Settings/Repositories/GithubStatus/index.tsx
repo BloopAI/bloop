@@ -13,6 +13,7 @@ import {
 } from '../../../../services/storage';
 import { STEP_KEY } from '../../../../pages/Onboarding/RemoteServicesStep';
 import { DeviceContext } from '../../../../context/deviceContext';
+import { deleteAuthCookie } from '../../../../utils';
 
 type Props = {
   setGitHubAuth: (b: boolean) => void;
@@ -36,6 +37,7 @@ const GithubStatus = ({
     setOnBoardingState,
     setSettingsOpen,
     setShouldShowWelcome,
+    setGithubConnected,
   } = useContext(UIContext);
   const { isSelfServe } = useContext(DeviceContext);
   const [isConfirmOpen, setConfirmOpen] = useState(false);
@@ -48,7 +50,8 @@ const GithubStatus = ({
 
   const handleLogout = useCallback(() => {
     if (isSelfServe) {
-      onLogout();
+      deleteAuthCookie();
+      setGithubConnected(false);
       setSettingsOpen(false);
       setShouldShowWelcome(true);
       return;
