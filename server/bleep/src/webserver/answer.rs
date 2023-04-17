@@ -439,7 +439,7 @@ impl Action {
     ///
     /// We convert:
     ///
-    /// ```
+    /// ```text
     /// ["type", "value"]
     /// ["type", "arg1", "arg2"]
     /// ```
