@@ -94,50 +94,6 @@ impl<T> Clone for PersistedState<T> {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct ApplicationSeed(String);
-
-impl From<Option<String>> for ApplicationSeed {
-    fn from(value: Option<String>) -> Self {
-        match value {
-            Some(val) => ApplicationSeed(val),
-            None => Self::default(),
-        }
-    }
-}
-
-impl ToString for ApplicationSeed {
-    fn to_string(&self) -> String {
-        self.0.to_string()
-    }
-}
-
-impl Default for ApplicationSeed {
-    fn default() -> Self {
-        Self(uuid::Uuid::new_v4().to_string())
-    }
-}
-
-/// User-specific configuration
-#[derive(Serialize, Deserialize)]
-pub struct UserState {
-    #[serde(default)]
-    tracking_id: String,
-}
-
-impl UserState {
-    pub fn tracking_id(&self) -> String {
-        self.tracking_id.clone()
-    }
-}
-
-impl Default for UserState {
-    fn default() -> Self {
-        let tracking_id = uuid::Uuid::new_v4().to_string();
-        Self { tracking_id }
-    }
-}
-
 impl StateSource {
     pub(crate) fn set_default_dir(&mut self, dir: &Path) {
         self.state_file

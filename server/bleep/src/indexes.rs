@@ -23,6 +23,7 @@ use crate::{
     query::parser::Query,
     repo::{RepoMetadata, RepoRef, Repository},
     semantic::Semantic,
+    state::RepositoryPool,
     Configuration,
 };
 
@@ -68,12 +69,23 @@ pub struct Indexes {
 }
 
 impl Indexes {
-    pub fn new(config: Arc<Configuration>, semantic: Option<Semantic>) -> Result<Self> {
+    pub fn new(
+        repo_pool: RepositoryPool,
+        config: Arc<Configuration>,
+        semantic: Option<Semantic>,
+    ) -> Result<Self> {
         if config.source.index_version_mismatch() {
+            // we don't support old schemas, and tantivy will hard
+            // error if we try to open a db with a different schema.
             std::fs::remove_dir_all(config.index_path("repo"))?;
             std::fs::remove_dir_all(config.index_path("content"))?;
-            config.source.save_index_version()?;
+
+            // knocking out our current file caches will force re-indexing qdrant
+            repo_pool.scan(|_, repo| {
+                _ = repo.delete_file_cache(&config.index_dir);
+            });
         }
+        config.source.save_index_version()?;
 
         let (progress, _) = tokio::sync::broadcast::channel(16);
 

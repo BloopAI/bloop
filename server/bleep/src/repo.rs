@@ -10,7 +10,7 @@ use tracing::debug;
 use utoipa::ToSchema;
 
 use crate::{
-    ctags, indexes,
+    indexes,
     language::{get_language_info, LanguageInfo},
     state::{get_relative_path, pretty_write_file},
 };
@@ -311,7 +311,6 @@ fn get_unix_time(time: SystemTime) -> u64 {
 #[derive(Debug)]
 pub struct RepoMetadata {
     pub last_commit_unix_secs: u64,
-    pub symbols: ctags::SymbolMap,
     pub langs: LanguageInfo,
 }
 
@@ -320,39 +319,14 @@ async fn get_repo_metadata(repo_disk_path: &PathBuf) -> Arc<RepoMetadata> {
         .and_then(|repo| Ok(repo.head()?.peel_to_commit()?.time().seconds() as u64))
         .unwrap_or(0);
 
-    // Extract symbols using Ctags for all languages which are not covered by a more
-    // precise form of symbol extraction.
-    //
-    // There might be a way to generate this list from intelligence::ALL_LANGUAGES,
-    // but not all lang_ids are valid ctags' languages though, so we hardcode some here:
-    let exclude_langs = &[
-        "javascript",
-        "typescript",
-        "python",
-        "go",
-        "c",
-        "rust",
-        "c++",
-        "c#",
-        "java",
-        // misc languages
-        "json",
-        "markdown",
-        "rmarkdown",
-        "iniconf",
-        "man",
-        "protobuf",
-    ];
-
     RepoMetadata {
         last_commit_unix_secs: repo,
-        symbols: ctags::get_symbols(repo_disk_path, exclude_langs).await,
         langs: get_language_info(repo_disk_path),
     }
     .into()
 }
 
-#[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug)]
+#[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum SyncStatus {
     Error { message: String },

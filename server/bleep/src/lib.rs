@@ -22,14 +22,13 @@ use console_subscriber as _;
 #[cfg(target_os = "windows")]
 use dunce::canonicalize;
 use scc::hash_map::Entry;
-use state::PersistedState;
 #[cfg(not(target_os = "windows"))]
 use std::fs::canonicalize;
 
 use crate::{
     background::BackgroundExecutor, indexes::Indexes, semantic::Semantic, state::RepositoryPool,
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use axum::extract::FromRef;
 
 use once_cell::sync::OnceCell;
@@ -49,7 +48,6 @@ mod repo;
 mod webserver;
 
 pub mod analytics;
-pub mod ctags;
 pub mod indexes;
 pub mod intelligence;
 pub mod query;
@@ -97,11 +95,8 @@ pub struct Application {
     /// Conversational store cache
     prior_conversational_store: Arc<scc::HashMap<String, Vec<(String, String)>>>,
 
-    /// User-specific store
-    user_store: PersistedState<scc::HashMap<String, state::UserState>>,
-
-    /// Application-wide tracking seed
-    tracking_seed: PersistedState<state::ApplicationSeed>,
+    /// Analytics backend -- may be unintialized
+    analytics: Option<Arc<analytics::RudderHub>>,
 }
 
 impl Application {
@@ -109,6 +104,7 @@ impl Application {
         env: Environment,
         config: Configuration,
         tracking_seed: impl Into<Option<String>>,
+        analytics_options: impl Into<Option<analytics::HubOptions>>,
     ) -> Result<Application> {
         let mut config = match config.config_file {
             None => config,
@@ -124,13 +120,6 @@ impl Application {
         config.source.set_default_dir(&config.index_dir);
 
         let config = Arc::new(config);
-
-        // Set path to Ctags binary
-        if let Some(ref executable) = config.ctags_path {
-            ctags::CTAGS_BINARY
-                .set(executable.clone())
-                .map_err(|existing| anyhow!("ctags binary already set: {existing:?}"))?;
-        }
 
         // Initialise Semantic index if `qdrant_url` set in config
         let semantic = match config.qdrant_url {
@@ -155,17 +144,24 @@ impl Application {
             env
         };
 
+        let analytics = match initialize_analytics(&config, tracking_seed, analytics_options) {
+            Ok(analytics) => Some(analytics),
+            Err(err) => {
+                warn!(?err, "failed to initialize analytics");
+                None
+            }
+        };
+
+        let repo_pool = config.source.initialize_pool()?;
+
         Ok(Self {
-            indexes: Arc::new(Indexes::new(config.clone(), semantic.clone())?),
+            indexes: Indexes::new(repo_pool.clone(), config.clone(), semantic.clone())?.into(),
             background: BackgroundExecutor::start(config.clone()),
             prior_conversational_store: Arc::default(),
-            repo_pool: config.source.initialize_pool()?,
             cookie_key: config.source.initialize_cookie_key()?,
             credentials: config.source.initialize_credentials()?.into(),
-            user_store: config.source.load_or_default("user_store")?,
-            tracking_seed: config
-                .source
-                .load_state_or("application_seed", tracking_seed.into())?,
+            repo_pool,
+            analytics,
             semantic,
             config,
             env,
@@ -195,28 +191,6 @@ impl Application {
         _ = SENTRY_GUARD.set(guard);
     }
 
-    pub fn initialize_analytics(&self) {
-        let Some(key) = &self.config.analytics_key else {
-            warn!("analytics key missing; skipping initialization");
-            return;
-        };
-
-        let Some(data_plane) = &self.config.analytics_data_plane else {
-            warn!("analytics data plane url missing; skipping initialization");
-            return;
-        };
-
-        let options = analytics::HubOptions {
-            event_filter: Some(Arc::new(Some)),
-            package_metadata: None,
-        };
-
-        info!("configuring analytics ...");
-        tokio::task::block_in_place(|| {
-            analytics::RudderHub::new_with_options(key.clone(), data_plane.clone(), options)
-        });
-    }
-
     pub fn install_logging() {
         if let Some(true) = LOGGER_INSTALLED.get() {
             return;
@@ -233,8 +207,10 @@ impl Application {
         LOGGER_INSTALLED.set(true).unwrap();
     }
 
-    pub fn track_query(&self, event: &analytics::QueryEvent) {
-        tokio::task::block_in_place(|| analytics::RudderHub::track_query(event.clone()))
+    pub fn track_query(&self, user: &webserver::middleware::User, event: &analytics::QueryEvent) {
+        if let Some(analytics) = self.analytics.as_ref() {
+            tokio::task::block_in_place(|| analytics.track_query(user, event.clone()))
+        }
     }
 
     pub async fn run(self) -> Result<()> {
@@ -375,4 +351,38 @@ where
             Level::DEBUG | Level::INFO | Level::WARN => EventFilter::Breadcrumb,
             Level::TRACE => EventFilter::Ignore,
         })
+}
+
+fn initialize_analytics(
+    config: &Configuration,
+    tracking_seed: impl Into<Option<String>>,
+    options: impl Into<Option<analytics::HubOptions>>,
+) -> Result<Arc<analytics::RudderHub>> {
+    let Some(key) = &config.analytics_key else {
+            bail!("analytics key missing; skipping initialization");
+        };
+
+    let Some(data_plane) = &config.analytics_data_plane else {
+            bail!("analytics data plane url missing; skipping initialization");
+        };
+
+    let options = options.into().unwrap_or_else(|| analytics::HubOptions {
+        event_filter: Some(Arc::new(Some)),
+        package_metadata: Some(analytics::PackageMetadata {
+            name: env!("CARGO_CRATE_NAME"),
+            version: env!("CARGO_PKG_VERSION"),
+            git_rev: git_version::git_version!(fallback = "unknown"),
+        }),
+    });
+
+    info!("configuring analytics ...");
+    tokio::task::block_in_place(|| {
+        analytics::RudderHub::new_with_options(
+            &config.source,
+            tracking_seed,
+            key.clone(),
+            data_plane.clone(),
+            options,
+        )
+    })
 }

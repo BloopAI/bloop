@@ -178,18 +178,33 @@ impl Semantic {
             anyhow::bail!("no search target for query");
         };
 
-        let repo_filter = parsed_query
-            .repo()
-            .map(|r| make_kv_filter("repo_name", r).into());
+        let repo_filter: qdrant_client::qdrant::Condition = {
+            let conditions = parsed_query
+                .repos()
+                .map(|r| make_kv_filter("repo_name", r).into())
+                .collect();
+            // one of the above repos should match
+            Filter {
+                should: conditions,
+                ..Default::default()
+            }
+        }
+        .into();
 
-        let lang_filter = parsed_query
-            .lang()
-            .map(|l| make_kv_filter("lang", l).into());
+        let lang_filter: qdrant_client::qdrant::Condition = {
+            let conditions = parsed_query
+                .langs()
+                .map(|l| make_kv_filter("lang", l).into())
+                .collect();
+            // one of the above langs should match
+            Filter {
+                should: conditions,
+                ..Default::default()
+            }
+        }
+        .into();
 
-        let filters = [repo_filter, lang_filter]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
+        let filters = vec![repo_filter, lang_filter];
 
         let response = self
             .qdrant
@@ -326,7 +341,7 @@ fn make_kv_filter(key: &str, value: &str) -> FieldCondition {
     FieldCondition {
         key,
         r#match: Some(Match {
-            match_value: MatchValue::Text(value).into(),
+            match_value: MatchValue::Keyword(value).into(),
         }),
         ..Default::default()
     }

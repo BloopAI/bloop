@@ -1,19 +1,21 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::semantic::chunk::OverlapStrategy;
+use crate::{
+    semantic::chunk::OverlapStrategy,
+    state::{PersistedState, StateSource},
+};
 
-use once_cell::sync::OnceCell;
 use rudderanalytics::{
     client::RudderAnalytics,
     message::{Message, Track},
 };
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tracing::{info, warn};
 
 #[derive(Debug, Default, Clone)]
 pub struct QueryEvent {
-    pub user_id: String,
     pub session_id: String,
     pub query_id: uuid::Uuid,
     pub overlap_strategy: OverlapStrategy,
@@ -44,11 +46,18 @@ pub struct PackageMetadata {
     pub git_rev: &'static str,
 }
 
-static HUB: OnceCell<Arc<RudderHub>> = OnceCell::new();
-
 pub struct RudderHub {
+    /// Rudderstack options
     options: Option<HubOptions>,
+
+    /// Rudderstack client
     client: RudderAnalytics,
+
+    /// User-specific store
+    user_store: PersistedState<scc::HashMap<String, UserState>>,
+
+    /// Device-specific unique identifier
+    device_id: PersistedState<DeviceId>,
 }
 
 #[derive(Default)]
@@ -57,52 +66,73 @@ pub struct HubOptions {
     pub package_metadata: Option<PackageMetadata>,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct DeviceId(String);
+
+/// User-specific configuration
+#[derive(Serialize, Deserialize)]
+pub struct UserState {
+    #[serde(default)]
+    tracking_id: String,
+}
+
 impl RudderHub {
-    pub fn new(key: String, data_plane: String) -> Arc<Self> {
+    pub fn new_with_options(
+        state: &StateSource,
+        device_id: impl Into<Option<String>>,
+        key: String,
+        data_plane: String,
+        options: impl Into<Option<HubOptions>>,
+    ) -> anyhow::Result<Arc<Self>> {
         let client = RudderAnalytics::load(key, data_plane);
-        let hub = Self {
+        Ok(Self {
             client,
-            options: None,
-        };
-        let _ = HUB.set(Arc::new(hub));
-        RudderHub::get().unwrap()
+            options: options.into(),
+            user_store: state.load_or_default("user_tracking")?,
+            device_id: state.load_state_or("device_id", device_id.into())?,
+        }
+        .into())
     }
 
-    pub fn new_with_options(key: String, data_plane: String, options: HubOptions) -> Arc<Self> {
-        let client = RudderAnalytics::load(key, data_plane);
-        let hub = Self {
-            client,
-            options: Some(options),
-        };
-        let _ = HUB.set(Arc::new(hub));
-        RudderHub::get().unwrap()
+    pub fn device_id(&self) -> String {
+        self.device_id.to_string()
     }
 
-    pub fn get() -> Option<Arc<Self>> {
-        HUB.get().map(Arc::clone)
+    pub fn tracking_id(&self, user: &crate::webserver::middleware::User) -> String {
+        match user.0 {
+            Some(ref username) => {
+                let id = self
+                    .user_store
+                    .entry(username.clone())
+                    .or_default()
+                    .get()
+                    .tracking_id();
+                _ = self.user_store.store();
+                id
+            }
+            None => self.device_id.to_string(),
+        }
     }
 
-    pub fn track_query(event: QueryEvent) {
-        if let Some(hub) = Self::get() {
-            if let Some(options) = &hub.options {
-                if let Some(filter) = &options.event_filter {
-                    if let Some(ev) = (filter)(event) {
-                        if let Err(e) = hub.client.send(&Message::Track(Track {
-                            user_id: Some(ev.user_id),
-                            event: "openai query".to_owned(),
-                            properties: Some(json!({
-                                "query_id": ev.query_id,
-                                "session_id": ev.session_id,
-                                "overlap_strategy": ev.overlap_strategy,
-                                "stages": ev.stages,
-                                "package_metadata": options.package_metadata,
-                            })),
-                            ..Default::default()
-                        })) {
-                            warn!("failed to send analytics event: {:?}", e);
-                        } else {
-                            info!("sent analytics event ...");
-                        }
+    pub fn track_query(&self, user: &crate::webserver::middleware::User, event: QueryEvent) {
+        if let Some(options) = &self.options {
+            if let Some(filter) = &options.event_filter {
+                if let Some(ev) = (filter)(event) {
+                    if let Err(err) = self.client.send(&Message::Track(Track {
+                        user_id: Some(self.tracking_id(user)),
+                        event: "openai query".to_owned(),
+                        properties: Some(json!({
+                            "query_id": ev.query_id,
+                            "session_id": ev.session_id,
+                            "overlap_strategy": ev.overlap_strategy,
+                            "stages": ev.stages,
+                            "package_metadata": options.package_metadata,
+                        })),
+                        ..Default::default()
+                    })) {
+                        warn!(?err, "failed to send analytics event");
+                    } else {
+                        info!("sent analytics event...");
                     }
                 }
             }
@@ -111,7 +141,7 @@ impl RudderHub {
 }
 
 impl Stage {
-    pub fn new<T: serde::Serialize>(name: &'static str, data: T) -> Self {
+    pub fn new<T: Serialize>(name: &'static str, data: T) -> Self {
         let data = serde_json::to_value(data).unwrap();
         let _type = match data {
             Value::Null => "null",
@@ -132,5 +162,39 @@ impl Stage {
     pub fn with_time(mut self, time_elapsed: Duration) -> Self {
         self.time_elapsed = Some(time_elapsed.as_millis());
         self
+    }
+}
+
+impl From<Option<String>> for DeviceId {
+    fn from(value: Option<String>) -> Self {
+        match value {
+            Some(val) => DeviceId(val),
+            None => Self::default(),
+        }
+    }
+}
+
+impl ToString for DeviceId {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
+impl Default for DeviceId {
+    fn default() -> Self {
+        Self(uuid::Uuid::new_v4().to_string())
+    }
+}
+
+impl UserState {
+    pub fn tracking_id(&self) -> String {
+        self.tracking_id.clone()
+    }
+}
+
+impl Default for UserState {
+    fn default() -> Self {
+        let tracking_id = uuid::Uuid::new_v4().to_string();
+        Self { tracking_id }
     }
 }

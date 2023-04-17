@@ -10,19 +10,6 @@ Dependencies:
  - [`rust`](https://rustup.rs/)
  - `openssl`
  - `onnxruntime`
- - `universal-ctags`
-
-Follow [these instructions](https://github.com/universal-ctags/ctags) and verify the installation with `ctags --version`. You should see something like this:
-
-```
-Universal Ctags 5.9.0(6f10588d), Copyright (C) 2015-2022 Universal Ctags Team
-Universal Ctags is derived from Exuberant Ctags.
-Exuberant Ctags 5.8, Copyright (C) 1996-2009 Darren Hiebert
-  Compiled: Aug 19 2022, 11:23:10
-  URL: https://ctags.io/
-  Optional compiled features: +wildcards, +regex, +gnulib_fnmatch, +gnulib_regex, +iconv, +option-directory, +xpath, +json, +interactive, +yaml, +case-insensitive-filenames, +packcc, +optscript
-```
-Make sure that `+json` is in the list of compiled features.
 
 ### Build
 
