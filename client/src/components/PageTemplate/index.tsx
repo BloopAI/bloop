@@ -22,8 +22,12 @@ const PageTemplate = ({ children }: Props) => {
   const { isSelfServe } = useContext(DeviceContext);
   const { isAnalyticsAllowed, setIsAnalyticsAllowed } =
     useContext(AnalyticsContext);
-  const { isGithubConnected, setOnBoardingState, isGithubChecked } =
-    useContext(UIContext);
+  const {
+    isGithubConnected,
+    setOnBoardingState,
+    isGithubChecked,
+    shouldShowWelcome,
+  } = useContext(UIContext);
   const [isModalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
@@ -31,7 +35,8 @@ const PageTemplate = ({ children }: Props) => {
       isGithubChecked &&
       !isGithubConnected &&
       isAnalyticsAllowed &&
-      !isSelfServe
+      !isSelfServe &&
+      !shouldShowWelcome
     ) {
       setModalOpen(true);
     }
