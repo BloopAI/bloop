@@ -1,7 +1,7 @@
 use pest::{iterators::Pair, Parser};
 use regex::Regex;
 use smallvec::{smallvec, SmallVec};
-use std::{borrow::Cow, mem};
+use std::{borrow::Cow, collections::HashSet, mem};
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct Query<'a> {
@@ -24,18 +24,18 @@ pub enum Target<'a> {
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct NLQuery<'a> {
-    pub repo: Option<Literal<'a>>,
-    pub lang: Option<Cow<'a, str>>,
+    pub repos: HashSet<Literal<'a>>,
+    pub langs: HashSet<Cow<'a, str>>,
     pub target: Option<Literal<'a>>,
 }
 
 impl<'a> NLQuery<'a> {
-    pub fn repo(&self) -> Option<&Cow<'_, str>> {
-        self.repo.as_ref().and_then(|t| t.as_plain())
+    pub fn repos(&self) -> impl Iterator<Item = &Cow<'_, str>> {
+        self.repos.iter().filter_map(|t| t.as_plain())
     }
 
-    pub fn lang(&self) -> Option<&Cow<'_, str>> {
-        self.lang.as_ref()
+    pub fn langs(&self) -> impl Iterator<Item = &Cow<'_, str>> {
+        self.langs.iter()
     }
 
     pub fn target(&self) -> Option<&Cow<'_, str>> {
@@ -405,16 +405,18 @@ pub fn parse(query: &str) -> Result<Vec<Query<'_>>, ParseError> {
 pub fn parse_nl(query: &str) -> Result<NLQuery<'_>, ParseError> {
     let pairs = PestParser::parse(Rule::nl_query, query).map_err(Box::new)?;
 
-    let mut repo = None;
-    let mut lang = None;
+    let mut repos = HashSet::new();
+    let mut langs = HashSet::new();
     let mut target: Option<Literal> = None;
     for pair in pairs {
         match pair.as_rule() {
-            Rule::repo => repo = Some(Literal::from(pair.into_inner().next().unwrap())),
+            Rule::repo => {
+                let item = Literal::from(pair.into_inner().next().unwrap());
+                let _ = repos.insert(item);
+            }
             Rule::lang => {
-                lang = Some(super::languages::parse_alias(
-                    pair.into_inner().as_str().into(),
-                ))
+                let item = super::languages::parse_alias(pair.into_inner().as_str().into());
+                let _ = langs.insert(item);
             }
             Rule::unquoted_literal | Rule::quoted_literal | Rule::single_quoted_literal => {
                 let rhs = Literal::from(pair);
@@ -428,9 +430,11 @@ pub fn parse_nl(query: &str) -> Result<NLQuery<'_>, ParseError> {
         }
     }
 
-    let qs = NLQuery { repo, lang, target };
-
-    Ok(qs)
+    Ok(NLQuery {
+        repos,
+        langs,
+        target,
+    })
 }
 
 fn flatten(root: Expr<'_>) -> SmallVec<[Query<'_>; 1]> {
@@ -951,19 +955,48 @@ mod tests {
     }
 
     #[test]
-    fn test_nl_parse() {
+    fn nl_parse() {
         assert_eq!(
             parse_nl("what is background color? lang:tsx repo:bloop").unwrap(),
             NLQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
-                lang: Some("tsx".into()),
-                repo: Some(Literal::Plain("bloop".into())),
+                langs: ["tsx".into()].into(),
+                repos: [Literal::Plain("bloop".into())].into(),
             },
         );
     }
 
     #[test]
-    fn test_nl_consume_flags() {
+    fn nl_parse_dedup_similar_filters() {
+        assert_eq!(
+            parse_nl("what is background color? lang:tsx repo:bloop repo:bloop")
+                .unwrap()
+                .repos()
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn nl_parse_multiple_filters() {
+        assert_eq!(
+            parse_nl("what is background color? lang:tsx lang:ts repo:bloop repo:bar repo:baz")
+                .unwrap(),
+            NLQuery {
+                target: Some(Literal::Plain("what is background color?".into())),
+                langs: ["tsx".into(), "typescript".into()].into(),
+                repos: [
+                    Literal::Plain("bloop".into()),
+                    Literal::Plain("bar".into()),
+                    Literal::Plain("baz".into())
+                ]
+                .into(),
+            },
+        );
+    }
+
+    #[test]
+    fn nl_consume_flags() {
         assert_eq!(
             parse_nl(
                 "what is background color? lang:tsx repo:bloop org:bloop symbol:foo open:true"
@@ -971,8 +1004,8 @@ mod tests {
             .unwrap(),
             NLQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
-                lang: Some("tsx".into()),
-                repo: Some(Literal::Plain("bloop".into())),
+                langs: ["tsx".into()].into(),
+                repos: [Literal::Plain("bloop".into())].into(),
             },
         );
 
@@ -982,8 +1015,7 @@ mod tests {
                 target: Some(Literal::Plain(
                     "why are languages excluded from ctags?".into()
                 )),
-                lang: None,
-                repo: None,
+                ..Default::default()
             },
         );
     }
