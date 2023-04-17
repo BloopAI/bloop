@@ -203,10 +203,10 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
                           icon: <DoorRight />,
                           type: MenuListItemType.DEFAULT,
                           onClick: () => {
+                            setShouldShowWelcome(true);
                             gitHubLogout().then(() => {
                               setGithubConnected(false);
                             });
-                            setShouldShowWelcome(true);
                           },
                         },
                       ]
