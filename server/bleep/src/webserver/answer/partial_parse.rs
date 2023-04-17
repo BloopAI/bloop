@@ -113,7 +113,68 @@ fn rectify_number(input: &str) -> (Cow<str>, &str) {
 }
 
 fn rectify_object(input: &str) -> (Cow<str>, &str) {
-    todo!()
+    let mut buf = String::from("{");
+    let mut rest = &input[1..];
+
+    // we have just `{` close it off with `}`
+    if rest.is_empty() {
+        buf += "}";
+    }
+
+    while !rest.is_empty() {
+        let (value, r) = rectify_str(rest);
+        buf += &value;
+        rest = r;
+
+        while rest.starts_with(' ') {
+            rest = &rest[1..];
+            buf += " ";
+        }
+
+        match rest.chars().next() {
+            Some(':') => {
+                rest = &rest[1..];
+                buf += ":";
+            }
+            None => {
+                buf += ":null}";
+                break;
+            }
+            // beyond repair here
+            _ => panic!("malformed JSON object"),
+        }
+
+        while rest.starts_with(' ') {
+            rest = &rest[1..];
+            buf += " ";
+        }
+
+        let (value, r) = rectify_json(rest);
+        buf += &value;
+        rest = r;
+
+        match rest.chars().next() {
+            // we can accomodate more objects
+            Some(',') => {
+                rest = &rest[1..];
+                buf += ",";
+            }
+            // end of object
+            Some('}') => {
+                rest = &rest[1..];
+                buf += "}";
+                break;
+            }
+            // end of stream, not much to do here
+            None => {
+                buf += "}";
+                break;
+            }
+            _ => panic!("malformed JSON object"),
+        }
+    }
+
+    (buf.into(), rest)
 }
 
 #[cfg(test)]
@@ -201,6 +262,18 @@ mod tests {
 
         let (value, rest) = rectify_json(r#"{"#);
         assert_eq!(value, r#"{}"#);
+        assert_eq!(rest, "");
+
+        let (value, rest) = rectify_json(r#"{"foo": {"bar": "baz"}"#);
+        assert_eq!(value, r#"{"foo": {"bar": "baz"}}"#);
+        assert_eq!(rest, "");
+
+        let (value, rest) = rectify_json(r#"{"foo": ["hello"#);
+        assert_eq!(value, r#"{"foo": ["hello"]}"#);
+        assert_eq!(rest, "");
+
+        let (value, rest) = rectify_json(r#"{"foo": {"bar""#);
+        assert_eq!(value, r#"{"foo": {"bar":null}}"#);
         assert_eq!(rest, "");
     }
 }
