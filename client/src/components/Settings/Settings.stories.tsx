@@ -36,6 +36,8 @@ export const Default = () => {
           isGithubConnected: false,
           setGithubConnected: () => {},
           isGithubChecked: true,
+          shouldShowWelcome: false,
+          setShouldShowWelcome: () => {},
         }}
       >
         <RepositoriesContext.Provider
@@ -79,6 +81,8 @@ export const ScanErrors = () => {
           isGithubConnected: false,
           setGithubConnected: () => {},
           isGithubChecked: true,
+          shouldShowWelcome: false,
+          setShouldShowWelcome: () => {},
         }}
       >
         <RepositoriesContext.Provider
@@ -204,6 +208,8 @@ export const EmailConfirmedReposSynced = () => {
           isGithubConnected: true,
           setGithubConnected: () => {},
           isGithubChecked: true,
+          shouldShowWelcome: false,
+          setShouldShowWelcome: () => {},
         }}
       >
         <RepositoriesContext.Provider
