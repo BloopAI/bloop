@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, fmt, sync::Arc, time::Duration};
 
 use super::prelude::*;
 use crate::{
@@ -100,19 +100,13 @@ impl SymbolOccurrence {
 pub(super) enum OccurrenceKind {
     Definition,
     Reference,
-    Modification,
-    Return,
 }
 
-impl TryFrom<usize> for OccurrenceKind {
-    type Error = ();
-    fn try_from(value: usize) -> Result<Self, Self::Error> {
-        match value {
-            1 => Ok(Self::Definition),
-            2 => Ok(Self::Reference),
-            3 => Ok(Self::Modification),
-            4 => Ok(Self::Return),
-            _ => Err(()),
+impl fmt::Display for OccurrenceKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Definition => write!(f, "definition"),
+            Self::Reference => write!(f, "reference"),
         }
     }
 }
@@ -131,7 +125,7 @@ fn handle_definition_local(
     let data = handler
         .handle_definition()
         .into_iter()
-        .map(|range| to_occurrence(doc, range))
+        .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Definition)))
         .collect();
     FileSymbols { file, data }
 }
@@ -157,7 +151,7 @@ fn handle_definition_repo_wide(
                 let data = handler
                     .handle_definition()
                     .into_iter()
-                    .map(|range| to_occurrence(doc, range))
+                    .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Definition)))
                     .collect();
                 Some(FileSymbols { file, data })
             }
@@ -182,14 +176,14 @@ fn handle_reference_local(
         file: file.clone(),
         data: defs
             .into_iter()
-            .map(|range| to_occurrence(doc, range))
+            .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Reference)))
             .collect(),
     };
     let ref_data = FileSymbols {
         file: file.clone(),
         data: refs
             .into_iter()
-            .map(|range| to_occurrence(doc, range))
+            .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Reference)))
             .collect(),
     };
 
@@ -220,14 +214,14 @@ fn handle_reference_repo_wide(
                     file: file.clone(),
                     data: defs
                         .into_iter()
-                        .map(|range| to_occurrence(doc, range))
+                        .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Reference)))
                         .collect(),
                 };
                 let ref_data = FileSymbols {
                     file,
                     data: refs
                         .into_iter()
-                        .map(|range| to_occurrence(doc, range))
+                        .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Reference)))
                         .collect(),
                 };
 
@@ -238,7 +232,11 @@ fn handle_reference_repo_wide(
         .unzip()
 }
 
-fn to_occurrence(doc: &ContentDocument, range: TextRange) -> SymbolOccurrence {
+fn to_occurrence(
+    doc: &ContentDocument,
+    range: TextRange,
+    kind: Option<OccurrenceKind>,
+) -> SymbolOccurrence {
     let src = &doc.content;
     let line_end_indices = &doc.line_end_indices;
     let highlight = range.start.byte..range.end.byte;
@@ -250,7 +248,7 @@ fn to_occurrence(doc: &ContentDocument, range: TextRange) -> SymbolOccurrence {
     SymbolOccurrence {
         range,
         snippet,
-        kind: None,
+        kind,
     }
 }
 
@@ -307,53 +305,41 @@ pub(super) async fn handle(
     let lang = content.lang.as_deref();
     let all_docs = indexes.file.by_repo(repo_ref, lang).await;
 
+    let done = futures::stream::once(async { Ok(Event::default().data("[DONE]")) });
+
     match &scope_graph.graph[idx] {
         // we are already at a def
         // - find refs from the current file
         // - find refs from other files
-        NodeKind::Def(d) => {
-            // fetch local references with scope-graphs
-            let local_references = handle_definition_local(scope_graph, idx, &content);
+        // NodeKind::Def(d) => {
+        //     // fetch local references with scope-graphs
+        //     let local_references = handle_definition_local(scope_graph, idx, &content);
 
-            // fetch repo-wide references with trivial search, only if the def is
-            // a top-level def (typically functions, ADTs, consts)
-            let repo_wide_references = if scope_graph.is_top_level(idx) {
-                let token = d.name(src.as_bytes());
-                handle_definition_repo_wide(token, kind, current_file, &all_docs)
-            } else {
-                vec![]
-            };
+        //     // fetch repo-wide references with trivial search, only if the def is
+        //     // a top-level def (typically functions, ADTs, consts)
+        //     let repo_wide_references = if scope_graph.is_top_level(idx) {
+        //         let token = d.name(src.as_bytes());
+        //         handle_definition_repo_wide(token, kind, current_file, &all_docs)
+        //     } else {
+        //         vec![]
+        //     };
 
-            // merge the two
-            let references = merge([local_references], repo_wide_references);
+        //     let initial_event = Event::default()
+        //         .json_data(local_references)
+        //         .map_err(Error::internal)?;
 
-            let selections = gpt_handler(&app, Arc::clone(&state), &references).await;
-            let flattened = references
-                .into_iter()
-                .flat_map(|fs| fs.flatten())
-                .collect::<Vec<_>>();
-            let mut selected = vec![];
+        //     let result_stream = async_stream::stream! {
+        //         yield <Result::<Event, String>>::Ok(initial_event);
 
-            for (selected_idx, kind) in selections {
-                let (item_path, mut item) = flattened[selected_idx - 1].clone();
-                if let Some(kind) = OccurrenceKind::try_from(kind).ok() {
-                    item.set_kind(kind);
-                };
-                selected.push((item_path, item));
-            }
+        //         for f in repo_wide_references {
+        //             if f.is_populated() {
+        //                 yield Ok(Event::default().json_data(dbg!(f)).unwrap());
+        //             }
+        //         }
+        //     };
 
-            let file_symbols: Vec<FileSymbols> = selected
-                .into_iter()
-                .fold(HashMap::new(), |mut map, (item_path, item)| {
-                    map.entry(item_path).or_insert_with(Vec::new).push(item);
-                    map
-                })
-                .into_iter()
-                .map(|(k, v)| FileSymbols { file: k, data: v })
-                .collect::<Vec<_>>();
-
-            Ok(json(TokenInfoResponse { data: file_symbols }))
-        }
+        //     Ok(Sse::new(Box::pin(result_stream.chain(done))))
+        // }
 
         // we are at a reference:
         // - find def from the current file
@@ -373,38 +359,72 @@ pub(super) async fn handle(
             let (repo_wide_definitions, repo_wide_references) =
                 handle_reference_repo_wide(token, kind, current_file, &all_docs);
 
-            // merge the two
-            let definitions = merge([local_definitions], repo_wide_definitions);
-            let references = merge([local_references], repo_wide_references);
+            let initial_event = Event::default()
+                .json_data(merge([local_definitions], [local_references]))
+                .map_err(Error::internal)?;
 
-            let all_symbols = merge(definitions, references);
+            let bearer = answer_bearer_token(&app);
 
-            let selections = gpt_handler(&app, Arc::clone(&state), &all_symbols).await;
-            let flattened = all_symbols
-                .into_iter()
-                .flat_map(|fs| fs.flatten())
-                .collect::<Vec<_>>();
-            let mut selected = vec![];
+            let result_stream = async_stream::stream! {
+                yield <Result::<Event, String>>::Ok(initial_event);
 
-            for (selected_idx, kind) in selections {
-                let (item_path, mut item) = flattened[selected_idx - 1].clone();
-                if let Some(kind) = OccurrenceKind::try_from(kind).ok() {
-                    item.set_kind(kind);
+                if let Some(answer_bearer) = bearer {
+                    // apply filter to repo-wide symbols only
+                    let repo_wide_symbols = merge(repo_wide_definitions, repo_wide_references);
+
+                    // fetch filtered selections from gpt
+                    let selections = gpt_handler(
+                            &app,
+                            Arc::clone(&state),
+                            &repo_wide_symbols,
+                            answer_bearer
+                        )
+                        .await
+                        .unwrap_or_else(|| (0..repo_wide_symbols.len()).collect());
+
+                    // rebuild the symbol list from the indices gpt gives us
+                    let flattened = repo_wide_symbols
+                        .into_iter()
+                        .flat_map(|fs| fs.flatten())
+                        .collect::<Vec<_>>();
+
+                    let mut selected = vec![];
+
+                    for selected_idx in selections {
+                        let (item_path, mut item) = flattened[selected_idx - 1].clone();
+                        selected.push((item_path, item));
+                    }
+
+                    let file_symbols: Vec<FileSymbols> = selected
+                        .into_iter()
+                        .fold(HashMap::new(), |mut map, (item_path, item)| {
+                            map.entry(item_path).or_insert_with(Vec::new).push(item);
+                            map
+                        })
+                        .into_iter()
+                        .map(|(k, v)| FileSymbols { file: k, data: v })
+                        .collect::<Vec<_>>();
+
+                    for f in file_symbols.into_iter() {
+                        if f.is_populated() {
+                            yield Ok(Event::default().json_data(f).unwrap());
+                        }
+                    }
+
+                } else {
+                    // no gh token, no filter
+                    // merge the two
+                    let all_symbols = merge(repo_wide_definitions, repo_wide_references);
+
+                    for f in all_symbols.into_iter() {
+                        if f.is_populated() {
+                            yield Ok(Event::default().json_data(f).unwrap());
+                        }
+                    }
                 };
-                selected.push((item_path, item));
-            }
+            };
 
-            let file_symbols: Vec<FileSymbols> = selected
-                .into_iter()
-                .fold(HashMap::new(), |mut map, (item_path, item)| {
-                    map.entry(item_path).or_insert_with(Vec::new).push(item);
-                    map
-                })
-                .into_iter()
-                .map(|(k, v)| FileSymbols { file: k, data: v })
-                .collect::<Vec<_>>();
-
-            Ok(json(TokenInfoResponse { data: file_symbols }))
+            Ok(Sse::new(Box::pin(result_stream.chain(done))))
         }
         _ => Err(Error::user(
             "provided range is not eligible for intelligence",
@@ -413,7 +433,7 @@ pub(super) async fn handle(
 }
 
 const DELIMITER: &str = "=====";
-async fn gpt_filter(file_symbols: &[FileSymbols]) -> api::Messages {
+fn build_prompt(file_symbols: &[FileSymbols]) -> api::Messages {
     let symbols = file_symbols
         .iter()
         .flat_map(|fs| fs.flatten())
@@ -421,46 +441,38 @@ async fn gpt_filter(file_symbols: &[FileSymbols]) -> api::Messages {
         .map(|((file, occurrence), idx)| {
             let name = occurrence.snippet.highlight_strs()[0];
             format!(
-                "{}. `{}` in file `{}`:\n{}\n=====\n",
-                idx, name, file, occurrence.snippet.data
+                "{}. {} of `{}` in file `{}`:\n{}\n{DELIMITER}n",
+                idx,
+                occurrence.kind.unwrap_or(OccurrenceKind::Reference),
+                name,
+                file,
+                occurrence.snippet.data
             )
         })
         .collect::<String>();
-    let mut prompt = r#"Below are a list of snippets separated by `=====`. Your job is to annotate these snippets as one 
-of the following: 1 for Definition, 2 for Reference, 3 for Modification and 4 for Returned, from the perspective of the 
-SUBJECT in the snippet:
-- Definition: the SUBJECT is being defined in this snippet
-- Reference: the SUBJECT is being referenced in this snippet
-- Modification: the SUBJECT is being modified in this snippet
-- Returned: the SUBJECT is being returned in this snippet
+    let mut prompt = r#"Below are a list of snippets separated by `=====`. 
+Your job is to filter out those references or definitions which are irrelevant, such as imports of the SUBJECT.
 
-Typically a definition occurs on the LHS of an equal-to sign ('='), or occurs in a declaration such as a class declaration.
-Typically, a modification is a situation where the SUBJECT is being mutated. Things like method calls upon the SUBJECT may 
-be considered to be modifications, whereas, passing the SUBJECT into a function may be considered a plain reference. 
-You may classify a snippet as a return if the SUBJECT is prefixed by a return keyword, or if the SUBJECT occurs as the last 
-statement in the execution of that function.
-
-Also filter out those snippets which are irrelevant, such as imports of the SUBJECT.
+Some criteria you can use are: 
+- if the snippet is marked as a definition but is actually an import statement
 
 For example, if given the following list of snippets, with `HashMap` as the SUBJECT:
 
-1. `HashMap` in file `src/main.rs`
-use std::collections::HashMap;
+1. definition of `HashMap` in file `src/main.rs`
 use std::collections::HashSet;
-use std::collections::BTreeSet;
 
-2. `HashMap` in file `src/map.rs`
+2. definition of `HashMap` in file `src/map.rs`
 struct HashMap<T> {
-    bucket: Vec<T>,
-    capacity: usize
 
-3. `HashMap` in file `src/util.rs`
+3. reference to `HashMap` in file `src/util.rs`
 use crate::map::HashMap;
 
-4. `HashMap` in file `src/util.rs`
+4. reference to `HashMap` in file `src/util.rs`
 let util: HashMap<T, V> = HashMap::new();
 
-Output:[[2,1],[4,2]]
+Output:[2,3,4]
+
+Here, index 1 is filtered out because it is marked as a definition but is actually an import.
 
 Now, complete the answer for the given snippets:
 
@@ -476,14 +488,11 @@ Now, complete the answer for the given snippets:
     api::Messages { messages }
 }
 
-async fn gpt_handler(
-    app: &Application,
-    state: Arc<AnswerState>,
-    file_symbols: &[FileSymbols],
-) -> Vec<(usize, usize)> {
-    let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
+fn answer_bearer_token(app: &Application) -> Option<String> {
+    if app.env.allow(Feature::GithubDeviceFlow) {
         let Some(cred) = app.credentials.github() else {
-            panic!("no gh token");
+            tracing::warn!("no gh token no gpt");
+            return None;
         };
 
         use remotes::github::{Auth, State};
@@ -501,33 +510,40 @@ async fn gpt_handler(
                 auth: Auth::App { .. },
                 ..
             } => {
-                panic!("cannot connect to answer API using installation token")
+                tracing::error!("cannot connect to answer API using installation token");
+                None
             }
         }
     } else {
         None
-    };
+    }
+}
 
-    let semantic = app.semantic.clone().expect("qdrant not configured");
+async fn gpt_handler(
+    app: &Application,
+    state: Arc<AnswerState>,
+    file_symbols: &[FileSymbols],
+    answer_bearer: String,
+) -> Option<Vec<usize>> {
+    let semantic = app.semantic.clone()?;
 
     let answer_api_client = semantic.build_answer_api_client(
         &*state,
         format!("{}/v1/q", app.config.answer_api_url).as_str(),
         5,
-        answer_bearer.clone(),
+        Some(answer_bearer),
     );
 
-    let prompt = gpt_filter(file_symbols).await;
+    let prompt = build_prompt(file_symbols);
     let answer = answer_api_client
         .send(prompt, 50, 0.0, api::Provider::OpenAi, vec![])
         .await
-        .unwrap()
+        .ok()?
         .try_collect::<String>()
         .await
-        .unwrap();
-    let selections: Vec<(usize, usize)> =
-        serde_json::from_str(&answer).unwrap_or_else(|_| Vec::new());
-    selections
+        .ok()?;
+    let selections: Vec<usize> = serde_json::from_str(&answer).ok()?;
+    Some(selections)
 }
 
 #[cfg(test)]
