@@ -182,7 +182,7 @@ impl Semantic {
             let conditions = parsed_query
                 .repos()
                 .map(|r| {
-                    if r.contains('/') {
+                    if r.contains('/') && !r.starts_with("github.com/") {
                         format!("github.com/{r}")
                     } else {
                         r.to_string()
