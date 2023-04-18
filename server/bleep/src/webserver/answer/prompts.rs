@@ -85,9 +85,11 @@ The user's query is "{question}"
 
 Your answer should be in the following JSON format: a list of objects, where each object represents one instance of:
 
-1. citing a single file from the codebase (this object can appear multiple times)
+1. citing a single file from the codebase (this object can appear multiple times, in the form of a JSON array)
+START LINE and END LINE should focus on the code mentioned in the COMMENT.
 
-["cite",INT: §ALIAS,STRING: COMMENT]
+[["cite",INT: §ALIAS, STRING: COMMENT, INT: START LINE, INT: END LINE],
+["cite",INT: §ALIAS, STRING: COMMENT, INT: START LINE, INT: END LINE]]
 
 2. write a new code file (this object can appear multiple times)
 Do not use this to demonstrate updating an existing file.

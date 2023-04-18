@@ -19,7 +19,7 @@ pub fn rectify_json(input: &str) -> (Cow<str>, &str) {
         '[' => rectify_array(input),
         '{' => rectify_object(input),
         d if input.trim().starts_with(|c: char| c.is_ascii_digit()) => rectify_number(input),
-        _ => panic!("malformed JSON value"),
+        c => panic!("malformed JSON value: `{c}`"),
     }
 }
 
@@ -64,30 +64,42 @@ fn rectify_array(input: &str) -> (Cow<str>, &str) {
     let mut buf = String::from("[");
     let mut rest = &input[1..];
 
-    // we have just `{` close it off with `}`
+    rest = consume_whitespace(rest);
+
+    // we have just `[` close it off with `]`
     if rest.is_empty() {
         buf += "]";
     }
 
-    // while rest.starts_with(|c: char| c.is_whitespace()) {
-    //     rest = &rest[1..];
-    //     buf += " ";
-    // }
-    rest = consume_whitespace(rest);
-
+    let mut continuing = false;
     while !rest.is_empty() {
         let (value, r) = rectify_json(rest);
+        if continuing {
+            buf.push(',');
+            continuing = false;
+        }
         buf += &value;
         rest = r;
 
         rest = consume_whitespace(rest);
 
         match rest.chars().next() {
-            Some(c @ ']') | Some(c @ ',') => {
+            // end of this object
+            Some(']') => {
                 rest = &rest[1..];
-                buf += &c.to_string();
-                if c == ']' {
-                    break;
+                buf.push(']');
+                break;
+            }
+
+            // expecting more objects ... or not
+            Some(',') => {
+                // we need to look further ahead:
+                // - if we have more content, we may append a `,`
+                // - if we cannot produce another json object, do not append `,`
+                rest = &rest[1..];
+                rest = consume_whitespace(rest);
+                if !rest.is_empty() {
+                    continuing = true;
                 }
             }
             None => {}
@@ -242,6 +254,22 @@ mod tests {
 
         let (value, rest) = rectify_json(r#"["cite",1"#);
         assert_eq!(value, r#"["cite",1]"#);
+        assert_eq!(rest, "");
+
+        let (value, rest) = rectify_json("[[\"cite\",1],\n");
+        assert_eq!(value, "[[\"cite\",1]]");
+        assert_eq!(rest, "");
+
+        let (value, rest) = rectify_json("[[\"cite\",1],\n[");
+        assert_eq!(value, "[[\"cite\",1],[]]");
+        assert_eq!(rest, "");
+
+        let (value, rest) = rectify_json("[[\"cite\",1],\n[\"");
+        assert_eq!(value, "[[\"cite\",1],[\"\"]]");
+        assert_eq!(rest, "");
+
+        let (value, rest) = rectify_json("[[\"cite\",1],\n[\"cite\",");
+        assert_eq!(value, "[[\"cite\",1],[\"cite\"]]");
         assert_eq!(rest, "");
     }
 
