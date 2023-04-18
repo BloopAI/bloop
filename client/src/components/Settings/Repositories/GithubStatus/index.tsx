@@ -85,7 +85,7 @@ const GithubStatus = ({
         {isConnected ? (
           <>
             <Button variant="tertiary" size="small" onClick={handleLogout}>
-              Logout GitHub <DoorRight />
+              Logout from GitHub <DoorRight />
             </Button>
             <ModalOrSidebar
               isSidebar={false}
