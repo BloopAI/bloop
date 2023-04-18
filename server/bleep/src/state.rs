@@ -96,7 +96,7 @@ impl<T> Clone for PersistedState<T> {
 
 impl StateSource {
     pub(crate) fn set_default_dir(&mut self, dir: &Path) {
-        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(&dir).expect("the index folder can't be created");
 
         self.state_file
             .get_or_insert_with(|| dir.join("repo_state.json"));
