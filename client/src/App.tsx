@@ -21,7 +21,7 @@ function App({ deviceContextValue }: Props) {
   const [envConfig, setEnvConfig] = useState({});
 
   useEffect(() => {
-    getConfig().then(setEnvConfig);
+    setTimeout(() => getConfig().then(setEnvConfig), 1000); // server returns wrong tracking_id within first second
   }, []);
 
   const deviceContextWithEnv = useMemo(

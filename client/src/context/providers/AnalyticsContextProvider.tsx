@@ -59,7 +59,7 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   useEffect(() => {
     if (analyticsLoaded && envConfig.tracking_id) {
       analytics.identify(
-        envConfig.tracking_id,
+        envConfig.tracking_id.trim(),
         {
           isSelfServe: isSelfServe,
           githubUsername: envConfig.user_login || '',
