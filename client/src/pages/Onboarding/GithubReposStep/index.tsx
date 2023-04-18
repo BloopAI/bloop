@@ -87,18 +87,20 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
       const selectedRepos = onBoardingState[STEP_KEY];
 
       setRepos(
-        githubRepos.map((r) => {
-          const pathParts = splitPath(r.name);
-          let selected: boolean = selectedRepos?.length
-            ? !!selectedRepos.includes(r.ref)
-            : false;
-          return {
-            ...r,
-            selected,
-            shortName: pathParts[pathParts.length - 1],
-            folderName: pathParts[0],
-          };
-        }),
+        githubRepos
+          .map((r) => {
+            const pathParts = splitPath(r.name);
+            let selected: boolean = selectedRepos?.length
+              ? !!selectedRepos.includes(r.ref)
+              : false;
+            return {
+              ...r,
+              selected,
+              shortName: pathParts[pathParts.length - 1],
+              folderName: pathParts[0],
+            };
+          })
+          .sort((a, b) => (a.folderName > b.folderName ? -1 : 1)),
       );
     });
   }, []);
