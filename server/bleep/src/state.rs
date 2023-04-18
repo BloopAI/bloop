@@ -96,6 +96,8 @@ impl<T> Clone for PersistedState<T> {
 
 impl StateSource {
     pub(crate) fn set_default_dir(&mut self, dir: &Path) {
+        std::fs::create_dir_all(dir).expect("the index folder can't be created");
+
         self.state_file
             .get_or_insert_with(|| dir.join("repo_state.json"));
 
@@ -164,7 +166,9 @@ impl StateSource {
                     _ = out.insert(reporef, repo);
                 }
 
-                Ok(out.into())
+                let pool = Arc::new(out);
+                self.save_pool(pool.clone())?;
+                Ok(pool)
             }
             // Update RepositoryPool with repos under `root`
             (Some(root), Some(path)) => {
@@ -178,7 +182,6 @@ impl StateSource {
                 state.for_each(|k, repo| {
                     if let Some(path) = k.local_path() {
                         // Clippy suggestion causes the code to break, revisit after 1.66
-                        #[allow(clippy::needless_borrow)]
                         if path.starts_with(&root) && !current_repos.contains(k) {
                             debug!(reporef=%k, "repo scheduled to be removed;");
                             repo.mark_removed();
