@@ -118,17 +118,17 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
   } | null>(null);
 
   useEffect(() => {
-    if (!emptyRepos) {
+    const fetchRepos = () => {
       getRepos().then((data) => {
-        setRepositories(data.list || []);
-        setReposToShow(filterRepositories(filter, data.list || []));
+        const list =
+          data?.list?.sort((a, b) => (a.name < b.name ? -1 : 1)) || [];
+        setRepositories(list);
+        setReposToShow(filterRepositories(filter, list));
       });
-      const intervalId = setInterval(() => {
-        getRepos().then((data) => {
-          setRepositories(data.list || []);
-          setReposToShow(filterRepositories(filter, data.list || []));
-        });
-      }, 10000);
+    };
+    if (!emptyRepos) {
+      fetchRepos();
+      const intervalId = setInterval(fetchRepos, 10000);
       return () => {
         clearInterval(intervalId);
       };

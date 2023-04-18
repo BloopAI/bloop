@@ -19,6 +19,7 @@ const AddRepos = ({ addRepos, onClose }: Props) => {
     onClose(false);
   };
   const handleSubmit = () => {
+    setFolderChosen(false);
     onClose(true);
   };
   return (
