@@ -76,16 +76,20 @@ const RepositoriesSettings = () => {
     setGitHubAuth(!githubRepos.length);
   }, [githubRepos.length]);
 
-  useEffect(() => {
-    getRepos().then((data) => {
-      setRepositories(data.list || []);
+  const fetchRepos = useCallback(() => {
+    return getRepos().then((data) => {
+      const list = data?.list?.sort((a, b) => (a.name < b.name ? -1 : 1)) || [];
+      setRepositories(list);
     });
+  }, []);
+
+  useEffect(() => {
+    fetchRepos();
   }, []);
 
   const handleRemoveOne = useCallback(async (repoRef: string) => {
     await deleteRepo(repoRef);
-    const data = await getRepos();
-    setRepositories(data.list || []);
+    await fetchRepos();
   }, []);
 
   const addReposMenuItems = useMemo(
