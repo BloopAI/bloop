@@ -19,7 +19,7 @@ interface NavigationItem {
   searchType?: SearchType;
   pathParams?: Record<string, string>;
   threadId?: string;
-  recordId?: string;
+  recordId?: number;
 }
 
 type ContextType = {
@@ -51,7 +51,7 @@ type ContextType = {
     path: string,
     pathParams?: Record<string, string>,
   ) => void;
-  navigateConversationResults: (recordId: string) => void;
+  navigateConversationResults: (messageIndex: number) => void;
   query: string;
 };
 
@@ -172,12 +172,20 @@ export const AppNavigationProvider = (prop: {
     [],
   );
 
-  const navigateConversationResults = useCallback((recordId: string) => {
-    saveState({
-      type: 'conversation-result',
-      recordId,
-    });
-  }, []);
+  const navigateConversationResults = useCallback(
+    (messageIndex: number) => {
+      if (
+        navigatedItem?.type !== 'conversation-result' ||
+        navigatedItem?.recordId !== messageIndex
+      ) {
+        saveState({
+          type: 'conversation-result',
+          recordId: messageIndex,
+        });
+      }
+    },
+    [navigatedItem],
+  );
 
   const navigateFullResult = useCallback(
     (repo: string, path: string, pathParams?: Record<string, string>) => {

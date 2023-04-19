@@ -130,13 +130,14 @@ type ChatMessageUser = {
   text: string;
 };
 
-type ChatMessageServer = {
+export type ChatMessageServer = {
   author: ChatMessageAuthor.Server;
   text?: string;
   isLoading: boolean;
   loadingSteps: string[];
   error?: string;
   type: ChatMessageType;
+  fullAnswer?: any[][];
 };
 
 export type ChatMessage = ChatMessageUser | ChatMessageServer;
