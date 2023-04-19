@@ -18,6 +18,7 @@ type ContextType = {
   setShouldShowWelcome: (b: boolean) => void;
   isRightPanelOpen: boolean;
   setRightPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  tab: { key: string; name: string };
 };
 
 export const UIContext = createContext<ContextType>({
@@ -38,4 +39,5 @@ export const UIContext = createContext<ContextType>({
   setShouldShowWelcome: () => {},
   isRightPanelOpen: false,
   setRightPanelOpen: () => {},
+  tab: { key: 'initial', name: 'Home' },
 });
