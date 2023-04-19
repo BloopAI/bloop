@@ -114,3 +114,29 @@ export type ConversationMessage = {
   }[];
   error?: string;
 };
+
+export enum ChatMessageType {
+  Answer = 'answer',
+  Prompt = 'prompt',
+}
+
+export enum ChatMessageAuthor {
+  User = 'user',
+  Server = 'server',
+}
+
+type ChatMessageUser = {
+  author: ChatMessageAuthor.User;
+  text: string;
+};
+
+type ChatMessageServer = {
+  author: ChatMessageAuthor.Server;
+  text?: string;
+  isLoading: boolean;
+  loadingSteps: string[];
+  error?: string;
+  type: ChatMessageType;
+};
+
+export type ChatMessage = ChatMessageUser | ChatMessageServer;
