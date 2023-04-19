@@ -241,7 +241,6 @@ fn to_occurrence(
     let line_end_indices = &doc.line_end_indices;
     let highlight = range.start.byte..range.end.byte;
     let snippet = Snipper::default()
-        .context(0, 3)
         .expand(highlight, src, line_end_indices)
         .reify(src, &[]);
 
@@ -278,17 +277,17 @@ pub(super) async fn handle(
     State(state): State<Arc<AnswerState>>,
     Extension(app): Extension<Application>,
 ) -> Result<impl IntoResponse> {
-    let repo_ref = &payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
+    let repo_ref = payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
 
     let indexes = Arc::clone(&app.indexes);
-    let content = &indexes
+    let content = indexes
         .file
-        .by_path(repo_ref, &payload.relative_path)
+        .by_path(&repo_ref, &payload.relative_path)
         .await
         .map_err(Error::user)?;
 
     let scope_graph = match content.symbol_locations {
-        SymbolLocations::TreeSitter(ref graph) => graph,
+        SymbolLocations::TreeSitter(ref graph) => graph.clone(),
         _ => return Err(Error::user("Intelligence is unavailable for this language")),
     };
 
@@ -299,47 +298,44 @@ pub(super) async fn handle(
         Some(idx) => idx,
     };
 
-    let src = &content.content;
-    let current_file = &content.relative_path;
-    let kind = scope_graph.symbol_name_of(idx);
-    let lang = content.lang.as_deref();
-    let all_docs = indexes.file.by_repo(repo_ref, lang).await;
-
-    let done = futures::stream::once(async { Ok(Event::default().data("[DONE]")) });
+    let result_stream = async_stream::stream! {
+        let src = &content.content;
+        let current_file = &content.relative_path;
+        let kind = scope_graph.symbol_name_of(idx);
+        let lang = content.lang.as_deref();
+        let all_docs = indexes.file.by_repo(&repo_ref, lang).await;
 
     match &scope_graph.graph[idx] {
         // we are already at a def
         // - find refs from the current file
         // - find refs from other files
-        // NodeKind::Def(d) => {
-        //     // fetch local references with scope-graphs
-        //     let local_references = handle_definition_local(scope_graph, idx, &content);
+        NodeKind::Def(d) => {
+            // fetch local references with scope-graphs
+            let local_references = handle_definition_local(&scope_graph, idx, &content);
 
-        //     // fetch repo-wide references with trivial search, only if the def is
-        //     // a top-level def (typically functions, ADTs, consts)
-        //     let repo_wide_references = if scope_graph.is_top_level(idx) {
-        //         let token = d.name(src.as_bytes());
-        //         handle_definition_repo_wide(token, kind, current_file, &all_docs)
-        //     } else {
-        //         vec![]
-        //     };
+            // fetch repo-wide references with trivial search, only if the def is
+            // a top-level def (typically functions, ADTs, consts)
+            let repo_wide_references = if scope_graph.is_top_level(idx) {
+                let token = d.name(src.as_bytes());
+                handle_definition_repo_wide(token, kind, current_file, &all_docs)
+            } else {
+                vec![]
+            };
 
-        //     let initial_event = Event::default()
-        //         .json_data(local_references)
-        //         .map_err(Error::internal)?;
+            let initial_event = Event::default()
+                .json_data(local_references)
+                .unwrap();
 
-        //     let result_stream = async_stream::stream! {
-        //         yield <Result::<Event, String>>::Ok(initial_event);
+            yield <Result::<Event, String>>::Ok(initial_event);
 
-        //         for f in repo_wide_references {
-        //             if f.is_populated() {
-        //                 yield Ok(Event::default().json_data(dbg!(f)).unwrap());
-        //             }
-        //         }
-        //     };
+            for f in repo_wide_references {
+                if f.is_populated() {
+                    yield Ok(Event::default().json_data(dbg!(f)).unwrap());
+                }
+            }
 
-        //     Ok(Sse::new(Box::pin(result_stream.chain(done))))
-        // }
+            yield Ok(Event::default().data("[DONE]"));
+        }
 
         // we are at a reference:
         // - find def from the current file
@@ -352,7 +348,7 @@ pub(super) async fn handle(
         NodeKind::Ref(r) => {
             // fetch local (defs, refs) with scope-graphs
             let (local_definitions, local_references) =
-                handle_reference_local(scope_graph, idx, &content);
+                handle_reference_local(&scope_graph, idx, &content);
 
             // fetch repo-wide (defs, refs) with trivial search
             let token = r.name(src.as_bytes());
@@ -361,38 +357,40 @@ pub(super) async fn handle(
 
             let initial_event = Event::default()
                 .json_data(merge([local_definitions], [local_references]))
-                .map_err(Error::internal)?;
+                .unwrap();
 
             let bearer = answer_bearer_token(&app);
 
-            let result_stream = async_stream::stream! {
-                yield <Result::<Event, String>>::Ok(initial_event);
+            yield <Result::<Event, String>>::Ok(initial_event);
 
-                if let Some(answer_bearer) = bearer {
-                    // apply filter to repo-wide symbols only
-                    let repo_wide_symbols = merge(repo_wide_definitions, repo_wide_references);
+            if let Some(answer_bearer) = bearer {
+                // apply filter to repo-wide symbols only
+                let repo_wide_symbols = merge(repo_wide_definitions, repo_wide_references);
 
-                    // fetch filtered selections from gpt
-                    let selections = gpt_handler(
-                            &app,
-                            Arc::clone(&state),
-                            &repo_wide_symbols,
-                            answer_bearer
-                        )
-                        .await
-                        .unwrap_or_else(|| (0..repo_wide_symbols.len()).collect());
+                // fetch filtered selections from gpt
+                let selections = gpt_handler(
+                        &app,
+                        Arc::clone(&state),
+                        &repo_wide_symbols,
+                        answer_bearer
+                    )
+                    .await
+                    .unwrap_or_else(|| (0..repo_wide_symbols.len()).collect());
 
-                    // rebuild the symbol list from the indices gpt gives us
-                    let flattened = repo_wide_symbols
-                        .into_iter()
-                        .flat_map(|fs| fs.flatten())
-                        .collect::<Vec<_>>();
+                // rebuild the symbol list from the indices gpt gives us
+                let flattened = repo_wide_symbols
+                    .into_iter()
+                    .flat_map(|fs| fs.flatten())
+                    .collect::<Vec<_>>();
 
+                if !flattened.is_empty() {
                     let mut selected = vec![];
 
                     for selected_idx in selections {
-                        let (item_path, mut item) = flattened[selected_idx - 1].clone();
-                        selected.push((item_path, item));
+                        if let Some(idx) = selected_idx.checked_sub(1) {
+                            let (item_path, mut item) = flattened[idx].clone();
+                            selected.push((item_path, item));
+                        }
                     }
 
                     let file_symbols: Vec<FileSymbols> = selected
@@ -401,35 +399,36 @@ pub(super) async fn handle(
                             map.entry(item_path).or_insert_with(Vec::new).push(item);
                             map
                         })
-                        .into_iter()
+                    .into_iter()
                         .map(|(k, v)| FileSymbols { file: k, data: v })
                         .collect::<Vec<_>>();
 
                     for f in file_symbols.into_iter() {
                         if f.is_populated() {
-                            yield Ok(Event::default().json_data(f).unwrap());
+                            yield Ok(Event::default().json_data(dbg!(f)).unwrap());
                         }
                     }
+                }
 
-                } else {
-                    // no gh token, no filter
-                    // merge the two
-                    let all_symbols = merge(repo_wide_definitions, repo_wide_references);
 
-                    for f in all_symbols.into_iter() {
-                        if f.is_populated() {
-                            yield Ok(Event::default().json_data(f).unwrap());
-                        }
+            } else {
+                // no gh token, no filter
+                // merge the two
+                let all_symbols = merge(repo_wide_definitions, repo_wide_references);
+
+                for f in all_symbols.into_iter() {
+                    if f.is_populated() {
+                        yield Ok(Event::default().json_data(f).unwrap());
                     }
-                };
+                }
             };
 
-            Ok(Sse::new(Box::pin(result_stream.chain(done))))
+            yield Ok(Event::default().data("[DONE]"));
         }
-        _ => Err(Error::user(
-            "provided range is not eligible for intelligence",
-        )),
+        _ => panic!(),
     }
+    };
+    Ok(Sse::new(result_stream))
 }
 
 const DELIMITER: &str = "=====";
@@ -472,7 +471,8 @@ let util: HashMap<T, V> = HashMap::new();
 
 Output:[2,3,4]
 
-Here, index 1 is filtered out because it is marked as a definition but is actually an import.
+Here, index 1 is filtered out because it is marked as a definition but is actually an import. Do not use 
+any whitespace in the response.
 
 Now, complete the answer for the given snippets:
 
