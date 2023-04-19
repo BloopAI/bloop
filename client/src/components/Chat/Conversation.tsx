@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { Fragment, useEffect, useRef } from 'react';
 import {
   ChatMessage,
   ChatMessageAuthor,
@@ -27,7 +27,7 @@ const Conversation = ({ conversation }: Props) => {
       ref={messagesRef}
     >
       {conversation.map((m, i) => (
-        <>
+        <Fragment key={i}>
           {m.author === ChatMessageAuthor.Server &&
             m.type === ChatMessageType.Answer && (
               <div className="group-custom">
@@ -62,7 +62,6 @@ const Conversation = ({ conversation }: Props) => {
           {m.text || (m.author === ChatMessageAuthor.Server && m.error) ? (
             <Message
               isHistory={false}
-              key={i}
               author={m.author}
               message={
                 m.text ||
@@ -71,7 +70,7 @@ const Conversation = ({ conversation }: Props) => {
               }
             />
           ) : null}
-        </>
+        </Fragment>
       ))}
     </div>
   );

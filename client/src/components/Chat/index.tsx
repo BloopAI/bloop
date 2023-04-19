@@ -16,6 +16,8 @@ import {
   ChatMessageType,
 } from '../../types/general';
 import { RepositoriesContext } from '../../context/repositoriesContext';
+import useAppNavigation from '../../hooks/useAppNavigation';
+import { ChatContext } from '../../context/chatContext';
 import NLInput from './NLInput';
 import ChipButton from './ChipButton';
 import AllConversations from './AllCoversations';
@@ -27,11 +29,12 @@ const Chat = () => {
   const { isRightPanelOpen, setRightPanelOpen } = useContext(UIContext);
   const { apiUrl } = useContext(DeviceContext);
   const { repositories } = useContext(RepositoriesContext);
+  const { conversation, setConversation } = useContext(ChatContext);
   const [isActive, setActive] = useState(false);
   const chatRef = useRef(null);
-  const [conversation, setConversation] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   useOnClickOutside(chatRef, () => setActive(false));
+  const { navigateConversationResults } = useAppNavigation();
 
   useEffect(() => {
     if (isActive) {
@@ -50,6 +53,7 @@ const Chat = () => {
       );
       prevEventSource = eventSource;
       eventSource.onmessage = (ev) => {
+        console.log(ev.data);
         if (ev.data === '[DONE]') {
           eventSource.close();
           prevEventSource = undefined;
@@ -92,14 +96,33 @@ const Chat = () => {
               return [...newConversation, ...lastMessages];
             });
           } else if (data.Ok.Answer) {
-            setConversation((prev) => {
-              const newConversation = prev.slice(0, -1);
-              const lastMessage = {
-                ...prev.slice(-1)[0],
-                text: JSON.stringify(data.Ok.Answer),
-              };
-              return [...newConversation, lastMessage];
-            });
+            try {
+              const answerPieces = JSON.parse(data.Ok.Answer);
+              setConversation((prev) => {
+                const newConversation = prev.slice(0, -1);
+                const lastMessage = {
+                  ...prev.slice(-1)[0],
+                  text: answerPieces
+                    .filter(
+                      (part: [string, string]) =>
+                        part[0] === 'con' || part[0] === 'cite',
+                    )
+                    .map((p: string[]) => (p[0] === 'con' ? p[1] : p[2]))
+                    .join('\n'),
+                  fullAnswer: answerPieces,
+                };
+                if (
+                  ['new', 'mod'].includes(
+                    answerPieces[answerPieces.length - 1]?.[0],
+                  )
+                ) {
+                  navigateConversationResults(prev.length - 1);
+                }
+                return [...newConversation, lastMessage];
+              });
+            } catch (err) {
+              console.log(err);
+            }
           } else if (data.Ok.Prompt) {
             setConversation((prev) => {
               const newConversation = prev.slice(0, -1);
