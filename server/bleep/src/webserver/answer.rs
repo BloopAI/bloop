@@ -50,7 +50,7 @@ fn default_thread_id() -> String {
 
 pub(super) fn endpoint<S>() -> MethodRouter<S> {
     let state = Arc::new(RouteState::default());
-    axum::routing::post(handle).with_state(state)
+    axum::routing::get(handle).with_state(state)
 }
 
 pub(super) async fn handle(
