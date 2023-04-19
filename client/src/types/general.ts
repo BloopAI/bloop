@@ -141,3 +141,16 @@ export type ChatMessageServer = {
 };
 
 export type ChatMessage = ChatMessageUser | ChatMessageServer;
+
+export interface NavigationItem {
+  type: 'search' | 'repo' | 'full-result' | 'home' | 'conversation-result';
+  query?: string;
+  repo?: string;
+  path?: string;
+  page?: number;
+  loaded?: boolean;
+  searchType?: SearchType;
+  pathParams?: Record<string, string>;
+  threadId?: string;
+  recordId?: number;
+}

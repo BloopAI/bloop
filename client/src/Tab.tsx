@@ -9,7 +9,7 @@ import { AnalyticsContextProvider } from './context/providers/AnalyticsContextPr
 import ReportBugModal from './components/ReportBugModal';
 import { UIContextProvider } from './context/providers/UiContextProvider';
 import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
-import { AppNavigationProvider } from './hooks/useAppNavigation';
+import { AppNavigationProvider } from './context/providers/AppNavigationProvider';
 import ContentContainer from './pages';
 import { SearchContextProvider } from './context/providers/SearchContextProvider';
 import { ChatContextProvider } from './context/providers/ChatContextProvider';
