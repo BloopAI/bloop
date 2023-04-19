@@ -127,7 +127,11 @@ const AllConversations = ({
       )}
       {!!openItem && (
         <div className="p-4 flex flex-col gap-3 overflow-auto flex-1 pb-12">
-          <ConversationMessage author="user" message="Where are the ctags?" />
+          <ConversationMessage
+            isHistory
+            author="user"
+            message="Where are the ctags?"
+          />
           <div className="flex gap-2 px-4 items-center">
             <div className="text-success-500 h-5">
               <Checkmark />
@@ -141,10 +145,12 @@ const AllConversations = ({
             </button>
           </div>
           <ConversationMessage
+            isHistory
             author="server"
             message={`It seems you're looking at a binary file for ctags specific to the x86_64 Apple Darwin architecture. The binary file itself is not human-readable and is intended to be executed by the system.`}
           />
           <ConversationMessage
+            isHistory
             author="user"
             message="What are the most common practicalities for ctags usage in bloop?"
           />
@@ -184,6 +190,7 @@ const AllConversations = ({
             </button>
           </div>
           <ConversationMessage
+            isHistory
             author="server"
             message={`Some practical aspects of using ctags in conjunction with bleep include:
 - Installation: Make sure to install universal-ctags with JSON support. You can verify it by running ctags --version and checking for +json in the list of compiled features.
@@ -191,6 +198,7 @@ const AllConversations = ({
 - Integration: Programs and plugins like Vim, Emacs, and Visual Studio Code can utilize ctags to enable features like "go to definition" and "find all references."`}
           />
           <ConversationMessage
+            isHistory
             author="server"
             message={`Some practical aspects of using ctags in conjunction with bleep include:
 - Installation: Make sure to install universal-ctags with JSON support. You can verify it by running ctags --version and checking for +json in the list of compiled features.
