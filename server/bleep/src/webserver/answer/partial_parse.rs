@@ -144,8 +144,13 @@ fn rectify_object(input: &str) -> (Cow<str>, &str) {
         buf += "}";
     }
 
+    let mut continuing = false;
     while !rest.is_empty() {
         let (value, r) = rectify_str(rest);
+        if continuing {
+            buf.push(',');
+            continuing = false;
+        }
         buf += &value;
         rest = r;
 
@@ -161,7 +166,7 @@ fn rectify_object(input: &str) -> (Cow<str>, &str) {
                 break;
             }
             // beyond repair here
-            _ => panic!("malformed JSON object"),
+            c => panic!("malformed JSON object: `{c:?}`"),
         }
 
         rest = consume_whitespace(&rest);
@@ -173,10 +178,16 @@ fn rectify_object(input: &str) -> (Cow<str>, &str) {
         rest = consume_whitespace(&rest);
 
         match rest.chars().next() {
-            // we can accomodate more objects
+            // expecting more objects ... or not
             Some(',') => {
+                // we need to look further ahead:
+                // - if we have more content, we may append a `,`
+                // - if we cannot produce another json object, do not append `,`
                 rest = &rest[1..];
-                buf += ",";
+                rest = consume_whitespace(rest);
+                if !rest.is_empty() {
+                    continuing = true;
+                }
             }
             // end of object
             Some('}') => {
@@ -332,6 +343,10 @@ mod tests {
 
         let (value, rest) = rectify_json(r#"{"foo": {"bar""#);
         assert_eq!(value, r#"{"foo":{"bar":null}}"#);
+        assert_eq!(rest, "");
+
+        let (value, rest) = rectify_json("{\"oldFileName\": \"config.rs\",\n\"new\"");
+        assert_eq!(value, "{\"oldFileName\":\"config.rs\",\"new\":null}");
         assert_eq!(rest, "");
     }
 }
