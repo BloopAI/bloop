@@ -205,6 +205,7 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
         {reposToShow.map(({ ref, ...r }, i) => (
           <RepoCard
             name={r.name}
+            repoRef={ref}
             sync_status={r.sync_status}
             last_update={r.last_index}
             lang={r.most_common_lang}

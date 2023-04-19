@@ -15,7 +15,6 @@ import {
   ChatMessageAuthor,
   ChatMessageType,
 } from '../../types/general';
-import { RepositoriesContext } from '../../context/repositoriesContext';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import { ChatContext } from '../../context/chatContext';
 import NLInput from './NLInput';
@@ -26,9 +25,8 @@ import Conversation from './Conversation';
 let prevEventSource: EventSource | undefined;
 
 const Chat = () => {
-  const { isRightPanelOpen, setRightPanelOpen } = useContext(UIContext);
+  const { isRightPanelOpen, setRightPanelOpen, tab } = useContext(UIContext);
   const { apiUrl } = useContext(DeviceContext);
-  const { repositories } = useContext(RepositoriesContext);
   const { conversation, setConversation } = useContext(ChatContext);
   const [isActive, setActive] = useState(false);
   const chatRef = useRef(null);
@@ -47,11 +45,12 @@ const Chat = () => {
       prevEventSource?.close();
       setInputValue('');
       const eventSource = new EventSource(
-        `${apiUrl.replace('https:', '')}/answer?q=${query}&repo_ref=${
-          repositories?.[0]?.ref
-        }`,
+        `${apiUrl.replace('https:', '')}/answer?q=${query}&repo_ref=${tab.key}`,
       );
       prevEventSource = eventSource;
+      eventSource.onerror = (err) => {
+        console.log(err);
+      };
       eventSource.onmessage = (ev) => {
         console.log(ev.data);
         if (ev.data === '[DONE]') {
@@ -156,7 +155,7 @@ const Chat = () => {
         }
       };
     },
-    [repositories],
+    [tab],
   );
 
   const onSubmit = useCallback(
