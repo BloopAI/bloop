@@ -1,13 +1,13 @@
 import { format as timeAgo } from 'timeago.js';
 import { useCallback, useContext, useMemo } from 'react';
 import { GitHubLogo } from '../../icons';
-import { SearchType, SyncStatus } from '../../types/general';
+import { SyncStatus } from '../../types/general';
 import FileIcon from '../FileIcon';
 import { getFileExtensionForLang } from '../../utils';
-import useAppNavigation from '../../hooks/useAppNavigation';
 import BarLoader from '../Loaders/BarLoader';
 import { UIContext } from '../../context/uiContext';
 import { AnalyticsContext } from '../../context/analyticsContext';
+import { TabsContext } from '../../context/tabsContext';
 
 type Props = {
   name: string;
@@ -15,6 +15,7 @@ type Props = {
   sync_status: SyncStatus;
   last_update: string;
   lang: string;
+  repoRef: string;
   provider: 'local' | 'github';
   isSyncing?: boolean;
   syncStatus?: { indexStep: number; percentage: number } | null;
@@ -39,28 +40,21 @@ const RepoCard = ({
   provider,
   isSyncing,
   syncStatus,
+  repoRef,
 }: Props) => {
   const { isGithubConnected } = useContext(UIContext);
+  const { handleAddTab } = useContext(TabsContext);
   const { isAnalyticsAllowed } = useContext(AnalyticsContext);
   const isGh = useMemo(() => provider === 'github', [provider]);
   const repoName = useMemo(() => {
     return !isGh ? name.split('/').reverse()[0] : name;
   }, [name, provider]);
 
-  const { navigateRepoPath, navigateSearch } = useAppNavigation();
-
   const handleClick = useCallback(() => {
     if (!last_update || last_update === '1970-01-01T00:00:00Z') {
       return;
     }
-    if (isGithubConnected && isAnalyticsAllowed) {
-      navigateSearch(
-        `What does this repo do? repo:${repoName} lang:markdown`,
-        SearchType.NL,
-      );
-    } else {
-      navigateRepoPath(`${isGh ? 'github.com/' : ''}${repoName}`);
-    }
+    handleAddTab(repoRef, repoName);
   }, [repoName, provider, isGithubConnected, isAnalyticsAllowed, sync_status]);
 
   return (
