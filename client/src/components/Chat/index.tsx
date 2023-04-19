@@ -15,7 +15,7 @@ import {
   ChatMessageAuthor,
   ChatMessageType,
 } from '../../types/general';
-import useAppNavigation from '../../hooks/useAppNavigation';
+import { AppNavigationContext } from '../../context/appNavigationContext';
 import { ChatContext } from '../../context/chatContext';
 import NLInput from './NLInput';
 import ChipButton from './ChipButton';
@@ -28,11 +28,11 @@ const Chat = () => {
   const { isRightPanelOpen, setRightPanelOpen, tab } = useContext(UIContext);
   const { apiUrl } = useContext(DeviceContext);
   const { conversation, setConversation } = useContext(ChatContext);
+  const { navigateConversationResults } = useContext(AppNavigationContext);
   const [isActive, setActive] = useState(false);
   const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
   useOnClickOutside(chatRef, () => setActive(false));
-  const { navigateConversationResults } = useAppNavigation();
 
   useEffect(() => {
     if (isActive) {
@@ -101,13 +101,16 @@ const Chat = () => {
                 const newConversation = prev.slice(0, -1);
                 const lastMessage = {
                   ...prev.slice(-1)[0],
-                  text: answerPieces
-                    .filter(
-                      (part: [string, string]) =>
-                        part[0] === 'con' || part[0] === 'cite',
-                    )
-                    .map((p: string[]) => (p[0] === 'con' ? p[1] : p[2]))
-                    .join('\n'),
+                  text:
+                    typeof answerPieces[0] === 'string'
+                      ? answerPieces[1]
+                      : answerPieces
+                          .filter(
+                            (part: [string, string]) =>
+                              part[0] === 'con' || part[0] === 'cite',
+                          )
+                          .map((p: string[]) => (p[0] === 'con' ? p[1] : p[2]))
+                          .join('\n'),
                   fullAnswer: answerPieces,
                 };
                 if (
@@ -115,7 +118,10 @@ const Chat = () => {
                     answerPieces[answerPieces.length - 1]?.[0],
                   )
                 ) {
-                  navigateConversationResults(prev.length - 1);
+                  setTimeout(
+                    () => navigateConversationResults(prev.length - 1),
+                    0,
+                  );
                 }
                 return [...newConversation, lastMessage];
               });
