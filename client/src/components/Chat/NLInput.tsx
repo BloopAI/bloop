@@ -28,6 +28,8 @@ const NLInput = ({
         id={id}
         value={value}
         onChange={onChange}
+        autoComplete="off"
+        type="search"
       />
     </div>
   );

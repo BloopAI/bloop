@@ -14,7 +14,6 @@ import { buildRepoQuery } from '../utils';
 import { SearchType } from '../types/general';
 import { TabsContext } from '../context/tabsContext';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
-import { conversationsCache } from '../services/cache';
 import RepositoryPage from './Repository';
 import ResultsPage from './Results';
 import ViewResult from './ResultFull';

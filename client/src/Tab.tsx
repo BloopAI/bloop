@@ -12,6 +12,7 @@ import { DeviceContextProvider } from './context/providers/DeviceContextProvider
 import { AppNavigationProvider } from './hooks/useAppNavigation';
 import ContentContainer from './pages';
 import { SearchContextProvider } from './context/providers/SearchContextProvider';
+import { ChatContextProvider } from './context/providers/ChatContextProvider';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -45,11 +46,13 @@ function Tab({ deviceContextValue, isActive, tab }: Props) {
               <AppNavigationProvider>
                 <SearchContextProvider initialSearchHistory={tab.searchHistory}>
                   <RepositoriesContext.Provider value={reposContextValue}>
-                    <Routes>
-                      <Route path="*" element={<ContentContainer />} />
-                    </Routes>
-                    <Settings />
-                    <ReportBugModal />
+                    <ChatContextProvider>
+                      <Routes>
+                        <Route path="*" element={<ContentContainer />} />
+                      </Routes>
+                      <Settings />
+                      <ReportBugModal />
+                    </ChatContextProvider>
                   </RepositoriesContext.Provider>
                 </SearchContextProvider>
               </AppNavigationProvider>
