@@ -9,8 +9,6 @@ import { UITabType } from './types/general';
 import { getJsonFromStorage, SEARCH_HISTORY_KEY } from './services/storage';
 import { getConfig, initApi } from './services/api';
 import { useComponentWillMount } from './hooks/useComponentWillMount';
-import useKeyboardNavigation from './hooks/useKeyboardNavigation';
-import { generateUniqueId } from './utils';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -32,41 +30,27 @@ function App({ deviceContextValue }: Props) {
   const [tabs, setTabs] = useState<UITabType[]>([
     {
       key: 'initial',
-      name: 'Untitled search',
+      name: 'Home',
       searchHistory: getJsonFromStorage(SEARCH_HISTORY_KEY) || [],
     },
   ]);
   const [activeTab, setActiveTab] = useState('initial');
 
-  const handleAddTab = useCallback(() => {
+  const handleAddTab = useCallback((repoRef: string, repoName: string) => {
     const newTab = {
-      key: generateUniqueId(),
-      name: 'Home',
+      key: repoRef,
+      name: repoName,
     };
-    setTabs((prev) => [...prev, newTab]);
+    setTabs((prev) => {
+      const existing = prev.find((t) => t.key === newTab.key);
+      if (existing) {
+        setActiveTab(existing.key);
+        return prev;
+      }
+      return [...prev, newTab];
+    });
     setActiveTab(newTab.key);
   }, []);
-
-  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
-    if (e.key === 't' && (e.metaKey || e.ctrlKey)) {
-      e.stopPropagation();
-      e.preventDefault();
-      handleAddTab();
-    }
-  }, []);
-  useKeyboardNavigation(handleKeyEvent);
-
-  const updateCurrentTabName = useCallback(
-    (newName: string) => {
-      setTabs((prev) => {
-        const newTabs = [...prev];
-        const tabToUpdate = newTabs.findIndex((t) => t.key === activeTab);
-        newTabs[tabToUpdate] = { ...newTabs[tabToUpdate], name: newName };
-        return newTabs;
-      });
-    },
-    [activeTab],
-  );
 
   const handleRemoveTab = useCallback(
     (tabKey: string) => {
@@ -91,9 +75,8 @@ function App({ deviceContextValue }: Props) {
       handleAddTab,
       handleRemoveTab,
       setActiveTab,
-      updateCurrentTabName,
     }),
-    [tabs, activeTab, handleAddTab, handleRemoveTab, updateCurrentTabName],
+    [tabs, activeTab, handleAddTab, handleRemoveTab],
   );
 
   return (

@@ -42,13 +42,16 @@ function Tab({ deviceContextValue, isActive, tab }: Props) {
           envConfig={deviceContextValue.envConfig}
         >
           <DeviceContextProvider deviceContextValue={deviceContextValue}>
-            <UIContextProvider>
+            <UIContextProvider tab={tab}>
               <AppNavigationProvider>
                 <SearchContextProvider initialSearchHistory={tab.searchHistory}>
                   <RepositoriesContext.Provider value={reposContextValue}>
                     <ChatContextProvider>
                       <Routes>
-                        <Route path="*" element={<ContentContainer />} />
+                        <Route
+                          path="*"
+                          element={<ContentContainer tab={tab} />}
+                        />
                       </Routes>
                       <Settings />
                       <ReportBugModal />

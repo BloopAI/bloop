@@ -15,7 +15,10 @@ import {
   ONBOARDING_DONE_KEY,
 } from '../../services/storage';
 
-export const UIContextProvider = ({ children }: PropsWithChildren) => {
+export const UIContextProvider = ({
+  children,
+  tab,
+}: PropsWithChildren<{ tab: { key: string; name: string } }>) => {
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isBugReportModalOpen, setBugReportModalOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState(
@@ -62,6 +65,7 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       setShouldShowWelcome,
       isRightPanelOpen,
       setRightPanelOpen,
+      tab,
     }),
     [
       isSettingsOpen,
@@ -73,6 +77,7 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       isGithubChecked,
       shouldShowWelcome,
       isRightPanelOpen,
+      tab,
     ],
   );
   return (
