@@ -31,11 +31,10 @@ const mockQuerySuggestions = [
   'lang:tsx apples',
 ];
 
-const ContentContainer = () => {
+const ContentContainer = ({ tab }: { tab: { name: string; key: string } }) => {
   const { setInputValue, globalRegex, searchType, setSearchType } =
     useContext(SearchContext);
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
-  const { updateCurrentTabName } = useContext(TabsContext);
 
   const { navigatedItem, query, navigateBack } = useAppNavigation();
 
@@ -58,7 +57,12 @@ const ContentContainer = () => {
 
   useEffect(() => {
     if (!navigatedItem) {
-      updateCurrentTabName('Home');
+      if (tab.key !== 'initial') {
+        const repoName = tab.key.startsWith('local//')
+          ? tab.key.split('/').reverse()[0]
+          : tab.key;
+        searchQuery(buildRepoQuery(repoName), 0, false, SearchType.REGEX);
+      }
       return;
     }
     if (navigatedItem.searchType !== undefined) {
@@ -70,11 +74,6 @@ const ContentContainer = () => {
     switch (navigatedItem.type) {
       case 'repo':
       case 'full-result':
-        updateCurrentTabName(
-          navigatedItem.type === 'repo'
-            ? navigatedItem.repo!
-            : navigatedItem.path!,
-        );
         searchQuery(
           buildRepoQuery(navigatedItem.repo, navigatedItem.path),
           0,
@@ -83,15 +82,13 @@ const ContentContainer = () => {
         );
         break;
       case 'home':
-        updateCurrentTabName('Home');
         break;
       default:
-        updateCurrentTabName(navigatedItem.query!);
         if ((navigatedItem.searchType ?? searchType) === SearchType.REGEX) {
           searchQuery(navigatedItem.query!, navigatedItem.page, globalRegex);
         }
     }
-  }, [navigatedItem]);
+  }, [navigatedItem, tab.key]);
 
   const getRenderPage = useCallback(() => {
     let renderPage:
@@ -102,10 +99,10 @@ const ContentContainer = () => {
       | 'no-results'
       | 'home'
       | 'conversation-result';
-    if (!navigatedItem || navigatedItem.type === 'home') {
+    if (tab.key === 'initial') {
       return 'home';
     }
-    if (navigatedItem.type === 'conversation-result') {
+    if (navigatedItem?.type === 'conversation-result') {
       return 'conversation-result';
     }
     if (
@@ -133,7 +130,7 @@ const ContentContainer = () => {
         renderPage = 'results';
     }
     return renderPage;
-  }, [navigatedItem, data, loading]);
+  }, [navigatedItem, data, loading, tab.key]);
 
   const renderedPage = useMemo(() => {
     let renderPage = getRenderPage();
