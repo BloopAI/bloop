@@ -1,3 +1,4 @@
+telemetry_disabled: true
 storage:
   # Where to store all the data
   storage_path: {storage}
