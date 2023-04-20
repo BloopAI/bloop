@@ -452,13 +452,11 @@ impl File {
         let lang_str = if file.kind.is_file() {
             repo_metadata
                 .langs
-                .path_map
-                .read(&entry_pathbuf, |_, v| *v)
+                .get(&entry_pathbuf, file.buffer.as_ref())
                 .unwrap_or_else(|| {
                     warn!(?entry_pathbuf, "Path not found in language map");
-                    Some("")
+                    ""
                 })
-                .unwrap_or("")
         } else {
             ""
         };

@@ -271,14 +271,7 @@ impl Repository {
             .and_then(|repo| Ok(repo.head()?.peel_to_commit_in_place()?.time()?.seconds()))
             .unwrap_or(0) as u64;
 
-        let langs = match self.remote {
-            RepoRemote::Git { .. } => {
-                language::aggregate(iterator::GitWalker::open_repository(&self.disk_path, None)?)
-            }
-            RepoRemote::None => {
-                language::aggregate(iterator::FileWalker::index_directory(&self.disk_path))
-            }
-        };
+        let langs = Default::default();
 
         Ok(RepoMetadata {
             last_commit_unix_secs,
@@ -303,7 +296,7 @@ impl Repository {
         self.last_index_unix_secs = get_unix_time(SystemTime::now());
         self.last_commit_unix_secs = metadata.last_commit_unix_secs;
         self.sync_status = SyncStatus::Done;
-        self.most_common_lang = metadata.langs.most_common_lang.map(|l| l.to_string());
+        self.most_common_lang = metadata.langs.most_common_lang().map(|l| l.to_string());
     }
 
     fn file_cache_path(&self, index_dir: &Path) -> PathBuf {
