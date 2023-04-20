@@ -20,8 +20,6 @@ use futures::{
     stream::{self, BoxStream},
     StreamExt, TryStreamExt,
 };
-use once_cell::sync::Lazy;
-use regex::Regex;
 use reqwest::StatusCode;
 use secrecy::ExposeSecret;
 use tokio::sync::mpsc::Sender;
@@ -35,6 +33,7 @@ use crate::{
 };
 
 mod llm_gateway;
+mod partial_parse;
 mod prompts;
 
 #[derive(Default)]
@@ -56,7 +55,7 @@ fn default_thread_id() -> String {
 
 pub(super) fn endpoint<S>() -> MethodRouter<S> {
     let state = Arc::new(RouteState::default());
-    axum::routing::post(handle).with_state(state)
+    axum::routing::get(handle).with_state(state)
 }
 
 pub(super) async fn handle(
@@ -197,7 +196,8 @@ impl Conversation {
                 return Ok(None);
             }
 
-            Action::Answer(_) => {
+            Action::Answer(rephrased_question) => {
+                self.answer(ctx, update, &rephrased_question).await?;
                 let r: Result<ActionStream> = Action::Prompt(prompts::CONTINUE.to_owned()).into();
                 return Ok(Some(r?));
             }
@@ -411,6 +411,33 @@ impl Conversation {
 
         Ok(serde_json::to_string(&out)?)
     }
+
+    async fn answer(&self, ctx: &AppContext, update: Sender<Update>, question: &str) -> Result<()> {
+        let messages = self
+            .history
+            .iter()
+            .filter(|m| m.role == "user")
+            .map(|m| &m.content)
+            .collect::<Vec<_>>();
+
+        let context = serde_json::to_string(&messages)?;
+        let prompt = prompts::final_explanation_prompt(&context, question);
+
+        let messages = [llm_gateway::api::Message::system(&prompt)];
+
+        let mut stream = ctx.llm_gateway.chat(&messages).await?.boxed();
+        let mut buffer = String::new();
+        while let Some(token) = stream.next().await {
+            buffer += &token?;
+            let (s, _) = partial_parse::rectify_json(&buffer);
+            update
+                .send(Update::Answer(s.into_owned()))
+                .await
+                .or(Err(anyhow!("failed to send answer update")))?;
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -439,7 +466,7 @@ impl Action {
     /// Map this action to a summary update.
     fn update(&self) -> Update {
         match self {
-            Self::Answer(s) => Update::Answer(s.clone()),
+            Self::Answer(..) => Update::Answering,
             Self::Prompt(s) => Update::Prompt(s.clone()),
             Self::Query(..) => Update::ProcessingQuery,
             Self::Code(..) => Update::SearchingFiles,
@@ -453,7 +480,7 @@ impl Action {
     ///
     /// We convert:
     ///
-    /// ```
+    /// ```text
     /// ["type", "value"]
     /// ["type", "arg1", "arg2"]
     /// ```
@@ -534,10 +561,8 @@ struct ActionStream {
 }
 
 impl ActionStream {
-    /// Load this action, partially parsing it if applicable, and pushing updates along the way.
+    /// Load this action, consuming the stream if required.
     async fn load(mut self, update: &Sender<Update>) -> Result<(Action, String)> {
-        static TAG_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"\["(\w+)"#).unwrap());
-
         let mut stream = match self.action {
             Either::Left(stream) => stream,
             Either::Right(action) => {
@@ -549,34 +574,8 @@ impl ActionStream {
             }
         };
 
-        let tag = loop {
-            match TAG_REGEX.captures(&self.tokens) {
-                None => {
-                    self.tokens += &stream.next().await.context("stream ended early")??;
-                }
-
-                Some(m) => break m[1].to_owned(),
-            }
-        };
-
         while let Some(token) = stream.next().await {
             self.tokens += &token?;
-
-            // Stream partially-parsed answer strings.
-            //
-            // TODO: This is placed here temporarily, until we implement structured partial
-            // parsing.
-            if tag == "answer" {
-                static ANSWER_REGEX: Lazy<Regex> =
-                    Lazy::new(|| Regex::new(r#"^\["answer",\s*"(.*[^\\"\]])"#).unwrap());
-
-                if let Some(s) = ANSWER_REGEX.captures(&self.tokens) {
-                    update
-                        .send(Update::Answer(s[1].to_owned()))
-                        .await
-                        .map_err(|_| anyhow!("failed to send update"))?;
-                }
-            }
         }
 
         let action = Action::deserialize_gpt(&self.tokens)?;
