@@ -13,13 +13,15 @@ import {
 } from '../../services/storage';
 import Button from '../Button';
 import Chat from '../Chat';
+import SearchInput from '../SearchInput';
 
 type Props = {
   children: React.ReactNode;
+  withSearchBar: boolean;
 };
 
 const mainContainerStyle = { height: 'calc(100vh - 8rem)' };
-const PageTemplate = ({ children }: Props) => {
+const PageTemplate = ({ children, withSearchBar }: Props) => {
   const { isSelfServe } = useContext(DeviceContext);
   const { isAnalyticsAllowed, setIsAnalyticsAllowed } =
     useContext(AnalyticsContext);
@@ -75,12 +77,20 @@ const PageTemplate = ({ children }: Props) => {
         />
       </SeparateOnboardingStep>
       <NavBar userSigned />
+      <div className="mt-8" />
+      {withSearchBar && (
+        <div className="w-full bg-gray-800 py-2 flex items-center justify-center border-b border-gray-700">
+          <div className="w-full max-w-[548px]">
+            <SearchInput />
+          </div>
+        </div>
+      )}
       <div
-        className="flex my-16 w-screen overflow-hidden relative z-10"
+        className="flex mb-16 w-screen overflow-hidden relative z-10"
         style={mainContainerStyle}
       >
         {children}
-        <Chat />
+        {withSearchBar && <Chat />}
       </div>
       <StatusBar />
     </div>
