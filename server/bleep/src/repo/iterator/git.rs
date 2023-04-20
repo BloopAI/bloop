@@ -9,21 +9,23 @@ use std::{collections::HashMap, path::Path};
 
 pub enum BranchFilter {
     All,
+    Head,
     Select(RegexSet),
 }
 
 impl BranchFilter {
-    fn filter(&self, branch: &str) -> bool {
+    fn filter(&self, is_head: bool, branch: &str) -> bool {
         match self {
             BranchFilter::All => true,
             BranchFilter::Select(patterns) => patterns.is_match(branch),
+            BranchFilter::Head => is_head,
         }
     }
 }
 
 impl Default for BranchFilter {
     fn default() -> Self {
-        Self::All
+        Self::Head
     }
 }
 
@@ -56,18 +58,19 @@ impl GitWalker {
 
         let refs = local_git.references()?;
         let entries = refs
-            .local_branches()
-            .unwrap()
-            .peeled()
+            .all()?
             .filter_map(Result::ok)
-            .map(|r| (human_readable_branch_name(&r), r))
-            .filter(|(name, _)| branches.filter(name))
-            .filter_map(|(branch, r)| -> Option<_> {
-                let is_head = head
-                    .as_ref()
-                    .map(|head| head.as_ref() == r.name())
-                    .unwrap_or_default();
-
+            .map(|r| {
+                (
+                    head.as_ref()
+                        .map(|head| head.as_ref() == r.name())
+                        .unwrap_or_default(),
+                    human_readable_branch_name(&r),
+                    r,
+                )
+            })
+            .filter(|(is_head, name, _)| branches.filter(*is_head, name))
+            .filter_map(|(is_head, branch, r)| -> Option<_> {
                 let tree = r
                     .into_fully_peeled_id()
                     .ok()?
