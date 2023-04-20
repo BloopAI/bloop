@@ -168,7 +168,9 @@ const ContentContainer = ({ tab }: { tab: { name: string; key: string } }) => {
   return (
     <>
       <Onboarding />
-      <PageTemplate>{renderedPage}</PageTemplate>
+      <PageTemplate withSearchBar={getRenderPage() !== 'home'}>
+        {renderedPage}
+      </PageTemplate>
     </>
   );
 };
