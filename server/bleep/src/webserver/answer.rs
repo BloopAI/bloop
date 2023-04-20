@@ -91,13 +91,16 @@ pub(super) async fn handle(
 
             use futures::future::FutureExt;
 
-            let (update_tx, update_rx) = tokio::sync::mpsc::channel(10);
+
+            let (update_tx, update_rx) = tokio::sync::mpsc::channel(100);
 
             let left_stream = tokio_stream::wrappers::ReceiverStream::new(update_rx)
                 .map(Either::Left);
 
+            let mut update_stream = UpdateStream::new(&conversation_id, &conversation);
+            update_stream.set_tx(update_tx);
             let right_stream = conversation
-                .step(&ctx, action_stream, update_tx)
+                .step(&ctx, action_stream, update_stream)
                 .into_stream()
                 .map(Either::Right);
 
@@ -173,15 +176,9 @@ impl Conversation {
         &mut self,
         ctx: &AppContext,
         action_stream: ActionStream,
-        update: Sender<Update>,
+        mut update: UpdateStream,
     ) -> Result<Option<ActionStream>> {
-        let (action, raw_response) = action_stream.load(&update).await?;
-
-        if !matches!(action, Action::Query(..)) {
-            self.history
-                .push(llm_gateway::api::Message::assistant(&raw_response));
-            trace!("handling raw action: {raw_response}");
-        }
+        let (action, raw_response) = action_stream.load(&mut update).await.unwrap();
 
         let question = match action {
             Action::Query(s) => parser::parse_nl(&s)?
@@ -412,7 +409,12 @@ impl Conversation {
         Ok(serde_json::to_string(&out)?)
     }
 
-    async fn answer(&self, ctx: &AppContext, update: Sender<Update>, question: &str) -> Result<()> {
+    async fn answer(
+        &self,
+        ctx: &AppContext,
+        mut update: UpdateStream,
+        question: &str,
+    ) -> Result<()> {
         let messages = self
             .history
             .iter()
@@ -430,11 +432,23 @@ impl Conversation {
         while let Some(token) = stream.next().await {
             buffer += &token?;
             let (s, _) = partial_parse::rectify_json(&buffer);
-            update
-                .send(Update::Answer(s.into_owned()))
-                .await
-                .or(Err(anyhow!("failed to send answer update")))?;
+
+            // this /should/ be infallible if rectify_json works
+            let json_array: Vec<Vec<serde_json::Value>> =
+                serde_json::from_str(&s).expect("failed to rectify_json");
+
+            let search_results = json_array
+                .iter()
+                .map(Vec::as_slice)
+                .filter_map(SearchResult::from_json_array)
+                .collect::<Vec<_>>();
+
+            update.set_results(search_results);
+
+            update.send().await?;
         }
+
+        update.clear_current_message();
 
         Ok(())
     }
@@ -464,15 +478,15 @@ enum FileRef {
 
 impl Action {
     /// Map this action to a summary update.
-    fn update(&self) -> Update {
+    fn update(&self) -> SearchStep {
         match self {
-            Self::Answer(..) => Update::Answering,
-            Self::Prompt(s) => Update::Prompt(s.clone()),
-            Self::Query(..) => Update::ProcessingQuery,
-            Self::Code(..) => Update::SearchingFiles,
-            Self::Path(..) => Update::SearchingFiles,
-            Self::File(..) => Update::LoadingFiles,
-            Self::Check(..) => Update::Answering,
+            Self::Answer(..) => SearchStep::_Custom("ANSWER".into(), "Answering query".into()),
+            Self::Prompt(_) => SearchStep::_Custom("PROMPT".into(), "Awaiting prompt".into()),
+            Self::Query(..) => SearchStep::Query("Processing query".into()),
+            Self::Code(f) => SearchStep::Code(format!("Performing semantic search")),
+            Self::Path(p) => SearchStep::Path(format!("Searching paths")),
+            Self::File(..) => SearchStep::File(format!("Retrieving file contents")),
+            Self::Check(..) => SearchStep::File(format!("Checking files")),
         }
     }
 
@@ -554,6 +568,254 @@ enum Update {
     LoadingFiles,
 }
 
+struct UpdateStream {
+    sender: Option<Sender<FullUpdate>>,
+
+    // past messages of this conversation
+    history: Vec<llm_gateway::api::Message>,
+
+    // the message currently being produced
+    current_message: AssistantMessage,
+
+    // auxilliary data that has no other place to go
+    thread_id: String,
+    user_id: String,
+}
+
+impl UpdateStream {
+    // initialize the update stream, given an existing conversation history
+    fn new(conversation_id: &ConversationId, conversation: &Conversation) -> Self {
+        let history = conversation.history.clone();
+        let current_message = AssistantMessage::default();
+        let thread_id = conversation_id.thread_id.clone();
+        let user_id = conversation_id.user_id.clone();
+
+        Self {
+            sender: None,
+            history,
+            current_message,
+            thread_id,
+            user_id,
+        }
+    }
+
+    fn set_tx(&mut self, sender: Sender<FullUpdate>) {
+        self.sender = Some(sender);
+    }
+
+    fn build_update(&self) -> FullUpdate {
+        let messages = self
+            .history
+            .iter()
+            .filter_map(|llm_message| match llm_message.role.as_str() {
+                "user" => Some(UpdatableMessage::User(UserMessage {
+                    content: llm_message.content.clone(),
+                })),
+                "assistant" => Some(UpdatableMessage::Assistant(AssistantMessage {
+                    content: Some(llm_message.content.clone()),
+                    status: MessageStatus::Finished,
+                    ..Default::default()
+                })),
+                _ => None,
+            })
+            .chain(std::iter::once(UpdatableMessage::Assistant(
+                self.current_message.clone(),
+            )))
+            .collect::<Vec<_>>();
+
+        FullUpdate {
+            thread_id: self.thread_id.clone(),
+            user_id: self.user_id.clone(),
+            description: Some("New conversation".into()), // TODO: fill this out cleverly
+            messages,
+        }
+    }
+
+    fn finish_message(&mut self) {
+        self.current_message.status = MessageStatus::Finished;
+    }
+
+    fn clear_current_message(&mut self) {
+        self.current_message = AssistantMessage::default();
+    }
+
+    fn add_search_step(&mut self, step: SearchStep) {
+        self.current_message.search_steps.push(step);
+    }
+
+    // - populates message.results
+    // - if a conclusion exists, sets message.content to the conclusion
+    fn set_results(&mut self, mut results: Vec<SearchResult>) {
+        let conclusion = results
+            .iter()
+            .position(SearchResult::is_conclusion)
+            .and_then(|idx| {
+                self.finish_message();
+                results.remove(idx).conclusion()
+            });
+
+        self.current_message.results = results;
+        self.current_message.content = conclusion;
+    }
+
+    async fn send(&self) -> Result<()> {
+        if let Some(s) = &self.sender {
+            s.send(self.build_update())
+                .await
+                .or(Err(anyhow!("failed to send update")))
+        } else {
+            Err(anyhow!("failed to send update"))
+        }
+    }
+}
+
+#[derive(serde::Serialize, Debug, Clone, Default)]
+struct FullUpdate {
+    thread_id: String,
+    user_id: String,
+    description: Option<String>,
+    messages: Vec<UpdatableMessage>,
+}
+
+#[derive(serde::Serialize, Debug, Clone)]
+#[serde(tag = "role", rename_all = "lowercase")]
+enum UpdatableMessage {
+    User(UserMessage),
+    Assistant(AssistantMessage),
+}
+
+#[derive(serde::Serialize, Debug, Clone)]
+struct UserMessage {
+    content: String,
+}
+
+#[derive(serde::Serialize, Debug, Clone, Default)]
+struct AssistantMessage {
+    status: MessageStatus,
+    content: Option<String>,
+    search_steps: Vec<SearchStep>,
+    results: Vec<SearchResult>,
+}
+
+#[derive(serde::Serialize, Debug, Copy, Clone, Default)]
+#[serde(rename_all = "UPPERCASE")]
+enum MessageStatus {
+    Finished,
+
+    #[default]
+    Loading,
+}
+
+#[derive(serde::Serialize, Debug, Clone)]
+#[serde(rename_all = "UPPERCASE")]
+#[non_exhaustive]
+enum SearchStep {
+    Query(String),
+    Path(String),
+    Code(String),
+    Check(String),
+    File(String),
+
+    // step type, step content
+    _Custom(String, String),
+}
+
+#[derive(serde::Serialize, Debug, Clone)]
+enum SearchResult {
+    Cite(CiteResult),
+    New(NewResult),
+    Modify(ModifyResult),
+    Conclude(ConcludeResult),
+}
+
+impl SearchResult {
+    fn from_json_array(v: &[serde_json::Value]) -> Option<Self> {
+        let tag = v.first()?;
+
+        match tag.as_str()? {
+            "cite" => Some(Self::Cite(CiteResult::from_json_array(&v[1..]))),
+            "con" => Some(Self::Conclude(ConcludeResult::from_json_array(&v[1..]))),
+            "new" => Some(Self::New(NewResult::from_json_array(&v[1..]))),
+            _ => None,
+        }
+    }
+
+    fn is_conclusion(&self) -> bool {
+        matches!(self, Self::Conclude(..))
+    }
+
+    fn conclusion(self) -> Option<String> {
+        match self {
+            Self::Conclude(ConcludeResult { comment }) => comment,
+            _ => None,
+        }
+    }
+}
+
+#[derive(serde::Serialize, Debug, Clone)]
+struct CiteResult {
+    path_alias: Option<u64>,
+    comment: Option<String>,
+    start_line: Option<u64>,
+    end_line: Option<u64>,
+}
+
+#[derive(serde::Serialize, Debug, Clone)]
+struct NewResult {
+    language: Option<String>,
+    code: Option<String>,
+}
+
+#[derive(serde::Serialize, Debug, Clone)]
+struct ModifyResult {}
+
+#[derive(serde::Serialize, Debug, Clone)]
+struct ConcludeResult {
+    comment: Option<String>,
+}
+
+impl CiteResult {
+    fn from_json_array(v: &[serde_json::Value]) -> Self {
+        let path_alias = v.get(0).and_then(serde_json::Value::as_u64);
+        let comment = v
+            .get(1)
+            .and_then(serde_json::Value::as_str)
+            .map(ToOwned::to_owned);
+        let start_line = v.get(2).and_then(serde_json::Value::as_u64);
+        let end_line = v.get(3).and_then(serde_json::Value::as_u64);
+        Self {
+            path_alias,
+            comment,
+            start_line,
+            end_line,
+        }
+    }
+}
+
+impl NewResult {
+    fn from_json_array(v: &[serde_json::Value]) -> Self {
+        let language = v
+            .get(0)
+            .and_then(serde_json::Value::as_str)
+            .map(ToOwned::to_owned);
+        let code = v
+            .get(1)
+            .and_then(serde_json::Value::as_str)
+            .map(ToOwned::to_owned);
+        Self { language, code }
+    }
+}
+
+impl ConcludeResult {
+    fn from_json_array(v: &[serde_json::Value]) -> Self {
+        let comment = v
+            .get(0)
+            .and_then(serde_json::Value::as_str)
+            .map(ToOwned::to_owned);
+        Self { comment }
+    }
+}
+
 /// An action that may not have finished loading yet.
 struct ActionStream {
     tokens: String,
@@ -562,12 +824,13 @@ struct ActionStream {
 
 impl ActionStream {
     /// Load this action, consuming the stream if required.
-    async fn load(mut self, update: &Sender<Update>) -> Result<(Action, String)> {
+    async fn load(mut self, update: &mut UpdateStream) -> Result<(Action, String)> {
         let mut stream = match self.action {
             Either::Left(stream) => stream,
             Either::Right(action) => {
+                update.add_search_step(action.update());
                 update
-                    .send(action.update())
+                    .send()
                     .await
                     .or(Err(anyhow!("failed to send update")))?;
                 return Ok((action, self.tokens));
@@ -579,8 +842,9 @@ impl ActionStream {
         }
 
         let action = Action::deserialize_gpt(&self.tokens)?;
+        update.add_search_step(action.update());
         update
-            .send(action.update())
+            .send()
             .await
             .or(Err(anyhow!("failed to send update")))?;
 

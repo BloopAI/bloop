@@ -18,7 +18,7 @@ pub fn rectify_json(input: &str) -> (Cow<str>, &str) {
         '"' => rectify_str(input),
         '[' => rectify_array(input),
         '{' => rectify_object(input),
-        d if input.trim().starts_with(|c: char| c.is_ascii_digit()) => rectify_number(input),
+        _d if input.trim().starts_with(|c: char| c.is_ascii_digit()) => rectify_number(input),
         c => panic!("malformed JSON value: `{c}`"),
     }
 }
