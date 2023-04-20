@@ -19,16 +19,21 @@ const NavBar = ({ isSkeleton }: Props) => {
     setShouldShowWelcome,
     setGithubConnected,
   } = useContext(UIContext);
-  const { openLink, isSelfServe } = useContext(DeviceContext);
+  const { openLink, isSelfServe, os } = useContext(DeviceContext);
   const { tabs, setActiveTab, activeTab, handleRemoveTab } =
     useContext(TabsContext);
 
   return (
     <div
       className={`h-12 flex items-center gap-6 px-8 bg-gray-800/75 fixed top-0 left-0 right-0 z-30 justify-between
-       border-b border-gray-700 backdrop-blur-8`}
+       border-b border-gray-700 backdrop-blur-8 select-none`}
+      data-tauri-drag-region
     >
-      <div className="flex items-center justify-start h-full overflow-auto">
+      <div
+        className={`flex items-center justify-start h-full overflow-auto ${
+          os.type === 'Darwin' ? 'ml-12' : ''
+        }`}
+      >
         {tabs.map((t) => (
           <div
             key={t.key}
