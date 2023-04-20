@@ -40,6 +40,16 @@ const Chat = () => {
     }
   }, [isActive]);
 
+  useEffect(() => {
+    const lastMessage = conversation[conversation.length - 1];
+    if (
+      lastMessage?.author === ChatMessageAuthor.Server &&
+      lastMessage.fullAnswer?.some((a) => ['new', 'mod'].includes(a[0]))
+    ) {
+      navigateConversationResults(conversation.length - 1);
+    }
+  }, [conversation]);
+
   const makeSearch = useCallback(
     (query: string) => {
       prevEventSource?.close();
@@ -113,16 +123,6 @@ const Chat = () => {
                           .join('\n'),
                   fullAnswer: answerPieces,
                 };
-                if (
-                  ['new', 'mod'].includes(
-                    answerPieces[answerPieces.length - 1]?.[0],
-                  )
-                ) {
-                  setTimeout(
-                    () => navigateConversationResults(prev.length - 1),
-                    0,
-                  );
-                }
                 return [...newConversation, lastMessage];
               });
             } catch (err) {
