@@ -1,5 +1,13 @@
 import React, { useContext } from 'react';
-import { Bug, CloseSign, Cog, DoorRight, Magazine, Person } from '../../icons';
+import {
+  Bug,
+  CloseSign,
+  Cog,
+  DoorRight,
+  Home,
+  Magazine,
+  Person,
+} from '../../icons';
 import { MenuListItemType } from '../ContextMenu';
 import { deleteAuthCookie } from '../../utils';
 import DropdownWithIcon from '../Dropdown/WithIcon';
@@ -25,8 +33,8 @@ const NavBar = ({ isSkeleton }: Props) => {
 
   return (
     <div
-      className={`h-12 flex items-center gap-6 px-8 bg-gray-800/75 fixed top-0 left-0 right-0 z-30 justify-between
-       border-b border-gray-700 backdrop-blur-8 select-none`}
+      className={`h-8 flex items-center gap-6 px-8 bg-gray-900 fixed top-0 left-0 right-0 z-30 justify-between
+       border-b border-gray-800 backdrop-blur-8 select-none`}
       data-tauri-drag-region
     >
       <div
@@ -34,23 +42,31 @@ const NavBar = ({ isSkeleton }: Props) => {
           os.type === 'Darwin' ? 'ml-12' : ''
         }`}
       >
-        {tabs.map((t) => (
+        {tabs.map((t, i) => (
           <div
             key={t.key}
             onClick={() => setActiveTab(t.key)}
-            className={`px-4 border-x border-gray-700 h-full flex items-center justify-center gap-4 ${
-              activeTab === t.key ? 'bg-gray-700' : 'bg-gray-800'
+            className={`px-4 border-r ${
+              i === 0 ? 'border-l' : ''
+            } border-gray-700 h-full flex items-center justify-center gap-2 ${
+              activeTab === t.key
+                ? 'bg-gray-800 text-gray-100'
+                : 'bg-gray-900 text-gray-400'
             } cursor-pointer`}
           >
-            {t.name}
+            {t.name === 'Home' ? <Home sizeClassName="w-4 h-4" /> : t.name}
             {t.key !== 'initial' && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleRemoveTab(t.key);
                 }}
+                className={`w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-100 ${
+                  activeTab !== t.key ? 'opacity-0' : ''
+                } relative top-px`}
+                disabled={activeTab !== t.key}
               >
-                <CloseSign sizeClassName="w-3 h-3" />
+                <CloseSign sizeClassName="w-3.5 h-3.5" />
               </button>
             )}
           </div>
