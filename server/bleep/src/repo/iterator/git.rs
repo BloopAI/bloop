@@ -78,17 +78,21 @@ impl GitWalker {
 
                 let files = tree.traverse().breadthfirst.files().unwrap().into_iter();
 
-                Some(files.map(move |entry| {
-                    let strpath = String::from_utf8_lossy(entry.filepath.as_ref());
-                    let full_path = root_dir.join(strpath.as_ref());
-                    (
-                        is_head,
-                        branch.clone(),
-                        full_path.to_string_lossy().to_string(),
-                        entry.mode,
-                        entry.oid,
-                    )
-                }))
+                Some(
+                    files
+                        .map(move |entry| {
+                            let strpath = String::from_utf8_lossy(entry.filepath.as_ref());
+                            let full_path = root_dir.join(strpath.as_ref());
+                            (
+                                is_head,
+                                branch.clone(),
+                                full_path.to_string_lossy().to_string(),
+                                entry.mode,
+                                entry.oid,
+                            )
+                        })
+                        .filter(|(_, _, path, _, _)| should_index(path)),
+                )
             })
             .flatten()
             .fold(
@@ -127,17 +131,16 @@ impl FileSource for GitWalker {
             .into_par_iter()
             .filter_map(|((file, kind, oid), branches)| {
                 let git = self.git.to_thread_local();
-
                 let Ok(Some(object)) = git.try_find_object(oid) else {
 		    error!(?file, ?branches, "can't find object for file");
 		    return None;
 		};
 
-                let buffer = String::from_utf8_lossy(&object.data).to_string();
-
-                if buffer.len() as u64 > MAX_FILE_LEN {
+                if object.data.len() as u64 > MAX_FILE_LEN {
                     return None;
                 }
+
+                let buffer = String::from_utf8_lossy(&object.data).to_string();
 
                 Some(RepoFile {
                     path: file,
