@@ -140,7 +140,7 @@ const TooltipCode = ({
   const renderTooltip = (attrs: {
     'data-placement': TippyProps['placement'];
   }) => {
-    if (!(data?.data?.length || data?.data?.length) && !isLoading) {
+    if (!data?.length && !isLoading) {
       return '';
     }
     const tailPosition = getTailPosition(attrs['data-placement']);
@@ -176,7 +176,7 @@ const TooltipCode = ({
                     onClick={toggleFilter}
                     active={filters.includes(Type.DEF)}
                     disabled={
-                      !data?.data.some((d) =>
+                      !data?.some((d) =>
                         d.data.some((dd) => dd.kind.startsWith(Type.DEF)),
                       )
                     }
@@ -187,7 +187,7 @@ const TooltipCode = ({
                     onClick={toggleFilter}
                     active={filters.includes(Type.REF)}
                     disabled={
-                      !data?.data.some((d) =>
+                      !data?.some((d) =>
                         d.data.some((dd) => dd.kind.startsWith(Type.REF)),
                       )
                     }
@@ -198,7 +198,7 @@ const TooltipCode = ({
                     onClick={toggleFilter}
                     active={filters.includes(Type.MOD)}
                     disabled={
-                      !data?.data.some((d) =>
+                      !data?.some((d) =>
                         d.data.some((dd) => dd.kind.startsWith(Type.MOD)),
                       )
                     }
@@ -209,7 +209,7 @@ const TooltipCode = ({
                     onClick={toggleFilter}
                     active={filters.includes(Type.RET)}
                     disabled={
-                      !data?.data.some((d) =>
+                      !data?.some((d) =>
                         d.data.some((dd) => dd.kind.startsWith(Type.RET)),
                       )
                     }
@@ -243,28 +243,9 @@ const TooltipCode = ({
             </div>
           )}
           <span className="overflow-auto max-h-80">
-            {isLoading && (
-              <div className="bg-gray-700 h-40">
-                <div className="w-1/2 h-7 pt-2 px-3">
-                  <SkeletonItem />
-                </div>
-                <div className="w-4/5 h-9 py-2 px-3">
-                  <SkeletonItem />
-                </div>
-                <div className="w-1/2 h-7 pt-2 px-3">
-                  <SkeletonItem />
-                </div>
-                <div className="w-3/5 h-7 pt-2 px-3">
-                  <SkeletonItem />
-                </div>
-                <div className="w-4/5 h-9 py-2 px-3">
-                  <SkeletonItem />
-                </div>
-              </div>
-            )}
             {!isLoading &&
-              data?.data.length &&
-              data.data
+              data?.length &&
+              data
                 .filter(
                   (d) =>
                     d.data.filter((dd) =>
@@ -310,6 +291,11 @@ const TooltipCode = ({
                       ))}
                   </div>
                 ))}
+            {isLoading && (
+              <div className="w-1/2 h-7 pt-2 px-3">
+                <SkeletonItem />
+              </div>
+            )}
           </span>
         </div>
       </div>

@@ -212,37 +212,35 @@ export type TokenInfoNormalized = {
 };
 
 export type TokenInfoResponse = {
+  file: string;
   data: {
-    file: string;
-    data: {
-      kind: 'reference' | 'definition' | 'modification' | 'return';
-      start: {
-        byte: number;
-        line: number;
-        column: number;
-      };
-      end: {
-        byte: number;
-        line: number;
-        column: number;
-      };
-      snippet: {
-        data: string;
-        highlights: [
-          {
-            start: number;
-            end: number;
-          },
-        ];
-        symbols: [];
-        line_range: {
+    kind: 'reference' | 'definition' | 'modification' | 'return';
+    start: {
+      byte: number;
+      line: number;
+      column: number;
+    };
+    end: {
+      byte: number;
+      line: number;
+      column: number;
+    };
+    snippet: {
+      data: string;
+      highlights: [
+        {
           start: number;
           end: number;
-        };
+        },
+      ];
+      symbols: [];
+      line_range: {
+        start: number;
+        end: number;
       };
-    }[];
+    };
   }[];
-};
+}[];
 
 export interface SuggestionsResponse {
   count: number;

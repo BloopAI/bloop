@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import TooltipCode from '../../TooltipCode';
 import CodeToken from '../Code/CodeToken';
 import { Token as TokenType } from '../../../types/prism';
 import { Range } from '../../../types/results';
 import { getTokenInfo } from '../../../services/api';
 import { TokenInfoResponse } from '../../../types/api';
+import { DeviceContext } from '../../../context/deviceContext';
 
 type Props = {
   language: string;
@@ -30,6 +31,8 @@ const tokenHoverable = (tokenPosition: Range, ranges: Range[]) => {
   }
 };
 
+let prevEventSource: EventSource | undefined;
+
 const Token = ({
   language,
   token,
@@ -39,6 +42,7 @@ const Token = ({
   repoPath,
   onRefDefClick,
 }: Props) => {
+  const { apiUrl } = useContext(DeviceContext);
   const [hoverableRange, setHoverableRange] = useState(
     tokenHoverable(token.byteRange, lineHoverRanges),
   );
@@ -47,19 +51,46 @@ const Token = ({
 
   const getHoverableContent = useCallback(() => {
     if (hoverableRange && relativePath) {
+      prevEventSource?.close();
       setLoading(true);
-      getTokenInfo(
-        relativePath,
-        repoPath,
-        hoverableRange.start,
-        hoverableRange.end,
-      )
-        .then((data) => {
-          setTokenInfo(data);
-        })
-        .finally(() => {
+      const eventSource = new EventSource(
+        `${apiUrl.replace(
+          'https:',
+          '',
+        )}/token-info?relative_path=${relativePath}&repo_ref=${repoPath}&start=${
+          hoverableRange.start
+        }&end=${hoverableRange.end}`,
+      );
+      prevEventSource = eventSource;
+      eventSource.onmessage = (ev) => {
+        if (ev.data === '[DONE]') {
+          eventSource.close();
           setLoading(false);
-        });
+          return;
+        }
+        console.log(ev.data);
+        const newData = JSON.parse(ev.data);
+
+        setTokenInfo((prev) => [
+          ...(prev || []),
+          ...(Array.isArray(newData) ? newData : [newData]),
+        ]);
+      };
+      eventSource.onerror = (err) => {
+        console.log(err);
+      };
+      // getTokenInfo(
+      //   relativePath,
+      //   repoPath,
+      //   hoverableRange.start,
+      //   hoverableRange.end,
+      // )
+      //   .then((data) => {
+      //     setTokenInfo(data);
+      //   })
+      //   .finally(() => {
+      //     setLoading(false);
+      //   });
     }
   }, [relativePath, hoverableRange]);
 
