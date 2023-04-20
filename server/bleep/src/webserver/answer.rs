@@ -100,7 +100,7 @@ pub(super) async fn handle(
             let mut update_stream = UpdateStream::new(&conversation_id, &conversation);
             update_stream.set_tx(update_tx);
             let right_stream = conversation
-                .step(&ctx, action_stream, update_stream)
+                .step(&ctx, action_stream, &mut update_stream)
                 .into_stream()
                 .map(Either::Right);
 
@@ -176,9 +176,9 @@ impl Conversation {
         &mut self,
         ctx: &AppContext,
         action_stream: ActionStream,
-        mut update: UpdateStream,
+        update: &mut UpdateStream,
     ) -> Result<Option<ActionStream>> {
-        let (action, raw_response) = action_stream.load(&mut update).await.unwrap();
+        let (action, raw_response) = action_stream.load(update).await.unwrap();
 
         let question = match action {
             Action::Query(s) => parser::parse_nl(&s)?
@@ -412,7 +412,7 @@ impl Conversation {
     async fn answer(
         &self,
         ctx: &AppContext,
-        mut update: UpdateStream,
+        update: &mut UpdateStream,
         question: &str,
     ) -> Result<()> {
         let messages = self
