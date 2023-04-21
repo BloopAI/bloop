@@ -76,6 +76,7 @@ const NLInput = ({
         autoComplete="off"
         spellCheck="false"
         ref={inputRef}
+        disabled={isStoppable}
         onCompositionStart={() => setComposition(true)}
         onCompositionEnd={() => setComposition(false)}
         onKeyDown={handleKeyDown}
