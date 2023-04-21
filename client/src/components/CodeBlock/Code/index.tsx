@@ -22,6 +22,7 @@ type Props = {
   onlySymbolLines?: boolean;
   removePaddings?: boolean;
   lineHoverEffect?: boolean;
+  isDiff?: boolean;
   highlightColor?: string;
 };
 
@@ -36,6 +37,7 @@ const Code = ({
   removePaddings,
   lineHoverEffect,
   highlightColor,
+  isDiff,
 }: Props) => {
   const lang = useMemo(
     () => getPrismLanguage(language) || 'plaintext',
@@ -137,6 +139,12 @@ const Code = ({
           }
           hoverEffect={lineHoverEffect}
           highlightColor={highlightColor}
+          isNewLine={
+            isDiff && !line[0].token.content && line[1].token.content === '+'
+          }
+          isRemovedLine={
+            isDiff && !line[0].token.content && line[1].token.content === '-'
+          }
         >
           {line.map((token, index) => (
             <CodeToken
