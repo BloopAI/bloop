@@ -28,12 +28,14 @@ const DiffCode = ({ data }: Props) => {
         </div>
       </div>
       {data.diff?.lines ? (
-        <div className="relative overflow-auto py-4">
-          <Code
-            lineStart={data.diff.header?.old_start}
-            code={data.diff.lines?.join('\n')}
-            language={'TSX'}
-          />
+        <div className="relative py-4">
+          <div className="overflow-auto">
+            <Code
+              lineStart={data.diff.header?.old_start}
+              code={data.diff.lines?.join('\n')}
+              language={data.language}
+            />
+          </div>
           <div className="absolute top-4 right-4">
             <Button
               variant="secondary"
