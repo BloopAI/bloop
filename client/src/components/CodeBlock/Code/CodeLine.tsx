@@ -33,6 +33,8 @@ type Props = {
   };
   stylesGenerated?: any;
   shouldHighlight?: boolean;
+  isNewLine?: boolean;
+  isRemovedLine?: boolean;
   searchTerm?: string;
   onMouseSelectStart?: (lineNum: number, charNum: number) => void;
   onMouseSelectEnd?: (lineNum: number, charNum: number) => void;
@@ -56,6 +58,8 @@ const CodeLine = ({
   onMouseSelectStart,
   onMouseSelectEnd,
   highlightColor,
+  isNewLine,
+  isRemovedLine,
 }: Props) => {
   const [isHighlighted, setHighlighted] = useState(false);
   const codeRef = useRef<HTMLTableCellElement>(null);
@@ -254,7 +258,15 @@ const CodeLine = ({
           lineHidden ? 'p-0' : ''
         } ${isHighlighted ? 'animate-flash-highlight rounded-4 pr-2' : ''}`}
         ref={codeRef}
-        style={highlightColor ? { backgroundColor: highlightColor } : {}}
+        style={
+          highlightColor
+            ? { backgroundColor: highlightColor }
+            : isNewLine
+            ? { backgroundColor: 'rgb(0,255,0,0.2)' }
+            : isRemovedLine
+            ? { backgroundColor: 'rgb(255,0,0,0.2)' }
+            : {}
+        }
       >
         {children}
       </div>
