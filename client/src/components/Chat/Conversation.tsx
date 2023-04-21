@@ -29,34 +29,23 @@ const Conversation = ({ conversation }: Props) => {
       {conversation.map((m, i) => (
         <Fragment key={i}>
           {m.author === ChatMessageAuthor.Server &&
-            m.type === ChatMessageType.Answer && (
-              <div className="group-custom">
-                <div className="hidden group-custom-hover:flex flex-col gap-2 text-gray-400 caption">
-                  {m.loadingSteps.map((s, i) => (
-                    <div className="flex gap-2 px-4 items-center" key={i}>
-                      <div className="h-5">
-                        <MagnifyTool />
-                      </div>
-                      <p>{s}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2 px-4 items-center group-custom-hover:hidden">
-                  {!m.isLoading ? (
-                    <div className="text-success-500 h-5">
-                      <Checkmark />
-                    </div>
-                  ) : (
-                    <div className="text-gray-400 h-5">
-                      <MagnifyTool />
-                    </div>
-                  )}
-                  <p className="caption text-gray-400 flex-1">
-                    {m.isLoading
-                      ? m.loadingSteps[m.loadingSteps.length - 1]
-                      : 'Answer Ready'}
-                  </p>
-                </div>
+            m.type === ChatMessageType.Answer &&
+            m.text && (
+              <div className="flex gap-2 px-4 items-center">
+                {!m.isLoading ? (
+                  <div className="text-success-500 h-5">
+                    <Checkmark />
+                  </div>
+                ) : (
+                  <div className="text-gray-400 h-5">
+                    <MagnifyTool />
+                  </div>
+                )}
+                <p className="caption text-gray-400 flex-1">
+                  {m.isLoading
+                    ? m.loadingSteps[m.loadingSteps.length - 1]
+                    : 'Answer Ready'}
+                </p>
               </div>
             )}
           {m.text || (m.author === ChatMessageAuthor.Server && m.error) ? (
