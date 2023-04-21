@@ -13,6 +13,7 @@ import { DeviceContext } from '../../context/deviceContext';
 import {
   ChatMessage,
   ChatMessageAuthor,
+  ChatMessageServer,
   ChatMessageType,
 } from '../../types/general';
 import { AppNavigationContext } from '../../context/appNavigationContext';
@@ -24,19 +25,30 @@ import Conversation from './Conversation';
 
 let prevEventSource: EventSource | undefined;
 
+const focusInput = () => {
+  document.getElementById('question-input')?.focus();
+};
+
+const blurInput = () => {
+  document.getElementById('question-input')?.blur();
+};
+
 const Chat = () => {
   const { isRightPanelOpen, setRightPanelOpen, tab } = useContext(UIContext);
   const { apiUrl } = useContext(DeviceContext);
   const { conversation, setConversation } = useContext(ChatContext);
-  const { navigateConversationResults } = useContext(AppNavigationContext);
+  const { navigateConversationResults, navigateRepoPath } =
+    useContext(AppNavigationContext);
   const [isActive, setActive] = useState(false);
   const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
+  const [threadId, setThreadId] = useState('');
+  const [resp, setResp] = useState(null);
   useOnClickOutside(chatRef, () => setActive(false));
 
   useEffect(() => {
     if (isActive) {
-      document.getElementById('question-input')?.focus();
+      focusInput();
     }
   }, [isActive]);
 
@@ -44,7 +56,7 @@ const Chat = () => {
     const lastMessage = conversation[conversation.length - 1];
     if (
       lastMessage?.author === ChatMessageAuthor.Server &&
-      lastMessage.fullAnswer?.some((a) => ['new', 'mod'].includes(a[0]))
+      lastMessage.results?.length
     ) {
       navigateConversationResults(conversation.length - 1);
     }
@@ -55,7 +67,9 @@ const Chat = () => {
       prevEventSource?.close();
       setInputValue('');
       const eventSource = new EventSource(
-        `${apiUrl.replace('https:', '')}/answer?q=${query}&repo_ref=${tab.key}`,
+        `${apiUrl.replace('https:', '')}/answer?q=${query}&repo_ref=${tab.key}${
+          threadId ? `&thread_id=${threadId}` : ''
+        }`,
       );
       prevEventSource = eventSource;
       eventSource.onerror = (err) => {
@@ -78,76 +92,98 @@ const Chat = () => {
         }
         const data = JSON.parse(ev.data);
         if (data.Ok) {
-          if (typeof data.Ok === 'string') {
-            setConversation((prev) => {
-              const newConversation = prev?.slice(0, -1) || [];
-              const lastMessage = prev?.slice(-1)[0];
-              const lastMessages: ChatMessage[] =
-                lastMessage?.author === ChatMessageAuthor.Server &&
-                lastMessage?.isLoading
-                  ? [
-                      {
-                        author: ChatMessageAuthor.Server,
-                        isLoading: true,
-                        type: ChatMessageType.Answer,
-                        loadingSteps: [...lastMessage.loadingSteps, data.Ok],
-                      },
-                    ]
-                  : [
-                      ...prev.slice(-1),
-                      {
-                        author: ChatMessageAuthor.Server,
-                        isLoading: true,
-                        type: ChatMessageType.Answer,
-                        loadingSteps: [data.Ok],
-                      },
-                    ];
-              return [...newConversation, ...lastMessages];
-            });
-          } else if (data.Ok.Answer) {
-            try {
-              const answerPieces = JSON.parse(data.Ok.Answer);
-              setConversation((prev) => {
-                const newConversation = prev.slice(0, -1);
-                const lastMessage = {
-                  ...prev.slice(-1)[0],
-                  text:
-                    typeof answerPieces[0] === 'string'
-                      ? answerPieces[1]
-                      : answerPieces
-                          .filter(
-                            (part: [string, string]) =>
-                              part[0] === 'con' || part[0] === 'cite',
-                          )
-                          .map((p: string[]) => (p[0] === 'con' ? p[1] : p[2]))
-                          .join('\n'),
-                  fullAnswer: answerPieces,
-                };
-                return [...newConversation, lastMessage];
-              });
-            } catch (err) {
-              console.log(err);
-            }
-          } else if (data.Ok.Prompt) {
-            setConversation((prev) => {
-              const newConversation = prev.slice(0, -1);
-              const lastMessage = {
-                ...prev.slice(-1)[0],
-                isLoading: false,
-              };
-              return [
-                ...newConversation,
-                lastMessage,
-                {
-                  author: ChatMessageAuthor.Server,
-                  isLoading: false,
-                  type: ChatMessageType.Prompt,
-                  text: data.Ok.Prompt,
-                  loadingSteps: [],
-                },
-              ];
-            });
-          }
+          setResp(data.Ok);
+          setThreadId(data.Ok.thread_id);
+          const newMessage = data.Ok.messages[0];
+          setConversation((prev) => {
+            const newConversation = prev?.slice(0, -1) || [];
+            const lastMessage = prev?.slice(-1)[0];
+            const messageToAdd = {
+              author: ChatMessageAuthor.Server,
+              isLoading: newMessage.status === 'LOADING',
+              type: ChatMessageType.Answer,
+              loadingSteps: newMessage.search_steps.map(
+                (s: { [key: string]: string | string[] }) =>
+                  Array.isArray(Object.values(s)[0])
+                    ? Object.values(s)[0][1]
+                    : Object.values(s)[0],
+              ),
+              text: newMessage.content,
+              results: newMessage.results,
+            };
+            const lastMessages: ChatMessage[] =
+              lastMessage?.author === ChatMessageAuthor.Server
+                ? [messageToAdd]
+                : [...prev.slice(-1), messageToAdd];
+            return [...newConversation, ...lastMessages];
+          });
+          // if (typeof data.Ok === 'string') {
+          //   setConversation((prev) => {
+          //     const newConversation = prev?.slice(0, -1) || [];
+          //     const lastMessage = prev?.slice(-1)[0];
+          //     const lastMessages: ChatMessage[] =
+          //       lastMessage?.author === ChatMessageAuthor.Server &&
+          //       lastMessage?.isLoading
+          //         ? [
+          //             {
+          //               author: ChatMessageAuthor.Server,
+          //               isLoading: true,
+          //               type: ChatMessageType.Answer,
+          //               loadingSteps: [...lastMessage.loadingSteps, data.Ok],
+          //             },
+          //           ]
+          //         : [
+          //             ...prev.slice(-1),
+          //             {
+          //               author: ChatMessageAuthor.Server,
+          //               isLoading: true,
+          //               type: ChatMessageType.Answer,
+          //               loadingSteps: [data.Ok],
+          //             },
+          //           ];
+          //     return [...newConversation, ...lastMessages];
+          //   });
+          // } else if (data.Ok.Answer) {
+          //   try {
+          //     const answerPieces = JSON.parse(data.Ok.Answer);
+          //     setConversation((prev) => {
+          //       const newConversation = prev.slice(0, -1);
+          //       const lastMessage = {
+          //         ...prev.slice(-1)[0],
+          //         text:
+          //           typeof answerPieces[0] === 'string'
+          //             ? answerPieces[1]
+          //             : answerPieces
+          //                 .filter((part: string[]) => part[0] === 'con')
+          //                 .map((p: string[]) => p[1])
+          //                 .join('\n'),
+          //         fullAnswer: answerPieces,
+          //       };
+          //       return [...newConversation, lastMessage];
+          //     });
+          //   } catch (err) {
+          //     console.log(err);
+          //   }
+          // } else if (data.Ok.Prompt) {
+          //   setConversation((prev) => {
+          //     const newConversation = prev.slice(0, -1);
+          //     const lastMessage = {
+          //       ...prev.slice(-1)[0],
+          //       isLoading: false,
+          //     };
+          //     return [
+          //       ...newConversation,
+          //       lastMessage,
+          //       {
+          //         author: ChatMessageAuthor.Server,
+          //         isLoading: false,
+          //         type: ChatMessageType.Prompt,
+          //         text: data.Ok.Prompt,
+          //         loadingSteps: [],
+          //       },
+          //     ];
+          //   });
+          // }
         } else if (data.Err) {
           setConversation((prev) => {
             const newConversation = prev.slice(0, -1);
@@ -161,19 +197,40 @@ const Chat = () => {
         }
       };
     },
-    [tab],
+    [tab, threadId],
   );
+
+  const stopGenerating = useCallback(() => {
+    prevEventSource?.close();
+    setConversation((prev) => {
+      const newConversation = prev.slice(0, -1);
+      const lastMessage = {
+        ...prev.slice(-1)[0],
+        isLoading: false,
+      };
+      return [...newConversation, lastMessage];
+    });
+    focusInput();
+  }, []);
 
   const onSubmit = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
+      if (
+        (conversation[conversation.length - 1] as ChatMessageServer)
+          ?.isLoading ||
+        !inputValue.trim()
+      ) {
+        return;
+      }
+      blurInput();
       setConversation((prev) => [
         ...prev,
         { author: ChatMessageAuthor.User, text: inputValue, isLoading: false },
       ]);
       makeSearch(inputValue);
     },
-    [inputValue],
+    [inputValue, conversation],
   );
 
   return (
@@ -202,9 +259,21 @@ const Chat = () => {
               >
                 <List /> All conversations
               </ChipButton>
-              <ChipButton variant="filled" onClick={() => setActive(false)}>
-                <CloseSign sizeClassName="w-3.5 h-3.5" />
-              </ChipButton>
+              <div className="flex items-center gap-1">
+                <ChipButton
+                  onClick={() => {
+                    setConversation([]);
+                    setThreadId('');
+                    navigateRepoPath(tab.name);
+                    focusInput();
+                  }}
+                >
+                  Create new
+                </ChipButton>
+                <ChipButton variant="filled" onClick={() => setActive(false)}>
+                  <CloseSign sizeClassName="w-3.5 h-3.5" />
+                </ChipButton>
+              </div>
             </div>
           </div>
         </div>
@@ -217,6 +286,24 @@ const Chat = () => {
               id="question-input"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
+              isStoppable={
+                (conversation[conversation.length - 1] as ChatMessageServer)
+                  ?.isLoading
+              }
+              onStop={stopGenerating}
+              placeholder={
+                (conversation[conversation.length - 1] as ChatMessageServer)
+                  ?.isLoading
+                  ? (conversation[conversation.length - 1] as ChatMessageServer)
+                      ?.loadingSteps?.[
+                      (
+                        conversation[
+                          conversation.length - 1
+                        ] as ChatMessageServer
+                      )?.loadingSteps?.length - 1
+                    ]
+                  : undefined
+              }
             />
           </form>
         </div>

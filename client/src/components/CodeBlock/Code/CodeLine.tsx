@@ -36,6 +36,7 @@ type Props = {
   searchTerm?: string;
   onMouseSelectStart?: (lineNum: number, charNum: number) => void;
   onMouseSelectEnd?: (lineNum: number, charNum: number) => void;
+  highlightColor?: string;
 };
 
 const CodeLine = ({
@@ -54,6 +55,7 @@ const CodeLine = ({
   searchTerm,
   onMouseSelectStart,
   onMouseSelectEnd,
+  highlightColor,
 }: Props) => {
   const [isHighlighted, setHighlighted] = useState(false);
   const codeRef = useRef<HTMLTableCellElement>(null);
@@ -252,6 +254,7 @@ const CodeLine = ({
           lineHidden ? 'p-0' : ''
         } ${isHighlighted ? 'animate-flash-highlight rounded-4 pr-2' : ''}`}
         ref={codeRef}
+        style={highlightColor ? { backgroundColor: highlightColor } : {}}
       >
         {children}
       </div>
