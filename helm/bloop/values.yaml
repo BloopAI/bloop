@@ -63,8 +63,15 @@ ingress:
   className: nginx
   annotations:
     kubernetes.io/tls-acme: "true"
-  hosts: []
-  tls: []
+  hosts:
+    - host: bloopai-test.bloop.ai
+      paths:
+      - path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - bloopai-test.bloop.ai
+    secretName: test
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
@@ -93,7 +100,7 @@ qdrant:
   image:
     repository: qdrant/qdrant
     pullPolicy: IfNotPresent
-    tag: latest
+    tag: v1.1.1
 
   imagePullSecrets: []
   nameOverride: ""
