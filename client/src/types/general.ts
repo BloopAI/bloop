@@ -130,6 +130,42 @@ type ChatMessageUser = {
   text: string;
 };
 
+export type MessageResultCite = {
+  Cite: {
+    path_alias: number;
+    path: string;
+    comment: string;
+    start_line: number;
+    end_line: number;
+  };
+};
+
+export type MessageResultNew = {
+  New: {
+    language: string;
+    code: string;
+  };
+};
+
+export type MessageResultModify = {
+  Modify: {
+    path: string;
+    diff: {
+      old_file_name: string;
+      new_file_name: string;
+      old_header: string;
+      new_header: string;
+      hunks: {
+        old_start: number;
+        new_start: number;
+        old_lines: number;
+        new_lines: number;
+        lines: string[];
+      }[];
+    };
+  };
+};
+
 export type ChatMessageServer = {
   author: ChatMessageAuthor.Server;
   text?: string;
@@ -137,7 +173,7 @@ export type ChatMessageServer = {
   loadingSteps: string[];
   error?: string;
   type: ChatMessageType;
-  fullAnswer?: any[][];
+  results?: (MessageResultCite | MessageResultNew | MessageResultModify)[];
 };
 
 export type ChatMessage = ChatMessageUser | ChatMessageServer;

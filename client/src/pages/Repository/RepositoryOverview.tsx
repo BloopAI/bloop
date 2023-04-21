@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { Remarkable } from 'remarkable';
 import Accordion from '../../components/Accordion';
 import FileIcon from '../../components/FileIcon';
@@ -10,6 +10,7 @@ import { cleanRepoName, sortFiles } from '../../utils/file';
 import { highlightCode } from '../../utils/prism';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import { DeviceContext } from '../../context/deviceContext';
+import { SearchType } from '../../types/general';
 
 const md = new Remarkable({
   html: true,
@@ -45,7 +46,12 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
       (file) => file.path.toLowerCase() === 'readme.md',
     );
     if (readmePath) {
-      searchQuery(`open:true repo:${repository.name} path:${readmePath.path}`);
+      searchQuery(
+        `open:true repo:${repository.name} path:${readmePath.path}`,
+        0,
+        false,
+        SearchType.REGEX,
+      );
     } else {
       setReadme(null);
     }
