@@ -34,6 +34,7 @@ const DiffCode = ({ data }: Props) => {
               lineStart={data.diff.header?.old_start}
               code={data.diff.lines?.join('\n')}
               language={data.language}
+              isDiff
             />
           </div>
           <div className="absolute top-4 right-4">
