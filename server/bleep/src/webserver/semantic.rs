@@ -1,5 +1,8 @@
 use super::prelude::*;
-use crate::{query::parser, semantic::Semantic};
+use crate::{
+    query::parser::{self, ParsedQuery},
+    semantic::Semantic,
+};
 use tracing::error;
 
 use qdrant_client::qdrant::value::Kind;
@@ -33,7 +36,10 @@ pub(super) async fn raw_chunks(
 ) -> impl IntoResponse {
     if let Some(semantic) = semantic {
         let Args { ref query, limit } = args;
-        let query = parser::parse_nl(query).unwrap();
+        let ParsedQuery::NL(query) = parser::parse_nl(query).map_err(Error::user)? else {
+            return Err(Error::new(ErrorKind::User, "can't search like that on this endpoint"));
+	};
+
         let result = semantic.search(&query, limit).await.and_then(|raw| {
             raw.into_iter()
                 .map(|v| {

@@ -21,7 +21,7 @@ use crate::{
     analytics::{QueryEvent, Stage},
     env::Feature,
     indexes::reader::ContentDocument,
-    query::parser,
+    query::parser::{self, ParsedQuery},
     remotes,
     repo::RepoRef,
     semantic::{self, Semantic},
@@ -184,9 +184,12 @@ pub(super) async fn handle(
 }
 
 fn parse_query(query: &str) -> Result<String, Error> {
-    Ok(parser::parse_nl(query)
-        .map_err(Error::user)?
-        .target()
+    let ParsedQuery::NL(q): ParsedQuery = parser::parse_nl(query)
+        .map_err(Error::user)? else {
+	    return Err(Error::new(ErrorKind::User, "can't do that here"));
+	};
+
+    Ok(q.target()
         .ok_or_else(|| Error::user("empty search"))?
         .to_string())
 }
@@ -208,7 +211,10 @@ async fn search_snippets(
     raw_query: &str,
     rephrased_query: &str,
 ) -> Result<Vec<Snippet>, Error> {
-    let mut parsed_query = &mut parser::parse_nl(raw_query).map_err(Error::user)?;
+    let ParsedQuery::NL(ref mut parsed_query): ParsedQuery = parser::parse_nl(raw_query)
+        .map_err(Error::user)? else {
+	    unreachable!()
+	};
 
     parsed_query.target = Some(parser::Literal::Plain(rephrased_query.into()));
 
