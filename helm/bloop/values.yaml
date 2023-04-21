@@ -64,8 +64,7 @@ ingress:
   annotations:
     kubernetes.io/tls-acme: "true"
   hosts: []
-  tls:
-  - hosts: []
+  tls: []
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
