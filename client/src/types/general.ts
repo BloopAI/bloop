@@ -151,17 +151,13 @@ export type MessageResultModify = {
   Modify: {
     path: string;
     diff: {
-      old_file_name: string;
-      new_file_name: string;
-      old_header: string;
-      new_header: string;
-      hunks: {
+      header: {
         old_start: number;
         new_start: number;
         old_lines: number;
         new_lines: number;
-        lines: string[];
-      }[];
+      };
+      lines: string[];
     };
   };
 };
