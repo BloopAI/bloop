@@ -150,6 +150,7 @@ export type MessageResultNew = {
 export type MessageResultModify = {
   Modify: {
     path: string;
+    language: string;
     diff: {
       header: {
         old_start: number;
