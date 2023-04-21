@@ -33,6 +33,7 @@ pub struct FileDocument {
     pub repo_name: String,
     pub repo_ref: String,
     pub lang: Option<String>,
+    pub branches: Option<String>,
 }
 
 pub struct RepoDocument {
@@ -161,6 +162,7 @@ impl DocumentRead for FileReader {
         Compiler::new()
             .literal(schema.relative_path, |q| q.path.clone())
             .literal(schema.repo_name, |q| q.repo.clone())
+            .literal(schema.branches, |q| q.branch.clone())
             .byte_string(schema.lang, |q| q.lang.as_ref())
             .compile(queries, tantivy_index)
     }
@@ -170,12 +172,14 @@ impl DocumentRead for FileReader {
         let repo_ref = read_text_field(&doc, schema.repo_ref);
         let repo_name = read_text_field(&doc, schema.repo_name);
         let lang = read_lang_field(&doc, schema.lang);
+        let branches = read_lang_field(&doc, schema.branches);
 
         FileDocument {
             relative_path,
             repo_name,
             repo_ref,
             lang,
+            branches,
         }
     }
 }
