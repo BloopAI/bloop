@@ -94,7 +94,7 @@ const RepositoryPage = ({ repositoryData }: Props) => {
   ) : (
     <div className="flex w-full">
       <div className="h-full flex flex-col overflow-hidden relative overflow-y-auto w-[20.25rem] flex-shrink-0">
-        <div className="p-8 flex flex-row gap-6 justify-between select-none cursor-default">
+        <div className="p-8 flex flex-row gap-6 justify-between select-none cursor-default border-r border-gray-800">
           <span className="flex flex-col gap-3">
             <span className="flex flex-row gap-4 items-center">
               <span className="bg-gray-800 rounded-md p-1 w-7 h-7 select-none">
