@@ -1,4 +1,10 @@
-import React, { ChangeEvent, useEffect, useRef } from 'react';
+import React, {
+  ChangeEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { QuillIcon, SendIcon } from '../../icons';
 import ClearButton from '../ClearButton';
 import Tooltip from '../Tooltip';
@@ -10,6 +16,7 @@ type Props = {
   isStoppable?: boolean;
   onStop?: () => void;
   onChange?: (e: ChangeEvent<HTMLTextAreaElement>) => void;
+  onSubmit?: () => void;
 };
 
 const NLInput = ({
@@ -19,8 +26,11 @@ const NLInput = ({
   placeholder = 'Anything I can help you with?',
   isStoppable,
   onStop,
+  onSubmit,
 }: Props) => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [isComposing, setComposition] = useState(false);
+
   useEffect(() => {
     if (inputRef.current) {
       // We need to reset the height momentarily to get the correct scrollHeight for the textarea
@@ -32,6 +42,20 @@ const NLInput = ({
       inputRef.current.style.height = Math.min(scrollHeight, 300) + 'px';
     }
   }, [inputRef.current, value]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (isComposing) {
+        return true;
+      }
+      if (e.key === 'Enter' && !e.shiftKey && onSubmit) {
+        e.preventDefault();
+        onSubmit();
+      }
+    },
+    [isComposing, onSubmit],
+  );
+
   return (
     <div
       className={`w-full flex items-start gap-2 bg-gray-800 rounded-lg disabled:border-transparent disabled:text-gray-500
@@ -52,6 +76,9 @@ const NLInput = ({
         autoComplete="off"
         spellCheck="false"
         ref={inputRef}
+        onCompositionStart={() => setComposition(true)}
+        onCompositionEnd={() => setComposition(false)}
+        onKeyDown={handleKeyDown}
       />
       {isStoppable ? (
         <div className="relative top-[18px]">

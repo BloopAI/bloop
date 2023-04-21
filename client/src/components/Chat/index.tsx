@@ -214,8 +214,10 @@ const Chat = () => {
   }, []);
 
   const onSubmit = useCallback(
-    (e: FormEvent) => {
-      e.preventDefault();
+    (e?: FormEvent) => {
+      if (e?.preventDefault) {
+        e.preventDefault();
+      }
       if (
         (conversation[conversation.length - 1] as ChatMessageServer)
           ?.isLoading ||
@@ -285,6 +287,7 @@ const Chat = () => {
             <NLInput
               id="question-input"
               value={inputValue}
+              onSubmit={onSubmit}
               onChange={(e) => setInputValue(e.target.value)}
               isStoppable={
                 (conversation[conversation.length - 1] as ChatMessageServer)
