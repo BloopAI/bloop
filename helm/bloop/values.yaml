@@ -63,15 +63,9 @@ ingress:
   className: nginx
   annotations:
     kubernetes.io/tls-acme: "true"
-  hosts:
-    - host: bloopai-test.bloop.ai
-      paths:
-      - path: /
-        pathType: Prefix
+  hosts: []
   tls:
-  - hosts:
-    - bloopai-test.bloop.ai
-    secretName: test
+  - hosts: []
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
