@@ -121,7 +121,13 @@ const CodeLine = ({
         );
       }
     }
-    return <div className={`p-0 ${blameStyle}`}></div>;
+    return (
+      <div
+        className={`p-0 ${blameStyle} ${
+          isRemovedLine ? 'bg-[#4F2828]' : isNewLine ? 'bg-[#28432B]' : ''
+        }`}
+      ></div>
+    );
   }, [blame, blameLine]);
 
   const style = useMemo(
@@ -237,6 +243,8 @@ const CodeLine = ({
         <div
           className={`${showLineNumbers ? 'px-1' : ''} text-center ${
             lineHidden ? 'p-0' : ''
+          } ${
+            isRemovedLine ? 'bg-[#4F2828]' : isNewLine ? 'bg-[#28432B]' : ''
           }`}
         />
       )}
