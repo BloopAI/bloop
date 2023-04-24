@@ -1,11 +1,9 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import Code from '../../components/CodeBlock/Code';
 import Button from '../../components/Button';
 import { Clipboard } from '../../icons';
 import { copyToClipboard, splitPathForBreadcrumbs } from '../../utils';
 import FileIcon from '../../components/FileIcon';
-import BreadcrumbsPath from '../../components/BreadcrumbsPath';
-import { FileTreeFileType } from '../../types';
 import { MessageResultModify } from '../../types/general';
 import Breadcrumbs from '../../components/Breadcrumbs';
 
@@ -14,10 +12,20 @@ type Props = {
 };
 
 const DiffCode = ({ data }: Props) => {
+  const [showRaw, setShowRaw] = useState(false);
+  const rawCode = useMemo(
+    () =>
+      data.diff.lines
+        ?.filter((l) => !l.startsWith('-'))
+        .map((l) => (l.startsWith('+') ? ' ' + l.slice(1) : l))
+        .join('\n'),
+    [data.diff.lines],
+  );
+
   return (
     <div className="text-sm border border-gray-700 rounded-md">
-      <div className="w-full bg-gray-800 py-1 px-3 border-b border-gray-700 select-none">
-        <div className="flex items-center gap-2 max-w-[calc(100%-120px)] w-full h-11.5">
+      <div className="w-full bg-gray-800 p-3 border-b border-gray-700 select-none flex items-center justify-between">
+        <div className="flex items-center gap-2 max-w-[calc(100%-120px)] w-full">
           <FileIcon filename={data.path} />
           <div className="overflow-hidden">
             <Breadcrumbs
@@ -26,13 +34,35 @@ const DiffCode = ({ data }: Props) => {
             />
           </div>
         </div>
+        <div className="flex items-center justify-center p-0.5 gap-0.5 bg-gray-900 rounded-4">
+          <button
+            className={`px-2 h-6 rounded-4 caption flex items-center justify-center outline-none focus:outline-none focus: border-gray-700 ${
+              !showRaw
+                ? 'text-white bg-gray-800 border-gray-700 shadow-tiny'
+                : 'text-gray-400 border-transparent'
+            } transition-all duration-150 ease-in-bounce border`}
+            onClick={() => setShowRaw(false)}
+          >
+            Diff
+          </button>
+          <button
+            className={`px-2 h-6 rounded-4 caption flex items-center justify-center outline-none focus:outline-none focus: border-gray-700 ${
+              showRaw
+                ? 'text-white bg-gray-800 border-gray-700 shadow-tiny'
+                : 'text-gray-400 border-transparent'
+            } transition-all duration-150 ease-in-bounce border`}
+            onClick={() => setShowRaw(true)}
+          >
+            Raw
+          </button>
+        </div>
       </div>
       {data.diff?.lines ? (
         <div className="relative py-4">
           <div className="overflow-auto">
             <Code
               lineStart={data.diff.header?.old_start}
-              code={data.diff.lines?.join('\n')}
+              code={showRaw ? rawCode : data.diff.lines?.join('\n')}
               language={data.language}
               isDiff
             />
@@ -41,7 +71,7 @@ const DiffCode = ({ data }: Props) => {
             <Button
               variant="secondary"
               size="small"
-              onClick={() => copyToClipboard(data.diff.lines.join('\n'))}
+              onClick={() => copyToClipboard(rawCode)}
             >
               <Clipboard />
               Copy
