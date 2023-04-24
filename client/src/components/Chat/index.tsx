@@ -40,10 +40,11 @@ const Chat = () => {
   const { navigateConversationResults, navigateRepoPath } =
     useContext(AppNavigationContext);
   const [isActive, setActive] = useState(false);
+  const [isLoading, setLoading] = useState(false);
   const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
   const [threadId, setThreadId] = useState('');
-  const [resp, setResp] = useState(null);
+  const [resp, setResp] = useState<{ thread_id: string } | null>(null);
   useOnClickOutside(chatRef, () => setActive(false));
 
   useEffect(() => {
@@ -66,6 +67,7 @@ const Chat = () => {
     (query: string) => {
       prevEventSource?.close();
       setInputValue('');
+      setLoading(true);
       const eventSource = new EventSource(
         `${apiUrl.replace('https:', '')}/answer?q=${query}&repo_ref=${tab.key}${
           threadId ? `&thread_id=${threadId}` : ''
@@ -80,6 +82,7 @@ const Chat = () => {
         if (ev.data === '[DONE]') {
           eventSource.close();
           prevEventSource = undefined;
+          setLoading(false);
           setConversation((prev) => {
             const newConversation = prev.slice(0, -1);
             const lastMessage = {
@@ -117,73 +120,6 @@ const Chat = () => {
                 : [...prev.slice(-1), messageToAdd];
             return [...newConversation, ...lastMessages];
           });
-          // if (typeof data.Ok === 'string') {
-          //   setConversation((prev) => {
-          //     const newConversation = prev?.slice(0, -1) || [];
-          //     const lastMessage = prev?.slice(-1)[0];
-          //     const lastMessages: ChatMessage[] =
-          //       lastMessage?.author === ChatMessageAuthor.Server &&
-          //       lastMessage?.isLoading
-          //         ? [
-          //             {
-          //               author: ChatMessageAuthor.Server,
-          //               isLoading: true,
-          //               type: ChatMessageType.Answer,
-          //               loadingSteps: [...lastMessage.loadingSteps, data.Ok],
-          //             },
-          //           ]
-          //         : [
-          //             ...prev.slice(-1),
-          //             {
-          //               author: ChatMessageAuthor.Server,
-          //               isLoading: true,
-          //               type: ChatMessageType.Answer,
-          //               loadingSteps: [data.Ok],
-          //             },
-          //           ];
-          //     return [...newConversation, ...lastMessages];
-          //   });
-          // } else if (data.Ok.Answer) {
-          //   try {
-          //     const answerPieces = JSON.parse(data.Ok.Answer);
-          //     setConversation((prev) => {
-          //       const newConversation = prev.slice(0, -1);
-          //       const lastMessage = {
-          //         ...prev.slice(-1)[0],
-          //         text:
-          //           typeof answerPieces[0] === 'string'
-          //             ? answerPieces[1]
-          //             : answerPieces
-          //                 .filter((part: string[]) => part[0] === 'con')
-          //                 .map((p: string[]) => p[1])
-          //                 .join('\n'),
-          //         fullAnswer: answerPieces,
-          //       };
-          //       return [...newConversation, lastMessage];
-          //     });
-          //   } catch (err) {
-          //     console.log(err);
-          //   }
-          // } else if (data.Ok.Prompt) {
-          //   setConversation((prev) => {
-          //     const newConversation = prev.slice(0, -1);
-          //     const lastMessage = {
-          //       ...prev.slice(-1)[0],
-          //       isLoading: false,
-          //     };
-          //     return [
-          //       ...newConversation,
-          //       lastMessage,
-          //       {
-          //         author: ChatMessageAuthor.Server,
-          //         isLoading: false,
-          //         type: ChatMessageType.Prompt,
-          //         text: data.Ok.Prompt,
-          //         loadingSteps: [],
-          //       },
-          //     ];
-          //   });
-          // }
         } else if (data.Err) {
           setConversation((prev) => {
             const newConversation = prev.slice(0, -1);
@@ -281,7 +217,11 @@ const Chat = () => {
         </div>
         <div className="p-4">
           {!!conversation.length && (
-            <Conversation conversation={conversation} />
+            <Conversation
+              conversation={conversation}
+              searchId={resp?.thread_id || ''}
+              isLoading={isLoading}
+            />
           )}
           <form onSubmit={onSubmit} className="flex flex-col w-95">
             <NLInput
