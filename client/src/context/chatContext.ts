@@ -6,6 +6,10 @@ type ContextType = {
   setConversation: Dispatch<SetStateAction<ChatMessage[]>>;
   isChatOpen: boolean;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
+  showTooltip: boolean;
+  setShowTooltip: Dispatch<SetStateAction<boolean>>;
+  tooltipText: string;
+  setTooltipText: Dispatch<SetStateAction<string>>;
 };
 
 export const ChatContext = createContext<ContextType>({
@@ -13,4 +17,8 @@ export const ChatContext = createContext<ContextType>({
   setConversation: () => {},
   isChatOpen: false,
   setChatOpen: () => {},
+  showTooltip: false,
+  setShowTooltip: () => {},
+  tooltipText: '',
+  setTooltipText: () => {},
 });
