@@ -125,7 +125,7 @@ fn handle_definition_local(
     let data = handler
         .handle_definition()
         .into_iter()
-        .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Definition)))
+        .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Reference)))
         .collect();
     FileSymbols { file, data }
 }
@@ -151,7 +151,7 @@ fn handle_definition_repo_wide(
                 let data = handler
                     .handle_definition()
                     .into_iter()
-                    .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Definition)))
+                    .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Reference)))
                     .collect();
                 Some(FileSymbols { file, data })
             }
@@ -176,7 +176,7 @@ fn handle_reference_local(
         file: file.clone(),
         data: defs
             .into_iter()
-            .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Reference)))
+            .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Definition)))
             .collect(),
     };
     let ref_data = FileSymbols {
@@ -196,6 +196,7 @@ fn handle_reference_repo_wide(
     start_file: &str,
     all_docs: &[ContentDocument],
 ) -> (Vec<FileSymbols>, Vec<FileSymbols>) {
+    all_docs.len();
     all_docs
         .iter()
         .filter(|doc| doc.relative_path != start_file) // do not look in the current file
@@ -214,7 +215,7 @@ fn handle_reference_repo_wide(
                     file: file.clone(),
                     data: defs
                         .into_iter()
-                        .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Reference)))
+                        .map(|range| to_occurrence(doc, range, Some(OccurrenceKind::Definition)))
                         .collect(),
                 };
                 let ref_data = FileSymbols {
@@ -330,7 +331,7 @@ pub(super) async fn handle(
 
             for f in repo_wide_references {
                 if f.is_populated() {
-                    yield Ok(Event::default().json_data(dbg!(f)).unwrap());
+                    yield Ok(Event::default().json_data(f).unwrap());
                 }
             }
 
@@ -405,7 +406,7 @@ pub(super) async fn handle(
 
                     for f in file_symbols.into_iter() {
                         if f.is_populated() {
-                            yield Ok(Event::default().json_data(dbg!(f)).unwrap());
+                            yield Ok(Event::default().json_data(f).unwrap());
                         }
                     }
                 }
@@ -440,7 +441,7 @@ fn build_prompt(file_symbols: &[FileSymbols]) -> api::Messages {
         .map(|((file, occurrence), idx)| {
             let name = occurrence.snippet.highlight_strs()[0];
             format!(
-                "{}. {} of `{}` in file `{}`:\n{}\n{DELIMITER}n",
+                "{}. {} of `{}` in file `{}`:\n{}\n{DELIMITER}\n",
                 idx,
                 occurrence.kind.unwrap_or(OccurrenceKind::Reference),
                 name,
@@ -525,6 +526,10 @@ async fn gpt_handler(
     file_symbols: &[FileSymbols],
     answer_bearer: String,
 ) -> Option<Vec<usize>> {
+    if file_symbols.is_empty() {
+        return None;
+    }
+
     let semantic = app.semantic.clone()?;
 
     let answer_api_client = semantic.build_answer_api_client(
