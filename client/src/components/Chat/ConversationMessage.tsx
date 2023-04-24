@@ -1,10 +1,11 @@
-import React, { useCallback, useContext, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { useRive } from '@rive-app/react-canvas';
 import { QuillIcon } from '../../icons';
 import useAnalytics from '../../hooks/useAnalytics';
 import { saveUpvote } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
 import { ChatMessageAuthor } from '../../types/general';
+import { ChatContext } from '../../context/chatContext';
 
 type Props = {
   author: ChatMessageAuthor;
@@ -27,6 +28,7 @@ const ConversationMessage = ({
   const [isDownvote, setIsDownvote] = useState(false);
   const { trackUpvote } = useAnalytics();
   const { envConfig } = useContext(DeviceContext);
+  const { setChatOpen } = useContext(ChatContext);
   const RiveUpvoteInline = useRive({
     src: '/like-blue.riv',
     autoplay: false,
@@ -35,6 +37,10 @@ const ConversationMessage = ({
     src: '/like-red.riv',
     autoplay: false,
   });
+
+  useEffect(() => {
+    setChatOpen(true);
+  }, []);
 
   const handleUpvote = useCallback(
     (isUpvote: boolean) => {
