@@ -9,9 +9,11 @@ import Message from './ConversationMessage';
 
 type Props = {
   conversation: ChatMessage[];
+  searchId: string;
+  isLoading?: boolean;
 };
 
-const Conversation = ({ conversation }: Props) => {
+const Conversation = ({ conversation, searchId, isLoading }: Props) => {
   const messagesRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     messagesRef.current?.scrollTo({
@@ -57,6 +59,14 @@ const Conversation = ({ conversation }: Props) => {
                 (m.author === ChatMessageAuthor.Server && m.error) ||
                 ''
               }
+              showInlineFeedback={
+                m.author === ChatMessageAuthor.Server &&
+                !m.isLoading &&
+                !isLoading &&
+                i === conversation.length - 1
+              }
+              searchId={searchId}
+              query={conversation[0].text || ''}
             />
           ) : null}
         </Fragment>
