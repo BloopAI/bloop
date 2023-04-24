@@ -239,6 +239,7 @@ module.exports = {
       },
       animation: {
         'spin-slow': 'spin 1.5s linear infinite',
+        'spin-extra-slow': 'spin 2s linear infinite',
         'move-x': 'move-x 2.5s linear infinite',
         'move-x-fast': 'move-bg 1.5s linear infinite',
         'flash-highlight': 'flash-highlight 1.5s linear',
