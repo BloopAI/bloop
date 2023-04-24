@@ -90,8 +90,8 @@ const RepoList = ({
               filteredRepos.map((repo, i) => (
                 <Fragment key={repo.name + i}>
                   {i === 0 ||
-                  (repos[i - 1] &&
-                    repos[i - 1].folderName !== repo.folderName) ? (
+                  (filteredRepos[i - 1] &&
+                    filteredRepos[i - 1].folderName !== repo.folderName) ? (
                     <span
                       className={`bg-gray-800 text-sm w-full py-1 px-4 block ${
                         i === 0 ? 'rounded-t-md' : ''
