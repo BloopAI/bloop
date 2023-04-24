@@ -31,7 +31,6 @@ const GithubConnectStep = ({
   const {
     code,
     codeCopied,
-    loginUrl,
     authenticationFailed,
     buttonClicked,
     handleClick,
@@ -67,11 +66,7 @@ const GithubConnectStep = ({
   const getButton = () => {
     if (authenticationFailed) {
       return (
-        <Button
-          variant="primary"
-          onClick={generateNewCode}
-          disabled={!loginUrl}
-        >
+        <Button variant="primary" onClick={generateNewCode}>
           Generate new code
         </Button>
       );
@@ -91,20 +86,14 @@ const GithubConnectStep = ({
     }
     if (buttonClicked) {
       return (
-        <Button
-          variant="secondary"
-          disabled={!authenticationFailed}
-          onClick={handleClick}
-        >
-          {authenticationFailed || showRelaunch
-            ? 'Relaunch GitHub authentication'
-            : 'Waiting for authentication...'}
+        <Button variant="secondary" disabled>
+          Waiting for authentication...
         </Button>
       );
     }
 
     return (
-      <Button variant="primary" onClick={handleClick} disabled={!loginUrl}>
+      <Button variant="primary" onClick={handleClick} disabled={!code}>
         <GitHubLogo /> Connect GitHub
       </Button>
     );
@@ -147,6 +136,14 @@ const GithubConnectStep = ({
       </span>
       <div className="flex flex-col gap-4">
         {getButton()}
+        {buttonClicked && (
+          <p className="-mt-2 text-center caption text-gray-400">
+            Or use:{' '}
+            <span className="text-primary-300" onClick={handleClick}>
+              github.com/login/device
+            </span>
+          </p>
+        )}
         {!(isAnalyticsAllowed || forceAnalyticsAllowed) || secondaryCTA ? (
           <>
             <div className="flex items-center">
