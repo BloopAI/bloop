@@ -8,13 +8,16 @@ type Props = {
 
 export const ChatContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
+  const [isChatOpen, setChatOpen] = useState(false);
 
   const contextValue = useMemo(
     () => ({
       conversation,
       setConversation,
+      isChatOpen,
+      setChatOpen,
     }),
-    [conversation],
+    [conversation, isChatOpen],
   );
   return (
     <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>

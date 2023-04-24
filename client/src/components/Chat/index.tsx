@@ -36,22 +36,22 @@ const blurInput = () => {
 const Chat = () => {
   const { isRightPanelOpen, setRightPanelOpen, tab } = useContext(UIContext);
   const { apiUrl } = useContext(DeviceContext);
-  const { conversation, setConversation } = useContext(ChatContext);
+  const { conversation, setConversation, isChatOpen, setChatOpen } =
+    useContext(ChatContext);
   const { navigateConversationResults, navigateRepoPath } =
     useContext(AppNavigationContext);
-  const [isActive, setActive] = useState(false);
   const [isLoading, setLoading] = useState(false);
   const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
   const [threadId, setThreadId] = useState('');
   const [resp, setResp] = useState<{ thread_id: string } | null>(null);
-  useOnClickOutside(chatRef, () => setActive(false));
+  useOnClickOutside(chatRef, () => setChatOpen(false));
 
   useEffect(() => {
-    if (isActive) {
+    if (isChatOpen) {
       focusInput();
     }
-  }, [isActive]);
+  }, [isChatOpen]);
 
   useEffect(() => {
     const lastMessage = conversation[conversation.length - 1];
@@ -98,6 +98,9 @@ const Chat = () => {
           setResp(data.Ok);
           setThreadId(data.Ok.thread_id);
           const newMessage = data.Ok.messages[0];
+          if (newMessage.results?.length && !newMessage.content) {
+            setChatOpen(false);
+          }
           setConversation((prev) => {
             const newConversation = prev?.slice(0, -1) || [];
             const lastMessage = prev?.slice(-1)[0];
@@ -175,16 +178,16 @@ const Chat = () => {
     <>
       <button
         className={`fixed z-50 bottom-20 w-13 h-13 rounded-full cursor-pointer ${
-          isActive || isRightPanelOpen ? '-right-full' : 'right-8'
+          isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
         } border border-gray-600 bg-gray-700 transition-all duration-300 ease-out-slow`}
-        onClick={() => setActive(true)}
+        onClick={() => setChatOpen(true)}
       >
         {/*<div>chat</div>*/}
       </button>
       <div
         ref={chatRef}
         className={`fixed z-50 bottom-20 rounded-xl group w-97 max-h-[30rem] flex flex-col justify-end ${
-          !isActive || isRightPanelOpen ? '-right-full' : 'right-8'
+          !isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
         } backdrop-blur-6 shadow-small bg-gray-800/50 transition-all duration-300 ease-out-slow`}
       >
         <div className="w-full max-h-0 group-hover:max-h-96 transition-all duration-200 overflow-hidden flex-shrink-0">
@@ -208,7 +211,7 @@ const Chat = () => {
                 >
                   Create new
                 </ChipButton>
-                <ChipButton variant="filled" onClick={() => setActive(false)}>
+                <ChipButton variant="filled" onClick={() => setChatOpen(false)}>
                   <CloseSign sizeClassName="w-3.5 h-3.5" />
                 </ChipButton>
               </div>
@@ -255,7 +258,7 @@ const Chat = () => {
       <AllConversations
         setHistoryOpen={setRightPanelOpen}
         isHistoryOpen={isRightPanelOpen}
-        setActive={setActive}
+        setActive={setChatOpen}
       />
     </>
   );
