@@ -59,8 +59,10 @@ const NLInput = ({
   return (
     <div
       className={`w-full flex items-start gap-2 bg-gray-800 rounded-lg disabled:border-transparent disabled:text-gray-500
-    border border-gray-700 focus-within:border-gray-600 hover:border-gray-600 px-4
-    text-gray-400 focus-within:text-gray-100 hover:text-gray-100 transition-all ease-out duration-150 flex-grow-0`}
+    border border-gray-700 focus-within:border-gray-600 px-4
+    text-gray-400 focus-within:text-gray-100 ${
+      isStoppable ? '' : 'hover:text-gray-100 hover:border-gray-600'
+    } transition-all ease-out duration-150 flex-grow-0`}
     >
       <span className="py-4">
         <QuillIcon />

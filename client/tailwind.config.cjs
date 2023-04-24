@@ -162,6 +162,7 @@ module.exports = {
         'medium': '0px 16px 24px rgba(0, 0, 0, 0.25)'
       },
       spacing: {
+        "4.5": "1.125rem",
         "11.5": "2.875rem",
         '13': '3.375rem',
         "30": "7.5rem",
