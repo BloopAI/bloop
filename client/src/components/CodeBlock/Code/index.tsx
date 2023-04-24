@@ -12,6 +12,11 @@ type HighlightMap = {
   endHl?: boolean;
 };
 
+type Line = {
+  tokens: HighlightMap[];
+  lineNumber: number | null;
+};
+
 type Props = {
   code: string;
   language: string;
@@ -122,9 +127,24 @@ const Code = ({
     return highlightMap;
   };
 
-  const tokensMap: HighlightMap[][] = useMemo((): HighlightMap[][] => {
-    return tokens.map((line) => getMap(line));
-  }, [tokens]);
+  const tokensMap = useMemo((): Line[] => {
+    const lines = tokens
+      .map((line) => getMap(line))
+      .map((l): Line => ({ tokens: l, lineNumber: null }));
+    let currentLine = lineStart;
+    for (let i = 0; i < lines.length; i++) {
+      if (
+        isDiff &&
+        !lines[i].tokens[0].token.content &&
+        lines[i].tokens[1].token.content === '-'
+      ) {
+        continue;
+      }
+      lines[i].lineNumber = currentLine + 1;
+      currentLine++;
+    }
+    return lines;
+  }, [tokens, lineStart, isDiff]);
 
   const codeLines = useMemo(
     () =>
@@ -132,6 +152,7 @@ const Code = ({
         <CodeLine
           key={lineNumber}
           lineNumber={lineStart + lineNumber}
+          lineNumberToShow={line.lineNumber}
           showLineNumbers={showLines}
           symbols={getSymbols(lineStart + lineNumber)}
           lineHidden={
@@ -140,13 +161,17 @@ const Code = ({
           hoverEffect={lineHoverEffect}
           highlightColor={highlightColor}
           isNewLine={
-            isDiff && !line[0].token.content && line[1].token.content === '+'
+            isDiff &&
+            !line.tokens[0].token.content &&
+            line.tokens[1].token.content === '+'
           }
           isRemovedLine={
-            isDiff && !line[0].token.content && line[1].token.content === '-'
+            isDiff &&
+            !line.tokens[0].token.content &&
+            line.tokens[1].token.content === '-'
           }
         >
-          {line.map((token, index) => (
+          {line.tokens.map((token, index) => (
             <CodeToken
               key={index}
               token={token.token}
