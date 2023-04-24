@@ -264,7 +264,7 @@ impl Backends {
             .entry(Backend::Github)
             .and_modify(|existing| {
                 existing.inner = BackendCredential::Github(gh.clone());
-                existing.updated_tx.send(()).unwrap();
+                _ = existing.updated_tx.send(());
             })
             .or_insert_with(|| BackendCredential::Github(gh).into());
     }
@@ -323,7 +323,7 @@ impl BackendCredential {
                     .repo_pool
                     .read_async(&repo_ref, |_k, repo| repo.clone())
                     .await
-                    .unwrap();
+                    .expect("repo exists & locked, this shouldn't happen");
                 gh.auth.pull_repo(repo).await
             }
             None => {
@@ -332,7 +332,7 @@ impl BackendCredential {
                     .repo_pool
                     .read_async(&repo_ref, |_k, repo| repo.clone())
                     .await
-                    .unwrap();
+                    .expect("repo just created & locked, this shouldn't happen");
                 gh.auth.clone_repo(repo.clone()).await
             }
         };
@@ -347,7 +347,7 @@ impl BackendCredential {
         app.repo_pool
             .update_async(&repo_ref, |_k, v| v.sync_status = new_status)
             .await
-            .unwrap();
+            .expect("unlocking repo failed, this shouldn't happen");
 
         app.config.source.save_pool(app.repo_pool.clone())?;
         synced
