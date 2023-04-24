@@ -229,9 +229,10 @@ const Chat = () => {
               value={inputValue}
               onSubmit={onSubmit}
               onChange={(e) => setInputValue(e.target.value)}
-              isStoppable={
+              isStoppable={isLoading}
+              loadingSteps={
                 (conversation[conversation.length - 1] as ChatMessageServer)
-                  ?.isLoading
+                  ?.loadingSteps
               }
               onStop={stopGenerating}
               placeholder={
