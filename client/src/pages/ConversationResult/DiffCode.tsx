@@ -65,6 +65,7 @@ const DiffCode = ({ data }: Props) => {
               code={showRaw ? rawCode : data.diff.lines?.join('\n')}
               language={data.language}
               isDiff
+              removePaddings
             />
           </div>
           <div className="absolute top-4 right-4">
