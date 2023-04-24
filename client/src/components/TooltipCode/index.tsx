@@ -3,8 +3,6 @@ import Tippy, { TippyProps } from '@tippyjs/react/headless';
 import Code from '../CodeBlock/Code';
 import BreadcrumbsPath from '../BreadcrumbsPath';
 import { TokenInfoResponse } from '../../types/api';
-import Button from '../Button';
-import Sparkle from '../../icons/Sparkle';
 import SkeletonItem from '../SkeletonItem';
 import Badge from './Badge';
 
@@ -23,15 +21,11 @@ type Props = {
 export enum Type {
   REF = 'ref',
   DEF = 'def',
-  MOD = 'mod',
-  RET = 'ret',
 }
 
 const colorMap = {
   ref: 'text-danger-400',
   def: 'text-success-400',
-  mod: 'text-violet-400',
-  ret: 'text-sky-500',
 };
 
 const positionMapping = {
@@ -73,12 +67,7 @@ const TooltipCode = ({
   queryParams,
   isLoading,
 }: Props) => {
-  const [filters, setFilters] = useState<Type[]>([
-    Type.REF,
-    Type.DEF,
-    Type.MOD,
-    Type.RET,
-  ]);
+  const [filters, setFilters] = useState<Type[]>([Type.REF, Type.DEF]);
   const [isExplanationOpen, setExplanationOpen] = useState(false);
   const [explanation, setExplanation] = useState('');
 
@@ -192,28 +181,6 @@ const TooltipCode = ({
                       )
                     }
                     tooltipText="The line of code where the identifier is referenced"
-                  />
-                  <Badge
-                    type={Type.MOD}
-                    onClick={toggleFilter}
-                    active={filters.includes(Type.MOD)}
-                    disabled={
-                      !data?.some((d) =>
-                        d.data.some((dd) => dd.kind.startsWith(Type.MOD)),
-                      )
-                    }
-                    tooltipText="The line of code where the identifier is modified"
-                  />
-                  <Badge
-                    type={Type.RET}
-                    onClick={toggleFilter}
-                    active={filters.includes(Type.RET)}
-                    disabled={
-                      !data?.some((d) =>
-                        d.data.some((dd) => dd.kind.startsWith(Type.RET)),
-                      )
-                    }
-                    tooltipText="The line of code where the identifier is returned"
                   />
                 </div>
                 {/*{!isExplanationOpen && (*/}
