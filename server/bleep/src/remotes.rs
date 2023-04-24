@@ -63,6 +63,9 @@ pub(crate) enum RemoteError {
     #[error("github access error: {0}")]
     GitHub(#[from] octocrab::Error),
 
+    #[error("underlying thread died: {0:?}")]
+    JoinError(#[from] tokio::task::JoinError),
+
     #[error("low-level code: {0:?}")]
     UnspecifiedGit(git2::Error),
 }
@@ -97,8 +100,7 @@ async fn git_clone(auth: GitCreds, url: &str, target: &Path) -> Result<()> {
         builder.fetch_options(options);
         builder.clone(&url, &target)
     })
-    .await
-    .expect("git failed")?;
+    .await??;
 
     Ok(())
 }
@@ -137,8 +139,7 @@ async fn git_pull(auth: GitCreds, repo: &Repository) -> Result<()> {
             Some(git2::build::CheckoutBuilder::new().force()),
         )?)
     })
-    .await
-    .expect("git failed")?;
+    .await??;
 
     let mut git_gc = Command::new("git");
 
