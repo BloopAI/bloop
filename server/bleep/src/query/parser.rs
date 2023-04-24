@@ -13,6 +13,7 @@ pub struct Query<'a> {
     pub repo: Option<Literal<'a>>,
     pub path: Option<Literal<'a>>,
     pub lang: Option<Cow<'a, str>>,
+    pub branch: Option<Literal<'a>>,
     pub target: Option<Target<'a>>,
 }
 
@@ -26,6 +27,7 @@ pub enum Target<'a> {
 pub struct NLQuery<'a> {
     pub repos: HashSet<Literal<'a>>,
     pub langs: HashSet<Cow<'a, str>>,
+    pub branch: HashSet<Literal<'a>>,
     pub target: Option<Literal<'a>>,
 }
 
@@ -40,6 +42,10 @@ impl<'a> NLQuery<'a> {
 
     pub fn target(&self) -> Option<&Cow<'_, str>> {
         self.target.as_ref().and_then(|t| t.as_plain())
+    }
+
+    pub fn branch(&self) -> impl Iterator<Item = &Cow<'_, str>> {
+        self.branch.iter().filter_map(|t| t.as_plain())
     }
 }
 
@@ -56,6 +62,7 @@ impl<'a> Query<'a> {
             repo: rhs.repo.or(self.repo),
             path: rhs.path.or(self.path),
             lang: rhs.lang.or(self.lang),
+            branch: rhs.branch.or(self.branch),
 
             target: match (self.target, rhs.target) {
                 (Some(Target::Content(lhs)), Some(Target::Content(rhs))) => {
@@ -285,6 +292,7 @@ enum Expr<'a> {
     Path(Literal<'a>),
     Lang(Cow<'a, str>),
     Content(Literal<'a>),
+    Branch(Literal<'a>),
 
     CaseSensitive(bool),
     Open(bool),
@@ -306,6 +314,7 @@ impl<'a> Expr<'a> {
             Rule::repo => Repo(Literal::from(pair.into_inner().next().unwrap())),
             Rule::symbol => Symbol(Literal::from(pair.into_inner().next().unwrap())),
             Rule::org => Org(Literal::from(pair.into_inner().next().unwrap())),
+            Rule::branch => Branch(Literal::from(pair.into_inner().next().unwrap())),
             Rule::lang => Lang(pair.into_inner().as_str().into()),
 
             Rule::open => {
@@ -407,12 +416,17 @@ pub fn parse_nl(query: &str) -> Result<NLQuery<'_>, ParseError> {
 
     let mut repos = HashSet::new();
     let mut langs = HashSet::new();
+    let mut branch = HashSet::new();
     let mut target: Option<Literal> = None;
     for pair in pairs {
         match pair.as_rule() {
             Rule::repo => {
                 let item = Literal::from(pair.into_inner().next().unwrap());
                 let _ = repos.insert(item);
+            }
+            Rule::branch => {
+                let item = Literal::from(pair.into_inner().next().unwrap());
+                let _ = branch.insert(item);
             }
             Rule::lang => {
                 let item = super::languages::parse_alias(pair.into_inner().as_str().into());
@@ -433,6 +447,7 @@ pub fn parse_nl(query: &str) -> Result<NLQuery<'_>, ParseError> {
     Ok(NLQuery {
         repos,
         langs,
+        branch,
         target,
     })
 }
@@ -441,6 +456,10 @@ fn flatten(root: Expr<'_>) -> SmallVec<[Query<'_>; 1]> {
     match root {
         Expr::Repo(repo) => smallvec![Query {
             repo: Some(repo),
+            ..Default::default()
+        }],
+        Expr::Branch(branch) => smallvec![Query {
+            branch: Some(branch),
             ..Default::default()
         }],
         Expr::Org(org) => smallvec![Query {
@@ -504,6 +523,17 @@ mod tests {
         assert_eq!(
             parse("ParseError").unwrap(),
             vec![Query {
+                target: Some(Target::Content(Literal::Plain("ParseError".into()))),
+                ..Query::default()
+            }],
+        );
+
+        assert_eq!(
+            parse("org:bloopai repo:enterprise-search branch:main ParseError").unwrap(),
+            vec![Query {
+                repo: Some(Literal::Plain("enterprise-search".into())),
+                org: Some(Literal::Plain("bloopai".into())),
+                branch: Some(Literal::Plain("main".into())),
                 target: Some(Target::Content(Literal::Plain("ParseError".into()))),
                 ..Query::default()
             }],
@@ -962,6 +992,7 @@ mod tests {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into()].into(),
                 repos: [Literal::Plain("bloop".into())].into(),
+                branch: [].into()
             },
         );
     }
@@ -985,6 +1016,7 @@ mod tests {
             NLQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into(), "typescript".into()].into(),
+                branch: [].into(),
                 repos: [
                     Literal::Plain("bloop".into()),
                     Literal::Plain("bar".into()),
@@ -1006,15 +1038,17 @@ mod tests {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into()].into(),
                 repos: [Literal::Plain("bloop".into())].into(),
+                branch: [].into(),
             },
         );
 
         assert_eq!(
-            parse_nl("case:ignore why are languages excluded from ctags?").unwrap(),
+            parse_nl("case:ignore why are languages excluded from ctags? branch:main").unwrap(),
             NLQuery {
                 target: Some(Literal::Plain(
                     "why are languages excluded from ctags?".into()
                 )),
+                branch: [Literal::Plain("main".into())].into(),
                 ..Default::default()
             },
         );

@@ -1,3 +1,4 @@
+use anyhow::Context;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt::{self, Display},
@@ -11,9 +12,11 @@ use utoipa::ToSchema;
 
 use crate::{
     indexes,
-    language::{get_language_info, LanguageInfo},
     state::{get_relative_path, pretty_write_file},
 };
+
+pub(crate) mod iterator;
+use iterator::language;
 
 pub(crate) type FileCache = Arc<scc::HashMap<PathBuf, FreshValue<String>>>;
 
@@ -100,6 +103,10 @@ impl RepoRef {
 
     pub fn is_local(&self) -> bool {
         self.backend == Backend::Local
+    }
+
+    pub fn is_remote(&self) -> bool {
+        self.backend != Backend::Local
     }
 
     pub fn indexed_name(&self) -> String {
@@ -244,7 +251,7 @@ impl Repository {
         writers: &indexes::GlobalWriteHandle<'_>,
     ) -> Result<Arc<RepoMetadata>, RepoError> {
         use rayon::prelude::*;
-        let metadata = get_repo_metadata(&self.disk_path).await;
+        let metadata = self.get_repo_metadata().await?;
 
         tokio::task::block_in_place(|| {
             writers
@@ -254,6 +261,23 @@ impl Repository {
         })?;
 
         Ok(metadata)
+    }
+
+    /// Pre-scan the repository to provide supporting metadata for a
+    /// new indexing operation
+    async fn get_repo_metadata(&self) -> Result<Arc<RepoMetadata>, RepoError> {
+        let last_commit_unix_secs = gix::open(&self.disk_path)
+            .context("failed to open git repo")
+            .and_then(|repo| Ok(repo.head()?.peel_to_commit_in_place()?.time()?.seconds()))
+            .unwrap_or(0) as u64;
+
+        let langs = Default::default();
+
+        Ok(RepoMetadata {
+            last_commit_unix_secs,
+            langs,
+        }
+        .into())
     }
 
     /// Marks the repository for removal on the next sync
@@ -272,7 +296,7 @@ impl Repository {
         self.last_index_unix_secs = get_unix_time(SystemTime::now());
         self.last_commit_unix_secs = metadata.last_commit_unix_secs;
         self.sync_status = SyncStatus::Done;
-        self.most_common_lang = metadata.langs.most_common_lang.map(|l| l.to_string());
+        self.most_common_lang = metadata.langs.most_common_lang().map(|l| l.to_string());
     }
 
     fn file_cache_path(&self, index_dir: &Path) -> PathBuf {
@@ -311,19 +335,7 @@ fn get_unix_time(time: SystemTime) -> u64 {
 #[derive(Debug)]
 pub struct RepoMetadata {
     pub last_commit_unix_secs: u64,
-    pub langs: LanguageInfo,
-}
-
-async fn get_repo_metadata(repo_disk_path: &PathBuf) -> Arc<RepoMetadata> {
-    let repo = git2::Repository::open(repo_disk_path)
-        .and_then(|repo| Ok(repo.head()?.peel_to_commit()?.time().seconds() as u64))
-        .unwrap_or(0);
-
-    RepoMetadata {
-        last_commit_unix_secs: repo,
-        langs: get_language_info(repo_disk_path),
-    }
-    .into()
+    pub langs: language::LanguageInfo,
 }
 
 #[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug, Hash)]

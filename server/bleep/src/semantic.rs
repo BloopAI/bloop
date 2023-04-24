@@ -12,7 +12,7 @@ use qdrant_client::{
     qdrant::{
         r#match::MatchValue, vectors_config, with_payload_selector, with_vectors_selector,
         CollectionOperationResponse, CreateCollection, Distance, FieldCondition, Filter, Match,
-        PointId, PointStruct, ScoredPoint, SearchPoints, VectorParams, VectorsConfig,
+        PointId, PointStruct, ScoredPoint, SearchPoints, Value, VectorParams, VectorsConfig,
         WithPayloadSelector, WithVectorsSelector,
     },
 };
@@ -217,7 +217,23 @@ impl Semantic {
             }
         };
 
-        let filters = [repo_filter, lang_filter]
+        let branch_filter = {
+            let conditions = parsed_query
+                .branch()
+                .map(|l| make_kv_filter("branches", l).into())
+                .collect::<Vec<_>>();
+
+            if conditions.is_empty() {
+                None
+            } else {
+                Some(Filter {
+                    should: conditions,
+                    ..Default::default()
+                })
+            }
+        };
+
+        let filters = [repo_filter, lang_filter, branch_filter]
             .into_iter()
             .flatten()
             .map(Into::into)
@@ -254,6 +270,7 @@ impl Semantic {
         relative_path: &str,
         buffer: &str,
         lang_str: &str,
+        branches: &[String],
     ) {
         // Delete all points corresponding to the same path
         self.delete_points_by_path(repo_ref, std::iter::once(relative_path))
@@ -284,6 +301,7 @@ impl Semantic {
                             ("lang".into(), lang_str.to_ascii_lowercase().into()),
                             ("repo_name".into(), repo_name.into()),
                             ("repo_ref".into(), repo_ref.into()),
+                            ("branches".into(), Value::from(branches.to_owned())),
                             ("relative_path".into(), relative_path.into()),
                             ("snippet".into(), chunk.data.into()),
                             (

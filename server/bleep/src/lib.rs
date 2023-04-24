@@ -42,7 +42,6 @@ mod background;
 mod collector;
 mod config;
 mod env;
-mod language;
 mod remotes;
 mod repo;
 mod webserver;

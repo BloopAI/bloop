@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     ops::Not,
     path::{Path, PathBuf, MAIN_SEPARATOR},
     sync::{
@@ -10,10 +10,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use once_cell::sync::Lazy;
-use regex::Regex;
 use scc::hash_map::Entry;
-use smallvec::SmallVec;
 use tantivy::{
     collector::TopDocs,
     doc,
@@ -40,19 +37,19 @@ use super::{
 };
 use crate::{
     intelligence::TreeSitterFile,
-    repo::{FileCache, RepoMetadata, RepoRef, Repository},
+    repo::{iterator::*, FileCache, RepoMetadata, RepoRef, RepoRemote, Repository},
     semantic::Semantic,
     symbol::SymbolLocations,
     Configuration,
 };
 
 struct Workload<'a> {
-    entry_disk_path: PathBuf,
     repo_disk_path: &'a Path,
     repo_ref: String,
     repo_name: &'a str,
     repo_metadata: &'a RepoMetadata,
     cache: &'a FileCache,
+    file: RepoFile,
 }
 
 #[derive(Clone)]
@@ -97,6 +94,9 @@ pub struct File {
     pub raw_content: Field,
     pub raw_repo_name: Field,
     pub raw_relative_path: Field,
+
+    // list of branches in which this file can be found
+    pub branches: Field,
 }
 
 impl File {
@@ -118,9 +118,11 @@ impl File {
         let line_end_indices =
             builder.add_bytes_field("line_end_indices", BytesOptions::default().set_stored());
 
-        let symbols = builder.add_text_field("symbols", trigram);
+        let symbols = builder.add_text_field("symbols", trigram.clone());
         let symbol_locations =
             builder.add_bytes_field("symbol_locations", BytesOptions::default().set_stored());
+
+        let branches = builder.add_text_field("branches", trigram);
 
         let lang = builder.add_bytes_field(
             "lang",
@@ -152,89 +154,13 @@ impl File {
             raw_content,
             raw_repo_name,
             raw_relative_path,
+            branches,
 
             #[cfg(feature = "debug")]
             histogram: Arc::new(Histogram::builder().build().unwrap().into()),
         }
     }
 }
-
-fn should_index<P: AsRef<Path>>(p: &P) -> bool {
-    let path = p.as_ref();
-
-    #[rustfmt::skip]
-    const EXT_BLACKLIST: &[&str] = &[
-        // graphics
-        "png", "jpg", "jpeg", "ico", "bmp", "bpg", "eps", "pcx", "ppm", "tga", "tiff", "wmf", "xpm",
-        "svg",
-        // fonts
-        "ttf", "woff2", "fnt", "fon", "otf",
-        // documents
-        "pdf", "ps", "doc", "dot", "docx", "dotx", "xls", "xlsx", "xlt", "odt", "ott", "ods", "ots", "dvi", "pcl",
-        // media
-        "mp3", "ogg", "ac3", "aac", "mod", "mp4", "mkv", "avi", "m4v", "mov", "flv",
-        // compiled
-        "jar", "pyc", "war", "ear",
-        // compression
-        "tar", "gz", "bz2", "xz", "7z", "bin", "apk", "deb", "rpm",
-        // executable
-        "com", "exe", "out", "coff", "obj", "dll", "app", "class",
-        // misc.
-        "log", "wad", "bsp", "bak", "sav", "dat", "lock",
-    ];
-
-    let Some(ext) = path.extension() else {
-        return true;
-    };
-
-    let ext = ext.to_string_lossy();
-    if EXT_BLACKLIST.contains(&&*ext) {
-        return false;
-    }
-
-    static VENDOR_PATTERNS: Lazy<HashMap<&'static str, SmallVec<[Regex; 1]>>> = Lazy::new(|| {
-        let patterns: &[(&[&str], &[&str])] = &[
-            (
-                &["go", "proto"],
-                &["^(vendor|third_party)/.*\\.\\w+$", "\\w+\\.pb\\.go$"],
-            ),
-            (
-                &["js", "jsx", "ts", "tsx", "css", "md", "json", "txt", "conf"],
-                &["^(node_modules|vendor|dist)/.*\\.\\w+$"],
-            ),
-        ];
-
-        patterns
-            .iter()
-            .flat_map(|(exts, rxs)| exts.iter().map(move |&e| (e, rxs)))
-            .map(|(ext, rxs)| {
-                let regexes = rxs
-                    .iter()
-                    .filter_map(|source| match Regex::new(source) {
-                        Ok(r) => Some(r),
-                        Err(e) => {
-                            warn!(%e, "failed to compile vendor regex {source:?}");
-                            None
-                        }
-                    })
-                    .collect();
-
-                (ext, regexes)
-            })
-            .collect()
-    });
-
-    match VENDOR_PATTERNS.get(&*ext) {
-        None => true,
-        Some(rxs) => !rxs.iter().any(|r| r.is_match(&path.to_string_lossy())),
-    }
-}
-
-// Empirically calculated using:
-//     cat **/*.rs | awk '{SUM+=length;N+=1}END{print SUM/N}'
-const AVG_LINE_LEN: u64 = 30;
-const MAX_LINE_COUNT: u64 = 20000;
-const MAX_FILE_LEN: u64 = AVG_LINE_LEN * MAX_LINE_COUNT;
 
 #[async_trait]
 impl Indexable for File {
@@ -248,51 +174,41 @@ impl Indexable for File {
     ) -> Result<()> {
         let file_cache = repo.open_file_cache(&self.config.index_dir)?;
         let repo_name = reporef.indexed_name();
-
-        // note: this WILL observe .gitignore files for the respective repos.
-        let walker = ignore::Walk::new(&repo.disk_path)
-            .filter_map(|de| match de {
-                Ok(de) => Some(de),
-                Err(err) => {
-                    warn!(%err, "access failure; skipping");
-                    None
-                }
-            })
-            // Preliminarily ignore files that are very large, without reading the contents.
-            .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
-            .filter_map(|de| crate::canonicalize(de.into_path()).ok())
-            .filter(|p| {
-                p.strip_prefix(&repo.disk_path)
-                    .as_ref()
-                    .map(should_index)
-                    .unwrap_or_default()
-            })
-            .collect::<Vec<PathBuf>>();
-
-        let count = walker.len();
         let processed = &AtomicU64::new(0);
 
-        let start = std::time::Instant::now();
-        use rayon::prelude::*;
+        let file_worker = |count: usize| {
+            let file_cache = file_cache.clone();
+            move |file: RepoFile| {
+                let completed = processed.fetch_add(1, Ordering::Relaxed);
+                progress(((completed as f32 / count as f32) * 100f32) as u8);
 
-        walker.into_par_iter().for_each(|entry_disk_path| {
-            let completed = processed.fetch_add(1, Ordering::Relaxed);
-            progress(((completed as f32 / count as f32) * 100f32) as u8);
+                let entry_disk_path = file.path.clone();
+                let workload = Workload {
+                    repo_disk_path: &repo.disk_path,
+                    repo_ref: reporef.to_string(),
+                    repo_name: &repo_name,
+                    cache: &file_cache,
+                    repo_metadata,
+                    file,
+                };
 
-            let workload = Workload {
-                entry_disk_path: entry_disk_path.clone(),
-                repo_disk_path: &repo.disk_path,
-                repo_ref: reporef.to_string(),
-                repo_name: &repo_name,
-                cache: &file_cache,
-                repo_metadata,
-            };
-
-            debug!(?entry_disk_path, "queueing entry");
-            if let Err(err) = self.worker(workload, writer) {
-                warn!(%err, ?entry_disk_path, "indexing failed; skipping");
+                debug!(entry_disk_path, "queueing entry");
+                if let Err(err) = self.worker(workload, writer) {
+                    warn!(%err, entry_disk_path, "indexing failed; skipping");
+                }
             }
-        });
+        };
+
+        let start = std::time::Instant::now();
+        if reporef.is_remote() && matches!(repo.remote, RepoRemote::Git { .. }) {
+            let walker = GitWalker::open_repository(&repo.disk_path, None)?;
+            let count = walker.len();
+            walker.for_each(file_worker(count));
+        } else {
+            let walker = FileWalker::index_directory(&repo.disk_path);
+            let count = walker.len();
+            walker.for_each(file_worker(count));
+        };
 
         info!(?repo.disk_path, "repo file indexing finished, took {:?}", start.elapsed());
 
@@ -480,51 +396,45 @@ impl Indexer<File> {
 }
 
 impl File {
-    #[tracing::instrument(fields(repo=%workload.repo_ref, entry_disk_path=?workload.entry_disk_path), skip_all)]
+    #[tracing::instrument(fields(repo=%workload.repo_ref, entry_disk_path=?workload.file.path), skip_all)]
     fn worker(&self, workload: Workload<'_>, writer: &IndexWriter) -> Result<()> {
         let Workload {
-            entry_disk_path,
             repo_ref,
             repo_disk_path,
             repo_name,
             repo_metadata,
             cache,
+            mut file,
         } = workload;
 
         #[cfg(feature = "debug")]
         let start = Instant::now();
 
-        let mut buffer = if entry_disk_path.is_file() {
-            match std::fs::read_to_string(&entry_disk_path) {
-                Err(err) => {
-                    warn!(%err, ?entry_disk_path, "read failed; skipping");
-                    return Ok(());
-                }
-                Ok(buffer) => buffer,
-            }
-        } else {
-            String::new()
+        let relative_path = {
+            let entry_srcpath = PathBuf::from(&file.path);
+            entry_srcpath
+                .strip_prefix(repo_disk_path)
+                .map(ToOwned::to_owned)
+                .unwrap_or(entry_srcpath)
         };
+        let entry_pathbuf = repo_disk_path.join(&relative_path);
 
-        let relative_path = entry_disk_path.strip_prefix(repo_disk_path)?;
-        let relative_path_str = if entry_disk_path.is_dir() {
-            format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy()).into()
+        let relative_path_str = if file.kind.is_dir() {
+            format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy())
         } else {
-            relative_path.to_string_lossy()
+            relative_path.to_string_lossy().to_string()
         };
-
         trace!("processing file");
 
         let content_hash = {
             let mut hash = blake3::Hasher::new();
             hash.update(crate::state::SCHEMA_VERSION.as_bytes());
-            hash.update(buffer.as_bytes());
+            hash.update(file.buffer.as_bytes());
             hash.finalize().to_hex().to_string()
         };
-
         trace!("adding cache entry");
 
-        match cache.entry(entry_disk_path.to_owned()) {
+        match cache.entry(entry_pathbuf.clone()) {
             Entry::Occupied(mut val) if val.get().value == content_hash => {
                 // skip processing if contents are up-to-date in the cache
                 val.get_mut().fresh = true;
@@ -539,24 +449,22 @@ impl File {
         }
         trace!("added cache entry");
 
-        let lang_str = if entry_disk_path.is_file() {
+        let lang_str = if file.kind.is_file() {
             repo_metadata
                 .langs
-                .path_map
-                .get(&entry_disk_path)
+                .get(&entry_pathbuf, file.buffer.as_ref())
                 .unwrap_or_else(|| {
-                    warn!("Path not found in language map");
-                    &Some("")
+                    warn!(?entry_pathbuf, "Path not found in language map");
+                    ""
                 })
-                .unwrap_or("")
         } else {
             ""
         };
 
         // calculate symbol locations
-        let symbol_locations = if entry_disk_path.is_file() {
+        let symbol_locations = if file.kind.is_file() {
             // build a syntax aware representation of the file
-            let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
+            let scope_graph = TreeSitterFile::try_build(file.buffer.as_bytes(), lang_str)
                 .and_then(TreeSitterFile::scope_graph);
 
             match scope_graph {
@@ -576,18 +484,21 @@ impl File {
         let symbols = symbol_locations
             .list()
             .iter()
-            .map(|sym| buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
+            .map(|sym| file.buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
             .collect::<HashSet<_>>()
             .into_iter()
             .collect::<Vec<_>>()
             .join("\n");
 
+        let branches = file.branches.join("\n");
+
         // add an NL if this file is not NL-terminated
-        if !buffer.ends_with('\n') {
-            buffer += "\n";
+        if !file.buffer.ends_with('\n') {
+            file.buffer += "\n";
         }
 
-        let line_end_indices = buffer
+        let line_end_indices = file
+            .buffer
             .match_indices('\n')
             .flat_map(|(i, _)| u32::to_le_bytes(i as u32))
             .collect::<Vec<_>>();
@@ -598,19 +509,20 @@ impl File {
             return Ok(());
         }
 
-        let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
+        let lines_avg = file.buffer.len() as f64 / file.buffer.lines().count() as f64;
         let last_commit = repo_metadata.last_commit_unix_secs;
 
         // produce vectors for this document if it is a file
-        if entry_disk_path.is_file() {
+        if file.kind.is_file() {
             if let Some(semantic) = &self.semantic {
                 tokio::task::block_in_place(|| {
                     Handle::current().block_on(semantic.insert_points_for_buffer(
                         repo_name,
                         &repo_ref,
-                        &relative_path.to_string_lossy(),
-                        &buffer,
+                        &relative_path_str,
+                        &file.buffer,
                         lang_str,
+                        &file.branches,
                     ))
                 });
             }
@@ -620,21 +532,22 @@ impl File {
         #[cfg(feature = "debug")]
         let buf_size = buffer.len();
         writer.add_document(doc!(
+            self.raw_content => file.buffer.as_bytes(),
+            self.raw_repo_name => repo_name.as_bytes(),
+            self.raw_relative_path => relative_path_str.as_bytes(),
             self.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-            self.entry_disk_path => entry_disk_path.to_string_lossy().as_ref(),
-            self.relative_path => relative_path_str.as_ref(),
+            self.entry_disk_path => entry_pathbuf.to_string_lossy().as_ref(),
+            self.relative_path => relative_path_str,
             self.repo_ref => repo_ref,
             self.repo_name => repo_name,
-            self.content => buffer.as_str(),
+            self.content => file.buffer,
             self.line_end_indices => line_end_indices,
             self.lang => lang_str.to_ascii_lowercase().as_bytes(),
             self.avg_line_length => lines_avg,
             self.last_commit_unix_seconds => last_commit,
             self.symbol_locations => bincode::serialize(&symbol_locations)?,
             self.symbols => symbols,
-            self.raw_content => buffer.as_bytes(),
-            self.raw_repo_name => repo_name.as_bytes(),
-            self.raw_relative_path => relative_path_str.as_ref().as_bytes(),
+            self.branches => branches,
         ))?;
 
         trace!("document written");
@@ -668,44 +581,5 @@ impl File {
         }
 
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_should_index() {
-        let tests = [
-            // Ignore these extensions completely.
-            ("image.png", false),
-            ("image.jpg", false),
-            ("image.jpeg", false),
-            ("font.ttf", false),
-            ("font.otf", false),
-            ("font.woff2", false),
-            ("icon.ico", false),
-            // Simple paths that should be indexed.
-            ("foo.js", true),
-            ("bar.ts", true),
-            ("quux/fred.ts", true),
-            // Typical vendored paths.
-            ("vendor/jquery.js", false),
-            ("dist/react.js", false),
-            ("vendor/github.com/Microsoft/go-winio/file.go", false),
-            (
-                "third_party/protobuf/google/protobuf/descriptor.proto",
-                false,
-            ),
-            ("src/defs.pb.go", false),
-            // These are not typically vendored in Rust.
-            ("dist/main.rs", true),
-            ("vendor/foo.rs", true),
-        ];
-
-        for (path, index) in tests {
-            assert_eq!(should_index(&Path::new(path)), index);
-        }
     }
 }
