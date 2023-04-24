@@ -1,7 +1,6 @@
 import React, { useCallback, useContext, useState } from 'react';
 import { useRive } from '@rive-app/react-canvas';
 import { QuillIcon } from '../../icons';
-import Button from '../Button';
 import useAnalytics from '../../hooks/useAnalytics';
 import { saveUpvote } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
@@ -28,14 +27,6 @@ const ConversationMessage = ({
   const [isDownvote, setIsDownvote] = useState(false);
   const { trackUpvote } = useAnalytics();
   const { envConfig } = useContext(DeviceContext);
-  const RiveUpvote = useRive({
-    src: '/gray-to-blue.riv',
-    autoplay: false,
-  });
-  const RiveDownvote = useRive({
-    src: '/gray-to-red.riv',
-    autoplay: false,
-  });
   const RiveUpvoteInline = useRive({
     src: '/like-blue.riv',
     autoplay: false,
@@ -47,21 +38,15 @@ const ConversationMessage = ({
 
   const handleUpvote = useCallback(
     (isUpvote: boolean) => {
-      const upvoteComponent = showInlineFeedback
-        ? RiveUpvoteInline.rive
-        : RiveUpvote.rive;
-      const downvoteComponent = showInlineFeedback
-        ? RiveDownvoteInline.rive
-        : RiveDownvote.rive;
-      if (upvoteComponent && downvoteComponent) {
+      if (RiveUpvoteInline.rive && RiveDownvoteInline.rive) {
         if (isUpvote) {
-          upvoteComponent.play();
-          downvoteComponent.reset();
-          downvoteComponent.drawFrame();
+          RiveUpvoteInline.rive.play();
+          RiveDownvoteInline.rive.reset();
+          RiveDownvoteInline.rive.drawFrame();
         } else {
-          downvoteComponent.play();
-          upvoteComponent.reset();
-          upvoteComponent.drawFrame();
+          RiveDownvoteInline.rive.play();
+          RiveUpvoteInline.rive.reset();
+          RiveUpvoteInline.rive.drawFrame();
         }
       }
       setIsUpvote(isUpvote);
@@ -76,8 +61,6 @@ const ConversationMessage = ({
       });
     },
     [
-      RiveUpvote,
-      RiveDownvote,
       RiveUpvoteInline,
       RiveDownvoteInline,
       showInlineFeedback,
@@ -107,32 +90,6 @@ const ConversationMessage = ({
         <pre className="body-s text-gray-200 whitespace-pre-wrap">
           {message}
         </pre>
-        {author === ChatMessageAuthor.Server &&
-          !!message &&
-          !showInlineFeedback && (
-            <div
-              className={`absolute top-2 right-2 flex items-center gap-1 p-1 bg-gray-900/75 backdrop-blur-4 rounded-md opacity-0 group-custom-hover:opacity-100 transition-opacity`}
-            >
-              <Button
-                variant={'tertiary'}
-                onlyIcon
-                size="small"
-                title="Upvote"
-                onClick={() => handleUpvote(true)}
-              >
-                <RiveUpvote.RiveComponent className="w-4/5 h-4/5 transform scale-1" />
-              </Button>
-              <Button
-                variant={'tertiary'}
-                onlyIcon
-                size="small"
-                title="Downvote"
-                onClick={() => handleUpvote(false)}
-              >
-                <RiveDownvote.RiveComponent className="w-4/5 h-4/5 transform scale-1" />
-              </Button>
-            </div>
-          )}
       </div>
       {showInlineFeedback && (
         <div className="flex flex-col items-center gap-3">
