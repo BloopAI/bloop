@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Code from '../../components/CodeBlock/Code';
-import Button from '../../components/Button';
-import { Conversation } from '../../icons';
 import FileIcon from '../../components/FileIcon';
 import BreadcrumbsPath from '../../components/BreadcrumbsPath';
 import { FileTreeFileType } from '../../types';
-import { search as searchApiCall } from '../../services/api';
-import { File } from '../../types/api';
+import { getHoverables, search as searchApiCall } from '../../services/api';
+import { File, FileSearchResponse } from '../../types/api';
+import { FullResult } from '../../types/results';
+import { FullResultModeEnum, SearchType } from '../../types/general';
+import { mapFileResult, mapRanges } from '../../mappers/results';
+import { useSearch } from '../../hooks/useSearch';
+import ResultModal from '../ResultModal';
 
 type Props = {
   filePath: string;
@@ -30,6 +33,12 @@ const colors = [
 
 const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
   const [file, setFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<FullResultModeEnum>(
+    FullResultModeEnum.MODAL,
+  );
+  const [openResult, setOpenResult] = useState<FullResult | null>(null);
+  const { searchQuery: fileModalSearchQuery, data: fileResultData } =
+    useSearch<FileSearchResponse>();
   useEffect(() => {
     searchApiCall(`open:true repo:${repoName} path:${filePath}`).then(
       (resp) => {
@@ -37,6 +46,41 @@ const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
       },
     );
   }, [filePath, repoName]);
+
+  const onResultClick = useCallback(
+    (path: string) => {
+      fileModalSearchQuery(
+        `open:true repo:${repoName} path:${path}`,
+        0,
+        false,
+        SearchType.REGEX,
+      );
+    },
+    [repoName],
+  );
+
+  const handleModeChange = useCallback((m: FullResultModeEnum) => {
+    setMode(m);
+  }, []);
+
+  const onResultClosed = useCallback(() => {
+    setOpenResult(null);
+  }, [mode]);
+
+  useEffect(() => {
+    if (fileResultData) {
+      setOpenResult(mapFileResult(fileResultData.data[0]));
+      getHoverables(
+        fileResultData.data[0].data.relative_path,
+        fileResultData.data[0].data.repo_ref,
+      ).then((data) => {
+        setOpenResult((prevState) => ({
+          ...prevState!,
+          hoverableRanges: mapRanges(data.ranges),
+        }));
+      });
+    }
+  }, [fileResultData]);
 
   return (
     <div className="flex gap-3 w-full overflow-hidden">
@@ -46,9 +90,9 @@ const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
             <FileIcon filename={filePath} />
             <BreadcrumbsPath
               path={filePath}
-              repo={''}
+              repo={repoName}
               onClick={(path, type) =>
-                type === FileTreeFileType.FILE ? {} : {}
+                type === FileTreeFileType.FILE ? onResultClick(path) : {}
               }
             />
           </div>
@@ -66,7 +110,7 @@ const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
                   language={file.lang}
                   highlightColor={`rgba(${colors[c.i % colors.length].join(
                     ', ',
-                  )}, 0.20)`}
+                  )}, 1)`}
                 />
                 {i !== citations.length - 1 ? (
                   <pre className={` bg-gray-900 my-0 px-2`}>
@@ -108,6 +152,16 @@ const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
           </div>
         ))}
       </div>
+      {openResult ? (
+        <ResultModal
+          result={openResult as FullResult}
+          onResultClosed={onResultClosed}
+          mode={mode}
+          setMode={handleModeChange}
+        />
+      ) : (
+        ''
+      )}
     </div>
   );
 };

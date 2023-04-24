@@ -28,7 +28,7 @@ const modalAnimation = (top: string, shouldStretch: boolean) => ({
 });
 
 const sidebarAnimation = (shouldStretch: boolean) => ({
-  top: '4rem',
+  top: '5.5rem',
   ...(shouldStretch ? { bottom: '4rem' } : {}),
   right: '0%',
   transform: 'translate(0%, 0%)',
@@ -74,7 +74,7 @@ const ModalOrSidebar = ({
   shouldStretch = true,
   fullOverlay,
   filtersOverlay,
-  top = '5rem',
+  top = '8rem',
 }: PropsWithChildren<Props>) => {
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape' && shouldShow) {
@@ -98,7 +98,7 @@ const ModalOrSidebar = ({
           <motion.div
             key="overlay"
             className={`fixed top-0 ${
-              fullOverlay ? '' : 'mt-16'
+              fullOverlay ? '' : 'mt-24'
             } bottom-0 left-0 right-0 bg-gray-900 bg-opacity-75 cursor-alias ${
               fullOverlay ? 'z-60' : 'z-20'
             }`}
