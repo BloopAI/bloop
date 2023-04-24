@@ -159,7 +159,8 @@ module.exports = {
         'light-bigger': '0px 6px 16px rgba(0, 0, 0, 0.25)',
         'small': '0px 8px 12px rgba(14, 14, 15, 0.75)',
         'big': '0px 16px 34px rgba(0, 0, 0, 0.5)',
-        'medium': '0px 16px 24px rgba(0, 0, 0, 0.25)'
+        'medium': '0px 16px 24px rgba(0, 0, 0, 0.25)',
+        'tiny': '0px 1px 1px rgba(0, 0, 0, 0.32)'
       },
       spacing: {
         "4.5": "1.125rem",
