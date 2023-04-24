@@ -241,6 +241,10 @@ module.exports = {
         'move-x': 'move-x 2.5s linear infinite',
         'move-x-fast': 'move-bg 1.5s linear infinite',
         'flash-highlight': 'flash-highlight 1.5s linear',
+        'loader-state-zero': 'loader-state-zero 0.55s cubic-bezier(.2,.5,.5,.8)',
+        'loader-state-one': 'loader-state-one 2s cubic-bezier(.5,.5,.5,1)',
+        'loader-state-two': 'loader-state-two 0.55s cubic-bezier(.5,.2,.8,.5)',
+        'loader-state-three': 'loader-state-three 0.55s cubic-bezier(.5,.0,1,.5)',
       },
       keyframes: {
         'move-x': {
@@ -271,6 +275,22 @@ module.exports = {
           '25%': { backgroundColor: 'rgba(253,201,0,0.25)' },
           '80%': { backgroundColor: 'rgba(253,201,0,0.25)' },
           '100%': { backgroundColor: 'transparent' },
+        },
+        'loader-state-zero': {
+          '0%': {width: '0%'},
+          '100%': {width: '50%'},
+        },
+        'loader-state-one': {
+          '0%': {width: '50%'},
+          '100%': {width: '90%'},
+        },
+        'loader-state-two': {
+          '0%': {width: '50%'},
+          '100%': {width: '100%'},
+        },
+        'loader-state-three': {
+          '0%': {width: '90%'},
+          '100%': {width: '100%'},
         }
       }
     },
