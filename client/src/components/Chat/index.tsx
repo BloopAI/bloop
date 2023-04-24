@@ -7,7 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
-import { CloseSign, List } from '../../icons';
+import { CloseSign, List, LiteLoader, Sparkle } from '../../icons';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import {
@@ -36,8 +36,15 @@ const blurInput = () => {
 const Chat = () => {
   const { isRightPanelOpen, setRightPanelOpen, tab } = useContext(UIContext);
   const { apiUrl } = useContext(DeviceContext);
-  const { conversation, setConversation, isChatOpen, setChatOpen } =
-    useContext(ChatContext);
+  const {
+    conversation,
+    setConversation,
+    isChatOpen,
+    setChatOpen,
+    setShowTooltip,
+    showTooltip,
+    tooltipText,
+  } = useContext(ChatContext);
   const { navigateConversationResults, navigateRepoPath } =
     useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
@@ -177,12 +184,44 @@ const Chat = () => {
   return (
     <>
       <button
-        className={`fixed z-50 bottom-20 w-13 h-13 rounded-full cursor-pointer ${
+        className={`fixed z-50 bottom-20 w-13 h-13 rounded-full cursor-pointer flex items-center justify-center ${
           isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
-        } border border-gray-600 bg-gray-700 transition-all duration-300 ease-out-slow`}
-        onClick={() => setChatOpen(true)}
+        } border border-gray-700 bg-[linear-gradient(135deg,#1D1D20_0%,#0B0B14_100%)] transition-all duration-300 ease-out-slow`}
+        onClick={() => {
+          setShowTooltip(false);
+          setChatOpen(true);
+        }}
       >
-        {/*<div>chat</div>*/}
+        {showTooltip && (
+          <div className="absolute -top-full right-0 drop-shadow-sm">
+            <div className="bg-primary-300 rounded-full flex py-2 px-4 w-max body-s text-white">
+              {tooltipText}
+            </div>
+            <svg
+              width="33"
+              height="12"
+              viewBox="0 0 33 12"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="absolute -bottom-2 right-6"
+            >
+              <path
+                d="M0 3V0H33V3C23.4444 3.93779 23.1642 8.18145 23.8084 11.5958C23.8623 11.8815 23.5209 12.0844 23.2996 11.8957C16.2381 5.87225 10.3185 3 0 3Z"
+                fill="#5D75FF"
+              />
+            </svg>
+          </div>
+        )}
+        <div className="absolute rounded-full top-0 left-0 right-0 bottom-0 bg-[url('/stars.png')] flex z-0 overflow-hidden">
+          <div className="w-full h-full bg-[radial-gradient(47.73%_47.73%_at_50%_0%,transparent_0%,#0B0B14_100%)] animate-spin-extra-slow" />
+        </div>
+        <div
+          className={`w-6 h-6 relative z-10 ${
+            isLoading ? 'animate-spin-extra-slow' : ''
+          }`}
+        >
+          {isLoading ? <LiteLoader raw /> : <Sparkle raw />}
+        </div>
       </button>
       <div
         ref={chatRef}

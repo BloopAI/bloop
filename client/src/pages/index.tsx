@@ -132,8 +132,12 @@ const ContentContainer = ({ tab }: { tab: { name: string; key: string } }) => {
     return renderPage;
   }, [navigatedItem, data, loading, tab.key]);
 
+  const renderPage = useMemo(
+    () => getRenderPage(),
+    [data, loading, navigatedItem, query, navigatedItem?.threadId],
+  );
+
   const renderedPage = useMemo(() => {
-    let renderPage = getRenderPage();
     switch (renderPage) {
       case 'results':
         return (
@@ -163,12 +167,22 @@ const ContentContainer = ({ tab }: { tab: { name: string; key: string } }) => {
       default:
         return <HomePage />;
     }
-  }, [data, loading, navigatedItem, query, navigatedItem?.threadId]);
+  }, [
+    data,
+    loading,
+    navigatedItem,
+    query,
+    navigatedItem?.threadId,
+    renderPage,
+  ]);
 
   return (
     <>
       <Onboarding />
-      <PageTemplate withSearchBar={getRenderPage() !== 'home'}>
+      <PageTemplate
+        withSearchBar={renderPage !== 'home'}
+        renderPage={renderPage}
+      >
         {renderedPage}
       </PageTemplate>
     </>

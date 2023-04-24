@@ -14,15 +14,25 @@ import {
 import Button from '../Button';
 import Chat from '../Chat';
 import SearchInput from '../SearchInput';
+import { ChatContext } from '../../context/chatContext';
 
 type Props = {
   children: React.ReactNode;
   withSearchBar: boolean;
+  renderPage:
+    | 'results'
+    | 'repo'
+    | 'full-result'
+    | 'nl-result'
+    | 'no-results'
+    | 'home'
+    | 'conversation-result';
 };
 
 const mainContainerStyle = { height: 'calc(100vh - 8rem)' };
-const PageTemplate = ({ children, withSearchBar }: Props) => {
+const PageTemplate = ({ children, withSearchBar, renderPage }: Props) => {
   const { isSelfServe } = useContext(DeviceContext);
+  const { setShowTooltip, setTooltipText } = useContext(ChatContext);
   const { isAnalyticsAllowed, setIsAnalyticsAllowed } =
     useContext(AnalyticsContext);
   const {
@@ -32,6 +42,19 @@ const PageTemplate = ({ children, withSearchBar }: Props) => {
     shouldShowWelcome,
   } = useContext(UIContext);
   const [isModalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    let timerId: number;
+    if (renderPage === 'repo') {
+      timerId = window.setTimeout(() => {
+        setTooltipText('Ask me a question!');
+        setShowTooltip(true);
+      }, 1000);
+    }
+    return () => {
+      clearTimeout(timerId);
+    };
+  }, [renderPage]);
 
   useEffect(() => {
     if (
