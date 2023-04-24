@@ -333,7 +333,7 @@ impl BackendCredential {
                     .read_async(&repo_ref, |_k, repo| repo.clone())
                     .await
                     .expect("repo just created & locked, this shouldn't happen");
-                gh.auth.clone_repo(repo.clone()).await
+                gh.auth.clone_repo(repo).await
             }
         };
 
