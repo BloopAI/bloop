@@ -217,7 +217,23 @@ impl Semantic {
             }
         };
 
-        let filters = [repo_filter, lang_filter]
+        let branch_filter = {
+            let conditions = parsed_query
+                .branch()
+                .map(|l| make_kv_filter("branches", l).into())
+                .collect::<Vec<_>>();
+
+            if conditions.is_empty() {
+                None
+            } else {
+                Some(Filter {
+                    should: conditions,
+                    ..Default::default()
+                })
+            }
+        };
+
+        let filters = [repo_filter, lang_filter, branch_filter]
             .into_iter()
             .flatten()
             .map(Into::into)
