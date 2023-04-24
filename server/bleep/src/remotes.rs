@@ -318,19 +318,21 @@ impl BackendCredential {
         let synced = match existing {
             Some(Err(err)) => return Err(err),
             Some(Ok(_)) => {
-                app.repo_pool
-                    .update_async(&repo_ref, |_k, repo| gh.auth.pull_repo(repo.clone()))
+                let repo = app
+                    .repo_pool
+                    .read_async(&repo_ref, |_k, repo| repo.clone())
                     .await
-                    .unwrap()
-                    .await
+                    .unwrap();
+                gh.auth.pull_repo(repo).await
             }
             None => {
                 create_repository(&app, &repo_ref).await;
-                app.repo_pool
-                    .update_async(&repo_ref, |_k, repo| gh.auth.clone_repo(repo.clone()))
+                let repo = app
+                    .repo_pool
+                    .read_async(&repo_ref, |_k, repo| repo.clone())
                     .await
-                    .unwrap()
-                    .await
+                    .unwrap();
+                gh.auth.clone_repo(repo.clone()).await
             }
         };
 
