@@ -19,6 +19,7 @@ import { propsAreShallowEqual } from '../../../utils';
 
 type Props = {
   lineNumber: number;
+  lineNumberToShow?: number | null;
   children: ReactNode;
   showLineNumbers?: boolean;
   lineFoldable?: boolean;
@@ -60,6 +61,7 @@ const CodeLine = ({
   highlightColor,
   isNewLine,
   isRemovedLine,
+  lineNumberToShow = lineNumber + 1,
 }: Props) => {
   const [isHighlighted, setHighlighted] = useState(false);
   const codeRef = useRef<HTMLTableCellElement>(null);
@@ -240,13 +242,22 @@ const CodeLine = ({
       )}
       {showLineNumbers && (
         <div
-          data-line={lineNumber + 1}
-          className={`text-gray-500 min-w-6 text-right select-none pr-0 leading-5 ${blameStyle} ${
+          data-line={lineNumberToShow}
+          className={`min-w-[27px] text-right select-none pr-0 leading-5 ${blameStyle} ${
             lineHidden ? 'p-0' : ''
           } ${hoverEffect ? 'group-hover:text-gray-300' : ''}
-           ${lineHidden ? '' : 'before:content-[attr(data-line)]'}
-          `}
-        ></div>
+           ${
+             lineHidden || !lineNumberToShow
+               ? ''
+               : 'before:content-[attr(data-line)]'
+           } ${
+            isRemovedLine
+              ? 'bg-[#4F2828] text-gray-100'
+              : isNewLine
+              ? 'bg-[#28432B] text-gray-100'
+              : 'text-gray-500'
+          }`}
+        />
       )}
       <div className={`text-gray-500 ${lineHidden ? 'p-0' : ''} ${blameStyle}`}>
         {lineFoldable && (
@@ -266,9 +277,9 @@ const CodeLine = ({
         ref={codeRef}
         style={
           isNewLine
-            ? { backgroundColor: 'rgb(0,255,0,0.2)' }
+            ? { backgroundColor: '#18261E' }
             : isRemovedLine
-            ? { backgroundColor: 'rgb(255,0,0,0.2)' }
+            ? { backgroundColor: '#24191C' }
             : {}
         }
       >
