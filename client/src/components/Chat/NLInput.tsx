@@ -8,6 +8,7 @@ import React, {
 import { QuillIcon, SendIcon } from '../../icons';
 import ClearButton from '../ClearButton';
 import Tooltip from '../Tooltip';
+import InputLoader from './InputLoader';
 
 type Props = {
   id?: string;
@@ -17,6 +18,7 @@ type Props = {
   onStop?: () => void;
   onChange?: (e: ChangeEvent<HTMLTextAreaElement>) => void;
   onSubmit?: () => void;
+  loadingSteps?: string[];
 };
 
 const NLInput = ({
@@ -27,6 +29,7 @@ const NLInput = ({
   isStoppable,
   onStop,
   onSubmit,
+  loadingSteps,
 }: Props) => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setComposition] = useState(false);
@@ -62,8 +65,11 @@ const NLInput = ({
     border border-gray-700 focus-within:border-gray-600 px-4
     text-gray-400 focus-within:text-gray-100 ${
       isStoppable ? '' : 'hover:text-gray-100 hover:border-gray-600'
-    } transition-all ease-out duration-150 flex-grow-0`}
+    } transition-all ease-out duration-150 flex-grow-0 relative`}
     >
+      {isStoppable && loadingSteps?.length && (
+        <InputLoader loadingSteps={loadingSteps} />
+      )}
       <span className="py-4">
         <QuillIcon />
       </span>
