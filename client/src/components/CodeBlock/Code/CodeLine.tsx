@@ -123,8 +123,14 @@ const CodeLine = ({
   }, [blame, blameLine]);
 
   const style = useMemo(
-    () => ({ lineHeight: lineHidden ? '0' : '', ...stylesGenerated }),
-    [lineHidden, stylesGenerated],
+    () => ({
+      lineHeight: lineHidden ? '0' : '',
+      ...(highlightColor
+        ? { borderLeft: `3px solid ${highlightColor}`, marginLeft: 4 }
+        : {}),
+      ...stylesGenerated,
+    }),
+    [lineHidden, stylesGenerated, highlightColor],
   );
   const [actualLineNumber] = useState(lineNumber);
 
@@ -259,9 +265,7 @@ const CodeLine = ({
         } ${isHighlighted ? 'animate-flash-highlight rounded-4 pr-2' : ''}`}
         ref={codeRef}
         style={
-          highlightColor
-            ? { backgroundColor: highlightColor }
-            : isNewLine
+          isNewLine
             ? { backgroundColor: 'rgb(0,255,0,0.2)' }
             : isRemovedLine
             ? { backgroundColor: 'rgb(255,0,0,0.2)' }
