@@ -63,6 +63,9 @@ pub(crate) enum RemoteError {
     #[error("github access error: {0}")]
     GitHub(#[from] octocrab::Error),
 
+    #[error("underlying thread died: {0:?}")]
+    JoinError(#[from] tokio::task::JoinError),
+
     #[error("low-level code: {0:?}")]
     UnspecifiedGit(git2::Error),
 }
@@ -97,8 +100,7 @@ async fn git_clone(auth: GitCreds, url: &str, target: &Path) -> Result<()> {
         builder.fetch_options(options);
         builder.clone(&url, &target)
     })
-    .await
-    .expect("git failed")?;
+    .await??;
 
     Ok(())
 }
@@ -137,8 +139,7 @@ async fn git_pull(auth: GitCreds, repo: &Repository) -> Result<()> {
             Some(git2::build::CheckoutBuilder::new().force()),
         )?)
     })
-    .await
-    .expect("git failed")?;
+    .await??;
 
     let mut git_gc = Command::new("git");
 
@@ -263,7 +264,7 @@ impl Backends {
             .entry(Backend::Github)
             .and_modify(|existing| {
                 existing.inner = BackendCredential::Github(gh.clone());
-                existing.updated_tx.send(()).unwrap();
+                _ = existing.updated_tx.send(());
             })
             .or_insert_with(|| BackendCredential::Github(gh).into());
     }
@@ -318,19 +319,21 @@ impl BackendCredential {
         let synced = match existing {
             Some(Err(err)) => return Err(err),
             Some(Ok(_)) => {
-                app.repo_pool
-                    .update_async(&repo_ref, |_k, repo| gh.auth.pull_repo(repo.clone()))
+                let repo = app
+                    .repo_pool
+                    .read_async(&repo_ref, |_k, repo| repo.clone())
                     .await
-                    .unwrap()
-                    .await
+                    .expect("repo exists & locked, this shouldn't happen");
+                gh.auth.pull_repo(repo).await
             }
             None => {
                 create_repository(&app, &repo_ref).await;
-                app.repo_pool
-                    .update_async(&repo_ref, |_k, repo| gh.auth.clone_repo(repo.clone()))
+                let repo = app
+                    .repo_pool
+                    .read_async(&repo_ref, |_k, repo| repo.clone())
                     .await
-                    .unwrap()
-                    .await
+                    .expect("repo just created & locked, this shouldn't happen");
+                gh.auth.clone_repo(repo).await
             }
         };
 
@@ -344,7 +347,7 @@ impl BackendCredential {
         app.repo_pool
             .update_async(&repo_ref, |_k, v| v.sync_status = new_status)
             .await
-            .unwrap();
+            .expect("unlocking repo failed, this shouldn't happen");
 
         app.config.source.save_pool(app.repo_pool.clone())?;
         synced
