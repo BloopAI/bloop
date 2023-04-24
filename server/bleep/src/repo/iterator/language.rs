@@ -16,7 +16,7 @@ impl LanguageInfo {
             Entry::Occupied(existing) => existing.get().to_owned(),
             Entry::Vacant(vacant) => {
                 let detected = detect_language(path, buf);
-                vacant.insert_entry(detected.clone());
+                vacant.insert_entry(detected);
                 detected
             }
         }
@@ -43,7 +43,7 @@ impl LanguageInfo {
 }
 
 fn detect_language(path: &Path, buf: &[u8]) -> Option<&'static str> {
-    detect_buffer(&path, |_| Ok(Cursor::new(&buf)))
+    detect_buffer(path, |_| Ok(Cursor::new(buf)))
         .ok()
         .flatten()
         .map(|d| d.language())
