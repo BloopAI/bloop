@@ -90,3 +90,7 @@ export { default as Home } from './Home';
 export { default as Conversation } from './Conversation';
 export { default as Sparkle } from './Sparkle';
 export { default as LiteLoader } from './LiteLoader';
+export { default as Globe2 } from './Globe2';
+export { default as Lock } from './Lock';
+export { default as LockFilled } from './LockFilled';
+export { default as HardDrive } from './HardDrive';

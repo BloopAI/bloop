@@ -15,7 +15,7 @@ import { groupReposByParentFolder, splitPath } from '../../../utils';
 import { DropdownWithIcon } from '../../Dropdown';
 import GitHubIcon from '../../../icons/GitHubIcon';
 import { DeviceContext } from '../../../context/deviceContext';
-import AddRepos from './AddRepos';
+import AddRepos from '../../../pages/Home/AddRepos';
 import GithubStatus from './GithubStatus';
 
 const dropdownIcon = (
@@ -27,12 +27,8 @@ const dropdownIcon = (
 
 const RepositoriesSettings = () => {
   const { repositories, setRepositories } = useContext(RepositoriesContext);
-  const {
-    onBoardingState,
-    isGithubConnected,
-    setGithubConnected,
-    setSettingsOpen,
-  } = useContext(UIContext);
+  const { isGithubConnected, setGithubConnected, setSettingsOpen } =
+    useContext(UIContext);
   const { isSelfServe } = useContext(DeviceContext);
   const [isAddReposOpen, setAddReposOpen] = useState<null | 'local' | 'github'>(
     null,

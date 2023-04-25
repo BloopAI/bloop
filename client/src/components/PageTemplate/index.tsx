@@ -82,7 +82,7 @@ const PageTemplate = ({ children, withSearchBar, renderPage }: Props) => {
 
   return (
     <div className="text-gray-200">
-      <SeparateOnboardingStep isVisible={isModalOpen} top={'5rem'}>
+      <SeparateOnboardingStep isVisible={isModalOpen}>
         <GithubConnectStep
           handleNext={() => {
             setModalOpen(false);
@@ -106,7 +106,7 @@ const PageTemplate = ({ children, withSearchBar, renderPage }: Props) => {
       <div className="mt-8" />
       {withSearchBar && <Subheader />}
       <div
-        className="flex mb-16 w-screen overflow-hidden relative z-10"
+        className="flex mb-16 w-screen overflow-hidden relative"
         style={mainContainerStyle}
       >
         {children}

@@ -64,12 +64,21 @@ const FolderSelectStep = ({ handleNext, handleBack }: Props) => {
   return (
     <>
       <DialogText
-        title="Sync local repositories"
-        description="Select the folders you want to add to bloop. You can always sync, unsync or remove unwanted repositories later."
+        title="Local repository"
+        description="Sync a repository on your local machine"
       />
-      <div className="flex flex-col overflow-auto">
+      <div className="flex flex-col overflow-auto gap-8">
+        <div className="py-5 px-3 flex flex-col gap-2 rounded-md bg-gradient-to-t to-gray-800 from-transparent items-center text-center">
+          <p className="body-s text-gray-300">Scan a folder</p>
+          <p className="body-s text-gray-400">
+            Scan a folder to sync it’s repositories
+          </p>
+          <Button variant="secondary" onClick={handleChooseFolder}>
+            Select folder
+          </Button>
+        </div>
         <div className={`flex flex-col gap-4`}>
-          <Button onClick={handleChooseFolder}>Choose a folder</Button>
+          <Button disabled>Sync repository</Button>
           {handleBack ? (
             <Button variant="secondary" onClick={handleSkip}>
               Skip this step
