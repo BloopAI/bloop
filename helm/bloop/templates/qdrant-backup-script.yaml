@@ -18,11 +18,11 @@ data:
       curl -X POST localhost:6333/snapshots
 
       snapshot_file=$(ls -AU {{ .Values.qdrant.config.storage.snapshots_path }}/*.snapshot | head -1)
-      echo "Uploading backup ${snapshot_file} to S3 bucket ${S3_BACKUP_BUCKET}"
-      aws s3 cp ${snapshot_file} s3://${S3_BACKUP_BUCKET}/${GITHUB_ORG}/${snapshot_file}
+      echo "Uploading backup ${snapshot_file} to S3 bucket {{ .Values.qdrant.backup.awsBucketName }}"
+      aws s3 cp ${snapshot_file} s3://{{ .Values.qdrant.backup.awsBucketName }}/${GITHUB_ORG}/${snapshot_file}
 
       echo "Cleaning up all the snapshots"
-      rm -Rf {{ .Values.qdrant.config.storage.snapshots_path }}/*
+      rm -Rf {{ .Values.qdrant.config.storage.snapshots_path }}/*.snapshot
       echo "Done"
       echo "Next backup in 24h"
 

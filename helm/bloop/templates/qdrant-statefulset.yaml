@@ -39,8 +39,6 @@ spec:
           env:
           - name: AWS_DEFAULT_REGION
             value: {{ .Values.qdrant.backup.awsRegion }}
-          - name: S3_BACKUP_BUCKET
-            value: {{ .Values.qdrant.backup.awsBucketName }}
           - name: GITHUB_ORG
             value: {{ .Values.bloop.githubOrgName }}
           - name: AWS_ACCESS_KEY_ID
