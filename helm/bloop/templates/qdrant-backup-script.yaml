@@ -12,6 +12,7 @@ data:
     done
 
     while true; do
+      echo
       echo "Date: $(date)"
       echo "Backing up qdrant collection for organization ${GITHUB_ORG}"
       curl -X POST localhost:6333/snapshots
