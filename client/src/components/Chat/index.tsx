@@ -84,6 +84,7 @@ const Chat = () => {
       eventSource.onerror = (err) => {
         console.log(err);
       };
+      let firstResultCame: boolean;
       eventSource.onmessage = (ev) => {
         console.log(ev.data);
         if (ev.data === '[DONE]') {
@@ -105,8 +106,13 @@ const Chat = () => {
           setResp(data.Ok);
           setThreadId(data.Ok.thread_id);
           const newMessage = data.Ok.messages[0];
-          if (newMessage.results?.length && !newMessage.content) {
+          if (
+            newMessage.results?.length &&
+            !newMessage.content &&
+            !firstResultCame
+          ) {
             setChatOpen(false);
+            firstResultCame = true;
           }
           setConversation((prev) => {
             const newConversation = prev?.slice(0, -1) || [];
@@ -136,7 +142,7 @@ const Chat = () => {
             const lastMessage = {
               ...prev.slice(-1)[0],
               isLoading: false,
-              error: data.Err,
+              error: 'Something went wrong',
             };
             return [...newConversation, lastMessage];
           });

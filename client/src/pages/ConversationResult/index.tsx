@@ -16,7 +16,7 @@ const ConversationResult = ({ recordId }: Props) => {
   const { tab } = useContext(UIContext);
   const data = useMemo(
     () => (conversation[recordId] as ChatMessageServer)?.results || [],
-    [conversation[recordId]],
+    [(conversation[recordId] as ChatMessageServer)?.results],
   );
   const citations = useMemo(() => {
     const files: Record<string, any> = {};

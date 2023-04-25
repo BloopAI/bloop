@@ -3,7 +3,7 @@ import Code from '../../components/CodeBlock/Code';
 import FileIcon from '../../components/FileIcon';
 import BreadcrumbsPath from '../../components/BreadcrumbsPath';
 import { FileTreeFileType } from '../../types';
-import { getHoverables, search as searchApiCall } from '../../services/api';
+import { getFileLines, getHoverables } from '../../services/api';
 import { File, FileSearchResponse } from '../../types/api';
 import { FullResult } from '../../types/results';
 import { FullResultModeEnum, SearchType } from '../../types/general';
@@ -32,20 +32,27 @@ const colors = [
 ];
 
 const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
-  const [file, setFile] = useState<File | null>(null);
+  const [fileParts, setFileParts] = useState<File[]>([]);
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.MODAL,
   );
   const [openResult, setOpenResult] = useState<FullResult | null>(null);
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
+
   useEffect(() => {
-    searchApiCall(`open:true repo:${repoName} path:${filePath}`).then(
-      (resp) => {
-        setFile(resp.data[0].data as File);
-      },
-    );
-  }, [filePath, repoName]);
+    Promise.all(
+      citations.map((c) =>
+        getFileLines(
+          `open:true repo:${repoName} path:${filePath}`,
+          c.start_line,
+          c.end_line,
+        ),
+      ),
+    ).then((resps) => {
+      setFileParts(resps.map((resp) => resp.data[0].data as File));
+    });
+  }, [filePath, repoName, citations]);
 
   const onResultClick = useCallback(
     (path: string) => {
@@ -97,17 +104,17 @@ const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
             />
           </div>
         </div>
-        {file ? (
+        {fileParts.length ? (
           <div className="relative overflow-auto py-4">
             {citations.map((c, i) => (
               <span key={c.i}>
                 <Code
                   lineStart={c.start_line}
-                  code={file.contents
+                  code={fileParts[i].contents
                     .split('\n')
                     .slice(Math.max(c.start_line - 1, 0), c.end_line)
                     .join('\n')}
-                  language={file.lang}
+                  language={fileParts[i].lang}
                   highlightColor={`rgba(${colors[c.i % colors.length].join(
                     ', ',
                   )}, 1)`}
