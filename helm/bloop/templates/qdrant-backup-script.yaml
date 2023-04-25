@@ -5,6 +5,12 @@ metadata:
   name: {{ include "qdrant.fullname" . }}-backup-script
 data:
   backup-script.sh: |
+    mkdir {{ .Values.qdrant.snapshot.path }} -p
+    echo "Waiting for qdrant to start..."
+    until curl -s http://localhost:6333; do
+      sleep 30
+    done
+
     while true; do
       echo "Date: $(date)"
       echo "Backing up qdrant collection for organization ${GITHUB_ORG}"
