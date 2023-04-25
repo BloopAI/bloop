@@ -16,6 +16,7 @@ type Props = {
   containerClassName?: string;
   source: 'local' | 'GitHub';
   onSync?: () => void;
+  onFolderChange?: () => void;
 };
 
 const SearchableRepoList = ({
@@ -24,6 +25,7 @@ const SearchableRepoList = ({
   containerClassName,
   source,
   onSync,
+  onFolderChange,
 }: Props) => {
   const [filter, setFilter] = useState('');
 
@@ -50,6 +52,7 @@ const SearchableRepoList = ({
         filter={filter}
         isLoading={isLoading}
         onSync={onSync}
+        onFolderChange={onFolderChange}
       />
     </div>
   );
