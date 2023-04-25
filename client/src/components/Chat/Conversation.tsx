@@ -1,10 +1,11 @@
-import React, { Fragment, useEffect, useRef } from 'react';
+import React, { Fragment, useContext, useEffect, useRef } from 'react';
 import {
   ChatMessage,
   ChatMessageAuthor,
   ChatMessageType,
 } from '../../types/general';
 import { Checkmark, MagnifyTool } from '../../icons';
+import { AppNavigationContext } from '../../context/appNavigationContext';
 import Message from './ConversationMessage';
 
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
 
 const Conversation = ({ conversation, searchId, isLoading }: Props) => {
   const messagesRef = useRef<HTMLDivElement>(null);
+  const { navigateConversationResults } = useContext(AppNavigationContext);
   useEffect(() => {
     messagesRef.current?.scrollTo({
       left: 0,
@@ -48,6 +50,16 @@ const Conversation = ({ conversation, searchId, isLoading }: Props) => {
                     ? m.loadingSteps[m.loadingSteps.length - 1]
                     : 'Answer Ready'}
                 </p>
+                {!m.isLoading && !!m.results?.length ? (
+                  <div className="flex items-center justify-end justify-self-end">
+                    <button
+                      className="text-primary-300 body-s mr-2"
+                      onClick={() => navigateConversationResults(i)}
+                    >
+                      View
+                    </button>
+                  </div>
+                ) : null}
               </div>
             )}
           {m.text || (m.author === ChatMessageAuthor.Server && m.error) ? (
