@@ -37,7 +37,7 @@ spec:
           args:
           - /bloop/backup-script.sh
           env:
-          - name: AWS_DEFAULT_REGION
+          - name: AWS_REGION
             value: {{ .Values.qdrant.backup.awsRegion }}
           - name: GITHUB_ORG
             value: {{ .Values.bloop.githubOrgName }}
