@@ -175,9 +175,6 @@ qdrant:
     awsAccessKey: ""
     awsSecretAccessKey: ""
 
-  snapshot:
-    path: /qdrant/storage/snapshots
-
   #only supported for single node qdrant clusters.
   snapshotRestoration:
     enabled: false
@@ -193,3 +190,5 @@ qdrant:
         port: 6335
       consensus:
         tick_period_ms: 100
+    storage:
+      snapshots_path: /qdrant/storage/snapshots
