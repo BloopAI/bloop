@@ -1,11 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import LocalReposStep from '../../../../pages/Onboarding/LocalReposStep';
-import GithubReposStep from '../../../../pages/Onboarding/GithubReposStep';
-import FolderSelectStep from '../../../../pages/Onboarding/FolderSelectStep';
-import SeparateOnboardingStep from '../../../SeparateOnboardingStep';
+import LocalReposStep from '../../Onboarding/LocalReposStep';
+import GithubReposStep from '../../Onboarding/GithubReposStep';
+import FolderSelectStep from '../../Onboarding/FolderSelectStep';
+import SeparateOnboardingStep from '../../../components/SeparateOnboardingStep';
+import PublicGithubReposStep from '../../Onboarding/PublicGithubReposStep';
 
 type Props = {
-  addRepos: null | 'local' | 'github';
+  addRepos: null | 'local' | 'github' | 'public';
   onClose: (submitted: boolean) => void;
 };
 
@@ -19,19 +20,16 @@ const AddRepos = ({ addRepos, onClose }: Props) => {
     onClose(false);
   };
   const handleSubmit = () => {
-    setFolderChosen(false);
     onClose(true);
   };
   return (
     <SeparateOnboardingStep isVisible={!!addRepos} onClose={handleClose}>
       {addRepos === 'local' ? (
-        isFolderChosen ? (
-          <LocalReposStep handleNext={handleSubmit} />
-        ) : (
-          <FolderSelectStep handleNext={onFolderChosen} />
-        )
-      ) : (
+        <LocalReposStep handleNext={handleSubmit} />
+      ) : addRepos === 'github' ? (
         <GithubReposStep handleNext={handleSubmit} disableSkip />
+      ) : (
+        <PublicGithubReposStep handleNext={handleSubmit} disableSkip />
       )}
     </SeparateOnboardingStep>
   );
