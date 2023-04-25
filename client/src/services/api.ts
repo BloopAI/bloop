@@ -37,6 +37,22 @@ export const search = (
     .then((r) => r.data);
 };
 
+export const getFileLines = (
+  q: string,
+  line_start: number,
+  line_end: number,
+): Promise<SearchResponse> => {
+  return http
+    .get('/q', {
+      params: {
+        q,
+        line_start,
+        line_end,
+      },
+    })
+    .then((r) => r.data);
+};
+
 export const nlSearch = (
   q: string,
   user_id: string,

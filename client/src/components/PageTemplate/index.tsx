@@ -51,6 +51,8 @@ const PageTemplate = ({ children, withSearchBar, renderPage }: Props) => {
         setTooltipText('Ask me a question!');
         setShowTooltip(true);
       }, 1000);
+    } else {
+      setShowTooltip(false);
     }
     return () => {
       clearTimeout(timerId);
