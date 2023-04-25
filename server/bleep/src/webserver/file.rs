@@ -57,7 +57,7 @@ fn split_by_lines<'a>(text: &'a str, indices: &[u32], params: &Params) -> Result
 
     let line_end = params.line_end.unwrap_or(indices.len()) - 1;
     let char_end = *indices
-        .get(line_end as usize)
+        .get(line_end)
         .ok_or_else(|| Error::user("invalid line number"))? as usize;
 
     Ok(&text[char_start..=char_end])
