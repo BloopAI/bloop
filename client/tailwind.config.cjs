@@ -157,10 +157,11 @@ module.exports = {
         'light': '0px 1px 6px rgba(0, 0, 0, 0.25)',
         'lighter': '0px 1px 3px rgba(62, 70, 85, 0.12)',
         'light-bigger': '0px 6px 16px rgba(0, 0, 0, 0.25)',
+        'tiny': '0px 1px 1px rgba(0, 0, 0, 0.32)',
         'small': '0px 8px 12px rgba(14, 14, 15, 0.75)',
-        'big': '0px 16px 34px rgba(0, 0, 0, 0.5)',
+        'dark': '0px 8px 24px rgba(14, 14, 15, 0.9)',
         'medium': '0px 16px 24px rgba(0, 0, 0, 0.25)',
-        'tiny': '0px 1px 1px rgba(0, 0, 0, 0.32)'
+        'big': '0px 16px 34px rgba(0, 0, 0, 0.5)',
       },
       spacing: {
         "4.5": "1.125rem",
