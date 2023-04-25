@@ -188,9 +188,24 @@ impl Semantic {
                         r.to_string()
                     }
                 })
-                .map(|r| make_kv_filter("repo_name", r.as_str()).into())
+                .map(|r| make_kv_keyword_filter("repo_name", r.as_str()).into())
                 .collect::<Vec<_>>();
             // one of the above repos should match
+            if conditions.is_empty() {
+                None
+            } else {
+                Some(Filter {
+                    should: conditions,
+                    ..Default::default()
+                })
+            }
+        };
+
+        let path_filter = {
+            let conditions = parsed_query
+                .paths()
+                .map(|r| make_kv_text_filter("relative_path", r).into())
+                .collect::<Vec<_>>();
             if conditions.is_empty() {
                 None
             } else {
@@ -204,7 +219,7 @@ impl Semantic {
         let lang_filter = {
             let conditions = parsed_query
                 .langs()
-                .map(|l| make_kv_filter("lang", l).into())
+                .map(|l| make_kv_keyword_filter("lang", l).into())
                 .collect::<Vec<_>>();
             // one of the above langs should match
             if conditions.is_empty() {
@@ -220,7 +235,7 @@ impl Semantic {
         let branch_filter = {
             let conditions = parsed_query
                 .branch()
-                .map(|l| make_kv_filter("branches", l).into())
+                .map(|l| make_kv_keyword_filter("branches", l).into())
                 .collect::<Vec<_>>();
 
             if conditions.is_empty() {
@@ -233,7 +248,7 @@ impl Semantic {
             }
         };
 
-        let filters = [repo_filter, lang_filter, branch_filter]
+        let filters = [repo_filter, path_filter, lang_filter, branch_filter]
             .into_iter()
             .flatten()
             .map(Into::into)
@@ -345,9 +360,9 @@ impl Semantic {
     }
 
     pub async fn delete_points_by_path(&self, repo_ref: &str, paths: impl Iterator<Item = &str>) {
-        let repo_filter = make_kv_filter("repo_ref", repo_ref).into();
+        let repo_filter = make_kv_keyword_filter("repo_ref", repo_ref).into();
         let file_filter = paths
-            .map(|p| make_kv_filter("relative_path", p).into())
+            .map(|p| make_kv_keyword_filter("relative_path", p).into())
             .collect::<Vec<_>>();
         let selector = Filter {
             must: vec![repo_filter],
@@ -370,13 +385,27 @@ impl Semantic {
     }
 }
 
-fn make_kv_filter(key: &str, value: &str) -> FieldCondition {
+// Exact match filter
+fn make_kv_keyword_filter(key: &str, value: &str) -> FieldCondition {
     let key = key.to_owned();
     let value = value.to_owned();
     FieldCondition {
         key,
         r#match: Some(Match {
             match_value: MatchValue::Keyword(value).into(),
+        }),
+        ..Default::default()
+    }
+}
+
+// Substring match filter
+fn make_kv_text_filter(key: &str, value: &str) -> FieldCondition {
+    let key = key.to_owned();
+    let value = value.to_owned();
+    FieldCondition {
+        key,
+        r#match: Some(Match {
+            match_value: MatchValue::Text(value).into(),
         }),
         ..Default::default()
     }
