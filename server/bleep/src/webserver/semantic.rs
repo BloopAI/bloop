@@ -1,12 +1,9 @@
 use super::prelude::*;
 use crate::{
-    query::parser::{self, ParsedQuery},
-    semantic::Semantic,
+    query::parser,
+    semantic::{self, Semantic},
 };
 use tracing::error;
-
-use qdrant_client::qdrant::value::Kind;
-use std::collections::HashMap;
 
 #[derive(Deserialize)]
 pub(super) struct Args {
@@ -16,7 +13,7 @@ pub(super) struct Args {
 
 #[derive(Serialize)]
 pub(super) struct SemanticResponse {
-    chunks: Vec<serde_json::Value>,
+    chunks: Vec<semantic::Payload<'static>>,
 }
 
 impl super::ApiResponse for SemanticResponse {}
@@ -36,55 +33,24 @@ pub(super) async fn raw_chunks(
 ) -> impl IntoResponse {
     if let Some(semantic) = semantic {
         let Args { ref query, limit } = args;
-        let ParsedQuery::NL(query) = parser::parse_nl(query).map_err(Error::user)? else {
-            return Err(Error::new(ErrorKind::User, "can't search like that on this endpoint"));
-	};
-
-        let result = semantic.search(&query, limit).await.and_then(|raw| {
+        let parser::ParsedQuery::NL(query) = parser::parse_nl(query).unwrap() else {panic!("badd")};
+        let result = semantic.search(&query, limit).await.map(|raw| {
             raw.into_iter()
-                .map(|v| {
-                    v.payload
-                        .into_iter()
-                        .map(|(k, v)| (k, kind_to_value(v.kind)))
-                        .collect::<HashMap<_, _>>()
-                })
-                .map(serde_json::to_value)
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| e.into())
+                .map(|v| semantic::Payload::from_qdrant(v.payload))
+                .collect::<Vec<_>>()
         });
 
-        if let Err(err) = result {
-            error!(?err, "qdrant query failed");
-            return Err(Error::new(ErrorKind::UpstreamService, "error"));
-        };
-
-        Ok(json(SemanticResponse {
-            chunks: result.unwrap(),
-        }))
+        match result {
+            Err(err) => {
+                error!(?err, "qdrant query failed");
+                return Err(Error::new(ErrorKind::UpstreamService, "error"));
+            }
+            Ok(result) => Ok(json(SemanticResponse { chunks: result })),
+        }
     } else {
         Err(Error::new(
             ErrorKind::Configuration,
             "Qdrant not configured",
         ))
-    }
-}
-
-fn kind_to_value(kind: Option<Kind>) -> serde_json::Value {
-    match kind {
-        Some(Kind::NullValue(_)) => serde_json::Value::Null,
-        Some(Kind::BoolValue(v)) => serde_json::Value::Bool(v),
-        Some(Kind::DoubleValue(v)) => {
-            serde_json::Value::Number(serde_json::Number::from_f64(v).unwrap())
-        }
-        Some(Kind::IntegerValue(v)) => serde_json::Value::Number(v.into()),
-        Some(Kind::StringValue(v)) => serde_json::Value::String(v),
-        Some(Kind::ListValue(v)) => serde_json::Value::Array(
-            v.values
-                .into_iter()
-                .map(|v| kind_to_value(v.kind))
-                .collect(),
-        ),
-        Some(Kind::StructValue(_v)) => todo!(),
-        None => serde_json::Value::Null,
     }
 }

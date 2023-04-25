@@ -53,7 +53,7 @@ pub struct Semantic {
     config: Arc<Configuration>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct Payload<'a> {
     lang: Cow<'a, str>,
     repo_name: Cow<'a, str>,
@@ -68,6 +68,43 @@ pub struct Payload<'a> {
 }
 
 impl<'a> Payload<'a> {
+    pub fn from_qdrant(payload: HashMap<String, qdrant_client::qdrant::Value>) -> Payload<'static> {
+        let mut converted = payload
+            .into_iter()
+            .map(|(key, value)| (key, kind_to_value(value.kind)))
+            .collect::<HashMap<String, serde_json::Value>>();
+
+        Payload {
+            lang: serde_json::from_value(converted.remove("lang").unwrap()).unwrap(),
+            repo_name: serde_json::from_value(converted.remove("repo_name").unwrap()).unwrap(),
+            repo_ref: serde_json::from_value(converted.remove("repo_ref").unwrap()).unwrap(),
+            relative_path: serde_json::from_value(converted.remove("relative_path").unwrap())
+                .unwrap(),
+            snippet: serde_json::from_value(converted.remove("snippet").unwrap()).unwrap(),
+            start_line: serde_json::from_value::<Cow<'_, str>>(
+                converted.remove("start_line").unwrap(),
+            )
+            .unwrap()
+            .parse()
+            .unwrap(),
+            end_line: serde_json::from_value::<Cow<'_, str>>(converted.remove("end_line").unwrap())
+                .unwrap()
+                .parse()
+                .unwrap(),
+            start_byte: serde_json::from_value::<Cow<'_, str>>(
+                converted.remove("start_byte").unwrap(),
+            )
+            .unwrap()
+            .parse()
+            .unwrap(),
+            end_byte: serde_json::from_value::<Cow<'_, str>>(converted.remove("end_byte").unwrap())
+                .unwrap()
+                .parse()
+                .unwrap(),
+            branches: serde_json::from_value(converted.remove("branches")).unwrap(),
+        }
+    }
+
     fn into_qdrant(self) -> HashMap<String, Value> {
         HashMap::from([
             ("lang".into(), self.lang.to_ascii_lowercase().into()),
@@ -81,6 +118,27 @@ impl<'a> Payload<'a> {
             ("end_byte".into(), self.end_byte.to_string().into()),
             ("branches".into(), self.branches.into()),
         ])
+    }
+}
+
+fn kind_to_value(kind: Option<qdrant_client::qdrant::value::Kind>) -> serde_json::Value {
+    use qdrant_client::qdrant::value::Kind;
+    match kind {
+        Some(Kind::NullValue(_)) => serde_json::Value::Null,
+        Some(Kind::BoolValue(v)) => serde_json::Value::Bool(v),
+        Some(Kind::DoubleValue(v)) => {
+            serde_json::Value::Number(serde_json::Number::from_f64(v).unwrap())
+        }
+        Some(Kind::IntegerValue(v)) => serde_json::Value::Number(v.into()),
+        Some(Kind::StringValue(v)) => serde_json::Value::String(v),
+        Some(Kind::ListValue(v)) => serde_json::Value::Array(
+            v.values
+                .into_iter()
+                .map(|v| kind_to_value(v.kind))
+                .collect(),
+        ),
+        Some(Kind::StructValue(_v)) => todo!(),
+        None => serde_json::Value::Null,
     }
 }
 
