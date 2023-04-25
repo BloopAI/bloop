@@ -547,6 +547,7 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
 //    - "novelty" or, the measure of how minimal the similarity is
 //      to existing documents in the selection
 //      The value of lambda skews the weightage in favor of either relevance or novelty.
+//    - we add a language diversity factor to the score to encourage a range of langauges in the results
 //  k: the number of embeddings to select
 pub fn deduplicate_with_mmr(
     query_embedding: &[f32],
@@ -580,9 +581,9 @@ pub fn deduplicate_with_mmr(
             }
             let mut equation_score = lambda * first_part - (1. - lambda) * second_part;
 
-            // score is MMR + (1/4)^n where n is the number of times a language has been selected
+            // MMR + (1/2)^n where n is the number of times a language has been selected
             let count = lang_counts.get(languages[i]).unwrap_or(&0);
-            equation_score += 0.25_f32.powi(*count);
+            equation_score += 0.5_f32.powi(*count);
 
             if equation_score > best_score {
                 best_score = equation_score;
