@@ -53,6 +53,14 @@ spec:
               secretKeyRef:
                 name: {{ include "qdrant.fullname" . }}-backup
                 key: aws-secret-access-key
+          volumeMounts:
+          - name: {{ include "qdrant.fullname" . }}-storage
+            mountPath: /qdrant/storage
+          {{- if .Values.qdrant.backup.enabled }}
+          - mountPath: /bloop
+            name: {{ include "qdrant.fullname" . }}-backup-script
+            readOnly: true
+          {{- end }}
         {{ end }}
         - name: {{ .Chart.Name }}-qdrant
           image: "{{ .Values.qdrant.image.repository }}:{{ .Values.qdrant.image.tag | default .Chart.AppVersion }}"
@@ -117,11 +125,6 @@ spec:
           {{- if .Values.qdrant.snapshotRestoration.enabled }}
           - name: qdrant-snapshots
             mountPath: /qdrant/snapshots
-          {{- end }}
-          {{- if .Values.qdrant.backup.enabled }}
-          - mountPath: "/bloop"
-            name: {{ include "qdrant.fullname" . }}-backup-script
-            readOnly: true
           {{- end }}
 
       {{- with .Values.qdrant.nodeSelector }}
