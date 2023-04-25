@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Not, path::Path, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, ops::Not, path::Path, sync::Arc};
 
 use crate::{query::parser::NLQuery, Configuration};
 
@@ -51,6 +51,37 @@ pub struct Semantic {
     gpt2_tokenizer: Arc<tokenizers::Tokenizer>,
     session: Arc<ort::Session>,
     config: Arc<Configuration>,
+}
+
+#[derive(serde::Deserialize)]
+pub struct Payload<'a> {
+    lang: Cow<'a, str>,
+    repo_name: Cow<'a, str>,
+    repo_ref: Cow<'a, str>,
+    relative_path: Cow<'a, str>,
+    snippet: Cow<'a, str>,
+    start_line: u64,
+    end_line: u64,
+    start_byte: u64,
+    end_byte: u64,
+    branches: Vec<String>,
+}
+
+impl<'a> Payload<'a> {
+    fn into_qdrant(self) -> HashMap<String, Value> {
+        HashMap::from([
+            ("lang".into(), self.lang.to_ascii_lowercase().into()),
+            ("repo_name".into(), self.repo_name.as_ref().into()),
+            ("repo_ref".into(), self.repo_ref.as_ref().into()),
+            ("relative_path".into(), self.relative_path.as_ref().into()),
+            ("snippet".into(), self.snippet.as_ref().into()),
+            ("start_line".into(), self.start_line.to_string().into()),
+            ("end_line".into(), self.end_line.to_string().into()),
+            ("start_byte".into(), self.start_byte.to_string().into()),
+            ("end_byte".into(), self.end_byte.to_string().into()),
+            ("branches".into(), self.branches.into()),
+        ])
+    }
 }
 
 fn collection_config() -> CreateCollection {
@@ -297,24 +328,19 @@ impl Semantic {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
-                        payload: HashMap::from([
-                            ("lang".into(), lang_str.to_ascii_lowercase().into()),
-                            ("repo_name".into(), repo_name.into()),
-                            ("repo_ref".into(), repo_ref.into()),
-                            ("branches".into(), Value::from(branches.to_owned())),
-                            ("relative_path".into(), relative_path.into()),
-                            ("snippet".into(), chunk.data.into()),
-                            (
-                                "start_line".into(),
-                                chunk.range.start.line.to_string().into(),
-                            ),
-                            ("end_line".into(), chunk.range.end.line.to_string().into()),
-                            (
-                                "start_byte".into(),
-                                chunk.range.start.byte.to_string().into(),
-                            ),
-                            ("end_byte".into(), chunk.range.end.byte.to_string().into()),
-                        ]),
+                        payload: Payload {
+                            lang: lang_str.to_ascii_lowercase().into(),
+                            repo_name: repo_name.into(),
+                            repo_ref: repo_ref.into(),
+                            relative_path: relative_path.into(),
+                            branches: branches.to_owned(),
+                            snippet: chunk.data.into(),
+                            start_line: chunk.range.start.line as u64,
+                            end_line: chunk.range.end.line as u64,
+                            start_byte: chunk.range.start.byte as u64,
+                            end_byte: chunk.range.end.byte as u64,
+                        }
+                        .into_qdrant(),
                     }),
                     Err(err) => {
                         warn!(?err, %chunk_prefix, "embedding failed");
