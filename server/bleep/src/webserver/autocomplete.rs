@@ -7,27 +7,16 @@ use crate::{
         Indexes,
     },
     query::{
+        execute::{ApiQuery, ExecuteQuery, QueryResult},
         parser,
         parser::{Literal, Target},
     },
-    webserver::query::{ApiQuery, ExecuteQuery, QueryResult},
 };
 
 use axum::{extract::Query, response::IntoResponse as IntoAxumResponse, Extension};
 use futures::{stream, StreamExt, TryStreamExt};
 use serde::Serialize;
-use utoipa::ToSchema;
 
-#[utoipa::path(
-    get,
-    path = "/autocomplete",
-    params(ApiQuery),
-    responses(
-        (status = 200, description = "Execute query successfully", body = Response),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn handle(
     Query(mut api_params): Query<ApiQuery>,
     Extension(indexes): Extension<Arc<Indexes>>,
@@ -111,7 +100,7 @@ fn complete_lang(q: &str) -> Option<impl Iterator<Item = &str> + '_> {
     }
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize)]
 pub(super) struct AutocompleteResponse {
     count: usize,
     data: Vec<QueryResult>,

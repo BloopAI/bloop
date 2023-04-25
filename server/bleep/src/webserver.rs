@@ -1,4 +1,4 @@
-use crate::{env::Feature, snippet, Application};
+use crate::{env::Feature, Application};
 
 use axum::{http::StatusCode, response::IntoResponse, routing::get, Extension, Json};
 use std::sync::Arc;
@@ -7,8 +7,6 @@ use tower::Service;
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
 use tracing::info;
-use utoipa::OpenApi;
-use utoipa::ToSchema;
 
 mod aaa;
 pub mod answer;
@@ -91,10 +89,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         api = middleware::local_user(api, app.clone());
     }
 
-    api = api
-        .route("/api-doc/openapi.json", get(openapi_json::handle))
-        .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
-        .route("/health", get(health));
+    api = api.route("/health", get(health));
 
     let api = api
         .layer(Extension(app.indexes.clone()))
@@ -210,7 +205,7 @@ impl IntoResponse for Error {
 }
 
 /// The response upon encountering an error
-#[derive(serde::Serialize, PartialEq, Eq, ToSchema, Debug)]
+#[derive(serde::Serialize, PartialEq, Eq, Debug)]
 struct EndpointError<'a> {
     /// The kind of this error
     kind: ErrorKind,
@@ -221,7 +216,7 @@ struct EndpointError<'a> {
 
 /// The kind of an error
 #[allow(unused)]
-#[derive(serde::Serialize, PartialEq, Eq, ToSchema, Debug)]
+#[derive(serde::Serialize, PartialEq, Eq, Debug)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 enum ErrorKind {
@@ -237,7 +232,7 @@ enum ErrorKind {
     Custom,
 }
 
-trait ApiResponse: erased_serde::Serialize {}
+pub(crate) trait ApiResponse: erased_serde::Serialize {}
 erased_serde::serialize_trait_object!(ApiResponse);
 
 /// Every endpoint exposes a Response type
@@ -258,53 +253,6 @@ impl<T: ApiResponse + Send + Sync + 'static> From<T> for Response<'static> {
 impl<'a> From<EndpointError<'a>> for Response<'a> {
     fn from(value: EndpointError<'a>) -> Self {
         Self::Error(value)
-    }
-}
-
-#[derive(OpenApi)]
-#[openapi(
-    paths(query::handle, autocomplete::handle, hoverable::handle, intelligence::handle),
-    components(schemas(
-        crate::symbol::Symbol,
-        crate::text_range::TextRange,
-        crate::text_range::Point,
-        EndpointError<'_>,
-        ErrorKind,
-        autocomplete::AutocompleteResponse,
-        query::QueryResponse,
-        query::QueryResult,
-        query::RepositoryResultData,
-        query::FileResultData,
-        query::FileData,
-        query::DirectoryData,
-        hoverable::HoverableResponse,
-        intelligence::TokenInfoResponse,
-        intelligence::SymbolOccurrence,
-        snippet::SnippedFile,
-        snippet::Snippet,
-        repos::ReposResponse,
-        repos::Repo,
-        repos::SetIndexed,
-        crate::repo::Backend,
-        crate::repo::RepoRemote,
-        crate::repo::SyncStatus,
-        github::GithubResponse,
-        github::GithubCredentialStatus,
-    ))
-)]
-struct ApiDoc;
-
-pub mod openapi_json {
-    use super::*;
-    pub async fn handle() -> impl IntoResponse {
-        Json(<ApiDoc as OpenApi>::openapi())
-    }
-}
-
-pub mod openapi_yaml {
-    use super::*;
-    pub async fn handle() -> impl IntoResponse {
-        <ApiDoc as OpenApi>::openapi().to_yaml().unwrap()
     }
 }
 
