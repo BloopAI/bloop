@@ -8,7 +8,7 @@ use std::{
     },
 };
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use scc::hash_map::Entry;
 use tantivy::{
@@ -266,7 +266,7 @@ impl Indexable for File {
 }
 
 impl Indexer<File> {
-    pub async fn file_body(&self, file_disk_path: &str) -> Result<String> {
+    pub async fn file_body(&self, file_disk_path: &str) -> Result<ContentDocument> {
         // Mostly taken from `by_path`, below.
         //
         // TODO: This can be unified with `by_path` below, but we first need to decide on a unified
@@ -280,26 +280,7 @@ impl Indexer<File> {
             IndexRecordOption::Basic,
         );
 
-        let collector = TopDocs::with_limit(1);
-        let search_results = searcher
-            .search(&query, &collector)
-            .context("failed to search index")?;
-
-        match search_results.as_slice() {
-            [] => Err(anyhow::Error::msg("no path found")),
-            [(_, doc_addr)] => Ok(searcher
-                .doc(*doc_addr)
-                .context("failed to get document by address")?
-                .get_first(self.source.content)
-                .context("content field was missing")?
-                .as_text()
-                .context("content field did not contain text")?
-                .to_owned()),
-            _ => {
-                warn!("TopDocs is not limited to 1 and index contains duplicates");
-                Err(anyhow::Error::msg("multiple paths returned"))
-            }
-        }
+        self.top_hit(Box::new(query), searcher).await
     }
 
     pub async fn by_path(
@@ -311,7 +292,6 @@ impl Indexer<File> {
         let searcher = reader.searcher();
 
         let file_index = searcher.index();
-        let file_source = &self.source;
 
         // query the `relative_path` field of the `File` index, using tantivy's query language
         //
@@ -325,6 +305,16 @@ impl Indexer<File> {
                 "repo_ref:\"{repo_ref}\" AND relative_path:\"{relative_path}\""
             ))
             .expect("failed to parse tantivy query");
+
+        self.top_hit(query, searcher).await
+    }
+
+    async fn top_hit(
+        &self,
+        query: Box<dyn tantivy::query::Query>,
+        searcher: tantivy::Searcher,
+    ) -> Result<ContentDocument> {
+        let file_source = &self.source;
 
         let collector = TopDocs::with_limit(1);
         let search_results = searcher
