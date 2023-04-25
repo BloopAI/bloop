@@ -175,6 +175,9 @@ qdrant:
     awsAccessKey: ""
     awsSecretAccessKey: ""
 
+  snapshot:
+    path: /qdrant/storage/snapshots
+
   #only supported for single node qdrant clusters.
   snapshotRestoration:
     enabled: false

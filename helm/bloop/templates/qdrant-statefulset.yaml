@@ -124,7 +124,7 @@ spec:
             subPath: production.yaml
           {{- if .Values.qdrant.snapshotRestoration.enabled }}
           - name: qdrant-snapshots
-            mountPath: /qdrant/snapshots
+            mountPath: {{ .Values.qdrant.snapshot.path }}
           {{- end }}
 
       {{- with .Values.qdrant.nodeSelector }}

@@ -12,9 +12,9 @@ data:
     {{- else }}
     echo "Starting initializing for pod $SET_INDEX"
     if [ "$SET_INDEX" = "0" ]; then
-      ./qdrant --uri 'http://{{ include "bloop.fullname" . }}-qdrant-0.{{ include "bloop.fullname" . }}-qdrant-headless:6335'
+      ./qdrant --uri 'http://{{ include "bloop.fullname" . }}-qdrant-0.{{ include "bloop.fullname" . }}-qdrant-headless:6335' --storage-snapshot '{{ .Values.qdrant.snapshot.path }}'
     else
-      ./qdrant --bootstrap 'http://{{ include "bloop.fullname" . }}-qdrant-0.{{ include "bloop.fullname" . }}-qdrant-headless:6335' --uri 'http://{{ include "bloop.fullname" . }}-qdrant-'"$SET_INDEX"'.{{ include "bloop.fullname" . }}-qdrant-headless:6335'
+      ./qdrant --bootstrap 'http://{{ include "bloop.fullname" . }}-qdrant-0.{{ include "bloop.fullname" . }}-qdrant-headless:6335' --uri 'http://{{ include "bloop.fullname" . }}-qdrant-'"$SET_INDEX"'.{{ include "bloop.fullname" . }}-qdrant-headless:6335' --storage-snapshot '{{ .Values.qdrant.snapshot.path }}'
     fi
     {{ end }}
   production.yaml: |
