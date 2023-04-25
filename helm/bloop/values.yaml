@@ -169,7 +169,7 @@ qdrant:
     storageClassName: gp3
 
   backup:
-    enabled: true
+    enabled: false
     awsBucketName: ""
     awsDefaultRegion: ""
     awsAccessKey: ""
