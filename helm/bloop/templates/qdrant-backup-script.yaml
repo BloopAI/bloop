@@ -17,7 +17,7 @@ data:
       curl -X POST localhost:6333/snapshots
 
       snapshot_file=$(ls -AU {{ .Values.qdrant.config.storage.snapshots_path }}/*.snapshot | head -1)
-      printf "Uploading backup ${snapshot_file} to S3 bucket {{ .Values.qdrant.backup.awsBucketName }}\n"
+      printf "\nUploading backup ${snapshot_file} to S3 bucket {{ .Values.qdrant.backup.awsBucketName }}\n"
       aws s3 cp ${snapshot_file} s3://{{ .Values.qdrant.backup.awsBucketName }}/${GITHUB_ORG}/${snapshot_file}
 
       printf "Cleaning up all the snapshots\n"
