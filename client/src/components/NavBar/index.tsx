@@ -75,12 +75,16 @@ const NavBar = ({ isSkeleton }: Props) => {
       <div>
         <DropdownWithIcon
           items={[
-            {
-              text: 'Settings',
-              icon: <Cog />,
-              type: MenuListItemType.DEFAULT,
-              onClick: () => setSettingsOpen(true),
-            },
+            ...(!isSelfServe
+              ? [
+                  {
+                    text: 'Settings',
+                    icon: <Cog />,
+                    type: MenuListItemType.DEFAULT,
+                    onClick: () => setSettingsOpen(true),
+                  },
+                ]
+              : []),
             {
               text: 'Documentation',
               icon: <Magazine />,

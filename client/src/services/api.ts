@@ -119,15 +119,11 @@ export const getRepos = (): Promise<{ list: RepoType[] }> =>
 export const scanLocalRepos = (path: string) =>
   http.get(`/repos/scan`, { params: { path } }).then((r) => r.data);
 
-export const syncRepos = (repos: string[]) =>
-  http
-    .put('/repos/indexed', {
-      indexed: repos,
-    })
-    .then((r) => r.data);
-
 export const deleteRepo = (repoRef: string) =>
   http.delete(`/repos/indexed/${repoRef}`).then((r) => r.data);
+
+export const syncRepo = (repoRef: string) =>
+  http.get(`/repos/sync/${repoRef}`).then((r) => r.data);
 
 export const saveUserData = (userData: {
   email: string;

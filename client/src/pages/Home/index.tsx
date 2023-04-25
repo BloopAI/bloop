@@ -1,46 +1,32 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import * as Sentry from '@sentry/react';
-import ListNavigation from '../../components/IdeNavigation/ListNavigation';
-import { GitHubLogo, List, Repository } from '../../icons';
 import ErrorFallback from '../../components/ErrorFallback';
-import { DeviceContext } from '../../context/deviceContext';
-import { ReposFilter } from '../../types/general';
-import { UIContext } from '../../context/uiContext';
+import AddRepos from './AddRepos';
 import ReposSection from './ReposSection';
+import AddRepoCard from './AddRepoCard';
 
-type Props = {
-  emptyRepos?: boolean; // only for storybook
-};
-
-const listNavigationItems = [
-  { title: 'All', icon: <List /> },
-  { title: 'Local repos', icon: <Repository /> },
-  { title: 'GitHub repos', icon: <GitHubLogo /> },
-];
-
-const HomePage = ({ emptyRepos }: Props) => {
-  const [filter, setFilter] = useState<ReposFilter>(ReposFilter.ALL);
-  const { isSelfServe } = useContext(DeviceContext);
-  const { isRightPanelOpen } = useContext(UIContext);
-
+const HomePage = () => {
+  const [isAddReposOpen, setAddReposOpen] = useState<
+    null | 'local' | 'github' | 'public'
+  >(null);
   return (
-    <>
-      {isSelfServe ? null : (
-        <div
-          className={`w-90 text-gray-300 border-r border-gray-800 flex-shrink-0 h-full ${
-            isRightPanelOpen ? '-ml-90' : ''
-          } transition-all duration-300 ease-out-slow`}
-        >
-          <ListNavigation
-            title=" "
-            items={listNavigationItems}
-            setSelected={setFilter}
-            selected={filter}
-          />
+    <div className="w-full flex flex-col mx-auto max-w-6.5xl">
+      <div className="p-8 pb-0">
+        <h4 className="mb-3">Add</h4>
+        <div className="flex gap-3.5 items-center">
+          <AddRepoCard type="github" onClick={setAddReposOpen} />
+          <AddRepoCard type="public" onClick={setAddReposOpen} />
+          <AddRepoCard type="local" onClick={setAddReposOpen} />
         </div>
-      )}
-      <ReposSection filter={filter} emptyRepos={emptyRepos} />
-    </>
+      </div>
+      <ReposSection />
+      <AddRepos
+        addRepos={isAddReposOpen}
+        onClose={() => {
+          setAddReposOpen(null);
+        }}
+      />
+    </div>
   );
 };
 

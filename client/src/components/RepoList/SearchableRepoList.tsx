@@ -11,25 +11,19 @@ import TextInput from '../TextInput';
 import RepoList from './index';
 
 type Props = {
-  readOnly?: boolean;
-  activeTab: number;
-  setActiveTab?: (t: number) => void;
+  isLoading?: boolean;
   repos: RepoUi[];
-  setRepos: Dispatch<SetStateAction<RepoUi[]>>;
   containerClassName?: string;
   source: 'local' | 'GitHub';
+  onSync?: () => void;
 };
 
-const tabs = [{ title: 'Sync all repos' }, { title: 'Sync selected repos' }];
-
 const SearchableRepoList = ({
-  readOnly,
-  activeTab,
-  setActiveTab,
   repos,
-  setRepos,
+  isLoading,
   containerClassName,
   source,
+  onSync,
 }: Props) => {
   const [filter, setFilter] = useState('');
 
@@ -39,7 +33,7 @@ const SearchableRepoList = ({
 
   return (
     <div
-      className={`flex flex-col overflow-auto gap-3 ${
+      className={`flex flex-col overflow-auto gap-8 ${
         containerClassName || ''
       }`}
     >
@@ -50,23 +44,12 @@ const SearchableRepoList = ({
         onChange={handleChange}
         placeholder="Search..."
       />
-      {!readOnly && (
-        <div className="overflow-hidden flex-shrink-0">
-          <Tabs
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            tabs={tabs}
-            variant="button"
-            fullWidth
-          />
-        </div>
-      )}
       <RepoList
         repos={repos}
-        setRepos={setRepos}
         source={source}
-        activeTab={activeTab}
         filter={filter}
+        isLoading={isLoading}
+        onSync={onSync}
       />
     </div>
   );
