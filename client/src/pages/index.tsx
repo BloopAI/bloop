@@ -36,7 +36,8 @@ const ContentContainer = ({ tab }: { tab: { name: string; key: string } }) => {
     useContext(SearchContext);
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
 
-  const { navigatedItem, query, navigateBack } = useAppNavigation();
+  const { navigatedItem, query, navigateBack, navigateRepoPath } =
+    useAppNavigation();
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (
@@ -61,7 +62,7 @@ const ContentContainer = ({ tab }: { tab: { name: string; key: string } }) => {
         const repoName = tab.key.startsWith('local//')
           ? tab.key.split('/').reverse()[0]
           : tab.key;
-        searchQuery(buildRepoQuery(repoName), 0, false, SearchType.REGEX);
+        navigateRepoPath(repoName);
       }
       return;
     }

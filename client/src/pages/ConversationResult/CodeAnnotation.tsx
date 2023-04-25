@@ -68,7 +68,7 @@ const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
   }, [mode]);
 
   useEffect(() => {
-    if (fileResultData) {
+    if (fileResultData?.data?.length) {
       setOpenResult(mapFileResult(fileResultData.data[0]));
       getHoverables(
         fileResultData.data[0].data.relative_path,
