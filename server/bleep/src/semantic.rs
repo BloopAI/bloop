@@ -22,6 +22,7 @@ use thiserror::Error;
 use tracing::{debug, info, trace, warn};
 
 pub mod chunk;
+pub mod execute;
 
 const COLLECTION_NAME: &str = "documents";
 
@@ -55,16 +56,16 @@ pub struct Semantic {
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Payload<'a> {
-    lang: Cow<'a, str>,
-    repo_name: Cow<'a, str>,
-    repo_ref: Cow<'a, str>,
-    relative_path: Cow<'a, str>,
-    snippet: Cow<'a, str>,
-    start_line: u64,
-    end_line: u64,
-    start_byte: u64,
-    end_byte: u64,
-    branches: Vec<String>,
+    pub lang: Cow<'a, str>,
+    pub repo_name: Cow<'a, str>,
+    pub repo_ref: Cow<'a, str>,
+    pub relative_path: Cow<'a, str>,
+    pub snippet: Cow<'a, str>,
+    pub start_line: u64,
+    pub end_line: u64,
+    pub start_byte: u64,
+    pub end_byte: u64,
+    pub branches: Vec<String>,
 }
 
 impl<'a> Payload<'a> {
@@ -262,6 +263,7 @@ impl Semantic {
         &self,
         parsed_query: &NLQuery<'a>,
         limit: u64,
+        offset: u64,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
         let Some(query) = parsed_query.target() else {
             anyhow::bail!("no search target for query");
@@ -332,6 +334,7 @@ impl Semantic {
             .qdrant
             .search_points(&SearchPoints {
                 collection_name: COLLECTION_NAME.to_string(),
+                offset: Some(offset),
                 limit,
                 vector: self.embed(query)?,
                 with_payload: Some(WithPayloadSelector {

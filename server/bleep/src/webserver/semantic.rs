@@ -1,34 +1,18 @@
 use super::prelude::*;
 use crate::{
-    query::parser,
+    query::{
+        execute::ApiQuery,
+        parser::{self, ParsedQuery},
+    },
     semantic::{self, Semantic},
 };
 use tracing::error;
 
-#[derive(Deserialize)]
-pub(super) struct Args {
-    limit: u64,
-    query: String,
-}
-
-#[derive(Serialize)]
-pub(super) struct SemanticResponse {
-    chunks: Vec<semantic::Payload<'static>>,
-}
-
-impl super::ApiResponse for SemanticResponse {}
-
 /// Get details of an indexed repository based on their id
 //
-#[utoipa::path(get, path = "/repos/indexed/:ref",
-    responses(
-        (status = 200, description = "Execute query successfully", body = SemanticResponse),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
-pub(super) async fn raw_chunks(
-    Query(args): Query<Args>,
+pub(super) async fn complex_search(
+    Query(args): Query<ApiQuery>,
+    Extension(indexes): Extension<Arc<Indexes>>,
     Extension(semantic): Extension<Option<Semantic>>,
 ) -> impl IntoResponse {
     let Some(semantic) = semantic else {
@@ -38,19 +22,19 @@ pub(super) async fn raw_chunks(
         ));
     };
 
-    let Args { ref query, limit } = args;
-    let parser::ParsedQuery::NL(query) = parser::parse_nl(query).unwrap() else {panic!("badd")};
-    let result = semantic.search(&query, limit).await.map(|raw| {
-        raw.into_iter()
-            .map(|v| semantic::Payload::from_qdrant(v.payload))
-            .collect::<Vec<_>>()
-    });
-
-    match result {
+    match parser::parse_nl(&args.q.clone()) {
+        Ok(ParsedQuery::NL(q)) => semantic::execute::execute(semantic, q, args)
+            .await
+            .map(json)
+            .map_err(super::Error::from),
+        Ok(ParsedQuery::Grep(q)) => Arc::new(args)
+            .query_with(indexes, q)
+            .await
+            .map(json)
+            .map_err(super::Error::from),
         Err(err) => {
             error!(?err, "qdrant query failed");
             Err(Error::new(ErrorKind::UpstreamService, "error"))
         }
-        Ok(result) => Ok(json(SemanticResponse { chunks: result })),
     }
 }

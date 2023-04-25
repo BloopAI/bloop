@@ -219,7 +219,7 @@ async fn search_snippets(
     parsed_query.target = Some(parser::Literal::Plain(rephrased_query.into()));
 
     let all_snippets: Vec<Snippet> = semantic
-        .search(parsed_query, 4 * SNIPPET_COUNT as u64) // heuristic
+        .search(parsed_query, 4 * SNIPPET_COUNT as u64, 0) // heuristic
         .await
         .map_err(Error::internal)?
         .into_iter()
