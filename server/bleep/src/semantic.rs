@@ -68,7 +68,7 @@ pub struct Payload<'a> {
 }
 
 impl<'a> Payload<'a> {
-    pub fn from_qdrant(payload: HashMap<String, qdrant_client::qdrant::Value>) -> Payload<'static> {
+    pub fn from_qdrant(payload: HashMap<String, Value>) -> Payload<'static> {
         let mut converted = payload
             .into_iter()
             .map(|(key, value)| (key, kind_to_value(value.kind)))
@@ -101,7 +101,7 @@ impl<'a> Payload<'a> {
                 .unwrap()
                 .parse()
                 .unwrap(),
-            branches: serde_json::from_value(converted.remove("branches")).unwrap(),
+            branches: serde_json::from_value(converted.remove("branches").unwrap()).unwrap(),
         }
     }
 

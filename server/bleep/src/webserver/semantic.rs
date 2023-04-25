@@ -31,26 +31,26 @@ pub(super) async fn raw_chunks(
     Query(args): Query<Args>,
     Extension(semantic): Extension<Option<Semantic>>,
 ) -> impl IntoResponse {
-    if let Some(semantic) = semantic {
-        let Args { ref query, limit } = args;
-        let parser::ParsedQuery::NL(query) = parser::parse_nl(query).unwrap() else {panic!("badd")};
-        let result = semantic.search(&query, limit).await.map(|raw| {
-            raw.into_iter()
-                .map(|v| semantic::Payload::from_qdrant(v.payload))
-                .collect::<Vec<_>>()
-        });
-
-        match result {
-            Err(err) => {
-                error!(?err, "qdrant query failed");
-                return Err(Error::new(ErrorKind::UpstreamService, "error"));
-            }
-            Ok(result) => Ok(json(SemanticResponse { chunks: result })),
-        }
-    } else {
-        Err(Error::new(
+    let Some(semantic) = semantic else {
+        return Err(Error::new(
             ErrorKind::Configuration,
             "Qdrant not configured",
-        ))
+        ));
+    };
+
+    let Args { ref query, limit } = args;
+    let parser::ParsedQuery::NL(query) = parser::parse_nl(query).unwrap() else {panic!("badd")};
+    let result = semantic.search(&query, limit).await.map(|raw| {
+        raw.into_iter()
+            .map(|v| semantic::Payload::from_qdrant(v.payload))
+            .collect::<Vec<_>>()
+    });
+
+    match result {
+        Err(err) => {
+            error!(?err, "qdrant query failed");
+            Err(Error::new(ErrorKind::UpstreamService, "error"))
+        }
+        Ok(result) => Ok(json(SemanticResponse { chunks: result })),
     }
 }
