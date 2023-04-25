@@ -41,7 +41,12 @@ export const AppNavigationProvider = (prop: {
 
   const saveState = useCallback(
     (navigationItem: NavigationItem) => {
-      setNavigation((prevState) => [...prevState, navigationItem]);
+      setNavigation((prevState) =>
+        JSON.stringify(navigationItem) !==
+        JSON.stringify(prevState.slice(-1)[0])
+          ? [...prevState, navigationItem]
+          : prevState,
+      ); // do not duplicate navigation item if called multiple times
       setForwardNavigation([]);
       if (navigationItem.type === 'home') {
         navigateBrowser('/');
@@ -135,10 +140,13 @@ export const AppNavigationProvider = (prop: {
     [],
   );
 
-  const navigateBack = useCallback(() => {
+  const navigateBack = useCallback((delta: number = -1) => {
+    if (!delta) {
+      return;
+    }
     setNavigation((prevState) => {
-      setForwardNavigation((prev) => [...prev, prevState.slice(-1)[0]]);
-      return prevState.slice(0, -1);
+      setForwardNavigation((prev) => [...prev, prevState.slice(delta)[0]]);
+      return prevState.slice(0, delta);
     });
   }, []);
 
