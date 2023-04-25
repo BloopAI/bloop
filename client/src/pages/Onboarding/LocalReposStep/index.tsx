@@ -9,6 +9,7 @@ import GoBackButton from '../GoBackButton';
 import { splitPath } from '../../../utils';
 import {
   CHOSEN_SCAN_FOLDER_KEY,
+  getPlainFromStorage,
   savePlainToStorage,
 } from '../../../services/storage';
 import { DeviceContext } from '../../../context/deviceContext';
@@ -20,7 +21,9 @@ type Props = {
 
 const LocalReposStep = ({ handleNext, handleBack }: Props) => {
   const [repos, setRepos] = useState<RepoUi[]>([]);
-  const [chosenFolder, setChosenFolder] = useState('');
+  const [chosenFolder, setChosenFolder] = useState(
+    getPlainFromStorage(CHOSEN_SCAN_FOLDER_KEY),
+  );
   const [isLoading, setLoading] = useState(true);
   const { homeDir, chooseFolder } = useContext(DeviceContext);
 
@@ -84,12 +87,17 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
         description="Select the folders you want to add to bloop. You can always sync, unsync or remove unwanted repositories later."
       />
       {chosenFolder ? (
-        <div className="flex flex-col overflow-auto h-full">
+        <div className="flex flex-col overflow-auto h-full relative">
           <SearchableRepoList
             repos={repos}
             source="local"
             isLoading={isLoading}
             onSync={handleNext}
+            onFolderChange={() => {
+              setChosenFolder('');
+              setLoading(true);
+              setRepos([]);
+            }}
           />
           <div className={`flex flex-col gap-4 ${chosenFolder ? 'mt-4' : ''}`}>
             <Button type="submit" variant="primary">
