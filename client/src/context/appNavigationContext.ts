@@ -12,7 +12,7 @@ type ContextType = {
     path?: string,
     page?: number,
   ) => void;
-  navigateBack: () => void;
+  navigateBack: (delta?: number) => void;
   navigateForward: () => void;
   navigateHome: () => void;
   navigateRepoPath: (

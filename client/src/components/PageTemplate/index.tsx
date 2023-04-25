@@ -15,6 +15,7 @@ import Button from '../Button';
 import Chat from '../Chat';
 import SearchInput from '../SearchInput';
 import { ChatContext } from '../../context/chatContext';
+import Subheader from './Subheader';
 
 type Props = {
   children: React.ReactNode;
@@ -101,13 +102,7 @@ const PageTemplate = ({ children, withSearchBar, renderPage }: Props) => {
       </SeparateOnboardingStep>
       <NavBar userSigned />
       <div className="mt-8" />
-      {withSearchBar && (
-        <div className="w-full bg-gray-800 py-2 flex items-center justify-center border-b border-gray-700">
-          <div className="w-full max-w-[548px]">
-            <SearchInput />
-          </div>
-        </div>
-      )}
+      {withSearchBar && <Subheader />}
       <div
         className="flex mb-16 w-screen overflow-hidden relative z-10"
         style={mainContainerStyle}
