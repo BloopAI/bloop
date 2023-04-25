@@ -11,12 +11,20 @@ type Props = {
   isLoading?: boolean;
   filter?: string;
   onSync?: () => void;
+  onFolderChange?: () => void;
 };
 
 const listItemClassName =
   'bg-gray-900 border-b border-l border-r first:border-t first:rounded-t-md last:border-b last:rounded-b-md border-gray-800 pl-3 p-1.5 body-s group h-11';
 
-const RepoList = ({ repos, source, isLoading, filter, onSync }: Props) => {
+const RepoList = ({
+  repos,
+  source,
+  isLoading,
+  filter,
+  onSync,
+  onFolderChange,
+}: Props) => {
   const [filteredRepos, setFilteredRepos] = useState(repos);
 
   useEffect(() => {
@@ -50,11 +58,17 @@ const RepoList = ({ repos, source, isLoading, filter, onSync }: Props) => {
                 (filteredRepos[i - 1] &&
                   filteredRepos[i - 1].folderName !== repo.folderName) ? (
                   <span
-                    className={`bg-gray-800 text-sm w-full py-2 px-4 block ${
+                    className={`bg-gray-800 text-sm w-full py-2 px-4 flex items-center justify-between ${
                       i === 0 ? 'rounded-t-md' : ''
                     }`}
                   >
                     {repo.folderName}
+                    <button
+                      className="caption text-primary-300"
+                      onClick={onFolderChange}
+                    >
+                      Choose folder
+                    </button>
                   </span>
                 ) : (
                   ''
