@@ -1,0 +1,21 @@
+{{ if .Values.qdrant.backup -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "qdrant.fullname" . }}-backup-script
+data:
+  backup-script.sh: |
+    while true; do
+
+      echo "Backing up qdrant collection for organization ${GITHUB_ORG}"
+      curl -X POST localhost:6333/snapshots
+
+      snapshot_file=$(ls -AU /qdrant/snapshots/*.snapshot | head -1)
+      echo "Uploading backup ${snapshot_file} to S3 bucket ${S3_BACKUP_BUCKET}"
+      aws s3 cp ${snapshot_file} s3://${S3_BACKUP_BUCKET}/${GITHUB_ORG}/${snapshot_file}
+
+      echo "Cleaning up all the snapshots"
+      rm -Rf /qdrant/snapshots/*
+      sleep 24h
+    done
+{{ end -}}
