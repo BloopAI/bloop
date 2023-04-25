@@ -43,7 +43,9 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
           ?.filter(
             (r) =>
               r.provider === RepoProvider.Local &&
-              r.sync_status == SyncStatus.Done &&
+              ![SyncStatus.Uninitialized, SyncStatus.Removed].includes(
+                r.sync_status,
+              ) &&
               !repos.find((repo) => r.ref === repo.ref),
           )
           .map((r) => r.ref) || [];
