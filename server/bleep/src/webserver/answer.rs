@@ -209,7 +209,7 @@ impl Conversation {
                     .app
                     .indexes
                     .file
-                    .partial_path_match(&self.repo_ref, &search)
+                    .fuzzy_path_match(&self.repo_ref, &search, /* limit */ 50)
                     .await
                     .map(|c| c.relative_path)
                     .map(|p| format!("{}, {p}", self.path_alias(&p)))
