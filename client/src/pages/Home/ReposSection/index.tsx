@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import RepoCard from '../../../components/RepoCard';
 import { getRepos } from '../../../services/api';
 import { RepoType, SyncStatus } from '../../../types/general';
@@ -30,15 +30,15 @@ const ReposSection = () => {
     percentage: number;
   } | null>(null);
 
+  const fetchRepos = useCallback(() => {
+    getRepos().then((data) => {
+      const list = data?.list?.sort((a, b) => (a.name < b.name ? -1 : 1)) || [];
+      setRepositories(list);
+      setReposToShow(filterRepositories(list));
+    });
+  }, []);
+
   useEffect(() => {
-    const fetchRepos = () => {
-      getRepos().then((data) => {
-        const list =
-          data?.list?.sort((a, b) => (a.name < b.name ? -1 : 1)) || [];
-        setRepositories(list);
-        setReposToShow(filterRepositories(list));
-      });
-    };
     fetchRepos();
     const intervalId = setInterval(fetchRepos, 10000);
     return () => {
@@ -108,6 +108,9 @@ const ReposSection = () => {
                 currentlySyncingRepo?.percentage !== 100)
             }
             syncStatus={currentlySyncingRepo}
+            onDelete={() => {
+              setReposToShow((prev) => prev.filter((r) => r.ref !== ref));
+            }}
           />
         ))}
       </div>
