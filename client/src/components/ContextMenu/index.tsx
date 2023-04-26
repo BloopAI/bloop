@@ -1,5 +1,5 @@
-import React, { Fragment, MouseEvent, PropsWithChildren, useRef } from 'react';
-import Tippy from '@tippyjs/react/headless';
+import React, { MouseEvent, PropsWithChildren, useRef } from 'react';
+import Tippy, { TippyProps } from '@tippyjs/react/headless';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
 import { ExtendedMenuItemType, MenuItemType } from '../../types/general';
 import ItemShared from './ContextMenuItem/ItemShared';
@@ -37,11 +37,18 @@ type Props = {
   visible: boolean;
   closeOnClickOutside?: boolean;
   lastItemFixed?: boolean;
-  isWide?: boolean;
   title?: string;
   handleClose: () => void;
   key?: string;
   appendTo?: Element | 'parent';
+  size?: 'small' | 'medium' | 'large';
+  dropdownPlacement?: TippyProps['placement'];
+};
+
+const sizesMap = {
+  small: 'w-44',
+  medium: 'w-72',
+  large: 'w-100',
 };
 
 const ContextMenu = ({
@@ -53,7 +60,8 @@ const ContextMenu = ({
   closeOnClickOutside = true,
   appendTo = 'parent',
   lastItemFixed,
-  isWide,
+  size = 'medium',
+  dropdownPlacement = 'bottom-start',
 }: PropsWithChildren<Props>) => {
   const contextMenuRef = useRef<HTMLDivElement>(null);
   useOnClickOutside(
@@ -73,6 +81,7 @@ const ContextMenu = ({
             key={i}
             icon={item.icon}
             onClick={(e) => {
+              e.stopPropagation();
               item.onClick?.(e);
               handleClose();
             }}
@@ -113,7 +122,7 @@ const ContextMenu = ({
     <Tippy
       onHide={handleClose}
       visible={visible}
-      placement="bottom-start"
+      placement={dropdownPlacement}
       interactive
       key={title}
       appendTo={appendTo}
@@ -124,7 +133,7 @@ const ContextMenu = ({
           className={`${visible ? '' : 'scale-0 opacity-0'}
       transition-all duration-300 ease-in-slow backdrop-blur-6
        rounded p-1 bg-gray-800/75 shadow-light-bigger ${
-         isWide ? 'w-100' : 'w-72'
+         sizesMap[size]
        } flex flex-col gap-1`}
         >
           {title ? (
