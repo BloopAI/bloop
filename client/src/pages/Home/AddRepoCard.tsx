@@ -7,17 +7,29 @@ type Props = {
 
 const typeMap = {
   local: {
-    icon: <HardDrive />,
+    icon: (
+      <div className="w-4 h-4">
+        <HardDrive raw />
+      </div>
+    ),
     title: 'Local repository',
     description: 'Add a repository from your local machine',
   },
   github: {
-    icon: <LockFilled />,
+    icon: (
+      <div className="w-4 h-4">
+        <LockFilled raw />
+      </div>
+    ),
     title: 'Your GitHub repository',
     description: 'Any repository from you private GitHub account',
   },
   public: {
-    icon: <Globe2 />,
+    icon: (
+      <div className="w-4 h-4">
+        <Globe2 raw />
+      </div>
+    ),
     title: 'Public repository',
     description: 'Any public repository hosted on GitHub',
   },
@@ -36,7 +48,7 @@ const AddRepoCard = ({ type, onClick }: Props) => {
         </p>
         <ChevronRight className="group-hover:text-primary-300" />
       </div>
-      <p className="pl-7 caption text-gray-500 group-hover:text-gray-400">
+      <p className="pl-6 caption text-gray-500 group-hover:text-gray-400">
         {typeMap[type].description}
       </p>
     </div>

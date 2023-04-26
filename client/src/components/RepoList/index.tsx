@@ -63,19 +63,21 @@ const RepoList = ({
                     }`}
                   >
                     {repo.folderName}
-                    <button
-                      className="caption text-primary-300"
-                      onClick={onFolderChange}
-                    >
-                      Choose folder
-                    </button>
+                    {onFolderChange && (
+                      <button
+                        className="caption text-primary-300"
+                        onClick={onFolderChange}
+                      >
+                        Choose folder
+                      </button>
+                    )}
                   </span>
                 ) : (
                   ''
                 )}
                 <li className={listItemClassName} title={repo.name}>
                   <div className="flex items-center justify-between w-full gap-2">
-                    <div className="py-1.5 flex items-center gap-2 overflow-hidden">
+                    <div className="py-1.5 flex items-center gap-2 overflow-hidden text-gray-400 group-hover:text-gray-100">
                       {source === 'local' ? <HardDrive /> : <Lock />}
                       <span className="whitespace-nowrap">
                         {repo.shortName}
