@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     query::{
         execute::{ApiQuery, PagingMetadata, QueryResponse, QueryResult, ResultStats},
-        parser::NLQuery,
+        parser::SemanticQuery,
     },
     snippet::Snippet,
 };
@@ -14,7 +14,7 @@ use anyhow::Result;
 
 pub async fn execute(
     semantic: Semantic,
-    query: NLQuery<'_>,
+    query: SemanticQuery<'_>,
     params: ApiQuery,
 ) -> Result<QueryResponse> {
     let data = semantic

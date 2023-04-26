@@ -184,7 +184,7 @@ pub(super) async fn handle(
 }
 
 fn parse_query(query: &str) -> Result<String, Error> {
-    let ParsedQuery::NL(q): ParsedQuery = parser::parse_nl(query)
+    let ParsedQuery::Semantic(q): ParsedQuery = parser::parse_nl(query)
         .map_err(Error::user)? else {
 	    return Err(Error::new(ErrorKind::User, "can't do that here"));
 	};
@@ -211,7 +211,7 @@ async fn search_snippets(
     raw_query: &str,
     rephrased_query: &str,
 ) -> Result<Vec<Snippet>, Error> {
-    let ParsedQuery::NL(ref mut parsed_query): ParsedQuery = parser::parse_nl(raw_query)
+    let ParsedQuery::Semantic(ref mut parsed_query): ParsedQuery = parser::parse_nl(raw_query)
         .map_err(Error::user)? else {
 	    unreachable!()
 	};

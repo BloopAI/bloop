@@ -25,19 +25,19 @@ pub enum Target<'a> {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParsedQuery<'a> {
-    NL(NLQuery<'a>),
+    Semantic(SemanticQuery<'a>),
     Grep(Vec<Query<'a>>),
 }
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
-pub struct NLQuery<'a> {
+pub struct SemanticQuery<'a> {
     pub repos: HashSet<Literal<'a>>,
     pub langs: HashSet<Cow<'a, str>>,
     pub branch: HashSet<Literal<'a>>,
     pub target: Option<Literal<'a>>,
 }
 
-impl<'a> NLQuery<'a> {
+impl<'a> SemanticQuery<'a> {
     pub fn repos(&self) -> impl Iterator<Item = &Cow<'_, str>> {
         self.repos.iter().filter_map(|t| t.as_plain())
     }
@@ -492,7 +492,7 @@ pub fn parse_nl(query: &str) -> Result<ParsedQuery<'_>, ParseError> {
 
     match force_parsing_as {
         Some(ForceParsingAs::Grep) => parse(query).map(ParsedQuery::Grep),
-        _ => Ok(ParsedQuery::NL(NLQuery {
+        _ => Ok(ParsedQuery::Semantic(SemanticQuery {
             repos,
             langs,
             branch,
@@ -1099,7 +1099,7 @@ mod tests {
     fn nl_parse() {
         assert_eq!(
             parse_nl("what is background color? lang:tsx repo:bloop").unwrap(),
-            ParsedQuery::NL(NLQuery {
+            ParsedQuery::Semantic(SemanticQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into()].into(),
                 repos: [Literal::Plain("bloop".into())].into(),
@@ -1110,7 +1110,7 @@ mod tests {
 
     #[test]
     fn nl_parse_dedup_similar_filters() {
-        let ParsedQuery::NL(q) =
+        let ParsedQuery::Semantic(q) =
             parse_nl("what is background color? lang:tsx repo:bloop repo:bloop").unwrap() else {
 		panic!("down with this sorta thing")
 	    };
@@ -1122,7 +1122,7 @@ mod tests {
         assert_eq!(
             parse_nl("what is background color? lang:tsx lang:ts repo:bloop repo:bar repo:baz")
                 .unwrap(),
-            ParsedQuery::NL(NLQuery {
+            ParsedQuery::Semantic(SemanticQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into(), "typescript".into()].into(),
                 branch: [].into(),
@@ -1143,7 +1143,7 @@ mod tests {
                 "what is background color? lang:tsx repo:bloop org:bloop symbol:foo open:true"
             )
             .unwrap(),
-            ParsedQuery::NL(NLQuery {
+            ParsedQuery::Semantic(SemanticQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into()].into(),
                 repos: [Literal::Plain("bloop".into())].into(),
@@ -1153,7 +1153,7 @@ mod tests {
 
         assert_eq!(
             parse_nl("case:ignore why are languages excluded from ctags? branch:main").unwrap(),
-            ParsedQuery::NL(NLQuery {
+            ParsedQuery::Semantic(SemanticQuery {
                 target: Some(Literal::Plain(
                     "why are languages excluded from ctags?".into()
                 )),

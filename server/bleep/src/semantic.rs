@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, ops::Not, path::Path, sync::Arc};
 
-use crate::{query::parser::NLQuery, Configuration};
+use crate::{query::parser::SemanticQuery, Configuration};
 
 use ndarray::Axis;
 use ort::{
@@ -252,7 +252,7 @@ impl Semantic {
 
     pub async fn search<'a>(
         &self,
-        parsed_query: &NLQuery<'a>,
+        parsed_query: &SemanticQuery<'a>,
         limit: u64,
         offset: u64,
     ) -> anyhow::Result<Vec<ScoredPoint>> {

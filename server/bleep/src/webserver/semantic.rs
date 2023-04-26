@@ -21,7 +21,7 @@ pub(super) async fn complex_search(
     };
 
     match parser::parse_nl(&args.q.clone()) {
-        Ok(ParsedQuery::NL(q)) => semantic::execute::execute(semantic, q, args)
+        Ok(ParsedQuery::Semantic(q)) => semantic::execute::execute(semantic, q, args)
             .await
             .map(json)
             .map_err(super::Error::from),
