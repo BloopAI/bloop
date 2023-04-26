@@ -21,7 +21,6 @@ export const Default = () => {
   ]);
   const [searchSubmitted, setSearchSubmitted] = useState(false);
   const [globalRegex, setGlobalRegex] = useState(false);
-  const [lastQueryTime, setLastQueryTime] = useState(3);
   const [searchType, setSearchType] = useState(SearchType.REGEX);
   const searchContextValue = useMemo(
     () => ({
@@ -33,8 +32,6 @@ export const Default = () => {
       setFilters,
       searchSubmitted,
       setSearchSubmitted,
-      lastQueryTime,
-      setLastQueryTime,
       globalRegex,
       setGlobalRegex,
       searchType,
@@ -62,7 +59,6 @@ export const MixedSuggestions = () => {
     'error:no items',
   ]);
   const [searchSubmitted, setSearchSubmitted] = useState(false);
-  const [lastQueryTime, setLastQueryTime] = useState(3);
   const [globalRegex, setGlobalRegex] = useState(false);
   const [searchType, setSearchType] = useState(SearchType.REGEX);
   const searchContextValue = useMemo(
@@ -75,8 +71,6 @@ export const MixedSuggestions = () => {
       setFilters,
       searchSubmitted,
       setSearchSubmitted,
-      lastQueryTime,
-      setLastQueryTime,
       globalRegex,
       setGlobalRegex,
       searchType,
