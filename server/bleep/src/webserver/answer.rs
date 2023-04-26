@@ -249,7 +249,7 @@ async fn grow_snippet(
                 grow_size += 10;
             }
         } else {
-            break relevant_snippet.snippet.to_string();
+            break relevant_snippet.text.to_string();
         }
     };
 
@@ -258,7 +258,7 @@ async fn grow_snippet(
         repo_name: relevant_snippet.repo_name.clone(),
         repo_ref: relevant_snippet.repo_ref.clone(),
         relative_path: relevant_snippet.relative_path.clone(),
-        snippet: grown_text.into(),
+        text: grown_text.into(),
         start_line: relevant_snippet.start_line,
         end_line: relevant_snippet.end_line,
         start_byte: relevant_snippet.start_byte,
@@ -812,7 +812,7 @@ impl<'a> AnswerAPIClient<'a> {
                     snippet.relative_path,
                     snippet.lang,
                     i + 1,
-                    snippet.snippet
+                    snippet.text
                 )
             })
             .fold(
@@ -858,7 +858,7 @@ impl<'a> AnswerAPIClient<'a> {
     ) -> api::Messages {
         let system = format!(
             include_str!("../prompt/explain.txt"),
-            TEXT = snippet.snippet,
+            TEXT = snippet.text,
             PATH = snippet.relative_path,
             REPO = snippet.repo_name,
         );

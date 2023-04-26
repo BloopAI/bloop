@@ -43,7 +43,7 @@ pub async fn execute(
             ))
             .or_insert_with(Vec::new)
             .push(Snippet {
-                data: payload.snippet.to_string(),
+                data: payload.text.to_string(),
                 line_range: payload.start_line as usize..payload.end_line as usize,
                 highlights: vec![],
                 symbols: vec![],
