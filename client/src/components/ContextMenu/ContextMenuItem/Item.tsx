@@ -30,6 +30,7 @@ const Item = ({
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     if (disabled) {
       return;
     }
