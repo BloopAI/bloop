@@ -132,7 +132,7 @@ const ContextMenu = ({
           ref={contextMenuRef}
           className={`${visible ? '' : 'scale-0 opacity-0'}
       transition-all duration-300 ease-in-slow backdrop-blur-6
-       rounded p-1 bg-gray-800/75 shadow-light-bigger ${
+       rounded-md p-1 bg-gray-800/80 border border-gray-700 shadow-light-bigger ${
          sizesMap[size]
        } flex flex-col gap-1`}
         >
