@@ -72,16 +72,16 @@ const RepoCard = ({
 
   return (
     <div
-      className={`bg-gray-900 hover:bg-gray-800 border border-gray-800 rounded-md p-4 w-64 h-36 group
+      className={`bg-gray-900 hover:bg-gray-800 border border-gray-800 rounded-md p-4 w-67 h-36 group
        flex-shrink-0 flex flex-col justify-between cursor-pointer transition-all duration-150`}
       onClick={handleClick}
     >
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-start">
         <div className="flex items-start gap-4">
-          <span className="h-6 flex items-center">
+          <span className="h-6 flex items-center mt-1">
             <FileIcon filename={getFileExtensionForLang(lang)} />
           </span>
-          <p className="break-all text-gray-200">{repoName}</p>
+          <p className="break-all text-gray-200 pt-0.5">{repoName}</p>
         </div>
         <div className="opacity-0 group-hover:opacity-100 transition-all duration-150">
           <Dropdown
@@ -119,9 +119,11 @@ const RepoCard = ({
         </div>
       ) : (
         <div className="flex items-center gap-2 caption text-gray-500">
-          <div className="w-4 h-4 ">
-            <GitHubLogo raw />
-          </div>
+          {isGh && (
+            <div className="w-4 h-4 ">
+              <GitHubLogo raw />
+            </div>
+          )}
           <span
             className={`w-2 h-2 ${
               STATUS_MAP[
