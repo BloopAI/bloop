@@ -173,12 +173,14 @@ impl<'a> Target<'a> {
 #[grammar = "query/grammar.pest"] // relative to src
 struct PestParser;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, PartialEq, thiserror::Error)]
 pub enum ParseError {
     #[error("parse error: {0:?}")]
     Pest(#[from] Box<pest::error::Error<Rule>>),
     #[error("unparsed token: {0:?}")]
     UnparsedToken(String),
+    #[error("multiple mode designators")]
+    MultiMode,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -449,7 +451,7 @@ pub fn parse_nl(query: &str) -> Result<ParsedQuery<'_>, ParseError> {
     let mut langs = HashSet::new();
     let mut branch = HashSet::new();
     let mut target: Option<Literal> = None;
-    let mut force_parsing_as = ForceParsingAs::Semantic;
+    let mut force_parsing_as = None;
     for pair in pairs {
         match pair.as_rule() {
             Rule::repo => {
@@ -475,27 +477,27 @@ pub fn parse_nl(query: &str) -> Result<ParsedQuery<'_>, ParseError> {
             Rule::mode_selector => {
                 let inner = pair.into_inner().next().unwrap();
                 match inner.as_str() {
-                    "grep" => {
-                        force_parsing_as = ForceParsingAs::Grep;
-                        break;
+                    "grep" if force_parsing_as.is_none() => {
+                        force_parsing_as = Some(ForceParsingAs::Grep);
                     }
-                    "semantic" => {}
-                    _ => unreachable!(),
+                    "semantic" if force_parsing_as.is_none() => {
+                        force_parsing_as = Some(ForceParsingAs::Semantic);
+                    }
+                    _ => return Err(ParseError::MultiMode),
                 };
-                break;
             }
             _ => {}
         }
     }
 
     match force_parsing_as {
-        ForceParsingAs::Semantic => Ok(ParsedQuery::NL(NLQuery {
+        Some(ForceParsingAs::Grep) => parse(query).map(ParsedQuery::Grep),
+        _ => Ok(ParsedQuery::NL(NLQuery {
             repos,
             langs,
             branch,
             target,
         })),
-        _ => parse(query).map(ParsedQuery::Grep),
     }
 }
 
@@ -645,20 +647,44 @@ mod tests {
             ],
         );
 
-        // Flip the intersection order.
         assert_eq!(
-            parse_nl("repo:bar or repo:foo ParseError mode:grep").unwrap(),
-            ParsedQuery::Grep(vec![
-                Query {
-                    repo: Some(Literal::Plain("bar".into())),
-                    ..Query::default()
-                },
+            parse_nl("repo:foo ParseError or repo:bar mode:grep"),
+            Ok(ParsedQuery::Grep(vec![
                 Query {
                     repo: Some(Literal::Plain("foo".into())),
                     target: Some(Target::Content(Literal::Plain("ParseError".into()))),
                     ..Query::default()
                 },
-            ]),
+                Query {
+                    repo: Some(Literal::Plain("bar".into())),
+                    ..Query::default()
+                },
+            ])),
+        );
+
+        assert_eq!(
+            parse("repo:foo ParseError or repo:bar").unwrap(),
+            vec![
+                Query {
+                    repo: Some(Literal::Plain("foo".into())),
+                    target: Some(Target::Content(Literal::Plain("ParseError".into()))),
+                    ..Query::default()
+                },
+                Query {
+                    repo: Some(Literal::Plain("bar".into())),
+                    ..Query::default()
+                },
+            ],
+        );
+
+        assert_eq!(
+            parse_nl("repo:bar or repo:foo ParseError mode:grep mode:semantic"),
+            Err(ParseError::MultiMode)
+        );
+
+        assert_eq!(
+            parse_nl("repo:bar or repo:foo ParseError mode:semantic mode:grep"),
+            Err(ParseError::MultiMode)
         );
     }
 
