@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, ops::Not, path::Path, sync::Arc};
 
-use crate::{query::parser::SemanticQuery, Configuration};
+use crate::{query::parser::SemanticQuery, snippet::Snippet, Configuration};
 
 use ndarray::Axis;
 use ort::{
@@ -10,10 +10,10 @@ use ort::{
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
-        r#match::MatchValue, vectors_config, with_payload_selector, with_vectors_selector,
-        CollectionOperationResponse, CreateCollection, Distance, FieldCondition, Filter, Match,
-        PointId, PointStruct, ScoredPoint, SearchPoints, Value, VectorParams, VectorsConfig,
-        WithPayloadSelector, WithVectorsSelector,
+        r#match::MatchValue, vectors::VectorsOptions, vectors_config, with_payload_selector,
+        with_vectors_selector, CollectionOperationResponse, CreateCollection, Distance,
+        FieldCondition, Filter, Match, PointId, PointStruct, ScoredPoint, SearchPoints, Value,
+        VectorParams, Vectors, VectorsConfig, WithPayloadSelector, WithVectorsSelector,
     },
 };
 
@@ -25,6 +25,8 @@ pub mod chunk;
 pub mod execute;
 
 const COLLECTION_NAME: &str = "documents";
+
+pub type Embedding = Vec<f32>;
 
 #[derive(Error, Debug)]
 pub enum SemanticError {
@@ -54,7 +56,7 @@ pub struct Semantic {
     config: Arc<Configuration>,
 }
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Default, Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct Payload<'a> {
     pub lang: Cow<'a, str>,
     pub repo_name: Cow<'a, str>,
@@ -66,6 +68,11 @@ pub struct Payload<'a> {
     pub start_byte: u64,
     pub end_byte: u64,
     pub branches: Vec<String>,
+
+    #[serde(skip)]
+    pub embedding: Option<Embedding>,
+    #[serde(skip)]
+    pub score: Option<f32>,
 }
 
 macro_rules! val_str(($hash:ident, $val:expr) => { serde_json::from_value($hash.remove($val).unwrap()).unwrap() });
@@ -77,11 +84,27 @@ macro_rules! val_parse_str(($hash:ident, $val:expr) => {
 });
 
 impl<'a> Payload<'a> {
-    pub fn from_qdrant(payload: HashMap<String, Value>) -> Payload<'static> {
+    pub fn from_qdrant(orig: ScoredPoint) -> Payload<'static> {
+        let ScoredPoint {
+            payload,
+            score,
+            vectors,
+            ..
+        } = orig;
+
         let mut converted = payload
             .into_iter()
             .map(|(key, value)| (key, kind_to_value(value.kind)))
             .collect::<HashMap<String, serde_json::Value>>();
+
+        let embedding = if let Some(Vectors {
+            vectors_options: Some(VectorsOptions::Vector(v)),
+        }) = vectors
+        {
+            v.data
+        } else {
+            panic!("got non-vector value");
+        };
 
         Payload {
             lang: val_str!(converted, "lang"),
@@ -94,6 +117,9 @@ impl<'a> Payload<'a> {
             end_line: val_parse_str!(converted, "end_line"),
             start_byte: val_parse_str!(converted, "start_byte"),
             end_byte: val_parse_str!(converted, "end_byte"),
+
+            score: Some(score),
+            embedding: Some(embedding),
         }
     }
 
@@ -214,7 +240,7 @@ impl Semantic {
         Ok(())
     }
 
-    pub fn embed(&self, sequence: &str) -> anyhow::Result<Vec<f32>> {
+    pub fn embed(&self, sequence: &str) -> anyhow::Result<Embedding> {
         let tokenizer_output = self.tokenizer.encode(sequence, true).unwrap();
 
         let input_ids = tokenizer_output.get_ids();
@@ -250,16 +276,13 @@ impl Semantic {
         Ok(pooled.to_owned().as_slice().unwrap().to_vec())
     }
 
-    pub async fn search<'a>(
+    pub async fn search_with<'a>(
         &self,
         parsed_query: &SemanticQuery<'a>,
+        vector: Embedding,
         limit: u64,
         offset: u64,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
-        let Some(query) = parsed_query.target() else {
-            anyhow::bail!("no search target for query");
-        };
-
         let repo_filter = {
             let conditions = parsed_query
                 .repos()
@@ -324,10 +347,10 @@ impl Semantic {
         let response = self
             .qdrant
             .search_points(&SearchPoints {
+                limit,
+                vector,
                 collection_name: COLLECTION_NAME.to_string(),
                 offset: Some(offset),
-                limit,
-                vector: self.embed(query)?,
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
@@ -343,6 +366,19 @@ impl Semantic {
             .await?;
 
         Ok(response.result)
+    }
+
+    pub async fn search<'a>(
+        &self,
+        parsed_query: &SemanticQuery<'a>,
+        limit: u64,
+        offset: u64,
+    ) -> anyhow::Result<Vec<ScoredPoint>> {
+        let Some(query) = parsed_query.target() else {
+            anyhow::bail!("no search target for query");
+        };
+        let vector = self.embed(query)?;
+        self.search_with(parsed_query, vector, limit, offset).await
     }
 
     #[tracing::instrument(skip(self, repo_ref, relative_path, buffer))]
@@ -391,6 +427,7 @@ impl Semantic {
                             end_line: chunk.range.end.line as u64,
                             start_byte: chunk.range.start.byte as u64,
                             end_byte: chunk.range.end.byte as u64,
+                            ..Default::default()
                         }
                         .into_qdrant(),
                     }),
@@ -521,4 +558,35 @@ pub fn deduplicate_with_mmr(
         }
     }
     idxs
+}
+
+pub fn deduplicate_snippets(
+    mut all_snippets: Vec<Payload>,
+    query_embedding: Embedding,
+) -> Vec<Payload> {
+    const SNIPPET_COUNT: usize = 20;
+
+    let idxs = {
+        let lambda = 0.5;
+        let k = SNIPPET_COUNT; // number of snippets
+        let embeddings = all_snippets
+            .iter()
+            .map(|s| s.embedding.as_deref().unwrap())
+            .collect::<Vec<_>>();
+        deduplicate_with_mmr(&query_embedding, &embeddings, lambda, k)
+    };
+
+    info!("preserved idxs after MMR are {:?}", idxs);
+
+    all_snippets
+        .drain(..)
+        .enumerate()
+        .filter_map(|(ref i, payload)| {
+            if idxs.contains(i) {
+                Some(payload)
+            } else {
+                None
+            }
+        })
+        .collect()
 }

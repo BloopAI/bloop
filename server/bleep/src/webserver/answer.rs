@@ -24,7 +24,7 @@ use crate::{
     query::parser::{self, ParsedQuery},
     remotes,
     repo::RepoRef,
-    semantic::{self, Semantic},
+    semantic::{self, deduplicate_snippets, Embedding, Payload, Semantic},
     Application,
 };
 
@@ -79,25 +79,7 @@ pub mod api {
     pub type Result = std::result::Result<String, Error>;
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Default)]
-pub struct Snippet {
-    pub lang: String,
-    pub repo_name: String,
-    pub repo_ref: String,
-    pub relative_path: String,
-    pub text: String,
-    pub start_line: usize,
-    pub end_line: usize,
-    pub start_byte: usize,
-    pub end_byte: usize,
-    pub score: f32,
-
-    /// the vector embeddings for each chunk.
-    ///
-    /// this is used to eliminate duplicate chunks using MMR, see semantic::deduplicate_with_mmr
-    #[serde(skip)]
-    pub embedding: Vec<f32>,
-}
+type Snippet = Payload<'static>;
 
 fn default_limit() -> u64 {
     20
@@ -223,73 +205,10 @@ async fn search_snippets(
         .await
         .map_err(Error::internal)?
         .into_iter()
-        .map(|r| {
-            use qdrant_client::qdrant::{value::Kind, Value};
-
-            // TODO: Can we merge with webserver/semantic.rs:L63?
-            fn value_to_string(value: Value) -> String {
-                match value.kind.unwrap() {
-                    Kind::StringValue(s) => s,
-                    _ => panic!("got non-string value"),
-                }
-            }
-
-            fn extract_vector(point: &ScoredPoint) -> Vec<f32> {
-                if let Some(vectors) = &point.vectors {
-                    if let Some(vectors::VectorsOptions::Vector(v)) = &vectors.vectors_options {
-                        return v.data.clone();
-                    }
-                }
-                panic!("got non-vector value");
-            }
-
-            let embedding = extract_vector(&r);
-
-            let mut s = r.payload;
-
-            Snippet {
-                lang: value_to_string(s.remove("lang").unwrap()),
-                repo_name: value_to_string(s.remove("repo_name").unwrap()),
-                repo_ref: value_to_string(s.remove("repo_ref").unwrap()),
-                relative_path: value_to_string(s.remove("relative_path").unwrap()),
-                text: value_to_string(s.remove("snippet").unwrap()),
-
-                start_line: value_to_string(s.remove("start_line").unwrap())
-                    .parse::<usize>()
-                    .unwrap(),
-                end_line: value_to_string(s.remove("end_line").unwrap())
-                    .parse::<usize>()
-                    .unwrap(),
-                start_byte: value_to_string(s.remove("start_byte").unwrap())
-                    .parse::<usize>()
-                    .unwrap(),
-                end_byte: value_to_string(s.remove("end_byte").unwrap())
-                    .parse::<usize>()
-                    .unwrap(),
-                score: r.score,
-                embedding,
-            }
-        })
+        .map(|r| Snippet::from_qdrant(r))
         .collect();
 
     Ok(all_snippets)
-}
-
-fn deduplicate_snippets(all_snippets: Vec<Snippet>, query_embedding: Vec<f32>) -> Vec<Snippet> {
-    let lambda = 0.5;
-    let k = SNIPPET_COUNT; // number of snippets
-    let embeddings = all_snippets
-        .iter()
-        .map(|s| s.embedding.as_slice())
-        .collect::<Vec<_>>();
-    let idxs = semantic::deduplicate_with_mmr(&query_embedding, &embeddings, lambda, k);
-    let mut snippets = vec![];
-    info!("preserved idxs after MMR are {:?}", idxs);
-    for i in idxs {
-        let item = all_snippets[i].clone();
-        snippets.push(item);
-    }
-    snippets
 }
 
 // we use this internally to check whether the first token (skipping whitespace) is a
@@ -330,22 +249,23 @@ async fn grow_snippet(
                 grow_size += 10;
             }
         } else {
-            break relevant_snippet.text.clone();
+            break relevant_snippet.snippet.to_string();
         }
     };
 
-    Ok(Snippet {
+    Ok(Payload {
         lang: relevant_snippet.lang.clone(),
         repo_name: relevant_snippet.repo_name.clone(),
         repo_ref: relevant_snippet.repo_ref.clone(),
         relative_path: relevant_snippet.relative_path.clone(),
-        text: grown_text,
+        snippet: grown_text.into(),
         start_line: relevant_snippet.start_line,
         end_line: relevant_snippet.end_line,
         start_byte: relevant_snippet.start_byte,
         end_byte: relevant_snippet.end_byte,
-        score: relevant_snippet.score,
+        score: relevant_snippet.score.clone(),
         embedding: relevant_snippet.embedding.clone(),
+        branches: relevant_snippet.branches.clone(),
     })
 }
 
@@ -643,12 +563,13 @@ async fn _handle(
             query_id,
             session_id: params.thread_id.clone(),
             snippets: snippets.as_ref().map(|matches| AnswerSnippets {
-                matches: matches.clone(),
+                matches: matches.to_vec(),
                 answer_path: matches
                     .first()
                     .map(|s| &s.relative_path)
                     .cloned()
-                    .unwrap_or_default(),
+                    .unwrap_or_default()
+                    .to_string(),
             }),
         }))
         .map_err(Error::internal)?;
@@ -689,10 +610,10 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String>
     let content = &doc.content;
 
     // do not grow if this snippet contains incorrect byte ranges
-    if snippet.start_byte >= content.len() || snippet.end_byte >= content.len() {
+    if snippet.start_byte as usize >= content.len() || snippet.end_byte as usize >= content.len() {
         error!(
-            repo = snippet.repo_name,
-            path = snippet.relative_path,
+            repo = %snippet.repo_name,
+            path = %snippet.relative_path,
             start = snippet.start_byte,
             end = snippet.end_byte,
             "invalid snippet bounds",
@@ -702,7 +623,7 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String>
 
     // skip upwards `size` number of lines
     let new_start_byte = content
-        .get(..snippet.start_byte)?
+        .get(..snippet.start_byte as usize)?
         .rmatch_indices('\n')
         .map(|(idx, _)| idx)
         .nth(size)
@@ -710,11 +631,11 @@ fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String>
 
     // skip downwards `size` number of lines
     let new_end_byte = content
-        .get(snippet.end_byte..)?
+        .get(snippet.end_byte as usize..)?
         .match_indices('\n')
         .map(|(idx, _)| idx)
         .nth(size)
-        .map(|s| s.saturating_add(snippet.end_byte)) // the index is off by `snippet.end_byte`
+        .map(|s| s.saturating_add(snippet.end_byte as usize)) // the index is off by `snippet.end_byte`
         .unwrap_or(content.len());
 
     content
@@ -891,7 +812,7 @@ impl<'a> AnswerAPIClient<'a> {
                     snippet.relative_path,
                     snippet.lang,
                     i + 1,
-                    snippet.text
+                    snippet.snippet
                 )
             })
             .fold(
@@ -937,7 +858,7 @@ impl<'a> AnswerAPIClient<'a> {
     ) -> api::Messages {
         let system = format!(
             include_str!("../prompt/explain.txt"),
-            TEXT = snippet.text,
+            TEXT = snippet.snippet,
             PATH = snippet.relative_path,
             REPO = snippet.repo_name,
         );
