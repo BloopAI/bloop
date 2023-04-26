@@ -24,7 +24,6 @@ export const SearchContextProvider = ({
   const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>(
     initialSearchHistory || [],
   );
-  const [lastQueryTime, setLastQueryTime] = useState(3);
   const [globalRegex, setGlobalRegex] = useState(false);
   const { navigatedItem } = useAppNavigation();
   const { isGithubConnected } = useContext(UIContext);
@@ -51,21 +50,12 @@ export const SearchContextProvider = ({
       setSearchHistory,
       filters,
       setFilters,
-      lastQueryTime,
-      setLastQueryTime,
       globalRegex,
       setGlobalRegex,
       searchType,
       setSearchType,
     }),
-    [
-      inputValue,
-      filters,
-      searchHistory,
-      lastQueryTime,
-      globalRegex,
-      searchType,
-    ],
+    [inputValue, filters, searchHistory, globalRegex, searchType],
   );
   return (
     <SearchContext.Provider value={searchContextValue}>

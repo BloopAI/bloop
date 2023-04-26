@@ -1,14 +1,12 @@
 import { useContext, useEffect, useState } from 'react';
 import Button from '../Button';
-import { DiscordLogo, PowerPlug, Thunder } from '../../icons';
-import { SearchContext } from '../../context/searchContext';
+import { DiscordLogo, PowerPlug } from '../../icons';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { getDiscordLink } from '../../services/api';
 import StatusItem from './StatusItem';
 
 const StatusBar = () => {
-  const { lastQueryTime } = useContext(SearchContext);
   const { setBugReportModalOpen } = useContext(UIContext);
   const { openLink } = useContext(DeviceContext);
   const [isOnline, setIsOnline] = useState(true);
@@ -40,7 +38,7 @@ const StatusBar = () => {
   return (
     <div
       className={`h-16 flex items-center justify-between gap-8 px-8 bg-gray-900 select-none
-    text-xs border-t border-gray-800 fixed bottom-0 left-0 right-0 z-30 select-none cursor-default`}
+    text-xs border-t border-gray-800 fixed bottom-0 left-0 right-0 z-30 cursor-default`}
     >
       <span className="flex text-gray-500 gap-4">
         <StatusItem
@@ -54,11 +52,6 @@ const StatusBar = () => {
         {/*  textMain={'Clients'}*/}
         {/*  textSecondary={'80k'}*/}
         {/*/>*/}
-        <StatusItem
-          icon={<Thunder />}
-          textMain={'Speed of last query'}
-          textSecondary={lastQueryTime + 'ms'}
-        />
       </span>
       <span className="flex gap-3">
         <Button

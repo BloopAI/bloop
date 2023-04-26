@@ -5,6 +5,7 @@ import ConversationMessage from '../ConversationMessage';
 import NLInput from '../NLInput';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import { conversationsCache } from '../../../services/cache';
+import { ChatMessageAuthor } from '../../../types/general';
 import ConversationListItem from './ConversationListItem';
 
 type Props = {
@@ -128,8 +129,11 @@ const AllConversations = ({
       {!!openItem && (
         <div className="p-4 flex flex-col gap-3 overflow-auto flex-1 pb-12">
           <ConversationMessage
+            showInlineFeedback={false}
+            searchId={''}
+            query={''}
             isHistory
-            author="user"
+            author={ChatMessageAuthor.User}
             message="Where are the ctags?"
           />
           <div className="flex gap-2 px-4 items-center">
@@ -145,13 +149,19 @@ const AllConversations = ({
             </button>
           </div>
           <ConversationMessage
+            showInlineFeedback={false}
+            searchId={''}
+            query={''}
             isHistory
-            author="server"
+            author={ChatMessageAuthor.Server}
             message={`It seems you're looking at a binary file for ctags specific to the x86_64 Apple Darwin architecture. The binary file itself is not human-readable and is intended to be executed by the system.`}
           />
           <ConversationMessage
+            showInlineFeedback={false}
+            searchId={''}
+            query={''}
             isHistory
-            author="user"
+            author={ChatMessageAuthor.User}
             message="What are the most common practicalities for ctags usage in bloop?"
           />
           <div className="flex gap-2 px-4 items-center">
@@ -162,7 +172,7 @@ const AllConversations = ({
             <button
               className="text-primary-300 caption mr-2"
               onClick={() => {
-                const recordId = 'xyz';
+                const recordId = 1;
                 conversationsCache[recordId] = {
                   type: 'new-code',
                   data: [
@@ -190,16 +200,22 @@ const AllConversations = ({
             </button>
           </div>
           <ConversationMessage
+            showInlineFeedback={false}
+            searchId={''}
+            query={''}
             isHistory
-            author="server"
+            author={ChatMessageAuthor.Server}
             message={`Some practical aspects of using ctags in conjunction with bleep include:
 - Installation: Make sure to install universal-ctags with JSON support. You can verify it by running ctags --version and checking for +json in the list of compiled features.
 - Usage: ctags works in the background with the bleep server to provide fast code search and navigation.
 - Integration: Programs and plugins like Vim, Emacs, and Visual Studio Code can utilize ctags to enable features like "go to definition" and "find all references."`}
           />
           <ConversationMessage
+            showInlineFeedback={false}
+            searchId={''}
+            query={''}
             isHistory
-            author="server"
+            author={ChatMessageAuthor.Server}
             message={`Some practical aspects of using ctags in conjunction with bleep include:
 - Installation: Make sure to install universal-ctags with JSON support. You can verify it by running ctags --version and checking for +json in the list of compiled features.
 - Usage: ctags works in the background with the bleep server to provide fast code search and navigation.
