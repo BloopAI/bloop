@@ -8,8 +8,6 @@ use crate::{
 };
 use tracing::error;
 
-/// Get details of an indexed repository based on their id
-//
 pub(super) async fn complex_search(
     Query(args): Query<ApiQuery>,
     Extension(indexes): Extension<Arc<Indexes>>,

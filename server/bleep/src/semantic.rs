@@ -68,6 +68,14 @@ pub struct Payload<'a> {
     pub branches: Vec<String>,
 }
 
+macro_rules! val_str(($hash:ident, $val:expr) => { serde_json::from_value($hash.remove($val).unwrap()).unwrap() });
+macro_rules! val_parse_str(($hash:ident, $val:expr) => {
+    serde_json::from_value::<Cow<'_, str>>($hash.remove($val).unwrap())
+        .unwrap()
+        .parse()
+        .unwrap()
+});
+
 impl<'a> Payload<'a> {
     pub fn from_qdrant(payload: HashMap<String, Value>) -> Payload<'static> {
         let mut converted = payload
@@ -76,33 +84,16 @@ impl<'a> Payload<'a> {
             .collect::<HashMap<String, serde_json::Value>>();
 
         Payload {
-            lang: serde_json::from_value(converted.remove("lang").unwrap()).unwrap(),
-            repo_name: serde_json::from_value(converted.remove("repo_name").unwrap()).unwrap(),
-            repo_ref: serde_json::from_value(converted.remove("repo_ref").unwrap()).unwrap(),
-            relative_path: serde_json::from_value(converted.remove("relative_path").unwrap())
-                .unwrap(),
-            snippet: serde_json::from_value(converted.remove("snippet").unwrap()).unwrap(),
-            start_line: serde_json::from_value::<Cow<'_, str>>(
-                converted.remove("start_line").unwrap(),
-            )
-            .unwrap()
-            .parse()
-            .unwrap(),
-            end_line: serde_json::from_value::<Cow<'_, str>>(converted.remove("end_line").unwrap())
-                .unwrap()
-                .parse()
-                .unwrap(),
-            start_byte: serde_json::from_value::<Cow<'_, str>>(
-                converted.remove("start_byte").unwrap(),
-            )
-            .unwrap()
-            .parse()
-            .unwrap(),
-            end_byte: serde_json::from_value::<Cow<'_, str>>(converted.remove("end_byte").unwrap())
-                .unwrap()
-                .parse()
-                .unwrap(),
-            branches: serde_json::from_value(converted.remove("branches").unwrap()).unwrap(),
+            lang: val_str!(converted, "lang"),
+            repo_name: val_str!(converted, "repo_name"),
+            repo_ref: val_str!(converted, "repo_ref"),
+            relative_path: val_str!(converted, "relative_path"),
+            snippet: val_str!(converted, "snippet"),
+            branches: val_str!(converted, "branches"),
+            start_line: val_parse_str!(converted, "start_line"),
+            end_line: val_parse_str!(converted, "end_line"),
+            start_byte: val_parse_str!(converted, "start_byte"),
+            end_byte: val_parse_str!(converted, "end_byte"),
         }
     }
 
