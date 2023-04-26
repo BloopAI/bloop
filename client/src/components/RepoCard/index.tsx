@@ -1,13 +1,15 @@
 import { format as timeAgo } from 'timeago.js';
-import { useCallback, useContext, useMemo } from 'react';
-import { GitHubLogo } from '../../icons';
-import { SyncStatus } from '../../types/general';
+import { MouseEvent, useCallback, useContext, useMemo } from 'react';
+import { GitHubLogo, MoreVertical, TrashCan } from '../../icons';
+import { MenuItemType, SyncStatus } from '../../types/general';
 import FileIcon from '../FileIcon';
 import { getFileExtensionForLang } from '../../utils';
 import BarLoader from '../Loaders/BarLoader';
 import { UIContext } from '../../context/uiContext';
 import { AnalyticsContext } from '../../context/analyticsContext';
 import { TabsContext } from '../../context/tabsContext';
+import Dropdown from '../Dropdown/WithIcon';
+import { deleteRepo } from '../../services/api';
 
 type Props = {
   name: string;
@@ -19,6 +21,7 @@ type Props = {
   provider: 'local' | 'github';
   isSyncing?: boolean;
   syncStatus?: { indexStep: number; percentage: number } | null;
+  onDelete: () => void;
 };
 
 export const STATUS_MAP = {
@@ -41,6 +44,7 @@ const RepoCard = ({
   isSyncing,
   syncStatus,
   repoRef,
+  onDelete,
 }: Props) => {
   const { isGithubConnected } = useContext(UIContext);
   const { handleAddTab } = useContext(TabsContext);
@@ -57,15 +61,47 @@ const RepoCard = ({
     handleAddTab(repoRef, repoName);
   }, [repoName, provider, isGithubConnected, isAnalyticsAllowed, sync_status]);
 
+  const onRepoRemove = useCallback(
+    (e: MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      deleteRepo(repoRef);
+      onDelete();
+    },
+    [repoRef],
+  );
+
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-md p-4 w-60 flex-shrink-0 flex flex-col justify-between h-36">
-      <div className="flex items-start gap-4">
-        <span className="h-6 flex items-center">
-          <FileIcon filename={getFileExtensionForLang(lang)} />
-        </span>
-        <p className="cursor-pointer break-all" onClick={handleClick}>
-          {repoName}
-        </p>
+    <div
+      className={`bg-gray-900 hover:bg-gray-800 border border-gray-800 rounded-md p-4 w-64 h-36 group
+       flex-shrink-0 flex flex-col justify-between cursor-pointer transition-all duration-150`}
+      onClick={handleClick}
+    >
+      <div className="flex justify-between items-center">
+        <div className="flex items-start gap-4">
+          <span className="h-6 flex items-center">
+            <FileIcon filename={getFileExtensionForLang(lang)} />
+          </span>
+          <p className="break-all text-gray-200">{repoName}</p>
+        </div>
+        <div className="opacity-0 group-hover:opacity-100 transition-all duration-150">
+          <Dropdown
+            icon={<MoreVertical />}
+            noChevron
+            btnSize="small"
+            size="small"
+            btnOnlyIcon
+            btnVariant="secondary"
+            dropdownPlacement="bottom-end"
+            items={[
+              {
+                type: MenuItemType.DANGER,
+                text: 'Remove',
+                icon: <TrashCan />,
+                onClick: onRepoRemove,
+              },
+            ]}
+          />
+        </div>
       </div>
       {isSyncing &&
       (sync_status === SyncStatus.Indexing ||
