@@ -98,10 +98,10 @@ export const Default = () => {
           />
         </div>
         <RepoList
+          onSync={() => {}}
+          isLoading={false}
           repos={repos}
-          setRepos={setRepos}
           source="local"
-          activeTab={activeTab}
         />
       </div>
     </div>

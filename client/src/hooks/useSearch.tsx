@@ -33,7 +33,7 @@ export const useSearch = <T,>(
   });
   const { apiUrl } = useContext(DeviceContext);
 
-  const { setLastQueryTime, searchType } = useContext(SearchContext);
+  const { searchType } = useContext(SearchContext);
   const { trackSearch } = useAnalytics();
 
   const searchQuery = (
@@ -65,7 +65,6 @@ export const useSearch = <T,>(
 
             if (i === 0) {
               const queryTime = Date.now() - startTime;
-              setLastQueryTime(queryTime);
               trackSearch(queryTime, query, newData.query_id);
               if (newData.Err) {
                 setStatus((prev) => ({
@@ -100,7 +99,6 @@ export const useSearch = <T,>(
         searchApiCall(query, page, undefined, globalRegex)
           .then((res: any) => {
             const queryTime = Date.now() - startTime;
-            setLastQueryTime(queryTime);
             trackSearch(queryTime, query);
             setStatus({ loading: false, data: res });
           })

@@ -8,8 +8,6 @@ type ContextType = {
   setSearchHistory: React.Dispatch<React.SetStateAction<SearchHistoryItem[]>>;
   filters: FilterType[];
   setFilters: React.Dispatch<React.SetStateAction<FilterType[]>>;
-  lastQueryTime: number;
-  setLastQueryTime: (v: number) => void;
   globalRegex: boolean;
   setGlobalRegex: React.Dispatch<React.SetStateAction<boolean>>;
   searchType: SearchType;
@@ -23,8 +21,6 @@ export const SearchContext = createContext<ContextType>({
   setSearchHistory: (newHistory) => {},
   filters: [],
   setFilters: (f) => {},
-  lastQueryTime: 3,
-  setLastQueryTime: (n) => {},
   globalRegex: false,
   setGlobalRegex: (b) => {},
   searchType: SearchType.REGEX,
