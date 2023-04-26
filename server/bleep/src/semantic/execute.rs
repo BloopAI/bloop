@@ -28,7 +28,7 @@ pub async fn execute(
         .await
         .map(|raw| {
             raw.into_iter()
-                .map(|v| super::Payload::from_qdrant(v))
+                .map(super::Payload::from_qdrant)
                 .collect::<Vec<_>>()
         })?;
 

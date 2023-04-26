@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, ops::Not, path::Path, sync::Arc};
 
-use crate::{query::parser::SemanticQuery, snippet::Snippet, Configuration};
+use crate::{query::parser::SemanticQuery, Configuration};
 
 use ndarray::Axis;
 use ort::{

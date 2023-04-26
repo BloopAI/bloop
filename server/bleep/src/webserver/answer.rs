@@ -10,7 +10,7 @@ use axum::{
     Extension,
 };
 use futures::{stream, Stream, StreamExt, TryStreamExt};
-use qdrant_client::qdrant::{vectors, ScoredPoint};
+
 use secrecy::ExposeSecret;
 use thiserror::Error;
 use tokio::sync::RwLock;
@@ -24,7 +24,7 @@ use crate::{
     query::parser::{self, ParsedQuery},
     remotes,
     repo::RepoRef,
-    semantic::{self, deduplicate_snippets, Embedding, Payload, Semantic},
+    semantic::{deduplicate_snippets, Payload, Semantic},
     Application,
 };
 
@@ -205,7 +205,7 @@ async fn search_snippets(
         .await
         .map_err(Error::internal)?
         .into_iter()
-        .map(|r| Snippet::from_qdrant(r))
+        .map(Snippet::from_qdrant)
         .collect();
 
     Ok(all_snippets)
@@ -263,7 +263,7 @@ async fn grow_snippet(
         end_line: relevant_snippet.end_line,
         start_byte: relevant_snippet.start_byte,
         end_byte: relevant_snippet.end_byte,
-        score: relevant_snippet.score.clone(),
+        score: relevant_snippet.score,
         embedding: relevant_snippet.embedding.clone(),
         branches: relevant_snippet.branches.clone(),
     })
