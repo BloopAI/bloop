@@ -1,4 +1,5 @@
 # Env
+.direnv
 .idea
 .DS_Store
 .vscode
