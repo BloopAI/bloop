@@ -32,6 +32,7 @@ pub enum ParsedQuery<'a> {
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct SemanticQuery<'a> {
     pub repos: HashSet<Literal<'a>>,
+    pub paths: HashSet<Literal<'a>>,
     pub langs: HashSet<Cow<'a, str>>,
     pub branch: HashSet<Literal<'a>>,
     pub target: Option<Literal<'a>>,
@@ -40,6 +41,10 @@ pub struct SemanticQuery<'a> {
 impl<'a> SemanticQuery<'a> {
     pub fn repos(&self) -> impl Iterator<Item = &Cow<'_, str>> {
         self.repos.iter().filter_map(|t| t.as_plain())
+    }
+
+    pub fn paths(&self) -> impl Iterator<Item = &Cow<'_, str>> {
+        self.paths.iter().filter_map(|t| t.as_plain())
     }
 
     pub fn langs(&self) -> impl Iterator<Item = &Cow<'_, str>> {
@@ -448,6 +453,7 @@ pub fn parse_nl(query: &str) -> Result<ParsedQuery<'_>, ParseError> {
     let pairs = PestParser::parse(Rule::nl_query, query).map_err(Box::new)?;
 
     let mut repos = HashSet::new();
+    let mut paths = HashSet::new();
     let mut langs = HashSet::new();
     let mut branch = HashSet::new();
     let mut target: Option<Literal> = None;
@@ -457,6 +463,10 @@ pub fn parse_nl(query: &str) -> Result<ParsedQuery<'_>, ParseError> {
             Rule::repo => {
                 let item = Literal::from(pair.into_inner().next().unwrap());
                 let _ = repos.insert(item);
+            }
+            Rule::path => {
+                let item = Literal::from(pair.into_inner().next().unwrap());
+                let _ = paths.insert(item);
             }
             Rule::branch => {
                 let item = Literal::from(pair.into_inner().next().unwrap());
@@ -494,6 +504,7 @@ pub fn parse_nl(query: &str) -> Result<ParsedQuery<'_>, ParseError> {
         Some(ForceParsingAs::Grep) => parse(query).map(ParsedQuery::Grep),
         _ => Ok(ParsedQuery::Semantic(SemanticQuery {
             repos,
+            paths,
             langs,
             branch,
             target,
@@ -1103,6 +1114,7 @@ mod tests {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into()].into(),
                 repos: [Literal::Plain("bloop".into())].into(),
+                paths: [].into(),
                 branch: [].into()
             }),
         );
@@ -1120,7 +1132,7 @@ mod tests {
     #[test]
     fn nl_parse_multiple_filters() {
         assert_eq!(
-            parse_nl("what is background color? lang:tsx lang:ts repo:bloop repo:bar repo:baz")
+            parse_nl("what is background color? lang:tsx lang:ts repo:bloop repo:bar path:server/bleep repo:baz")
                 .unwrap(),
             ParsedQuery::Semantic(SemanticQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
@@ -1132,6 +1144,7 @@ mod tests {
                     Literal::Plain("baz".into())
                 ]
                 .into(),
+                paths: [Literal::Plain("server/bleep".into())].into(),
             })
         );
     }
@@ -1147,6 +1160,7 @@ mod tests {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into()].into(),
                 repos: [Literal::Plain("bloop".into())].into(),
+                paths: [].into(),
                 branch: [].into(),
             })
         );

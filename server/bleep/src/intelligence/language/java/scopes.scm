@@ -367,7 +367,7 @@
   (type_list 
     (type_identifier) @local.reference))
 
-;; sealed inteface _ permits I, J, K
+;; sealed interface _ permits I, J, K
 (permits 
   (type_list
     (type_identifier) @local.reference))

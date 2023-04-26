@@ -26,7 +26,7 @@ export const STATUS_MAP = {
   [SyncStatus.Uninitialized]: { text: 'Not synced', color: 'bg-gray-700' },
   [SyncStatus.Queued]: { text: 'Queued...', color: 'bg-gray-700' },
   [SyncStatus.Indexing]: { text: 'Indexing...', color: 'bg-yellow-500' },
-  [SyncStatus.Syncing]: { text: 'Syncing...', color: 'bg-yellow-500' },
+  [SyncStatus.Syncing]: { text: 'Cloning...', color: 'bg-yellow-500' },
   [SyncStatus.Done]: { text: 'Last updated ', color: 'bg-green-500' },
   [SyncStatus.RemoteRemoved]: { text: 'Remote removed ', color: 'bg-red-500' },
 };
@@ -79,7 +79,7 @@ const RepoCard = ({
       syncStatus &&
       (syncStatus.indexStep === 0 || syncStatus.percentage < 100) ? (
         <div className="flex flex-col gap-2">
-          <p className="body-s text-gray-200">Syncing...</p>
+          <p className="body-s text-gray-200">Indexing...</p>
           <BarLoader
             percentage={syncStatus.indexStep === 1 ? syncStatus.percentage : 1}
           />
