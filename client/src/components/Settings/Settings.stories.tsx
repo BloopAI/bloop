@@ -38,6 +38,9 @@ export const Default = () => {
           isGithubChecked: true,
           shouldShowWelcome: false,
           setShouldShowWelcome: () => {},
+          isRightPanelOpen: false,
+          setRightPanelOpen: () => {},
+          tab: { key: '1', name: 'New tab' },
         }}
       >
         <RepositoriesContext.Provider
@@ -83,6 +86,9 @@ export const ScanErrors = () => {
           isGithubChecked: true,
           shouldShowWelcome: false,
           setShouldShowWelcome: () => {},
+          isRightPanelOpen: false,
+          setRightPanelOpen: () => {},
+          tab: { key: '1', name: 'New tab' },
         }}
       >
         <RepositoriesContext.Provider
@@ -210,6 +216,9 @@ export const EmailConfirmedReposSynced = () => {
           isGithubChecked: true,
           shouldShowWelcome: false,
           setShouldShowWelcome: () => {},
+          isRightPanelOpen: false,
+          setRightPanelOpen: () => {},
+          tab: { key: '1', name: 'New tab' },
         }}
       >
         <RepositoriesContext.Provider
