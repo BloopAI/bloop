@@ -165,16 +165,12 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
         />
       </div>
 
-      {openResult ? (
-        <ResultModal
-          result={openResult as FullResult}
-          onResultClosed={onResultClosed}
-          mode={mode}
-          setMode={handleModeChange}
-        />
-      ) : (
-        ''
-      )}
+      <ResultModal
+        result={openResult}
+        onResultClosed={onResultClosed}
+        mode={mode}
+        setMode={handleModeChange}
+      />
     </>
   );
 };
