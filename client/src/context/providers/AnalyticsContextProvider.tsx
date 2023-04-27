@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import * as analytics from 'rudder-sdk-js';
 import { AnalyticsContext } from '../analyticsContext';
-import {
-  getPlainFromStorage,
-  IS_ANALYTICS_ALLOWED_KEY,
-} from '../../services/storage';
 
 interface AnalyticsProviderProps {
   children: React.ReactNode;
@@ -22,15 +18,10 @@ interface AnalyticsProviderProps {
 
 export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   children,
-  forceAnalytics,
   isSelfServe,
   envConfig,
 }) => {
   const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
-
-  const [isAnalyticsAllowed, setIsAnalyticsAllowed] = useState(
-    forceAnalytics || getPlainFromStorage(IS_ANALYTICS_ALLOWED_KEY) === 'true',
-  );
 
   const loadAnalytics = async () => {
     if (
@@ -73,16 +64,12 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   }, [analyticsLoaded, envConfig.tracking_id]);
 
   useEffect(() => {
-    if (isAnalyticsAllowed) {
-      loadAnalytics();
-    } else {
-      setAnalyticsLoaded(false);
-    }
-  }, [envConfig.analytics_key_fe, isAnalyticsAllowed]);
+    loadAnalytics();
+  }, [envConfig.analytics_key_fe]);
 
   const analyticsContextValue = useMemo(
-    () => ({ setIsAnalyticsAllowed, isAnalyticsAllowed, analyticsLoaded }),
-    [isAnalyticsAllowed],
+    () => ({ analyticsLoaded }),
+    [analyticsLoaded],
   );
 
   return (
