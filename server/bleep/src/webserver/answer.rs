@@ -1,932 +1,627 @@
 use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+    mem,
     sync::Arc,
-    time::{Duration, Instant},
 };
 
+use anyhow::{anyhow, bail, Context, Result};
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
-    response::{sse::Event, IntoResponse, Sse},
+    response::{
+        sse::{self, Sse},
+        IntoResponse,
+    },
+    routing::MethodRouter,
     Extension,
 };
-use futures::{stream, Stream, StreamExt, TryStreamExt};
-
+use futures::{
+    future::Either,
+    stream::{self, BoxStream},
+    StreamExt, TryStreamExt,
+};
+use reqwest::StatusCode;
 use secrecy::ExposeSecret;
-use thiserror::Error;
-use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tokio::sync::mpsc::Sender;
+use tracing::trace;
 
+use super::middleware::User;
 use crate::{
-    analytics::{QueryEvent, Stage},
-    env::Feature,
-    indexes::reader::ContentDocument,
-    query::parser::{self, ParsedQuery},
-    remotes,
+    query::parser::{self, SemanticQuery},
     repo::RepoRef,
-    semantic::{deduplicate_snippets, Payload, Semantic},
     Application,
 };
 
-use super::{middleware::User, prelude::*};
+mod llm_gateway;
+mod partial_parse;
+mod prompts;
 
-/// Mirrored from `answer_api/lib.rs` to avoid private dependency.
-pub mod api {
-    use serde::Deserialize;
-
-    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-    pub struct Message {
-        pub role: String,
-        pub content: String,
-    }
-
-    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-    pub struct Messages {
-        pub messages: Vec<Message>,
-    }
-
-    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-    #[serde(rename_all = "lowercase")]
-    pub enum Provider {
-        OpenAi,
-        Anthropic,
-    }
-
-    impl Provider {
-        pub fn token_limit(&self) -> usize {
-            match self {
-                Self::OpenAi => 8192,
-                Self::Anthropic => 8000,
-            }
-        }
-    }
-
-    #[derive(Debug, serde::Serialize, serde::Deserialize)]
-    pub struct Request {
-        pub messages: Messages,
-        pub max_tokens: Option<u32>,
-        pub temperature: Option<f32>,
-        pub provider: Provider,
-        pub extra_stop_sequences: Vec<String>,
-    }
-
-    #[derive(thiserror::Error, Debug, Deserialize)]
-    pub enum Error {
-        #[error("bad OpenAI request")]
-        BadOpenAiRequest,
-    }
-
-    pub type Result = std::result::Result<String, Error>;
-}
-
-type Snippet = Payload<'static>;
-
-fn default_limit() -> u64 {
-    20
+#[derive(Default)]
+pub struct RouteState {
+    conversations: scc::HashMap<ConversationId, Conversation>,
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
     pub q: String,
+    pub repo_ref: RepoRef,
+    #[serde(default = "default_thread_id")]
     pub thread_id: String,
-    #[serde(default = "default_limit")]
-    pub limit: u64,
 }
 
-#[derive(serde::Serialize, Debug)]
-pub struct AnswerResponse {
-    pub session_id: String,
-    pub query_id: uuid::Uuid,
-    pub snippets: Option<AnswerSnippets>,
+fn default_thread_id() -> String {
+    uuid::Uuid::new_v4().to_string()
 }
 
-#[derive(serde::Serialize, Debug)]
-pub struct AnswerSnippets {
-    pub matches: Vec<Snippet>,
-    pub answer_path: String,
-}
-
-impl super::ApiResponse for AnswerResponse {}
-
-const SNIPPET_COUNT: usize = 20;
-
-pub(super) struct AnswerState {
-    client: reqwest::Client,
-}
-
-impl Default for AnswerState {
-    fn default() -> Self {
-        Self {
-            client: reqwest::Client::builder()
-                .cookie_store(true)
-                .build()
-                // This should never fail, the only default properties we change are enabling
-                // cookies.
-                .unwrap(),
-        }
-    }
+pub(super) fn endpoint<S>() -> MethodRouter<S> {
+    let state = Arc::new(RouteState::default());
+    axum::routing::get(handle).with_state(state)
 }
 
 pub(super) async fn handle(
     Query(params): Query<Params>,
-    State(state): State<Arc<AnswerState>>,
+    State(state): State<Arc<RouteState>>,
     Extension(app): Extension<Application>,
     Extension(user): Extension<User>,
-) -> Result<impl IntoResponse> {
-    // create a new analytics event for this query
-    let event = Arc::new(RwLock::new(QueryEvent::default()));
-
-    // populate analytics event
-    let response = _handle(
-        &state,
-        params,
-        app.clone(),
-        Arc::clone(&event),
-        user.clone(),
-    )
-    .await;
-
-    if response.is_err() {
-        // Result<impl IntoResponse> does not implement `Debug`, `unwrap_err` is unavailable
-        let Err(e) = response.as_ref() else {
-            unreachable!();
-        };
-
-        // add error stage to pipeline
-        let mut ev = event.write().await;
-        ev.stages
-            .push(Stage::new("error", (e.status.as_u16(), e.message())));
-
-        // send to rudderstack
-        app.track_query(&user, &ev);
-    } else {
-        // the analytics event is fired when the stream is consumed
-    }
-    response
-}
-
-fn parse_query(query: &str) -> Result<String, Error> {
-    let ParsedQuery::Semantic(q) = parser::parse_nl(query).map_err(Error::user)? else {
-	return Err(Error::new(ErrorKind::User, "only semantic queries are allowed"));
+) -> super::Result<impl IntoResponse> {
+    let conversation_id = ConversationId {
+        user_id: user
+            .0
+            .ok_or_else(|| super::Error::user("didn't have user ID"))?,
+        thread_id: params.thread_id,
     };
 
-    Ok(q.target()
-        .ok_or_else(|| Error::user("empty search"))?
-        .to_string())
-}
-
-const MAX_HISTORY: usize = 3;
-
-#[derive(Debug)]
-enum AnswerProgress {
-    // Need to rephrase the query. The contained string is the prompt for rephrasing
-    Rephrase(String),
-    // Got a query to search
-    Search(String),
-    // Explain the results
-    Explain(String),
-}
-
-async fn search_snippets(
-    semantic: &Semantic,
-    raw_query: &str,
-    rephrased_query: &str,
-) -> Result<Vec<Snippet>, Error> {
-    let ParsedQuery::Semantic(ref mut parsed_query): ParsedQuery = parser::parse_nl(raw_query)
-        .map_err(Error::user)? else {
-	    unreachable!()
-	};
-
-    parsed_query.target = Some(parser::Literal::Plain(rephrased_query.into()));
-
-    let all_snippets: Vec<Snippet> = semantic
-        .search(parsed_query, 4 * SNIPPET_COUNT as u64, 0) // heuristic
+    let mut conversation: Conversation = state
+        .conversations
+        .read_async(&conversation_id, |_k, v| v.clone())
         .await
-        .map_err(Error::internal)?
-        .into_iter()
-        .map(Snippet::from_qdrant)
-        .collect();
+        .unwrap_or_else(|| Conversation::new(params.repo_ref));
 
-    Ok(all_snippets)
-}
+    let ctx = AppContext::new(app)
+        .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
+    let q = params.q;
+    let stream = async_stream::try_stream! {
+        let mut action_stream = Action::Query(q).into()?;
 
-// we use this internally to check whether the first token (skipping whitespace) is a
-// number or something else
-enum FirstToken {
-    Number(usize),
-    Other(String),
-    None,
-}
+        loop {
+            // The main loop. Here, we create two streams that operate simultaneously; the update
+            // stream, which sends updates back to the HTTP event stream response, and the action
+            // stream, which returns a single item when there is a new action available to execute.
+            // Both of these operate together, and we repeat the process for every new action.
 
-async fn grow_snippet(
-    relevant_snippet: &Snippet,
-    semantic: &Semantic,
-    app: &Application,
-) -> Result<Snippet, Error> {
-    // grow the snippet by 60 lines above and below, we have sufficient space
-    // to grow this snippet by 10 times its original size (15 to 150)
-    let repo_ref = &relevant_snippet
-        .repo_ref
-        .parse::<RepoRef>()
-        .map_err(Error::internal)?;
+            use futures::future::FutureExt;
 
-    let doc = app
-        .indexes
-        .file
-        .by_path(repo_ref, &relevant_snippet.relative_path)
-        .await
-        .map_err(Error::internal)?;
+            let (update_tx, update_rx) = tokio::sync::mpsc::channel(10);
 
-    let mut grow_size = 40;
-    let grown_text = loop {
-        if let Some(grown_text) = grow(&doc, relevant_snippet, grow_size) {
-            let token_count = semantic.gpt2_token_count(&grown_text);
-            info!(%grow_size, %token_count, "growing ...");
-            if token_count > 6000 || grow_size > 100 {
-                break grown_text;
-            } else {
-                grow_size += 10;
+            let left_stream = tokio_stream::wrappers::ReceiverStream::new(update_rx)
+                .map(Either::Left);
+
+            let right_stream = conversation
+                .step(&ctx, action_stream, update_tx)
+                .into_stream()
+                .map(Either::Right);
+
+            let mut next = None;
+            for await item in stream::select(left_stream, right_stream) {
+                match item {
+                    Either::Left(upd) => yield upd,
+                    Either::Right(n) => next = n?,
+                }
             }
+
+            match next {
+                Some(a) => action_stream = a,
+                None => break,
+            }
+        }
+
+        // Storing the conversation here allows us to make subsequent requests.
+        state.conversations
+            .entry_async(conversation_id)
+            .await
+            .insert_entry(conversation);
+    };
+
+    let stream = stream
+        .map(|upd: Result<_>| sse::Event::default().json_data(upd.map_err(|e| e.to_string())))
+        .chain(futures::stream::once(async {
+            Ok(sse::Event::default().data("[DONE]"))
+        }));
+
+    Ok(Sse::new(stream))
+}
+
+#[derive(Hash, PartialEq, Eq)]
+struct ConversationId {
+    thread_id: String,
+    user_id: String,
+}
+
+#[derive(Clone, Debug)]
+struct Conversation {
+    history: Vec<llm_gateway::api::Message>,
+    path_aliases: Vec<String>,
+    repo_ref: RepoRef,
+}
+
+impl Conversation {
+    fn new(repo_ref: RepoRef) -> Self {
+        // We start of with a conversation describing the operations that the LLM can perform, and
+        // an initial (hidden) prompt that we pose to the user.
+
+        Self {
+            history: vec![
+                llm_gateway::api::Message::system(prompts::SYSTEM),
+                llm_gateway::api::Message::assistant(prompts::INITIAL_PROMPT),
+            ],
+            path_aliases: Vec::new(),
+            repo_ref,
+        }
+    }
+
+    fn path_alias(&mut self, path: &str) -> usize {
+        if let Some(i) = self.path_aliases.iter().position(|p| *p == path) {
+            i
         } else {
-            break relevant_snippet.text.to_string();
+            let i = self.path_aliases.len();
+            self.path_aliases.push(path.to_owned());
+            i
         }
-    };
+    }
 
-    Ok(Payload {
-        lang: relevant_snippet.lang.clone(),
-        repo_name: relevant_snippet.repo_name.clone(),
-        repo_ref: relevant_snippet.repo_ref.clone(),
-        relative_path: relevant_snippet.relative_path.clone(),
-        text: grown_text.into(),
-        start_line: relevant_snippet.start_line,
-        end_line: relevant_snippet.end_line,
-        start_byte: relevant_snippet.start_byte,
-        end_byte: relevant_snippet.end_byte,
-        score: relevant_snippet.score,
-        embedding: relevant_snippet.embedding.clone(),
-        branches: relevant_snippet.branches.clone(),
-    })
-}
+    async fn step(
+        &mut self,
+        ctx: &AppContext,
+        action_stream: ActionStream,
+        update: Sender<Update>,
+    ) -> Result<Option<ActionStream>> {
+        let (action, raw_response) = action_stream.load(&update).await?;
 
-async fn handle_inner(
-    query: &str,
-    thread_id: &str,
-    state: &AnswerState,
-    params: Arc<Params>,
-    app: Arc<Application>,
-    event: Arc<RwLock<QueryEvent>>,
-    mut stop_watch: StopWatch,
-) -> Result<(
-    Option<Vec<Snippet>>,
-    StopWatch,
-    std::pin::Pin<Box<dyn Stream<Item = Result<String, AnswerAPIError>> + Send>>,
-)> {
-    let query = query.to_string(); // TODO: Sort out query handling
-
-    event
-        .write()
-        .await
-        .stages
-        .push(Stage::new("parsed_query", &query).with_time(stop_watch.lap()));
-
-    let mut snippets = None;
-
-    let answer_bearer = if app.env.allow(Feature::GithubDeviceFlow) {
-        let Some(cred) = app.credentials.github() else {
-            return Err(Error::user(
-                "missing Github token",
-            ).with_status(StatusCode::UNAUTHORIZED));
-        };
-
-        use remotes::github::{Auth, State};
-        match cred {
-            State {
-                auth:
-                    Auth::OAuth {
-                        access_token: token,
-                        ..
-                    },
-                ..
-            } => Some(token.expose_secret().clone()),
-
-            State {
-                auth: Auth::App { .. },
-                ..
-            } => {
-                return Err(
-                    Error::user("cannot connect to answer API using installation token")
-                        .with_status(StatusCode::UNAUTHORIZED),
-                )
-            }
+        if !matches!(action, Action::Query(..)) {
+            self.history
+                .push(llm_gateway::api::Message::assistant(&raw_response));
+            trace!("handling raw action: {raw_response}");
         }
-    } else {
-        None
-    };
 
-    let semantic = app
-        .semantic
-        .clone()
-        .ok_or_else(|| Error::new(ErrorKind::Configuration, "Qdrant not configured"))?;
+        let question = match action {
+            Action::Query(s) => parser::parse_nl(&s)?
+                .as_semantic()
+                .context("got a 'Grep' query")?
+                .target
+                .as_ref()
+                .context("query was empty")?
+                .as_plain()
+                .context("user query was not plain text")?
+                .clone()
+                .into_owned(),
 
-    let answer_api_client = semantic.build_answer_api_client(
-        state,
-        format!("{}/v1/q", app.config.answer_api_url).as_str(),
-        5,
-        answer_bearer.clone(),
-    );
-
-    let mut progress = app
-        .with_prior_conversation(thread_id, |history| {
-            if history.is_empty() {
-                None
-            } else {
-                Some(query.clone())
+            Action::Prompt(_) => {
+                return Ok(None);
             }
-        })
-        .map(AnswerProgress::Rephrase)
-        .unwrap_or(AnswerProgress::Rephrase(query.clone()));
 
-    loop {
-        let stream_params = match &progress {
-            AnswerProgress::Rephrase(query) => {
-                let prompt = app.with_prior_conversation(thread_id, |history| {
-                    let n = history.len().saturating_sub(MAX_HISTORY);
-                    build_rephrase_query_prompt(query, history.get(n..).unwrap_or_default())
-                });
-                (prompt, 20, 0.0, vec![])
+            Action::Answer(rephrased_question) => {
+                self.answer(ctx, update, &rephrased_question).await?;
+                let r: Result<ActionStream> = Action::Prompt(prompts::CONTINUE.to_owned()).into();
+                return Ok(Some(r?));
             }
-            AnswerProgress::Search(rephrased_query) => {
-                // TODO: Clean up this query handling logic
-                let all_snippets = search_snippets(&semantic, &params.q, rephrased_query).await?;
-                info!("Retrieved {} snippets", all_snippets.len());
 
-                event.write().await.stages.push(
-                    Stage::new("semantic_results", &all_snippets).with_time(stop_watch.lap()),
-                );
+            Action::Path(search) => {
+                // First, perform a lexical search for the path
+                // TODO: This should be fuzzy
+                let mut paths = ctx
+                    .app
+                    .indexes
+                    .file
+                    .fuzzy_path_match(&self.repo_ref, &search, /* limit */ 50)
+                    .await
+                    .map(|c| c.relative_path)
+                    .map(|p| format!("{}, {p}", self.path_alias(&p)))
+                    .collect::<Vec<_>>();
 
-                let query_embedding = semantic.embed(rephrased_query).map_err(|e| {
-                    error!("failed to embed query: {}", e);
-                    Error::internal(e)
-                })?;
-                let filtered_snippets =
-                    deduplicate_snippets(all_snippets, query_embedding, SNIPPET_COUNT);
+                // If there are no lexical results, perform a semantic search.
+                if paths.is_empty() {
+                    // TODO: Semantic search should accept unparsed queries
+                    let nl_query = SemanticQuery {
+                        target: Some(parser::Literal::Plain(Cow::Owned(search))),
+                        ..Default::default()
+                    };
 
-                event.write().await.stages.push(
-                    Stage::new("filtered_semantic_results", &filtered_snippets)
-                        .with_time(stop_watch.lap()),
-                );
+                    let mut semantic_paths: Vec<String> = ctx
+                        .app
+                        .semantic
+                        .as_ref()
+                        .context("semantic search is not enabled")?
+                        .search(&nl_query, 10, 0)
+                        .await?
+                        .into_iter()
+                        .map(|v| {
+                            v.payload
+                                .into_iter()
+                                .map(|(k, v)| (k, super::semantic::kind_to_value(v.kind)))
+                                .collect::<HashMap<_, _>>()
+                        })
+                        .map(|chunk| {
+                            let relative_path = chunk["relative_path"].as_str().unwrap();
+                            format!("{}, {relative_path}", self.path_alias(relative_path))
+                        })
+                        .collect::<HashSet<_>>()
+                        .into_iter()
+                        .collect();
 
-                if filtered_snippets.is_empty() {
-                    warn!("Semantic search returned no snippets");
-                    let selection_fail_stream = Box::pin(stream::once(async {
-                        Ok("Sorry, I could not find any results matching your query. \
-                            Please try again with different keywords or refine your search."
-                            .to_string())
-                    }));
-                    return Ok((snippets, stop_watch, selection_fail_stream));
+                    paths.append(&mut semantic_paths);
                 }
 
-                let prompt =
-                    answer_api_client.build_select_prompt(rephrased_query, &filtered_snippets);
-                snippets = Some(filtered_snippets);
-
-                event
-                    .write()
-                    .await
-                    .stages
-                    .push(Stage::new("select_prompt", &prompt).with_time(stop_watch.lap()));
-
-                (prompt, 10, 0.0, vec!["</index>".into()])
+                Some("§alias, path".to_owned())
+                    .into_iter()
+                    .chain(paths)
+                    .collect::<Vec<_>>()
+                    .join("\n")
             }
-            AnswerProgress::Explain(query) => {
-                let prompt = if let Some(snippet) = snippets.as_ref().unwrap().first() {
-                    let grown = grow_snippet(snippet, &semantic, &app).await?;
-                    app.with_prior_conversation(thread_id, |conversation| {
-                        answer_api_client.build_explain_prompt(&grown, conversation, query)
-                    })
-                } else {
-                    api::Messages {
-                        messages: vec![api::Message {
-                            role: "user".into(),
-                            content: "Apologize for not finding a suitable code snippet, \
-                        while expressing hope that one of the snippets may still be useful"
-                                .to_string(),
-                        }],
-                    }
+
+            Action::File(file_ref) => {
+                // Retrieve the contents of a file.
+
+                let path = match &file_ref {
+                    FileRef::Alias(idx) => self
+                        .path_aliases
+                        .get(*idx)
+                        .with_context(|| format!("unknown path alias {idx}"))?,
+
+                    FileRef::Path(p) => p,
                 };
-                let tokens_used =
-                    semantic.gpt2_token_count(&prompt.messages.first().unwrap().content);
-                info!(%tokens_used, "input prompt token count");
-                let max_tokens = 8000u32.saturating_sub(tokens_used as u32);
-                if max_tokens == 0 {
-                    // our prompt has overshot the token count, log an error for now
-                    // TODO: this should propagte to sentry
-                    error!(%tokens_used, "prompt overshot token limit");
-                }
-                // do not let the completion cross 250 tokens
-                let max_tokens = max_tokens.clamp(1, 250);
-                info!(%max_tokens, "clamping max tokens");
 
-                event
-                    .write()
-                    .await
-                    .stages
-                    .push(Stage::new("explain_prompt", &prompt).with_time(stop_watch.lap()));
+                ctx.app
+                    .indexes
+                    .file
+                    .by_path(&self.repo_ref, path)
+                    .await?
+                    .content
+            }
 
-                (prompt, max_tokens, 0.9, vec![])
+            Action::Code(query) => {
+                // Semantic search.
+
+                let nl_query = SemanticQuery {
+                    target: Some(parser::Literal::Plain(Cow::Owned(query))),
+                    ..Default::default()
+                };
+
+                let chunks = ctx
+                    .app
+                    .semantic
+                    .as_ref()
+                    .context("semantic search is not enabled")?
+                    .search(&nl_query, 10, 0)
+                    .await?
+                    .into_iter()
+                    .map(|v| {
+                        v.payload
+                            .into_iter()
+                            .map(|(k, v)| (k, super::semantic::kind_to_value(v.kind)))
+                            .collect::<HashMap<_, _>>()
+                    })
+                    .map(|chunk| {
+                        let relative_path = chunk["relative_path"].as_str().unwrap();
+                        serde_json::json!({
+                            "path": relative_path,
+                            "§ALIAS": self.path_alias(relative_path),
+                            "snippet": chunk["snippet"],
+                            "start": chunk["start_line"].as_str().unwrap().parse::<u32>().unwrap(),
+                            "end": chunk["end_line"].as_str().unwrap().parse::<u32>().unwrap(),
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
+                serde_json::to_string(&chunks).unwrap()
+            }
+
+            Action::Check(question, path_aliases) => {
+                self.check(ctx, question, path_aliases).await?
             }
         };
 
-        // This strange extraction of parameters from a tuple is due to lifetime issues. This
-        // function should probably be refactored, but at the time of writing this is left as-is
-        // due to time constraints.
-        let mut stream = Box::pin(
-            answer_api_client
-                .send_until_success(
-                    stream_params.0,
-                    stream_params.1,
-                    stream_params.2,
-                    api::Provider::OpenAi,
-                    stream_params.3,
-                )
-                .await?,
-        );
+        self.history.push(llm_gateway::api::Message::user(
+            &(question + "\n\nAnswer only with a JSON action."),
+        ));
 
-        if let AnswerProgress::Rephrase(_) = &progress {
-            let rephrased_query: String = stream.try_collect().await?;
-            info!("Rephrased query: {:?}", &rephrased_query);
-            if rephrased_query.trim() == "N/A" {
-                let rephrase_fail_stream = Box::pin(stream::once(async {
-                    Ok(
-                        "I'm not sure what you mean. Try asking a technical question about the codebase."
-                            .to_string(),
-                    )
-                }));
-                return Ok((None, stop_watch, rephrase_fail_stream));
-            }
-            event
-                .write()
+        let stream = ctx.llm_gateway.chat(&self.history).await?.boxed();
+        let action_stream = ActionStream {
+            tokens: String::new(),
+            action: Either::Left(stream),
+        };
+
+        Ok(Some(action_stream))
+    }
+
+    async fn check(
+        &mut self,
+        ctx: &AppContext,
+        question: String,
+        path_aliases: Vec<usize>,
+    ) -> Result<String> {
+        let paths = path_aliases
+            .into_iter()
+            .map(|i| self.path_aliases.get(i).ok_or(i))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|i| anyhow!("invalid path alias {i}"))?;
+
+        let question = &question;
+        let ctx = &ctx.clone().model("gpt-3.5-turbo");
+        let repo_ref = &self.repo_ref;
+        let chunks = stream::iter(paths).map(|path| async move {
+            let lines = ctx
+                .app
+                .indexes
+                .file
+                .by_path(repo_ref, path)
                 .await
-                .stages
-                .push(Stage::new("rephrased_query", &rephrased_query));
-            progress = AnswerProgress::Search(rephrased_query);
-            continue;
-        }
+                .with_context(|| format!("failed to read path: {path}"))?
+                .content
+                .split('\n')
+                .enumerate()
+                .map(|(i, line)| format!("{}: {line}", i + 1))
+                .collect::<Vec<_>>();
 
-        let mut collected = FirstToken::None;
-        while let Some(token) = stream.try_next().await? {
-            if let Ok(i) = token.trim().parse::<usize>() {
-                collected = FirstToken::Number(i);
-                break;
-            } else if !token.bytes().all(|b| b.is_ascii_whitespace()) {
-                collected = FirstToken::Other(token);
-                break;
+            // We store the lines separately, so that we can reference them later to trim
+            // this snippet by line number.
+            let contents = lines.join("\n");
+
+            let prompt = prompts::file_explanation(question, path, &contents);
+
+            let json = ctx
+                .llm_gateway
+                .chat(&[llm_gateway::api::Message::system(&prompt)])
+                .await?
+                .try_collect::<String>()
+                .await?;
+
+            #[derive(serde::Deserialize)]
+            struct Range {
+                start: usize,
+                end: usize,
+                answer: String,
             }
-        }
 
-        match collected {
-            FirstToken::Number(n) => {
-                progress = match progress {
-                    AnswerProgress::Search(_) => {
-                        let Some(index) = n.checked_sub(1) else {
-                            let selection_fail_stream = Box::pin(stream::once(async {
-                                Ok("I'm not sure. One of these snippets might be relevant".to_string())
-                            }));
-                            return Ok((snippets, stop_watch, selection_fail_stream));
-                        };
-                        snippets.as_mut().unwrap().swap(index, 0);
-                        AnswerProgress::Explain(query.clone())
-                    }
-                    e => e,
-                }
-            }
-            FirstToken::Other(token) => {
-                return Ok((
-                    snippets,
-                    stop_watch,
-                    Box::pin(stream::once(async move { Ok(token) }).chain(stream)),
-                ));
-            }
-            FirstToken::None => {
-                return Ok((
-                    snippets,
-                    stop_watch,
-                    Box::pin(stream::once(async move { Ok("".to_string()) }).chain(stream)),
-                ));
-            }
-        }
-    }
-}
+            let explanations = serde_json::from_str::<Vec<Range>>(&json)?
+                .into_iter()
+                .filter(|r| r.start > 0 && r.end > 0)
+                .map(|r| {
+                    let end = r.end.min(r.start + 10);
 
-async fn _handle(
-    state: &AnswerState,
-    params: Params,
-    app: Application,
-    event: Arc<RwLock<QueryEvent>>,
-    user: User,
-) -> Result<impl IntoResponse> {
-    let query_id = uuid::Uuid::new_v4();
-
-    info!("Raw query: {:?}", &params.q);
-
-    {
-        let mut analytics_event = event.write().await;
-        analytics_event.query_id = query_id;
-        analytics_event.session_id = params.thread_id.clone();
-        if let Some(semantic) = app.semantic.as_ref() {
-            analytics_event.overlap_strategy = semantic.overlap_strategy();
-        }
-        analytics_event
-            .stages
-            .push(Stage::new("raw_query", &params.q));
-    }
-
-    let query = parse_query(&params.q)?;
-    info!("Parsed query target: {:?}", &query);
-
-    let stop_watch = StopWatch::start();
-    let params = Arc::new(params);
-    let mut app = Arc::new(app);
-    let (snippets, mut stop_watch, mut text) = handle_inner(
-        &query,
-        &params.thread_id,
-        state,
-        Arc::clone(&params),
-        Arc::clone(&app),
-        Arc::clone(&event),
-        stop_watch,
-    )
-    .await?;
-    Arc::make_mut(&mut app).add_conversation_entry(params.thread_id.clone(), query);
-    let initial_event = Event::default()
-        .json_data(super::Response::<'static>::from(AnswerResponse {
-            query_id,
-            session_id: params.thread_id.clone(),
-            snippets: snippets.as_ref().map(|matches| AnswerSnippets {
-                matches: matches.to_vec(),
-                answer_path: matches
-                    .first()
-                    .map(|s| &s.relative_path)
-                    .cloned()
-                    .unwrap_or_default()
-                    .to_string(),
-            }),
-        }))
-        .map_err(Error::internal)?;
-
-    let mut expl = String::new();
-
-    let wrapped_stream = async_stream::stream! {
-        yield Ok(initial_event);
-        while let Some(result) = text.next().await {
-            if let Ok(fragment) = &result {
-                app.extend_conversation_answer(params.thread_id.clone(), fragment.trim_end())
-            }
-            yield Ok(Event::default()
-                .json_data(result.as_ref().map_err(|e| e.to_string()))
-                .unwrap());
-
-            match result {
-                Ok(s) => expl += &s,
-                Err(e) => yield Err(e),
-            }
-        }
-
-        debug!("answer complete, closing SSE");
-        let mut event = event.write().await;
-        event
-            .stages
-            .push(Stage::new("answer", &expl).with_time(stop_watch.lap()));
-        app.track_query(&user, &event);
-    };
-
-    Ok(Sse::new(wrapped_stream.chain(futures::stream::once(
-        async { Ok(Event::default().data("[DONE]")) },
-    ))))
-}
-
-// grow the text of this snippet by `size` and return the new text
-fn grow(doc: &ContentDocument, snippet: &Snippet, size: usize) -> Option<String> {
-    let content = &doc.content;
-
-    // do not grow if this snippet contains incorrect byte ranges
-    if snippet.start_byte as usize >= content.len() || snippet.end_byte as usize >= content.len() {
-        error!(
-            repo = %snippet.repo_name,
-            path = %snippet.relative_path,
-            start = snippet.start_byte,
-            end = snippet.end_byte,
-            "invalid snippet bounds",
-        );
-        return None;
-    }
-
-    // skip upwards `size` number of lines
-    let new_start_byte = content
-        .get(..snippet.start_byte as usize)?
-        .rmatch_indices('\n')
-        .map(|(idx, _)| idx)
-        .nth(size)
-        .unwrap_or(0);
-
-    // skip downwards `size` number of lines
-    let new_end_byte = content
-        .get(snippet.end_byte as usize..)?
-        .match_indices('\n')
-        .map(|(idx, _)| idx)
-        .nth(size)
-        .map(|s| s.saturating_add(snippet.end_byte as usize)) // the index is off by `snippet.end_byte`
-        .unwrap_or(content.len());
-
-    content
-        .get(new_start_byte..new_end_byte)
-        .map(ToOwned::to_owned)
-}
-
-struct AnswerAPIClient<'s> {
-    host: String,
-    semantic: &'s Semantic,
-    max_attempts: u64,
-    bearer_token: Option<String>,
-    client: reqwest::Client,
-}
-
-#[derive(Error, Debug)]
-enum AnswerAPIError {
-    #[error("max retry attempts reached {0}")]
-    MaxAttemptsReached(u64),
-
-    #[error("event source error {0}")]
-    EventSource(#[from] reqwest_eventsource::Error),
-
-    #[error("failed to open stream")]
-    StreamFail,
-
-    #[error("message deserialization error {0}")]
-    MessageFormat(#[from] serde_json::Error),
-
-    #[error("answer API error {0}")]
-    BadRequest(#[from] api::Error),
-}
-
-impl From<AnswerAPIError> for Error {
-    fn from(e: AnswerAPIError) -> Error {
-        sentry::capture_message(
-            format!("answer-api failed to respond: {e}").as_str(),
-            sentry::Level::Error,
-        );
-        Error::new(ErrorKind::UpstreamService, e.to_string())
-    }
-}
-
-impl Semantic {
-    fn build_answer_api_client<'s>(
-        &'s self,
-        state: &AnswerState,
-        host: &str,
-        max_attempts: u64,
-        bearer_token: Option<String>,
-    ) -> AnswerAPIClient<'s> {
-        AnswerAPIClient {
-            host: host.to_owned(),
-            semantic: self,
-            max_attempts,
-            // Internally, cookies are shared between `reqwest` client instances via a shared lock.
-            // Cloning the client here just creates a new handle to the same lock.
-            client: state.client.clone(),
-            bearer_token,
-        }
-    }
-}
-
-impl<'s> AnswerAPIClient<'s> {
-    async fn send(
-        &self,
-        messages: api::Messages,
-        max_tokens: u32,
-        temperature: f32,
-        provider: api::Provider,
-        extra_stop_sequences: Vec<String>,
-    ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
-        let mut stream = Box::pin(
-            reqwest_eventsource::EventSource::new({
-                let mut builder = self.client.post(self.host.as_str());
-
-                if let Some(bearer) = &self.bearer_token {
-                    builder = builder.bearer_auth(bearer);
-                }
-
-                builder.json(&api::Request {
-                    messages,
-                    max_tokens: Some(max_tokens),
-                    temperature: Some(temperature),
-                    provider,
-                    extra_stop_sequences,
+                    serde_json::json!({
+                        "start": r.start,
+                        "answer": r.answer,
+                        "end": end,
+                        "relevant_code": lines[r.start..end].join("\n"),
+                    })
                 })
-            })
-            // We don't have a `Stream` body so this can't fail.
-            .expect("couldn't clone requestbuilder")
-            // `reqwest_eventsource` returns an error to signify a stream end, instead of simply ending
-            // the stream. So we catch the error here and close the stream.
-            .take_while(|result| {
-                let is_end = matches!(result, Err(reqwest_eventsource::Error::StreamEnded));
-                async move { !is_end }
-            }),
-        );
+                .collect::<Vec<_>>();
 
-        match stream.next().await {
-            Some(Ok(reqwest_eventsource::Event::Open)) => {}
-            Some(Err(e)) => return Err(AnswerAPIError::EventSource(e)),
-            _ => return Err(AnswerAPIError::StreamFail),
-        }
-
-        Ok(stream
-            .filter_map(|result| async move {
-                match result {
-                    Ok(reqwest_eventsource::Event::Message(msg)) => Some(Ok(msg.data)),
-                    Ok(reqwest_eventsource::Event::Open) => None,
-                    Err(reqwest_eventsource::Error::StreamEnded) => None,
-                    Err(e) => Some(Err(e)),
-                }
-            })
-            .map(|result| match result {
-                Ok(s) => Ok(serde_json::from_str::<api::Result>(&s)??),
-                Err(e) => Err(AnswerAPIError::EventSource(e)),
+            Ok::<_, anyhow::Error>(serde_json::json!({
+                "explanations": explanations,
+                "path": path,
             }))
-    }
-
-    #[allow(dead_code)]
-    async fn send_until_success(
-        &self,
-        messages: api::Messages,
-        max_tokens: u32,
-        temperature: f32,
-        provider: api::Provider,
-        extra_stop_sequences: Vec<String>,
-    ) -> Result<impl Stream<Item = Result<String, AnswerAPIError>>, AnswerAPIError> {
-        const DELAY: [Duration; 5] = [
-            Duration::from_secs(0),
-            Duration::from_secs(2),
-            Duration::from_secs(4),
-            Duration::from_secs(8),
-            Duration::from_secs(16),
-        ];
-
-        for attempt in 0..self.max_attempts {
-            warn!(%attempt, "delaying by {:?}", DELAY[attempt as usize % 5]);
-            tokio::time::sleep(DELAY[attempt as usize % 5]).await;
-
-            let result = self
-                .send(
-                    messages.clone(),
-                    max_tokens,
-                    temperature,
-                    provider.clone(),
-                    extra_stop_sequences.clone(),
-                )
-                .await;
-
-            match result {
-                Ok(r) => return Ok(r),
-                Err(e) => warn!(%attempt, "answer-api returned {e:?} ... retrying"),
-            }
-        }
-        Err(AnswerAPIError::MaxAttemptsReached(self.max_attempts))
-    }
-}
-
-const DELIMITER: &str = "=========";
-impl<'a> AnswerAPIClient<'a> {
-    fn build_select_prompt(&self, query: &str, snippets: &[Snippet]) -> api::Messages {
-        // snippets are 1-indexed so we can use index 0 where no snippets are relevant
-        let token_count = self
-            .semantic
-            .gpt2_token_count(include_str!("../prompt/select.txt"));
-        let mut system = snippets
-            .iter()
-            .enumerate()
-            .map(|(i, snippet)| {
-                format!(
-                    "Repository: {}\nPath: {}\nLanguage: {}\nIndex: {}\n\n{}\n{DELIMITER}\n",
-                    snippet.repo_name,
-                    snippet.relative_path,
-                    snippet.lang,
-                    i + 1,
-                    snippet.text
-                )
-            })
-            .fold(
-                (token_count, String::default()),
-                |(count, mut prompt), entry| {
-                    let new_count = count + self.semantic.gpt2_token_count(&entry);
-                    if new_count < api::Provider::OpenAi.token_limit() {
-                        prompt.push_str(&entry);
-                        (new_count, prompt)
-                    } else {
-                        debug!("evicting a snippet!");
-                        (count, prompt)
-                    }
-                },
-            )
-            .1;
-
-        // the example question/answer pair helps reinforce that we want exactly a single
-        // number in the output, with no spaces or punctuation such as fullstops.
-        system += &format!(
-            include_str!("../prompt/select.txt"),
-            COUNT = snippets.len(),
-            QUERY = &query,
-            DELIMITER = DELIMITER,
-        );
-
-        let messages = vec![api::Message {
-            role: "user".into(),
-            content: system.clone(),
-        }];
-
-        let tokens_used = self.semantic.gpt2_token_count(&system);
-        debug!(%tokens_used, "select prompt token count");
-
-        api::Messages { messages }
-    }
-
-    fn build_explain_prompt(
-        &self,
-        snippet: &Snippet,
-        conversation: &[(String, String)],
-        query: &str,
-    ) -> api::Messages {
-        let system = format!(
-            include_str!("../prompt/explain.txt"),
-            TEXT = snippet.text,
-            PATH = snippet.relative_path,
-            REPO = snippet.repo_name,
-        );
-
-        let mut messages = vec![api::Message {
-            role: "system".to_string(),
-            content: system,
-        }];
-
-        for (question, answer) in conversation {
-            messages.push(api::Message {
-                role: "user".to_string(),
-                content: question.clone(),
-            });
-            messages.push(api::Message {
-                role: "assistant".to_string(),
-                content: answer.clone(),
-            });
-        }
-
-        messages.push(api::Message {
-            role: "user".to_string(),
-            content: query.to_string(),
         });
 
-        api::Messages { messages }
+        let out = chunks
+            // This box seems unnecessary, but it avoids a compiler bug:
+            // https://github.com/rust-lang/rust/issues/64552
+            .boxed()
+            .buffered(5)
+            .filter_map(|res| async { res.ok() })
+            .collect::<Vec<_>>()
+            .await;
+
+        Ok(serde_json::to_string(&out)?)
+    }
+
+    async fn answer(&self, ctx: &AppContext, update: Sender<Update>, question: &str) -> Result<()> {
+        let messages = self
+            .history
+            .iter()
+            .filter(|m| m.role == "user")
+            .map(|m| &m.content)
+            .collect::<Vec<_>>();
+
+        let context = serde_json::to_string(&messages)?;
+        let prompt = prompts::final_explanation_prompt(&context, question);
+
+        let messages = [llm_gateway::api::Message::system(&prompt)];
+
+        let mut stream = ctx.llm_gateway.chat(&messages).await?.boxed();
+        let mut buffer = String::new();
+        while let Some(token) = stream.next().await {
+            buffer += &token?;
+            let (s, _) = partial_parse::rectify_json(&buffer);
+            update
+                .send(Update::Answer(s.into_owned()))
+                .await
+                .or(Err(anyhow!("failed to send answer update")))?;
+        }
+
+        Ok(())
     }
 }
 
-fn build_rephrase_query_prompt(query: &str, conversation: &[(String, String)]) -> api::Messages {
-    let mut system = include_str!("../prompt/rephrase.txt").to_string();
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum Action {
+    /// A user-provided query.
+    Query(String),
 
-    for (question, answer) in conversation {
-        system.push_str(&format!("User: {}\n", question.clone()));
-        system.push_str(&format!("Assistant: {}\n", answer.clone()));
-    }
-    system.push_str(&format!("User: {}\n", query));
-    system.push_str("Query: ");
-
-    let messages = vec![api::Message {
-        role: "system".to_string(),
-        content: system,
-    }];
-
-    api::Messages { messages }
+    #[serde(rename = "ask")]
+    Prompt(String),
+    Path(String),
+    Answer(String),
+    Code(String),
+    File(FileRef),
+    Check(String, Vec<usize>),
 }
 
-// Measure time between instants statefully
-struct StopWatch {
-    start: Instant,
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(untagged)]
+enum FileRef {
+    Path(String),
+    Alias(usize),
 }
 
-impl StopWatch {
-    // Start the watch
-    fn start() -> Self {
-        Self {
-            start: Instant::now(),
+impl Action {
+    /// Map this action to a summary update.
+    fn update(&self) -> Update {
+        match self {
+            Self::Answer(..) => Update::Answering,
+            Self::Prompt(s) => Update::Prompt(s.clone()),
+            Self::Query(..) => Update::ProcessingQuery,
+            Self::Code(..) => Update::SearchingFiles,
+            Self::Path(..) => Update::SearchingFiles,
+            Self::File(..) => Update::LoadingFiles,
+            Self::Check(..) => Update::Answering,
         }
     }
 
-    // Measure the time since start
-    fn measure(&self) -> Duration {
-        self.start.elapsed()
+    /// Deserialize this action from the GPT-tagged enum variant format.
+    ///
+    /// We convert:
+    ///
+    /// ```text
+    /// ["type", "value"]
+    /// ["type", "arg1", "arg2"]
+    /// ```
+    ///
+    /// To:
+    ///
+    /// ```
+    /// {"type":"value"}
+    /// {"type":["arg1", "arg2"]}
+    /// ```
+    ///
+    /// So that we can deserialize using the serde-provided "tagged" enum representation.
+    fn deserialize_gpt(s: &str) -> Result<Self> {
+        let mut array = serde_json::from_str::<Vec<serde_json::Value>>(s)
+            .with_context(|| format!("model response was not a JSON array: {s}"))?;
+
+        if array.is_empty() {
+            bail!("model returned an empty array");
+        }
+
+        let action = array.remove(0);
+        let action = action.as_str().context("model action was not a string")?;
+
+        let value = if array.len() < 2 {
+            array.pop().unwrap_or(serde_json::Value::Null)
+        } else {
+            array.into()
+        };
+
+        let mut obj = serde_json::Map::new();
+        obj.insert(action.into(), value);
+        Ok(serde::Deserialize::deserialize(serde_json::Value::Object(
+            obj,
+        ))?)
     }
 
-    // Read the value since the last start, and zero the clock
-    fn lap(&mut self) -> Duration {
-        let duration = self.measure();
-        self.start = Instant::now();
-        duration
+    /// The inverse of `deserialize_gpt`; serializes this action into a format described by our
+    /// prompt.
+    fn serialize_gpt(&self) -> Result<String> {
+        let mut obj = serde_json::to_value(self)?;
+        let mut fields = mem::take(
+            obj.as_object_mut()
+                .context("action was not serialized as an object")?,
+        )
+        .into_iter()
+        .collect::<Vec<_>>();
+
+        if fields.len() != 1 {
+            bail!("action serialized to multiple keys");
+        }
+
+        let (k, v) = fields.pop().unwrap();
+        let k = k.into();
+        let array = match v {
+            serde_json::Value::Null => vec![k],
+            serde_json::Value::Array(a) => [vec![k], a].concat(),
+            other => vec![k, other],
+        };
+
+        Ok(serde_json::to_string(&array)?)
+    }
+}
+
+#[derive(serde::Serialize)]
+enum Update {
+    Prompt(String),
+    Answer(String),
+    ProcessingQuery,
+    SearchingFiles,
+    Answering,
+    LoadingFiles,
+}
+
+/// An action that may not have finished loading yet.
+struct ActionStream {
+    tokens: String,
+    action: Either<BoxStream<'static, Result<String>>, Action>,
+}
+
+impl ActionStream {
+    /// Load this action, consuming the stream if required.
+    async fn load(mut self, update: &Sender<Update>) -> Result<(Action, String)> {
+        let mut stream = match self.action {
+            Either::Left(stream) => stream,
+            Either::Right(action) => {
+                update
+                    .send(action.update())
+                    .await
+                    .or(Err(anyhow!("failed to send update")))?;
+                return Ok((action, self.tokens));
+            }
+        };
+
+        while let Some(token) = stream.next().await {
+            self.tokens += &token?;
+        }
+
+        let action = Action::deserialize_gpt(&self.tokens)?;
+        update
+            .send(action.update())
+            .await
+            .or(Err(anyhow!("failed to send update")))?;
+
+        Ok((action, self.tokens))
+    }
+}
+
+impl From<Action> for Result<ActionStream> {
+    fn from(action: Action) -> Self {
+        Ok(ActionStream {
+            tokens: action.serialize_gpt()?,
+            action: Either::Right(action),
+        })
+    }
+}
+
+#[derive(Clone)]
+struct AppContext {
+    app: Application,
+    llm_gateway: llm_gateway::Client,
+}
+
+impl AppContext {
+    fn new(app: Application) -> Result<Self> {
+        let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
+            .temperature(0.0)
+            .bearer(app.github_token()?.map(|s| s.expose_secret().clone()));
+
+        Ok(Self { app, llm_gateway })
+    }
+
+    fn model(mut self, model: &str) -> Self {
+        if model.is_empty() {
+            self.llm_gateway.model = None;
+        } else {
+            self.llm_gateway.model = Some(model.to_owned());
+        }
+
+        self
     }
 }

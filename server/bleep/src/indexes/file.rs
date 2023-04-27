@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashSet, HashMap},
     ops::Not,
     path::{Path, PathBuf, MAIN_SEPARATOR},
     sync::{
@@ -32,7 +32,7 @@ use {
 };
 
 use super::{
-    reader::{ContentDocument, ContentReader},
+    reader::{ContentDocument, ContentReader, FileDocument, FileReader},
     DocumentRead, Indexable, Indexer,
 };
 use crate::{
@@ -266,6 +266,150 @@ impl Indexable for File {
 }
 
 impl Indexer<File> {
+    pub async fn file_body(&self, file_disk_path: &str) -> Result<ContentDocument> {
+        // Mostly taken from `by_path`, below.
+        //
+        // TODO: This can be unified with `by_path` below, but we first need to decide on a unified
+        // path referencing API throughout the webserver.
+
+        let reader = self.reader.read().await;
+        let searcher = reader.searcher();
+
+        let query = TermQuery::new(
+            Term::from_field_text(self.source.entry_disk_path, file_disk_path),
+            IndexRecordOption::Basic,
+        );
+
+        self.top_hit(Box::new(query), searcher).await
+    }
+
+    /// Search this index for paths fuzzily matching a given string.
+    ///
+    /// For example, the string `Cargo` can return documents whose path is `foo/Cargo.toml`,
+    /// or `bar/Cargo.lock`. Constructs regexes that permit an edit-distance of 2.
+    pub async fn fuzzy_path_match(
+        &self,
+        repo_ref: &RepoRef,
+        query_str: &str,
+        limit: usize,
+    ) -> impl Iterator<Item = FileDocument> + '_ {
+        // lifted from query::compiler
+        fn trigrams(s: &str) -> impl Iterator<Item = String> {
+            let mut chars = s.chars().collect::<Vec<_>>();
+
+            std::iter::from_fn(move || match chars.len() {
+                0 => None,
+                1 | 2 | 3 => Some(std::mem::take(&mut chars).into_iter().collect()),
+                _ => {
+                    let out = chars.iter().take(3).collect();
+                    chars.remove(0);
+                    Some(out)
+                }
+            })
+        }
+
+        let reader = self.reader.read().await;
+        let searcher = reader.searcher();
+        let collector = TopDocs::with_limit(100);
+        let file_source = &self.source;
+
+        // hits is a mapping between a document address and the number of trigrams in it that
+        // matched the query
+        let repo_ref_term = Term::from_field_text(self.source.repo_ref, &repo_ref.to_string());
+        let mut hits = trigrams(&query_str)
+            .map(|token| Term::from_field_text(self.source.relative_path, &token))
+            .map(|term| {
+                BooleanQuery::intersection(vec![
+                    Box::new(TermQuery::new(term, IndexRecordOption::Basic)),
+                    Box::new(TermQuery::new(
+                        repo_ref_term.clone(),
+                        IndexRecordOption::Basic,
+                    )),
+                ])
+            })
+            .flat_map(|query| {
+                searcher
+                    .search(&query, &collector)
+                    .expect("failed to search index")
+                    .into_iter()
+                    .map(move |(_, addr)| addr)
+            })
+            .fold(HashMap::new(), |mut map: HashMap<_, usize>, hit| {
+                *map.entry(hit).or_insert(0) += 1;
+                map
+            })
+            .into_iter()
+            .collect::<Vec<_>>();
+
+        // decsending order of number of matched trigrams
+        hits.sort_by(|(_, a), (_, b)| b.cmp(a));
+
+        let regex_filter = {
+            fn additions(s: &str, i: usize, j: usize) -> String {
+                if i > j {
+                    return additions(s, j, i);
+                } else {
+                    let mut s = s.to_owned();
+                    s.insert_str(j, ".?");
+                    s.insert_str(i, ".?");
+                    s
+                }
+            }
+
+            fn replacements(s: &str, i: usize, j: usize) -> String {
+                if i > j {
+                    return replacements(s, j, i);
+                } else {
+                    let mut s = s.to_owned();
+                    s.remove(j);
+                    s.insert_str(j, ".?");
+
+                    s.remove(i);
+                    s.insert_str(i, ".?");
+
+                    s
+                }
+            }
+
+            fn one_of_each(s: &str, i: usize, j: usize) -> String {
+                if i > j {
+                    return replacements(s, j, i);
+                } else {
+                    let mut s = s.to_owned();
+                    s.remove(j);
+                    s.insert_str(j, ".?");
+
+                    s.insert_str(i, ".?");
+                    s
+                }
+            }
+
+            let all_regexes = (0..=query_str.len())
+                .flat_map(|i| (0..=query_str.len()).map(move |j| (i, j)))
+                .filter(|(i, j)| i <= j)
+                .flat_map(|(i, j)| {
+                    let mut v = vec![];
+                    if j != query_str.len() {
+                        v.push(one_of_each(query_str, i, j));
+                        v.push(replacements(query_str, i, j));
+                    }
+                    v.push(additions(query_str, i, j));
+                    v
+                });
+            regex::RegexSet::new(all_regexes).unwrap()
+        };
+
+        hits.into_iter()
+            .map(move |(addr, _)| {
+                let retrieved_doc = searcher
+                    .doc(addr)
+                    .expect("failed to get document by address");
+                FileReader.read_document(file_source, retrieved_doc)
+            })
+            .take(limit)
+            .filter(move |doc| regex_filter.is_match(&doc.relative_path))
+    }
+
     pub async fn by_path(
         &self,
         repo_ref: &RepoRef,

@@ -1,7 +1,6 @@
 use crate::{env::Feature, Application};
 
 use axum::{http::StatusCode, response::IntoResponse, routing::get, Extension, Json};
-use std::sync::Arc;
 use std::{borrow::Cow, net::SocketAddr};
 use tower::Service;
 use tower_http::services::{ServeDir, ServeFile};
@@ -62,12 +61,9 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))
         // misc
-        .route("/file", get(file::handle))
         .route("/search", get(semantic::complex_search))
-        .route(
-            "/answer",
-            get(answer::handle).with_state(Arc::new(answer::AnswerState::default())),
-        );
+        .route("/file", get(file::handle))
+        .route("/answer", answer::endpoint());
 
     if app.env.allow(Feature::AnyPathScan) {
         api = api.route("/repos/scan", get(repos::scan_local));
@@ -180,13 +176,6 @@ impl Error {
                 kind: ErrorKind::User,
                 message: message.to_string().into(),
             })),
-        }
-    }
-
-    fn message(&self) -> &str {
-        match &self.body {
-            Json(Response::Error(EndpointError { message, .. })) => message.as_ref(),
-            _ => "",
         }
     }
 }

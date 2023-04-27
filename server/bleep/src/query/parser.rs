@@ -30,6 +30,15 @@ pub enum ParsedQuery<'a> {
     Grep(Vec<Query<'a>>),
 }
 
+impl ParsedQuery<'_> {
+    pub fn as_semantic(&self) -> Option<&SemanticQuery> {
+        match self {
+            Self::Semantic(q) => Some(q),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct SemanticQuery<'a> {
     pub repos: HashSet<Literal<'a>>,
