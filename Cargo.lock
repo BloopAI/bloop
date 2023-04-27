@@ -510,6 +510,7 @@ dependencies = [
  "time 0.3.20",
  "tokenizers",
  "tokio",
+ "tokio-stream",
  "tower",
  "tower-http",
  "tracing",
