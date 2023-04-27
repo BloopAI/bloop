@@ -1,5 +1,6 @@
 use crate::{env::Feature, Application};
 
+use axum::routing::delete;
 use axum::{http::StatusCode, response::IntoResponse, routing::get, Extension, Json};
 use std::{borrow::Cow, net::SocketAddr};
 use tower::Service;
@@ -63,7 +64,8 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         // misc
         .route("/search", get(semantic::complex_search))
         .route("/answer", get(answer::handle))
-        .route("/answer/conversations", get(answer::conversations::list));
+        .route("/answer/conversations", get(answer::conversations::list))
+        .route("/answer/conversations", delete(answer::conversations::delete));
 
     if app.env.allow(Feature::AnyPathScan) {
         api = api.route("/repos/scan", get(repos::scan_local));

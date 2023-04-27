@@ -1,4 +1,5 @@
 use axum::{extract::Query, response::IntoResponse, Extension, Json};
+use reqwest::StatusCode;
 
 use crate::{
     db,
@@ -53,4 +54,32 @@ pub(in crate::webserver) async fn list(
     }
 
     Ok(Json(conversations))
+}
+
+#[derive(serde::Deserialize)]
+pub(in crate::webserver) struct Delete {
+    thread_id: String,
+}
+
+pub(in crate::webserver) async fn delete(
+    Query(params): Query<Delete>,
+    Extension(user): Extension<User>,
+) -> webserver::Result<()> {
+    let db = db::get().await?;
+    let user_id = user.0.ok_or_else(|| Error::user("missing user ID"))?;
+
+    let result = sqlx::query! {
+        "DELETE FROM conversations WHERE user_id = ? AND thread_id = ?",
+        user_id,
+        params.thread_id,
+    }
+    .execute(db)
+    .await
+    .map_err(Error::internal)?;
+
+    if result.rows_affected() == 0 {
+        return Err(Error::user("conversation not found").with_status(StatusCode::NOT_FOUND));
+    }
+
+    Ok(())
 }
