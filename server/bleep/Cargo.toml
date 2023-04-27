@@ -84,7 +84,6 @@ blake3 = "1.3.3"
 notify-debouncer-mini = { version = "0.2.1", default-features = false }
 
 # misc
-git2 = "0.16.1"
 serde = "1.0.152"
 regex = "1.7.1"
 regex-syntax = "0.6.28"
@@ -116,7 +115,7 @@ erased-serde = "0.3.25"
 scc = { version= "1.2.0", features = ["serde"] }
 sentry-tracing = "0.30.0"
 git-version = "0.3.5"
-gix = { version = "0.43.0", features = ["async-network-client", "pack-cache-lru-static"] }
+gix = { version="0.44.0", features = ["blocking-http-transport-reqwest", "blocking-network-client", "pack-cache-lru-static"] }
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.3"

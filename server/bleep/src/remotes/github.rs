@@ -170,13 +170,15 @@ impl Auth {
 
     fn git_cred(&self) -> GitCreds {
         use Auth::*;
-        match self.clone() {
-            OAuth { access_token, .. } => {
-                Box::new(move |_, _, _| Cred::userpass_plaintext(access_token.expose_secret(), ""))
-            }
-            App { token, .. } => Box::new(move |_, _, _| {
-                Cred::userpass_plaintext("x-access-token", token.expose_secret())
-            }),
+        match self {
+            OAuth { access_token, .. } => GitCreds {
+                username: access_token.expose_secret().into(),
+                password: "".into(),
+            },
+            App { token, .. } => GitCreds {
+                username: "x-access-token".into(),
+                password: token.expose_secret().into(),
+            },
         }
     }
 

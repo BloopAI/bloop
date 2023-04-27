@@ -221,19 +221,26 @@ impl Repository {
     ///
     /// When used with non-local refs
     pub(crate) fn local_from(reporef: &RepoRef) -> Self {
+        use gix::remote::Direction;
         let disk_path = reporef.local_path().unwrap();
 
-        let remote = git2::Repository::open(&disk_path)
-            .ok()
+        let remote = gix::open(&disk_path)
+            .map_err(anyhow::Error::from)
             .and_then(|git| {
-                git.find_remote("origin").ok().and_then(|origin| {
-                    origin.url().and_then(|url| {
-                        debug!(%reporef, origin=url, "found git repo with `origin` remote");
-                        url.parse().ok()
-                    })
-                })
+                let origin = git
+                    .find_default_remote(Direction::Fetch)
+                    .context("no git remote")??;
+                let url = origin.url(Direction::Fetch).context("no fetch url")?;
+                let remote = url
+                    .to_bstring()
+                    .to_string()
+                    .parse()
+                    .map_err(|_| anyhow::format_err!("remote url not understood"))?;
+
+                debug!(%reporef, origin=?remote, "found git repo with remote");
+                Ok(remote)
             })
-            .unwrap_or_else(|| RepoRemote::from(reporef));
+            .unwrap_or_else(|_| RepoRemote::from(reporef));
 
         Self {
             sync_status: SyncStatus::Queued,

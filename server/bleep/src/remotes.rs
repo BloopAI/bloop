@@ -4,11 +4,11 @@ use std::{
     borrow::Borrow,
     collections::HashMap,
     path::{Path, PathBuf},
-    process::Command,
     sync::Arc,
 };
 
-use git2::{Cred, CredentialType, RemoteCallbacks};
+use anyhow::Context;
+use gix::sec::identity::Account;
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
@@ -24,11 +24,7 @@ pub mod github;
 mod poll;
 pub(crate) use poll::*;
 
-type GitCreds = Box<
-    dyn FnMut(&str, Option<&str>, CredentialType) -> std::result::Result<Cred, git2::Error>
-        + Send
-        + 'static,
->;
+type GitCreds = Account;
 
 pub(crate) type Result<T> = std::result::Result<T, RemoteError>;
 #[derive(thiserror::Error, Debug)]
@@ -38,9 +34,6 @@ pub(crate) enum RemoteError {
 
     #[error("permission denied")]
     PermissionDenied,
-
-    #[error("invalid checkout state")]
-    InvalidLocalState,
 
     #[error("syncing in progress")]
     SyncInProgress,
@@ -63,103 +56,88 @@ pub(crate) enum RemoteError {
     #[error("github access error: {0}")]
     GitHub(#[from] octocrab::Error),
 
+    #[error("anyhow: {0:?}")]
+    Anyhow(#[from] anyhow::Error),
+
     #[error("underlying thread died: {0:?}")]
     JoinError(#[from] tokio::task::JoinError),
 
-    #[error("low-level code: {0:?}")]
-    UnspecifiedGit(git2::Error),
+    #[error("git open: {0:?}")]
+    GitOpen(#[from] gix::open::Error),
+
+    #[error("git prepare fetch: {0:?}")]
+    GitPrepareFetch(#[from] gix::remote::fetch::prepare::Error),
+
+    #[error("git fetch: {0:?}")]
+    GitFetch(#[from] gix::remote::fetch::Error),
+
+    #[error("git find remote: {0:?}")]
+    GitFindRemote(#[from] gix::remote::find::existing::Error),
+
+    #[error("git find remote: {0:?}")]
+    GitConnect(#[from] gix::remote::connect::Error),
+
+    #[error("git clone: {0:?}")]
+    GitClone(#[from] gix::clone::Error),
+
+    #[error("git clone fetch: {0:?}")]
+    GitCloneFetch(#[from] gix::clone::fetch::Error),
 }
 
-impl From<git2::Error> for RemoteError {
-    fn from(value: git2::Error) -> Self {
-        use git2::ErrorCode::*;
+macro_rules! creds_callback(($auth:ident) => {{
+    use gix::{
+	credentials::{
+            helper::{Action, NextAction},
+            protocol::Outcome,
+	}};
 
-        match value.code() {
-            Auth => RemoteError::PermissionDenied,
-            NotFound => RemoteError::RemoteNotFound,
-            _ => RemoteError::UnspecifiedGit(value),
-        }
+    let auth = $auth.clone();
+    move |action| match action {
+        Action::Get(ctx) => Ok(Some(Outcome {
+            identity: auth.clone(),
+            next: NextAction::from(ctx),
+        })),
+        Action::Store(_) => Ok(None),
+        Action::Erase(_) => Ok(None),
     }
-}
+}});
 
 async fn git_clone(auth: GitCreds, url: &str, target: &Path) -> Result<()> {
     let url = url.to_owned();
     let target = target.to_owned();
 
     tokio::task::spawn_blocking(move || {
-        let options = {
-            let mut callbacks = RemoteCallbacks::new();
-            callbacks.credentials(auth);
+        let clone = gix::prepare_clone_bare(url, target)?;
+        let (_repo, _outcome) = clone
+            .configure_connection(move |con| {
+                con.set_credentials(creds_callback!(auth));
+                Ok(())
+            })
+            .fetch_only(gix::progress::Discard, &false.into())?;
 
-            let mut fo = git2::FetchOptions::new();
-            fo.remote_callbacks(callbacks);
-            fo
-        };
-
-        let mut builder = git2::build::RepoBuilder::new();
-        builder.fetch_options(options);
-        builder.clone(&url, &target)
+        Ok(())
     })
-    .await??;
-
-    Ok(())
+    .await?
 }
 
 async fn git_pull(auth: GitCreds, repo: &Repository) -> Result<()> {
+    use gix::remote::Direction;
+
     let disk_path = repo.disk_path.to_owned();
-
     tokio::task::spawn_blocking(move || {
-        let git = git2::Repository::open(&disk_path)?;
-        let head = git.head()?;
-        let branch = head
-            .name()
-            .ok_or(RemoteError::InvalidLocalState)?
-            .split('/')
-            .last()
-            .ok_or(RemoteError::InvalidLocalState)?;
+        let repo = gix::open(disk_path)?;
+        let remote = repo
+            .find_default_remote(Direction::Fetch)
+            .context("no remote found")??;
+        remote
+            .connect(Direction::Fetch)?
+            .with_credentials(creds_callback!(auth))
+            .prepare_fetch(gix::progress::Discard, Default::default())?
+            .receive(gix::progress::Discard, &false.into())?;
 
-        let mut options = {
-            let mut callbacks = RemoteCallbacks::new();
-            callbacks.credentials(auth);
-
-            let mut fo = git2::FetchOptions::new();
-            fo.remote_callbacks(callbacks);
-            fo
-        };
-
-        let mut remote = git.find_remote("origin")?;
-        remote.fetch(&[&branch], Some(&mut options), None)?;
-
-        let fetch_head = git.find_reference("FETCH_HEAD")?;
-        let new_head = fetch_head.peel(git2::ObjectType::Commit)?;
-
-        Ok::<_, RemoteError>(git.reset(
-            &new_head,
-            git2::ResetType::Hard,
-            Some(git2::build::CheckoutBuilder::new().force()),
-        )?)
+        Ok(())
     })
-    .await??;
-
-    let mut git_gc = Command::new("git");
-
-    git_gc.arg("gc");
-    git_gc.current_dir(&repo.disk_path);
-
-    #[cfg(windows)]
-    git_gc.creation_flags(0x08000000); // add a CREATE_NO_WINDOW flag to prevent window focus change
-
-    match tokio::process::Command::from(git_gc).spawn() {
-        Ok(_) => {
-            // don't actually want to wait for this to finish, as `git` may
-            // not even be available as a command.
-        }
-        Err(err) => {
-            warn!(?err, "failed to invoke git-gc");
-        }
-    }
-
-    Ok(())
+    .await?
 }
 
 pub(crate) fn gather_repo_roots(
