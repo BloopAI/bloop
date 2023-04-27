@@ -42,80 +42,83 @@ const NavBar = ({ isSkeleton }: Props) => {
           os.type === 'Darwin' ? 'ml-12' : ''
         }`}
       >
-        {tabs.map((t, i) => (
-          <div
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            className={`px-4 border-r ${
-              i === 0 ? 'border-l' : ''
-            } border-gray-700 h-full flex items-center justify-center gap-2 ${
-              activeTab === t.key
-                ? 'bg-gray-800 text-gray-100'
-                : 'bg-gray-900 text-gray-400'
-            } cursor-pointer`}
-          >
-            {t.name === 'Home' ? <Home sizeClassName="w-4 h-4" /> : t.name}
-            {t.key !== 'initial' && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRemoveTab(t.key);
-                }}
-                className={`w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-100 ${
-                  activeTab !== t.key ? 'opacity-0' : ''
-                } relative top-px`}
-                disabled={activeTab !== t.key}
-              >
-                <CloseSign sizeClassName="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        ))}
+        {!isSkeleton &&
+          tabs.map((t, i) => (
+            <div
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`px-4 border-r ${
+                i === 0 ? 'border-l' : ''
+              } border-gray-700 h-full flex items-center justify-center gap-2 ${
+                activeTab === t.key
+                  ? 'bg-gray-800 text-gray-100'
+                  : 'bg-gray-900 text-gray-400'
+              } cursor-pointer`}
+            >
+              {t.name === 'Home' ? <Home sizeClassName="w-4 h-4" /> : t.name}
+              {t.key !== 'initial' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveTab(t.key);
+                  }}
+                  className={`w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-100 ${
+                    activeTab !== t.key ? 'opacity-0' : ''
+                  } relative top-px`}
+                  disabled={activeTab !== t.key}
+                >
+                  <CloseSign sizeClassName="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
       </div>
-      <div>
-        <DropdownWithIcon
-          items={[
-            ...(!isSelfServe
-              ? [
-                  {
-                    text: 'Settings',
-                    icon: <Cog />,
-                    type: MenuListItemType.DEFAULT,
-                    onClick: () => setSettingsOpen(true),
-                  },
-                ]
-              : []),
-            {
-              text: 'Documentation',
-              icon: <Magazine />,
-              type: MenuListItemType.DEFAULT,
-              onClick: () => openLink('https://bloop.ai/docs'),
-            },
-            {
-              text: 'Report a bug',
-              icon: <Bug />,
-              type: MenuListItemType.DEFAULT,
-              onClick: () => setBugReportModalOpen(true),
-            },
-            ...(isSelfServe
-              ? [
-                  {
-                    text: 'Sign out',
-                    icon: <DoorRight />,
-                    type: MenuListItemType.DEFAULT,
-                    onClick: () => {
-                      setShouldShowWelcome(true);
-                      deleteAuthCookie();
-                      setGithubConnected(false);
+      {!isSkeleton && (
+        <div>
+          <DropdownWithIcon
+            items={[
+              ...(!isSelfServe
+                ? [
+                    {
+                      text: 'Settings',
+                      icon: <Cog />,
+                      type: MenuListItemType.DEFAULT,
+                      onClick: () => setSettingsOpen(true),
                     },
-                  },
-                ]
-              : []),
-          ]}
-          icon={<Person />}
-          dropdownBtnClassName="-mr-4"
-        />
-      </div>
+                  ]
+                : []),
+              {
+                text: 'Documentation',
+                icon: <Magazine />,
+                type: MenuListItemType.DEFAULT,
+                onClick: () => openLink('https://bloop.ai/docs'),
+              },
+              {
+                text: 'Report a bug',
+                icon: <Bug />,
+                type: MenuListItemType.DEFAULT,
+                onClick: () => setBugReportModalOpen(true),
+              },
+              ...(isSelfServe
+                ? [
+                    {
+                      text: 'Sign out',
+                      icon: <DoorRight />,
+                      type: MenuListItemType.DEFAULT,
+                      onClick: () => {
+                        setShouldShowWelcome(true);
+                        deleteAuthCookie();
+                        setGithubConnected(false);
+                      },
+                    },
+                  ]
+                : []),
+            ]}
+            icon={<Person />}
+            dropdownBtnClassName="-mr-4"
+          />
+        </div>
+      )}
     </div>
   );
 };
