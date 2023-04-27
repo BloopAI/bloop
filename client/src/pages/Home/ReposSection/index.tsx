@@ -4,7 +4,6 @@ import { getRepos } from '../../../services/api';
 import { RepoType, SyncStatus } from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { DeviceContext } from '../../../context/deviceContext';
-import { repositoriesSyncCache } from '../../../services/cache';
 
 const filterRepositories = (repos?: RepoType[]) => {
   return (
@@ -19,7 +18,7 @@ const filterRepositories = (repos?: RepoType[]) => {
 let eventSource: EventSource;
 
 const ReposSection = () => {
-  const { apiUrl, showNativeMessage } = useContext(DeviceContext);
+  const { apiUrl } = useContext(DeviceContext);
   const { setRepositories, repositories } = useContext(RepositoriesContext);
   const [reposToShow, setReposToShow] = useState<RepoType[]>(
     filterRepositories(repositories),
@@ -69,25 +68,6 @@ const ReposSection = () => {
       eventSource?.close();
     };
   }, []);
-
-  useEffect(() => {
-    if (repositoriesSyncCache.shouldNotifyWhenDone) {
-      if (
-        repositories?.find((r) => r.sync_status === SyncStatus.Done) &&
-        repositories?.every(
-          (r) =>
-            r.sync_status === SyncStatus.Done ||
-            r.sync_status === SyncStatus.Uninitialized,
-        )
-      ) {
-        showNativeMessage(
-          'All repositories are now indexed and ready for search!',
-          { title: 'Ready to search!' },
-        );
-        repositoriesSyncCache.shouldNotifyWhenDone = false;
-      }
-    }
-  }, [repositories]);
 
   return (
     <div className="p-8 flex-1 overflow-x-auto relative">
