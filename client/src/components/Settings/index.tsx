@@ -1,9 +1,8 @@
 import React, { useContext, useEffect } from 'react';
 import ListNavigation from '../IdeNavigation/ListNavigation';
-import { Person, TuneControls } from '../../icons';
+import { Person } from '../../icons';
 import { UIContext } from '../../context/uiContext';
 import General from './General';
-import Preferences from './Preferences';
 
 const backdropFilterVisible = {
   transition:
@@ -17,13 +16,13 @@ const backdropFilterInvisible = {
 
 export enum SettingSections {
   GENERAL,
-  PREFERENCES,
+  // PREFERENCES,
   // REPOSITORIES,
 }
 
 const listNavigationItems = [
   { title: 'General', icon: <Person /> },
-  { title: 'Preferences', icon: <TuneControls /> },
+  // { title: 'Preferences', icon: <TuneControls /> },
   // { title: 'Repositories', icon: <Repository /> },
 ];
 
@@ -68,11 +67,7 @@ const Settings = () => {
           />
         </div>
         <div className="p-8 flex-1 overflow-y-auto flex flex-col">
-          {settingsSection === SettingSections.GENERAL ? (
-            <General />
-          ) : (
-            <Preferences />
-          )}
+          <General />
         </div>
       </div>
     </div>

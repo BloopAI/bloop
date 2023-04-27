@@ -6,7 +6,6 @@ import FileIcon from '../FileIcon';
 import { getFileExtensionForLang } from '../../utils';
 import BarLoader from '../Loaders/BarLoader';
 import { UIContext } from '../../context/uiContext';
-import { AnalyticsContext } from '../../context/analyticsContext';
 import { TabsContext } from '../../context/tabsContext';
 import Dropdown from '../Dropdown/WithIcon';
 import { deleteRepo } from '../../services/api';
@@ -48,7 +47,6 @@ const RepoCard = ({
 }: Props) => {
   const { isGithubConnected } = useContext(UIContext);
   const { handleAddTab } = useContext(TabsContext);
-  const { isAnalyticsAllowed } = useContext(AnalyticsContext);
   const isGh = useMemo(() => provider === 'github', [provider]);
   const repoName = useMemo(() => {
     return !isGh ? name.split('/').reverse()[0] : name;
@@ -59,7 +57,7 @@ const RepoCard = ({
       return;
     }
     handleAddTab(repoRef, repoName);
-  }, [repoName, provider, isGithubConnected, isAnalyticsAllowed, sync_status]);
+  }, [repoName, provider, isGithubConnected, sync_status]);
 
   const onRepoRemove = useCallback(
     (e: MouseEvent<HTMLButtonElement>) => {

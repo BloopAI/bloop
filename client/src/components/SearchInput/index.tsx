@@ -37,6 +37,7 @@ import {
   SearchType,
 } from '../../types/general';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
+import { UIContext } from '../../context/uiContext';
 import AutocompleteMenu from './AutocompleteMenu';
 import SearchTextInput from './SearchTextInput';
 
@@ -62,12 +63,13 @@ function SearchInput() {
     setFilters,
     filters,
     setSearchHistory,
+    globalRegex,
+    setGlobalRegex,
   } = useContext(SearchContext);
+  const { tab } = useContext(UIContext);
   const [options, setOptions] = useState<SuggestionType[]>([]);
   const [left, setLeft] = useState<number>(INPUT_POSITION_LEFT);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { globalRegex, setGlobalRegex, searchType, setSearchType } =
-    useContext(SearchContext);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
   const arrowNavContainerRef = useArrowKeyNavigation({
     selectors: 'input, .arrow-navigate',
@@ -155,12 +157,12 @@ function SearchInput() {
             setFilters([]);
             return;
           }
-          if (searchType === SearchType.REGEX) {
-            getAutocompleteThrottled(state.inputValue, setOptions);
-          } else if (searchType === SearchType.NL) {
-            setOptions([]);
-            return;
-          }
+          getAutocompleteThrottled(
+            state.inputValue.includes(`repo:${tab.name}`)
+              ? state.inputValue
+              : `${state.inputValue} repo:${tab.name}`,
+            setOptions,
+          );
           const parsedFilters = parseFilters(state.inputValue);
           if (Object.entries(parsedFilters).some((filters) => filters.length)) {
             const newFilters = filters.map((filterItem) => ({
@@ -195,18 +197,20 @@ function SearchInput() {
     });
 
   const onSubmit = useCallback(
-    (val: string, forceSearchType?: SearchType) => {
+    (val: string) => {
       if (!val.trim()) {
         return;
       }
-      const newSearchType = forceSearchType ?? searchType;
-      navigateSearch(val, newSearchType);
+      const search = val.includes(`repo:${tab.name}`)
+        ? val
+        : `${val} repo:${tab.name}`;
+      navigateSearch(search);
       closeMenu();
       setSearchHistory((prev) => {
         const newHistory = [
           {
-            query: val,
-            searchType: newSearchType,
+            query: search,
+            searchType: SearchType.REGEX,
             timestamp: new Date().toISOString(),
           },
           ...prev,
@@ -215,7 +219,7 @@ function SearchInput() {
         return newHistory;
       });
     },
-    [searchType],
+    [tab.name],
   );
 
   const handleClearHistory = useCallback(() => {
@@ -264,10 +268,7 @@ function SearchInput() {
           ),
           onClick: () => {
             setInputValue(isOlderItem ? s : s.query);
-            onSubmit(
-              isOlderItem ? s : s.query,
-              isOlderItem ? undefined : s.searchType,
-            );
+            onSubmit(isOlderItem ? s : s.query);
           },
         });
       });
@@ -315,11 +316,6 @@ function SearchInput() {
             setGlobalRegex(!globalRegex);
           }}
           regexEnabled={globalRegex}
-          searchType={searchType}
-          onSearchTypeChanged={(st) => {
-            setSearchType(st);
-            setInputValue('');
-          }}
         />
       </div>
 
@@ -335,7 +331,7 @@ function SearchInput() {
         items={historyItems}
         icon={<ArrowRevert />}
         lastItemFixed
-        isWide
+        size="large"
       />
     </div>
   );
