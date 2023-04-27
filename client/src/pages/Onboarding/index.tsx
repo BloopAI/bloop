@@ -74,7 +74,7 @@ const Onboarding = () => {
           if (d.status !== 'ok') {
             setShouldShowWelcome(true);
           } else {
-            // closeOnboarding();
+            closeOnboarding();
           }
         })
         .catch(() => {

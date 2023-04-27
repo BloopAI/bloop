@@ -14,6 +14,7 @@ import DropdownWithIcon from '../Dropdown/WithIcon';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { TabsContext } from '../../context/tabsContext';
+import { gitHubLogout } from '../../services/api';
 
 type Props = {
   userSigned?: boolean;
@@ -77,16 +78,16 @@ const NavBar = ({ isSkeleton }: Props) => {
         <div>
           <DropdownWithIcon
             items={[
-              ...(!isSelfServe
-                ? [
-                    {
-                      text: 'Settings',
-                      icon: <Cog />,
-                      type: MenuListItemType.DEFAULT,
-                      onClick: () => setSettingsOpen(true),
-                    },
-                  ]
-                : []),
+              // ...(!isSelfServe
+              //   ? [
+              //       {
+              //         text: 'Settings',
+              //         icon: <Cog />,
+              //         type: MenuListItemType.DEFAULT,
+              //         onClick: () => setSettingsOpen(true),
+              //       },
+              //     ]
+              //   : []),
               {
                 text: 'Documentation',
                 icon: <Magazine />,
@@ -99,20 +100,19 @@ const NavBar = ({ isSkeleton }: Props) => {
                 type: MenuListItemType.DEFAULT,
                 onClick: () => setBugReportModalOpen(true),
               },
-              ...(isSelfServe
-                ? [
-                    {
-                      text: 'Sign out',
-                      icon: <DoorRight />,
-                      type: MenuListItemType.DEFAULT,
-                      onClick: () => {
-                        setShouldShowWelcome(true);
-                        deleteAuthCookie();
-                        setGithubConnected(false);
-                      },
-                    },
-                  ]
-                : []),
+              {
+                text: 'Sign out',
+                icon: <DoorRight />,
+                type: MenuListItemType.DEFAULT,
+                onClick: () => {
+                  setShouldShowWelcome(true);
+                  deleteAuthCookie();
+                  setGithubConnected(false);
+                  if (!isSelfServe) {
+                    gitHubLogout();
+                  }
+                },
+              },
             ]}
             icon={<Person />}
             dropdownBtnClassName="-mr-4"
