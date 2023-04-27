@@ -15,6 +15,7 @@ struct Language {
 fn main() {
     set_index_version();
     process_languages();
+    println!("cargo:rerun-if-changed=migrations");
 }
 
 fn set_index_version() {

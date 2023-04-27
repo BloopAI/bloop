@@ -26,6 +26,11 @@ pub struct Configuration {
     /// Directory to store indexes
     pub index_dir: PathBuf,
 
+    /// Directory to store persistent data
+    #[clap(long, default_value_os_t = default_data_dir())]
+    #[serde(default = "default_data_dir")]
+    pub data_dir: PathBuf,
+
     #[clap(long, default_value_t = false)]
     #[serde(skip)]
     /// Quit after indexing the specified repos
@@ -190,8 +195,8 @@ impl Configuration {
     pub fn cli_overriding_config_file() -> Result<Self> {
         let cli = Self::from_cli()?;
         let Ok(file) = cli.config_file.as_ref().context("no config file specified").and_then(Self::read) else {
-	    return Ok(cli);
-	};
+            return Ok(cli);
+        };
 
         Ok(Self::merge(file, cli))
     }
@@ -210,6 +215,8 @@ impl Configuration {
             source: right_if_default!(b.source, a.source, Default::default()),
 
             index_dir: b.index_dir,
+
+            data_dir: b.data_dir,
 
             index_only: b.index_only | a.index_only,
 
@@ -303,6 +310,13 @@ where
 fn default_index_path() -> PathBuf {
     match directories::ProjectDirs::from("ai", "bloop", "bleep") {
         Some(dirs) => dirs.cache_dir().to_owned(),
+        None => "bloop_index".into(),
+    }
+}
+
+fn default_data_dir() -> PathBuf {
+    match directories::ProjectDirs::from("ai", "bloop", "bloop") {
+        Some(dirs) => dirs.data_dir().join("bleep"),
         None => "bloop_index".into(),
     }
 }

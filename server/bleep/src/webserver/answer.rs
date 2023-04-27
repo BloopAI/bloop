@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
     mem,
+    str::FromStr,
     sync::Arc,
 };
 
@@ -27,6 +28,7 @@ use tracing::trace;
 
 use super::middleware::User;
 use crate::{
+    db,
     query::parser::{self, SemanticQuery},
     repo::RepoRef,
     Application,
@@ -36,13 +38,9 @@ mod llm_gateway;
 mod partial_parse;
 mod prompts;
 mod response;
+pub mod conversations;
 
 use response::{ResponseState, SearchResult, SearchStep, Update};
-
-#[derive(Default)]
-pub struct RouteState {
-    conversations: scc::HashMap<ConversationId, Conversation>,
-}
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
@@ -56,14 +54,8 @@ fn default_thread_id() -> String {
     uuid::Uuid::new_v4().to_string()
 }
 
-pub(super) fn endpoint<S>() -> MethodRouter<S> {
-    let state = Arc::new(RouteState::default());
-    axum::routing::get(handle).with_state(state)
-}
-
 pub(super) async fn handle(
     Query(params): Query<Params>,
-    State(state): State<Arc<RouteState>>,
     Extension(app): Extension<Application>,
     Extension(user): Extension<User>,
 ) -> super::Result<impl IntoResponse> {
@@ -74,10 +66,8 @@ pub(super) async fn handle(
         thread_id: params.thread_id,
     };
 
-    let mut conversation: Conversation = state
-        .conversations
-        .read_async(&conversation_id, |_k, v| v.clone())
-        .await
+    let mut conversation = Conversation::load(&conversation_id)
+        .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref));
 
     let ctx = AppContext::new(app)
@@ -125,10 +115,14 @@ pub(super) async fn handle(
 
         // TODO: add `conclusion` of last assistant response to history here
         // Storing the conversation here allows us to make subsequent requests.
-        state.conversations
-            .entry_async(conversation_id)
-            .await
-            .insert_entry(conversation);
+
+        // conversation
+        //     .history
+        //     .push(llm_gateway::api::Message::assistant(
+        //         full_update.conclusion().unwrap_or_default(),
+        //     ));
+
+        conversation.store(conversation_id).await?;
     };
 
     let stream = stream
@@ -140,7 +134,7 @@ pub(super) async fn handle(
     Ok(Sse::new(stream))
 }
 
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Hash, PartialEq, Eq, Clone)]
 pub(super) struct ConversationId {
     thread_id: String,
     user_id: String,
@@ -499,6 +493,97 @@ impl Conversation {
         }
 
         Ok(())
+    }
+
+    async fn store(self, id: ConversationId) -> Result<()> {
+        let db = db::get().await?;
+        let transaction = db.begin().await?;
+
+        // Delete the old conversation for simplicity. This also deletes all its messages.
+        let id2 = id.clone();
+        sqlx::query! {
+            "DELETE FROM conversations \
+             WHERE user_id = ? AND thread_id = ?",
+            id2.user_id,
+            id2.thread_id,
+        }
+        .execute(db)
+        .await?;
+
+        let repo_ref = self.repo_ref.to_string();
+        let path_aliases = serde_json::to_string(&self.path_aliases)?;
+        let conversation_id = sqlx::query! {
+            "INSERT INTO conversations (repo_ref, user_id, thread_id, path_aliases, created_at) \
+             VALUES (?, ?, ?, ?, strftime('%s', 'now')) \
+             RETURNING id",
+            repo_ref,
+            id.user_id,
+            id.thread_id,
+            path_aliases,
+        }
+        .fetch_one(db)
+        .await?
+        .id;
+
+        for (i, message) in self.history.iter().enumerate() {
+            let i = i as i32;
+            let llm_gateway::api::Message { content, role } = message.clone();
+
+            sqlx::query! {
+                "INSERT INTO messages (conversation_id, ordinal, role, content) \
+                 VALUES (?, ?, ?, ?)",
+                conversation_id,
+                i,
+                role,
+                content,
+            }
+            .execute(db)
+            .await?;
+        }
+
+        transaction.commit().await?;
+
+        Ok(())
+    }
+
+    async fn load(conversation_id: &ConversationId) -> Result<Option<Self>> {
+        let db = db::get().await?;
+
+        let ConversationId { thread_id, user_id } = conversation_id.clone();
+
+        let row = sqlx::query! {
+            "SELECT id, repo_ref, path_aliases FROM conversations \
+             WHERE user_id = ? AND thread_id = ?",
+            user_id,
+            thread_id,
+        }
+        .fetch_optional(db)
+        .await?;
+
+        let row = match row {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        let repo_ref = RepoRef::from_str(&row.repo_ref).context("failed to parse repo ref")?;
+        let path_aliases = serde_json::from_str(&row.path_aliases)?;
+
+        let history = sqlx::query_as! {
+            llm_gateway::api::Message,
+            "SELECT role, content FROM messages \
+             WHERE conversation_id = ? \
+             ORDER BY ordinal ASC",
+            row.id,
+        }
+        .fetch(db)
+        .try_collect::<Vec<_>>()
+        .await?;
+
+        Ok(Some(Self {
+            repo_ref,
+            history,
+            path_aliases,
+        }))
     }
 }
 

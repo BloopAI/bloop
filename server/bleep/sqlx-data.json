@@ -1,0 +1,125 @@
+{
+  "db": "SQLite",
+  "392b563bb3af6711817fe99335d053691750426762dcde7b0381dc9f69cd804e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "DELETE FROM conversations WHERE user_id = ? AND thread_id = ?"
+  },
+  "65070b3ccabcae2f50e3010ff2d66c42cec6a8cbd11b0abe7c29e8b7ce12c87b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "repo_ref",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "path_aliases",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT id, repo_ref, path_aliases FROM conversations WHERE user_id = ? AND thread_id = ?"
+  },
+  "7cc11708840a8317f33110dcff41a74c820527c9b043268cc2b4fc0ba8d694e9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "thread_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "preview",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT c.thread_id, c.created_at, messages.content as preview FROM conversations c JOIN ( SELECT conversation_id, min(ordinal) ordinal FROM messages WHERE role = \"user\" GROUP BY conversation_id ) m ON m.conversation_id = c.id JOIN messages ON messages.conversation_id = c.id AND messages.ordinal = m.ordinal WHERE c.user_id = ?"
+  },
+  "80640f5084d8cc0238fa8856f93240e427f5f3f2737744beeb7c4e69b26d11ff": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 4
+      }
+    },
+    "query": "INSERT INTO messages (conversation_id, ordinal, role, content) VALUES (?, ?, ?, ?)"
+  },
+  "a25e7837a4a1bb09cafb917b0214307e17bca829b1e94d441b442c4f9c050fdf": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 4
+      }
+    },
+    "query": "INSERT INTO conversations (repo_ref, user_id, thread_id, path_aliases, created_at) VALUES (?, ?, ?, ?, strftime('%s', 'now')) RETURNING id"
+  },
+  "e9cf879bf7b6efb8c5fc587a649be52010f7fa8e09c353154d9dd83607e2a970": {
+    "describe": {
+      "columns": [
+        {
+          "name": "role",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "content",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY ordinal ASC"
+  }
+}

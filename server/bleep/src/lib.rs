@@ -42,6 +42,7 @@ use tracing_subscriber::EnvFilter;
 mod background;
 mod collector;
 mod config;
+mod db;
 mod env;
 mod remotes;
 mod repo;
@@ -116,6 +117,8 @@ impl Application {
 
         let config = Arc::new(config);
         debug!(?config, "effective configuration");
+
+        db::init(&config).await?;
 
         // Initialise Semantic index if `qdrant_url` set in config
         let semantic = match config.qdrant_url {
