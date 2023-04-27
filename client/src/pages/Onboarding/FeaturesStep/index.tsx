@@ -7,7 +7,7 @@ import Feature from './Feature';
 
 type Props = {
   handleNext: (e?: any) => void;
-  handleBack: (e?: any) => void;
+  handleBack?: (e?: any) => void;
 };
 
 const FeaturesStep = ({ handleNext, handleBack }: Props) => {
@@ -43,11 +43,11 @@ const FeaturesStep = ({ handleNext, handleBack }: Props) => {
         />
         <div className="flex flex-col gap-4 mt-4">
           <Button type="submit" variant="primary" onClick={handleSubmit}>
-            Get Started
+            Got it
           </Button>
         </div>
       </div>
-      <GoBackButton handleBack={handleBack} />
+      {handleBack ? <GoBackButton handleBack={handleBack} /> : null}
     </>
   );
 };

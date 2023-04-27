@@ -1,4 +1,14 @@
-import { createContext } from 'react';
+import { createContext, Dispatch, SetStateAction } from 'react';
+
+type EnvConfig = {
+  analytics_data_plane?: string;
+  analytics_key_fe?: string;
+  sentry_dsn_fe?: string;
+  user_login?: string | null;
+  org_name?: string | null;
+  tracking_id?: string;
+  device_id?: string;
+};
 
 export type DeviceContextType = {
   openFolderInExplorer: (p: string) => void;
@@ -25,15 +35,8 @@ export type DeviceContextType = {
   isRepoManagementAllowed: boolean;
   forceAnalytics: boolean;
   isSelfServe: boolean;
-  envConfig: {
-    analytics_data_plane?: string;
-    analytics_key_fe?: string;
-    sentry_dsn_fe?: string;
-    user_login?: string | null;
-    org_name?: string | null;
-    tracking_id?: string;
-    device_id?: string;
-  };
+  envConfig: EnvConfig;
+  setEnvConfig: Dispatch<SetStateAction<EnvConfig>>;
   showNativeMessage: (m: string, options?: any) => Promise<void> | void;
 };
 
@@ -56,5 +59,6 @@ export const DeviceContext = createContext<DeviceContextType>({
   forceAnalytics: false,
   isSelfServe: false,
   envConfig: {},
+  setEnvConfig: () => {},
   showNativeMessage: () => Promise.resolve(),
 });
