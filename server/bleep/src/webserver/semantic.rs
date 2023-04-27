@@ -63,7 +63,7 @@ pub(super) async fn raw_chunks(
     }
 }
 
-fn kind_to_value(kind: Option<Kind>) -> serde_json::Value {
+pub fn kind_to_value(kind: Option<Kind>) -> serde_json::Value {
     match kind {
         Some(Kind::NullValue(_)) => serde_json::Value::Null,
         Some(Kind::BoolValue(v)) => serde_json::Value::Bool(v),
