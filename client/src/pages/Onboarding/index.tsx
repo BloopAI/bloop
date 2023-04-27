@@ -100,7 +100,7 @@ const Onboarding = () => {
 
   return shouldShowWelcome ? (
     <div className="fixed top-0 bottom-0 left-0 right-0 z-100 bg-[#101011]">
-      {os.type === 'Darwin' && <NavBar userSigned isSkeleton />}
+      {os.type === 'Darwin' && <NavBar isSkeleton />}
       <img
         src="/light.png"
         alt=""

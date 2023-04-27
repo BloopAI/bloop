@@ -10,8 +10,6 @@ export const IdeNavBar = () => {
   return (
     <MemoryRouter initialEntries={['']}>
       <div style={{ width: '100%' }}>
-        <NavBar userSigned />
-        <br />
         <NavBar />
       </div>
     </MemoryRouter>

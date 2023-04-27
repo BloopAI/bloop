@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchContext } from '../../context/searchContext';
 import { mockFiltersInitial } from '../../mocks';
-import { SearchHistoryItem, SearchType } from '../../types/general';
+import { SearchHistoryItem } from '../../types/general';
 import SearchInput from './index';
 import '../../index.css';
 
@@ -21,7 +21,6 @@ export const Default = () => {
   ]);
   const [searchSubmitted, setSearchSubmitted] = useState(false);
   const [globalRegex, setGlobalRegex] = useState(false);
-  const [searchType, setSearchType] = useState(SearchType.REGEX);
   const searchContextValue = useMemo(
     () => ({
       inputValue,
@@ -34,8 +33,6 @@ export const Default = () => {
       setSearchSubmitted,
       globalRegex,
       setGlobalRegex,
-      searchType,
-      setSearchType,
     }),
     [inputValue],
   );
@@ -60,7 +57,6 @@ export const MixedSuggestions = () => {
   ]);
   const [searchSubmitted, setSearchSubmitted] = useState(false);
   const [globalRegex, setGlobalRegex] = useState(false);
-  const [searchType, setSearchType] = useState(SearchType.REGEX);
   const searchContextValue = useMemo(
     () => ({
       inputValue,
@@ -73,8 +69,6 @@ export const MixedSuggestions = () => {
       setSearchSubmitted,
       globalRegex,
       setGlobalRegex,
-      searchType,
-      setSearchType,
     }),
     [inputValue],
   );

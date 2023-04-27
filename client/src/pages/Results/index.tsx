@@ -48,7 +48,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   const [scrollToLine, setScrollToLine] = useState<string | undefined>(
     undefined,
   );
-  const { filters, setFilters, inputValue, globalRegex, searchType } =
+  const { filters, setFilters, inputValue, globalRegex } =
     useContext(SearchContext);
   const { setSymbolsCollapsed } = useContext(UIContext);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
@@ -85,9 +85,9 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   const handlePageChange = useCallback(
     (page: number) => {
       setPage(page);
-      navigateSearch(inputValue, searchType, page);
+      navigateSearch(inputValue, page);
     },
-    [inputValue, globalRegex, searchType],
+    [inputValue, globalRegex],
   );
 
   const handleModeChange = useCallback((m: FullResultModeEnum) => {

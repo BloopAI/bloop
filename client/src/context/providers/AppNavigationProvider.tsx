@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { buildRepoQuery, generateUniqueId } from '../../utils';
+import { buildRepoQuery } from '../../utils';
 import { NavigationItem, SearchType } from '../../types/general';
 import { AppNavigationContext } from '../appNavigationContext';
 
@@ -77,20 +77,13 @@ export const AppNavigationProvider = (prop: {
     [],
   );
 
-  const navigateSearch = useCallback(
-    (query: string, searchType: SearchType, page?: number) => {
-      saveState({
-        type: 'search',
-        page,
-        query,
-        searchType,
-        ...(searchType === SearchType.NL
-          ? { threadId: generateUniqueId() }
-          : {}),
-      });
-    },
-    [],
-  );
+  const navigateSearch = useCallback((query: string, page?: number) => {
+    saveState({
+      type: 'search',
+      page,
+      query,
+    });
+  }, []);
 
   const navigateRepoPath = useCallback(
     (repo: string, path?: string, pathParams?: Record<string, string>) => {

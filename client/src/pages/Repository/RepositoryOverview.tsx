@@ -10,7 +10,6 @@ import { cleanRepoName, sortFiles } from '../../utils/file';
 import { highlightCode } from '../../utils/prism';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import { DeviceContext } from '../../context/deviceContext';
-import { SearchType } from '../../types/general';
 
 const md = new Remarkable({
   html: true,
@@ -46,12 +45,7 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
       (file) => file.path.toLowerCase() === 'readme.md',
     );
     if (readmePath) {
-      searchQuery(
-        `open:true repo:${repository.name} path:${readmePath.path}`,
-        0,
-        false,
-        SearchType.REGEX,
-      );
+      searchQuery(`open:true repo:${repository.name} path:${readmePath.path}`);
     } else {
       setReadme(null);
     }
