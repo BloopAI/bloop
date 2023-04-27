@@ -44,7 +44,7 @@ const initialModalStyles = (top: string, shouldStretch: boolean) => ({
 });
 
 const initialSidebarStyles = (shouldStretch: boolean) => ({
-  top: '4rem',
+  top: '5.5rem',
   right: '0%',
   ...(shouldStretch ? { bottom: '4rem' } : {}),
   transform: 'translate(4rem, 0%)',
