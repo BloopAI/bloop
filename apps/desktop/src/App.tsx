@@ -88,6 +88,7 @@ function App() {
   });
   const [release, setRelease] = useState('');
   const contentContainer = useRef<HTMLDivElement>(null);
+  const [envConfig, setEnvConfig] = useState({});
 
   useEffect(() => {
     homeDir().then(setHomeDir);
@@ -148,10 +149,11 @@ function App() {
       isRepoManagementAllowed: true,
       forceAnalytics: false,
       isSelfServe: false,
-      envConfig: {},
+      envConfig,
+      setEnvConfig,
       showNativeMessage: message,
     }),
-    [homeDirectory, indexFolder, os, release],
+    [homeDirectory, indexFolder, os, release, envConfig],
   );
   return (
     <>
