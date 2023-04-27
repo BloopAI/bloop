@@ -25,6 +25,7 @@ type Props = {
   pathParts: PathParts[];
   path: string;
   separator?: string;
+  type?: 'link' | 'button';
   activeStyle?: 'primary' | 'secondary';
 };
 
@@ -33,7 +34,12 @@ const breadcrumbVariants = {
   visible: { opacity: 1, transition: { duration: 0.2 } },
 };
 
-const Breadcrumbs = ({ pathParts, path, separator = '/' }: Props) => {
+const Breadcrumbs = ({
+  pathParts,
+  path,
+  separator = '/',
+  type = 'link',
+}: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [formattedPathParts, setFormattedPathParts] =
     useState<(PathParts | PathParts[])[]>(pathParts);
@@ -100,6 +106,7 @@ const Breadcrumbs = ({ pathParts, path, separator = '/' }: Props) => {
                 onClick={p.onClick}
                 highlight={p.highlight}
                 isLast={i == formattedPathParts.length - 1}
+                type={type}
               />
             </span>
             {i !== formattedPathParts.length - 1 && (
@@ -113,7 +120,7 @@ const Breadcrumbs = ({ pathParts, path, separator = '/' }: Props) => {
       {formattedPathParts.map((p, i) => (
         <Fragment key={i + (Array.isArray(p) ? 'array' : 'item')}>
           {Array.isArray(p) ? (
-            <BreadcrumbsCollapsed items={p} />
+            <BreadcrumbsCollapsed items={p} type={type} />
           ) : (
             <span className="flex items-center gap-1 flex-shrink-0">
               <BreadcrumbSection
@@ -122,6 +129,7 @@ const Breadcrumbs = ({ pathParts, path, separator = '/' }: Props) => {
                 onClick={p.onClick}
                 highlight={p.highlight}
                 isLast={i == formattedPathParts.length - 1}
+                type={type}
               />
             </span>
           )}
