@@ -154,16 +154,12 @@ const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
           </div>
         ))}
       </div>
-      {openResult ? (
-        <ResultModal
-          result={openResult as FullResult}
-          onResultClosed={onResultClosed}
-          mode={mode}
-          setMode={handleModeChange}
-        />
-      ) : (
-        ''
-      )}
+      <ResultModal
+        result={openResult}
+        onResultClosed={onResultClosed}
+        mode={mode}
+        setMode={handleModeChange}
+      />
     </div>
   );
 };
