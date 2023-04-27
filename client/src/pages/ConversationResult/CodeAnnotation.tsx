@@ -6,7 +6,7 @@ import { FileTreeFileType } from '../../types';
 import { getFileLines, getHoverables } from '../../services/api';
 import { File, FileSearchResponse } from '../../types/api';
 import { FullResult } from '../../types/results';
-import { FullResultModeEnum, SearchType } from '../../types/general';
+import { FullResultModeEnum } from '../../types/general';
 import { mapFileResult, mapRanges } from '../../mappers/results';
 import { useSearch } from '../../hooks/useSearch';
 import ResultModal from '../ResultModal';
@@ -56,12 +56,7 @@ const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
 
   const onResultClick = useCallback(
     (path: string) => {
-      fileModalSearchQuery(
-        `open:true repo:${repoName} path:${path}`,
-        0,
-        false,
-        SearchType.REGEX,
-      );
+      fileModalSearchQuery(`open:true repo:${repoName} path:${path}`);
     },
     [repoName],
   );

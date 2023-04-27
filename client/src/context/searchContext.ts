@@ -1,5 +1,5 @@
 import React, { createContext } from 'react';
-import { FilterType, SearchHistoryItem, SearchType } from '../types/general';
+import { FilterType, SearchHistoryItem } from '../types/general';
 
 type ContextType = {
   inputValue: string;
@@ -10,8 +10,6 @@ type ContextType = {
   setFilters: React.Dispatch<React.SetStateAction<FilterType[]>>;
   globalRegex: boolean;
   setGlobalRegex: React.Dispatch<React.SetStateAction<boolean>>;
-  searchType: SearchType;
-  setSearchType: React.Dispatch<React.SetStateAction<SearchType>>;
 };
 
 export const SearchContext = createContext<ContextType>({
@@ -23,6 +21,4 @@ export const SearchContext = createContext<ContextType>({
   setFilters: (f) => {},
   globalRegex: false,
   setGlobalRegex: (b) => {},
-  searchType: SearchType.REGEX,
-  setSearchType: (s) => {},
 });
