@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import { NavigationItem, SearchType } from '../types/general';
+import { NavigationItem } from '../types/general';
 
 type ContextType = {
   navigationHistory: NavigationItem[];
@@ -20,11 +20,7 @@ type ContextType = {
     path?: string,
     pathParams?: Record<string, string>,
   ) => void;
-  navigateSearch: (
-    query: string,
-    searchType: SearchType,
-    page?: number,
-  ) => void;
+  navigateSearch: (query: string, page?: number) => void;
   navigateFullResult: (
     repo: string,
     path: string,

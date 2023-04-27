@@ -4,24 +4,12 @@ import {
   forwardRef,
   HTMLInputTypeAttribute,
   KeyboardEvent,
-  useContext,
   useImperativeHandle,
   useRef,
   useState,
 } from 'react';
-import {
-  ChevronDownFilled,
-  ChevronUpFilled,
-  NaturalLanguage,
-  RegexIcon,
-} from '../../icons';
 import ClearButton from '../ClearButton';
 import RegexButton from '../RegexButton';
-import ContextMenu from '../ContextMenu';
-import { MenuItemType, SearchType } from '../../types/general';
-import { UIContext } from '../../context/uiContext';
-import { DeviceContext } from '../../context/deviceContext';
-import { AnalyticsContext } from '../../context/analyticsContext';
 
 type Props = {
   value: string;
@@ -41,8 +29,6 @@ type Props = {
   validate?: () => void;
   regexEnabled?: boolean;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  searchType: SearchType;
-  onSearchTypeChanged: (searchType: SearchType) => void;
 };
 
 const borderMap = {
@@ -79,17 +65,11 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
     regex,
     onRegexClick,
     regexEnabled,
-    searchType,
-    onSearchTypeChanged,
   }: Props,
   ref: ForwardedRef<HTMLInputElement>,
 ) {
   const inputRef = useRef<HTMLInputElement>(null);
   useImperativeHandle(ref, () => inputRef.current!);
-  const [searchCtxMenuVisible, setSearchCtxMenuVisible] = useState(false);
-  const { isSelfServe } = useContext(DeviceContext);
-  const { isGithubConnected } = useContext(UIContext);
-  const { isAnalyticsAllowed } = useContext(AnalyticsContext);
   const [composing, setComposition] = useState(false);
   const startComposition = () => setComposition(true);
   const endComposition = () => setComposition(false);
@@ -134,70 +114,6 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
             : ''
         } transition-all duration-300 ease-in-bounce relative`}
       >
-        <span className="relative h-full">
-          <ContextMenu
-            items={[
-              {
-                text: 'Natural language',
-                type: MenuItemType.LINK,
-                disabled:
-                  !isSelfServe && (!isAnalyticsAllowed || !isGithubConnected),
-                tooltip:
-                  !isSelfServe && (!isAnalyticsAllowed || !isGithubConnected)
-                    ? `${
-                        !isAnalyticsAllowed
-                          ? 'Opt-in to remote services'
-                          : 'Connect GitHub'
-                      } to use natural language search`
-                    : undefined,
-                onClick: () => onSearchTypeChanged(SearchType.NL),
-                icon: <NaturalLanguage />,
-              },
-              {
-                text: 'Regex',
-                type: MenuItemType.LINK,
-                onClick: () => onSearchTypeChanged(SearchType.REGEX),
-                icon: <RegexIcon />,
-              },
-            ]}
-            visible={searchCtxMenuVisible}
-            title={'Search type'}
-            handleClose={() => setSearchCtxMenuVisible(false)}
-            closeOnClickOutside
-          >
-            <button
-              className="flex items-center px-2 h-full bg-gray-700 rounded-l"
-              title="Search type"
-              onClick={(e) => {
-                e.preventDefault();
-                setSearchCtxMenuVisible(!searchCtxMenuVisible);
-              }}
-            >
-              <span
-                className={`w-5 h-5 group-hover:text-gray-200 ${
-                  searchCtxMenuVisible ? 'text-gray-200' : 'text-gray-300'
-                }`}
-              >
-                {searchType === SearchType.NL ? (
-                  <NaturalLanguage />
-                ) : (
-                  <RegexIcon />
-                )}
-              </span>
-              <span
-                className={`w-5 h-5 group-hover:text-gray-200 ${
-                  searchCtxMenuVisible ? 'text-gray-200' : 'text-gray-500'
-                }`}
-              >
-                {searchCtxMenuVisible ? (
-                  <ChevronUpFilled />
-                ) : (
-                  <ChevronDownFilled />
-                )}
-              </span>
-            </button>
-          </ContextMenu>
-        </span>
         <input
           value={value}
           onChange={onChange}
@@ -229,7 +145,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
             className={success ? 'group-focus-within:flex hidden' : 'flex'}
           />
         ) : null}
-        {regex && searchType === SearchType.REGEX ? (
+        {regex ? (
           <RegexButton
             onClick={handleRegex}
             clasName={'mr-2'}

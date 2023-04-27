@@ -11,13 +11,10 @@ import PageTemplate from '../components/PageTemplate';
 import ErrorFallback from '../components/ErrorFallback';
 import useAppNavigation from '../hooks/useAppNavigation';
 import { buildRepoQuery } from '../utils';
-import { SearchType } from '../types/general';
-import { TabsContext } from '../context/tabsContext';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import RepositoryPage from './Repository';
 import ResultsPage from './Results';
 import ViewResult from './ResultFull';
-import NLResults from './NLResults';
 import NoResults from './Results/NoResults';
 import HomePage from './Home';
 import Onboarding from './Onboarding';
@@ -32,8 +29,7 @@ const mockQuerySuggestions = [
 ];
 
 const ContentContainer = ({ tab }: { tab: { name: string; key: string } }) => {
-  const { setInputValue, globalRegex, searchType, setSearchType } =
-    useContext(SearchContext);
+  const { setInputValue, globalRegex } = useContext(SearchContext);
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
 
   const { navigatedItem, query, navigateBack, navigateRepoPath } =
@@ -66,28 +62,18 @@ const ContentContainer = ({ tab }: { tab: { name: string; key: string } }) => {
       }
       return;
     }
-    if (navigatedItem.searchType !== undefined) {
-      setSearchType(navigatedItem.searchType);
-    }
 
     setInputValue(query);
 
     switch (navigatedItem.type) {
       case 'repo':
       case 'full-result':
-        searchQuery(
-          buildRepoQuery(navigatedItem.repo, navigatedItem.path),
-          0,
-          false,
-          SearchType.REGEX,
-        );
+        searchQuery(buildRepoQuery(navigatedItem.repo, navigatedItem.path));
         break;
       case 'home':
         break;
       default:
-        if ((navigatedItem.searchType ?? searchType) === SearchType.REGEX) {
-          searchQuery(navigatedItem.query!, navigatedItem.page, globalRegex);
-        }
+        searchQuery(navigatedItem.query!, navigatedItem.page, globalRegex);
     }
   }, [navigatedItem, tab.key]);
 
@@ -106,26 +92,16 @@ const ContentContainer = ({ tab }: { tab: { name: string; key: string } }) => {
     if (navigatedItem?.type === 'conversation-result') {
       return 'conversation-result';
     }
-    if (
-      navigatedItem?.searchType === SearchType.REGEX &&
-      !data?.data?.[0] &&
-      !loading
-    ) {
+    if (!data?.data?.[0] && !loading) {
       return 'no-results';
     }
-    const resultType =
-      navigatedItem?.searchType === SearchType.NL
-        ? 'nl'
-        : data?.data?.[0]?.kind;
+    const resultType = data?.data?.[0]?.kind;
     switch (resultType) {
       case 'dir':
         renderPage = 'repo';
         break;
       case 'file':
         renderPage = 'full-result';
-        break;
-      case 'nl':
-        renderPage = 'nl-result';
         break;
       default:
         renderPage = 'results';
@@ -155,14 +131,6 @@ const ContentContainer = ({ tab }: { tab: { name: string; key: string } }) => {
         );
       case 'full-result':
         return <ViewResult data={data} />;
-      case 'nl-result':
-        return (
-          <NLResults
-            query={query}
-            key={navigatedItem?.threadId}
-            threadId={navigatedItem?.threadId!}
-          />
-        );
       case 'conversation-result':
         return <ConversationResult recordId={navigatedItem?.recordId!} />;
       default:

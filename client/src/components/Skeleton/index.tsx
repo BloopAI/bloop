@@ -70,7 +70,7 @@ const mainContainerStyle = { height: 'calc(100vh - 8rem)' };
 const Skeleton = () => {
   return (
     <div className="text-gray-200">
-      <NavBar userSigned />
+      <NavBar />
       <div
         className="flex mt-16 w-screen overflow-hidden relative"
         style={mainContainerStyle}
