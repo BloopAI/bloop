@@ -63,17 +63,18 @@ const Subheader = () => {
 
   return (
     <div className="w-full bg-gray-800 py-2 pl-8 pr-6 flex items-center justify-between border-b border-gray-700 relative z-40">
-      <div className="flex gap-3 items-center overflow-hidden">
+      <div className="flex flex-1 gap-3 items-center overflow-hidden">
         <Breadcrumbs
           pathParts={breadcrumbs}
-          path={breadcrumbs.map((b) => b.label).join(',')}
+          path={''}
           separator="›"
+          type="button"
         />
       </div>
-      <div className="w-full max-w-[548px]">
+      <div className="w-full max-w-[548px] flex-grow-[3]">
         <SearchInput />
       </div>
-      <div />
+      <div className="flex-1" />
     </div>
   );
 };

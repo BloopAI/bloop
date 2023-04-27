@@ -177,12 +177,12 @@ function SearchInput() {
               setFilters(newFilters);
             }
           }
-          const input = inputRef.current;
-          if (input) {
-            if (input.getBoundingClientRect().left) {
-              setLeft(input.getBoundingClientRect().left - 272);
-            }
-          }
+          // const input = inputRef.current;
+          // if (input) {
+          //   if (input.getBoundingClientRect().left) {
+          //     setLeft(input.getBoundingClientRect().left - 272);
+          //   }
+          // }
         }
       },
       items: options,
@@ -300,7 +300,7 @@ function SearchInput() {
       <div className="flex-1 max-w-3xl">
         <SearchTextInput
           type="search"
-          placeholder="What does this repo do?"
+          placeholder="Search for code using regex"
           regex
           {...getInputProps(
             {
