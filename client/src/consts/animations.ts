@@ -14,7 +14,7 @@ export const FILTER_SECTION_ANIMATION = { duration: 0.3, ease: EASE_IN_SLOW };
 
 export const MODAL_SIDEBAR_CHANGE_ANIMATION = {
   duration: 0.5,
-  ease: 'anticipate',
+  ease: 'easeIn',
 };
 export const MODAL_SIDEBAR_APPEAR_ANIMATION = {
   duration: 0.2,
