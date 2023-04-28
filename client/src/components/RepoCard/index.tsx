@@ -56,7 +56,7 @@ const RepoCard = ({
     if (!last_update || last_update === '1970-01-01T00:00:00Z') {
       return;
     }
-    handleAddTab(repoRef, repoName);
+    handleAddTab(repoRef, isGh ? repoRef : repoName, repoName);
   }, [repoName, provider, isGithubConnected, sync_status]);
 
   const onRepoRemove = useCallback(

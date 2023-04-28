@@ -31,26 +31,31 @@ function App({ deviceContextValue }: Props) {
     {
       key: 'initial',
       name: 'Home',
+      repoName: '',
       searchHistory: getJsonFromStorage(SEARCH_HISTORY_KEY) || [],
     },
   ]);
   const [activeTab, setActiveTab] = useState('initial');
 
-  const handleAddTab = useCallback((repoRef: string, repoName: string) => {
-    const newTab = {
-      key: repoRef,
-      name: repoName,
-    };
-    setTabs((prev) => {
-      const existing = prev.find((t) => t.key === newTab.key);
-      if (existing) {
-        setActiveTab(existing.key);
-        return prev;
-      }
-      return [...prev, newTab];
-    });
-    setActiveTab(newTab.key);
-  }, []);
+  const handleAddTab = useCallback(
+    (repoRef: string, repoName: string, name: string) => {
+      const newTab = {
+        key: repoRef,
+        name,
+        repoName,
+      };
+      setTabs((prev) => {
+        const existing = prev.find((t) => t.key === newTab.key);
+        if (existing) {
+          setActiveTab(existing.key);
+          return prev;
+        }
+        return [...prev, newTab];
+      });
+      setActiveTab(newTab.key);
+    },
+    [],
+  );
 
   const handleRemoveTab = useCallback(
     (tabKey: string) => {

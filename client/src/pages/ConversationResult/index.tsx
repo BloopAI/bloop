@@ -44,7 +44,7 @@ const ConversationResult = ({ recordId }: Props) => {
           return (
             <CodeAnnotation
               key={i}
-              repoName={tab.name}
+              repoName={tab.repoName}
               filePath={file}
               citations={citations}
             />
