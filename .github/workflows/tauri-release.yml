@@ -61,6 +61,12 @@ jobs:
       - name: Install app dependencies
         run: npm ci
 
+      - name: get release version
+        id: release-version
+        run: echo "RELEASE_VERSION=$(cat apps/desktop/src-tauri/tauri.conf.json | jq '.package.version' | tr -d '"')" >> "$GITHUB_OUTPUT"
+
+      - run: echo "${{ steps.release-version.outputs.RELEASE_VERSION }}"
+
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
@@ -103,10 +109,6 @@ jobs:
           field: tauri.bundle.macOS.signingIdentity
           value: ${{ secrets.APPLE_SIGNING_IDENTITY }}
 
-      - name: get release version
-        id: release-version
-        run: cat apps/desktop/src-tauri/tauri.conf.json | jq '.package.version' | tr -d '"'
-
       - uses: tauri-apps/tauri-action@dev
         env:
           ORT_LIB_LOCATION: ${{ github.workspace }}/lib/${{ matrix.target }}/onnxruntime
@@ -121,7 +123,7 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_RELEASE_VERSION: ${{ steps.release-version.outputs.stdout }}
+          SENTRY_RELEASE_VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
         with:
           args: -- --target "${{ matrix.target }}" -v
 
