@@ -13,8 +13,8 @@ jobs:
       awsAccountID: ${{ secrets.AWS_ACCOUNT_ID }}
       slackBuildWebhook: ${{ secrets.SLACK_BUILD_WEBHOOK }}
       build-args: |
-        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-        SENTRY_RELEASE_VERSION: ${{ github.sha }}
+        SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_RELEASE_VERSION=${{ github.sha }}
 
   validate_helm:
     uses: BloopAI/reusable-workflows/.github/workflows/validate-helm-chart.yml@main
