@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import Code from '../../components/CodeBlock/Code';
-import FileIcon from '../../components/FileIcon';
-import BreadcrumbsPath from '../../components/BreadcrumbsPath';
-import { FileTreeFileType } from '../../types';
-import { getFileLines, getHoverables } from '../../services/api';
-import { File, FileSearchResponse } from '../../types/api';
-import { FullResult } from '../../types/results';
-import { FullResultModeEnum } from '../../types/general';
-import { mapFileResult, mapRanges } from '../../mappers/results';
-import { useSearch } from '../../hooks/useSearch';
-import ResultModal from '../ResultModal';
+import FileIcon from '../../../components/FileIcon';
+import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
+import { FileTreeFileType } from '../../../types';
+import { getHoverables } from '../../../services/api';
+import { FileSearchResponse } from '../../../types/api';
+import { FullResult } from '../../../types/results';
+import { FullResultModeEnum } from '../../../types/general';
+import { mapFileResult, mapRanges } from '../../../mappers/results';
+import { useSearch } from '../../../hooks/useSearch';
+import ResultModal from '../../ResultModal';
+import CodePart from './CodePart';
 
 type Props = {
   filePath: string;
@@ -22,7 +22,7 @@ type Props = {
   }[];
 };
 
-const colors = [
+export const colors = [
   [253, 201, 0],
   [14, 164, 233],
   [236, 72, 153],
@@ -32,27 +32,12 @@ const colors = [
 ];
 
 const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
-  const [fileParts, setFileParts] = useState<File[]>([]);
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.MODAL,
   );
   const [openResult, setOpenResult] = useState<FullResult | null>(null);
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
-
-  useEffect(() => {
-    Promise.all(
-      citations.map((c) =>
-        getFileLines(
-          `open:true repo:${repoName} path:${filePath}`,
-          c.start_line,
-          c.end_line,
-        ),
-      ),
-    ).then((resps) => {
-      setFileParts(resps.map((resp) => resp.data[0].data as File));
-    });
-  }, [filePath, repoName, citations]);
 
   const onResultClick = useCallback(
     (path: string) => {
@@ -99,38 +84,18 @@ const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
             />
           </div>
         </div>
-        {fileParts.length ? (
+        {citations.length ? (
           <div className="relative overflow-auto py-4">
             {citations.map((c, i) => (
-              <span key={c.i}>
-                <Code
-                  lineStart={c.start_line}
-                  code={fileParts[i].contents
-                    .split('\n')
-                    .slice(Math.max(c.start_line - 1, 0), c.end_line)
-                    .join('\n')}
-                  language={fileParts[i].lang}
-                  highlightColor={`rgba(${colors[c.i % colors.length].join(
-                    ', ',
-                  )}, 1)`}
-                />
-                {i !== citations.length - 1 ? (
-                  <pre className={` bg-gray-900 my-0 px-2`}>
-                    <table>
-                      <tbody>
-                        <tr className="token-line">
-                          <td className={`w-0 px-1 text-center`} />
-                          <td className="text-gray-500 min-w-6 text-right	text-l select-none">
-                            ..
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </pre>
-                ) : (
-                  ''
-                )}
-              </span>
+              <CodePart
+                key={c.i}
+                i={c.i}
+                repoName={repoName}
+                filePath={filePath}
+                startLine={c.start_line}
+                endLine={c.end_line}
+                isLast={i === citations.length - 1}
+              />
             ))}
           </div>
         ) : null}
