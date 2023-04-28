@@ -5,7 +5,7 @@ import { ChatMessageServer, MessageResultCite } from '../../types/general';
 import { UIContext } from '../../context/uiContext';
 import NewCode from './NewCode';
 import DiffCode from './DiffCode';
-import CodeAnnotation from './CodeAnnotation';
+import CodeAnnotation from './CodeAnotation';
 
 type Props = {
   recordId: number;
