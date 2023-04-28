@@ -35,7 +35,7 @@ use once_cell::sync::OnceCell;
 
 use sentry_tracing::{EventFilter, SentryLayer};
 use std::{path::Path, sync::Arc};
-use tracing::{error, info, warn, Level};
+use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::EnvFilter;
 
 mod background;
@@ -101,15 +101,10 @@ pub struct Application {
 impl Application {
     pub async fn initialize(
         env: Environment,
-        config: Configuration,
+        mut config: Configuration,
         tracking_seed: impl Into<Option<String>>,
         analytics_options: impl Into<Option<analytics::HubOptions>>,
     ) -> Result<Application> {
-        let mut config = match config.config_file {
-            None => config,
-            Some(ref path) => Configuration::read(path)?,
-        };
-
         config.max_threads = config.max_threads.max(minimum_parallelism());
         let threads = config.max_threads;
 
@@ -119,6 +114,7 @@ impl Application {
         config.source.set_default_dir(&config.index_dir);
 
         let config = Arc::new(config);
+        debug!(?config, "effective configuration");
 
         // Initialise Semantic index if `qdrant_url` set in config
         let semantic = match config.qdrant_url {

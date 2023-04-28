@@ -28,6 +28,38 @@ spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
       containers:
+        {{ if .Values.qdrant.backup }}
+        - name: {{ .Chart.Name }}-qdrant-backup
+          image: amazon/aws-cli:2.11.15
+          imagePullPolicy: {{ .Values.qdrant.image.pullPolicy }}
+          command:
+          - /bin/sh
+          args:
+          - /bloop/backup-script.sh
+          env:
+          - name: AWS_REGION
+            value: {{ .Values.qdrant.backup.awsDefaultRegion }}
+          - name: GITHUB_ORG
+            value: {{ .Values.bloop.githubOrgName }}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "qdrant.fullname" . }}-backup
+                key: aws-access-key-id
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "qdrant.fullname" . }}-backup
+                key: aws-secret-access-key
+          volumeMounts:
+          - name: {{ include "qdrant.fullname" . }}-storage
+            mountPath: /qdrant/storage
+          {{- if .Values.qdrant.backup.enabled }}
+          - mountPath: /bloop
+            name: {{ include "qdrant.fullname" . }}-backup-script
+            readOnly: true
+          {{- end }}
+        {{ end }}
         - name: {{ .Chart.Name }}-qdrant
           image: "{{ .Values.qdrant.image.repository }}:{{ .Values.qdrant.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.qdrant.image.pullPolicy }}
@@ -90,8 +122,9 @@ spec:
             subPath: production.yaml
           {{- if .Values.qdrant.snapshotRestoration.enabled }}
           - name: qdrant-snapshots
-            mountPath: /qdrant/snapshots
+            mountPath: {{ .Values.qdrant.snapshot.path }}
           {{- end }}
+
       {{- with .Values.qdrant.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -116,4 +149,9 @@ spec:
         - name: qdrant-snapshots
           persistentVolumeClaim:
             claimName: {{ .Values.qdrant.snapshotRestoration.pvcName }}
+        {{- end }}
+        {{- if .Values.qdrant.backup.enabled }}
+        - name: {{ include "qdrant.fullname" . }}-backup-script
+          configMap:
+            name: {{ include "qdrant.fullname" . }}-backup-script
         {{- end }}

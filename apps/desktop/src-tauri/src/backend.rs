@@ -24,24 +24,28 @@ pub(super) fn bleep<R>(app: &mut App<R>) -> plugin::Result<()>
 where
     R: Runtime,
 {
-    let config = app
-        .path_resolver()
-        .resolve_resource("config.json")
-        .expect("failed to resolve resource");
+    let configuration = {
+        let path = app
+            .path_resolver()
+            .resolve_resource("config.json")
+            .expect("failed to resolve resource");
 
-    let mut configuration = Configuration::merge(
-        Configuration::read(config).unwrap(),
-        Configuration::from_cli().unwrap(),
-    );
-    configuration.qdrant_url = Some("http://127.0.0.1:6334".into());
-    configuration.max_threads = bleep::default_parallelism() / 2;
-    configuration.model_dir = app
-        .path_resolver()
-        .resolve_resource("model")
-        .expect("bad bundle");
+        let mut bundled = Configuration::read(path).unwrap();
+        bundled.qdrant_url = Some("http://127.0.0.1:6334".into());
+        bundled.max_threads = bleep::default_parallelism() / 2;
+        bundled.model_dir = app
+            .path_resolver()
+            .resolve_resource("model")
+            .expect("bad bundle");
 
-    let cache_dir = app.path_resolver().app_cache_dir().unwrap();
-    configuration.index_dir = cache_dir.join("bleep");
+        let cache_dir = app.path_resolver().app_cache_dir().unwrap();
+        bundled.index_dir = cache_dir.join("bleep");
+
+        Configuration::merge(
+            bundled,
+            Configuration::cli_overriding_config_file().unwrap(),
+        )
+    };
 
     if let Some(dsn) = &configuration.sentry_dsn {
         initialize_sentry(dsn);

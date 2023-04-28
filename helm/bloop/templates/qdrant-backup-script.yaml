@@ -1,0 +1,31 @@
+{{ if .Values.qdrant.backup -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "qdrant.fullname" . }}-backup-script
+data:
+  backup-script.sh: |
+    mkdir {{ .Values.qdrant.config.storage.snapshots_path }} -p
+    printf "Waiting for qdrant to start..."
+    until curl -s http://localhost:6333; do
+      sleep 30
+    done
+
+    while true; do
+      printf "Date: $(date)\n"
+      printf "Backing up qdrant collection for organization ${GITHUB_ORG}\n"
+      curl -X POST localhost:6333/snapshots
+
+      snapshot_file=$(ls -AU {{ .Values.qdrant.config.storage.snapshots_path }}/*.snapshot | head -1)
+      snapshot_file_name="$(basename -- ${snapshot_file})"
+      printf "\nUploading backup ${snapshot_file} to S3 bucket {{ .Values.qdrant.backup.awsBucketName }}\n"
+      aws s3 cp ${snapshot_file} s3://{{ .Values.qdrant.backup.awsBucketName }}/${GITHUB_ORG}/${snapshot_file_name}
+
+      printf "Cleaning up all the snapshots\n"
+      rm -Rf {{ .Values.qdrant.config.storage.snapshots_path }}/*.snapshot
+      printf "Done at $(date)\n"
+      printf "Next backup in 24h\n"
+
+      sleep 24h
+    done
+{{ end -}}

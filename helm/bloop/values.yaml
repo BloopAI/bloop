@@ -168,6 +168,13 @@ qdrant:
     size: 10Gi
     storageClassName: gp3
 
+  backup:
+    enabled: false
+    awsBucketName: ""
+    awsDefaultRegion: ""
+    awsAccessKey: ""
+    awsSecretAccessKey: ""
+
   #only supported for single node qdrant clusters.
   snapshotRestoration:
     enabled: false
@@ -183,3 +190,5 @@ qdrant:
         port: 6335
       consensus:
         tick_period_ms: 100
+    storage:
+      snapshots_path: /qdrant/storage/snapshots

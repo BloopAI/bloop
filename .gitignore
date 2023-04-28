@@ -1,4 +1,5 @@
 # Env
+.direnv
 .idea
 .DS_Store
 .vscode
@@ -31,3 +32,6 @@ playwright-report
 .tests.env
 
 .env
+
+# local config
+/local_config.json
