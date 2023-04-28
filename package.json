@@ -13,6 +13,7 @@
   "devDependencies": {
     "@babel/core": "^7.18.10",
     "@playwright/test": "^1.28.1",
+    "@sentry/vite-plugin": "^0.7.2",
     "@storybook/addon-actions": "^6.5.16",
     "@storybook/addon-essentials": "^6.5.16",
     "@storybook/addon-interactions": "^6.5.16",

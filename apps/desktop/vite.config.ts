@@ -1,37 +1,34 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import EnvironmentPlugin from 'vite-plugin-environment';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  build: {
+    sourcemap: true, // Source map generation must be turned on
+  },
   envDir: '../../.',
   plugins: [
     react(),
     EnvironmentPlugin(
       {
-        ANALYTICS_FE_WRITE_KEY_DEV: '',
-        ANALYTICS_FE_WRITE_KEY_PROD: '',
-        ANALYTICS_DATA_PLANE_URL: '',
-        SENTRY_DSN_FE: '',
-        SENTRY_DSN_BE: '',
         ONBOARDING: '',
         API_URL: '',
-        DEVICE_ID: '',
       },
-      // [
-      //   'ANALYTICS_FE_WRITE_KEY_DEV',
-      //   'ANALYTICS_FE_WRITE_KEY_PROD',
-      //   'ANALYTICS_DATA_PLANE_URL',
-      //   'SENTRY_DSN_FE',
-      //   'SENTRY_DSN_BE',
-      //   'ONBOARDING',
-      //   'API_URL',
-      //   'DEVICE_ID',
-      // ],
       {
         defineOn: 'import.meta.env',
       },
     ),
+    sentryVitePlugin({
+      org: 'bloop-yr',
+      project: 'bloop-frontend',
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      sourcemaps: {
+        assets: './dist/**',
+      },
+      release: process.env.SENTRY_RELEASE_VERSION,
+    }),
   ],
   publicDir: '../../client/public',
   define: {
