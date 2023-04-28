@@ -65,6 +65,7 @@ jobs:
       slackBuildWebhook: ${{ secrets.SLACK_BUILD_WEBHOOK }}
       build-args: |
         SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_RELEASE_VERSION: ${{ needs.build_tag.outputs.tag }}
 
   report_status:
     runs-on: ubuntu-latest
