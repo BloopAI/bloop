@@ -100,19 +100,12 @@ Do not use this to demonstrate updating an existing file.
 This is the best way to demonstrate updating an existing file.
 Changes should be as small as possible.
 
-["mod",INT: §ALIAS,CHANGES]
-Where CHANGES is an array of changes in the format:
-{{
-  oldFileName: 'oldfile', newFileName: 'newfile',
-  oldHeader: 'header1', newHeader: 'header2',
-  hunks: [{{
-    oldStart: 1, oldLines: 3, newStart: 1, newLines: 3,
-    lines: [' line2', ' line3', '-line4', '+line5', '\\ No newline at end of file'],
-  }}]
-}}
-The 'lines' array should contain each line of code within the line range.
-If you are adding a line, put a '+' at the start of the line.
-If you are removing a line, put a '-' at the start of the line.
+["mod",INT: §ALIAS,STRING: LANGUAGE,STRING: GIT DIFF]
+Where GIT DIFF describes the diff chunks for the file, including the git diff header.
+For example:
+@@ -1 +1 @@
+-this is a git diff test example
++this is a diff example
 
 4. conclusion (this object is mandatory and must appear once at the end)
 
