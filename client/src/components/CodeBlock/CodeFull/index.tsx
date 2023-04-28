@@ -87,7 +87,10 @@ const CodeFull = ({
 
   useEffect(() => {
     const toggleSearch = (e: KeyboardEvent) => {
-      if (e.code === 'KeyF' && e.metaKey) {
+      console.log('e', e.code, e.metaKey);
+      if (e.code === 'KeyF' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        console.log('activate search');
         setSearchActive((prev) => !prev);
       } else if (e.code === 'Enter') {
         const isNext = !e.shiftKey;
