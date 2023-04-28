@@ -237,6 +237,7 @@ impl<'a> From<Pair<'a, Rule>> for Literal<'a> {
             Rule::quoted_literal => Self::Plain(unescape(pair.as_str(), '"').into()),
             Rule::single_quoted_literal => Self::Plain(unescape(pair.as_str(), '\'').into()),
             Rule::regex_quoted_literal => Self::Regex(unescape(pair.as_str(), '/').into()),
+            Rule::raw_text => Self::Plain(pair.as_str().trim().into()),
             _ => unreachable!(),
         }
     }
@@ -432,7 +433,7 @@ pub fn parse_nl(query: &str) -> Result<NLQuery<'_>, ParseError> {
                 let item = super::languages::parse_alias(pair.into_inner().as_str().into());
                 let _ = langs.insert(item);
             }
-            Rule::unquoted_literal | Rule::quoted_literal | Rule::single_quoted_literal => {
+            Rule::raw_text => {
                 let rhs = Literal::from(pair);
                 if let Some(t) = target {
                     target = t.join_as_plain(rhs);
@@ -1052,6 +1053,19 @@ mod tests {
                 ..Default::default()
             },
         );
+    }
+
+    // NL queries should permit arbitrary text in the `target` field, such as `(` and `|`
+    #[test]
+    fn nl_parse_arbitrary_text() {
+        let queries = [
+            "explain analytics (in the frontend)",
+            "repo:bloop path:server start the server",
+            ":613330{})/.[|^%@!Z",
+        ];
+        for q in queries {
+            assert!(parse_nl(q).is_ok());
+        }
     }
 
     #[test]
