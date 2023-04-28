@@ -61,12 +61,6 @@ jobs:
       - name: Install app dependencies
         run: npm ci
 
-      - name: get release version
-        id: release-version
-        run: echo "RELEASE_VERSION=$(cat apps/desktop/src-tauri/tauri.conf.json | jq '.package.version' | tr -d '"')" >> "$GITHUB_OUTPUT"
-
-      - run: echo "${{ steps.release-version.outputs.RELEASE_VERSION }}"
-
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
@@ -108,6 +102,10 @@ jobs:
           file: apps/desktop/src-tauri/tauri.conf.json
           field: tauri.bundle.macOS.signingIdentity
           value: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+
+      - name: get release version
+        id: release-version
+        run: echo "RELEASE_VERSION=$(cat apps/desktop/src-tauri/tauri.conf.json | jq '.package.version' | tr -d '"')" >> "$GITHUB_OUTPUT"
 
       - uses: tauri-apps/tauri-action@dev
         env:
