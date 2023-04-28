@@ -40,7 +40,6 @@ use super::{
 };
 use crate::{
     intelligence::TreeSitterFile,
-    query::{compiler::Compiler, parser::Query},
     repo::{FileCache, RepoMetadata, RepoRef, Repository},
     semantic::Semantic,
     symbol::SymbolLocations,

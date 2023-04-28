@@ -39,10 +39,14 @@ OR
 ["file",STRING: PATH]
 Retrieve the contents of a single file.
 
-4. Check files for answer
-["check",STRING: QUESTION,INT[]: §ALIAS FOR EACH FILE]
-Check more than one file. Do not use this action if you are only checking one file.
+4. Process files to find answer
+["proc",STRING: PROCESS,INT[]: PATH ALIAS FOR EACH FILE]
+Process the files with the given aliases to find the answer to the question.
 Do not check the same file more than once.
+This will return a list of paths, relevant line ranges and relevant dependencies. You may wish to check the relevant dependencies.
+PROCESS should be a question, or detailed instruction of information to extract like:
+- find references to API
+- find react components
 
 5. State that you are ready to answer the question after absolutely all information has been gathered
 ["answer",STRING: STANDALONE USER REQUEST]
@@ -52,27 +56,27 @@ It should be possible to understand from this string alone what the user is aski
 
 pub fn file_explanation(question: &str, path: &str, code: &str) -> String {
     format!(
-        r#"Here's the contents of the code file {path} in <code> tags:
+        r#"Here's the contents of the code file /{path}:
 
-<code>
+#####
+
 {code}
-</code>
 
-The code is one file of many that can help answer a user query.
+#####
 
-The user's query is: {question}
+Your job is to perform the following tasks:
+1. Find out which other files and dependencies we should look at for information relevant to the query. You must answer with a json list of relevant paths, relative to the current file.
+2. Find all the relevant line ranges of code.
 
-Answer in the following JSON format, identifying any relevant line ranges:
-[{{
-"start":int,
-"end":int,
-"answer":[natural language description]
-}}]
+Q: find Kafka auth keys
+A: {{"dependencies":["../../utils/kafkaHandler","../src/config/index.ts"],"lines":[{{"start":12,"end":15}}]}}
 
-If the user's query cannot be answered by the file do not answer, instead reply with "0".
+Q: find where we submit payment requests
+A: {{"dependencies":["../paymentRequestProvider"],"lines":[{{"start":12,"end":15}}]}}
 
-Do not repeat the question in your answer.
-Do not make any assumptions, your answer should only refer to insights taken from the code."#
+ANSWER ONLY IN JSON
+Q: {question}
+A: "#
     )
 }
 
@@ -88,8 +92,8 @@ Your answer should be in the following JSON format: a list of objects, where eac
 1. citing a single file from the codebase (this object can appear multiple times, in the form of a JSON array)
 START LINE and END LINE should focus on the code mentioned in the COMMENT.
 
-[["cite",INT: §ALIAS, STRING: COMMENT, INT: START LINE, INT: END LINE],
-["cite",INT: §ALIAS, STRING: COMMENT, INT: START LINE, INT: END LINE]]
+[["cite",INT: §ALIAS,STRING: COMMENT,INT: START LINE,INT: END LINE],
+["cite",INT: §ALIAS,STRING: COMMENT,INT: START LINE,INT: END LINE]]
 
 2. write a new code file (this object can appear multiple times)
 Do not use this to demonstrate updating an existing file.

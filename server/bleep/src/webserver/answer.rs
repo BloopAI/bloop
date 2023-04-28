@@ -352,8 +352,8 @@ impl Conversation {
                 serde_json::to_string(&chunks).unwrap()
             }
 
-            Action::Check(question, path_aliases) => {
-                self.check(ctx, update, question, path_aliases).await?
+            Action::Proc(question, path_aliases) => {
+                self.proc(ctx, update, question, path_aliases).await?
             }
         };
 
@@ -370,7 +370,7 @@ impl Conversation {
         Ok(Some(action_stream))
     }
 
-    async fn check(
+    async fn proc(
         &mut self,
         ctx: &AppContext,
         update: Sender<Update>,
@@ -385,7 +385,7 @@ impl Conversation {
 
         for u in paths
             .iter()
-            .map(|&p| Update::Step(SearchStep::Check(p.clone())))
+            .map(|&p| Update::Step(SearchStep::Proc(p.clone())))
         {
             update.send(u).await?;
         }
@@ -421,31 +421,37 @@ impl Conversation {
                 .await?;
 
             #[derive(serde::Deserialize)]
+            struct ProcResult {
+                dependencies: Vec<String>,
+                lines: Vec<Range>,
+            }
+
+            #[derive(serde::Deserialize)]
             struct Range {
                 start: usize,
                 end: usize,
-                answer: String,
             }
 
-            let explanations = serde_json::from_str::<Vec<Range>>(&json)?
-                .into_iter()
+            let proc_result = serde_json::from_str::<ProcResult>(&json)?;
+            let explanations = proc_result
+                .lines
+                .iter()
                 .filter(|r| r.start > 0 && r.end > 0)
                 .map(|r| {
                     let end = r.end.min(r.start + 10);
 
                     serde_json::json!({
                         "start": r.start,
-                        "answer": r.answer,
                         "end": end,
                         "relevant_code": lines[r.start..end].join("\n"),
                     })
                 })
                 .collect::<Vec<_>>();
 
-            Ok::<_, anyhow::Error>(serde_json::json!({
-                "explanations": explanations,
-                "path": path,
-            }))
+            Ok::<_, anyhow::Error>(dbg!(serde_json::json!({
+                "lines": explanations,
+                "dependencies": proc_result.dependencies,
+            })))
         });
 
         let out = chunks
@@ -515,7 +521,7 @@ enum Action {
     Answer(String),
     Code(String),
     File(FileRef),
-    Check(String, Vec<usize>),
+    Proc(String, Vec<usize>),
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

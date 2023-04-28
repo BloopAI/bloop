@@ -144,7 +144,7 @@ pub enum SearchStep {
     Query(String),
     Path(String),
     Code(String),
-    Check(String),
+    Proc(String),
     File(String),
     Prompt(String),
 }
