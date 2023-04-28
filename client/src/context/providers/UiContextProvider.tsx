@@ -14,11 +14,12 @@ import {
   getPlainFromStorage,
   ONBOARDING_DONE_KEY,
 } from '../../services/storage';
+import { UITabType } from '../../types/general';
 
 export const UIContextProvider = ({
   children,
   tab,
-}: PropsWithChildren<{ tab: { key: string; name: string } }>) => {
+}: PropsWithChildren<{ tab: UITabType }>) => {
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isBugReportModalOpen, setBugReportModalOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState(

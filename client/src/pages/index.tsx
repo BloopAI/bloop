@@ -12,6 +12,7 @@ import ErrorFallback from '../components/ErrorFallback';
 import useAppNavigation from '../hooks/useAppNavigation';
 import { buildRepoQuery } from '../utils';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
+import { UITabType } from '../types/general';
 import RepositoryPage from './Repository';
 import ResultsPage from './Results';
 import ViewResult from './ResultFull';
@@ -28,7 +29,7 @@ const mockQuerySuggestions = [
   'lang:tsx apples',
 ];
 
-const ContentContainer = ({ tab }: { tab: { name: string; key: string } }) => {
+const ContentContainer = ({ tab }: { tab: UITabType }) => {
   const { setInputValue, globalRegex } = useContext(SearchContext);
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
 
@@ -55,10 +56,7 @@ const ContentContainer = ({ tab }: { tab: { name: string; key: string } }) => {
   useEffect(() => {
     if (!navigatedItem) {
       if (tab.key !== 'initial') {
-        const repoName = tab.key.startsWith('local//')
-          ? tab.key.split('/').reverse()[0]
-          : tab.key;
-        navigateRepoPath(repoName);
+        navigateRepoPath(tab.repoName);
       }
       return;
     }
