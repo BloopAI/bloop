@@ -100,7 +100,7 @@ fn complete_lang(q: &str) -> Option<impl Iterator<Item = &str> + '_> {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub(super) struct AutocompleteResponse {
     count: usize,
     data: Vec<QueryResult>,
