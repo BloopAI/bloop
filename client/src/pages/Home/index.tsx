@@ -17,7 +17,7 @@ const HomePage = () => {
     <div className="w-full flex flex-col mx-auto max-w-6.5xl">
       <div className="p-8 pb-0">
         <h4 className="mb-3">Add</h4>
-        <div className="flex gap-3.5 items-center">
+        <div className="flex gap-3.5">
           <AddRepoCard type="github" onClick={setAddReposOpen} />
           <AddRepoCard type="public" onClick={setAddReposOpen} />
           <AddRepoCard type="local" onClick={setAddReposOpen} />
