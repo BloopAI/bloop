@@ -1,7 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const InputLoader = ({ loadingSteps }: { loadingSteps: string[] }) => {
   const [state, setState] = useState(-1);
+  const steps = useRef(loadingSteps);
+
+  useEffect(() => {
+    steps.current = loadingSteps;
+  }, [loadingSteps]);
 
   useEffect(() => {
     let currentLoadingItemIndex = -1; // Start by showing the first loading item
@@ -9,7 +14,7 @@ const InputLoader = ({ loadingSteps }: { loadingSteps: string[] }) => {
     function animate() {
       if (currentLoadingItemState === 0) {
         // Going from 0 -> 50%, check if there's another item yet
-        if (loadingSteps[currentLoadingItemIndex + 1]) {
+        if (steps.current[currentLoadingItemIndex + 1]) {
           // There is another item, move to 100%
           currentLoadingItemState = 2;
         } else {
@@ -17,7 +22,7 @@ const InputLoader = ({ loadingSteps }: { loadingSteps: string[] }) => {
         }
       } else if (currentLoadingItemState === 1) {
         // Go from 50% -> 90%
-        if (loadingSteps[currentLoadingItemIndex + 1]) {
+        if (steps.current[currentLoadingItemIndex + 1]) {
           // There is another item, move to 100%
           currentLoadingItemState = 3;
         }
