@@ -25,6 +25,7 @@ type Props = {
   pathParts: PathParts[];
   path: string;
   separator?: string;
+  limitSectionWidth?: boolean;
   type?: 'link' | 'button';
   activeStyle?: 'primary' | 'secondary';
 };
@@ -39,6 +40,7 @@ const Breadcrumbs = ({
   path,
   separator = '/',
   type = 'link',
+  limitSectionWidth,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [formattedPathParts, setFormattedPathParts] =
@@ -99,7 +101,11 @@ const Breadcrumbs = ({
       >
         {pathParts.map((p, i) => (
           <Fragment key={i}>
-            <span className="flex items-center gap-1 flex-shrink-0">
+            <span
+              className={`flex items-center gap-1 flex-shrink-0 ${
+                limitSectionWidth ? 'max-w-[6rem] ellipsis' : ''
+              }`}
+            >
               <BreadcrumbSection
                 icon={p.icon}
                 label={p.label}
@@ -122,7 +128,11 @@ const Breadcrumbs = ({
           {Array.isArray(p) ? (
             <BreadcrumbsCollapsed items={p} type={type} />
           ) : (
-            <span className="flex items-center gap-1 flex-shrink-0">
+            <span
+              className={`flex items-center gap-1 flex-shrink-0 ${
+                limitSectionWidth ? 'max-w-[6rem] ellipsis' : ''
+              }`}
+            >
               <BreadcrumbSection
                 icon={p.icon}
                 label={p.label}

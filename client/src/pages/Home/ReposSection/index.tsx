@@ -1,49 +1,28 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, {
+  Dispatch,
+  SetStateAction,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import RepoCard from '../../../components/RepoCard';
-import { getRepos } from '../../../services/api';
-import { RepoType, SyncStatus } from '../../../types/general';
-import { RepositoriesContext } from '../../../context/repositoriesContext';
+import { RepoType } from '../../../types/general';
 import { DeviceContext } from '../../../context/deviceContext';
 
-const filterRepositories = (repos?: RepoType[]) => {
-  return (
-    repos?.filter(
-      (r) =>
-        r.sync_status !== SyncStatus.Uninitialized &&
-        r.sync_status !== SyncStatus.Removed,
-    ) || []
-  );
+type Props = {
+  reposToShow: RepoType[];
+  setReposToShow: Dispatch<SetStateAction<RepoType[]>>;
 };
 
 let eventSource: EventSource;
 
-const ReposSection = () => {
+const ReposSection = ({ reposToShow, setReposToShow }: Props) => {
   const { apiUrl } = useContext(DeviceContext);
-  const { setRepositories, repositories } = useContext(RepositoriesContext);
-  const [reposToShow, setReposToShow] = useState<RepoType[]>(
-    filterRepositories(repositories),
-  );
   const [currentlySyncingRepo, setCurrentlySyncingRepo] = useState<{
     repoRef: string;
     indexStep: number;
     percentage: number;
   } | null>(null);
-
-  const fetchRepos = useCallback(() => {
-    getRepos().then((data) => {
-      const list = data?.list?.sort((a, b) => (a.name < b.name ? -1 : 1)) || [];
-      setRepositories(list);
-      setReposToShow(filterRepositories(list));
-    });
-  }, []);
-
-  useEffect(() => {
-    fetchRepos();
-    const intervalId = setInterval(fetchRepos, 10000);
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, []);
 
   useEffect(() => {
     eventSource?.close();
