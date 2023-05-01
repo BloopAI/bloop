@@ -72,8 +72,11 @@ const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
   return (
     <div className="flex gap-3 w-full overflow-hidden">
       <div className="text-sm border border-gray-700 rounded-md flex-1 overflow-auto">
-        <div className="w-full bg-gray-800 py-1 px-3 border-b border-gray-700 select-none">
-          <div className="flex items-center gap-2 max-w-[calc(100%-120px)] w-full h-11.5">
+        <div
+          className="w-full bg-gray-800 py-1 px-3 border-b border-gray-700 select-none cursor-pointer"
+          onClick={() => onResultClick(filePath)}
+        >
+          <div className="flex items-center gap-2 w-full h-11.5">
             <FileIcon filename={filePath} />
             <BreadcrumbsPath
               path={filePath}

@@ -60,16 +60,6 @@ const Chat = () => {
     }
   }, [isChatOpen]);
 
-  useEffect(() => {
-    const lastMessage = conversation[conversation.length - 1];
-    if (
-      lastMessage?.author === ChatMessageAuthor.Server &&
-      lastMessage.results?.length
-    ) {
-      navigateConversationResults(conversation.length - 1);
-    }
-  }, [conversation]);
-
   const makeSearch = useCallback(
     (query: string) => {
       prevEventSource?.close();
@@ -112,6 +102,10 @@ const Chat = () => {
             !firstResultCame
           ) {
             setChatOpen(false);
+            setConversation((prev) => {
+              navigateConversationResults(prev.length - 1);
+              return prev;
+            });
             firstResultCame = true;
           }
           setConversation((prev) => {
@@ -231,8 +225,8 @@ const Chat = () => {
             </svg>
           </div>
         )}
-        <div className="absolute rounded-full top-0 left-0 right-0 bottom-0 bg-[url('/stars.png')] flex z-0 overflow-hidden">
-          <div className="w-full h-full bg-[radial-gradient(47.73%_47.73%_at_50%_0%,transparent_0%,#0B0B14_100%)] bg-cover animate-spin-extra-slow" />
+        <div className="absolute rounded-full top-0 left-0 right-0 bottom-0 bg-[url('/stars.png')] bg-cover flex z-0 overflow-hidden">
+          <div className="w-full h-full bg-[radial-gradient(47.73%_47.73%_at_50%_0%,transparent_0%,#0B0B14_100%)] animate-spin-extra-slow" />
         </div>
         <div
           className={`w-6 h-6 relative z-10 ${

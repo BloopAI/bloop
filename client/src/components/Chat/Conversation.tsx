@@ -1,4 +1,10 @@
-import React, { Fragment, useContext, useEffect, useRef } from 'react';
+import React, {
+  Fragment,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   ChatMessage,
   ChatMessageAuthor,
@@ -18,11 +24,13 @@ const Conversation = ({ conversation, searchId, isLoading }: Props) => {
   const messagesRef = useRef<HTMLDivElement>(null);
   const { navigateConversationResults } = useContext(AppNavigationContext);
   useEffect(() => {
-    messagesRef.current?.scrollTo({
-      left: 0,
-      top: messagesRef.current?.scrollHeight,
-      behavior: 'smooth',
-    });
+    if (messagesRef.current) {
+      messagesRef.current?.scrollTo({
+        left: 0,
+        top: messagesRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
   }, [conversation]);
 
   return (
