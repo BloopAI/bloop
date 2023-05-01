@@ -3,10 +3,13 @@ import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import NavBar from '../../components/NavBar';
 import {
+  getJsonFromStorage,
   getPlainFromStorage,
   ONBOARDING_DONE_KEY,
+  saveJsonToStorage,
   savePlainToStorage,
   SESSION_ID_KEY,
+  USER_DATA_FORM,
 } from '../../services/storage';
 import {
   getConfig,
@@ -34,6 +37,7 @@ const Onboarding = () => {
     lastName: '',
     email: '',
     emailError: null,
+    ...getJsonFromStorage(USER_DATA_FORM),
   });
   const [isGitHubScreen, setGitHubScreen] = useState(false);
   const [shouldShowPopup, setShouldShowPopup] = useState(false);
@@ -115,6 +119,7 @@ const Onboarding = () => {
       last_name: form.lastName,
       unique_id: envConfig.tracking_id || '',
     });
+    saveJsonToStorage(USER_DATA_FORM, form);
     closeOnboarding();
     setTimeout(() => setShouldShowPopup(true), 1000);
   }, [form, envConfig.tracking_id]);
