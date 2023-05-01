@@ -22,14 +22,16 @@ import FeaturesStep from './FeaturesStep';
 let onboardingFinished = false;
 
 export type Form = {
-  name: string;
+  firsName: string;
+  lastName: string;
   email: string;
   emailError: string | null;
 };
 
 const Onboarding = () => {
   const [form, setForm] = useState<Form>({
-    name: '',
+    firsName: '',
+    lastName: '',
     email: '',
     emailError: null,
   });
@@ -109,8 +111,8 @@ const Onboarding = () => {
   const onSubmit = useCallback(() => {
     saveUserData({
       email: form.email,
-      first_name: form.name?.split(' ')[0],
-      last_name: form.name?.split(' ')[1],
+      first_name: form.firsName,
+      last_name: form.lastName,
       unique_id: envConfig.tracking_id || '',
     });
     closeOnboarding();
@@ -118,17 +120,17 @@ const Onboarding = () => {
   }, [form, envConfig.tracking_id]);
 
   return shouldShowWelcome ? (
-    <div className="fixed top-0 bottom-0 left-0 right-0 z-100 bg-[#101011]">
+    <div className="fixed top-0 bottom-0 left-0 right-0 z-100 bg-[#101011] select-none">
       {os.type === 'Darwin' && <NavBar isSkeleton />}
       <img
         src="/light.png"
         alt=""
-        className="fixed -top-96 left-1/3 pointer-events-none opacity-[0.16] z-50"
+        className="fixed -top-68 lg:-top-80 xl:-top-96 w-[90vw] lg:w-[80vw] xl:w-[69vw] right-0 pointer-events-none opacity-[0.16] z-50"
       />
       <div className="flex h-full justify-center mt-8">
-        <div className="w-full lg:w-1/2 h-full flex justify-center lg:justify-end">
+        <div className="w-full lg:w-1/2 h-full flex justify-center">
           <div
-            className={`w-[512px] h-full flex flex-col items-center pt-40 px-13 ${
+            className={`w-[512px] h-full flex flex-col items-center justify-center px-13 ${
               isGitHubScreen ? 'gap-8' : 'gap-6'
             }`}
           >
@@ -145,11 +147,11 @@ const Onboarding = () => {
           </div>
         </div>
         <div
-          className={`w-1/2 h-full hidden lg:flex justify-start border-l border-gray-700 relative 
+          className={`w-1/2 h-full hidden lg:flex justify-center items-center border-l border-gray-700 relative 
         before:absolute before:top-0 before:bottom-0 before:left-0 before:right-0 before:bg-[url('/grainy-pattern.png')] 
         before:bg-repeat before:mix-blend-soft-light before:opacity-[0.14]`}
         >
-          <div className="w-[585px] h-full pt-40">
+          <div className="w-[585px]">
             <img
               srcSet="/chatsImage-big.png 3x"
               src="/chatsImage-small.png"

@@ -37,10 +37,10 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
 
   return (
     <>
-      <div className="w-11 h-11">
-        <BloopLogo />
-      </div>
-      <div className="flex flex-col gap-3 text-center">
+      <div className="flex flex-col gap-3 text-center relative">
+        <div className="w-11 h-11 absolute left-1/2 -top-16 transform -translate-x-1/2">
+          <BloopLogo />
+        </div>
         <h4 className="">Setup bloop</h4>
         <p className="text-gray-400 body-s">
           Please log into your GitHub account to complete setup
@@ -48,19 +48,27 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
       </div>
       <form className="flex flex-col gap-4 w-full">
         <TextInput
-          value={form.name}
-          name="name"
-          placeholder="Your name"
+          value={form.firsName}
+          name="firsName"
+          placeholder="First name"
           variant="filled"
-          startIcon={<Person />}
           onChange={(e) =>
-            setForm((prev) => ({ ...prev, name: e.target.value }))
+            setForm((prev) => ({ ...prev, firsName: e.target.value }))
+          }
+          autoFocus
+        />
+        <TextInput
+          value={form.lastName}
+          name="lastName"
+          placeholder="Last name"
+          variant="filled"
+          onChange={(e) =>
+            setForm((prev) => ({ ...prev, lastName: e.target.value }))
           }
         />
         <TextInput
           value={form.email}
           variant="filled"
-          startIcon={<MailIcon />}
           onChange={(e) =>
             setForm((prev) => ({
               ...prev,
@@ -99,7 +107,12 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
           </button>
         </div>
         <Button
-          disabled={!isGithubConnected || !form.name || !form.email}
+          disabled={
+            !isGithubConnected ||
+            !form.firsName ||
+            !form.lastName ||
+            !form.email
+          }
           onClick={onContinue}
         >
           Continue
