@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
 import { Range, SnippetSymbol } from '../../../types/results';
 import { Token } from '../../../types/prism';
@@ -29,6 +29,7 @@ type Props = {
   lineHoverEffect?: boolean;
   isDiff?: boolean;
   highlightColor?: string;
+  onTokensLoaded?: () => void;
 };
 
 const Code = ({
@@ -43,6 +44,7 @@ const Code = ({
   lineHoverEffect,
   highlightColor,
   isDiff,
+  onTokensLoaded,
 }: Props) => {
   const lang = useMemo(
     () => getPrismLanguage(language) || 'plaintext',
@@ -145,6 +147,13 @@ const Code = ({
     }
     return lines;
   }, [tokens, lineStart, isDiff]);
+
+  useEffect(() => {
+    if (tokensMap.length && onTokensLoaded) {
+      console.log('tokensMap.length', tokensMap.length);
+      onTokensLoaded();
+    }
+  }, [tokensMap]);
 
   const codeLines = useMemo(
     () =>

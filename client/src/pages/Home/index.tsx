@@ -1,18 +1,51 @@
-import React, { useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react';
 import ErrorFallback from '../../components/ErrorFallback';
 import LiteLoader from '../../components/Loaders/LiteLoader';
 import Button from '../../components/Button';
 import { CloseSign } from '../../icons';
+import { getRepos } from '../../services/api';
+import { RepositoriesContext } from '../../context/repositoriesContext';
+import { RepoType, SyncStatus } from '../../types/general';
 import AddRepos from './AddRepos';
 import ReposSection from './ReposSection';
 import AddRepoCard from './AddRepoCard';
 
+const filterRepositories = (repos?: RepoType[]) => {
+  return (
+    repos?.filter(
+      (r) =>
+        r.sync_status !== SyncStatus.Uninitialized &&
+        r.sync_status !== SyncStatus.Removed,
+    ) || []
+  );
+};
+
 const HomePage = () => {
+  const { setRepositories, repositories } = useContext(RepositoriesContext);
   const [popupOpen, setPopupOpen] = useState(false);
   const [isAddReposOpen, setAddReposOpen] = useState<
     null | 'local' | 'github' | 'public'
   >(null);
+  const [reposToShow, setReposToShow] = useState<RepoType[]>(
+    filterRepositories(repositories),
+  );
+
+  const fetchRepos = useCallback(() => {
+    getRepos().then((data) => {
+      const list = data?.list?.sort((a, b) => (a.name < b.name ? -1 : 1)) || [];
+      setRepositories(list);
+      setReposToShow(filterRepositories(list));
+    });
+  }, []);
+
+  useEffect(() => {
+    fetchRepos();
+    const intervalId = setInterval(fetchRepos, 10000);
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
   return (
     <div className="w-full flex flex-col mx-auto max-w-6.5xl">
       <div className="p-8 pb-0">
@@ -23,11 +56,12 @@ const HomePage = () => {
           <AddRepoCard type="local" onClick={setAddReposOpen} />
         </div>
       </div>
-      <ReposSection />
+      <ReposSection reposToShow={reposToShow} setReposToShow={setReposToShow} />
       <AddRepos
         addRepos={isAddReposOpen}
         onClose={(isSubmitted) => {
           if (isSubmitted) {
+            fetchRepos();
             setPopupOpen(true);
             setTimeout(() => setPopupOpen(false), 3000);
           }
