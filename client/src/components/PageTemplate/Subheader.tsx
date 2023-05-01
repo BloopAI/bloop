@@ -67,6 +67,7 @@ const Subheader = () => {
         <Breadcrumbs
           pathParts={breadcrumbs}
           path={''}
+          limitSectionWidth
           separator="›"
           type="button"
         />
