@@ -190,7 +190,7 @@ const Chat = () => {
   return (
     <>
       <button
-        className={`fixed z-50 bottom-20 w-13 h-13 rounded-full cursor-pointer flex items-center justify-center ${
+        className={`fixed z-50 bottom-20 w-16 h-16 rounded-full cursor-pointer flex items-center justify-center ${
           isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
         } border border-gray-700 bg-[linear-gradient(135deg,#1D1D20_0%,#0B0B14_100%)] transition-all duration-300 ease-out-slow`}
         onClick={() => {
@@ -199,27 +199,40 @@ const Chat = () => {
         }}
       >
         {showTooltip && (
-          <div className="absolute -top-full right-0 drop-shadow-sm">
-            <div className="bg-primary-300 rounded-full flex py-2 px-4 w-max body-s text-white">
+          <div className="absolute -top-8 z-10 right-2.5 drop-shadow-sm">
+            <div className="bg-[linear-gradient(93.53deg,#5D75FF_0%,#2A2A4A_100%)] rounded-full flex py-2 px-4 w-max body-s text-white">
               {tooltipText}
             </div>
             <svg
-              width="33"
-              height="12"
-              viewBox="0 0 33 12"
+              width="97"
+              height="13"
+              viewBox="0 0 97 13"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              className="absolute -bottom-2 right-6"
+              className="absolute -bottom-2 right-0 -z-10"
             >
               <path
-                d="M0 3V0H33V3C23.4444 3.93779 23.1642 8.18145 23.8084 11.5958C23.8623 11.8815 23.5209 12.0844 23.2996 11.8957C16.2381 5.87225 10.3185 3 0 3Z"
-                fill="#5D75FF"
+                d="M32 3V0H65V3C55.4444 3.93779 55.1642 8.18145 55.8084 11.5958C55.8623 11.8815 55.5209 12.0844 55.2996 11.8957C48.2381 5.87225 42.3185 3 32 3Z"
+                fill="url(#paint0_linear_8526_247744)"
               />
+              <defs>
+                <linearGradient
+                  id="paint0_linear_8526_247744"
+                  x1="38.5"
+                  y1="2"
+                  x2="56"
+                  y2="12.5"
+                  gradientUnits="userSpaceOnUse"
+                >
+                  <stop stopColor="#3C4488" />
+                  <stop offset="1" stopColor="#35396D" />
+                </linearGradient>
+              </defs>
             </svg>
           </div>
         )}
         <div className="absolute rounded-full top-0 left-0 right-0 bottom-0 bg-[url('/stars.png')] flex z-0 overflow-hidden">
-          <div className="w-full h-full bg-[radial-gradient(47.73%_47.73%_at_50%_0%,transparent_0%,#0B0B14_100%)] animate-spin-extra-slow" />
+          <div className="w-full h-full bg-[radial-gradient(47.73%_47.73%_at_50%_0%,transparent_0%,#0B0B14_100%)] bg-cover animate-spin-extra-slow" />
         </div>
         <div
           className={`w-6 h-6 relative z-10 ${
