@@ -1,7 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import FileIcon from '../../../components/FileIcon';
-import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
-import { FileTreeFileType } from '../../../types';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getHoverables } from '../../../services/api';
 import { FileSearchResponse } from '../../../types/api';
 import { FullResult } from '../../../types/results';
@@ -9,17 +6,20 @@ import { FullResultModeEnum } from '../../../types/general';
 import { mapFileResult, mapRanges } from '../../../mappers/results';
 import { useSearch } from '../../../hooks/useSearch';
 import ResultModal from '../../ResultModal';
-import CodePart from './CodePart';
+import AnnotatedFile from './AnnotatedFile';
+import FileComment from './FileComment';
+
+type Comment = {
+  start_line: number;
+  end_line: number;
+  comment: string;
+  i: number;
+  top?: number;
+};
 
 type Props = {
-  filePath: string;
   repoName: string;
-  citations: {
-    start_line: number;
-    end_line: number;
-    comment: string;
-    i: number;
-  }[];
+  citations: Record<string, Comment[]>;
 };
 
 export const colors = [
@@ -31,7 +31,7 @@ export const colors = [
   [20, 184, 166],
 ];
 
-const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
+const CodeAnnotation = ({ repoName, citations }: Props) => {
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.MODAL,
   );
@@ -45,6 +45,12 @@ const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
     },
     [repoName],
   );
+
+  const comments = useMemo(() => {
+    return Object.values(citations)
+      .map((fc) => fc.map((c) => c))
+      .flat();
+  }, [citations]);
 
   const handleModeChange = useCallback((m: FullResultModeEnum) => {
     setMode(m);
@@ -70,56 +76,21 @@ const CodeAnnotation = ({ filePath, repoName, citations }: Props) => {
   }, [fileResultData]);
 
   return (
-    <div className="flex gap-3 w-full overflow-hidden">
-      <div className="text-sm border border-gray-700 rounded-md flex-1 overflow-auto">
-        <div
-          className="w-full bg-gray-800 py-1 px-3 border-b border-gray-700 select-none cursor-pointer"
-          onClick={() => onResultClick(filePath)}
-        >
-          <div className="flex items-center gap-2 w-full h-11.5">
-            <FileIcon filename={filePath} />
-            <BreadcrumbsPath
-              path={filePath}
-              repo={repoName}
-              onClick={(path, type) =>
-                type === FileTreeFileType.FILE ? onResultClick(path) : {}
-              }
-            />
-          </div>
-        </div>
-        {citations.length ? (
-          <div className="relative overflow-auto py-4">
-            {citations.map((c, i) => (
-              <CodePart
-                key={c.i}
-                i={c.i}
-                repoName={repoName}
-                filePath={filePath}
-                startLine={c.start_line}
-                endLine={c.end_line}
-                isLast={i === citations.length - 1}
-              />
-            ))}
-          </div>
-        ) : null}
+    <div className="flex gap-3 w-full overflow-x-hidden">
+      <div className="flex flex-col gap-3 flex-1 overflow-hidden">
+        {Object.keys(citations).map((filePath) => (
+          <AnnotatedFile
+            key={filePath}
+            repoName={repoName}
+            filePath={filePath}
+            onResultClick={onResultClick}
+            cites={citations[filePath]}
+          />
+        ))}
       </div>
-      <div className="relative flex flex-col gap-3 w-96">
-        {citations.map((cite, i) => (
-          <div
-            className="bg-gray-800 border border-gray-700 shadow-light-bigger rounded-4  py-4 px-3 flex flex-col gap-2 mb-1"
-            key={i}
-          >
-            <div
-              className="border-l-2 pl-3"
-              style={{
-                borderColor: `rgb(${colors[cite.i % colors.length].join(
-                  ', ',
-                )})`,
-              }}
-            >
-              {cite.comment}
-            </div>
-          </div>
+      <div className="relative flex flex-col gap-3 w-96 flex-grow-0 overflow-y-auto">
+        {comments.map((cite, i) => (
+          <FileComment i={cite.i} comment={cite.comment} key={i} />
         ))}
       </div>
       <ResultModal
