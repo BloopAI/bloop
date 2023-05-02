@@ -257,7 +257,7 @@ const Chat = () => {
                   onClick={() => {
                     setConversation([]);
                     setThreadId('');
-                    navigateRepoPath(tab.key);
+                    navigateRepoPath(tab.repoName);
                     focusInput();
                   }}
                 >
