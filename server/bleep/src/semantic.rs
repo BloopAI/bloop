@@ -592,12 +592,11 @@ pub fn deduplicate_with_mmr(
 pub fn deduplicate_snippets(
     mut all_snippets: Vec<Payload>,
     query_embedding: Embedding,
+    output_count: usize,
 ) -> Vec<Payload> {
-    const SNIPPET_COUNT: usize = 20;
-
     let idxs = {
         let lambda = 0.5;
-        let k = SNIPPET_COUNT; // number of snippets
+        let k = output_count; // number of snippets
         let embeddings = all_snippets
             .iter()
             .map(|s| s.embedding.as_deref().unwrap())

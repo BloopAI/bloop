@@ -32,7 +32,7 @@ pub async fn execute(
                 .collect::<Vec<_>>()
         })?;
 
-    let data = deduplicate_snippets(query_result, vector)
+    let data = deduplicate_snippets(query_result, vector, params.page_size)
         .into_iter()
         .fold(HashMap::new(), |mut acc, payload| {
             acc.entry((

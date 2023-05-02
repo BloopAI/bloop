@@ -368,7 +368,8 @@ async fn handle_inner(
                     error!("failed to embed query: {}", e);
                     Error::internal(e)
                 })?;
-                let filtered_snippets = deduplicate_snippets(all_snippets, query_embedding);
+                let filtered_snippets =
+                    deduplicate_snippets(all_snippets, query_embedding, SNIPPET_COUNT);
 
                 event.write().await.stages.push(
                     Stage::new("filtered_semantic_results", &filtered_snippets)
