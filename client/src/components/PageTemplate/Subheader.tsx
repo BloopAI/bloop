@@ -13,7 +13,7 @@ const Subheader = () => {
       (n) => n.type === 'repo' && !n.path,
     );
     let historyPart = navigationHistory;
-    if (lastHomeIndex > 0) {
+    if (lastHomeIndex >= 0) {
       historyPart = reversedHistory.slice(0, lastHomeIndex + 1).reverse();
     }
     if (historyPart.length === 1 && historyPart[0].type === 'repo') {
