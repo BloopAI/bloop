@@ -38,7 +38,7 @@ const CodePart = ({
   }, [filePath, repoName, startLine, endLine]);
 
   return (
-    <div id={`code-${i}`}>
+    <div id={`code-${i}`} style={{ scrollMarginTop: 80 }}>
       {(isLoading || !filePart) && (
         <div className="flex flex-col items-center py-8">
           <LiteLoader sizeClassName="w-7 h-7" />
