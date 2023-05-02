@@ -93,11 +93,11 @@ const ContextMenu = ({
           />
         );
       case ExtendedMenuItemType.DIVIDER:
-        return <span className="bg-gray-700 h-[1px] w-full" key={i} />;
+        return <span className="bg-gray-600 h-[1px] w-full" key={i} />;
       case ExtendedMenuItemType.DIVIDER_WITH_TEXT:
         return (
           <div
-            className="px-2.5 py-2 border-b border-gray-700 caption text-gray-300 sticky top-0 bg-gray-800"
+            className="px-2.5 py-2 border-b border-gray-600 caption text-gray-300 sticky top-0 bg-gray-700"
             key={i}
           >
             {item.text}
@@ -132,7 +132,7 @@ const ContextMenu = ({
           ref={contextMenuRef}
           className={`${visible ? '' : 'scale-0 opacity-0'}
       transition-all duration-300 ease-in-slow backdrop-blur-6
-       rounded-md p-1 bg-gray-800/80 border border-gray-700 shadow-light-bigger ${
+       rounded-md p-1 bg-gray-700 border border-gray-600 shadow-light-bigger ${
          sizesMap[size]
        } flex flex-col gap-1`}
         >
@@ -141,7 +141,7 @@ const ContextMenu = ({
               <span className="text-gray-300 text-xs px-2.5 pt-2 block ">
                 {title}
               </span>
-              <div className="bg-gray-700 h-[1px] w-full" />
+              <div className="bg-gray-600 h-[1px] w-full" />
             </>
           ) : (
             ''
