@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashSet, HashMap},
+    collections::{HashMap, HashSet},
     ops::Not,
     path::{Path, PathBuf, MAIN_SEPARATOR},
     sync::{
@@ -316,7 +316,7 @@ impl Indexer<File> {
         // hits is a mapping between a document address and the number of trigrams in it that
         // matched the query
         let repo_ref_term = Term::from_field_text(self.source.repo_ref, &repo_ref.to_string());
-        let mut hits = trigrams(&query_str)
+        let mut hits = trigrams(query_str)
             .map(|token| Term::from_field_text(self.source.relative_path, &token))
             .map(|term| {
                 BooleanQuery::intersection(vec![
@@ -347,7 +347,7 @@ impl Indexer<File> {
         let regex_filter = {
             fn additions(s: &str, i: usize, j: usize) -> String {
                 if i > j {
-                    return additions(s, j, i);
+                    additions(s, j, i)
                 } else {
                     let mut s = s.to_owned();
                     s.insert_str(j, ".?");
@@ -358,7 +358,7 @@ impl Indexer<File> {
 
             fn replacements(s: &str, i: usize, j: usize) -> String {
                 if i > j {
-                    return replacements(s, j, i);
+                    replacements(s, j, i)
                 } else {
                     let mut s = s.to_owned();
                     s.remove(j);
@@ -373,7 +373,7 @@ impl Indexer<File> {
 
             fn one_of_each(s: &str, i: usize, j: usize) -> String {
                 if i > j {
-                    return replacements(s, j, i);
+                    replacements(s, j, i)
                 } else {
                     let mut s = s.to_owned();
                     s.remove(j);

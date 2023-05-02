@@ -119,7 +119,7 @@ fn rectify_array(input: &str) -> (Cow<str>, &str) {
 
 fn rectify_number(input: &str) -> (Cow<str>, &str) {
     let mut last = None;
-    let mut rest = &input[..];
+    let mut rest = input;
 
     for i in 0..input.len() {
         if input[..i + 1].parse::<f64>().is_ok() {
@@ -137,7 +137,7 @@ fn rectify_object(input: &str) -> (Cow<str>, &str) {
     let mut buf = String::from("{");
     let mut rest = &input[1..];
 
-    rest = consume_whitespace(&rest);
+    rest = consume_whitespace(rest);
 
     // we have just `{` close it off with `}`
     if rest.is_empty() {
@@ -154,7 +154,7 @@ fn rectify_object(input: &str) -> (Cow<str>, &str) {
         buf += &value;
         rest = r;
 
-        rest = consume_whitespace(&rest);
+        rest = consume_whitespace(rest);
 
         match rest.chars().next() {
             Some(':') => {
@@ -169,13 +169,13 @@ fn rectify_object(input: &str) -> (Cow<str>, &str) {
             c => panic!("malformed JSON object: `{c:?}`"),
         }
 
-        rest = consume_whitespace(&rest);
+        rest = consume_whitespace(rest);
 
         let (value, r) = rectify_json(rest);
         buf += &value;
         rest = r;
 
-        rest = consume_whitespace(&rest);
+        rest = consume_whitespace(rest);
 
         match rest.chars().next() {
             // expecting more objects ... or not
