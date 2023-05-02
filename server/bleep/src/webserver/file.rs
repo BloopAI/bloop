@@ -29,11 +29,18 @@ pub(super) async fn handle<'a>(
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<Json<super::Response<'a>>, Error> {
     // Strip leading slash, always present.
-    let file_disk_path = &path[1..];
+    let Some((rr, file_path)) = path.split_once(':') else {
+	return Err(Error::user("invalid path, use repo_ref:path"));
+    };
+
+    let Ok(repo_ref) = rr.parse() else {
+	println!("{rr}");
+	return Err(Error::user("invalid repo_ref"));
+    };
 
     let doc = indexes
         .file
-        .file_body(file_disk_path)
+        .by_path(&repo_ref, file_path)
         .await
         .map_err(Error::internal)?;
 
