@@ -57,8 +57,8 @@ const Item = ({
         disabled
           ? 'text-gray-500 cursor-default'
           : type === MenuItemType.DANGER
-          ? 'hover:bg-gray-700 text-danger-600 cursor-pointer'
-          : 'hover:bg-gray-700 text-gray-300 cursor-pointer'
+          ? 'hover:bg-gray-600 text-danger-600 cursor-pointer'
+          : 'hover:bg-gray-600 text-gray-300 cursor-pointer'
       } flex items-center justify-between rounded text-sm duration-100`}
       onClick={handleClick}
       disabled={disabled}
