@@ -1,5 +1,8 @@
 FROM node AS frontend
 
+ARG SENTRY_AUTH_TOKEN
+ARG SENTRY_RELEASE_VERSION
+
 WORKDIR /build
 COPY package.json package-lock.json ./
 RUN npm ci

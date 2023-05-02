@@ -17,8 +17,7 @@ use crate::{
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use regex::{
-    bytes::{Regex as ByteRegex, RegexBuilder as ByteRegexBuilder},
-    Regex, RegexBuilder,
+    bytes::{RegexBuilder as ByteRegexBuilder}, RegexBuilder,
 };
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -505,9 +504,16 @@ impl ExecuteQuery for RepoReader {
             .iter()
             .filter(|q| self.query_matches(q))
             .filter_map(|q| {
-                let regex_str = q.repo.as_ref()?.regex_str();
-                let regex = Regex::new(&regex_str).ok()?;
-                let byte_regex = ByteRegex::new(&regex_str).ok()?;
+                let regex_str = q.path.as_ref()?.regex_str();
+                let case_insensitive = !q.case_sensitive.unwrap_or(true);
+                let regex = RegexBuilder::new(&regex_str)
+                    .case_insensitive(case_insensitive)
+                    .build()
+                    .ok()?;
+                let byte_regex = ByteRegexBuilder::new(&regex_str)
+                    .case_insensitive(case_insensitive)
+                    .build()
+                    .ok()?;
                 Some((regex, byte_regex))
             })
             .unzip();
