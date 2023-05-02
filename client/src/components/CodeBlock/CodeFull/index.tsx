@@ -88,7 +88,9 @@ const CodeFull = ({
   useEffect(() => {
     const toggleSearch = (e: KeyboardEvent) => {
       if (e.code === 'KeyF' && e.metaKey) {
+        e.preventDefault();
         setSearchActive((prev) => !prev);
+        return false;
       } else if (e.code === 'Enter') {
         const isNext = !e.shiftKey;
         setCurrentResult((prev) =>
@@ -109,10 +111,10 @@ const CodeFull = ({
         });
       }
     };
-    window.addEventListener('keypress', toggleSearch);
+    window.addEventListener('keydown', toggleSearch);
 
     return () => {
-      window.removeEventListener('keypress', toggleSearch);
+      window.removeEventListener('keydown', toggleSearch);
     };
   }, [searchResults]);
 

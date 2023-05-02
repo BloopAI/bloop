@@ -25,7 +25,7 @@ type Props = {
   variant?: 'outlined' | 'filled';
   type?: HTMLInputTypeAttribute;
   onSubmit?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  onEscape?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onEscape?: () => void;
   onRegexClick?: () => void;
   validate?: () => void;
   regexEnabled?: boolean;
@@ -102,7 +102,7 @@ const TextInput = forwardRef(function TextInputWithRef(
       onSubmit(e);
     } else if (e.key === 'Escape' && onEscape) {
       e.stopPropagation();
-      onEscape(e);
+      onEscape();
     }
   };
 
@@ -198,11 +198,15 @@ const TextInput = forwardRef(function TextInputWithRef(
           <ClearButton
             tabIndex={-1}
             onClick={() => {
-              onChange({
-                target: { value: '', name },
-              } as ChangeEvent<HTMLInputElement>);
-              // @ts-ignore
-              (ref || inputRef).current?.focus();
+              if (!value && onEscape) {
+                onEscape();
+              } else {
+                onChange({
+                  target: { value: '', name },
+                } as ChangeEvent<HTMLInputElement>);
+                // @ts-ignore
+                (ref || inputRef).current?.focus();
+              }
             }}
             className={success ? 'group-focus-within:flex hidden' : 'flex'}
           />

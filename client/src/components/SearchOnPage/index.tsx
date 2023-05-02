@@ -1,7 +1,6 @@
 import React, {
   ChangeEvent,
   Dispatch,
-  KeyboardEvent,
   SetStateAction,
   useCallback,
 } from 'react';
@@ -14,7 +13,7 @@ type Props = {
   resultNum: number;
   currentResult: number;
   setCurrentResult: Dispatch<SetStateAction<number>>;
-  onCancel?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onCancel?: () => void;
   searchValue: string;
   containerClassName: string;
 };
