@@ -24,3 +24,8 @@ dist-ssr
 *.sln
 *.sw?
 /.env
+
+# Qdrant build relic
+src-tauri/bin/schema_generator
+# Auto-generated from Cargo.toml/lock files
+.crates*
