@@ -281,11 +281,7 @@ impl Conversation {
 
                 Some("§alias, path".to_owned())
                     .into_iter()
-                    .chain(
-                        paths
-                            .iter()
-                            .map(|p| format!("{}, {p}", self.path_alias(&p))),
-                    )
+                    .chain(paths.iter().map(|p| format!("{}, {p}", self.path_alias(p))))
                     .collect::<Vec<_>>()
                     .join("\n")
             }

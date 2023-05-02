@@ -369,7 +369,7 @@ impl std::str::FromStr for ModifyResultHunkHeader {
         };
 
         let (old_start, old_lines) = parts
-            .get(0)
+            .first()
             .map(|s| s.trim_start_matches('-'))
             .map(parse_part)
             .unwrap_or_default();
