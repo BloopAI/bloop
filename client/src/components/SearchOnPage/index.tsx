@@ -28,7 +28,6 @@ const SearchOnPage = ({
   searchValue,
   containerClassName,
 }: Props) => {
-  console.log('isSearchActive', isSearchActive);
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
       handleSearch(e.target.value);
