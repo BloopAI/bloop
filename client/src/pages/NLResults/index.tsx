@@ -41,7 +41,7 @@ const ResultsPage = ({ query, threadId }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const { apiUrl } = useContext(DeviceContext);
   const { setLastQueryTime } = useContext(SearchContext);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!conversationsCache[threadId]);
   const [conversation, setConversation] = useState<ConversationMessage[]>(
     conversationsCache[threadId] || [
       { author: 'user', text: query, isLoading: false },
@@ -64,7 +64,14 @@ const ResultsPage = ({ query, threadId }: Props) => {
   const [scopeRepos, setScopeRepos] = useState<string[]>([]);
 
   useEffect(() => {
-    conversationsCache[threadId] = conversation;
+    let loadedConversation = [...conversation];
+    if (conversation[conversation.length - 1]?.isLoading) {
+      loadedConversation[loadedConversation.length - 1] = {
+        ...loadedConversation[loadedConversation.length - 1],
+        isLoading: false,
+      };
+    }
+    conversationsCache[threadId] = loadedConversation;
     const allRepoFlags: Set<string> = new Set();
     conversation.forEach((m) => {
       if (m.author === 'user') {
