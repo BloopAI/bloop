@@ -252,6 +252,7 @@ const Chat = () => {
               <div className="flex items-center gap-1">
                 <ChipButton
                   onClick={() => {
+                    stopGenerating();
                     setConversation([]);
                     setThreadId('');
                     navigateRepoPath(tab.repoName);
