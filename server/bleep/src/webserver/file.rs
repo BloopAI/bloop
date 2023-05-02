@@ -22,6 +22,7 @@ pub(super) struct Params {
 #[derive(serde::Serialize)]
 pub(super) struct FileResponse {
     contents: String,
+    lang: Option<String>,
 }
 
 impl super::ApiResponse for FileResponse {}
@@ -41,6 +42,7 @@ pub(super) async fn handle<'a>(
 
     Ok(json(FileResponse {
         contents: split_by_lines(&doc.content, &doc.line_end_indices, &params)?.to_string(),
+        lang: doc.lang,
     }))
 }
 
