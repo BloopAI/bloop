@@ -116,10 +116,7 @@ const Chat = () => {
               isLoading: newMessage.status === 'LOADING',
               type: ChatMessageType.Answer,
               loadingSteps: newMessage.search_steps.map(
-                (s: { [key: string]: string | string[] }) =>
-                  Array.isArray(Object.values(s)[0])
-                    ? Object.values(s)[0][1]
-                    : Object.values(s)[0],
+                (s: { type: string; content: string }) => s.content,
               ),
               text: newMessage.content,
               results: newMessage.results,
