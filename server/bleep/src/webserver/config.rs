@@ -13,6 +13,7 @@ pub(super) struct ConfigResponse {
     schema_version: String,
     tracking_id: String,
     device_id: String,
+    github_user: Option<octocrab::models::Author>,
     bloop_version: String,
     bloop_commit: String,
 }
@@ -47,8 +48,8 @@ pub(super) async fn handle(
         user_login: user.0,
         schema_version: crate::state::SCHEMA_VERSION.into(),
         bloop_version: env!("CARGO_PKG_VERSION").into(),
-        bloop_commit: git_version::git_version!(fallback = "unknown"),
-
+        bloop_commit: git_version::git_version!(fallback = "unknown").into(),
+        github_user: None,
         device_id,
         org_name,
         tracking_id,

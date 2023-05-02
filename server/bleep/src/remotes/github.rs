@@ -4,7 +4,7 @@ use octocrab::{
     models::{Installation, InstallationToken},
     Octocrab,
 };
-use reqwest::StatusCode;
+
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 
@@ -159,11 +159,7 @@ impl Auth {
             },
             // I'm leaving this here for completeness' sake, this likely isn't exercised
             // Octocrab seems to treat GitHub application-layer errors as higher priority
-            Err(octocrab::Error::Http { ref source, .. }) => match source.status() {
-                Some(StatusCode::NOT_FOUND) => Err(RemoteError::RemoteNotFound),
-                Some(StatusCode::FORBIDDEN) => Err(RemoteError::PermissionDenied),
-                _ => Ok(response.map(|_| ())?),
-            },
+            Err(octocrab::Error::Http { .. }) => Err(RemoteError::PermissionDenied),
             _ => Ok(response.map(|_| ())?),
         }
     }

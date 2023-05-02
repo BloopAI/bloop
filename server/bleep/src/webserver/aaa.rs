@@ -325,10 +325,9 @@ async fn user_auth(
 
         // https://docs.github.com/en/rest/orgs/members?apiVersion=2022-11-28#check-organization-membership-for-a-user
         let is_member = octocrab
-            ._get(
-                format!("https://api.github.com/orgs/{org_name}/members/{user_name}"),
-                None::<&()>,
-            )
+            ._get(format!(
+                "https://api.github.com/orgs/{org_name}/members/{user_name}"
+            ))
             .await
             .context("failed to check user membership on org")?
             .status()
