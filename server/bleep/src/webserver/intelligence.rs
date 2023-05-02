@@ -13,10 +13,9 @@ use crate::{
 use axum::{extract::Query, response::IntoResponse, Extension};
 use petgraph::graph::NodeIndex;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
 /// The request made to the `local-intel` endpoint.
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub(super) struct TokenInfoRequest {
     /// The repo_ref of the file of interest
     repo_ref: String,
@@ -30,7 +29,7 @@ pub(super) struct TokenInfoRequest {
 }
 
 /// The response from the `local-intel` endpoint.
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub(super) enum TokenInfoResponse {
     /// The response returned when the input range is a definition
@@ -49,7 +48,7 @@ pub(super) enum TokenInfoResponse {
 
 impl super::ApiResponse for TokenInfoResponse {}
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize)]
 pub(super) struct FileSymbols {
     // FIXME: choose a better name
     /// The file to which the following occurrences belong
@@ -66,7 +65,7 @@ impl FileSymbols {
 }
 
 /// An occurrence of a single symbol in a document, along with some context
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize)]
 pub(super) struct SymbolOccurrence {
     /// The precise range of this symbol
     #[serde(flatten)]
@@ -219,16 +218,6 @@ fn merge(
         .collect()
 }
 
-#[utoipa::path(
-    get,
-    path = "/token-info",
-    params(TokenInfoRequest),
-    responses(
-        (status = 200, description = "Execute query successfully", body = TokenInfoResponse),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn handle(
     Query(payload): Query<TokenInfoRequest>,
     Extension(indexes): Extension<Arc<Indexes>>,

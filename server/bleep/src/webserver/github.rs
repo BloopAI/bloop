@@ -9,7 +9,7 @@ use tracing::{error, warn};
 
 use std::time::{Duration, Instant};
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum GithubResponse {
     AuthenticationNeeded { url: String, code: String },
@@ -18,7 +18,7 @@ pub(super) enum GithubResponse {
 
 impl super::ApiResponse for GithubResponse {}
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum GithubCredentialStatus {
     Ok,
@@ -27,13 +27,6 @@ pub(super) enum GithubCredentialStatus {
 
 /// Get the status of the Github OAuth authentication
 //
-#[utoipa::path(get, path = "/remotes/github/status",
-    responses(
-        (status = 200, description = "Execute query successfully", body = Response),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn status(Extension(app): Extension<Application>) -> impl IntoResponse {
     (
         StatusCode::OK,
@@ -48,13 +41,6 @@ pub(super) async fn status(Extension(app): Extension<Application>) -> impl IntoR
 
 /// Connect to Github through OAuth Device Flow
 //
-#[utoipa::path(get, path = "/remotes/github/login",
-    responses(
-        (status = 200, description = "Execute query successfully", body = Response),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoResponse {
     let client_id = match app.config.github_client_id.as_ref() {
         Some(id) => id.clone(),
@@ -93,13 +79,6 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
 
 /// Remove Github OAuth credentials
 //
-#[utoipa::path(get, path = "/remotes/github/logout",
-    responses(
-        (status = 200, description = "Execute query successfully", body = Response),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn logout(Extension(app): Extension<Application>) -> impl IntoResponse {
     let deleted = app.credentials.remove(&Backend::Github).is_some();
     if deleted {

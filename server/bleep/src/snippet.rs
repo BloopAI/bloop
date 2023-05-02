@@ -2,12 +2,11 @@ use anyhow::Result;
 use regex::{Regex, RegexBuilder};
 use serde::Serialize;
 use smallvec::{smallvec, SmallVec};
-use utoipa::ToSchema;
 
 use crate::{indexes, symbol::Symbol};
 use std::ops::Range;
 
-#[derive(Serialize, ToSchema, Debug, PartialEq, Eq)]
+#[derive(Serialize, Debug, PartialEq, Eq)]
 pub struct SnippedFile {
     pub relative_path: String,
     pub repo_name: String,
@@ -16,7 +15,7 @@ pub struct SnippedFile {
     pub snippets: Vec<Snippet>,
 }
 
-#[derive(Serialize, ToSchema, Debug, PartialEq, Eq)]
+#[derive(Serialize, Debug, PartialEq, Eq)]
 pub struct Snippet {
     pub data: String,
     pub highlights: Vec<Range<usize>>,
@@ -28,7 +27,7 @@ pub struct Snippet {
 ///
 /// This doesn't store the actual text data itself, just the position information for simplified
 /// merging.
-#[derive(Serialize, ToSchema, Debug, PartialEq, Eq)]
+#[derive(Serialize, Debug, PartialEq, Eq)]
 pub struct Location {
     /// The subset's byte range in the original input string.
     pub byte_range: Range<usize>,
@@ -294,7 +293,7 @@ impl Snipper {
     }
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize)]
 pub struct HighlightedString {
     pub text: String,
 

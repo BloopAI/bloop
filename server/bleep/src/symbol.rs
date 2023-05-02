@@ -1,9 +1,8 @@
 use crate::{intelligence::ScopeGraph, text_range::TextRange};
 
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Symbol {
     pub kind: String,
     pub range: TextRange,

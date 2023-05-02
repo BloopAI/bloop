@@ -15,7 +15,6 @@ use secrecy::ExposeSecret;
 use thiserror::Error;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
-use utoipa::ToSchema;
 
 use crate::{
     analytics::{QueryEvent, Stage},
@@ -93,14 +92,14 @@ pub struct Params {
     pub limit: u64,
 }
 
-#[derive(serde::Serialize, ToSchema, Debug)]
+#[derive(serde::Serialize, Debug)]
 pub struct AnswerResponse {
     pub session_id: String,
     pub query_id: uuid::Uuid,
     pub snippets: Option<AnswerSnippets>,
 }
 
-#[derive(serde::Serialize, ToSchema, Debug)]
+#[derive(serde::Serialize, Debug)]
 pub struct AnswerSnippets {
     pub matches: Vec<Snippet>,
     pub answer_path: String,
