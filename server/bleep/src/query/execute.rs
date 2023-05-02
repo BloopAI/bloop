@@ -16,9 +16,7 @@ use crate::{
 
 use anyhow::{bail, Result};
 use async_trait::async_trait;
-use regex::{
-    bytes::{RegexBuilder as ByteRegexBuilder}, RegexBuilder,
-};
+use regex::{bytes::RegexBuilder as ByteRegexBuilder, RegexBuilder};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use tantivy::collector::{MultiCollector, TopDocs};
