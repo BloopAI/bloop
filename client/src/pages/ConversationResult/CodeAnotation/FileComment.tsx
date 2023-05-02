@@ -15,7 +15,7 @@ const FileComment = ({ i, comment }: Props) => {
       onClick={() => {
         document
           .getElementById(`code-${i}`)
-          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }}
     >
       <div
