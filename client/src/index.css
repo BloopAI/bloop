@@ -1,3 +1,6 @@
+@import "./prism-vsc-dark-plus.css";
+@import "./prism-vsc-light.css";
+
 @font-face {
   font-family: Menlo;
   font-weight: normal;
@@ -72,11 +75,103 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+
+@layer base {
+    [data-theme="default"] {
+      --primary-50: #E5E9FF;
+      --primary-100: #B8C3FF;
+      --primary-200: #8A9CFF;
+      --primary-300: #5D75FF;
+      --primary-400: #304FFF;
+      --primary-500: #0228FF;
+      --primary-600: #0020D6;
+      --primary-700: #001AAD;
+      --primary-800: #001485;
+      --primary-900: #000E5C;
+
+      --secondary-50: #FFFAE5;
+      --secondary-100: #FFF0B7;
+      --secondary-200: #FFE78A;
+      --secondary-300: #FFDD5C;
+      --secondary-400: #FFD42E;
+      --secondary-500: #FDC900;
+      --secondary-600: #D4A900;
+      --secondary-700: #AB8800;
+      --secondary-800: #836800;
+      --secondary-900: #5A4700;
+
+      --gray-50: #F9F9F9;
+      --gray-100: #F1F1F2;
+      --gray-200: #DDDDE1;
+      --gray-300: #CACACF;
+      --gray-400: #90909A;
+      --gray-500: #5E5E67;
+      --gray-600: #404049;
+      --gray-700: #27272D;
+      --gray-800: #1D1D20;
+      --gray-900: #131315;
+
+      --contrast-color: white;
+      --app-bg: #131315;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-light: 0px 1px 6px rgba(0, 0, 0, 0.25);
+      --shadow-lighter: 0px 1px 3px rgba(62, 70, 85, 0.12);
+      --shadow-light-bigger: 0px 6px 16px rgba(0, 0, 0, 0.25);
+      --shadow-big: 0px 16px 34px rgba(0, 0, 0, 0.5);
+      --shadow-medium: 0px 16px 24px rgba(0, 0, 0, 0.25);
+    }
+    [data-theme="default-light"] {
+      --primary-900: #E5E9FF;
+      --primary-800: #B8C3FF;
+      --primary-700: #8A9CFF;
+      --primary-600: #5D75FF;
+      --primary-500: #304FFF;
+      --primary-400: #0228FF;
+      --primary-300: #0020D6;
+      --primary-200: #001AAD;
+      --primary-100: #001485;
+      --primary-50: #000E5C;
+
+      --secondary-900: #FFFAE5;
+      --secondary-800: #FFF0B7;
+      --secondary-700: #FFE78A;
+      --secondary-600: #FFDD5C;
+      --secondary-500: #FFD42E;
+      --secondary-400: #FDC900;
+      --secondary-300: #D4A900;
+      --secondary-200: #AB8800;
+      --secondary-100: #836800;
+      --secondary-50: #5A4700;
+
+      --gray-900: #F9F9F9;
+      --gray-800: #F1F1F2;
+      --gray-700: #DDDDE1;
+      --gray-600: #CACACF;
+      --gray-500: #90909A;
+      --gray-400: #5E5E67;
+      --gray-300: #404049;
+      --gray-200: #27272D;
+      --gray-100: #1D1D20;
+      --gray-50: #131315;
+
+      --contrast-color: black;
+      --app-bg: #ffffff;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.08);
+      --shadow-light: 0px 1px 6px rgba(0, 0, 0, 0.12);
+      --shadow-lighter: 0px 1px 3px rgba(62, 70, 85, 0.06);
+      --shadow-light-bigger: 0px 6px 16px rgba(0, 0, 0, 0.12);
+      --shadow-big: 0px 16px 34px rgba(0, 0, 0, 0.25);
+      --shadow-medium: 0px 16px 24px rgba(0, 0, 0, 0.12);
+    }
+}
+
+body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #131315;
-  color: #F1F1F2;
+  background-color: var(--app-bg);
+  color: var(--gray-800);
   overflow: hidden;
 }
 
