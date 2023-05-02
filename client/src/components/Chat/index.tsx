@@ -254,6 +254,7 @@ const Chat = () => {
                   onClick={() => {
                     stopGenerating();
                     setConversation([]);
+                    setLoading(false);
                     setThreadId('');
                     navigateRepoPath(tab.repoName);
                     focusInput();
