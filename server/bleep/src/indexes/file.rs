@@ -266,23 +266,6 @@ impl Indexable for File {
 }
 
 impl Indexer<File> {
-    pub async fn file_body(&self, file_disk_path: &str) -> Result<ContentDocument> {
-        // Mostly taken from `by_path`, below.
-        //
-        // TODO: This can be unified with `by_path` below, but we first need to decide on a unified
-        // path referencing API throughout the webserver.
-
-        let reader = self.reader.read().await;
-        let searcher = reader.searcher();
-
-        let query = TermQuery::new(
-            Term::from_field_text(self.source.entry_disk_path, file_disk_path),
-            IndexRecordOption::Basic,
-        );
-
-        self.top_hit(Box::new(query), searcher).await
-    }
-
     pub async fn by_path(
         &self,
         repo_ref: &RepoRef,
