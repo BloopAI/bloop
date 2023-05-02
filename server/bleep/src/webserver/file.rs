@@ -1,14 +1,17 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
-use axum::{
-    extract::{Path, Query},
-    Extension, Json,
-};
+use anyhow::Context;
+use axum::{extract::Query, Extension, Json};
+
+use crate::repo::RepoRef;
 
 use super::prelude::*;
 
-#[derive(Debug, serde::Deserialize, Default)]
+#[derive(Debug, serde::Deserialize)]
 pub(super) struct Params {
+    pub repo_ref: RepoRef,
+    pub path: PathBuf,
+
     /// 1-indexed line number at which to start the snippet
     pub line_start: Option<isize>,
 
@@ -19,33 +22,27 @@ pub(super) struct Params {
 #[derive(serde::Serialize)]
 pub(super) struct FileResponse {
     contents: String,
+    lang: Option<String>,
 }
 
 impl super::ApiResponse for FileResponse {}
 
 pub(super) async fn handle<'a>(
-    Path(path): Path<String>,
     Query(params): Query<Params>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<Json<super::Response<'a>>, Error> {
-    // Strip leading slash, always present.
-    let Some((rr, file_path)) = path.split_once(':') else {
-	return Err(Error::user("invalid path, use repo_ref:path"));
-    };
-
-    let Ok(repo_ref) = rr.parse() else {
-	println!("{rr}");
-	return Err(Error::user("invalid repo_ref"));
-    };
-
     let doc = indexes
         .file
-        .by_path(&repo_ref, file_path)
+        .by_path(
+            &params.repo_ref,
+            params.path.to_str().context("invalid file path")?,
+        )
         .await
         .map_err(Error::internal)?;
 
     Ok(json(FileResponse {
         contents: split_by_lines(&doc.content, &doc.line_end_indices, &params)?.to_string(),
+        lang: doc.lang,
     }))
 }
 
@@ -93,6 +90,8 @@ cccccc
                 text,
                 &indices,
                 &Params {
+                    repo_ref: "local//repo".into(),
+                    path: "file".into(),
                     line_start: None,
                     line_end: None
                 }
@@ -106,6 +105,8 @@ cccccc
                 text,
                 &indices,
                 &Params {
+                    repo_ref: "local//repo".into(),
+                    path: "file".into(),
                     line_start: Some(1),
                     line_end: None
                 }
@@ -119,6 +120,8 @@ cccccc
                 text,
                 &indices,
                 &Params {
+                    repo_ref: "local//repo".into(),
+                    path: "file".into(),
                     line_start: Some(2),
                     line_end: None
                 }
@@ -132,6 +135,8 @@ cccccc
                 text,
                 &indices,
                 &Params {
+                    repo_ref: "local//repo".into(),
+                    path: "file".into(),
                     line_start: Some(3),
                     line_end: Some(3),
                 }
@@ -145,6 +150,8 @@ cccccc
                 text,
                 &indices,
                 &Params {
+                    repo_ref: "local//repo".into(),
+                    path: "file".into(),
                     line_start: Some(2),
                     line_end: Some(3),
                 }
