@@ -17,6 +17,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 .map(|(i, _)| i as u32)
                 .collect(),
             symbol_locations: SymbolLocations::Empty,
+            branches: None,
         };
 
         b.iter(|| snipper.all_for_doc(black_box("context"), black_box(&doc)));

@@ -33,7 +33,10 @@ path = ${ "path:" ~ literal }
 branch = ${ "branch:" ~ literal }
 lang = ${ "lang:" ~ unquoted_literal }
 
-mode = _{ case | open | global_regex }
+mode = _{ case | open | global_regex | mode_selector }
+mode_selector = ${ "mode:" ~ ( grep | semantic ) }
+grep = ${ "grep" }
+semantic = ${ "semantic" }
 
 case = ${ "case:" ~ ( case_ignore | case_sensitive ) }
 case_ignore = { "ignore" }

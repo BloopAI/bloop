@@ -1,4 +1,4 @@
-use crate::{env::Feature, snippet, Application};
+use crate::{env::Feature, Application};
 
 use axum::{http::StatusCode, response::IntoResponse, routing::get, Extension, Json};
 use std::sync::Arc;
@@ -7,8 +7,7 @@ use tower::Service;
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
 use tracing::info;
-use utoipa::OpenApi;
-use utoipa::ToSchema;
+use utoipa::{OpenApi, ToSchema};
 
 mod aaa;
 pub mod answer;
@@ -66,7 +65,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/token-info", get(intelligence::handle))
         // misc
         .route("/file/*ref", get(file::handle))
-        .route("/semantic/chunks", get(semantic::raw_chunks))
+        .route("/search", get(semantic::complex_search))
         .route(
             "/answer",
             get(answer::handle).with_state(Arc::new(answer::AnswerState::default())),
@@ -237,7 +236,7 @@ enum ErrorKind {
     Custom,
 }
 
-trait ApiResponse: erased_serde::Serialize {}
+pub(crate) trait ApiResponse: erased_serde::Serialize {}
 erased_serde::serialize_trait_object!(ApiResponse);
 
 /// Every endpoint exposes a Response type
@@ -261,27 +260,25 @@ impl<'a> From<EndpointError<'a>> for Response<'a> {
     }
 }
 
+async fn health(Extension(app): Extension<Application>) {
+    if let Some(ref semantic) = app.semantic {
+        // panic is fine here, we don't need exact reporting of
+        // subsystem checks at this stage
+        semantic.health_check().await.unwrap()
+    }
+}
+
 #[derive(OpenApi)]
 #[openapi(
-    paths(query::handle, autocomplete::handle, hoverable::handle, intelligence::handle),
+    paths(intelligence::handle),
     components(schemas(
         crate::symbol::Symbol,
         crate::text_range::TextRange,
         crate::text_range::Point,
         EndpointError<'_>,
         ErrorKind,
-        autocomplete::AutocompleteResponse,
-        query::QueryResponse,
-        query::QueryResult,
-        query::RepositoryResultData,
-        query::FileResultData,
-        query::FileData,
-        query::DirectoryData,
-        hoverable::HoverableResponse,
         intelligence::TokenInfoResponse,
         intelligence::SymbolOccurrence,
-        snippet::SnippedFile,
-        snippet::Snippet,
         repos::ReposResponse,
         repos::Repo,
         repos::SetIndexed,
@@ -305,13 +302,5 @@ pub mod openapi_yaml {
     use super::*;
     pub async fn handle() -> impl IntoResponse {
         <ApiDoc as OpenApi>::openapi().to_yaml().unwrap()
-    }
-}
-
-async fn health(Extension(app): Extension<Application>) {
-    if let Some(ref semantic) = app.semantic {
-        // panic is fine here, we don't need exact reporting of
-        // subsystem checks at this stage
-        semantic.health_check().await.unwrap()
     }
 }

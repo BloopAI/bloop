@@ -1,6 +1,6 @@
-use std::{collections::HashMap, ops::Not, path::Path, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, ops::Not, path::Path, sync::Arc};
 
-use crate::{query::parser::NLQuery, Configuration};
+use crate::{query::parser::SemanticQuery, Configuration};
 
 use ndarray::Axis;
 use ort::{
@@ -10,10 +10,10 @@ use ort::{
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
-        r#match::MatchValue, vectors_config, with_payload_selector, with_vectors_selector,
-        CollectionOperationResponse, CreateCollection, Distance, FieldCondition, Filter, Match,
-        PointId, PointStruct, ScoredPoint, SearchPoints, Value, VectorParams, VectorsConfig,
-        WithPayloadSelector, WithVectorsSelector,
+        r#match::MatchValue, vectors::VectorsOptions, vectors_config, with_payload_selector,
+        with_vectors_selector, CollectionOperationResponse, CreateCollection, Distance,
+        FieldCondition, Filter, Match, PointId, PointStruct, ScoredPoint, SearchPoints, Value,
+        VectorParams, Vectors, VectorsConfig, WithPayloadSelector, WithVectorsSelector,
     },
 };
 
@@ -22,8 +22,11 @@ use thiserror::Error;
 use tracing::{debug, info, trace, warn};
 
 pub mod chunk;
+pub mod execute;
 
 const COLLECTION_NAME: &str = "documents";
+
+pub type Embedding = Vec<f32>;
 
 #[derive(Error, Debug)]
 pub enum SemanticError {
@@ -51,6 +54,110 @@ pub struct Semantic {
     gpt2_tokenizer: Arc<tokenizers::Tokenizer>,
     session: Arc<ort::Session>,
     config: Arc<Configuration>,
+}
+
+#[derive(Default, Clone, Debug, serde::Deserialize, serde::Serialize)]
+pub struct Payload<'a> {
+    pub lang: Cow<'a, str>,
+    pub repo_name: Cow<'a, str>,
+    pub repo_ref: Cow<'a, str>,
+    pub relative_path: Cow<'a, str>,
+    pub text: Cow<'a, str>,
+    pub start_line: u64,
+    pub end_line: u64,
+    pub start_byte: u64,
+    pub end_byte: u64,
+    pub branches: Vec<String>,
+
+    #[serde(skip)]
+    pub embedding: Option<Embedding>,
+    #[serde(skip)]
+    pub score: Option<f32>,
+}
+
+macro_rules! val_str(($hash:ident, $val:expr) => { serde_json::from_value($hash.remove($val).unwrap()).unwrap() });
+macro_rules! val_parse_str(($hash:ident, $val:expr) => {
+    serde_json::from_value::<Cow<'_, str>>($hash.remove($val).unwrap())
+        .unwrap()
+        .parse()
+        .unwrap()
+});
+
+impl<'a> Payload<'a> {
+    pub fn from_qdrant(orig: ScoredPoint) -> Payload<'static> {
+        let ScoredPoint {
+            payload,
+            score,
+            vectors,
+            ..
+        } = orig;
+
+        let mut converted = payload
+            .into_iter()
+            .map(|(key, value)| (key, kind_to_value(value.kind)))
+            .collect::<HashMap<String, serde_json::Value>>();
+
+        let embedding = if let Some(Vectors {
+            vectors_options: Some(VectorsOptions::Vector(v)),
+        }) = vectors
+        {
+            v.data
+        } else {
+            panic!("got non-vector value");
+        };
+
+        Payload {
+            lang: val_str!(converted, "lang"),
+            repo_name: val_str!(converted, "repo_name"),
+            repo_ref: val_str!(converted, "repo_ref"),
+            relative_path: val_str!(converted, "relative_path"),
+            text: val_str!(converted, "snippet"),
+            branches: val_str!(converted, "branches"),
+            start_line: val_parse_str!(converted, "start_line"),
+            end_line: val_parse_str!(converted, "end_line"),
+            start_byte: val_parse_str!(converted, "start_byte"),
+            end_byte: val_parse_str!(converted, "end_byte"),
+
+            score: Some(score),
+            embedding: Some(embedding),
+        }
+    }
+
+    fn into_qdrant(self) -> HashMap<String, Value> {
+        HashMap::from([
+            ("lang".into(), self.lang.to_ascii_lowercase().into()),
+            ("repo_name".into(), self.repo_name.as_ref().into()),
+            ("repo_ref".into(), self.repo_ref.as_ref().into()),
+            ("relative_path".into(), self.relative_path.as_ref().into()),
+            ("snippet".into(), self.text.as_ref().into()),
+            ("start_line".into(), self.start_line.to_string().into()),
+            ("end_line".into(), self.end_line.to_string().into()),
+            ("start_byte".into(), self.start_byte.to_string().into()),
+            ("end_byte".into(), self.end_byte.to_string().into()),
+            ("branches".into(), self.branches.into()),
+        ])
+    }
+}
+
+fn kind_to_value(kind: Option<qdrant_client::qdrant::value::Kind>) -> serde_json::Value {
+    use qdrant_client::qdrant::value::Kind;
+    match kind {
+        Some(Kind::NullValue(_)) => serde_json::Value::Null,
+        Some(Kind::BoolValue(v)) => serde_json::Value::Bool(v),
+        Some(Kind::DoubleValue(v)) => {
+            serde_json::Value::Number(serde_json::Number::from_f64(v).unwrap())
+        }
+        Some(Kind::IntegerValue(v)) => serde_json::Value::Number(v.into()),
+        Some(Kind::StringValue(v)) => serde_json::Value::String(v),
+        Some(Kind::ListValue(v)) => serde_json::Value::Array(
+            v.values
+                .into_iter()
+                .map(|v| kind_to_value(v.kind))
+                .collect(),
+        ),
+        Some(Kind::StructValue(_v)) => todo!(),
+        None => serde_json::Value::Null,
+    }
 }
 
 fn collection_config() -> CreateCollection {
@@ -133,7 +240,7 @@ impl Semantic {
         Ok(())
     }
 
-    pub fn embed(&self, sequence: &str) -> anyhow::Result<Vec<f32>> {
+    pub fn embed(&self, sequence: &str) -> anyhow::Result<Embedding> {
         let tokenizer_output = self.tokenizer.encode(sequence, true).unwrap();
 
         let input_ids = tokenizer_output.get_ids();
@@ -169,15 +276,13 @@ impl Semantic {
         Ok(pooled.to_owned().as_slice().unwrap().to_vec())
     }
 
-    pub async fn search<'a>(
+    pub async fn search_with<'a>(
         &self,
-        parsed_query: &NLQuery<'a>,
+        parsed_query: &SemanticQuery<'a>,
+        vector: Embedding,
         limit: u64,
+        offset: u64,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
-        let Some(query) = parsed_query.target() else {
-            anyhow::bail!("no search target for query");
-        };
-
         let repo_filter = {
             let conditions = parsed_query
                 .repos()
@@ -257,9 +362,10 @@ impl Semantic {
         let response = self
             .qdrant
             .search_points(&SearchPoints {
-                collection_name: COLLECTION_NAME.to_string(),
                 limit,
-                vector: self.embed(query)?,
+                vector,
+                collection_name: COLLECTION_NAME.to_string(),
+                offset: Some(offset),
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
@@ -275,6 +381,19 @@ impl Semantic {
             .await?;
 
         Ok(response.result)
+    }
+
+    pub async fn search<'a>(
+        &self,
+        parsed_query: &SemanticQuery<'a>,
+        limit: u64,
+        offset: u64,
+    ) -> anyhow::Result<Vec<ScoredPoint>> {
+        let Some(query) = parsed_query.target() else {
+            anyhow::bail!("no search target for query");
+        };
+        let vector = self.embed(query)?;
+        self.search_with(parsed_query, vector, limit, offset).await
     }
 
     #[tracing::instrument(skip(self, repo_ref, relative_path, buffer))]
@@ -312,24 +431,20 @@ impl Semantic {
                     Ok(ok) => Some(PointStruct {
                         id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
                         vectors: Some(ok.into()),
-                        payload: HashMap::from([
-                            ("lang".into(), lang_str.to_ascii_lowercase().into()),
-                            ("repo_name".into(), repo_name.into()),
-                            ("repo_ref".into(), repo_ref.into()),
-                            ("branches".into(), Value::from(branches.to_owned())),
-                            ("relative_path".into(), relative_path.into()),
-                            ("snippet".into(), chunk.data.into()),
-                            (
-                                "start_line".into(),
-                                chunk.range.start.line.to_string().into(),
-                            ),
-                            ("end_line".into(), chunk.range.end.line.to_string().into()),
-                            (
-                                "start_byte".into(),
-                                chunk.range.start.byte.to_string().into(),
-                            ),
-                            ("end_byte".into(), chunk.range.end.byte.to_string().into()),
-                        ]),
+                        payload: Payload {
+                            lang: lang_str.to_ascii_lowercase().into(),
+                            repo_name: repo_name.into(),
+                            repo_ref: repo_ref.into(),
+                            relative_path: relative_path.into(),
+                            branches: branches.to_owned(),
+                            text: chunk.data.into(),
+                            start_line: chunk.range.start.line as u64,
+                            end_line: chunk.range.end.line as u64,
+                            start_byte: chunk.range.start.byte as u64,
+                            end_byte: chunk.range.end.byte as u64,
+                            ..Default::default()
+                        }
+                        .into_qdrant(),
                     }),
                     Err(err) => {
                         warn!(?err, %chunk_prefix, "embedding failed");
@@ -472,4 +587,34 @@ pub fn deduplicate_with_mmr(
         }
     }
     idxs
+}
+
+pub fn deduplicate_snippets(
+    mut all_snippets: Vec<Payload>,
+    query_embedding: Embedding,
+    output_count: usize,
+) -> Vec<Payload> {
+    let idxs = {
+        let lambda = 0.5;
+        let k = output_count; // number of snippets
+        let embeddings = all_snippets
+            .iter()
+            .map(|s| s.embedding.as_deref().unwrap())
+            .collect::<Vec<_>>();
+        deduplicate_with_mmr(&query_embedding, &embeddings, lambda, k)
+    };
+
+    info!("preserved idxs after MMR are {:?}", idxs);
+
+    all_snippets
+        .drain(..)
+        .enumerate()
+        .filter_map(|(ref i, payload)| {
+            if idxs.contains(i) {
+                Some(payload)
+            } else {
+                None
+            }
+        })
+        .collect()
 }
