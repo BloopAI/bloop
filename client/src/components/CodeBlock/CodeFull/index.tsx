@@ -112,10 +112,10 @@ const CodeFull = ({
         });
       }
     };
-    window.addEventListener('keypress', toggleSearch);
+    window.addEventListener('keydown', toggleSearch);
 
     return () => {
-      window.removeEventListener('keypress', toggleSearch);
+      window.removeEventListener('keydown', toggleSearch);
     };
   }, [searchResults]);
 
