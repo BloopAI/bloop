@@ -18,7 +18,7 @@ type Props = {
     | 'conversation-result';
 };
 
-const mainContainerStyle = { height: 'calc(100vh - 8rem)' };
+const mainContainerStyle = { height: 'calc(100vh - 9.5rem)' };
 const PageTemplate = ({ children, withSearchBar, renderPage }: Props) => {
   const { setShowTooltip, setTooltipText } = useContext(ChatContext);
 
