@@ -166,10 +166,9 @@ pub(super) async fn handle(
 }
 
 fn parse_query(query: &str) -> Result<String, Error> {
-    let ParsedQuery::Semantic(q): ParsedQuery = parser::parse_nl(query)
-        .map_err(Error::user)? else {
-	    return Err(Error::new(ErrorKind::User, "can't do that here"));
-	};
+    let ParsedQuery::Semantic(q) = parser::parse_nl(query).map_err(Error::user)? else {
+	return Err(Error::new(ErrorKind::User, "only semantic queries are allowed"));
+    };
 
     Ok(q.target()
         .ok_or_else(|| Error::user("empty search"))?
