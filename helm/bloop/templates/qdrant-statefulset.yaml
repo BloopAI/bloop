@@ -28,7 +28,7 @@ spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
       containers:
-        {{ if .Values.qdrant.backup }}
+        {{ if .Values.qdrant.backup.enabled }}
         - name: {{ .Chart.Name }}-qdrant-backup
           image: amazon/aws-cli:2.11.15
           imagePullPolicy: {{ .Values.qdrant.image.pullPolicy }}
