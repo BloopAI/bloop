@@ -67,13 +67,21 @@ pub mod api {
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
         pub provider: Provider,
+        pub client_version: String,
         pub extra_stop_sequences: Vec<String>,
     }
 
+    #[allow(clippy::enum_variant_names)]
     #[derive(thiserror::Error, Debug, Deserialize)]
     pub enum Error {
         #[error("bad OpenAI request")]
         BadOpenAiRequest,
+
+        #[error("incorrect configuration")]
+        BadConfiguration,
+
+        #[error("invalid client version")]
+        BadClientVersion,
     }
 
     pub type Result = std::result::Result<String, Error>;
@@ -720,6 +728,7 @@ impl<'s> AnswerAPIClient<'s> {
                     messages,
                     max_tokens: Some(max_tokens),
                     temperature: Some(temperature),
+                    client_version: env!("CARGO_PKG_VERSION").to_string(),
                     provider,
                     extra_stop_sequences,
                 })
@@ -788,6 +797,10 @@ impl<'s> AnswerAPIClient<'s> {
 
             match result {
                 Ok(r) => return Ok(r),
+                Err(AnswerAPIError::BadRequest(api::Error::BadClientVersion)) => {
+                    error!(%attempt, "Client version incompatible with answer-api");
+                    return Err(AnswerAPIError::BadRequest(api::Error::BadClientVersion));
+                }
                 Err(e) => warn!(%attempt, "answer-api returned {e:?} ... retrying"),
             }
         }
