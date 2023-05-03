@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import Code from '../../../components/CodeBlock/Code';
 import { getFileLines } from '../../../services/api';
-import { File } from '../../../types/api';
+import { FileResponse } from '../../../types/api';
 import LiteLoader from '../../../components/Loaders/LiteLoader';
 import { colors } from './index';
 
 type Props = {
   filePath: string;
-  repoName: string;
+  repoRef: string;
   startLine: number;
   endLine: number;
   i: number;
@@ -16,26 +16,31 @@ type Props = {
 
 const CodePart = ({
   filePath,
-  repoName,
+  repoRef,
   startLine,
   endLine,
   i,
   isLast,
 }: Props) => {
-  const [filePart, setFilePart] = useState<File | null>(null);
+  const [filePart, setFilePart] = useState<FileResponse | null>(null);
   const [isLoading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (repoName && filePath && startLine > -1 && endLine > -1) {
-      getFileLines(
-        `open:true repo:${repoName} path:${filePath}`,
-        startLine,
-        endLine,
-      ).then((resp) => {
-        setFilePart(resp.data[0].data as File);
-      });
+    if (
+      repoRef &&
+      filePath &&
+      startLine !== null &&
+      startLine > -1 &&
+      endLine !== null &&
+      endLine > -1
+    ) {
+      getFileLines(repoRef, filePath, startLine + 1, endLine + 1).then(
+        (resp) => {
+          setFilePart(resp);
+        },
+      );
     }
-  }, [filePath, repoName, startLine, endLine]);
+  }, [filePath, repoRef, startLine, endLine]);
 
   return (
     <div id={`code-${i}`} style={{ scrollMarginTop: 80 }}>
@@ -49,11 +54,8 @@ const CodePart = ({
         {filePart && (
           <Code
             lineStart={startLine}
-            code={filePart?.contents
-              .split('\n')
-              .slice(Math.max(startLine - 1, 0), endLine)
-              .join('\n')}
-            language={filePart?.lang}
+            code={filePart.contents.slice(0, -1)} // there is always a trailing new line
+            language={filePart.lang}
             highlightColor={`rgba(${colors[i % colors.length].join(', ')}, 1)`}
             onTokensLoaded={() => setLoading(false)}
           />
