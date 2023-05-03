@@ -6,6 +6,7 @@ import CodePart from './CodePart';
 
 type Props = {
   repoName: string;
+  repoRef: string;
   filePath: string;
   onResultClick: (path: string) => void;
   cites: {
@@ -16,7 +17,13 @@ type Props = {
   }[];
 };
 
-const AnnotatedFile = ({ filePath, onResultClick, repoName, cites }: Props) => {
+const AnnotatedFile = ({
+  filePath,
+  onResultClick,
+  repoName,
+  repoRef,
+  cites,
+}: Props) => {
   return (
     <div>
       <div className="text-sm border border-gray-700 rounded-md flex-1 overflow-auto">
@@ -41,7 +48,7 @@ const AnnotatedFile = ({ filePath, onResultClick, repoName, cites }: Props) => {
               <CodePart
                 key={c.i}
                 i={c.i}
-                repoName={repoName}
+                repoRef={repoRef}
                 filePath={filePath}
                 startLine={c.start_line}
                 endLine={c.end_line}
