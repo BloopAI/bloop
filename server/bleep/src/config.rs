@@ -189,7 +189,12 @@ impl Configuration {
 
     pub fn cli_overriding_config_file() -> Result<Self> {
         let cli = Self::from_cli()?;
-        let Ok(file) = cli.config_file.as_ref().context("no config file specified").and_then(Self::read) else {
+        let Ok(file) = cli
+	    .config_file
+	    .as_ref()
+	    .context("no config file specified")
+	    .and_then(Self::read) else
+	{
 	    return Ok(cli);
 	};
 
@@ -209,7 +214,7 @@ impl Configuration {
 
             source: right_if_default!(b.source, a.source, Default::default()),
 
-            index_dir: b.index_dir,
+            index_dir: right_if_default!(b.index_dir, a.index_dir, default_index_path()),
 
             index_only: b.index_only | a.index_only,
 
