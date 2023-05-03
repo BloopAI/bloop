@@ -13,6 +13,9 @@ pub(super) struct ConfigResponse {
     schema_version: String,
     tracking_id: String,
     device_id: String,
+    github_user: Option<octocrab::models::Author>,
+    bloop_version: String,
+    bloop_commit: String,
 }
 
 impl super::ApiResponse for ConfigResponse {}
@@ -38,12 +41,25 @@ pub(super) async fn handle(
         _ => None,
     });
 
+    let github_user = 'user: {
+        let Some(gh) = app.credentials.github() else {
+            break 'user None;
+        };
+        let Ok(crab) = gh.client() else {
+            break 'user None;
+        };
+        crab.current().user().await.ok()
+    };
+
     json(ConfigResponse {
         analytics_data_plane: app.config.analytics_data_plane.clone(),
         analytics_key_fe: app.config.analytics_key_fe.clone(),
         sentry_dsn_fe: app.config.sentry_dsn_fe.clone(),
         user_login: user.0,
         schema_version: crate::state::SCHEMA_VERSION.into(),
+        bloop_version: env!("CARGO_PKG_VERSION").into(),
+        bloop_commit: git_version::git_version!(fallback = "unknown").into(),
+        github_user,
         device_id,
         org_name,
         tracking_id,
