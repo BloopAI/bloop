@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import {
+  FileResponse,
   HoverablesResponse,
   NLSearchResponse,
   SearchResponse,
@@ -38,14 +39,16 @@ export const search = (
 };
 
 export const getFileLines = (
-  q: string,
+  repo_ref: string,
+  path: string,
   line_start: number,
   line_end: number,
-): Promise<SearchResponse> => {
+): Promise<FileResponse> => {
   return http
-    .get('/q', {
+    .get(`/file`, {
       params: {
-        q,
+        repo_ref,
+        path,
         line_start,
         line_end,
       },

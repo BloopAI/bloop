@@ -95,10 +95,10 @@ const Chat = () => {
         if (data.Ok) {
           setResp(data.Ok);
           setThreadId(data.Ok.thread_id);
-          const newMessage = data.Ok.messages[0];
+          const newMessage = data.Ok;
           if (
             newMessage.results?.length &&
-            !newMessage.content &&
+            !newMessage.conclusion &&
             !firstResultCame
           ) {
             setChatOpen(false);
@@ -113,12 +113,12 @@ const Chat = () => {
             const lastMessage = prev?.slice(-1)[0];
             const messageToAdd = {
               author: ChatMessageAuthor.Server,
-              isLoading: newMessage.status === 'LOADING',
+              isLoading: !newMessage.finished,
               type: ChatMessageType.Answer,
               loadingSteps: newMessage.search_steps.map(
                 (s: { type: string; content: string }) => s.content,
               ),
-              text: newMessage.content,
+              text: newMessage.conclusion,
               results: newMessage.results,
             };
             const lastMessages: ChatMessage[] =

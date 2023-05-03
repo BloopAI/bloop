@@ -78,7 +78,11 @@ const ConversationResult = ({ recordId }: Props) => {
         loading={false}
       />
       <div className="flex flex-col gap-4">
-        <CodeAnnotation repoName={tab.repoName} citations={citations} />
+        <CodeAnnotation
+          repoName={tab.repoName}
+          repoRef={tab.key}
+          citations={citations}
+        />
         {otherBlocks.map((b, i) => {
           if ('New' in b && b.New.code && b.New.language) {
             return (

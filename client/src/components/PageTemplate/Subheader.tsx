@@ -75,7 +75,7 @@ const Subheader = () => {
       <div className="w-full max-w-[548px] flex-grow-[3]">
         <SearchInput />
       </div>
-      <div className="flex-1" />
+      <div className="flex-1 hidden lg:block" />
     </div>
   );
 };

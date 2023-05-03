@@ -139,7 +139,8 @@ export interface File {
 }
 
 export interface FileResponse {
-  content: string;
+  contents: string;
+  lang: string;
 }
 
 export interface FiltersItem {
