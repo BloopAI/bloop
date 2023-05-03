@@ -5,10 +5,9 @@ use crate::{indexes::Indexes, repo::RepoRef, symbol::SymbolLocations, text_range
 
 use axum::{extract::Query, response::IntoResponse, Extension};
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
 /// The request made to the `hoverable` endpoint.
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub(super) struct HoverableRequest {
     /// The repo_ref of the file of interest
     repo_ref: String,
@@ -18,23 +17,13 @@ pub(super) struct HoverableRequest {
 }
 
 /// The response from the `hoverable` endpoint.
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize)]
 pub(super) struct HoverableResponse {
     ranges: Vec<TextRange>,
 }
 
 impl super::ApiResponse for HoverableResponse {}
 
-#[utoipa::path(
-    get,
-    path = "/hoverable",
-    params(HoverableRequest),
-    responses(
-        (status = 200, description = "Execute query successfully", body = HoverableResponse),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn handle(
     Query(payload): Query<HoverableRequest>,
     Extension(indexes): Extension<Arc<Indexes>>,

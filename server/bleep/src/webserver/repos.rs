@@ -13,11 +13,10 @@ use axum::{
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
 use super::prelude::*;
 
-#[derive(Serialize, ToSchema, Debug, Eq)]
+#[derive(Serialize, Debug, Eq)]
 pub(super) struct Repo {
     pub(super) provider: Backend,
     pub(super) name: String,
@@ -87,7 +86,7 @@ impl PartialEq for Repo {
     }
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum ReposResponse {
     List(Vec<Repo>),
@@ -101,13 +100,6 @@ impl super::ApiResponse for ReposResponse {}
 /// Get a stream of status notifications about the indexing of each repository
 /// This endpoint opens an SSE stream
 //
-#[utoipa::path(get, path = "/repos/index-status",
-    responses(
-        (status = 200, description = "Execute query successfully", body = Sse),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn index_status(Extension(app): Extension<Application>) -> impl IntoResponse {
     let mut receiver = app.indexes.subscribe();
 
@@ -127,13 +119,6 @@ pub(super) async fn index_status(Extension(app): Extension<Application>) -> impl
 
 /// Retrieve all indexed repositories
 //
-#[utoipa::path(get, path = "/repos/indexed",
-    responses(
-        (status = 200, description = "Execute query successfully", body = Response),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn indexed(Extension(app): Extension<Application>) -> impl IntoResponse {
     let mut repos = vec![];
     app.repo_pool
@@ -144,13 +129,6 @@ pub(super) async fn indexed(Extension(app): Extension<Application>) -> impl Into
 }
 
 /// Get details of an indexed repository based on their id
-#[utoipa::path(get, path = "/repos/indexed/:ref",
-    responses(
-        (status = 200, description = "Execute query successfully", body = Response),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn get_by_id(
     Path(path): Path<Vec<String>>,
     Extension(app): Extension<Application>,
@@ -173,13 +151,6 @@ pub(super) async fn get_by_id(
 
 /// Delete a repository from the disk and any indexes
 //
-#[utoipa::path(delete, path = "/repos/indexed/:ref",
-    responses(
-        (status = 200, description = "Execute query successfully", body = Response),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn delete_by_id(
     Path(path): Path<Vec<String>>,
     Extension(app): Extension<Application>,
@@ -202,13 +173,6 @@ pub(super) async fn delete_by_id(
 }
 
 /// Synchronize a repo by its id
-#[utoipa::path(get, path = "/repos/sync/:ref",
-    responses(
-        (status = 200, description = "Execute query successfully", body = Response),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn sync(
     Path(path): Path<Vec<String>>,
     Extension(app): Extension<Application>,
@@ -223,13 +187,6 @@ pub(super) async fn sync(
 
 /// List all repositories that are either indexed, or available for indexing
 //
-#[utoipa::path(get, path = "/repos",
-    responses(
-        (status = 200, description = "Execute query successfully", body = Response),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn available(Extension(app): Extension<Application>) -> impl IntoResponse {
     let unknown_github = app
         .credentials
@@ -270,7 +227,7 @@ pub(super) async fn available(Extension(app): Extension<Application>) -> impl In
     (StatusCode::OK, Json(ReposResponse::List(repos)))
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub(super) struct SetIndexed {
     indexed: Vec<RepoRef>,
 }
@@ -278,13 +235,6 @@ pub(super) struct SetIndexed {
 /// Update the list of repositories that are currently being indexed.
 /// This will automatically trigger a sync of currently un-indexed repositories.
 //
-#[utoipa::path(put, path = "/repos", request_body = SetIndexed,
-    responses(
-        (status = 200, description = "Execute query successfully", body = Response),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn set_indexed(
     Extension(app): Extension<Application>,
     Json(new_list): Json<SetIndexed>,
@@ -306,7 +256,7 @@ pub(super) async fn set_indexed(
     json(ReposResponse::SyncQueued)
 }
 
-#[derive(Deserialize, IntoParams)]
+#[derive(Deserialize)]
 pub(super) struct ScanRequest {
     /// The path to scan
     path: String,
@@ -314,13 +264,6 @@ pub(super) struct ScanRequest {
 
 /// Gather recognized repository types from the filesystem
 ///
-#[utoipa::path(get, path = "/repos/scan",
-    responses(
-        (status = 200, description = "Execute query successfully", body = Response),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn scan_local(
     Query(scan_request): Query<ScanRequest>,
     Extension(app): Extension<Application>,

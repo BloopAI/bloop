@@ -92,13 +92,6 @@ const STATE_LEN: usize = 32;
 type State = String;
 
 /// Initiate a new login using a web-based OAuth flow.
-#[utoipa::path(get, path = "/auth/login/start",
-    responses(
-        (status = 200, description = "Execute query successfully", body = Response),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn login(
     Extension(app): Extension<Application>,
     Extension(auth_layer): Extension<Arc<AuthLayer>>,
@@ -153,13 +146,6 @@ pub(super) struct AuthorizedParams {
 /// Complete the login flow.
 ///
 /// Takes the `state` that has been established previously so we don't leak the actual keys.
-#[utoipa::path(post, path = "/auth/login/complete",
-    responses(
-        (status = 200, description = "Execute query successfully", body = Response),
-        (status = 400, description = "Bad request", body = EndpointError),
-        (status = 500, description = "Server error", body = EndpointError),
-    ),
-)]
 pub(super) async fn authorized(
     axum::extract::State(app): axum::extract::State<Application>,
     Extension(auth_layer): Extension<Arc<AuthLayer>>,

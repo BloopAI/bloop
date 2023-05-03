@@ -7,7 +7,6 @@ use tower::Service;
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
 use tracing::info;
-use utoipa::{OpenApi, ToSchema};
 
 mod aaa;
 pub mod answer;
@@ -34,7 +33,6 @@ pub(in crate::webserver) mod prelude {
     };
     pub(in crate::webserver) use serde::{Deserialize, Serialize};
     pub(in crate::webserver) use std::sync::Arc;
-    pub(in crate::webserver) use utoipa::{IntoParams, ToSchema};
 }
 
 pub async fn start(app: Application) -> anyhow::Result<()> {
@@ -90,10 +88,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         api = middleware::local_user(api, app.clone());
     }
 
-    api = api
-        .route("/api-doc/openapi.json", get(openapi_json::handle))
-        .route("/api-doc/openapi.yaml", get(openapi_yaml::handle))
-        .route("/health", get(health));
+    api = api.route("/health", get(health));
 
     let api = api
         .layer(Extension(app.indexes.clone()))
@@ -209,7 +204,7 @@ impl IntoResponse for Error {
 }
 
 /// The response upon encountering an error
-#[derive(serde::Serialize, PartialEq, Eq, ToSchema, Debug)]
+#[derive(serde::Serialize, PartialEq, Eq, Debug)]
 struct EndpointError<'a> {
     /// The kind of this error
     kind: ErrorKind,
@@ -220,7 +215,7 @@ struct EndpointError<'a> {
 
 /// The kind of an error
 #[allow(unused)]
-#[derive(serde::Serialize, PartialEq, Eq, ToSchema, Debug)]
+#[derive(serde::Serialize, PartialEq, Eq, Debug)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 enum ErrorKind {
@@ -265,42 +260,5 @@ async fn health(Extension(app): Extension<Application>) {
         // panic is fine here, we don't need exact reporting of
         // subsystem checks at this stage
         semantic.health_check().await.unwrap()
-    }
-}
-
-#[derive(OpenApi)]
-#[openapi(
-    paths(intelligence::handle),
-    components(schemas(
-        crate::symbol::Symbol,
-        crate::text_range::TextRange,
-        crate::text_range::Point,
-        EndpointError<'_>,
-        ErrorKind,
-        intelligence::TokenInfoResponse,
-        intelligence::SymbolOccurrence,
-        repos::ReposResponse,
-        repos::Repo,
-        repos::SetIndexed,
-        crate::repo::Backend,
-        crate::repo::RepoRemote,
-        crate::repo::SyncStatus,
-        github::GithubResponse,
-        github::GithubCredentialStatus,
-    ))
-)]
-struct ApiDoc;
-
-pub mod openapi_json {
-    use super::*;
-    pub async fn handle() -> impl IntoResponse {
-        Json(<ApiDoc as OpenApi>::openapi())
-    }
-}
-
-pub mod openapi_yaml {
-    use super::*;
-    pub async fn handle() -> impl IntoResponse {
-        <ApiDoc as OpenApi>::openapi().to_yaml().unwrap()
     }
 }

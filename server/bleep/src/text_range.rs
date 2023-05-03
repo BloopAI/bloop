@@ -1,10 +1,9 @@
 use std::cmp::{Ord, Ordering};
-use utoipa::ToSchema;
 
 use serde::{Deserialize, Serialize};
 
 /// A singular position in a text document
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Point {
     /// The byte index
     pub byte: usize,
@@ -34,7 +33,7 @@ impl Point {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TextRange {
     pub start: Point,
     pub end: Point,

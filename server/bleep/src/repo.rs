@@ -8,7 +8,6 @@ use std::{
     time::SystemTime,
 };
 use tracing::debug;
-use utoipa::ToSchema;
 
 use crate::{
     indexes,
@@ -35,7 +34,7 @@ impl<T> From<T> for FreshValue<T> {
 }
 
 // Types of repo
-#[derive(Serialize, Deserialize, ToSchema, Hash, PartialEq, Eq, Clone, Debug)]
+#[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum Backend {
     Local,
@@ -345,7 +344,7 @@ pub struct RepoMetadata {
     pub langs: language::LanguageInfo,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug, Hash)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum SyncStatus {
     Error { message: String },
@@ -365,7 +364,7 @@ impl SyncStatus {
     }
 }
 
-#[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct GitRemote {
     /// protocol to use during git operations
@@ -376,14 +375,14 @@ pub struct GitRemote {
     pub address: String,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum GitProtocol {
     Https,
     Ssh,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, PartialEq, Eq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum RepoRemote {
     Git(GitRemote),
