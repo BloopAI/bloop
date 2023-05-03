@@ -1,18 +1,22 @@
-use axum::{extract::Query, response::IntoResponse, Extension, Json};
+use axum::{
+    extract::{Path, Query},
+    response::IntoResponse,
+    Extension, Json,
+};
 use reqwest::StatusCode;
 
 use crate::{
     db,
-    webserver::{self, middleware::User, Error},
+    webserver::{self, middleware::User, Error, ErrorKind},
 };
 
-use super::Conversation;
+use super::{Conversation, ConversationId};
 
 #[derive(serde::Serialize)]
 pub struct ConversationPreview {
     pub thread_id: String,
     pub created_at: i64,
-    pub preview: String,
+    pub title: String,
 }
 
 pub(in crate::webserver) async fn list(
@@ -22,36 +26,17 @@ pub(in crate::webserver) async fn list(
 
     let user_id = user.0.ok_or_else(|| Error::user("missing user ID"))?;
 
-    // We create a nested query to fetch all lowest-ordinal "user" messages, grouped by
-    // conversation.
-
-    let mut conversations = sqlx::query_as! {
+    let conversations = sqlx::query_as! {
         ConversationPreview,
-        "SELECT c.thread_id, c.created_at, messages.content as preview \
-         FROM conversations c \
-         JOIN ( \
-             SELECT conversation_id, min(ordinal) ordinal FROM messages \
-             WHERE role = \"user\" \
-             GROUP BY conversation_id \
-         ) m ON m.conversation_id = c.id \
-         JOIN messages ON messages.conversation_id = c.id AND messages.ordinal = m.ordinal \
-         WHERE c.user_id = ?",
+        "SELECT thread_id, created_at, title \
+         FROM conversations \
+         WHERE user_id = ? \
+         ORDER BY created_at DESC",
         user_id,
     }
     .fetch_all(db)
     .await
     .map_err(Error::internal)?;
-
-    // Trim the preview, and only read up to the first newline.
-    for conversation in &mut conversations {
-        conversation.preview = conversation
-            .preview
-            .trim()
-            .split("\n")
-            .next()
-            .unwrap_or("")
-            .to_owned();
-    }
 
     Ok(Json(conversations))
 }
@@ -82,4 +67,16 @@ pub(in crate::webserver) async fn delete(
     }
 
     Ok(())
+}
+
+pub(in crate::webserver) async fn thread(
+    Path(thread_id): Path<String>,
+    Extension(user): Extension<User>,
+) -> webserver::Result<impl IntoResponse> {
+    let user_id = user.0.ok_or_else(|| Error::user("missing user ID"))?;
+    let conversation = Conversation::load(&ConversationId { thread_id, user_id })
+        .await?
+        .ok_or_else(|| Error::new(ErrorKind::NotFound, "thread was not found"))?;
+
+    Ok(Json(conversation.exchanges))
 }

@@ -4,14 +4,10 @@ CREATE TABLE conversations (
     user_id TEXT NOT NULL,
     thread_id TEXT NOT NULL,
     repo_ref TEXT NOT NULL,
-    -- JSON array of strings
-    path_aliases TEXT NOT NULL
-);
+    title TEXT NOT NULL,
 
-CREATE TABLE messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    conversation_id INTEGER REFERENCES conversations (id) ON DELETE CASCADE,
-    ordinal INTEGER NOT NULL,
-    role TEXT NOT NULL,
-    content TEXT NOT NULL
+    -- JSON serialized fields
+    exchanges TEXT NOT NULL,
+    llm_history TEXT NOT NULL,
+    path_aliases TEXT NOT NULL
 );

@@ -1,7 +1,7 @@
 use std::fs;
 
-use anyhow::{Result, anyhow};
-use once_cell::sync::{Lazy, OnceCell};
+use anyhow::{anyhow, Result};
+use once_cell::sync::OnceCell;
 use sqlx::SqlitePool;
 use tracing::debug;
 
@@ -19,11 +19,13 @@ pub async fn init(config: &Configuration) -> Result<()> {
 
     sqlx::migrate!().run(&pool).await?;
 
-    POOL.set(pool).map_err(|_| anyhow!("database was already initialized!"))?;
+    POOL.set(pool)
+        .map_err(|_| anyhow!("database was already initialized!"))?;
 
     Ok(())
 }
 
 pub async fn get() -> Result<&'static SqlitePool> {
-    POOL.get().ok_or(anyhow!("database pool was not initialized"))
+    POOL.get()
+        .ok_or(anyhow!("database pool was not initialized"))
 }

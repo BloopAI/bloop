@@ -3,17 +3,15 @@ use std::{
     collections::{HashMap, HashSet},
     mem,
     str::FromStr,
-    sync::Arc,
 };
 
 use anyhow::{anyhow, bail, Context, Result};
 use axum::{
-    extract::{Query, State},
+    extract::Query,
     response::{
         sse::{self, Sse},
         IntoResponse,
     },
-    routing::MethodRouter,
     Extension,
 };
 use futures::{
@@ -34,13 +32,13 @@ use crate::{
     Application,
 };
 
+pub mod conversations;
 mod llm_gateway;
 mod partial_parse;
 mod prompts;
 mod response;
-pub mod conversations;
 
-use response::{ResponseState, SearchResult, SearchStep, Update};
+use response::{Exchange, SearchResult, SearchStep, Update};
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
@@ -75,7 +73,7 @@ pub(super) async fn handle(
     let q = params.q;
     let stream = async_stream::try_stream! {
         let mut action_stream = Action::Query(q).into()?;
-        let mut response = ResponseState::new(&conversation_id, &conversation);
+        let mut exchange = Exchange::default();
 
         loop {
             // The main loop. Here, we create two streams that operate simultaneously; the update
@@ -84,7 +82,6 @@ pub(super) async fn handle(
             // Both of these operate together, and we repeat the process for every new action.
 
             use futures::future::FutureExt;
-
 
             let (update_tx, update_rx) = tokio::sync::mpsc::channel(10);
 
@@ -100,8 +97,8 @@ pub(super) async fn handle(
             for await item in stream::select(left_stream, right_stream) {
                 match item {
                     Either::Left(upd) => {
-                        response.apply_update(upd);
-                        yield response.clone()
+                        exchange.apply_update(upd);
+                        yield exchange.clone()
                     },
                     Either::Right(n) => next = n?,
                 }
@@ -122,11 +119,14 @@ pub(super) async fn handle(
         //         full_update.conclusion().unwrap_or_default(),
         //     ));
 
+        conversation.exchanges.push(exchange);
         conversation.store(conversation_id).await?;
     };
 
     let stream = stream
-        .map(|upd: Result<_>| sse::Event::default().json_data(upd.map_err(|e| e.to_string())))
+        .map(|upd: Result<Exchange>| {
+            sse::Event::default().json_data(upd.map_err(|e| e.to_string()))
+        })
         .chain(futures::stream::once(async {
             Ok(sse::Event::default().data("[DONE]"))
         }));
@@ -142,7 +142,8 @@ pub(super) struct ConversationId {
 
 #[derive(Clone, Debug)]
 pub(super) struct Conversation {
-    history: Vec<llm_gateway::api::Message>,
+    llm_history: Vec<llm_gateway::api::Message>,
+    exchanges: Vec<Exchange>,
     path_aliases: Vec<String>,
     repo_ref: RepoRef,
 }
@@ -153,10 +154,11 @@ impl Conversation {
         // an initial (hidden) prompt that we pose to the user.
 
         Self {
-            history: vec![
+            llm_history: vec![
                 llm_gateway::api::Message::system(prompts::SYSTEM),
                 llm_gateway::api::Message::assistant(prompts::INITIAL_PROMPT),
             ],
+            exchanges: Vec::new(),
             path_aliases: Vec::new(),
             repo_ref,
         }
@@ -181,7 +183,7 @@ impl Conversation {
         let (action, raw_response) = action_stream.load().await?;
 
         if !matches!(action, Action::Query(..)) {
-            self.history
+            self.llm_history
                 .push(llm_gateway::api::Message::assistant(&raw_response));
             trace!("handling raw action: {raw_response}");
         }
@@ -350,11 +352,11 @@ impl Conversation {
             }
         };
 
-        self.history.push(llm_gateway::api::Message::user(
+        self.llm_history.push(llm_gateway::api::Message::user(
             &(question + "\n\nAnswer only with a JSON action."),
         ));
 
-        let stream = ctx.llm_gateway.chat(&self.history).await?.boxed();
+        let stream = ctx.llm_gateway.chat(&self.llm_history).await?.boxed();
         let action_stream = ActionStream {
             tokens: String::new(),
             action: Either::Left(stream),
@@ -461,7 +463,7 @@ impl Conversation {
         path_aliases: &[String],
     ) -> Result<()> {
         let messages = self
-            .history
+            .llm_history
             .iter()
             .filter(|m| m.role == "user")
             .map(|m| &m.content)
@@ -497,7 +499,7 @@ impl Conversation {
 
     async fn store(self, id: ConversationId) -> Result<()> {
         let db = db::get().await?;
-        let transaction = db.begin().await?;
+        let mut transaction = db.begin().await?;
 
         // Delete the old conversation for simplicity. This also deletes all its messages.
         let id2 = id.clone();
@@ -507,39 +509,36 @@ impl Conversation {
             id2.user_id,
             id2.thread_id,
         }
-        .execute(db)
+        .execute(&mut transaction)
         .await?;
 
         let repo_ref = self.repo_ref.to_string();
+        let title = self
+            .exchanges
+            .first()
+            .and_then(|list| list.query())
+            .and_then(|q| q.split("\n").next())
+            .context("couldn't find conversation title")?;
+
+        let exchanges = serde_json::to_string(&self.exchanges)?;
+        let llm_history = serde_json::to_string(&self.llm_history)?;
         let path_aliases = serde_json::to_string(&self.path_aliases)?;
-        let conversation_id = sqlx::query! {
-            "INSERT INTO conversations (repo_ref, user_id, thread_id, path_aliases, created_at) \
-             VALUES (?, ?, ?, ?, strftime('%s', 'now')) \
-             RETURNING id",
-            repo_ref,
+        sqlx::query! {
+            "INSERT INTO conversations (\
+               user_id, thread_id, repo_ref, title, exchanges, llm_history, \
+               path_aliases, created_at\
+             ) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))",
             id.user_id,
             id.thread_id,
+            repo_ref,
+            title,
+            exchanges,
+            llm_history,
             path_aliases,
         }
-        .fetch_one(db)
-        .await?
-        .id;
-
-        for (i, message) in self.history.iter().enumerate() {
-            let i = i as i32;
-            let llm_gateway::api::Message { content, role } = message.clone();
-
-            sqlx::query! {
-                "INSERT INTO messages (conversation_id, ordinal, role, content) \
-                 VALUES (?, ?, ?, ?)",
-                conversation_id,
-                i,
-                role,
-                content,
-            }
-            .execute(db)
-            .await?;
-        }
+        .execute(&mut transaction)
+        .await?;
 
         transaction.commit().await?;
 
@@ -552,7 +551,7 @@ impl Conversation {
         let ConversationId { thread_id, user_id } = conversation_id.clone();
 
         let row = sqlx::query! {
-            "SELECT id, repo_ref, path_aliases FROM conversations \
+            "SELECT repo_ref, llm_history, exchanges, path_aliases FROM conversations \
              WHERE user_id = ? AND thread_id = ?",
             user_id,
             thread_id,
@@ -567,21 +566,13 @@ impl Conversation {
 
         let repo_ref = RepoRef::from_str(&row.repo_ref).context("failed to parse repo ref")?;
         let path_aliases = serde_json::from_str(&row.path_aliases)?;
-
-        let history = sqlx::query_as! {
-            llm_gateway::api::Message,
-            "SELECT role, content FROM messages \
-             WHERE conversation_id = ? \
-             ORDER BY ordinal ASC",
-            row.id,
-        }
-        .fetch(db)
-        .try_collect::<Vec<_>>()
-        .await?;
+        let llm_history = serde_json::from_str(&row.llm_history)?;
+        let exchanges = serde_json::from_str(&row.exchanges)?;
 
         Ok(Some(Self {
             repo_ref,
-            history,
+            llm_history,
+            exchanges,
             path_aliases,
         }))
     }
