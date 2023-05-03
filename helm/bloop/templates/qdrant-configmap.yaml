@@ -8,7 +8,7 @@ data:
     SET_INDEX=${HOSTNAME##*-}
     {{- if and (.Values.qdrant.restore.enabled) (eq (.Values.qdrant.replicaCount | quote)  (1 | quote)) }}
     echo "Starting initializing for pod $SET_INDEX and snapshots restoration"
-    ./qdrant --storage-snapshot {{ .Values.qdrant.config.storage.snapshots_path }}/restore.snapshot
+    ./qdrant --storage-snapshot {{ .Values.qdrant.config.storage.snapshots_path }}/restore.snapshot --force-snapshot
     {{- else }}
     echo "Starting initializing for pod $SET_INDEX"
     if [ "$SET_INDEX" = "0" ]; then
