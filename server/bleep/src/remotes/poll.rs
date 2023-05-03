@@ -63,6 +63,10 @@ pub(crate) async fn sync_github_status(app: Application) {
         }
     };
 
+    // In case this is a GitHub App installation, we get the
+    // credentials from CLI/config
+    update_credentials(&app).await;
+
     let mut last_poll = UNIX_EPOCH;
     loop {
         let Some(github) = app.credentials.github() else {
