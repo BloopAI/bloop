@@ -5,7 +5,7 @@ use either::Either;
 use octocrab::{auth::DeviceCodes, Octocrab};
 use reqwest::header::ACCEPT;
 use secrecy::SecretString;
-use tracing::{error, warn};
+use tracing::{debug, error, warn};
 
 use std::time::{Duration, Instant};
 
@@ -113,11 +113,13 @@ async fn poll_for_oauth_token(
     let mut interval = Duration::from_secs(codes.interval);
     let mut clock = tokio::time::interval(interval);
 
+    debug!(?interval, "github auth started");
+
     let auth = loop {
         clock.tick().await;
 
         if Instant::now().duration_since(start) > Duration::from_secs(600) {
-            error!("Github authorization timed out!");
+            error!("github authorization timed out!");
             return;
         }
 
@@ -125,32 +127,38 @@ async fn poll_for_oauth_token(
             Ok(Either::Left(auth)) => break auth,
             Ok(Either::Right(cont)) => match cont {
                 octocrab::auth::Continue::SlowDown => {
-                    // We were request to slow down. We add five seconds to the polling
+                    // We were request to slow down. We add one second to the polling
                     // duration.
                     interval += Duration::from_secs(5);
+                    debug!(?interval, "slowing down polling");
+
                     clock = tokio::time::interval(interval);
-                    // The first tick happens instantly, so we tick that off immediately.
                     clock.tick().await;
                 }
                 octocrab::auth::Continue::AuthorizationPending => {
+                    debug!(?interval, "waiting for user");
                     // The user has not clicked authorize yet, but nothing has gone wrong.
                     // We keep polling.
                 }
             },
             Err(err) => {
-                warn!(?err, "GitHub authorization failed");
+                warn!(?err, "github authorization failed");
                 return;
             }
         }
     };
 
+    debug!("acquired credentials");
     app.credentials.set_github(auth.into());
+
     let saved = app
         .config
         .source
         .save_credentials(&app.credentials.serialize().await);
 
     if let Err(err) = saved {
-        error!(?err, "Failed to save credentials to disk");
+        error!(?err, "failed to save credentials to disk");
     }
+
+    debug!("github auth complete");
 }

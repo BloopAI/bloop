@@ -29,9 +29,9 @@ const POLL_INTERVAL_MINUTE: &[Duration] = &[
     Duration::from_secs(30 * 60),
 ];
 
-pub(crate) async fn sync_repositories(app: Application) {
+pub(crate) async fn sync_github_status(app: Application) {
     const POLL_PERIOD: Duration = POLL_INTERVAL_MINUTE[1];
-    const LIVENESS: Duration = Duration::from_secs(3);
+    const LIVENESS: Duration = Duration::from_secs(1);
 
     let timeout = || async {
         sleep(LIVENESS).await;
@@ -69,16 +69,22 @@ pub(crate) async fn sync_repositories(app: Application) {
             timeout().await;
             continue;
 	};
+        debug!("credentials exist");
 
         let Ok(repos) = github.current_repo_list().await else {
             timeout().await;
             continue;
 	};
+        debug!("repo list updated");
 
         let updated = app.credentials.github_updated().unwrap();
         let new = github.update_repositories(repos);
 
+        // store the updated credentials here
         app.credentials.set_github(new);
+
+        // then retrieve username & other maintenance
+        update_credentials(&app).await;
 
         // swallow the event that's generated from this update
         _ = updated.recv_async().await;
@@ -86,43 +92,40 @@ pub(crate) async fn sync_repositories(app: Application) {
     }
 }
 
-pub(crate) async fn check_credentials(app: Application) {
-    loop {
-        if app.env.allow(Feature::GithubInstallation) {
-            match app.credentials.github().and_then(|c| c.expiry()) {
-                // If we have a valid token, do nothing.
-                Some(expiry) if expiry > Utc::now() + chrono::Duration::minutes(10) => {}
+async fn update_credentials(app: &Application) {
+    if app.env.allow(Feature::GithubInstallation) {
+        match app.credentials.github().and_then(|c| c.expiry()) {
+            // If we have a valid token, do nothing.
+            Some(expiry) if expiry > Utc::now() + chrono::Duration::minutes(10) => {}
 
-                _ => {
-                    if let Err(e) = remotes::github::refresh_github_installation_token(&app).await {
-                        error!(?e, "failed to get GitHub token");
-                    }
+            _ => {
+                if let Err(e) = remotes::github::refresh_github_installation_token(app).await {
+                    error!(?e, "failed to get GitHub token");
                 }
             }
         }
+    }
 
-        if app.env.allow(Feature::GithubDeviceFlow) {
-            let expired = if let Some(github) = app.credentials.github() {
-                let username = github.validate().await;
-                if let Ok(Some(ref user)) = username {
-                    app.credentials.set_user(user.into()).await;
-                }
-
-                username.is_err()
-            } else {
-                true
-            };
-
-            if expired && app.credentials.remove(&Backend::Github).is_some() {
-                app.config
-                    .source
-                    .save_credentials(&app.credentials.serialize().await)
-                    .unwrap();
-                debug!("github oauth is invalid; credentials removed");
+    if app.env.allow(Feature::GithubDeviceFlow) {
+        let expired = if let Some(github) = app.credentials.github() {
+            let username = github.validate().await;
+            if let Ok(Some(ref user)) = username {
+                debug!(?user, "updated user");
+                app.credentials.set_user(user.into()).await;
             }
-        }
 
-        sleep(POLL_INTERVAL_MINUTE[0]).await;
+            username.is_err()
+        } else {
+            true
+        };
+
+        if expired && app.credentials.remove(&Backend::Github).is_some() {
+            app.config
+                .source
+                .save_credentials(&app.credentials.serialize().await)
+                .unwrap();
+            debug!("github oauth is invalid; credentials removed");
+        }
     }
 }
 
