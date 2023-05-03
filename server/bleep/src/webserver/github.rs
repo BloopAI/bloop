@@ -53,6 +53,8 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
     };
 
     let github = octocrab::Octocrab::builder()
+        .base_uri("https://github.com/")
+        .unwrap()
         .add_header(ACCEPT, "application/json".to_string())
         .build()
         .map_err(|_| Error::internal("failed to build octocrab client"))?;
