@@ -167,6 +167,7 @@ fn collection_config() -> CreateCollection {
             config: Some(vectors_config::Config::Params(VectorParams {
                 size: 384,
                 distance: Distance::Cosine.into(),
+                ..Default::default()
             })),
         }),
         ..Default::default()
@@ -457,7 +458,10 @@ impl Semantic {
         if !datapoints.is_empty() {
             let num_datapoints = datapoints.len();
             debug!(point_count = num_datapoints, "updating docs");
-            let upserted = self.qdrant.upsert_points(COLLECTION_NAME, datapoints).await;
+            let upserted = self
+                .qdrant
+                .upsert_points(COLLECTION_NAME, datapoints, None)
+                .await;
             if upserted.is_ok() {
                 info!(
                     ?chunk_prefix,
@@ -485,7 +489,10 @@ impl Semantic {
             ..Default::default()
         }
         .into();
-        let _ = self.qdrant.delete_points(COLLECTION_NAME, &selector).await;
+        let _ = self
+            .qdrant
+            .delete_points(COLLECTION_NAME, &selector, None)
+            .await;
     }
 
     pub fn gpt2_token_count(&self, input: &str) -> usize {

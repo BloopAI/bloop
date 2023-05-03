@@ -26,7 +26,7 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 color-eyre = "0.6.2"
 once_cell = "1.17.1"
 sentry = "0.31.0"
-qdrant-client = "0.11.6"
+qdrant-client = "1.1.2"
 git-version = "0.3.5"
 
 [target.'cfg(unix)'.dependencies]
