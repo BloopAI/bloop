@@ -217,8 +217,7 @@ impl Application {
             joins.spawn(self.write_index().startup_scan());
         } else {
             if !self.config.disable_background {
-                tokio::spawn(remotes::sync_repositories(self.clone()));
-                tokio::spawn(remotes::check_credentials(self.clone()));
+                tokio::spawn(remotes::sync_github_status(self.clone()));
                 tokio::spawn(remotes::check_repo_updates(self.clone()));
             }
 
