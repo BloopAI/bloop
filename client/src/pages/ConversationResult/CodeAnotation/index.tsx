@@ -19,6 +19,7 @@ type Comment = {
 
 type Props = {
   repoName: string;
+  repoRef: string;
   citations: Record<string, Comment[]>;
 };
 
@@ -31,7 +32,7 @@ export const colors = [
   [20, 184, 166],
 ];
 
-const CodeAnnotation = ({ repoName, citations }: Props) => {
+const CodeAnnotation = ({ repoName, repoRef, citations }: Props) => {
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.MODAL,
   );
@@ -82,6 +83,7 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
           <AnnotatedFile
             key={filePath}
             repoName={repoName}
+            repoRef={repoRef}
             filePath={filePath}
             onResultClick={onResultClick}
             cites={citations[filePath]}
