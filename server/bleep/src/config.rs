@@ -26,6 +26,11 @@ pub struct Configuration {
     /// Directory to store indexes
     pub index_dir: PathBuf,
 
+    /// Directory to store persistent data
+    #[clap(long, default_value_os_t = default_data_dir())]
+    #[serde(default = "default_data_dir")]
+    pub data_dir: PathBuf,
+
     #[clap(long, default_value_t = false)]
     #[serde(skip)]
     /// Quit after indexing the specified repos
@@ -216,6 +221,8 @@ impl Configuration {
 
             index_dir: right_if_default!(b.index_dir, a.index_dir, default_index_path()),
 
+            data_dir: b.data_dir,
+
             index_only: b.index_only | a.index_only,
 
             disable_background: b.disable_background | a.disable_background,
@@ -308,6 +315,13 @@ where
 fn default_index_path() -> PathBuf {
     match directories::ProjectDirs::from("ai", "bloop", "bleep") {
         Some(dirs) => dirs.cache_dir().to_owned(),
+        None => "bloop_index".into(),
+    }
+}
+
+fn default_data_dir() -> PathBuf {
+    match directories::ProjectDirs::from("ai", "bloop", "bloop") {
+        Some(dirs) => dirs.data_dir().join("bleep"),
         None => "bloop_index".into(),
     }
 }

@@ -1,89 +1,46 @@
-use super::{Conversation, ConversationId};
-
-/// The continually updated response object. Initial events from the server contain
-/// nulls or defaults. This object is updated via `ResponseState::apply_update` as we
-/// recieve stream portions of the answer.
-#[derive(serde::Serialize, Debug, Clone, Default)]
-pub struct ResponseState {
-    thread_id: String,
-    user_id: String,
-
-    /// A GPT generated description of this thread.
-    description: Option<String>,
-
-    // TODO: tooling-state-update/@np should contain history of chats between user and
-    // assistant only, omitting system prompts or intermediate assistant steps.
-    messages: Vec<UpdatableMessage>,
+/// A continually updated conversation exchange.
+///
+/// This contains the query from the user, the intermediate steps the model takes, and the final
+/// conclusion from the model alongside results, if any.
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
+pub struct Exchange {
+    finished: bool,
+    conclusion: Option<String>,
+    search_steps: Vec<SearchStep>,
+    results: Vec<SearchResult>,
 }
 
-impl ResponseState {
-    /// Constructs a new `ResponseState` for a given conversation.
+impl Exchange {
+    /// Advance this exchange.
     ///
-    /// TODO: this should also extract and populate conversation history.
-    pub(super) fn new(conversation_id: &ConversationId, conversation: &Conversation) -> Self {
-        let thread_id = conversation_id.thread_id.clone();
-        let user_id = conversation_id.user_id.clone();
-        let description = Some(format!(
-            "New conversation in {}",
-            conversation.repo_ref.display_name()
-        ));
-        let messages = vec![UpdatableMessage::Assistant(AssistantMessage::default())];
-        Self {
-            thread_id,
-            user_id,
-            description,
-            messages,
-        }
-    }
-
-    /// A reference to the (partial) response from the assistant
-    fn current_message(&self) -> &AssistantMessage {
-        match self.messages.last().unwrap() {
-            UpdatableMessage::User(_) => {
-                panic!("called `current_message` when last message was a `user` message")
-            }
-            UpdatableMessage::Assistant(a) => a,
-        }
-    }
-
-    /// A mutable reference to the (partial) response from the assistant
-    fn current_message_mut(&mut self) -> &mut AssistantMessage {
-        match self.messages.last_mut().unwrap() {
-            UpdatableMessage::User(_) => {
-                panic!("called `current_message_mut` when last message was a `user` message")
-            }
-            UpdatableMessage::Assistant(a) => a,
-        }
-    }
-
-    /// Applies an `Update` to advance the `ResponseState`. This should always be additive. An
-    /// update should not result in fewer search results or fewer search steps.
+    /// This should always be additive. An update should not result in fewer search results or fewer
+    /// search steps.
     pub fn apply_update(&mut self, update: Update) {
         match update {
-            Update::Step(search_step) => self.add_search_step(search_step),
+            Update::Step(search_step) => self.search_steps.push(search_step),
             Update::Result(search_results) => self.set_results(search_results),
         }
     }
 
-    /// Update `ResponseState` to add another search step
-    fn add_search_step(&mut self, step: SearchStep) {
-        self.current_message_mut().search_steps.push(step);
+    /// Get the query associated with this exchange, if it has been made.
+    pub fn query(&self) -> Option<&str> {
+        self.search_steps.iter().find_map(|step| match step {
+            SearchStep::Query(q) => Some(q.as_str()),
+            _ => None,
+        })
     }
 
-    /// Update `ResponseState` to set the current search result list.
-    ///
-    /// NOTE: we might want to rework this to work like `Self::add_search_step`, which is additive
+    /// Set the current search result list.
     fn set_results(&mut self, mut results: Vec<SearchResult>) {
         // fish out the conclusion from the result list, if any
-        //
-        // the conclusion is attached as message.content
         let conclusion = results
             .iter()
             .position(SearchResult::is_conclusion)
-            .and_then(|idx| {
-                self.finish_message();
-                results.remove(idx).conclusion()
-            });
+            .and_then(|idx| results.remove(idx).conclusion());
+
+        if conclusion.is_some() {
+            self.finished = true;
+        }
 
         // we always want the results to be additive, however
         // some updates may result in fewer number of search results
@@ -93,51 +50,15 @@ impl ResponseState {
         //
         // we only update the search results when the latest update
         // gives us more than what we already have
-        if self.current_message().results.len() <= results.len() {
-            self.current_message_mut().results = results;
+        if self.results.len() <= results.len() {
+            self.results = results;
         }
 
-        self.current_message_mut().content = conclusion;
-    }
-
-    /// Conclude the current response from the assistant
-    ///
-    /// TODO: this should perform some state-management to advance `Self::current_message`.
-    fn finish_message(&mut self) {
-        self.current_message_mut().status = MessageStatus::Finished;
+        self.conclusion = conclusion;
     }
 }
 
-#[derive(serde::Serialize, Debug, Clone)]
-#[serde(tag = "role", rename_all = "lowercase")]
-enum UpdatableMessage {
-    User(UserMessage),
-    Assistant(AssistantMessage),
-}
-
-#[derive(serde::Serialize, Debug, Clone)]
-struct UserMessage {
-    content: String,
-}
-
-#[derive(serde::Serialize, Debug, Clone, Default)]
-struct AssistantMessage {
-    status: MessageStatus,
-    content: Option<String>,
-    search_steps: Vec<SearchStep>,
-    results: Vec<SearchResult>,
-}
-
-#[derive(serde::Serialize, Debug, Copy, Clone, Default)]
-#[serde(rename_all = "UPPERCASE")]
-enum MessageStatus {
-    Finished,
-
-    #[default]
-    Loading,
-}
-
-#[derive(serde::Serialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 #[serde(rename_all = "UPPERCASE", tag = "type", content = "content")]
 #[non_exhaustive]
 pub enum SearchStep {
@@ -155,7 +76,7 @@ pub enum Update {
     Result(Vec<SearchResult>),
 }
 
-#[derive(serde::Serialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub enum SearchResult {
     Cite(CiteResult),
     New(NewResult),
@@ -196,7 +117,7 @@ impl SearchResult {
     }
 }
 
-#[derive(serde::Serialize, Default, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
 pub struct CiteResult {
     #[serde(skip)]
     path_alias: Option<u64>,
@@ -206,13 +127,13 @@ pub struct CiteResult {
     end_line: Option<u64>,
 }
 
-#[derive(serde::Serialize, Default, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
 pub struct NewResult {
     language: Option<String>,
     code: Option<String>,
 }
 
-#[derive(serde::Serialize, Default, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
 pub struct ModifyResult {
     #[serde(skip)]
     path_alias: Option<u64>,
@@ -221,13 +142,13 @@ pub struct ModifyResult {
     diff: Option<ModifyResultHunk>,
 }
 
-#[derive(serde::Serialize, Default, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
 struct ModifyResultHunk {
     header: Option<ModifyResultHunkHeader>,
     lines: Vec<String>,
 }
 
-#[derive(serde::Serialize, Default, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
 struct ModifyResultHunkHeader {
     old_start: Option<usize>,
     old_lines: Option<usize>,
@@ -235,7 +156,7 @@ struct ModifyResultHunkHeader {
     new_lines: Option<usize>,
 }
 
-#[derive(serde::Serialize, Default, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
 pub struct ConcludeResult {
     comment: Option<String>,
 }

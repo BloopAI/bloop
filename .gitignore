@@ -28,6 +28,8 @@ server/schema
 server/target
 server/tmp_index
 
+server/bleep/bleep.db*
+
 playwright-report
 .tests.env
 

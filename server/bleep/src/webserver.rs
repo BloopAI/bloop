@@ -63,7 +63,15 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         // misc
         .route("/search", get(semantic::complex_search))
         .route("/file", get(file::handle))
-        .route("/answer", answer::endpoint());
+        .route("/answer", get(answer::handle))
+        .route(
+            "/answer/conversations",
+            get(answer::conversations::list).delete(answer::conversations::delete),
+        )
+        .route(
+            "/answer/conversations/:thread_id",
+            get(answer::conversations::thread),
+        );
 
     if app.env.allow(Feature::AnyPathScan) {
         api = api.route("/repos/scan", get(repos::scan_local));
