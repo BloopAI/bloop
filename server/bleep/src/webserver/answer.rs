@@ -517,7 +517,7 @@ impl Conversation {
             .exchanges
             .first()
             .and_then(|list| list.query())
-            .and_then(|q| q.split("\n").next())
+            .and_then(|q| q.split('\n').next())
             .context("couldn't find conversation title")?;
 
         let exchanges = serde_json::to_string(&self.exchanges)?;
