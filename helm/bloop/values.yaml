@@ -175,6 +175,10 @@ qdrant:
     awsAccessKey: ""
     awsSecretAccessKey: ""
 
+  restore:
+    enabled: false
+    snapshotName: "" # if empty - latest one available will be restored
+
   #only supported for single node qdrant clusters.
   snapshotRestoration:
     enabled: false

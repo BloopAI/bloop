@@ -6,9 +6,9 @@ data:
   initialize.sh: |
     #!/bin/sh
     SET_INDEX=${HOSTNAME##*-}
-    {{- if and (.Values.qdrant.snapshotRestoration.enabled) (eq (.Values.qdrant.replicaCount | quote)  (1 | quote)) }}
+    {{- if and (.Values.qdrant.restore.enabled) (eq (.Values.qdrant.replicaCount | quote)  (1 | quote)) }}
     echo "Starting initializing for pod $SET_INDEX and snapshots restoration"
-    ./qdrant {{ range .Values.qdrant.snapshotRestoration.snapshots }} --snapshot {{ . }} {{ end }}
+    ./qdrant --snapshot {{ .Values.qdrant.config.storage.snapshots_path }}/restore.snapshot
     {{- else }}
     echo "Starting initializing for pod $SET_INDEX"
     if [ "$SET_INDEX" = "0" ]; then

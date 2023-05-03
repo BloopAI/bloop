@@ -1,0 +1,23 @@
+{{ if .Values.qdrant.restore.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "qdrant.fullname" . }}-restore-script
+data:
+  restore-script.sh: |
+    mkdir {{ .Values.qdrant.config.storage.snapshots_path }} -p
+
+    snapshot_file_name={{ .Values.qdrant.restore.snapshotName }}
+    if [[ ${snapshot_file_name} == "" ]]; then
+      printf "Snapshot name not defined, taking latest available snapshot for ${GITHUB_ORG}\n"
+      snapshot_file_name=$(aws s3 ls s3://{{ .Values.qdrant.backup.awsBucketName }}/${GITHUB_ORG}/ | sort | tail -1 | awk '{print $4}')
+    fi
+
+    if [[ ${snapshot_file_name} == "" ]]; then
+      printf "Failed to find any snapshots for ${GITHUB_ORG}\n"
+      exit 1
+    fi
+
+    printf "Preparing snapshot ${snapshot_file_name}\n"
+    aws s3 cp s3://{{ .Values.qdrant.backup.awsBucketName }}/${GITHUB_ORG}/${snapshot_file_name} {{ .Values.qdrant.config.storage.snapshots_path }}/restore.snapshot
+{{ end -}}
