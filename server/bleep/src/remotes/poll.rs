@@ -99,7 +99,7 @@ async fn update_credentials(app: &Application) {
             Some(expiry) if expiry > Utc::now() + chrono::Duration::minutes(10) => {}
 
             _ => {
-                if let Err(e) = remotes::github::refresh_github_installation_token(&app).await {
+                if let Err(e) = remotes::github::refresh_github_installation_token(app).await {
                     error!(?e, "failed to get GitHub token");
                 }
             }
