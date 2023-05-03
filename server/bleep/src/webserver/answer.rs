@@ -451,11 +451,11 @@ impl Conversation {
                 })
                 .collect::<Vec<_>>();
 
-            Ok::<_, anyhow::Error>(dbg!(serde_json::json!({
+            Ok::<_, anyhow::Error>(serde_json::json!({
                 "explanations": explanations,
                 "path": path,
                 "relevant_dependencies": normalized_deps,
-            })))
+            }))
         });
 
         let out = chunks
