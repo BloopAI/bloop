@@ -148,7 +148,7 @@ async fn poll_for_oauth_token(
                 octocrab::auth::Continue::SlowDown => {
                     // We were request to slow down. We add five seconds to the polling
                     // duration.
-                    interval += Duration::from_secs(5);
+                    interval += Duration::from_secs(1);
                     clock = tokio::time::interval(interval);
                     // The first tick happens instantly, so we tick that off immediately.
                     clock.tick().await;
