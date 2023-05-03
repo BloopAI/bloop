@@ -186,6 +186,13 @@ impl Error {
             })),
         }
     }
+
+    fn message(&self) -> &str {
+        match &self.body {
+            Json(Response::Error(EndpointError { message, .. })) => message.as_ref(),
+            _ => "",
+        }
+    }
 }
 
 impl From<anyhow::Error> for Error {

@@ -27,6 +27,7 @@ use tracing::trace;
 
 use super::middleware::User;
 use crate::{
+    analytics::{EventData, QueryEvent},
     db,
     query::parser::{self, SemanticQuery},
     repo::RepoRef,
@@ -58,10 +59,42 @@ pub(super) async fn handle(
     Extension(app): Extension<Application>,
     Extension(user): Extension<User>,
 ) -> super::Result<impl IntoResponse> {
+    let query_id = uuid::Uuid::new_v4();
+    let response = _handle(
+        Query(params),
+        Extension(app.clone()),
+        Extension(user.clone()),
+        query_id,
+    )
+    .await;
+
+    if let Err(err) = response.as_ref() {
+        app.track_query(
+            &user,
+            &QueryEvent {
+                query_id,
+                data: EventData::output_stage("error")
+                    .with_payload("status", err.status.as_u16())
+                    .with_payload("message", err.message()),
+            },
+        );
+    }
+
+    response
+}
+
+pub(super) async fn _handle(
+    Query(params): Query<Params>,
+    Extension(app): Extension<Application>,
+    Extension(user): Extension<User>,
+    query_id: uuid::Uuid,
+) -> super::Result<impl IntoResponse> {
     let conversation_id = ConversationId {
         user_id: user
             .0
-            .ok_or_else(|| super::Error::user("didn't have user ID"))?,
+            .as_ref()
+            .ok_or_else(|| super::Error::user("didn't have user ID"))?
+            .to_string(),
         thread_id: params.thread_id,
     };
 
@@ -69,7 +102,7 @@ pub(super) async fn handle(
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
-    let ctx = AppContext::new(app)
+    let ctx = AppContext::new(app, user, query_id)
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
     let q = params.q;
     let stream = async_stream::try_stream! {
@@ -210,6 +243,8 @@ impl Conversation {
                     .send(Update::Step(SearchStep::Query(s.clone())))
                     .await?;
 
+                ctx.track_query(EventData::input_stage("query").with_payload("q", &s));
+
                 parser::parse_nl(&s)?
                     .as_semantic()
                     .context("got a 'Grep' query")?
@@ -253,11 +288,13 @@ impl Conversation {
                     .map(|c| c.relative_path)
                     .collect::<Vec<_>>();
 
+                let is_semantic = paths.is_empty();
+
                 // If there are no lexical results, perform a semantic search.
                 if paths.is_empty() {
                     // TODO: Semantic search should accept unparsed queries
                     let nl_query = SemanticQuery {
-                        target: Some(parser::Literal::Plain(Cow::Owned(search))),
+                        target: Some(parser::Literal::Plain(Cow::Owned(search.clone()))),
                         repos: [parser::Literal::Plain(Cow::Owned(
                             self.repo_ref.display_name(),
                         ))]
@@ -287,6 +324,13 @@ impl Conversation {
                     paths = semantic_paths;
                 }
 
+                ctx.track_query(
+                    EventData::input_stage("path search")
+                        .with_payload("query", &search)
+                        .with_payload("is_semantic", is_semantic)
+                        .with_payload("results", &paths),
+                );
+
                 Some("§alias, path".to_owned())
                     .into_iter()
                     .chain(paths.iter().map(|p| format!("{}, {p}", self.path_alias(p))))
@@ -302,7 +346,7 @@ impl Conversation {
                     .await?;
 
                 let nl_query = SemanticQuery {
-                    target: Some(parser::Literal::Plain(Cow::Owned(query))),
+                    target: Some(parser::Literal::Plain(Cow::Owned(query.clone()))),
                     repos: [parser::Literal::Plain(Cow::Owned(
                         self.repo_ref.display_name(),
                     ))]
@@ -335,6 +379,12 @@ impl Conversation {
                         })
                     })
                     .collect::<Vec<_>>();
+
+                ctx.track_query(
+                    EventData::input_stage("semantic code search")
+                        .with_payload("query", &query)
+                        .with_payload("chunks", &chunks),
+                );
 
                 serde_json::to_string(&chunks).unwrap()
             }
@@ -488,6 +538,12 @@ impl Conversation {
             .collect::<Vec<_>>()
             .await;
 
+        ctx.track_query(
+            EventData::input_stage("process file")
+                .with_payload("question", &question)
+                .with_payload("chunks", &out),
+        );
+
         Ok(serde_json::to_string(&out)?)
     }
 
@@ -547,6 +603,13 @@ impl Conversation {
 
             update.send(Update::Result(search_results)).await?;
         }
+
+        ctx.track_query(
+            EventData::output_stage("answer")
+                .with_payload("question", &question)
+                .with_payload("context", &context)
+                .with_payload("response", &buffer),
+        );
 
         Ok(())
     }
@@ -784,15 +847,22 @@ impl From<Action> for Result<ActionStream> {
 struct AppContext {
     app: Application,
     llm_gateway: llm_gateway::Client,
+    query_id: uuid::Uuid,
+    user: User,
 }
 
 impl AppContext {
-    fn new(app: Application) -> Result<Self> {
+    fn new(app: Application, user: User, query_id: uuid::Uuid) -> Result<Self> {
         let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
             .temperature(0.0)
             .bearer(app.github_token()?.map(|s| s.expose_secret().clone()));
 
-        Ok(Self { app, llm_gateway })
+        Ok(Self {
+            app,
+            llm_gateway,
+            query_id,
+            user,
+        })
     }
 
     fn model(mut self, model: &str) -> Self {
@@ -803,6 +873,14 @@ impl AppContext {
         }
 
         self
+    }
+
+    fn track_query(&self, data: EventData) {
+        let event = QueryEvent {
+            query_id: self.query_id,
+            data,
+        };
+        self.app.track_query(&self.user, &event);
     }
 }
 
