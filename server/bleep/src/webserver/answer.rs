@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
     mem,
+    path::{Component, PathBuf},
     str::FromStr,
 };
 
@@ -282,30 +283,6 @@ impl Conversation {
                     .join("\n")
             }
 
-            Action::File(file_ref) => {
-                // Retrieve the contents of a file.
-
-                let path = match &file_ref {
-                    FileRef::Alias(idx) => self
-                        .path_aliases
-                        .get(*idx)
-                        .with_context(|| format!("unknown path alias {idx}"))?,
-
-                    FileRef::Path(p) => p,
-                };
-
-                update
-                    .send(Update::Step(SearchStep::File(path.clone())))
-                    .await?;
-
-                ctx.app
-                    .indexes
-                    .file
-                    .by_path(&self.repo_ref, path)
-                    .await?
-                    .content
-            }
-
             Action::Code(query) => {
                 // Semantic search.
 
@@ -347,8 +324,8 @@ impl Conversation {
                 serde_json::to_string(&chunks).unwrap()
             }
 
-            Action::Check(question, path_aliases) => {
-                self.check(ctx, update, question, path_aliases).await?
+            Action::Proc(question, path_aliases) => {
+                self.proc(ctx, update, question, path_aliases).await?
             }
         };
 
@@ -365,13 +342,34 @@ impl Conversation {
         Ok(Some(action_stream))
     }
 
-    async fn check(
+    async fn proc(
         &mut self,
         ctx: &AppContext,
         update: Sender<Update>,
         question: String,
         path_aliases: Vec<usize>,
     ) -> Result<String> {
+        // filesystem agnostic trivial path normalization
+        //
+        // - a//b -> a/b
+        // - a/./b -> a/b
+        // - a/b/../c -> a/c (regardless of whether this exists)
+        // - ../b/c -> None
+        fn normalize(path: PathBuf) -> Option<PathBuf> {
+            let mut stack = vec![];
+            for c in path.components() {
+                match c {
+                    Component::Normal(s) => stack.push(s),
+                    Component::ParentDir if stack.is_empty() => return None,
+                    Component::ParentDir => {
+                        _ = stack.pop();
+                    }
+                    _ => (),
+                }
+            }
+            Some(stack.iter().collect::<PathBuf>())
+        }
+
         let paths = path_aliases
             .into_iter()
             .map(|i| self.path_aliases.get(i).ok_or(i))
@@ -380,7 +378,7 @@ impl Conversation {
 
         for u in paths
             .iter()
-            .map(|&p| Update::Step(SearchStep::Check(p.clone())))
+            .map(|&p| Update::Step(SearchStep::Proc(p.clone())))
         {
             update.send(u).await?;
         }
@@ -416,21 +414,37 @@ impl Conversation {
                 .await?;
 
             #[derive(serde::Deserialize)]
+            struct ProcResult {
+                // list of paths relative to the currently processed file
+                dependencies: Vec<String>,
+                // list of relevant line ranges
+                lines: Vec<Range>,
+            }
+
+            #[derive(serde::Deserialize)]
             struct Range {
                 start: usize,
                 end: usize,
-                answer: String,
             }
 
-            let explanations = serde_json::from_str::<Vec<Range>>(&json)?
-                .into_iter()
+            let proc_result = serde_json::from_str::<ProcResult>(&json)?;
+
+            // turn relative paths into absolute paths
+            let normalized_deps = proc_result
+                .dependencies
+                .iter()
+                .filter_map(|d| normalize(PathBuf::from(path).join(d)))
+                .collect::<Vec<_>>();
+
+            let explanations = proc_result
+                .lines
+                .iter()
                 .filter(|r| r.start > 0 && r.end > 0)
                 .map(|r| {
                     let end = r.end.min(r.start + 10);
 
                     serde_json::json!({
                         "start": r.start,
-                        "answer": r.answer,
                         "end": end,
                         "relevant_code": lines[r.start..end].join("\n"),
                     })
@@ -440,6 +454,7 @@ impl Conversation {
             Ok::<_, anyhow::Error>(serde_json::json!({
                 "explanations": explanations,
                 "path": path,
+                "relevant_dependencies": normalized_deps,
             }))
         });
 
@@ -589,15 +604,7 @@ enum Action {
     Path(String),
     Answer(String),
     Code(String),
-    File(FileRef),
-    Check(String, Vec<usize>),
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-#[serde(untagged)]
-enum FileRef {
-    Path(String),
-    Alias(usize),
+    Proc(String, Vec<usize>),
 }
 
 impl Action {
