@@ -29,29 +29,29 @@ harness = false
 [dependencies]
 
 # core
-tantivy = { version = "0.19.1", features = ["mmap"] }
-tokio = { version = "1.24.2", features = ["macros", "process", "rt", "rt-multi-thread", "io-std", "io-util", "sync", "fs"] }
-futures = "0.3.25"
-rayon = "1.6.1"
-clap = { version = "4.1.4", features = ["derive"] }
+tantivy = { version = "0.19.2", features = ["mmap"] }
+tokio = { version = "1.28.0", features = ["macros", "process", "rt", "rt-multi-thread", "io-std", "io-util", "sync", "fs"] }
+futures = "0.3.28"
+rayon = "1.7.0"
+clap = { version = "4.2.7", features = ["derive"] }
 tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.16", features = ["env-filter", "registry"] }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter", "registry"] }
 color-eyre = "0.6.2"
 
 # for debugging
 console-subscriber = { version = "0.1.8", optional = true }
-histogram = { version = "0.7.0", optional = true }
+histogram = { version = "0.7.2", optional = true }
 
 # error handling
-anyhow = "1.0.68"
-thiserror = "1.0.38"
+anyhow = "1.0.71"
+thiserror = "1.0.40"
 
 # query parsing
-pest = "2.5.4"
-pest_derive = "2.5.4"
+pest = "2.6.0"
+pest_derive = "2.6.0"
 
 # code-nav
-tree-sitter = "0.20.9"
+tree-sitter = "0.20.10"
 tree-sitter-c = "0.20.2"
 tree-sitter-go = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "05900fa" }
 tree-sitter-javascript = "0.20.0"
@@ -61,74 +61,74 @@ tree-sitter-typescript = "0.20.2"
 tree-sitter-c-sharp = "0.20.0"
 tree-sitter-java = { git = "https://github.com/tree-sitter/tree-sitter-java", tag = "v0.20.0" }
 tree-sitter-cpp = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "5ead1e2" }
-petgraph = { version = "0.6.2", default-features = false, features = ["serde-1"] }
+petgraph = { version = "0.6.3", default-features = false, features = ["serde-1"] }
 
 # webserver
-serde_json = "1.0.91"
-axum = { version = "0.6.4", features = ["http2", "headers"] }
-axum-extra = { version = "0.4.2", features = ["cookie", "cookie-private"] }
+serde_json = "1.0.96"
+axum = { version = "0.6.18", features = ["http2", "headers"] }
+axum-extra = { version = "0.7.4", features = ["cookie", "cookie-private"] }
 tower = "0.4.13"
-tower-http = { version = "0.3.5", features = ["auth", "cors", "catch-panic", "fs"] }
+tower-http = { version = "0.4.0", features = ["auth", "cors", "catch-panic", "fs"] }
 
 # api integrations
 octocrab = { git = "https://github.com/bloopai/octocrab", features = ["rustls"] }
-reqwest = { version = "0.11.14", features = ["rustls-tls", "rustls", "cookies"], default-features = false }
+reqwest = { version = "0.11.17", features = ["rustls-tls", "rustls", "cookies"], default-features = false }
 reqwest-eventsource = "0.4.0"
 secrecy = { version = "0.8.0", features = ["serde"] }
 
 # file processing
-ignore = "0.4.18"
+ignore = "=0.4.18"
 hyperpolyglot = { git = "https://github.com/bloopai/hyperpolyglot" }
 blake3 = "1.3.3"
 notify-debouncer-mini = { version = "0.2.1", default-features = false }
 
 # misc
-serde = "1.0.152"
-regex = "1.7.1"
-regex-syntax = "0.6.28"
+serde = "1.0.160"
+regex = "1.8.1"
+regex-syntax = "0.6.29"
 smallvec = { version = "1.10.0", features = ["serde"]}
-async-trait = "0.1.63"
+async-trait = "0.1.68"
 flume = "0.10.14"
 either = "1.8.1"
-compact_str = "0.6.1"
+compact_str = "0.7.0"
 bincode = "1.3.3"
-directories = "4.0.1"
-chrono = { version = "0.4.23", features = ["serde"], default-features = false }
-time = { version = "0.3.17", default-features = false }
+directories = "5.0.1"
+chrono = { version = "0.4.24", features = ["serde"], default-features = false }
+time = { version = "0.3.20", default-features = false }
 phf = "0.11.1"
 rand = "0.8.5"
-once_cell = "1.17.0"
-relative-path = "1.7.3"
-qdrant-client = { version = "0.11.6", default-features = false }
-tokenizers = "0.13.2"
+once_cell = "1.17.1"
+relative-path = "1.8.0"
+qdrant-client = { version = "1.1.2", default-features = false }
+tokenizers = "0.13.3"
 ort = { git = "https://github.com/bloopai/ort", branch = "merge-upstream" }
 ndarray = "0.15"
-uuid = { version = "1.2.2", features = ["v4", "fast-rng"] }
-jsonwebtoken = { version = "8.2.0", features = ["use_pem"] }
+uuid = { version = "1.3.2", features = ["v4", "fast-rng"] }
+jsonwebtoken = { version = "8.3.0", features = ["use_pem"] }
 
 # telemetry
-sentry = "0.29.2"
+sentry = "0.31.0"
 rudderanalytics = "1.1.2"
-async-stream = "0.3.3"
+async-stream = "0.3.5"
 erased-serde = "0.3.25"
-scc = { version= "1.2.0", features = ["serde"] }
-sentry-tracing = "0.30.0"
+scc = { version= "1.6.3", features = ["serde"] }
+sentry-tracing = "0.31.0"
 git-version = "0.3.5"
-gix = { version="0.44.0", features = ["blocking-http-transport-reqwest", "blocking-network-client", "pack-cache-lru-static"] }
+gix = { version="0.44.1", features = ["blocking-http-transport-reqwest", "blocking-network-client", "pack-cache-lru-static"] }
 
 [target.'cfg(windows)'.dependencies]
-dunce = "1.0.3"
+dunce = "1.0.4"
 
 [dev-dependencies]
 criterion = { version = "0.4.0", features = ["async_tokio"] }
 pretty_assertions = "1.3.0"
 tempdir = "0.3.7"
-expect-test = "1.4.0"
-reqwest = { version = "0.11.14", features = ["blocking"] }
+expect-test = "1.4.1"
+reqwest = { version = "0.11.17", features = ["blocking"] }
 git-version = "0.3.5"
 
 [build-dependencies]
 phf_codegen = "0.11.1"
-serde = {version = "1.0.152", features = ["derive"]}
-serde_yaml = "0.9.17"
+serde = {version = "1.0.160", features = ["derive"]}
+serde_yaml = "0.9.21"
 blake3 = "1.3.3"
