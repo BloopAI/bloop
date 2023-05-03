@@ -547,14 +547,17 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
 //    - "novelty" or, the measure of how minimal the similarity is
 //      to existing documents in the selection
 //      The value of lambda skews the weightage in favor of either relevance or novelty.
+//    - we add a language diversity factor to the score to encourage a range of langauges in the results
 //  k: the number of embeddings to select
 pub fn deduplicate_with_mmr(
     query_embedding: &[f32],
     embeddings: &[&[f32]],
+    languages: &[&str],
     lambda: f32,
     k: usize,
 ) -> Vec<usize> {
     let mut idxs = vec![];
+    let mut lang_counts = HashMap::new();
 
     if embeddings.len() < k {
         return (0..embeddings.len()).collect();
@@ -576,7 +579,12 @@ pub fn deduplicate_with_mmr(
                     second_part = cos_sim;
                 }
             }
-            let equation_score = lambda * first_part - (1. - lambda) * second_part;
+            let mut equation_score = lambda * first_part - (1. - lambda) * second_part;
+
+            // MMR + (1/2)^n where n is the number of times a language has been selected
+            let count = lang_counts.get(languages[i]).unwrap_or(&0);
+            equation_score += 0.5_f32.powi(*count);
+
             if equation_score > best_score {
                 best_score = equation_score;
                 idx_to_add = Some(i);
@@ -584,6 +592,7 @@ pub fn deduplicate_with_mmr(
         }
         if let Some(i) = idx_to_add {
             idxs.push(i);
+            *lang_counts.entry(languages[i]).or_insert(0) += 1;
         }
     }
     idxs
@@ -601,7 +610,11 @@ pub fn deduplicate_snippets(
             .iter()
             .map(|s| s.embedding.as_deref().unwrap())
             .collect::<Vec<_>>();
-        deduplicate_with_mmr(&query_embedding, &embeddings, lambda, k)
+        let languages = all_snippets
+            .iter()
+            .map(|s| s.lang.as_ref())
+            .collect::<Vec<_>>();
+        deduplicate_with_mmr(&query_embedding, &embeddings, &languages, lambda, k)
     };
 
     info!("preserved idxs after MMR are {:?}", idxs);
