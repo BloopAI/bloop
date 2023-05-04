@@ -19,6 +19,8 @@ bloop:
   analyticsDataPlane: ""
   sentryDsn: ""
   sentryDsnFE: ""
+  #
+  logLevel: info
 
 image:
   repository: ""

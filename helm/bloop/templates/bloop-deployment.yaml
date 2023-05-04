@@ -72,7 +72,7 @@ spec:
           - --analytics-key-fe={{ .Values.bloop.analyticsKeyFE }}
           env:
           - name: BLOOP_LOG
-            value: info
+            value: {{ .Values.bloop.logLevel }}
           {{ if .Values.env }}
           {{ range .Values.env }}
           -
