@@ -244,6 +244,10 @@ impl Conversation {
                     // TODO: Semantic search should accept unparsed queries
                     let nl_query = SemanticQuery {
                         target: Some(parser::Literal::Plain(Cow::Owned(search))),
+                        repos: [parser::Literal::Plain(Cow::Owned(
+                            self.repo_ref.to_string(),
+                        ))]
+                        .into(),
                         ..Default::default()
                     };
 
@@ -292,6 +296,10 @@ impl Conversation {
 
                 let nl_query = SemanticQuery {
                     target: Some(parser::Literal::Plain(Cow::Owned(query))),
+                    repos: [parser::Literal::Plain(Cow::Owned(
+                        self.repo_ref.to_string(),
+                    ))]
+                    .into(),
                     ..Default::default()
                 };
 
