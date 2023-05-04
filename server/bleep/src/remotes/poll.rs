@@ -106,6 +106,10 @@ async fn update_credentials(app: &Application) {
                 if let Err(e) = remotes::github::refresh_github_installation_token(app).await {
                     error!(?e, "failed to get GitHub token");
                 }
+                if app.credentials.github().is_none() {
+                    error!("Error in the matrix");
+                }
+                info!("Github installation token refreshed!")
             }
         }
     }
