@@ -15,7 +15,7 @@ type Props = {
 };
 
 const listItemClassName =
-  'bg-gray-900 border-b border-l border-r first:border-t first:rounded-t-md last:border-b last:rounded-b-md border-gray-800 pl-3 p-1.5 body-s group h-11';
+  'bg-bg-sub pl-3 p-1.5 body-s group h-11 border-b border-x border-bg-border first:border-t first:rounded-tl-md first:rounded-tr-md  last:rounded-bl-md last:rounded-br-md';
 
 const RepoList = ({
   repos,
@@ -41,13 +41,13 @@ const RepoList = ({
   }, []);
 
   return (
-    <div className={`fade-bottom relative`}>
-      <ul className="bg-gray-900 shadow-light overflow-y-auto pb-6">
+    <div className={`relative`}>
+      <ul className="overflow-auto pb-6 rounded-md">
         {!isLoading ? (
           !filteredRepos.length ? (
             <div className="flex flex-col gap-2 py-6 text-center">
-              <p className="body-s text-gray-300">No results...</p>
-              <p className="text-gray-500 caption">
+              <p className="body-s text-label-title">No results...</p>
+              <p className="text-label-base caption">
                 Nothing matched your search. Try a different combination!
               </p>
             </div>
@@ -58,14 +58,14 @@ const RepoList = ({
                 (filteredRepos[i - 1] &&
                   filteredRepos[i - 1].folderName !== repo.folderName) ? (
                   <span
-                    className={`bg-gray-800 text-sm w-full py-2 px-4 flex items-center justify-between ${
+                    className={`bg-bg-base border-x border-b first:border-t border-bg-border text-sm w-full py-2 px-4 flex items-center justify-between ${
                       i === 0 ? 'rounded-t-md' : ''
                     }`}
                   >
                     {repo.folderName}
-                    {onFolderChange && (
+                    {onFolderChange && i === 0 && (
                       <button
-                        className="caption text-primary-300"
+                        className="caption text-bg-main"
                         onClick={onFolderChange}
                       >
                         Choose folder
@@ -77,7 +77,7 @@ const RepoList = ({
                 )}
                 <li className={listItemClassName} title={repo.name}>
                   <div className="flex items-center justify-between w-full gap-2">
-                    <div className="py-1.5 flex items-center gap-2 overflow-hidden text-gray-400 group-hover:text-gray-100">
+                    <div className="py-1.5 flex items-center gap-2 overflow-hidden text-label-base group-hover:text-label-title">
                       {source === 'local' ? <HardDrive /> : <Lock />}
                       <span className="whitespace-nowrap">
                         {repo.shortName}

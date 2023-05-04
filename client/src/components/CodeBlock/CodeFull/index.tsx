@@ -314,7 +314,7 @@ const CodeFull = ({
       />
       <div className={`${!minimap ? 'w-full' : ''}`} ref={codeRef}>
         <pre
-          className={`prism-code language-${lang} bg-gray-900 my-0 w-full h-full`}
+          className={`prism-code language-${lang} bg-bg-sub my-0 w-full h-full`}
           onCopy={handleCopy}
         >
           <CodeContainer

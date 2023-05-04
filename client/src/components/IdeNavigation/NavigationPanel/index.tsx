@@ -11,9 +11,9 @@ type Props = {
 const NavigationPanel = ({ repoName, children }: Props) => {
   const { navigateRepoPath } = useAppNavigation();
   return (
-    <div className="flex divide-y divide-gray-800 flex-col border-r border-gray-800 w-90 h-full select-none">
+    <div className="flex divide-y divide-bg-border bg-bg-base flex-col border-r border-bg-border w-90 h-full select-none">
       <div
-        className="w-full border-b border-gray-700 flex justify-between py-7 px-8 select-none cursor-pointer"
+        className="w-full border-b border-bg-border flex justify-between py-7 px-8 select-none cursor-pointer"
         onClick={() => navigateRepoPath(repoName)}
       >
         <TextField

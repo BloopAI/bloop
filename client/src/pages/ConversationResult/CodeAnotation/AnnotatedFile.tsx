@@ -26,9 +26,9 @@ const AnnotatedFile = ({
 }: Props) => {
   return (
     <div>
-      <div className="text-sm border border-gray-700 rounded-md flex-1 overflow-auto">
+      <div className="text-sm border border-bg-border rounded-md flex-1 overflow-auto">
         <div
-          className="w-full bg-gray-800 py-1 px-3 border-b border-gray-700 select-none cursor-pointer"
+          className="w-full bg-bg-shade py-1 px-3 border-b border-bg-border select-none cursor-pointer"
           onClick={() => onResultClick(filePath)}
         >
           <div className="flex items-center gap-2 w-full h-11.5">

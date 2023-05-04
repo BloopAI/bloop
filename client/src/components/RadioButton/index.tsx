@@ -28,8 +28,8 @@ const RadioButton = ({
         value={value}
       />
       <span
-        className={`border border-gray-600 rounded-full w-4 h-4 inline-block  ${
-          checked ? 'bg-primary-400 text-white' : 'text-gray-600'
+        className={`border border-bg-border rounded-full w-4 h-4 inline-block  ${
+          checked ? 'bg-bg-main text-label-control' : 'text-label-muted'
         } flex items-center justify-center transition-all flex-shrink-0 relative top-0.5`}
       >
         <svg
@@ -46,9 +46,9 @@ const RadioButton = ({
         </svg>
       </span>
       <div className="flex flex-col gap-1">
-        <span className="body-s text-gray-100">{title}</span>
+        <span className="body-s text-label-title">{title}</span>
         {description ? (
-          <span className="body-s text-gray-500">{description}</span>
+          <span className="body-s text-label-muted">{description}</span>
         ) : null}
       </div>
     </label>

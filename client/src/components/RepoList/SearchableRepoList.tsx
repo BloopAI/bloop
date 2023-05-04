@@ -35,7 +35,7 @@ const SearchableRepoList = ({
 
   return (
     <div
-      className={`flex flex-col overflow-auto gap-8 ${
+      className={`flex flex-col overflow-auto gap-8 fade-bottom ${
         containerClassName || ''
       }`}
     >
@@ -44,7 +44,8 @@ const SearchableRepoList = ({
         value={filter}
         name="filter"
         onChange={handleChange}
-        placeholder="Search..."
+        placeholder="Search repository..."
+        variant="filled"
       />
       <RepoList
         repos={repos}

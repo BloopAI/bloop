@@ -9,7 +9,7 @@ export default {
 export const TooltipCodeDefault = () => {
   return (
     <MemoryRouter initialEntries={['']}>
-      <div style={{ backgroundColor: '#131315' }}>
+      <div>
         <div className="flex flex-col gap-8 items-center">
           <TooltipCode
             position={'left'}

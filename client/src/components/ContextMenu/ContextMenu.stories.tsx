@@ -11,7 +11,7 @@ export default {
 
 export const ContextMenuItems = () => {
   return (
-    <div style={{ width: 384, backgroundColor: '', padding: '10px' }}>
+    <div style={{ width: 384, padding: '10px' }}>
       <Item
         icon={<MailIcon />}
         onClick={() => {}}
@@ -56,7 +56,6 @@ export const ContextMenuDefault = () => {
     <div
       style={{
         width: 384,
-        backgroundColor: '',
         position: 'relative',
       }}
     >
@@ -90,7 +89,8 @@ export const ContextMenuDefault = () => {
             type: MenuItemType.SELECTABLE,
           },
           {
-            type: MenuListItemType.DIVIDER,
+            type: MenuListItemType.DIVIDER_WITH_TEXT,
+            text: 'Divider',
           },
           {
             text: 'Item Five',

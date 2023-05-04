@@ -50,15 +50,17 @@ type MultilineProps = Props & {
 const borderMap = {
   filled: {
     default:
-      'border-transparent hover:border-gray-500 focus-within:border-gray-500',
-    error: 'border-danger-500',
-    disabled: 'border-gray-700',
+      'border-transparent hover:border-bg-border-hover focus-within:border-bg-border-hover',
+    error: 'border-bg-danger',
+    success: 'border-bg-border-hover',
+    disabled: 'border-bg-base',
   },
   outlined: {
     default:
-      'border-gray-700 hover:border-gray-500 focus-within:border-gray-500',
-    error: 'border-danger-500',
-    disabled: 'border-gray-700',
+      'border-bg-border hover:border-bg-border-hover focus-within:border-bg-border-hover',
+    error: 'border-bg-danger',
+    success: 'border-bg-border-hover',
+    disabled: 'border-bg-base',
   },
 };
 
@@ -113,19 +115,13 @@ const TextInput = forwardRef(function TextInputWithRef(
   return (
     <div
       className={`flex flex-col gap-1 w-full ${
-        disabled ? 'text-gray-500' : 'text-gray-100'
+        disabled ? 'text-label-base' : 'text-label-title'
       } body-s`}
     >
       {label || helperText ? (
         <div className="flex justify-between items-center w-full">
           <label>{label}</label>
-          <span
-            className={`${
-              disabled ? 'text-gray-500' : 'text-gray-400'
-            } caption`}
-          >
-            {helperText}
-          </span>
+          <span className={`text-label-base caption`}>{helperText}</span>
         </div>
       ) : null}
       <div
@@ -136,20 +132,18 @@ const TextInput = forwardRef(function TextInputWithRef(
             ? borderMap[variant].disabled
             : error
             ? borderMap[variant].error
+            : success
+            ? borderMap[variant].success
             : borderMap[variant].default
-        } ${
-          disabled
-            ? 'bg-transparent '
-            : variant === 'filled'
-            ? 'bg-gray-800'
-            : ''
+        } ${disabled || variant === 'filled' || success ? 'bg-bg-base' : ''} ${
+          variant === 'filled' ? 'hover:bg-bg-base-hover' : ''
         } transition-all duration-300 ease-in-bounce relative`}
       >
         {type === 'email' || type === 'search' || startIcon ? (
           <span
-            className={`w-5 mx-2.5 ${
-              disabled ? 'text-gray-500' : 'text-gray-400'
-            } flex items-center group-focus-within:text-gray-100 flex-shrink-0 transition-all duration-300 ease-in-bounce`}
+            className={`w-5 mx-2.5 flex items-center flex-shrink-0 ${
+              disabled ? 'text-label-muted' : 'text-label-base'
+            } group-hover:text-label-title group-focus-within:text-label-title transition-all duration-300 ease-in-bounce`}
           >
             {startIcon || (type === 'email' ? <MailIcon /> : <MagnifyTool />)}
           </span>
@@ -167,7 +161,8 @@ const TextInput = forwardRef(function TextInputWithRef(
             autoComplete="off"
             spellCheck="false"
             className={`bg-transparent resize-none border-none focus:outline-none w-full 
-            group-focus-within:placeholder:text-gray-100 disabled:placeholder:text-gray-500 
+            group-focus-within:placeholder:text-label-title group-hover:placeholder:text-label-title 
+            disabled:placeholder:text-label-muted placeholder:text-label-base
             transition-all duration-300 ease-in-bounce outline-none outline-0`}
             onKeyDown={handleEnter}
           />
@@ -189,7 +184,9 @@ const TextInput = forwardRef(function TextInputWithRef(
                 ? 'px-1'
                 : 'pl-2.5'
             } transition-all duration-300 ease-in-bounce outline-none outline-0 pr-9 ${inputClassName}
-            group-focus-within:placeholder:text-gray-100 disabled:placeholder:text-gray-500`}
+            placeholder:text-label-base disabled:placeholder:text-label-muted
+            group-focus-within:placeholder:text-label-title group-hover:placeholder:text-label-title
+            placeholder:transition-all placeholder:duration-300 placeholder:ease-in-bounce`}
             onKeyDown={handleEnter}
             autoFocus={autoFocus}
           />
@@ -213,7 +210,7 @@ const TextInput = forwardRef(function TextInputWithRef(
         ) : null}
         {success ? (
           <span
-            className="w-5 mr-2.5 flex items-center group-focus-within:hidden text-success-700 right-0
+            className="w-5 mr-2.5 flex items-center group-focus-within:hidden text-bg-success right-0
           top-1/2 -translate-y-1/2 absolute"
           >
             <CheckIcon />
@@ -230,7 +227,7 @@ const TextInput = forwardRef(function TextInputWithRef(
           ''
         )}
       </div>
-      {error ? <span className="text-danger-500 caption">{error}</span> : null}
+      {error ? <span className="text-bg-danger caption">{error}</span> : null}
     </div>
   );
 });

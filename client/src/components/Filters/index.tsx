@@ -132,7 +132,7 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
 
   return (
     <motion.div
-      className={`text-gray-300 border-r border-gray-800  flex-shrink-0 select-none overflow-x-hidden relative`}
+      className={`bg-bg-base border-r border-bg-border flex-shrink-0 select-none overflow-x-hidden relative`}
       animate={{ width: isOpen ? '20.25rem' : '5rem' }}
       transition={FILTER_PARENT_ANIMATION}
     >
@@ -141,7 +141,7 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
       >
         {showHeader && (
           <div
-            className={`px-8 subhead-m py-6 border-b border-gray-800 flex items-center justify-between ${
+            className={`px-8 subhead-m py-6 border-b border-bg-border flex items-center justify-between ${
               isOpen ? 'px-8' : 'px-6'
             }`}
           >

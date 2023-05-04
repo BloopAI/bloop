@@ -57,16 +57,16 @@ const RepositoryFiles = ({
       }
       icon={<Papers />}
     >
-      <div className="flex flex-col divide-y divide-gray-700 text-gray-500 text-sm divide-y divide-gray-700 overflow-auto">
+      <div className="flex flex-col text-label-muted text-sm divide-y divide-bg-border overflow-auto bg-bg-sub">
         {files.map((file, id) => (
           <span
             key={id}
-            className="flex flex-row justify-between px-4 py-4  bg-gray-900 last:rounded-b group cursor-pointer"
+            className="flex flex-row justify-between px-4 py-4 last:rounded-b group cursor-pointer"
             onClick={() => {
               onClick(file.path, file.type);
             }}
           >
-            <span className="w-fit group-hover:text-gray-300 flex items-center gap-2">
+            <span className="w-fit group-hover:text-label-base flex items-center gap-2">
               {file.type === FileTreeFileType.DIR ? (
                 <FolderFilled />
               ) : (

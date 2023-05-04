@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { MailIcon } from '../../icons';
 import Tabs from './index';
-import '../../index.css';
 
 export default {
   title: 'components/Tabs',
@@ -11,7 +10,7 @@ export default {
 export const LinkMedium = () => {
   const [activeTab, setActiveTab] = useState(0);
   return (
-    <div className="bg-gray-900">
+    <div>
       <Tabs
         tabs={[
           { title: 'Medium1' },
@@ -29,7 +28,7 @@ export const LinkMedium = () => {
 export const LinkSmall = () => {
   const [activeTab, setActiveTab] = useState(0);
   return (
-    <div className="bg-gray-900">
+    <div>
       <Tabs
         tabs={[
           { title: 'Small1' },
@@ -48,7 +47,7 @@ export const LinkSmall = () => {
 export const LinkLarge = () => {
   const [activeTab, setActiveTab] = useState(0);
   return (
-    <div className="bg-gray-900">
+    <div>
       <Tabs
         tabs={[
           { title: 'Large1' },
@@ -67,7 +66,7 @@ export const LinkLarge = () => {
 export const LinkFullWidth = () => {
   const [activeTab, setActiveTab] = useState(0);
   return (
-    <div className="bg-gray-900 max-w-md2 w-full">
+    <div className="max-w-md2 w-full">
       <Tabs
         tabs={[
           { title: 'Tab1' },
@@ -86,7 +85,7 @@ export const LinkFullWidth = () => {
 export const ButtonMedium = () => {
   const [activeTab, setActiveTab] = useState(0);
   return (
-    <div className="bg-gray-900">
+    <div>
       <Tabs
         tabs={[
           { title: 'Medium1' },
@@ -105,7 +104,7 @@ export const ButtonMedium = () => {
 export const ButtonSmall = () => {
   const [activeTab, setActiveTab] = useState(0);
   return (
-    <div className="bg-gray-900">
+    <div>
       <Tabs
         tabs={[
           { title: 'Small1' },
@@ -125,7 +124,7 @@ export const ButtonSmall = () => {
 export const ButtonLarge = () => {
   const [activeTab, setActiveTab] = useState(0);
   return (
-    <div className="bg-gray-900">
+    <div>
       <Tabs
         tabs={[
           { title: 'Large1' },
@@ -145,7 +144,7 @@ export const ButtonLarge = () => {
 export const ButtonFullWidth = () => {
   const [activeTab, setActiveTab] = useState(0);
   return (
-    <div className="bg-gray-900 max-w-md2 w-full">
+    <div className="max-w-md2 w-full">
       <Tabs
         tabs={[
           { title: 'Tab1' },

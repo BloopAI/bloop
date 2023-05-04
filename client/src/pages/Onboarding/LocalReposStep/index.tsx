@@ -113,9 +113,9 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
         </div>
       ) : (
         <div className="flex flex-col overflow-auto gap-8">
-          <div className="py-5 px-3 flex flex-col gap-2 rounded-md bg-gradient-to-t to-gray-800 from-transparent items-center text-center">
-            <p className="body-s text-gray-300">Scan a folder</p>
-            <p className="body-s text-gray-400">
+          <div className="py-5 px-3 flex flex-col gap-2 rounded-md bg-bg-sub items-center text-center">
+            <p className="body-s-strong text-label-title">Scan a folder</p>
+            <p className="body-s text-label-muted">
               Scan a folder to sync it’s repositories
             </p>
             <Button variant="secondary" onClick={handleChooseFolder}>

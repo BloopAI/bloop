@@ -67,7 +67,7 @@ const FiltersSection = ({
   );
 
   return (
-    <div className="text-gray-300 w-full border-b border-gray-800">
+    <div className="text-label-title w-full border-b border-bg-border">
       <FilterTitle
         label={title}
         numberSelected={items.filter((i) => i.checked).length}
@@ -88,7 +88,7 @@ const FiltersSection = ({
                 value={filter}
                 onChange={handleFilter}
                 name={name + '-filter'}
-                variant="filled"
+                variant="outlined"
                 placeholder={`Filter ${name}...`}
               />
               {filteredItems.length ? (
@@ -100,9 +100,7 @@ const FiltersSection = ({
                       label={
                         <span
                           className={`${
-                            allSelected
-                              ? 'body-s text-gray-300'
-                              : 'caption text-gray-500'
+                            allSelected ? 'body-s' : 'caption'
                           } whitespace-nowrap overflow-hidden`}
                         >
                           {allSelected ? 'Deselect all' : 'Select all'}
@@ -127,8 +125,8 @@ const FiltersSection = ({
                 </>
               ) : (
                 <div className="text-center">
-                  <p className="body-s text-gray-300 pb-2">No results...</p>
-                  <p className="caption text-gray-500">
+                  <p className="body-s text-label-title pb-2">No results...</p>
+                  <p className="caption text-label-muted">
                     Nothing matched your search. Try a different combination!
                   </p>
                 </div>

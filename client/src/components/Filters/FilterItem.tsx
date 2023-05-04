@@ -23,12 +23,12 @@ const FilterItem = ({
     <Checkbox
       checked={selected}
       label={
-        <span className="flex gap-2 items-center justify-between w-full caption text-gray-300 overflow-hidden flex-nowrap">
+        <span className="flex gap-2 items-center justify-between w-full caption text-label-title overflow-hidden flex-nowrap">
           <span className="flex items-center gap-2 w-full overflow-hidden">
             {icon}
             <span className="ellipsis w-full">{label}</span>
           </span>
-          <span className="text-gray-500 caption flex-shrink-0">
+          <span className="text-label-base caption flex-shrink-0">
             {description}
           </span>
         </span>
@@ -40,8 +40,8 @@ const FilterItem = ({
       role="checkbox"
       className={`flex gap-2 items-center justify-between w-full focus:outline-none border-none p-1.5 rounded-4 body-s ${
         selected
-          ? 'bg-primary-400 text-gray-100 pr-2.5'
-          : 'bg-transparent text-gray-300'
+          ? 'bg-bg-main text-label-title pr-2.5'
+          : 'bg-transparent text-label-base'
       }`}
       onClick={() => onSelect(!selected)}
     >
@@ -51,7 +51,7 @@ const FilterItem = ({
       </span>
       <span
         className={`caption ${
-          selected ? 'text-gray-100' : 'text-gray-500'
+          selected ? 'text-label-title' : 'text-label-base'
         } flex items-center gap-2`}
       >
         {description}

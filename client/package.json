@@ -8,8 +8,8 @@
     "preview": "vite preview",
     "lint": "eslint src --ext ts --ext tsx --fix",
     "type-check": "tsc",
-    "storybook": "start-storybook -p 6006",
-    "build-storybook": "build-storybook",
+    "storybook": "sb dev -p 6006",
+    "build-storybook": "sb build",
     "test": "jest --collect-coverage --passWithNoTests",
     "chromatic": "npx chromatic --project-token=6115d726666b"
   }

@@ -194,7 +194,7 @@ const Chat = () => {
       <button
         className={`fixed z-50 bottom-20 w-16 h-16 rounded-full cursor-pointer flex items-center justify-center ${
           isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
-        } border border-gray-700 bg-[linear-gradient(135deg,#1D1D20_0%,#0B0B14_100%)] transition-all duration-300 ease-out-slow`}
+        } border border-chat-bg-border bg-chat-bg-base transition-all duration-300 ease-out-slow`}
         onClick={() => {
           setShowTooltip(false);
           setChatOpen(true);
@@ -202,34 +202,22 @@ const Chat = () => {
       >
         {showTooltip && (
           <div className="absolute -top-8 z-10 right-2.5 drop-shadow-sm">
-            <div className="bg-[linear-gradient(93.53deg,#5D75FF_0%,#2A2A4A_100%)] rounded-full flex py-2 px-4 w-max body-s text-white">
+            <div className="bg-chat-bg-base border border-chat-bg-border rounded-4 flex py-2 px-4 w-max body-s text-label-title">
               {tooltipText}
             </div>
+            <span className="absolute right-[2.375rem] -bottom-px w-3.5 h-0.5 bg-chat-bg-base z-10" />
             <svg
               width="97"
-              height="13"
-              viewBox="0 0 97 13"
+              height="14"
+              viewBox="0 0 97 14"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
               className="absolute -bottom-2 right-0 -z-10"
             >
               <path
-                d="M32 3V0H65V3C55.4444 3.93779 55.1642 8.18145 55.8084 11.5958C55.8623 11.8815 55.5209 12.0844 55.2996 11.8957C48.2381 5.87225 42.3185 3 32 3Z"
-                fill="url(#paint0_linear_8526_247744)"
+                d="M31.5 4V4.5H32C37.1106 4.5 41.1041 5.2109 44.6844 6.65285C48.2676 8.09598 51.4662 10.283 54.9751 13.2761C55.5683 13.7821 56.438 13.2356 56.2997 12.5031C55.9833 10.8263 55.9276 9.09472 56.9816 7.66601C58.0394 6.2322 60.3211 4.96159 65.0488 4.49761L65.5 4.45333V4V1V0.5H65H32H31.5V1V4Z"
+                className="fill-chat-bg-base stroke-chat-bg-border"
               />
-              <defs>
-                <linearGradient
-                  id="paint0_linear_8526_247744"
-                  x1="38.5"
-                  y1="2"
-                  x2="56"
-                  y2="12.5"
-                  gradientUnits="userSpaceOnUse"
-                >
-                  <stop stopColor="#3C4488" />
-                  <stop offset="1" stopColor="#35396D" />
-                </linearGradient>
-              </defs>
             </svg>
           </div>
         )}
@@ -248,7 +236,7 @@ const Chat = () => {
         ref={chatRef}
         className={`fixed z-50 bottom-20 rounded-xl group w-97 max-h-[30rem] flex flex-col justify-end ${
           !isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
-        } backdrop-blur-6 shadow-small bg-gray-800/50 transition-all duration-300 ease-out-slow`}
+        } backdrop-blur-6 shadow-low bg-chat-bg-base/50 border border-chat-bg-border transition-all duration-300 ease-out-slow`}
       >
         <div className="w-full max-h-0 group-hover:max-h-96 transition-all duration-200 overflow-hidden flex-shrink-0">
           <div className="px-4 pt-4 flex flex-col">

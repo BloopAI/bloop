@@ -79,11 +79,11 @@ const AllConversations = ({
 
   return (
     <div
-      className={`w-97 flex-shrink-0 border-l border-gray-800 h-full flex flex-col overflow-hidden ${
+      className={`w-97 flex-shrink-0 border-l border-chat-bg-divider h-full flex flex-col overflow-hidden ${
         isHistoryOpen ? 'mr-0' : '-mr-97'
       } transition-all duration-300 ease-out-slow`}
     >
-      <div className="p-4 bg-gray-900/75 border-b border-gray-800 backdrop-blur-6 flex items-center gap-2 text-gray-200">
+      <div className="p-4 bg-chat-bg-sub border-b border-chat-bg-divider flex items-center gap-2 text-label-title">
         {!!openItem && (
           <ChipButton variant="filled" onClick={() => setOpenItem(null)}>
             <ArrowLeft sizeClassName="w-4 h-4" />
@@ -105,7 +105,7 @@ const AllConversations = ({
         </ChipButton>
       </div>
       {!openItem && (
-        <div className="flex flex-col gap-1 py-4 overflow-auto flex-1 pb-12">
+        <div className="flex flex-col gap-1 py-4 overflow-auto flex-1 pb-12 bg-chat-bg-sub">
           {conversations.map((c) => (
             <ConversationListItem
               key={c.thread_id}
@@ -131,7 +131,7 @@ const AllConversations = ({
           />
         </div>
       )}
-      <div className="backdrop-blur-6 bg-gray-900/75 -mt-10">
+      <div className="backdrop-blur-6 bg-chat-bg-base/75 -mt-10">
         <div
           className="p-4"
           onClick={() => {
