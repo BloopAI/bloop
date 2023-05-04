@@ -62,7 +62,7 @@ const Subheader = () => {
   }, [navigationHistory]);
 
   return (
-    <div className="w-full bg-gray-800 py-2 pl-8 pr-6 flex items-center justify-between border-b border-gray-700 relative z-40">
+    <div className="w-full bg-bg-shade py-2 pl-8 pr-6 flex items-center justify-between border-b border-bg-border shadow-medium relative z-40">
       <div className="flex flex-1 gap-3 items-center overflow-hidden">
         <Breadcrumbs
           pathParts={breadcrumbs}

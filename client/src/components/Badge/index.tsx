@@ -6,9 +6,7 @@ type Props = {
 const Badge = ({ text, active }: Props) => {
   return (
     <span
-      className={`${
-        active ? 'bg-primary-400' : 'bg-gray-700'
-      } px-2 py-1 rounded`}
+      className={`${active ? 'bg-bg-main' : 'bg-bg-shade'} px-2 py-1 rounded`}
     >
       {text}
     </span>

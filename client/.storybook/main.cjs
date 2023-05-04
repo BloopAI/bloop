@@ -8,9 +8,9 @@ module.exports = {
     "@storybook/addon-essentials",
     "@storybook/addon-interactions"
   ],
-  "framework": "@storybook/react",
-  "core": {
-    "builder": "@storybook/builder-vite"
+  framework: {
+    name: '@storybook/react-vite',
+    options: {},
   },
   "features": {
     "storyStoreV7": true

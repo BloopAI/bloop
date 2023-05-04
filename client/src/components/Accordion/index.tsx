@@ -16,19 +16,27 @@ const autoHeight = { height: 'auto' };
 const Accordion = ({ title, icon, children, headerItems }: Props) => {
   const [expanded, setExpanded] = useState(true);
   return (
-    <div className="rounded border border-gray-700 overflow-hidden">
-      <span className="bg-gray-800 flex flex-row px-4 py-2 justify-between items-center	select-none gap-2">
+    <div
+      className={`rounded border hover:border-bg-border ${
+        expanded ? 'border-bg-border' : 'border-transparent'
+      } overflow-hidden`}
+    >
+      <span
+        className="bg-bg-shade hover:bg-base-hover flex flex-row px-4 py-2 justify-between items-center	select-none gap-2 group cursor-pointer"
+        onClick={() => setExpanded(!expanded)}
+      >
         <span className="flex flex-row items-center gap-2 flex-1 overflow-hidden">
           {icon}
           {title}
         </span>
         <span className="flex flex-row items-center gap-4">
           {headerItems}
-          <span
-            className="cursor-pointer"
-            onClick={() => setExpanded(!expanded)}
-          >
-            <span className="w-2 h-2 block">
+          <span>
+            <span
+              className={`w-2 h-2 block text-label-muted group-hover:text-label-title ${
+                expanded ? 'text-label-title' : ''
+              }`}
+            >
               {expanded ? <ChevronUpFilled raw /> : <ChevronDownFilled raw />}
             </span>
           </span>

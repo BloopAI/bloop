@@ -3,7 +3,6 @@ import { Snippet, SymbolType } from '../../types/results';
 import CodeBlockSearch from './Search/index';
 import SearchRepo from './SearchRepo';
 import SearchFile from './SearchFile';
-import SemanticSearch from './SemanticSearch';
 
 export default {
   title: 'components/CodeBlockSearch',
@@ -27,7 +26,7 @@ export const CodeBlockMultipleMatches = () => {
   ];
   return (
     <MemoryRouter initialEntries={['']}>
-      <div style={{ width: 1000, backgroundColor: '', padding: '10px' }}>
+      <div style={{ width: 800, padding: '10px' }}>
         <CodeBlockSearch
           snippets={snippets}
           language={'typescript'}
@@ -50,7 +49,7 @@ export const CodeBlockSingleMatch = () => {
   ];
   return (
     <MemoryRouter initialEntries={['']}>
-      <div style={{ width: 1000, backgroundColor: '', padding: '10px' }}>
+      <div style={{ width: 800, padding: '10px' }}>
         <CodeBlockSearch
           snippets={snippets}
           language={'typescript'}
@@ -104,7 +103,7 @@ export const CodeBlockHighlighted = () => {
   ];
   return (
     <MemoryRouter initialEntries={['']}>
-      <div style={{ width: 1000, backgroundColor: '', padding: '10px' }}>
+      <div style={{ width: 800, padding: '10px' }}>
         <CodeBlockSearch
           snippets={snippets}
           language={'typescript'}
@@ -130,7 +129,7 @@ export const CodeBlockSymbolSearch = () => {
 
   return (
     <MemoryRouter initialEntries={['']}>
-      <div style={{ width: 1000, backgroundColor: '', padding: '10px' }}>
+      <div style={{ width: 800, padding: '10px' }}>
         <CodeBlockSearch
           snippets={snippets}
           language={'typescript'}
@@ -161,7 +160,7 @@ export const CodeBlockSymbolSearchCollapsed = () => {
   ];
   return (
     <MemoryRouter initialEntries={['']}>
-      <div style={{ width: 1000, backgroundColor: '', padding: '10px' }}>
+      <div style={{ width: 800, padding: '10px' }}>
         <CodeBlockSearch
           snippets={snippets}
           language={'typescript'}
@@ -179,7 +178,7 @@ export const CodeBlockSymbolSearchCollapsed = () => {
 export const CodeSearchPath = () => {
   return (
     <MemoryRouter initialEntries={['']}>
-      <div style={{ width: 1000 }} className="flex flex-col gap-4">
+      <div style={{ width: 800 }} className="flex flex-col gap-4">
         <SearchFile
           filePath={'cobra-ats/src/javascript/app.js'}
           highlights={[{ start: 12, end: 15 }]}
@@ -195,34 +194,12 @@ export const CodeSearchPath = () => {
 export const CodeSearchRepo = () => {
   return (
     <MemoryRouter initialEntries={['']}>
-      <div style={{ width: 1000 }} className="flex flex-col gap-4">
+      <div style={{ width: 800 }} className="flex flex-col gap-4">
         <SearchRepo
           repository="cobra-ats"
           highlights={[{ start: 12, end: 15 }]}
         />
       </div>
     </MemoryRouter>
-  );
-};
-
-export const SemanticSearchSnippets = () => {
-  return (
-    <div style={{ width: 1000 }} className="flex flex-col gap-4">
-      <SemanticSearch
-        snippets={[
-          {
-            line: 1,
-            code: 'console.log("Hello world!");',
-            path: 'src/index.js',
-            repoName: 'bloop',
-            lang: 'JavaScript',
-          },
-        ]}
-        // nlQuery="Some nice answer"
-        onClick={(e) => {
-          // e.preventDefault();
-        }}
-      />
-    </div>
   );
 };

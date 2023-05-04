@@ -9,7 +9,6 @@ import {
   Version,
 } from '../../../icons';
 import ListNavigation from './index';
-import '../../../index.css';
 
 export default {
   title: 'components/ListNavigation',
@@ -19,7 +18,7 @@ export default {
 export const BranchNavigation = () => {
   const [selectedBranch, setSelectedBranch] = React.useState(0);
   return (
-    <div className="p-5 bg-gray-900 w-[384px]">
+    <div className="p-5 w-[384px]">
       <ListNavigation
         items={[
           { title: 'main' },
@@ -39,7 +38,7 @@ export const BranchNavigation = () => {
 export const VersionNavigation = () => {
   const [selectedVersion, setSelectedVersion] = React.useState(0);
   return (
-    <div className="p-5 bg-gray-900 w-[384px]">
+    <div className="p-5 w-[384px]">
       <ListNavigation
         items={[{ title: '2.1.1' }, { title: '2.1.2' }, { title: '2.1.3' }]}
         icon={<Version />}
@@ -55,7 +54,7 @@ export const VersionNavigation = () => {
 export const DefaultNavigation = () => {
   const [selected, setSelected] = React.useState(0);
   return (
-    <div className="bg-gray-900 w-[384px]">
+    <div className="w-[384px]">
       <ListNavigation
         title=""
         items={[
@@ -73,7 +72,7 @@ export const DefaultNavigation = () => {
 export const LightNavigation = () => {
   const [selected, setSelected] = React.useState(0);
   return (
-    <div className="bg-gray-800 w-[384px]">
+    <div className="w-[384px]">
       <ListNavigation
         title=""
         items={[

@@ -35,8 +35,8 @@ import 'prismjs/components/prism-scss.min';
 import 'prismjs/components/prism-less.min';
 import 'prismjs/components/prism-scala.min';
 import 'prismjs/components/prism-julia.min';
+import 'prismjs/components/prism-docker.min';
 import type { Token } from '../types/prism';
-import '../prism-vsc-dark-plus.css';
 
 const newlineRe = /\r\n|\r|\n/;
 

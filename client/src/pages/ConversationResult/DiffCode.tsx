@@ -23,8 +23,8 @@ const DiffCode = ({ data }: Props) => {
   );
 
   return (
-    <div className="text-sm border border-gray-700 rounded-md">
-      <div className="w-full bg-gray-800 p-3 border-b border-gray-700 select-none flex items-center justify-between">
+    <div className="text-sm border border-bg-border rounded-md">
+      <div className="w-full bg-bg-base p-3 border-b border-bg-border select-none flex items-center justify-between">
         <div className="flex items-center gap-2 max-w-[calc(100%-120px)] w-full">
           <FileIcon filename={data.path} />
           <div className="overflow-hidden">
@@ -34,22 +34,22 @@ const DiffCode = ({ data }: Props) => {
             />
           </div>
         </div>
-        <div className="flex items-center justify-center p-0.5 gap-0.5 bg-gray-900 rounded-4">
+        <div className="flex items-center justify-center p-0.5 gap-0.5 bg-bg-sub rounded-4">
           <button
-            className={`px-2 h-6 rounded-4 caption flex items-center justify-center outline-none focus:outline-none focus: border-gray-700 ${
+            className={`px-2 h-6 rounded-4 caption flex items-center justify-center outline-none focus:outline-none focus:border-bg-border ${
               !showRaw
-                ? 'text-white bg-gray-800 border-gray-700 shadow-tiny'
-                : 'text-gray-400 border-transparent'
+                ? 'text-label-title bg-bg-base border-bg-border shadow-low'
+                : 'text-label-base border-transparent'
             } transition-all duration-150 ease-in-bounce border`}
             onClick={() => setShowRaw(false)}
           >
             Diff
           </button>
           <button
-            className={`px-2 h-6 rounded-4 caption flex items-center justify-center outline-none focus:outline-none focus: border-gray-700 ${
+            className={`px-2 h-6 rounded-4 caption flex items-center justify-center outline-none focus:outline-none focus:border-bg-border ${
               showRaw
-                ? 'text-white bg-gray-800 border-gray-700 shadow-tiny'
-                : 'text-gray-400 border-transparent'
+                ? 'text-label-title bg-bg-base border-bg-border shadow-low'
+                : 'text-label-base border-transparent'
             } transition-all duration-150 ease-in-bounce border`}
             onClick={() => setShowRaw(true)}
           >

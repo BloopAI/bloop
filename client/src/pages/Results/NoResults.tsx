@@ -31,7 +31,7 @@ const NoResults = ({ suggestions }: Props) => {
           loading={false}
         />
         <div className="mt-13 select-none">
-          <p className="body-s text-gray-500">Suggested combinations</p>
+          <p className="body-s text-label-muted">Suggested combinations</p>
           <div className="flex gap-3 flex-wrap mt-6 w-1/2">{items}</div>
         </div>
       </div>

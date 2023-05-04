@@ -6,7 +6,7 @@ import SkeletonItem from '../SkeletonItem';
 export const ResultsPreviewSkeleton = () => {
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-3 border border-gray-800 p-4 rounded">
+      <div className="flex flex-col gap-3 border border-bg-border p-4 rounded">
         <div className="h-4 w-24 mb-2">
           <SkeletonItem />
         </div>
@@ -20,7 +20,7 @@ export const ResultsPreviewSkeleton = () => {
           <SkeletonItem />
         </div>
       </div>
-      <div className="flex flex-col gap-3 border border-gray-800 p-4 rounded">
+      <div className="flex flex-col gap-3 border border-bg-border p-4 rounded">
         <div className="h-4 w-24 mb-2">
           <SkeletonItem />
         </div>
@@ -34,7 +34,7 @@ export const ResultsPreviewSkeleton = () => {
           <SkeletonItem />
         </div>
       </div>
-      <div className="flex flex-col gap-3 border border-gray-800 p-4 rounded">
+      <div className="flex flex-col gap-3 border border-bg-border p-4 rounded">
         <div className="h-4 w-24 mb-2">
           <SkeletonItem />
         </div>
@@ -48,7 +48,7 @@ export const ResultsPreviewSkeleton = () => {
           <SkeletonItem />
         </div>
       </div>
-      <div className="flex flex-col gap-3 border border-gray-800 p-4 rounded">
+      <div className="flex flex-col gap-3 border border-bg-border p-4 rounded">
         <div className="h-4 w-24 mb-2">
           <SkeletonItem />
         </div>
@@ -69,22 +69,22 @@ export const ResultsPreviewSkeleton = () => {
 const mainContainerStyle = { height: 'calc(100vh - 8rem)' };
 const Skeleton = () => {
   return (
-    <div className="text-gray-200">
+    <div className="text-label-title">
       <NavBar />
       <div
         className="flex mt-16 w-screen overflow-hidden relative"
         style={mainContainerStyle}
       >
         <div
-          className={`text-gray-300 border-b border-r border-gray-800 overflow-y-auto flex-shrink-0 ${'w-90'} transition-all duration-100 `}
+          className={`text-label-title border-b border-r border-bg-border overflow-y-auto flex-shrink-0 ${'w-90'} transition-all duration-100 `}
         >
-          <div className="w-full px-8 py-4 border-b border-gray-800">
+          <div className="w-full px-8 py-4 border-b border-bg-border">
             <div className="w-24 h-4">
               <SkeletonItem />
             </div>
           </div>
           <div
-            className={`flex flex-col items-start gap-2 px-8 subhead-m py-2 border-b border-gray-800 flex justify-between h-60 pb-8`}
+            className={`flex flex-col items-start gap-2 px-8 subhead-m py-2 border-b border-bg-border flex justify-between h-60 pb-8`}
           >
             <div className="w-72 h-12 py-4">
               <SkeletonItem />
@@ -106,7 +106,7 @@ const Skeleton = () => {
             </div>
           </div>
           <div
-            className={`flex flex-col items-start gap-2 px-8 subhead-m py-2 border-b border-gray-800 flex justify-between h-60 pb-8`}
+            className={`flex flex-col items-start gap-2 px-8 subhead-m py-2 border-b border-bg-border flex justify-between h-60 pb-8`}
           >
             <div className="w-72 h-12 py-4">
               <SkeletonItem />
@@ -128,7 +128,7 @@ const Skeleton = () => {
             </div>
           </div>
           <div
-            className={`flex flex-col items-start gap-2 px-8 subhead-m py-2 border-b border-gray-800 flex justify-between h-60 pb-8`}
+            className={`flex flex-col items-start gap-2 px-8 subhead-m py-2 border-b border-bg-border justify-between h-60 pb-8`}
           >
             <div className="w-72 h-12 py-4">
               <SkeletonItem />

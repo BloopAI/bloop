@@ -47,10 +47,10 @@ const Tabs = ({
 
   return (
     <div
-      className={`text-gray-400 flex items-center ${
-        variant === 'link' ? 'gap-5' : 'rounded-4 border border-gray-800'
+      className={`text-label-base flex items-center ${
+        variant === 'link' ? 'gap-5' : 'rounded-4 border border-bg-border'
       } relative ${fullWidth ? 'w-full' : ''} z-10 ${
-        divider ? 'divide-x divide-gray-800' : ''
+        divider ? 'divide-x divide-bg-border' : ''
       } select-none`}
       ref={containerRef}
     >
@@ -61,8 +61,8 @@ const Tabs = ({
             sizeMap[size]
           } focus:outline-none flex items-center p-0 gap-2 rounded-none ${
             activeTab === i
-              ? 'text-sky-500 focus:text-sky-400'
-              : 'hover:text-gray-100 focus:text-gray-100'
+              ? 'text-bg-main focus:text-bg-main-hover'
+              : 'hover:text-label-title focus:text-label-title'
           } transition-all outline-none outline-0 bg-transparent ${
             fullWidth ? 'flex-1 justify-center' : ''
           }`}
@@ -75,13 +75,13 @@ const Tabs = ({
       ))}
       {variant === 'link' ? (
         <span
-          className="absolute bottom-0 h-[1px] bg-sky-500 transition-all duration-300 ease-in-slow"
+          className="absolute bottom-0 h-[1px] bg-bg-main transition-all duration-300 ease-in-slow"
           style={position}
         />
       ) : (
         <span
           style={{ left: position.left - 1, width: position.width }}
-          className="absolute bottom-0 top-0 -z-10 bg-gray-800 transition-all duration-300 ease-in-slow"
+          className="absolute bottom-0 top-0 -z-10 bg-bg-base transition-all duration-300 ease-in-slow"
         />
       )}
     </div>

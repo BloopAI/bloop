@@ -12,7 +12,7 @@ type Props = {
   dropdownBtnClassName?: string;
   noChevron?: boolean;
   btnVariant?: 'primary' | 'secondary' | 'tertiary';
-  btnSize?: 'small' | 'medium' | 'large';
+  btnSize?: 'small' | 'medium' | 'large' | 'tiny';
   btnOnlyIcon?: boolean;
   lastItemFixed?: boolean;
   size?: 'small' | 'medium' | 'large';
@@ -53,7 +53,7 @@ const Dropdown = ({
           size={btnSize}
           id="dropdownDefault"
           data-dropdown-toggle="dropdown"
-          className={`${visible ? 'text-gray-50' : ''} ${
+          className={`${visible ? 'text-label-title' : ''} ${
             dropdownBtnClassName || ''
           }`}
           onClick={(e) => {

@@ -75,7 +75,6 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
     <div className="flex flex-col gap-4">
       <div>
         <h4>Files in {repository.name}</h4>
-        <p className="body-s text-gray-500"></p>
       </div>
       <div className="select-none">
         <RepositoryFiles

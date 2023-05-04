@@ -66,7 +66,7 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
       default:
         return (
           <div
-            className={`flex px-2 py-4 bg-gray-900 h-[calc(100vh-15rem)] overflow-y-auto p-3 pr-12`}
+            className={`flex px-2 py-4 bg-bg-sub h-[calc(100vh-15rem)] overflow-y-auto p-3 pr-12`}
           >
             <CodeFull
               code={result.code}
@@ -84,7 +84,7 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
       case 1:
         return (
           <div
-            className={`flex bg-gray-900 h-[calc(100vh-15rem)] overflow-y-auto`}
+            className={`flex bg-bg-sub h-[calc(100vh-15rem)] overflow-y-auto`}
           >
             <CodeFull
               code={result.code}
@@ -106,7 +106,7 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
       case 2:
         return (
           <div
-            className={`flex bg-gray-900 h-[calc(100vh-15rem)] overflow-y-auto pl-3 pr-12`}
+            className={`flex bg-bg-sub h-[calc(100vh-15rem)] overflow-y-auto pl-3 pr-12`}
           >
             <CommitHistory commits={mockCommits} showFirstSeparator={false} />
           </div>
@@ -127,7 +127,7 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
         containerClassName="w-[60vw]"
         filtersOverlay={mode === FullResultModeEnum.SIDEBAR}
       >
-        <div className="flex justify-between items-center p-3 bg-gray-800 border-b border-gray-700 shadow-lighter select-none">
+        <div className="flex justify-between items-center p-3 bg-bg-base border-b border-bg-border shadow-low select-none">
           {!!result && (
             <ModeToggle
               repoName={result.repoName}
@@ -163,15 +163,8 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
               onResultClosed={onResultClosed}
             />
           )}
-          {/*<div className={`border-b border-gray-700 w-full pb-0 p-3`}>*/}
-          {/*  <Tabs*/}
-          {/*    activeTab={activeTab}*/}
-          {/*    onTabChange={setActiveTab}*/}
-          {/*    tabs={tabs}*/}
-          {/*  />*/}
-          {/*</div>*/}
           <div
-            className={`flex px-2 py-4 bg-gray-900 h-[calc(100vh-15rem)] overflow-y-auto p-3 pr-12`}
+            className={`flex px-2 py-4 bg-bg-sub h-[calc(100vh-15rem)] overflow-y-auto p-3 pr-12`}
           >
             {!!result && (
               <CodeFull

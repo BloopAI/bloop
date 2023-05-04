@@ -53,10 +53,10 @@ const FileItem = ({ item, level, handleClick, expand, currentPath }: Props) => {
   return (
     <>
       <div
-        className={`flex items-center hover:text-gray-300 hover:bg-gray-800 cursor-pointer ${
+        className={`flex items-center hover:text-label-title hover:bg-bg-base-hover cursor-pointer ${
           item.selected && !hasChildren
-            ? 'bg-gray-800 text-gray-300'
-            : 'bg-gray-900 text-gray-500'
+            ? 'bg-bg-shade text-label-title'
+            : 'bg-bg-base text-label-base'
         }`}
         style={{ paddingLeft: `${level ? level + 0.7 * level : level}rem` }}
       >

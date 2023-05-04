@@ -38,17 +38,17 @@ const typeMap = {
 const AddRepoCard = ({ type, onClick }: Props) => {
   return (
     <div
-      className="flex flex-1 flex-col gap-1 p-4 bg-gray-800 hover:bg-gray-700 rounded-md cursor-pointer group"
+      className="flex flex-1 flex-col gap-1 p-4 bg-bg-base border border-bg-base hover:bg-bg-base-hover hover:border-bg-border-hover rounded-md cursor-pointer group"
       onClick={() => onClick(type)}
     >
-      <div className="flex gap-2 items-center text-gray-600 group-hover:text-gray-100">
+      <div className="flex gap-2 items-center text-label-muted group-hover:text-label-title">
         {typeMap[type].icon}
-        <p className="subhead-s text-gray-200 group-hover:text-gray-100 flex-1">
+        <p className="subhead-s text-label-title flex-1">
           {typeMap[type].title}
         </p>
-        <ChevronRight className="group-hover:text-primary-300" />
+        <ChevronRight className="group-hover:text-bg-main" />
       </div>
-      <p className="pl-6 caption text-gray-500 group-hover:text-gray-400">
+      <p className="pl-6 caption text-label-muted group-hover:text-label-base">
         {typeMap[type].description}
       </p>
     </div>

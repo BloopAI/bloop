@@ -71,12 +71,12 @@ const HomePage = () => {
       />
       {popupOpen && (
         <div
-          className={`fixed w-85 p-3 flex gap-3 bg-gray-800 border border-gray-700 shadow-dark left-8 bottom-24 z-40 text-primary-300`}
+          className={`fixed w-85 p-3 flex gap-3 bg-bg-shade border border-bg-border rounded-lg shadow-high left-8 bottom-24 z-40 text-bg-main`}
         >
           <LiteLoader />
           <div className="flex flex-col gap-1">
-            <p className="body-s text-white">Syncing repository</p>
-            <p className="caption text-gray-400">
+            <p className="body-s text-label-title">Syncing repository</p>
+            <p className="caption text-label-base">
               We are syncing your repository to bloop. This might take a couple
               on minutes
             </p>

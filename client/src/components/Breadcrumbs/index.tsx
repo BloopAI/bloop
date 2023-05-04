@@ -116,7 +116,7 @@ const Breadcrumbs = ({
               />
             </span>
             {i !== formattedPathParts.length - 1 && (
-              <span className="text-gray-500" data-role="separator">
+              <span className="text-label-muted" data-role="separator">
                 {separator}
               </span>
             )}
@@ -144,7 +144,7 @@ const Breadcrumbs = ({
             </span>
           )}
           {i !== formattedPathParts.length - 1 && (
-            <span className="text-gray-500" data-role="separator">
+            <span className="text-label-muted" data-role="separator">
               {separator}
             </span>
           )}
