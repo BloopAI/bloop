@@ -99,7 +99,7 @@ const ModalOrSidebar = ({
             key="overlay"
             className={`fixed top-0 ${
               fullOverlay ? '' : 'mt-24'
-            } bottom-0 left-0 right-0 bg-gray-900 bg-opacity-75 cursor-alias ${
+            } bottom-0 left-0 right-0 bg-bg-base/75 cursor-alias ${
               fullOverlay ? 'z-60' : 'z-20'
             }`}
             initial={backdropHidden}
@@ -121,8 +121,10 @@ const ModalOrSidebar = ({
           <motion.div
             key="modal"
             className={`modal-or-sidebar overflow-hidden fixed flex flex-col ${
-              isSidebar ? `border-y-0` : `rounded-md drop-shadow-light-bigger`
-            } bg-gray-900 border border-gray-700 bg-opacity-75 z-70 backdrop-blur-8 ${containerClassName}`}
+              isSidebar ? `border-y-0` : `rounded-md shadow-float`
+            } bg-bg-shade border border-bg-border ${
+              isSidebar ? '' : 'z-70'
+            } ${containerClassName}`}
             animate={
               isSidebar
                 ? sidebarAnimation(shouldStretch)

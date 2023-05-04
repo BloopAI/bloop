@@ -12,9 +12,12 @@ import { gitHubStatus } from '../../services/api';
 import { SettingSections } from '../../components/Settings';
 import {
   getPlainFromStorage,
+  savePlainToStorage,
   ONBOARDING_DONE_KEY,
+  THEME,
 } from '../../services/storage';
 import { UITabType } from '../../types/general';
+import { Theme } from '../../types';
 
 export const UIContextProvider = ({
   children,
@@ -37,6 +40,9 @@ export const UIContextProvider = ({
     !getPlainFromStorage(ONBOARDING_DONE_KEY),
   );
   const [isRightPanelOpen, setRightPanelOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>(
+    (getPlainFromStorage(THEME) as 'default' | null) || 'default',
+  );
 
   useEffect(() => {
     if (!isSelfServe) {
@@ -46,6 +52,11 @@ export const UIContextProvider = ({
       });
     }
   }, []);
+
+  useEffect(() => {
+    savePlainToStorage(THEME, theme);
+    document.body.dataset.theme = theme;
+  }, [theme]);
 
   const uiContextValue = useMemo(
     () => ({
@@ -67,6 +78,8 @@ export const UIContextProvider = ({
       isRightPanelOpen,
       setRightPanelOpen,
       tab,
+      theme,
+      setTheme,
     }),
     [
       isSettingsOpen,
@@ -79,6 +92,7 @@ export const UIContextProvider = ({
       shouldShowWelcome,
       isRightPanelOpen,
       tab,
+      theme,
     ],
   );
   return (

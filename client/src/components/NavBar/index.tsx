@@ -1,5 +1,13 @@
 import React, { useContext } from 'react';
-import { Bug, CloseSign, DoorRight, Home, Magazine, Person } from '../../icons';
+import {
+  Bug,
+  CloseSign,
+  Cog,
+  DoorRight,
+  Home,
+  Magazine,
+  Person,
+} from '../../icons';
 import { MenuListItemType } from '../ContextMenu';
 import { deleteAuthCookie } from '../../utils';
 import DropdownWithIcon from '../Dropdown/WithIcon';
@@ -13,16 +21,20 @@ type Props = {
 };
 
 const NavBar = ({ isSkeleton }: Props) => {
-  const { setBugReportModalOpen, setShouldShowWelcome, setGithubConnected } =
-    useContext(UIContext);
+  const {
+    setBugReportModalOpen,
+    setShouldShowWelcome,
+    setGithubConnected,
+    setSettingsOpen,
+  } = useContext(UIContext);
   const { openLink, isSelfServe, os } = useContext(DeviceContext);
   const { tabs, setActiveTab, activeTab, handleRemoveTab } =
     useContext(TabsContext);
 
   return (
     <div
-      className={`h-8 flex items-center gap-6 px-8 bg-gray-900 fixed top-0 left-0 right-0 z-30 justify-between
-       border-b border-gray-800 backdrop-blur-8 select-none`}
+      className={`h-8 flex items-center gap-6 px-8 bg-bg-base fixed top-0 left-0 right-0 z-50 justify-between
+       border-b border-bg-border backdrop-blur-8 select-none`}
       data-tauri-drag-region
     >
       <div
@@ -37,10 +49,10 @@ const NavBar = ({ isSkeleton }: Props) => {
               onClick={() => setActiveTab(t.key)}
               className={`px-4 border-r ${
                 i === 0 ? 'border-l' : ''
-              } border-gray-700 h-full flex items-center justify-center gap-2 ${
+              } border-bg-border h-full flex items-center justify-center gap-2 ${
                 activeTab === t.key
-                  ? 'bg-gray-800 text-gray-100'
-                  : 'bg-gray-900 text-gray-400'
+                  ? 'bg-bg-shade text-label-title'
+                  : 'bg-bg-base text-label-base'
               } cursor-pointer`}
             >
               {t.name === 'Home' ? <Home sizeClassName="w-4 h-4" /> : t.name}
@@ -50,7 +62,7 @@ const NavBar = ({ isSkeleton }: Props) => {
                     e.stopPropagation();
                     handleRemoveTab(t.key);
                   }}
-                  className={`w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-100 ${
+                  className={`w-5 h-5 flex items-center justify-center text-label-base hover:text-label-title ${
                     activeTab !== t.key ? 'opacity-0' : ''
                   } relative top-px`}
                   disabled={activeTab !== t.key}
@@ -65,6 +77,12 @@ const NavBar = ({ isSkeleton }: Props) => {
         <div>
           <DropdownWithIcon
             items={[
+              {
+                text: 'Settings',
+                icon: <Cog />,
+                type: MenuListItemType.DEFAULT,
+                onClick: () => setSettingsOpen(true),
+              },
               {
                 text: 'Documentation',
                 icon: <Magazine />,
@@ -93,6 +111,8 @@ const NavBar = ({ isSkeleton }: Props) => {
             ]}
             icon={<Person />}
             dropdownBtnClassName="-mr-4"
+            btnSize="tiny"
+            btnVariant="tertiary"
           />
         </div>
       )}

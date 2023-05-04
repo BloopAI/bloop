@@ -25,16 +25,16 @@ const CommentItemExpanded = ({
 }: Props) => {
   return (
     <span
-      className={`bg-gray-900/75 flex flex-col gap-3 border-gray-800 border rounded-md mt-4 divide-y divide-gray-700 transition-all duration-300 ease-in-bounce ${
+      className={`bg-bg-base flex flex-col gap-3 border-bg-border border rounded-md mt-4 divide-y divide-bg-border transition-all duration-300 ease-in-bounce ${
         readonly ? 'w-80' : 'w-96'
       } ${visible ? 'opacity-100' : 'opacity-0'}`}
     >
       {readonly ? (
         <>
-          <span className="flex gap-2 text-gray-500 justify-between p-3 pb-0 items-center">
+          <span className="flex gap-2 text-label-muted justify-between p-3 pb-0 items-center">
             <span className="flex gap-2 items-center">
               <img className="w-6 h-6" src={avatar} alt="" />
-              <span className="text-gray-100 text-sm">{author}</span>
+              <span className="text-label-title text-sm">{author}</span>
             </span>
             <Button
               size={'small'}
@@ -47,7 +47,7 @@ const CommentItemExpanded = ({
             </Button>
           </span>
           <span className="p-4">
-            <span className="text-gray-400 text-sm">{comment}</span>
+            <span className="text-label-base text-sm">{comment}</span>
           </span>
         </>
       ) : (
@@ -80,9 +80,9 @@ const CommentItemExpanded = ({
           <span className="p-4 flex flex-col gap-2">
             <span className="flex gap-2">
               <img className="w-6 h-6" src={avatar} alt="" />
-              <span className="text-gray-100">{author}</span>
+              <span className="text-label-title">{author}</span>
             </span>
-            <span className="text-gray-400 ">{comment}</span>
+            <span className="text-label-base">{comment}</span>
           </span>
         </>
       )}

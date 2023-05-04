@@ -40,44 +40,46 @@ const CommitHistory = ({ commits, showFirstSeparator = true }: Props) => {
   return (
     <div className="pt-2 w-full">
       {showFirstSeparator && (
-        <span className="h-4 border-r pl-2.5 border-gray-700 w-full"></span>
+        <span className="h-4 border-r pl-2.5 border-bg-border w-full"></span>
       )}
       {sortedCommits.map((commitDate) => (
         <div key={commitDate.date}>
-          <div className="text-gray-400 text-sm flex flex-row py-1">
+          <div className="text-label-base text-sm flex flex-row py-1">
             <Commit />
             <span className="pl-2 select-none">
               Commits on {format(commitDate.date, 'MMM d,y')}
             </span>
           </div>
           <div className="flex flex-row gap-4 flex-1">
-            <span className=" border-r pl-2.5 border-gray-700 block"></span>
-            <div className="rounded border border-gray-700 divide-y divide-gray-700 gap-2 my-4 w-full">
+            <span className="border-r pl-2.5 border-bg-border block"></span>
+            <div className="rounded border border-bg-border divide-y divide-bg-border gap-2 my-4 w-full">
               {commitDate.commits.map((commit) => (
                 <span
                   key={commit.hash}
-                  className="flex flex-row items-center p-3 gap-12 bg-gray-900 first:rounded-t last:rounded-b"
+                  className="flex flex-row items-center p-3 gap-12 bg-bg-sub first:rounded-t last:rounded-b"
                 >
                   <span className="flex flex-col gap-2 w-1/2">
-                    <span className="text-gray-300 text-sm cursor-pointer hover:underline">
+                    <span className="text-label-base text-sm cursor-pointer hover:underline">
                       {commit.message}
                     </span>
                     <span className="flex flex-row text-xs items-center">
                       <span className="w-5 h-5 cursor-pointer select-none">
                         <img src={commit.image} />
                       </span>
-                      <span className="text-gray-300 ml-3 cursor-pointer hover:underline">
+                      <span className="text-label-base ml-3 cursor-pointer hover:underline">
                         {commit.author}
                       </span>
-                      <span className="text-gray-500 ml-1 select-none">
+                      <span className="text-label-muted ml-1 select-none">
                         committed&nbsp;
                         {timeAgo(commit.datetime)}
                       </span>
                     </span>
                   </span>
                   <span className="flex flex-row items-center gap-2">
-                    <span className="text-gray-300 text-sm">{commit.hash}</span>
-                    <span className="text-gray-500">
+                    <span className="text-label-base text-sm">
+                      {commit.hash}
+                    </span>
+                    <span className="text-label-muted">
                       <Button
                         onlyIcon
                         variant={'tertiary'}

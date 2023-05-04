@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import TextInput from './index';
-import '../../index.css';
 
 export default {
   title: 'components/TextInput',
@@ -10,7 +9,7 @@ export default {
 export const DefaultOutlined = () => {
   const [value, setValue] = useState('');
   return (
-    <div style={{ width: 384, backgroundColor: '#131315' }}>
+    <div style={{ width: 384 }}>
       <TextInput
         label="Add label"
         placeholder="Placeholder"
@@ -27,7 +26,7 @@ export const DefaultOutlined = () => {
 export const InputErrorOutlined = () => {
   const [value, setValue] = useState('');
   return (
-    <div style={{ width: 384, backgroundColor: '#131315' }}>
+    <div style={{ width: 384 }}>
       <TextInput
         label="Add label"
         placeholder="Placeholder"
@@ -45,7 +44,7 @@ export const InputErrorOutlined = () => {
 export const InputSuccessOutlined = () => {
   const [value, setValue] = useState('Placeholder');
   return (
-    <div style={{ width: 384, backgroundColor: '#131315' }}>
+    <div style={{ width: 384 }}>
       <TextInput
         label="Add label"
         placeholder="Placeholder"
@@ -63,7 +62,7 @@ export const InputSuccessOutlined = () => {
 export const DisabledOutlined = () => {
   const [value, setValue] = useState('');
   return (
-    <div style={{ width: 384, backgroundColor: '#131315' }}>
+    <div style={{ width: 384 }}>
       <TextInput
         label="Add label"
         placeholder="Placeholder"
@@ -81,7 +80,7 @@ export const DisabledOutlined = () => {
 export const DefaultFilled = () => {
   const [value, setValue] = useState('');
   return (
-    <div style={{ width: 384, backgroundColor: '#131315' }}>
+    <div style={{ width: 384 }}>
       <TextInput
         label="Add label"
         placeholder="Placeholder"
@@ -99,7 +98,7 @@ export const DefaultFilled = () => {
 export const InputErrorFilled = () => {
   const [value, setValue] = useState('');
   return (
-    <div style={{ width: 384, backgroundColor: '#131315' }}>
+    <div style={{ width: 384 }}>
       <TextInput
         label="Add label"
         placeholder="Placeholder"
@@ -118,7 +117,7 @@ export const InputErrorFilled = () => {
 export const InputSuccessFilled = () => {
   const [value, setValue] = useState('Placeholder');
   return (
-    <div style={{ width: 384, backgroundColor: '#131315' }}>
+    <div style={{ width: 384 }}>
       <TextInput
         label="Add label"
         placeholder="Placeholder"
@@ -137,7 +136,7 @@ export const InputSuccessFilled = () => {
 export const DisabledFilled = () => {
   const [value, setValue] = useState('');
   return (
-    <div style={{ width: 384, backgroundColor: '#131315' }}>
+    <div style={{ width: 384 }}>
       <TextInput
         label="Add label"
         placeholder="Placeholder"

@@ -17,19 +17,19 @@ const ConversationListItem = ({
 }: Props) => {
   return (
     <div
-      className={`text-gray-300 active:text-gray-300 transition-all duration-300 ease-in-bounce 
-      px-4 block py-3 cursor-pointer hover:text-gray-300 w-full group text-start hover:bg-gray-800`}
+      className={`transition-all duration-300 ease-in-bounce 
+      px-4 block py-3 cursor-pointer w-full group text-start hover:bg-chat-bg-base-hover`}
       onClick={onClick}
     >
       <span
-        className={`flex w-full items-start justify-start gap-2 text-gray-500 group-hover:text-gray-300 transition-all duration-300 ease-in-bounce `}
+        className={`flex w-full items-start justify-start gap-2 text-label-base group-hover:text-label-title transition-all duration-300 ease-in-bounce `}
       >
         <QuillIcon />
         <div className="flex-1 overflow-hidden">
-          <div className="ellipsis body-s w-full text-gray-300 group-hover:text-gray-100 transition-all duration-300 ease-in-bounce ">
+          <div className="ellipsis body-s w-full text-label-base group-hover:text-label-title transition-all duration-300 ease-in-bounce ">
             {title}
           </div>
-          <div className="caption group-hover:text-gray-400 transition-all duration-300 ease-in-bounce ">
+          <div className="caption text-label-muted group-hover:text-label-base transition-all duration-300 ease-in-bounce ">
             {subtitle}
           </div>
         </div>

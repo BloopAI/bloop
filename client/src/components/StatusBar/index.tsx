@@ -37,10 +37,10 @@ const StatusBar = () => {
 
   return (
     <div
-      className={`h-16 flex items-center justify-between gap-8 px-8 bg-gray-900 select-none
-    text-xs border-t border-gray-800 fixed bottom-0 left-0 right-0 z-30 cursor-default`}
+      className={`h-16 flex items-center justify-between gap-8 px-8 bg-bg-base select-none
+    text-xs border-t border-bg-border fixed bottom-0 left-0 right-0 z-30 cursor-default`}
     >
-      <span className="flex text-gray-500 gap-4">
+      <span className="flex text-label-muted gap-4">
         <StatusItem
           icon={<PowerPlug />}
           textMain={'Status'}

@@ -37,7 +37,7 @@ const SearchOnPage = ({
 
   return isSearchActive ? (
     <div
-      className={`z-50 bg-gray-900 bg-opacity-80 ${containerClassName}`}
+      className={`z-50 bg-bg-sub/80 ${containerClassName}`}
       style={{
         backdropFilter: 'blur(1px)',
         WebkitBackdropFilter: 'blur(1px)',
@@ -54,14 +54,14 @@ const SearchOnPage = ({
         inputClassName="pr-24"
         onEscape={onCancel}
       />
-      <div className="flex items-center absolute top-0.5 right-9 caption text-gray-300">
+      <div className="flex items-center absolute top-0.5 right-9 caption text-label-base">
         {resultNum ? (
           <span>
             {currentResult}/{resultNum}
           </span>
         ) : null}
         <button
-          className="p-2 hover:text-gray-50 disabled:hover:text-gray-300"
+          className="p-2 hover:text-label-title disabled:hover:text-label-base"
           onClick={() =>
             setCurrentResult((prev) => (prev > 1 ? prev - 1 : resultNum))
           }
@@ -70,7 +70,7 @@ const SearchOnPage = ({
           <ChevronUp />
         </button>
         <button
-          className="p-2 hover:text-gray-50 disabled:hover:text-gray-300"
+          className="p-2 hover:text-label-title disabled:hover:text-label-base"
           onClick={() =>
             setCurrentResult((prev) => (prev < resultNum ? prev + 1 : 1))
           }

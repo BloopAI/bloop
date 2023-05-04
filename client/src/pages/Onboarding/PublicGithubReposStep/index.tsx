@@ -95,7 +95,7 @@ const PublicGithubReposStep = ({
               }
               startIcon={
                 isVerified ? (
-                  <div className="text-gray-200 h-5 w-5">
+                  <div className="text-label-title h-5 w-5">
                     <Globe2 raw />
                   </div>
                 ) : undefined

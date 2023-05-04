@@ -49,7 +49,7 @@ const CodePart = ({
       {(isLoading || !filePart) && (
         <div className="flex flex-col items-center py-8">
           <LiteLoader sizeClassName="w-7 h-7" />
-          <p className="body-s text-gray-300">Loading code line ranges...</p>
+          <p className="body-s text-label-base">Loading code line ranges...</p>
         </div>
       )}
       <div className={`${isLoading ? 'opacity-0' : 'opacity-100'}`}>
@@ -64,12 +64,12 @@ const CodePart = ({
         )}
       </div>
       {!isLast ? (
-        <pre className={` bg-gray-900 my-0 px-2`}>
+        <pre className={`bg-bg-sub my-0 px-2`}>
           <table>
             <tbody>
               <tr className="token-line">
                 <td className={`w-0 px-1 text-center`} />
-                <td className="text-gray-500 min-w-6 text-right	text-l select-none">
+                <td className="text-label-muted min-w-6 text-right	text-l select-none">
                   ..
                 </td>
               </tr>

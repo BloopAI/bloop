@@ -19,10 +19,10 @@ const AutocompleteMenuItem = ({ getItemProps, item, index }: Props) => {
     <li
       {...getItemProps({ item, index })}
       tabIndex={0}
-      className={`text-gray-300 cursor-pointer w-full flex justify-between items-center outline-0 outline-none ${
+      className={`text-label-base cursor-pointer w-full flex justify-between items-center outline-0 outline-none ${
         item.type === ResultItemType.FLAG ? 'h-9' : ''
-      } px-1.5 py-2.5 hover:bg-gray-700 gap-1 border-transparent border-l-2 hover:border-primary-400 group 
-      focus:outline-none arrow-navigate focus:border-primary-400 focus:bg-gray-700 transition duration-150 ease-in-slow`}
+      } px-1.5 py-2.5 hover:bg-bg-base-hover gap-1 border-transparent border-l-2 hover:border-bg-main group 
+      focus:outline-none arrow-navigate focus:border-bg-main focus:bg-bg-base-hover transition duration-150 ease-in-slow`}
     >
       {item.type === ResultItemType.FLAG ||
       item.type === ResultItemType.LANG ? (
@@ -41,14 +41,14 @@ const AutocompleteMenuItem = ({ getItemProps, item, index }: Props) => {
       ) : item.type === ResultItemType.FILE ? (
         <>
           <span className="caption flex-1">{item.relativePath}</span>
-          <span className="p-1 bg-gray-700 rounded-sm caption text-gray-500 group-hover:bg-gray-600 group-hover:text-gray-100 group-focus:bg-gray-600 group-focus:text-gray-100 transition duration-150 ease-in-slow">
+          <span className="p-1 bg-bg-base rounded-sm caption text-label-muted group-hover:bg-bg-base-hover group-hover:text-label-title group-focus:bg-bg-base-hover group-focus:text-label-title transition duration-150 ease-in-slow">
             File
           </span>
         </>
       ) : item.type === ResultItemType.REPO ? (
         <>
           <span className="caption flex-1">{item.repository}</span>
-          <span className="p-1 bg-gray-700 rounded-sm caption text-gray-500 group-hover:bg-gray-600 group-hover:text-gray-100 group-focus:bg-gray-600 group-focus:text-gray-100 transition duration-150 ease-in-slow">
+          <span className="p-1 bg-bg-base rounded-sm caption text-label-muted group-hover:bg-bg-base-hover group-hover:text-label-title group-focus:bg-bg-base-hover group-focus:text-label-title transition duration-150 ease-in-slow">
             Repository
           </span>
         </>

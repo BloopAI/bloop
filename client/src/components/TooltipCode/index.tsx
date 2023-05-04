@@ -32,12 +32,12 @@ const positionMap = {
 
 const tailStyles = {
   top: {
-    tail: 'bg-gray-700 top-2',
-    fixture: 'border-b-[1px] top-[10px]',
+    tail: 'bg-bg-shade top-2',
+    fixture: 'border-b-[1px] border-bg-border top-[10px]',
   },
   bottom: {
-    tail: 'bg-gray-800 bottom-2',
-    fixture: 'border-t-[1px] border-gray-800 bottom-[10px]',
+    tail: 'bg-bg-shade bottom-2',
+    fixture: 'border-t-[1px] border-bg-border bottom-[10px]',
   },
 };
 
@@ -100,27 +100,27 @@ const TooltipCode = ({
         <span
           className={`absolute ${
             positionMap[tailPosition.horizontal].tail
-          } w-5 h-5 border border-gray-600 ${
+          } w-5 h-5 border border-bg-border ${
             tailStyles[tailPosition.vertical].tail
           } transform rotate-45 box-border z-[-1] rounded-sm`}
         />
 
-        <div className="flex flex-col w-96 rounded border border-gray-600 z-10">
+        <div className="flex flex-col w-96 rounded border border-bg-border z-10">
           <span
             className={`absolute ${
               positionMap[tailPosition.horizontal].fixBorder
-            } w-[11.52px] h-[1px] bg-gray-700 ${
+            } w-[11.52px] h-[1px] bg-bg-shade ${
               tailStyles[tailPosition.vertical].fixture
-            } border-l-[1px] border-r-[1px] border-b-transparent border-l-gray-600 border-r-gray-600`}
+            } border-l-[1px] border-r-[1px] border-b-transparent border-l-bg-border-hover border-r-bg-border`}
           />
-          <span className="bg-gray-700 px-3 pt-2 rounded-t">
+          <span className="bg-bg-shade px-3 pt-2 rounded-t">
             <Tabs
               tabs={tabs}
               activeTab={activeTab}
               onTabChange={setActiveTab}
             />
           </span>
-          <span className="bg-gray-800 rounded-b text-xs">
+          <span className="bg-bg-base rounded-b text-xs">
             {[data.references, data.definitions]
               .filter((s) => s?.length)
               .map((items, index) => (
@@ -130,17 +130,17 @@ const TooltipCode = ({
                       key={index}
                       className={`${
                         activeTab === index ? 'visible' : 'hidden'
-                      } flex flex-col divide-y divide-gray-600 max-h-72 overflow-x-hidden pt-1`}
+                      } flex flex-col divide-y divide-bg-border max-h-72 overflow-x-hidden pt-1`}
                     >
                       {items.length > 1 && (
-                        <span className="pl-4 py-1 text-gray-400">
+                        <span className="pl-4 py-1 text-label-muted">
                           Found{' '}
-                          <span className="text-gray-200">
+                          <span className="text-label-base">
                             {countItems(items)}{' '}
                             {tabs[activeTab]?.title.toLowerCase()}
                           </span>{' '}
                           in{' '}
-                          <span className="text-gray-200">
+                          <span className="text-label-base">
                             {items.length} files
                           </span>
                         </span>

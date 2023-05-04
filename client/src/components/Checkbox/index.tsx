@@ -25,10 +25,10 @@ const Checkbox = ({
   return (
     <label
       className={`${
-        disabled ? 'text-gray-500' : 'text-gray-100 cursor-pointer'
+        disabled ? 'text-label-muted' : 'text-label-title cursor-pointer'
       } flex gap-2 ${
         description ? 'items-start' : 'items-center'
-      } group-custom w-full overflow-hidden`}
+      } group-custom w-full focus:outline-none focus:outline-0 outline-none`}
       onClick={() => {
         if (!disabled) {
           onChange(!checked);
@@ -39,19 +39,20 @@ const Checkbox = ({
         role="checkbox"
         tabIndex={0}
         id={id}
-        className={`${
+        className={`border ${
           checked || intermediary
-            ? 'bg-primary-400 text-gray-100'
+            ? 'bg-bg-main text-label-control border-bg-main'
             : disabled
-            ? 'text-transparent border border-gray-600 '
-            : 'text-transparent group-custom-hover:text-gray-600 border border-gray-600 '
+            ? 'text-transparent border-bg-base'
+            : 'text-transparent group-custom-hover:text-bg-border-hover border-bg-border hover:border-bg-border-hover'
         } ${
           disabled
-            ? 'bg-gray-800'
-            : 'group-custom-active:text-gray-100 group-custom-active:bg-primary-400 group-custom-active:shadow-rings-blue'
-        } w-4 h-4 p-1 flex flex-shrink-0 items-center rounded-sm relative ${
+            ? 'bg-bg-base'
+            : 'group-custom-active:text-label-control group-custom-active:bg-bg-main group-custom-active:border-bg-main group-custom-active:shadow-rings-blue'
+        } w-4 h-4 flex flex-shrink-0 items-center justify-center rounded-sm relative ${
           description ? 'top-[2px]' : ''
-        } transition-all duration-150 ease-in-bounce`}
+        } transition-all duration-150 ease-in-bounce
+         focus:outline-none focus:outline-0 outline-none`}
         aria-checked={checked}
       >
         {intermediary ? (
@@ -76,7 +77,9 @@ const Checkbox = ({
       <div className="flex flex-col gap-1 body-s w-full overflow-hidden">
         <span className={labelClassName}>{label}</span>
         {description ? (
-          <span className="text-gray-500">{description}</span>
+          <span className={disabled ? 'text-label-muted' : 'text-label-base'}>
+            {description}
+          </span>
         ) : null}
       </div>
     </label>

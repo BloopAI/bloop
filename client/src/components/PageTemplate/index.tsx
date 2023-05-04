@@ -38,7 +38,7 @@ const PageTemplate = ({ children, withSearchBar, renderPage }: Props) => {
   }, [renderPage]);
 
   return (
-    <div className="text-gray-200">
+    <div className="text-label-title">
       <NavBar />
       <div className="mt-8" />
       {withSearchBar && <Subheader />}

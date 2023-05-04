@@ -24,9 +24,9 @@ const FloatingToolbar = ({ position }: Props) => {
   return (
     <div className="relative pb-[5px]">
       <div
-        className={`text-gray-500 rounded-4 border border-gray-700 w-fit ${
+        className={`text-label-muted rounded-4 border border-bg-border w-fit ${
           isCommentOpen ? 'w-[286px] h-[52px]' : 'w-[203px] h-[42px]'
-        } flex relative z-10 bg-gray-900 relative transition-all duration-300 ease-in-bounce`}
+        } flex relative z-10 bg-bg-base transition-all duration-300 ease-in-bounce`}
       >
         {isCommentOpen ? (
           <div className="flex items-center p-1 gap-1">
@@ -50,24 +50,24 @@ const FloatingToolbar = ({ position }: Props) => {
           </div>
         ) : (
           <>
-            <div className="border-r border-gray-700 flex">
+            <div className="border-r border-bg-border flex">
               <ToolbarButton
-                color="bg-sky-500"
+                color="bg-sky"
                 isActive={activeButton === 0}
                 onClick={() => setActiveButton(0)}
               />
               <ToolbarButton
-                color="bg-pink-500"
+                color="bg-pink"
                 isActive={activeButton === 1}
                 onClick={() => setActiveButton(1)}
               />
               <ToolbarButton
-                color="bg-yellow-500"
+                color="bg-yellow"
                 isActive={activeButton === 2}
                 onClick={() => setActiveButton(2)}
               />
               <ToolbarButton
-                color="bg-violet-500"
+                color="bg-violet"
                 isActive={activeButton === 3}
                 onClick={() => setActiveButton(3)}
               />
@@ -76,11 +76,11 @@ const FloatingToolbar = ({ position }: Props) => {
           </>
         )}
         <span
-          className={`absolute bottom-[-1px] ${positionMap[position].fixBorder} w-[8px] h-[1px] bg-gray-900`}
+          className={`absolute bottom-[-1px] ${positionMap[position].fixBorder} w-[8px] h-[1px] bg-bg-base`}
         />
       </div>
       <span
-        className={`absolute bottom-1 ${positionMap[position].tail} w-5 h-5 border border-gray-700 bg-gray-900 transform rotate-45 box-border z-0`}
+        className={`absolute bottom-1 ${positionMap[position].tail} w-5 h-5 border border-bg-border bg-bg-base transform rotate-45 box-border z-0`}
       />
     </div>
   );

@@ -49,15 +49,15 @@ const Conversation = ({
             m.text && (
               <div className="flex gap-2 px-4 items-center">
                 {!m.isLoading ? (
-                  <div className="text-success-500 h-5">
+                  <div className="text-bg-success-hover h-5">
                     <Checkmark />
                   </div>
                 ) : (
-                  <div className="text-gray-400 h-5">
+                  <div className="text-label-base h-5">
                     <MagnifyTool />
                   </div>
                 )}
-                <p className="caption text-gray-400 flex-1">
+                <p className="caption text-label-base flex-1">
                   {m.isLoading
                     ? m.loadingSteps[m.loadingSteps.length - 1]
                     : 'Answer Ready'}
@@ -65,7 +65,7 @@ const Conversation = ({
                 {!m.isLoading && !!m.results?.length ? (
                   <div className="flex items-center justify-end justify-self-end">
                     <button
-                      className="text-primary-300 body-s mr-2"
+                      className="text-bg-main body-s mr-2"
                       onClick={() => {
                         navigateConversationResults(i, searchId);
                         setHistoryOpen(false);

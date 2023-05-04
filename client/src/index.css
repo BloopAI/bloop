@@ -1,3 +1,27 @@
+@import "./file-icons.css";
+@import "circleProgress.css";
+
+@import "themes/default-dark.css";
+@import "themes/default-light.css";
+@import "themes/vscode-default-dark.css";
+@import "themes/vscode-default-light.css";
+@import "themes/monokai.css";
+@import "themes/solarized-light.css";
+@import "themes/solarized-dark.css";
+@import "themes/abyss.css";
+@import "themes/gruvbox-dark.css";
+@import "themes/gruvbox-light.css";
+@import "themes/kimbie-dark.css";
+@import "themes/quiet-light.css";
+@import "themes/tomorrow-night-blue.css";
+@import "themes/atom-one-dark-pro.css";
+@import "themes/github-dark.css";
+@import "themes/github-light.css";
+@import "themes/dracula.css";
+@import "themes/darcula.css";
+@import "themes/night-owl.css";
+@import "themes/material.css";
+
 @font-face {
   font-family: Menlo;
   font-weight: normal;
@@ -72,11 +96,763 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+
+@layer base {
+    [data-theme="default"], body:not([data-theme]) {
+      --bg-base: 35, 35, 39; /* #232327 */
+      --bg-base-hover: 48, 48, 57;
+      --bg-shade: 41, 41, 47; /* #29292F */
+      --bg-sub: 26, 26, 31; /* #1A1A1F */
+      --bg-border: 48, 48, 55;
+      --bg-border-hover: 68, 68, 81;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 85, 85, 85;
+      --label-base: 185, 185, 185; /* #B9B9B9 */
+      --label-title: 238, 238, 238;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="default-light"] {
+      --bg-base: 255, 255, 255;
+      --bg-base-hover: 236, 236, 236;
+      --bg-shade: 249, 249, 249;
+      --bg-sub: 243, 243, 243;
+      --bg-border: 230, 230, 230;
+      --bg-border-hover: 211, 211, 211;
+      --bg-main: 93, 117, 255;
+      --bg-main-hover: 69, 89, 205;
+      --bg-danger: 215, 66, 74;
+      --bg-danger-hover: 199, 54, 62;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 173, 173, 173;
+      --label-muted: 98, 98, 98;
+      --label-base: 57, 57, 57;
+      --label-title: 21, 21, 21;
+      --label-link: 78, 128, 238;
+      --chat-bg-base: 226, 227, 243;
+      --chat-bg-base-hover: 211, 213, 240;
+      --chat-bg-shade: 248, 248, 255;
+      --chat-bg-sub: 211, 212, 236;
+      --chat-bg-border: 195, 197, 225;
+      --chat-bg-border-hover: 184, 187, 225;
+      --chat-bg-divider: 216, 217, 234;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos-light.png");
+    }
+    [data-theme="vsc-default-dark"] {
+      --bg-base: 37, 37, 38;
+      --bg-base-hover: 45, 45, 45;
+      --bg-shade: 40, 40, 40;
+      --bg-sub: 30, 30, 30;
+      --bg-border: 64, 64, 64;
+      --bg-border-hover: 112, 112, 112;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 85, 85, 85;
+      --label-base: 185, 185, 185;
+      --label-title: 238, 238, 238;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="vsc-default-light"] {
+      --bg-base: 243, 243, 243;
+      --bg-base-hover: 236, 236, 236;
+      --bg-shade: 228, 230, 241;
+      --bg-sub: 255, 255, 255;
+      --bg-border: 211, 211, 211;
+      --bg-border-hover: 147, 147, 147;
+      --bg-main: 93, 117, 255;
+      --bg-main-hover: 69, 89, 205;
+      --bg-danger: 215, 66, 74;
+      --bg-danger-hover: 199, 54, 62;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 173, 173, 173;
+      --label-muted: 98, 98, 98;
+      --label-base: 57, 57, 57;
+      --label-title: 21, 21, 21;
+      --label-link: 78, 128, 238;
+      --chat-bg-base: 226, 227, 243;
+      --chat-bg-base-hover: 211, 213, 240;
+      --chat-bg-shade: 248, 248, 255;
+      --chat-bg-sub: 211, 212, 236;
+      --chat-bg-border: 195, 197, 225;
+      --chat-bg-border-hover: 184, 187, 225;
+      --chat-bg-divider: 216, 217, 234;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos-light.png");
+    }
+    [data-theme="monokai"] {
+      --bg-sub: 30, 31, 28;
+      --bg-base: 39, 40, 34;
+      --bg-base-hover: 52, 53, 47;
+      --bg-shade: 50, 51, 43;
+      --bg-border: 70, 71, 65;
+      --bg-border-hover: 118, 119, 113;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 72, 73, 77;
+      --label-base: 204, 204, 199;
+      --label-title: 248, 248, 242;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="abyss"] {
+      --bg-base: 6, 6, 33;
+      --bg-base-hover: 6, 25, 64;
+      --bg-shade: 5, 19, 54;
+      --bg-sub: 0, 12, 24;
+      --bg-border: 0, 41, 82;
+      --bg-border-hover: 32, 73, 114;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 85, 85, 85;
+      --label-base: 185, 185, 185;
+      --label-title: 238, 238, 238;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="atom-one-dark-pro"] {
+      --bg-base: 40, 44, 52;
+      --bg-base-hover: 44, 49, 58;
+      --bg-shade: 44, 49, 60;
+      --bg-sub: 33, 37, 43;
+      --bg-border: 59, 64, 72;
+      --bg-border-hover: 69, 74, 82;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 85, 85, 85;
+      --label-base: 185, 185, 185;
+      --label-title: 238, 238, 238;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="darcula"] {
+      --bg-base: 40, 40, 40;
+      --bg-base-hover: 45, 45, 45;
+      --bg-shade: 49, 51, 53;
+      --bg-sub: 43, 43, 43;
+      --bg-border: 55, 55, 55;
+      --bg-border-hover: 65, 65, 65;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 85, 85, 85;
+      --label-base: 185, 185, 185;
+      --label-title: 238, 238, 238;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="dracula"] {
+      --bg-base: 33, 34, 44;
+      --bg-base-hover: 52, 55, 70;
+      --bg-shade: 40, 42, 54;
+      --bg-sub: 25, 26, 33;
+      --bg-border: 55, 60, 72;
+      --bg-border-hover: 65, 70, 82;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 98, 114, 164;
+      --label-base: 185, 185, 185;
+      --label-title: 248, 248, 242;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="github-dark"] {
+      --bg-base: 36, 41, 46;
+      --bg-base-hover: 40, 46, 52;
+      --bg-shade: 43, 48, 54;
+      --bg-sub: 31, 36, 40;
+      --bg-border: 55, 60, 72;
+      --bg-border-hover: 65, 70, 82;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 149, 157, 165;
+      --label-base: 185, 185, 185;
+      --label-title: 248, 248, 242;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="gruvbox-dark"] {
+      --bg-base: 40, 40, 40;
+      --bg-base-hover: 60, 56, 54;
+      --bg-shade: 50, 48, 47;
+      --bg-sub: 30, 30, 30;
+      --bg-border: 60, 56, 54;
+      --bg-border-hover: 70, 66, 64;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 169, 157, 145;
+      --label-base: 195, 195, 195;
+      --label-title: 248, 248, 242;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="kimbie-dark"] {
+      --bg-base: 34, 26, 15;
+      --bg-base-hover: 50, 35, 14;
+      --bg-shade: 54, 39, 18;
+      --bg-sub: 19, 21, 16;
+      --bg-border: 59, 55, 45;
+      --bg-border-hover: 69, 65, 55;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 169, 157, 145;
+      --label-base: 195, 195, 195;
+      --label-title: 248, 248, 242;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="material"] {
+      --bg-base: 33, 33, 33;
+      --bg-base-hover: 43, 43, 43;
+      --bg-shade: 38, 38, 38;
+      --bg-sub: 33, 33, 33;
+      --bg-border: 43, 43, 43;
+      --bg-border-hover: 53, 53, 53;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 97, 97, 97;
+      --label-base: 195, 195, 195;
+      --label-title: 248, 248, 242;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="night-owl"] {
+      --bg-base: 1, 22, 39;
+      --bg-base-hover: 11, 41, 66;
+      --bg-shade: 6, 31, 52;
+      --bg-sub: 1, 17, 29;
+      --bg-border: 39, 43, 59;
+      --bg-border-hover: 49, 53, 69;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 95, 126, 151;
+      --label-base: 195, 195, 195;
+      --label-title: 210, 222, 231;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="solarized-dark"] {
+      --bg-base: 0, 43, 55;
+      --bg-base-hover: 0, 64, 82;
+      --bg-shade: 0, 53, 68;
+      --bg-sub: 0, 33, 43;
+      --bg-border: 0, 56, 71;
+      --bg-border-hover: 0, 66, 81;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 147, 161, 161;
+      --label-base: 195, 195, 195;
+      --label-title: 210, 222, 231;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="tomorrow-night-blue"] {
+      --bg-base: 0, 23, 51;
+      --bg-base-hover: 0, 36, 81;
+      --bg-shade: 0, 28, 64;
+      --bg-sub: 0, 17, 38;
+      --bg-border: 34, 39, 95;
+      --bg-border-hover: 64, 79, 125;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 147, 147, 147;
+      --label-base: 195, 195, 195;
+      --label-title: 210, 222, 231;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
+    }
+    [data-theme="github-light"] {
+    --bg-base: 255, 255, 255;
+    --bg-base-hover: 237, 242, 245;
+    --bg-shade: 246, 248, 250;
+    --bg-sub: 235, 240, 244;
+    --bg-border: 215, 218, 222;
+    --bg-border-hover: 225, 228, 232;
+    --bg-main: 93, 117, 255;
+    --bg-main-hover: 69, 89, 205;
+    --bg-danger: 215, 66, 74;
+    --bg-danger-hover: 199, 54, 62;
+    --bg-success: 21, 128, 61;
+    --bg-success-hover: 33, 197, 94;
+    --label-control: 255, 255, 255;
+    --label-faint: 173, 173, 173;
+    --label-muted: 98, 98, 98;
+    --label-base: 57, 57, 57;
+    --label-title: 21, 21, 21;
+    --label-link: 78, 128, 238;
+    --chat-bg-base: 226, 227, 243;
+    --chat-bg-base-hover: 211, 213, 240;
+    --chat-bg-shade: 248, 248, 255;
+    --chat-bg-sub: 211, 212, 236;
+    --chat-bg-border: 195, 197, 225;
+    --chat-bg-border-hover: 184, 187, 225;
+    --chat-bg-divider: 216, 217, 234;
+
+    --bg-highlight: 253, 201, 0;
+
+    --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
+    --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+    --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+    --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+    --img-no-repos: url("/no-repos-light.png");
+  }
+    [data-theme="gruvbox-light"] {
+    --bg-base: 251, 241, 199;
+    --bg-base-hover: 235, 219, 178;
+    --bg-shade: 243, 230, 188;
+    --bg-sub: 235, 219, 178;
+    --bg-border: 235, 219, 178;
+    --bg-border-hover: 245, 229, 188;
+    --bg-main: 93, 117, 255;
+    --bg-main-hover: 69, 89, 205;
+    --bg-danger: 215, 66, 74;
+    --bg-danger-hover: 199, 54, 62;
+    --bg-success: 21, 128, 61;
+    --bg-success-hover: 33, 197, 94;
+    --label-control: 255, 255, 255;
+    --label-faint: 173, 173, 173;
+    --label-muted: 98, 98, 98;
+    --label-base: 57, 57, 57;
+    --label-title: 21, 21, 21;
+    --label-link: 78, 128, 238;
+    --chat-bg-base: 226, 227, 243;
+    --chat-bg-base-hover: 211, 213, 240;
+    --chat-bg-shade: 248, 248, 255;
+    --chat-bg-sub: 211, 212, 236;
+    --chat-bg-border: 195, 197, 225;
+    --chat-bg-border-hover: 184, 187, 225;
+    --chat-bg-divider: 216, 217, 234;
+
+    --bg-highlight: 253, 201, 0;
+
+    --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
+    --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+    --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+    --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+    --img-no-repos: url("/no-repos-light.png");
+  }
+    [data-theme="quiet-light"] {
+    --bg-base: 237, 232, 239;
+    --bg-base-hover: 247, 242, 249;
+    --bg-shade: 237, 237, 245;
+    --bg-sub: 245, 245, 245;
+    --bg-border: 213, 213, 213;
+    --bg-border-hover: 203, 203, 203;
+    --bg-main: 93, 117, 255;
+    --bg-main-hover: 69, 89, 205;
+    --bg-danger: 215, 66, 74;
+    --bg-danger-hover: 199, 54, 62;
+    --bg-success: 21, 128, 61;
+    --bg-success-hover: 33, 197, 94;
+    --label-control: 255, 255, 255;
+    --label-faint: 173, 173, 173;
+    --label-muted: 98, 98, 98;
+    --label-base: 57, 57, 57;
+    --label-title: 21, 21, 21;
+    --label-link: 78, 128, 238;
+    --chat-bg-base: 226, 227, 243;
+    --chat-bg-base-hover: 211, 213, 240;
+    --chat-bg-shade: 248, 248, 255;
+    --chat-bg-sub: 211, 212, 236;
+    --chat-bg-border: 195, 197, 225;
+    --chat-bg-border-hover: 184, 187, 225;
+    --chat-bg-divider: 216, 217, 234;
+
+    --bg-highlight: 253, 201, 0;
+
+    --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
+    --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+    --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+    --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+    --img-no-repos: url("/no-repos-light.png");
+  }
+    [data-theme="solarized-light"] {
+      --bg-base: 238, 232, 213;
+      --bg-base-hover: 221, 214, 193;
+      --bg-shade: 245, 242, 220;
+      --bg-sub: 253, 246, 227;
+      --bg-border: 221, 214, 193;
+      --bg-border-hover: 211, 204, 183;
+      --bg-main: 93, 117, 255;
+      --bg-main-hover: 69, 89, 205;
+      --bg-danger: 215, 66, 74;
+      --bg-danger-hover: 199, 54, 62;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 173, 173, 173;
+      --label-muted: 98, 98, 98;
+      --label-base: 57, 57, 57;
+      --label-title: 21, 21, 21;
+      --label-link: 78, 128, 238;
+      --chat-bg-base: 226, 227, 243;
+      --chat-bg-base-hover: 211, 213, 240;
+      --chat-bg-shade: 248, 248, 255;
+      --chat-bg-sub: 211, 212, 236;
+      --chat-bg-border: 195, 197, 225;
+      --chat-bg-border-hover: 184, 187, 225;
+      --chat-bg-divider: 216, 217, 234;
+
+      --bg-highlight: 253, 201, 0;
+
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos-light.png");
+    }
+}
+
+body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #131315;
-  color: #F1F1F2;
+  background-color: rgb(var(--bg-sub));
+  color: rgb(var(--label-title));
   overflow: hidden;
   font-size: 16px;
 }
@@ -217,6 +993,15 @@ h5, .h5 {
   letter-spacing: -0.02em;
 }
 
+.body-s-strong {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 160%;
+  letter-spacing: -0.02em;
+}
+
 .callout {
   font-family: 'Inter', sans-serif;
   font-style: normal;
@@ -327,7 +1112,7 @@ h5, .h5 {
 }
 
 .readme h1, .readme h2 {
-  border-bottom: 1px solid #27272D;
+  border-bottom: 1px solid rgb(var(--bg-border));
   padding-bottom: 0.6rem;
 }
 
@@ -368,50 +1153,21 @@ h5, .h5 {
 }
 
 .readme a {
-  color: #5D75FF;
+  color: rgb(var(--label-link));
 }
 
 .hljs-addition {
   width: auto !important;
 }
-.semantic-answer pre {
-  @apply whitespace-pre-wrap break-words bg-gray-700 rounded my-1 text-xs p-1 overflow-y-auto;
-}
-.semantic-answer pre > code {
-  @apply bg-gray-700 p-[2px] rounded;
-}
-.semantic-answer p > code {
-  @apply text-sky-400;
-}
-
-.semantic-answer a {
-  color: #5D75FF;
-}
 
 .search-highlight {
-  background-color: rgba(255, 255, 0, 0.5);
+  background-color: rgba(var(--bg-highlight), 0.25);
 }
 
 .search-highlight-active {
-  background-color: rgba(255, 165, 0, 0.8);
+  background-color: rgba(var(--bg-highlight), 0.8);
 }
 
-.conversation-message {
-  overflow-wrap: break-word;
-}
-
-.conversation-message code {
-  background-color: #686DC3; /* secondary-500 with 25 opacity on primary-400 bg */
-  white-space: pre-wrap !important; /* sometimes overridden by styles from prism.js */
-}
-
-.conversation-message pre:has(code[class*="language-"]) {
-  background-color: rgba(19, 19, 21, 0.8); /* primary-900 */
-  border-radius: 4px;
-  white-space: pre-wrap !important; /* sometimes overridden by styles from prism.js */
-  padding: 4px;
-}
-
-.conversation-message pre:has(code[class*="language-"]) code {
-  background-color: unset;
+.img-no-repos {
+  content: var(--img-no-repos);
 }

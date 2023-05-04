@@ -4,7 +4,7 @@
     padding: 0;
     width: 5em;
     height: 5em;
-    background-color: #27272D;
+    background-color: var(--bg-shade);
     border-radius: 50%;
     line-height: 5em;
 }
@@ -19,7 +19,7 @@
     border-radius: 50%;
     width: 4.3em;
     height: 4.3em;
-    background-color: #131315;
+    background-color: var(--bg-sub);
     content: " ";
 }
 /* Text inside the control */
@@ -29,7 +29,7 @@
     width: 5em;
     text-align: center;
     display: block;
-    color: #90909A;
+    color: var(--label-base);
     z-index: 2;
 }
 .left-half-clipper {
@@ -53,7 +53,7 @@
     width: 5em;
     height: 5em;
     border-radius: 50%;
-    border: 0.45em solid #90909A; /*The border is 0.35 but making it larger removes visual artifacts */
+    border: 0.45em solid var(--label-base); /*The border is 0.35 but making it larger removes visual artifacts */
     /*background-color: #4D642D;*/ /* for debug */
     box-sizing: border-box;
 
@@ -63,7 +63,7 @@
     /*Progress bar for the first 50%, filling the whole right half*/
     position: absolute; /*needed for clipping*/
     clip: rect(0, 5em, 5em, 2.5em);
-    background-color: #90909A;
+    background-color: var(--label-base);
     border-radius: 50%;
     width: 5em;
     height: 5em;

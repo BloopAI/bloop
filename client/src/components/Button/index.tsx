@@ -29,13 +29,13 @@ type TextBtnProps = {
 
 const variantStylesMap = {
   primary:
-    'text-gray-100 bg-primary-400 hover:bg-primary-300 focus:bg-primary-300 active:bg-primary-400 active:shadow-rings-blue disabled:bg-gray-800 disabled:text-gray-500 disabled:hover:border-none disabled:hover:bg-gray-800 disabled:active:shadow-none disabled:border-none',
+    'text-label-control bg-bg-main hover:bg-bg-main-hover focus:bg-bg-main-hover active:bg-bg-main active:shadow-rings-blue disabled:bg-bg-base disabled:text-label-muted disabled:hover:border-none disabled:hover:bg-bg-base disabled:active:shadow-none disabled:border-none',
   secondary:
-    'text-gray-300 hover:text-gray-100 focus:text-gray-100 bg-gray-800 border border-gray-700 hover:border-gray-600 focus:border-gray-600 active:border-gray-700 active:text-gray-200 disabled:border-none disabled:text-gray-500 shadow-light hover:shadow-none focus:shadow-none active:shadow-light disabled:shadow-none',
+    'text-label-title bg-bg-base border border-bg-border hover:border-bg-border-hover hover:bg-bg-base-hover focus:border-bg-border-hover active:bg-bg-base disabled:bg-bg-base disabled:border-none disabled:text-label-muted shadow-low hover:shadow-none focus:shadow-none active:shadow-rings-gray disabled:shadow-none',
   tertiary:
-    'text-gray-500 bg-transparent hover:text-gray-300 focus:text-gray-300 hover:border-gray-800 focus:border-gray-800 active:text-gray-50 disabled:bg-gray-900 disabled:text-gray-500 disabled:hover:border-transparent',
+    'text-label-muted bg-transparent hover:text-label-title focus:text-label-title hover:bg-bg-base-hover focus:bg-bg-base-hover active:text-label-title active:bg-transparent disabled:bg-bg-base disabled:text-label-muted',
   'tertiary-outlined':
-    'text-gray-500 bg-transparent border border-gray-700 hover:bg-gray-700 focus:bg-gray-700 active:bg-transparent hover:text-gray-300  active:text-gray-50 disabled:bg-gray-900 disabled:text-gray-500 disabled:border-transparent disabled:hover:border-transparent',
+    'text-label-muted bg-transparent border border-bg-border hover:bg-bg-base-hover focus:bg-bg-base-hover active:bg-transparent hover:text-label-title focus:text-label-title active:text-label-title disabled:bg-bg-base disabled:text-label-muted disabled:border-transparent disabled:hover:border-transparent',
 };
 
 const sizeMap = {

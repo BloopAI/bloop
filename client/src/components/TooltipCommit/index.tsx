@@ -62,29 +62,29 @@ const TooltipCommit = ({
       render={() => (
         <div className="relative pb-[5px] w-fit">
           <div
-            className={`text-gray-500 rounded-4 border border-gray-700 w-fit flex relative z-10 bg-gray-800`}
+            className={`rounded-4 border border-bg-border w-fit flex relative z-10 bg-bg-shade`}
           >
             <div className="flex flex-col">
-              <div className="flex flex-col gap-2 py-3 px-2 text-gray-300 text-xs">
-                <span className="flex flex-row gap-2 items-center">
+              <div className="flex flex-col gap-2 py-3 px-2 text-xs">
+                <span className="flex flex-row gap-2 items-center text-label-title">
                   <img className="w-5" src={image} />
                   <span>{name}</span>
                 </span>
-                <span className="flex flex-row gap-2 items-center">
+                <span className="flex flex-row gap-2 items-center text-label-base">
                   <Commit />
                   <span>{message}</span>
                 </span>
               </div>
-              <span className="border-t border-gray-700 py-3 px-2 text-gray-400 text-xs">
+              <span className="border-t border-bg-border py-3 px-2 text-label-base text-xs">
                 Committed on {format(date, 'd MMM, y')}
               </span>
             </div>
             <span
-              className={`absolute bottom-[-1px] ${positionMap[position].fixBorder} w-[9.52px] h-[1px] bg-gray-800 border-t-[1px] border-l-[1px] border-r-[1px] border-t-transparent border-l-gray-700 border-r-gray-700`}
+              className={`absolute bottom-[-1px] ${positionMap[position].fixBorder} w-[9.52px] h-[1px] bg-bg-shade border-t-[1px] border-l-[1px] border-r-[1px] border-t-transparent border-l-bg-border border-r-bg-border`}
             />
           </div>
           <span
-            className={`absolute bottom-1 ${positionMap[position].tail} w-5 h-5 border border-gray-700 bg-gray-800 transform rotate-45 box-border z-0 rounded-sm`}
+            className={`absolute bottom-1 ${positionMap[position].tail} w-5 h-5 border border-bg-border bg-bg-shade transform rotate-45 box-border z-0 rounded-sm`}
           />
         </div>
       )}

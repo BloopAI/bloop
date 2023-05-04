@@ -44,8 +44,10 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
       .forEach((c, i) => {
         if (files[c.Cite.path]) {
           files[c.Cite.path].push({ ...c.Cite, i });
-        } else if (c.Cite.path) {
-          files[c.Cite.path] = [{ ...c.Cite, i }];
+        } else {
+          files[c.Cite.path || 'client/src/components/Tabs/index.tsx'] = [
+            { ...c.Cite, i },
+          ];
         }
       });
     return files;
@@ -102,7 +104,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
         !isScrolled && (
           <div className="fixed z-30 left-1/2 bottom-24 transform -translate-x-1/2">
             <div
-              className={`rounded-full bg-primary-300 text-white shadow-small caption 
+              className={`rounded-full bg-bg-main text-label-title shadow-low caption 
                 flex gap-1 items-center justify-center pl-4 pr-3 py-2 select-none`}
             >
               More results <ChevronDown />

@@ -12,8 +12,8 @@ const ChipButton = ({
 }: PropsWithChildren<Props>) => {
   return (
     <button
-      className={`flex items-center justify-center gap-1 py-1 px-3 border border-gray-700 rounded-full ${
-        variant === 'filled' ? 'bg-gray-700' : ''
+      className={`flex items-center justify-center gap-1 py-1 px-3 rounded-full text-label-title ${
+        variant === 'filled' ? 'bg-chat-bg-sub' : 'border border-chat-bg-border'
       } caption`}
       onClick={onClick}
     >

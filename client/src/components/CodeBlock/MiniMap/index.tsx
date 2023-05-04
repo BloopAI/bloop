@@ -62,7 +62,7 @@ export const MiniMap = ({
       >
         <div
           style={{ height: `${Math.floor(cursorHeight)}px` }}
-          className={`bg-gray-600/50 w-full z-40 group-hover:visible invisible`}
+          className={`bg-bg-shade/50 w-full z-40 group-hover:visible invisible`}
         ></div>
       </Draggable>
     </div>
