@@ -317,9 +317,23 @@ impl BackendCredential {
 
         let new_status = match synced {
             Ok(_) => SyncStatus::Queued,
-            Err(ref err) => SyncStatus::Error {
-                message: err.to_string(),
-            },
+            Err(ref err) => {
+                let repo = app
+                    .repo_pool
+                    .read_async(&repo_ref, |_k, repo| repo.clone())
+                    .await
+                    .expect("repo exists & locked, this shouldn't happen");
+
+                // try cloning again
+                tokio::fs::remove_dir_all(&repo.disk_path).await;
+
+                match gh.auth.clone_repo(repo).await {
+                    Ok(_) => SyncStatus::Queued,
+                    Err(_) => SyncStatus::Error {
+                        message: err.to_string(),
+                    },
+                }
+            }
         };
 
         app.repo_pool
