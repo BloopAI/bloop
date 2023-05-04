@@ -38,6 +38,8 @@ export const Default = () => {
           isGithubChecked: true,
           shouldShowWelcome: false,
           setShouldShowWelcome: () => {},
+          theme: 'default',
+          setTheme: () => {},
         }}
       >
         <RepositoriesContext.Provider
@@ -83,6 +85,8 @@ export const ScanErrors = () => {
           isGithubChecked: true,
           shouldShowWelcome: false,
           setShouldShowWelcome: () => {},
+          theme: 'default',
+          setTheme: () => {},
         }}
       >
         <RepositoriesContext.Provider
@@ -210,6 +214,8 @@ export const EmailConfirmedReposSynced = () => {
           isGithubChecked: true,
           shouldShowWelcome: false,
           setShouldShowWelcome: () => {},
+          theme: 'default',
+          setTheme: () => {},
         }}
       >
         <RepositoriesContext.Provider

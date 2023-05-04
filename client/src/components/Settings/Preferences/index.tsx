@@ -1,4 +1,4 @@
-import { useCallback, useState, useContext } from 'react';
+import { useCallback, useContext, useState } from 'react';
 import SettingsText from '../SettingsText';
 import SettingsRow from '../SettingsRow';
 import { AnalyticsContext } from '../../../context/analyticsContext';
@@ -14,11 +14,23 @@ import RemoteServicesStep, {
 import { UIContext } from '../../../context/uiContext';
 import GithubConnectStep from '../../../pages/Onboarding/GithubConnectStep';
 import GithubReposStep from '../../../pages/Onboarding/GithubReposStep';
+import Dropdown from '../../Dropdown/Normal';
+import { MenuItemType } from '../../../types/general';
+import { Theme } from '../../../types';
+
+const themesMap = {
+  default: 'Default',
+  'default-light': 'Default Light',
+  'vsc-default-dark': 'VSCode Dark',
+  'vsc-default-light': 'VSCode Light',
+  monokai: 'Monokai',
+};
 
 const Preferences = () => {
   const { isAnalyticsAllowed, setIsAnalyticsAllowed } =
     useContext(AnalyticsContext);
-  const { isGithubConnected, setOnBoardingState } = useContext(UIContext);
+  const { isGithubConnected, setOnBoardingState, theme, setTheme } =
+    useContext(UIContext);
   const [isModalOpen, setModalOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [hasOptedIn, setHasOptedIn] = useState(isAnalyticsAllowed);
@@ -38,99 +50,23 @@ const Preferences = () => {
         <h5>Preferences</h5>
       </div>
       <div>
-        {/*<SettingsText*/}
-        {/*  title="Theme"*/}
-        {/*  subtitle="Select your interface color scheme"*/}
-        {/*/>*/}
-        {/*<div className="flex gap-6 my-6">*/}
-        {/*  <label className="cursor-pointer">*/}
-        {/*    <input*/}
-        {/*      type="radio"*/}
-        {/*      className="hidden"*/}
-        {/*      name="theme"*/}
-        {/*      value="dark"*/}
-        {/*      checked={theme === 'dark'}*/}
-        {/*      onChange={onThemeChange}*/}
-        {/*    />*/}
-        {/*    <img*/}
-        {/*      src="/dark_theme.png"*/}
-        {/*      className={`w-56 border-2 rounded-md ${*/}
-        {/*        theme === 'dark' ? 'border-primary-400' : 'border-transparent'*/}
-        {/*      } transition-colors duration-150`}*/}
-        {/*      alt="dark theme"*/}
-        {/*    />*/}
-        {/*    <div*/}
-        {/*      className={`flex items-center gap-1 body-s ${*/}
-        {/*        theme === 'dark' ? 'text-gray-100' : 'text-gray-500'*/}
-        {/*      } transition-colors duration-150`}*/}
-        {/*    >*/}
-        {/*      {theme === 'dark' && (*/}
-        {/*        <span className="w-5 h-5 text-success-700">*/}
-        {/*          <CheckIcon />*/}
-        {/*        </span>*/}
-        {/*      )}*/}
-        {/*      Dark*/}
-        {/*    </div>*/}
-        {/*  </label>*/}
-        {/*  <label className="cursor-pointer">*/}
-        {/*    <input*/}
-        {/*      type="radio"*/}
-        {/*      className="hidden"*/}
-        {/*      name="theme"*/}
-        {/*      value="light"*/}
-        {/*      checked={theme === 'light'}*/}
-        {/*      onChange={onThemeChange}*/}
-        {/*    />*/}
-        {/*    <img*/}
-        {/*      src="/light_theme.png"*/}
-        {/*      className={`w-56 border-2 rounded-md ${*/}
-        {/*        theme === 'light' ? 'border-primary-400' : 'border-transparent'*/}
-        {/*      } transition-colors duration-150`}*/}
-        {/*      alt="light theme"*/}
-        {/*    />*/}
-        {/*    <div*/}
-        {/*      className={`flex items-center gap-1 body-s ${*/}
-        {/*        theme === 'light' ? 'text-gray-100' : 'text-gray-500'*/}
-        {/*      } transition-colors duration-150`}*/}
-        {/*    >*/}
-        {/*      {theme === 'light' && (*/}
-        {/*        <span className="w-5 h-5 text-success-700">*/}
-        {/*          <CheckIcon />*/}
-        {/*        </span>*/}
-        {/*      )}*/}
-        {/*      Light*/}
-        {/*    </div>*/}
-        {/*  </label>*/}
-        {/*  <label className="cursor-pointer">*/}
-        {/*    <input*/}
-        {/*      type="radio"*/}
-        {/*      className="hidden"*/}
-        {/*      name="theme"*/}
-        {/*      value="system"*/}
-        {/*      checked={theme === 'system'}*/}
-        {/*      onChange={onThemeChange}*/}
-        {/*    />*/}
-        {/*    <img*/}
-        {/*      src="/system_theme.png"*/}
-        {/*      className={`w-56 border-2 rounded-md ${*/}
-        {/*        theme === 'system' ? 'border-primary-400' : 'border-transparent'*/}
-        {/*      } transition-colors duration-150`}*/}
-        {/*      alt="system theme"*/}
-        {/*    />*/}
-        {/*    <div*/}
-        {/*      className={`flex items-center gap-1 body-s ${*/}
-        {/*        theme === 'system' ? 'text-gray-100' : 'text-gray-500'*/}
-        {/*      } transition-colors duration-150`}*/}
-        {/*    >*/}
-        {/*      {theme === 'system' && (*/}
-        {/*        <span className="w-5 h-5 text-success-700">*/}
-        {/*          <CheckIcon />*/}
-        {/*        </span>*/}
-        {/*      )}*/}
-        {/*      System*/}
-        {/*    </div>*/}
-        {/*  </label>*/}
-        {/*</div>*/}
+        <SettingsRow>
+          <SettingsText
+            title="Theme"
+            subtitle="Select your interface color scheme"
+          />
+          <Dropdown
+            items={Object.entries(themesMap).map(([key, name]) => ({
+              type: MenuItemType.DEFAULT,
+              text: name,
+              onClick: () => setTheme(key as Theme),
+            }))}
+            selected={{
+              type: MenuItemType.DEFAULT,
+              text: themesMap[theme],
+            }}
+          />
+        </SettingsRow>
         <SettingsRow>
           <SettingsText
             title={`Remote services: ${isAnalyticsAllowed ? 'on' : 'off'}`}

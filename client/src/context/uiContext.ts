@@ -1,4 +1,5 @@
 import React, { createContext } from 'react';
+import { Theme } from '../types';
 
 type ContextType = {
   isSettingsOpen: boolean;
@@ -16,6 +17,8 @@ type ContextType = {
   isGithubChecked: boolean;
   shouldShowWelcome: boolean;
   setShouldShowWelcome: (b: boolean) => void;
+  theme: Theme;
+  setTheme: (s: Theme) => void;
 };
 
 export const UIContext = createContext<ContextType>({
@@ -34,4 +37,6 @@ export const UIContext = createContext<ContextType>({
   isGithubChecked: false,
   shouldShowWelcome: false,
   setShouldShowWelcome: () => {},
+  theme: 'default',
+  setTheme: () => {},
 });
