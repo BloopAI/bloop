@@ -1,5 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import {
+  AllConversationsResponse,
+  ConversationType,
   FileResponse,
   HoverablesResponse,
   NLSearchResponse,
@@ -170,3 +172,16 @@ export const githubWebLogin = () =>
   http.get('/auth/login/start').then((r) => r.data);
 
 export const getConfig = () => http.get('/config').then((r) => r.data);
+
+export const getAllConversations = (): Promise<AllConversationsResponse> =>
+  http.get('/answer/conversations').then((r) => r.data);
+
+export const getConversation = (thread_id: string) =>
+  http.get(`/answer/conversations/${thread_id}`).then((r) => r.data);
+
+export const deleteConversation = (
+  thread_id: string,
+): Promise<ConversationType> =>
+  http
+    .delete(`/answer/conversations`, { params: { thread_id } })
+    .then((r) => r.data);
