@@ -114,7 +114,7 @@ impl Auth {
     ) -> Result<Self> {
         let token: InstallationToken = octocrab
             .post(
-                format!("app/installations/{install_id}/access_tokens"),
+                format!("/app/installations/{install_id}/access_tokens"),
                 None::<&()>,
             )
             .await?;
@@ -260,7 +260,7 @@ pub(crate) async fn refresh_github_installation_token(app: &Application) -> Resu
         .build()?;
 
     let installation: Installation = octocrab
-        .get(format!("app/installations/{install_id}"), None::<&()>)
+        .get(format!("/app/installations/{install_id}"), None::<&()>)
         .await?;
 
     if !matches!(installation.target_type.as_deref(), Some("Organization")) {

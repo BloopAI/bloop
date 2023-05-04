@@ -63,6 +63,10 @@ pub(crate) async fn sync_github_status(app: Application) {
         }
     };
 
+    // In case this is a GitHub App installation, we get the
+    // credentials from CLI/config
+    update_credentials(&app).await;
+
     let mut last_poll = UNIX_EPOCH;
     loop {
         let Some(github) = app.credentials.github() else {
@@ -102,6 +106,10 @@ async fn update_credentials(app: &Application) {
                 if let Err(e) = remotes::github::refresh_github_installation_token(app).await {
                     error!(?e, "failed to get GitHub token");
                 }
+                if app.credentials.github().is_none() {
+                    error!("Error in the matrix");
+                }
+                info!("Github installation token refreshed!")
             }
         }
     }
