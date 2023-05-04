@@ -189,6 +189,19 @@ export interface TokenInfoResponse {
   definitions?: TokenInfoItem[];
 }
 
+export type AllConversationsResponse = {
+  created_at: number;
+  thread_id: string;
+  title: string;
+}[];
+
+export type ConversationType = {
+  finished: boolean;
+  search_steps: { content: string; type: string }[];
+  conclusion: string;
+  results: any[];
+};
+
 export interface SuggestionsResponse {
   count: number;
   data: (
