@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { format } from 'date-fns';
 import ChipButton from '../ChipButton';
-import { ArrowLeft, Checkmark, CloseSign } from '../../../icons';
-import ConversationMessage from '../ConversationMessage';
+import { ArrowLeft, CloseSign } from '../../../icons';
 import NLInput from '../NLInput';
-import useAppNavigation from '../../../hooks/useAppNavigation';
-import { conversationsCache } from '../../../services/cache';
-import { ChatMessageAuthor } from '../../../types/general';
+import {
+  deleteConversation,
+  getAllConversations,
+  getConversation,
+} from '../../../services/api';
+import { AllConversationsResponse, ConversationType } from '../../../types/api';
+import Conversation from '../Conversation';
 import ConversationListItem from './ConversationListItem';
 
 type Props = {
@@ -19,11 +23,30 @@ const AllConversations = ({
   setHistoryOpen,
   setActive,
 }: Props) => {
-  const [openItem, setOpenItem] = useState<number | null>(null);
-  const { navigateConversationResults } = useAppNavigation();
+  const [openItem, setOpenItem] = useState<ConversationType | null>(null);
+  const [conversations, setConversations] = useState<AllConversationsResponse>(
+    [],
+  );
+
+  const fetchConversations = useCallback(() => {
+    getAllConversations().then(setConversations);
+  }, []);
+
+  useEffect(() => {
+    fetchConversations();
+  }, []);
+
+  const onDelete = useCallback((threadId: string) => {
+    deleteConversation(threadId).then(fetchConversations);
+  }, []);
+
+  const onClick = useCallback((threadId: string) => {
+    getConversation(threadId).then(setOpenItem);
+  }, []);
+
   return (
     <div
-      className={`w-97 border-l border-gray-800 h-full flex flex-col overflow-hidden ${
+      className={`w-97 flex-shrink-0 border-l border-gray-800 h-full flex flex-col overflow-hidden ${
         isHistoryOpen ? 'mr-0' : '-mr-97'
       } transition-all duration-300 ease-out-slow`}
     >
@@ -51,175 +74,27 @@ const AllConversations = ({
         </ChipButton>
       </div>
       {!openItem && (
-        <div className="flex flex-col gap-1 py-4 overflow-auto flex-1">
-          <ConversationListItem
-            title="Where are ctags?"
-            subtitle="Monday, July 12, 2:36 PM"
-            onClick={() => setOpenItem(1)}
-            onDelete={() => {}}
-          />
-          <ConversationListItem
-            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
-            subtitle="Monday, July 12, 2:36 PM"
-            onClick={() => setOpenItem(1)}
-            onDelete={() => {}}
-          />
-          <ConversationListItem
-            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
-            subtitle="Monday, July 12, 2:36 PM"
-            onClick={() => setOpenItem(1)}
-            onDelete={() => {}}
-          />
-          <ConversationListItem
-            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
-            subtitle="Monday, July 12, 2:36 PM"
-            onClick={() => setOpenItem(1)}
-            onDelete={() => {}}
-          />
-          <ConversationListItem
-            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
-            subtitle="Monday, July 12, 2:36 PM"
-            onClick={() => setOpenItem(1)}
-            onDelete={() => {}}
-          />
-          <ConversationListItem
-            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
-            subtitle="Monday, July 12, 2:36 PM"
-            onClick={() => setOpenItem(1)}
-            onDelete={() => {}}
-          />
-          <ConversationListItem
-            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
-            subtitle="Monday, July 12, 2:36 PM"
-            onClick={() => setOpenItem(1)}
-            onDelete={() => {}}
-          />
-          <ConversationListItem
-            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
-            subtitle="Monday, July 12, 2:36 PM"
-            onClick={() => setOpenItem(1)}
-            onDelete={() => {}}
-          />
-          <ConversationListItem
-            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
-            subtitle="Monday, July 12, 2:36 PM"
-            onClick={() => setOpenItem(1)}
-            onDelete={() => {}}
-          />
-          <ConversationListItem
-            title="Lorem ipsum dolor sit amet consecteturd sdfmnsf"
-            subtitle="Monday, July 12, 2:36 PM"
-            onClick={() => setOpenItem(1)}
-            onDelete={() => {}}
-          />
-          <ConversationListItem
-            title="Where are ctags?"
-            subtitle="Monday, July 12, 2:36 PM"
-            onClick={() => setOpenItem(1)}
-            onDelete={() => {}}
-          />
-          <ConversationListItem
-            title="Where are ctags?"
-            subtitle="Monday, July 12, 2:36 PM"
-            onClick={() => setOpenItem(1)}
-            onDelete={() => {}}
-          />
+        <div className="flex flex-col gap-1 py-4 overflow-auto flex-1 pb-12">
+          {conversations.map((c) => (
+            <ConversationListItem
+              key={c.thread_id}
+              title={c.title}
+              subtitle={format(
+                new Date(c.created_at * 1000),
+                'EEEE, MMMM d, h:m a',
+              )}
+              onClick={() => onClick(c.thread_id)}
+              onDelete={() => onDelete(c.thread_id)}
+            />
+          ))}
         </div>
       )}
       {!!openItem && (
-        <div className="p-4 flex flex-col gap-3 overflow-auto flex-1 pb-12">
-          <ConversationMessage
-            showInlineFeedback={false}
+        <div className="min-h-[2rem]">
+          <Conversation
+            conversation={openItem}
             searchId={''}
-            query={''}
-            isHistory
-            author={ChatMessageAuthor.User}
-            message="Where are the ctags?"
-          />
-          <div className="flex gap-2 px-4 items-center">
-            <div className="text-success-500 h-5">
-              <Checkmark />
-            </div>
-            <p className="caption text-gray-400 flex-1">Answer Ready</p>
-            <button
-              className="text-primary-300 caption mr-2"
-              onClick={() => {}}
-            >
-              Show
-            </button>
-          </div>
-          <ConversationMessage
-            showInlineFeedback={false}
-            searchId={''}
-            query={''}
-            isHistory
-            author={ChatMessageAuthor.Server}
-            message={`It seems you're looking at a binary file for ctags specific to the x86_64 Apple Darwin architecture. The binary file itself is not human-readable and is intended to be executed by the system.`}
-          />
-          <ConversationMessage
-            showInlineFeedback={false}
-            searchId={''}
-            query={''}
-            isHistory
-            author={ChatMessageAuthor.User}
-            message="What are the most common practicalities for ctags usage in bloop?"
-          />
-          <div className="flex gap-2 px-4 items-center">
-            <div className="text-success-500 h-5">
-              <Checkmark />
-            </div>
-            <p className="caption text-gray-400 flex-1">Answer Ready</p>
-            <button
-              className="text-primary-300 caption mr-2"
-              onClick={() => {
-                const recordId = 1;
-                conversationsCache[recordId] = {
-                  type: 'new-code',
-                  data: [
-                    {
-                      code:
-                        'const trackUpvote = useCallback(\n' +
-                        '    (isUpvote: boolean, query: string, answer: string, searchId: string) => {\n' +
-                        "      analytics?.track('Upvote', {\n" +
-                        '        isUpvote,\n' +
-                        '        query,\n' +
-                        '        answer,\n' +
-                        '        searchId,\n' +
-                        '      });\n' +
-                        '    },\n' +
-                        '    [analytics],\n' +
-                        '  );',
-                      language: 'TypeScript',
-                    },
-                  ],
-                };
-                navigateConversationResults(recordId);
-              }}
-            >
-              Show
-            </button>
-          </div>
-          <ConversationMessage
-            showInlineFeedback={false}
-            searchId={''}
-            query={''}
-            isHistory
-            author={ChatMessageAuthor.Server}
-            message={`Some practical aspects of using ctags in conjunction with bleep include:
-- Installation: Make sure to install universal-ctags with JSON support. You can verify it by running ctags --version and checking for +json in the list of compiled features.
-- Usage: ctags works in the background with the bleep server to provide fast code search and navigation.
-- Integration: Programs and plugins like Vim, Emacs, and Visual Studio Code can utilize ctags to enable features like "go to definition" and "find all references."`}
-          />
-          <ConversationMessage
-            showInlineFeedback={false}
-            searchId={''}
-            query={''}
-            isHistory
-            author={ChatMessageAuthor.Server}
-            message={`Some practical aspects of using ctags in conjunction with bleep include:
-- Installation: Make sure to install universal-ctags with JSON support. You can verify it by running ctags --version and checking for +json in the list of compiled features.
-- Usage: ctags works in the background with the bleep server to provide fast code search and navigation.
-- Integration: Programs and plugins like Vim, Emacs, and Visual Studio Code can utilize ctags to enable features like "go to definition" and "find all references."`}
+            isLoading={false}
           />
         </div>
       )}
