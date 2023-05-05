@@ -8,7 +8,6 @@ pub struct Exchange {
     conclusion: Option<String>,
     search_steps: Vec<SearchStep>,
     results: Vec<SearchResult>,
-    thread_id: uuid::Uuid,
 }
 
 impl Exchange {
@@ -56,11 +55,6 @@ impl Exchange {
         }
 
         self.conclusion = conclusion;
-    }
-
-    pub fn with_thread_id(mut self, thread_id: uuid::Uuid) -> Self {
-        self.thread_id = thread_id;
-        self
     }
 }
 

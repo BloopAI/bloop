@@ -74,7 +74,7 @@ pub(super) async fn handle(
     let q = params.q;
     let stream = async_stream::try_stream! {
         let mut action_stream = Action::Query(q).into()?;
-        let mut exchange = Exchange::default().with_thread_id(params.thread_id);
+        let mut exchange = Exchange::default();
 
         loop {
             // The main loop. Here, we create two streams that operate simultaneously; the update
@@ -124,13 +124,17 @@ pub(super) async fn handle(
         conversation.store(conversation_id).await?;
     };
 
-    let stream = stream
-        .map(|upd: Result<Exchange>| {
-            sse::Event::default().json_data(upd.map_err(|e| e.to_string()))
-        })
-        .chain(futures::stream::once(async {
-            Ok(sse::Event::default().data("[DONE]"))
-        }));
+    let thread_stream = futures::stream::once(async move {
+        Ok(sse::Event::default().data(params.thread_id.to_string()))
+    });
+
+    let answer_stream = stream.map(|upd: Result<Exchange>| {
+        sse::Event::default().json_data(upd.map_err(|e| e.to_string()))
+    });
+
+    let done_stream = futures::stream::once(async { Ok(sse::Event::default().data("[DONE]")) });
+
+    let stream = thread_stream.chain(answer_stream).chain(done_stream);
 
     Ok(Sse::new(stream))
 }
