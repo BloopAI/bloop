@@ -46,11 +46,11 @@ pub struct Params {
     pub q: String,
     pub repo_ref: RepoRef,
     #[serde(default = "default_thread_id")]
-    pub thread_id: String,
+    pub thread_id: uuid::Uuid,
 }
 
-fn default_thread_id() -> String {
-    uuid::Uuid::new_v4().to_string()
+fn default_thread_id() -> uuid::Uuid {
+    uuid::Uuid::new_v4()
 }
 
 pub(super) async fn handle(
@@ -67,7 +67,7 @@ pub(super) async fn handle(
 
     let mut conversation = Conversation::load(&conversation_id)
         .await?
-        .unwrap_or_else(|| Conversation::new(params.repo_ref));
+        .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
     let ctx = AppContext::new(app)
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
@@ -124,20 +124,24 @@ pub(super) async fn handle(
         conversation.store(conversation_id).await?;
     };
 
-    let stream = stream
-        .map(|upd: Result<Exchange>| {
-            sse::Event::default().json_data(upd.map_err(|e| e.to_string()))
-        })
-        .chain(futures::stream::once(async {
-            Ok(sse::Event::default().data("[DONE]"))
-        }));
+    let thread_stream = futures::stream::once(async move {
+        Ok(sse::Event::default().data(params.thread_id.to_string()))
+    });
+
+    let answer_stream = stream.map(|upd: Result<Exchange>| {
+        sse::Event::default().json_data(upd.map_err(|e| e.to_string()))
+    });
+
+    let done_stream = futures::stream::once(async { Ok(sse::Event::default().data("[DONE]")) });
+
+    let stream = thread_stream.chain(answer_stream).chain(done_stream);
 
     Ok(Sse::new(stream))
 }
 
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub(super) struct ConversationId {
-    thread_id: String,
+    thread_id: uuid::Uuid,
     user_id: String,
 }
 
@@ -517,12 +521,12 @@ impl Conversation {
         let mut transaction = db.begin().await?;
 
         // Delete the old conversation for simplicity. This also deletes all its messages.
-        let id2 = id.clone();
+        let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
         sqlx::query! {
             "DELETE FROM conversations \
              WHERE user_id = ? AND thread_id = ?",
-            id2.user_id,
-            id2.thread_id,
+            user_id,
+            thread_id,
         }
         .execute(&mut transaction)
         .await?;
@@ -544,8 +548,8 @@ impl Conversation {
                path_aliases, created_at\
              ) \
              VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))",
-            id.user_id,
-            id.thread_id,
+            user_id,
+            thread_id,
             repo_ref,
             title,
             exchanges,
@@ -560,10 +564,10 @@ impl Conversation {
         Ok(())
     }
 
-    async fn load(conversation_id: &ConversationId) -> Result<Option<Self>> {
+    async fn load(id: &ConversationId) -> Result<Option<Self>> {
         let db = db::get().await?;
 
-        let ConversationId { thread_id, user_id } = conversation_id.clone();
+        let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
 
         let row = sqlx::query! {
             "SELECT repo_ref, llm_history, exchanges, path_aliases FROM conversations \
