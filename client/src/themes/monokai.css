@@ -1,3 +1,6 @@
+[data-theme="monokai"] {
+    /* Code blocks */
+}
 [data-theme="monokai"] code[class*="language-"], [data-theme="monokai"] pre[class*="language-"] {
     color: #f8f8f2;
     font-family: Menlo, Monaco, Consolas, "Andale Mono", "Ubuntu Mono", "Courier New", monospace;
@@ -32,7 +35,7 @@
     overflow: auto;
 }
 [data-theme="monokai"] :not(pre) > code[class*="language-"], [data-theme="monokai"] pre[class*="language-"] {
-    color: white;
+    color: #f8f8f2;
 }
 [data-theme="monokai"] :not(pre) > code[class*="language-"] {
     padding: 0.1em;
@@ -42,17 +45,25 @@
 [data-theme="monokai"] .token.comment {
     color: #88846f;
 }
-[data-theme="monokai"] .token.string {
+[data-theme="monokai"] .token.string, [data-theme="monokai"] .token.tag.attr-value, [data-theme="monokai"] .token.content {
     color: #e6db74;
 }
 [data-theme="monokai"] .token.changed {
     color: #e6db74;
 }
-[data-theme="monokai"] .token.punctuation {
+[data-theme="monokai"] .token.url {
+    color: #e6db74;
+    text-decoration: underline;
+}
+[data-theme="monokai"] .token.namespace.punctuation {
+    color: #f92672;
+    text-decoration: none;
+}
+[data-theme="monokai"] .token.keyword {
     color: #f92672;
 }
 [data-theme="monokai"] .token.tag {
-    color: #66d9ef;
+    color: #f92672;
 }
 [data-theme="monokai"] .token.deleted {
     color: #f92672;
@@ -63,8 +74,25 @@
 [data-theme="monokai"] .token.builtin {
     color: #ae81ff;
 }
+[data-theme="monokai"] .token.char {
+    color: #ae81ff;
+}
+[data-theme="monokai"] .token.constant {
+    color: #ae81ff;
+}
+[data-theme="monokai"] .token.content {
+    color: #ae81ff;
+}
 [data-theme="monokai"] .token.variable {
     color: #f8f8f2;
+}
+[data-theme="monokai"] .token.class-name {
+    color: #a6e22e;
+    text-decoration: underline;
+}
+[data-theme="monokai"] .token.namespace {
+    color: #a6e22e;
+    text-decoration: underline;
 }
 [data-theme="monokai"] .token.function {
     color: #a6e22e;
@@ -72,23 +100,28 @@
 [data-theme="monokai"] .token.attr-name {
     color: #a6e22e;
 }
-[data-theme="monokai"] .token.attr-value {
-    color: #e6db74;
-}
 [data-theme="monokai"] .token.selector {
     color: #a6e22e;
 }
 [data-theme="monokai"] .token.inserted {
     color: #a6e22e;
 }
-[data-theme="monokai"] .token.important {
+[data-theme="monokai"] .token.title, [data-theme="monokai"] .token.title.punctuation {
     color: #a6e22e;
+}
+[data-theme="monokai"] .token.builtin, [data-theme="monokai"] .token.macro {
+    color: #66d9ef;
 }
 [data-theme="monokai"] .token.property {
     color: #66d9ef;
+    font-style: italic;
 }
-[data-theme="monokai"] .token.keyword {
+[data-theme="monokai"] .token.tag.class-name {
     color: #66d9ef;
+    font-style: italic;
+}
+[data-theme="monokai"] .token.code-snippet {
+    color: #fd971f;
 }
 [data-theme="monokai"] .token.important, [data-theme="monokai"] .token.bold {
     font-weight: bold;

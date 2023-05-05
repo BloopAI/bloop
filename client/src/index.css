@@ -3,6 +3,12 @@
 @import "themes/vscode-default-dark.css";
 @import "themes/vscode-default-light.css";
 @import "themes/monokai.css";
+@import "themes/solarized-light.css";
+@import "themes/solarized-dark.css";
+@import "themes/abyss.css";
+@import "themes/groovebox-dark.css";
+@import "themes/groovebox-light.css";
+@import "themes/kimbie-dark.css";
 
 @font-face {
   font-family: Menlo;
