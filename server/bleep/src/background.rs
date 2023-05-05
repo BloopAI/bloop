@@ -4,7 +4,7 @@ use tracing::{debug, error, info};
 use crate::{
     indexes,
     remotes::RemoteError,
-    repo::{RepoRef, Repository, SyncStatus},
+    repo::{RepoMetadata, RepoRef, Repository, SyncStatus},
     Application, Configuration,
 };
 
@@ -114,10 +114,24 @@ impl IndexWriter {
             }
         }
 
-        if let Err(err) = self.index_repo(&reporef).await {
-            error!(?err, ?reporef, "failed to index repository");
-            return Err(err);
-        }
+        let indexed = self.index_repo(&reporef).await;
+
+        repo_pool
+            .update_async(&reporef, |_k, repo| match indexed {
+                Ok(Some(state)) => {
+                    repo.sync_done_with(state);
+                    info!("commit complete; indexing done");
+                }
+                Ok(None) => {}
+                Err(err) => {
+                    repo.sync_status = SyncStatus::Error {
+                        message: err.to_string(),
+                    };
+                    error!(?err, ?reporef, "failed to index repository");
+                }
+            })
+            .await
+            .unwrap();
 
         Ok(())
     }
@@ -135,7 +149,7 @@ impl IndexWriter {
         self.sync_and_index(repos).await
     }
 
-    async fn index_repo(&self, reporef: &RepoRef) -> anyhow::Result<()> {
+    async fn index_repo(&self, reporef: &RepoRef) -> anyhow::Result<Option<Arc<RepoMetadata>>> {
         use SyncStatus::*;
 
         let Self(Application {
@@ -152,7 +166,7 @@ impl IndexWriter {
             .unwrap();
 
         let indexed = match repo.sync_status {
-            Uninitialized | Syncing | Indexing => return Ok(()),
+            Uninitialized | Syncing | Indexing => return Ok(None),
             Removed => {
                 repo_pool.remove(reporef);
                 let deleted = self.delete_repo_indexes(reporef, &repo, &writers).await;
@@ -160,7 +174,7 @@ impl IndexWriter {
                     writers.commit().await?;
                     config.source.save_pool(repo_pool.clone())?;
                 }
-                return deleted;
+                return deleted.map(|_| None);
             }
             RemoteRemoved => {
                 // Note we don't clean up here, leave the
@@ -169,7 +183,7 @@ impl IndexWriter {
                 // This is to be able to report to the user that
                 // something happened, and let them clean up in a
                 // subsequent action.
-                return Ok(());
+                return Ok(None);
             }
             _ => {
                 repo_pool
@@ -184,23 +198,7 @@ impl IndexWriter {
         writers.commit().await?;
         config.source.save_pool(repo_pool.clone())?;
 
-        repo_pool
-            .update_async(reporef, move |_k, repo| match indexed {
-                Ok(state) => {
-                    repo.sync_done_with(state);
-                    info!("commit complete; indexing done");
-                }
-                Err(err) => {
-                    repo.sync_status = Error {
-                        message: err.to_string(),
-                    };
-                    error!(?err, ?reporef, "failed to index repository");
-                }
-            })
-            .await
-            .unwrap();
-
-        Ok(())
+        Ok(indexed?).map(Some)
     }
 
     //
