@@ -39,7 +39,7 @@ mod partial_parse;
 mod prompts;
 mod response;
 
-use response::{Exchange, SearchResult, SearchStep, Update};
+use response::{AssistantExchange, Exchange, SearchResult, SearchStep, Update, UserExchange};
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
@@ -74,7 +74,7 @@ pub(super) async fn handle(
     let q = params.q;
     let stream = async_stream::try_stream! {
         let mut action_stream = Action::Query(q).into()?;
-        let mut exchange = Exchange::default();
+        let mut exchange = AssistantExchange::default();
 
         loop {
             // The main loop. Here, we create two streams that operate simultaneously; the update
@@ -99,7 +99,7 @@ pub(super) async fn handle(
                 match item {
                     Either::Left(upd) => {
                         exchange.apply_update(upd);
-                        yield exchange.clone()
+                        yield Exchange::Assistant(exchange.clone())
                     },
                     Either::Right(n) => next = n?,
                 }
@@ -120,7 +120,7 @@ pub(super) async fn handle(
         //         full_update.conclusion().unwrap_or_default(),
         //     ));
 
-        conversation.exchanges.push(exchange);
+        conversation.exchanges.push(Exchange::Assistant(exchange));
         conversation.store(conversation_id).await?;
     };
 
@@ -191,6 +191,8 @@ impl Conversation {
 
         let question = match action {
             Action::Query(s) => {
+                self.exchanges.push(Exchange::User(UserExchange::new(&s)));
+
                 update
                     .send(Update::Step(SearchStep::Query(s.clone())))
                     .await?;

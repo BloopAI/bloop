@@ -1,16 +1,49 @@
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[serde(tag = "author")]
+pub enum Exchange {
+    User(UserExchange),
+    Assistant(AssistantExchange),
+}
+
+impl Exchange {
+    pub fn query(&self) -> Option<&str> {
+        match self {
+            Self::User(u) => Some(u.query()),
+            Self::Assistant(a) => a.query(),
+        }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
+pub struct UserExchange {
+    message: String,
+}
+
+impl UserExchange {
+    pub fn new(message: &str) -> Self {
+        Self {
+            message: message.to_string(),
+        }
+    }
+
+    pub fn query(&self) -> &str {
+        self.message.as_str()
+    }
+}
+
 /// A continually updated conversation exchange.
 ///
 /// This contains the query from the user, the intermediate steps the model takes, and the final
 /// conclusion from the model alongside results, if any.
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
-pub struct Exchange {
+pub struct AssistantExchange {
     finished: bool,
     conclusion: Option<String>,
     search_steps: Vec<SearchStep>,
     results: Vec<SearchResult>,
 }
 
-impl Exchange {
+impl AssistantExchange {
     /// Advance this exchange.
     ///
     /// This should always be additive. An update should not result in fewer search results or fewer
