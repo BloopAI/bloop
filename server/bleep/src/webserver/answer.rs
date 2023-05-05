@@ -481,6 +481,13 @@ impl Conversation {
         question: &str,
         path_aliases: &[String],
     ) -> Result<()> {
+        fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
+            match v {
+                serde_json::Value::Array(a) => Some(a),
+                _ => None,
+            }
+        }
+
         let messages = self
             .llm_history
             .iter()
@@ -500,10 +507,21 @@ impl Conversation {
             let (s, _) = partial_parse::rectify_json(&buffer);
 
             // this /should/ be infallible if rectify_json works
-            let json_array: Vec<Vec<serde_json::Value>> =
+            let rectified_json: serde_json::Value =
                 serde_json::from_str(&s).expect("failed to rectify_json");
 
-            let search_results = json_array
+            let json_array = as_array(rectified_json)
+                .ok_or(anyhow!("failed to parse `answer` response, expected array"))?;
+
+            let array_of_arrays = json_array
+                .into_iter()
+                .map(as_array)
+                .collect::<Option<Vec<Vec<_>>>>()
+                .ok_or(anyhow!(
+                    "failed to parse `answer` response, expected array of arrays"
+                ))?;
+
+            let search_results = array_of_arrays
                 .iter()
                 .map(Vec::as_slice)
                 .filter_map(SearchResult::from_json_array)
