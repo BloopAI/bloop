@@ -30,6 +30,11 @@ impl Exchange {
         })
     }
 
+    /// Get the conslusion associated with this exchange, if it has been made.
+    pub fn conclusion(&self) -> Option<&str> {
+        self.conclusion.as_ref().map(String::as_str)
+    }
+
     /// Set the current search result list.
     fn set_results(&mut self, mut results: Vec<SearchResult>) {
         // fish out the conclusion from the result list, if any
