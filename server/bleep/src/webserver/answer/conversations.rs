@@ -70,7 +70,7 @@ pub(in crate::webserver) async fn delete(
 }
 
 pub(in crate::webserver) async fn thread(
-    Path(thread_id): Path<String>,
+    Path(thread_id): Path<uuid::Uuid>,
     Extension(user): Extension<User>,
 ) -> webserver::Result<impl IntoResponse> {
     let user_id = user.0.ok_or_else(|| Error::user("missing user ID"))?;
