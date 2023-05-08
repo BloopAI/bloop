@@ -130,7 +130,12 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
       case 'full-result':
         return <ViewResult data={data} />;
       case 'conversation-result':
-        return <ConversationResult recordId={navigatedItem?.recordId!} />;
+        return (
+          <ConversationResult
+            recordId={navigatedItem?.recordId!}
+            threadId={navigatedItem?.threadId!}
+          />
+        );
       default:
         return <HomePage />;
     }

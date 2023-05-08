@@ -176,7 +176,9 @@ export const getConfig = () => http.get('/config').then((r) => r.data);
 export const getAllConversations = (): Promise<AllConversationsResponse> =>
   http.get('/answer/conversations').then((r) => r.data);
 
-export const getConversation = (thread_id: string) =>
+export const getConversation = (
+  thread_id: string,
+): Promise<ConversationType[]> =>
   http.get(`/answer/conversations/${thread_id}`).then((r) => r.data);
 
 export const deleteConversation = (

@@ -75,8 +75,14 @@ const Chat = () => {
         console.log(err);
       };
       let firstResultCame: boolean;
+      let i = -1;
       eventSource.onmessage = (ev) => {
         console.log(ev.data);
+        i++;
+        if (i === 0) {
+          setThreadId(ev.data);
+          return;
+        }
         if (ev.data === '[DONE]') {
           eventSource.close();
           prevEventSource = undefined;
@@ -91,52 +97,55 @@ const Chat = () => {
           });
           return;
         }
-        const data = JSON.parse(ev.data);
-        if (data.Ok) {
-          setResp(data.Ok);
-          setThreadId(data.Ok.thread_id);
-          const newMessage = data.Ok;
-          if (
-            newMessage.results?.length &&
-            !newMessage.conclusion &&
-            !firstResultCame
-          ) {
-            setChatOpen(false);
+        try {
+          const data = JSON.parse(ev.data);
+          if (data.Ok) {
+            setResp(data.Ok);
+            const newMessage = data.Ok;
+            if (
+              newMessage.results?.length &&
+              !newMessage.conclusion &&
+              !firstResultCame
+            ) {
+              setChatOpen(false);
+              setConversation((prev) => {
+                navigateConversationResults(prev.length - 1, threadId);
+                return prev;
+              });
+              firstResultCame = true;
+            }
             setConversation((prev) => {
-              navigateConversationResults(prev.length - 1);
-              return prev;
+              const newConversation = prev?.slice(0, -1) || [];
+              const lastMessage = prev?.slice(-1)[0];
+              const messageToAdd = {
+                author: ChatMessageAuthor.Server,
+                isLoading: !newMessage.finished,
+                type: ChatMessageType.Answer,
+                loadingSteps: newMessage.search_steps.map(
+                  (s: { type: string; content: string }) => s.content,
+                ),
+                text: newMessage.conclusion,
+                results: newMessage.results,
+              };
+              const lastMessages: ChatMessage[] =
+                lastMessage?.author === ChatMessageAuthor.Server
+                  ? [messageToAdd]
+                  : [...prev.slice(-1), messageToAdd];
+              return [...newConversation, ...lastMessages];
             });
-            firstResultCame = true;
+          } else if (data.Err) {
+            setConversation((prev) => {
+              const newConversation = prev.slice(0, -1);
+              const lastMessage = {
+                ...prev.slice(-1)[0],
+                isLoading: false,
+                error: 'Something went wrong',
+              };
+              return [...newConversation, lastMessage];
+            });
           }
-          setConversation((prev) => {
-            const newConversation = prev?.slice(0, -1) || [];
-            const lastMessage = prev?.slice(-1)[0];
-            const messageToAdd = {
-              author: ChatMessageAuthor.Server,
-              isLoading: !newMessage.finished,
-              type: ChatMessageType.Answer,
-              loadingSteps: newMessage.search_steps.map(
-                (s: { type: string; content: string }) => s.content,
-              ),
-              text: newMessage.conclusion,
-              results: newMessage.results,
-            };
-            const lastMessages: ChatMessage[] =
-              lastMessage?.author === ChatMessageAuthor.Server
-                ? [messageToAdd]
-                : [...prev.slice(-1), messageToAdd];
-            return [...newConversation, ...lastMessages];
-          });
-        } else if (data.Err) {
-          setConversation((prev) => {
-            const newConversation = prev.slice(0, -1);
-            const lastMessage = {
-              ...prev.slice(-1)[0],
-              isLoading: false,
-              error: 'Something went wrong',
-            };
-            return [...newConversation, lastMessage];
-          });
+        } catch (err) {
+          console.log(err);
         }
       };
     },
@@ -275,6 +284,7 @@ const Chat = () => {
               conversation={conversation}
               searchId={resp?.thread_id || ''}
               isLoading={isLoading}
+              setHistoryOpen={setRightPanelOpen}
             />
           )}
           <form onSubmit={onSubmit} className="flex flex-col w-95">
