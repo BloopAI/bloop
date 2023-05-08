@@ -8,8 +8,14 @@ import {
   getAllConversations,
   getConversation,
 } from '../../../services/api';
-import { AllConversationsResponse, ConversationType } from '../../../types/api';
+import { AllConversationsResponse } from '../../../types/api';
 import Conversation from '../Conversation';
+import {
+  ChatMessage,
+  ChatMessageAuthor,
+  ChatMessageType,
+} from '../../../types/general';
+import { conversationsCache } from '../../../services/cache';
 import ConversationListItem from './ConversationListItem';
 
 type Props = {
@@ -23,10 +29,11 @@ const AllConversations = ({
   setHistoryOpen,
   setActive,
 }: Props) => {
-  const [openItem, setOpenItem] = useState<ConversationType | null>(null);
+  const [openItem, setOpenItem] = useState<ChatMessage[] | null>(null);
   const [conversations, setConversations] = useState<AllConversationsResponse>(
     [],
   );
+  const [threadId, setThreadId] = useState('');
 
   const fetchConversations = useCallback(() => {
     getAllConversations().then(setConversations);
@@ -34,14 +41,30 @@ const AllConversations = ({
 
   useEffect(() => {
     fetchConversations();
-  }, []);
+  }, [isHistoryOpen]);
 
   const onDelete = useCallback((threadId: string) => {
     deleteConversation(threadId).then(fetchConversations);
   }, []);
 
   const onClick = useCallback((threadId: string) => {
-    getConversation(threadId).then(setOpenItem);
+    setThreadId(threadId);
+    getConversation(threadId).then((resp) => {
+      conversationsCache[threadId] = resp;
+      const conv = resp.map((m) => {
+        return {
+          author: ChatMessageAuthor.Server,
+          isLoading: false,
+          type: ChatMessageType.Answer,
+          loadingSteps: m.search_steps?.map(
+            (s: { type: string; content: string }) => s.content,
+          ),
+          text: m.conclusion,
+          results: m.results,
+        };
+      });
+      setOpenItem(conv);
+    });
   }, []);
 
   return (
@@ -90,11 +113,13 @@ const AllConversations = ({
         </div>
       )}
       {!!openItem && (
-        <div className="min-h-[2rem]">
+        <div className="flex-1 px-4 py-2">
           <Conversation
             conversation={openItem}
-            searchId={''}
+            searchId={threadId}
             isLoading={false}
+            isHistory
+            setHistoryOpen={setHistoryOpen}
           />
         </div>
       )}

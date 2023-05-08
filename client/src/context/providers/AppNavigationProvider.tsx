@@ -106,14 +106,16 @@ export const AppNavigationProvider = (prop: {
   );
 
   const navigateConversationResults = useCallback(
-    (messageIndex: number) => {
+    (messageIndex: number, threadId: string) => {
       if (
         navigatedItem?.type !== 'conversation-result' ||
-        navigatedItem?.recordId !== messageIndex
+        navigatedItem?.recordId !== messageIndex ||
+        navigatedItem?.threadId !== threadId
       ) {
         saveState({
           type: 'conversation-result',
           recordId: messageIndex,
+          threadId,
         });
       }
     },

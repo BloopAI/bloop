@@ -1,10 +1,4 @@
-import React, {
-  Fragment,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { Fragment, useContext, useEffect, useRef } from 'react';
 import {
   ChatMessage,
   ChatMessageAuthor,
@@ -18,9 +12,17 @@ type Props = {
   conversation: ChatMessage[];
   searchId: string;
   isLoading?: boolean;
+  isHistory?: boolean;
+  setHistoryOpen: (b: boolean) => void;
 };
 
-const Conversation = ({ conversation, searchId, isLoading }: Props) => {
+const Conversation = ({
+  conversation,
+  searchId,
+  isLoading,
+  isHistory,
+  setHistoryOpen,
+}: Props) => {
   const messagesRef = useRef<HTMLDivElement>(null);
   const { navigateConversationResults } = useContext(AppNavigationContext);
   useEffect(() => {
@@ -35,7 +37,9 @@ const Conversation = ({ conversation, searchId, isLoading }: Props) => {
 
   return (
     <div
-      className="w-full flex flex-col gap-3 pb-3 overflow-auto max-h-80"
+      className={`w-full flex flex-col gap-3 pb-3 overflow-auto ${
+        !isHistory ? 'max-h-80' : ''
+      }`}
       ref={messagesRef}
     >
       {conversation.map((m, i) => (
@@ -62,7 +66,10 @@ const Conversation = ({ conversation, searchId, isLoading }: Props) => {
                   <div className="flex items-center justify-end justify-self-end">
                     <button
                       className="text-primary-300 body-s mr-2"
-                      onClick={() => navigateConversationResults(i)}
+                      onClick={() => {
+                        navigateConversationResults(i, searchId);
+                        setHistoryOpen(false);
+                      }}
                     >
                       View
                     </button>
@@ -72,7 +79,7 @@ const Conversation = ({ conversation, searchId, isLoading }: Props) => {
             )}
           {m.text || (m.author === ChatMessageAuthor.Server && m.error) ? (
             <Message
-              isHistory={false}
+              isHistory={isHistory}
               author={m.author}
               message={
                 m.text ||
