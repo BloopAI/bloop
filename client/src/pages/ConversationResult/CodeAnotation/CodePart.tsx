@@ -34,11 +34,9 @@ const CodePart = ({
       endLine !== null &&
       endLine > -1
     ) {
-      getFileLines(repoRef, filePath, startLine + 1, endLine + 1).then(
-        (resp) => {
-          setFilePart(resp);
-        },
-      );
+      getFileLines(repoRef, filePath, startLine, endLine).then((resp) => {
+        setFilePart(resp);
+      });
     }
   }, [filePath, repoRef, startLine, endLine]);
 
@@ -57,7 +55,7 @@ const CodePart = ({
       <div className={`${isLoading ? 'opacity-0' : 'opacity-100'}`}>
         {filePart && (
           <Code
-            lineStart={startLine}
+            lineStart={startLine - 1}
             code={filePart.contents.slice(0, -1)} // there is always a trailing new line
             language={filePart.lang}
             highlightColor={`rgba(${colors[i % colors.length].join(', ')}, 1)`}
