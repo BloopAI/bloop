@@ -71,11 +71,13 @@ const Chat = () => {
         }`,
       );
       prevEventSource = eventSource;
-      eventSource.onerror = (err) => {
-        console.log(err);
-      };
       let firstResultCame: boolean;
       let i = -1;
+      eventSource.onerror = (err) => {
+        console.log(err);
+        firstResultCame = false;
+        i = -1;
+      };
       eventSource.onmessage = (ev) => {
         console.log(ev.data);
         i++;
