@@ -78,6 +78,7 @@
   background-color: #131315;
   color: #F1F1F2;
   overflow: hidden;
+  font-size: 16px;
 }
 
 input[type="search" i]::-webkit-search-cancel-button {
@@ -96,7 +97,7 @@ h1, .h1 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 600;
-  font-size: 48px;
+  font-size: 3rem;
   line-height: 110%;
   letter-spacing: -0.02em;
 
@@ -110,7 +111,7 @@ h2, .h2 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 600;
-  font-size: 38px;
+  font-size: 2.375rem;
   line-height: 110%;
   letter-spacing: -0.02em;
 
@@ -124,7 +125,7 @@ h3, .h3 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 600;
-  font-size: 28px;
+  font-size: 1.75rem;
   line-height: 110%;
   letter-spacing: -0.02em;
 
@@ -138,7 +139,7 @@ h4, .h4 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 600;
-  font-size: 22px;
+  font-size: 1.375rem;
   line-height: 110%;
   letter-spacing: -0.02em;
 
@@ -152,7 +153,7 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 500;
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 110%;
   letter-spacing: -0.02em;
 
@@ -166,7 +167,7 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 500;
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 110%;
   letter-spacing: -0.02em;
 }
@@ -175,7 +176,7 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 500;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 110%;
   letter-spacing: -0.02em;
 }
@@ -184,7 +185,7 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 110%;
   letter-spacing: -0.02em;
 }
@@ -193,7 +194,7 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 400;
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 160%;
   letter-spacing: -0.02em;
 }
@@ -202,7 +203,7 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 400;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 160%;
   letter-spacing: -0.02em;
 }
@@ -211,7 +212,7 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 400;
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 160%;
   letter-spacing: -0.02em;
 }
@@ -220,7 +221,7 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 100%;
   letter-spacing: -0.02em;
 }
@@ -229,7 +230,7 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 400;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 140%;
   letter-spacing: -0.01em;
 }
@@ -238,7 +239,7 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 500;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 140%;
   letter-spacing: -0.01em;
 }
@@ -247,7 +248,7 @@ h5, .h5 {
   font-family: Menlo, sans-serif;
   font-style: normal;
   font-weight: 400;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 150%;
 }
 .hide-scrollbar::-webkit-scrollbar {
