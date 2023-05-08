@@ -9,6 +9,15 @@
 @import "themes/groovebox-dark.css";
 @import "themes/groovebox-light.css";
 @import "themes/kimbie-dark.css";
+@import "themes/quiet-light.css";
+@import "themes/tomorrow-night-blue.css";
+@import "themes/atom-one-dark-pro.css";
+@import "themes/github-dark.css";
+@import "themes/github-light.css";
+@import "themes/dracula.css";
+@import "themes/darcula.css";
+@import "themes/night-owl.css";
+@import "themes/material.css";
 
 @font-face {
   font-family: Menlo;
@@ -87,28 +96,6 @@
 
 @layer base {
     [data-theme="default"] {
-      --primary-50: 229, 233, 255;
-      --primary-100: 184, 195, 255;
-      --primary-200: 138, 156, 255;
-      --primary-300: 93, 117, 255;
-      --primary-400: 48, 79, 255;
-      --primary-500: 2, 40, 255;
-      --primary-600: 0, 32, 214;
-      --primary-700: 0, 26, 173;
-      --primary-800: 0, 20, 133;
-      --primary-900: 0, 14, 92;
-
-      --secondary-50: 255, 250, 229;
-      --secondary-100: 255, 240, 183;
-      --secondary-200: 255, 231, 138;
-      --secondary-300: 255, 221, 92;
-      --secondary-400: 255, 212, 46;
-      --secondary-500: 253, 201, 0;
-      --secondary-600: 212, 169, 0;
-      --secondary-700: 171, 136, 0;
-      --secondary-800: 131, 104, 0;
-      --secondary-900: 90, 71, 0;
-
       --gray-50: 249, 249, 249;
       --gray-100: 241, 241, 242;
       --gray-200: 221, 221, 225;
@@ -136,28 +123,6 @@
       --footer-border: rgb(var(--gray-700));
     }
     [data-theme="default-light"] {
-      --primary-900: 229, 233, 255;
-      --primary-800: 184, 195, 255;
-      --primary-700: 138, 156, 255;
-      --primary-600: 93, 117, 255;
-      --primary-500: 48, 79, 255;
-      --primary-400: 2, 40, 255;
-      --primary-300: 0, 32, 214;
-      --primary-200: 0, 26, 173;
-      --primary-100: 0, 20, 133;
-      --primary-50: 0, 14, 92;
-
-      --secondary-900: 255, 250, 229;
-      --secondary-800: 255, 240, 183;
-      --secondary-700: 255, 231, 138;
-      --secondary-600: 255, 221, 92;
-      --secondary-500: 255, 212, 46;
-      --secondary-400: 253, 201, 0;
-      --secondary-300: 212, 169, 0;
-      --secondary-200: 171, 136, 0;
-      --secondary-100: 131, 104, 0;
-      --secondary-50: 90, 71, 0;
-
       --gray-900: 249, 249, 249;
       --gray-800: 241, 241, 242;
       --gray-700: 221, 221, 225;
@@ -185,28 +150,6 @@
       --footer-border: rgb(var(--gray-600));
     }
   [data-theme="vsc-default-dark"] {
-    --primary-50: 229, 233, 255;
-    --primary-100: 184, 195, 255;
-    --primary-200: 138, 156, 255;
-    --primary-300: 93, 117, 255;
-    --primary-400: 48, 79, 255;
-    --primary-500: 2, 40, 255;
-    --primary-600: 0, 32, 214;
-    --primary-700: 0, 26, 173;
-    --primary-800: 0, 20, 133;
-    --primary-900: 0, 14, 92;
-
-    --secondary-50: 255, 250, 229;
-    --secondary-100: 255, 240, 183;
-    --secondary-200: 255, 231, 138;
-    --secondary-300: 255, 221, 92;
-    --secondary-400: 255, 212, 46;
-    --secondary-500: 253, 201, 0;
-    --secondary-600: 212, 169, 0;
-    --secondary-700: 171, 136, 0;
-    --secondary-800: 131, 104, 0;
-    --secondary-900: 90, 71, 0;
-
     --gray-50: 249, 249, 249;
     --gray-100: 241, 241, 242;
     --gray-200: 221, 221, 225;
@@ -234,28 +177,6 @@
     --footer-border: rgb(var(--gray-700));
   }
     [data-theme="vsc-default-light"] {
-      --primary-900: 229, 233, 255;
-      --primary-800: 184, 195, 255;
-      --primary-700: 138, 156, 255;
-      --primary-600: 93, 117, 255;
-      --primary-500: 48, 79, 255;
-      --primary-400: 2, 40, 255;
-      --primary-300: 0, 32, 214;
-      --primary-200: 0, 26, 173;
-      --primary-100: 0, 20, 133;
-      --primary-50: 0, 14, 92;
-
-      --secondary-900: 255, 250, 229;
-      --secondary-800: 255, 240, 183;
-      --secondary-700: 255, 231, 138;
-      --secondary-600: 255, 221, 92;
-      --secondary-500: 255, 212, 46;
-      --secondary-400: 253, 201, 0;
-      --secondary-300: 212, 169, 0;
-      --secondary-200: 171, 136, 0;
-      --secondary-100: 131, 104, 0;
-      --secondary-50: 90, 71, 0;
-
       --gray-900: 249, 249, 249;
       --gray-800: 241, 241, 242;
       --gray-700: 221, 221, 225;
@@ -283,28 +204,6 @@
       --footer-border: rgb(var(--gray-600));
     }
     [data-theme="monokai"] {
-      --primary-50: 229, 233, 255;
-      --primary-100: 184, 195, 255;
-      --primary-200: 138, 156, 255;
-      --primary-300: 93, 117, 255;
-      --primary-400: 48, 79, 255;
-      --primary-500: 2, 40, 255;
-      --primary-600: 0, 32, 214;
-      --primary-700: 0, 26, 173;
-      --primary-800: 0, 20, 133;
-      --primary-900: 0, 14, 92;
-
-      --secondary-50: 255, 250, 229;
-      --secondary-100: 255, 240, 183;
-      --secondary-200: 255, 231, 138;
-      --secondary-300: 255, 221, 92;
-      --secondary-400: 255, 212, 46;
-      --secondary-500: 253, 201, 0;
-      --secondary-600: 212, 169, 0;
-      --secondary-700: 171, 136, 0;
-      --secondary-800: 131, 104, 0;
-      --secondary-900: 90, 71, 0;
-
       --gray-50: 248, 248, 242;
       --gray-100: 241, 241, 242;
       --gray-200: 221, 221, 225;
