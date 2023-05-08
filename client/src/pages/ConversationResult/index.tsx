@@ -5,15 +5,17 @@ import { ChatContext } from '../../context/chatContext';
 import { ChatMessageServer, MessageResultCite } from '../../types/general';
 import { UIContext } from '../../context/uiContext';
 import { ChevronDown } from '../../icons';
+import { conversationsCache } from '../../services/cache';
 import NewCode from './NewCode';
 import DiffCode from './DiffCode';
 import CodeAnnotation from './CodeAnotation';
 
 type Props = {
   recordId: number;
+  threadId: string;
 };
 
-const ConversationResult = ({ recordId }: Props) => {
+const ConversationResult = ({ recordId, threadId }: Props) => {
   const { conversation } = useContext(ChatContext);
   const { tab } = useContext(UIContext);
   const [isScrolled, setScrolled] = useState(false);
@@ -24,8 +26,16 @@ const ConversationResult = ({ recordId }: Props) => {
   }, [recordId]);
 
   const data = useMemo(
-    () => (conversation[recordId] as ChatMessageServer)?.results || [],
-    [(conversation[recordId] as ChatMessageServer)?.results],
+    () =>
+      (
+        (conversationsCache[threadId]?.[recordId] ||
+          conversation[recordId]) as ChatMessageServer
+      )?.results || [],
+    [
+      (conversation[recordId] as ChatMessageServer)?.results,
+      recordId,
+      threadId,
+    ],
   );
   const citations = useMemo(() => {
     const files: Record<string, any> = {};
