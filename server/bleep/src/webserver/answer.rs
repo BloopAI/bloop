@@ -23,7 +23,7 @@ use futures::{
 use reqwest::StatusCode;
 use secrecy::ExposeSecret;
 use tokio::sync::mpsc::Sender;
-use tracing::trace;
+use tracing::{info, trace};
 
 use super::middleware::User;
 use crate::{
@@ -144,15 +144,7 @@ pub(super) async fn _handle(
             }
         }
 
-        // TODO: add `conclusion` of last assistant response to history here
         // Storing the conversation here allows us to make subsequent requests.
-
-        // conversation
-        //     .history
-        //     .push(llm_gateway::api::Message::assistant(
-        //         full_update.conclusion().unwrap_or_default(),
-        //     ));
-
         conversation.exchanges.push(exchange);
         conversation.store(conversation_id).await?;
     };
@@ -223,6 +215,17 @@ impl Conversation {
             .collect()
     }
 
+    // Generate a summary of the last exchange
+    fn get_summarized_answer(&self) -> Option<String> {
+        self.exchanges.last().map(|e| {
+            e.results
+                .iter()
+                .map(SearchResult::summarize)
+                .collect::<Vec<_>>()
+                .join("\n")
+        })
+    }
+
     async fn step(
         &mut self,
         ctx: &AppContext,
@@ -244,6 +247,17 @@ impl Conversation {
                     .await?;
 
                 ctx.track_query(EventData::input_stage("query").with_payload("q", &s));
+
+                match self.get_summarized_answer() {
+                    Some(summary) => {
+                        info!("attaching summary of previous exchange: {summary}");
+                        self.llm_history
+                            .push(llm_gateway::api::Message::assistant(&summary));
+                    }
+                    None => {
+                        info!("no previous exchanges, skipping summary");
+                    }
+                }
 
                 parser::parse_nl(&s)?
                     .as_semantic()
@@ -614,6 +628,7 @@ impl Conversation {
     }
 
     async fn store(self, id: ConversationId) -> Result<()> {
+        info!("writing conversation {}-{}", id.user_id, id.thread_id);
         let db = db::get().await?;
         let mut transaction = db.begin().await?;
 
