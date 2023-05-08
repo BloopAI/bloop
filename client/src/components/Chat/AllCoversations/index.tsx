@@ -34,6 +34,7 @@ const AllConversations = ({
     [],
   );
   const [threadId, setThreadId] = useState('');
+  const [title, setTitle] = useState('');
 
   const fetchConversations = useCallback(() => {
     getAllConversations().then(setConversations);
@@ -50,9 +51,16 @@ const AllConversations = ({
   const onClick = useCallback((threadId: string) => {
     setThreadId(threadId);
     getConversation(threadId).then((resp) => {
-      conversationsCache[threadId] = resp;
-      const conv = resp.map((m) => {
-        return {
+      const conv: ChatMessage[] = [];
+      resp.forEach((m) => {
+        const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
+        if (userQuery) {
+          conv.push({
+            author: ChatMessageAuthor.User,
+            text: userQuery.content,
+          });
+        }
+        conv.push({
           author: ChatMessageAuthor.Server,
           isLoading: false,
           type: ChatMessageType.Answer,
@@ -61,9 +69,11 @@ const AllConversations = ({
           ),
           text: m.conclusion,
           results: m.results,
-        };
+        });
       });
+      setTitle(conv[0].text || '');
       setOpenItem(conv);
+      conversationsCache[threadId] = conv;
     });
   }, []);
 
@@ -79,9 +89,7 @@ const AllConversations = ({
             <ArrowLeft sizeClassName="w-4 h-4" />
           </ChipButton>
         )}
-        <p className="flex-1 body-m">
-          {openItem ? 'Where are the ctags?' : 'Conversations'}
-        </p>
+        <p className="flex-1 body-m">{openItem ? title : 'Conversations'}</p>
         {!openItem && (
           <ChipButton
             onClick={() => {
