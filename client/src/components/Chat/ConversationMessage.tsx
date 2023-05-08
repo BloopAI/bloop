@@ -12,7 +12,7 @@ type Props = {
   message: string;
   query: string;
   searchId: string;
-  isHistory: boolean;
+  isHistory?: boolean;
   showInlineFeedback: boolean;
 };
 
@@ -97,7 +97,7 @@ const ConversationMessage = ({
           {message}
         </pre>
       </div>
-      {showInlineFeedback && (
+      {showInlineFeedback && !isHistory && (
         <div className="flex flex-col items-center gap-3">
           <p className="body-s text-gray-200">
             How would you rate this response?
