@@ -23,6 +23,7 @@ type Props = {
 const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
   const { isGithubConnected, setGithubConnected } = useContext(UIContext);
   const { envConfig, openLink } = useContext(DeviceContext);
+  console.log('envC', envConfig);
 
   const handleLogout = useCallback(() => {
     gitHubLogout();
@@ -85,7 +86,7 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
         <div className="flex items-center pl-2.5 gap-2.5 border border-gray-700 rounded-4">
           <GitHubLogo />
           <p className="callout text-gray-100 flex-1">
-            {isGithubConnected ? envConfig.user_login : 'GitHub'}
+            {isGithubConnected ? envConfig.github_user?.login : 'GitHub'}
           </p>
           <button
             type="button"

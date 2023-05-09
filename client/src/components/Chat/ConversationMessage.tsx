@@ -81,8 +81,8 @@ const ConversationMessage = ({
       >
         {author === ChatMessageAuthor.User && (
           <div className="relative">
-            <div className="w-6 h-6 rounded-full bg-chat-bg-sub">
-              <img src={envConfig?.user?.avatar_url} />
+            <div className="w-6 h-6 rounded-full bg-chat-bg-sub overflow-hidden">
+              <img src={envConfig.github_user?.avatar_url} />
             </div>
             <div className="absolute -bottom-1 -right-1 w-4 h-3 bg-chat-bg-border box-content border-2 border-chat-bg-shade text-white rounded-full flex items-center justify-center">
               <div className="w-1.5 h-2">

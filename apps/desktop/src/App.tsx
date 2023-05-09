@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { invoke } from '@tauri-apps/api';
 import { open } from '@tauri-apps/api/shell';
 import { homeDir } from '@tauri-apps/api/path';
@@ -8,12 +14,8 @@ import * as tauriOs from '@tauri-apps/api/os';
 import { getVersion } from '@tauri-apps/api/app';
 import ClientApp from '../../../client/src/App';
 import '../../../client/src/index.css';
-import {
-  DEVICE_ID,
-  getPlainFromStorage,
-  savePlainToStorage,
-} from '../../../client/src/services/storage';
-import { generateUniqueId } from '../../../client/src/utils';
+import useKeyboardNavigation from '../../../client/src/hooks/useKeyboardNavigation';
+import { getConfig } from '../../../client/src/services/api';
 import TextSearch from './TextSearch';
 
 // let askedToUpdate = false;
@@ -106,6 +108,30 @@ function App() {
       //   1000 * 60 * 60,
       // );
     });
+  }, []);
+
+  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
+    if (
+      (e.key === '=' || e.key === '-' || e.key === '0') &&
+      (e.metaKey || e.ctrlKey)
+    ) {
+      const root = document.querySelector(':root');
+      if (!root) {
+        return;
+      }
+      const style = window
+        .getComputedStyle(root, null)
+        .getPropertyValue('font-size');
+      const fontSize = parseFloat(style);
+
+      (root as HTMLElement).style.fontSize =
+        (e.key === '0' ? 16 : fontSize + (e.key === '=' ? 1 : -1)) + 'px';
+    }
+  }, []);
+  useKeyboardNavigation(handleKeyEvent);
+
+  useEffect(() => {
+    setTimeout(() => getConfig().then(setEnvConfig), 1000); // server returns wrong tracking_id within first second
   }, []);
 
   const deviceContextValue = useMemo(
