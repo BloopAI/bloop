@@ -92,12 +92,12 @@ const Onboarding = () => {
   useEffect(() => {
     let intervalId: number;
     let timerId: number;
-    if (isGithubConnected && !envConfig.user_login) {
+    if (isGithubConnected && !envConfig.github_user?.login) {
       intervalId = window.setInterval(
         () =>
           getConfig().then((resp) => {
             setEnvConfig(resp);
-            if (resp.user_login) {
+            if (resp.github_user?.login) {
               clearInterval(intervalId);
             }
           }),
@@ -110,7 +110,7 @@ const Onboarding = () => {
       clearInterval(intervalId);
       clearTimeout(timerId);
     };
-  }, [isGithubConnected, envConfig.user_login]);
+  }, [isGithubConnected, envConfig.github_user]);
 
   const onSubmit = useCallback(() => {
     saveUserData({
