@@ -1,4 +1,5 @@
 @import "./file-icons.css";
+@import "circleProgress.css";
 
 @import "themes/default-dark.css";
 @import "themes/default-light.css";
@@ -97,7 +98,7 @@
 
 
 @layer base {
-    [data-theme="default"] {
+    [data-theme="default"], :not([data-theme]) {
       --gray-50: 249, 249, 249;
       --gray-100: 241, 241, 242;
       --gray-200: 221, 221, 225;
@@ -111,18 +112,49 @@
 
       --contrast-color: white;
 
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
       --shadow-light: 0px 1px 6px rgba(0, 0, 0, 0.25);
       --shadow-lighter: 0px 1px 3px rgba(62, 70, 85, 0.12);
       --shadow-light-bigger: 0px 6px 16px rgba(0, 0, 0, 0.25);
       --shadow-big: 0px 16px 34px rgba(0, 0, 0, 0.5);
-      --shadow-medium: 0px 16px 24px rgba(0, 0, 0, 0.25);
 
       --app-bg: #131315;
       --header-bg: rgba(var(--gray-800), 0.75);
       --header-border: rgb(var(--gray-700));
       --footer-bg: rgb(var(--gray-800));
       --footer-border: rgb(var(--gray-700));
+
+      --bg-base: 35, 35, 39; /* #232327 */
+      --bg-base-hover: 48, 48, 57;
+      --bg-shade: 41, 41, 47; /* #29292F */
+      --bg-sub: 26, 26, 31; /* #1A1A1F */
+      --bg-border: 48, 48, 55;
+      --bg-border-hover: 68, 68, 81;
+      --bg-main: 91, 110, 221;
+      --bg-main-hover: 114, 133, 238;
+      --bg-danger: 199, 54, 62;
+      --bg-danger-hover: 215, 66, 74;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 57, 57, 57;
+      --label-muted: 85, 85, 85;
+      --label-base: 185, 185, 185; /* #B9B9B9 */
+      --label-title: 238, 238, 238;
+      --label-link: 104, 141, 222;
+      --chat-bg-base: 37, 38, 56;
+      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-shade: 31, 32, 49;
+      --chat-bg-sub: 21, 22, 32;
+      --chat-bg-border: 57, 58, 74;
+      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-divider: 45, 45, 58;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
     }
     [data-theme="default-light"] {
       --gray-900: 249, 249, 249;
@@ -143,13 +175,43 @@
       --shadow-lighter: 0px 1px 3px rgba(62, 70, 85, 0.06);
       --shadow-light-bigger: 0px 6px 16px rgba(0, 0, 0, 0.12);
       --shadow-big: 0px 16px 34px rgba(0, 0, 0, 0.25);
-      --shadow-medium: 0px 16px 24px rgba(0, 0, 0, 0.12);
 
       --app-bg: #ffffff;
       --header-bg: #fefefe;
       --header-border: rgb(var(--gray-600));
       --footer-bg: #fafafa;
       --footer-border: rgb(var(--gray-600));
+
+      --bg-base: 255, 255, 255;
+      --bg-base-hover: 236, 236, 236;
+      --bg-shade: 249, 249, 249;
+      --bg-sub: 243, 243, 243;
+      --bg-border: 230, 230, 230;
+      --bg-border-hover: 211, 211, 211;
+      --bg-main: 93, 117, 255;
+      --bg-main-hover: 69, 89, 205;
+      --bg-danger: 215, 66, 74;
+      --bg-danger-hover: 199, 54, 62;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 173, 173, 173;
+      --label-muted: 98, 98, 98;
+      --label-base: 57, 57, 57;
+      --label-title: 21, 21, 21;
+      --label-link: 78, 128, 238;
+      --chat-bg-base: 226, 227, 243;
+      --chat-bg-base-hover: 211, 213, 240;
+      --chat-bg-shade: 248, 248, 255;
+      --chat-bg-sub: 211, 212, 236;
+      --chat-bg-border: 195, 197, 225;
+      --chat-bg-border-hover: 184, 187, 225;
+      --chat-bg-divider: 216, 217, 234;
+
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
     }
   [data-theme="vsc-default-dark"] {
     --gray-50: 249, 249, 249;

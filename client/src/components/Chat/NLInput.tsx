@@ -61,10 +61,12 @@ const NLInput = ({
 
   return (
     <div
-      className={`w-full flex items-start gap-2 bg-gray-800 rounded-lg disabled:border-transparent disabled:text-gray-500
-    border border-gray-700 focus-within:border-gray-600 px-4
-    text-gray-400 focus-within:text-gray-100 ${
-      isStoppable ? '' : 'hover:text-gray-100 hover:border-gray-600'
+      className={`w-full flex items-start gap-2 rounded-lg 
+    border border-chat-bg-border focus-within:border-chat-bg-border-hover px-4
+    text-label-base focus-within:text-label-title ${
+      isStoppable && loadingSteps?.length
+        ? 'bg-transparent'
+        : 'bg-chat-bg-base hover:text-label-title hover:border-chat-bg-border-hover'
     } transition-all ease-out duration-150 flex-grow-0 relative`}
     >
       {isStoppable && loadingSteps?.length && (
@@ -96,7 +98,7 @@ const NLInput = ({
           </Tooltip>
         </div>
       ) : value ? (
-        <button type="submit" className="self-end py-3 text-primary-300">
+        <button type="submit" className="self-end py-3 text-bg-main">
           <Tooltip text={'Submit'} placement={'top-end'}>
             <SendIcon />
           </Tooltip>

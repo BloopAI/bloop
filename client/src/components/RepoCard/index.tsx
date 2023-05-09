@@ -70,7 +70,7 @@ const RepoCard = ({
 
   return (
     <div
-      className={`bg-gray-900 hover:bg-gray-800 border border-gray-800 rounded-md p-4 w-67 h-36 group
+      className={`bg-bg-base hover:bg-bg-base-hover border border-bg-border rounded-md p-4 w-67 h-36 group
        flex-shrink-0 flex flex-col justify-between cursor-pointer transition-all duration-150`}
       onClick={handleClick}
     >
@@ -79,7 +79,7 @@ const RepoCard = ({
           <span className="h-6 flex items-center mt-1">
             <FileIcon filename={getFileExtensionForLang(lang)} />
           </span>
-          <p className="break-all text-gray-200 pt-0.5">{repoName}</p>
+          <p className="break-all text-label-title pt-0.5">{repoName}</p>
         </div>
         <div className="opacity-0 group-hover:opacity-100 transition-all duration-150">
           <Dropdown
@@ -107,16 +107,16 @@ const RepoCard = ({
       syncStatus &&
       (syncStatus.indexStep === 0 || syncStatus.percentage < 100) ? (
         <div className="flex flex-col gap-2">
-          <p className="body-s text-gray-200">Indexing...</p>
+          <p className="body-s text-label-title">Indexing...</p>
           <BarLoader
             percentage={syncStatus.indexStep === 1 ? syncStatus.percentage : 1}
           />
-          <p className="caption text-gray-500">
+          <p className="caption text-label-muted">
             {syncStatus.indexStep === 1 ? syncStatus.percentage : 1}% complete
           </p>
         </div>
       ) : (
-        <div className="flex items-center gap-2 caption text-gray-500">
+        <div className="flex items-center gap-2 caption text-label-base">
           {isGh && (
             <div className="w-4 h-4 ">
               <GitHubLogo raw />

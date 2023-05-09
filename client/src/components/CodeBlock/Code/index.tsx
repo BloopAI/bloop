@@ -150,7 +150,6 @@ const Code = ({
 
   useEffect(() => {
     if (tokensMap.length && onTokensLoaded) {
-      console.log('tokensMap.length', tokensMap.length);
       onTokensLoaded();
     }
   }, [tokensMap]);
@@ -198,7 +197,7 @@ const Code = ({
   return (
     <div>
       <pre
-        className={`prism-code language-${lang} bg-gray-900 my-0 ${
+        className={`prism-code language-${lang} text-label-base my-0 ${
           removePaddings ? '' : 'px-2'
         } ${onlySymbolLines ? 'overflow-hidden' : ''}`}
       >

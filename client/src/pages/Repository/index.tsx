@@ -100,7 +100,7 @@ const RepositoryPage = ({ repositoryData }: Props) => {
           isRightPanelOpen ? 'w-0' : 'w-[20.25rem]'
         } transition-all duration-150 flex-shrink-0`}
       >
-        <div className="p-8 flex flex-row gap-6 justify-between select-none cursor-default border-r border-gray-800">
+        <div className="p-8 flex flex-row gap-6 justify-between select-none cursor-default border-r border-bg-border">
           <span className="flex flex-col gap-3">
             <span className="flex flex-row gap-4 items-center">
               <span className="bg-gray-800 rounded-md p-1 w-7 h-7 select-none">
@@ -118,7 +118,7 @@ const RepositoryPage = ({ repositoryData }: Props) => {
                       statusTextColor?.color || 'bg-yellow-500'
                     }`}
                   />
-                  <span className="ellipsis text-gray-500 text-xs select-none">
+                  <span className="ellipsis text-label-muted text-xs select-none">
                     {statusTextColor?.text === 'Last updated '
                       ? 'Synced'
                       : statusTextColor?.text || repoStatus}

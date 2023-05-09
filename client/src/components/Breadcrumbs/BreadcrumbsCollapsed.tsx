@@ -11,13 +11,13 @@ type Props = {
 
 const typeMap = {
   link: {
-    default: 'bg-none text-gray-500 hover:text-sky-500 active:text-sky-500',
-    isHiddenClicked: 'text-gray-200 hover:text-sky-500 active:text-sky-500',
+    default: 'bg-none text-label-muted hover:text-bg-main active:text-bg-main',
+    isHiddenClicked: 'text-label-title hover:text-bg-main active:text-bg-main',
   },
   button: {
     default:
-      'px-2 py-1 rounded-4 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-gray-100',
-    isHiddenClicked: 'text-gray-100 bg-gray-700 px-2 py-1 rounded-4',
+      'px-2 py-1 rounded-4 hover:bg-bg-base-hover text-label-base hover:text-label-title',
+    isHiddenClicked: 'text-label-title bg-bg-base-hover px-2 py-1 rounded-4',
   },
 };
 

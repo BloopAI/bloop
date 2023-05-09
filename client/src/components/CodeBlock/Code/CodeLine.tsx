@@ -194,7 +194,7 @@ const CodeLine = ({
       className={`flex transition-all duration-150 ease-in-bounce group hover:bg-transparent ${
         lineHidden ? 'opacity-0' : ''
       } ${
-        blameLine?.start && lineNumber !== 0 ? ' border-t border-gray-700' : ''
+        blameLine?.start && lineNumber !== 0 ? ' border-t border-bg-border' : ''
       }`}
       style={style}
       onMouseDown={(e) => {
@@ -220,7 +220,7 @@ const CodeLine = ({
                     {symbols.map((symbol, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <SymbolIcon type={symbol} />
-                        <span className="caption text-gray-200 py-1">
+                        <span className="caption text-label-title py-1">
                           {symbol.charAt(0).toUpperCase()}
                           {symbol.slice(1)}
                         </span>
@@ -253,21 +253,23 @@ const CodeLine = ({
           data-line={lineNumberToShow}
           className={`min-w-[27px] text-right select-none pr-0 leading-5 ${blameStyle} ${
             lineHidden ? 'p-0' : ''
-          } ${hoverEffect ? 'group-hover:text-gray-300' : ''}
+          } ${hoverEffect ? 'group-hover:text-label-base' : ''}
            ${
              lineHidden || !lineNumberToShow
                ? ''
                : 'before:content-[attr(data-line)]'
            } ${
             isRemovedLine
-              ? 'bg-[#4F2828] text-gray-100'
+              ? 'bg-[#4F2828] text-label-base'
               : isNewLine
-              ? 'bg-[#28432B] text-gray-100'
-              : 'text-gray-500'
+              ? 'bg-[#28432B] text-label-base'
+              : 'text-label-muted'
           }`}
         />
       )}
-      <div className={`text-gray-500 ${lineHidden ? 'p-0' : ''} ${blameStyle}`}>
+      <div
+        className={`text-label-muted ${lineHidden ? 'p-0' : ''} ${blameStyle}`}
+      >
         {lineFoldable && (
           <FoldButton
             onClick={(folded: boolean) => {

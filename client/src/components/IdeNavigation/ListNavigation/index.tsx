@@ -22,12 +22,12 @@ type Props = {
 
 const colorsMap = {
   default: {
-    default: 'text-gray-500 bg-gray-900',
-    selected: 'text-gray-300 bg-gray-800',
+    default: 'text-label-base',
+    selected: 'text-label-title bg-shade',
   },
   light: {
-    default: 'text-gray-500 bg-gray-800',
-    selected: 'text-gray-300 bg-gray-700',
+    default: 'text-label-base',
+    selected: 'text-label-title bg-bg-base-hover',
   },
 };
 
@@ -41,11 +41,7 @@ const ListNavigation = ({
   variant = 'default',
 }: Props) => {
   return (
-    <div
-      className={`text-gray-500 ${
-        !dense ? 'flex flex-col gap-2' : ''
-      } select-none`}
-    >
+    <div className={`${!dense ? 'flex flex-col gap-2' : ''} select-none`}>
       {!!title && <span className="text-xs p-5 px-8">{title}</span>}
       {items.map((item, index) => (
         <span

@@ -50,11 +50,11 @@ const RepositoryContributors = ({ contributors }: Props) => {
         </span>
       </div>
       <div className="flex flex-col gap-2">
-        <div className="flex flex-col divide-gray-700 divide-gray-700 divide-y rounded border border-gray-700">
+        <div className="flex flex-col divide-bg-border divide-y rounded border border-bg-border">
           {contributors.map((contributor, id) => (
             <span
               key={id}
-              className="flex flex-row px-2 py-2 items-center bg-gray-900 first:rounded-t last:rounded-b"
+              className="flex flex-row px-2 py-2 items-center bg-bg-sub first:rounded-t last:rounded-b"
             >
               <span className="flex flex-row w-1/2 items-center gap-2">
                 <span className="w-8 cursor-pointer select-none">
@@ -64,16 +64,16 @@ const RepositoryContributors = ({ contributors }: Props) => {
                   <span className="cursor-pointer hover:underline">
                     {contributor.name}
                   </span>
-                  <span className="text-xs text-gray-500 select-none">
+                  <span className="text-xs text-label-muted select-none">
                     {contributor.commits} commits
                   </span>
                 </span>
               </span>
               <span className="text-sm flex flex-row gap-2 select-none">
-                <span className="text-success-700">
+                <span className="text-bg-success">
                   {contributor.additions}++
                 </span>
-                <span className="text-danger-700">
+                <span className="text-bg-danger">
                   {contributor.additions}--
                 </span>
               </span>

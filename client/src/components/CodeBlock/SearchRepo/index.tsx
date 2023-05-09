@@ -36,7 +36,7 @@ const SearchRepo = ({ repository, onClick, highlights }: Props) => {
   }, [repository]);
 
   return (
-    <div className="flex flex-row w-full flex justify-between bg-gray-800 p-3 border border-gray-700 rounded-4 text-gray-500 items-center">
+    <div className="flex flex-row w-full justify-between bg-bg-shade p-3 border border-bg-border rounded-4 text-label-base items-center">
       <span
         className={`flex flex-row gap-2 items-center ${
           onClick ? 'cursor-pointer' : ''
@@ -45,13 +45,13 @@ const SearchRepo = ({ repository, onClick, highlights }: Props) => {
       >
         <Repository />
 
-        <span className={'text-gray-100'}>
+        <span className={'text-label-title'}>
           {getHighlighted(repository).map((hl, i) => (
             <span
               key={i}
               className={`${
                 hl.hl
-                  ? `before:block before:absolute before:-inset-0.5 before:bg-secondary-500/25 relative before:rounded-l before:left-[-2px] before:rounded-r before:right-[-2px]`
+                  ? `text-label-base before:block before:absolute before:-inset-0.5 before:bg-secondary-500/25 relative before:rounded-l before:left-[-2px] before:rounded-r before:right-[-2px]`
                   : ''
               } `}
             >

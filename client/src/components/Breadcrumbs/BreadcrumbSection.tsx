@@ -12,13 +12,13 @@ type Props = {
 
 const typeMap = {
   link: {
-    default: 'text-gray-500 hover:text-sky-500 active:text-sky-500',
-    isLast: 'text-gray-200',
+    default: 'text-label-muted hover:text-bg-main active:text-bg-main',
+    isLast: 'text-label-base',
   },
   button: {
     default:
-      'px-2 py-1 rounded-4 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-gray-100',
-    isLast: 'text-gray-100 px-2 py-1 rounded-4 bg-gray-800',
+      'px-2 py-1 rounded-4 hover:bg-bg-base-hover text-label-base hover:text-label-title',
+    isLast: 'text-label-base px-2 py-1 rounded-4',
   },
 };
 
@@ -38,7 +38,9 @@ const BreadcrumbSection = ({
       return (
         <span>
           {left}
-          <span className="bg-secondary-500/25 rounded-4">{search}</span>
+          <span className="bg-secondary-500/25 rounded-4 text-label-base">
+            {search}
+          </span>
           {right}
         </span>
       );

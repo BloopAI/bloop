@@ -194,7 +194,7 @@ const Chat = () => {
       <button
         className={`fixed z-50 bottom-20 w-16 h-16 rounded-full cursor-pointer flex items-center justify-center ${
           isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
-        } border border-gray-700 bg-[linear-gradient(135deg,#1D1D20_0%,#0B0B14_100%)] transition-all duration-300 ease-out-slow`}
+        } border border-chat-bg-border bg-[linear-gradient(135deg,#1D1D20_0%,#0B0B14_100%)] transition-all duration-300 ease-out-slow`}
         onClick={() => {
           setShowTooltip(false);
           setChatOpen(true);
@@ -248,7 +248,7 @@ const Chat = () => {
         ref={chatRef}
         className={`fixed z-50 bottom-20 rounded-xl group w-97 max-h-[30rem] flex flex-col justify-end ${
           !isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
-        } backdrop-blur-6 shadow-small bg-gray-800/50 transition-all duration-300 ease-out-slow`}
+        } backdrop-blur-6 shadow-small bg-chat-bg-base/50 border border-chat-bg-border transition-all duration-300 ease-out-slow`}
       >
         <div className="w-full max-h-0 group-hover:max-h-96 transition-all duration-200 overflow-hidden flex-shrink-0">
           <div className="px-4 pt-4 flex flex-col">

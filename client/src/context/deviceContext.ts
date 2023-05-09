@@ -8,6 +8,7 @@ type EnvConfig = {
   org_name?: string | null;
   tracking_id?: string;
   device_id?: string;
+  user?: any;
 };
 
 export type DeviceContextType = {

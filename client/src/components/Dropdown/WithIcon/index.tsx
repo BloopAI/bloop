@@ -12,7 +12,7 @@ type Props = {
   dropdownBtnClassName?: string;
   noChevron?: boolean;
   btnVariant?: 'primary' | 'secondary' | 'tertiary';
-  btnSize?: 'small' | 'medium' | 'large';
+  btnSize?: 'small' | 'medium' | 'large' | 'tiny';
   btnOnlyIcon?: boolean;
   lastItemFixed?: boolean;
   size?: 'small' | 'medium' | 'large';
