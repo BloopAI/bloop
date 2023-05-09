@@ -649,8 +649,6 @@ impl Conversation {
                 .content = "[HIDDEN]".into();
         }
 
-        dbg!(&tiktoken_msgs, old_len);
-
         Ok(tiktoken_msgs
             .into_iter()
             .map(|m| llm_gateway::api::Message {
