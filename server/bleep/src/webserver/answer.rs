@@ -639,8 +639,6 @@ impl Conversation {
             })
             .collect::<Vec<_>>();
 
-        let old_len = tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)?;
-
         while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < HEADROOM {
             tiktoken_msgs
                 .iter_mut()
