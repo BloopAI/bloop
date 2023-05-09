@@ -188,3 +188,16 @@ export interface NavigationItem {
   threadId?: string;
   recordId?: number;
 }
+
+export type EnvConfig = {
+  analytics_data_plane?: string;
+  analytics_key_fe?: string;
+  sentry_dsn_fe?: string;
+  org_name?: string | null;
+  tracking_id?: string;
+  device_id?: string;
+  github_user?: {
+    login: string;
+    avatar_url: string;
+  };
+};
