@@ -8,7 +8,7 @@ use super::sync::SyncHandle;
 
 /// Asynchronous queue with await semantics for popping the front
 /// element.
-pub struct NotifyQueue {
+pub(super) struct NotifyQueue {
     queue: RwLock<VecDeque<Arc<SyncHandle>>>,
     available: Semaphore,
 }
@@ -23,7 +23,7 @@ impl Default for NotifyQueue {
 }
 
 impl NotifyQueue {
-    pub async fn push(&self, item: Arc<SyncHandle>) {
+    pub(super) async fn push(&self, item: Arc<SyncHandle>) {
         let mut q = self.queue.write().await;
 
         self.available.add_permits(1);
@@ -31,7 +31,7 @@ impl NotifyQueue {
         q.push_back(item);
     }
 
-    pub async fn pop(&self) -> Arc<SyncHandle> {
+    pub(super) async fn pop(&self) -> Arc<SyncHandle> {
         let permit = self.available.acquire().await.expect("fatal");
         let mut q = self.queue.write().await;
 
@@ -40,11 +40,11 @@ impl NotifyQueue {
         q.pop_front().expect("the semaphore should guard this")
     }
 
-    pub async fn get_list(&self) -> Vec<Arc<SyncHandle>> {
+    pub(super) async fn get_list(&self) -> Vec<Arc<SyncHandle>> {
         self.queue.read().await.iter().cloned().collect()
     }
 
-    pub async fn contains(&self, reporef: &RepoRef) -> bool {
+    pub(super) async fn contains(&self, reporef: &RepoRef) -> bool {
         self.queue
             .read()
             .await
@@ -52,7 +52,7 @@ impl NotifyQueue {
             .any(|h| &h.reporef == reporef)
     }
 
-    pub async fn remove(&self, reporef: RepoRef) {
+    pub(super) async fn remove(&self, reporef: RepoRef) {
         let mut q = self.queue.write().await;
         self.available.acquire().await.expect("fatal").forget();
         q.retain(|item| item.reporef != reporef);

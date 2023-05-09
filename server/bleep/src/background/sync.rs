@@ -1,23 +1,50 @@
-use anyhow::bail;
 use tokio::sync::OwnedSemaphorePermit;
 use tracing::{debug, error, info};
 
 use crate::{
     indexes,
     remotes::RemoteError,
-    repo::{RepoMetadata, RepoRef, Repository, SyncStatus},
+    repo::{Backend, RepoError, RepoMetadata, RepoRef, Repository, SyncStatus},
     Application,
 };
 
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use super::control::SyncPipes;
 
-pub struct SyncHandle {
+pub(super) struct SyncHandle {
     pub reporef: RepoRef,
     app: Application,
     pipes: SyncPipes,
     exited: flume::Sender<SyncStatus>,
+}
+
+type Result<T> = std::result::Result<T, SyncError>;
+#[derive(thiserror::Error, Debug)]
+pub(super) enum SyncError {
+    #[error("no keys for backend: {0:?}")]
+    NoKeysForBackend(Backend),
+
+    #[error("path not allowed: {0:?}")]
+    PathNotAllowed(PathBuf),
+
+    #[error("indexing failed: {0:?}")]
+    Indexing(RepoError),
+
+    #[error("sync failed: {0:?}")]
+    Sync(RemoteError),
+
+    #[error("file cache cleanup failed: {0:?}")]
+    State(RepoError),
+
+    #[error("file cache cleanup failed: {0:?}")]
+    FileCache(RepoError),
+
+    #[error("folder cleanup failed: path: {0:?}, error: {1}")]
+    RemoveLocal(PathBuf, std::io::Error),
+
+    #[error("tantivy: {0:?}")]
+    Tantivy(anyhow::Error),
 }
 
 impl PartialEq for SyncHandle {
@@ -50,7 +77,10 @@ impl Drop for SyncHandle {
 }
 
 impl SyncHandle {
-    pub fn new(app: Application, reporef: RepoRef) -> (Arc<Self>, flume::Receiver<SyncStatus>) {
+    pub(super) fn new(
+        app: Application,
+        reporef: RepoRef,
+    ) -> (Arc<Self>, flume::Receiver<SyncStatus>) {
         let (exited, exit_signal) = flume::bounded(1);
         let pipes = SyncPipes::default();
 
@@ -67,7 +97,7 @@ impl SyncHandle {
     }
 
     /// The permit that's taken here is exclusively for parallelism control.
-    pub async fn run(&self, _permit: OwnedSemaphorePermit) -> anyhow::Result<SyncStatus> {
+    pub(super) async fn run(&self, _permit: OwnedSemaphorePermit) -> Result<SyncStatus> {
         debug!(?self.reporef, "syncing repo");
         let Application { ref repo_pool, .. } = self.app;
 
@@ -108,7 +138,7 @@ impl SyncHandle {
         Ok(status)
     }
 
-    async fn index(&self) -> anyhow::Result<Option<Arc<RepoMetadata>>> {
+    async fn index(&self) -> Result<Option<Arc<RepoMetadata>>> {
         use SyncStatus::*;
         let Application {
             ref config,
@@ -117,7 +147,7 @@ impl SyncHandle {
             ..
         } = self.app;
 
-        let writers = indexes.writers().await?;
+        let writers = indexes.writers().await.map_err(SyncError::Tantivy)?;
         let (key, repo) = repo_pool
             .read_async(&self.reporef, |k, v| (k.clone(), v.clone()))
             .await
@@ -129,9 +159,13 @@ impl SyncHandle {
                 repo_pool.remove(&self.reporef);
                 let deleted = self.delete_repo_indexes(&repo, &writers).await;
                 if deleted.is_ok() {
-                    writers.commit().await?;
-                    config.source.save_pool(repo_pool.clone())?;
+                    writers.commit().await.map_err(SyncError::Tantivy)?;
+                    config
+                        .source
+                        .save_pool(repo_pool.clone())
+                        .map_err(SyncError::State)?;
                 }
+
                 return deleted.map(|_| None);
             }
             RemoteRemoved => {
@@ -154,25 +188,28 @@ impl SyncHandle {
         };
 
         if !indexed.is_err() {
-            writers.commit().await?;
-            config.source.save_pool(repo_pool.clone())?;
+            writers.commit().await.map_err(SyncError::Tantivy)?;
+            config
+                .source
+                .save_pool(repo_pool.clone())
+                .map_err(SyncError::State)?;
         }
 
-        Ok(indexed?).map(Some)
+        indexed.map_err(SyncError::Indexing).map(Some)
     }
 
-    async fn sync(&self) -> anyhow::Result<()> {
+    async fn sync(&self) -> Result<()> {
         let repo = self.reporef.clone();
         let backend = repo.backend();
         let creds = match self.app.credentials.for_repo(&repo) {
             Some(creds) => creds,
             None => {
                 let Some(path) = repo.local_path() else {
-		    bail!("no keys for backend {:?}", backend)
+		    return Err(SyncError::NoKeysForBackend(backend));
 		};
 
-                if !self.app.allow_path(path) {
-                    bail!("path not authorized {repo:?}")
+                if !self.app.allow_path(&path) {
+                    return Err(SyncError::PathNotAllowed(path));
                 }
 
                 self.app
@@ -201,14 +238,14 @@ impl SyncHandle {
             return Ok(());
         }
 
-        Ok(synced?)
+        synced.map_err(SyncError::Sync)
     }
 
     async fn delete_repo_indexes(
         &self,
         repo: &Repository,
         writers: &indexes::GlobalWriteHandleRef<'_>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let Application {
             ref config,
             ref semantic,
@@ -221,9 +258,13 @@ impl SyncHandle {
                 .await;
         }
 
-        repo.delete_file_cache(&config.index_dir)?;
+        repo.delete_file_cache(&config.index_dir)
+            .map_err(SyncError::FileCache)?;
+
         if !self.reporef.is_local() {
-            tokio::fs::remove_dir_all(&repo.disk_path).await?;
+            tokio::fs::remove_dir_all(&repo.disk_path)
+                .await
+                .map_err(|e| SyncError::RemoveLocal(repo.disk_path.clone(), e))?;
         }
 
         for handle in writers {
