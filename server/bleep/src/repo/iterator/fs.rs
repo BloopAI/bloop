@@ -11,13 +11,7 @@ pub struct FileWalker {
 impl FileWalker {
     pub fn index_directory(dir: impl AsRef<Path>) -> impl FileSource {
         // note: this WILL observe .gitignore files for the respective repos.
-        let walker = ignore::WalkBuilder::new(&dir)
-            .standard_filters(true)
-            .hidden(false)
-            .filter_entry(should_index_entry)
-            .build();
-
-        let file_list = walker
+        let file_list = ignore::Walk::new(&dir)
             .filter_map(|de| match de {
                 Ok(de) => Some(de),
                 Err(err) => {
@@ -28,6 +22,12 @@ impl FileWalker {
             // Preliminarily ignore files that are very large, without reading the contents.
             .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
             .filter_map(|de| crate::canonicalize(de.into_path()).ok())
+            .filter(|p| {
+                p.strip_prefix(&dir)
+                    .as_ref()
+                    .map(should_index)
+                    .unwrap_or_default()
+            })
             .collect();
 
         Self { file_list }

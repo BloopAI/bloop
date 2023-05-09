@@ -47,17 +47,8 @@ impl FileType {
     }
 }
 
-fn should_index_entry(de: &ignore::DirEntry) -> bool {
-    should_index(&de.path())
-}
-
 fn should_index<P: AsRef<Path>>(p: &P) -> bool {
     let path = p.as_ref();
-
-    // TODO: Make this more robust
-    if path.components().any(|c| c.as_os_str() == ".git") {
-        return false;
-    }
 
     #[rustfmt::skip]
     const EXT_BLACKLIST: &[&str] = &[
@@ -158,11 +149,6 @@ mod test {
             // These are not typically vendored in Rust.
             ("dist/main.rs", true),
             ("vendor/foo.rs", true),
-            // Ignore .git directory.
-            (".git/HEAD", false),
-            (".git/config", false),
-            (".gitignore", true),
-            (".github/workflows/ci.yml", true),
         ];
 
         for (path, index) in tests {
