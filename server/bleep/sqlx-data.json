@@ -10,17 +10,7 @@
     },
     "query": "DELETE FROM conversations WHERE user_id = ? AND thread_id = ?"
   },
-  "5daa70448b2ce5c453ccf1993a632620b55dd85a15e0ae6d55171205ca3a236f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 7
-      }
-    },
-    "query": "INSERT INTO conversations (user_id, thread_id, repo_ref, title, exchanges, llm_history, path_aliases, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))"
-  },
-  "8224649272e8c092f30dc9da4c5e2fea845dd1b6a01de4614a02f2f878cb99bc": {
+  "6d8b70a52e6a1f0b18a7981604386ca4ef264d57d2c22958f2e31cb5eaad9b02": {
     "describe": {
       "columns": [
         {
@@ -42,9 +32,15 @@
           "name": "path_aliases",
           "ordinal": 3,
           "type_info": "Text"
+        },
+        {
+          "name": "code_chunks",
+          "ordinal": 4,
+          "type_info": "Text"
         }
       ],
       "nullable": [
+        false,
         false,
         false,
         false,
@@ -54,7 +50,17 @@
         "Right": 2
       }
     },
-    "query": "SELECT repo_ref, llm_history, exchanges, path_aliases FROM conversations WHERE user_id = ? AND thread_id = ?"
+    "query": "SELECT repo_ref, llm_history, exchanges, path_aliases, code_chunks FROM conversations WHERE user_id = ? AND thread_id = ?"
+  },
+  "cc1b6ba03d478b999fd7e6f2a3b64c710af167c84eadf715108e61b2564e22c1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 8
+      }
+    },
+    "query": "INSERT INTO conversations (user_id, thread_id, repo_ref, title, exchanges, llm_history, path_aliases, code_chunks, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))"
   },
   "d5ee5becde7005920d7094fca5b7974bbf19713b3625fbf6d1a3e198e7cf4de4": {
     "describe": {
