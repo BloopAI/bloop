@@ -41,6 +41,8 @@ export const Default = () => {
           isRightPanelOpen: false,
           setRightPanelOpen: () => {},
           tab: { key: '1', name: 'New tab', repoName: '' },
+          theme: 'default',
+          setTheme: () => {},
         }}
       >
         <RepositoriesContext.Provider
@@ -89,6 +91,8 @@ export const ScanErrors = () => {
           isRightPanelOpen: false,
           setRightPanelOpen: () => {},
           tab: { key: '1', name: 'New tab', repoName: '' },
+          theme: 'default',
+          setTheme: () => {},
         }}
       >
         <RepositoriesContext.Provider
@@ -219,6 +223,8 @@ export const EmailConfirmedReposSynced = () => {
           isRightPanelOpen: false,
           setRightPanelOpen: () => {},
           tab: { key: '1', name: 'New tab', repoName: '' },
+          theme: 'default',
+          setTheme: () => {},
         }}
       >
         <RepositoriesContext.Provider

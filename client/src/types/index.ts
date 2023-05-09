@@ -50,3 +50,10 @@ export interface Repository {
   currentPath: string;
   source: RepoSource;
 }
+
+export type Theme =
+  | 'default'
+  | 'default-light'
+  | 'vsc-default-dark'
+  | 'vsc-default-light'
+  | 'monokai';

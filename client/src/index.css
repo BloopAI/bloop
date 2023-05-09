@@ -1,3 +1,24 @@
+@import "themes/default-dark.css";
+@import "themes/default-light.css";
+@import "themes/vscode-default-dark.css";
+@import "themes/vscode-default-light.css";
+@import "themes/monokai.css";
+@import "themes/solarized-light.css";
+@import "themes/solarized-dark.css";
+@import "themes/abyss.css";
+@import "themes/groovebox-dark.css";
+@import "themes/groovebox-light.css";
+@import "themes/kimbie-dark.css";
+@import "themes/quiet-light.css";
+@import "themes/tomorrow-night-blue.css";
+@import "themes/atom-one-dark-pro.css";
+@import "themes/github-dark.css";
+@import "themes/github-light.css";
+@import "themes/dracula.css";
+@import "themes/darcula.css";
+@import "themes/night-owl.css";
+@import "themes/material.css";
+
 @font-face {
   font-family: Menlo;
   font-weight: normal;
@@ -72,11 +93,150 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+
+@layer base {
+    [data-theme="default"] {
+      --gray-50: 249, 249, 249;
+      --gray-100: 241, 241, 242;
+      --gray-200: 221, 221, 225;
+      --gray-300: 202, 202, 207;
+      --gray-400: 144, 144, 154;
+      --gray-500: 94, 94, 103;
+      --gray-600: 64, 64, 73;
+      --gray-700: 39, 39, 45;
+      --gray-800: 29, 29, 32;
+      --gray-900: 19, 19, 21;
+
+      --contrast-color: white;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-light: 0px 1px 6px rgba(0, 0, 0, 0.25);
+      --shadow-lighter: 0px 1px 3px rgba(62, 70, 85, 0.12);
+      --shadow-light-bigger: 0px 6px 16px rgba(0, 0, 0, 0.25);
+      --shadow-big: 0px 16px 34px rgba(0, 0, 0, 0.5);
+      --shadow-medium: 0px 16px 24px rgba(0, 0, 0, 0.25);
+
+      --app-bg: #131315;
+      --header-bg: rgba(var(--gray-800), 0.75);
+      --header-border: rgb(var(--gray-700));
+      --footer-bg: rgb(var(--gray-800));
+      --footer-border: rgb(var(--gray-700));
+    }
+    [data-theme="default-light"] {
+      --gray-900: 249, 249, 249;
+      --gray-800: 241, 241, 242;
+      --gray-700: 221, 221, 225;
+      --gray-600: 202, 202, 207;
+      --gray-500: 144, 144, 154;
+      --gray-400: 94, 94, 103;
+      --gray-300: 64, 64, 73;
+      --gray-200: 39, 39, 45;
+      --gray-100: 29, 29, 32;
+      --gray-50: 19, 19, 21;
+
+      --contrast-color: black;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.08);
+      --shadow-light: 0px 1px 6px rgba(0, 0, 0, 0.12);
+      --shadow-lighter: 0px 1px 3px rgba(62, 70, 85, 0.06);
+      --shadow-light-bigger: 0px 6px 16px rgba(0, 0, 0, 0.12);
+      --shadow-big: 0px 16px 34px rgba(0, 0, 0, 0.25);
+      --shadow-medium: 0px 16px 24px rgba(0, 0, 0, 0.12);
+
+      --app-bg: #ffffff;
+      --header-bg: #fefefe;
+      --header-border: rgb(var(--gray-600));
+      --footer-bg: #fafafa;
+      --footer-border: rgb(var(--gray-600));
+    }
+  [data-theme="vsc-default-dark"] {
+    --gray-50: 249, 249, 249;
+    --gray-100: 241, 241, 242;
+    --gray-200: 221, 221, 225;
+    --gray-300: 202, 202, 207;
+    --gray-400: 144, 144, 154;
+    --gray-500: 94, 94, 103;
+    --gray-600: 64, 64, 73;
+    --gray-700: 39, 39, 45;
+    --gray-800: 29, 29, 32;
+    --gray-900: 19, 19, 21;
+
+    --contrast-color: white;
+
+    --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+    --shadow-light: 0px 1px 6px rgba(0, 0, 0, 0.25);
+    --shadow-lighter: 0px 1px 3px rgba(62, 70, 85, 0.12);
+    --shadow-light-bigger: 0px 6px 16px rgba(0, 0, 0, 0.25);
+    --shadow-big: 0px 16px 34px rgba(0, 0, 0, 0.5);
+    --shadow-medium: 0px 16px 24px rgba(0, 0, 0, 0.25);
+
+    --app-bg: #131315;
+    --header-bg: rgba(var(--gray-800), 0.75);
+    --header-border: rgb(var(--gray-700));
+    --footer-bg: rgb(var(--gray-800));
+    --footer-border: rgb(var(--gray-700));
+  }
+    [data-theme="vsc-default-light"] {
+      --gray-900: 249, 249, 249;
+      --gray-800: 241, 241, 242;
+      --gray-700: 221, 221, 225;
+      --gray-600: 202, 202, 207;
+      --gray-500: 144, 144, 154;
+      --gray-400: 94, 94, 103;
+      --gray-300: 64, 64, 73;
+      --gray-200: 39, 39, 45;
+      --gray-100: 29, 29, 32;
+      --gray-50: 19, 19, 21;
+
+      --contrast-color: black;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.08);
+      --shadow-light: 0px 1px 6px rgba(0, 0, 0, 0.12);
+      --shadow-lighter: 0px 1px 3px rgba(62, 70, 85, 0.06);
+      --shadow-light-bigger: 0px 6px 16px rgba(0, 0, 0, 0.12);
+      --shadow-big: 0px 16px 34px rgba(0, 0, 0, 0.25);
+      --shadow-medium: 0px 16px 24px rgba(0, 0, 0, 0.12);
+
+      --app-bg: #ffffff;
+      --header-bg: #fefefe;
+      --header-border: rgb(var(--gray-600));
+      --footer-bg: #fafafa;
+      --footer-border: rgb(var(--gray-600));
+    }
+    [data-theme="monokai"] {
+      --gray-50: 248, 248, 242;
+      --gray-100: 241, 241, 242;
+      --gray-200: 221, 221, 225;
+      --gray-300: 202, 202, 207;
+      --gray-400: 144, 144, 154;
+      --gray-500: 117, 113, 94;
+      --gray-600: 65, 67, 57;
+      --gray-700: 52, 53, 47;
+      --gray-800: 39, 40, 34;
+      --gray-900: 30, 31, 28;
+
+      --contrast-color: white;
+
+      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+      --shadow-light: 0px 1px 6px rgba(0, 0, 0, 0.25);
+      --shadow-lighter: 0px 1px 3px rgba(62, 70, 85, 0.12);
+      --shadow-light-bigger: 0px 6px 16px rgba(0, 0, 0, 0.25);
+      --shadow-big: 0px 16px 34px rgba(0, 0, 0, 0.5);
+      --shadow-medium: 0px 16px 24px rgba(0, 0, 0, 0.25);
+
+      --app-bg: rgb(30, 31, 28);
+      --header-bg: rgb(var(--gray-900));
+      --header-border: rgb(var(--gray-700));
+      --footer-bg: rgb(var(--gray-800));
+      --footer-border: rgb(var(--gray-700));
+    }
+}
+
+body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #131315;
-  color: #F1F1F2;
+  background-color: var(--app-bg);
+  color: var(--contrast-color);
   overflow: hidden;
 }
 

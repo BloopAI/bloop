@@ -11,7 +11,7 @@ const TextField = ({ icon, value, className, active = true }: Props) => {
   return (
     <span className={`flex items-center gap-2 ${className ? className : ''}`}>
       {icon}
-      <span className="ellipsis w-full">{value}</span>
+      <span className="ellipsis w-full leading-normal">{value}</span>
     </span>
   );
 };
