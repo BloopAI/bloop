@@ -5,7 +5,7 @@ use futures::{Stream, StreamExt};
 use reqwest_eventsource::EventSource;
 
 pub mod api {
-    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
     pub struct Message {
         pub role: String,
         pub content: String,

@@ -345,7 +345,11 @@ impl Conversation {
             &(question + "\n\nAnswer only with a JSON action."),
         ));
 
-        let stream = ctx.llm_gateway.chat(&self.llm_history).await?.boxed();
+        let stream = ctx
+            .llm_gateway
+            .chat(&self.trimmed_history()?)
+            .await?
+            .boxed();
         let action_stream = ActionStream {
             tokens: String::new(),
             action: Either::Left(stream),
@@ -621,6 +625,36 @@ impl Conversation {
             path_aliases,
         }))
     }
+
+    fn trimmed_history(&self) -> Result<Vec<llm_gateway::api::Message>> {
+        const HEADROOM: usize = 1024;
+
+        let mut tiktoken_msgs = self
+            .llm_history
+            .iter()
+            .map(|m| tiktoken_rs::ChatCompletionRequestMessage {
+                role: m.role.clone(),
+                content: m.content.clone(),
+                name: None,
+            })
+            .collect::<Vec<_>>();
+
+        while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < HEADROOM {
+            tiktoken_msgs
+                .iter_mut()
+                .find(|m| m.role == "user" && m.content != "[HIDDEN]")
+                .context("could not find message to trim")?
+                .content = "[HIDDEN]".into();
+        }
+
+        Ok(tiktoken_msgs
+            .into_iter()
+            .map(|m| llm_gateway::api::Message {
+                role: m.role,
+                content: m.content,
+            })
+            .collect())
+    }
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -649,7 +683,7 @@ impl Action {
     ///
     /// To:
     ///
-    /// ```
+    /// ```text
     /// {"type":"value"}
     /// {"type":["arg1", "arg2"]}
     /// ```
@@ -763,5 +797,49 @@ impl AppContext {
         }
 
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_trimming() {
+        let long_string = std::iter::repeat("long string ")
+            .take(3000)
+            .collect::<String>();
+
+        let conversation = Conversation {
+            llm_history: vec![
+                llm_gateway::api::Message::system("foo"),
+                llm_gateway::api::Message::user("bar"),
+                llm_gateway::api::Message::assistant("baz"),
+                llm_gateway::api::Message::user(&long_string),
+                llm_gateway::api::Message::assistant("quux"),
+                llm_gateway::api::Message::user("fred"),
+                llm_gateway::api::Message::assistant("thud"),
+                llm_gateway::api::Message::user(&long_string),
+                llm_gateway::api::Message::user("corge"),
+            ],
+            exchanges: Vec::new(),
+            path_aliases: Vec::new(),
+            repo_ref: "github.com/foo/bar".parse().unwrap(),
+        };
+
+        assert_eq!(
+            conversation.trimmed_history().unwrap(),
+            vec![
+                llm_gateway::api::Message::system("foo"),
+                llm_gateway::api::Message::user("[HIDDEN]"),
+                llm_gateway::api::Message::assistant("baz"),
+                llm_gateway::api::Message::user("[HIDDEN]"),
+                llm_gateway::api::Message::assistant("quux"),
+                llm_gateway::api::Message::user("fred"),
+                llm_gateway::api::Message::assistant("thud"),
+                llm_gateway::api::Message::user(&long_string),
+                llm_gateway::api::Message::user("corge"),
+            ]
+        );
     }
 }
