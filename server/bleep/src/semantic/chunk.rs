@@ -235,7 +235,7 @@ pub fn by_tokens<'s>(
         return Vec::new();
     }
 
-    let repo_plus_file = repo.to_owned() + "\t" + file + "\n";
+    let repo_plus_file = file.to_owned() + "\n";
     let repo_tokens = match tokenizer.encode(repo_plus_file, true) {
         Ok(encoding) => encoding.get_ids().len(),
         Err(e) => {

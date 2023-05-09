@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashMap, ops::Not, path::Path, sync::Arc};
 
 use crate::{query::parser::SemanticQuery, Configuration};
 
-use ndarray::Axis;
+use ndarray::{ArrayBase, Axis, Dim, IxDynImpl, OwnedRepr};
 use ort::{
     tensor::{FromArray, InputTensor, OrtOwnedTensor},
     Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
@@ -16,10 +16,11 @@ use qdrant_client::{
         VectorParams, Vectors, VectorsConfig, WithPayloadSelector, WithVectorsSelector,
     },
 };
+use tokenizers::Encoding;
 
 use rayon::prelude::*;
 use thiserror::Error;
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, warn};
 
 pub mod chunk;
 pub mod execute;
@@ -50,9 +51,11 @@ pub enum SemanticError {
 #[derive(Clone)]
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
-    tokenizer: Arc<tokenizers::Tokenizer>,
+    embedder_tokenizer: Arc<tokenizers::Tokenizer>,
+    ranker_tokenizer: Arc<tokenizers::Tokenizer>,
     gpt2_tokenizer: Arc<tokenizers::Tokenizer>,
-    session: Arc<ort::Session>,
+    embedder_session: Arc<ort::Session>,
+    ranker_session: Arc<ort::Session>,
     config: Arc<Configuration>,
 }
 
@@ -221,16 +224,24 @@ impl Semantic {
 
         Ok(Self {
             qdrant: qdrant.into(),
-            tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("tokenizer.json"))
+            embedder_tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("embedder").join("tokenizer.json"))
+                .unwrap()
+                .into(),
+            ranker_tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("ranker").join("tokenizer.json"))
                 .unwrap()
                 .into(),
             gpt2_tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("gpt-2").join("tokenizer.json"))
                 .expect("unable to open gpt2-tokenizer, try `git lfs pull` and pass `--model-dir bloop/model` at the CLI")
                 .into(),
-            session: SessionBuilder::new(&environment)?
+            embedder_session: SessionBuilder::new(&environment)?
                 .with_optimization_level(GraphOptimizationLevel::Level3)?
                 .with_intra_threads(threads)?
-                .with_model_from_file(model_dir.join("model.onnx"))?
+                .with_model_from_file(model_dir.join("embedder").join("model.onnx"))?
+                .into(),
+            ranker_session: SessionBuilder::new(&environment)?
+                .with_optimization_level(GraphOptimizationLevel::Level3)?
+                .with_intra_threads(threads)?
+                .with_model_from_file(model_dir.join("ranker").join("model.onnx"))?
                 .into(),
             config,
         })
@@ -241,40 +252,55 @@ impl Semantic {
         Ok(())
     }
 
-    pub fn embed(&self, sequence: &str) -> anyhow::Result<Embedding> {
-        let tokenizer_output = self.tokenizer.encode(sequence, true).unwrap();
+    pub fn encode(
+        &self,
+        tokens: &Encoding,
+        session: Arc<ort::Session>,
+    ) -> anyhow::Result<ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>> {
+        let input_ids = tokens.get_ids();
+        let attention_mask = tokens.get_attention_mask();
+        let token_type_ids = tokens.get_type_ids();
 
-        let input_ids = tokenizer_output.get_ids();
-        let attention_mask = tokenizer_output.get_attention_mask();
-        let token_type_ids = tokenizer_output.get_type_ids();
         let length = input_ids.len();
-        trace!("embedding {} tokens {:?}", length, sequence);
 
         let inputs_ids_array = ndarray::Array::from_shape_vec(
             (1, length),
             input_ids.iter().map(|&x| x as i64).collect(),
         )?;
-
         let attention_mask_array = ndarray::Array::from_shape_vec(
             (1, length),
             attention_mask.iter().map(|&x| x as i64).collect(),
         )?;
-
         let token_type_ids_array = ndarray::Array::from_shape_vec(
             (1, length),
             token_type_ids.iter().map(|&x| x as i64).collect(),
         )?;
 
-        let outputs = self.session.run([
+        let outputs = session.run([
             InputTensor::from_array(inputs_ids_array.into_dyn()),
             InputTensor::from_array(attention_mask_array.into_dyn()),
             InputTensor::from_array(token_type_ids_array.into_dyn()),
         ])?;
 
         let output_tensor: OrtOwnedTensor<f32, _> = outputs[0].try_extract().unwrap();
-        let sequence_embedding = &*output_tensor.view();
-        let pooled = sequence_embedding.mean_axis(Axis(1)).unwrap();
+        Ok(output_tensor.view().to_owned())
+    }
+
+    pub fn embed(&self, chunk: &str) -> anyhow::Result<Vec<f32>> {
+        let tokens = self.embedder_tokenizer.encode(chunk, true).unwrap();
+        let embedding = self.encode(&tokens, self.embedder_session.clone())?;
+        let pooled = embedding.mean_axis(Axis(1)).unwrap();
         Ok(pooled.to_owned().as_slice().unwrap().to_vec())
+    }
+
+    pub fn score(&self, query: &str, chunk: &str) -> anyhow::Result<f32> {
+        let tokens = self.ranker_tokenizer.encode((query, chunk), true).unwrap();
+        let logit = self
+            .encode(&tokens, self.ranker_session.clone())?
+            .remove_axis(Axis(0))[0];
+        // normalise with sigmoid function
+        let score = 1. / (1. + (-logit).exp());
+        Ok(score)
     }
 
     pub async fn search_with<'a>(
@@ -415,7 +441,7 @@ impl Semantic {
             repo_name,
             relative_path,
             buffer,
-            &self.tokenizer,
+            &self.embedder_tokenizer,
             50..self.config.max_chunk_tokens,
             15,
             self.overlap_strategy(),

@@ -7,8 +7,9 @@ use crate::{
     },
     snippet::Snippet,
 };
+use tracing::info;
 
-use super::{deduplicate_snippets, Semantic};
+use super::{deduplicate_snippets, Payload, Semantic};
 
 use anyhow::{Context, Result};
 
@@ -17,12 +18,13 @@ pub async fn execute(
     query: SemanticQuery<'_>,
     params: ApiQuery,
 ) -> Result<QueryResponse> {
-    let vector = semantic.embed(query.target().context("invalid query")?)?;
+    let query_target = query.target().context("invalid query")?;
+    let vector = semantic.embed(query_target)?;
     let query_result = semantic
         .search_with(
             &query,
             vector.clone(),
-            params.page_size as u64,
+            (params.page_size * 4) as u64,
             ((params.page + 1) * params.page_size) as u64,
         )
         .await
@@ -32,7 +34,10 @@ pub async fn execute(
                 .collect::<Vec<_>>()
         })?;
 
-    let data = deduplicate_snippets(query_result, vector, params.page_size)
+    let data = deduplicate_snippets(query_result, vector, params.page_size * 2);
+    let data = rank_snippets(&semantic, query_target, data, params.page_size);
+
+    let data = data
         .into_iter()
         .fold(HashMap::new(), |mut acc, payload| {
             acc.entry((
@@ -68,4 +73,44 @@ pub async fn execute(
         stats: ResultStats::default(),
         data,
     })
+}
+
+fn rank_snippets<'a>(
+    semantic: &Semantic,
+    query: &str,
+    results: Vec<Payload<'a>>,
+    k: usize,
+) -> Vec<Payload<'a>> {
+    let mut scored_results = results
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, payload)| {
+            let text = format!(
+                "{}\t{}\n{}",
+                payload.lang, payload.relative_path, payload.text
+            );
+            let score = semantic.score(query, &text).ok();
+            score.map(|score| (idx, score))
+        })
+        .collect::<Vec<_>>();
+
+    // Sort by ranking model score
+    scored_results.sort_by(|a, b| a.1.total_cmp(&b.1));
+
+    // Get top k snippet scores
+    let top_idxs = scored_results
+        .into_iter()
+        .rev()
+        .take(k)
+        .map(|(idx, _)| idx)
+        .collect::<Vec<_>>();
+
+    info!("preserved idxs after reranking are {:?}", top_idxs);
+
+    results
+        .into_iter()
+        .enumerate()
+        .filter(|(idx, _)| top_idxs.contains(idx))
+        .map(|(_, payload)| payload)
+        .collect()
 }
