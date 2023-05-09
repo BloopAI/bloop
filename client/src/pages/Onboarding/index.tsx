@@ -25,7 +25,7 @@ import FeaturesStep from './FeaturesStep';
 let onboardingFinished = false;
 
 export type Form = {
-  firsName: string;
+  firstName: string;
   lastName: string;
   email: string;
   emailError: string | null;
@@ -33,7 +33,7 @@ export type Form = {
 
 const Onboarding = () => {
   const [form, setForm] = useState<Form>({
-    firsName: '',
+    firstName: '',
     lastName: '',
     email: '',
     emailError: null,
@@ -115,7 +115,7 @@ const Onboarding = () => {
   const onSubmit = useCallback(() => {
     saveUserData({
       email: form.email,
-      first_name: form.firsName,
+      first_name: form.firstName,
       last_name: form.lastName,
       unique_id: envConfig.tracking_id || '',
     });

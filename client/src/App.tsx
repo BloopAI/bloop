@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DeviceContextType } from './context/deviceContext';
 import './index.css';
-import './circleProgress.css';
-import 'highlight.js/styles/vs2015.css';
+// import './circleProgress.css';
+// import 'highlight.js/styles/vs2015.css';
 import Tab from './Tab';
 import { TabsContext } from './context/tabsContext';
 import { UITabType } from './types/general';

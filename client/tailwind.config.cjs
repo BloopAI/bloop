@@ -166,7 +166,7 @@ module.exports = {
         'tiny': '0px 1px 1px rgba(0, 0, 0, 0.32)',
         'small': '0px 8px 12px rgba(14, 14, 15, 0.75)',
         'dark': '0px 8px 24px rgba(14, 14, 15, 0.9)',
-        'medium': 'var(--shadow-medium)'
+        'medium': 'var(--shadow-medium)',
         'big': 'var(--shadow-big)',
       },
       spacing: {

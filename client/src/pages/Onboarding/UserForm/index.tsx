@@ -4,13 +4,7 @@ import React, {
   useCallback,
   useContext,
 } from 'react';
-import {
-  BloopLogo,
-  ChevronRight,
-  GitHubLogo,
-  MailIcon,
-  Person,
-} from '../../../icons';
+import { BloopLogo, ChevronRight, GitHubLogo } from '../../../icons';
 import TextInput from '../../../components/TextInput';
 import { EMAIL_REGEX } from '../../../consts/validations';
 import Button from '../../../components/Button';
@@ -48,12 +42,12 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
       </div>
       <form className="flex flex-col gap-4 w-full">
         <TextInput
-          value={form.firsName}
-          name="firsName"
+          value={form.firstName}
+          name="firstName"
           placeholder="First name"
           variant="filled"
           onChange={(e) =>
-            setForm((prev) => ({ ...prev, firsName: e.target.value }))
+            setForm((prev) => ({ ...prev, firstName: e.target.value }))
           }
           autoFocus
         />
@@ -109,7 +103,7 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
         <Button
           disabled={
             !isGithubConnected ||
-            !form.firsName ||
+            !form.firstName ||
             !form.lastName ||
             !form.email
           }

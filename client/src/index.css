@@ -1,3 +1,5 @@
+@import "./file-icons.css";
+
 @import "themes/default-dark.css";
 @import "themes/default-light.css";
 @import "themes/vscode-default-dark.css";

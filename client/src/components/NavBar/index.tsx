@@ -1,5 +1,13 @@
 import React, { useContext } from 'react';
-import { Bug, CloseSign, DoorRight, Home, Magazine, Person } from '../../icons';
+import {
+  Bug,
+  CloseSign,
+  Cog,
+  DoorRight,
+  Home,
+  Magazine,
+  Person,
+} from '../../icons';
 import { MenuListItemType } from '../ContextMenu';
 import { deleteAuthCookie } from '../../utils';
 import DropdownWithIcon from '../Dropdown/WithIcon';
@@ -13,8 +21,12 @@ type Props = {
 };
 
 const NavBar = ({ isSkeleton }: Props) => {
-  const { setBugReportModalOpen, setShouldShowWelcome, setGithubConnected } =
-    useContext(UIContext);
+  const {
+    setBugReportModalOpen,
+    setShouldShowWelcome,
+    setGithubConnected,
+    setSettingsOpen,
+  } = useContext(UIContext);
   const { openLink, isSelfServe, os } = useContext(DeviceContext);
   const { tabs, setActiveTab, activeTab, handleRemoveTab } =
     useContext(TabsContext);
@@ -65,6 +77,12 @@ const NavBar = ({ isSkeleton }: Props) => {
         <div>
           <DropdownWithIcon
             items={[
+              {
+                text: 'Settings',
+                icon: <Cog />,
+                type: MenuListItemType.DEFAULT,
+                onClick: () => setSettingsOpen(true),
+              },
               {
                 text: 'Documentation',
                 icon: <Magazine />,

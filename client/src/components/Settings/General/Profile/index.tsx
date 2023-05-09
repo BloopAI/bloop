@@ -2,38 +2,41 @@ import React, {
   ChangeEvent,
   useCallback,
   useContext,
-  useEffect,
+  useMemo,
   useState,
 } from 'react';
 import Button from '../../../Button';
 import TextInput from '../../../TextInput';
 import SettingsRow from '../../SettingsRow';
 import SettingsText from '../../SettingsText';
-import { UIContext } from '../../../../context/uiContext';
 import { EMAIL_REGEX } from '../../../../consts/validations';
 import { saveUserData } from '../../../../services/api';
 import { DeviceContext } from '../../../../context/deviceContext';
+import {
+  getJsonFromStorage,
+  saveJsonToStorage,
+  USER_DATA_FORM,
+} from '../../../../services/storage';
+
+type Form = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  emailError?: string;
+};
 
 const ProfileSettings = () => {
-  const { onBoardingState, setOnBoardingState } = useContext(UIContext);
   const { envConfig } = useContext(DeviceContext);
-  const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
+  const savedForm: Form | null = useMemo(
+    () => getJsonFromStorage(USER_DATA_FORM),
+    [],
+  );
+  const [form, setForm] = useState<Form>({
+    firstName: savedForm?.firstName || '',
+    lastName: savedForm?.lastName || '',
+    email: savedForm?.email || '',
     emailError: '',
   });
-
-  useEffect(() => {
-    const savedForm = onBoardingState['STEP_DATA_FORM'];
-
-    setForm((prev) => ({
-      ...prev,
-      firstName: savedForm?.firstName || '',
-      lastName: savedForm?.lastName || '',
-      email: savedForm?.email || '',
-    }));
-  }, [onBoardingState]);
 
   const onChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({
@@ -49,10 +52,7 @@ const ProfileSettings = () => {
       if (form.emailError) {
         return;
       }
-      setOnBoardingState((prev) => ({
-        ...prev,
-        ['STEP_DATA_FORM']: form,
-      }));
+      saveJsonToStorage(USER_DATA_FORM, form);
       saveUserData({
         email: form.email,
         first_name: form.firstName,
@@ -141,9 +141,9 @@ const ProfileSettings = () => {
         className="absolute top-0 right-0"
         disabled={
           !!form.emailError ||
-          (form.email === onBoardingState['STEP_DATA_FORM']?.email &&
-            form.firstName === onBoardingState['STEP_DATA_FORM']?.firstName &&
-            form.lastName === onBoardingState['STEP_DATA_FORM']?.lastName)
+          (form.email === savedForm?.email &&
+            form.firstName === savedForm?.firstName &&
+            form.lastName === savedForm?.lastName)
         }
         onClick={handleSubmit}
       >
