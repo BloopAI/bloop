@@ -205,8 +205,8 @@ fn add_token_range<'s>(
 /// This tries to split the code by lines and add as much tokens as possible until reaching
 /// `max_tokens`. Then it'll reduce to the last newline.
 pub fn by_tokens<'s>(
-    repo: &str,
-    file: &str,
+    lang: &str,
+    path: &str,
     src: &'s str,
     tokenizer: &Tokenizer, // we count from line
     token_bounds: Range<usize>,
@@ -235,11 +235,11 @@ pub fn by_tokens<'s>(
         return Vec::new();
     }
 
-    let repo_plus_file = file.to_owned() + "\n";
-    let repo_tokens = match tokenizer.encode(repo_plus_file, true) {
+    let lang_plus_path = lang.to_owned() + "\t" + path + "\n";
+    let repo_tokens = match tokenizer.encode(lang_plus_path, true) {
         Ok(encoding) => encoding.get_ids().len(),
         Err(e) => {
-            error!("failure during encoding repo + file {:?}", e);
+            error!("failure during encoding lang + paths {:?}", e);
             return Vec::new();
         }
     };
@@ -370,8 +370,8 @@ mod tests {
         let token_bounds = 50..256;
         let max_lines = 15;
         let no_tokens = by_tokens(
-            "bloop",
-            "rmpty.rs",
+            "rust",
+            "empty.rs",
             "",
             &tokenizer,
             token_bounds,
@@ -401,7 +401,7 @@ mod tests {
             }
             let Ok(src) = std::fs::read_to_string(file.path()) else { continue };
             let chunks = by_tokens(
-                "bloop",
+                "json",
                 &file.path().to_string_lossy(),
                 &src,
                 &tokenizer,

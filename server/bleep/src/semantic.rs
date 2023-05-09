@@ -438,7 +438,7 @@ impl Semantic {
             .await;
 
         let chunks = chunk::by_tokens(
-            repo_name,
+            lang_str,
             relative_path,
             buffer,
             &self.embedder_tokenizer,
@@ -448,8 +448,8 @@ impl Semantic {
         );
         debug!(chunk_count = chunks.len(), "found chunks");
 
-        // Prepend all chunks with `repo_name   relative_path`
-        let chunk_prefix = format!("{repo_name}\t{relative_path}\n");
+        // Prepend all chunks with `lang_str   relative_path`
+        let chunk_prefix = format!("{lang_str}\t{relative_path}\n");
 
         let datapoints = chunks
             .par_iter()
