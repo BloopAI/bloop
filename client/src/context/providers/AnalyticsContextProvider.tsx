@@ -1,19 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import * as analytics from 'rudder-sdk-js';
 import { AnalyticsContext } from '../analyticsContext';
+import { EnvConfig } from '../../types/general';
 
 interface AnalyticsProviderProps {
   children: React.ReactNode;
   forceAnalytics?: boolean;
   isSelfServe?: boolean;
-  envConfig: {
-    analytics_data_plane?: string;
-    analytics_key_fe?: string;
-    user_login?: string | null;
-    org_name?: string | null;
-    tracking_id?: string;
-    device_id?: string;
-  };
+  envConfig: EnvConfig;
 }
 
 export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
@@ -53,7 +47,7 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
         envConfig.tracking_id.trim(),
         {
           isSelfServe: isSelfServe,
-          githubUsername: envConfig.user_login || '',
+          githubUsername: envConfig.github_user?.login || '',
           orgName: envConfig.org_name || '',
           deviceId: envConfig.device_id?.trim(),
         },
