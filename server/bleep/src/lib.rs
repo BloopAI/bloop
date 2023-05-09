@@ -25,9 +25,7 @@ use scc::hash_map::Entry;
 #[cfg(not(target_os = "windows"))]
 use std::fs::canonicalize;
 
-use crate::{
-    background::BackgroundExecutor, indexes::Indexes, semantic::Semantic, state::RepositoryPool,
-};
+use crate::{background::SyncQueue, indexes::Indexes, semantic::Semantic, state::RepositoryPool};
 use anyhow::{bail, Result};
 use axum::extract::FromRef;
 
@@ -77,7 +75,7 @@ pub struct Application {
 
     /// Background & maintenance tasks are executed on a separate
     /// executor
-    background: BackgroundExecutor,
+    sync_queue: SyncQueue,
 
     /// Semantic search subsystem
     semantic: Option<Semantic>,
@@ -151,7 +149,7 @@ impl Application {
 
         Ok(Self {
             indexes: Indexes::new(repo_pool.clone(), config.clone(), semantic.clone())?.into(),
-            background: BackgroundExecutor::start(config.clone()),
+            sync_queue: SyncQueue::start(config.clone()),
             prior_conversational_store: Arc::default(),
             cookie_key: config.source.initialize_cookie_key()?,
             credentials: config.source.initialize_credentials()?.into(),
@@ -253,8 +251,8 @@ impl Application {
     // To be performed on the background executor
     //
     //
-    pub(crate) fn write_index(&self) -> background::IndexWriter {
-        background::IndexWriter(self.clone())
+    pub(crate) fn write_index(&self) -> background::BoundSyncQueue {
+        self.sync_queue.bind(self.clone())
     }
 
     /// This gets the prior conversation. Be sure to drop the borrow before calling

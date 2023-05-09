@@ -163,11 +163,13 @@ pub(super) async fn delete_by_id(
         .repo_pool
         .update_async(&reporef, |k, value| {
             value.mark_removed();
-            app.write_index().queue_sync_and_index(vec![k.clone()]);
         })
         .await
     {
-        Some(_) => Ok(json(ReposResponse::Deleted)),
+        Some(_) => {
+            app.write_index().sync_and_index(vec![reporef]).await;
+            Ok(json(ReposResponse::Deleted))
+        }
         None => Err(Error::new(ErrorKind::NotFound, "Repo not found")),
     }
 }
@@ -181,7 +183,7 @@ pub(super) async fn sync(
         return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
     };
 
-    app.write_index().queue_sync_and_index(vec![reporef]);
+    app.write_index().sync_and_index(vec![reporef]).await;
     Ok(json(ReposResponse::SyncQueued))
 }
 
@@ -251,7 +253,8 @@ pub(super) async fn set_indexed(
         .await;
 
     app.write_index()
-        .queue_sync_and_index(repo_list.into_iter().collect());
+        .sync_and_index(repo_list.into_iter().collect())
+        .await;
 
     json(ReposResponse::SyncQueued)
 }
