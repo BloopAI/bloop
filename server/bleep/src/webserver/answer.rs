@@ -175,7 +175,21 @@ pub(super) struct Conversation {
     llm_history: Vec<llm_gateway::api::Message>,
     exchanges: Vec<Exchange>,
     path_aliases: Vec<String>,
+    code_chunks: Vec<CodeChunk>,
     repo_ref: RepoRef,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+struct CodeChunk {
+    path: String,
+    #[serde(rename = "§ALIAS")]
+    alias: u32,
+    #[serde(rename = "snippet")]
+    snippet: String,
+    #[serde(rename = "start")]
+    start_line: u32,
+    #[serde(rename = "end")]
+    end_line: u32,
 }
 
 impl Conversation {
@@ -190,6 +204,7 @@ impl Conversation {
             ],
             exchanges: Vec::new(),
             path_aliases: Vec::new(),
+            code_chunks: Vec::new(),
             repo_ref,
         }
     }
@@ -384,15 +399,24 @@ impl Conversation {
                     })
                     .map(|chunk| {
                         let relative_path = chunk["relative_path"].as_str().unwrap();
-                        serde_json::json!({
-                            "path": relative_path,
-                            "§ALIAS": self.path_alias(relative_path),
-                            "snippet": chunk["snippet"],
-                            "start": chunk["start_line"].as_str().unwrap().parse::<u32>().unwrap(),
-                            "end": chunk["end_line"].as_str().unwrap().parse::<u32>().unwrap(),
-                        })
+
+                        CodeChunk {
+                            path: relative_path.to_owned(),
+                            alias: self.path_alias(relative_path) as u32,
+                            snippet: chunk["snippet"].as_str().unwrap().to_owned(),
+                            start_line: chunk["start_line"]
+                                .as_str()
+                                .unwrap()
+                                .parse::<u32>()
+                                .unwrap(),
+                            end_line: chunk["end_line"].as_str().unwrap().parse::<u32>().unwrap(),
+                        }
                     })
                     .collect::<Vec<_>>();
+
+                for chunk in &chunks {
+                    self.code_chunks.push(chunk.clone());
+                }
 
                 ctx.track_query(
                     EventData::input_stage("semantic code search")
@@ -574,16 +598,48 @@ impl Conversation {
             }
         }
 
-        let messages = self
-            .llm_history
-            .iter()
-            .filter(|m| m.role == "user")
-            .map(|m| &m.content)
-            .collect::<Vec<_>>();
+        let context = {
+            let mut s =
+                "Below is the current context, Future actions will add to this.\n".to_owned();
 
-        let context = serde_json::to_string(&messages)?;
+            if !self.path_aliases.is_empty() {
+                s += "##### PATHS #####\npath alias, path\n";
+
+                for (alias, path) in self.path_aliases.iter().enumerate() {
+                    s += &format!("{alias}, {path}\n");
+                }
+            }
+
+            let mut has_chunk = false;
+            // Order chunks by most recent.
+            for chunk in self.code_chunks.iter().rev() {
+                if !has_chunk {
+                    has_chunk = true;
+                    s += "\n##### CODE CHUNKS #####\n\n";
+                }
+
+                let snippet = chunk
+                    .snippet
+                    .lines()
+                    .enumerate()
+                    .map(|(i, line)| format!("{}: {line}\n", i + chunk.start_line as usize))
+                    .collect::<String>();
+
+                s += &format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
+            }
+
+            s
+        };
+
+        let query = self
+            .exchanges
+            .last()
+            .context("the exchange list was empty")?
+            .query()
+            .context("exchange did not have a user query")?;
+
         let query_history = self.query_history().join("\n");
-        let prompt = prompts::final_explanation_prompt(&context, &query_history);
+        let prompt = prompts::final_explanation_prompt(&context, query, &query_history);
 
         let messages = [llm_gateway::api::Message::system(&prompt)];
 
@@ -654,12 +710,13 @@ impl Conversation {
         let exchanges = serde_json::to_string(&self.exchanges)?;
         let llm_history = serde_json::to_string(&self.llm_history)?;
         let path_aliases = serde_json::to_string(&self.path_aliases)?;
+        let code_chunks = serde_json::to_string(&self.code_chunks)?;
         sqlx::query! {
             "INSERT INTO conversations (\
                user_id, thread_id, repo_ref, title, exchanges, llm_history, \
-               path_aliases, created_at\
+               path_aliases, code_chunks, created_at\
              ) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))",
             user_id,
             thread_id,
             repo_ref,
@@ -667,6 +724,7 @@ impl Conversation {
             exchanges,
             llm_history,
             path_aliases,
+            code_chunks,
         }
         .execute(&mut transaction)
         .await?;
@@ -682,7 +740,7 @@ impl Conversation {
         let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
 
         let row = sqlx::query! {
-            "SELECT repo_ref, llm_history, exchanges, path_aliases FROM conversations \
+            "SELECT repo_ref, llm_history, exchanges, path_aliases, code_chunks FROM conversations \
              WHERE user_id = ? AND thread_id = ?",
             user_id,
             thread_id,
@@ -699,12 +757,14 @@ impl Conversation {
         let path_aliases = serde_json::from_str(&row.path_aliases)?;
         let llm_history = serde_json::from_str(&row.llm_history)?;
         let exchanges = serde_json::from_str(&row.exchanges)?;
+        let code_chunks = serde_json::from_str(&row.code_chunks)?;
 
         Ok(Some(Self {
             repo_ref,
             llm_history,
             exchanges,
             path_aliases,
+            code_chunks,
         }))
     }
 

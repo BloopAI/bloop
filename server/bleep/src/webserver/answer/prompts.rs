@@ -108,53 +108,110 @@ A: "#
     )
 }
 
-pub fn final_explanation_prompt(context: &str, query_history: &str) -> String {
-    format!(
-        r#"{context}#####
-Above are several pieces of information that can help you answer a user query.
+pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str) -> String {
+    struct Rule<'a> {
+        title: &'a str,
+        description: &'a str,
+        schema: &'a str,
+        example: Option<&'a str>,
+    }
 
-Your job is to answer the user's query. Your answer should be in the following JSON format: a list of objects, where each object represents one instance of:
-
-1. citing a single file from the codebase (this object can appear multiple times, in the form of a JSON array)
-START LINE and END LINE should focus on the code mentioned in the COMMENT.
-
-[["cite",INT: §ALIAS,STRING: COMMENT,INT: START LINE,INT: END LINE],
-["cite",INT: §ALIAS,STRING: COMMENT,INT: START LINE,INT: END LINE]]
-
-2. write a new code file (this object can appear multiple times)
-Do not use this to demonstrate updating an existing file.
-
-["new",STRING: LANGUAGE,STRING: CODE]
-
-3. update the code in an existing file (this object can appear multiple times)
-This is the best way to demonstrate updating an existing file.
-Changes should be as small as possible.
-
-["mod",INT: §ALIAS,STRING: LANGUAGE,STRING: GIT DIFF]
-Where GIT DIFF describes the diff chunks for the file, including the git diff header.
+    let rules = [
+        Rule {
+            title: "cite a single file from the codebase (this object can appear multiple times)",
+            description: "START LINE and END LINE should focus on the code mentioned in the COMMENT.",
+            schema: "[\"cite\",INT: PATH ALIAS, STRING: COMMENT, INT: START LINE, INT: END LINE]",
+            example: None,
+        },
+        Rule {
+            title: "write a new code file (this object can appear multiple times)",
+            description: "Do not use this to demonstrate updating an existing file.",
+            schema: "[\"new\",STRING: LANGUAGE,STRING: CODE]",
+            example: None,
+        },
+        Rule {
+            title: "update the code in an existing file (this object can appear multiple times)",
+            description: "This is the best way to demonstrate updating an existing file. Changes should be as small as possible.",
+            schema: "[\"mod\",INT: §ALIAS,STRING: GIT DIFF]",
+            example: Some(r#"Where GIT DIFF describes the diff chunks for the file, including the git diff header.
 For example:
 @@ -1 +1 @@
 -this is a git diff test example
-+this is a diff example
++this is a diff example"#),
+        },
+        Rule {
+            title: "cite multiple commits (this object can appear multiple times)",
+            description: "List a group of commits with a shared comment",
+            schema: "[\"commit\", INT[]: COMMIT ALIASES, STRING: COMMENT]",
+            example: None,
+        },
+        Rule {
+            title: "conclusion (this is mandatory and must appear once at the end)",
+            description: "Summarise your previous steps in a sentence.",
+            schema: "[\"con\", STRING: COMMENT]",
+            example: None,
+        },
+    ];
 
-4. conclusion (this object is mandatory and must appear once at the end)
+    let output_rules_str = rules
+        .into_iter()
+        .enumerate()
+        .map(|(i, r)| {
+            let Rule {
+                title,
+                description,
+                schema,
+                example,
+                ..
+            } = r;
+            format!(
+                "{i}. {title}\n{description}\n{schema}\n{}\n\n",
+                example.unwrap_or("")
+            )
+        })
+        .collect::<String>();
 
-["con",STRING: COMMENT]
+    format!(
+        r#"{context}#####
 
-Your response should be a JSON array of objects.
+Above are several pieces of information that can help you answer a user query.
+
+#####
+
+Your job is to answer the user's query. Your answer should be in the following JSON format: a list of objects, where each object represents one instance of:
+
+{output_rules_str}
+
+Your response should be a JSON list of lists.
 Refer to directories by their full paths, surrounded by single backticks.
 
 #####
 
-{query_history}
+Example:
 
-Above is the query and answer history. The user can see the previous queries and answers on their screen, but not anything else.
-Based on this history, answer the user's last question.
+Show all the analytics events
+
+[
+  ["cite", 27, "Track 'Search' event in useAnalytics.ts", 7, 12],
+  ["con", "I've found three analytics events"]
+]
+
+What changed in the last 48h
+
+[
+  ["commit", [30, 4], "Two commits were made to improve performance and fix a bug"],
+  ["con", "I found two commits"]
+]
 
 #####
 
-Output only JSON.
+"{query_history}"
 
-"#
+Above is the query and answer history. The user can see the previous queries and answers on their screen, but not anything else.
+Based on this history, answer the question: {query}
+
+#####
+
+Output only JSON."#
     )
 }
