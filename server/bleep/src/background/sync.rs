@@ -1,5 +1,5 @@
 use anyhow::bail;
-use tokio::sync::{OwnedSemaphorePermit};
+use tokio::sync::OwnedSemaphorePermit;
 use tracing::{debug, error, info};
 
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
     Application,
 };
 
-use std::{sync::Arc};
+use std::sync::Arc;
 
 use super::control::SyncPipes;
 
@@ -153,8 +153,10 @@ impl SyncHandle {
             }
         };
 
-        writers.commit().await?;
-        config.source.save_pool(repo_pool.clone())?;
+        if !indexed.is_err() {
+            writers.commit().await?;
+            config.source.save_pool(repo_pool.clone())?;
+        }
 
         Ok(indexed?).map(Some)
     }

@@ -98,6 +98,8 @@ impl SyncQueue {
 
         {
             let instance = instance.clone();
+
+            // We spawn the queue handler on the background executor
             instance.runner.clone().spawn(async move {
                 while let (Ok(permit), next) = tokio::join!(
                     instance.tickets.clone().acquire_owned(),
