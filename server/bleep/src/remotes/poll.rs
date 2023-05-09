@@ -178,15 +178,17 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
             return None;
         }
 
+        debug!("starting sync");
         if let Err(err) = app
             .write_index()
-            .sync_and_index(vec![reporef.clone()])
+            .wait_for_sync_and_index(reporef.clone())
             .await
         {
             error!(?err, ?reporef, "failed to sync & index repo");
             return None;
         }
 
+        debug!("sync done");
         let (updated, status) = check_repo(&app, &reporef)?;
         if status.indexable().not() {
             warn!(?status, ?reporef, "terminating monitoring for repo");
