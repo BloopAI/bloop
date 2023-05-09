@@ -16,6 +16,7 @@ pub(super) struct SyncHandle {
     pub reporef: RepoRef,
     app: Application,
     pipes: SyncPipes,
+    status: tokio::sync::broadcast::Sender<super::Progress>,
     exited: flume::Sender<SyncStatus>,
 }
 
@@ -80,6 +81,7 @@ impl SyncHandle {
     pub(super) fn new(
         app: Application,
         reporef: RepoRef,
+        status: tokio::sync::broadcast::Sender<super::Progress>,
     ) -> (Arc<Self>, flume::Receiver<SyncStatus>) {
         let (exited, exit_signal) = flume::bounded(1);
         let pipes = SyncPipes::default();
@@ -89,6 +91,7 @@ impl SyncHandle {
                 app,
                 pipes,
                 reporef,
+                status,
                 exited,
             }
             .into(),
@@ -148,8 +151,8 @@ impl SyncHandle {
         } = self.app;
 
         let writers = indexes.writers().await.map_err(SyncError::Tantivy)?;
-        let (key, repo) = repo_pool
-            .read_async(&self.reporef, |k, v| (k.clone(), v.clone()))
+        let repo = repo_pool
+            .read_async(&self.reporef, |_k, v| v.clone())
             .await
             .unwrap();
 
@@ -183,11 +186,23 @@ impl SyncHandle {
                     .await
                     .unwrap();
 
-                repo.index(&key, &writers).await
+                {
+                    let reporef = self.reporef.clone();
+                    let status = self.status.clone();
+                    writers
+                        .index(
+                            &self.reporef,
+                            &repo,
+                            Arc::new(move |p: u8| {
+                                status.send((reporef.clone(), 1, p));
+                            }) as Arc<dyn Fn(u8) + Send + Sync>,
+                        )
+                        .await
+                }
             }
         };
 
-        if !indexed.is_err() {
+        if indexed.is_ok() {
             writers.commit().await.map_err(SyncError::Tantivy)?;
             config
                 .source

@@ -15,14 +15,18 @@ mod control;
 mod notifyqueue;
 use notifyqueue::NotifyQueue;
 
-type Task = Pin<Box<dyn Future<Output = ()> + Send + Sync>>;
+pub type Progress = (RepoRef, usize, u8);
 
+type Task = Pin<Box<dyn Future<Output = ()> + Send + Sync>>;
 #[derive(Clone)]
 pub struct SyncQueue {
     runner: BackgroundExecutor,
     active: Arc<scc::HashMap<RepoRef, Arc<SyncHandle>>>,
     tickets: Arc<Semaphore>,
     queue: Arc<NotifyQueue>,
+
+    /// Report progress from indexing runs
+    progress: tokio::sync::broadcast::Sender<Progress>,
 }
 
 #[derive(Clone)]
@@ -89,11 +93,14 @@ impl BackgroundExecutor {
 
 impl SyncQueue {
     pub fn start(config: Arc<Configuration>) -> Self {
+        let (progress, _) = tokio::sync::broadcast::channel(config.max_threads * 2);
+
         let instance = Self {
             tickets: Arc::new(Semaphore::new(config.max_threads)),
             runner: BackgroundExecutor::start(config.clone()),
             active: Default::default(),
             queue: Default::default(),
+            progress,
         };
 
         {
@@ -131,6 +138,10 @@ impl SyncQueue {
     pub fn bind(&self, app: Application) -> BoundSyncQueue {
         BoundSyncQueue(app, self.clone())
     }
+
+    pub fn subscribe(&self) -> tokio::sync::broadcast::Receiver<Progress> {
+        self.progress.subscribe()
+    }
 }
 
 impl BoundSyncQueue {
@@ -143,7 +154,7 @@ impl BoundSyncQueue {
             }
 
             info!(%reporef, "queueing for sync");
-            let (handle, _) = SyncHandle::new(self.0.clone(), reporef);
+            let (handle, _) = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone());
             self.1.queue.push(handle).await;
         }
 
@@ -155,7 +166,7 @@ impl BoundSyncQueue {
         self,
         reporef: RepoRef,
     ) -> anyhow::Result<SyncStatus> {
-        let (handle, signal) = SyncHandle::new(self.0.clone(), reporef);
+        let (handle, signal) = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone());
         self.1.queue.push(handle).await;
         Ok(signal.recv_async().await?)
     }

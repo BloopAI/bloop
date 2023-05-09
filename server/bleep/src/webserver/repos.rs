@@ -101,7 +101,7 @@ impl super::ApiResponse for ReposResponse {}
 /// This endpoint opens an SSE stream
 //
 pub(super) async fn index_status(Extension(app): Extension<Application>) -> impl IntoResponse {
-    let mut receiver = app.indexes.subscribe();
+    let mut receiver = app.sync_queue.subscribe();
 
     Sse::new(async_stream::stream! {
         while let Ok(event) = receiver.recv().await {
@@ -161,7 +161,7 @@ pub(super) async fn delete_by_id(
 
     match app
         .repo_pool
-        .update_async(&reporef, |k, value| {
+        .update_async(&reporef, |_k, value| {
             value.mark_removed();
         })
         .await
