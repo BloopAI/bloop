@@ -47,7 +47,7 @@ impl FileType {
     }
 }
 
-fn should_index_de(de: &ignore::DirEntry) -> bool {
+fn should_index_entry(de: &ignore::DirEntry) -> bool {
     should_index(&de.path())
 }
 
