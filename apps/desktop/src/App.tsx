@@ -15,6 +15,7 @@ import { getVersion } from '@tauri-apps/api/app';
 import ClientApp from '../../../client/src/App';
 import '../../../client/src/index.css';
 import useKeyboardNavigation from '../../../client/src/hooks/useKeyboardNavigation';
+import { getConfig } from '../../../client/src/services/api';
 import TextSearch from './TextSearch';
 
 // let askedToUpdate = false;
@@ -128,6 +129,10 @@ function App() {
     }
   }, []);
   useKeyboardNavigation(handleKeyEvent);
+
+  useEffect(() => {
+    setTimeout(() => getConfig().then(setEnvConfig), 1000); // server returns wrong tracking_id within first second
+  }, []);
 
   const deviceContextValue = useMemo(
     () => ({

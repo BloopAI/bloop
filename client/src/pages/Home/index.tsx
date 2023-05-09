@@ -62,6 +62,7 @@ const HomePage = () => {
         onClose={(isSubmitted) => {
           if (isSubmitted) {
             fetchRepos();
+            setTimeout(() => fetchRepos(), 1000);
             setPopupOpen(true);
             setTimeout(() => setPopupOpen(false), 3000);
           }
