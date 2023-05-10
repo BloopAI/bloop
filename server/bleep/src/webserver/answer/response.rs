@@ -7,7 +7,7 @@ pub struct Exchange {
     finished: bool,
     conclusion: Option<String>,
     search_steps: Vec<SearchStep>,
-    results: Vec<SearchResult>,
+    pub results: Vec<SearchResult>,
 }
 
 impl Exchange {
@@ -119,6 +119,14 @@ impl SearchResult {
             s => s,
         }
     }
+
+    pub fn summarize(&self) -> String {
+        match self {
+            Self::Cite(cite) => cite.summarize(),
+            Self::Conclude(conclude) => conclude.summarize(),
+            _ => String::default(),
+        }
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
@@ -191,6 +199,16 @@ impl CiteResult {
             .and_then(|alias| path_aliases.get(*alias as usize))
             .map(ToOwned::to_owned);
         self
+    }
+
+    fn summarize(&self) -> String {
+        fn _summarize(s: &CiteResult) -> Option<String> {
+            let comment = s.comment.as_ref()?;
+            let path = s.path.as_ref()?;
+            Some(format!("'{comment}' in `{path}`",))
+        }
+
+        _summarize(&self).unwrap_or_default()
     }
 }
 
@@ -320,5 +338,9 @@ impl ConcludeResult {
             .and_then(serde_json::Value::as_str)
             .map(ToOwned::to_owned);
         Some(Self { comment })
+    }
+
+    fn summarize(&self) -> String {
+        self.comment.clone().unwrap_or_default()
     }
 }
