@@ -160,7 +160,7 @@ impl Conversation {
 
         Self {
             llm_history: vec![
-                llm_gateway::api::Message::system(prompts::SYSTEM),
+                llm_gateway::api::Message::system(&prompts::system()),
                 llm_gateway::api::Message::assistant(prompts::INITIAL_PROMPT),
             ],
             exchanges: Vec::new(),
@@ -177,6 +177,17 @@ impl Conversation {
             self.path_aliases.push(path.to_owned());
             i
         }
+    }
+
+    fn query_history(&self) -> Vec<String> {
+        self.exchanges
+            .iter()
+            .flat_map(|e| match (e.query(), e.conclusion()) {
+                (Some(q), Some(c)) => vec![("user", q), ("assistant", c)],
+                _ => vec![],
+            })
+            .map(|(author, message)| format!("{author}: {message}"))
+            .collect()
     }
 
     async fn step(
@@ -219,14 +230,9 @@ impl Conversation {
                 return Ok(None);
             }
 
-            Action::Answer(rephrased_question) => {
-                self.answer(
-                    ctx,
-                    update,
-                    &rephrased_question,
-                    self.path_aliases.as_slice(),
-                )
-                .await?;
+            Action::Answer => {
+                self.answer(ctx, update, self.path_aliases.as_slice())
+                    .await?;
                 let r: Result<ActionStream> = Action::Prompt(prompts::CONTINUE.to_owned()).into();
                 return Ok(Some(r?));
             }
@@ -456,14 +462,16 @@ impl Conversation {
                 .lines
                 .iter()
                 .filter(|r| r.start > 0 && r.end > 0)
-                .map(|r| {
+                .filter_map(|r| {
                     let end = r.end.min(r.start + 10);
 
-                    serde_json::json!({
+                    Some(serde_json::json!({
                         "start": r.start,
                         "end": end,
-                        "relevant_code": lines[r.start..end].join("\n"),
-                    })
+                        "relevant_code": lines
+                            .get(r.start.saturating_sub(1)..end.saturating_sub(1))?
+                            .join("\n"),
+                    }))
                 })
                 .collect::<Vec<_>>();
 
@@ -490,7 +498,6 @@ impl Conversation {
         &self,
         ctx: &AppContext,
         update: Sender<Update>,
-        question: &str,
         path_aliases: &[String],
     ) -> Result<()> {
         fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
@@ -508,7 +515,8 @@ impl Conversation {
             .collect::<Vec<_>>();
 
         let context = serde_json::to_string(&messages)?;
-        let prompt = prompts::final_explanation_prompt(&context, question);
+        let query_history = self.query_history().join("\n");
+        let prompt = prompts::final_explanation_prompt(&context, &query_history);
 
         let messages = [llm_gateway::api::Message::system(&prompt)];
 
@@ -666,7 +674,8 @@ enum Action {
     #[serde(rename = "ask")]
     Prompt(String),
     Path(String),
-    Answer(String),
+    #[serde(rename = "none")]
+    Answer,
     Code(String),
     Proc(String, Vec<usize>),
 }
