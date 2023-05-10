@@ -16,6 +16,7 @@ mod notifyqueue;
 use notifyqueue::NotifyQueue;
 
 pub type Progress = (RepoRef, usize, u8);
+type ProgressStream = tokio::sync::broadcast::Sender<Progress>;
 
 type Task = Pin<Box<dyn Future<Output = ()> + Send + Sync>>;
 #[derive(Clone)]
@@ -26,7 +27,7 @@ pub struct SyncQueue {
     queue: Arc<NotifyQueue>,
 
     /// Report progress from indexing runs
-    progress: tokio::sync::broadcast::Sender<Progress>,
+    progress: ProgressStream,
 }
 
 #[derive(Clone)]
