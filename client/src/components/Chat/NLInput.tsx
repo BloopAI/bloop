@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { QuillIcon, SendIcon } from '../../icons';
+import { FeatherSelected, QuillIcon, SendIcon } from '../../icons';
 import ClearButton from '../ClearButton';
 import Tooltip from '../Tooltip';
 import InputLoader from './InputLoader';
@@ -19,6 +19,8 @@ type Props = {
   onChange?: (e: ChangeEvent<HTMLTextAreaElement>) => void;
   onSubmit?: () => void;
   loadingSteps?: string[];
+  selectedLines?: [number, number] | null;
+  setSelectedLines?: (l: [number, number] | null) => void;
 };
 
 const NLInput = ({
@@ -30,6 +32,8 @@ const NLInput = ({
   onStop,
   onSubmit,
   loadingSteps,
+  selectedLines,
+  setSelectedLines,
 }: Props) => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setComposition] = useState(false);
@@ -73,7 +77,7 @@ const NLInput = ({
         <InputLoader loadingSteps={loadingSteps} />
       )}
       <span className="py-4">
-        <QuillIcon />
+        {selectedLines ? <FeatherSelected /> : <QuillIcon />}
       </span>
       <textarea
         className={`w-full py-4 bg-transparent rounded-lg outline-none focus:outline-0 resize-none
@@ -91,10 +95,14 @@ const NLInput = ({
         onCompositionEnd={() => setComposition(false)}
         onKeyDown={handleKeyDown}
       />
-      {isStoppable ? (
+      {isStoppable || selectedLines ? (
         <div className="relative top-[18px]">
           <Tooltip text={'Stop generating'} placement={'top-end'}>
-            <ClearButton onClick={onStop} />
+            <ClearButton
+              onClick={() =>
+                isStoppable ? onStop?.() : setSelectedLines?.(null)
+              }
+            />
           </Tooltip>
         </div>
       ) : value ? (

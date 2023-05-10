@@ -97,3 +97,6 @@ export { default as HardDrive } from './HardDrive';
 export { default as MoreVertical } from './MoreVertical';
 export { default as BloopLogo } from './BloopLogo';
 export { default as GitHubLogoBig } from './GitHubLogo';
+export { default as Feather } from './Feather';
+export { default as FeatherSelected } from './FeatherSelected';
+export { default as Info } from './Info';

@@ -170,6 +170,7 @@ const ResultFull = ({ data }: Props) => {
                   language={result.language}
                   repoPath={result.repoPath}
                   relativePath={result.relativePath}
+                  isOnResultPage
                   metadata={{
                     hoverableRanges: result.hoverableRanges,
                     lexicalBlocks: [],
