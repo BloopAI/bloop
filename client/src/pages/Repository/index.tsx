@@ -96,7 +96,7 @@ const RepositoryPage = ({ repositoryData }: Props) => {
   ) : (
     <div className="flex w-full">
       <div
-        className={`h-full flex flex-col overflow-hidden relative overflow-y-auto ${
+        className={`h-full bg-bg-base flex flex-col overflow-hidden relative overflow-y-auto ${
           isRightPanelOpen ? 'w-0' : 'w-[20.25rem]'
         } transition-all duration-150 flex-shrink-0`}
       >

@@ -34,7 +34,7 @@ const GitHubConnect = ({ goBack }: { goBack: () => void }) => {
         <div className="w-11 h-11">
           <GitHubLogoBig />
         </div>
-        <p className="body-s text-center text-gray-400">
+        <p className="body-s text-center text-label-base">
           After launching the GitHub login window, you’ll need to perform the
           following steps:
         </p>
@@ -44,15 +44,15 @@ const GitHubConnect = ({ goBack }: { goBack: () => void }) => {
           <StepsLine />
         </div>
         <div className="w-full flex flex-col gap-1">
-          <p className="body-m text-gray-100 ml-4">Enter the device code</p>
-          <div className="bg-[linear-gradient(40.91deg,#1A1B1D_5.55%,#1D2125_96.73%)] rounded-lg p-4 flex flex-col gap-2">
+          <p className="body-m text-label-title ml-4">Enter the device code</p>
+          <div className="bg-bg-shade rounded-lg p-4 flex flex-col gap-2">
             {authenticationFailed ? (
               <Button size="small" onClick={generateNewCode}>
                 Generate new code
               </Button>
             ) : (
               <div className="flex items-center gap-2">
-                <div className="bg-gray-700 rounded-4 text-center flex-1 py-1 body-m text-gray-100">
+                <div className="bg-bg-base-hover rounded-4 text-center flex-1 py-1 body-m text-label-title">
                   {code || '...'}
                 </div>
                 <Button variant="secondary" size="small" onClick={handleCopy}>
@@ -70,15 +70,15 @@ const GitHubConnect = ({ goBack }: { goBack: () => void }) => {
                 }
                 icon={<Chronometer raw />}
                 className={`caption ${
-                  authenticationFailed ? 'text-danger-500' : 'text-gray-400'
+                  authenticationFailed ? 'text-bg-danger' : 'text-label-base'
                 }`}
               />
             </div>
           </div>
         </div>
         <div className="flex flex-col gap-1">
-          <p className="body-m text-gray-100 ml-4">Authorise bloop</p>
-          <p className="body-s text-gray-400 ml-4">
+          <p className="body-m text-label-title ml-4">Authorise bloop</p>
+          <p className="body-s text-label-base ml-4">
             Note: GitHub OAuth login doesn&apos;t support granular repo or
             organisation level access. The token has a wide scope, but only
             repos you explicitly choose will be synced, and your account
@@ -93,9 +93,9 @@ const GitHubConnect = ({ goBack }: { goBack: () => void }) => {
               ? 'Relaunch GitHub auth'
               : 'Launch GitHub Login'}
           </Button>
-          <p className="text-center caption text-gray-400">
+          <p className="text-center caption text-label-base">
             or visit:{' '}
-            <span className="text-primary-300">github.com/login/device</span>
+            <span className="text-label-link">github.com/login/device</span>
           </p>
         </div>
       </div>

@@ -98,7 +98,7 @@
 
 
 @layer base {
-    [data-theme="default"], :not([data-theme]) {
+    [data-theme="default"], body:not([data-theme]) {
       --gray-50: 249, 249, 249;
       --gray-100: 241, 241, 242;
       --gray-200: 221, 221, 225;
@@ -155,6 +155,8 @@
       --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos.png");
     }
     [data-theme="default-light"] {
       --gray-900: 249, 249, 249;
@@ -212,6 +214,8 @@
       --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+      --img-no-repos: url("/no-repos-light.png");
     }
   [data-theme="vsc-default-dark"] {
     --gray-50: 249, 249, 249;
@@ -299,8 +303,8 @@
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--app-bg);
-  color: var(--contrast-color);
+  background-color: rgb(var(--bg-sub));
+  color: rgb(var(--label-title));
   overflow: hidden;
 }
 
@@ -435,6 +439,15 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 400;
+  font-size: 14px;
+  line-height: 160%;
+  letter-spacing: -0.02em;
+}
+
+.body-s-strong {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 500;
   font-size: 14px;
   line-height: 160%;
   letter-spacing: -0.02em;
@@ -637,4 +650,8 @@ h5, .h5 {
 
 .conversation-message pre:has(code[class*="language-"]) code {
   background-color: unset;
+}
+
+.img-no-repos {
+  content: var(--img-no-repos);
 }

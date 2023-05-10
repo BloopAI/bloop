@@ -41,14 +41,16 @@ const PageHeader = ({
             <SkeletonItem />
           </div>
         ) : (
-          <h4>{resultsNumber ? 'Results' : 'No results'}</h4>
+          <h4 className="text-label-title">
+            {resultsNumber ? 'Results' : 'No results'}
+          </h4>
         )}
         {loading ? (
           <div className="h-4 w-48">
             <SkeletonItem />
           </div>
         ) : (
-          <p className="body-s text-gray-500">
+          <p className="body-s text-label-muted">
             {resultsNumber
               ? `Showing ${resultsNumber} result${resultsNumber > 1 ? 's' : ''}`
               : 'Nothing matched your search. Try a different combination!'}

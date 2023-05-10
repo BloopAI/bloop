@@ -45,7 +45,7 @@ const SeparateOnboardingStep = ({
       <AnimatePresence>
         {isVisible && (
           <motion.div
-            className={`fixed top-0 bottom-0 left-0 right-0 bg-gray-900 bg-opacity-75 ${
+            className={`fixed top-0 bottom-0 left-0 right-0 bg-bg-base/75 ${
               onClose ? 'cursor-alias' : ''
             } z-50`}
             initial={backdropHidden}
@@ -59,8 +59,8 @@ const SeparateOnboardingStep = ({
       <AnimatePresence>
         {isVisible && (
           <motion.div
-            className={`overflow-auto fixed flex flex-col rounded-md drop-shadow-light-bigger bg-gray-900 
-            border border-gray-800 bg-opacity-75 z-70 backdrop-blur-8`}
+            className={`overflow-auto fixed flex flex-col rounded-md shadow-float bg-bg-shade
+            border border-bg-border z-70 backdrop-blur-8`}
             animate={modalAnimation}
             initial={initialModalStyles}
             exit={initialModalStyles}

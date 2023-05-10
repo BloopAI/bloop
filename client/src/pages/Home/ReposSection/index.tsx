@@ -8,6 +8,7 @@ import React, {
 import RepoCard from '../../../components/RepoCard';
 import { RepoType } from '../../../types/general';
 import { DeviceContext } from '../../../context/deviceContext';
+import { UIContext } from '../../../context/uiContext';
 
 type Props = {
   reposToShow: RepoType[];
@@ -74,11 +75,11 @@ const ReposSection = ({ reposToShow, setReposToShow }: Props) => {
         ))}
       </div>
       {!reposToShow.length ? (
-        <div className="flex w-full flex-col items-center justify-center gap-4 px-4 py-11 bg-gray-900 border border-gray-800 rounded-md">
-          <img src="/no-repos.png" className="w-64" alt="No repositories" />
+        <div className="flex w-full flex-col items-center justify-center gap-4 px-4 py-11 bg-bg-sub border border-bg-border rounded-md">
+          <img className="w-64 img-no-repos" alt="No repositories" />
           <div className="flex flex-col gap-3 items-center">
-            <p className="subhead-m text-white">No repositories</p>
-            <p className="body-s text-gray-400">
+            <p className="subhead-m text-label-title">No repositories</p>
+            <p className="body-s text-label-muted">
               As soon as you add a repository it will appear here.
             </p>
           </div>

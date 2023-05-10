@@ -36,8 +36,8 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
         <div className="w-11 h-11 absolute left-1/2 -top-16 transform -translate-x-1/2">
           <BloopLogo />
         </div>
-        <h4 className="">Setup bloop</h4>
-        <p className="text-gray-400 body-s">
+        <h4 className="text-label-title">Setup bloop</h4>
+        <p className="text-label-muted body-s">
           Please log into your GitHub account to complete setup
         </p>
       </div>
@@ -83,16 +83,16 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
           name="email"
           placeholder="Email address"
         />
-        <div className="flex items-center pl-2.5 gap-2.5 border border-gray-700 rounded-4">
+        <div className="flex items-center pl-2.5 gap-2.5 border border-bg-border rounded-4">
           <GitHubLogo />
-          <p className="callout text-gray-100 flex-1">
+          <p className="callout text-label-title flex-1">
             {isGithubConnected ? envConfig.github_user?.login : 'GitHub'}
           </p>
           <button
             type="button"
-            className={`caption text-gray-100 ${
+            className={`caption text-label-title ${
               isGithubConnected ? 'px-3' : 'pl-3 pr-2'
-            } h-10 flex gap-1 items-center border-l border-gray-700 hover:bg-gray-800`}
+            } h-10 flex gap-1 items-center border-l border-bg-border hover:bg-bg-base-hover`}
             onClick={() =>
               isGithubConnected ? handleLogout() : setGitHubScreen(true)
             }
@@ -114,19 +114,19 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
         </Button>
       </form>
       {isGithubConnected && (
-        <p className="caption text-gray-400 text-center">
+        <p className="caption text-label-base text-center">
           By continuing you accept our
           <br />
           <button
             onClick={() => openLink('https://bloop.ai/terms')}
-            className="text-primary-300"
+            className="text-label-link"
           >
             Terms & conditions
           </button>{' '}
           and{' '}
           <button
             onClick={() => openLink('https://bloop.ai/privacy')}
-            className="text-primary-300"
+            className="text-label-link"
           >
             Privacy policy
           </button>

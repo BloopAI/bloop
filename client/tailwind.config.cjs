@@ -5,6 +5,7 @@ module.exports = {
     extend: {
       colors: {
         "bg-base": "rgb(var(--bg-base))",
+        "bg-base/75": "rgba(var(--bg-base), 0.75)",
         "bg-base-hover": "rgb(var(--bg-base-hover))",
         "bg-shade": "rgb(var(--bg-shade))",
         "bg-shade/50": "rgba(var(--bg-shade), 0.5)",
@@ -31,6 +32,7 @@ module.exports = {
         "chat-bg-shade": "rgb(var(--chat-bg-shade))",
         "chat-bg-sub": "rgb(var(--chat-bg-sub))",
         "chat-bg-border": "rgb(var(--chat-bg-border))",
+        "chat-bg-border/50": "rgba(var(--chat-bg-border), 0.5)",
         "chat-bg-border-hover": "rgb(var(--chat-bg-border-hover))",
         "chat-bg-divider": "rgb(var(--chat-bg-divider))",
         primary: {
@@ -179,7 +181,7 @@ module.exports = {
         'light-bigger': '0px 6px 16px rgba(0, 0, 0, 0.25)'
       },
       backgroundImage: {
-        skeleton: 'linear-gradient(90deg, rgba(29, 29, 32, .1) 0%, rgba(29, 29, 32, .1) 33%, #1D1D20 60%, rgba(29, 29, 32, .1) 100%)',
+        skeleton: 'linear-gradient(90deg, rgba(var(--bg-base), .1) 0%, rgba(var(--bg-base), .1) 33%, rgb(var(--bg-base)) 60%, rgba(var(--bg-base), .1) 100%)',
       },
       backgroundSize :{
         '50%': '50%',

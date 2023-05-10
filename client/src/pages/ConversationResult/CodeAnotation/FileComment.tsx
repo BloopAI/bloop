@@ -9,7 +9,7 @@ type Props = {
 const FileComment = ({ i, comment }: Props) => {
   return (
     <div
-      className={`bg-gray-800 border border-gray-700 shadow-light-bigger rounded-4 py-4 px-3 flex flex-col gap-2 
+      className={`bg-bg-base border border-bg-border rounded-4 py-4 px-3 flex flex-col gap-2 text-label-title
         transition-all duration-75 ease-linear cursor-pointer`}
       id={`comment-${i}`}
       onClick={() => {

@@ -125,7 +125,7 @@ const Onboarding = () => {
   }, [form, envConfig.tracking_id]);
 
   return shouldShowWelcome ? (
-    <div className="fixed top-0 bottom-0 left-0 right-0 z-100 bg-[#101011] select-none">
+    <div className="fixed top-0 bottom-0 left-0 right-0 z-100 bg-bg-sub select-none">
       {os.type === 'Darwin' && <NavBar isSkeleton />}
       <img
         src="/light.png"
@@ -152,7 +152,7 @@ const Onboarding = () => {
           </div>
         </div>
         <div
-          className={`w-1/2 h-full hidden lg:flex justify-center items-center border-l border-gray-700 relative 
+          className={`w-1/2 h-full hidden lg:flex justify-center items-center border-l border-bg-border relative 
         before:absolute before:top-0 before:bottom-0 before:left-0 before:right-0 before:bg-[url('/grainy-pattern.png')] 
         before:bg-repeat before:mix-blend-soft-light before:opacity-[0.14]`}
         >

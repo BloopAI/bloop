@@ -139,7 +139,7 @@ const ResultFull = ({ data }: Props) => {
         <div className="flex-1 overflow-auto w-full box-content flex flex-col">
           <div className="w-full flex flex-col overflow-auto flex-1">
             <div
-              className={`w-full border-b border-gray-700 flex justify-between py-3 px-8 select-none`}
+              className={`w-full border-b border-bg-border flex justify-between py-3 px-8 select-none`}
             >
               <div className="flex items-center gap-1 overflow-hidden">
                 <FileIcon filename={result.relativePath.slice(-5)} />
@@ -174,7 +174,7 @@ const ResultFull = ({ data }: Props) => {
               {/*  />*/}
               {/*</div>*/}
               {/*{activeTab === 0 ? (*/}
-              <div className={`flex px-2 py-4 bg-gray-900 py-3 px-8 h-full`}>
+              <div className={`flex py-3 px-8 h-full`}>
                 <CodeFull
                   code={result.code}
                   language={result.language}

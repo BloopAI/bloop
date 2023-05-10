@@ -33,7 +33,7 @@ const ShareFileModal = ({
       setIsModalSidebarTransition={() => {}}
       containerClassName="w-[60vw]"
     >
-      <div className="bg-gray-800 border-b border-gray-700 shadow-lighter flex items-center justify-between p-3">
+      <div className="bg-bg0sub border-b border-bg-border shadow-lighter flex items-center justify-between p-3">
         <h5>File share</h5>
         <div className="flex gap-2 items-center">
           <Button variant="secondary" onlyIcon title="Share multiple files">
@@ -47,7 +47,7 @@ const ShareFileModal = ({
           </Button>
         </div>
       </div>
-      <div className="border-b border-gray-700 p-3">
+      <div className="border-b border-bg-border p-3">
         <div className="flex items-center gap-1 overflow-hidden h-5">
           <FileIcon filename={result?.relativePath.slice(-5) || 'a.js'} />
           <Breadcrumbs
@@ -59,9 +59,9 @@ const ShareFileModal = ({
       </div>
       <div className="overflow-auto py-4 px-2 flex h-full relative">
         {isHintShown && (
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-2 py-2 pl-3 pr-9 bg-gray-800 rounded-full">
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-2 py-2 pl-3 pr-9 bg-bg-sub rounded-full">
             <CursorSelection sizeClassName="w-6 h-6" />
-            <p className="caption text-gray-500">
+            <p className="caption text-label-muted">
               Select code to annotate before sharing
             </p>
             <ClearButton onClick={() => setHintShown(false)} />
