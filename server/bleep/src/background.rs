@@ -9,7 +9,7 @@ use crate::{
 use std::{future::Future, pin::Pin, sync::Arc, thread};
 
 mod sync;
-use sync::SyncHandle;
+pub(crate) use sync::SyncHandle;
 
 mod control;
 mod notifyqueue;
