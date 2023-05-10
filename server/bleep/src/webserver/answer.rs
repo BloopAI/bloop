@@ -238,6 +238,10 @@ impl Conversation {
             }
 
             Action::Path(search) => {
+                update
+                    .send(Update::Step(SearchStep::Path(search.clone())))
+                    .await?;
+
                 // First, perform a lexical search for the path
                 // TODO: This should be fuzzy
                 let mut paths = ctx
@@ -281,13 +285,6 @@ impl Conversation {
                         .collect();
 
                     paths = semantic_paths;
-                }
-
-                for u in paths
-                    .iter()
-                    .map(|p| Update::Step(SearchStep::Path(p.clone())))
-                {
-                    update.send(u).await?;
                 }
 
                 Some("§alias, path".to_owned())
