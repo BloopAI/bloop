@@ -44,8 +44,12 @@ const Chat = () => {
     setShowTooltip,
     showTooltip,
     tooltipText,
+    submittedQuery,
+    setSubmittedQuery,
+    selectedLines,
+    setSelectedLines,
   } = useContext(ChatContext);
-  const { navigateConversationResults, navigateRepoPath } =
+  const { navigateConversationResults, navigateRepoPath, navigatedItem } =
     useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
   const chatRef = useRef(null);
@@ -68,9 +72,22 @@ const Chat = () => {
       const eventSource = new EventSource(
         `${apiUrl.replace('https:', '')}/answer?q=${query}&repo_ref=${tab.key}${
           threadId ? `&thread_id=${threadId}` : ''
+        }${
+          navigatedItem?.type === 'repo'
+            ? `&file_path=${navigatedItem?.path}&is_file=false`
+            : ''
+        }${
+          navigatedItem?.type === 'full-result'
+            ? `&file_path=${navigatedItem?.path}&is_file=true`
+            : ''
+        }${
+          selectedLines
+            ? `&start_line=${selectedLines[0]}&end_line=${selectedLines[1]}`
+            : ''
         }`,
       );
       prevEventSource = eventSource;
+      setSelectedLines(null);
       let firstResultCame: boolean;
       let i = -1;
       eventSource.onerror = (err) => {
@@ -151,8 +168,29 @@ const Chat = () => {
         }
       };
     },
-    [tab, threadId],
+    [tab, threadId, navigatedItem?.path, navigatedItem?.type, selectedLines],
   );
+
+  useEffect(() => {
+    let userQuery = submittedQuery;
+    if (submittedQuery.startsWith('#explain_')) {
+      const [prefix, ending] = submittedQuery.split(':');
+      const [lineStart, lineEnd] = ending.split('-');
+      const filePath = prefix.slice(9);
+      userQuery = `Explain lines ${Number(lineStart) + 1} - ${
+        Number(lineEnd) + 1
+      } in ${filePath}`;
+    }
+    setConversation((prev) => [
+      ...prev,
+      {
+        author: ChatMessageAuthor.User,
+        text: userQuery,
+        isLoading: false,
+      },
+    ]);
+    makeSearch(userQuery);
+  }, [submittedQuery]);
 
   const stopGenerating = useCallback(() => {
     prevEventSource?.close();
@@ -180,11 +218,7 @@ const Chat = () => {
         return;
       }
       blurInput();
-      setConversation((prev) => [
-        ...prev,
-        { author: ChatMessageAuthor.User, text: inputValue, isLoading: false },
-      ]);
-      makeSearch(inputValue);
+      setSubmittedQuery(inputValue);
     },
     [inputValue, conversation],
   );
@@ -302,6 +336,8 @@ const Chat = () => {
                     ]
                   : undefined
               }
+              selectedLines={selectedLines}
+              setSelectedLines={setSelectedLines}
             />
           </form>
         </div>

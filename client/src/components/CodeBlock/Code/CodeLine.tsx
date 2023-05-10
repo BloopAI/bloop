@@ -196,6 +196,7 @@ const CodeLine = ({
       } ${
         blameLine?.start && lineNumber !== 0 ? ' border-t border-bg-border' : ''
       }`}
+      data-line-number={lineNumber}
       style={style}
       onMouseDown={(e) => {
         const index = getCharIndex(e);
