@@ -1,7 +1,6 @@
 use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
-    mem,
     path::{Component, PathBuf},
     str::FromStr,
 };
@@ -15,11 +14,7 @@ use axum::{
     },
     Extension,
 };
-use futures::{
-    future::Either,
-    stream::{self, BoxStream},
-    StreamExt, TryStreamExt,
-};
+use futures::{future::Either, stream, StreamExt, TryStreamExt};
 use reqwest::StatusCode;
 use secrecy::ExposeSecret;
 use tokio::sync::mpsc::Sender;
@@ -106,8 +101,9 @@ pub(super) async fn _handle(
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
     let q = params.q;
     let stream = async_stream::try_stream! {
-        let mut action_stream = Action::Query(q).into()?;
-        let mut exchange = Exchange::default();
+        let mut action = Action::Query(q);
+
+        conversation.exchanges.push(Exchange::default());
 
         loop {
             // The main loop. Here, we create two streams that operate simultaneously; the update
@@ -123,29 +119,25 @@ pub(super) async fn _handle(
                 .map(Either::Left);
 
             let right_stream = conversation
-                .step(&ctx, action_stream, update_tx)
+                .step(&ctx, action, update_tx)
                 .into_stream()
                 .map(Either::Right);
 
             let mut next = None;
             for await item in stream::select(left_stream, right_stream) {
                 match item {
-                    Either::Left(upd) => {
-                        exchange.apply_update(upd);
-                        yield exchange.clone()
-                    },
+                    Either::Left(exchange) => yield exchange,
                     Either::Right(n) => next = n?,
                 }
             }
 
             match next {
-                Some(a) => action_stream = a,
+                Some(a) => action = a,
                 None => break,
             }
         }
 
         // Storing the conversation here allows us to make subsequent requests.
-        conversation.exchanges.push(exchange);
         conversation.store(conversation_id).await?;
     };
 
@@ -175,7 +167,21 @@ pub(super) struct Conversation {
     llm_history: Vec<llm_gateway::api::Message>,
     exchanges: Vec<Exchange>,
     path_aliases: Vec<String>,
+    code_chunks: Vec<CodeChunk>,
     repo_ref: RepoRef,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+struct CodeChunk {
+    path: String,
+    #[serde(rename = "§ALIAS")]
+    alias: u32,
+    #[serde(rename = "snippet")]
+    snippet: String,
+    #[serde(rename = "start")]
+    start_line: u32,
+    #[serde(rename = "end")]
+    end_line: u32,
 }
 
 impl Conversation {
@@ -190,6 +196,7 @@ impl Conversation {
             ],
             exchanges: Vec::new(),
             path_aliases: Vec::new(),
+            code_chunks: Vec::new(),
             repo_ref,
         }
     }
@@ -229,21 +236,13 @@ impl Conversation {
     async fn step(
         &mut self,
         ctx: &AppContext,
-        action_stream: ActionStream,
-        update: Sender<Update>,
-    ) -> Result<Option<ActionStream>> {
-        let (action, raw_response) = action_stream.load().await?;
-
-        if !matches!(action, Action::Query(..)) {
-            self.llm_history
-                .push(llm_gateway::api::Message::assistant(&raw_response));
-            trace!("handling raw action: {raw_response}");
-        }
-
+        action: Action,
+        exchange_tx: Sender<Exchange>,
+    ) -> Result<Option<Action>> {
         let question = match action {
             Action::Query(s) => {
-                update
-                    .send(Update::Step(SearchStep::Query(s.clone())))
+                exchange_tx
+                    .send(self.update(Update::Step(SearchStep::Query(s.clone()))))
                     .await?;
 
                 ctx.track_query(EventData::input_stage("query").with_payload("q", &s));
@@ -272,23 +271,22 @@ impl Conversation {
             }
 
             Action::Prompt(_) => {
-                update
-                    .send(Update::Step(SearchStep::Prompt("awaiting prompt".into())))
+                exchange_tx
+                    .send(self.update(Update::Step(SearchStep::Prompt("awaiting prompt".into()))))
                     .await?;
 
                 return Ok(None);
             }
 
             Action::Answer => {
-                self.answer(ctx, update, self.path_aliases.as_slice())
-                    .await?;
-                let r: Result<ActionStream> = Action::Prompt(prompts::CONTINUE.to_owned()).into();
-                return Ok(Some(r?));
+                self.answer(ctx, exchange_tx).await?;
+                let action = Action::Prompt(prompts::CONTINUE.to_owned());
+                return Ok(Some(action));
             }
 
             Action::Path(search) => {
-                update
-                    .send(Update::Step(SearchStep::Path(search.clone())))
+                exchange_tx
+                    .send(self.update(Update::Step(SearchStep::Path(search.clone()))))
                     .await?;
 
                 // First, perform a lexical search for the path
@@ -338,6 +336,13 @@ impl Conversation {
                     paths = semantic_paths;
                 }
 
+                for u in paths
+                    .iter()
+                    .map(|p| Update::Step(SearchStep::Path(p.clone())))
+                {
+                    exchange_tx.send(self.update(u)).await?;
+                }
+
                 ctx.track_query(
                     EventData::input_stage("path search")
                         .with_payload("query", &search)
@@ -355,8 +360,8 @@ impl Conversation {
             Action::Code(query) => {
                 // Semantic search.
 
-                update
-                    .send(Update::Step(SearchStep::Code(query.clone())))
+                exchange_tx
+                    .send(self.update(Update::Step(SearchStep::Code(query.clone()))))
                     .await?;
 
                 let nl_query = SemanticQuery {
@@ -384,15 +389,24 @@ impl Conversation {
                     })
                     .map(|chunk| {
                         let relative_path = chunk["relative_path"].as_str().unwrap();
-                        serde_json::json!({
-                            "path": relative_path,
-                            "§ALIAS": self.path_alias(relative_path),
-                            "snippet": chunk["snippet"],
-                            "start": chunk["start_line"].as_str().unwrap().parse::<u32>().unwrap(),
-                            "end": chunk["end_line"].as_str().unwrap().parse::<u32>().unwrap(),
-                        })
+
+                        CodeChunk {
+                            path: relative_path.to_owned(),
+                            alias: self.path_alias(relative_path) as u32,
+                            snippet: chunk["snippet"].as_str().unwrap().to_owned(),
+                            start_line: chunk["start_line"]
+                                .as_str()
+                                .unwrap()
+                                .parse::<u32>()
+                                .unwrap(),
+                            end_line: chunk["end_line"].as_str().unwrap().parse::<u32>().unwrap(),
+                        }
                     })
                     .collect::<Vec<_>>();
+
+                for chunk in &chunks {
+                    self.code_chunks.push(chunk.clone());
+                }
 
                 ctx.track_query(
                     EventData::input_stage("semantic code search")
@@ -404,7 +418,7 @@ impl Conversation {
             }
 
             Action::Proc(question, path_aliases) => {
-                self.proc(ctx, update, question, path_aliases).await?
+                self.proc(ctx, exchange_tx, question, path_aliases).await?
             }
         };
 
@@ -412,23 +426,27 @@ impl Conversation {
             &(question + "\n\nAnswer only with a JSON action."),
         ));
 
-        let stream = ctx
+        let raw_response = ctx
             .llm_gateway
             .chat(&self.trimmed_history()?)
             .await?
-            .boxed();
-        let action_stream = ActionStream {
-            tokens: String::new(),
-            action: Either::Left(stream),
-        };
+            .try_collect::<String>()
+            .await?;
 
-        Ok(Some(action_stream))
+        let action = Action::deserialize_gpt(&raw_response)?;
+        if !matches!(action, Action::Query(..)) {
+            self.llm_history
+                .push(llm_gateway::api::Message::assistant(&raw_response));
+            trace!("handling raw action: {raw_response}");
+        }
+
+        Ok(Some(action))
     }
 
     async fn proc(
         &mut self,
         ctx: &AppContext,
-        update: Sender<Update>,
+        exchange_tx: Sender<Exchange>,
         question: String,
         path_aliases: Vec<usize>,
     ) -> Result<String> {
@@ -455,15 +473,16 @@ impl Conversation {
 
         let paths = path_aliases
             .into_iter()
-            .map(|i| self.path_aliases.get(i).ok_or(i))
+            .map(|i| self.path_aliases.get(i).ok_or(i).cloned())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|i| anyhow!("invalid path alias {i}"))?;
 
         for u in paths
             .iter()
-            .map(|&p| Update::Step(SearchStep::Proc(p.clone())))
+            .map(|p| Update::Step(SearchStep::Proc(p.clone())))
+            .collect::<Vec<_>>()
         {
-            update.send(u).await?;
+            exchange_tx.send(self.update(u)).await?;
         }
 
         let question = &question;
@@ -474,7 +493,7 @@ impl Conversation {
                 .app
                 .indexes
                 .file
-                .by_path(repo_ref, path)
+                .by_path(repo_ref, &path)
                 .await
                 .with_context(|| format!("failed to read path: {path}"))?
                 .content
@@ -487,7 +506,7 @@ impl Conversation {
             // this snippet by line number.
             let contents = lines.join("\n");
 
-            let prompt = prompts::file_explanation(question, path, &contents);
+            let prompt = prompts::file_explanation(question, &path, &contents);
 
             let json = ctx
                 .llm_gateway
@@ -516,7 +535,7 @@ impl Conversation {
             let normalized_deps = proc_result
                 .dependencies
                 .iter()
-                .filter_map(|d| normalize(PathBuf::from(path).join(d)))
+                .filter_map(|d| normalize(PathBuf::from(&path).join(d)))
                 .collect::<Vec<_>>();
 
             let explanations = proc_result
@@ -561,12 +580,7 @@ impl Conversation {
         Ok(serde_json::to_string(&out)?)
     }
 
-    async fn answer(
-        &self,
-        ctx: &AppContext,
-        update: Sender<Update>,
-        path_aliases: &[String],
-    ) -> Result<()> {
+    async fn answer(&mut self, ctx: &AppContext, exchange_tx: Sender<Exchange>) -> Result<()> {
         fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
             match v {
                 serde_json::Value::Array(a) => Some(a),
@@ -574,16 +588,46 @@ impl Conversation {
             }
         }
 
-        let messages = self
-            .llm_history
-            .iter()
-            .filter(|m| m.role == "user")
-            .map(|m| &m.content)
-            .collect::<Vec<_>>();
+        let context = {
+            let mut s =
+                "Below is the current context, Future actions will add to this.\n".to_owned();
 
-        let context = serde_json::to_string(&messages)?;
+            if !self.path_aliases.is_empty() {
+                s += "##### PATHS #####\npath alias, path\n";
+
+                for (alias, path) in self.path_aliases.iter().enumerate() {
+                    s += &format!("{alias}, {path}\n");
+                }
+            }
+
+            let mut has_chunk = false;
+            // Order chunks by most recent.
+            for chunk in self.code_chunks.iter().rev() {
+                if !has_chunk {
+                    has_chunk = true;
+                    s += "\n##### CODE CHUNKS #####\n\n";
+                }
+
+                let snippet = chunk
+                    .snippet
+                    .lines()
+                    .enumerate()
+                    .map(|(i, line)| format!("{}: {line}\n", i + chunk.start_line as usize))
+                    .collect::<String>();
+
+                s += &format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
+            }
+
+            s
+        };
+
         let query_history = self.query_history().join("\n");
-        let prompt = prompts::final_explanation_prompt(&context, &query_history);
+        let query = self
+            .last_exchange()
+            .query()
+            .context("exchange did not have a user query")?;
+
+        let prompt = prompts::final_explanation_prompt(&context, query, &query_history);
 
         let messages = [llm_gateway::api::Message::system(&prompt)];
 
@@ -612,10 +656,12 @@ impl Conversation {
                 .iter()
                 .map(Vec::as_slice)
                 .filter_map(SearchResult::from_json_array)
-                .map(|s| s.substitute_path_alias(path_aliases))
+                .map(|s| s.substitute_path_alias(&self.path_aliases))
                 .collect::<Vec<_>>();
 
-            update.send(Update::Result(search_results)).await?;
+            exchange_tx
+                .send(self.update(Update::Result(search_results)))
+                .await?;
         }
 
         ctx.track_query(
@@ -654,12 +700,13 @@ impl Conversation {
         let exchanges = serde_json::to_string(&self.exchanges)?;
         let llm_history = serde_json::to_string(&self.llm_history)?;
         let path_aliases = serde_json::to_string(&self.path_aliases)?;
+        let code_chunks = serde_json::to_string(&self.code_chunks)?;
         sqlx::query! {
             "INSERT INTO conversations (\
                user_id, thread_id, repo_ref, title, exchanges, llm_history, \
-               path_aliases, created_at\
+               path_aliases, code_chunks, created_at\
              ) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))",
             user_id,
             thread_id,
             repo_ref,
@@ -667,6 +714,7 @@ impl Conversation {
             exchanges,
             llm_history,
             path_aliases,
+            code_chunks,
         }
         .execute(&mut transaction)
         .await?;
@@ -682,7 +730,7 @@ impl Conversation {
         let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
 
         let row = sqlx::query! {
-            "SELECT repo_ref, llm_history, exchanges, path_aliases FROM conversations \
+            "SELECT repo_ref, llm_history, exchanges, path_aliases, code_chunks FROM conversations \
              WHERE user_id = ? AND thread_id = ?",
             user_id,
             thread_id,
@@ -699,12 +747,14 @@ impl Conversation {
         let path_aliases = serde_json::from_str(&row.path_aliases)?;
         let llm_history = serde_json::from_str(&row.llm_history)?;
         let exchanges = serde_json::from_str(&row.exchanges)?;
+        let code_chunks = serde_json::from_str(&row.code_chunks)?;
 
         Ok(Some(Self {
             repo_ref,
             llm_history,
             exchanges,
             path_aliases,
+            code_chunks,
         }))
     }
 
@@ -736,6 +786,16 @@ impl Conversation {
                 content: m.content,
             })
             .collect())
+    }
+
+    fn last_exchange(&mut self) -> &mut Exchange {
+        self.exchanges.last_mut().expect("exchange list was empty")
+    }
+
+    fn update(&mut self, update: Update) -> Exchange {
+        let exc = self.last_exchange();
+        exc.apply_update(update);
+        exc.clone()
     }
 }
 
@@ -794,66 +854,6 @@ impl Action {
         Ok(serde::Deserialize::deserialize(serde_json::Value::Object(
             obj,
         ))?)
-    }
-
-    /// The inverse of `deserialize_gpt`; serializes this action into a format described by our
-    /// prompt.
-    fn serialize_gpt(&self) -> Result<String> {
-        let mut obj = serde_json::to_value(self)?;
-        let mut fields = mem::take(
-            obj.as_object_mut()
-                .context("action was not serialized as an object")?,
-        )
-        .into_iter()
-        .collect::<Vec<_>>();
-
-        if fields.len() != 1 {
-            bail!("action serialized to multiple keys");
-        }
-
-        let (k, v) = fields.pop().unwrap();
-        let k = k.into();
-        let array = match v {
-            serde_json::Value::Null => vec![k],
-            serde_json::Value::Array(a) => [vec![k], a].concat(),
-            other => vec![k, other],
-        };
-
-        Ok(serde_json::to_string(&array)?)
-    }
-}
-
-/// An action that may not have finished loading yet.
-struct ActionStream {
-    tokens: String,
-    action: Either<BoxStream<'static, Result<String>>, Action>,
-}
-
-impl ActionStream {
-    /// Load this action, consuming the stream if required.
-    async fn load(mut self) -> Result<(Action, String)> {
-        let mut stream = match self.action {
-            Either::Left(stream) => stream,
-            Either::Right(action) => {
-                return Ok((action, self.tokens));
-            }
-        };
-
-        while let Some(token) = stream.next().await {
-            self.tokens += &token?;
-        }
-
-        let action = Action::deserialize_gpt(&self.tokens)?;
-        Ok((action, self.tokens))
-    }
-}
-
-impl From<Action> for Result<ActionStream> {
-    fn from(action: Action) -> Self {
-        Ok(ActionStream {
-            tokens: action.serialize_gpt()?,
-            action: Either::Right(action),
-        })
     }
 }
 
@@ -923,6 +923,7 @@ mod tests {
             exchanges: Vec::new(),
             path_aliases: Vec::new(),
             repo_ref: "github.com/foo/bar".parse().unwrap(),
+            code_chunks: vec![],
         };
 
         assert_eq!(
