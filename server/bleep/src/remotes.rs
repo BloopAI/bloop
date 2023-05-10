@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
 use crate::{
+    background::SyncHandle,
     remotes,
     repo::{Backend, RepoError, RepoRef, Repository, SyncStatus},
     Application,
@@ -300,12 +301,13 @@ pub(crate) enum BackendCredential {
 }
 
 impl BackendCredential {
-    pub(crate) async fn sync(self, app: Application, repo_ref: RepoRef) -> Result<()> {
-        use BackendCredential::*;
+    pub(crate) async fn sync(self, sync_handle: &SyncHandle) -> Result<()> {
+        let SyncHandle { app, reporef, .. } = sync_handle;
 
+        use BackendCredential::*;
         let existing = app
             .repo_pool
-            .update_async(&repo_ref, |_k, repo| {
+            .update_async(&reporef, |_k, repo| {
                 if repo.sync_status == SyncStatus::Syncing {
                     Err(RemoteError::SyncInProgress)
                 } else {
@@ -321,16 +323,16 @@ impl BackendCredential {
             Some(Ok(_)) => {
                 let repo = app
                     .repo_pool
-                    .read_async(&repo_ref, |_k, repo| repo.clone())
+                    .read_async(reporef, |_k, repo| repo.clone())
                     .await
                     .expect("repo exists & locked, this shouldn't happen");
                 gh.auth.pull_repo(repo).await
             }
             None => {
-                create_repository(&app, &repo_ref).await;
+                create_repository(&app, reporef).await;
                 let repo = app
                     .repo_pool
-                    .read_async(&repo_ref, |_k, repo| repo.clone())
+                    .read_async(reporef, |_k, repo| repo.clone())
                     .await
                     .expect("repo just created & locked, this shouldn't happen");
                 gh.auth.clone_repo(repo).await
@@ -342,7 +344,7 @@ impl BackendCredential {
             Err(ref err) => {
                 let repo = app
                     .repo_pool
-                    .read_async(&repo_ref, |_k, repo| repo.clone())
+                    .read_async(reporef, |_k, repo| repo.clone())
                     .await
                     .expect("repo exists & locked, this shouldn't happen");
 
@@ -359,7 +361,7 @@ impl BackendCredential {
         };
 
         app.repo_pool
-            .update_async(&repo_ref, |_k, v| v.sync_status = new_status)
+            .update_async(reporef, |_k, v| v.sync_status = new_status)
             .await
             .expect("unlocking repo failed, this shouldn't happen");
 

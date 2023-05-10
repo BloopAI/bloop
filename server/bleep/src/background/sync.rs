@@ -12,9 +12,9 @@ use std::{path::PathBuf, sync::Arc};
 
 use super::control::SyncPipes;
 
-pub(super) struct SyncHandle {
-    pub reporef: RepoRef,
-    app: Application,
+pub(crate) struct SyncHandle {
+    pub(crate) reporef: RepoRef,
+    pub(crate) app: Application,
     pipes: SyncPipes,
     status: tokio::sync::broadcast::Sender<super::Progress>,
     exited: flume::Sender<SyncStatus>,
@@ -238,7 +238,7 @@ impl SyncHandle {
             }
         };
 
-        let synced = creds.sync(self.app.clone(), repo.clone()).await;
+        let synced = creds.sync(self).await;
         if let Err(RemoteError::RemoteNotFound) = synced {
             self.app
                 .repo_pool
