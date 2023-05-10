@@ -606,7 +606,6 @@ impl Conversation {
 
         ctx.track_query(
             EventData::output_stage("answer")
-                .with_payload("question", &question)
                 .with_payload("context", &context)
                 .with_payload("response", &buffer),
         );
