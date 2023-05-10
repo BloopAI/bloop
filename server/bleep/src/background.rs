@@ -166,9 +166,9 @@ impl BoundSyncQueue {
         self,
         reporef: RepoRef,
     ) -> anyhow::Result<SyncStatus> {
-        let (handle, signal) = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone());
+        let (handle, finished) = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone());
         self.1.queue.push(handle).await;
-        Ok(signal.recv_async().await?)
+        Ok(finished.recv_async().await?)
     }
 
     pub(crate) async fn startup_scan(self) -> anyhow::Result<()> {
