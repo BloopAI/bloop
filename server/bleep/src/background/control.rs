@@ -23,7 +23,7 @@ impl SyncPipes {
         }
     }
 
-    pub(crate) fn progress(&self, p: super::Progress) {
-        _ = self.progress.send(p);
+    pub(crate) fn progress(&self, current: u8) {
+        _ = self.progress.send((self.reporef.clone(), 1, current));
     }
 }

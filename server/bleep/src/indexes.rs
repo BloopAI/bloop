@@ -20,7 +20,7 @@ pub use repo::Repo;
 use tracing::debug;
 
 use crate::{
-    background::SyncHandle,
+    background::{SyncHandle, SyncPipes},
     query::parser::Query,
     repo::{RepoError, RepoMetadata, RepoRef, Repository},
     semantic::Semantic,
@@ -73,12 +73,7 @@ impl<'a> GlobalWriteHandle<'a> {
             self.handles
                 .par_iter()
                 .map(|handle| {
-                    handle.index(
-                        &sync_handle.reporef,
-                        repo,
-                        &metadata,
-                        sync_handle.progress_callback(),
-                    )
+                    handle.index(&sync_handle.reporef, repo, &metadata, sync_handle.pipes())
                 })
                 .collect::<Result<Vec<_>, _>>()
         })?;
@@ -150,7 +145,7 @@ pub trait Indexable: Send + Sync {
         repo: &Repository,
         metadata: &RepoMetadata,
         writer: &IndexWriter,
-        progress: &(dyn Fn(u8) + Sync),
+        pipes: &SyncPipes,
     ) -> Result<()>;
 
     fn delete_by_repo(&self, writer: &IndexWriter, repo: &Repository);
@@ -203,10 +198,10 @@ impl<'a> IndexWriteHandle<'a> {
         reporef: &RepoRef,
         repo: &Repository,
         metadata: &RepoMetadata,
-        progress: Arc<dyn Fn(u8) + Send + Sync>,
+        progress: &SyncPipes,
     ) -> Result<()> {
         self.source
-            .index_repository(reporef, repo, metadata, &self.writer, progress.as_ref())
+            .index_repository(reporef, repo, metadata, &self.writer, progress)
     }
 
     pub async fn commit(&mut self) -> Result<()> {

@@ -12,6 +12,8 @@ mod sync;
 pub(crate) use sync::SyncHandle;
 
 mod control;
+pub(crate) use control::SyncPipes;
+
 mod notifyqueue;
 use notifyqueue::NotifyQueue;
 
