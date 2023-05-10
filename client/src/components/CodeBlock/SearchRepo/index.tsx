@@ -51,7 +51,7 @@ const SearchRepo = ({ repository, onClick, highlights }: Props) => {
               key={i}
               className={`${
                 hl.hl
-                  ? `text-label-base before:block before:absolute before:-inset-0.5 before:bg-secondary-500/25 relative before:rounded-l before:left-[-2px] before:rounded-r before:right-[-2px]`
+                  ? `text-label-base before:block before:absolute before:-inset-0.5 before:bg-bg-highlight/25 relative before:rounded-l before:left-[-2px] before:rounded-r before:right-[-2px]`
                   : ''
               } `}
             >

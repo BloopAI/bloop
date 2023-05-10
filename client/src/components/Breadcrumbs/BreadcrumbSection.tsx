@@ -38,7 +38,7 @@ const BreadcrumbSection = ({
       return (
         <span>
           {left}
-          <span className="bg-secondary-500/25 rounded-4 text-label-base">
+          <span className="bg-bg-highlight/25 rounded-4 text-label-base">
             {search}
           </span>
           {right}

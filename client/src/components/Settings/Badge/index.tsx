@@ -7,7 +7,7 @@ type Props = {
 const Badge = ({ children, className }: PropsWithChildren<Props>) => {
   return (
     <span
-      className={`bg-danger-600 px-1.5 rounded-4 caption text-gray-100 h-5 flex items-center ${className}`}
+      className={`bg-bg-danger px-1.5 rounded-4 caption text-label-title h-5 flex items-center ${className}`}
     >
       {children}
     </span>

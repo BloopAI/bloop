@@ -6,10 +6,7 @@ export default {
 
 export const Default = () => {
   return (
-    <div
-      className="gap-2 grid grid-cols-5 justify-items-center justify-center text-gray-100 items-center"
-      style={{ backgroundColor: '#131315', color: '#F1F1F2' }}
-    >
+    <div className="gap-2 grid grid-cols-5 justify-items-center justify-center text-label-title items-center">
       <span className="flex flex-col gap-1 items-center">
         <span>Text</span>
         <Icon type={'text'} />

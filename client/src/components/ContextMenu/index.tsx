@@ -131,17 +131,17 @@ const ContextMenu = ({
           id="dropdown"
           ref={contextMenuRef}
           className={`${visible ? '' : 'scale-0 opacity-0'}
-      transition-all duration-300 ease-in-slow
+      transition-all duration-300 ease-in-slow max-h-96 overflow-auto
        rounded-md p-1 bg-bg-shade border border-bg-border shadow-high ${
          sizesMap[size]
        } flex flex-col gap-1`}
         >
           {title ? (
             <>
-              <span className="text-gray-300 text-xs px-2.5 pt-2 block ">
+              <span className="text-label-base text-xs px-2.5 pt-2 block ">
                 {title}
               </span>
-              <div className="bg-gray-600 h-[1px] w-full" />
+              <div className="bg-bg-border-hover h-[1px] w-full" />
             </>
           ) : (
             ''

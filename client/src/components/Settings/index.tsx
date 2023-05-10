@@ -42,10 +42,10 @@ const Settings = () => {
 
   return (
     <div
-      className={`fixed top-0 bottom-0 left-0 right-0 bg-gray-900 bg-opacity-75 z-40 ${
+      className={`fixed top-0 bottom-0 left-0 right-0 z-90 ${
         isSettingsOpen
-          ? 'visible bg-opacity-75 backdrop-blur-2'
-          : 'invisible bg-opacity-0 backdrop-blur-0'
+          ? 'visible bg-bg-base/75 backdrop-blur-2'
+          : 'invisible bg-transparent backdrop-blur-0'
       }`}
       style={isSettingsOpen ? backdropFilterVisible : backdropFilterInvisible}
       onClick={() => {
@@ -54,12 +54,12 @@ const Settings = () => {
       }}
     >
       <div
-        className={`bg-gray-900 border border-gray-700 rounded-lg shadow-medium w-[85vw] h-[77vh] xl:w-[78vw] xl:h-[70vh] max-w-5.5xl flex ${
+        className={`bg-bg-sub border border-bg-border rounded-lg overflow-hidden shadow-medium w-[85vw] h-[77vh] xl:w-[78vw] xl:h-[70vh] max-w-5.5xl flex ${
           isSettingsOpen ? 'opacity-100' : 'opacity-0'
         } absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-150`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-gray-800 py-3 w-64">
+        <div className="bg-bg-base py-3 w-64">
           <ListNavigation
             setSelected={setSettingsSection}
             items={listNavigationItems}

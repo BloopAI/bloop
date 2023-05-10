@@ -52,22 +52,22 @@ const FloatingToolbar = ({ position }: Props) => {
           <>
             <div className="border-r border-bg-border flex">
               <ToolbarButton
-                color="bg-sky-500"
+                color="bg-sky"
                 isActive={activeButton === 0}
                 onClick={() => setActiveButton(0)}
               />
               <ToolbarButton
-                color="bg-pink-500"
+                color="bg-pink"
                 isActive={activeButton === 1}
                 onClick={() => setActiveButton(1)}
               />
               <ToolbarButton
-                color="bg-yellow-500"
+                color="bg-yellow"
                 isActive={activeButton === 2}
                 onClick={() => setActiveButton(2)}
               />
               <ToolbarButton
-                color="bg-violet-500"
+                color="bg-violet"
                 isActive={activeButton === 3}
                 onClick={() => setActiveButton(3)}
               />

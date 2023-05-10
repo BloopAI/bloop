@@ -11,7 +11,7 @@ export const Default = () => {
   return (
     <MemoryRouter initialEntries={['']}>
       <SearchContextProvider>
-        <div className="bg-gray-900 relative">
+        <div className="relative">
           <SearchInput />
         </div>
       </SearchContextProvider>

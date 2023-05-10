@@ -122,7 +122,9 @@ const ModalOrSidebar = ({
             key="modal"
             className={`modal-or-sidebar overflow-hidden fixed flex flex-col ${
               isSidebar ? `border-y-0` : `rounded-md shadow-float`
-            } bg-bg-shade border border-bg-border z-70 ${containerClassName}`}
+            } bg-bg-shade border border-bg-border ${
+              isSidebar ? '' : 'z-70'
+            } ${containerClassName}`}
             animate={
               isSidebar
                 ? sidebarAnimation(shouldStretch)

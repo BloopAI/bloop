@@ -38,7 +38,7 @@ const DiffCode = ({ data }: Props) => {
           <button
             className={`px-2 h-6 rounded-4 caption flex items-center justify-center outline-none focus:outline-none focus:border-bg-border ${
               !showRaw
-                ? 'text-label-title bg-bg-base border-bg-border shadow-tiny'
+                ? 'text-label-title bg-bg-base border-bg-border shadow-low'
                 : 'text-label-base border-transparent'
             } transition-all duration-150 ease-in-bounce border`}
             onClick={() => setShowRaw(false)}
@@ -48,7 +48,7 @@ const DiffCode = ({ data }: Props) => {
           <button
             className={`px-2 h-6 rounded-4 caption flex items-center justify-center outline-none focus:outline-none focus:border-bg-border ${
               showRaw
-                ? 'text-white bg-bg-base border-bg-border shadow-tiny'
+                ? 'text-label-title bg-bg-base border-bg-border shadow-low'
                 : 'text-label-base border-transparent'
             } transition-all duration-150 ease-in-bounce border`}
             onClick={() => setShowRaw(true)}

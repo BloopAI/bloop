@@ -11,7 +11,22 @@ const themesMap = {
   'default-light': 'Default Light',
   'vsc-default-dark': 'VSCode Dark',
   'vsc-default-light': 'VSCode Light',
+  abyss: 'Abyss',
+  'atom-one-dark-pro': 'Atom One Dark Pro',
+  darcula: 'Darcula',
+  dracula: 'Dracula',
+  'github-dark': 'GitHub Dark',
+  'github-light': 'GitHub Light',
+  'gruvbox-dark': 'Gruvbox Dark',
+  'gruvbox-light': 'Gruvbox Light',
+  'kimbie-dark': 'Kimbie',
+  material: 'Material',
   monokai: 'Monokai',
+  'night-owl': 'Night Owl',
+  'quiet-light': 'Quiet Light',
+  'solarized-dark': 'Solarized Dark',
+  'solarized-light': 'Solarized Light',
+  'tomorrow-night-blue': 'Tomorrow Night Blue',
 };
 
 const Preferences = () => {

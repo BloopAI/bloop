@@ -202,7 +202,7 @@ const Chat = () => {
       >
         {showTooltip && (
           <div className="absolute -top-8 z-10 right-2.5 drop-shadow-sm">
-            <div className="bg-[linear-gradient(93.53deg,#5D75FF_0%,#2A2A4A_100%)] rounded-full flex py-2 px-4 w-max body-s text-white">
+            <div className="bg-[linear-gradient(93.53deg,#5D75FF_0%,#2A2A4A_100%)] rounded-full flex py-2 px-4 w-max body-s text-label-title">
               {tooltipText}
             </div>
             <svg
@@ -248,7 +248,7 @@ const Chat = () => {
         ref={chatRef}
         className={`fixed z-50 bottom-20 rounded-xl group w-97 max-h-[30rem] flex flex-col justify-end ${
           !isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
-        } backdrop-blur-6 shadow-small bg-chat-bg-base/50 border border-chat-bg-border transition-all duration-300 ease-out-slow`}
+        } backdrop-blur-6 shadow-low bg-chat-bg-base/50 border border-chat-bg-border transition-all duration-300 ease-out-slow`}
       >
         <div className="w-full max-h-0 group-hover:max-h-96 transition-all duration-200 overflow-hidden flex-shrink-0">
           <div className="px-4 pt-4 flex flex-col">

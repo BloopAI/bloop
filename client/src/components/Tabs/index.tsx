@@ -50,7 +50,7 @@ const Tabs = ({
       className={`text-label-base flex items-center ${
         variant === 'link' ? 'gap-5' : 'rounded-4 border border-bg-border'
       } relative ${fullWidth ? 'w-full' : ''} z-10 ${
-        divider ? 'divide-x divide-gray-800' : ''
+        divider ? 'divide-x divide-bg-border' : ''
       } select-none`}
       ref={containerRef}
     >

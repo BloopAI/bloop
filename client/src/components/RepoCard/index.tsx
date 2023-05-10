@@ -26,10 +26,10 @@ type Props = {
 export const STATUS_MAP = {
   [SyncStatus.Error]: { text: 'Error', color: 'bg-red-500' },
   [SyncStatus.Removed]: { text: 'Removed', color: 'bg-red-500' },
-  [SyncStatus.Uninitialized]: { text: 'Not synced', color: 'bg-gray-700' },
-  [SyncStatus.Queued]: { text: 'Queued...', color: 'bg-gray-700' },
-  [SyncStatus.Indexing]: { text: 'Indexing...', color: 'bg-yellow-500' },
-  [SyncStatus.Syncing]: { text: 'Cloning...', color: 'bg-yellow-500' },
+  [SyncStatus.Uninitialized]: { text: 'Not synced', color: 'bg-bg-shade' },
+  [SyncStatus.Queued]: { text: 'Queued...', color: 'bg-bg-shade' },
+  [SyncStatus.Indexing]: { text: 'Indexing...', color: 'bg-yellow' },
+  [SyncStatus.Syncing]: { text: 'Cloning...', color: 'bg-yellow' },
   [SyncStatus.Done]: { text: 'Last updated ', color: 'bg-green-500' },
   [SyncStatus.RemoteRemoved]: { text: 'Remote removed ', color: 'bg-red-500' },
 };
@@ -126,7 +126,7 @@ const RepoCard = ({
             className={`w-2 h-2 ${
               STATUS_MAP[
                 typeof sync_status === 'string' ? sync_status : 'error'
-              ]?.color || 'bg-yellow-500'
+              ]?.color || 'bg-yellow'
             } rounded-full`}
           />
           <p className="select-none">

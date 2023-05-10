@@ -164,16 +164,6 @@ const ResultFull = ({ data }: Props) => {
               />
             </div>
             <div className="overflow-scroll flex-1">
-              {/*<div*/}
-              {/*  className={`border-b border-gray-700 w-full pb-0 py-3 px-8`}*/}
-              {/*>*/}
-              {/*  <Tabs*/}
-              {/*    activeTab={activeTab}*/}
-              {/*    onTabChange={setActiveTab}*/}
-              {/*    tabs={tabs}*/}
-              {/*  />*/}
-              {/*</div>*/}
-              {/*{activeTab === 0 ? (*/}
               <div className={`flex py-3 px-8 h-full`}>
                 <CodeFull
                   code={result.code}

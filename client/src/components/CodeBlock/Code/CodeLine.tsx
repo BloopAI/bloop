@@ -113,7 +113,7 @@ const CodeLine = ({
                   alt=""
                 />
               </TooltipCommit>
-              <span className="text-gray-500 caption">
+              <span className="text-label-muted caption">
                 {format(blameLine.commit.datetime)}
               </span>
             </span>

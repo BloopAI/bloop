@@ -111,7 +111,7 @@ const TooltipCode = ({
               positionMap[tailPosition.horizontal].fixBorder
             } w-[11.52px] h-[1px] bg-bg-shade ${
               tailStyles[tailPosition.vertical].fixture
-            } border-l-[1px] border-r-[1px] border-b-transparent border-l-gray-600 border-r-bg-border`}
+            } border-l-[1px] border-r-[1px] border-b-transparent border-l-bg-border-hover border-r-bg-border`}
           />
           <span className="bg-bg-shade px-3 pt-2 rounded-t">
             <Tabs

@@ -65,28 +65,6 @@ const ProfileSettings = () => {
 
   return (
     <form className="block">
-      {/*<div className="border-t border-t-gray-800 flex items-center justify-start gap-4 py-6">*/}
-      {/*  <img*/}
-      {/*    src={avatarUrl || '/empty_avatar.png'}*/}
-      {/*    alt="avatar"*/}
-      {/*    className="w-13 h-13 rounded-full "*/}
-      {/*  />*/}
-      {/*  <label className="flex items-center gap-4 flex-1 relative cursor-pointer">*/}
-      {/*    <input*/}
-      {/*      type="file"*/}
-      {/*      className="hidden"*/}
-      {/*      id="avatar-upload"*/}
-      {/*      onChange={(e) => setAvatarUrl(e.target.files?.[0]?.name || '')}*/}
-      {/*    />*/}
-      {/*    <Button variant="secondary">Choose</Button>*/}
-      {/*    /!* overlay over button to prevent click event to be fired on button instead of label *!/*/}
-      {/*    <div className="absolute top-0 left-0 bottom-0 w-24" />*/}
-      {/*    <p className="body-s text-gray-500">JPG, GIF or PNG. 1MB Max.</p>*/}
-      {/*  </label>*/}
-      {/*  <Button onlyIcon variant="tertiary-outlined" title="Remove avatar">*/}
-      {/*    <TrashCan />*/}
-      {/*  </Button>*/}
-      {/*</div>*/}
       <SettingsRow>
         <SettingsText
           title="First and last name"

@@ -33,7 +33,7 @@ const ShareFileModal = ({
       setIsModalSidebarTransition={() => {}}
       containerClassName="w-[60vw]"
     >
-      <div className="bg-bg0sub border-b border-bg-border shadow-lighter flex items-center justify-between p-3">
+      <div className="bg-bg0sub border-b border-bg-border shadow-low flex items-center justify-between p-3">
         <h5>File share</h5>
         <div className="flex gap-2 items-center">
           <Button variant="secondary" onlyIcon title="Share multiple files">

@@ -74,7 +74,7 @@ const CodeBlockSearch = ({
 
   return (
     <div className="w-full border border-bg-border rounded-4">
-      <div className="w-full flex justify-between bg-bg-shade py-1 px-3 h-11.5 border-b border-bg-border gap-2 select-none">
+      <div className="w-full flex justify-between rounded-tl-4 rounded-tr-4 bg-bg-shade py-1 px-3 h-11.5 border-b border-bg-border gap-2 select-none">
         <div className="flex items-center gap-2 max-w-[calc(100%-120px)] w-full">
           <FileIcon filename={filePath} />
           <BreadcrumbsPath
@@ -86,11 +86,6 @@ const CodeBlockSearch = ({
           />
         </div>
         <div className="flex gap-2 items-center flex-shrink-0">
-          {/*<div className="flex items-center gap-2">*/}
-          {/*  <Branch />*/}
-          {/*  <span className="body-s">{branch}</span>*/}
-          {/*</div>*/}
-          {/*<span className="text-gray-700 h-3 border-l border-l-gray-700"></span>*/}
           {!hideMatchCounter ? (
             <span className="body-s text-label-title">
               {totalMatches} match{totalMatches > 1 ? 'es' : ''}

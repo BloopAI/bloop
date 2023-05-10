@@ -163,13 +163,6 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
               onResultClosed={onResultClosed}
             />
           )}
-          {/*<div className={`border-b border-gray-700 w-full pb-0 p-3`}>*/}
-          {/*  <Tabs*/}
-          {/*    activeTab={activeTab}*/}
-          {/*    onTabChange={setActiveTab}*/}
-          {/*    tabs={tabs}*/}
-          {/*  />*/}
-          {/*</div>*/}
           <div
             className={`flex px-2 py-4 bg-bg-sub h-[calc(100vh-15rem)] overflow-y-auto p-3 pr-12`}
           >

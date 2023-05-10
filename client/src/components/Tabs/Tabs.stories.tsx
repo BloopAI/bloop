@@ -66,7 +66,7 @@ export const LinkLarge = () => {
 export const LinkFullWidth = () => {
   const [activeTab, setActiveTab] = useState(0);
   return (
-    <div className="bg-gray-900 max-w-md2 w-full">
+    <div className="max-w-md2 w-full">
       <Tabs
         tabs={[
           { title: 'Tab1' },
@@ -144,7 +144,7 @@ export const ButtonLarge = () => {
 export const ButtonFullWidth = () => {
   const [activeTab, setActiveTab] = useState(0);
   return (
-    <div className="bg-gray-900 max-w-md2 w-full">
+    <div className="max-w-md2 w-full">
       <Tabs
         tabs={[
           { title: 'Tab1' },

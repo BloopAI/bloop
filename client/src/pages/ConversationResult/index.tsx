@@ -104,7 +104,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
         !isScrolled && (
           <div className="fixed z-30 left-1/2 bottom-24 transform -translate-x-1/2">
             <div
-              className={`rounded-full bg-bg-main text-white shadow-small caption 
+              className={`rounded-full bg-bg-main text-label-title shadow-low caption 
                 flex gap-1 items-center justify-center pl-4 pr-3 py-2 select-none`}
             >
               More results <ChevronDown />

@@ -53,7 +53,7 @@ const Dropdown = ({
           size={btnSize}
           id="dropdownDefault"
           data-dropdown-toggle="dropdown"
-          className={`${visible ? 'text-gray-50' : ''} ${
+          className={`${visible ? 'text-label-title' : ''} ${
             dropdownBtnClassName || ''
           }`}
           onClick={(e) => {
