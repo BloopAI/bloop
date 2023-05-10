@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getHoverables } from '../../../services/api';
 import { FileSearchResponse } from '../../../types/api';
 import { FullResult } from '../../../types/results';
@@ -37,11 +38,16 @@ const CodeAnnotation = ({ repoName, repoRef, citations }: Props) => {
     FullResultModeEnum.MODAL,
   );
   const [openResult, setOpenResult] = useState<FullResult | null>(null);
+  const [scrollToLine, setScrollToLine] = useState<string | undefined>(
+    undefined,
+  );
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
+  const navigateBrowser = useNavigate();
 
   const onResultClick = useCallback(
-    (path: string) => {
+    (path: string, lineNumber?: number[]) => {
+      setScrollToLine(lineNumber ? lineNumber.join('_') : undefined);
       fileModalSearchQuery(`open:true repo:${repoName} path:${path}`);
     },
     [repoName],
@@ -64,6 +70,14 @@ const CodeAnnotation = ({ repoName, repoRef, citations }: Props) => {
   useEffect(() => {
     if (fileResultData?.data?.length) {
       setOpenResult(mapFileResult(fileResultData.data[0]));
+      navigateBrowser({
+        search: scrollToLine
+          ? '?' +
+            new URLSearchParams({
+              scroll_line_index: scrollToLine.toString(),
+            }).toString()
+          : '',
+      });
       getHoverables(
         fileResultData.data[0].data.relative_path,
         fileResultData.data[0].data.repo_ref,

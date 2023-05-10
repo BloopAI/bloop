@@ -12,6 +12,7 @@ type Props = {
   endLine: number;
   i: number;
   isLast: boolean;
+  onResultClick: (path: string, lineNum?: number[]) => void;
 };
 
 const CodePart = ({
@@ -21,6 +22,7 @@ const CodePart = ({
   endLine,
   i,
   isLast,
+  onResultClick,
 }: Props) => {
   const [filePart, setFilePart] = useState<FileResponse | null>(null);
   const [isLoading, setLoading] = useState(true);
@@ -52,7 +54,15 @@ const CodePart = ({
           <p className="body-s text-label-base">Loading code line ranges...</p>
         </div>
       )}
-      <div className={`${isLoading ? 'opacity-0' : 'opacity-100'}`}>
+      <div
+        className={`${isLoading ? 'opacity-0' : 'opacity-100'} cursor-pointer`}
+        onClick={(e) => {
+          if (filePart) {
+            e.stopPropagation();
+            onResultClick(filePath, [Math.max(startLine - 1, 0), endLine - 1]);
+          }
+        }}
+      >
         {filePart && (
           <Code
             lineStart={startLine - 1}
