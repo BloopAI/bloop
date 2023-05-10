@@ -15,11 +15,7 @@ use axum::{
     },
     Extension,
 };
-use futures::{
-    future::Either,
-    stream::{self, BoxStream},
-    StreamExt, TryStreamExt,
-};
+use futures::{future::Either, stream, StreamExt, TryStreamExt};
 use reqwest::StatusCode;
 use secrecy::ExposeSecret;
 use tokio::sync::mpsc::Sender;
@@ -106,8 +102,9 @@ pub(super) async fn _handle(
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
     let q = params.q;
     let stream = async_stream::try_stream! {
-        let mut action_stream = Action::Query(q).into()?;
-        let mut exchange = Exchange::default();
+        let mut action = Action::Query(q);
+
+        conversation.exchanges.push(Exchange::default());
 
         loop {
             // The main loop. Here, we create two streams that operate simultaneously; the update
@@ -123,29 +120,25 @@ pub(super) async fn _handle(
                 .map(Either::Left);
 
             let right_stream = conversation
-                .step(&ctx, action_stream, update_tx)
+                .step(&ctx, action, update_tx)
                 .into_stream()
                 .map(Either::Right);
 
             let mut next = None;
             for await item in stream::select(left_stream, right_stream) {
                 match item {
-                    Either::Left(upd) => {
-                        exchange.apply_update(upd);
-                        yield exchange.clone()
-                    },
+                    Either::Left(exchange) => yield exchange,
                     Either::Right(n) => next = n?,
                 }
             }
 
             match next {
-                Some(a) => action_stream = a,
+                Some(a) => action = a,
                 None => break,
             }
         }
 
         // Storing the conversation here allows us to make subsequent requests.
-        conversation.exchanges.push(exchange);
         conversation.store(conversation_id).await?;
     };
 
@@ -244,21 +237,13 @@ impl Conversation {
     async fn step(
         &mut self,
         ctx: &AppContext,
-        action_stream: ActionStream,
-        update: Sender<Update>,
-    ) -> Result<Option<ActionStream>> {
-        let (action, raw_response) = action_stream.load().await?;
-
-        if !matches!(action, Action::Query(..)) {
-            self.llm_history
-                .push(llm_gateway::api::Message::assistant(&raw_response));
-            trace!("handling raw action: {raw_response}");
-        }
-
+        action: Action,
+        exchange_tx: Sender<Exchange>,
+    ) -> Result<Option<Action>> {
         let question = match action {
             Action::Query(s) => {
-                update
-                    .send(Update::Step(SearchStep::Query(s.clone())))
+                exchange_tx
+                    .send(self.update(Update::Step(SearchStep::Query(s.clone()))))
                     .await?;
 
                 ctx.track_query(EventData::input_stage("query").with_payload("q", &s));
@@ -287,23 +272,22 @@ impl Conversation {
             }
 
             Action::Prompt(_) => {
-                update
-                    .send(Update::Step(SearchStep::Prompt("awaiting prompt".into())))
+                exchange_tx
+                    .send(self.update(Update::Step(SearchStep::Prompt("awaiting prompt".into()))))
                     .await?;
 
                 return Ok(None);
             }
 
             Action::Answer => {
-                self.answer(ctx, update, self.path_aliases.as_slice())
-                    .await?;
-                let r: Result<ActionStream> = Action::Prompt(prompts::CONTINUE.to_owned()).into();
-                return Ok(Some(r?));
+                self.answer(ctx, exchange_tx).await?;
+                let action = Action::Prompt(prompts::CONTINUE.to_owned());
+                return Ok(Some(action));
             }
 
             Action::Path(search) => {
-                update
-                    .send(Update::Step(SearchStep::Path(search.clone())))
+                exchange_tx
+                    .send(self.update(Update::Step(SearchStep::Path(search.clone()))))
                     .await?;
 
                 // First, perform a lexical search for the path
@@ -353,6 +337,13 @@ impl Conversation {
                     paths = semantic_paths;
                 }
 
+                for u in paths
+                    .iter()
+                    .map(|p| Update::Step(SearchStep::Path(p.clone())))
+                {
+                    exchange_tx.send(self.update(u)).await?;
+                }
+
                 ctx.track_query(
                     EventData::input_stage("path search")
                         .with_payload("query", &search)
@@ -370,8 +361,8 @@ impl Conversation {
             Action::Code(query) => {
                 // Semantic search.
 
-                update
-                    .send(Update::Step(SearchStep::Code(query.clone())))
+                exchange_tx
+                    .send(self.update(Update::Step(SearchStep::Code(query.clone()))))
                     .await?;
 
                 let nl_query = SemanticQuery {
@@ -428,7 +419,7 @@ impl Conversation {
             }
 
             Action::Proc(question, path_aliases) => {
-                self.proc(ctx, update, question, path_aliases).await?
+                self.proc(ctx, exchange_tx, question, path_aliases).await?
             }
         };
 
@@ -436,23 +427,27 @@ impl Conversation {
             &(question + "\n\nAnswer only with a JSON action."),
         ));
 
-        let stream = ctx
+        let raw_response = ctx
             .llm_gateway
             .chat(&self.trimmed_history()?)
             .await?
-            .boxed();
-        let action_stream = ActionStream {
-            tokens: String::new(),
-            action: Either::Left(stream),
-        };
+            .try_collect::<String>()
+            .await?;
 
-        Ok(Some(action_stream))
+        let action = Action::deserialize_gpt(&raw_response)?;
+        if !matches!(action, Action::Query(..)) {
+            self.llm_history
+                .push(llm_gateway::api::Message::assistant(&raw_response));
+            trace!("handling raw action: {raw_response}");
+        }
+
+        Ok(Some(action))
     }
 
     async fn proc(
         &mut self,
         ctx: &AppContext,
-        update: Sender<Update>,
+        exchange_tx: Sender<Exchange>,
         question: String,
         path_aliases: Vec<usize>,
     ) -> Result<String> {
@@ -479,15 +474,16 @@ impl Conversation {
 
         let paths = path_aliases
             .into_iter()
-            .map(|i| self.path_aliases.get(i).ok_or(i))
+            .map(|i| self.path_aliases.get(i).ok_or(i).cloned())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|i| anyhow!("invalid path alias {i}"))?;
 
         for u in paths
             .iter()
-            .map(|&p| Update::Step(SearchStep::Proc(p.clone())))
+            .map(|p| Update::Step(SearchStep::Proc(p.clone())))
+            .collect::<Vec<_>>()
         {
-            update.send(u).await?;
+            exchange_tx.send(self.update(u)).await?;
         }
 
         let question = &question;
@@ -498,7 +494,7 @@ impl Conversation {
                 .app
                 .indexes
                 .file
-                .by_path(repo_ref, path)
+                .by_path(repo_ref, &path)
                 .await
                 .with_context(|| format!("failed to read path: {path}"))?
                 .content
@@ -511,7 +507,7 @@ impl Conversation {
             // this snippet by line number.
             let contents = lines.join("\n");
 
-            let prompt = prompts::file_explanation(question, path, &contents);
+            let prompt = prompts::file_explanation(question, &path, &contents);
 
             let json = ctx
                 .llm_gateway
@@ -540,7 +536,7 @@ impl Conversation {
             let normalized_deps = proc_result
                 .dependencies
                 .iter()
-                .filter_map(|d| normalize(PathBuf::from(path).join(d)))
+                .filter_map(|d| normalize(PathBuf::from(&path).join(d)))
                 .collect::<Vec<_>>();
 
             let explanations = proc_result
@@ -585,12 +581,7 @@ impl Conversation {
         Ok(serde_json::to_string(&out)?)
     }
 
-    async fn answer(
-        &self,
-        ctx: &AppContext,
-        update: Sender<Update>,
-        path_aliases: &[String],
-    ) -> Result<()> {
+    async fn answer(&mut self, ctx: &AppContext, exchange_tx: Sender<Exchange>) -> Result<()> {
         fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
             match v {
                 serde_json::Value::Array(a) => Some(a),
@@ -631,14 +622,12 @@ impl Conversation {
             s
         };
 
+        let query_history = self.query_history().join("\n");
         let query = self
-            .exchanges
-            .last()
-            .context("the exchange list was empty")?
+            .last_exchange()
             .query()
             .context("exchange did not have a user query")?;
 
-        let query_history = self.query_history().join("\n");
         let prompt = prompts::final_explanation_prompt(&context, query, &query_history);
 
         let messages = [llm_gateway::api::Message::system(&prompt)];
@@ -668,10 +657,12 @@ impl Conversation {
                 .iter()
                 .map(Vec::as_slice)
                 .filter_map(SearchResult::from_json_array)
-                .map(|s| s.substitute_path_alias(path_aliases))
+                .map(|s| s.substitute_path_alias(&self.path_aliases))
                 .collect::<Vec<_>>();
 
-            update.send(Update::Result(search_results)).await?;
+            exchange_tx
+                .send(self.update(Update::Result(search_results)))
+                .await?;
         }
 
         ctx.track_query(
@@ -797,6 +788,16 @@ impl Conversation {
             })
             .collect())
     }
+
+    fn last_exchange(&mut self) -> &mut Exchange {
+        self.exchanges.last_mut().expect("exchange list was empty")
+    }
+
+    fn update(&mut self, update: Update) -> Exchange {
+        let exc = self.last_exchange();
+        exc.apply_update(update);
+        exc.clone()
+    }
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -880,40 +881,6 @@ impl Action {
         };
 
         Ok(serde_json::to_string(&array)?)
-    }
-}
-
-/// An action that may not have finished loading yet.
-struct ActionStream {
-    tokens: String,
-    action: Either<BoxStream<'static, Result<String>>, Action>,
-}
-
-impl ActionStream {
-    /// Load this action, consuming the stream if required.
-    async fn load(mut self) -> Result<(Action, String)> {
-        let mut stream = match self.action {
-            Either::Left(stream) => stream,
-            Either::Right(action) => {
-                return Ok((action, self.tokens));
-            }
-        };
-
-        while let Some(token) = stream.next().await {
-            self.tokens += &token?;
-        }
-
-        let action = Action::deserialize_gpt(&self.tokens)?;
-        Ok((action, self.tokens))
-    }
-}
-
-impl From<Action> for Result<ActionStream> {
-    fn from(action: Action) -> Self {
-        Ok(ActionStream {
-            tokens: action.serialize_gpt()?,
-            action: Either::Right(action),
-        })
     }
 }
 
