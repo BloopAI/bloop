@@ -84,6 +84,7 @@ impl BackgroundExecutor {
             .unwrap();
     }
 
+    #[allow(unused)]
     pub async fn wait_for<T: Send + Sync + 'static>(
         &self,
         job: impl Future<Output = T> + Send + Sync + 'static,
@@ -150,7 +151,7 @@ impl SyncQueue {
 impl BoundSyncQueue {
     /// Enqueue repos for syncing which aren't already being synced or
     /// in the queue.
-    pub(crate) async fn sync_and_index(self, repositories: Vec<RepoRef>) -> anyhow::Result<()> {
+    pub(crate) async fn sync_and_index(self, repositories: Vec<RepoRef>) {
         for reporef in repositories {
             if self.1.queue.contains(&reporef).await || self.1.active.contains(&reporef) {
                 continue;
@@ -160,8 +161,6 @@ impl BoundSyncQueue {
             let (handle, _) = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone());
             self.1.queue.push(handle).await;
         }
-
-        Ok(())
     }
 
     /// Pull or clone an existing, or new repo, respectively.
@@ -180,6 +179,8 @@ impl BoundSyncQueue {
         let mut repos = vec![];
         repo_pool.scan_async(|k, _| repos.push(k.clone())).await;
 
-        self.sync_and_index(repos).await
+        self.sync_and_index(repos).await;
+
+        Ok(())
     }
 }

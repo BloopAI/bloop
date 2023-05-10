@@ -349,7 +349,7 @@ impl BackendCredential {
                     .expect("repo exists & locked, this shouldn't happen");
 
                 // try cloning again
-                tokio::fs::remove_dir_all(&repo.disk_path).await;
+                _ = tokio::fs::remove_dir_all(&repo.disk_path).await;
 
                 match gh.auth.clone_repo(repo).await {
                     Ok(_) => SyncStatus::Queued,

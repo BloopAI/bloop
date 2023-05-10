@@ -71,6 +71,8 @@ impl Drop for SyncHandle {
             })
             .expect("the repo has been deleted from the db?");
 
+        _ = self.app.config.source.save_pool(self.app.repo_pool.clone());
+
         info!(?status, %self.reporef, "normalized status after sync");
         self.exited.send(status).expect("pipe closed prematurely");
     }
@@ -190,10 +192,8 @@ impl SyncHandle {
 
         if indexed.is_ok() {
             writers.commit().await.map_err(SyncError::Tantivy)?;
-            config
-                .source
-                .save_pool(repo_pool.clone())
-                .map_err(SyncError::State)?;
+        } else {
+            writers.rollback().map_err(SyncError::Tantivy)?;
         }
 
         indexed.map_err(SyncError::Indexing).map(Some)

@@ -40,6 +40,7 @@ impl NotifyQueue {
         q.pop_front().expect("the semaphore should guard this")
     }
 
+    #[allow(unused)]
     pub(super) async fn get_list(&self) -> Vec<Arc<SyncHandle>> {
         self.queue.read().await.iter().cloned().collect()
     }
@@ -52,6 +53,7 @@ impl NotifyQueue {
             .any(|h| &h.reporef == reporef)
     }
 
+    #[allow(unused)]
     pub(super) async fn remove(&self, reporef: RepoRef) {
         let mut q = self.queue.write().await;
         self.available.acquire().await.expect("fatal").forget();
