@@ -1,7 +1,6 @@
 use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
-    mem,
     path::{Component, PathBuf},
     str::FromStr,
 };
@@ -856,32 +855,6 @@ impl Action {
             obj,
         ))?)
     }
-
-    /// The inverse of `deserialize_gpt`; serializes this action into a format described by our
-    /// prompt.
-    fn serialize_gpt(&self) -> Result<String> {
-        let mut obj = serde_json::to_value(self)?;
-        let mut fields = mem::take(
-            obj.as_object_mut()
-                .context("action was not serialized as an object")?,
-        )
-        .into_iter()
-        .collect::<Vec<_>>();
-
-        if fields.len() != 1 {
-            bail!("action serialized to multiple keys");
-        }
-
-        let (k, v) = fields.pop().unwrap();
-        let k = k.into();
-        let array = match v {
-            serde_json::Value::Null => vec![k],
-            serde_json::Value::Array(a) => [vec![k], a].concat(),
-            other => vec![k, other],
-        };
-
-        Ok(serde_json::to_string(&array)?)
-    }
 }
 
 #[derive(Clone)]
@@ -950,6 +923,7 @@ mod tests {
             exchanges: Vec::new(),
             path_aliases: Vec::new(),
             repo_ref: "github.com/foo/bar".parse().unwrap(),
+            code_chunks: vec![],
         };
 
         assert_eq!(
