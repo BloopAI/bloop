@@ -1,10 +1,6 @@
 use std::sync::Arc;
-use std::time::Duration;
 
-use crate::{
-    semantic::chunk::OverlapStrategy,
-    state::{PersistedState, StateSource},
-};
+use crate::state::{PersistedState, StateSource};
 
 use rudderanalytics::{
     client::RudderAnalytics,
@@ -14,29 +10,47 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tracing::{info, warn};
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct QueryEvent {
-    pub session_id: String,
     pub query_id: uuid::Uuid,
-    pub overlap_strategy: OverlapStrategy,
-    pub stages: Vec<Stage>,
+    pub data: EventData,
 }
 
-/// Represents a single stage of the Answer API pipeline
-#[derive(Debug, serde::Serialize, Clone)]
-pub struct Stage {
-    /// The name of this stage, e.g.: "filtered semantic results"
-    pub name: &'static str,
+#[derive(Debug, Clone, Serialize)]
+pub struct EventData {
+    kind: EventKind,
+    name: String,
+    payload: Vec<(String, Value)>,
+}
 
-    /// The type of the data being serialized
-    #[serde(rename = "type")]
-    pub _type: &'static str,
+#[derive(Debug, Clone, Serialize)]
+pub enum EventKind {
+    Input,
+    Output,
+}
 
-    /// Stage payload
-    pub data: Value,
+impl EventData {
+    pub fn input_stage(name: &str) -> Self {
+        Self {
+            kind: EventKind::Input,
+            name: name.to_string(),
+            payload: Vec::new(),
+        }
+    }
 
-    /// Time taken for this stage in milliseconds
-    pub time_elapsed: Option<u128>,
+    pub fn output_stage(name: &str) -> Self {
+        Self {
+            kind: EventKind::Output,
+            name: name.to_string(),
+            payload: Vec::new(),
+        }
+    }
+
+    pub fn with_payload<T: Serialize>(mut self, name: &str, payload: T) -> Self {
+        self.payload
+            .push((name.to_string(), serde_json::to_value(payload).unwrap()));
+        self
+    }
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -123,9 +137,7 @@ impl RudderHub {
                         event: "openai query".to_owned(),
                         properties: Some(json!({
                             "query_id": ev.query_id,
-                            "session_id": ev.session_id,
-                            "overlap_strategy": ev.overlap_strategy,
-                            "stages": ev.stages,
+                            "data": ev.data,
                             "package_metadata": options.package_metadata,
                         })),
                         ..Default::default()
@@ -137,31 +149,6 @@ impl RudderHub {
                 }
             }
         }
-    }
-}
-
-impl Stage {
-    pub fn new<T: Serialize>(name: &'static str, data: T) -> Self {
-        let data = serde_json::to_value(data).unwrap();
-        let _type = match data {
-            Value::Null => "null",
-            Value::Bool(_) => "bool",
-            Value::Number(_) => "number",
-            Value::String(_) => "string",
-            Value::Array(_) => "array",
-            Value::Object(_) => "object",
-        };
-        Self {
-            name,
-            _type,
-            data,
-            time_elapsed: None,
-        }
-    }
-
-    pub fn with_time(mut self, time_elapsed: Duration) -> Self {
-        self.time_elapsed = Some(time_elapsed.as_millis());
-        self
     }
 }
 
