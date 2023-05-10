@@ -307,7 +307,7 @@ impl BackendCredential {
         use BackendCredential::*;
         let existing = app
             .repo_pool
-            .update_async(&reporef, |_k, repo| {
+            .update_async(reporef, |_k, repo| {
                 if repo.sync_status == SyncStatus::Syncing {
                     Err(RemoteError::SyncInProgress)
                 } else {
@@ -329,7 +329,7 @@ impl BackendCredential {
                 gh.auth.pull_repo(repo).await
             }
             None => {
-                create_repository(&app, reporef).await;
+                create_repository(app, reporef).await;
                 let repo = app
                     .repo_pool
                     .read_async(reporef, |_k, repo| repo.clone())
