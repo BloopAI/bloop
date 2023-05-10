@@ -36,6 +36,7 @@ use super::{
     DocumentRead, Indexable, Indexer,
 };
 use crate::{
+    background::SyncPipes,
     intelligence::TreeSitterFile,
     repo::{iterator::*, FileCache, RepoMetadata, RepoRef, RepoRemote, Repository},
     semantic::Semantic,
@@ -170,7 +171,7 @@ impl Indexable for File {
         repo: &Repository,
         repo_metadata: &RepoMetadata,
         writer: &IndexWriter,
-        progress: &(dyn Fn(u8) + Sync),
+        pipes: &SyncPipes,
     ) -> Result<()> {
         let file_cache = repo.open_file_cache(&self.config.index_dir)?;
         let repo_name = reporef.indexed_name();
@@ -180,7 +181,7 @@ impl Indexable for File {
             let file_cache = file_cache.clone();
             move |file: RepoFile| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
-                progress(((completed as f32 / count as f32) * 100f32) as u8);
+                pipes.progress(((completed as f32 / count as f32) * 100f32) as u8);
 
                 let entry_disk_path = file.path.clone();
                 let workload = Workload {
@@ -248,7 +249,7 @@ impl Indexable for File {
             }
         }
 
-        progress(100);
+        pipes.progress(100);
         repo.save_file_cache(&self.config.index_dir, file_cache)?;
         Ok(())
     }

@@ -275,12 +275,7 @@ impl SyncHandle {
         Ok(())
     }
 
-    pub(crate) fn progress_callback(&self) -> Arc<dyn Fn(u8) + Send + Sync> {
-        let reporef = self.reporef.clone();
-        let status = self.pipes.clone();
-
-        Arc::new(move |p: u8| {
-            status.progress((reporef.clone(), 1, p));
-        })
+    pub(crate) fn pipes(&self) -> &SyncPipes {
+        &self.pipes
     }
 }
