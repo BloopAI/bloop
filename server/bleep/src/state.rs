@@ -8,7 +8,6 @@ use rand::Rng;
 use relative_path::RelativePath;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
-    collections::HashSet,
     ops::Deref,
     path::{Path, PathBuf},
     sync::Arc,
@@ -175,7 +174,7 @@ impl StateSource {
                 // Load RepositoryPool from path
                 let state: RepositoryPool = Arc::new(read_file_or_default(path)?);
 
-                let current_repos = gather_repo_roots(root, None).collect::<HashSet<_>>();
+                let current_repos = gather_repo_roots(root, None);
                 let root = canonicalize(root)?;
 
                 // mark repositories from the index which are no longer present

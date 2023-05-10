@@ -143,8 +143,10 @@ async fn git_pull(auth: GitCreds, repo: &Repository) -> Result<()> {
 pub(crate) fn gather_repo_roots(
     path: impl AsRef<Path>,
     exclude: Option<PathBuf>,
-) -> impl Iterator<Item = RepoRef> {
+) -> std::collections::HashSet<RepoRef> {
     const RECOGNIZED_VCS_DIRS: &[&str] = &[".git"];
+
+    let repos = Arc::new(scc::HashSet::new());
 
     WalkBuilder::new(path)
         .ignore(true)
@@ -162,24 +164,44 @@ pub(crate) fn gather_repo_roots(
                 })
                 .unwrap_or(true)
         })
-        .build()
-        .filter_map(|entry| {
-            entry.ok().and_then(|de| match de.file_type() {
-                Some(ft)
-                    if ft.is_dir()
-                        && RECOGNIZED_VCS_DIRS
-                            .contains(&de.file_name().to_string_lossy().as_ref()) =>
+        .build_parallel()
+        .run(|| {
+            let repos = repos.clone();
+            Box::new(move |entry| {
+                use ignore::WalkState::*;
+
+                let Ok(de) = entry else {
+		    return Continue;
+		};
+
+                let Some(ft) = de.file_type() else {
+		    return Continue;
+		};
+
+                if ft.is_dir()
+                    && RECOGNIZED_VCS_DIRS.contains(&de.file_name().to_string_lossy().as_ref())
                 {
-                    Some(RepoRef::from(
+                    _ = repos.insert(RepoRef::from(
                         &crate::canonicalize(
                             de.path().parent().expect("/ shouldn't be a git repo"),
                         )
                         .expect("repo root is both a dir and exists"),
-                    ))
+                    ));
+
+                    // we've already taken this repo, do not search subdirectories
+                    return Skip;
                 }
-                _ => None,
+
+                return Continue;
             })
-        })
+        });
+
+    let mut output = std::collections::HashSet::default();
+    repos.scan(|entry| {
+        output.insert(entry.clone());
+    });
+
+    output
 }
 
 struct BackendEntry {
