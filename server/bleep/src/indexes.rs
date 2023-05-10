@@ -20,6 +20,7 @@ pub use repo::Repo;
 use tracing::debug;
 
 use crate::{
+    background::SyncHandle,
     query::parser::Query,
     repo::{RepoError, RepoMetadata, RepoRef, Repository},
     semantic::Semantic,
@@ -43,7 +44,7 @@ impl<'a> Deref for GlobalWriteHandle<'a> {
 }
 
 impl<'a> GlobalWriteHandle<'a> {
-    pub fn rollback(self) -> Result<()> {
+    pub(crate) fn rollback(self) -> Result<()> {
         for mut handle in self.handles {
             handle.rollback()?
         }
@@ -51,7 +52,7 @@ impl<'a> GlobalWriteHandle<'a> {
         Ok(())
     }
 
-    pub async fn commit(self) -> Result<()> {
+    pub(crate) async fn commit(self) -> Result<()> {
         for mut handle in self.handles {
             handle.commit().await?
         }
@@ -59,19 +60,26 @@ impl<'a> GlobalWriteHandle<'a> {
         Ok(())
     }
 
-    pub async fn index(
+    pub(crate) async fn index(
         &self,
-        reporef: &RepoRef,
+        sync_handle: &SyncHandle,
         repo: &Repository,
-        progress: Arc<dyn Fn(u8) + Send + Sync>,
     ) -> Result<Arc<RepoMetadata>, RepoError> {
         use rayon::prelude::*;
+
         let metadata = repo.get_repo_metadata().await?;
 
         tokio::task::block_in_place(|| {
             self.handles
                 .par_iter()
-                .map(|handle| handle.index(reporef, repo, &metadata, progress.clone()))
+                .map(|handle| {
+                    handle.index(
+                        &sync_handle.reporef,
+                        repo,
+                        &metadata,
+                        sync_handle.progress_callback(),
+                    )
+                })
                 .collect::<Result<Vec<_>, _>>()
         })?;
 

@@ -15,8 +15,7 @@ use super::control::SyncPipes;
 pub(crate) struct SyncHandle {
     pub(crate) reporef: RepoRef,
     pub(crate) app: Application,
-    pipes: SyncPipes,
-    status: tokio::sync::broadcast::Sender<super::Progress>,
+    pipes: Arc<SyncPipes>,
     exited: flume::Sender<SyncStatus>,
 }
 
@@ -81,17 +80,16 @@ impl SyncHandle {
     pub(super) fn new(
         app: Application,
         reporef: RepoRef,
-        status: tokio::sync::broadcast::Sender<super::Progress>,
+        status: super::ProgressStream,
     ) -> (Arc<Self>, flume::Receiver<SyncStatus>) {
         let (exited, exit_signal) = flume::bounded(1);
-        let pipes = SyncPipes::default();
+        let pipes = SyncPipes::new(reporef.clone(), status).into();
 
         (
             Self {
                 app,
                 pipes,
                 reporef,
-                status,
                 exited,
             }
             .into(),
@@ -186,19 +184,7 @@ impl SyncHandle {
                     .await
                     .unwrap();
 
-                {
-                    let reporef = self.reporef.clone();
-                    let status = self.status.clone();
-                    writers
-                        .index(
-                            &self.reporef,
-                            &repo,
-                            Arc::new(move |p: u8| {
-                                status.send((reporef.clone(), 1, p));
-                            }) as Arc<dyn Fn(u8) + Send + Sync>,
-                        )
-                        .await
-                }
+                writers.index(self, &repo).await
             }
         };
 
@@ -287,5 +273,14 @@ impl SyncHandle {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn progress_callback(&self) -> Arc<dyn Fn(u8) + Send + Sync> {
+        let reporef = self.reporef.clone();
+        let status = self.pipes.clone();
+
+        Arc::new(move |p: u8| {
+            status.progress((reporef.clone(), 1, p));
+        })
     }
 }
