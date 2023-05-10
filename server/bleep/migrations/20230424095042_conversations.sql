@@ -9,5 +9,6 @@ CREATE TABLE conversations (
     -- JSON serialized fields
     exchanges TEXT NOT NULL,
     llm_history TEXT NOT NULL,
-    path_aliases TEXT NOT NULL
+    path_aliases TEXT NOT NULL,
+    code_chunks TEXT NOT NULL
 );
