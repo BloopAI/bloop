@@ -8,7 +8,7 @@ type Props = {
   repoName: string;
   repoRef: string;
   filePath: string;
-  onResultClick: (path: string) => void;
+  onResultClick: (path: string, lineNum?: number[]) => void;
   cites: {
     start_line: number;
     end_line: number;
@@ -53,6 +53,7 @@ const AnnotatedFile = ({
                 startLine={c.start_line}
                 endLine={c.end_line}
                 isLast={i === cites.length - 1}
+                onResultClick={onResultClick}
               />
             ))}
           </div>
