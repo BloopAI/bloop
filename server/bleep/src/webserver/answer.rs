@@ -216,6 +216,7 @@ impl Conversation {
             .iter()
             .flat_map(|e| match (e.query(), e.conclusion()) {
                 (Some(q), Some(c)) => vec![("user", q), ("assistant", c)],
+                (Some(q), None) => vec![("user", q)],
                 _ => vec![],
             })
             .map(|(author, message)| format!("{author}: {message}"))
@@ -334,13 +335,6 @@ impl Conversation {
                         .collect();
 
                     paths = semantic_paths;
-                }
-
-                for u in paths
-                    .iter()
-                    .map(|p| Update::Step(SearchStep::Path(p.clone())))
-                {
-                    exchange_tx.send(self.update(u)).await?;
                 }
 
                 ctx.track_query(
