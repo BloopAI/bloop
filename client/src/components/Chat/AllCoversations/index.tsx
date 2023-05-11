@@ -83,7 +83,7 @@ const AllConversations = ({
 
   return (
     <div
-      className={`w-97 flex-shrink-0 border-l border-chat-bg-divider h-full flex flex-col overflow-hidden ${
+      className={`w-97 flex-shrink-0 bg-chat-bg-sub border-l border-chat-bg-divider h-full flex flex-col overflow-hidden ${
         isHistoryOpen ? 'mr-0' : '-mr-97'
       } transition-all duration-300 ease-out-slow`}
     >
