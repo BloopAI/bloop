@@ -66,6 +66,9 @@ const Chat = () => {
 
   const makeSearch = useCallback(
     (query: string) => {
+      if (!query) {
+        return;
+      }
       prevEventSource?.close();
       setInputValue('');
       setLoading(true);
@@ -289,6 +292,7 @@ const Chat = () => {
                     setConversation([]);
                     setLoading(false);
                     setThreadId('');
+                    setSubmittedQuery('');
                     navigateRepoPath(tab.repoName);
                     focusInput();
                   }}
