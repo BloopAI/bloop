@@ -854,7 +854,6 @@ body {
   background-color: rgb(var(--bg-sub));
   color: rgb(var(--label-title));
   overflow: hidden;
-  font-size: 16px;
 }
 
 input[type="search" i]::-webkit-search-cancel-button {
@@ -865,7 +864,7 @@ input::placeholder {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 400;
-  font-size: 14px;
+  font-size: 0.875rem;
   letter-spacing: -0.02em;
 }
 
@@ -997,7 +996,7 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 160%;
   letter-spacing: -0.02em;
 }
