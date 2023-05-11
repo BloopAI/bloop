@@ -127,7 +127,7 @@ const Onboarding = () => {
   }, [form, envConfig.tracking_id]);
 
   return shouldShowWelcome ? (
-    !isSelfServe ? (
+    isSelfServe ? (
       <div className="text-label-title">
         <NavBar isSkeleton />
         <div
