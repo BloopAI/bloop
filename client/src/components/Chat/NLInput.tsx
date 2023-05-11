@@ -81,7 +81,7 @@ const NLInput = ({
       </span>
       <textarea
         className={`w-full py-4 bg-transparent rounded-lg outline-none focus:outline-0 resize-none
-        placeholder:text-current flex-grow-0`}
+        placeholder:text-current placeholder:truncate placeholder:max-w-[19.5rem] flex-grow-0`}
         placeholder={placeholder}
         id={id}
         value={value}
