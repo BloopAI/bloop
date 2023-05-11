@@ -132,7 +132,7 @@ pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str)
         Rule {
             title: "update the code in an existing file (this object can appear multiple times)",
             description: "This is the best way to demonstrate updating an existing file. Changes should be as small as possible.",
-            schema: "[\"mod\",INT: §ALIAS,STRING: GIT DIFF]",
+            schema: "[\"mod\",INT: §ALIAS,STRING: LANGUAGE,STRING: GIT DIFF]",
             example: Some(r#"Where GIT DIFF describes the diff chunks for the file, including the git diff header.
 For example:
 @@ -1 +1 @@
