@@ -34,6 +34,7 @@ mod llm_gateway;
 mod partial_parse;
 mod prompts;
 mod response;
+mod ui_context;
 
 use response::{Exchange, SearchResult, SearchStep, Update};
 
@@ -43,6 +44,13 @@ pub struct Params {
     pub repo_ref: RepoRef,
     #[serde(default = "default_thread_id")]
     pub thread_id: uuid::Uuid,
+
+    // ui context
+    pub relative_path: Option<String>,
+    pub start_line: Option<usize>,
+    pub end_line: Option<usize>,
+    #[serde(default)]
+    pub is_folder: bool,
 }
 
 fn default_thread_id() -> uuid::Uuid {
@@ -97,6 +105,14 @@ pub(super) async fn _handle(
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
+    let ui_context = ui_context::UiContext::new(
+        params.repo_ref.clone(),
+        params.relative_path.clone(),
+        params.start_line,
+        params.end_line,
+        params.is_folder,
+    );
+    let ui_context_prompt = ui_context.prompt(&app).await;
     let ctx = AppContext::new(app, user, query_id)
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
     let q = params.q;
@@ -104,6 +120,10 @@ pub(super) async fn _handle(
         let mut action = Action::Query(q);
 
         conversation.exchanges.push(Exchange::default());
+
+        if let Some(p) = ui_context_prompt {
+            conversation.llm_history.push(llm_gateway::api::Message::user(&p));
+        }
 
         loop {
             // The main loop. Here, we create two streams that operate simultaneously; the update
