@@ -175,6 +175,9 @@ const Chat = () => {
   );
 
   useEffect(() => {
+    if (!submittedQuery) {
+      return;
+    }
     let userQuery = submittedQuery;
     if (submittedQuery.startsWith('#explain_')) {
       const [prefix, ending] = submittedQuery.split(':');
