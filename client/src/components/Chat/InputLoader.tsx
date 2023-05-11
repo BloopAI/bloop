@@ -49,7 +49,7 @@ const InputLoader = ({ loadingSteps }: { loadingSteps: string[] }) => {
     <div className="absolute top-0 left-0 right-0 bottom-0">
       <div
         className={`bg-chat-bg-border/50 h-full ${
-          state === 2 ? 'w-[90%]' : ''
+          state === 1 ? 'w-[90%]' : ''
         } ${
           [
             'animate-loader-state-zero',
