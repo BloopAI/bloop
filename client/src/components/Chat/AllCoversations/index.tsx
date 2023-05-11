@@ -22,18 +22,22 @@ type Props = {
   isHistoryOpen: boolean;
   setHistoryOpen: (b: boolean) => void;
   setActive: (b: boolean) => void;
+  setConversation: (b: ChatMessage[]) => void;
+  setThreadId: (b: string) => void;
 };
 
 const AllConversations = ({
   isHistoryOpen,
   setHistoryOpen,
   setActive,
+  setThreadId,
+  setConversation,
 }: Props) => {
   const [openItem, setOpenItem] = useState<ChatMessage[] | null>(null);
   const [conversations, setConversations] = useState<AllConversationsResponse>(
     [],
   );
-  const [threadId, setThreadId] = useState('');
+  const [openThreadId, setOpenThreadId] = useState('');
   const [title, setTitle] = useState('');
 
   const fetchConversations = useCallback(() => {
@@ -49,7 +53,7 @@ const AllConversations = ({
   }, []);
 
   const onClick = useCallback((threadId: string) => {
-    setThreadId(threadId);
+    setOpenThreadId(threadId);
     getConversation(threadId).then((resp) => {
       const conv: ChatMessage[] = [];
       resp.forEach((m) => {
@@ -124,7 +128,7 @@ const AllConversations = ({
         <div className="flex-1 px-4 py-2">
           <Conversation
             conversation={openItem}
-            searchId={threadId}
+            searchId={openThreadId}
             isLoading={false}
             isHistory
             setHistoryOpen={setHistoryOpen}
@@ -135,9 +139,11 @@ const AllConversations = ({
         <div
           className="p-4"
           onClick={() => {
-            document.getElementById('question-input')?.focus();
-            setActive(true);
+            setThreadId(openThreadId);
+            setConversation(openItem!);
             setHistoryOpen(false);
+            setActive(true);
+            document.getElementById('question-input')?.focus();
           }}
         >
           <NLInput />

@@ -76,11 +76,11 @@ const Chat = () => {
         `${apiUrl.replace('https:', '')}/answer?q=${query}&repo_ref=${tab.key}${
           threadId ? `&thread_id=${threadId}` : ''
         }${
-          navigatedItem?.type === 'repo'
+          navigatedItem?.type === 'repo' && navigatedItem?.path
             ? `&relative_path=${navigatedItem?.path}&is_folder=true`
             : ''
         }${
-          navigatedItem?.type === 'full-result'
+          navigatedItem?.type === 'full-result' && navigatedItem?.path
             ? `&relative_path=${navigatedItem?.path}&is_folder=false`
             : ''
         }${
@@ -350,6 +350,8 @@ const Chat = () => {
         setHistoryOpen={setRightPanelOpen}
         isHistoryOpen={isRightPanelOpen}
         setActive={setChatOpen}
+        setConversation={setConversation}
+        setThreadId={setThreadId}
       />
     </>
   );
