@@ -74,15 +74,15 @@ const Chat = () => {
           threadId ? `&thread_id=${threadId}` : ''
         }${
           navigatedItem?.type === 'repo'
-            ? `&file_path=${navigatedItem?.path}&is_file=false`
+            ? `&relative_path=${navigatedItem?.path}&is_folder=true`
             : ''
         }${
           navigatedItem?.type === 'full-result'
-            ? `&file_path=${navigatedItem?.path}&is_file=true`
+            ? `&relative_path=${navigatedItem?.path}&is_folder=false`
             : ''
         }${
           selectedLines
-            ? `&start_line=${selectedLines[0]}&end_line=${selectedLines[1]}`
+            ? `&start=${selectedLines[0]}&end=${selectedLines[1]}`
             : ''
         }`,
       );
