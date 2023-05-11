@@ -261,7 +261,7 @@
       --bg-success-hover: 33, 197, 94;
       --label-control: 255, 255, 255;
       --label-faint: 57, 57, 57;
-      --label-muted: 72, 73, 77;
+      --label-muted: 117, 113, 94;
       --label-base: 204, 204, 199;
       --label-title: 248, 248, 242;
       --label-link: 104, 141, 222;
@@ -303,13 +303,13 @@
       --label-base: 185, 185, 185;
       --label-title: 238, 238, 238;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
+      --chat-bg-base: 16, 25, 44;
+      --chat-bg-base-hover: 21, 32, 55;
+      --chat-bg-shade: 18, 28, 49;
+      --chat-bg-sub: 6, 15, 34;
+      --chat-bg-border: 43, 43, 74;
+      --chat-bg-border-hover: 53, 53, 89;
+      --chat-bg-divider: 33, 33, 60;
 
       --bg-highlight: 253, 201, 0;
 
@@ -417,13 +417,13 @@
       --label-base: 185, 185, 185;
       --label-title: 248, 248, 242;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
+      --chat-bg-base: 43, 37, 56;
+      --chat-bg-base-hover: 50, 43, 66;
+      --chat-bg-shade: 40, 31, 49;
+      --chat-bg-sub: 26, 21, 32;
+      --chat-bg-border: 148, 115, 196;
+      --chat-bg-border-hover: 189, 147, 249;
+      --chat-bg-divider: 185, 87, 145;
 
       --bg-highlight: 253, 201, 0;
 
@@ -607,13 +607,13 @@
       --label-base: 195, 195, 195;
       --label-title: 210, 222, 231;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
+      --chat-bg-base: 34, 45, 54;
+      --chat-bg-base-hover: 47, 61, 73;
+      --chat-bg-shade: 40, 53, 63;
+      --chat-bg-sub: 27, 34, 42;
+      --chat-bg-border: 42, 54, 66;
+      --chat-bg-border-hover: 68, 89, 107;
+      --chat-bg-divider: 58, 74, 91;
 
       --bg-highlight: 253, 201, 0;
 
@@ -683,13 +683,13 @@
       --label-base: 195, 195, 195;
       --label-title: 210, 222, 231;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
+      --chat-bg-base: 43, 37, 56;
+      --chat-bg-base-hover: 50, 43, 66;
+      --chat-bg-shade: 40, 31, 49;
+      --chat-bg-sub: 18, 16, 24;
+      --chat-bg-border: 57, 44, 73;
+      --chat-bg-border-hover: 94, 73, 122;
+      --chat-bg-divider: 56, 50, 73;
 
       --bg-highlight: 253, 201, 0;
 
@@ -743,8 +743,8 @@
     --bg-base-hover: 235, 219, 178;
     --bg-shade: 243, 230, 188;
     --bg-sub: 235, 219, 178;
-    --bg-border: 235, 219, 178;
-    --bg-border-hover: 245, 229, 188;
+    --bg-border: 182, 170, 139;
+    --bg-border-hover: 148, 139, 113;
     --bg-main: 93, 117, 255;
     --bg-main-hover: 69, 89, 205;
     --bg-danger: 215, 66, 74;
@@ -757,13 +757,13 @@
     --label-base: 57, 57, 57;
     --label-title: 21, 21, 21;
     --label-link: 78, 128, 238;
-    --chat-bg-base: 226, 227, 243;
-    --chat-bg-base-hover: 211, 213, 240;
-    --chat-bg-shade: 248, 248, 255;
-    --chat-bg-sub: 211, 212, 236;
-    --chat-bg-border: 195, 197, 225;
-    --chat-bg-border-hover: 184, 187, 225;
-    --chat-bg-divider: 216, 217, 234;
+    --chat-bg-base: 236, 237, 237;
+    --chat-bg-base-hover: 211, 213, 223;
+    --chat-bg-shade: 248, 248, 248;
+    --chat-bg-sub: 221, 222, 222;
+    --chat-bg-border: 195, 197, 197;
+    --chat-bg-border-hover: 184, 187, 187;
+    --chat-bg-divider: 216, 217, 217;
 
     --bg-highlight: 253, 201, 0;
 
