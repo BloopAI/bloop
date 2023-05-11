@@ -54,12 +54,12 @@ const Settings = () => {
       }}
     >
       <div
-        className={`bg-bg-sub border border-bg-border rounded-lg overflow-hidden shadow-medium w-[85vw] h-[77vh] xl:w-[78vw] xl:h-[70vh] max-w-5.5xl flex ${
+        className={`bg-bg-shade border border-bg-border rounded-lg overflow-hidden shadow-medium w-[85vw] h-[77vh] xl:w-[78vw] xl:h-[70vh] max-w-5.5xl flex ${
           isSettingsOpen ? 'opacity-100' : 'opacity-0'
         } absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-150`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-bg-base py-3 w-64">
+        <div className="py-3 w-64">
           <ListNavigation
             setSelected={setSettingsSection}
             items={listNavigationItems}
@@ -67,7 +67,7 @@ const Settings = () => {
             variant="light"
           />
         </div>
-        <div className="p-8 flex-1 overflow-y-auto flex flex-col">
+        <div className="p-8 flex-1 overflow-y-auto flex flex-col border-l border-bg-border">
           {settingsSection === SettingSections.GENERAL ? (
             <General />
           ) : (
