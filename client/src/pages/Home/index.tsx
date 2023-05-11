@@ -7,6 +7,7 @@ import { CloseSign } from '../../icons';
 import { getRepos } from '../../services/api';
 import { RepositoriesContext } from '../../context/repositoriesContext';
 import { RepoType, SyncStatus } from '../../types/general';
+import { DeviceContext } from '../../context/deviceContext';
 import AddRepos from './AddRepos';
 import ReposSection from './ReposSection';
 import AddRepoCard from './AddRepoCard';
@@ -23,6 +24,7 @@ const filterRepositories = (repos?: RepoType[]) => {
 
 const HomePage = () => {
   const { setRepositories, repositories } = useContext(RepositoriesContext);
+  const { isSelfServe } = useContext(DeviceContext);
   const [popupOpen, setPopupOpen] = useState(false);
   const [isAddReposOpen, setAddReposOpen] = useState<
     null | 'local' | 'github' | 'public'
@@ -53,7 +55,9 @@ const HomePage = () => {
         <div className="flex gap-3.5">
           <AddRepoCard type="github" onClick={setAddReposOpen} />
           <AddRepoCard type="public" onClick={setAddReposOpen} />
-          <AddRepoCard type="local" onClick={setAddReposOpen} />
+          {!isSelfServe && (
+            <AddRepoCard type="local" onClick={setAddReposOpen} />
+          )}
         </div>
       </div>
       <ReposSection reposToShow={reposToShow} setReposToShow={setReposToShow} />
