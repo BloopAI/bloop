@@ -15,9 +15,9 @@ type Props = {
 };
 
 const defaultState =
-  'text-label-title border border-transparent hover:border-bg-border active:border-bg-border-hover focus:border-bg-border drop-shadow-sm hover:drop-shadow-none';
+  'text-label-base border border-transparent hover:border-bg-border-hover focus:border-bg-border-hover hover:text-label-title focus:text-label-title ';
 const selectedState =
-  'text-bg-main hover:text-bg-main-hover bg-bg-sub border border-transparent ';
+  'text-bg-main hover:text-bg-main-hover bg-bg-base-hover border border-bg-border-hover';
 
 const sizeMap = {
   small: {
