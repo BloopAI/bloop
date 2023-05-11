@@ -272,7 +272,7 @@ pub(super) async fn scan_local(
 
     if app.allow_path(root) {
         Ok(json(ReposResponse::List(
-            crate::remotes::gather_repo_roots(&root, app.config.source.repo_dir())
+            crate::remotes::gather_repo_roots(root, app.config.source.repo_dir())
                 .into_iter()
                 .map(|reporef| {
                     let mut repo = Repository::local_from(&reporef);

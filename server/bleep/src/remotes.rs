@@ -192,7 +192,7 @@ pub(crate) fn gather_repo_roots(
                     return Skip;
                 }
 
-                return Continue;
+                Continue
             })
         });
 
