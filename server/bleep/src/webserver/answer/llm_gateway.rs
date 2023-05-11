@@ -1,8 +1,11 @@
 //! A Rust-friendly interface to Bloop's LLM Gateway service.
 
+use std::time::Duration;
+
 use anyhow::bail;
 use futures::{Stream, StreamExt};
 use reqwest_eventsource::EventSource;
+use tracing::warn;
 
 pub mod api {
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
@@ -71,6 +74,7 @@ impl api::Message {
 pub struct Client {
     http: reqwest::Client,
     pub base_url: String,
+    pub max_retries: u32,
 
     pub bearer_token: Option<String>,
     pub temperature: Option<f32>,
@@ -84,6 +88,7 @@ impl Client {
         Self {
             http: reqwest::Client::new(),
             base_url: base_url.to_owned(),
+            max_retries: 5,
 
             bearer_token: None,
             provider: api::Provider::OpenAi,
@@ -110,6 +115,30 @@ impl Client {
     }
 
     pub async fn chat(
+        &self,
+        messages: &[api::Message],
+    ) -> anyhow::Result<impl Stream<Item = anyhow::Result<String>>> {
+        const INITIAL_DELAY: Duration = Duration::from_millis(100);
+        const SCALE_FACTOR: f32 = 1.5;
+
+        let mut delay = INITIAL_DELAY;
+        for _ in 0..self.max_retries {
+            match self.chat_oneshot(messages).await {
+                Err(e) => {
+                    warn!("LLM request failed: {e}");
+                    tokio::time::sleep(delay).await;
+                    delay = Duration::from_millis((delay.as_millis() as f32 * SCALE_FACTOR) as u64);
+                }
+
+                Ok(stream) => return Ok(stream),
+            }
+        }
+
+        bail!("request failed {} times", self.max_retries)
+    }
+
+    /// Like `chat`, but without exponential backoff.
+    async fn chat_oneshot(
         &self,
         messages: &[api::Message],
     ) -> anyhow::Result<impl Stream<Item = anyhow::Result<String>>> {
