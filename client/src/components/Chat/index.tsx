@@ -82,7 +82,7 @@ const Chat = () => {
             : ''
         }${
           selectedLines
-            ? `&start=${selectedLines[0]}&end=${selectedLines[1]}`
+            ? `&start_line=${selectedLines[0]}&end_line=${selectedLines[1]}`
             : ''
         }`,
       );

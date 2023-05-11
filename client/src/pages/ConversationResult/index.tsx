@@ -44,10 +44,8 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
       .forEach((c, i) => {
         if (files[c.Cite.path]) {
           files[c.Cite.path].push({ ...c.Cite, i });
-        } else {
-          files[c.Cite.path || 'client/src/components/Tabs/index.tsx'] = [
-            { ...c.Cite, i },
-          ];
+        } else if (c.Cite.path) {
+          files[c.Cite.path] = [{ ...c.Cite, i }];
         }
       });
     return files;
