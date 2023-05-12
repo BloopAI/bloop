@@ -55,7 +55,7 @@ pub fn system() -> String {
             {
               "name": "PATH ALIAS FOR EACH FILE",
               "type": "INT[]",
-              "examples": [2, 3, 7, 10],
+              "examples": [[2, 3, 7, 10]],
             },
           ],
         },
@@ -158,7 +158,7 @@ pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str)
         Rule {
             title: "Update the code in an existing file",
             description: "Edit an existing code file by generating the diff between old and new versions. Changes should be as small as possible.",
-            schema: "[\"mod\",PATH ALIAS:INT,GIT DIFF:STRING]",
+            schema: "[\"mod\",PATH ALIAS:INT,LANGUAGE:STRING,GIT DIFF:STRING]",
             note: "This object can occur multiple times",
             example: Some(r#"Where GIT DIFF describes the diff chunks for the file, including the git diff header.
 For example:
