@@ -20,15 +20,19 @@ export default defineConfig({
         defineOn: 'import.meta.env',
       },
     ),
-    sentryVitePlugin({
-      org: 'bloop-yr',
-      project: 'bloop-frontend',
-      authToken: process.env.SENTRY_AUTH_TOKEN,
-      sourcemaps: {
-        assets: './dist/**',
-      },
-      release: process.env.SENTRY_RELEASE_VERSION,
-    }),
+    ...(process.env.SENTRY_AUTH_TOKEN
+      ? [
+          sentryVitePlugin({
+            org: 'bloop-yr',
+            project: 'bloop-frontend',
+            authToken: process.env.SENTRY_AUTH_TOKEN,
+            sourcemaps: {
+              assets: './dist/**',
+            },
+            release: process.env.SENTRY_RELEASE_VERSION,
+          }),
+        ]
+      : []),
   ],
   publicDir: '../../client/public',
   define: {
