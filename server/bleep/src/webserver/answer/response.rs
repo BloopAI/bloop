@@ -83,6 +83,7 @@ pub enum Update {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub enum SearchResult {
     Cite(CiteResult),
+    Directory(DirectoryResult),
     New(NewResult),
     Modify(ModifyResult),
     Conclude(ConcludeResult),
@@ -94,6 +95,7 @@ impl SearchResult {
 
         match tag.as_str()? {
             "cite" => CiteResult::from_json_array(&v[1..]).map(Self::Cite),
+            "dir" => DirectoryResult::from_json_array(&v[1..]).map(Self::Directory),
             "new" => NewResult::from_json_array(&v[1..]).map(Self::New),
             "mod" => ModifyResult::from_json_array(&v[1..]).map(Self::Modify),
             "con" => ConcludeResult::from_json_array(&v[1..]).map(Self::Conclude),
@@ -137,6 +139,11 @@ pub struct CiteResult {
     comment: Option<String>,
     start_line: Option<u64>,
     end_line: Option<u64>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
+pub struct DirectoryResult {
+    path: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
@@ -209,6 +216,19 @@ impl CiteResult {
         }
 
         _summarize(&self).unwrap_or_default()
+    }
+}
+
+impl DirectoryResult {
+    fn from_json_array(v: &[serde_json::Value]) -> Option<Self> {
+        let path = v
+            .get(0)
+            .and_then(serde_json::Value::as_str)
+            .map(ToOwned::to_owned);
+        Some(Self {
+            path,
+            ..Default::default()
+        })
     }
 }
 
