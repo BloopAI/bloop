@@ -606,7 +606,7 @@ impl Conversation {
                     .snippet
                     .lines()
                     .enumerate()
-                    .map(|(i, line)| format!("{}: {line}\n", i + chunk.start_line as usize))
+                    .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
                     .collect::<String>();
 
                 s += &format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
@@ -802,7 +802,7 @@ enum Action {
     #[serde(rename = "ask")]
     Prompt(String),
     Path(String),
-    #[serde(rename = "none")]
+    #[serde(rename = "resp")]
     Answer,
     Code(String),
     Proc(String, Vec<usize>),
