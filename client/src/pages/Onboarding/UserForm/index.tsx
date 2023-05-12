@@ -23,7 +23,6 @@ type Props = {
 const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
   const { isGithubConnected, setGithubConnected } = useContext(UIContext);
   const { envConfig, openLink } = useContext(DeviceContext);
-  console.log('envC', envConfig);
 
   const handleLogout = useCallback(() => {
     gitHubLogout();

@@ -59,7 +59,8 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
           setScrolled(true);
           const scrollTop = (e.target as HTMLDivElement).scrollTop;
           let previousCommentsHeight = 0;
-          Object.values(citations).forEach((fileCite) => {
+          let stickedCommentsHeight = 0;
+          Object.values(citations).forEach((fileCite, i) => {
             fileCite.forEach((c: any) => {
               const comment = document.getElementById(`comment-${c.i}`);
               const code = document.getElementById(`code-${c.i}`);
@@ -71,13 +72,18 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
                   codeRect.bottom +
                   scrollTop -
                   (code.dataset.last === 'true' ? 170 : 205); // calculate code bottom relative to parent
+                const lowestPosition =
+                  codeBottom - commentRect.height - previousCommentsHeight;
                 const maxTranslateY = Math.max(
                   0,
-                  Math.min(
-                    scrollTop,
-                    codeBottom - commentRect.height - previousCommentsHeight,
-                  ),
+                  Math.min(scrollTop - stickedCommentsHeight, lowestPosition),
                 );
+                if (
+                  maxTranslateY === lowestPosition &&
+                  scrollTop > codeBottom
+                ) {
+                  stickedCommentsHeight += commentRect.height + 12;
+                }
                 previousCommentsHeight += commentRect.height + 12;
                 comment.style.transform = `translateY(${maxTranslateY}px)`;
               }
