@@ -517,10 +517,17 @@ impl Conversation {
                 lines: Vec<Range>,
             }
 
-            #[derive(serde::Deserialize)]
+            #[derive(serde::Deserialize, serde::Serialize, Copy, Clone)]
             struct Range {
                 start: usize,
                 end: usize,
+            }
+
+            #[derive(serde::Serialize)]
+            struct Explanation {
+                #[serde(flatten)]
+                range: Range,
+                relevant_code: String,
             }
 
             let proc_result = serde_json::from_str::<ProcResult>(&json)?;
@@ -534,18 +541,31 @@ impl Conversation {
 
             let explanations = proc_result
                 .lines
-                .iter()
+                .into_iter()
                 .filter(|r| r.start > 0 && r.end > 0)
-                .filter_map(|r| {
-                    let end = r.end.min(r.start + 10);
+                .map(|mut r| {
+                    r.end = r.end.min(r.start + 20);
+                    r
+                })
+                .fold(Vec::<Range>::new(), |mut exps, next| {
+                    if let Some(prev) = exps.last_mut() {
+                        if prev.end >= next.start {
+                            prev.end = next.end;
+                            return exps;
+                        }
+                    }
 
-                    Some(serde_json::json!({
-                        "start": r.start,
-                        "end": end,
-                        "relevant_code": lines
-                            .get(r.start.saturating_sub(1)..end.saturating_sub(1))?
+                    exps.push(next);
+                    exps
+                })
+                .into_iter()
+                .filter_map(|range| {
+                    Some(Explanation {
+                        range,
+                        relevant_code: lines
+                            .get(range.start.saturating_sub(1)..range.end.saturating_sub(1))?
                             .join("\n"),
-                    }))
+                    })
                 })
                 .collect::<Vec<_>>();
 
