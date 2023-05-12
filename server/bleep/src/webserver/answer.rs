@@ -606,22 +606,63 @@ impl Conversation {
             let mut s =
                 "Below is the current context, Future actions will add to this.\n".to_owned();
 
-            if !self.path_aliases.is_empty() {
+            let mut path_aliases = self
+                .code_chunks
+                .iter()
+                .map(|chunk| chunk.alias as usize)
+                .filter(|alias| *alias < self.path_aliases.len())
+                .map(|alias| (alias, &self.path_aliases[alias]))
+                .collect::<Vec<_>>();
+
+            path_aliases.sort_by_key(|(alias, _)| *alias);
+            path_aliases.dedup_by_key(|(alias, _)| *alias);
+
+            if !path_aliases.is_empty() {
                 s += "##### PATHS #####\npath alias, path\n";
 
-                for (alias, path) in self.path_aliases.iter().enumerate() {
+                for (alias, path) in path_aliases.iter() {
                     s += &format!("{alias}, {path}\n");
                 }
             }
 
-            let mut has_chunk = false;
-            // Order chunks by most recent.
-            for chunk in self.code_chunks.iter().rev() {
-                if !has_chunk {
-                    has_chunk = true;
-                    s += "\n##### CODE CHUNKS #####\n\n";
-                }
+            if !self.code_chunks.is_empty() {
+                s += "\n##### CODE CHUNKS #####\n\n";
+            }
 
+            let code_chunks = if path_aliases.len() == 1 {
+                let (alias, path) = path_aliases[0];
+
+                let chunk = &mut self.code_chunks[0];
+
+                let snippet = ctx
+                    .app
+                    .indexes
+                    .file
+                    .by_path(&self.repo_ref, &chunk.path)
+                    .await
+                    .with_context(|| format!("failed to read path: {}", chunk.path))?
+                    .content;
+
+                let snippet = tiktoken_rs::get_bpe_from_model("gpt-4")
+                    .context("invalid model requested")?
+                    .split_by_token_iter(&snippet, false)
+                    .take(4000)
+                    .collect::<Result<String>>()
+                    .context("failed to tokenize snippet")?;
+
+                vec![CodeChunk {
+                    alias: alias as u32,
+                    path: path.clone(),
+                    start_line: 1,
+                    end_line: snippet.lines().count() as u32 + 1,
+                    snippet,
+                }]
+            } else {
+                self.code_chunks.clone()
+            };
+
+            // Order chunks by most recent.
+            for chunk in code_chunks.iter().rev() {
                 let snippet = chunk
                     .snippet
                     .lines()
