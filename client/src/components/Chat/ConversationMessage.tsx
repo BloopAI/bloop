@@ -9,7 +9,8 @@ import { ChatContext } from '../../context/chatContext';
 
 type Props = {
   author: ChatMessageAuthor;
-  message: string;
+  message?: string;
+  error?: string;
   query: string;
   searchId: string;
   isHistory?: boolean;
@@ -19,6 +20,7 @@ type Props = {
 const ConversationMessage = ({
   author,
   message,
+  error,
   isHistory,
   showInlineFeedback,
   query,
@@ -92,10 +94,10 @@ const ConversationMessage = ({
           </div>
         )}
         <pre className="body-s text-label-title whitespace-pre-wrap">
-          {message}
+          {message || error}
         </pre>
       </div>
-      {showInlineFeedback && !isHistory && (
+      {showInlineFeedback && !isHistory && !error && (
         <div className="flex flex-col items-center gap-3">
           <p className="body-s text-label-title">
             How would you rate this response?
