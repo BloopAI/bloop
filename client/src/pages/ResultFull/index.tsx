@@ -73,7 +73,7 @@ const ResultFull = ({ data }: Props) => {
       }));
     });
   }, [data]);
-
+  console.log(result);
   const navigateTo = useCallback(
     (path: string, isFile: boolean) => {
       if (!result) {
