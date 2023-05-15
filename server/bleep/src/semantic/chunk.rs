@@ -365,13 +365,13 @@ mod tests {
     pub fn test_empty() {
         let cur_dir = env::current_dir().unwrap();
         let base_dir = cur_dir.ancestors().nth(2).unwrap();
-        let tok_json = base_dir.join("model/tokenizer.json");
+        let tok_json = base_dir.join("model/embedder/tokenizer.json");
         let tokenizer = tokenizers::Tokenizer::from_file(tok_json).unwrap();
         let token_bounds = 50..256;
         let max_lines = 15;
         let no_tokens = by_tokens(
-            "rust",
-            "empty.rs",
+            "",
+            "",
             "",
             &tokenizer,
             token_bounds,
@@ -385,7 +385,7 @@ mod tests {
     pub fn test_by_tokens() {
         let cur_dir = env::current_dir().unwrap();
         let base_dir = cur_dir.ancestors().nth(2).unwrap();
-        let tok_json = base_dir.join("model/tokenizer.json");
+        let tok_json = base_dir.join("model/embedder/tokenizer.json");
         let tokenizer = tokenizers::Tokenizer::from_file(tok_json).unwrap();
         let token_bounds = 50..256;
         let max_lines = 15;
