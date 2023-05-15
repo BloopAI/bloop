@@ -305,17 +305,7 @@ impl BackendCredential {
         let SyncHandle { app, reporef, .. } = sync_handle;
 
         use BackendCredential::*;
-        let existing = app
-            .repo_pool
-            .update_async(reporef, |_k, repo| {
-                if repo.sync_status == SyncStatus::Syncing {
-                    Err(RemoteError::SyncInProgress)
-                } else {
-                    repo.sync_status = SyncStatus::Syncing;
-                    Ok(())
-                }
-            })
-            .await;
+        let existing = sync_handle.sync_lock().await;
 
         let Github(gh) = self;
         let synced = match existing {
@@ -326,6 +316,8 @@ impl BackendCredential {
                     .read_async(reporef, |_k, repo| repo.clone())
                     .await
                     .expect("repo exists & locked, this shouldn't happen");
+
+                sync_handle.set_status(|repo| repo.sync_status.clone());
                 gh.auth.pull_repo(repo).await
             }
             None => {
@@ -335,6 +327,8 @@ impl BackendCredential {
                     .read_async(reporef, |_k, repo| repo.clone())
                     .await
                     .expect("repo just created & locked, this shouldn't happen");
+
+                sync_handle.set_status(|repo| repo.sync_status.clone());
                 gh.auth.clone_repo(repo).await
             }
         };
@@ -360,9 +354,8 @@ impl BackendCredential {
             }
         };
 
-        app.repo_pool
-            .update_async(reporef, |_k, v| v.sync_status = new_status)
-            .await
+        sync_handle
+            .set_status(|_| new_status)
             .expect("unlocking repo failed, this shouldn't happen");
 
         app.config.source.save_pool(app.repo_pool.clone())?;

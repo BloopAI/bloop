@@ -56,18 +56,14 @@ impl PartialEq for SyncHandle {
 impl Drop for SyncHandle {
     fn drop(&mut self) {
         let status = self
-            .app
-            .repo_pool
-            .update(&self.reporef, |_k, v| {
+            .set_status(|v| {
                 use SyncStatus::*;
-                v.sync_status = match &v.sync_status {
+                match &v.sync_status {
                     Indexing | Syncing => Error {
                         message: "unknown".into(),
                     },
                     other => other.clone(),
-                };
-
-                v.sync_status.clone()
+                }
             })
             .expect("the repo has been deleted from the db?");
 
@@ -119,26 +115,26 @@ impl SyncHandle {
         }
 
         let indexed = self.index().await;
-        let status = repo_pool
-            .update_async(&self.reporef, |_k, repo| match indexed {
-                Ok(Some(state)) => {
-                    info!("commit complete; indexing done");
-                    repo.sync_done_with(state);
-                    SyncStatus::Done
-                }
-                Ok(None) => SyncStatus::Done,
-                Err(err) => {
-                    repo.sync_status = SyncStatus::Error {
-                        message: err.to_string(),
-                    };
-                    error!(?err, ?self.reporef, "failed to index repository");
-                    repo.sync_status.clone()
-                }
-            })
-            .await
-            .unwrap();
+        let status = match indexed {
+            Ok(Some(state)) => {
+                info!("commit complete; indexing done");
+                self.app
+                    .repo_pool
+                    .update(&self.reporef, |_k, repo| repo.sync_done_with(state));
 
-        Ok(status)
+                // technically `sync_done_with` does this, but we want to send notifications
+                self.set_status(|_| SyncStatus::Done)
+            }
+            Ok(None) => self.set_status(|_| SyncStatus::Done),
+            Err(err) => {
+                error!(?err, ?self.reporef, "failed to index repository");
+                self.set_status(|_| SyncStatus::Error {
+                    message: err.to_string(),
+                })
+            }
+        };
+
+        Ok(status.expect("failed to update repo status"))
     }
 
     async fn index(&self) -> Result<Option<Arc<RepoMetadata>>> {
@@ -181,11 +177,7 @@ impl SyncHandle {
                 return Ok(None);
             }
             _ => {
-                repo_pool
-                    .update_async(&self.reporef, |_, v| v.sync_status = Indexing)
-                    .await
-                    .unwrap();
-
+                self.set_status(|_| Indexing).unwrap();
                 writers.index(self, &repo).await
             }
         };
@@ -226,12 +218,7 @@ impl SyncHandle {
 
         let synced = creds.sync(self).await;
         if let Err(RemoteError::RemoteNotFound) = synced {
-            self.app
-                .repo_pool
-                .update_async(&repo, |_, v| v.sync_status = SyncStatus::RemoteRemoved)
-                .await
-                .unwrap();
-
+            self.set_status(|_| SyncStatus::RemoteRemoved).unwrap();
             error!(?repo, "remote repository removed; disabling local syncing");
 
             // we want indexing to pick this up later and handle the new state
@@ -277,5 +264,31 @@ impl SyncHandle {
 
     pub(crate) fn pipes(&self) -> &SyncPipes {
         &self.pipes
+    }
+
+    pub(crate) fn set_status(
+        &self,
+        updater: impl FnOnce(&Repository) -> SyncStatus,
+    ) -> Option<SyncStatus> {
+        let new_status = self.app.repo_pool.update(&self.reporef, move |_k, repo| {
+            repo.sync_status = (updater)(repo);
+            repo.sync_status.clone()
+        })?;
+
+        Some(new_status)
+    }
+
+    pub(crate) async fn sync_lock(&self) -> Option<std::result::Result<(), RemoteError>> {
+        self.app
+            .repo_pool
+            .update_async(&self.reporef, |_k, repo| {
+                if repo.sync_status == SyncStatus::Syncing {
+                    Err(RemoteError::SyncInProgress)
+                } else {
+                    repo.sync_status = SyncStatus::Syncing;
+                    Ok(())
+                }
+            })
+            .await
     }
 }
