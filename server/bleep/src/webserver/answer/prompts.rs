@@ -65,16 +65,7 @@ pub fn system() -> String {
         "description": "Answer the user's query. This is the final step in the process. You should use the information gathered from the other tools to answer the query.",
         "schema": {
           "name": "resp",
-          "args": [
-              {
-                "name": "RELEVANT PATH ALIASES",
-                "type": "INT[]",
-                "examples": [
-                  [1], [2, 5], [3]
-                ],
-                "description": "The path alias of the files you want to cite.",
-              }
-          ],
+          "args": [],
         },
       }
     ]);
