@@ -140,6 +140,13 @@ pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str)
             example: None,
         },
         Rule {
+            title: "Cite a single directory from the codebase",
+            description: "When you wish to cite every file in a directory, use this to directly cite the directory instead.",
+            schema: "[\"dir\",PATH:STRING]",
+            note: "This object can occur multiple times",
+            example: Some(r#"The path is a relative path, with no leading slash, for example: server/bleep/src/webserver"#),
+        },
+        Rule {
             title: "Write a new code file",
             description: "Write a new code file that satisfies the query. Do not use this to demonstrate updating an existing file.",
             schema: "[\"new\",LANGUAGE:STRING,CODE:STRING]",
