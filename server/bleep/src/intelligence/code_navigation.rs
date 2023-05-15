@@ -34,37 +34,29 @@ impl<'a> CurrentFileHandler<'a> {
         let Self {
             scope_graph, idx, ..
         } = self;
-        let (defs, mut refs) = scope_graph
+        let (defs, refs): (Vec<_>, Vec<_>) = scope_graph
             .definitions(*idx) // for every possible def...
-            .map(|def| {
-                // get its corresponding (range, refs)
+            .chain(scope_graph.imports(*idx))
+            .map(|node_idx| {
+                // get its corresponding (node, refs)
                 (
-                    scope_graph.graph[def].range(),
+                    &scope_graph.graph[node_idx],
                     scope_graph
-                        .references(def)
-                        .map(|i| scope_graph.graph[i].range()),
+                        .references(node_idx)
+                        .map(|i| scope_graph.graph[i].range())
+                        .collect::<Vec<_>>(),
                 )
             })
-            .fold(
-                // collect all of that into (all definitions, all references)
-                //
-                // we collect into a BTreeSet just to be absolutely sure that
-                // there are no dupes.
-                (BTreeSet::new(), BTreeSet::new()),
-                |(mut defs, mut refs), (d, rs)| {
-                    defs.insert(d);
-                    for r in rs {
-                        refs.insert(r);
-                    }
-                    (defs, refs)
-                },
-            );
+            .unzip();
 
-        // remove the currently hovered ref from the list
-        refs.remove(&self.scope_graph.graph[self.idx].range());
+        let defs = defs
+            .into_iter()
+            .filter(|d| matches!(d, NodeKind::Def(_)))
+            .map(|d| d.range())
+            .collect();
 
-        let defs = defs.into_iter().collect::<Vec<_>>();
-        let refs = refs.into_iter().collect::<Vec<_>>();
+        let refs = refs.into_iter().flatten().collect();
+
         (defs, refs)
     }
 }
@@ -102,14 +94,26 @@ impl<'a> RepoWideHandler<'a> {
         let (def_data, ref_data): (Vec<_>, Vec<_>) = graph
             .node_indices()
             .filter(|&node_idx| self.scope_graph.is_top_level(node_idx))
-            .filter(|node_idx| matches!(&graph[*node_idx], NodeKind::Def(d) if d.name(src.as_bytes()) == self.token))
-            .map(|node_idx| (graph[node_idx].range(), self.scope_graph.references(node_idx)))
+            .filter(|node_idx| match &graph[*node_idx] {
+                NodeKind::Def(d) => d.name(src.as_bytes()) == self.token,
+                NodeKind::Import(i) => i.name(src.as_bytes()) == self.token,
+                _ => false,
+            })
+            .map(|node_idx| (&graph[node_idx], self.scope_graph.references(node_idx)))
             .unzip();
+
         let ref_data = ref_data
             .into_iter()
             .flatten()
             .map(|node_idx| graph[node_idx].range())
             .collect();
+
+        let def_data = def_data
+            .into_iter()
+            .filter(|node| matches!(node, NodeKind::Def(_)))
+            .map(|node| node.range())
+            .collect();
+
         (def_data, ref_data)
     }
 }

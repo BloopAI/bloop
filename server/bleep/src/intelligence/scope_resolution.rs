@@ -277,7 +277,6 @@ impl ScopeGraph {
     }
 
     /// Produce a list of interesting ranges: ranges of defs and refs
-    #[allow(unused)]
     pub fn hoverable_ranges(&self) -> Box<dyn Iterator<Item = TextRange> + '_> {
         let iterator =
             self.graph
@@ -292,7 +291,6 @@ impl ScopeGraph {
     }
 
     /// Produce possible definitions for a reference
-    #[allow(unused)]
     pub fn definitions(
         &self,
         reference_node: NodeIndex<u32>,
@@ -305,8 +303,20 @@ impl ScopeGraph {
         Box::new(iterator)
     }
 
-    /// Produce possible references for a definition
-    #[allow(unused)]
+    /// Produce possible imports for a reference
+    pub fn imports(
+        &self,
+        reference_node: NodeIndex<u32>,
+    ) -> Box<dyn Iterator<Item = NodeIndex<u32>> + '_> {
+        let iterator = self
+            .graph
+            .edges_directed(reference_node, Direction::Outgoing)
+            .filter(|edge| *edge.weight() == EdgeKind::RefToImport)
+            .map(|edge| edge.target());
+        Box::new(iterator)
+    }
+
+    /// Produce possible references for a definition/import node
     pub fn references(
         &self,
         definition_node: NodeIndex<u32>,
@@ -314,7 +324,9 @@ impl ScopeGraph {
         let iterator = self
             .graph
             .edges_directed(definition_node, Direction::Incoming)
-            .filter(|edge| *edge.weight() == EdgeKind::RefToDef)
+            .filter(|edge| {
+                *edge.weight() == EdgeKind::RefToDef || *edge.weight() == EdgeKind::RefToImport
+            })
             .map(|edge| edge.source());
         Box::new(iterator)
     }
@@ -322,7 +334,12 @@ impl ScopeGraph {
     pub fn node_by_range(&self, start_byte: usize, end_byte: usize) -> Option<NodeIndex<u32>> {
         self.graph
             .node_indices()
-            .filter(|&idx| matches!(self.graph[idx], NodeKind::Def(_) | NodeKind::Ref(_)))
+            .filter(|&idx| {
+                matches!(
+                    self.graph[idx],
+                    NodeKind::Def(_) | NodeKind::Ref(_) | NodeKind::Import(_)
+                )
+            })
             .find(|&idx| {
                 let node = self.graph[idx].range();
                 start_byte >= node.start.byte && end_byte <= node.end.byte

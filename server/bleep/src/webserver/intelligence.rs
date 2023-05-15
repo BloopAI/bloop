@@ -298,6 +298,36 @@ pub(super) async fn handle(
                 references,
             }))
         }
+
+        // we are at an import:
+        //
+        // an import is in an of itself a "definition" of a name in the current tree,
+        // it is the first time a name is introduced in a tree. however the original
+        // definition of this name can only exist in other trees (or not exist at all).
+        //
+        // when looking at an import, we only care about:
+        //  - local references to the import
+        //  - repo-wide definition(s) for this import
+        NodeKind::Import(i) => {
+            // fetch local refs with scope-graph
+            let local_references = handle_definition_local(scope_graph, idx, &content);
+
+            // fetch repo-wide defs with trivial search
+            let token = i.name(src.as_bytes());
+            let (repo_wide_definitions, _) =
+                handle_reference_repo_wide(token, kind, current_file, &all_docs);
+
+            Ok(json(TokenInfoResponse::Reference {
+                definitions: repo_wide_definitions
+                    .into_iter()
+                    .filter(FileSymbols::is_populated)
+                    .collect(),
+                references: local_references
+                    .is_populated()
+                    .then(|| vec![local_references])
+                    .unwrap_or_default(),
+            }))
+        }
         _ => Err(Error::user(
             "provided range is not eligible for intelligence",
         )),
