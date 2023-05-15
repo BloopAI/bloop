@@ -181,7 +181,7 @@ impl Indexable for File {
             let file_cache = file_cache.clone();
             move |file: RepoFile| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
-                pipes.progress(((completed as f32 / count as f32) * 100f32) as u8);
+                pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
 
                 let entry_disk_path = file.path.clone();
                 let workload = Workload {
@@ -249,7 +249,7 @@ impl Indexable for File {
             }
         }
 
-        pipes.progress(100);
+        pipes.index_percent(100);
         repo.save_file_cache(&self.config.index_dir, file_cache)?;
         Ok(())
     }
