@@ -17,8 +17,22 @@ pub(crate) use control::SyncPipes;
 mod notifyqueue;
 use notifyqueue::NotifyQueue;
 
-pub type Progress = (RepoRef, usize, u8);
 type ProgressStream = tokio::sync::broadcast::Sender<Progress>;
+
+#[derive(serde::Serialize, Clone)]
+pub struct Progress {
+    #[serde(rename = "ref")]
+    reporef: RepoRef,
+    #[serde(rename = "ev")]
+    event: ProgressEvent,
+}
+
+#[derive(serde::Serialize, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum ProgressEvent {
+    IndexPercent(u8),
+    StatusChange(SyncStatus),
+}
 
 type Task = Pin<Box<dyn Future<Output = ()> + Send + Sync>>;
 #[derive(Clone)]

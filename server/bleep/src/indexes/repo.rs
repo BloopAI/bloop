@@ -89,7 +89,7 @@ impl Indexable for Repo {
             self.repo_ref => repo_ref.to_string(),
         ))?;
 
-        pipes.progress(100);
+        pipes.index_percent(100);
 
         info!(
             ?repo.disk_path,

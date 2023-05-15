@@ -281,31 +281,44 @@ impl SyncHandle {
             repo.sync_status.clone()
         })?;
 
+        self.pipes.status(new_status.clone());
         Some(new_status)
     }
 
     /// Will return the current Repository, inserting a new one if none
     pub(crate) async fn create_new(&self, repo: impl FnOnce() -> Repository) -> Repository {
-        self.app
+        let current = self
+            .app
             .repo_pool
             .entry_async(self.reporef.clone())
             .await
             .or_insert_with(repo)
             .get()
-            .clone()
+            .clone();
+
+        self.pipes.status(current.sync_status.clone());
+        current
     }
 
     pub(crate) async fn sync_lock(&self) -> Option<std::result::Result<(), RemoteError>> {
-        self.app
+        let new = self
+            .app
             .repo_pool
             .update_async(&self.reporef, |_k, repo| {
                 if repo.sync_status == SyncStatus::Syncing {
                     Err(RemoteError::SyncInProgress)
                 } else {
                     repo.sync_status = SyncStatus::Syncing;
-                    Ok(())
+                    Ok(repo.sync_status.clone())
                 }
             })
-            .await
+            .await;
+
+        if let Some(Ok(new)) = new {
+            self.pipes.status(new);
+            Some(Ok(()))
+        } else {
+            new.map(|inner| inner.map(|_| ()))
+        }
     }
 }

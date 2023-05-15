@@ -1,5 +1,8 @@
-use crate::repo::RepoRef;
+use crate::repo::{RepoRef, SyncStatus};
 
+use super::{Progress, ProgressEvent};
+
+#[allow(unused)]
 pub enum ControlEvent {
     /// Cancel whatever's happening, and return
     Cancel,
@@ -23,7 +26,17 @@ impl SyncPipes {
         }
     }
 
-    pub(crate) fn progress(&self, current: u8) {
-        _ = self.progress.send((self.reporef.clone(), 1, current));
+    pub(crate) fn index_percent(&self, current: u8) {
+        _ = self.progress.send(Progress {
+            reporef: self.reporef.clone(),
+            event: ProgressEvent::IndexPercent(current),
+        });
+    }
+
+    pub(crate) fn status(&self, new: SyncStatus) {
+        _ = self.progress.send(Progress {
+            reporef: self.reporef.clone(),
+            event: ProgressEvent::StatusChange(new),
+        });
     }
 }
