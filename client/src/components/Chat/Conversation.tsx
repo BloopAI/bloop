@@ -81,11 +81,8 @@ const Conversation = ({
             <Message
               isHistory={isHistory}
               author={m.author}
-              message={
-                m.text ||
-                (m.author === ChatMessageAuthor.Server && m.error) ||
-                ''
-              }
+              message={m.text}
+              error={m.author === ChatMessageAuthor.Server ? m.error : ''}
               showInlineFeedback={
                 m.author === ChatMessageAuthor.Server &&
                 !m.isLoading &&
