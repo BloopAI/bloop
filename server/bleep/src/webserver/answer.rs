@@ -279,8 +279,8 @@ impl Conversation {
                 return Ok(None);
             }
 
-            Action::Answer => {
-                self.answer(ctx, exchange_tx).await?;
+            Action::Answer(aliases) => {
+                self.answer(ctx, exchange_tx, aliases).await?;
                 let action = Action::Prompt(prompts::CONTINUE.to_owned());
                 return Ok(Some(action));
             }
@@ -594,7 +594,12 @@ impl Conversation {
         Ok(serde_json::to_string(&out)?)
     }
 
-    async fn answer(&mut self, ctx: &AppContext, exchange_tx: Sender<Exchange>) -> Result<()> {
+    async fn answer(
+        &mut self,
+        ctx: &AppContext,
+        exchange_tx: Sender<Exchange>,
+        aliases: Vec<usize>,
+    ) -> Result<()> {
         fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
             match v {
                 serde_json::Value::Array(a) => Some(a),
@@ -610,18 +615,20 @@ impl Conversation {
                 .code_chunks
                 .iter()
                 .map(|chunk| chunk.alias as usize)
+                // Filter out invaild aliases
                 .filter(|alias| *alias < self.path_aliases.len())
-                .map(|alias| (alias, &self.path_aliases[alias]))
+                // Take only selected aliases
+                .filter(|alias| aliases.contains(alias))
                 .collect::<Vec<_>>();
 
-            path_aliases.sort_by_key(|(alias, _)| *alias);
-            path_aliases.dedup_by_key(|(alias, _)| *alias);
+            path_aliases.sort();
+            path_aliases.dedup();
 
             if !path_aliases.is_empty() {
                 s += "##### PATHS #####\npath alias, path\n";
 
-                for (alias, path) in path_aliases.iter() {
-                    s += &format!("{alias}, {path}\n");
+                for alias in &path_aliases {
+                    s += &format!("{alias}, {}\n", &self.path_aliases[*alias]);
                 }
             }
 
@@ -630,7 +637,7 @@ impl Conversation {
             }
 
             let code_chunks = if path_aliases.len() == 1 {
-                let (alias, path) = path_aliases[0];
+                let alias = path_aliases[0];
 
                 let chunk = &mut self.code_chunks[0];
 
@@ -652,13 +659,17 @@ impl Conversation {
 
                 vec![CodeChunk {
                     alias: alias as u32,
-                    path: path.clone(),
+                    path: self.path_aliases[alias].clone(),
                     start_line: 1,
                     end_line: snippet.lines().count() as u32 + 1,
                     snippet,
                 }]
             } else {
-                self.code_chunks.clone()
+                self.code_chunks
+                    .iter()
+                    .filter(|c| path_aliases.contains(&(c.alias as usize)))
+                    .cloned()
+                    .collect()
             };
 
             // Order chunks by most recent.
@@ -864,7 +875,7 @@ enum Action {
     Prompt(String),
     Path(String),
     #[serde(rename = "resp")]
-    Answer,
+    Answer(Vec<usize>),
     Code(String),
     Proc(String, Vec<usize>),
 }
