@@ -142,6 +142,10 @@
 (list
   (identifier) @local.reference)
 
+;; f-strings
+(interpolation
+  (identifier) @local.reference)
+
 ;; [ *a ]
 (list_splat
   (identifier) @local.reference)

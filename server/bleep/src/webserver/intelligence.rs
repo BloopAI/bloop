@@ -304,28 +304,25 @@ pub(super) async fn handle(
         // an import is in an of itself a "definition" of a name in the current tree,
         // it is the first time a name is introduced in a tree. however the original
         // definition of this name can only exist in other trees (or not exist at all).
-        //
-        // when looking at an import, we only care about:
-        //  - local references to the import
-        //  - repo-wide definition(s) for this import
         NodeKind::Import(i) => {
             // fetch local refs with scope-graph
             let local_references = handle_definition_local(scope_graph, idx, &content);
 
             // fetch repo-wide defs with trivial search
             let token = i.name(src.as_bytes());
-            let (repo_wide_definitions, _) =
+            let (repo_wide_definitions, repo_wide_references) =
                 handle_reference_repo_wide(token, kind, current_file, &all_docs);
 
+            let definitions = repo_wide_definitions
+                .into_iter()
+                .filter(FileSymbols::is_populated)
+                .collect();
+
+            let references = merge([local_references], repo_wide_references);
+
             Ok(json(TokenInfoResponse::Reference {
-                definitions: repo_wide_definitions
-                    .into_iter()
-                    .filter(FileSymbols::is_populated)
-                    .collect(),
-                references: local_references
-                    .is_populated()
-                    .then(|| vec![local_references])
-                    .unwrap_or_default(),
+                definitions,
+                references,
             }))
         }
         _ => Err(Error::user(

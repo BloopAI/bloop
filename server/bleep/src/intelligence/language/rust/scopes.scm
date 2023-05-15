@@ -455,3 +455,9 @@
 ;; `T` is a ref
 (scoped_type_identifier
   path: (identifier) @local.reference)
+
+;; struct _ { field: Type }
+;; `Type` is a ref
+ (field_declaration
+   name: (_)
+   type: (type_identifier) @local.reference)
