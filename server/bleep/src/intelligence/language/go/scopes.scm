@@ -152,7 +152,7 @@
 
 ;; imports
 (import_spec 
-  (package_identifier) @local.definition.module)
+  (package_identifier) @local.import)
 
 ;; switch t := q.(type)
 (type_switch_statement

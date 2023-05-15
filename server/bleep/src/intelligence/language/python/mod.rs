@@ -5,7 +5,7 @@ pub static PYTHON: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["py"],
     grammar: tree_sitter_python::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
-    namespaces: &[&["class", "function", "parameter", "variable", "unknown"]],
+    namespaces: &[&["class", "function", "parameter", "variable"]],
 };
 
 #[cfg(test)]
@@ -136,21 +136,6 @@ mod tests {
             expect![[r#"
                 scope {
                     definitions: [
-                        List {
-                            kind: "unknown",
-                            context: "from typings import §List§",
-                            referenced in (2): [
-                                `def sines(items: §List§[int]) -> List[int]:`,
-                                `def sines(items: List[int]) -> §List§[int]:`,
-                            ],
-                        },
-                        math {
-                            kind: "unknown",
-                            context: "import §math§",
-                            referenced in (1): [
-                                `return [§math§.sin(item) for item in items]`,
-                            ],
-                        },
                         sines {
                             kind: "function",
                             context: "def §sines§(items: List[int]) -> List[int]:",
@@ -163,6 +148,21 @@ mod tests {
                             context: "§list§ = [1, 2, 3]",
                             referenced in (1): [
                                 `sines(§list§)`,
+                            ],
+                        },
+                    ],
+                    imports: [
+                        List {
+                            context: "from typings import §List§",
+                            referenced in (2): [
+                                `def sines(items: §List§[int]) -> List[int]:`,
+                                `def sines(items: List[int]) -> §List§[int]:`,
+                            ],
+                        },
+                        math {
+                            context: "import §math§",
+                            referenced in (1): [
+                                `return [§math§.sin(item) for item in items]`,
                             ],
                         },
                     ],
@@ -358,16 +358,17 @@ mod tests {
             expect![[r#"
                 scope {
                     definitions: [
+                        foo {
+                            kind: "function",
+                            context: "def §foo§():",
+                        },
+                    ],
+                    imports: [
                         decor {
-                            kind: "unknown",
                             context: "from module import §decor§",
                             referenced in (1): [
                                 `@§decor§`,
                             ],
-                        },
-                        foo {
-                            kind: "function",
-                            context: "def §foo§():",
                         },
                     ],
                     child scopes: [

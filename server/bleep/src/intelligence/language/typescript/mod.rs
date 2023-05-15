@@ -69,34 +69,6 @@ mod test {
             expect![[r#"
                 scope {
                     definitions: [
-                        React {
-                            kind: "none",
-                            context: "import §React§, { createContext } from 'react';",
-                            referenced in (1): [
-                                `icon?: §React§.ReactElement;`,
-                            ],
-                        },
-                        createContext {
-                            kind: "none",
-                            context: "import React, { §createContext§ } from 'react';",
-                            referenced in (1): [
-                                `export const SearchContext = §createContext§<ContextType>({`,
-                            ],
-                        },
-                        ExtendedItemType {
-                            kind: "none",
-                            context: "import { §ExtendedItemType§, ItemType }",
-                            referenced in (1): [
-                                `type: ItemType | §ExtendedItemType§;`,
-                            ],
-                        },
-                        ItemType {
-                            kind: "none",
-                            context: "import { ExtendedItemType, §ItemType§ }",
-                            referenced in (1): [
-                                `type: §ItemType§ | ExtendedItemType;`,
-                            ],
-                        },
                         SearchHistoryType {
                             kind: "alias",
                             context: "type §SearchHistoryType§ = {",
@@ -115,6 +87,32 @@ mod test {
                         SearchContext {
                             kind: "constant",
                             context: "export const §SearchContext§ = createContext<ContextType>({",
+                        },
+                    ],
+                    imports: [
+                        React {
+                            context: "import §React§, { createContext } from 'react';",
+                            referenced in (1): [
+                                `icon?: §React§.ReactElement;`,
+                            ],
+                        },
+                        createContext {
+                            context: "import React, { §createContext§ } from 'react';",
+                            referenced in (1): [
+                                `export const SearchContext = §createContext§<ContextType>({`,
+                            ],
+                        },
+                        ExtendedItemType {
+                            context: "import { §ExtendedItemType§, ItemType }",
+                            referenced in (1): [
+                                `type: ItemType | §ExtendedItemType§;`,
+                            ],
+                        },
+                        ItemType {
+                            context: "import { ExtendedItemType, §ItemType§ }",
+                            referenced in (1): [
+                                `type: §ItemType§ | ExtendedItemType;`,
+                            ],
                         },
                     ],
                     child scopes: [
@@ -213,9 +211,9 @@ mod test {
             "#,
             expect![[r#"
                 scope {
-                    definitions: [
+                    definitions: [],
+                    imports: [
                         React {
-                            kind: "none",
                             context: "import §React§ from 'react';",
                             referenced in (2): [
                                 `<§React§.StrictMode>`,
@@ -223,14 +221,12 @@ mod test {
                             ],
                         },
                         ReactDOM {
-                            kind: "none",
                             context: "import §ReactDOM§ from 'react-dom/client';",
                             referenced in (1): [
                                 `§ReactDOM§.createRoot(document.getElementById('root') as HTMLElement).render(`,
                             ],
                         },
                         App {
-                            kind: "none",
                             context: "import §App§ from './App';",
                             referenced in (1): [
                                 `<§App§ />`,
