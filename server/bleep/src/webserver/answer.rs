@@ -482,99 +482,130 @@ impl Conversation {
         let question = &question;
         let ctx = &ctx.clone().model("gpt-3.5-turbo");
         let repo_ref = &self.repo_ref;
-        let chunks = stream::iter(paths).map(|path| async move {
-            let lines = ctx
-                .app
-                .indexes
-                .file
-                .by_path(repo_ref, &path)
-                .await
-                .with_context(|| format!("failed to read path: {path}"))?
-                .content
-                .split('\n')
-                .enumerate()
-                .map(|(i, line)| format!("{}: {line}", i + 1))
-                .collect::<Vec<_>>();
+        let chunks = stream::iter(paths)
+            .map(|path| async move {
+                let lines = ctx
+                    .app
+                    .indexes
+                    .file
+                    .by_path(repo_ref, &path)
+                    .await
+                    .with_context(|| format!("failed to read path: {path}"))?
+                    .content
+                    .split('\n')
+                    .enumerate()
+                    .map(|(i, line)| format!("{}: {line}", i + 1))
+                    .collect::<Vec<_>>();
 
-            // We store the lines separately, so that we can reference them later to trim
-            // this snippet by line number.
-            let contents = lines.join("\n");
+                Result::<_>::Ok((lines, path))
+            })
+            // Buffer file loading to load multiple paths at once
+            .buffered(10)
+            .and_then(|(lines, path): (Vec<String>, String)| async move {
+                const MAX_TOKENS: usize = 3600;
+                const OVERLAP: usize = 50;
 
-            let prompt = prompts::file_explanation(question, &path, &contents);
+                let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
+                let text = lines.join("\n");
 
-            let json = ctx
-                .llm_gateway
-                .chat(&[llm_gateway::api::Message::system(&prompt)])
-                .await?
-                .try_collect::<String>()
-                .await?;
+                let tokens = bpe.encode_ordinary(&text);
+                let total_tokens = tokens.len();
 
-            #[derive(serde::Deserialize)]
-            struct ProcResult {
-                // list of paths relative to the currently processed file
-                dependencies: Vec<String>,
-                // list of relevant line ranges
-                lines: Vec<Range>,
-            }
+                let chunk_iter = (0..total_tokens.saturating_sub(OVERLAP))
+                    .step_by(MAX_TOKENS - OVERLAP)
+                    .map(move |start| {
+                        let end = std::cmp::min(start + MAX_TOKENS, total_tokens);
+                        let text = bpe.decode(tokens[start..end].to_vec())?;
+                        let lines = text.lines().map(str::to_owned).collect::<Vec<_>>();
 
-            #[derive(serde::Deserialize, serde::Serialize, Copy, Clone)]
-            struct Range {
-                start: usize,
-                end: usize,
-            }
+                        Result::<_>::Ok((lines, path.clone()))
+                    });
 
-            #[derive(serde::Serialize)]
-            struct RelevantChunk {
-                #[serde(flatten)]
-                range: Range,
-                relevant_code: String,
-            }
+                Ok(futures::stream::iter(chunk_iter))
+            })
+            .try_flatten()
+            .map(|result| async move {
+                let (lines, path) = result?;
 
-            let proc_result = serde_json::from_str::<ProcResult>(&json)?;
+                // We store the lines separately, so that we can reference them later to trim
+                // this snippet by line number.
+                let contents = lines.join("\n");
 
-            // turn relative paths into absolute paths
-            let normalized_deps = proc_result
-                .dependencies
-                .iter()
-                .filter_map(|d| normalize(PathBuf::from(&path).join(d)))
-                .collect::<Vec<_>>();
+                let prompt = prompts::file_explanation(question, &path, &contents);
 
-            let explanations = proc_result
-                .lines
-                .into_iter()
-                .filter(|r| r.start > 0 && r.end > 0)
-                .map(|mut r| {
-                    r.end = r.end.min(r.start + 20); // Cap relevant chunk size by line number
-                    r
-                })
-                .fold(Vec::<Range>::new(), |mut exps, next| {
-                    if let Some(prev) = exps.last_mut() {
-                        if prev.end + 10 >= next.start {
-                            prev.end = next.end;
-                            return exps;
-                        }
-                    }
+                let json = ctx
+                    .llm_gateway
+                    .chat(&[llm_gateway::api::Message::system(&prompt)])
+                    .await?
+                    .try_collect::<String>()
+                    .await?;
 
-                    exps.push(next);
-                    exps
-                })
-                .into_iter()
-                .filter_map(|range| {
-                    Some(RelevantChunk {
-                        range,
-                        relevant_code: lines
-                            .get(range.start.saturating_sub(1)..range.end.saturating_sub(1))?
-                            .join("\n"),
+                #[derive(serde::Deserialize)]
+                struct ProcResult {
+                    // list of paths relative to the currently processed file
+                    dependencies: Vec<String>,
+                    // list of relevant line ranges
+                    lines: Vec<Range>,
+                }
+
+                #[derive(serde::Deserialize, serde::Serialize, Copy, Clone)]
+                struct Range {
+                    start: usize,
+                    end: usize,
+                }
+
+                #[derive(serde::Serialize)]
+                struct RelevantChunk {
+                    #[serde(flatten)]
+                    range: Range,
+                    relevant_code: String,
+                }
+
+                let proc_result = serde_json::from_str::<ProcResult>(&json)?;
+
+                // turn relative paths into absolute paths
+                let normalized_deps = proc_result
+                    .dependencies
+                    .iter()
+                    .filter_map(|d| normalize(PathBuf::from(&path).join(d)))
+                    .collect::<Vec<_>>();
+
+                let explanations = proc_result
+                    .lines
+                    .into_iter()
+                    .filter(|r| r.start > 0 && r.end > 0)
+                    .map(|mut r| {
+                        r.end = r.end.min(r.start + 20); // Cap relevant chunk size by line number
+                        r
                     })
-                })
-                .collect::<Vec<_>>();
+                    .fold(Vec::<Range>::new(), |mut exps, next| {
+                        if let Some(prev) = exps.last_mut() {
+                            if prev.end + 10 >= next.start {
+                                prev.end = next.end;
+                                return exps;
+                            }
+                        }
 
-            Ok::<_, anyhow::Error>(serde_json::json!({
-                "explanations": explanations,
-                "path": path,
-                "relevant_dependencies": normalized_deps,
-            }))
-        });
+                        exps.push(next);
+                        exps
+                    })
+                    .into_iter()
+                    .filter_map(|range| {
+                        Some(RelevantChunk {
+                            range,
+                            relevant_code: lines
+                                .get(range.start.saturating_sub(1)..range.end.saturating_sub(1))?
+                                .join("\n"),
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
+                Ok::<_, anyhow::Error>(serde_json::json!({
+                    "explanations": explanations,
+                    "path": path,
+                    "relevant_dependencies": normalized_deps,
+                }))
+            });
 
         let out = chunks
             // This box seems unnecessary, but it avoids a compiler bug:
