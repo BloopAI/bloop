@@ -8,16 +8,18 @@ import React, {
 import RepoCard from '../../../components/RepoCard';
 import { RepoType } from '../../../types/general';
 import { DeviceContext } from '../../../context/deviceContext';
-import { UIContext } from '../../../context/uiContext';
+import RepoCardSkeleton from '../../../components/RepoCard/RepoCardSkeleton';
+import NoRepos from '../../../components/RepoCard/NoRepos';
 
 type Props = {
   reposToShow: RepoType[];
   setReposToShow: Dispatch<SetStateAction<RepoType[]>>;
+  repositories?: RepoType[];
 };
 
 let eventSource: EventSource;
 
-const ReposSection = ({ reposToShow, setReposToShow }: Props) => {
+const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
   const { apiUrl } = useContext(DeviceContext);
   const [currentlySyncingRepo, setCurrentlySyncingRepo] = useState<{
     repoRef: string;
@@ -74,9 +76,15 @@ const ReposSection = ({ reposToShow, setReposToShow }: Props) => {
           />
         ))}
       </div>
-      {!reposToShow.length ? (
+      {!repositories ? (
+        <div className="flex flex-wrap gap-3.5 w-full relative items-start">
+          {new Array(6).fill('x').map((_, i) => (
+            <RepoCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : !reposToShow.length ? (
         <div className="flex w-full flex-col items-center justify-center gap-4 px-4 py-11 bg-bg-sub border border-bg-border rounded-md">
-          <img className="w-64 img-no-repos" alt="No repositories" />
+          <NoRepos />
           <div className="flex flex-col gap-3 items-center">
             <p className="subhead-m text-label-title">No repositories</p>
             <p className="body-s text-label-muted">

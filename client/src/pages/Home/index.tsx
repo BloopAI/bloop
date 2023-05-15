@@ -60,7 +60,11 @@ const HomePage = () => {
           )}
         </div>
       </div>
-      <ReposSection reposToShow={reposToShow} setReposToShow={setReposToShow} />
+      <ReposSection
+        reposToShow={reposToShow}
+        setReposToShow={setReposToShow}
+        repositories={repositories}
+      />
       <AddRepos
         addRepos={isAddReposOpen}
         onClose={(isSubmitted) => {

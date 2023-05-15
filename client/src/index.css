@@ -134,7 +134,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="default-light"] {
       --bg-base: 255, 255, 255;
@@ -170,7 +170,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos-light.png");
+      --onboarding-chats-img: url("../public/chatsImage-light.png");
     }
     [data-theme="vsc-default-dark"] {
       --bg-base: 37, 37, 38;
@@ -208,7 +208,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="vsc-default-light"] {
       --bg-base: 243, 243, 243;
@@ -244,7 +244,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos-light.png");
+      --onboarding-chats-img: url("../public/chatsImage-light.png");
     }
     [data-theme="monokai"] {
       --bg-sub: 30, 31, 28;
@@ -282,7 +282,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="abyss"] {
       --bg-base: 6, 6, 33;
@@ -320,7 +320,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="atom-one-dark-pro"] {
       --bg-base: 40, 44, 52;
@@ -358,7 +358,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="darcula"] {
       --bg-base: 40, 40, 40;
@@ -396,7 +396,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="dracula"] {
       --bg-base: 33, 34, 44;
@@ -434,7 +434,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="github-dark"] {
       --bg-base: 36, 41, 46;
@@ -472,7 +472,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="gruvbox-dark"] {
       --bg-base: 40, 40, 40;
@@ -510,7 +510,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="kimbie-dark"] {
       --bg-base: 34, 26, 15;
@@ -548,7 +548,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="material"] {
       --bg-base: 33, 33, 33;
@@ -586,7 +586,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="night-owl"] {
       --bg-base: 1, 22, 39;
@@ -624,7 +624,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="solarized-dark"] {
       --bg-base: 0, 43, 55;
@@ -662,7 +662,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="tomorrow-night-blue"] {
       --bg-base: 0, 23, 51;
@@ -700,7 +700,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos.png");
+      --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="github-light"] {
     --bg-base: 255, 255, 255;
@@ -736,8 +736,8 @@
     --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
     --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-    --img-no-repos: url("/no-repos-light.png");
-  }
+      --onboarding-chats-img: url("../public/chatsImage-light.png");
+    }
     [data-theme="gruvbox-light"] {
     --bg-base: 251, 241, 199;
     --bg-base-hover: 235, 219, 178;
@@ -772,8 +772,8 @@
     --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
     --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-    --img-no-repos: url("/no-repos-light.png");
-  }
+      --onboarding-chats-img: url("../public/chatsImage-light.png");
+    }
     [data-theme="quiet-light"] {
     --bg-base: 237, 232, 239;
     --bg-base-hover: 247, 242, 249;
@@ -808,8 +808,8 @@
     --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
     --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-    --img-no-repos: url("/no-repos-light.png");
-  }
+      --onboarding-chats-img: url("../public/chatsImage-light.png");
+    }
     [data-theme="solarized-light"] {
       --bg-base: 238, 232, 213;
       --bg-base-hover: 221, 214, 193;
@@ -844,7 +844,7 @@
       --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
       --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
-      --img-no-repos: url("/no-repos-light.png");
+      --onboarding-chats-img: url("../public/chatsImage-light.png");
     }
 }
 
@@ -1167,6 +1167,6 @@ h5, .h5 {
   background-color: rgba(var(--bg-highlight), 0.8);
 }
 
-.img-no-repos {
-  content: var(--img-no-repos);
+.onboarding-chats-img {
+  content: var(--onboarding-chats-img);
 }
