@@ -151,7 +151,7 @@ pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str)
         Rule {
             title: "Cite a single directory from the codebase",
             description: "When you wish to cite every file in a directory, use this to directly cite the directory instead.",
-            schema: "[\"dir\",STRING: PATH]",
+            schema: "[\"dir\",PATH:STRING]",
             note: "This object can occur multiple times",
             example: None,
         },
