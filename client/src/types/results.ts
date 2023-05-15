@@ -141,6 +141,8 @@ export type TokenInfoFile = {
   items: TokenInfoItem[];
 };
 
+export type TokenInfoType = 'references' | 'definitions';
+
 export type TokenInfo = {
   references?: TokenInfoFile[];
   definitions?: TokenInfoFile[];

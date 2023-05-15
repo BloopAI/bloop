@@ -1,9 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import Tippy, { TippyProps } from '@tippyjs/react/headless';
-import Tabs from '../Tabs';
 import Code from '../CodeBlock/Code';
-import { TokenInfo, TokenInfoFile, TokenInfoItem } from '../../types/results';
+import { TokenInfo, TokenInfoType, TokenInfoItem } from '../../types/results';
 import BreadcrumbsPath from '../BreadcrumbsPath';
+import SkeletonItem from '../SkeletonItem';
+import Badge from './Badge';
 
 type Props = {
   language: string;
@@ -12,7 +13,18 @@ type Props = {
   children: React.ReactNode;
   onHover: () => void;
   repoName: string;
-  onRefDefClick: (item: TokenInfoItem, filePath: string) => void;
+  onRefDefClick: (lineNum: TokenInfoItem, filePath: string) => void;
+  isLoading: boolean;
+};
+
+export const TypeMap = {
+  REF: 'references',
+  DEF: 'definitions',
+} as const;
+
+const colorMap = {
+  [TypeMap.REF]: 'text-bg-danger',
+  [TypeMap.DEF]: 'text-bg-success',
 };
 
 const positionMapping = {
@@ -49,26 +61,21 @@ const TooltipCode = ({
   onHover,
   repoName,
   onRefDefClick,
+  isLoading,
 }: Props) => {
-  const [activeTab, setActiveTab] = useState(0);
+  const [filters, setFilters] = useState<TokenInfoType[]>([
+    TypeMap.REF,
+    TypeMap.DEF,
+  ]);
 
-  const tabs = useMemo(() => {
-    if (data.definitions?.length && data.references?.length) {
-      return [{ title: 'References' }, { title: 'Definitions' }];
-    }
-    if (data.references?.length) {
-      return [{ title: 'References' }];
-    }
-    if (data.definitions?.length) {
-      return [{ title: 'Definitions' }];
-    }
-    return [];
-  }, [data]);
-
-  const countItems = useCallback((items: TokenInfoFile[]) => {
-    return items.reduce((acc: number, item) => {
-      return acc + item.items.length;
-    }, 0);
+  const toggleFilter = useCallback((type: TokenInfoType) => {
+    setFilters((prev) => {
+      if (prev.includes(type)) {
+        return prev.filter((t) => t !== type);
+      } else {
+        return [...prev, type];
+      }
+    });
   }, []);
 
   const getTailPosition = (
@@ -90,7 +97,7 @@ const TooltipCode = ({
   const renderTooltip = (attrs: {
     'data-placement': TippyProps['placement'];
   }) => {
-    if (!(data.definitions?.length || data.references?.length)) {
+    if (!(data.definitions?.length || data.references?.length) && !isLoading) {
       return '';
     }
     const tailPosition = getTailPosition(attrs['data-placement']);
@@ -113,80 +120,85 @@ const TooltipCode = ({
               tailStyles[tailPosition.vertical].fixture
             } border-l-[1px] border-r-[1px] border-b-transparent border-l-bg-border-hover border-r-bg-border`}
           />
-          <span className="bg-bg-shade px-3 pt-2 rounded-t">
-            <Tabs
-              tabs={tabs}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-            />
-          </span>
-          <span className="bg-bg-base rounded-b text-xs">
-            {[data.references, data.definitions]
-              .filter((s) => s?.length)
-              .map((items, index) => (
-                <React.Fragment key={index}>
-                  {items?.length ? (
-                    <span
-                      key={index}
-                      className={`${
-                        activeTab === index ? 'visible' : 'hidden'
-                      } flex flex-col divide-y divide-bg-border max-h-72 overflow-x-hidden pt-1`}
-                    >
-                      {items.length > 1 && (
-                        <span className="pl-4 py-1 text-label-muted">
-                          Found{' '}
-                          <span className="text-label-base">
-                            {countItems(items)}{' '}
-                            {tabs[activeTab]?.title.toLowerCase()}
-                          </span>{' '}
-                          in{' '}
-                          <span className="text-label-base">
-                            {items.length} files
-                          </span>
-                        </span>
-                      )}
-                      {items.map((fileItem, i) => (
-                        <React.Fragment
-                          key={'snippet' + fileItem.path + index + i}
+          <div className="bg-bg-shade px-3 py-2 rounded-t border-b border-bg-border flex items-center justify-between gap-2">
+            {isLoading ? (
+              <div className="w-full h-6 my-1">
+                <SkeletonItem />
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <Badge
+                    type={TypeMap.DEF}
+                    onClick={toggleFilter}
+                    active={filters.includes(TypeMap.DEF)}
+                    disabled={!data.definitions?.length}
+                    tooltipText="The line of code where identifier is defined"
+                  />
+                  <Badge
+                    type={TypeMap.REF}
+                    onClick={toggleFilter}
+                    active={filters.includes(TypeMap.REF)}
+                    disabled={!data.references?.length}
+                    tooltipText="The line of code where the identifier is referenced"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          <div className="bg-bg-base rounded-b text-xs overflow-auto max-h-80">
+            {!isLoading &&
+              [
+                ...(data.definitions || []).map((d) => ({
+                  ...d,
+                  kind: TypeMap.DEF,
+                })),
+                ...(data.references || []).map((d) => ({
+                  ...d,
+                  kind: TypeMap.REF,
+                })),
+              ]
+                .filter((d) => filters.includes(d.kind))
+                .map((d, i) => (
+                  <div className="border-b border-bg-border" key={d.path + i}>
+                    <div className="px-3 pt-2">
+                      <BreadcrumbsPath
+                        path={d.path}
+                        repo={repoName}
+                        activeStyle="secondary"
+                      />
+                    </div>
+                    {d.items.map((line, i) => (
+                      <div
+                        key={i}
+                        className="py-2 px-3 code-s flex gap-1 cursor-pointer overflow-auto"
+                        onClick={() => onRefDefClick(line, d.path)}
+                      >
+                        <div
+                          className={`uppercase caption w-8 flex-shrink-0 flex-grow-0 ${
+                            colorMap[d.kind]
+                          }`}
                         >
-                          <span className="pl-3 text-xs">
-                            <BreadcrumbsPath
-                              path={fileItem.path}
-                              repo={repoName}
-                              activeStyle="secondary"
-                            />
-                          </span>
-                          {fileItem.items.map((item, j) => (
-                            <span
-                              key={
-                                'snippet' +
-                                fileItem.path +
-                                item.line +
-                                index +
-                                i +
-                                j
-                              }
-                              className="py-1 overflow-x-auto hide-scrollbar pr-3 flex-shrink-0 cursor-pointer"
-                              onClick={() => onRefDefClick(item, fileItem.path)}
-                            >
-                              <Code
-                                code={item.code}
-                                lineStart={item.line}
-                                language={language}
-                                removePaddings
-                                lineHoverEffect
-                              />
-                            </span>
-                          ))}
-                        </React.Fragment>
-                      ))}
-                    </span>
-                  ) : (
-                    ''
-                  )}
-                </React.Fragment>
+                          {d.kind.slice(0, 3)}
+                        </div>
+                        <Code
+                          code={line.code.trim()}
+                          lineStart={line.line}
+                          language={language}
+                          removePaddings
+                          lineHoverEffect
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+            {isLoading &&
+              new Array(6).fill('x').map((_, i) => (
+                <div className="w-full h-8 py-2 px-3" key={i}>
+                  <SkeletonItem />
+                </div>
               ))}
-          </span>
+          </div>
         </div>
       </div>
     );
