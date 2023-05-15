@@ -178,11 +178,7 @@ const Onboarding = () => {
         before:bg-repeat before:mix-blend-soft-light before:opacity-[0.14]`}
           >
             <div className="w-[585px]">
-              <img
-                srcSet="/chatsImage-big.png 3x"
-                src="/chatsImage-small.png"
-                alt="chats in bloop"
-              />
+              <img className="onboarding-chats-img" alt="chats in bloop" />
             </div>
           </div>
         </div>

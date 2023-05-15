@@ -13,6 +13,7 @@ import { UIContext } from '../../context/uiContext';
 import { EMAIL_REGEX } from '../../consts/validations';
 import { saveBugReport, saveCrashReport } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
+import ConfirmImg from './ConfirmImg';
 
 type Props = {
   errorBoundaryMessage?: string;
@@ -208,7 +209,7 @@ const ReportBugModal = ({
               </p>
             </div>
             <div className="w-full">
-              <img src="/bug_report_confirm.png" alt="Confirmation" />
+              <ConfirmImg />
             </div>
             <Button variant="secondary" onClick={() => resetState()}>
               Got it!

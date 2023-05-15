@@ -60,7 +60,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
           const scrollTop = (e.target as HTMLDivElement).scrollTop;
           let previousCommentsHeight = 0;
           let stickedCommentsHeight = 0;
-          Object.values(citations).forEach((fileCite, i) => {
+          Object.values(citations).forEach((fileCite) => {
             fileCite.forEach((c: any) => {
               const comment = document.getElementById(`comment-${c.i}`);
               const code = document.getElementById(`code-${c.i}`);

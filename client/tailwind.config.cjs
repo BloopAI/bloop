@@ -113,7 +113,7 @@ module.exports = {
         'md': "6px"
       },
       backgroundImage: {
-        skeleton: 'linear-gradient(90deg, rgba(var(--bg-base), .1) 0%, rgba(var(--bg-base), .1) 33%, rgb(var(--bg-base)) 60%, rgba(var(--bg-base), .1) 100%)',
+        skeleton: 'linear-gradient(90deg, rgba(var(--bg-base-hover), .1) 0%, rgba(var(--bg-base-hover), .1) 33%, rgb(var(--bg-base-hover)) 60%, rgba(var(--bg-base-hover), .1) 100%)',
       },
       backgroundSize :{
         '50%': '50%',
