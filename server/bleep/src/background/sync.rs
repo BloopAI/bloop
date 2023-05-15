@@ -266,6 +266,12 @@ impl SyncHandle {
         &self.pipes
     }
 
+    pub(crate) fn repo(&self) -> Option<Repository> {
+        self.app
+            .repo_pool
+            .read(&self.reporef, |_k, repo| repo.clone())
+    }
+
     pub(crate) fn set_status(
         &self,
         updater: impl FnOnce(&Repository) -> SyncStatus,
@@ -276,6 +282,17 @@ impl SyncHandle {
         })?;
 
         Some(new_status)
+    }
+
+    /// Will return the current Repository, inserting a new one if none
+    pub(crate) async fn create_new(&self, repo: impl FnOnce() -> Repository) -> Repository {
+        self.app
+            .repo_pool
+            .entry_async(self.reporef.clone())
+            .await
+            .or_insert_with(repo)
+            .get()
+            .clone()
     }
 
     pub(crate) async fn sync_lock(&self) -> Option<std::result::Result<(), RemoteError>> {
