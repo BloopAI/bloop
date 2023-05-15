@@ -153,7 +153,7 @@ pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str)
             description: "When you wish to cite every file in a directory, use this to directly cite the directory instead.",
             schema: "[\"dir\",PATH:STRING]",
             note: "This object can occur multiple times",
-            example: None,
+            example: Some(r#"The path is a relative path, with no leading slash, for example: server/bleep/src/webserver"#),
         },
         Rule {
             title: "Write a new code file",
