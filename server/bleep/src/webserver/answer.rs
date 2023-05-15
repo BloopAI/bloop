@@ -524,7 +524,7 @@ impl Conversation {
             }
 
             #[derive(serde::Serialize)]
-            struct Explanation {
+            struct RelevantChunk {
                 #[serde(flatten)]
                 range: Range,
                 relevant_code: String,
@@ -544,12 +544,12 @@ impl Conversation {
                 .into_iter()
                 .filter(|r| r.start > 0 && r.end > 0)
                 .map(|mut r| {
-                    r.end = r.end.min(r.start + 20);
+                    r.end = r.end.min(r.start + 20); // Cap relevant chunk size by line number
                     r
                 })
                 .fold(Vec::<Range>::new(), |mut exps, next| {
                     if let Some(prev) = exps.last_mut() {
-                        if prev.end >= next.start {
+                        if prev.end + 10 >= next.start {
                             prev.end = next.end;
                             return exps;
                         }
@@ -560,7 +560,7 @@ impl Conversation {
                 })
                 .into_iter()
                 .filter_map(|range| {
-                    Some(Explanation {
+                    Some(RelevantChunk {
                         range,
                         relevant_code: lines
                             .get(range.start.saturating_sub(1)..range.end.saturating_sub(1))?
