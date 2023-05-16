@@ -9,11 +9,11 @@ type Props = {
 const Feature = ({ icon, description, title }: Props) => {
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex gap-3 items-center body-m text-white">
+      <div className="flex gap-3 items-center body-m text-label-title">
         {icon}
         {title}
       </div>
-      <div className="pl-8 body-s text-gray-500">{description}</div>
+      <div className="pl-8 body-s text-label-base">{description}</div>
     </div>
   );
 };

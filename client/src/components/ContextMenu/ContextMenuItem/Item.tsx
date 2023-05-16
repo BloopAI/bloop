@@ -7,7 +7,6 @@ import Tooltip from '../../Tooltip';
 
 export type ItemProps = {
   text: string | React.ReactElement;
-  href?: string;
   icon?: React.ReactElement;
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   onDelete?: () => void;
@@ -22,7 +21,6 @@ const Item = ({
   icon,
   type,
   onDelete,
-  href,
   disabled,
   tooltip,
 }: ItemProps) => {
@@ -30,6 +28,7 @@ const Item = ({
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     if (disabled) {
       return;
     }
@@ -45,19 +44,14 @@ const Item = ({
     }
   };
 
-  const Comp =
-    type === MenuItemType.LINK
-      ? (props: any) => <a {...props} href={href} />
-      : (props: any) => <span {...props} />;
-
   const item = (
-    <Comp
-      className={`p-2.5 group ${
+    <button
+      className={`p-2.5 group w-full text-left ${
         disabled
-          ? 'text-gray-500 cursor-default'
+          ? 'text-label-muted cursor-default'
           : type === MenuItemType.DANGER
-          ? 'hover:bg-gray-700 text-danger-600 cursor-pointer'
-          : 'hover:bg-gray-700 text-gray-300 cursor-pointer'
+          ? 'hover:bg-bg-base-hover active:bg-transparent text-bg-danger cursor-pointer'
+          : 'hover:bg-bg-base-hover active:bg-transparent text-label-base hover:text-label-title focus:text-label-title active:text-label-title cursor-pointer'
       } flex items-center justify-between rounded text-sm duration-100`}
       onClick={handleClick}
       disabled={disabled}
@@ -88,10 +82,16 @@ const Item = ({
           ) : (
             ''
           )}
-          {type === MenuItemType.SELECTABLE && selected ? <CheckIcon /> : ''}
+          {type === MenuItemType.SELECTABLE && selected ? (
+            <span className="w-5 h-5 text-bg-main">
+              <CheckIcon />
+            </span>
+          ) : (
+            ''
+          )}
         </span>
       )}
-    </Comp>
+    </button>
   );
 
   return tooltip ? (

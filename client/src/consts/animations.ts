@@ -1,4 +1,5 @@
 const EASE_IN_SLOW = [0.4, 0, 0, 1];
+const EASE_OUT_SLOW = [0.6, 0.6, 0, 1];
 
 const FILTER_EXPAND_ANIMATION_DURATION = 0.3;
 
@@ -13,7 +14,7 @@ export const FILTER_SECTION_ANIMATION = { duration: 0.3, ease: EASE_IN_SLOW };
 
 export const MODAL_SIDEBAR_CHANGE_ANIMATION = {
   duration: 0.5,
-  ease: 'anticipate',
+  ease: 'easeIn',
 };
 export const MODAL_SIDEBAR_APPEAR_ANIMATION = {
   duration: 0.2,
@@ -23,4 +24,9 @@ export const MODAL_SIDEBAR_APPEAR_ANIMATION = {
 export const ACCORDION_CHILDREN_ANIMATION = {
   duration: 0.3,
   ease: EASE_IN_SLOW,
+};
+
+export const CONVERSATIONS_SIDEBAR_ANIMATION = {
+  duration: 3,
+  ease: 'easeOut',
 };

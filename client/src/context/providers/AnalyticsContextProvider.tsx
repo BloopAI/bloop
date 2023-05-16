@@ -1,36 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import * as analytics from 'rudder-sdk-js';
 import { AnalyticsContext } from '../analyticsContext';
-import {
-  getPlainFromStorage,
-  IS_ANALYTICS_ALLOWED_KEY,
-} from '../../services/storage';
+import { EnvConfig } from '../../types/general';
 
 interface AnalyticsProviderProps {
   children: React.ReactNode;
   forceAnalytics?: boolean;
   isSelfServe?: boolean;
-  envConfig: {
-    analytics_data_plane?: string;
-    analytics_key_fe?: string;
-    user_login?: string | null;
-    org_name?: string | null;
-    tracking_id?: string;
-    device_id?: string;
-  };
+  envConfig: EnvConfig;
 }
 
 export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   children,
-  forceAnalytics,
   isSelfServe,
   envConfig,
 }) => {
   const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
-
-  const [isAnalyticsAllowed, setIsAnalyticsAllowed] = useState(
-    forceAnalytics || getPlainFromStorage(IS_ANALYTICS_ALLOWED_KEY) === 'true',
-  );
 
   const loadAnalytics = async () => {
     if (
@@ -62,7 +47,7 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
         envConfig.tracking_id.trim(),
         {
           isSelfServe: isSelfServe,
-          githubUsername: envConfig.user_login || '',
+          githubUsername: envConfig.github_user?.login || '',
           orgName: envConfig.org_name || '',
           deviceId: envConfig.device_id?.trim(),
         },
@@ -73,16 +58,12 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   }, [analyticsLoaded, envConfig.tracking_id]);
 
   useEffect(() => {
-    if (isAnalyticsAllowed) {
-      loadAnalytics();
-    } else {
-      setAnalyticsLoaded(false);
-    }
-  }, [envConfig.analytics_key_fe, isAnalyticsAllowed]);
+    loadAnalytics();
+  }, [envConfig.analytics_key_fe]);
 
   const analyticsContextValue = useMemo(
-    () => ({ setIsAnalyticsAllowed, isAnalyticsAllowed, analyticsLoaded }),
-    [isAnalyticsAllowed],
+    () => ({ analyticsLoaded }),
+    [analyticsLoaded],
   );
 
   return (

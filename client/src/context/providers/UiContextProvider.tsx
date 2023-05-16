@@ -12,10 +12,17 @@ import { gitHubStatus } from '../../services/api';
 import { SettingSections } from '../../components/Settings';
 import {
   getPlainFromStorage,
+  savePlainToStorage,
   ONBOARDING_DONE_KEY,
+  THEME,
 } from '../../services/storage';
+import { UITabType } from '../../types/general';
+import { Theme } from '../../types';
 
-export const UIContextProvider = ({ children }: PropsWithChildren) => {
+export const UIContextProvider = ({
+  children,
+  tab,
+}: PropsWithChildren<{ tab: UITabType }>) => {
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isBugReportModalOpen, setBugReportModalOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState(
@@ -32,6 +39,10 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
   const [shouldShowWelcome, setShouldShowWelcome] = useState(
     !getPlainFromStorage(ONBOARDING_DONE_KEY),
   );
+  const [isRightPanelOpen, setRightPanelOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>(
+    (getPlainFromStorage(THEME) as 'default' | null) || 'default',
+  );
 
   useEffect(() => {
     if (!isSelfServe) {
@@ -41,6 +52,11 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       });
     }
   }, []);
+
+  useEffect(() => {
+    savePlainToStorage(THEME, theme);
+    document.body.dataset.theme = theme;
+  }, [theme]);
 
   const uiContextValue = useMemo(
     () => ({
@@ -59,6 +75,11 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       isGithubChecked,
       shouldShowWelcome,
       setShouldShowWelcome,
+      isRightPanelOpen,
+      setRightPanelOpen,
+      tab,
+      theme,
+      setTheme,
     }),
     [
       isSettingsOpen,
@@ -69,6 +90,9 @@ export const UIContextProvider = ({ children }: PropsWithChildren) => {
       isGithubConnected,
       isGithubChecked,
       shouldShowWelcome,
+      isRightPanelOpen,
+      tab,
+      theme,
     ],
   );
   return (

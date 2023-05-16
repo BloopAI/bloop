@@ -9,7 +9,7 @@ export default {
 
 export const TooltipDefault = () => {
   return (
-    <div style={{ width: 384, backgroundColor: '#131315', padding: 50 }}>
+    <div style={{ width: 384, padding: 50 }}>
       <div className="flex flex-col gap-3 items-center justify-center">
         <Tooltip placement={'top-start'} text={'Tooltip top left position'}>
           <span>left top</span>
@@ -49,7 +49,7 @@ export const TooltipDefault = () => {
 
 export const TooltipIconOnlyButton = () => {
   return (
-    <div style={{ width: 384, backgroundColor: '#131315', padding: 50 }}>
+    <div style={{ width: 384, padding: 50 }}>
       <div className="flex flex-col gap-3 items-center justify-center">
         <Button
           onlyIcon

@@ -1,3 +1,4 @@
+import { Token } from './prism';
 import { FileTreeFileType, RepositoryFile } from './index';
 
 export type BaseSymbolType =
@@ -105,6 +106,18 @@ export interface Snippet {
   symbols?: SnippetSymbol[];
 }
 
+export type HighlightMap = {
+  highlight: boolean;
+  token: Token;
+  startHl?: boolean;
+  endHl?: boolean;
+};
+
+export type TokensLine = {
+  tokens: HighlightMap[];
+  lineNumber: number | null;
+};
+
 export type Range = { start: number; end: number };
 
 export type ResultType = CodeResult | RepoResult | FileResult;
@@ -134,12 +147,15 @@ export type DirectoryResult = {
 export type TokenInfoItem = {
   code: string;
   line: number;
+  highlights: Range[];
 };
 
 export type TokenInfoFile = {
   path: string;
   items: TokenInfoItem[];
 };
+
+export type TokenInfoType = 'references' | 'definitions';
 
 export type TokenInfo = {
   references?: TokenInfoFile[];

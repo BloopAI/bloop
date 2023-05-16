@@ -2,38 +2,41 @@ import React, {
   ChangeEvent,
   useCallback,
   useContext,
-  useEffect,
+  useMemo,
   useState,
 } from 'react';
 import Button from '../../../Button';
 import TextInput from '../../../TextInput';
 import SettingsRow from '../../SettingsRow';
 import SettingsText from '../../SettingsText';
-import { UIContext } from '../../../../context/uiContext';
 import { EMAIL_REGEX } from '../../../../consts/validations';
 import { saveUserData } from '../../../../services/api';
 import { DeviceContext } from '../../../../context/deviceContext';
+import {
+  getJsonFromStorage,
+  saveJsonToStorage,
+  USER_DATA_FORM,
+} from '../../../../services/storage';
+
+type Form = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  emailError?: string;
+};
 
 const ProfileSettings = () => {
-  const { onBoardingState, setOnBoardingState } = useContext(UIContext);
   const { envConfig } = useContext(DeviceContext);
-  const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
+  const savedForm: Form | null = useMemo(
+    () => getJsonFromStorage(USER_DATA_FORM),
+    [],
+  );
+  const [form, setForm] = useState<Form>({
+    firstName: savedForm?.firstName || '',
+    lastName: savedForm?.lastName || '',
+    email: savedForm?.email || '',
     emailError: '',
   });
-
-  useEffect(() => {
-    const savedForm = onBoardingState['STEP_DATA_FORM'];
-
-    setForm((prev) => ({
-      ...prev,
-      firstName: savedForm?.firstName || '',
-      lastName: savedForm?.lastName || '',
-      email: savedForm?.email || '',
-    }));
-  }, [onBoardingState]);
 
   const onChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({
@@ -49,10 +52,7 @@ const ProfileSettings = () => {
       if (form.emailError) {
         return;
       }
-      setOnBoardingState((prev) => ({
-        ...prev,
-        ['STEP_DATA_FORM']: form,
-      }));
+      saveJsonToStorage(USER_DATA_FORM, form);
       saveUserData({
         email: form.email,
         first_name: form.firstName,
@@ -65,28 +65,6 @@ const ProfileSettings = () => {
 
   return (
     <form className="block">
-      {/*<div className="border-t border-t-gray-800 flex items-center justify-start gap-4 py-6">*/}
-      {/*  <img*/}
-      {/*    src={avatarUrl || '/empty_avatar.png'}*/}
-      {/*    alt="avatar"*/}
-      {/*    className="w-13 h-13 rounded-full "*/}
-      {/*  />*/}
-      {/*  <label className="flex items-center gap-4 flex-1 relative cursor-pointer">*/}
-      {/*    <input*/}
-      {/*      type="file"*/}
-      {/*      className="hidden"*/}
-      {/*      id="avatar-upload"*/}
-      {/*      onChange={(e) => setAvatarUrl(e.target.files?.[0]?.name || '')}*/}
-      {/*    />*/}
-      {/*    <Button variant="secondary">Choose</Button>*/}
-      {/*    /!* overlay over button to prevent click event to be fired on button instead of label *!/*/}
-      {/*    <div className="absolute top-0 left-0 bottom-0 w-24" />*/}
-      {/*    <p className="body-s text-gray-500">JPG, GIF or PNG. 1MB Max.</p>*/}
-      {/*  </label>*/}
-      {/*  <Button onlyIcon variant="tertiary-outlined" title="Remove avatar">*/}
-      {/*    <TrashCan />*/}
-      {/*  </Button>*/}
-      {/*</div>*/}
       <SettingsRow>
         <SettingsText
           title="First and last name"
@@ -141,9 +119,9 @@ const ProfileSettings = () => {
         className="absolute top-0 right-0"
         disabled={
           !!form.emailError ||
-          (form.email === onBoardingState['STEP_DATA_FORM']?.email &&
-            form.firstName === onBoardingState['STEP_DATA_FORM']?.firstName &&
-            form.lastName === onBoardingState['STEP_DATA_FORM']?.lastName)
+          (form.email === savedForm?.email &&
+            form.firstName === savedForm?.firstName &&
+            form.lastName === savedForm?.lastName)
         }
         onClick={handleSubmit}
       >

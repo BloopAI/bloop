@@ -48,7 +48,7 @@ const Dropdown = ({
           size="medium"
           onClick={() => setVisibility(!visible)}
         >
-          {btnHint ? <span className="text-gray-500">{btnHint}</span> : null}
+          {btnHint ? <span className="text-label-muted">{btnHint}</span> : null}
           {selectedItem ? (
             <TextField
               value={selectedItem.text!}

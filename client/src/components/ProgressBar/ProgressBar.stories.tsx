@@ -1,5 +1,4 @@
 import ProgressBar from './index';
-import '../../index.css';
 
 export default {
   title: 'components/ProgressBar',
@@ -8,7 +7,7 @@ export default {
 
 export const Empty = () => {
   return (
-    <div className="bg-gray-900 w-98">
+    <div className="w-98">
       <ProgressBar
         label="Add label"
         description="0% · 3 minutes remaining"
@@ -20,7 +19,7 @@ export const Empty = () => {
 
 export const Start = () => {
   return (
-    <div className="bg-gray-900 w-98">
+    <div className="w-98">
       <ProgressBar
         label="Add label"
         description="3% · 3 minutes remaining"
@@ -32,7 +31,7 @@ export const Start = () => {
 
 export const Half = () => {
   return (
-    <div className="bg-gray-900 w-98">
+    <div className="w-98">
       <ProgressBar
         label="Add label"
         description="50% · 2 minutes remaining"
@@ -44,7 +43,7 @@ export const Half = () => {
 
 export const Full = () => {
   return (
-    <div className="bg-gray-900 w-98">
+    <div className="w-98">
       <ProgressBar
         label="Add label"
         description="100% · 1 second remaining"

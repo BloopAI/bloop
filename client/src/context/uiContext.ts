@@ -1,4 +1,5 @@
 import React, { createContext } from 'react';
+import { Theme } from '../types';
 
 type ContextType = {
   isSettingsOpen: boolean;
@@ -16,6 +17,11 @@ type ContextType = {
   isGithubChecked: boolean;
   shouldShowWelcome: boolean;
   setShouldShowWelcome: (b: boolean) => void;
+  isRightPanelOpen: boolean;
+  setRightPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  tab: { key: string; name: string; repoName: string };
+  theme: Theme;
+  setTheme: (s: Theme) => void;
 };
 
 export const UIContext = createContext<ContextType>({
@@ -34,4 +40,9 @@ export const UIContext = createContext<ContextType>({
   isGithubChecked: false,
   shouldShowWelcome: false,
   setShouldShowWelcome: () => {},
+  isRightPanelOpen: false,
+  setRightPanelOpen: () => {},
+  tab: { key: 'initial', name: 'Home', repoName: '' },
+  theme: 'default',
+  setTheme: () => {},
 });
