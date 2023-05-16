@@ -191,8 +191,8 @@ For example:
 
     let output_rules_str = rules
         .into_iter()
-        .enumerate()
-        .map(|(i, r)| {
+        .zip(1..)
+        .map(|(r, i)| {
             let Rule {
                 title,
                 description,

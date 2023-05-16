@@ -225,13 +225,17 @@ impl Conversation {
 
     // Generate a summary of the last exchange
     fn get_summarized_answer(&self) -> Option<String> {
-        self.exchanges.last().map(|e| {
-            e.results
-                .iter()
-                .map(SearchResult::summarize)
-                .collect::<Vec<_>>()
-                .join("\n")
-        })
+        self.exchanges
+            .len()
+            .checked_sub(2)
+            .and_then(|second_last| self.exchanges.get(second_last))
+            .map(|e| {
+                e.results
+                    .iter()
+                    .map(SearchResult::summarize)
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            })
     }
 
     async fn step(
@@ -253,6 +257,8 @@ impl Conversation {
                         info!("attaching summary of previous exchange: {summary}");
                         self.llm_history
                             .push(llm_gateway::api::Message::assistant(&summary));
+                        self.llm_history
+                            .push(llm_gateway::api::Message::assistant(prompts::CONTINUE));
                     }
                     None => {
                         info!("no previous exchanges, skipping summary");
