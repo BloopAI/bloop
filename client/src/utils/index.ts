@@ -1,4 +1,4 @@
-import { MouseEvent } from 'react';
+import { MouseEvent, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { RepoType, RepoUi } from '../types/general';
 import langs from './langs.json';
@@ -228,4 +228,13 @@ export const propsAreShallowEqual = <P>(
 
 export const deleteAuthCookie = () => {
   document.cookie = 'auth_cookie=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+};
+
+export const previewTheme = (key: string) => {
+  document.body.classList.add('notransition'); // to avoid flashing UI with color changes
+  document.body.dataset.theme = key;
+  setTimeout(
+    () => document.body.classList.remove('notransition'),
+    300, // longest color transition
+  );
 };

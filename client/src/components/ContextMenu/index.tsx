@@ -10,6 +10,7 @@ export const MenuListItemType = { ...MenuItemType, ...ExtendedMenuItemType };
 export type ContextMenuLinkItem = {
   type: MenuItemType.LINK;
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
+  onMouseOver?: () => void;
   icon?: React.ReactElement;
   text?: string;
   href?: string;
@@ -25,6 +26,7 @@ export type ContextMenuItem =
       text?: string | React.ReactElement;
       type: MenuItemType | ExtendedMenuItemType;
       onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
+      onMouseOver?: () => void;
       annotations?: number;
       removable?: boolean;
       onDelete?: () => void;
@@ -85,6 +87,7 @@ const ContextMenu = ({
               item.onClick?.(e);
               handleClose();
             }}
+            onMouseOver={item.onMouseOver}
             text={item.text!}
             type={item.type}
             onDelete={item.onDelete}
