@@ -182,8 +182,9 @@ const TooltipCode = ({
                           {d.kind.slice(0, 3)}
                         </div>
                         <Code
-                          code={line.code.trim()}
+                          code={line.code}
                           lineStart={line.line}
+                          highlights={line.highlights}
                           language={language}
                           removePaddings
                           lineHoverEffect

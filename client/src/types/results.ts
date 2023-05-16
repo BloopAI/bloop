@@ -134,6 +134,7 @@ export type DirectoryResult = {
 export type TokenInfoItem = {
   code: string;
   line: number;
+  highlights: Range[];
 };
 
 export type TokenInfoFile = {

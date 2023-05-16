@@ -26,6 +26,7 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -37,10 +38,12 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -50,10 +53,12 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -77,6 +82,7 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -88,10 +94,12 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -101,10 +109,12 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -128,6 +138,7 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -139,10 +150,12 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -152,10 +165,12 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
