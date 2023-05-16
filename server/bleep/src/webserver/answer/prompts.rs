@@ -152,8 +152,8 @@ pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str)
         },
         Rule {
             title: "Cite a single directory from the codebase",
-            description: "When you wish to cite every file in a directory, use this to directly cite the directory instead.",
-            schema: "[\"dir\",PATH:STRING]",
+            description: "When you wish to cite every file in a directory, use this to directly cite the directory instead. The COMMENT should answer the query with respect to the given directory.",
+            schema: "[\"dir\",PATH:STRING,COMMENT:STRING]",
             note: "This object can occur multiple times",
             example: Some(r#"The path is a relative path, with no leading slash. You must generate a trailing slash, for example: server/bleep/src/webserver/. On Windows, generate backslash separated components, for example: server\bleep\src\webserver\"#),
         },
@@ -228,7 +228,7 @@ Show all the analytics events
 
 Where is the webserver code located
 
-[["dir","server/bleep/src/webserver/"],["con","The webserver code is located under the server directory"]]
+[["dir","server/bleep/src/webserver/","This directory contains the webserver module"],["con","The webserver code is located under the server directory"]]
 
 #####
 

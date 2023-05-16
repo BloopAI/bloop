@@ -144,6 +144,7 @@ pub struct CiteResult {
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
 pub struct DirectoryResult {
     path: Option<String>,
+    comment: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
@@ -225,8 +226,13 @@ impl DirectoryResult {
             .get(0)
             .and_then(serde_json::Value::as_str)
             .map(ToOwned::to_owned);
+        let comment = v
+            .get(1)
+            .and_then(serde_json::Value::as_str)
+            .map(ToOwned::to_owned);
         Some(Self {
             path,
+            comment,
             ..Default::default()
         })
     }
