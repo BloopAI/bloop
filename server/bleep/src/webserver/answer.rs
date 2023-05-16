@@ -502,7 +502,7 @@ impl Conversation {
             // Buffer file loading to load multiple paths at once
             .buffered(10)
             .and_then(|(lines, path): (Vec<String>, String)| async move {
-                const MAX_TOKENS: usize = 3600;
+                const MAX_TOKENS: usize = 3400;
                 const OVERLAP: usize = 50;
 
                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
