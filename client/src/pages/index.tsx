@@ -122,7 +122,12 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
           />
         );
       case 'no-results':
-        return <NoResults suggestions={mockQuerySuggestions} />;
+        return (
+          <NoResults
+            suggestions={mockQuerySuggestions}
+            isRepo={navigatedItem?.type === 'repo'}
+          />
+        );
       case 'repo':
         return (
           <RepositoryPage repositoryData={data as DirectorySearchResponse} />

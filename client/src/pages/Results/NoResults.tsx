@@ -5,9 +5,10 @@ import PageHeader from '../../components/ResultsPageHeader';
 
 type Props = {
   suggestions: string[];
+  isRepo?: boolean;
 };
 
-const NoResults = ({ suggestions }: Props) => {
+const NoResults = ({ suggestions, isRepo }: Props) => {
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const items = useMemo(
     () =>
@@ -25,15 +26,28 @@ const NoResults = ({ suggestions }: Props) => {
         toggleOpen={() => setIsFiltersOpen((prev) => !prev)}
       />
       <div className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content">
-        <PageHeader
-          resultsNumber={0}
-          showCollapseControls={false}
-          loading={false}
-        />
-        <div className="mt-13 select-none">
-          <p className="body-s text-label-muted">Suggested combinations</p>
-          <div className="flex gap-3 flex-wrap mt-6 w-1/2">{items}</div>
-        </div>
+        {isRepo ? (
+          <div className="flex flex-col gap-4 select-none">
+            <h4 className="text-label-title">
+              Sorry, this repository is not ready for search
+            </h4>
+            <p className="body-s text-label-muted">
+              Wait for the repository to finish syncing and try again
+            </p>
+          </div>
+        ) : (
+          <PageHeader
+            resultsNumber={0}
+            showCollapseControls={false}
+            loading={false}
+          />
+        )}
+        {!isRepo && (
+          <div className="mt-13 select-none">
+            <p className="body-s text-label-muted">Suggested combinations</p>
+            <div className="flex gap-3 flex-wrap mt-6 w-1/2">{items}</div>
+          </div>
+        )}
       </div>
     </>
   );
