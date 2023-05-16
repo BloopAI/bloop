@@ -205,6 +205,7 @@ const Chat = () => {
 
   const stopGenerating = useCallback(() => {
     prevEventSource?.close();
+    setLoading(false);
     setConversation((prev) => {
       const newConversation = prev.slice(0, -1);
       const lastMessage = {
