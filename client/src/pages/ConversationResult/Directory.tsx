@@ -12,7 +12,7 @@ const Directory = ({ path, repo }: { path: string; repo: string }) => {
   const { navigateRepoPath, navigateFullResult } = useAppNavigation();
 
   useEffect(() => {
-    search(`open:true repo:${repo} path:${path}/`).then((resp) => {
+    search(`open:true repo:${repo} path:${path}`).then((resp) => {
       const data = mapDirResult(resp.data[0] as DirectoryItem);
       setFiles(data.entries.sort(sortFiles));
     });

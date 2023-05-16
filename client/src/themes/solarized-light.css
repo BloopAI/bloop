@@ -43,7 +43,7 @@
     white-space: normal;
 }
 [data-theme="solarized-light"] .token.comment {
-    color: #93a1a1;
+    color: #657b83;
     font-style: italic;
 }
 [data-theme="solarized-light"] .token.string {
@@ -76,9 +76,6 @@
 [data-theme="solarized-light"] .token.keyword {
     color: #859900;
 }
-[data-theme="solarized-light"] .token.punctuation {
-    color: #859900;
-}
 [data-theme="solarized-light"] .token.inserted {
     color: #859900;
 }
@@ -98,13 +95,13 @@
     color: #b58900;
 }
 [data-theme="solarized-light"] .token.tag.punctuation {
-    color: #93a1a1;
+    color: #657b83;
 }
 [data-theme="solarized-light"] .token.attr-name {
-    color: #93a1a1;
+    color: #657b83;
 }
 [data-theme="solarized-light"] .token.selector {
-    color: #93a1a1;
+    color: #657b83;
 }
 [data-theme="solarized-light"] .token.important, [data-theme="solarized-light"] .token.bold {
     font-weight: bold;
