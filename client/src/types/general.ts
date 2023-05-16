@@ -141,6 +141,12 @@ export type MessageResultCite = {
   };
 };
 
+export type MessageResultDirectory = {
+  Directory: {
+    path: string | null;
+  };
+};
+
 export type MessageResultNew = {
   New: {
     language: string;
@@ -171,7 +177,12 @@ export type ChatMessageServer = {
   loadingSteps: string[];
   error?: string;
   type: ChatMessageType;
-  results?: (MessageResultCite | MessageResultNew | MessageResultModify)[];
+  results?: (
+    | MessageResultCite
+    | MessageResultNew
+    | MessageResultModify
+    | MessageResultDirectory
+  )[];
 };
 
 export type ChatMessage = ChatMessageUser | ChatMessageServer;

@@ -9,6 +9,7 @@ import { conversationsCache } from '../../services/cache';
 import NewCode from './NewCode';
 import DiffCode from './DiffCode';
 import CodeAnnotation from './CodeAnotation';
+import Directory from './Directory';
 
 type Props = {
   recordId: number;
@@ -133,6 +134,10 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
             );
           } else if ('Modify' in b && b.Modify.diff) {
             return <DiffCode data={b.Modify} key={i} />;
+          } else if ('Directory' in b && b.Directory.path) {
+            return (
+              <Directory path={b.Directory.path} repo={tab.repoName} key={i} />
+            );
           }
         })}
       </div>
