@@ -13,6 +13,7 @@ import { UIContext } from '../../context/uiContext';
 import { EMAIL_REGEX } from '../../consts/validations';
 import { saveBugReport, saveCrashReport } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
+import ConfirmImg from './ConfirmImg';
 
 type Props = {
   errorBoundaryMessage?: string;
@@ -107,13 +108,13 @@ const ReportBugModal = ({
       fullOverlay
       containerClassName="max-w-md2 max-h-[80vh]"
     >
-      <div className="p-6 flex flex-col gap-8 relative bg-gray-900 overflow-auto">
+      <div className="p-6 flex flex-col gap-8 relative bg-bg-shade overflow-auto">
         {!isSubmitted ? (
           serverCrashedMessage ? (
             <>
               <div className="flex flex-col gap-3 items-center">
-                <h4>bloop crashed unexpectedly</h4>
-                <p className="body-s text-gray-500 text-center">
+                <h4 className="text-label-title">bloop crashed unexpectedly</h4>
+                <p className="body-s text-label-base text-center">
                   By submitting this crash report you agree to send it to bloop
                   for investigation.
                 </p>
@@ -128,10 +129,10 @@ const ReportBugModal = ({
                   placeholder="Provide any steps necessary to reproduce the problem..."
                 />
                 <div className="flex flex-col overflow-auto">
-                  <p className="body-s text-gray-100 mb-1">
+                  <p className="body-s text-label-title mb-1">
                     Problem details and System configuration
                   </p>
-                  <p className="body-s text-gray-400 border border-gray-800 p-2.5 rounded-4 overflow-auto">
+                  <p className="body-s text-label-base border border-bg-border p-2.5 rounded-4 overflow-auto">
                     {serverCrashedMessage}
                     <br />
                     <br />
@@ -152,10 +153,10 @@ const ReportBugModal = ({
             </>
           ) : (
             <>
-              <div className="flex flex-col gap-3 items-center">
+              <div className="flex flex-col gap-3 items-center text-label-title">
                 <Bug />
                 <h4>Report a bug</h4>
-                <p className="body-s text-gray-500 text-center">
+                <p className="body-s text-label-base text-center">
                   We want to make this the best experience for you. If you
                   encountered a bug, please submit this bug report to us. Our
                   team will investigate as soon as possible.
@@ -166,6 +167,7 @@ const ReportBugModal = ({
                   value={form.name}
                   onChange={onChange}
                   name="name"
+                  variant="filled"
                   placeholder="Full name"
                 />
                 <TextInput
@@ -181,6 +183,7 @@ const ReportBugModal = ({
                   }}
                   error={form.emailError}
                   name="email"
+                  variant="filled"
                   placeholder="Email address"
                 />
                 <TextInput
@@ -188,6 +191,7 @@ const ReportBugModal = ({
                   onChange={onChange}
                   name="text"
                   multiline
+                  variant="filled"
                   placeholder="Describe the bug to help us reproduce it..."
                 />
               </form>
@@ -200,12 +204,12 @@ const ReportBugModal = ({
           <>
             <div className="flex flex-col gap-3 items-center">
               <h4>Thank you!</h4>
-              <p className="body-s text-gray-500 text-center">
+              <p className="body-s text-label-base text-center">
                 We’ll investigate and reach out back soon if necessary.
               </p>
             </div>
             <div className="w-full">
-              <img src="/bug_report_confirm.png" alt="Confirmation" />
+              <ConfirmImg />
             </div>
             <Button variant="secondary" onClick={() => resetState()}>
               Got it!

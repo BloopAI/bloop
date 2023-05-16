@@ -5,7 +5,7 @@ type Props = {
   icon: ReactElement;
   textMain: string;
   textSecondary: string;
-  secondaryColor?: 'ok' | 'warning' | 'error';
+  secondaryColor?: 'ok' | 'error';
 };
 
 const StatusItem = ({
@@ -17,13 +17,10 @@ const StatusItem = ({
   let secondaryColorClass = '';
   switch (secondaryColor) {
     case 'ok':
-      secondaryColorClass = 'text-success-700';
+      secondaryColorClass = 'text-bg-success';
       break;
     case 'error':
-      secondaryColorClass = 'text-danger-700';
-      break;
-    case 'warning':
-      secondaryColorClass = 'text-yellow-300';
+      secondaryColorClass = 'text-bg-danger';
       break;
   }
 

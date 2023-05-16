@@ -9,9 +9,10 @@ import { AnalyticsContextProvider } from './context/providers/AnalyticsContextPr
 import ReportBugModal from './components/ReportBugModal';
 import { UIContextProvider } from './context/providers/UiContextProvider';
 import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
-import { AppNavigationProvider } from './hooks/useAppNavigation';
+import { AppNavigationProvider } from './context/providers/AppNavigationProvider';
 import ContentContainer from './pages';
 import { SearchContextProvider } from './context/providers/SearchContextProvider';
+import { ChatContextProvider } from './context/providers/ChatContextProvider';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -41,15 +42,20 @@ function Tab({ deviceContextValue, isActive, tab }: Props) {
           envConfig={deviceContextValue.envConfig}
         >
           <DeviceContextProvider deviceContextValue={deviceContextValue}>
-            <UIContextProvider>
+            <UIContextProvider tab={tab}>
               <AppNavigationProvider>
                 <SearchContextProvider initialSearchHistory={tab.searchHistory}>
                   <RepositoriesContext.Provider value={reposContextValue}>
-                    <Routes>
-                      <Route path="*" element={<ContentContainer />} />
-                    </Routes>
-                    <Settings />
-                    <ReportBugModal />
+                    <ChatContextProvider>
+                      <Routes>
+                        <Route
+                          path="*"
+                          element={<ContentContainer tab={tab} />}
+                        />
+                      </Routes>
+                      <Settings />
+                      <ReportBugModal />
+                    </ChatContextProvider>
                   </RepositoriesContext.Provider>
                 </SearchContextProvider>
               </AppNavigationProvider>

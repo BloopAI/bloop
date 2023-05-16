@@ -1,5 +1,6 @@
 import React, {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -7,6 +8,7 @@ import React, {
 } from 'react';
 import debounce from 'lodash.debounce';
 import { useSearchParams } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
 import { Range, TokenInfoItem } from '../../../types/results';
@@ -15,6 +17,9 @@ import { Commit } from '../../../types';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import SearchOnPage from '../../SearchOnPage';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
+import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
+import { Feather, Info, Sparkle } from '../../../icons';
+import { ChatContext } from '../../../context/chatContext';
 import CodeContainer from './CodeContainer';
 
 export interface BlameLine {
@@ -44,6 +49,7 @@ type Props = {
   repoName: string;
   containerWidth: number;
   containerHeight: number;
+  isOnResultPage?: boolean;
 };
 
 const CodeFull = ({
@@ -57,6 +63,7 @@ const CodeFull = ({
   repoName,
   containerWidth,
   containerHeight,
+  isOnResultPage,
 }: Props) => {
   const [foldableRanges, setFoldableRanges] = useState<Record<number, number>>(
     {},
@@ -78,6 +85,15 @@ const CodeFull = ({
   const [scrollToIndex, setScrollToIndex] = useState(
     scrollLineNumber || undefined,
   );
+  const ref = useRef<HTMLPreElement>(null);
+  useOnClickOutside(ref, () => setCurrentSelection([]));
+
+  const [popupPosition, setPopupPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const { setSubmittedQuery, setChatOpen, setSelectedLines } =
+    useContext(ChatContext);
   const { navigateRepoPath } = useAppNavigation();
 
   const [isSearchActive, setSearchActive] = useState(false);
@@ -228,49 +244,43 @@ const CodeFull = ({
     }
   }, [currentResult, searchResults]);
 
+  const codeToCopy = useMemo(() => {
+    if (!code || currentSelection.length !== 2) {
+      return '';
+    }
+    const lines = code.split('\n');
+
+    const [startLine, startChar] = currentSelection[0];
+    const [endLine, endChar] = currentSelection[1];
+
+    if (
+      startLine === 0 &&
+      startChar === 0 &&
+      endLine === lines.length - 1 &&
+      endChar === lines[lines.length - 1].length
+    ) {
+      return code;
+    }
+
+    let textToCopy = lines[startLine].slice(startChar, endChar);
+    if (startLine !== endLine) {
+      const firstLine = lines[startLine].slice(startChar);
+      const lastLine = lines[endLine].slice(0, endChar + 1);
+      const textBetween = lines.slice(startLine + 1, endLine).join('\n');
+      textToCopy =
+        firstLine + '\n' + (textBetween ? textBetween + '\n' : '') + lastLine;
+    }
+    return textToCopy;
+  }, [code, currentSelection]);
+
   const handleCopy = useCallback(
     (e: React.ClipboardEvent<HTMLPreElement>) => {
-      if (currentSelection.length === 2) {
+      if (codeToCopy) {
         e.preventDefault();
-        const lines = code.split('\n');
-        const startsAtTop =
-          currentSelection[0][0] <= currentSelection[1][0] ||
-          (currentSelection[0][0] === currentSelection[1][0] &&
-            currentSelection[0][1] < currentSelection[1][1]);
-
-        const [startLine, startChar] = startsAtTop
-          ? currentSelection[0]
-          : currentSelection[1];
-        const [endLine, endChar] = startsAtTop
-          ? currentSelection[1]
-          : currentSelection[0];
-
-        if (
-          startLine === 0 &&
-          startChar === 0 &&
-          endLine === lines.length - 1 &&
-          endChar === lines[lines.length - 1].length
-        ) {
-          copyToClipboard(code);
-          return;
-        }
-
-        let textToCopy = lines[startLine].slice(startChar, endChar);
-        if (startLine !== endLine) {
-          const firstLine = lines[startLine].slice(startChar);
-          const lastLine = lines[endLine].slice(0, endChar + 1);
-          const textBetween = lines.slice(startLine + 1, endLine).join('\n');
-          textToCopy =
-            firstLine +
-            '\n' +
-            (textBetween ? textBetween + '\n' : '') +
-            lastLine;
-        }
-
-        copyToClipboard(textToCopy);
+        copyToClipboard(codeToCopy);
       }
     },
-    [currentSelection, code],
+    [codeToCopy],
   );
 
   const handleKeyEvent = useCallback(
@@ -297,6 +307,20 @@ const CodeFull = ({
   );
   useKeyboardNavigation(handleKeyEvent);
 
+  useEffect(() => {
+    if (isOnResultPage && currentSelection.length == 2) {
+      const topLine = document.querySelector(
+        `[data-line-number="${currentSelection[0][0]}"]`,
+      );
+      if (topLine) {
+        const rect = topLine.getBoundingClientRect();
+        setPopupPosition({ top: rect.top - 40, left: rect.left + 40 });
+      }
+    } else {
+      setPopupPosition(null);
+    }
+  }, [isOnResultPage, currentSelection]);
+
   return (
     <div className="code-full-view w-full text-xs gap-10 flex flex-row relative">
       <SearchOnPage
@@ -314,8 +338,9 @@ const CodeFull = ({
       />
       <div className={`${!minimap ? 'w-full' : ''}`} ref={codeRef}>
         <pre
-          className={`prism-code language-${lang} bg-gray-900 my-0 w-full h-full`}
+          className={`prism-code language-${lang} bg-bg-sub my-0 w-full h-full`}
           onCopy={handleCopy}
+          ref={ref}
         >
           <CodeContainer
             width={containerWidth}
@@ -336,6 +361,76 @@ const CodeFull = ({
             onRefDefClick={onRefDefClick}
             scrollToIndex={scrollToIndex}
           />
+          <AnimatePresence>
+            {popupPosition && (
+              <motion.div
+                className="fixed"
+                style={popupPosition}
+                initial={{ opacity: 0, transform: 'translateY(1rem)' }}
+                animate={{ transform: 'translateY(0rem)', opacity: 1 }}
+                exit={{ opacity: 0, transform: 'translateY(1rem)' }}
+              >
+                <div className="bg-bg-base border border-bg-border rounded-md shadow-high flex overflow-hidden select-none">
+                  {codeToCopy.length > 1500 ? (
+                    <button
+                      className="h-8 flex items-center justify-center gap-1 px-2 caption text-label-muted"
+                      disabled
+                    >
+                      <div className="w-4 h-4">
+                        <Info raw />
+                      </div>
+                      Select less code
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setChatOpen(true);
+                          setSelectedLines([
+                            currentSelection[0]![0],
+                            currentSelection[1]![0],
+                          ]);
+                          setTimeout(
+                            () =>
+                              document
+                                .getElementById('question-input')
+                                ?.focus(),
+                            300,
+                          );
+                        }}
+                        className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover border-r border-bg-border caption text-label-title"
+                      >
+                        <div className="w-4 h-4">
+                          <Feather raw />
+                        </div>
+                        Ask bloop
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedLines([
+                            currentSelection[0]![0],
+                            currentSelection[1]![0],
+                          ]);
+                          setSubmittedQuery(
+                            `#explain_${relativePath}:${
+                              currentSelection[0]![0]
+                            }-${currentSelection[1]![0]}`,
+                          );
+                          setChatOpen(true);
+                        }}
+                        className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover caption text-label-title"
+                      >
+                        <div className="w-4 h-4">
+                          <Sparkle raw />
+                        </div>
+                        Explain
+                      </button>
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </pre>
       </div>
       {minimap && (

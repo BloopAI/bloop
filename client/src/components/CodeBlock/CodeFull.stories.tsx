@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { mockCommits } from '../../mocks';
 import CodeFull from './CodeFull/index';
 
@@ -80,30 +81,32 @@ export const CodeBlockFull = () => {
     setScrollElem(scrollRef.current);
   });
   return (
-    <div style={{ width: 1000, backgroundColor: '' }}>
-      <div className="h-screen overflow-scroll" ref={scrollRef}>
-        <CodeFull
-          code={code}
-          language={'typescript'}
-          scrollElement={scrollElem}
-          repoPath={''}
-          relativePath={''}
-          repoName={'bloop'}
-          containerWidth={window.innerWidth * 0.6}
-          containerHeight={window.innerHeight}
-          metadata={{
-            lexicalBlocks: [
-              { start: 4, end: 27 },
-              { start: 33, end: 64 },
-            ],
-            hoverableRanges: [
-              // { start: 54, end: 67 },
-              // { start: 222, end: 242 },
-            ],
-          }}
-        />
+    <MemoryRouter>
+      <div style={{ width: 800 }}>
+        <div className="h-screen overflow-scroll" ref={scrollRef}>
+          <CodeFull
+            code={code}
+            language={'typescript'}
+            scrollElement={scrollElem}
+            repoPath={''}
+            relativePath={''}
+            repoName={'bloop'}
+            containerWidth={window.innerWidth * 0.6}
+            containerHeight={window.innerHeight}
+            metadata={{
+              lexicalBlocks: [
+                { start: 4, end: 27 },
+                { start: 33, end: 64 },
+              ],
+              hoverableRanges: [
+                // { start: 54, end: 67 },
+                // { start: 222, end: 242 },
+              ],
+            }}
+          />
+        </div>
       </div>
-    </div>
+    </MemoryRouter>
   );
 };
 
@@ -136,67 +139,69 @@ client2.registerChannel('client2', {
     setScrollElem(scrollRef.current);
   });
   return (
-    <div style={{ width: 1000, backgroundColor: '' }}>
-      <div className="h-screen overflow-scroll" ref={scrollRef}>
-        <CodeFull
-          code={code}
-          language={'typescript'}
-          scrollElement={scrollElem}
-          containerWidth={window.innerWidth * 0.6}
-          containerHeight={window.innerHeight}
-          repoPath={''}
-          relativePath={''}
-          repoName={'bloop'}
-          metadata={{
-            lexicalBlocks: [],
-            hoverableRanges: [],
-            blame: [
-              {
-                commit: mockCommits[0],
-                lineRange: {
-                  start: 0,
-                  end: 3,
+    <MemoryRouter>
+      <div style={{ width: 800 }}>
+        <div className="h-screen overflow-scroll" ref={scrollRef}>
+          <CodeFull
+            code={code}
+            language={'typescript'}
+            scrollElement={scrollElem}
+            containerWidth={window.innerWidth * 0.6}
+            containerHeight={window.innerHeight}
+            repoPath={''}
+            relativePath={''}
+            repoName={'bloop'}
+            metadata={{
+              lexicalBlocks: [],
+              hoverableRanges: [],
+              blame: [
+                {
+                  commit: mockCommits[0],
+                  lineRange: {
+                    start: 0,
+                    end: 3,
+                  },
                 },
-              },
-              {
-                commit: mockCommits[0],
-                lineRange: {
-                  start: 4,
-                  end: 6,
+                {
+                  commit: mockCommits[0],
+                  lineRange: {
+                    start: 4,
+                    end: 6,
+                  },
                 },
-              },
-              {
-                commit: mockCommits[0],
-                lineRange: {
-                  start: 7,
-                  end: 8,
+                {
+                  commit: mockCommits[0],
+                  lineRange: {
+                    start: 7,
+                    end: 8,
+                  },
                 },
-              },
-              {
-                commit: mockCommits[0],
-                lineRange: {
-                  start: 9,
-                  end: 12,
+                {
+                  commit: mockCommits[0],
+                  lineRange: {
+                    start: 9,
+                    end: 12,
+                  },
                 },
-              },
-              {
-                commit: mockCommits[0],
-                lineRange: {
-                  start: 13,
-                  end: 17,
+                {
+                  commit: mockCommits[0],
+                  lineRange: {
+                    start: 13,
+                    end: 17,
+                  },
                 },
-              },
-              {
-                commit: mockCommits[0],
-                lineRange: {
-                  start: 18,
-                  end: 20,
+                {
+                  commit: mockCommits[0],
+                  lineRange: {
+                    start: 18,
+                    end: 20,
+                  },
                 },
-              },
-            ],
-          }}
-        />
+              ],
+            }}
+          />
+        </div>
       </div>
-    </div>
+    </MemoryRouter>
   );
 };

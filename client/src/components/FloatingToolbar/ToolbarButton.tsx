@@ -11,8 +11,8 @@ const ToolbarButton = ({ color, isActive, onClick }: Props) => {
     <button
       onClick={onClick}
       className={`outline-none outline-0 focus:outline-none rounded-4 w-8 h-8 p-0 m-1 ${
-        isActive ? 'bg-gray-700' : 'bg-transparent'
-      } hover:bg-gray-700  border-none flex items-center justify-center hover:text-gray-50`}
+        isActive ? 'bg-bg-base-hover' : 'bg-transparent'
+      } hover:bg-bg-base-hover  border-none flex items-center justify-center hover:text-label-title`}
     >
       <span
         className={`rounded-full ${

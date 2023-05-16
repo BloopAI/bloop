@@ -1,16 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
-import { Range, SnippetSymbol } from '../../../types/results';
+import {
+  HighlightMap,
+  Range,
+  SnippetSymbol,
+  TokensLine,
+} from '../../../types/results';
 import { Token } from '../../../types/prism';
-import CodeLine from './CodeLine';
-import CodeToken from './CodeToken';
-
-type HighlightMap = {
-  highlight: boolean;
-  token: Token;
-  startHl?: boolean;
-  endHl?: boolean;
-};
+import CodeContainer from './CodeContainer';
 
 type Props = {
   code: string;
@@ -22,6 +19,9 @@ type Props = {
   onlySymbolLines?: boolean;
   removePaddings?: boolean;
   lineHoverEffect?: boolean;
+  isDiff?: boolean;
+  highlightColor?: string;
+  onTokensLoaded?: () => void;
 };
 
 const Code = ({
@@ -34,21 +34,15 @@ const Code = ({
   onlySymbolLines,
   removePaddings,
   lineHoverEffect,
+  highlightColor,
+  isDiff,
+  onTokensLoaded,
 }: Props) => {
   const lang = useMemo(
     () => getPrismLanguage(language) || 'plaintext',
     [language],
   );
   const tokens = useMemo(() => tokenizeCode(code, lang), [code, lang]);
-
-  const getSymbols = (lineNumber: number) => {
-    if (symbols?.length) {
-      return symbols
-        .filter((symbol) => symbol.line === lineNumber)
-        .map((symbol) => symbol.kind);
-    }
-    return [];
-  };
 
   const hlRangesMap = useMemo(() => {
     const hl = new Set();
@@ -118,48 +112,45 @@ const Code = ({
     return highlightMap;
   };
 
-  const tokensMap: HighlightMap[][] = useMemo((): HighlightMap[][] => {
-    return tokens.map((line) => getMap(line));
-  }, [tokens]);
+  const tokensMap = useMemo((): TokensLine[] => {
+    const lines = tokens
+      .map((line) => getMap(line))
+      .map((l): TokensLine => ({ tokens: l, lineNumber: null }));
+    let currentLine = lineStart;
+    for (let i = 0; i < lines.length; i++) {
+      if (
+        isDiff &&
+        !lines[i].tokens[0].token.content &&
+        lines[i].tokens[1].token.content === '-'
+      ) {
+        continue;
+      }
+      lines[i].lineNumber = currentLine + 1;
+      currentLine++;
+    }
+    return lines;
+  }, [tokens, lineStart, isDiff]);
 
-  const codeLines = useMemo(
-    () =>
-      tokensMap.map((line, lineNumber) => (
-        <CodeLine
-          key={lineNumber}
-          lineNumber={lineStart + lineNumber}
-          showLineNumbers={showLines}
-          symbols={getSymbols(lineStart + lineNumber)}
-          lineHidden={
-            onlySymbolLines && !getSymbols(lineStart + lineNumber).length
-          }
-          hoverEffect={lineHoverEffect}
-        >
-          {line.map((token, index) => (
-            <CodeToken
-              key={index}
-              token={token.token}
-              highlights={highlights}
-              highlight={token.highlight}
-              startHl={token.startHl}
-              endHl={token.endHl}
-            />
-          ))}
-        </CodeLine>
-      )),
-    [tokensMap, showLines, highlights, onlySymbolLines],
-  );
+  useEffect(() => {
+    if (tokensMap.length && onTokensLoaded) {
+      onTokensLoaded();
+    }
+  }, [tokensMap]);
 
   return (
-    <div>
-      <pre
-        className={`prism-code language-${lang} bg-gray-900 my-0 ${
-          removePaddings ? '' : 'px-2'
-        } ${onlySymbolLines ? 'overflow-hidden' : ''}`}
-      >
-        <div>{codeLines}</div>
-      </pre>
-    </div>
+    <CodeContainer
+      lang={lang}
+      tokensMap={tokensMap}
+      symbols={symbols}
+      onlySymbolLines={onlySymbolLines}
+      highlights={highlights}
+      highlightColor={highlightColor}
+      lineStart={lineStart}
+      showLines={showLines}
+      isDiff={isDiff}
+      lineHoverEffect={lineHoverEffect}
+      removePaddings={removePaddings}
+    />
   );
 };
 

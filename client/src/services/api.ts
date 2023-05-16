@@ -1,5 +1,8 @@
 import axios, { AxiosInstance } from 'axios';
 import {
+  AllConversationsResponse,
+  ConversationType,
+  FileResponse,
   HoverablesResponse,
   NLSearchResponse,
   SearchResponse,
@@ -32,6 +35,24 @@ export const search = (
         page_size,
         page,
         calculate_totals: page === 0,
+      },
+    })
+    .then((r) => r.data);
+};
+
+export const getFileLines = (
+  repo_ref: string,
+  path: string,
+  line_start: number,
+  line_end: number,
+): Promise<FileResponse> => {
+  return http
+    .get(`/file`, {
+      params: {
+        repo_ref,
+        path,
+        line_start,
+        line_end,
       },
     })
     .then((r) => r.data);
@@ -103,15 +124,11 @@ export const getRepos = (): Promise<{ list: RepoType[] }> =>
 export const scanLocalRepos = (path: string) =>
   http.get(`/repos/scan`, { params: { path } }).then((r) => r.data);
 
-export const syncRepos = (repos: string[]) =>
-  http
-    .put('/repos/indexed', {
-      indexed: repos,
-    })
-    .then((r) => r.data);
-
 export const deleteRepo = (repoRef: string) =>
   http.delete(`/repos/indexed/${repoRef}`).then((r) => r.data);
+
+export const syncRepo = (repoRef: string) =>
+  http.get(`/repos/sync/${repoRef}`).then((r) => r.data);
 
 export const saveUserData = (userData: {
   email: string;
@@ -155,3 +172,18 @@ export const githubWebLogin = () =>
   http.get('/auth/login/start').then((r) => r.data);
 
 export const getConfig = () => http.get('/config').then((r) => r.data);
+
+export const getAllConversations = (): Promise<AllConversationsResponse> =>
+  http.get('/answer/conversations').then((r) => r.data);
+
+export const getConversation = (
+  thread_id: string,
+): Promise<ConversationType[]> =>
+  http.get(`/answer/conversations/${thread_id}`).then((r) => r.data);
+
+export const deleteConversation = (
+  thread_id: string,
+): Promise<ConversationType> =>
+  http
+    .delete(`/answer/conversations`, { params: { thread_id } })
+    .then((r) => r.data);

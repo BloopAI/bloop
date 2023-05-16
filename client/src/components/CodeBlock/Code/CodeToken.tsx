@@ -21,7 +21,7 @@ class CodeToken extends PureComponent<Props> {
           .join(' ')}`}
       >
         <span
-          className={`${highlight ? `bg-secondary-500/25 py-0.5` : ''} ${
+          className={`${highlight ? `bg-bg-highlight/25 py-0.5` : ''} ${
             startHl ? 'rounded-l pl-[2px]' : ''
           } ${endHl ? 'rounded-r pr-[2px]' : ''}`}
         >

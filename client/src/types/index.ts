@@ -50,3 +50,25 @@ export interface Repository {
   currentPath: string;
   source: RepoSource;
 }
+
+export type Theme =
+  | 'default'
+  | 'default-light'
+  | 'vsc-default-dark'
+  | 'vsc-default-light'
+  | 'atom-one-dark-pro'
+  | 'abyss'
+  | 'darcula'
+  | 'dracula'
+  | 'github-dark'
+  | 'github-light'
+  | 'gruvbox-dark'
+  | 'gruvbox-light'
+  | 'kimbie-dark'
+  | 'material'
+  | 'night-owl'
+  | 'quiet-light'
+  | 'solarized-dark'
+  | 'solarized-light'
+  | 'tomorrow-night-blue'
+  | 'monokai';

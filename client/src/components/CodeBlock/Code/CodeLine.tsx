@@ -19,6 +19,7 @@ import { propsAreShallowEqual } from '../../../utils';
 
 type Props = {
   lineNumber: number;
+  lineNumberToShow?: number | null;
   children: ReactNode;
   showLineNumbers?: boolean;
   lineFoldable?: boolean;
@@ -33,9 +34,12 @@ type Props = {
   };
   stylesGenerated?: any;
   shouldHighlight?: boolean;
+  isNewLine?: boolean;
+  isRemovedLine?: boolean;
   searchTerm?: string;
   onMouseSelectStart?: (lineNum: number, charNum: number) => void;
   onMouseSelectEnd?: (lineNum: number, charNum: number) => void;
+  highlightColor?: string;
 };
 
 const CodeLine = ({
@@ -54,6 +58,10 @@ const CodeLine = ({
   searchTerm,
   onMouseSelectStart,
   onMouseSelectEnd,
+  highlightColor,
+  isNewLine,
+  isRemovedLine,
+  lineNumberToShow = lineNumber + 1,
 }: Props) => {
   const [isHighlighted, setHighlighted] = useState(false);
   const codeRef = useRef<HTMLTableCellElement>(null);
@@ -105,7 +113,7 @@ const CodeLine = ({
                   alt=""
                 />
               </TooltipCommit>
-              <span className="text-gray-500 caption">
+              <span className="text-label-muted caption">
                 {format(blameLine.commit.datetime)}
               </span>
             </span>
@@ -113,12 +121,24 @@ const CodeLine = ({
         );
       }
     }
-    return <div className={`p-0 ${blameStyle}`}></div>;
+    return (
+      <div
+        className={`p-0 ${blameStyle} ${
+          isRemovedLine ? 'bg-[#4F2828]' : isNewLine ? 'bg-[#28432B]' : ''
+        }`}
+      ></div>
+    );
   }, [blame, blameLine]);
 
   const style = useMemo(
-    () => ({ lineHeight: lineHidden ? '0' : '', ...stylesGenerated }),
-    [lineHidden, stylesGenerated],
+    () => ({
+      lineHeight: lineHidden ? '0' : '',
+      ...(highlightColor
+        ? { borderLeft: `3px solid ${highlightColor}`, marginLeft: 4 }
+        : {}),
+      ...stylesGenerated,
+    }),
+    [lineHidden, stylesGenerated, highlightColor],
   );
   const [actualLineNumber] = useState(lineNumber);
 
@@ -174,8 +194,9 @@ const CodeLine = ({
       className={`flex transition-all duration-150 ease-in-bounce group hover:bg-transparent ${
         lineHidden ? 'opacity-0' : ''
       } ${
-        blameLine?.start && lineNumber !== 0 ? ' border-t border-gray-700' : ''
+        blameLine?.start && lineNumber !== 0 ? ' border-t border-bg-border' : ''
       }`}
+      data-line-number={lineNumber}
       style={style}
       onMouseDown={(e) => {
         const index = getCharIndex(e);
@@ -200,7 +221,7 @@ const CodeLine = ({
                     {symbols.map((symbol, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <SymbolIcon type={symbol} />
-                        <span className="caption text-gray-200 py-1">
+                        <span className="caption text-label-title py-1">
                           {symbol.charAt(0).toUpperCase()}
                           {symbol.slice(1)}
                         </span>
@@ -220,19 +241,36 @@ const CodeLine = ({
           </span>
         </div>
       ) : (
-        <div className={`px-1 text-center ${lineHidden ? 'p-0' : ''}`} />
+        <div
+          className={`${showLineNumbers ? 'px-1' : ''} text-center ${
+            lineHidden ? 'p-0' : ''
+          } ${
+            isRemovedLine ? 'bg-[#4F2828]' : isNewLine ? 'bg-[#28432B]' : ''
+          }`}
+        />
       )}
       {showLineNumbers && (
         <div
-          data-line={lineNumber + 1}
-          className={`text-gray-500 min-w-6 text-right select-none pr-0 leading-5 ${blameStyle} ${
+          data-line={lineNumberToShow}
+          className={`min-w-[27px] text-right select-none pr-0 leading-5 ${blameStyle} ${
             lineHidden ? 'p-0' : ''
-          } ${hoverEffect ? 'group-hover:text-gray-300' : ''}
-           ${lineHidden ? '' : 'before:content-[attr(data-line)]'}
-          `}
-        ></div>
+          } ${hoverEffect ? 'group-hover:text-label-base' : ''}
+           ${
+             lineHidden || !lineNumberToShow
+               ? ''
+               : 'before:content-[attr(data-line)]'
+           } ${
+            isRemovedLine
+              ? 'bg-[#4F2828] text-label-base'
+              : isNewLine
+              ? 'bg-[#28432B] text-label-base'
+              : 'text-label-muted'
+          }`}
+        />
       )}
-      <div className={`text-gray-500 ${lineHidden ? 'p-0' : ''} ${blameStyle}`}>
+      <div
+        className={`text-label-muted ${lineHidden ? 'p-0' : ''} ${blameStyle}`}
+      >
         {lineFoldable && (
           <FoldButton
             onClick={(folded: boolean) => {
@@ -244,10 +282,17 @@ const CodeLine = ({
         )}
       </div>
       <div
-        className={`pl-2 ${lineHidden ? 'p-0' : ''} ${
-          isHighlighted ? 'animate-flash-highlight rounded-4 pr-2' : ''
-        }`}
+        className={`${showLineNumbers ? 'pl-2' : ''} ${
+          lineHidden ? 'p-0' : ''
+        } ${isHighlighted ? 'animate-flash-highlight rounded-4 pr-2' : ''}`}
         ref={codeRef}
+        style={
+          isNewLine
+            ? { backgroundColor: '#18261E' }
+            : isRemovedLine
+            ? { backgroundColor: '#24191C' }
+            : {}
+        }
       >
         {children}
       </div>

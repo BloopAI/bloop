@@ -1,5 +1,3 @@
-import '../../file-icons.css';
-
 // @ts-ignore
 import * as icons from 'file-icons-js';
 type Props = { filename: string };
