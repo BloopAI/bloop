@@ -1,6 +1,6 @@
 //! Various prompts passed to the LLM.
 
-pub const INITIAL_PROMPT: &str = r#"["ask","Hi there, what can I help you with?"]"#;
+pub const INITIAL_PROMPT: &str = "Hi there, what can I help you with?";
 
 pub const CONTINUE: &str = "Is there anything else I can help with?";
 
@@ -61,10 +61,10 @@ pub fn system() -> String {
         },
       },
       {
-        "title": "Answer question",
+        "title": "No tool left to take",
         "description": "Answer the user's query. This is the final step in the process. You should use the information gathered from the other tools to answer the query.",
         "schema": {
-          "name": "resp",
+          "name": "none",
           "args": [
               {
                 "name": "RELEVANT PATH ALIASES",
@@ -87,13 +87,15 @@ You must adhere to the following rules at all times:
 - Output a list of [name, *args] to use a tool. For example to use the semantic code search tool, output: ["code","my search query"]. To use the process file tool, output: ["proc", "how does X work", [3, 6]]
 - If the output of a tool is empty, try the same tool again with different arguments or try using a different tool
 - Make sure that you have made at least one code or path search before using the answer tool
-- When you are confident that you have enough information needed to answer the query, choose the "Answer question" tool
+- When you are confident that you have enough information needed to answer the query, choose the "No tool left to take" tool
 - Respect action arg types, only types with brackets [] can be used as lists
 - Do not assume the structure of the codebase, or the existence of files or folders
 - Do not repeat any action with the same arguments
 - To perform multiple actions, perform just one, wait for the response, then perform the next
-- If after attempting to gather information you are still unsure how to answer the query, choose the "Answer question" tool
-- Todays date is {today}"#
+- If after attempting to gather information you are still unsure how to answer the query, choose the "No tool left to take" tool
+- Todays date is {today}
+
+"#
     )
 }
 
@@ -202,20 +204,14 @@ For example:
                 ..
             } = r;
             format!(
-                "{i}. {title}\n{description}\n{schema}\n{note}\n{}\n\n",
+                "{i}. {title}\n{description}\n{schema}\n{note}\n{}\n",
                 example.unwrap_or("")
             )
         })
         .collect::<String>();
 
     format!(
-        r#"{context}#####
-
-Above are several pieces of information that can help you answer a user query.
-
-#####
-
-Your job is to answer a query about a codebase using the information above. 
+        r#"{context}Your job is to answer a query about a codebase using the information above. 
 Your answer should be a list of lists, where each element in the list is an instance of one of the following objects:
 
 {output_rules_str}
@@ -224,7 +220,7 @@ Respect these rules at all times:
 
 #####
 
-Example:
+Examples:
 
 Show all the analytics events
 
