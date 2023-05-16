@@ -6,6 +6,7 @@ type Props = {
   label: string;
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   isLast?: boolean;
+  limitSectionWidth?: boolean;
   highlight?: Range;
   type: 'link' | 'button';
 };
@@ -29,6 +30,7 @@ const BreadcrumbSection = ({
   isLast,
   highlight,
   type,
+  limitSectionWidth,
 }: Props) => {
   const getHighlight = () => {
     if (highlight) {
@@ -51,11 +53,17 @@ const BreadcrumbSection = ({
     <button
       className={`flex items-center gap-1 cursor-pointer ${
         isLast ? typeMap[type].isLast : typeMap[type].default
+      } ${
+        limitSectionWidth ? 'max-w-[8rem] ellipsis' : ''
       } transition-all duration-300 ease-in-bounce flex-shrink-0`}
       onClick={onClick}
     >
       {icon}
-      <span className="whitespace-nowrap">{getHighlight()}</span>
+      <span
+        className={`whitespace-nowrap ${limitSectionWidth ? 'ellipsis' : ''}`}
+      >
+        {getHighlight()}
+      </span>
     </button>
   );
 };

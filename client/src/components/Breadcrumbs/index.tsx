@@ -101,11 +101,7 @@ const Breadcrumbs = ({
       >
         {pathParts.map((p, i) => (
           <Fragment key={i}>
-            <span
-              className={`flex items-center gap-1 flex-shrink-0 ${
-                limitSectionWidth ? 'max-w-[6rem] ellipsis' : ''
-              }`}
-            >
+            <span className={`flex items-center gap-1 flex-shrink-0`}>
               <BreadcrumbSection
                 icon={p.icon}
                 label={p.label}
@@ -113,6 +109,7 @@ const Breadcrumbs = ({
                 highlight={p.highlight}
                 isLast={i == formattedPathParts.length - 1}
                 type={type}
+                limitSectionWidth={limitSectionWidth}
               />
             </span>
             {i !== formattedPathParts.length - 1 && (
@@ -128,11 +125,7 @@ const Breadcrumbs = ({
           {Array.isArray(p) ? (
             <BreadcrumbsCollapsed items={p} type={type} />
           ) : (
-            <span
-              className={`flex items-center gap-1 flex-shrink-0 ${
-                limitSectionWidth ? 'max-w-[6rem] ellipsis' : ''
-              }`}
-            >
+            <span className={`flex items-center gap-1 flex-shrink-0`}>
               <BreadcrumbSection
                 icon={p.icon}
                 label={p.label}
@@ -140,6 +133,7 @@ const Breadcrumbs = ({
                 highlight={p.highlight}
                 isLast={i == formattedPathParts.length - 1}
                 type={type}
+                limitSectionWidth={limitSectionWidth}
               />
             </span>
           )}
