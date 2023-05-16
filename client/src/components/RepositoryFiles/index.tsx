@@ -1,20 +1,21 @@
 import React, { useMemo } from 'react';
 import { FileTreeFileType, RepositoryFile } from '../../types';
 import Accordion from '../Accordion';
-import { FolderFilled, Papers } from '../../icons';
-import FileIcon from '../FileIcon';
+import { Papers } from '../../icons';
 import Breadcrumbs, { PathParts } from '../Breadcrumbs';
 import {
   breadcrumbsItemPath,
   isWindowsPath,
   splitPathForBreadcrumbs,
 } from '../../utils';
+import FileRow from './FileRow';
 
 type Props = {
   files: RepositoryFile[];
   repositoryName: string;
   currentPath: string;
   onClick: (p: string, type: FileTreeFileType) => void;
+  maxInitialFiles?: number;
 };
 
 const RepositoryFiles = ({
@@ -22,6 +23,7 @@ const RepositoryFiles = ({
   currentPath,
   onClick,
   repositoryName,
+  maxInitialFiles,
 }: Props) => {
   const pathParts = useMemo<PathParts[]>(() => {
     const parts = splitPathForBreadcrumbs(
@@ -56,25 +58,35 @@ const RepositoryFiles = ({
         )
       }
       icon={<Papers />}
+      defaultExpanded={!maxInitialFiles}
+      shownItems={
+        maxInitialFiles && files.length > maxInitialFiles ? (
+          <div className="flex flex-col divide-y divide-bg-border border-b border-bg-border overflow-auto bg-bg-sub">
+            {files.slice(0, maxInitialFiles).map((file, id) => (
+              <FileRow
+                path={file.path}
+                name={file.name}
+                type={file.type}
+                onClick={onClick}
+                key={id}
+              />
+            ))}
+          </div>
+        ) : undefined
+      }
     >
-      <div className="flex flex-col text-label-muted text-sm divide-y divide-bg-border overflow-auto bg-bg-sub">
-        {files.map((file, id) => (
-          <span
+      <div className="flex flex-col divide-y divide-bg-border overflow-auto bg-bg-sub">
+        {(maxInitialFiles && files.length > maxInitialFiles
+          ? files.slice(maxInitialFiles)
+          : files
+        ).map((file, id) => (
+          <FileRow
+            path={file.path}
+            name={file.name}
+            type={file.type}
+            onClick={onClick}
             key={id}
-            className="flex flex-row justify-between px-4 py-4 last:rounded-b group cursor-pointer"
-            onClick={() => {
-              onClick(file.path, file.type);
-            }}
-          >
-            <span className="w-fit group-hover:text-label-base flex items-center gap-2">
-              {file.type === FileTreeFileType.DIR ? (
-                <FolderFilled />
-              ) : (
-                <FileIcon filename={file.name} />
-              )}
-              <span className="group-hover:underline">{file.name}</span>
-            </span>
-          </span>
+          />
         ))}
       </div>
     </Accordion>

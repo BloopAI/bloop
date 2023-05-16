@@ -23,11 +23,13 @@ type Props = {
   setSelectedLines?: (l: [number, number] | null) => void;
 };
 
+const defaultPlaceholder = 'Anything I can help you with?';
+
 const NLInput = ({
   id,
   value,
   onChange,
-  placeholder = 'Anything I can help you with?',
+  placeholder = defaultPlaceholder,
   isStoppable,
   onStop,
   onSubmit,
@@ -73,9 +75,11 @@ const NLInput = ({
         : 'bg-chat-bg-base hover:text-label-title hover:border-chat-bg-border-hover'
     } transition-all ease-out duration-150 flex-grow-0 relative`}
     >
-      {isStoppable && loadingSteps?.length && (
-        <InputLoader loadingSteps={loadingSteps} />
-      )}
+      {isStoppable &&
+        loadingSteps?.length &&
+        placeholder !== defaultPlaceholder && (
+          <InputLoader loadingSteps={loadingSteps} />
+        )}
       <span className="py-4">
         {selectedLines ? <FeatherSelected /> : <QuillIcon />}
       </span>
@@ -90,7 +94,7 @@ const NLInput = ({
         autoComplete="off"
         spellCheck="false"
         ref={inputRef}
-        disabled={isStoppable}
+        disabled={isStoppable && placeholder !== defaultPlaceholder}
         onCompositionStart={() => setComposition(true)}
         onCompositionEnd={() => setComposition(false)}
         onKeyDown={handleKeyDown}
