@@ -1,3 +1,4 @@
+import { Token } from './prism';
 import { FileTreeFileType, RepositoryFile } from './index';
 
 export type BaseSymbolType =
@@ -104,6 +105,18 @@ export interface Snippet {
   highlights?: Range[];
   symbols?: SnippetSymbol[];
 }
+
+export type HighlightMap = {
+  highlight: boolean;
+  token: Token;
+  startHl?: boolean;
+  endHl?: boolean;
+};
+
+export type TokensLine = {
+  tokens: HighlightMap[];
+  lineNumber: number | null;
+};
 
 export type Range = { start: number; end: number };
 

@@ -1,21 +1,13 @@
 import React, { useEffect, useMemo } from 'react';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
-import { Range, SnippetSymbol } from '../../../types/results';
+import {
+  HighlightMap,
+  Range,
+  SnippetSymbol,
+  TokensLine,
+} from '../../../types/results';
 import { Token } from '../../../types/prism';
-import CodeLine from './CodeLine';
-import CodeToken from './CodeToken';
-
-type HighlightMap = {
-  highlight: boolean;
-  token: Token;
-  startHl?: boolean;
-  endHl?: boolean;
-};
-
-type Line = {
-  tokens: HighlightMap[];
-  lineNumber: number | null;
-};
+import CodeContainer from './CodeContainer';
 
 type Props = {
   code: string;
@@ -51,15 +43,6 @@ const Code = ({
     [language],
   );
   const tokens = useMemo(() => tokenizeCode(code, lang), [code, lang]);
-
-  const getSymbols = (lineNumber: number) => {
-    if (symbols?.length) {
-      return symbols
-        .filter((symbol) => symbol.line === lineNumber)
-        .map((symbol) => symbol.kind);
-    }
-    return [];
-  };
 
   const hlRangesMap = useMemo(() => {
     const hl = new Set();
@@ -129,10 +112,10 @@ const Code = ({
     return highlightMap;
   };
 
-  const tokensMap = useMemo((): Line[] => {
+  const tokensMap = useMemo((): TokensLine[] => {
     const lines = tokens
       .map((line) => getMap(line))
-      .map((l): Line => ({ tokens: l, lineNumber: null }));
+      .map((l): TokensLine => ({ tokens: l, lineNumber: null }));
     let currentLine = lineStart;
     for (let i = 0; i < lines.length; i++) {
       if (
@@ -154,56 +137,20 @@ const Code = ({
     }
   }, [tokensMap]);
 
-  const codeLines = useMemo(
-    () =>
-      tokensMap.map((line, lineNumber) => (
-        <CodeLine
-          key={lineNumber}
-          lineNumber={lineStart + lineNumber}
-          lineNumberToShow={line.lineNumber}
-          showLineNumbers={showLines}
-          symbols={getSymbols(lineStart + lineNumber)}
-          lineHidden={
-            onlySymbolLines && !getSymbols(lineStart + lineNumber).length
-          }
-          hoverEffect={lineHoverEffect}
-          highlightColor={highlightColor}
-          isNewLine={
-            isDiff &&
-            !line.tokens[0].token.content &&
-            line.tokens[1].token.content === '+'
-          }
-          isRemovedLine={
-            isDiff &&
-            !line.tokens[0].token.content &&
-            line.tokens[1].token.content === '-'
-          }
-        >
-          {line.tokens.map((token, index) => (
-            <CodeToken
-              key={index}
-              token={token.token}
-              highlights={highlights}
-              highlight={token.highlight}
-              startHl={token.startHl}
-              endHl={token.endHl}
-            />
-          ))}
-        </CodeLine>
-      )),
-    [tokensMap, showLines, highlights, onlySymbolLines, highlightColor],
-  );
-
   return (
-    <div>
-      <pre
-        className={`prism-code language-${lang} text-label-base my-0 ${
-          removePaddings ? '' : 'px-2'
-        } ${onlySymbolLines ? 'overflow-hidden' : ''}`}
-      >
-        <div>{codeLines}</div>
-      </pre>
-    </div>
+    <CodeContainer
+      lang={lang}
+      tokensMap={tokensMap}
+      symbols={symbols}
+      onlySymbolLines={onlySymbolLines}
+      highlights={highlights}
+      highlightColor={highlightColor}
+      lineStart={lineStart}
+      showLines={showLines}
+      isDiff={isDiff}
+      lineHoverEffect={lineHoverEffect}
+      removePaddings={removePaddings}
+    />
   );
 };
 

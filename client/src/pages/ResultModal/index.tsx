@@ -176,7 +176,7 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
                 metadata={metadata}
                 scrollElement={null}
                 containerWidth={window.innerWidth * 0.6 - 56}
-                containerHeight={window.innerHeight - 15 * 16 - 32}
+                containerHeight={window.innerHeight - 15 * 16 - 114}
               />
             )}
           </div>

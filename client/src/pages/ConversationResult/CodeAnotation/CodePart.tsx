@@ -1,46 +1,37 @@
-import React, { useEffect, useState } from 'react';
-import Code from '../../../components/CodeBlock/Code';
-import { getFileLines } from '../../../services/api';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FileResponse } from '../../../types/api';
 import LiteLoader from '../../../components/Loaders/LiteLoader';
+import CodeContainer from '../../../components/CodeBlock/Code/CodeContainer';
+import { TokensLine } from '../../../types/results';
 import { colors } from './index';
 
 type Props = {
   filePath: string;
-  repoRef: string;
   startLine: number;
   endLine: number;
   i: number;
   isLast: boolean;
   onResultClick: (path: string, lineNum?: number[]) => void;
+  lang?: string;
+  tokensMap: TokensLine[];
 };
 
 const CodePart = ({
   filePath,
-  repoRef,
   startLine,
   endLine,
   i,
   isLast,
   onResultClick,
+  lang,
+  tokensMap,
 }: Props) => {
-  const [filePart, setFilePart] = useState<FileResponse | null>(null);
-  const [isLoading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (
-      repoRef &&
-      filePath &&
-      startLine !== null &&
-      startLine > -1 &&
-      endLine !== null &&
-      endLine > -1
-    ) {
-      getFileLines(repoRef, filePath, startLine, endLine).then((resp) => {
-        setFilePart(resp);
-      });
+  const slicedTokensMap = useMemo(() => {
+    if (startLine !== null && endLine !== null) {
+      return tokensMap.slice(Math.max(startLine - 1, 0), Math.max(1, endLine));
     }
-  }, [filePath, repoRef, startLine, endLine]);
+    return undefined;
+  }, [tokensMap, startLine, endLine]);
 
   return (
     <div
@@ -48,28 +39,29 @@ const CodePart = ({
       data-last={isLast.toString()}
       style={{ scrollMarginTop: 80 }}
     >
-      {(isLoading || !filePart) && (
+      {!slicedTokensMap?.length && (
         <div className="flex flex-col items-center py-8">
           <LiteLoader sizeClassName="w-7 h-7" />
           <p className="body-s text-label-base">Loading code line ranges...</p>
         </div>
       )}
       <div
-        className={`${isLoading ? 'opacity-0' : 'opacity-100'} cursor-pointer`}
+        className={`${
+          !slicedTokensMap?.length ? 'opacity-0' : 'opacity-100'
+        } cursor-pointer`}
         onClick={(e) => {
-          if (filePart) {
+          if (slicedTokensMap?.length) {
             e.stopPropagation();
             onResultClick(filePath, [Math.max(startLine - 1, 0), endLine - 1]);
           }
         }}
       >
-        {filePart && (
-          <Code
+        {slicedTokensMap?.length && (
+          <CodeContainer
             lineStart={startLine - 1}
-            code={filePart.contents.slice(0, -1)} // there is always a trailing new line
-            language={filePart.lang}
+            tokensMap={slicedTokensMap}
+            lang={lang || 'plaintext'}
             highlightColor={`rgba(${colors[i % colors.length].join(', ')}, 1)`}
-            onTokensLoaded={() => setLoading(false)}
           />
         )}
       </div>
