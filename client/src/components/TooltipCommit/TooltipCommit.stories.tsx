@@ -7,7 +7,7 @@ export default {
 
 export const TooltipCommitDefault = () => {
   return (
-    <div style={{ backgroundColor: '#131315' }}>
+    <div>
       <div className="flex flex-col gap-8 pt-32 items-center">
         <TooltipCommit
           message={'Enable Alex documentation linting for docs (#26598)'}

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import Checkbox from './index';
-import '../../index.css';
 
 export default {
   title: 'components/Checkbox',
@@ -10,12 +9,19 @@ export default {
 export const WithDescription = () => {
   const [checked, setChecked] = useState(false);
   return (
-    <div className="bg-gray-900">
+    <div className="flex flex-col gap-4">
       <Checkbox
         label="Add label"
         description="Add description"
         checked={checked}
         onChange={setChecked}
+      />
+      <Checkbox
+        label="Intermediary"
+        description="Intermediary"
+        checked={checked}
+        onChange={setChecked}
+        intermediary
       />
     </div>
   );
@@ -24,7 +30,7 @@ export const WithDescription = () => {
 export const WithoutDescription = () => {
   const [checked, setChecked] = useState(false);
   return (
-    <div className="bg-gray-900">
+    <div>
       <Checkbox label="Add label" checked={checked} onChange={setChecked} />
     </div>
   );
@@ -32,7 +38,7 @@ export const WithoutDescription = () => {
 
 export const Disabled = () => {
   return (
-    <div className="bg-gray-900">
+    <div>
       <Checkbox
         label="Add label"
         description="Add description"

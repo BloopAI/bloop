@@ -6,7 +6,21 @@ type Props = {
   label: string;
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   isLast?: boolean;
+  limitSectionWidth?: boolean;
   highlight?: Range;
+  type: 'link' | 'button';
+};
+
+const typeMap = {
+  link: {
+    default: 'text-label-muted hover:text-bg-main active:text-bg-main',
+    isLast: 'text-label-base',
+  },
+  button: {
+    default:
+      'px-2 py-1 rounded-4 hover:bg-bg-base-hover text-label-base hover:text-label-title',
+    isLast: 'text-label-base px-2 py-1 rounded-4',
+  },
 };
 
 const BreadcrumbSection = ({
@@ -15,6 +29,8 @@ const BreadcrumbSection = ({
   onClick,
   isLast,
   highlight,
+  type,
+  limitSectionWidth,
 }: Props) => {
   const getHighlight = () => {
     if (highlight) {
@@ -24,7 +40,9 @@ const BreadcrumbSection = ({
       return (
         <span>
           {left}
-          <span className="bg-secondary-500/25 rounded-4">{search}</span>
+          <span className="bg-bg-highlight/25 rounded-4 text-label-base">
+            {search}
+          </span>
           {right}
         </span>
       );
@@ -33,13 +51,19 @@ const BreadcrumbSection = ({
   };
   return (
     <button
-      className={`flex items-center gap-1 hover:text-sky-500 cursor-pointer active:text-sky-500 ${
-        isLast ? 'text-gray-200' : 'text-gray-500'
-      }  transition-all duration-300 ease-in-bounce flex-shrink-0`}
+      className={`flex items-center gap-1 cursor-pointer ${
+        isLast ? typeMap[type].isLast : typeMap[type].default
+      } ${
+        limitSectionWidth ? 'max-w-[8rem] ellipsis' : ''
+      } transition-all duration-300 ease-in-bounce flex-shrink-0`}
       onClick={onClick}
     >
       {icon}
-      <span className="whitespace-nowrap">{getHighlight()}</span>
+      <span
+        className={`whitespace-nowrap ${limitSectionWidth ? 'ellipsis' : ''}`}
+      >
+        {getHighlight()}
+      </span>
     </button>
   );
 };

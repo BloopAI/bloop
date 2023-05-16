@@ -9,9 +9,10 @@ export default {
 export const TooltipCodeDefault = () => {
   return (
     <MemoryRouter initialEntries={['']}>
-      <div style={{ backgroundColor: '#131315' }}>
+      <div>
         <div className="flex flex-col gap-8 items-center">
           <TooltipCode
+            isLoading={false}
             position={'left'}
             language={'javascript'}
             onHover={() => {}}
@@ -25,6 +26,7 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -36,10 +38,12 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -49,10 +53,12 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -62,6 +68,7 @@ export const TooltipCodeDefault = () => {
             <span>Tooltip Left</span>
           </TooltipCode>
           <TooltipCode
+            isLoading={false}
             position={'center'}
             language={'javascript'}
             onHover={() => {}}
@@ -75,6 +82,7 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -86,10 +94,12 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -99,10 +109,12 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -112,6 +124,7 @@ export const TooltipCodeDefault = () => {
             <span>Tooltip Center</span>
           </TooltipCode>
           <TooltipCode
+            isLoading={false}
             position={'right'}
             language={'javascript'}
             onHover={() => {}}
@@ -125,6 +138,7 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -136,10 +150,12 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },
@@ -149,10 +165,12 @@ export const TooltipCodeDefault = () => {
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                     {
                       code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
                       line: 12,
+                      highlights: [],
                     },
                   ],
                 },

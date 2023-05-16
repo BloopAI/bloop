@@ -17,7 +17,7 @@ const Subheader = ({
   onResultClosed,
 }: Props) => {
   return (
-    <div className={`w-full border-b border-gray-700 p-3`}>
+    <div className={`w-full border-b border-bg-border p-3`}>
       <div className="flex items-center gap-2 max-w-full select-none justify-between">
         <div className="flex items-center gap-1 max-w-[calc(100%-40px)]">
           <FileIcon filename={relativePath.slice(-5)} />

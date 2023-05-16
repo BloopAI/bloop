@@ -1,21 +1,17 @@
 import { Fragment } from 'react';
 import { MailIcon } from '../../icons';
 import Button from './index';
-import '../../index.css';
 
 export default {
   title: 'components/Button',
   component: Button,
 };
 
-const sizes = ['large', 'medium', 'small'] as const;
+const sizes = ['large', 'medium', 'small', 'tiny'] as const;
 
 export const Primary = () => {
   return (
-    <div
-      className="gap-4 grid grid-cols-4-fit justify-items-start justify-center text-gray-100 items-center"
-      style={{ backgroundColor: '#131315' }}
-    >
+    <div className="gap-4 grid grid-cols-4-fit justify-items-start justify-center items-center">
       {sizes.map((s) => (
         <Fragment key={s}>
           {s}
@@ -52,10 +48,7 @@ export const Primary = () => {
 
 export const Secondary = () => {
   return (
-    <div
-      className="gap-4 grid grid-cols-4-fit justify-items-start justify-center text-gray-100 items-center"
-      style={{ backgroundColor: '#131315' }}
-    >
+    <div className="gap-4 grid grid-cols-4-fit justify-items-start justify-center items-center">
       {sizes.map((s) => (
         <Fragment key={s}>
           {s}
@@ -94,10 +87,7 @@ export const Secondary = () => {
 
 export const Tertiary = () => {
   return (
-    <div
-      className="gap-4 grid grid-cols-4-fit justify-items-start justify-center text-gray-100 items-center"
-      style={{ backgroundColor: '#131315' }}
-    >
+    <div className="gap-4 grid grid-cols-4-fit justify-items-start justify-center items-center">
       {sizes.map((s) => (
         <Fragment key={s}>
           {s}
@@ -136,10 +126,7 @@ export const Tertiary = () => {
 
 export const TertiaryOutlined = () => {
   return (
-    <div
-      className="gap-4 grid grid-cols-4-fit justify-items-start justify-center text-gray-100 items-center"
-      style={{ backgroundColor: '#131315' }}
-    >
+    <div className="gap-4 grid grid-cols-4-fit justify-items-start justify-center items-center">
       {sizes.map((s) => (
         <Fragment key={s}>
           {s}

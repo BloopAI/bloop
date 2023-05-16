@@ -102,9 +102,18 @@ const CodeContainer = ({
   }, []);
 
   const onMouseSelectEnd = useCallback((lineNum: number, charNum: number) => {
-    setCurrentSelection((prev) =>
-      prev[0] ? [prev[0], [lineNum, charNum]] : [],
-    );
+    setCurrentSelection((prev) => {
+      if (!prev[0] || (prev[0][0] === lineNum && prev[0][1] === charNum)) {
+        return [];
+      }
+      const startsAtTop =
+        prev[0][0] <= lineNum ||
+        (prev[0][0] === lineNum && prev[0][1] < charNum);
+
+      return startsAtTop
+        ? [prev[0], [lineNum, charNum]]
+        : [[lineNum, charNum], prev[0]];
+    });
   }, []);
 
   return (

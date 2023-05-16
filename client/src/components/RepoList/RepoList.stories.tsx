@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { RepoProvider, RepoUi, SyncStatus } from '../../types/general';
 import Tabs from '../Tabs';
 import RepoList from './index';
-import '../../index.css';
 
 export default {
   title: 'components/RepoList',
@@ -86,7 +85,7 @@ export const Default = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [repos, setRepos] = useState<RepoUi[]>(mockRepos);
   return (
-    <div className="bg-gray-900 max-w-md2 p-6 w-full">
+    <div className="max-w-md2 p-6 w-full">
       <div className="flex flex-col overflow-auto">
         <div className="overflow-hidden flex-shrink-0">
           <Tabs
@@ -98,10 +97,10 @@ export const Default = () => {
           />
         </div>
         <RepoList
+          onSync={() => {}}
+          isLoading={false}
           repos={repos}
-          setRepos={setRepos}
           source="local"
-          activeTab={activeTab}
         />
       </div>
     </div>

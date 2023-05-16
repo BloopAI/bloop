@@ -29,15 +29,18 @@ const useAnalytics = () => {
     ({
       localRepos,
       githubRepos,
+      publicGithubRepos,
       where,
     }: {
       localRepos: number;
       githubRepos: number;
+      publicGithubRepos?: number;
       where: string;
     }) => {
       analytics?.track('Repos Selected', {
         localRepos,
         githubRepos,
+        publicGithubRepos,
         where,
       });
     },

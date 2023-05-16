@@ -17,16 +17,16 @@ const ContextMenu = ({ items, visible, rightSide }: Props) => {
     <div
       className={`${visible ? '' : 'hidden'} ${
         rightSide ? 'right-0' : ''
-      } flex flex-col divide-y divide-gray-700 z-10 rounded p-1 bg-gray-800/75 drop-shadow-lg absolute w-72 top-12 text-gray-300 p-2`}
+      } flex flex-col divide-y divide-bg-border z-10 rounded bg-bg-base/75 drop-shadow-lg absolute w-72 top-12 text-label-base p-2`}
     >
       <span className="text-xs px-1">Will be shared</span>
       <div className="my-2 py-2">
         {items.map((item) => (
           <span
-            className="flex items-center gap-3 py-1 hover:bg-gray-700 cursor-pointer"
+            className="flex items-center gap-3 py-1 hover:bg-bg-base-hover cursor-pointer"
             key={item.text}
           >
-            <span className="text-gray-500">
+            <span className="text-label-muted">
               <DragVertical />
             </span>
             <span className="flex flex-col">
@@ -34,17 +34,17 @@ const ContextMenu = ({ items, visible, rightSide }: Props) => {
                 value={item.text}
                 icon={<FileIcon filename={item.text} />}
               />
-              <span className="text-gray-500 text-xs">
+              <span className="text-label-muted text-xs">
                 {item.annotations} annotations
               </span>
             </span>
           </span>
         ))}
       </div>
-      <span className="py-3 px-1 hover:bg-gray-700 cursor-pointer">
+      <span className="py-3 px-1 hover:bg-bg-base-hover cursor-pointer">
         <TextField value={'Save to my collections'} icon={<FloppyDisk />} />
       </span>
-      <span className="py-3 px-1 hover:bg-gray-700 cursor-pointer">
+      <span className="py-3 px-1 hover:bg-bg-base-hover cursor-pointer">
         <TextField value={'Copy sharing link'} icon={<Clipboard />} />
       </span>
     </div>

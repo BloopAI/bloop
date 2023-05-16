@@ -28,7 +28,7 @@ const modalAnimation = (top: string, shouldStretch: boolean) => ({
 });
 
 const sidebarAnimation = (shouldStretch: boolean) => ({
-  top: '4rem',
+  top: '5.5rem',
   ...(shouldStretch ? { bottom: '4rem' } : {}),
   right: '0%',
   transform: 'translate(0%, 0%)',
@@ -44,7 +44,7 @@ const initialModalStyles = (top: string, shouldStretch: boolean) => ({
 });
 
 const initialSidebarStyles = (shouldStretch: boolean) => ({
-  top: '4rem',
+  top: '5.5rem',
   right: '0%',
   ...(shouldStretch ? { bottom: '4rem' } : {}),
   transform: 'translate(4rem, 0%)',
@@ -74,7 +74,7 @@ const ModalOrSidebar = ({
   shouldStretch = true,
   fullOverlay,
   filtersOverlay,
-  top = '5rem',
+  top = '8rem',
 }: PropsWithChildren<Props>) => {
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape' && shouldShow) {
@@ -98,8 +98,8 @@ const ModalOrSidebar = ({
           <motion.div
             key="overlay"
             className={`fixed top-0 ${
-              fullOverlay ? '' : 'mt-16'
-            } bottom-0 left-0 right-0 bg-gray-900 bg-opacity-75 cursor-alias ${
+              fullOverlay ? '' : 'mt-24'
+            } bottom-0 left-0 right-0 bg-bg-base/75 cursor-alias ${
               fullOverlay ? 'z-60' : 'z-20'
             }`}
             initial={backdropHidden}
@@ -121,8 +121,10 @@ const ModalOrSidebar = ({
           <motion.div
             key="modal"
             className={`modal-or-sidebar overflow-hidden fixed flex flex-col ${
-              isSidebar ? `border-y-0` : `rounded-md drop-shadow-light-bigger`
-            } bg-gray-900 border border-gray-700 bg-opacity-75 z-70 backdrop-blur-8 ${containerClassName}`}
+              isSidebar ? `border-y-0` : `rounded-md shadow-float`
+            } bg-bg-shade border border-bg-border ${
+              isSidebar ? '' : 'z-70'
+            } ${containerClassName}`}
             animate={
               isSidebar
                 ? sidebarAnimation(shouldStretch)

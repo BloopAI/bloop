@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import FilterSection from './FilterSection';
 import Filters from './index';
-import '../../index.css';
 
 export default {
   title: 'components/Filters',
@@ -46,7 +45,7 @@ export const Default = () => {
   const [isOpen, setIsOpen] = useState(true);
   return (
     <MemoryRouter initialEntries={['']}>
-      <div style={{ backgroundColor: '#131315', width: 350 }}>
+      <div style={{ width: 350 }}>
         <Filters
           isOpen={isOpen}
           toggleOpen={() => setIsOpen((prev) => !prev)}
@@ -65,7 +64,7 @@ export const Checkboxes = () => {
   ]);
   const [isOpen, setIsOpen] = useState(true);
   return (
-    <div style={{ backgroundColor: '#131315', width: 350 }}>
+    <div style={{ width: 350 }}>
       <FilterSection
         items={items}
         onChange={(i, b) => {
@@ -95,7 +94,7 @@ export const ClickableLines = () => {
   ]);
   const [isOpen, setIsOpen] = useState(true);
   return (
-    <div style={{ backgroundColor: '#131315', width: 350 }}>
+    <div style={{ width: 350 }}>
       <FilterSection
         items={items}
         onChange={(i, b) => {

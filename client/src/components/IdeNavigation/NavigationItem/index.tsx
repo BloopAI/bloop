@@ -6,13 +6,13 @@ type Props = {
   value: string;
   active?: boolean;
   dense?: boolean;
-  variant: 'default' | 'light';
+  variant?: 'default' | 'light';
   onClick?: () => void;
 };
 
 const colorsMap = {
-  default: 'active:bg-gray-800 hover:bg-gray-800',
-  light: 'active:bg-gray-700 hover:bg-gray-700',
+  default: 'active:bg-bg-base-hover hover:bg-bg-base-hover',
+  light: 'active:bg-bg-base-hover hover:bg-bg-base-hover',
 };
 
 const NavigationItem = ({
@@ -20,16 +20,16 @@ const NavigationItem = ({
   value,
   active = false,
   dense,
-  variant,
+  variant = 'default',
   onClick,
 }: Props) => {
   return (
     <span
-      className={`${active ? 'text-gray-300' : 'text-gray-500'} ${
+      className={`${active ? 'text-label-title' : 'text-label-base'} ${
         !dense ? 'h-11.5 flex items-center' : ''
-      } active:text-gray-300 transition-all duration-300 ease-in-bounce ${
+      } active:text-label-title transition-all duration-300 ease-in-bounce ${
         colorsMap[variant]
-      } px-8 block py-2 cursor-pointer hover:text-gray-300 w-full`}
+      } px-8 block py-2 cursor-pointer hover:text-label-title w-full`}
       onClick={onClick}
     >
       <TextField

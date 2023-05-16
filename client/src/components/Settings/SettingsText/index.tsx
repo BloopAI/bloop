@@ -9,8 +9,8 @@ const SettingsText = ({
 }: PropsWithChildren<Props>) => {
   return (
     <div className="flex flex-col gap-1 flex-1">
-      <p className="subhead-s text-gray-200">{title}</p>
-      <p className="body-s text-gray-500">{subtitle}</p>
+      <p className="subhead-s text-label-title">{title}</p>
+      <p className="body-s text-label-muted">{subtitle}</p>
       {children}
     </div>
   );
