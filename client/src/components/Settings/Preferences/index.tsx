@@ -5,28 +5,29 @@ import { UIContext } from '../../../context/uiContext';
 import Dropdown from '../../Dropdown/Normal';
 import { MenuItemType } from '../../../types/general';
 import { Theme } from '../../../types';
+import { previewTheme } from '../../../utils';
 
-const themesMap = {
+export const themesMap = {
   default: 'Default',
-  'default-light': 'Default Light',
   'vsc-default-dark': 'VSCode Dark',
-  'vsc-default-light': 'VSCode Light',
   abyss: 'Abyss',
   'atom-one-dark-pro': 'Atom One Dark Pro',
   darcula: 'Darcula',
   dracula: 'Dracula',
   'github-dark': 'GitHub Dark',
-  'github-light': 'GitHub Light',
   'gruvbox-dark': 'Gruvbox Dark',
-  'gruvbox-light': 'Gruvbox Light',
   'kimbie-dark': 'Kimbie',
   material: 'Material',
   monokai: 'Monokai',
   'night-owl': 'Night Owl',
-  'quiet-light': 'Quiet Light',
   'solarized-dark': 'Solarized Dark',
-  'solarized-light': 'Solarized Light',
   'tomorrow-night-blue': 'Tomorrow Night Blue',
+  'default-light': 'Default Light',
+  'vsc-default-light': 'VSCode Light',
+  'github-light': 'GitHub Light',
+  'gruvbox-light': 'Gruvbox Light',
+  'quiet-light': 'Quiet Light',
+  'solarized-light': 'Solarized Light',
 };
 
 const Preferences = () => {
@@ -48,7 +49,9 @@ const Preferences = () => {
               type: MenuItemType.DEFAULT,
               text: name,
               onClick: () => setTheme(key as Theme),
+              onMouseOver: () => previewTheme(key),
             }))}
+            onClose={() => previewTheme(theme)}
             selected={{
               type: MenuItemType.DEFAULT,
               text: themesMap[theme],

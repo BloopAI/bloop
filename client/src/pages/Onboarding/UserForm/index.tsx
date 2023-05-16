@@ -12,6 +12,11 @@ import { UIContext } from '../../../context/uiContext';
 import { DeviceContext } from '../../../context/deviceContext';
 import { gitHubLogout } from '../../../services/api';
 import { Form } from '../index';
+import Dropdown from '../../../components/Dropdown/Normal';
+import { MenuItemType } from '../../../types/general';
+import { Theme } from '../../../types';
+import { themesMap } from '../../../components/Settings/Preferences';
+import { previewTheme } from '../../../utils';
 
 type Props = {
   form: Form;
@@ -23,6 +28,7 @@ type Props = {
 const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
   const { isGithubConnected, setGithubConnected } = useContext(UIContext);
   const { envConfig, openLink } = useContext(DeviceContext);
+  const { theme, setTheme } = useContext(UIContext);
 
   const handleLogout = useCallback(() => {
     gitHubLogout();
@@ -82,6 +88,25 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
           name="email"
           placeholder="Email address"
         />
+        <div className="flex flex-col w-full">
+          <Dropdown
+            btnHint={
+              <span className="text-label-title">Select color theme:</span>
+            }
+            btnClassName="w-full border-transparent"
+            items={Object.entries(themesMap).map(([key, name]) => ({
+              type: MenuItemType.DEFAULT,
+              text: name,
+              onClick: () => setTheme(key as Theme),
+              onMouseOver: () => previewTheme(key),
+            }))}
+            onClose={() => previewTheme(theme)}
+            selected={{
+              type: MenuItemType.DEFAULT,
+              text: themesMap[theme],
+            }}
+          />
+        </div>
         <div className="flex items-center pl-2.5 gap-2.5 border border-bg-border rounded-4">
           <GitHubLogo />
           <p className="callout text-label-title flex-1">

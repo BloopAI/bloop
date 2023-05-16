@@ -9,6 +9,7 @@ export type ItemProps = {
   text: string | React.ReactElement;
   icon?: React.ReactElement;
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
+  onMouseOver?: () => void;
   onDelete?: () => void;
   type: MenuItemType;
   disabled?: boolean;
@@ -23,6 +24,7 @@ const Item = ({
   onDelete,
   disabled,
   tooltip,
+  onMouseOver,
 }: ItemProps) => {
   const [selected, setSelected] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -55,6 +57,8 @@ const Item = ({
       } flex items-center justify-between rounded text-sm duration-100`}
       onClick={handleClick}
       disabled={disabled}
+      onMouseOver={onMouseOver}
+      onFocus={onMouseOver}
     >
       {showConfirmation ? (
         <TextField value="Confirm" icon={<CheckIcon />} />
