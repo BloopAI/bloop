@@ -2,14 +2,19 @@ import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import throttle from 'lodash.throttle';
 import PageHeader from '../../components/ResultsPageHeader';
 import { ChatContext } from '../../context/chatContext';
-import { ChatMessageServer, MessageResultCite } from '../../types/general';
+import {
+  ChatMessageServer,
+  MessageResultCite,
+  MessageResultDirectory,
+} from '../../types/general';
 import { UIContext } from '../../context/uiContext';
 import { ChevronDown } from '../../icons';
 import { conversationsCache } from '../../services/cache';
 import NewCode from './NewCode';
 import DiffCode from './DiffCode';
 import CodeAnnotation from './CodeAnotation';
-import Directory from './Directory';
+import Directory from './DirectoryAnnotation/Directory';
+import DirectoryAnnotation from './DirectoryAnnotation';
 
 type Props = {
   recordId: number;
@@ -43,7 +48,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
     data
       .filter((d): d is MessageResultCite => 'Cite' in d)
       .forEach((c, i) => {
-        if (files[c.Cite.path]) {
+        if (c.Cite.path && files[c.Cite.path]) {
           files[c.Cite.path].push({ ...c.Cite, i });
         } else if (c.Cite.path) {
           files[c.Cite.path] = [{ ...c.Cite, i }];
@@ -51,7 +56,23 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
       });
     return files;
   }, [data]);
-  const otherBlocks = useMemo(() => data.filter((d) => !('Cite' in d)), [data]);
+  const dirCitations = useMemo(() => {
+    const files: Record<string, any> = {};
+    data
+      .filter((d): d is MessageResultDirectory => 'Directory' in d)
+      .forEach((c, i) => {
+        if (c.Directory.path && files[c.Directory.path]) {
+          files[c.Directory.path].push({ ...c.Directory, i });
+        } else if (c.Directory.path) {
+          files[c.Directory.path] = [{ ...c.Directory, i }];
+        }
+      });
+    return files;
+  }, [data]);
+  const otherBlocks = useMemo(
+    () => data.filter((d) => !('Cite' in d || 'Directory' in d)),
+    [data],
+  );
 
   const handleScroll = useMemo(
     () =>
@@ -61,35 +82,37 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
           const scrollTop = (e.target as HTMLDivElement).scrollTop;
           let previousCommentsHeight = 0;
           let stickedCommentsHeight = 0;
-          Object.values(citations).forEach((fileCite) => {
-            fileCite.forEach((c: any) => {
-              const comment = document.getElementById(`comment-${c.i}`);
-              const code = document.getElementById(`code-${c.i}`);
+          Object.values(citations.length ? citations : dirCitations).forEach(
+            (fileCite) => {
+              fileCite.forEach((c: any) => {
+                const comment = document.getElementById(`comment-${c.i}`);
+                const code = document.getElementById(`code-${c.i}`);
 
-              if (comment && code) {
-                const commentRect = comment.getBoundingClientRect();
-                const codeRect = code.getBoundingClientRect();
-                const codeBottom =
-                  codeRect.bottom +
-                  scrollTop -
-                  (code.dataset.last === 'true' ? 170 : 205); // calculate code bottom relative to parent
-                const lowestPosition =
-                  codeBottom - commentRect.height - previousCommentsHeight;
-                const maxTranslateY = Math.max(
-                  0,
-                  Math.min(scrollTop - stickedCommentsHeight, lowestPosition),
-                );
-                if (
-                  maxTranslateY === lowestPosition &&
-                  scrollTop > codeBottom
-                ) {
-                  stickedCommentsHeight += commentRect.height + 12;
+                if (comment && code) {
+                  const commentRect = comment.getBoundingClientRect();
+                  const codeRect = code.getBoundingClientRect();
+                  const codeBottom =
+                    codeRect.bottom +
+                    scrollTop -
+                    (code.dataset.last === 'true' ? 170 : 205); // calculate code bottom relative to parent
+                  const lowestPosition =
+                    codeBottom - commentRect.height - previousCommentsHeight;
+                  const maxTranslateY = Math.max(
+                    0,
+                    Math.min(scrollTop - stickedCommentsHeight, lowestPosition),
+                  );
+                  if (
+                    maxTranslateY === lowestPosition &&
+                    scrollTop > codeBottom
+                  ) {
+                    stickedCommentsHeight += commentRect.height + 12;
+                  }
+                  previousCommentsHeight += commentRect.height + 12;
+                  comment.style.transform = `translateY(${maxTranslateY}px)`;
                 }
-                previousCommentsHeight += commentRect.height + 12;
-                comment.style.transform = `translateY(${maxTranslateY}px)`;
-              }
-            });
-          });
+              });
+            },
+          );
         },
         75,
         { trailing: true, leading: true },
@@ -123,6 +146,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
       />
       <div className="flex flex-col gap-4 pb-44">
         <CodeAnnotation repoName={tab.repoName} citations={citations} />
+        <DirectoryAnnotation repoName={tab.repoName} citations={dirCitations} />
         {otherBlocks.map((b, i) => {
           if ('New' in b && b.New.code && b.New.language) {
             return (
@@ -130,10 +154,6 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
             );
           } else if ('Modify' in b && b.Modify.diff) {
             return <DiffCode data={b.Modify} key={i} />;
-          } else if ('Directory' in b && b.Directory.path) {
-            return (
-              <Directory path={b.Directory.path} repo={tab.repoName} key={i} />
-            );
           }
         })}
       </div>

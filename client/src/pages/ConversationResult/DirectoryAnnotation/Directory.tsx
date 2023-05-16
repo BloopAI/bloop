@@ -1,13 +1,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { cleanRepoName, sortFiles } from '../../utils/file';
-import RepositoryFiles from '../../components/RepositoryFiles';
-import { search } from '../../services/api';
-import { FileTreeFileType, RepositoryFile } from '../../types';
-import useAppNavigation from '../../hooks/useAppNavigation';
-import { DirectoryItem } from '../../types/api';
-import { mapDirResult } from '../../mappers/results';
+import { cleanRepoName, sortFiles } from '../../../utils/file';
+import RepositoryFiles from '../../../components/RepositoryFiles';
+import { search } from '../../../services/api';
+import { FileTreeFileType, RepositoryFile } from '../../../types';
+import useAppNavigation from '../../../hooks/useAppNavigation';
+import { DirectoryItem } from '../../../types/api';
+import { mapDirResult } from '../../../mappers/results';
 
-const Directory = ({ path, repo }: { path: string; repo: string }) => {
+const Directory = ({
+  path,
+  repo,
+  i,
+}: {
+  path: string;
+  repo: string;
+  i: number;
+}) => {
   const [files, setFiles] = useState<RepositoryFile[] | null>(null);
   const { navigateRepoPath, navigateFullResult } = useAppNavigation();
 
@@ -27,7 +35,7 @@ const Directory = ({ path, repo }: { path: string; repo: string }) => {
   }, []);
 
   return (
-    <div>
+    <div id={`code-${i}`}>
       {files && (
         <RepositoryFiles
           files={files}

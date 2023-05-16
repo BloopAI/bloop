@@ -144,6 +144,7 @@ export type MessageResultCite = {
 export type MessageResultDirectory = {
   Directory: {
     path: string | null;
+    comment: string | null;
   };
 };
 
