@@ -153,7 +153,7 @@ pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str)
             description: "When you wish to cite every file in a directory, use this to directly cite the directory instead.",
             schema: "[\"dir\",PATH:STRING]",
             note: "This object can occur multiple times",
-            example: Some(r#"The path is a relative path, with no leading slash, for example: server/bleep/src/webserver"#),
+            example: Some(r#"The path is a relative path, with no leading slash. You must generate a trailing slash, for example: server/bleep/src/webserver/. On Windows, generate backslash separated components, for example: server\bleep\src\webserver\"#),
         },
         Rule {
             title: "Write a new code file",
@@ -228,17 +228,11 @@ Example:
 
 Show all the analytics events
 
-[
-  ["cite", 27, "Track 'Search' event in useAnalytics.ts", 7, 12],
-  ["con", "I've found three analytics events"]
-]
+[["cite",27,"Track 'Search' event in useAnalytics.ts",7,12], ["con","I've found three analytics events"]]
 
-What changed in the last 48h
+Where is the webserver code located
 
-[
-  ["commit", [30, 4], "Two commits were made to improve performance and fix a bug"],
-  ["con", "I found two commits"]
-]
+[["dir","server/bleep/src/webserver/"],["con","The webserver code is located under the server directory"]]
 
 #####
 
