@@ -88,6 +88,7 @@ const RepositoryFiles = ({
             key={id}
           />
         ))}
+        {!!maxInitialFiles && <div className="h-13 w-full" />}
       </div>
     </Accordion>
   );
