@@ -493,7 +493,7 @@ impl Conversation {
                 .content
                 .split('\n')
                 .enumerate()
-                .map(|(i, line)| format!("{}: {line}", i + 1))
+                .map(|(i, line)| format!("{} {line}", i + 1))
                 .collect::<Vec<_>>();
 
             // We store the lines separately, so that we can reference them later to trim
@@ -874,7 +874,7 @@ enum Action {
     #[serde(rename = "ask")]
     Prompt(String),
     Path(String),
-    #[serde(rename = "resp")]
+    #[serde(rename = "none")]
     Answer(Vec<usize>),
     Code(String),
     Proc(String, Vec<usize>),
