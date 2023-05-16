@@ -125,7 +125,8 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
         return (
           <NoResults
             suggestions={mockQuerySuggestions}
-            isRepo={navigatedItem?.type === 'repo'}
+            isRepo={navigatedItem?.type === 'repo' && !navigatedItem?.path}
+            isFolder={!!navigatedItem?.path}
           />
         );
       case 'repo':
