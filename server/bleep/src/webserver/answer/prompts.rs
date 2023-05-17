@@ -101,7 +101,7 @@ You must adhere to the following rules at all times:
 
 pub fn file_explanation(question: &str, path: &str, code: &str) -> String {
     format!(
-        r#"Below are the contents of the code file /{path}. Each line is numbered.
+        r#"Below are some lines from the file /{path}. Each line is numbered.
 
 #####
 
@@ -110,23 +110,24 @@ pub fn file_explanation(question: &str, path: &str, code: &str) -> String {
 #####
 
 Your job is to perform the following tasks:
-1. Find out which other files and dependencies we should look at for information relevant to the query. You must answer with a json list of relevant paths, relative to the current file.
-2. Find all the relevant line ranges of code.
+1. Find all the relevant line ranges of code.
+2. DO NOT cite line ranges that you are not given above
+3. You MUST answer with only line ranges. DO NOT answer the question
 
 Q: find Kafka auth keys
-A: {{"dependencies":["../../utils/kafkaHandler","../src/config/index.ts"],"lines":[{{"start":12,"end":15}}]}}
+A: [[12, 15]]
 
 Q: find where we submit payment requests
-A: {{"dependencies":["../paymentRequestProvider"],"lines":[{{"start":37,"end":50}}]}}
+A: [[37, 50]]
 
-Q: auth code expiration 
-A: {{"dependencies":[],"lines":[{{"start":486,"end":501}},{{"start":530,"end":535}},{{"start":810,"end":832}}]}}
+Q: auth code expiration
+A: [[486, 501], [520, 560], [590, 631]]
 
-Q: library matrix multiplication 
-A: {{"dependencies":[],"lines":[{{"start":68,"end":74}},{{"start":82,"end":85}},{{"start":103,"end":107}},{{"start":212,"end":219}}]}}
+Q: library matrix multiplication
+A: [[68, 74], [82, 85], [103, 107], [187, 193]]
 
-Q: how combine result streams 
-A: {{"dependencies":[],"lines":[]}}
+Q: how combine result streams
+A: []
 
 Q: {question}
 A: "#
