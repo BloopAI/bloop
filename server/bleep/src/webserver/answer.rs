@@ -38,7 +38,7 @@ mod response;
 
 use response::{Exchange, SearchResult, SearchStep, Update};
 
-const TIMEOUT_SECS: u64 = 10;
+const TIMEOUT_SECS: u64 = 60;
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
