@@ -225,11 +225,23 @@ Examples:
 
 Show all the analytics events
 
-[["cite",27,"Track 'Search' event in useAnalytics.ts",7,12], ["con","I've found three analytics events"]]
+[
+  ["cite", 27, "Track 'Search' event in useAnalytics.ts", 7, 12],
+  ["con", "I've found three analytics events"]
+]
 
 Where is the webserver code located
 
-[["dir","server/bleep/src/webserver/","This directory contains the webserver module"],["con","The webserver code is located under the server directory"]]
+[
+  ["dir","server/bleep/src/webserver/","This directory contains the webserver module"],
+  ["con","The webserver code is located under the server directory"]
+]
+
+What's the value of MAX_FILE_LEN?
+
+[
+  ["con": "None of files in the context contain the value of MAX_FILE_LEN"]
+]
 
 #####
 
