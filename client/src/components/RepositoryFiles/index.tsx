@@ -45,7 +45,7 @@ const RepositoryFiles = ({
       ...parts,
     ];
   }, [currentPath, onClick, repositoryName]);
-  console.log('currentPath', currentPath);
+
   return (
     <Accordion
       title={
