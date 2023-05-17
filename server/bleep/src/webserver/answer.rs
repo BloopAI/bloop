@@ -19,7 +19,7 @@ use futures::{future::Either, stream, StreamExt, TryStreamExt};
 use reqwest::StatusCode;
 use secrecy::ExposeSecret;
 use tokio::sync::mpsc::Sender;
-use tracing::{info, trace};
+use tracing::{info, trace, warn};
 
 use super::middleware::User;
 use crate::{
@@ -755,17 +755,22 @@ impl Conversation {
                 .ok_or(anyhow!("failed to parse `answer` response, expected array"))?;
 
             let array_of_arrays = json_array
+                .clone()
                 .into_iter()
                 .map(as_array)
                 .collect::<Option<Vec<Vec<_>>>>()
-                .ok_or(anyhow!(
-                    "failed to parse `answer` response, expected array of arrays"
-                ))?;
+                .unwrap_or_else(|| vec![json_array]);
 
             let search_results = array_of_arrays
                 .iter()
                 .map(Vec::as_slice)
-                .filter_map(SearchResult::from_json_array)
+                .filter_map(|v| {
+                    let item = SearchResult::from_json_array(&v);
+                    if item.is_none() {
+                        warn!("failed to build search result from: {v:?}");
+                    }
+                    item
+                })
                 .map(|s| s.substitute_path_alias(&self.path_aliases))
                 .collect::<Vec<_>>();
 
