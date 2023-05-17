@@ -56,6 +56,7 @@ const Dropdown = ({
         <Button
           variant="secondary"
           size="medium"
+          type="button"
           onClick={() => setVisibility(!visible)}
           className={btnClassName}
         >
