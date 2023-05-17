@@ -58,7 +58,7 @@ const RepositoryFiles = ({
         )
       }
       icon={<Papers />}
-      defaultExpanded={!maxInitialFiles}
+      defaultExpanded
       shownItems={
         maxInitialFiles && files.length > maxInitialFiles ? (
           <div className="flex flex-col divide-y divide-bg-border border-b border-bg-border overflow-auto bg-bg-sub">
@@ -88,7 +88,9 @@ const RepositoryFiles = ({
             key={id}
           />
         ))}
-        {!!maxInitialFiles && <div className="h-13 w-full" />}
+        {!!maxInitialFiles && files.length > maxInitialFiles && (
+          <div className="h-13 w-full" />
+        )}
       </div>
     </Accordion>
   );

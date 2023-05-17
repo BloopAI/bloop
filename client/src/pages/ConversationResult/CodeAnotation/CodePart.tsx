@@ -1,5 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { FileResponse } from '../../../types/api';
+import React, { useMemo } from 'react';
 import LiteLoader from '../../../components/Loaders/LiteLoader';
 import CodeContainer from '../../../components/CodeBlock/Code/CodeContainer';
 import { TokensLine } from '../../../types/results';
