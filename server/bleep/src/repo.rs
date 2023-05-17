@@ -286,6 +286,10 @@ impl Repository {
         .into())
     }
 
+    pub(crate) fn git(&self) -> Result<gix::Repository, RepoError> {
+        Ok(gix::open(&self.disk_path).context("failed to open git repo")?)
+    }
+
     /// Marks the repository for removal on the next sync
     /// Does not initiate a new sync.
     pub(crate) fn mark_removed(&mut self) {

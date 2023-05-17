@@ -15,6 +15,7 @@ use axum::{
     },
     Extension,
 };
+use chrono::{DateTime, Utc};
 use futures::{future::Either, stream, StreamExt, TryStreamExt};
 use reqwest::StatusCode;
 use secrecy::ExposeSecret;
@@ -31,6 +32,7 @@ use crate::{
 };
 
 pub mod conversations;
+mod git;
 mod llm_gateway;
 mod partial_parse;
 mod prompts;
@@ -427,6 +429,19 @@ impl Conversation {
 
             Action::Proc(question, path_aliases) => {
                 self.proc(ctx, exchange_tx, question, path_aliases).await?
+            }
+
+            Action::Commit(query, author, start_date, end_date, file) => {
+                let filename = file.and_then(|f| self.path_aliases.get(f));
+                let search = git::LogSearch {
+                    query,
+                    author,
+                    start_date,
+                    end_date,
+                    file: filename.cloned(),
+                };
+
+                search.run(ctx, &self.repo_ref).await?
             }
         };
 
@@ -914,6 +929,8 @@ impl Conversation {
     }
 }
 
+type FileId = usize;
+
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum Action {
@@ -924,9 +941,16 @@ enum Action {
     Prompt(String),
     Path(String),
     #[serde(rename = "none")]
-    Answer(Vec<usize>),
+    Answer(Vec<FileId>),
     Code(String),
-    Proc(String, Vec<usize>),
+    Proc(String, Vec<FileId>),
+    Commit(
+        Option<String>,
+        Option<String>,
+        Option<DateTime<Utc>>,
+        Option<DateTime<Utc>>,
+        Option<FileId>,
+    ),
 }
 
 impl Action {

@@ -76,7 +76,40 @@ pub fn system() -> String {
               }
           ],
         },
-      }
+      },
+      {
+        "title": "Commit search",
+        "schema": {
+          "name": "commit",
+          "args": [
+              {
+                "name": "SEARCH TERMS",
+                "type": "STRING",
+                "examples": ["reset"],
+              },
+              {
+                "name": "AUTHOR",
+                "type": "STRING",
+                "examples": ["louis"],
+              },
+              {
+                "name": "START DATE",
+                "type": "STRING",
+                "examples": ["2023-01-01"],
+              },
+              {
+                "name": "END DATE",
+                "type": "STRING",
+                "examples": ["2023-01-02"],
+              },
+              {
+                "name": "PATH ALIAS",
+                "type": "INT",
+                "examples": [1],
+             },
+          ],
+        },
+      },
     ]);
 
     format!(
