@@ -174,7 +174,7 @@ pub(super) struct ConversationId {
 pub(super) struct Conversation {
     llm_history: Vec<llm_gateway::api::Message>,
     exchanges: Vec<Exchange>,
-    path_aliases: Vec<String>,
+    paths: Vec<String>,
     code_chunks: Vec<CodeChunk>,
     repo_ref: RepoRef,
 }
@@ -203,18 +203,18 @@ impl Conversation {
                 llm_gateway::api::Message::assistant(prompts::INITIAL_PROMPT),
             ],
             exchanges: Vec::new(),
-            path_aliases: Vec::new(),
+            paths: Vec::new(),
             code_chunks: Vec::new(),
             repo_ref,
         }
     }
 
     fn path_alias(&mut self, path: &str) -> usize {
-        if let Some(i) = self.path_aliases.iter().position(|p| *p == path) {
+        if let Some(i) = self.paths.iter().position(|p| *p == path) {
             i
         } else {
-            let i = self.path_aliases.len();
-            self.path_aliases.push(path.to_owned());
+            let i = self.paths.len();
+            self.paths.push(path.to_owned());
             i
         }
     }
@@ -481,7 +481,7 @@ impl Conversation {
 
         let paths = path_aliases
             .into_iter()
-            .map(|i| self.path_aliases.get(i).ok_or(i).cloned())
+            .map(|i| self.paths.get(i).ok_or(i).cloned())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|i| anyhow!("invalid path alias {i}"))?;
 
@@ -655,26 +655,26 @@ impl Conversation {
         let context = {
             let mut s = "".to_owned();
 
+            if !self.paths.is_empty() {
+                s += "##### PATHS #####\npath alias, path\n";
+
+                for (alias, path) in self.paths.iter().enumerate() {
+                    s += &format!("{alias}, {}\n", &path);
+                }
+            }
+
             let mut path_aliases = self
                 .code_chunks
                 .iter()
                 .map(|chunk| chunk.alias as usize)
                 // Filter out invaild aliases
-                .filter(|alias| *alias < self.path_aliases.len())
+                .filter(|alias| *alias < self.paths.len())
                 // Take only selected aliases
                 .filter(|alias| aliases.contains(alias))
                 .collect::<Vec<_>>();
 
             path_aliases.sort();
             path_aliases.dedup();
-
-            if !path_aliases.is_empty() {
-                s += "##### PATHS #####\npath alias, path\n";
-
-                for alias in &path_aliases {
-                    s += &format!("{alias}, {}\n", &self.path_aliases[*alias]);
-                }
-            }
 
             if !self.code_chunks.is_empty() {
                 s += "\n##### CODE CHUNKS #####\n\n";
@@ -703,7 +703,7 @@ impl Conversation {
 
                 vec![CodeChunk {
                     alias: alias as u32,
-                    path: self.path_aliases[alias].clone(),
+                    path: self.paths[alias].clone(),
                     start_line: 1,
                     end_line: snippet.lines().count() as u32 + 1,
                     snippet,
@@ -771,7 +771,7 @@ impl Conversation {
                     }
                     item
                 })
-                .map(|s| s.substitute_path_alias(&self.path_aliases))
+                .map(|s| s.substitute_path_alias(&self.paths))
                 .collect::<Vec<_>>();
 
             exchange_tx
@@ -814,7 +814,7 @@ impl Conversation {
 
         let exchanges = serde_json::to_string(&self.exchanges)?;
         let llm_history = serde_json::to_string(&self.llm_history)?;
-        let path_aliases = serde_json::to_string(&self.path_aliases)?;
+        let path_aliases = serde_json::to_string(&self.paths)?;
         let code_chunks = serde_json::to_string(&self.code_chunks)?;
         sqlx::query! {
             "INSERT INTO conversations (\
@@ -868,7 +868,7 @@ impl Conversation {
             repo_ref,
             llm_history,
             exchanges,
-            path_aliases,
+            paths: path_aliases,
             code_chunks,
         }))
     }
@@ -1036,7 +1036,7 @@ mod tests {
                 llm_gateway::api::Message::user("corge"),
             ],
             exchanges: Vec::new(),
-            path_aliases: Vec::new(),
+            paths: Vec::new(),
             repo_ref: "github.com/foo/bar".parse().unwrap(),
             code_chunks: vec![],
         };
