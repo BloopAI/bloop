@@ -115,23 +115,27 @@ impl IndexWriter {
         }
 
         let indexed = self.index_repo(&reporef).await;
-
-        repo_pool
-            .update_async(&reporef, |_k, repo| match indexed {
-                Ok(Some(state)) => {
-                    repo.sync_done_with(state);
-                    info!("commit complete; indexing done");
-                }
-                Ok(None) => {}
-                Err(err) => {
-                    repo.sync_status = SyncStatus::Error {
-                        message: err.to_string(),
-                    };
-                    error!(?err, ?reporef, "failed to index repository");
-                }
-            })
-            .await
-            .unwrap();
+        match indexed {
+            Ok(Some(state)) => {
+                repo_pool
+                    .update_async(&reporef, |_k, repo| repo.sync_done_with(state))
+                    .await
+                    .unwrap();
+                info!("commit complete; indexing done");
+            }
+            Ok(None) => {}
+            Err(err) => {
+                repo_pool
+                    .update_async(&reporef, |_k, repo| {
+                        repo.sync_status = SyncStatus::Error {
+                            message: err.to_string(),
+                        }
+                    })
+                    .await
+                    .unwrap();
+                error!(?err, ?reporef, "failed to index repository");
+            }
+        }
 
         Ok(())
     }
