@@ -748,12 +748,11 @@ impl Conversation {
                 .ok_or(anyhow!("failed to parse `answer` response, expected array"))?;
 
             let array_of_arrays = json_array
+                .clone()
                 .into_iter()
                 .map(as_array)
                 .collect::<Option<Vec<Vec<_>>>>()
-                .ok_or(anyhow!(
-                    "failed to parse `answer` response, expected array of arrays"
-                ))?;
+                .unwrap_or_else(|| vec![json_array]);
 
             let search_results = array_of_arrays
                 .iter()
