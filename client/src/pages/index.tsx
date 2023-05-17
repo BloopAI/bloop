@@ -29,6 +29,17 @@ const mockQuerySuggestions = [
   'lang:tsx apples',
 ];
 
+type RenderPage =
+  | 'results'
+  | 'repo'
+  | 'full-result'
+  | 'nl-result'
+  | 'no-results'
+  | 'home'
+  | 'conversation-result';
+
+let prevRenderPage: RenderPage;
+
 const ContentContainer = ({ tab }: { tab: UITabType }) => {
   const { setInputValue, globalRegex } = useContext(SearchContext);
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
@@ -76,14 +87,7 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
   }, [navigatedItem, tab.key]);
 
   const getRenderPage = useCallback(() => {
-    let renderPage:
-      | 'results'
-      | 'repo'
-      | 'full-result'
-      | 'nl-result'
-      | 'no-results'
-      | 'home'
-      | 'conversation-result';
+    let renderPage: RenderPage;
     if (tab.key === 'initial') {
       return 'home';
     }
@@ -92,6 +96,9 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
     }
     if (!data?.data?.[0] && !loading) {
       return 'no-results';
+    }
+    if (loading && prevRenderPage && navigatedItem?.type === 'repo') {
+      return prevRenderPage;
     }
     const resultType = data?.data?.[0]?.kind;
     switch (resultType) {
@@ -104,6 +111,7 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
       default:
         renderPage = 'results';
     }
+    prevRenderPage = renderPage;
     return renderPage;
   }, [navigatedItem, data, loading, tab.key]);
 
