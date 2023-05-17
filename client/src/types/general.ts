@@ -129,6 +129,7 @@ export enum ChatMessageAuthor {
 type ChatMessageUser = {
   author: ChatMessageAuthor.User;
   text: string;
+  isFromHistory?: boolean;
 };
 
 export type MessageResultCite = {
@@ -177,6 +178,7 @@ export type ChatMessageServer = {
   isLoading: boolean;
   loadingSteps: string[];
   error?: string;
+  isFromHistory?: boolean;
   type: ChatMessageType;
   results?: (
     | MessageResultCite

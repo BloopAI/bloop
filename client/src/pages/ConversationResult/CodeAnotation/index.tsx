@@ -102,7 +102,7 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
           />
         ))}
       </div>
-      <div className="relative flex flex-col gap-3 w-96 flex-grow-0 overflow-y-auto">
+      <div className="relative flex flex-col gap-3 max-w-96 w-3/5 flex-grow-0 overflow-y-auto">
         {comments.map((cite, i) => (
           <FileComment i={cite.i} comment={cite.comment} key={i} />
         ))}

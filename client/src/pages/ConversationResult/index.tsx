@@ -13,7 +13,6 @@ import { conversationsCache } from '../../services/cache';
 import NewCode from './NewCode';
 import DiffCode from './DiffCode';
 import CodeAnnotation from './CodeAnotation';
-import Directory from './DirectoryAnnotation/Directory';
 import DirectoryAnnotation from './DirectoryAnnotation';
 
 type Props = {
@@ -82,42 +81,42 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
           const scrollTop = (e.target as HTMLDivElement).scrollTop;
           let previousCommentsHeight = 0;
           let stickedCommentsHeight = 0;
-          Object.values(citations.length ? citations : dirCitations).forEach(
-            (fileCite) => {
-              fileCite.forEach((c: any) => {
-                const comment = document.getElementById(`comment-${c.i}`);
-                const code = document.getElementById(`code-${c.i}`);
+          Object.values(
+            Object.keys(citations).length ? citations : dirCitations,
+          ).forEach((fileCite) => {
+            fileCite.forEach((c: any) => {
+              const comment = document.getElementById(`comment-${c.i}`);
+              const code = document.getElementById(`code-${c.i}`);
 
-                if (comment && code) {
-                  const commentRect = comment.getBoundingClientRect();
-                  const codeRect = code.getBoundingClientRect();
-                  const codeBottom =
-                    codeRect.bottom +
-                    scrollTop -
-                    (code.dataset.last === 'true' ? 170 : 205); // calculate code bottom relative to parent
-                  const lowestPosition =
-                    codeBottom - commentRect.height - previousCommentsHeight;
-                  const maxTranslateY = Math.max(
-                    0,
-                    Math.min(scrollTop - stickedCommentsHeight, lowestPosition),
-                  );
-                  if (
-                    maxTranslateY === lowestPosition &&
-                    scrollTop > codeBottom
-                  ) {
-                    stickedCommentsHeight += commentRect.height + 12;
-                  }
-                  previousCommentsHeight += commentRect.height + 12;
-                  comment.style.transform = `translateY(${maxTranslateY}px)`;
+              if (comment && code) {
+                const commentRect = comment.getBoundingClientRect();
+                const codeRect = code.getBoundingClientRect();
+                const codeBottom =
+                  codeRect.bottom +
+                  scrollTop -
+                  (code.dataset.last === 'true' ? 170 : 205); // calculate code bottom relative to parent
+                const lowestPosition =
+                  codeBottom - commentRect.height - previousCommentsHeight;
+                const maxTranslateY = Math.max(
+                  0,
+                  Math.min(scrollTop - stickedCommentsHeight, lowestPosition),
+                );
+                if (
+                  maxTranslateY === lowestPosition &&
+                  scrollTop > codeBottom
+                ) {
+                  stickedCommentsHeight += commentRect.height + 12;
                 }
-              });
-            },
-          );
+                previousCommentsHeight += commentRect.height + 12;
+                comment.style.transform = `translateY(${maxTranslateY}px)`;
+              }
+            });
+          });
         },
         75,
         { trailing: true, leading: true },
       ),
-    [citations],
+    [citations, dirCitations],
   );
 
   return (
@@ -132,7 +131,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
         !isScrolled && (
           <div className="fixed z-30 left-1/2 bottom-24 transform -translate-x-1/2">
             <div
-              className={`rounded-full bg-bg-main text-label-title shadow-low caption 
+              className={`rounded-full bg-bg-main text-label-control shadow-low caption 
                 flex gap-1 items-center justify-center pl-4 pr-3 py-2 select-none`}
             >
               More results <ChevronDown />

@@ -62,6 +62,7 @@ const AllConversations = ({
           conv.push({
             author: ChatMessageAuthor.User,
             text: userQuery.content,
+            isFromHistory: true,
           });
         }
         conv.push({
@@ -73,6 +74,7 @@ const AllConversations = ({
           ),
           text: m.conclusion,
           results: m.results,
+          isFromHistory: true,
         });
       });
       setTitle(conv[0].text || '');
@@ -131,7 +133,6 @@ const AllConversations = ({
             searchId={openThreadId}
             isLoading={false}
             isHistory
-            setHistoryOpen={setHistoryOpen}
           />
         </div>
       )}
