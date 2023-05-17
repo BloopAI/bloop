@@ -10,5 +10,6 @@ CREATE TABLE conversations (
     exchanges TEXT NOT NULL,
     llm_history TEXT NOT NULL,
     path_aliases TEXT NOT NULL,
-    code_chunks TEXT NOT NULL
+    code_chunks TEXT NOT NULL,
+    commits TEXT NOT NULL
 );

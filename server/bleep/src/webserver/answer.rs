@@ -40,7 +40,7 @@ mod response;
 
 use response::{Exchange, SearchResult, SearchStep, Update};
 
-const TIMEOUT_SECS: u64 = 10;
+const TIMEOUT_SECS: u64 = 60;
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
@@ -178,6 +178,7 @@ pub(super) struct Conversation {
     exchanges: Vec<Exchange>,
     paths: Vec<String>,
     code_chunks: Vec<CodeChunk>,
+    commits: Vec<git::LogSearchResult>,
     repo_ref: RepoRef,
 }
 
@@ -207,6 +208,7 @@ impl Conversation {
             exchanges: Vec::new(),
             paths: Vec::new(),
             code_chunks: Vec::new(),
+            commits: Vec::new(),
             repo_ref,
         }
     }
@@ -432,7 +434,7 @@ impl Conversation {
             }
 
             Action::Commit(query, author, start_date, end_date, file) => {
-                let filename = file.and_then(|f| self.path_aliases.get(f));
+                let filename = file.and_then(|f| self.paths.get(f));
                 let search = git::LogSearch {
                     query,
                     author,
@@ -441,7 +443,10 @@ impl Conversation {
                     file: filename.cloned(),
                 };
 
-                search.run(ctx, &self.repo_ref).await?
+                self.commits
+                    .extend(search.run(ctx, &self.repo_ref).await?.into_iter());
+
+                "done".into()
             }
         };
 
@@ -743,6 +748,18 @@ impl Conversation {
                 s += &format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
             }
 
+            if !self.commits.is_empty() {
+                s += "\n##### COMMITS #####\n\neach commit in JSON";
+            }
+
+            s += &self
+                .commits
+                .iter()
+                .map(serde_json::to_string_pretty)
+                .map(Result::unwrap)
+                .collect::<Vec<_>>()
+                .join("\n");
+
             s
         };
 
@@ -831,12 +848,13 @@ impl Conversation {
         let llm_history = serde_json::to_string(&self.llm_history)?;
         let path_aliases = serde_json::to_string(&self.paths)?;
         let code_chunks = serde_json::to_string(&self.code_chunks)?;
+        let commits = serde_json::to_string(&self.commits)?;
         sqlx::query! {
             "INSERT INTO conversations (\
                user_id, thread_id, repo_ref, title, exchanges, llm_history, \
-               path_aliases, code_chunks, created_at\
+               path_aliases, code_chunks, commits, created_at\
              ) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))",
             user_id,
             thread_id,
             repo_ref,
@@ -845,6 +863,7 @@ impl Conversation {
             llm_history,
             path_aliases,
             code_chunks,
+            commits,
         }
         .execute(&mut transaction)
         .await?;
@@ -860,7 +879,7 @@ impl Conversation {
         let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
 
         let row = sqlx::query! {
-            "SELECT repo_ref, llm_history, exchanges, path_aliases, code_chunks FROM conversations \
+            "SELECT repo_ref, llm_history, exchanges, path_aliases, code_chunks, commits FROM conversations \
              WHERE user_id = ? AND thread_id = ?",
             user_id,
             thread_id,
@@ -878,6 +897,7 @@ impl Conversation {
         let llm_history = serde_json::from_str(&row.llm_history)?;
         let exchanges = serde_json::from_str(&row.exchanges)?;
         let code_chunks = serde_json::from_str(&row.code_chunks)?;
+        let commits = serde_json::from_str(&row.commits)?;
 
         Ok(Some(Self {
             repo_ref,
@@ -885,6 +905,7 @@ impl Conversation {
             exchanges,
             paths: path_aliases,
             code_chunks,
+            commits,
         }))
     }
 

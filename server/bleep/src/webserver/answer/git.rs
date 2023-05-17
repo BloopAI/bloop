@@ -1,7 +1,5 @@
-use std::convert::Infallible;
-
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, FixedOffset, TimeZone, Utc};
 use gix::{actor::SignatureRef, bstr::ByteSlice, object::tree::diff::Action};
 
 use crate::repo::RepoRef;
@@ -16,8 +14,21 @@ pub(super) struct LogSearch {
     pub(super) file: Option<String>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub(super) struct LogSearchResult {
+    hash: String,
+    author: String,
+    committer: String,
+    message: String,
+    time: String,
+}
+
 impl LogSearch {
-    pub(super) async fn run(self, ctx: &AppContext, reporef: &RepoRef) -> Result<String> {
+    pub(super) async fn run(
+        self,
+        ctx: &AppContext,
+        reporef: &RepoRef,
+    ) -> Result<Vec<LogSearchResult>> {
         let mut git = ctx
             .app
             .repo_pool
@@ -109,15 +120,27 @@ impl LogSearch {
                     }
                 };
 
+                let to_author_string = |(name, email)| format!("{name} <{email}>");
+                let time = commit.time().unwrap();
                 if decision {
-                    Some(commit.message().unwrap().summary().to_string())
+                    Some(LogSearchResult {
+                        hash: commit.id.to_string(),
+                        author: to_author_string(commit.author().unwrap().actor()),
+                        committer: to_author_string(commit.committer().unwrap().actor()),
+                        message: commit.message().unwrap().summary().to_string(),
+                        time: FixedOffset::east_opt(time.offset_in_seconds)
+                            .unwrap()
+                            .timestamp_opt(time.seconds_since_unix_epoch.into(), 0)
+                            .unwrap()
+                            .to_string(),
+                    })
                 } else {
                     None
                 }
             })
             .collect::<Vec<_>>();
 
-        Ok(serde_json::to_string(&commits)?)
+        Ok(commits)
     }
 }
 

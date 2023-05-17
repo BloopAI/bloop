@@ -1,5 +1,15 @@
 {
   "db": "SQLite",
+  "24cb28a065f9e470eb06678338242d0097f8d69a7595ae7c87eb325cfb9c93dd": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 9
+      }
+    },
+    "query": "INSERT INTO conversations (user_id, thread_id, repo_ref, title, exchanges, llm_history, path_aliases, code_chunks, commits, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))"
+  },
   "392b563bb3af6711817fe99335d053691750426762dcde7b0381dc9f69cd804e": {
     "describe": {
       "columns": [],
@@ -10,7 +20,7 @@
     },
     "query": "DELETE FROM conversations WHERE user_id = ? AND thread_id = ?"
   },
-  "6d8b70a52e6a1f0b18a7981604386ca4ef264d57d2c22958f2e31cb5eaad9b02": {
+  "4166f8765f380edad7f444c9d6bb4ad396e037e633ca6fa4225259cae07be4cd": {
     "describe": {
       "columns": [
         {
@@ -37,9 +47,15 @@
           "name": "code_chunks",
           "ordinal": 4,
           "type_info": "Text"
+        },
+        {
+          "name": "commits",
+          "ordinal": 5,
+          "type_info": "Text"
         }
       ],
       "nullable": [
+        false,
         false,
         false,
         false,
@@ -50,17 +66,7 @@
         "Right": 2
       }
     },
-    "query": "SELECT repo_ref, llm_history, exchanges, path_aliases, code_chunks FROM conversations WHERE user_id = ? AND thread_id = ?"
-  },
-  "cc1b6ba03d478b999fd7e6f2a3b64c710af167c84eadf715108e61b2564e22c1": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 8
-      }
-    },
-    "query": "INSERT INTO conversations (user_id, thread_id, repo_ref, title, exchanges, llm_history, path_aliases, code_chunks, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))"
+    "query": "SELECT repo_ref, llm_history, exchanges, path_aliases, code_chunks, commits FROM conversations WHERE user_id = ? AND thread_id = ?"
   },
   "d5ee5becde7005920d7094fca5b7974bbf19713b3625fbf6d1a3e198e7cf4de4": {
     "describe": {
