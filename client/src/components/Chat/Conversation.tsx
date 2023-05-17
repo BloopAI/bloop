@@ -13,7 +13,6 @@ type Props = {
   searchId: string;
   isLoading?: boolean;
   isHistory?: boolean;
-  setHistoryOpen: (b: boolean) => void;
 };
 
 const Conversation = ({
@@ -21,7 +20,6 @@ const Conversation = ({
   searchId,
   isLoading,
   isHistory,
-  setHistoryOpen,
 }: Props) => {
   const messagesRef = useRef<HTMLDivElement>(null);
   const { navigateConversationResults } = useContext(AppNavigationContext);
@@ -68,7 +66,6 @@ const Conversation = ({
                       className="text-bg-main body-s mr-2"
                       onClick={() => {
                         navigateConversationResults(i, searchId);
-                        setHistoryOpen(false);
                       }}
                     >
                       View
@@ -87,7 +84,8 @@ const Conversation = ({
                 m.author === ChatMessageAuthor.Server &&
                 !m.isLoading &&
                 !isLoading &&
-                i === conversation.length - 1
+                i === conversation.length - 1 &&
+                !m.isFromHistory
               }
               searchId={searchId}
               query={conversation[0].text || ''}
