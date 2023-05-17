@@ -86,7 +86,8 @@ module.exports = {
         'md2': '29.625rem',
         'md3': '30.25rem',
         '5.5xl': '70rem',
-        '6.5xl': '77.5rem'
+        '6.5xl': '77.5rem',
+        96: '24rem'
       },
       minWidth: {
         "6": "1.5rem"

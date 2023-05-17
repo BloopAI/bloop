@@ -7,24 +7,25 @@ import useAppNavigation from '../../../hooks/useAppNavigation';
 import { DirectoryItem } from '../../../types/api';
 import { mapDirResult } from '../../../mappers/results';
 
-const Directory = ({
-  path,
-  repo,
-  i,
-}: {
+type Props = {
   path: string;
   repo: string;
   i: number;
-}) => {
-  const [files, setFiles] = useState<RepositoryFile[] | null>(null);
+  isReady: boolean;
+};
+
+const Directory = ({ path, repo, i, isReady }: Props) => {
+  const [files, setFiles] = useState<RepositoryFile[]>([]);
   const { navigateRepoPath, navigateFullResult } = useAppNavigation();
 
   useEffect(() => {
-    search(`open:true repo:${repo} path:${path}`).then((resp) => {
-      const data = mapDirResult(resp.data[0] as DirectoryItem);
-      setFiles(data.entries.sort(sortFiles));
-    });
-  }, [path]);
+    if (isReady) {
+      search(`open:true repo:${repo} path:${path}`).then((resp) => {
+        const data = mapDirResult(resp.data[0] as DirectoryItem);
+        setFiles(data.entries.sort(sortFiles));
+      });
+    }
+  }, [path, isReady]);
 
   const fileClick = useCallback((path: string, type: FileTreeFileType) => {
     if (type === FileTreeFileType.FILE) {
@@ -36,15 +37,13 @@ const Directory = ({
 
   return (
     <div id={`code-${i}`}>
-      {files && (
-        <RepositoryFiles
-          files={files}
-          onClick={fileClick}
-          repositoryName={cleanRepoName(repo)}
-          currentPath={path}
-          maxInitialFiles={5}
-        />
-      )}
+      <RepositoryFiles
+        files={files}
+        onClick={fileClick}
+        repositoryName={cleanRepoName(repo)}
+        currentPath={path}
+        maxInitialFiles={5}
+      />
     </div>
   );
 };

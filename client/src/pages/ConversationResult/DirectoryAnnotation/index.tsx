@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import FileComment from '../CodeAnotation/FileComment';
 import Directory from './Directory';
 
@@ -34,6 +34,7 @@ const DirectoryAnnotation = ({ repoName, citations }: Props) => {
             repo={repoName}
             path={filePath}
             i={citations[filePath][0].i}
+            isReady={!!citations[filePath][0].comment}
           />
         ))}
       </div>
