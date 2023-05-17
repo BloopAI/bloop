@@ -3,6 +3,7 @@ use std::{
     collections::{HashMap, HashSet},
     path::{Component, PathBuf},
     str::FromStr,
+    time::Duration,
 };
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -18,7 +19,7 @@ use futures::{future::Either, stream, StreamExt, TryStreamExt};
 use reqwest::StatusCode;
 use secrecy::ExposeSecret;
 use tokio::sync::mpsc::Sender;
-use tracing::{info, trace};
+use tracing::{info, trace, warn};
 
 use super::middleware::User;
 use crate::{
@@ -36,6 +37,8 @@ mod prompts;
 mod response;
 
 use response::{Exchange, SearchResult, SearchStep, Update};
+
+const TIMEOUT_SECS: u64 = 10;
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
@@ -100,6 +103,7 @@ pub(super) async fn _handle(
     let ctx = AppContext::new(app, user, query_id)
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
     let q = params.q;
+
     let stream = async_stream::try_stream! {
         let mut action = Action::Query(q);
 
@@ -124,10 +128,14 @@ pub(super) async fn _handle(
                 .map(Either::Right);
 
             let mut next = None;
-            for await item in stream::select(left_stream, right_stream) {
+            for await item in tokio_stream::StreamExt::timeout(
+                stream::select(left_stream, right_stream),
+                Duration::from_secs(TIMEOUT_SECS),
+            ) {
                 match item {
-                    Either::Left(exchange) => yield exchange,
-                    Either::Right(n) => next = n?,
+                    Ok(Either::Left(exchange)) => yield exchange,
+                    Ok(Either::Right(n)) => next = n?,
+                    Err(e) => Err(anyhow!("reached timeout of {TIMEOUT_SECS}s"))?,
                 }
             }
 
@@ -747,17 +755,22 @@ impl Conversation {
                 .ok_or(anyhow!("failed to parse `answer` response, expected array"))?;
 
             let array_of_arrays = json_array
+                .clone()
                 .into_iter()
                 .map(as_array)
                 .collect::<Option<Vec<Vec<_>>>>()
-                .ok_or(anyhow!(
-                    "failed to parse `answer` response, expected array of arrays"
-                ))?;
+                .unwrap_or_else(|| vec![json_array]);
 
             let search_results = array_of_arrays
                 .iter()
                 .map(Vec::as_slice)
-                .filter_map(SearchResult::from_json_array)
+                .filter_map(|v| {
+                    let item = SearchResult::from_json_array(&v);
+                    if item.is_none() {
+                        warn!("failed to build search result from: {v:?}");
+                    }
+                    item
+                })
                 .map(|s| s.substitute_path_alias(&self.paths))
                 .collect::<Vec<_>>();
 
