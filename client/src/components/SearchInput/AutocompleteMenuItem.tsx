@@ -29,7 +29,10 @@ const AutocompleteMenuItem = ({ getItemProps, item, index }: Props) => {
         <span className="caption flex-1">{item.data}</span>
       ) : item.type === ResultItemType.CODE ? (
         <CodeBlockSearch
-          snippets={item.snippets?.slice(0, 1)}
+          snippets={item.snippets?.slice(0, 1).map((s) => ({
+            ...s,
+            code: s.code.split('\n').slice(0, 5).join('\n'), // don't render big snippets that have over 5 lines
+          }))}
           language={item.language}
           filePath={item.relativePath}
           repoName={item.repoName}
