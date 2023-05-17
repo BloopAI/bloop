@@ -3,6 +3,7 @@ use std::{
     collections::{HashMap, HashSet},
     path::{Component, PathBuf},
     str::FromStr,
+    time::Duration,
 };
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -36,6 +37,8 @@ mod prompts;
 mod response;
 
 use response::{Exchange, SearchResult, SearchStep, Update};
+
+const TIMEOUT_SECS: u64 = 10;
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
@@ -100,6 +103,7 @@ pub(super) async fn _handle(
     let ctx = AppContext::new(app, user, query_id)
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
     let q = params.q;
+
     let stream = async_stream::try_stream! {
         let mut action = Action::Query(q);
 
@@ -124,10 +128,14 @@ pub(super) async fn _handle(
                 .map(Either::Right);
 
             let mut next = None;
-            for await item in stream::select(left_stream, right_stream) {
+            for await item in tokio_stream::StreamExt::timeout(
+                stream::select(left_stream, right_stream),
+                Duration::from_secs(TIMEOUT_SECS),
+            ) {
                 match item {
-                    Either::Left(exchange) => yield exchange,
-                    Either::Right(n) => next = n?,
+                    Ok(Either::Left(exchange)) => yield exchange,
+                    Ok(Either::Right(n)) => next = n?,
+                    Err(e) => Err(anyhow!("reached timeout of {TIMEOUT_SECS}s"))?,
                 }
             }
 
