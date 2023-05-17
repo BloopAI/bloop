@@ -3,12 +3,9 @@ import {
   MouseEvent,
   ReactElement,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
-import { motion } from 'framer-motion';
-import { hashCode } from '../../utils';
 import { Range } from '../../types/results';
 import BreadcrumbSection from './BreadcrumbSection';
 import BreadcrumbsCollapsed from './BreadcrumbsCollapsed';
@@ -30,14 +27,8 @@ type Props = {
   activeStyle?: 'primary' | 'secondary';
 };
 
-const breadcrumbVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.2 } },
-};
-
 const Breadcrumbs = ({
   pathParts,
-  path,
   separator = '/',
   type = 'link',
   limitSectionWidth,
@@ -45,8 +36,6 @@ const Breadcrumbs = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [formattedPathParts, setFormattedPathParts] =
     useState<(PathParts | PathParts[])[]>(pathParts);
-
-  const pathHash = useMemo(() => (path ? hashCode(path) : ''), [path]); // To tell if code has changed
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -87,13 +76,7 @@ const Breadcrumbs = ({
   }, [pathParts]);
 
   return (
-    <motion.div
-      className="flex items-center body-s flex-shrink-0 gap-1.5"
-      key={pathHash}
-      initial="hidden"
-      animate="visible"
-      variants={breadcrumbVariants}
-    >
+    <div className="flex items-center body-s flex-shrink-0 gap-1.5">
       {/* this div is hidden and used only to calculate the full width of breadcrumbs before truncation */}
       <div
         className="fixed top-full opacity-0 left-0 flex flex-nowrap items-center body-s flex-shrink-0 gap-1.5"
@@ -144,7 +127,7 @@ const Breadcrumbs = ({
           )}
         </Fragment>
       ))}
-    </motion.div>
+    </div>
   );
 };
 
