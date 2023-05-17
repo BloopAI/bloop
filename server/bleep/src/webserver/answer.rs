@@ -660,11 +660,11 @@ impl Conversation {
             path_aliases.sort();
             path_aliases.dedup();
 
-            if !path_aliases.is_empty() {
+            if !self.path_aliases.is_empty() {
                 s += "##### PATHS #####\npath alias, path\n";
 
-                for alias in &path_aliases {
-                    s += &format!("{alias}, {}\n", &self.path_aliases[*alias]);
+                for (alias, path) in self.path_aliases.iter().enumerate() {
+                    s += &format!("{alias}, {}\n", &path);
                 }
             }
 
