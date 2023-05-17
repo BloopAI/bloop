@@ -212,11 +212,12 @@ For example:
 
     format!(
         r#"{context}Your job is to answer a query about a codebase using the information above. 
-Your answer should be a list of lists, where each element in the list is an instance of one of the following objects:
+Your answer should be an array of arrays, where each element in the array is an instance of one of the following objects:
 
 {output_rules_str}
 Respect these rules at all times:
-- Refer to directories by their full paths, surrounded by single backticks.
+- Refer to directories by their full paths, surrounded by single backticks
+- Your answer should always be an array of arrays, even when you only generate a conclusion
 
 #####
 
@@ -224,11 +225,23 @@ Examples:
 
 Show all the analytics events
 
-[["cite",27,"Track 'Search' event in useAnalytics.ts",7,12], ["con","I've found three analytics events"]]
+[
+  ["cite", 27, "Track 'Search' event in useAnalytics.ts", 7, 12],
+  ["con", "I've found three analytics events"]
+]
 
 Where is the webserver code located
 
-[["dir","server/bleep/src/webserver/","This directory contains the webserver module"],["con","The webserver code is located under the server directory"]]
+[
+  ["dir","server/bleep/src/webserver/","This directory contains the webserver module"],
+  ["con","The webserver code is located under the server directory"]
+]
+
+What's the value of MAX_FILE_LEN?
+
+[
+  ["con": "None of files in the context contain the value of MAX_FILE_LEN"]
+]
 
 #####
 

@@ -645,8 +645,7 @@ impl Conversation {
         }
 
         let context = {
-            let mut s =
-                "Below is the current context, Future actions will add to this.\n".to_owned();
+            let mut s = "".to_owned();
 
             let mut path_aliases = self
                 .code_chunks
