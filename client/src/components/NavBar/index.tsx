@@ -15,6 +15,7 @@ import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { TabsContext } from '../../context/tabsContext';
 import { gitHubLogout } from '../../services/api';
+import Tab from './Tab';
 
 type Props = {
   isSkeleton?: boolean;
@@ -33,45 +34,19 @@ const NavBar = ({ isSkeleton }: Props) => {
 
   return (
     <div
-      className={`h-8 flex items-center gap-6 px-8 bg-bg-base fixed top-0 left-0 right-0 z-50 justify-between
+      className={`h-8 flex items-center px-8 bg-bg-base fixed top-0 left-0 right-0 z-50
        border-b border-bg-border backdrop-blur-8 select-none`}
       data-tauri-drag-region
     >
+      {os.type === 'Darwin' ? <span className="w-14" /> : ''}
+      <Tab tabKey="initial" name="Home" key="initial" />
       <div
-        className={`flex items-center justify-start h-full overflow-auto ${
-          os.type === 'Darwin' ? 'ml-12' : ''
-        }`}
+        className={`flex-1 flex items-center justify-start h-full overflow-x-auto pb-1 -mb-1 pr-6 fade-right`}
       >
         {!isSkeleton &&
-          tabs.map((t, i) => (
-            <div
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`px-4 border-r ${
-                i === 0 ? 'border-l' : ''
-              } border-bg-border h-full flex items-center justify-center gap-2 ${
-                activeTab === t.key
-                  ? 'bg-bg-shade text-label-title'
-                  : 'bg-bg-base text-label-base'
-              } cursor-pointer`}
-            >
-              {t.name === 'Home' ? <Home sizeClassName="w-4 h-4" /> : t.name}
-              {t.key !== 'initial' && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemoveTab(t.key);
-                  }}
-                  className={`w-5 h-5 flex items-center justify-center text-label-base hover:text-label-title ${
-                    activeTab !== t.key ? 'opacity-0' : ''
-                  } relative top-px`}
-                  disabled={activeTab !== t.key}
-                >
-                  <CloseSign sizeClassName="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          ))}
+          tabs
+            .slice(1)
+            .map((t) => <Tab tabKey={t.key} name={t.name} key={t.key} />)}
       </div>
       {!isSkeleton && (
         <div>

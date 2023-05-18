@@ -174,8 +174,8 @@
     }
     [data-theme="vsc-default-dark"] {
       --bg-base: 37, 37, 38;
-      --bg-base-hover: 45, 45, 45;
-      --bg-shade: 40, 40, 40;
+      --bg-base-hover: 60, 60, 60;
+      --bg-shade: 45, 45, 45;
       --bg-sub: 30, 30, 30;
       --bg-border: 64, 64, 64;
       --bg-border-hover: 112, 112, 112;
@@ -1046,6 +1046,11 @@ h5, .h5 {
 .fade-bottom {
   mask-image: linear-gradient(to bottom, black calc(100% - 45px), transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 45px), transparent 100%);
+}
+
+.fade-right {
+  mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
 }
 
 .backdrop-blur-0 {
