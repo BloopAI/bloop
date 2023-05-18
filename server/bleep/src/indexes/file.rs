@@ -201,7 +201,7 @@ impl Indexable for File {
         };
 
         let start = std::time::Instant::now();
-        if reporef.is_remote() && matches!(repo.remote, RepoRemote::Git { .. }) {
+        if matches!(repo.remote, RepoRemote::Git { .. }) {
             let walker = GitWalker::open_repository(&repo.disk_path, None)?;
             let count = walker.len();
             walker.for_each(file_worker(count));
