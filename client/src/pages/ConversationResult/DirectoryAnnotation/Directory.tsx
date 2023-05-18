@@ -43,6 +43,7 @@ const Directory = ({ path, repo, i, isReady }: Props) => {
         repositoryName={cleanRepoName(repo)}
         currentPath={path}
         maxInitialFiles={5}
+        noRepoName
       />
     </div>
   );

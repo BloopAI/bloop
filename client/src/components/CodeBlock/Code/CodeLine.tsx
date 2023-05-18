@@ -296,9 +296,6 @@ const CodeLine = ({
       >
         {children}
       </div>
-      <div>
-        <br />
-      </div>
     </div>
   );
 };

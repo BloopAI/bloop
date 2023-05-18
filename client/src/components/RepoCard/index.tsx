@@ -9,6 +9,7 @@ import { UIContext } from '../../context/uiContext';
 import { TabsContext } from '../../context/tabsContext';
 import Dropdown from '../Dropdown/WithIcon';
 import { deleteRepo } from '../../services/api';
+import { RepoSource } from '../../types';
 
 type Props = {
   name: string;
@@ -56,7 +57,12 @@ const RepoCard = ({
     if (!last_update || last_update === '1970-01-01T00:00:00Z') {
       return;
     }
-    handleAddTab(repoRef, isGh ? repoRef : repoName, repoName);
+    handleAddTab(
+      repoRef,
+      isGh ? repoRef : repoName,
+      repoName,
+      isGh ? RepoSource.GH : RepoSource.LOCAL,
+    );
   }, [repoName, provider, isGithubConnected, sync_status]);
 
   const onRepoRemove = useCallback(
