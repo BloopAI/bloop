@@ -252,7 +252,7 @@ impl Conversation {
         action: Action,
         exchange_tx: Sender<Exchange>,
     ) -> Result<Option<Action>> {
-        let question = match action {
+        let action_result = match action {
             Action::Query(s) => {
                 exchange_tx
                     .send(self.update(Update::Step(SearchStep::Query(s.clone()))))
@@ -431,7 +431,7 @@ impl Conversation {
         };
 
         self.llm_history.push(llm_gateway::api::Message::user(
-            &(question + "\n\nAnswer only with a JSON action."),
+            &(action_result + "\n\nAnswer only with a JSON action."),
         ));
 
         let raw_response = ctx
@@ -554,15 +554,13 @@ impl Conversation {
                     .try_collect::<String>()
                     .await?;
 
-                #[derive(serde::Deserialize)]
+                #[derive(serde::Deserialize, Debug)]
                 struct ProcResult {
-                    // list of paths relative to the currently processed file
-                    dependencies: Vec<String>,
                     // list of relevant line ranges
                     lines: Vec<Range>,
                 }
 
-                #[derive(serde::Deserialize, serde::Serialize, Copy, Clone)]
+                #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
                 struct Range {
                     start: usize,
                     end: usize,
@@ -572,19 +570,12 @@ impl Conversation {
                 struct RelevantChunk {
                     #[serde(flatten)]
                     range: Range,
-                    relevant_code: String,
+                    code: String,
                 }
 
                 let proc_result = serde_json::from_str::<ProcResult>(&json)?;
 
-                // turn relative paths into absolute paths
-                let normalized_deps = proc_result
-                    .dependencies
-                    .iter()
-                    .filter_map(|d| normalize(PathBuf::from(&path).join(d)))
-                    .collect::<Vec<_>>();
-
-                let explanations = proc_result
+                let relevant_chunks = proc_result
                     .lines
                     .into_iter()
                     .filter(|r| r.start > 0 && r.end > 0)
@@ -607,7 +598,7 @@ impl Conversation {
                     .filter_map(|range| {
                         Some(RelevantChunk {
                             range,
-                            relevant_code: lines
+                            code: lines
                                 .get(range.start.saturating_sub(1)..range.end.saturating_sub(1))?
                                 .join("\n"),
                         })
@@ -615,9 +606,8 @@ impl Conversation {
                     .collect::<Vec<_>>();
 
                 Ok::<_, anyhow::Error>(serde_json::json!({
-                    "explanations": explanations,
+                    "relevant_chunks": relevant_chunks,
                     "path": path,
-                    "relevant_dependencies": normalized_deps,
                 }))
             });
 
