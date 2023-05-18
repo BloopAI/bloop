@@ -86,6 +86,8 @@ const AnnotatedFile = ({ filePath, onResultClick, repoName, cites }: Props) => {
                 isLast={i === cites.length - 1}
                 onResultClick={onResultClick}
                 tokensMap={tokensMap}
+                prevPartEnd={cites[i - 1]?.end_line}
+                nextPartStart={cites[i + 1]?.start_line}
               />
             ))}
           </div>

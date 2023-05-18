@@ -13,6 +13,8 @@ type Props = {
   onResultClick: (path: string, lineNum?: number[]) => void;
   lang?: string;
   tokensMap: TokensLine[];
+  prevPartEnd?: number | null;
+  nextPartStart?: number | null;
 };
 
 const CodePart = ({
@@ -24,13 +26,41 @@ const CodePart = ({
   onResultClick,
   lang,
   tokensMap,
+  prevPartEnd,
+  nextPartStart,
 }: Props) => {
+  const start = useMemo(
+    () =>
+      startLine !== null
+        ? Math.max(
+            startLine -
+              (!prevPartEnd
+                ? 5
+                : Math.max(Math.min(startLine - prevPartEnd - 5, 5), 0)),
+            0,
+          )
+        : null,
+    [startLine, prevPartEnd],
+  );
+  const end = useMemo(
+    () =>
+      endLine !== null
+        ? Math.max(
+            1,
+            endLine +
+              (!nextPartStart
+                ? 5
+                : Math.max(Math.min(nextPartStart - endLine, 5), 0)),
+          )
+        : null,
+    [endLine, nextPartStart],
+  );
   const slicedTokensMap = useMemo(() => {
-    if (startLine !== null && endLine !== null) {
-      return tokensMap.slice(Math.max(startLine - 1, 0), Math.max(1, endLine));
+    if (start !== null && end !== null) {
+      return tokensMap.slice(start, end);
     }
     return undefined;
-  }, [tokensMap, startLine, endLine]);
+  }, [tokensMap, start, end]);
 
   return (
     <div
@@ -64,7 +94,7 @@ const CodePart = ({
           />
         )}
       </div>
-      {!isLast ? (
+      {!isLast && (!end || !nextPartStart || end < nextPartStart - 5) ? (
         <pre className={`bg-bg-sub my-0 px-2`}>
           <table>
             <tbody>
