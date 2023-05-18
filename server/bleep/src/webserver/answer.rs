@@ -406,8 +406,14 @@ impl Conversation {
                                 .as_str()
                                 .unwrap()
                                 .parse::<u32>()
-                                .unwrap(),
-                            end_line: chunk["end_line"].as_str().unwrap().parse::<u32>().unwrap(),
+                                .unwrap()
+                                .saturating_add(1),
+                            end_line: chunk["end_line"]
+                                .as_str()
+                                .unwrap()
+                                .parse::<u32>()
+                                .unwrap()
+                                .saturating_add(1),
                         }
                     })
                     .collect::<Vec<_>>();
