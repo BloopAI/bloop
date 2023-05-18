@@ -8,6 +8,7 @@ import { UITabType } from './types/general';
 import { getJsonFromStorage, SEARCH_HISTORY_KEY } from './services/storage';
 import { initApi } from './services/api';
 import { useComponentWillMount } from './hooks/useComponentWillMount';
+import { RepoSource } from './types';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -21,17 +22,19 @@ function App({ deviceContextValue }: Props) {
       key: 'initial',
       name: 'Home',
       repoName: '',
+      source: RepoSource.LOCAL,
       searchHistory: getJsonFromStorage(SEARCH_HISTORY_KEY) || [],
     },
   ]);
   const [activeTab, setActiveTab] = useState('initial');
 
   const handleAddTab = useCallback(
-    (repoRef: string, repoName: string, name: string) => {
+    (repoRef: string, repoName: string, name: string, source: RepoSource) => {
       const newTab = {
         key: repoRef,
         name,
         repoName,
+        source,
       };
       setTabs((prev) => {
         const existing = prev.find((t) => t.key === newTab.key);

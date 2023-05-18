@@ -1,4 +1,5 @@
 import React, { ReactElement } from 'react';
+import { RepoSource } from './index';
 
 export enum MenuItemType {
   DEFAULT = 'default',
@@ -90,6 +91,7 @@ export type UITabType = {
   searchHistory?: string[];
   name: string;
   repoName: string;
+  source: RepoSource;
 };
 
 export enum ReposFilter {

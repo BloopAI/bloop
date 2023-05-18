@@ -1,19 +1,21 @@
 import React, { useContext } from 'react';
-import { CloseSign, Home } from '../../icons';
+import { CloseSign, GitHubLogo, HardDrive, Home } from '../../icons';
 import { TabsContext } from '../../context/tabsContext';
+import { RepoSource } from '../../types';
 
 type Props = {
   tabKey: string;
   name: string;
+  source: RepoSource;
 };
 
-const Tab = ({ tabKey, name }: Props) => {
+const Tab = ({ tabKey, name, source }: Props) => {
   const { setActiveTab, activeTab, handleRemoveTab } = useContext(TabsContext);
   return (
     <div
       key={tabKey}
       onClick={() => setActiveTab(tabKey)}
-      className={`px-4 border-r ${
+      className={`pl-4 pr-3 border-r ${
         tabKey === 'initial' ? 'border-l h-[calc(100%-7px)]' : 'h-full'
       } border-bg-border  flex items-center justify-center gap-2 ${
         activeTab === tabKey
@@ -24,7 +26,12 @@ const Tab = ({ tabKey, name }: Props) => {
       {tabKey === 'initial' ? (
         <Home sizeClassName="w-4 h-4" />
       ) : (
-        <span className="ellipsis">{name.split('/').slice(-1)[0]}</span>
+        <div className="flex items-center gap-1 ellipsis">
+          <div className="w-4 h-4 flex-shrink-0">
+            {source === RepoSource.GH ? <GitHubLogo raw /> : <HardDrive raw />}
+          </div>
+          <span className="ellipsis">{name.split('/').slice(-1)[0]}</span>
+        </div>
       )}
       {tabKey !== 'initial' && (
         <button
