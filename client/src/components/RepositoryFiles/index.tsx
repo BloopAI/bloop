@@ -29,6 +29,7 @@ const RepositoryFiles = ({
     const parts = splitPathForBreadcrumbs(
       currentPath,
       (e, item, index, arr) => {
+        e.stopPropagation();
         const path = breadcrumbsItemPath(
           arr,
           index,
@@ -40,7 +41,10 @@ const RepositoryFiles = ({
     return [
       {
         label: repositoryName,
-        onClick: () => onClick('/', FileTreeFileType.DIR),
+        onClick: (e) => {
+          e.stopPropagation();
+          onClick('/', FileTreeFileType.DIR);
+        },
       },
       ...parts,
     ];

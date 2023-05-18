@@ -94,6 +94,9 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
     if (navigatedItem?.type === 'conversation-result') {
       return 'conversation-result';
     }
+    if (navigatedItem?.type === 'full-result') {
+      return 'full-result';
+    }
     if (!data?.data?.[0] && !loading) {
       return 'no-results';
     }
@@ -142,7 +145,7 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
           <RepositoryPage repositoryData={data as DirectorySearchResponse} />
         );
       case 'full-result':
-        return <ViewResult data={data} />;
+        return <ViewResult data={data} isLoading={loading} />;
       case 'conversation-result':
         return (
           <ConversationResult
