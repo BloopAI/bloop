@@ -334,7 +334,7 @@ impl Conversation {
                         .semantic
                         .as_ref()
                         .context("semantic search is not enabled")?
-                        .search(&nl_query, 10, 0)
+                        .search(&nl_query, 30, 0)
                         .await?
                         .into_iter()
                         .map(|v| {
@@ -864,7 +864,7 @@ impl Conversation {
     }
 
     fn trimmed_history(&self) -> Result<Vec<llm_gateway::api::Message>> {
-        const HEADROOM: usize = 1024;
+        const HEADROOM: usize = 4096;
 
         let mut tiktoken_msgs = self
             .llm_history
