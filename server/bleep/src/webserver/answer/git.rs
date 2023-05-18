@@ -44,9 +44,10 @@ impl LogSearch {
         let parse_date =
             |date: DateTime<Utc>| gix::date::Time::new(date.timestamp().try_into().unwrap(), 0);
 
-        let check_author = |query, author: SignatureRef<'_>| {
+        let check_author = |query: &str, author: SignatureRef<'_>| {
             let (name, email) = author.actor();
-            name.contains_str(query) || email.contains_str(query)
+            name.to_str_lossy().to_lowercase().contains(query)
+                || name.to_str_lossy().to_lowercase().contains(query)
         };
 
         let mut start_date = self.start_date.map(parse_date);
@@ -79,16 +80,21 @@ impl LogSearch {
             // we implement an AND logic here
             .filter_map(|commit| {
                 let mut decision = match self.author {
-                    None => true,
+                    None => false,
                     Some(ref q) => {
-                        check_author(q, commit.author().unwrap())
-                            | check_author(q, commit.committer().unwrap())
+                        let query = q.to_lowercase();
+                        check_author(query.as_ref(), commit.author().unwrap())
+                            | check_author(query.as_ref(), commit.committer().unwrap())
                     }
                 };
 
                 decision = match self.query {
                     None => decision,
-                    Some(ref q) => commit.message_raw_sloppy().contains_str(q),
+                    Some(ref q) => commit
+                        .message_raw_sloppy()
+                        .to_str_lossy()
+                        .to_lowercase()
+                        .contains(q.to_lowercase().as_str()),
                 };
 
                 decision = match self.file {

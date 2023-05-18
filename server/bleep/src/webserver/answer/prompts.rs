@@ -85,7 +85,7 @@ pub fn system() -> String {
               {
                 "name": "SEARCH TERMS",
                 "type": "STRING",
-                "examples": ["reset", ""],
+                "examples": ["reset", null],
                 "description": "Search terms that must be present in the commit message.",
               },
               {
@@ -98,13 +98,13 @@ pub fn system() -> String {
                 "name": "START DATE",
                 "type": "STRING",
                 "examples": ["1985-04-12T23:20:50.52Z", null],
-                "description": "First date to look at in RFC3339 format.",
+                "description": "First date to look at in RFC3339 format, or `null`.",
               },
               {
                 "name": "END DATE",
                 "type": "STRING",
                 "examples": ["1985-04-13T23:20:50.52Z", null],
-                "description": "Last date to look at.",
+                "description": "Last date to look at in RFC 3339 format, or `null`.",
               },
               {
                 "name": "PATH ALIAS",
