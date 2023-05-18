@@ -70,7 +70,13 @@ impl Drop for SyncHandle {
         _ = self.app.config.source.save_pool(self.app.repo_pool.clone());
 
         info!(?status, %self.reporef, "normalized status after sync");
-        self.exited.send(status).expect("pipe closed prematurely");
+        if self
+            .exited
+            .send(status.unwrap_or(SyncStatus::Removed))
+            .is_err()
+        {
+            debug!("notification failed, repo probably deleted");
+        }
     }
 }
 
