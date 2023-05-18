@@ -396,7 +396,10 @@ impl Indexer<File> {
                     v.push(additions(query_str, i, j));
                     v
                 });
-            regex::RegexSet::new(all_regexes).unwrap()
+            regex::RegexSetBuilder::new(all_regexes)
+                .case_insensitive(true)
+                .build()
+                .unwrap()
         };
 
         hits.into_iter()
