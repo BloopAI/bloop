@@ -749,7 +749,7 @@ impl Conversation {
             }
 
             if !self.commits.is_empty() {
-                s += "\n##### COMMITS #####\n\neach commit in JSON";
+                s += "\n##### COMMITS #####\n\neach commit in JSON\n";
             }
 
             s += &self
