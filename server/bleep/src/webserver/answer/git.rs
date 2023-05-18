@@ -80,7 +80,7 @@ impl LogSearch {
             // we implement an AND logic here
             .filter_map(|commit| {
                 let mut decision = match self.author {
-                    None => false,
+                    None => true,
                     Some(ref q) => {
                         let query = q.to_lowercase();
                         check_author(query.as_ref(), commit.author().unwrap())
