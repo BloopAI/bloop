@@ -16,6 +16,7 @@ type Props = {
   currentPath: string;
   onClick: (p: string, type: FileTreeFileType) => void;
   maxInitialFiles?: number;
+  noRepoName?: boolean;
 };
 
 const RepositoryFiles = ({
@@ -24,6 +25,7 @@ const RepositoryFiles = ({
   onClick,
   repositoryName,
   maxInitialFiles,
+  noRepoName,
 }: Props) => {
   const pathParts = useMemo<PathParts[]>(() => {
     const parts = splitPathForBreadcrumbs(
@@ -39,13 +41,17 @@ const RepositoryFiles = ({
       },
     );
     return [
-      {
-        label: repositoryName,
-        onClick: (e) => {
-          e.stopPropagation();
-          onClick('/', FileTreeFileType.DIR);
-        },
-      },
+      ...(!noRepoName
+        ? [
+            {
+              label: repositoryName,
+              onClick: (e) => {
+                e.stopPropagation();
+                onClick('/', FileTreeFileType.DIR);
+              },
+            } as PathParts,
+          ]
+        : []),
       ...parts,
     ];
   }, [currentPath, onClick, repositoryName]);
@@ -62,7 +68,7 @@ const RepositoryFiles = ({
         )
       }
       icon={<Papers />}
-      defaultExpanded
+      defaultExpanded={!maxInitialFiles || files.length > maxInitialFiles}
       shownItems={
         maxInitialFiles && files.length > maxInitialFiles ? (
           <div className="flex flex-col divide-y divide-bg-border border-b border-bg-border overflow-auto bg-bg-sub">
