@@ -66,19 +66,24 @@
   (identifier) @local.definition.variable
   (identifier) @local.reference)
 
-;; for ([a, b] in thing)
-;;
-;; `a` & `b` are defs
-;; (array_pattern
-;;   (identifier) @local.definition.variable)
-
-;; let {a, b} = obj;
-;; (object_pattern
-;;   (shorthand_property_identifier_pattern) @local.definition.variable)
+;; {x: y}
+(pair_pattern
+  (property_identifier)
+  (identifier) @local.definition.variable)
 
 ;; var x = _
+;; var [x, y] = _
+;; var {x, y} = _
 (variable_declaration
   (variable_declarator . (identifier) @local.definition.variable))
+(variable_declaration
+  (variable_declarator 
+    name: (array_pattern
+            (identifier) @local.definition.variable)))
+(variable_declaration
+  (variable_declarator 
+    name: (object_pattern
+            (shorthand_property_identifier_pattern) @local.definition.variable)))
 
 ;; const _ = require(_) should produce imports
 (
@@ -152,7 +157,7 @@
    (variable_declarator 
      name: 
      (object_pattern
-       (shorthand_property_identifier_pattern) @local.definition.const)
+       (shorthand_property_identifier_pattern) @local.definition.constant)
      value: (_) @_rest))
   (#not-match? @_rest "require.*")
 )
@@ -174,7 +179,7 @@
    (variable_declarator 
      name: 
       (array_pattern
-        (identifier) @local.definition.const)
+        (identifier) @local.definition.constant)
      value: (_) @_rest))
   (#not-match? @_rest "require.*")
 )

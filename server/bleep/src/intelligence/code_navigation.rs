@@ -55,7 +55,10 @@ impl<'a> CurrentFileHandler<'a> {
             .map(|d| d.range())
             .collect();
 
-        let refs = refs.into_iter().flatten().collect();
+        // remove self from the list of references
+        let mut refs = refs.into_iter().flatten().collect::<BTreeSet<_>>();
+        refs.remove(&self.scope_graph.graph[*idx].range());
+        let refs = refs.into_iter().collect::<Vec<_>>();
 
         (defs, refs)
     }

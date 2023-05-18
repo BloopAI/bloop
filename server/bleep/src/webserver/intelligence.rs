@@ -289,8 +289,12 @@ pub(super) async fn handle(
             let (repo_wide_definitions, repo_wide_references) =
                 handle_reference_repo_wide(token, kind, current_file, &all_docs);
 
-            // merge the two
-            let definitions = merge([local_definitions], repo_wide_definitions);
+            // if we already have a local-def, do not search globally
+            let definitions = if local_definitions.is_empty() {
+                repo_wide_definitions
+            } else {
+                local_definitions
+            };
             let references = merge([local_references], repo_wide_references);
 
             Ok(json(TokenInfoResponse::Reference {
