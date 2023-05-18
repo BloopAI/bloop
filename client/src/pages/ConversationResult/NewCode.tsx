@@ -10,7 +10,7 @@ type Props = {
 
 const NewCode = ({ code, language }: Props) => {
   return (
-    <div className="text-sm p-4 border border-bg-border rounded-md relative">
+    <div className="text-sm p-4 border border-bg-border rounded-md relative bg-bg-shade">
       <div className="overflow-auto">
         <Code showLines={false} code={code} language={language} />
       </div>

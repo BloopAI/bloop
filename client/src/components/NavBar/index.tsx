@@ -1,13 +1,5 @@
 import React, { useContext } from 'react';
-import {
-  Bug,
-  CloseSign,
-  Cog,
-  DoorRight,
-  Home,
-  Magazine,
-  Person,
-} from '../../icons';
+import { Bug, Cog, DoorRight, Magazine, Person } from '../../icons';
 import { MenuListItemType } from '../ContextMenu';
 import { deleteAuthCookie } from '../../utils';
 import DropdownWithIcon from '../Dropdown/WithIcon';
@@ -15,6 +7,7 @@ import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { TabsContext } from '../../context/tabsContext';
 import { gitHubLogout } from '../../services/api';
+import { RepoSource } from '../../types';
 import Tab from './Tab';
 
 type Props = {
@@ -39,14 +32,22 @@ const NavBar = ({ isSkeleton }: Props) => {
       data-tauri-drag-region
     >
       {os.type === 'Darwin' ? <span className="w-14" /> : ''}
-      <Tab tabKey="initial" name="Home" key="initial" />
+      <Tab
+        tabKey="initial"
+        name="Home"
+        key="initial"
+        source={RepoSource.LOCAL}
+      />
       <div
         className={`flex-1 flex items-center justify-start h-full overflow-x-auto pb-1 -mb-1 pr-6 fade-right`}
+        data-tauri-drag-region
       >
         {!isSkeleton &&
           tabs
             .slice(1)
-            .map((t) => <Tab tabKey={t.key} name={t.name} key={t.key} />)}
+            .map((t) => (
+              <Tab tabKey={t.key} name={t.name} key={t.key} source={t.source} />
+            ))}
       </div>
       {!isSkeleton && (
         <div>
