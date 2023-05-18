@@ -290,10 +290,10 @@ pub(super) async fn handle(
                 handle_reference_repo_wide(token, kind, current_file, &all_docs);
 
             // if we already have a local-def, do not search globally
-            let definitions = if local_definitions.is_empty() {
-                repo_wide_definitions
+            let definitions = if local_definitions.data.is_empty() {
+                merge([], repo_wide_definitions)
             } else {
-                local_definitions
+                merge([local_definitions], [])
             };
             let references = merge([local_references], repo_wide_references);
 
