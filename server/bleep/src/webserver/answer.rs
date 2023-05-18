@@ -554,13 +554,17 @@ impl Conversation {
                     .try_collect::<String>()
                     .await?;
 
-                #[derive(serde::Deserialize, Debug)]
-                struct ProcResult {
-                    // list of relevant line ranges
-                    lines: Vec<Range>,
-                }
-
-                #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
+                #[derive(
+                    serde::Deserialize,
+                    serde::Serialize,
+                    PartialEq,
+                    Eq,
+                    PartialOrd,
+                    Ord,
+                    Copy,
+                    Clone,
+                    Debug,
+                )]
                 struct Range {
                     start: usize,
                     end: usize,
@@ -573,16 +577,20 @@ impl Conversation {
                     code: String,
                 }
 
-                let proc_result = serde_json::from_str::<ProcResult>(&json)?;
-
-                let relevant_chunks = proc_result
-                    .lines
+                let mut line_ranges: Vec<Range> = serde_json::from_str::<Vec<Range>>(&json)?
                     .into_iter()
                     .filter(|r| r.start > 0 && r.end > 0)
                     .map(|mut r| {
                         r.end = r.end.min(r.start + 20); // Cap relevant chunk size by line number
                         r
                     })
+                    .collect();
+
+                line_ranges.sort();
+                line_ranges.dedup();
+
+                let relevant_chunks = line_ranges
+                    .into_iter()
                     .fold(Vec::<Range>::new(), |mut exps, next| {
                         if let Some(prev) = exps.last_mut() {
                             if prev.end + 10 >= next.start {
@@ -653,14 +661,9 @@ impl Conversation {
                 }
             }
 
-            let mut path_aliases = self
-                .code_chunks
-                .iter()
-                .map(|chunk| chunk.alias as usize)
-                // Filter out invaild aliases
+            let mut path_aliases = aliases
+                .into_iter()
                 .filter(|alias| *alias < self.paths.len())
-                // Take only selected aliases
-                .filter(|alias| aliases.contains(alias))
                 .collect::<Vec<_>>();
 
             path_aliases.sort();
@@ -672,31 +675,30 @@ impl Conversation {
 
             let code_chunks = if path_aliases.len() == 1 {
                 let alias = path_aliases[0];
+                let path = self.paths[alias].clone();
 
-                let chunk = &mut self.code_chunks[0];
-
-                let snippet = ctx
+                let file_contents = ctx
                     .app
                     .indexes
                     .file
-                    .by_path(&self.repo_ref, &chunk.path)
+                    .by_path(&self.repo_ref, &path)
                     .await
-                    .with_context(|| format!("failed to read path: {}", chunk.path))?
+                    .with_context(|| format!("failed to read path: {}", path))?
                     .content;
 
-                let snippet = tiktoken_rs::get_bpe_from_model("gpt-4")
+                let trimmed_file_contents = tiktoken_rs::get_bpe_from_model("gpt-4")
                     .context("invalid model requested")?
-                    .split_by_token_iter(&snippet, false)
+                    .split_by_token_iter(&file_contents, false)
                     .take(4000)
                     .collect::<Result<String>>()
-                    .context("failed to tokenize snippet")?;
+                    .context("failed to tokenize file contents")?;
 
                 vec![CodeChunk {
                     alias: alias as u32,
-                    path: self.paths[alias].clone(),
+                    path,
                     start_line: 1,
-                    end_line: snippet.lines().count() as u32 + 1,
-                    snippet,
+                    end_line: trimmed_file_contents.lines().count() as u32 + 1,
+                    snippet: trimmed_file_contents,
                 }]
             } else {
                 self.code_chunks
