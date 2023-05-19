@@ -113,7 +113,6 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
   );
   const [currentlySyncingRepo, setCurrentlySyncingRepo] = useState<{
     repoRef: string;
-    indexStep: number;
     percentage: number;
   } | null>(null);
 
@@ -138,16 +137,28 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
   useEffect(() => {
     eventSource?.close();
     eventSource = new EventSource(
-      `${apiUrl.replace('https:', '')}/repos/index-status`,
+      `${apiUrl.replace('https:', '')}/repos/status`,
     );
     eventSource.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
-        setCurrentlySyncingRepo({
-          repoRef: data[0],
-          indexStep: data[1],
-          percentage: data[2],
-        });
+        if (data.ev?.status_change) {
+          setRepositories((prev: RepoType[]) => {
+            const index = prev.findIndex((r) => r.ref === data.ref);
+            const newRepos = [...prev];
+            newRepos[index] = {
+              ...newRepos[index],
+              sync_status: data.ev?.status_change,
+            };
+            return newRepos;
+          });
+        }
+        if (data.ev?.index_percent) {
+          setCurrentlySyncingRepo((prev) => ({
+            repoRef: data.ref,
+            percentage: data.ev?.index_percent || 1,
+          }));
+        }
       } catch {}
     };
     eventSource.onerror = (err) => {
@@ -212,10 +223,13 @@ const ReposSection = ({ filter, emptyRepos }: Props) => {
             provider={r.provider}
             isSyncing={
               currentlySyncingRepo?.repoRef === ref &&
-              (currentlySyncingRepo?.indexStep !== 1 ||
-                currentlySyncingRepo?.percentage !== 100)
+              currentlySyncingRepo?.percentage !== 100
             }
-            syncStatus={currentlySyncingRepo}
+            syncStatus={
+              currentlySyncingRepo?.repoRef === ref
+                ? currentlySyncingRepo
+                : null
+            }
           />
         ))}
         {!repositories ? (
