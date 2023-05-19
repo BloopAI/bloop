@@ -321,7 +321,6 @@ const Chat = () => {
               conversation={conversation}
               searchId={resp?.thread_id || ''}
               isLoading={isLoading}
-              setHistoryOpen={setRightPanelOpen}
             />
           )}
           <form onSubmit={onSubmit} className="flex flex-col w-95">

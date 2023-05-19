@@ -92,7 +92,7 @@ const RepositoryPage = ({ repositoryData }: Props) => {
   );
 
   return !repository || initialLoad ? (
-    <Skeleton />
+    <Skeleton isRepoPage />
   ) : (
     <div className="flex w-full">
       <div

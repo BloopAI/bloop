@@ -45,7 +45,7 @@ const BreadcrumbsPath = ({ path, onClick, repo, ...rest }: Props) => {
   }, [path]);
 
   return (
-    <div className="overflow-hidden">
+    <div className="overflow-hidden w-full">
       <Breadcrumbs {...rest} pathParts={pathParts} path={path} />
     </div>
   );
