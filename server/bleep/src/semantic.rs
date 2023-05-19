@@ -554,7 +554,7 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
 //    - "novelty" or, the measure of how minimal the similarity is
 //      to existing documents in the selection
 //      The value of lambda skews the weightage in favor of either relevance or novelty.
-//    - we add a language diversity factor to the score to encourage a range of langauges in the results
+//    - we add a language diversity factor to the score to encourage a range of languages in the results
 //  k: the number of embeddings to select
 pub fn deduplicate_with_mmr(
     query_embedding: &[f32],
