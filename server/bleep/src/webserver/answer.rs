@@ -513,9 +513,8 @@ impl Conversation {
                     .await
                     .with_context(|| format!("failed to read path: {path}"))?
                     .content
-                    .split('\n')
-                    .enumerate()
-                    .map(|(i, line)| format!("{} {line}", i + 1))
+                    .lines()
+                    .map(str::to_owned)
                     .collect::<Vec<_>>();
 
                 Result::<_>::Ok((lines, path))
@@ -523,7 +522,7 @@ impl Conversation {
             // Buffer file loading to load multiple paths at once
             .buffered(10)
             .and_then(|(lines, path): (Vec<String>, String)| async move {
-                const MAX_TOKENS: usize = 3400;
+                const MAX_TOKENS: usize = 3200;
                 const LINE_OVERLAP: usize = 3;
 
                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
@@ -532,7 +531,7 @@ impl Conversation {
                 Ok(futures::stream::iter(iter))
             })
             .try_flatten()
-            .map(|result| async move {
+            .map(|result| async {
                 let (lines, path) = result?;
 
                 // We store the lines separately, so that we can reference them later to trim
@@ -571,6 +570,21 @@ impl Conversation {
                     code: String,
                 }
 
+                impl RelevantChunk {
+                    fn enumerate_lines(&self) -> Self {
+                        Self {
+                            range: self.range,
+                            code: self
+                                .code
+                                .lines()
+                                .enumerate()
+                                .map(|(i, line)| format!("{} {line}", i + self.range.start))
+                                .collect::<Vec<_>>()
+                                .join("\n"),
+                        }
+                    }
+                }
+
                 let mut line_ranges: Vec<Range> = serde_json::from_str::<Vec<Range>>(&json)?
                     .into_iter()
                     .filter(|r| r.start > 0 && r.end > 0)
@@ -607,13 +621,10 @@ impl Conversation {
                     })
                     .collect::<Vec<_>>();
 
-                Ok::<_, anyhow::Error>(serde_json::json!({
-                    "relevant_chunks": relevant_chunks,
-                    "path": path,
-                }))
+                Ok::<_, anyhow::Error>((relevant_chunks, path))
             });
 
-        let out = chunks
+        let processed = chunks
             // This box seems unnecessary, but it avoids a compiler bug:
             // https://github.com/rust-lang/rust/issues/64552
             .boxed()
@@ -621,6 +632,33 @@ impl Conversation {
             .filter_map(|res| async { res.ok() })
             .collect::<Vec<_>>()
             .await;
+
+        for (relevant_chunks, path) in &processed {
+            let alias = self.path_alias(&path) as u32;
+
+            for c in relevant_chunks {
+                self.code_chunks.push(CodeChunk {
+                    path: path.clone(),
+                    alias,
+                    snippet: c.code.clone(),
+                    start_line: c.range.start as u32,
+                    end_line: c.range.end as u32,
+                });
+            }
+        }
+
+        let out = processed
+            .into_iter()
+            .map(|(relevant_chunks, path)| {
+                serde_json::json!({
+                    "relevant_chunks": relevant_chunks
+                        .iter()
+                        .map(|c| c.enumerate_lines())
+                        .collect::<Vec<_>>(),
+                    "path": path,
+                })
+            })
+            .collect::<Vec<_>>();
 
         ctx.track_query(
             EventData::input_stage("process file")
