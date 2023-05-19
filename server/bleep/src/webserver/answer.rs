@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
+    mem,
     path::{Component, PathBuf},
     str::FromStr,
     time::Duration,
@@ -683,6 +684,8 @@ impl Conversation {
         }
 
         let context = {
+            self.dedup_code_chunks();
+
             let mut s = "".to_owned();
 
             if !self.paths.is_empty() {
@@ -935,6 +938,42 @@ impl Conversation {
         let exc = self.last_exchange();
         exc.apply_update(update);
         exc.clone()
+    }
+
+    fn dedup_code_chunks(&mut self) {
+        let mut chunks_by_alias = HashMap::<_, Vec<_>>::new();
+
+        for c in mem::take(&mut self.code_chunks) {
+            chunks_by_alias.entry(c.alias).or_default().push(c);
+        }
+
+        self.code_chunks = chunks_by_alias
+            .into_values()
+            .flat_map(|mut chunks| {
+                chunks.sort_by_key(|c| c.start_line);
+
+                chunks
+                    .into_iter()
+                    .fold(Vec::<CodeChunk>::new(), |mut a, e| {
+                        if let Some(prev) = a.last_mut() {
+                            if prev.end_line >= e.start_line {
+                                prev.end_line = e.start_line;
+                                prev.snippet += "\n";
+                                prev.snippet += &e
+                                    .snippet
+                                    .lines()
+                                    .skip((e.start_line - prev.end_line) as usize + 1)
+                                    .collect::<Vec<_>>()
+                                    .join("\n");
+                                return a;
+                            }
+                        }
+
+                        a.push(e);
+                        a
+                    })
+            })
+            .collect();
     }
 }
 
