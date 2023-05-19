@@ -47,7 +47,7 @@ impl LogSearch {
         let check_author = |query: &str, author: SignatureRef<'_>| {
             let (name, email) = author.actor();
             name.to_str_lossy().to_lowercase().contains(query)
-                || name.to_str_lossy().to_lowercase().contains(query)
+                || email.to_str_lossy().to_lowercase().contains(query)
         };
 
         let mut start_date = self.start_date.map(parse_date);
@@ -59,14 +59,10 @@ impl LogSearch {
         }
 
         let head = || Ok::<_, anyhow::Error>(git.head()?.peel_to_commit_in_place()?);
-        let commits = vec![head()?]
-            .into_iter()
-            .chain(
-                head()?
-                    .ancestors()
-                    .all()?
-                    .map(|id| id.unwrap().object().unwrap().into_commit()),
-            )
+        let commits = head()?
+            .ancestors()
+            .all()?
+            .map(|id| id.unwrap().object().unwrap().into_commit())
             // we're going through the list in reverse chronological
             // order, so apply filters accordingly
             .skip_while(|commit| match end_date {
