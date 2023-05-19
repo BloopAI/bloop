@@ -532,7 +532,7 @@ impl Conversation {
                 Ok(futures::stream::iter(iter))
             })
             .try_flatten()
-            .map(|result| async move {
+            .map(|result| async {
                 let (lines, path) = result?;
 
                 // We store the lines separately, so that we can reference them later to trim
@@ -607,13 +607,10 @@ impl Conversation {
                     })
                     .collect::<Vec<_>>();
 
-                Ok::<_, anyhow::Error>(serde_json::json!({
-                    "relevant_chunks": relevant_chunks,
-                    "path": path,
-                }))
+                Ok::<_, anyhow::Error>((relevant_chunks, path))
             });
 
-        let out = chunks
+        let processed = chunks
             // This box seems unnecessary, but it avoids a compiler bug:
             // https://github.com/rust-lang/rust/issues/64552
             .boxed()
@@ -621,6 +618,28 @@ impl Conversation {
             .filter_map(|res| async { res.ok() })
             .collect::<Vec<_>>()
             .await;
+
+        for (relevant_chunks, path) in &processed {
+            let alias = self.path_alias(&path) as u32;
+
+            for c in relevant_chunks {
+                self.code_chunks.push(CodeChunk {
+                    path: path.clone(),
+                    alias,
+                    snippet: c.code.clone(),
+                    start_line: c.range.start as u32,
+                    end_line: c.range.end as u32,
+                });
+            }
+        }
+
+        let out = processed
+            .into_iter()
+            .map(|(relevant_chunks, path)| serde_json::json!({
+                "relevant_chunks": relevant_chunks,
+                "path": path,
+            }))
+            .collect::<Vec<_>>();
 
         ctx.track_query(
             EventData::input_stage("process file")
