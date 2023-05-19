@@ -1,20 +1,22 @@
 import React, { useMemo } from 'react';
 import { FileTreeFileType, RepositoryFile } from '../../types';
 import Accordion from '../Accordion';
-import { FolderFilled, Papers } from '../../icons';
-import FileIcon from '../FileIcon';
+import { Papers } from '../../icons';
 import Breadcrumbs, { PathParts } from '../Breadcrumbs';
 import {
   breadcrumbsItemPath,
   isWindowsPath,
   splitPathForBreadcrumbs,
 } from '../../utils';
+import FileRow from './FileRow';
 
 type Props = {
   files: RepositoryFile[];
   repositoryName: string;
   currentPath: string;
   onClick: (p: string, type: FileTreeFileType) => void;
+  maxInitialFiles?: number;
+  noRepoName?: boolean;
 };
 
 const RepositoryFiles = ({
@@ -22,11 +24,14 @@ const RepositoryFiles = ({
   currentPath,
   onClick,
   repositoryName,
+  maxInitialFiles,
+  noRepoName,
 }: Props) => {
   const pathParts = useMemo<PathParts[]>(() => {
     const parts = splitPathForBreadcrumbs(
       currentPath,
       (e, item, index, arr) => {
+        e.stopPropagation();
         const path = breadcrumbsItemPath(
           arr,
           index,
@@ -36,10 +41,17 @@ const RepositoryFiles = ({
       },
     );
     return [
-      {
-        label: repositoryName,
-        onClick: () => onClick('/', FileTreeFileType.DIR),
-      },
+      ...(!noRepoName
+        ? [
+            {
+              label: repositoryName,
+              onClick: (e) => {
+                e.stopPropagation();
+                onClick('/', FileTreeFileType.DIR);
+              },
+            } as PathParts,
+          ]
+        : []),
       ...parts,
     ];
   }, [currentPath, onClick, repositoryName]);
@@ -56,26 +68,39 @@ const RepositoryFiles = ({
         )
       }
       icon={<Papers />}
+      defaultExpanded={!maxInitialFiles || files.length <= maxInitialFiles}
+      shownItems={
+        maxInitialFiles && files.length > maxInitialFiles ? (
+          <div className="flex flex-col divide-y divide-bg-border border-b border-bg-border overflow-auto bg-bg-sub">
+            {files.slice(0, maxInitialFiles).map((file, id) => (
+              <FileRow
+                path={file.path}
+                name={file.name}
+                type={file.type}
+                onClick={onClick}
+                key={id}
+              />
+            ))}
+          </div>
+        ) : undefined
+      }
     >
-      <div className="flex flex-col divide-y divide-gray-700 text-gray-500 text-sm divide-y divide-gray-700 overflow-auto">
-        {files.map((file, id) => (
-          <span
+      <div className="flex flex-col divide-y divide-bg-border overflow-auto bg-bg-sub">
+        {(maxInitialFiles && files.length > maxInitialFiles
+          ? files.slice(maxInitialFiles)
+          : files
+        ).map((file, id) => (
+          <FileRow
+            path={file.path}
+            name={file.name}
+            type={file.type}
+            onClick={onClick}
             key={id}
-            className="flex flex-row justify-between px-4 py-4  bg-gray-900 last:rounded-b group cursor-pointer"
-            onClick={() => {
-              onClick(file.path, file.type);
-            }}
-          >
-            <span className="w-fit group-hover:text-gray-300 flex items-center gap-2">
-              {file.type === FileTreeFileType.DIR ? (
-                <FolderFilled />
-              ) : (
-                <FileIcon filename={file.name} />
-              )}
-              <span className="group-hover:underline">{file.name}</span>
-            </span>
-          </span>
+          />
         ))}
+        {!!maxInitialFiles && files.length > maxInitialFiles && (
+          <div className="h-13 w-full" />
+        )}
       </div>
     </Accordion>
   );

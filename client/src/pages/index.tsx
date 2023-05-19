@@ -11,16 +11,15 @@ import PageTemplate from '../components/PageTemplate';
 import ErrorFallback from '../components/ErrorFallback';
 import useAppNavigation from '../hooks/useAppNavigation';
 import { buildRepoQuery } from '../utils';
-import { SearchType } from '../types/general';
-import { TabsContext } from '../context/tabsContext';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
+import { UITabType } from '../types/general';
 import RepositoryPage from './Repository';
 import ResultsPage from './Results';
 import ViewResult from './ResultFull';
-import NLResults from './NLResults';
 import NoResults from './Results/NoResults';
 import HomePage from './Home';
 import Onboarding from './Onboarding';
+import ConversationResult from './ConversationResult';
 
 const mockQuerySuggestions = [
   'repo:cobra-ats  error:“no apples”',
@@ -30,13 +29,23 @@ const mockQuerySuggestions = [
   'lang:tsx apples',
 ];
 
-const ContentContainer = () => {
-  const { setInputValue, globalRegex, searchType, setSearchType } =
-    useContext(SearchContext);
-  const { searchQuery, data, loading } = useSearch<SearchResponse>();
-  const { updateCurrentTabName } = useContext(TabsContext);
+type RenderPage =
+  | 'results'
+  | 'repo'
+  | 'full-result'
+  | 'nl-result'
+  | 'no-results'
+  | 'home'
+  | 'conversation-result';
 
-  const { navigatedItem, query, navigateBack } = useAppNavigation();
+let prevRenderPage: RenderPage;
+
+const ContentContainer = ({ tab }: { tab: UITabType }) => {
+  const { setInputValue, globalRegex } = useContext(SearchContext);
+  const { searchQuery, data, loading } = useSearch<SearchResponse>();
+
+  const { navigatedItem, query, navigateBack, navigateRepoPath } =
+    useAppNavigation();
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (
@@ -57,11 +66,10 @@ const ContentContainer = () => {
 
   useEffect(() => {
     if (!navigatedItem) {
-      updateCurrentTabName('Home');
+      if (tab.key !== 'initial') {
+        navigateRepoPath(tab.repoName);
+      }
       return;
-    }
-    if (navigatedItem.searchType !== undefined) {
-      setSearchType(navigatedItem.searchType);
     }
 
     setInputValue(query);
@@ -69,51 +77,37 @@ const ContentContainer = () => {
     switch (navigatedItem.type) {
       case 'repo':
       case 'full-result':
-        updateCurrentTabName(
-          navigatedItem.type === 'repo'
-            ? navigatedItem.repo!
-            : navigatedItem.path!,
-        );
-        searchQuery(
-          buildRepoQuery(navigatedItem.repo, navigatedItem.path),
-          0,
-          false,
-          SearchType.REGEX,
-        );
+        searchQuery(buildRepoQuery(navigatedItem.repo, navigatedItem.path));
         break;
       case 'home':
-        updateCurrentTabName('Home');
+      case 'conversation-result':
         break;
       default:
-        updateCurrentTabName(navigatedItem.query!);
-        if ((navigatedItem.searchType ?? searchType) === SearchType.REGEX) {
-          searchQuery(navigatedItem.query!, navigatedItem.page, globalRegex);
-        }
+        const search = navigatedItem.query!.includes(`repo:${tab.name}`)
+          ? navigatedItem.query!
+          : `${navigatedItem.query} repo:${tab.name}`;
+        searchQuery(search, navigatedItem.page, globalRegex);
     }
-  }, [navigatedItem]);
+  }, [navigatedItem, tab.key, tab.name]);
 
   const getRenderPage = useCallback(() => {
-    let renderPage:
-      | 'results'
-      | 'repo'
-      | 'full-result'
-      | 'nl-result'
-      | 'no-results'
-      | 'home';
-    if (!navigatedItem || navigatedItem.type === 'home') {
+    let renderPage: RenderPage;
+    if (tab.key === 'initial') {
       return 'home';
     }
-    if (
-      navigatedItem?.searchType === SearchType.REGEX &&
-      !data?.data?.[0] &&
-      !loading
-    ) {
+    if (navigatedItem?.type === 'conversation-result') {
+      return 'conversation-result';
+    }
+    if (navigatedItem?.type === 'full-result') {
+      return 'full-result';
+    }
+    if (!data?.data?.[0] && !loading) {
       return 'no-results';
     }
-    const resultType =
-      navigatedItem?.searchType === SearchType.NL
-        ? 'nl'
-        : data?.data?.[0]?.kind;
+    if (loading && prevRenderPage && navigatedItem?.type === 'repo') {
+      return prevRenderPage;
+    }
+    const resultType = data?.data?.[0]?.kind;
     switch (resultType) {
       case 'dir':
         renderPage = 'repo';
@@ -121,17 +115,19 @@ const ContentContainer = () => {
       case 'file':
         renderPage = 'full-result';
         break;
-      case 'nl':
-        renderPage = 'nl-result';
-        break;
       default:
         renderPage = 'results';
     }
+    prevRenderPage = renderPage;
     return renderPage;
-  }, [navigatedItem, data, loading]);
+  }, [navigatedItem, data, loading, tab.key]);
+
+  const renderPage = useMemo(
+    () => getRenderPage(),
+    [data, loading, navigatedItem, query, navigatedItem?.threadId],
+  );
 
   const renderedPage = useMemo(() => {
-    let renderPage = getRenderPage();
     switch (renderPage) {
       case 'results':
         return (
@@ -141,30 +137,47 @@ const ContentContainer = () => {
           />
         );
       case 'no-results':
-        return <NoResults suggestions={mockQuerySuggestions} />;
+        return (
+          <NoResults
+            suggestions={mockQuerySuggestions}
+            isRepo={navigatedItem?.type === 'repo' && !navigatedItem?.path}
+            isFolder={!!navigatedItem?.path}
+          />
+        );
       case 'repo':
         return (
           <RepositoryPage repositoryData={data as DirectorySearchResponse} />
         );
       case 'full-result':
-        return <ViewResult data={data} />;
-      case 'nl-result':
+        return <ViewResult data={data} isLoading={loading} />;
+      case 'conversation-result':
         return (
-          <NLResults
-            query={query}
-            key={navigatedItem?.threadId}
+          <ConversationResult
+            recordId={navigatedItem?.recordId!}
             threadId={navigatedItem?.threadId!}
           />
         );
       default:
         return <HomePage />;
     }
-  }, [data, loading, navigatedItem, query, navigatedItem?.threadId]);
+  }, [
+    data,
+    loading,
+    navigatedItem,
+    query,
+    navigatedItem?.threadId,
+    renderPage,
+  ]);
 
   return (
     <>
       <Onboarding />
-      <PageTemplate>{renderedPage}</PageTemplate>
+      <PageTemplate
+        withSearchBar={renderPage !== 'home'}
+        renderPage={renderPage}
+      >
+        {renderedPage}
+      </PageTemplate>
     </>
   );
 };

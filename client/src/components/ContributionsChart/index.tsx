@@ -23,8 +23,8 @@ const variantColorMap = {
 const ContributionsChart = ({ border, variant }: Props) => {
   return (
     <div
-      className={`p-6 bg-gray-800 ${
-        border ? 'rounded border border-gray-700' : ''
+      className={`p-6 bg-bg-base ${
+        border ? 'rounded border border-bg-border' : ''
       }`}
     >
       <Line

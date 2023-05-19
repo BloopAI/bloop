@@ -1,16 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DeviceContextType } from './context/deviceContext';
 import './index.css';
-import './circleProgress.css';
 import 'highlight.js/styles/vs2015.css';
 import Tab from './Tab';
 import { TabsContext } from './context/tabsContext';
 import { UITabType } from './types/general';
-import { getJsonFromStorage, SEARCH_HISTORY_KEY } from './services/storage';
-import { getConfig, initApi } from './services/api';
+import {
+  getJsonFromStorage,
+  getPlainFromStorage,
+  LAST_ACTIVE_TAB_KEY,
+  saveJsonToStorage,
+  savePlainToStorage,
+  TABS_KEY,
+} from './services/storage';
+import { initApi } from './services/api';
 import { useComponentWillMount } from './hooks/useComponentWillMount';
-import useKeyboardNavigation from './hooks/useKeyboardNavigation';
-import { generateUniqueId } from './utils';
+import { RepoSource } from './types';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -18,55 +23,55 @@ type Props = {
 
 function App({ deviceContextValue }: Props) {
   useComponentWillMount(() => initApi(deviceContextValue.apiUrl));
-  const [envConfig, setEnvConfig] = useState({});
+
+  const [tabs, setTabs] = useState<UITabType[]>(
+    getJsonFromStorage(TABS_KEY) || [
+      {
+        key: 'initial',
+        name: 'Home',
+        repoName: '',
+        source: RepoSource.LOCAL,
+      },
+    ],
+  );
+  const [activeTab, setActiveTab] = useState(
+    getPlainFromStorage(LAST_ACTIVE_TAB_KEY) || 'initial',
+  );
+
+  const handleAddTab = useCallback(
+    (repoRef: string, repoName: string, name: string, source: RepoSource) => {
+      const newTab = {
+        key: repoRef,
+        name,
+        repoName,
+        source,
+      };
+      setTabs((prev) => {
+        const existing = prev.find((t) => t.key === newTab.key);
+        if (existing) {
+          setActiveTab(existing.key);
+          return prev;
+        }
+        return [...prev, newTab];
+      });
+      setActiveTab(newTab.key);
+    },
+    [],
+  );
 
   useEffect(() => {
-    setTimeout(() => getConfig().then(setEnvConfig), 1000); // server returns wrong tracking_id within first second
-  }, []);
+    saveJsonToStorage(TABS_KEY, tabs);
+  }, [tabs]);
 
-  const deviceContextWithEnv = useMemo(
-    () => ({ ...deviceContextValue, envConfig }),
-    [envConfig],
-  );
+  useEffect(() => {
+    savePlainToStorage(LAST_ACTIVE_TAB_KEY, activeTab);
+  }, [activeTab]);
 
-  const [tabs, setTabs] = useState<UITabType[]>([
-    {
-      key: 'initial',
-      name: 'Untitled search',
-      searchHistory: getJsonFromStorage(SEARCH_HISTORY_KEY) || [],
-    },
-  ]);
-  const [activeTab, setActiveTab] = useState('initial');
-
-  const handleAddTab = useCallback(() => {
-    const newTab = {
-      key: generateUniqueId(),
-      name: 'Home',
-    };
-    setTabs((prev) => [...prev, newTab]);
-    setActiveTab(newTab.key);
-  }, []);
-
-  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
-    if (e.key === 't' && (e.metaKey || e.ctrlKey)) {
-      e.stopPropagation();
-      e.preventDefault();
-      handleAddTab();
+  useEffect(() => {
+    if (!tabs.find((t) => t.key === activeTab)) {
+      setActiveTab('initial');
     }
-  }, []);
-  useKeyboardNavigation(handleKeyEvent);
-
-  const updateCurrentTabName = useCallback(
-    (newName: string) => {
-      setTabs((prev) => {
-        const newTabs = [...prev];
-        const tabToUpdate = newTabs.findIndex((t) => t.key === activeTab);
-        newTabs[tabToUpdate] = { ...newTabs[tabToUpdate], name: newName };
-        return newTabs;
-      });
-    },
-    [activeTab],
-  );
+  }, [activeTab, tabs]);
 
   const handleRemoveTab = useCallback(
     (tabKey: string) => {
@@ -91,9 +96,8 @@ function App({ deviceContextValue }: Props) {
       handleAddTab,
       handleRemoveTab,
       setActiveTab,
-      updateCurrentTabName,
     }),
-    [tabs, activeTab, handleAddTab, handleRemoveTab, updateCurrentTabName],
+    [tabs, activeTab, handleAddTab, handleRemoveTab],
   );
 
   return (
@@ -101,7 +105,7 @@ function App({ deviceContextValue }: Props) {
       {tabs.map((t) => (
         <Tab
           key={t.key}
-          deviceContextValue={deviceContextWithEnv}
+          deviceContextValue={deviceContextValue}
           isActive={t.key === activeTab}
           tab={t}
         />

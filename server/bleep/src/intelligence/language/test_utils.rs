@@ -7,14 +7,15 @@ use crate::intelligence::{scope_resolution::NodeKind, Language, TreeSitterFile};
 use expect_test::Expect;
 
 #[rustfmt::skip]
-pub fn counts(src: &str, lang_id: &str) -> (usize, usize, usize) {
+pub fn counts(src: &str, lang_id: &str) -> (usize, usize, usize, usize) {
     let tsf = TreeSitterFile::try_build(src.as_bytes(), lang_id).unwrap();
     let scope_graph = tsf.scope_graph().unwrap();
     let nodes = scope_graph.graph.node_weights();
-    nodes.fold((0, 0, 0), |(s, d, r), node| match node {
-        NodeKind::Scope(_) => (s + 1, d,     r    ),
-        NodeKind::Def(_)   => (s,     d + 1, r    ),
-        NodeKind::Ref(_)   => (s,     d,     r + 1),
+    nodes.fold((0, 0, 0, 0), |(s, d, r, i), node| match node {
+        NodeKind::Scope(_) => (s + 1, d,     r    , i    ),
+        NodeKind::Def(_)   => (s,     d + 1, r    , i    ),
+        NodeKind::Ref(_)   => (s,     d,     r + 1, i    ),
+        NodeKind::Import(_)=> (s,     d,     r    , i + 1),
     })
 }
 

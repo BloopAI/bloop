@@ -31,7 +31,7 @@ const Pagination = ({ page, setPage, totalPages }: Props) => {
 
   return (
     <div className="flex items-center justify-between">
-      <p className="body-s text-gray-400">
+      <p className="body-s text-label-base">
         Showing page {page + 1} of {totalPages}
       </p>
       <div className="flex items-center gap-3">

@@ -17,7 +17,7 @@ const SelfServeStep = () => {
     <>
       <DialogText
         title="Sign In"
-        description="Use GitHub to Sign In to your account"
+        description="Use GitHub to sign in to your account"
       />
       <a href={loginUrl} className="w-full flex flex-col">
         <Button variant="primary" disabled={!loginUrl}>

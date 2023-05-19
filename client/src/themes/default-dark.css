@@ -1,0 +1,189 @@
+[data-theme="default"] {
+    /********************************************************* * Tokens */
+    /********************************************************* * Language Specific */
+    /********************************************************* * Line highlighting */
+}
+[data-theme="default"] pre[class*="language-"], [data-theme="default"] code[class*="language-"] {
+    color: #d4d4d4;
+    text-shadow: none;
+    font-family: Menlo, Monaco, Consolas, "Andale Mono", "Ubuntu Mono", "Courier New", monospace;
+    direction: ltr;
+    text-align: left;
+    white-space: pre;
+    word-spacing: normal;
+    word-break: normal;
+    line-height: 1.5;
+    -moz-tab-size: 4;
+    -o-tab-size: 4;
+    tab-size: 4;
+    -webkit-hyphens: none;
+    -moz-hyphens: none;
+    -ms-hyphens: none;
+    hyphens: none;
+}
+[data-theme="default"] pre[class*="language-"]::selection, [data-theme="default"] code[class*="language-"]::selection, [data-theme="default"] pre[class*="language-"] *::selection, [data-theme="default"] code[class*="language-"] *::selection {
+    text-shadow: none;
+    background: #264f78;
+}
+@media print {
+    [data-theme="default"] pre[class*="language-"], [data-theme="default"] code[class*="language-"] {
+        text-shadow: none;
+    }
+}
+[data-theme="default"] pre[class*="language-"] {
+    /*padding: 1em;
+    */
+    /*margin: .5em 0;
+    */
+    /*overflow: auto;
+    */
+    background: transparent;
+}
+[data-theme="default"] :not(pre) > code[class*="language-"] {
+    padding: 0.1em 0.3em;
+    border-radius: 0.3em;
+    color: #db4c69;
+    /*background: #1e1e1e;
+    */
+}
+[data-theme="default"] .namespace {
+    opacity: 0.7;
+}
+[data-theme="default"] .token.doctype .token.doctype-tag {
+    color: #569cd6;
+}
+[data-theme="default"] .token.doctype .token.name {
+    color: #9cdcfe;
+}
+[data-theme="default"] .token.comment, [data-theme="default"] .token.prolog {
+    color: #6a9955;
+}
+[data-theme="default"] .token.property, [data-theme="default"] .token.tag, [data-theme="default"] .token.boolean, [data-theme="default"] .token.number, [data-theme="default"] .token.constant, [data-theme="default"] .token.symbol, [data-theme="default"] .token.inserted, [data-theme="default"] .token.unit {
+    color: #b5cea8;
+}
+[data-theme="default"] .token.tag {
+    color: #569cd6;
+}
+[data-theme="default"] .token.punctuation, [data-theme="default"] .language-html .language-css .token.punctuation, [data-theme="default"] .language-html .language-javascript .token.punctuation {
+    color: #d4d4d4;
+}
+[data-theme="default"] .token.selector, [data-theme="default"] .token.attr-name, [data-theme="default"] .token.string, [data-theme="default"] .token.char, [data-theme="default"] .token.builtin, [data-theme="default"] .token.deleted {
+    color: #ce9178;
+}
+[data-theme="default"] .language-css .token.string.url {
+    text-decoration: underline;
+}
+[data-theme="default"] .token.operator, [data-theme="default"] .token.entity {
+    color: #d4d4d4;
+}
+[data-theme="default"] .token.operator.arrow {
+    color: #569cd6;
+}
+[data-theme="default"] .token.atrule {
+    color: #ce9178;
+}
+[data-theme="default"] .token.atrule .token.rule {
+    color: #c586c0;
+}
+[data-theme="default"] .token.atrule .token.url {
+    color: #9cdcfe;
+}
+[data-theme="default"] .token.atrule .token.url .token.function {
+    color: #dcdcaa;
+}
+[data-theme="default"] .token.atrule .token.url .token.punctuation {
+    color: #d4d4d4;
+}
+[data-theme="default"] .token.keyword {
+    color: #569cd6;
+}
+[data-theme="default"] .token.keyword.module, [data-theme="default"] .token.keyword.control-flow {
+    color: #c586c0;
+}
+[data-theme="default"] .token.function, [data-theme="default"] .token.function .token.maybe-class-name {
+    color: #dcdcaa;
+}
+[data-theme="default"] .token.regex {
+    color: #d16969;
+}
+[data-theme="default"] .token.important {
+    color: #569cd6;
+}
+[data-theme="default"] .token.italic {
+    font-style: italic;
+}
+[data-theme="default"] .token.constant {
+    color: #9cdcfe;
+}
+[data-theme="default"] .token.class-name, [data-theme="default"] .token.maybe-class-name {
+    color: #4ec9b0;
+}
+[data-theme="default"] .token.console {
+    color: #9cdcfe;
+}
+[data-theme="default"] .token.parameter {
+    color: #9cdcfe;
+}
+[data-theme="default"] .token.interpolation {
+    color: #9cdcfe;
+}
+[data-theme="default"] .token.punctuation.interpolation-punctuation {
+    color: #569cd6;
+}
+[data-theme="default"] .token.boolean {
+    color: #569cd6;
+}
+[data-theme="default"] .token.property, [data-theme="default"] .token.variable, [data-theme="default"] .token.imports .token.maybe-class-name, [data-theme="default"] .token.exports .token.maybe-class-name {
+    color: #9cdcfe;
+}
+[data-theme="default"] .token.selector {
+    color: #d7ba7d;
+}
+[data-theme="default"] .token.escape {
+    color: #d7ba7d;
+}
+[data-theme="default"] .token.tag .token.punctuation {
+    color: #808080;
+}
+[data-theme="default"] .token.cdata {
+    color: #808080;
+}
+[data-theme="default"] .token.attr-name {
+    color: #9cdcfe;
+}
+[data-theme="default"] .token.attr-value, [data-theme="default"] .token.attr-value .token.punctuation {
+    color: #ce9178;
+}
+[data-theme="default"] .token.attr-value .token.punctuation.attr-equals {
+    color: #d4d4d4;
+}
+[data-theme="default"] .token.entity {
+    color: #569cd6;
+}
+[data-theme="default"] .token.namespace {
+    color: #4ec9b0;
+}
+[data-theme="default"] pre[class*="language-javascript"], [data-theme="default"] code[class*="language-javascript"], [data-theme="default"] pre[class*="language-jsx"], [data-theme="default"] code[class*="language-jsx"], [data-theme="default"] pre[class*="language-typescript"], [data-theme="default"] code[class*="language-typescript"], [data-theme="default"] pre[class*="language-tsx"], [data-theme="default"] code[class*="language-tsx"] {
+    color: #9cdcfe;
+}
+[data-theme="default"] pre[class*="language-css"], [data-theme="default"] code[class*="language-css"] {
+    color: #ce9178;
+}
+[data-theme="default"] pre[class*="language-html"], [data-theme="default"] code[class*="language-html"] {
+    color: #d4d4d4;
+}
+[data-theme="default"] .language-regex .token.anchor {
+    color: #dcdcaa;
+}
+[data-theme="default"] .language-html .token.punctuation {
+    color: #808080;
+}
+[data-theme="default"] pre[class*="language-"] > code[class*="language-"] {
+    position: relative;
+    z-index: 1;
+}
+[data-theme="default"] .line-highlight.line-highlight {
+    background: #f7ebc6;
+    box-shadow: inset 5px 0 0 #f7d87c;
+    z-index: 0;
+}

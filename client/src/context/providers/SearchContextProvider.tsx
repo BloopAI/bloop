@@ -1,47 +1,44 @@
-import React, {
-  PropsWithChildren,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
-import { FilterType, SearchHistoryItem, SearchType } from '../../types/general';
+import React, { PropsWithChildren, useEffect, useMemo, useState } from 'react';
+import {
+  FilterType,
+  SearchHistoryItem,
+  TabHistoryType,
+  UITabType,
+} from '../../types/general';
 import { SearchContext } from '../searchContext';
-import useAppNavigation from '../../hooks/useAppNavigation';
-import { UIContext } from '../uiContext';
-import { AnalyticsContext } from '../analyticsContext';
+import {
+  getJsonFromStorage,
+  saveJsonToStorage,
+  TABS_HISTORY_KEY,
+} from '../../services/storage';
 
 type Props = {
-  initialSearchHistory?: string[];
+  tab: UITabType;
 };
 
 export const SearchContextProvider = ({
   children,
-  initialSearchHistory,
+  tab,
 }: PropsWithChildren<Props>) => {
   const [inputValue, setInputValue] = useState('');
   const [filters, setFilters] = useState<FilterType[]>([]);
   const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>(
-    initialSearchHistory || [],
+    (getJsonFromStorage<TabHistoryType[]>(TABS_HISTORY_KEY) || []).find(
+      (h) => h.tabKey === tab.key,
+    )?.history || [],
   );
-  const [lastQueryTime, setLastQueryTime] = useState(3);
   const [globalRegex, setGlobalRegex] = useState(false);
-  const { navigatedItem } = useAppNavigation();
-  const { isGithubConnected } = useContext(UIContext);
-  const { isAnalyticsAllowed } = useContext(AnalyticsContext);
-  const [searchType, setSearchType] = useState(
-    isGithubConnected && isAnalyticsAllowed
-      ? navigatedItem?.searchType ?? SearchType.NL
-      : SearchType.REGEX,
-  );
 
   useEffect(() => {
-    setSearchType(
-      isGithubConnected && isAnalyticsAllowed
-        ? navigatedItem?.searchType ?? SearchType.NL
-        : SearchType.REGEX,
-    );
-  }, [navigatedItem?.searchType, isGithubConnected, isAnalyticsAllowed]);
+    const prevHistory = (
+      getJsonFromStorage<TabHistoryType[]>(TABS_HISTORY_KEY) || []
+    ).filter((h) => h.tabKey !== tab.key);
+    const newHistory = [
+      ...prevHistory,
+      { tabKey: tab.key, history: searchHistory },
+    ];
+    saveJsonToStorage(TABS_HISTORY_KEY, newHistory);
+  }, [searchHistory, tab.key]);
 
   const searchContextValue = useMemo(
     () => ({
@@ -51,21 +48,10 @@ export const SearchContextProvider = ({
       setSearchHistory,
       filters,
       setFilters,
-      lastQueryTime,
-      setLastQueryTime,
       globalRegex,
       setGlobalRegex,
-      searchType,
-      setSearchType,
     }),
-    [
-      inputValue,
-      filters,
-      searchHistory,
-      lastQueryTime,
-      globalRegex,
-      searchType,
-    ],
+    [inputValue, filters, searchHistory, globalRegex],
   );
   return (
     <SearchContext.Provider value={searchContextValue}>

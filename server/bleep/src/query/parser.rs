@@ -30,6 +30,15 @@ pub enum ParsedQuery<'a> {
     Grep(Vec<Query<'a>>),
 }
 
+impl ParsedQuery<'_> {
+    pub fn as_semantic(&self) -> Option<&SemanticQuery> {
+        match self {
+            Self::Semantic(q) => Some(q),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct SemanticQuery<'a> {
     pub repos: HashSet<Literal<'a>>,
@@ -128,7 +137,8 @@ impl<'a> Query<'a> {
     }
 
     pub fn is_case_sensitive(&self) -> bool {
-        self.case_sensitive.unwrap_or(true)
+        // defaults to false if unset
+        self.case_sensitive.unwrap_or_default()
     }
 
     fn set_global_regex(&mut self, value: Option<bool>) {

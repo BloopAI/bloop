@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod debug;
 mod def;
+mod import;
 mod reference;
 mod scope;
 
 pub use def::LocalDef;
+pub use import::LocalImport;
 pub use reference::Reference;
 pub use scope::{LocalScope, ScopeStack};
 
@@ -58,6 +60,9 @@ pub enum NodeKind {
     /// A definition node
     Def(LocalDef),
 
+    /// An import node
+    Import(LocalImport),
+
     /// A reference node
     Ref(Reference),
 }
@@ -74,6 +79,7 @@ impl NodeKind {
             Self::Scope(l) => l.range,
             Self::Def(d) => d.range,
             Self::Ref(r) => r.range,
+            Self::Import(i) => i.range,
         }
     }
 }
@@ -84,11 +90,17 @@ pub enum EdgeKind {
     /// The edge weight from a nested scope to its parent scope
     ScopeToScope,
 
-    ///The edge weight from a definition to its definition scope
+    /// The edge weight from a definition to its definition scope
     DefToScope,
 
-    ///The edge weight from a reference to its definition
+    /// The edge weight from an import to its definition scope
+    ImportToScope,
+
+    /// The edge weight from a reference to its definition
     RefToDef,
+
+    /// The edge weight from a reference to its import
+    RefToImport,
 }
 
 /// A graph representation of scopes and names in a single syntax tree
@@ -152,9 +164,20 @@ impl ScopeGraph {
         }
     }
 
+    /// Insert an import into the scope-graph
+    pub fn insert_local_import(&mut self, new: LocalImport) {
+        if let Some(defining_scope) = self.scope_by_range(new.range, self.root_idx) {
+            let new_imp = NodeKind::Import(new);
+            let new_idx = self.graph.add_node(new_imp);
+            self.graph
+                .add_edge(new_idx, defining_scope, EdgeKind::ImportToScope);
+        }
+    }
+
     /// Insert a ref into the scope-graph
     pub fn insert_ref(&mut self, new: Reference, src: &[u8]) {
         let mut possible_defs = vec![];
+        let mut possible_imports = vec![];
         if let Some(local_scope_idx) = self.scope_by_range(new.range, self.root_idx) {
             // traverse the scopes from the current-scope to the root-scope
             for scope in self.scope_stack(local_scope_idx) {
@@ -184,14 +207,31 @@ impl ScopeGraph {
                         }
                     }
                 }
+
+                // find candidate imports in each scope
+                for local_import in self
+                    .graph
+                    .edges_directed(scope, Direction::Incoming)
+                    .filter(|edge| *edge.weight() == EdgeKind::ImportToScope)
+                    .map(|edge| edge.source())
+                {
+                    if let NodeKind::Import(import) = &self.graph[local_import] {
+                        if new.name(src) == import.name(src) {
+                            possible_imports.push(local_import);
+                        }
+                    }
+                }
             }
         }
 
-        if !possible_defs.is_empty() {
+        if !possible_defs.is_empty() || !possible_imports.is_empty() {
             let new_ref = NodeKind::Ref(new);
             let ref_idx = self.graph.add_node(new_ref);
             for def_idx in possible_defs {
                 self.graph.add_edge(ref_idx, def_idx, EdgeKind::RefToDef);
+            }
+            for imp_idx in possible_imports {
+                self.graph.add_edge(ref_idx, imp_idx, EdgeKind::RefToImport);
             }
         }
     }
@@ -237,7 +277,6 @@ impl ScopeGraph {
     }
 
     /// Produce a list of interesting ranges: ranges of defs and refs
-    #[allow(unused)]
     pub fn hoverable_ranges(&self) -> Box<dyn Iterator<Item = TextRange> + '_> {
         let iterator =
             self.graph
@@ -246,12 +285,12 @@ impl ScopeGraph {
                     NodeKind::Scope(_) => None,
                     NodeKind::Def(d) => Some(d.range),
                     NodeKind::Ref(r) => Some(r.range),
+                    NodeKind::Import(i) => Some(i.range),
                 });
         Box::new(iterator)
     }
 
     /// Produce possible definitions for a reference
-    #[allow(unused)]
     pub fn definitions(
         &self,
         reference_node: NodeIndex<u32>,
@@ -264,8 +303,20 @@ impl ScopeGraph {
         Box::new(iterator)
     }
 
-    /// Produce possible references for a definition
-    #[allow(unused)]
+    /// Produce possible imports for a reference
+    pub fn imports(
+        &self,
+        reference_node: NodeIndex<u32>,
+    ) -> Box<dyn Iterator<Item = NodeIndex<u32>> + '_> {
+        let iterator = self
+            .graph
+            .edges_directed(reference_node, Direction::Outgoing)
+            .filter(|edge| *edge.weight() == EdgeKind::RefToImport)
+            .map(|edge| edge.target());
+        Box::new(iterator)
+    }
+
+    /// Produce possible references for a definition/import node
     pub fn references(
         &self,
         definition_node: NodeIndex<u32>,
@@ -273,7 +324,9 @@ impl ScopeGraph {
         let iterator = self
             .graph
             .edges_directed(definition_node, Direction::Incoming)
-            .filter(|edge| *edge.weight() == EdgeKind::RefToDef)
+            .filter(|edge| {
+                *edge.weight() == EdgeKind::RefToDef || *edge.weight() == EdgeKind::RefToImport
+            })
             .map(|edge| edge.source());
         Box::new(iterator)
     }
@@ -281,7 +334,12 @@ impl ScopeGraph {
     pub fn node_by_range(&self, start_byte: usize, end_byte: usize) -> Option<NodeIndex<u32>> {
         self.graph
             .node_indices()
-            .filter(|&idx| matches!(self.graph[idx], NodeKind::Def(_) | NodeKind::Ref(_)))
+            .filter(|&idx| {
+                matches!(
+                    self.graph[idx],
+                    NodeKind::Def(_) | NodeKind::Ref(_) | NodeKind::Import(_)
+                )
+            })
             .find(|&idx| {
                 let node = self.graph[idx].range();
                 start_byte >= node.start.byte && end_byte <= node.end.byte
@@ -368,6 +426,9 @@ fn scope_res_generic(
     // is a local_def
     let mut local_def_captures = Vec::<LocalDefCapture<'_>>::new();
 
+    // every capture of the form local.import is a local_import
+    let mut local_import_capture_index = None;
+
     // every capture of the form local.reference.<symbol> is a local_ref
     let mut local_ref_captures = Vec::<LocalRefCapture<'_>>::new();
 
@@ -419,6 +480,7 @@ fn scope_res_generic(
                 local_ref_captures.push(l);
             }
             ["local", "scope"] => local_scope_capture_index = Some(i),
+            ["local", "import"] => local_import_capture_index = Some(i),
             _ if !name.starts_with('_') => warn!(?name, "unrecognized query capture"),
             _ => (), // allow captures that start with underscore to fly under the radar
         }
@@ -448,6 +510,14 @@ fn scope_res_generic(
         for range in ranges {
             let scope = LocalScope::new(*range);
             scope_graph.insert_local_scope(scope);
+        }
+    }
+
+    // followed by imports
+    if let Some(ranges) = local_import_capture_index.and_then(|idx| capture_map.get(&idx)) {
+        for range in ranges {
+            let import = LocalImport::new(*range);
+            scope_graph.insert_local_import(import);
         }
     }
 

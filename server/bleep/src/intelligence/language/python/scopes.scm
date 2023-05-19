@@ -93,7 +93,7 @@
   .
   (identifier) @local.definition.variable)
 
-;; imports create defs
+;; imports:
 ;;
 ;;     import a, b
 ;;     import module.submodule.c
@@ -101,34 +101,31 @@
 ;; here, `a`, `b`, `c` are imports, `module` and
 ;; `submodule` are ignored. so we capture the last
 ;; child of the `dotted_name` node using an anchor.
-;;
-;; all imports kinds are `unknown` because their kind 
-;; is unknown without resolving the source file.
 (import_statement
   (dotted_name
-    (identifier) @local.definition.unknown
+    (identifier) @local.import
     .))
 
 ;; import a as b
 ;;
 ;; `a` is ignored
-;; `b` is a def
+;; `b` is an import
 (import_statement
   (aliased_import
     "as"
-    (identifier) @local.definition.unknown))
+    (identifier) @local.import))
 
 ;; from module import name1, name2
 (import_from_statement
   name: 
   (dotted_name
-    (identifier) @local.definition.unknown))
+    (identifier) @local.import))
 
 ;; from __future__ import name
 (future_import_statement
   name:
   (dotted_name 
-    (identifier) @local.definition.unknown))
+    (identifier) @local.import))
 
 ;; class A
 (class_definition
@@ -143,6 +140,10 @@
 
 ;;[a, b, c]
 (list
+  (identifier) @local.reference)
+
+;; f-strings
+(interpolation
   (identifier) @local.reference)
 
 ;; [ *a ]

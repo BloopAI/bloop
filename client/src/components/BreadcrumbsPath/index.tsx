@@ -20,6 +20,7 @@ const BreadcrumbsPath = ({ path, onClick, repo, ...rest }: Props) => {
   const { navigateRepoPath } = useAppNavigation();
   const mapPath = useCallback(() => {
     return splitPathForBreadcrumbs(path, (e, item, index, pParts) => {
+      e.stopPropagation();
       const isLastPart = index === pParts.length - 1;
       const newPath = breadcrumbsItemPath(
         pParts,
@@ -44,7 +45,7 @@ const BreadcrumbsPath = ({ path, onClick, repo, ...rest }: Props) => {
   }, [path]);
 
   return (
-    <div className="overflow-hidden">
+    <div className="overflow-hidden w-full">
       <Breadcrumbs {...rest} pathParts={pathParts} path={path} />
     </div>
   );

@@ -1,0 +1,95 @@
+{
+  "db": "SQLite",
+  "392b563bb3af6711817fe99335d053691750426762dcde7b0381dc9f69cd804e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "DELETE FROM conversations WHERE user_id = ? AND thread_id = ?"
+  },
+  "6d8b70a52e6a1f0b18a7981604386ca4ef264d57d2c22958f2e31cb5eaad9b02": {
+    "describe": {
+      "columns": [
+        {
+          "name": "repo_ref",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "llm_history",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "exchanges",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "path_aliases",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "code_chunks",
+          "ordinal": 4,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT repo_ref, llm_history, exchanges, path_aliases, code_chunks FROM conversations WHERE user_id = ? AND thread_id = ?"
+  },
+  "cc1b6ba03d478b999fd7e6f2a3b64c710af167c84eadf715108e61b2564e22c1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 8
+      }
+    },
+    "query": "INSERT INTO conversations (user_id, thread_id, repo_ref, title, exchanges, llm_history, path_aliases, code_chunks, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))"
+  },
+  "d5ee5becde7005920d7094fca5b7974bbf19713b3625fbf6d1a3e198e7cf4de4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "thread_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "title",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT thread_id, created_at, title FROM conversations WHERE user_id = ? ORDER BY created_at DESC"
+  }
+}

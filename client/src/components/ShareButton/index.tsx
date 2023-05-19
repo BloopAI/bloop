@@ -43,15 +43,15 @@ const ShareButton = ({ files, visible }: Props) => {
   return (
     <div className={`relative ${buttonVisible ? '' : 'hidden'}`}>
       <span
-        className={`w-fit text-gray-300 flex cursor-pointer h-10 `}
+        className={`w-fit text-label-base flex cursor-pointer h-10 `}
         onClick={() => setMenuVisible(!menuVisible)}
       >
-        <span className="inline-flex gap-2 items-center border border-gray-700 w-fit p-2 rounded-l-4 bg-gray-800 hover:border-gray-600 hover:border-r-gray-700">
+        <span className="inline-flex gap-2 items-center border border-bg-border w-fit p-2 rounded-l-4 bg-bg-base hover:border-bg-border-hover hover:border-r-bg-border">
           <Counter count={fileItems.length} />
           <span>Multi share</span>
         </span>
         <span
-          className="inline-flex items-center gap-1 border border-gray-700 w-fit bg-gray-800 p-2 rounded-r-4 border-l-0 hover:border-gray-600"
+          className="inline-flex items-center gap-1 border border-bg-border w-fit bg-bg-base p-2 rounded-r-4 border-l-0 hover:border-bg-border-hover"
           onClick={() => setButtonVisible(false)}
         >
           <CloseSign />

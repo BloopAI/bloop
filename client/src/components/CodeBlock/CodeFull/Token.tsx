@@ -42,6 +42,7 @@ const Token = ({
   const [hoverableRange, setHoverableRange] = useState(
     tokenHoverable(token.byteRange, lineHoverRanges),
   );
+  const [isLoading, setLoading] = useState(false);
 
   const [tokenInfo, setTokenInfo] = useState<TokenInfo>({
     definitions: [],
@@ -51,14 +52,17 @@ const Token = ({
   const getHoverableContent = useCallback(
     (hoverableRange: Range) => {
       if (hoverableRange && relativePath) {
+        setLoading(true);
         getTokenInfo(
           relativePath,
           repoPath,
           hoverableRange.start,
           hoverableRange.end,
-        ).then((data) => {
-          setTokenInfo(mapTokenInfoData(data));
-        });
+        )
+          .then((data) => {
+            setTokenInfo(mapTokenInfoData(data));
+          })
+          .finally(() => setLoading(false));
       }
     },
     [relativePath],
@@ -93,6 +97,7 @@ const Token = ({
       onHover={onHover}
       repoName={repoName}
       onRefDefClick={handleRefsDefsClick}
+      isLoading={isLoading}
     >
       <CodeToken token={token} />
     </TooltipCode>

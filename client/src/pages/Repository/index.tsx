@@ -11,6 +11,7 @@ import { getRepoSource } from '../../utils/file';
 import { GitHubLogo, Repository as RepositoryIcon } from '../../icons';
 import { RepositoriesContext } from '../../context/repositoriesContext';
 import { STATUS_MAP } from '../../components/RepoCard';
+import { UIContext } from '../../context/uiContext';
 import RepositoryOverview from './RepositoryOverview';
 
 type Props = {
@@ -22,6 +23,7 @@ const RepositoryPage = ({ repositoryData }: Props) => {
   const [initialLoad, setInitialLoad] = useState(true);
   const { setFilters } = useContext(SearchContext);
   const { repositories } = useContext(RepositoriesContext);
+  const { isRightPanelOpen } = useContext(UIContext);
 
   useEffect(() => {
     setInitialLoad(false);
@@ -90,14 +92,18 @@ const RepositoryPage = ({ repositoryData }: Props) => {
   );
 
   return !repository || initialLoad ? (
-    <Skeleton />
+    <Skeleton isRepoPage />
   ) : (
     <div className="flex w-full">
-      <div className="h-full flex flex-col overflow-hidden relative overflow-y-auto w-[20.25rem] flex-shrink-0">
-        <div className="p-8 flex flex-row gap-6 justify-between select-none cursor-default">
+      <div
+        className={`h-full bg-bg-base flex flex-col overflow-hidden relative overflow-y-auto ${
+          isRightPanelOpen ? 'w-0' : 'w-[20.25rem]'
+        } transition-all duration-150 flex-shrink-0`}
+      >
+        <div className="p-8 flex flex-row gap-6 justify-between select-none cursor-default border-r border-bg-border">
           <span className="flex flex-col gap-3">
             <span className="flex flex-row gap-4 items-center">
-              <span className="bg-gray-800 rounded-md p-1 w-7 h-7 select-none">
+              <span className="rounded-md p-1 w-7 h-7 select-none">
                 {repository.source === RepoSource.LOCAL ? (
                   <RepositoryIcon />
                 ) : (
@@ -109,10 +115,10 @@ const RepositoryPage = ({ repositoryData }: Props) => {
                 <span className={`flex items-center gap-2 `}>
                   <div
                     className={`w-2 h-2 rounded-xl ${
-                      statusTextColor?.color || 'bg-yellow-500'
+                      statusTextColor?.color || 'bg-yellow'
                     }`}
                   />
-                  <span className="ellipsis text-gray-500 text-xs select-none">
+                  <span className="ellipsis text-label-muted text-xs select-none">
                     {statusTextColor?.text === 'Last updated '
                       ? 'Synced'
                       : statusTextColor?.text || repoStatus}

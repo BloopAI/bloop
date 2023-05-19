@@ -9,9 +9,9 @@ type Props = {
 const DialogText = ({ title, description, isCentered = true }: Props) => {
   return (
     <div>
-      <h4 className="text-center select-none">{title}</h4>
+      <h4 className="text-center select-none text-label-title">{title}</h4>
       <p
-        className={`body-s text-gray-500 mt-3 ${
+        className={`body-s text-label-base mt-3 ${
           isCentered ? 'text-center' : ''
         }`}
       >

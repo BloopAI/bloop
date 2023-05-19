@@ -1,4 +1,5 @@
 import React, { ReactElement } from 'react';
+import { RepoSource } from './index';
 
 export enum MenuItemType {
   DEFAULT = 'default',
@@ -87,8 +88,14 @@ export enum SearchType {
 
 export type UITabType = {
   key: string;
-  searchHistory?: string[];
   name: string;
+  repoName: string;
+  source: RepoSource;
+};
+
+export type TabHistoryType = {
+  tabKey: string;
+  history: SearchHistoryItem[];
 };
 
 export enum ReposFilter {
@@ -113,4 +120,104 @@ export type ConversationMessage = {
     line: number;
   }[];
   error?: string;
+};
+
+export enum ChatMessageType {
+  Answer = 'answer',
+  Prompt = 'prompt',
+}
+
+export enum ChatMessageAuthor {
+  User = 'user',
+  Server = 'server',
+}
+
+type ChatMessageUser = {
+  author: ChatMessageAuthor.User;
+  text: string;
+  isFromHistory?: boolean;
+};
+
+export type MessageResultCite = {
+  Cite: {
+    path_alias: number;
+    path: string;
+    comment: string;
+    start_line: number;
+    end_line: number;
+  };
+};
+
+export type MessageResultDirectory = {
+  Directory: {
+    path: string | null;
+    comment: string | null;
+  };
+};
+
+export type MessageResultNew = {
+  New: {
+    language: string;
+    code: string;
+  };
+};
+
+export type MessageResultModify = {
+  Modify: {
+    path: string;
+    language: string;
+    diff: {
+      header: {
+        old_start: number;
+        new_start: number;
+        old_lines: number;
+        new_lines: number;
+      };
+      lines: string[];
+    };
+  };
+};
+
+export type ChatMessageServer = {
+  author: ChatMessageAuthor.Server;
+  text?: string;
+  isLoading: boolean;
+  loadingSteps: string[];
+  error?: string;
+  isFromHistory?: boolean;
+  type: ChatMessageType;
+  results?: (
+    | MessageResultCite
+    | MessageResultNew
+    | MessageResultModify
+    | MessageResultDirectory
+  )[];
+};
+
+export type ChatMessage = ChatMessageUser | ChatMessageServer;
+
+export interface NavigationItem {
+  type: 'search' | 'repo' | 'full-result' | 'home' | 'conversation-result';
+  query?: string;
+  repo?: string;
+  path?: string;
+  page?: number;
+  loaded?: boolean;
+  searchType?: SearchType;
+  pathParams?: Record<string, string>;
+  threadId?: string;
+  recordId?: number;
+}
+
+export type EnvConfig = {
+  analytics_data_plane?: string;
+  analytics_key_fe?: string;
+  sentry_dsn_fe?: string;
+  org_name?: string | null;
+  tracking_id?: string;
+  device_id?: string;
+  github_user?: {
+    login: string;
+    avatar_url: string;
+  };
 };

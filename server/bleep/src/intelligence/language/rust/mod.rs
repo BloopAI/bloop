@@ -38,7 +38,7 @@ mod tests {
             static b: () = ();
         "#;
 
-        let (_, def_count, _) = counts(src, "Rust");
+        let (_, def_count, _, _) = counts(src, "Rust");
 
         // a, b
         assert_eq!(def_count, 2);
@@ -56,7 +56,7 @@ mod tests {
                 let S { i, field: _ } = ();
             }
         "#;
-        let (_, def_count, _) = counts(src, "Rust");
+        let (_, def_count, _, _) = counts(src, "Rust");
 
         // main, a, b, c, d, e, f, g, h, i
         assert_eq!(def_count, 10);
@@ -72,7 +72,7 @@ mod tests {
             fn f5(S {h, ..}: S) {}
             fn f6(S { field: i }: S) {}
         "#;
-        let (_, def_count, _) = counts(src, "Rust");
+        let (_, def_count, _, _) = counts(src, "Rust");
 
         // f1, f2, f3, f4, f5, f6, a, b, c, d, e, f, g, h, i
         assert_eq!(def_count, 15);
@@ -88,7 +88,7 @@ mod tests {
                 let _ = |(x, y): ()| {};
             }
         "#;
-        let (_, def_count, _) = counts(src, "Rust");
+        let (_, def_count, _, _) = counts(src, "Rust");
 
         // main,
         // x,
@@ -107,7 +107,7 @@ mod tests {
                 'loop: while true {}
             }
         "#;
-        let (_, def_count, _) = counts(src, "Rust");
+        let (_, def_count, _, _) = counts(src, "Rust");
 
         // main, 'loop x3
         assert_eq!(def_count, 4);
@@ -133,7 +133,7 @@ mod tests {
 
             type Ten = ();
         "#;
-        let (_, def_count, _) = counts(src, "Rust");
+        let (_, def_count, _, _) = counts(src, "Rust");
 
         assert_eq!(def_count, 10);
     }
@@ -147,7 +147,7 @@ mod tests {
                 mod four {}
             }
         "#;
-        let (_, def_count, _) = counts(src, "Rust");
+        let (_, def_count, _, _) = counts(src, "Rust");
 
         assert_eq!(def_count, 4);
     }
@@ -161,7 +161,7 @@ mod tests {
             while let a = () {}
             while let Some(a) = () {}
         "#;
-        let (_, def_count, _) = counts(src, "Rust");
+        let (_, def_count, _, _) = counts(src, "Rust");
 
         assert_eq!(def_count, 4);
     }
@@ -176,7 +176,7 @@ mod tests {
                 *a;
             }
         "#;
-        let (_, _, ref_count) = counts(src, "Rust");
+        let (_, _, ref_count, _) = counts(src, "Rust");
 
         assert_eq!(ref_count, 3);
     }
@@ -191,7 +191,7 @@ mod tests {
                 a >> b;
             }
         "#;
-        let (_, _, ref_count) = counts(src, "Rust");
+        let (_, _, ref_count, _) = counts(src, "Rust");
 
         assert_eq!(ref_count, 4);
     }
@@ -227,7 +227,7 @@ mod tests {
                 yield a;
             }
         "#;
-        let (_, _, ref_count) = counts(src, "Rust");
+        let (_, _, ref_count, _) = counts(src, "Rust");
 
         assert_eq!(ref_count, 8);
     }
@@ -242,7 +242,7 @@ mod tests {
                 a *= 2;
             }
         "#;
-        let (_, _, ref_count) = counts(src, "Rust");
+        let (_, _, ref_count, _) = counts(src, "Rust");
 
         assert_eq!(ref_count, 3);
     }
@@ -258,7 +258,7 @@ mod tests {
                 S { field: a, b };
             }
         "#;
-        let (_, _, ref_count) = counts(src, "Rust");
+        let (_, _, ref_count, _) = counts(src, "Rust");
 
         assert_eq!(ref_count, 5);
     }
@@ -273,7 +273,7 @@ mod tests {
                 a.foo();
             }
         "#;
-        let (_, _, ref_count) = counts(src, "Rust");
+        let (_, _, ref_count, _) = counts(src, "Rust");
 
         assert_eq!(ref_count, 2);
     }
@@ -287,7 +287,7 @@ mod tests {
                 foo(a, b);
             }
         "#;
-        let (_, _, ref_count) = counts(src, "Rust");
+        let (_, _, ref_count, _) = counts(src, "Rust");
 
         assert_eq!(ref_count, 2);
     }
@@ -400,24 +400,21 @@ mod tests {
                                 `use §intelligence§::language as lang;`,
                             ],
                         },
+                    ],
+                    imports: [
                         bleep {
-                            kind: "none",
                             context: "use §bleep§;",
                         },
                         test_utils {
-                            kind: "none",
                             context: "use super::§test_utils§;",
                         },
                         lang {
-                            kind: "none",
                             context: "use intelligence::language as §lang§;",
                         },
                         TextRange {
-                            kind: "none",
                             context: "use crate::text_range::{§TextRange§, Point};",
                         },
                         Point {
-                            kind: "none",
                             context: "use crate::text_range::{TextRange, §Point§};",
                         },
                     ],

@@ -22,6 +22,7 @@ use console_subscriber as _;
 #[cfg(target_os = "windows")]
 use dunce::canonicalize;
 use scc::hash_map::Entry;
+use secrecy::SecretString;
 #[cfg(not(target_os = "windows"))]
 use std::fs::canonicalize;
 
@@ -39,6 +40,7 @@ use tracing_subscriber::EnvFilter;
 mod background;
 mod collector;
 mod config;
+mod db;
 mod env;
 mod remotes;
 mod repo;
@@ -113,6 +115,8 @@ impl Application {
 
         let config = Arc::new(config);
         debug!(?config, "effective configuration");
+
+        db::init(&config).await?;
 
         // Initialise Semantic index if `qdrant_url` set in config
         let semantic = match config.qdrant_url {
@@ -293,6 +297,35 @@ impl Application {
     /// clear the conversation history for a user
     pub fn purge_prior_conversation(&self, user_id: &str) {
         self.prior_conversational_store.remove(user_id);
+    }
+
+    pub fn github_token(&self) -> Result<Option<SecretString>> {
+        Ok(if self.env.allow(env::Feature::GithubDeviceFlow) {
+            let Some(cred) = self.credentials.github() else {
+                bail!("missing Github token");
+            };
+
+            use remotes::github::{Auth, State};
+            match cred {
+                State {
+                    auth:
+                        Auth::OAuth {
+                            access_token: token,
+                            ..
+                        },
+                    ..
+                } => Some(token),
+
+                State {
+                    auth: Auth::App { .. },
+                    ..
+                } => {
+                    bail!("cannot connect to answer API using installation token");
+                }
+            }
+        } else {
+            None
+        })
     }
 }
 

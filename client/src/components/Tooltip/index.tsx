@@ -70,12 +70,12 @@ const Tooltip = ({ text, placement, children }: PropsWithChildren<Props>) => {
       render={(attrs) => (
         <span
           {...attrs}
-          className={`flex w-fit group-custom-hover:visible z-50 ${
+          className={`flex w-fit group-custom-hover:visible z-50 shadow-high ${
             positionsMap[attrs['data-placement']]
           }`}
         >
           <span
-            className={`text-gray-700`}
+            className={`text-bg-shade`}
             style={
               attrs['data-placement']?.startsWith('top') ||
               attrs['data-placement']?.startsWith('bottom')
@@ -90,7 +90,7 @@ const Tooltip = ({ text, placement, children }: PropsWithChildren<Props>) => {
             {getTail(attrs['data-placement'])}
           </span>
           <span
-            className={`inline-block w-max px-3 py-2 w-fit bg-gray-700 rounded text-center text-gray-300 text-xs`}
+            className={`inline-block w-max px-3 py-2 bg-bg-shade rounded text-center text-label-title text-xs`}
           >
             {text}
           </span>

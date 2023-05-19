@@ -15,6 +15,7 @@ import {
 } from '../../consts/animations';
 import { saveJsonToStorage, SEARCH_HISTORY_KEY } from '../../services/storage';
 import useAppNavigation from '../../hooks/useAppNavigation';
+import { SearchType } from '../../types/general';
 import FilterSection from './FilterSection';
 
 type Props = {
@@ -24,14 +25,8 @@ type Props = {
 };
 
 const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
-  const {
-    filters,
-    setFilters,
-    inputValue,
-    setInputValue,
-    setSearchHistory,
-    searchType,
-  } = useContext(SearchContext);
+  const { filters, setFilters, inputValue, setInputValue, setSearchHistory } =
+    useContext(SearchContext);
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [newFilters, setNewFilters] = useState(filters);
   const [hasFiltersChanged, setFiltersChanged] = useState(false);
@@ -79,16 +74,20 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
     }
 
     setFilters(newFilters);
-    navigateSearch(result, searchType);
+    navigateSearch(result);
     setSearchHistory((prev) => {
       const newHistory = [
-        { searchType, query: result, timestamp: new Date().toISOString() },
+        {
+          searchType: SearchType.REGEX,
+          query: result,
+          timestamp: new Date().toISOString(),
+        },
         ...prev,
       ].slice(0, 29);
       saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
       return newHistory;
     });
-  }, [newFilters, searchType]);
+  }, [newFilters]);
 
   const handleFiltersChange = useCallback(
     (s: number, i: number, b: boolean) => {
@@ -133,7 +132,7 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
 
   return (
     <motion.div
-      className={`text-gray-300 border-r border-gray-800  flex-shrink-0 select-none overflow-x-hidden relative`}
+      className={`bg-bg-base border-r border-bg-border flex-shrink-0 select-none overflow-x-hidden relative`}
       animate={{ width: isOpen ? '20.25rem' : '5rem' }}
       transition={FILTER_PARENT_ANIMATION}
     >
@@ -142,7 +141,7 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
       >
         {showHeader && (
           <div
-            className={`px-8 subhead-m py-6 border-b border-gray-800 flex items-center justify-between ${
+            className={`px-8 subhead-m py-6 border-b border-bg-border flex items-center justify-between ${
               isOpen ? 'px-8' : 'px-6'
             }`}
           >

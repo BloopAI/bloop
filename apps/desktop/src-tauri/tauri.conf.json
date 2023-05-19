@@ -92,7 +92,11 @@
         "height": 900,
         "resizable": true,
         "title": "bloop",
-        "width": 1200
+        "width": 1400,
+        "hiddenTitle": true,
+        "titleBarStyle": "Overlay",
+        "minHeight": 700,
+        "minWidth": 1000
       }
     ]
   }

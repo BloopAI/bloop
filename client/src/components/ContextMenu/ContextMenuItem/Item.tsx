@@ -7,9 +7,9 @@ import Tooltip from '../../Tooltip';
 
 export type ItemProps = {
   text: string | React.ReactElement;
-  href?: string;
   icon?: React.ReactElement;
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
+  onMouseOver?: () => void;
   onDelete?: () => void;
   type: MenuItemType;
   disabled?: boolean;
@@ -22,14 +22,15 @@ const Item = ({
   icon,
   type,
   onDelete,
-  href,
   disabled,
   tooltip,
+  onMouseOver,
 }: ItemProps) => {
   const [selected, setSelected] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     if (disabled) {
       return;
     }
@@ -45,22 +46,19 @@ const Item = ({
     }
   };
 
-  const Comp =
-    type === MenuItemType.LINK
-      ? (props: any) => <a {...props} href={href} />
-      : (props: any) => <span {...props} />;
-
   const item = (
-    <Comp
-      className={`p-2.5 group ${
+    <button
+      className={`p-2.5 group w-full text-left ${
         disabled
-          ? 'text-gray-500 cursor-default'
+          ? 'text-label-muted cursor-default'
           : type === MenuItemType.DANGER
-          ? 'hover:bg-gray-700 text-danger-600 cursor-pointer'
-          : 'hover:bg-gray-700 text-gray-300 cursor-pointer'
+          ? 'hover:bg-bg-base-hover active:bg-transparent text-bg-danger cursor-pointer'
+          : 'hover:bg-bg-base-hover active:bg-transparent text-label-base hover:text-label-title focus:text-label-title active:text-label-title cursor-pointer'
       } flex items-center justify-between rounded text-sm duration-100`}
       onClick={handleClick}
       disabled={disabled}
+      onMouseOver={onMouseOver}
+      onFocus={onMouseOver}
     >
       {showConfirmation ? (
         <TextField value="Confirm" icon={<CheckIcon />} />
@@ -88,10 +86,16 @@ const Item = ({
           ) : (
             ''
           )}
-          {type === MenuItemType.SELECTABLE && selected ? <CheckIcon /> : ''}
+          {type === MenuItemType.SELECTABLE && selected ? (
+            <span className="w-5 h-5 text-bg-main">
+              <CheckIcon />
+            </span>
+          ) : (
+            ''
+          )}
         </span>
       )}
-    </Comp>
+    </button>
   );
 
   return tooltip ? (

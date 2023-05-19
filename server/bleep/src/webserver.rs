@@ -1,7 +1,6 @@
 use crate::{env::Feature, Application};
 
 use axum::{http::StatusCode, response::IntoResponse, routing::get, Extension, Json};
-use std::sync::Arc;
 use std::{borrow::Cow, net::SocketAddr};
 use tower::Service;
 use tower_http::services::{ServeDir, ServeFile};
@@ -62,11 +61,16 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))
         // misc
-        .route("/file", get(file::handle))
         .route("/search", get(semantic::complex_search))
+        .route("/file", get(file::handle))
+        .route("/answer", get(answer::handle))
         .route(
-            "/answer",
-            get(answer::handle).with_state(Arc::new(answer::AnswerState::default())),
+            "/answer/conversations",
+            get(answer::conversations::list).delete(answer::conversations::delete),
+        )
+        .route(
+            "/answer/conversations/:thread_id",
+            get(answer::conversations::thread),
         );
 
     if app.env.allow(Feature::AnyPathScan) {

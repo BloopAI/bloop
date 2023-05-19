@@ -3,12 +3,9 @@ import {
   MouseEvent,
   ReactElement,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
-import { motion } from 'framer-motion';
-import { hashCode } from '../../utils';
 import { Range } from '../../types/results';
 import BreadcrumbSection from './BreadcrumbSection';
 import BreadcrumbsCollapsed from './BreadcrumbsCollapsed';
@@ -24,20 +21,21 @@ export type PathParts = {
 type Props = {
   pathParts: PathParts[];
   path: string;
+  separator?: string;
+  limitSectionWidth?: boolean;
+  type?: 'link' | 'button';
   activeStyle?: 'primary' | 'secondary';
 };
 
-const breadcrumbVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.2 } },
-};
-
-const Breadcrumbs = ({ pathParts, path }: Props) => {
+const Breadcrumbs = ({
+  pathParts,
+  separator = '/',
+  type = 'link',
+  limitSectionWidth,
+}: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [formattedPathParts, setFormattedPathParts] =
     useState<(PathParts | PathParts[])[]>(pathParts);
-
-  const pathHash = useMemo(() => (path ? hashCode(path) : ''), [path]); // To tell if code has changed
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -78,32 +76,28 @@ const Breadcrumbs = ({ pathParts, path }: Props) => {
   }, [pathParts]);
 
   return (
-    <motion.div
-      className="flex items-center body-s flex-shrink-0 gap-1"
-      key={pathHash}
-      initial="hidden"
-      animate="visible"
-      variants={breadcrumbVariants}
-    >
+    <div className="flex items-center body-s flex-shrink-0 gap-1.5">
       {/* this div is hidden and used only to calculate the full width of breadcrumbs before truncation */}
       <div
-        className="fixed top-full opacity-0 left-0 flex flex-nowrap items-center body-s flex-shrink-0 gap-1"
+        className="fixed top-full opacity-0 left-0 flex flex-nowrap items-center body-s flex-shrink-0 gap-1.5"
         ref={containerRef}
       >
         {pathParts.map((p, i) => (
           <Fragment key={i}>
-            <span className="flex items-center gap-1 flex-shrink-0">
+            <span className={`flex items-center gap-1 flex-shrink-0`}>
               <BreadcrumbSection
                 icon={p.icon}
                 label={p.label}
                 onClick={p.onClick}
                 highlight={p.highlight}
                 isLast={i == formattedPathParts.length - 1}
+                type={type}
+                limitSectionWidth={limitSectionWidth}
               />
             </span>
             {i !== formattedPathParts.length - 1 && (
-              <span className="text-gray-500" data-role="separator">
-                /
+              <span className="text-label-muted" data-role="separator">
+                {separator}
               </span>
             )}
           </Fragment>
@@ -112,26 +106,28 @@ const Breadcrumbs = ({ pathParts, path }: Props) => {
       {formattedPathParts.map((p, i) => (
         <Fragment key={i + (Array.isArray(p) ? 'array' : 'item')}>
           {Array.isArray(p) ? (
-            <BreadcrumbsCollapsed items={p} />
+            <BreadcrumbsCollapsed items={p} type={type} />
           ) : (
-            <span className="flex items-center gap-1 flex-shrink-0">
+            <span className={`flex items-center gap-1 flex-shrink-0`}>
               <BreadcrumbSection
                 icon={p.icon}
                 label={p.label}
                 onClick={p.onClick}
                 highlight={p.highlight}
                 isLast={i == formattedPathParts.length - 1}
+                type={type}
+                limitSectionWidth={limitSectionWidth}
               />
             </span>
           )}
           {i !== formattedPathParts.length - 1 && (
-            <span className="text-gray-500" data-role="separator">
-              /
+            <span className="text-label-muted" data-role="separator">
+              {separator}
             </span>
           )}
         </Fragment>
       ))}
-    </motion.div>
+    </div>
   );
 };
 

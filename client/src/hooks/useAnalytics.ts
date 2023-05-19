@@ -29,16 +29,35 @@ const useAnalytics = () => {
     ({
       localRepos,
       githubRepos,
+      publicGithubRepos,
       where,
     }: {
       localRepos: number;
       githubRepos: number;
+      publicGithubRepos?: number;
       where: string;
     }) => {
       analytics?.track('Repos Selected', {
         localRepos,
         githubRepos,
+        publicGithubRepos,
         where,
+      });
+    },
+    [analytics],
+  );
+
+  const trackReposSynced = useCallback(
+    ({
+      localRepos,
+      githubRepos,
+    }: {
+      localRepos: number;
+      githubRepos: number;
+    }) => {
+      analytics?.track('Repos Synced', {
+        localRepos,
+        githubRepos,
       });
     },
     [analytics],
@@ -48,6 +67,7 @@ const useAnalytics = () => {
     trackSearch,
     trackReposSelected,
     trackUpvote,
+    trackReposSynced,
   };
 };
 

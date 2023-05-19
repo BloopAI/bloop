@@ -168,20 +168,20 @@
 
 ;; using System.Text
 ;; 
-;; `Text` is a def
+;; `Text` is an import
 (using_directive
   .
   (qualified_name
     (_)
     .
-    (identifier) @local.definition))
+    (identifier) @local.import))
 
 ;; using Named = System.Text;
 ;;
 ;; `Named` is a def
 (using_directive
   (name_equals
-    (identifier) @local.definition))
+    (identifier) @local.import))
 
 
 ;; refs

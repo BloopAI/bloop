@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { TippyProps } from '@tippyjs/react';
 import { ChevronDownFilled, ChevronUpFilled } from '../../../icons';
 import ContextMenu, { ContextMenuItem } from '../../ContextMenu';
 import Button from '../../Button';
@@ -11,10 +12,11 @@ type Props = {
   dropdownBtnClassName?: string;
   noChevron?: boolean;
   btnVariant?: 'primary' | 'secondary' | 'tertiary';
-  btnSize?: 'small' | 'medium' | 'large';
+  btnSize?: 'small' | 'medium' | 'large' | 'tiny';
   btnOnlyIcon?: boolean;
   lastItemFixed?: boolean;
-  isWide?: boolean;
+  size?: 'small' | 'medium' | 'large';
+  dropdownPlacement?: TippyProps['placement'];
 };
 
 const Dropdown = ({
@@ -27,7 +29,8 @@ const Dropdown = ({
   btnSize = 'medium',
   btnOnlyIcon,
   lastItemFixed,
-  isWide,
+  size = 'medium',
+  dropdownPlacement = 'bottom-start',
 }: Props) => {
   const [visible, setVisibility] = useState(false);
   const ref = useRef(null);
@@ -42,17 +45,21 @@ const Dropdown = ({
         handleClose={() => setVisibility(false)}
         closeOnClickOutside={false}
         lastItemFixed={lastItemFixed}
-        isWide={isWide}
+        size={size}
+        dropdownPlacement={dropdownPlacement}
       >
         <Button
           variant={btnVariant}
           size={btnSize}
           id="dropdownDefault"
           data-dropdown-toggle="dropdown"
-          className={`${visible ? 'text-gray-50' : ''} ${
+          className={`${visible ? 'text-label-title' : ''} ${
             dropdownBtnClassName || ''
           }`}
-          onClick={() => setVisibility(!visible)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setVisibility(!visible);
+          }}
           onlyIcon={btnOnlyIcon}
           title="Open dropdown"
         >
