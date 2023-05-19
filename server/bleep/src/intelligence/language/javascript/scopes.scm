@@ -8,6 +8,7 @@
   ;; nameless functions create scopes, just like arrow functions
   (function !name)
   (function_declaration)
+  (method_definition)
   (generator_function_declaration)
   (for_statement)
   (for_in_statement)
@@ -65,41 +66,145 @@
   (identifier) @local.definition.variable
   (identifier) @local.reference)
 
-;; for ([a, b] in thing)
-;;
-;; `a` & `b` are defs
-(array_pattern
+;; {x: y}
+(pair_pattern
+  (property_identifier)
   (identifier) @local.definition.variable)
 
-;; let {a, b} = obj;
-(object_pattern
-  (shorthand_property_identifier_pattern) @local.definition.variable)
-
 ;; var x = _
+;; var [x, y] = _
+;; var {x, y} = _
 (variable_declaration
   (variable_declarator . (identifier) @local.definition.variable))
+(variable_declaration
+  (variable_declarator 
+    name: (array_pattern
+            (identifier) @local.definition.variable)))
+(variable_declaration
+  (variable_declarator 
+    name: (object_pattern
+            (shorthand_property_identifier_pattern) @local.definition.variable)))
 
-;; const x = _
-(lexical_declaration
-  "const"
-  (variable_declarator . (identifier) @local.definition.constant))
+;; const _ = require(_) should produce imports
+(
+ (lexical_declaration
+   ["const" "let"]
+   (variable_declarator 
+     name: (identifier) @local.import
+     value: (call_expression 
+              function: (identifier) @_req_call)))
+  (#match? @_req_call "require")
+ )
 
-;; let x = _
-(lexical_declaration
-  "let"
-  (variable_declarator . (identifier) @local.definition.variable))
+;; const _ = anything_else should produce const defs
+;; let _ = anything_else should produce var defs
+(
+ (lexical_declaration
+   "const"
+   (variable_declarator 
+     name: (identifier) @local.definition.constant
+     value: (_) @_rest))
+  (#not-match? @_rest "require.*")
+ )
+(
+ (lexical_declaration
+   "let"
+   (variable_declarator 
+     name: (identifier) @local.definition.variable
+     value: (_) @_rest))
+  (#not-match? @_rest "require.*")
+ )
+
+;; perform above dance for pattern matching in const/let patterns
+;; - import when
+;;   * const/let with object pattern
+;;   * const/let with array pattern
+;; - define a const when using
+;;   * const with object pattern
+;;   * const with array pattern
+;; - define a variable when using
+;;   * let with object pattern
+;;   * let with array pattern
+
+;; case 1 (imports):
+(
+ (lexical_declaration
+   ["const" "let"]
+   (variable_declarator 
+     name: 
+     (object_pattern
+       (shorthand_property_identifier_pattern) @local.import)
+     value: (call_expression 
+              function: (identifier) @_req_call)))
+ (#match? @_req_call "require")
+)
+(
+ (lexical_declaration
+   ["const" "let"]
+   (variable_declarator 
+     name: 
+      (array_pattern
+        (identifier) @local.import)
+     value: (call_expression 
+              function: (identifier) @_req_call)))
+ (#match? @_req_call "require")
+)
+
+;; case 2:
+(
+ (lexical_declaration
+   "const"
+   (variable_declarator 
+     name: 
+     (object_pattern
+       (shorthand_property_identifier_pattern) @local.definition.constant)
+     value: (_) @_rest))
+  (#not-match? @_rest "require.*")
+)
+(
+ (lexical_declaration
+   "let"
+   (variable_declarator 
+     name: 
+     (object_pattern
+       (shorthand_property_identifier_pattern) @local.definition.variable)
+     value: (_) @_rest))
+  (#not-match? @_rest "require.*")
+)
+
+;; case 3:
+(
+ (lexical_declaration
+   "const"
+   (variable_declarator 
+     name: 
+      (array_pattern
+        (identifier) @local.definition.constant)
+     value: (_) @_rest))
+  (#not-match? @_rest "require.*")
+)
+(
+ (lexical_declaration
+   "let"
+   (variable_declarator 
+     name: 
+      (array_pattern
+        (identifier) @local.definition.variable)
+     value: (_) @_rest))
+  (#not-match? @_rest "require.*")
+)
+
 
 ;; a = b
 (assignment_expression
-  .
-  (identifier) @local.definition.variable)
+  left: (identifier) @local.definition.variable)
 
 ;; method def
 ;;
 ;; TODO: support getters and setters here, blocked on:
 ;; https://github.com/tree-sitter/tree-sitter/issues/1461
 (method_definition
-  (property_identifier) @local.definition.method)
+  (property_identifier) @hoist.definition.method)
 
 ;; class
 (class_declaration
@@ -114,19 +219,19 @@
 (arrow_function
   (identifier) @local.definition.variable)
 
-;; imports are defs, but of unknown kinds
+;; imports
 
 ;; import defaultMember from "module";
 (import_statement
-  (import_clause (identifier) @local.definition))
+  (import_clause (identifier) @local.import))
 
 ;; import { member } from "module";
 ;; import { member as alias } from "module";
 (import_statement
   (import_clause
     (named_imports
-      [(import_specifier !alias (identifier) @local.definition)
-       (import_specifier alias: (identifier) @local.definition)])))
+      [(import_specifier !alias (identifier) @local.import)
+       (import_specifier alias: (identifier) @local.import)])))
 
 ;; for (item in list)
 ;;
@@ -202,6 +307,11 @@
 (update_expression
   (identifier) @local.reference)
 
+;; a = b
+;; `b` is a ref
+(assignment_expression
+  right: (identifier) @local.reference)
+
 ;; a += b
 (augmented_assignment_expression
   (identifier) @local.reference)
@@ -220,6 +330,11 @@
 
 ;; {...object}
 (spread_element
+  (identifier) @local.reference)
+
+;; chass _ extends T
+;; `T` is a ref
+(class_heritage
   (identifier) @local.reference)
 
 ;; exports are refs
@@ -257,4 +372,8 @@
   (identifier) @local.reference)
 
 (jsx_self_closing_element
+  (identifier) @local.reference)
+
+;; template strings
+(template_substitution
   (identifier) @local.reference)

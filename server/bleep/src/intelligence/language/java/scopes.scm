@@ -131,19 +131,19 @@
 (lambda_expression
   parameters: (identifier) @local.definition.local)
 
-;; imports are defs
+;; imports
 ;;
 ;; import item;
-;;        ^^^^ is a def
+;;        ^^^^ is an import
 (import_declaration 
-  (identifier) @local.definition)
+  (identifier) @local.import)
 
 ;; import java.util.Vector;
-;;                  ^^^^^^ is a def
+;;                  ^^^^^^ is an import
 (import_declaration 
   (scoped_identifier
     (_)
-    (identifier) @local.definition))
+    (identifier) @local.import))
 
 ;; labels
 (labeled_statement 

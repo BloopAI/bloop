@@ -289,8 +289,39 @@ pub(super) async fn handle(
             let (repo_wide_definitions, repo_wide_references) =
                 handle_reference_repo_wide(token, kind, current_file, &all_docs);
 
-            // merge the two
-            let definitions = merge([local_definitions], repo_wide_definitions);
+            // if we already have a local-def, do not search globally
+            let definitions = if local_definitions.data.is_empty() {
+                merge([], repo_wide_definitions)
+            } else {
+                merge([local_definitions], [])
+            };
+            let references = merge([local_references], repo_wide_references);
+
+            Ok(json(TokenInfoResponse::Reference {
+                definitions,
+                references,
+            }))
+        }
+
+        // we are at an import:
+        //
+        // an import is in an of itself a "definition" of a name in the current tree,
+        // it is the first time a name is introduced in a tree. however the original
+        // definition of this name can only exist in other trees (or not exist at all).
+        NodeKind::Import(i) => {
+            // fetch local refs with scope-graph
+            let local_references = handle_definition_local(scope_graph, idx, &content);
+
+            // fetch repo-wide defs with trivial search
+            let token = i.name(src.as_bytes());
+            let (repo_wide_definitions, repo_wide_references) =
+                handle_reference_repo_wide(token, kind, current_file, &all_docs);
+
+            let definitions = repo_wide_definitions
+                .into_iter()
+                .filter(FileSymbols::is_populated)
+                .collect();
+
             let references = merge([local_references], repo_wide_references);
 
             Ok(json(TokenInfoResponse::Reference {

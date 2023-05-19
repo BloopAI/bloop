@@ -12,6 +12,7 @@ use petgraph::{
 pub struct ScopeDebug {
     range: TextRange,
     defs: Vec<DefDebug>,
+    imports: Vec<ImportDebug>,
     scopes: Vec<ScopeDebug>,
     language: &'static TSLanguageConfig,
 }
@@ -26,6 +27,13 @@ struct DefDebug {
 
 struct RefDebug {
     context: String,
+}
+
+struct ImportDebug {
+    name: String,
+    range: TextRange,
+    context: String,
+    refs: Vec<RefDebug>,
 }
 
 impl DefDebug {
@@ -50,11 +58,27 @@ impl DefDebug {
     }
 }
 
+impl ImportDebug {
+    fn new(range: TextRange, name: String, refs: Vec<TextRange>, src: &[u8]) -> Self {
+        Self {
+            name,
+            range,
+            context: context(range, src),
+            refs: refs
+                .into_iter()
+                .map(|r| context(r, src))
+                .map(|context| RefDebug { context })
+                .collect(),
+        }
+    }
+}
+
 impl ScopeDebug {
     fn empty(range: TextRange, language: &'static TSLanguageConfig) -> Self {
         Self {
             range,
             defs: Vec::new(),
+            imports: Vec::new(),
             scopes: Vec::new(),
             language,
         }
@@ -97,8 +121,32 @@ impl ScopeDebug {
             })
             .collect::<Vec<_>>();
 
-        // sort defs by their ranges
-        defs.sort_by(|a, b| a.range.cmp(&b.range));
+        let mut imports = graph
+            .edges_directed(start, Direction::Incoming)
+            .filter(|edge| *edge.weight() == EdgeKind::ImportToScope)
+            .map(|edge| {
+                let imp_node = edge.source();
+
+                // range of this import
+                let range = graph[imp_node].range();
+
+                // text source of this import
+                let text = std::str::from_utf8(&src[range.start.byte..range.end.byte])
+                    .unwrap()
+                    .to_owned();
+
+                // all references of this import, sorted by range
+                let mut refs = graph
+                    .edges_directed(imp_node, Direction::Incoming)
+                    .filter(|edge| *edge.weight() == EdgeKind::RefToImport)
+                    .map(|edge| graph[edge.source()].range())
+                    .collect::<Vec<_>>();
+
+                refs.sort();
+
+                ImportDebug::new(range, text, refs, src)
+            })
+            .collect::<Vec<_>>();
 
         let mut scopes = graph
             .edges_directed(start, Direction::Incoming)
@@ -111,9 +159,15 @@ impl ScopeDebug {
             })
             .collect::<Vec<_>>();
 
+        // sort defs by their ranges
+        defs.sort_by(|a, b| a.range.cmp(&b.range));
+        // sort imports by their ranges
+        imports.sort_by(|a, b| a.range.cmp(&b.range));
+        // sort scopes by their ranges
         scopes.sort_by(|a, b| a.range.cmp(&b.range));
 
         self.defs = defs;
+        self.imports = imports;
         self.scopes = scopes;
     }
 
@@ -131,10 +185,18 @@ impl ScopeDebug {
 
 impl fmt::Debug for ScopeDebug {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("scope")
-            .field("definitions", &self.defs)
-            .field("child scopes", &self.scopes)
-            .finish()
+        if self.imports.is_empty() {
+            f.debug_struct("scope")
+                .field("definitions", &self.defs)
+                .field("child scopes", &self.scopes)
+                .finish()
+        } else {
+            f.debug_struct("scope")
+                .field("definitions", &self.defs)
+                .field("imports", &self.imports)
+                .field("child scopes", &self.scopes)
+                .finish()
+        }
     }
 }
 
@@ -144,6 +206,20 @@ impl fmt::Debug for DefDebug {
         let d = s
             .field("kind", &self.symbol)
             .field("context", &self.context);
+
+        if self.refs.is_empty() {
+            d
+        } else {
+            d.field(&format!("referenced in ({})", self.refs.len()), &self.refs)
+        }
+        .finish()
+    }
+}
+
+impl fmt::Debug for ImportDebug {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = f.debug_struct(&self.name);
+        let d = s.field("context", &self.context);
 
         if self.refs.is_empty() {
             d

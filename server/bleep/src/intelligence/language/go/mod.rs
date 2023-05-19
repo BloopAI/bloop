@@ -27,7 +27,7 @@ mod tests {
             const two, three = 2, 3
             "#;
 
-        let (_, d, _) = counts(src, "Go");
+        let (_, d, _, _) = counts(src, "Go");
         assert_eq!(d, 3);
     }
 
@@ -37,7 +37,7 @@ mod tests {
             const one uint64 = 1
             const two, three uint64 = 2, 3
             "#;
-        let (_, d, _) = counts(src, "Go");
+        let (_, d, _, _) = counts(src, "Go");
         assert_eq!(d, 3);
     }
 
@@ -49,7 +49,7 @@ mod tests {
                 one = 1
             )
         "#;
-        let (_, d, _) = counts(src, "Go");
+        let (_, d, _, _) = counts(src, "Go");
         assert_eq!(d, 2);
     }
 
@@ -61,7 +61,7 @@ mod tests {
                 one
             )
         "#;
-        let (_, d, _) = counts(src, "Go");
+        let (_, d, _, _) = counts(src, "Go");
         assert_eq!(d, 2);
     }
 
@@ -74,7 +74,7 @@ mod tests {
             var one, two = 1, 2
             var three, four, five = 3, 4, 5
         "#;
-        let (_, d, _) = counts(src, "Go");
+        let (_, d, _, _) = counts(src, "Go");
         assert_eq!(d, 6);
     }
 
@@ -86,7 +86,7 @@ mod tests {
             var zero uint64 = 0
             var one, two uint64 = 1, 2
         "#;
-        let (_, d, _) = counts(src, "Go");
+        let (_, d, _, _) = counts(src, "Go");
         assert_eq!(d, 3);
     }
 
@@ -100,7 +100,7 @@ mod tests {
                 one = 1
             )
         "#;
-        let (_, d, _) = counts(src, "Go");
+        let (_, d, _, _) = counts(src, "Go");
         assert_eq!(d, 2);
     }
 
@@ -114,7 +114,7 @@ mod tests {
         "#;
 
         // main, x, res, err
-        let (_, d, _) = counts(src, "Go");
+        let (_, d, _, _) = counts(src, "Go");
         assert_eq!(d, 4);
     }
 
@@ -129,7 +129,7 @@ mod tests {
             func f4(result int, err error) {}       // declares result, err
             func f5(x ... uint64, y ... uint64) {}  // declares x, y
         "#;
-        let (_, d, _) = counts(src, "Go");
+        let (_, d, _, _) = counts(src, "Go");
 
         // f1, f2, f3, f4, f5, result, err, x, y
         assert_eq!(d, 9);
@@ -148,7 +148,7 @@ mod tests {
             type s struct {}
             type i interface {}
         "#;
-        let (_, d, _) = counts(src, "Go");
+        let (_, d, _, _) = counts(src, "Go");
         assert_eq!(d, 5);
     }
 
@@ -162,7 +162,7 @@ mod tests {
                 b uint64
             )
         "#;
-        let (_, d, _) = counts(src, "Go");
+        let (_, d, _, _) = counts(src, "Go");
         assert_eq!(d, 2);
     }
 
@@ -177,7 +177,7 @@ mod tests {
         "#;
 
         // main, loop
-        let (_, d, _) = counts(src, "Go");
+        let (_, d, _, _) = counts(src, "Go");
         assert_eq!(d, 2);
     }
 
@@ -190,7 +190,7 @@ mod tests {
         "#;
 
         // main, t
-        let (_, d, _) = counts(src, "Go");
+        let (_, d, _, _) = counts(src, "Go");
         assert_eq!(d, 2);
     }
 
@@ -205,7 +205,7 @@ mod tests {
         "#;
 
         // 3 refs to a, 3 refs to b
-        let (_, _, r) = counts(src, "Go");
+        let (_, _, r, _) = counts(src, "Go");
         assert_eq!(r, 6);
     }
 
@@ -220,7 +220,7 @@ mod tests {
             }
         "#;
 
-        let (_, _, r) = counts(src, "Go");
+        let (_, _, r, _) = counts(src, "Go");
         assert_eq!(r, 2);
     }
 
@@ -234,7 +234,7 @@ mod tests {
             }
         "#;
 
-        let (_, _, r) = counts(src, "Go");
+        let (_, _, r, _) = counts(src, "Go");
         assert_eq!(r, 2);
     }
 
@@ -247,7 +247,7 @@ mod tests {
             }
         "#;
 
-        let (_, _, r) = counts(src, "Go");
+        let (_, _, r, _) = counts(src, "Go");
         assert_eq!(r, 1);
     }
 
@@ -260,7 +260,7 @@ mod tests {
             }
         "#;
 
-        let (_, _, r) = counts(src, "Go");
+        let (_, _, r, _) = counts(src, "Go");
         assert_eq!(r, 1);
     }
 
@@ -277,7 +277,7 @@ mod tests {
             }
         "#;
 
-        let (_, _, r) = counts(src, "Go");
+        let (_, _, r, _) = counts(src, "Go");
 
         // p (variable ref), person (type ref)
         assert_eq!(r, 2);
@@ -292,7 +292,7 @@ mod tests {
             }
         "#;
 
-        let (_, _, r) = counts(src, "Go");
+        let (_, _, r, _) = counts(src, "Go");
         assert_eq!(r, 1);
     }
 
@@ -305,7 +305,7 @@ mod tests {
             }
         "#;
 
-        let (_, _, r) = counts(src, "Go");
+        let (_, _, r, _) = counts(src, "Go");
         assert_eq!(r, 1);
     }
 
@@ -332,7 +332,7 @@ mod tests {
             }
         "#;
 
-        let (_, _, r) = counts(src, "Go");
+        let (_, _, r, _) = counts(src, "Go");
         assert_eq!(r, 10);
     }
 
@@ -347,7 +347,7 @@ mod tests {
             }
             func f3() {}
         "#;
-        let (_, d, r) = counts(src, "Go");
+        let (_, d, r, _) = counts(src, "Go");
 
         // f1, f1::a, f2, f3
         assert_eq!(d, 4);
@@ -580,18 +580,19 @@ mod tests {
             expect![[r#"
                 scope {
                     definitions: [
-                        x {
-                            kind: "module",
-                            context: "import §x§ \"github.com/golang/go/x\"",
-                            referenced in (1): [
-                                `var t §x§.Type := 2`,
-                            ],
-                        },
                         t {
                             kind: "var",
                             context: "var §t§ x.Type := 2",
                             referenced in (1): [
                                 `§t§++`,
+                            ],
+                        },
+                    ],
+                    imports: [
+                        x {
+                            context: "import §x§ \"github.com/golang/go/x\"",
+                            referenced in (1): [
+                                `var t §x§.Type := 2`,
                             ],
                         },
                     ],

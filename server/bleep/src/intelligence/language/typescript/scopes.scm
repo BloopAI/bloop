@@ -128,19 +128,20 @@
 (arrow_function
   (identifier) @local.definition.variable)
 
-;; imports are defs, but of unknown kinds
+
+;; imports
 
 ;; import defaultMember from "module";
 (import_statement
-  (import_clause (identifier) @local.definition))
+  (import_clause (identifier) @local.import))
 
 ;; import { member } from "module";
 ;; import { member as alias } from "module";
 (import_statement
   (import_clause
     (named_imports
-      [(import_specifier !alias (identifier) @local.definition)
-       (import_specifier alias: (identifier) @local.definition)])))
+      [(import_specifier !alias (identifier) @local.import)
+       (import_specifier alias: (identifier) @local.import)])))
 
 ;; for (item in list)
 ;;
