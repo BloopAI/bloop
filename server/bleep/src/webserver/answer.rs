@@ -513,9 +513,8 @@ impl Conversation {
                     .await
                     .with_context(|| format!("failed to read path: {path}"))?
                     .content
-                    .split('\n')
-                    .enumerate()
-                    .map(|(i, line)| format!("{} {line}", i + 1))
+                    .lines()
+                    .map(str::to_owned)
                     .collect::<Vec<_>>();
 
                 Result::<_>::Ok((lines, path))
@@ -523,7 +522,7 @@ impl Conversation {
             // Buffer file loading to load multiple paths at once
             .buffered(10)
             .and_then(|(lines, path): (Vec<String>, String)| async move {
-                const MAX_TOKENS: usize = 3400;
+                const MAX_TOKENS: usize = 3200;
                 const LINE_OVERLAP: usize = 3;
 
                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
@@ -569,6 +568,21 @@ impl Conversation {
                     #[serde(flatten)]
                     range: Range,
                     code: String,
+                }
+
+                impl RelevantChunk {
+                    fn enumerate_lines(&self) -> Self {
+                        Self {
+                            range: self.range,
+                            code: self
+                                .code
+                                .lines()
+                                .enumerate()
+                                .map(|(i, line)| format!("{} {line}", i + self.range.start))
+                                .collect::<Vec<_>>()
+                                .join("\n"),
+                        }
+                    }
                 }
 
                 let mut line_ranges: Vec<Range> = serde_json::from_str::<Vec<Range>>(&json)?
@@ -635,10 +649,15 @@ impl Conversation {
 
         let out = processed
             .into_iter()
-            .map(|(relevant_chunks, path)| serde_json::json!({
-                "relevant_chunks": relevant_chunks,
-                "path": path,
-            }))
+            .map(|(relevant_chunks, path)| {
+                serde_json::json!({
+                    "relevant_chunks": relevant_chunks
+                        .iter()
+                        .map(|c| c.enumerate_lines())
+                        .collect::<Vec<_>>(),
+                    "path": path,
+                })
+            })
             .collect::<Vec<_>>();
 
         ctx.track_query(
