@@ -20,11 +20,11 @@
 }
 [data-theme="kimbie-dark"] pre[class*="language-"]::-moz-selection, [data-theme="kimbie-dark"] pre[class*="language-"] ::-moz-selection, [data-theme="kimbie-dark"] code[class*="language-"]::-moz-selection, [data-theme="kimbie-dark"] code[class*="language-"] ::-moz-selection {
     text-shadow: none;
-    background: #84613d aa;
+    background: #84613daa;
 }
 [data-theme="kimbie-dark"] pre[class*="language-"]::selection, [data-theme="kimbie-dark"] pre[class*="language-"] ::selection, [data-theme="kimbie-dark"] code[class*="language-"]::selection, [data-theme="kimbie-dark"] code[class*="language-"] ::selection {
     text-shadow: none;
-    background: #84613d aa;
+    background: #84613daa;
 }
 @media print {
     [data-theme="kimbie-dark"] code[class*="language-"], [data-theme="kimbie-dark"] pre[class*="language-"] {

@@ -201,15 +201,12 @@ function SearchInput() {
       if (!val.trim()) {
         return;
       }
-      const search = val.includes(`repo:${tab.name}`)
-        ? val
-        : `${val} repo:${tab.name}`;
-      navigateSearch(search);
+      navigateSearch(val);
       closeMenu();
       setSearchHistory((prev) => {
         const newHistory = [
           {
-            query: search,
+            query: val,
             searchType: SearchType.REGEX,
             timestamp: new Date().toISOString(),
           },

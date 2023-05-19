@@ -1,18 +1,26 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import Code from '../../components/CodeBlock/Code';
 import Button from '../../components/Button';
 import { Clipboard } from '../../icons';
-import { copyToClipboard, splitPathForBreadcrumbs } from '../../utils';
+import { copyToClipboard } from '../../utils';
 import FileIcon from '../../components/FileIcon';
 import { MessageResultModify } from '../../types/general';
-import Breadcrumbs from '../../components/Breadcrumbs';
+import { FileTreeFileType } from '../../types';
+import BreadcrumbsPath from '../../components/BreadcrumbsPath';
+import FileModalContainer from '../ResultModal/FileModalContainer';
 
 type Props = {
   data: MessageResultModify['Modify'];
+  repoName: string;
 };
 
-const DiffCode = ({ data }: Props) => {
+const DiffCode = ({ data, repoName }: Props) => {
   const [showRaw, setShowRaw] = useState(false);
+  const [isModalOpen, setModalOpen] = useState(false);
+  const [scrollToLine, setScrollToLine] = useState<string | undefined>(
+    undefined,
+  );
+
   const rawCode = useMemo(
     () =>
       data.diff.lines
@@ -22,17 +30,29 @@ const DiffCode = ({ data }: Props) => {
     [data.diff.lines],
   );
 
+  const onResultClick = useCallback(
+    (path: string, lineNumber?: number[]) => {
+      setScrollToLine(lineNumber ? lineNumber.join('_') : undefined);
+      setModalOpen(true);
+    },
+    [repoName],
+  );
+
   return (
     <div className="text-sm border border-bg-border rounded-md">
       <div className="w-full bg-bg-base p-3 border-b border-bg-border select-none flex items-center justify-between">
-        <div className="flex items-center gap-2 max-w-[calc(100%-120px)] w-full">
+        <div
+          className="flex items-center gap-2 max-w-[calc(100%-120px)] w-full cursor-pointer"
+          onClick={() => onResultClick(data.path)}
+        >
           <FileIcon filename={data.path} />
-          <div className="overflow-hidden">
-            <Breadcrumbs
-              pathParts={splitPathForBreadcrumbs(data.path, () => {})}
-              path={data.path}
-            />
-          </div>
+          <BreadcrumbsPath
+            path={data.path}
+            repo={repoName}
+            onClick={(path, type) =>
+              type === FileTreeFileType.FILE ? onResultClick(path) : {}
+            }
+          />
         </div>
         <div className="flex items-center justify-center p-0.5 gap-0.5 bg-bg-sub rounded-4">
           <button
@@ -80,6 +100,13 @@ const DiffCode = ({ data }: Props) => {
           </div>
         </div>
       ) : null}
+      <FileModalContainer
+        repoName={repoName}
+        path={data.path}
+        isOpen={isModalOpen}
+        onClose={() => setModalOpen(false)}
+        scrollToLine={scrollToLine}
+      />
     </div>
   );
 };

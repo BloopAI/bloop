@@ -1,8 +1,8 @@
-import React, { useCallback, useState } from 'react';
 import LocalReposStep from '../../Onboarding/LocalReposStep';
 import GithubReposStep from '../../Onboarding/GithubReposStep';
 import SeparateOnboardingStep from '../../../components/SeparateOnboardingStep';
 import PublicGithubReposStep from '../../Onboarding/PublicGithubReposStep';
+import useAnalytics from '../../../hooks/useAnalytics';
 
 type Props = {
   addRepos: null | 'local' | 'github' | 'public';
@@ -10,12 +10,7 @@ type Props = {
 };
 
 const AddRepos = ({ addRepos, onClose }: Props) => {
-  const [isFolderChosen, setFolderChosen] = useState(false);
-  const onFolderChosen = useCallback(() => {
-    setFolderChosen(true);
-  }, []);
   const handleClose = () => {
-    setFolderChosen(false);
     onClose(false);
   };
   const handleSubmit = () => {

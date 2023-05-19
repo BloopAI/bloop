@@ -80,11 +80,15 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
         searchQuery(buildRepoQuery(navigatedItem.repo, navigatedItem.path));
         break;
       case 'home':
+      case 'conversation-result':
         break;
       default:
-        searchQuery(navigatedItem.query!, navigatedItem.page, globalRegex);
+        const search = navigatedItem.query!.includes(`repo:${tab.name}`)
+          ? navigatedItem.query!
+          : `${navigatedItem.query} repo:${tab.name}`;
+        searchQuery(search, navigatedItem.page, globalRegex);
     }
-  }, [navigatedItem, tab.key]);
+  }, [navigatedItem, tab.key, tab.name]);
 
   const getRenderPage = useCallback(() => {
     let renderPage: RenderPage;
