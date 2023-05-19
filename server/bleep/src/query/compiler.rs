@@ -160,16 +160,21 @@ fn plan_to_query(plan: planner::Fragment, field: Field, case_sensitive: bool) ->
     match plan {
         planner::Fragment::Literal(s) => {
             let queries = trigrams(&s)
-                .flat_map(|s| {
-                    if case_sensitive {
+                .map(|s| {
+                    let tokens = if case_sensitive {
                         Either::Left(std::iter::once(s))
                     } else {
                         Either::Right(case_permutations(&s))
-                    }
+                    };
+
+                    let subqueries = tokens
+                        .map(|token| Term::from_field_text(field, &token))
+                        .map(|term| TermQuery::new(term, IndexRecordOption::WithFreqs))
+                        .map(|q| Box::new(q) as DynQuery)
+                        .collect::<Vec<_>>();
+
+                    Box::new(BooleanQuery::union(subqueries)) as DynQuery
                 })
-                .map(|token| Term::from_field_text(field, &token))
-                .map(|term| TermQuery::new(term, IndexRecordOption::WithFreqs))
-                .map(|q| Box::new(q) as DynQuery)
                 .collect::<Vec<_>>();
 
             Box::new(BooleanQuery::intersection(queries))
