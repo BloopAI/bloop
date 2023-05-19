@@ -137,7 +137,8 @@ impl<'a> Query<'a> {
     }
 
     pub fn is_case_sensitive(&self) -> bool {
-        self.case_sensitive.unwrap_or(true)
+        // defaults to false if unset
+        self.case_sensitive.unwrap_or_default()
     }
 
     fn set_global_regex(&mut self, value: Option<bool>) {
