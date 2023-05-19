@@ -262,7 +262,7 @@
       --label-control: 255, 255, 255;
       --label-faint: 57, 57, 57;
       --label-muted: 117, 113, 94;
-      --label-base: 204, 204, 199;
+      --label-base: 196, 192, 174;
       --label-title: 248, 248, 242;
       --label-link: 104, 141, 222;
       --chat-bg-sub: 30, 31, 28;
@@ -414,7 +414,7 @@
       --label-control: 255, 255, 255;
       --label-faint: 57, 57, 57;
       --label-muted: 98, 114, 164;
-      --label-base: 185, 185, 185;
+      --label-base: 162, 172, 199;
       --label-title: 248, 248, 242;
       --label-link: 104, 141, 222;
       --chat-bg-base: 33, 34, 44;
@@ -604,7 +604,7 @@
       --label-control: 255, 255, 255;
       --label-faint: 57, 57, 57;
       --label-muted: 95, 126, 151;
-      --label-base: 195, 195, 195;
+      --label-base: 178, 192, 217;
       --label-title: 210, 222, 231;
       --label-link: 104, 141, 222;
       --chat-bg-base: 22, 1, 39;
@@ -641,8 +641,8 @@
       --bg-success-hover: 33, 197, 94;
       --label-control: 255, 255, 255;
       --label-faint: 57, 57, 57;
-      --label-muted: 147, 161, 161;
-      --label-base: 195, 195, 195;
+      --label-muted: 133, 174, 176;
+      --label-base: 191, 218, 219;
       --label-title: 210, 222, 231;
       --label-link: 104, 141, 222;
       --chat-bg-base: 0, 43, 55;
@@ -679,8 +679,8 @@
       --bg-success-hover: 33, 197, 94;
       --label-control: 255, 255, 255;
       --label-faint: 57, 57, 57;
-      --label-muted: 147, 147, 147;
-      --label-base: 195, 195, 195;
+      --label-muted: 114, 133, 183;
+      --label-base: 168, 184, 222;
       --label-title: 210, 222, 231;
       --label-link: 104, 141, 222;
       --chat-bg-base: 43, 37, 56;
