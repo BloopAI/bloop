@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useMemo } from 'react';
 import NavBar from '../NavBar';
 import StatusBar from '../StatusBar';
 import Chat from '../Chat';
@@ -18,9 +18,13 @@ type Props = {
     | 'conversation-result';
 };
 
-const mainContainerStyle = { height: 'calc(100vh - 9.5rem)' };
 const PageTemplate = ({ children, withSearchBar, renderPage }: Props) => {
   const { setShowTooltip, setTooltipText } = useContext(ChatContext);
+
+  const mainContainerStyle = useMemo(
+    () => ({ height: `calc(100vh - ${withSearchBar ? '6rem' : '9.5rem'})` }),
+    [withSearchBar],
+  );
 
   useEffect(() => {
     let timerId: number;
