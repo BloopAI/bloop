@@ -88,10 +88,14 @@ export enum SearchType {
 
 export type UITabType = {
   key: string;
-  searchHistory?: string[];
   name: string;
   repoName: string;
   source: RepoSource;
+};
+
+export type TabHistoryType = {
+  tabKey: string;
+  history: SearchHistoryItem[];
 };
 
 export enum ReposFilter {
