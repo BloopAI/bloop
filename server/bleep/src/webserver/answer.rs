@@ -434,17 +434,18 @@ impl Conversation {
             }
 
             Action::Commit(query, author, start_date, end_date, file) => {
-                let filename = file.and_then(|f| self.paths.get(f));
-                let search = git::LogSearch {
-                    query,
-                    author,
-                    start_date,
-                    end_date,
-                    file: filename.cloned(),
-                };
+                if self.commits.is_empty() {
+                    let filename = file.and_then(|f| self.paths.get(f));
+                    let search = git::LogSearch {
+                        query,
+                        author,
+                        start_date,
+                        end_date,
+                        file: filename.cloned(),
+                    };
 
-                self.commits
-                    .extend(search.run(ctx, &self.repo_ref).await?.into_iter());
+                    self.commits = search.run(ctx, &self.repo_ref).await?;
+                }
 
                 "done".into()
             }
@@ -749,16 +750,16 @@ impl Conversation {
             }
 
             if !self.commits.is_empty() {
-                s += "\n##### COMMITS #####\n\neach commit in JSON\n";
+                s += &format!(
+                    "\n##### CHANGE HISTORY #####\neach git commit in JSON:\n{}\n",
+                    self.commits
+                        .iter()
+                        .map(serde_json::to_string)
+                        .map(Result::unwrap)
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                );
             }
-
-            s += &self
-                .commits
-                .iter()
-                .map(serde_json::to_string_pretty)
-                .map(Result::unwrap)
-                .collect::<Vec<_>>()
-                .join("\n");
 
             s
         };

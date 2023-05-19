@@ -79,6 +79,7 @@ pub fn system() -> String {
       },
       {
         "title": "Commit search",
+        "description": "Search the commit history for to create a context. Do not invoke this tool multiple times if a commit history is already available in the prompt.",
         "schema": {
           "name": "commit",
           "args": [
