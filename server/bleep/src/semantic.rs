@@ -555,16 +555,19 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
 //      to existing documents in the selection
 //      The value of lambda skews the weightage in favor of either relevance or novelty.
 //    - we add a language diversity factor to the score to encourage a range of langauges in the results
+//    - we also add a path diversity factor to the score to encourage a range of paths in the results
 //  k: the number of embeddings to select
 pub fn deduplicate_with_mmr(
     query_embedding: &[f32],
     embeddings: &[&[f32]],
     languages: &[&str],
+    paths: &[&str],
     lambda: f32,
     k: usize,
 ) -> Vec<usize> {
     let mut idxs = vec![];
     let mut lang_counts = HashMap::new();
+    let mut path_counts = HashMap::new();
 
     if embeddings.len() < k {
         return (0..embeddings.len()).collect();
@@ -589,8 +592,12 @@ pub fn deduplicate_with_mmr(
             let mut equation_score = lambda * first_part - (1. - lambda) * second_part;
 
             // MMR + (1/2)^n where n is the number of times a language has been selected
-            let count = lang_counts.get(languages[i]).unwrap_or(&0);
-            equation_score += 0.5_f32.powi(*count);
+            let lang_count = lang_counts.get(languages[i]).unwrap_or(&0);
+            equation_score += 0.5_f32.powi(*lang_count);
+
+            // MMR + (3/4)^n where n is the number of times a path has been selected
+            let path_count = path_counts.get(paths[i]).unwrap_or(&0);
+            equation_score += 0.75_f32.powi(*path_count);
 
             if equation_score > best_score {
                 best_score = equation_score;
@@ -600,9 +607,39 @@ pub fn deduplicate_with_mmr(
         if let Some(i) = idx_to_add {
             idxs.push(i);
             *lang_counts.entry(languages[i]).or_insert(0) += 1;
+            *path_counts.entry(paths[i]).or_insert(0) += 1;
         }
     }
     idxs
+}
+
+fn filter_overlapping_snippets(mut snippets: Vec<Payload>) -> Vec<Payload> {
+    snippets.sort_by(|a, b| {
+        a.relative_path
+            .cmp(&b.relative_path)
+            .then(a.start_line.cmp(&b.start_line))
+    });
+
+    snippets = snippets
+        .into_iter()
+        .fold(Vec::<Payload>::new(), |mut deduped_snippets, snippet| {
+            if let Some(prev) = deduped_snippets.last_mut() {
+                if prev.relative_path == snippet.relative_path
+                    && prev.end_line >= snippet.start_line
+                {
+                    debug!(
+                        "Filtering overlapping snippets. End: {:?} - Start: {:?} from {:?}",
+                        prev.end_line, snippet.start_line, prev.relative_path
+                    );
+                    return deduped_snippets;
+                }
+            }
+            deduped_snippets.push(snippet);
+            deduped_snippets
+        });
+
+    snippets.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
+    snippets
 }
 
 pub fn deduplicate_snippets(
@@ -610,6 +647,8 @@ pub fn deduplicate_snippets(
     query_embedding: Embedding,
     output_count: usize,
 ) -> Vec<Payload> {
+    all_snippets = filter_overlapping_snippets(all_snippets);
+
     let idxs = {
         let lambda = 0.5;
         let k = output_count; // number of snippets
@@ -621,7 +660,11 @@ pub fn deduplicate_snippets(
             .iter()
             .map(|s| s.lang.as_ref())
             .collect::<Vec<_>>();
-        deduplicate_with_mmr(&query_embedding, &embeddings, &languages, lambda, k)
+        let paths = all_snippets
+            .iter()
+            .map(|s| s.relative_path.as_ref())
+            .collect::<Vec<_>>();
+        deduplicate_with_mmr(&query_embedding, &embeddings, &languages, &paths, lambda, k)
     };
 
     info!("preserved idxs after MMR are {:?}", idxs);
