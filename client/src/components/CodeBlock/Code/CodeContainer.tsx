@@ -15,6 +15,7 @@ type Props = {
   isDiff?: boolean;
   highlightColor?: string;
   tokensMap: TokensLine[];
+  highlightLines?: [number, number];
 };
 
 const CodeContainer = ({
@@ -29,6 +30,7 @@ const CodeContainer = ({
   isDiff,
   symbols,
   tokensMap,
+  highlightLines,
 }: Props) => {
   const getSymbols = (lineNumber: number) => {
     if (symbols?.length) {
@@ -53,6 +55,11 @@ const CodeContainer = ({
           }
           hoverEffect={lineHoverEffect}
           highlightColor={highlightColor}
+          leftHighlight={
+            highlightLines &&
+            lineStart + lineNumber >= highlightLines[0] &&
+            lineStart + lineNumber <= highlightLines[1]
+          }
           isNewLine={
             isDiff &&
             !line.tokens[0].token.content &&
@@ -76,7 +83,14 @@ const CodeContainer = ({
           ))}
         </CodeLine>
       )),
-    [tokensMap, showLines, highlights, onlySymbolLines, highlightColor],
+    [
+      tokensMap,
+      showLines,
+      highlights,
+      onlySymbolLines,
+      highlightColor,
+      highlightLines,
+    ],
   );
 
   return (

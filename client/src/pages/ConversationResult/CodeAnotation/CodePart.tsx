@@ -34,9 +34,10 @@ const CodePart = ({
       startLine !== null
         ? Math.max(
             startLine -
+              1 -
               (!prevPartEnd
                 ? 5
-                : Math.max(Math.min(startLine - prevPartEnd - 5, 5), 0)),
+                : Math.max(Math.min(startLine - 1 - prevPartEnd - 5, 5), 0)),
             0,
           )
         : null,
@@ -47,10 +48,11 @@ const CodePart = ({
       endLine !== null
         ? Math.max(
             1,
-            endLine +
+            endLine -
+              1 +
               (!nextPartStart
                 ? 5
-                : Math.max(Math.min(nextPartStart - endLine, 5), 0)),
+                : Math.max(Math.min(nextPartStart - endLine - 1, 5), 0)),
           )
         : null,
     [endLine, nextPartStart],
@@ -85,12 +87,13 @@ const CodePart = ({
           }
         }}
       >
-        {slicedTokensMap?.length && (
+        {slicedTokensMap?.length && start !== null && (
           <CodeContainer
-            lineStart={startLine - 1}
+            lineStart={start}
             tokensMap={slicedTokensMap}
             lang={lang || 'plaintext'}
             highlightColor={`rgba(${colors[i % colors.length].join(', ')}, 1)`}
+            highlightLines={[startLine - 1, endLine - 1]}
           />
         )}
       </div>
