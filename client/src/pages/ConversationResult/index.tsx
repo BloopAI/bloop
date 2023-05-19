@@ -152,7 +152,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
               <NewCode code={b.New.code} language={b.New.language} key={i} />
             );
           } else if ('Modify' in b && b.Modify.diff) {
-            return <DiffCode data={b.Modify} key={i} />;
+            return <DiffCode data={b.Modify} key={i} repoName={tab.repoName} />;
           }
         })}
       </div>

@@ -229,12 +229,12 @@
       --label-base: 57, 57, 57;
       --label-title: 21, 21, 21;
       --label-link: 78, 128, 238;
-      --chat-bg-base: 226, 227, 243;
-      --chat-bg-base-hover: 211, 213, 240;
-      --chat-bg-shade: 248, 248, 255;
-      --chat-bg-sub: 211, 212, 236;
-      --chat-bg-border: 195, 197, 225;
-      --chat-bg-border-hover: 184, 187, 225;
+      --chat-bg-base: 243, 243, 243;
+      --chat-bg-base-hover: 236, 236, 236;
+      --chat-bg-shade: 228, 230, 241;
+      --chat-bg-sub: 255, 255, 255;
+      --chat-bg-border: 211, 211, 211;
+      --chat-bg-border-hover: 147, 147, 147;
       --chat-bg-divider: 216, 217, 234;
 
       --bg-highlight: 253, 201, 0;
@@ -265,13 +265,13 @@
       --label-base: 204, 204, 199;
       --label-title: 248, 248, 242;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
+      --chat-bg-sub: 30, 31, 28;
+      --chat-bg-base: 39, 40, 34;
+      --chat-bg-base-hover: 52, 53, 47;
+      --chat-bg-shade: 50, 51, 43;
+      --chat-bg-border: 70, 71, 65;
+      --chat-bg-border-hover: 118, 119, 113;
+      --chat-bg-divider: 70, 71, 65;
 
       --bg-highlight: 253, 201, 0;
 
@@ -303,12 +303,12 @@
       --label-base: 185, 185, 185;
       --label-title: 238, 238, 238;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 16, 25, 44;
-      --chat-bg-base-hover: 21, 32, 55;
-      --chat-bg-shade: 18, 28, 49;
-      --chat-bg-sub: 6, 15, 34;
-      --chat-bg-border: 43, 43, 74;
-      --chat-bg-border-hover: 53, 53, 89;
+      --chat-bg-base: 6, 6, 33;
+      --chat-bg-base-hover: 6, 25, 64;
+      --chat-bg-shade: 5, 19, 54;
+      --chat-bg-sub: 0, 12, 24;
+      --chat-bg-border: 0, 41, 82;
+      --chat-bg-border-hover: 32, 73, 114;
       --chat-bg-divider: 33, 33, 60;
 
       --bg-highlight: 253, 201, 0;
@@ -341,12 +341,12 @@
       --label-base: 185, 185, 185;
       --label-title: 238, 238, 238;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
+      --chat-bg-base: 40, 44, 52;
+      --chat-bg-base-hover: 44, 49, 58;
+      --chat-bg-shade: 44, 49, 60;
+      --chat-bg-sub: 33, 37, 43;
+      --chat-bg-border: 59, 64, 72;
+      --chat-bg-border-hover: 69, 74, 82;
       --chat-bg-divider: 45, 45, 58;
 
       --bg-highlight: 253, 201, 0;
@@ -379,13 +379,13 @@
       --label-base: 185, 185, 185;
       --label-title: 238, 238, 238;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
+      --chat-bg-base: 40, 40, 40;
+      --chat-bg-base-hover: 45, 45, 45;
+      --chat-bg-shade: 49, 51, 53;
+      --chat-bg-sub: 43, 43, 43;
+      --chat-bg-border: 55, 55, 55;
+      --chat-bg-border-hover: 65, 65, 65;
+      --chat-bg-divider: 53, 53, 53;
 
       --bg-highlight: 253, 201, 0;
 
@@ -417,13 +417,13 @@
       --label-base: 185, 185, 185;
       --label-title: 248, 248, 242;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 43, 37, 56;
-      --chat-bg-base-hover: 50, 43, 66;
-      --chat-bg-shade: 40, 31, 49;
-      --chat-bg-sub: 26, 21, 32;
-      --chat-bg-border: 148, 115, 196;
-      --chat-bg-border-hover: 189, 147, 249;
-      --chat-bg-divider: 185, 87, 145;
+      --chat-bg-base: 33, 34, 44;
+      --chat-bg-base-hover: 52, 55, 70;
+      --chat-bg-shade: 40, 42, 54;
+      --chat-bg-sub: 25, 26, 33;
+      --chat-bg-border: 98, 114, 164;
+      --chat-bg-border-hover: 110, 126, 183;
+      --chat-bg-divider: 127, 60, 99;
 
       --bg-highlight: 253, 201, 0;
 
@@ -455,13 +455,13 @@
       --label-base: 185, 185, 185;
       --label-title: 248, 248, 242;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
+      --chat-bg-base: 36, 41, 46;
+      --chat-bg-base-hover: 40, 46, 52;
+      --chat-bg-shade: 43, 48, 54;
+      --chat-bg-sub: 31, 36, 40;
+      --chat-bg-border: 55, 60, 72;
+      --chat-bg-border-hover: 65, 70, 82;
+      --chat-bg-divider: 55, 60, 72;
 
       --bg-highlight: 253, 201, 0;
 
@@ -493,13 +493,13 @@
       --label-base: 195, 195, 195;
       --label-title: 248, 248, 242;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
+      --chat-bg-base: 40, 40, 40;
+      --chat-bg-base-hover: 56, 60, 54;
+      --chat-bg-shade: 48, 50, 47;
+      --chat-bg-sub: 30, 30, 30;
+      --chat-bg-border: 56, 60, 54;
+      --chat-bg-border-hover: 66, 70, 64;
+      --chat-bg-divider: 56, 60, 54;
 
       --bg-highlight: 253, 201, 0;
 
@@ -531,13 +531,13 @@
       --label-base: 195, 195, 195;
       --label-title: 248, 248, 242;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
+      --chat-bg-base: 37, 56, 38;
+      --chat-bg-base-hover: 43, 66, 44;
+      --chat-bg-shade: 31, 49, 32;
+      --chat-bg-sub: 21, 32, 22;
+      --chat-bg-border: 57, 74, 58;
+      --chat-bg-border-hover: 71, 98, 72;
+      --chat-bg-divider: 45, 58, 45;
 
       --bg-highlight: 253, 201, 0;
 
@@ -569,13 +569,13 @@
       --label-base: 195, 195, 195;
       --label-title: 248, 248, 242;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
+      --chat-bg-base: 33, 33, 33;
+      --chat-bg-base-hover: 43, 43, 43;
+      --chat-bg-shade: 38, 38, 38;
+      --chat-bg-sub: 30, 30, 30;
+      --chat-bg-border: 43, 43, 43;
+      --chat-bg-border-hover: 53, 53, 53;
+      --chat-bg-divider: 43, 43, 43;
 
       --bg-highlight: 253, 201, 0;
 
@@ -607,13 +607,13 @@
       --label-base: 195, 195, 195;
       --label-title: 210, 222, 231;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 34, 45, 54;
-      --chat-bg-base-hover: 47, 61, 73;
-      --chat-bg-shade: 40, 53, 63;
-      --chat-bg-sub: 27, 34, 42;
-      --chat-bg-border: 42, 54, 66;
-      --chat-bg-border-hover: 68, 89, 107;
-      --chat-bg-divider: 58, 74, 91;
+      --chat-bg-base: 22, 1, 39;
+      --chat-bg-base-hover: 41, 11, 66;
+      --chat-bg-shade: 31, 6, 52;
+      --chat-bg-sub: 17, 1, 29;
+      --chat-bg-border: 43, 39, 59;
+      --chat-bg-border-hover: 53, 49, 69;
+      --chat-bg-divider: 43, 39, 59;
 
       --bg-highlight: 253, 201, 0;
 
@@ -645,13 +645,13 @@
       --label-base: 195, 195, 195;
       --label-title: 210, 222, 231;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
+      --chat-bg-base: 0, 43, 55;
+      --chat-bg-base-hover: 0, 64, 82;
+      --chat-bg-shade: 0, 53, 68;
+      --chat-bg-sub: 0, 33, 43;
+      --chat-bg-border: 0, 56, 71;
+      --chat-bg-border-hover: 0, 66, 81;
+      --chat-bg-divider: 0, 56, 71;
 
       --bg-highlight: 253, 201, 0;
 
@@ -703,110 +703,110 @@
       --onboarding-chats-img: url("../public/chatsImage-dark.png");
     }
     [data-theme="github-light"] {
-    --bg-base: 255, 255, 255;
-    --bg-base-hover: 237, 242, 245;
-    --bg-shade: 246, 248, 250;
-    --bg-sub: 235, 240, 244;
-    --bg-border: 215, 218, 222;
-    --bg-border-hover: 225, 228, 232;
-    --bg-main: 93, 117, 255;
-    --bg-main-hover: 69, 89, 205;
-    --bg-danger: 215, 66, 74;
-    --bg-danger-hover: 199, 54, 62;
-    --bg-success: 21, 128, 61;
-    --bg-success-hover: 33, 197, 94;
-    --label-control: 255, 255, 255;
-    --label-faint: 173, 173, 173;
-    --label-muted: 98, 98, 98;
-    --label-base: 57, 57, 57;
-    --label-title: 21, 21, 21;
-    --label-link: 78, 128, 238;
-    --chat-bg-base: 226, 227, 243;
-    --chat-bg-base-hover: 211, 213, 240;
-    --chat-bg-shade: 248, 248, 255;
-    --chat-bg-sub: 211, 212, 236;
-    --chat-bg-border: 195, 197, 225;
-    --chat-bg-border-hover: 184, 187, 225;
-    --chat-bg-divider: 216, 217, 234;
+      --bg-base: 255, 255, 255;
+      --bg-base-hover: 237, 242, 245;
+      --bg-shade: 246, 248, 250;
+      --bg-sub: 235, 240, 244;
+      --bg-border: 215, 218, 222;
+      --bg-border-hover: 225, 228, 232;
+      --bg-main: 93, 117, 255;
+      --bg-main-hover: 69, 89, 205;
+      --bg-danger: 215, 66, 74;
+      --bg-danger-hover: 199, 54, 62;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 173, 173, 173;
+      --label-muted: 98, 98, 98;
+      --label-base: 57, 57, 57;
+      --label-title: 21, 21, 21;
+      --label-link: 78, 128, 238;
+      --chat-bg-base: 255, 255, 255;
+      --chat-bg-base-hover: 237, 242, 245;
+      --chat-bg-shade: 246, 248, 250;
+      --chat-bg-sub: 235, 240, 244;
+      --chat-bg-border: 215, 218, 222;
+      --chat-bg-border-hover: 225, 228, 232;
+      --chat-bg-divider: 215, 218, 222;
 
-    --bg-highlight: 253, 201, 0;
+      --bg-highlight: 253, 201, 0;
 
-    --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
-    --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-    --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-    --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
       --onboarding-chats-img: url("../public/chatsImage-light.png");
     }
     [data-theme="gruvbox-light"] {
-    --bg-base: 251, 241, 199;
-    --bg-base-hover: 235, 219, 178;
-    --bg-shade: 243, 230, 188;
-    --bg-sub: 235, 219, 178;
-    --bg-border: 182, 170, 139;
-    --bg-border-hover: 148, 139, 113;
-    --bg-main: 93, 117, 255;
-    --bg-main-hover: 69, 89, 205;
-    --bg-danger: 215, 66, 74;
-    --bg-danger-hover: 199, 54, 62;
-    --bg-success: 21, 128, 61;
-    --bg-success-hover: 33, 197, 94;
-    --label-control: 255, 255, 255;
-    --label-faint: 173, 173, 173;
-    --label-muted: 98, 98, 98;
-    --label-base: 57, 57, 57;
-    --label-title: 21, 21, 21;
-    --label-link: 78, 128, 238;
-    --chat-bg-base: 236, 237, 237;
-    --chat-bg-base-hover: 211, 213, 223;
-    --chat-bg-shade: 248, 248, 248;
-    --chat-bg-sub: 221, 222, 222;
-    --chat-bg-border: 195, 197, 197;
-    --chat-bg-border-hover: 184, 187, 187;
-    --chat-bg-divider: 216, 217, 217;
+      --bg-base: 251, 241, 199;
+      --bg-base-hover: 235, 219, 178;
+      --bg-shade: 243, 230, 188;
+      --bg-sub: 235, 219, 178;
+      --bg-border: 182, 170, 139;
+      --bg-border-hover: 148, 139, 113;
+      --bg-main: 93, 117, 255;
+      --bg-main-hover: 69, 89, 205;
+      --bg-danger: 215, 66, 74;
+      --bg-danger-hover: 199, 54, 62;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 173, 173, 173;
+      --label-muted: 98, 98, 98;
+      --label-base: 57, 57, 57;
+      --label-title: 21, 21, 21;
+      --label-link: 78, 128, 238;
+      --chat-bg-base: 251, 241, 199;
+      --chat-bg-base-hover: 235, 219, 178;
+      --chat-bg-shade: 243, 230, 188;
+      --chat-bg-sub: 235, 219, 178;
+      --chat-bg-border: 182, 170, 139;
+      --chat-bg-border-hover: 148, 139, 113;
+      --chat-bg-divider: 182, 170, 139;
 
-    --bg-highlight: 253, 201, 0;
+      --bg-highlight: 253, 201, 0;
 
-    --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
-    --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-    --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-    --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
       --onboarding-chats-img: url("../public/chatsImage-light.png");
     }
     [data-theme="quiet-light"] {
-    --bg-base: 237, 232, 239;
-    --bg-base-hover: 247, 242, 249;
-    --bg-shade: 237, 237, 245;
-    --bg-sub: 245, 245, 245;
-    --bg-border: 213, 213, 213;
-    --bg-border-hover: 203, 203, 203;
-    --bg-main: 93, 117, 255;
-    --bg-main-hover: 69, 89, 205;
-    --bg-danger: 215, 66, 74;
-    --bg-danger-hover: 199, 54, 62;
-    --bg-success: 21, 128, 61;
-    --bg-success-hover: 33, 197, 94;
-    --label-control: 255, 255, 255;
-    --label-faint: 173, 173, 173;
-    --label-muted: 98, 98, 98;
-    --label-base: 57, 57, 57;
-    --label-title: 21, 21, 21;
-    --label-link: 78, 128, 238;
-    --chat-bg-base: 226, 227, 243;
-    --chat-bg-base-hover: 211, 213, 240;
-    --chat-bg-shade: 248, 248, 255;
-    --chat-bg-sub: 211, 212, 236;
-    --chat-bg-border: 195, 197, 225;
-    --chat-bg-border-hover: 184, 187, 225;
-    --chat-bg-divider: 216, 217, 234;
+      --bg-base: 237, 232, 239;
+      --bg-base-hover: 247, 242, 249;
+      --bg-shade: 237, 237, 245;
+      --bg-sub: 245, 245, 245;
+      --bg-border: 213, 213, 213;
+      --bg-border-hover: 203, 203, 203;
+      --bg-main: 93, 117, 255;
+      --bg-main-hover: 69, 89, 205;
+      --bg-danger: 215, 66, 74;
+      --bg-danger-hover: 199, 54, 62;
+      --bg-success: 21, 128, 61;
+      --bg-success-hover: 33, 197, 94;
+      --label-control: 255, 255, 255;
+      --label-faint: 173, 173, 173;
+      --label-muted: 98, 98, 98;
+      --label-base: 57, 57, 57;
+      --label-title: 21, 21, 21;
+      --label-link: 78, 128, 238;
+      --chat-bg-base: 237, 232, 239;
+      --chat-bg-base-hover: 247, 242, 249;
+      --chat-bg-shade: 237, 237, 245;
+      --chat-bg-sub: 245, 245, 245;
+      --chat-bg-border: 213, 213, 213;
+      --chat-bg-border-hover: 203, 203, 203;
+      --chat-bg-divider: 213, 213, 213;
 
-    --bg-highlight: 253, 201, 0;
+      --bg-highlight: 253, 201, 0;
 
-    --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
-    --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-    --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-    --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
+      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
       --onboarding-chats-img: url("../public/chatsImage-light.png");
     }
@@ -829,13 +829,13 @@
       --label-base: 57, 57, 57;
       --label-title: 21, 21, 21;
       --label-link: 78, 128, 238;
-      --chat-bg-base: 226, 227, 243;
-      --chat-bg-base-hover: 211, 213, 240;
-      --chat-bg-shade: 248, 248, 255;
-      --chat-bg-sub: 211, 212, 236;
-      --chat-bg-border: 195, 197, 225;
-      --chat-bg-border-hover: 184, 187, 225;
-      --chat-bg-divider: 216, 217, 234;
+      --chat-bg-base: 238, 232, 213;
+      --chat-bg-base-hover: 221, 214, 193;
+      --chat-bg-shade: 245, 242, 220;
+      --chat-bg-sub: 253, 246, 227;
+      --chat-bg-border: 221, 214, 193;
+      --chat-bg-border-hover: 211, 204, 183;
+      --chat-bg-divider: 221, 214, 193;
 
       --bg-highlight: 253, 201, 0;
 

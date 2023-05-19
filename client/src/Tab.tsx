@@ -44,7 +44,7 @@ function Tab({ deviceContextValue, isActive, tab }: Props) {
           <DeviceContextProvider deviceContextValue={deviceContextValue}>
             <UIContextProvider tab={tab}>
               <AppNavigationProvider>
-                <SearchContextProvider initialSearchHistory={tab.searchHistory}>
+                <SearchContextProvider tab={tab}>
                   <RepositoriesContext.Provider value={reposContextValue}>
                     <ChatContextProvider>
                       <Routes>

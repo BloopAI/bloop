@@ -1,11 +1,18 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DeviceContextType } from './context/deviceContext';
 import './index.css';
 import 'highlight.js/styles/vs2015.css';
 import Tab from './Tab';
 import { TabsContext } from './context/tabsContext';
 import { UITabType } from './types/general';
-import { getJsonFromStorage, SEARCH_HISTORY_KEY } from './services/storage';
+import {
+  getJsonFromStorage,
+  getPlainFromStorage,
+  LAST_ACTIVE_TAB_KEY,
+  saveJsonToStorage,
+  savePlainToStorage,
+  TABS_KEY,
+} from './services/storage';
 import { initApi } from './services/api';
 import { useComponentWillMount } from './hooks/useComponentWillMount';
 import { RepoSource } from './types';
@@ -17,16 +24,19 @@ type Props = {
 function App({ deviceContextValue }: Props) {
   useComponentWillMount(() => initApi(deviceContextValue.apiUrl));
 
-  const [tabs, setTabs] = useState<UITabType[]>([
-    {
-      key: 'initial',
-      name: 'Home',
-      repoName: '',
-      source: RepoSource.LOCAL,
-      searchHistory: getJsonFromStorage(SEARCH_HISTORY_KEY) || [],
-    },
-  ]);
-  const [activeTab, setActiveTab] = useState('initial');
+  const [tabs, setTabs] = useState<UITabType[]>(
+    getJsonFromStorage(TABS_KEY) || [
+      {
+        key: 'initial',
+        name: 'Home',
+        repoName: '',
+        source: RepoSource.LOCAL,
+      },
+    ],
+  );
+  const [activeTab, setActiveTab] = useState(
+    getPlainFromStorage(LAST_ACTIVE_TAB_KEY) || 'initial',
+  );
 
   const handleAddTab = useCallback(
     (repoRef: string, repoName: string, name: string, source: RepoSource) => {
@@ -48,6 +58,20 @@ function App({ deviceContextValue }: Props) {
     },
     [],
   );
+
+  useEffect(() => {
+    saveJsonToStorage(TABS_KEY, tabs);
+  }, [tabs]);
+
+  useEffect(() => {
+    savePlainToStorage(LAST_ACTIVE_TAB_KEY, activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (!tabs.find((t) => t.key === activeTab)) {
+      setActiveTab('initial');
+    }
+  }, [activeTab, tabs]);
 
   const handleRemoveTab = useCallback(
     (tabKey: string) => {

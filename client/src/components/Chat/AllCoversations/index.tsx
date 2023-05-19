@@ -127,7 +127,7 @@ const AllConversations = ({
         </div>
       )}
       {!!openItem && (
-        <div className="flex-1 px-4 py-2">
+        <div className="flex-1 px-4 py-2 overflow-auto pb-10">
           <Conversation
             conversation={openItem}
             searchId={openThreadId}

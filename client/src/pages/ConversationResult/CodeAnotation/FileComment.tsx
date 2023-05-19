@@ -19,7 +19,7 @@ const FileComment = ({ i, comment }: Props) => {
       }}
     >
       <div
-        className="border-l-2 pl-3"
+        className="border-l-2 pl-3 break-words"
         style={{
           borderColor: `rgb(${colors[i % colors.length].join(', ')})`,
         }}

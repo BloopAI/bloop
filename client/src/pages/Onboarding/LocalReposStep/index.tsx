@@ -13,6 +13,7 @@ import {
   savePlainToStorage,
 } from '../../../services/storage';
 import { DeviceContext } from '../../../context/deviceContext';
+import { RepositoriesContext } from '../../../context/repositoriesContext';
 
 type Props = {
   handleNext: (e?: any) => void;
@@ -26,6 +27,7 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
   );
   const [isLoading, setLoading] = useState(true);
   const { homeDir, chooseFolder } = useContext(DeviceContext);
+  const { repositories } = useContext(RepositoriesContext);
 
   const handleSkip = useCallback(
     (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
@@ -43,6 +45,10 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
 
           setRepos(
             data.list
+              .filter(
+                (r: RepoType) =>
+                  !repositories?.find((repo) => repo.ref === r.ref),
+              )
               .map((r: RepoType) => {
                 const pathParts = splitPath(r.ref);
                 const folder = `/${pathParts

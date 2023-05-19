@@ -48,7 +48,8 @@ const NLInput = ({
 
       // We then set the height directly, outside of the render loop
       // Trying to set this with state or a ref will product an incorrect value.
-      inputRef.current.style.height = Math.min(scrollHeight, 300) + 'px';
+      inputRef.current.style.height =
+        Math.max(Math.min(scrollHeight, 300), 56) + 'px';
     }
   }, [inputRef.current, value]);
 

@@ -47,10 +47,27 @@ const useAnalytics = () => {
     [analytics],
   );
 
+  const trackReposSynced = useCallback(
+    ({
+      localRepos,
+      githubRepos,
+    }: {
+      localRepos: number;
+      githubRepos: number;
+    }) => {
+      analytics?.track('Repos Synced', {
+        localRepos,
+        githubRepos,
+      });
+    },
+    [analytics],
+  );
+
   return {
     trackSearch,
     trackReposSelected,
     trackUpvote,
+    trackReposSynced,
   };
 };
 
