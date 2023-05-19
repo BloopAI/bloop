@@ -10,7 +10,6 @@ type Props = {
 };
 
 const ErrorFallback = ({ error, componentStack, resetError }: Props) => {
-  const navigate = useNavigate();
   const [shouldShow, setShouldShow] = useState(true);
   return (
     <div className="fixed top-0 bottom-0 left-0 right-0 my-16 bg-[url('/onboarding-background.png')] bg-cover">
@@ -19,7 +18,6 @@ const ErrorFallback = ({ error, componentStack, resetError }: Props) => {
           errorBoundaryMessage={error.message + ' ' + componentStack}
           handleSubmit={() => {
             resetError();
-            navigate('/');
             setShouldShow(false);
           }}
           forceShow={shouldShow}

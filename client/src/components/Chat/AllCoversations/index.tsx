@@ -140,8 +140,10 @@ const AllConversations = ({
         <div
           className="p-4"
           onClick={() => {
-            setThreadId(openThreadId);
-            setConversation(openItem!);
+            if (openItem) {
+              setThreadId(openThreadId);
+              setConversation(openItem);
+            }
             setHistoryOpen(false);
             setActive(true);
             document.getElementById('question-input')?.focus();

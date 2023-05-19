@@ -77,6 +77,7 @@ const Button = forwardRef<
       className,
       title,
       tooltipPlacement,
+      type = 'button',
       ...rest
     },
     ref,
@@ -94,12 +95,12 @@ const Button = forwardRef<
     );
     return onlyIcon && !rest.disabled ? (
       <Tooltip text={title} placement={tooltipPlacement}>
-        <button {...rest} ref={ref} className={buttonClassName}>
+        <button {...rest} type={type} ref={ref} className={buttonClassName}>
           {children}
         </button>
       </Tooltip>
     ) : (
-      <button {...rest} ref={ref} className={buttonClassName}>
+      <button {...rest} type={type} ref={ref} className={buttonClassName}>
         {children}
       </button>
     );

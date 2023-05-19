@@ -13,6 +13,7 @@ import { UIContext } from '../../context/uiContext';
 import { EMAIL_REGEX } from '../../consts/validations';
 import { saveBugReport, saveCrashReport } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
+import { TabsContext } from '../../context/tabsContext';
 import ConfirmImg from './ConfirmImg';
 
 type Props = {
@@ -36,6 +37,7 @@ const ReportBugModal = ({
   const { onBoardingState, isBugReportModalOpen, setBugReportModalOpen } =
     useContext(UIContext);
   const { envConfig, listen, os } = useContext(DeviceContext);
+  const { handleRemoveTab, setActiveTab, activeTab } = useContext(TabsContext);
 
   useEffect(() => {
     listen('server-crashed', (event) => {
@@ -72,30 +74,35 @@ const ReportBugModal = ({
     [],
   );
 
-  const onSubmit = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-    e.preventDefault();
+  const onSubmit = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.preventDefault();
+      if (serverCrashedMessage) {
+        saveCrashReport({
+          text: form.text,
+          unique_id: envConfig.tracking_id || '',
+          info: serverCrashedMessage,
+          metadata: JSON.stringify(os),
+        });
+      } else {
+        const { emailError, ...values } = form;
+        saveBugReport({ ...values, unique_id: envConfig.tracking_id || '' });
+      }
+      setSubmitted(true);
+    },
+    [],
+  );
+  const resetState = useCallback(() => {
     if (serverCrashedMessage) {
-      saveCrashReport({
-        text: form.text,
-        unique_id: envConfig.tracking_id || '',
-        info: serverCrashedMessage,
-        metadata: JSON.stringify(os),
-      });
-    } else {
-      const { emailError, ...values } = form;
-      saveBugReport({ ...values, unique_id: envConfig.tracking_id || '' });
+      handleRemoveTab(activeTab);
+      setActiveTab('initial');
     }
-    setSubmitted(true);
-    setServerCrashedMessage('');
-  };
-
-  const resetState = () => {
     setForm((prev) => ({ ...prev, text: '', emailError: '' }));
     setSubmitted(false);
     setBugReportModalOpen(false);
     setServerCrashedMessage('');
     handleSubmit?.();
-  };
+  }, [handleRemoveTab, setActiveTab, serverCrashedMessage, activeTab]);
 
   return (
     <ModalOrSidebar
@@ -211,7 +218,7 @@ const ReportBugModal = ({
             <div className="w-full">
               <ConfirmImg />
             </div>
-            <Button variant="secondary" onClick={() => resetState()}>
+            <Button variant="secondary" onClick={resetState}>
               Got it!
             </Button>
           </>
@@ -222,7 +229,7 @@ const ReportBugModal = ({
             title="Close"
             variant="tertiary"
             size="small"
-            onClick={() => resetState()}
+            onClick={resetState}
           >
             <CloseSign />
           </Button>
