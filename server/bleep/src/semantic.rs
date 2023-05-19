@@ -591,10 +591,11 @@ pub fn deduplicate_with_mmr(
             }
             let mut equation_score = lambda * first_part - (1. - lambda) * second_part;
 
-            // MMR + (1/2)^n where n is the number of times a language and path has been selected
+            // MMR + (1/2)^n where n is the number of times a language has been selected
             let lang_count = lang_counts.get(languages[i]).unwrap_or(&0);
             equation_score += 0.5_f32.powi(*lang_count);
 
+            // MMR + (3/4)^n where n is the number of times a path has been selected
             let path_count = path_counts.get(paths[i]).unwrap_or(&0);
             equation_score += 0.75_f32.powi(*path_count);
 
