@@ -40,6 +40,7 @@ type Props = {
   onMouseSelectStart?: (lineNum: number, charNum: number) => void;
   onMouseSelectEnd?: (lineNum: number, charNum: number) => void;
   highlightColor?: string;
+  leftHighlight?: boolean;
 };
 
 const CodeLine = ({
@@ -62,6 +63,7 @@ const CodeLine = ({
   isNewLine,
   isRemovedLine,
   lineNumberToShow = lineNumber + 1,
+  leftHighlight,
 }: Props) => {
   const [isHighlighted, setHighlighted] = useState(false);
   const codeRef = useRef<HTMLTableCellElement>(null);
@@ -134,11 +136,16 @@ const CodeLine = ({
     () => ({
       lineHeight: lineHidden ? '0' : '',
       ...(highlightColor
-        ? { borderLeft: `3px solid ${highlightColor}`, marginLeft: 4 }
+        ? {
+            borderLeft: `3px solid ${
+              leftHighlight ? highlightColor : 'transparent'
+            }`,
+            marginLeft: 4,
+          }
         : {}),
       ...stylesGenerated,
     }),
-    [lineHidden, stylesGenerated, highlightColor],
+    [lineHidden, stylesGenerated, highlightColor, leftHighlight],
   );
   const [actualLineNumber] = useState(lineNumber);
 
