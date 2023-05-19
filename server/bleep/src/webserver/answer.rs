@@ -18,6 +18,7 @@ use axum::{
 use futures::{future::Either, stream, StreamExt, TryStreamExt};
 use reqwest::StatusCode;
 use secrecy::ExposeSecret;
+use tiktoken_rs::CoreBPE;
 use tokio::sync::mpsc::Sender;
 use tracing::{info, trace, warn};
 
@@ -523,25 +524,12 @@ impl Conversation {
             .buffered(10)
             .and_then(|(lines, path): (Vec<String>, String)| async move {
                 const MAX_TOKENS: usize = 3400;
-                const OVERLAP: usize = 50;
+                const LINE_OVERLAP: usize = 3;
 
                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
-                let text = lines.join("\n");
-
-                let tokens = bpe.encode_ordinary(&text);
-                let total_tokens = tokens.len();
-
-                let chunk_iter = (0..total_tokens.saturating_sub(OVERLAP))
-                    .step_by(MAX_TOKENS - OVERLAP)
-                    .map(move |start| {
-                        let end = std::cmp::min(start + MAX_TOKENS, total_tokens);
-                        let text = bpe.decode(tokens[start..end].to_vec())?;
-                        let lines = text.lines().map(str::to_owned).collect::<Vec<_>>();
-
-                        Result::<_>::Ok((lines, path.clone()))
-                    });
-
-                Ok(futures::stream::iter(chunk_iter))
+                let iter = split_line_set_by_tokens(lines, bpe, MAX_TOKENS, LINE_OVERLAP)
+                    .map(move |lines| Result::<_>::Ok((lines, path.clone())));
+                Ok(futures::stream::iter(iter))
             })
             .try_flatten()
             .map(|result| async move {
@@ -912,6 +900,34 @@ impl Conversation {
     }
 }
 
+fn split_line_set_by_tokens(
+    lines: Vec<String>,
+    bpe: CoreBPE,
+    max_tokens: usize,
+    line_overlap: usize,
+) -> impl Iterator<Item = Vec<String>> {
+    let mut start = 0usize;
+
+    std::iter::from_fn(move || {
+        if start >= lines.len() {
+            return None;
+        }
+
+        start = start.saturating_sub(line_overlap);
+
+        let mut subset = Vec::new();
+
+        while start < lines.len()
+            && bpe.split_by_token_ordinary_iter(&subset.join("\n")).count() < max_tokens
+        {
+            subset.push(lines[start].clone());
+            start += 1;
+        }
+
+        Some(subset)
+    })
+}
+
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum Action {
@@ -1052,6 +1068,83 @@ mod tests {
                 llm_gateway::api::Message::user(&long_string),
                 llm_gateway::api::Message::user("corge"),
             ]
+        );
+    }
+
+    #[test]
+    fn test_split_line_set_by_tokens() {
+        let lines = vec![
+            "fn main() {".to_string(),
+            "    one();".to_string(),
+            "    two();".to_string(),
+            "    three();".to_string(),
+            "    four();".to_string(),
+            "    five();".to_string(),
+            "    six();".to_string(),
+            "}".to_string(),
+        ];
+
+        let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
+        let out = split_line_set_by_tokens(lines, bpe, 15, 3).collect::<Vec<_>>();
+
+        pretty_assertions::assert_eq!(
+            out,
+            vec![
+                vec![
+                    "fn main() {".to_string(),
+                    "    one();".to_string(),
+                    "    two();".to_string(),
+                    "    three();".to_string(),
+                    "    four();".to_string(),
+                ],
+                vec![
+                    "    two();".to_string(),
+                    "    three();".to_string(),
+                    "    four();".to_string(),
+                    "    five();".to_string(),
+                    "    six();".to_string(),
+                ],
+                vec![
+                    "    four();".to_string(),
+                    "    five();".to_string(),
+                    "    six();".to_string(),
+                    "}".to_string(),
+                ],
+            ],
+        );
+
+        let lines = vec![
+            "fn main() {".to_string(),
+            "    one();".to_string(),
+            "    two();".to_string(),
+            "    three();".to_string(),
+            "    four();".to_string(),
+            "    five();".to_string(),
+            "    six();".to_string(),
+            "}".to_string(),
+        ];
+
+        let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
+        let out = split_line_set_by_tokens(lines, bpe, 20, 2).collect::<Vec<_>>();
+
+        pretty_assertions::assert_eq!(
+            out,
+            vec![
+                vec![
+                    "fn main() {".to_string(),
+                    "    one();".to_string(),
+                    "    two();".to_string(),
+                    "    three();".to_string(),
+                    "    four();".to_string(),
+                    "    five();".to_string(),
+                    "    six();".to_string(),
+                ],
+                vec![
+                    "    five();".to_string(),
+                    "    six();".to_string(),
+                    "}".to_string(),
+                ],
+            ],
         );
     }
 }
