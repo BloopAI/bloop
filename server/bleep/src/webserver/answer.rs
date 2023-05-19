@@ -635,7 +635,7 @@ impl Conversation {
             .await;
 
         for (relevant_chunks, path) in &processed {
-            let alias = self.path_alias(&path) as u32;
+            let alias = self.path_alias(path) as u32;
 
             for c in relevant_chunks {
                 self.code_chunks.push(CodeChunk {
@@ -663,7 +663,7 @@ impl Conversation {
 
         ctx.track_query(
             EventData::input_stage("process file")
-                .with_payload("question", &question)
+                .with_payload("question", question)
                 .with_payload("chunks", &out),
         );
 
@@ -792,7 +792,7 @@ impl Conversation {
                 .iter()
                 .map(Vec::as_slice)
                 .filter_map(|v| {
-                    let item = SearchResult::from_json_array(&v);
+                    let item = SearchResult::from_json_array(v);
                     if item.is_none() {
                         warn!("failed to build search result from: {v:?}");
                     }

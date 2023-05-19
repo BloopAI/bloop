@@ -32,7 +32,7 @@ impl Exchange {
 
     /// Get the conslusion associated with this exchange, if it has been made.
     pub fn conclusion(&self) -> Option<&str> {
-        self.conclusion.as_ref().map(String::as_str)
+        self.conclusion.as_deref()
     }
 
     /// Set the current search result list.
@@ -216,7 +216,7 @@ impl CiteResult {
             Some(format!("'{comment}' in `{path}`",))
         }
 
-        _summarize(&self).unwrap_or_default()
+        _summarize(self).unwrap_or_default()
     }
 }
 
@@ -230,11 +230,7 @@ impl DirectoryResult {
             .get(1)
             .and_then(serde_json::Value::as_str)
             .map(ToOwned::to_owned);
-        Some(Self {
-            path,
-            comment,
-            ..Default::default()
-        })
+        Some(Self { path, comment })
     }
 }
 
