@@ -6,8 +6,9 @@ import Button from '../../components/Button';
 import { CloseSign } from '../../icons';
 import { getRepos } from '../../services/api';
 import { RepositoriesContext } from '../../context/repositoriesContext';
-import { RepoType, SyncStatus } from '../../types/general';
+import { RepoProvider, RepoType, SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
+import useAnalytics from '../../hooks/useAnalytics';
 import AddRepos from './AddRepos';
 import ReposSection from './ReposSection';
 import AddRepoCard from './AddRepoCard';
@@ -26,12 +27,13 @@ const HomePage = () => {
   const { setRepositories, repositories } = useContext(RepositoriesContext);
   const { isSelfServe } = useContext(DeviceContext);
   const [popupOpen, setPopupOpen] = useState(false);
-  const [isAddReposOpen, setAddReposOpen] = useState<
+  const [addReposOpen, setAddReposOpen] = useState<
     null | 'local' | 'github' | 'public'
   >(null);
   const [reposToShow, setReposToShow] = useState<RepoType[]>(
     filterRepositories(repositories),
   );
+  const { trackReposSynced } = useAnalytics();
 
   const fetchRepos = useCallback(() => {
     getRepos().then((data) => {
@@ -66,9 +68,20 @@ const HomePage = () => {
         repositories={repositories}
       />
       <AddRepos
-        addRepos={isAddReposOpen}
+        addRepos={addReposOpen}
         onClose={(isSubmitted) => {
           if (isSubmitted) {
+            trackReposSynced({
+              localRepos:
+                (repositories?.filter((r) => r.provider === RepoProvider.Local)
+                  .length || 0) + (addReposOpen === 'local' ? 1 : 0),
+              githubRepos:
+                (repositories?.filter(
+                  (r) =>
+                    r.provider === RepoProvider.GitHub &&
+                    r.sync_status !== SyncStatus.Uninitialized,
+                ).length || 0) + (addReposOpen === 'local' ? 0 : 1),
+            });
             fetchRepos();
             setTimeout(() => fetchRepos(), 1000);
             setPopupOpen(true);
