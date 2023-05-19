@@ -539,6 +539,7 @@ dependencies = [
  "rudderanalytics",
  "scc",
  "secrecy",
+ "semver",
  "sentry",
  "sentry-tracing",
  "serde",

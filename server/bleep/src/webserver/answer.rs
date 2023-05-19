@@ -104,6 +104,25 @@ pub(super) async fn _handle(
 
     let ctx = AppContext::new(app, user, query_id)
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
+
+    match ctx
+        .llm_gateway
+        .is_compatible(env!("CARGO_PKG_VERSION").parse().unwrap())
+        .await
+    {
+        Ok(res) if res.status() == StatusCode::OK => (),
+        Ok(res) if res.status() == StatusCode::NOT_ACCEPTABLE => {
+            return Err(
+                super::Error::user("client out of date").with_status(StatusCode::NOT_ACCEPTABLE)
+            );
+        }
+        _ => {
+            let e = "failed to confirm version compatibility, exiting ...";
+            warn!("{e}");
+            return Err(super::Error::user(e).with_status(StatusCode::NOT_ACCEPTABLE));
+        }
+    };
+
     let q = params.q;
 
     let stream = async_stream::try_stream! {
@@ -137,7 +156,7 @@ pub(super) async fn _handle(
                 match item {
                     Ok(Either::Left(exchange)) => yield exchange,
                     Ok(Either::Right(n)) => next = n?,
-                    Err(e) => Err(anyhow!("reached timeout of {TIMEOUT_SECS}s"))?,
+                    Err(_) => Err(anyhow!("reached timeout of {TIMEOUT_SECS}s"))?,
                 }
             }
 
