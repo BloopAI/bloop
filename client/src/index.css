@@ -531,13 +531,13 @@
       --label-base: 195, 195, 195;
       --label-title: 248, 248, 242;
       --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
+      --chat-bg-base: 37, 56, 38;
+      --chat-bg-base-hover: 43, 66, 44;
+      --chat-bg-shade: 31, 49, 32;
+      --chat-bg-sub: 21, 32, 22;
+      --chat-bg-border: 57, 74, 58;
+      --chat-bg-border-hover: 71, 98, 72;
+      --chat-bg-divider: 45, 58, 45;
 
       --bg-highlight: 253, 201, 0;
 
