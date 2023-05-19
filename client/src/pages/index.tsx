@@ -80,6 +80,7 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
         searchQuery(buildRepoQuery(navigatedItem.repo, navigatedItem.path));
         break;
       case 'home':
+      case 'conversation-result':
         break;
       default:
         const search = navigatedItem.query!.includes(`repo:${tab.name}`)

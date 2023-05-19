@@ -1,12 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getHoverables } from '../../../services/api';
-import { FileSearchResponse } from '../../../types/api';
-import { FullResult } from '../../../types/results';
-import { FullResultModeEnum } from '../../../types/general';
-import { mapFileResult, mapRanges } from '../../../mappers/results';
-import { useSearch } from '../../../hooks/useSearch';
-import ResultModal from '../../ResultModal';
+import React, { useCallback, useMemo, useState } from 'react';
+import FileModalContainer from '../../ResultModal/FileModalContainer';
 import AnnotatedFile from './AnnotatedFile';
 import FileComment from './FileComment';
 
@@ -33,21 +26,17 @@ export const colors = [
 ];
 
 const CodeAnnotation = ({ repoName, citations }: Props) => {
-  const [mode, setMode] = useState<FullResultModeEnum>(
-    FullResultModeEnum.MODAL,
-  );
-  const [openResult, setOpenResult] = useState<FullResult | null>(null);
+  const [isModalOpen, setModalOpen] = useState(false);
+  const [openPath, setOpenPath] = useState('');
   const [scrollToLine, setScrollToLine] = useState<string | undefined>(
     undefined,
   );
-  const { searchQuery: fileModalSearchQuery, data: fileResultData } =
-    useSearch<FileSearchResponse>();
-  const navigateBrowser = useNavigate();
 
   const onResultClick = useCallback(
     (path: string, lineNumber?: number[]) => {
       setScrollToLine(lineNumber ? lineNumber.join('_') : undefined);
-      fileModalSearchQuery(`open:true repo:${repoName} path:${path}`);
+      setOpenPath(path);
+      setModalOpen(true);
     },
     [repoName],
   );
@@ -57,37 +46,6 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
       .map((fc) => fc.map((c) => c))
       .flat();
   }, [citations]);
-
-  const handleModeChange = useCallback((m: FullResultModeEnum) => {
-    setMode(m);
-  }, []);
-
-  const onResultClosed = useCallback(() => {
-    setOpenResult(null);
-  }, [mode]);
-
-  useEffect(() => {
-    if (fileResultData?.data?.length) {
-      setOpenResult(mapFileResult(fileResultData.data[0]));
-      navigateBrowser({
-        search: scrollToLine
-          ? '?' +
-            new URLSearchParams({
-              scroll_line_index: scrollToLine.toString(),
-            }).toString()
-          : '',
-      });
-      getHoverables(
-        fileResultData.data[0].data.relative_path,
-        fileResultData.data[0].data.repo_ref,
-      ).then((data) => {
-        setOpenResult((prevState) => ({
-          ...prevState!,
-          hoverableRanges: mapRanges(data.ranges),
-        }));
-      });
-    }
-  }, [fileResultData]);
 
   return (
     <div className="flex gap-3 w-full overflow-x-hidden">
@@ -107,11 +65,12 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
           <FileComment i={cite.i} comment={cite.comment} key={i} />
         ))}
       </div>
-      <ResultModal
-        result={openResult}
-        onResultClosed={onResultClosed}
-        mode={mode}
-        setMode={handleModeChange}
+      <FileModalContainer
+        repoName={repoName}
+        path={openPath}
+        isOpen={isModalOpen}
+        onClose={() => setModalOpen(false)}
+        scrollToLine={scrollToLine}
       />
     </div>
   );
