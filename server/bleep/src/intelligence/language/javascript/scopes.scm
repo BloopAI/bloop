@@ -373,3 +373,7 @@
 
 (jsx_self_closing_element
   (identifier) @local.reference)
+
+;; template strings
+(template_substitution
+  (identifier) @local.reference)
