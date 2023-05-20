@@ -24,12 +24,15 @@ const NoResults = ({
   const { repositories } = useContext(RepositoriesContext);
 
   const repoState = useMemo(
-    () => repositories?.find((r) => r.name === repo)?.sync_status,
+    () =>
+      repo
+        ? repositories?.find((r) => r.name === repo)?.sync_status
+        : undefined,
     [repositories, repo],
   );
 
   useEffect(() => {
-    if (repoState === SyncStatus.Done && refetchRepo) {
+    if (repoState === SyncStatus.Done && refetchRepo && isRepo) {
       refetchRepo();
     }
   }, [repoState]);
