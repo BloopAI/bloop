@@ -688,14 +688,6 @@ impl Conversation {
 
             let mut s = "".to_owned();
 
-            if !self.paths.is_empty() {
-                s += "##### PATHS #####\npath alias, path\n";
-
-                for (alias, path) in self.paths.iter().enumerate() {
-                    s += &format!("{alias}, {}\n", &path);
-                }
-            }
-
             let mut path_aliases = aliases
                 .into_iter()
                 .filter(|alias| *alias < self.paths.len())
@@ -703,6 +695,22 @@ impl Conversation {
 
             path_aliases.sort();
             path_aliases.dedup();
+
+            if !self.paths.is_empty() {
+                s += "##### PATHS #####\npath alias, path\n";
+
+                if path_aliases.len() == 1 {
+                    // Only show matching path
+                    let alias = path_aliases[0];
+                    let path = self.paths[alias].clone();
+                    s += &format!("{alias}, {}\n", &path);
+                } else {
+                    // Show all paths that have been seen
+                    for (alias, path) in self.paths.iter().enumerate() {
+                        s += &format!("{alias}, {}\n", &path);
+                    }
+                }
+            }
 
             if !self.code_chunks.is_empty() {
                 s += "\n##### CODE CHUNKS #####\n\n";
