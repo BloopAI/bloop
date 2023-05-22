@@ -370,7 +370,12 @@ mod tests {
             let (occur, query) = clause;
             assert_eq!(*occur, Occur::Must);
 
-            let term = query.downcast_ref::<TermQuery>().unwrap();
+            let subquery = query.downcast_ref::<BooleanQuery>().unwrap();
+            assert_eq!(subquery.clauses().len(), 1);
+
+            let (occur, term) = &subquery.clauses()[0];
+            let term = term.downcast_ref::<TermQuery>().unwrap();
+            assert_eq!(*occur, Occur::Should);
             assert_eq!(term.term().as_str().unwrap(), expected);
         }
     }
