@@ -1,3 +1,4 @@
+use either::Either;
 use tokio::sync::OwnedSemaphorePermit;
 use tracing::{debug, error, info};
 
@@ -120,7 +121,8 @@ impl SyncHandle {
 
         let indexed = self.index().await;
         let status = match indexed {
-            Ok(Some(state)) => {
+            Ok(Either::Left(status)) => Some(status),
+            Ok(Either::Right(state)) => {
                 info!("commit complete; indexing done");
                 self.app
                     .repo_pool
@@ -129,7 +131,6 @@ impl SyncHandle {
                 // technically `sync_done_with` does this, but we want to send notifications
                 self.set_status(|_| SyncStatus::Done)
             }
-            Ok(None) => self.set_status(|_| SyncStatus::Done),
             Err(err) => {
                 error!(?err, ?self.reporef, "failed to index repository");
                 self.set_status(|_| SyncStatus::Error {
@@ -141,7 +142,7 @@ impl SyncHandle {
         Ok(status.expect("failed to update repo status"))
     }
 
-    async fn index(&self) -> Result<Option<Arc<RepoMetadata>>> {
+    async fn index(&self) -> Result<Either<SyncStatus, Arc<RepoMetadata>>> {
         use SyncStatus::*;
         let Application {
             ref config,
@@ -157,7 +158,7 @@ impl SyncHandle {
             .unwrap();
 
         let indexed = match repo.sync_status {
-            Uninitialized | Syncing | Indexing => return Ok(None),
+            current @ (Uninitialized | Syncing | Indexing) => return Ok(Either::Left(current)),
             Removed => {
                 repo_pool.remove(&self.reporef);
                 let deleted = self.delete_repo_indexes(&repo, &writers).await;
@@ -169,7 +170,7 @@ impl SyncHandle {
                         .map_err(SyncError::State)?;
                 }
 
-                return deleted.map(|_| None);
+                return deleted.map(|_| Either::Left(Removed));
             }
             RemoteRemoved => {
                 // Note we don't clean up here, leave the
@@ -178,11 +179,11 @@ impl SyncHandle {
                 // This is to be able to report to the user that
                 // something happened, and let them clean up in a
                 // subsequent action.
-                return Ok(None);
+                return Ok(Either::Left(RemoteRemoved));
             }
             _ => {
                 self.set_status(|_| Indexing).unwrap();
-                writers.index(self, &repo).await
+                writers.index(self, &repo).await.map(Either::Right)
             }
         };
 
@@ -192,7 +193,7 @@ impl SyncHandle {
             writers.rollback().map_err(SyncError::Tantivy)?;
         }
 
-        indexed.map_err(SyncError::Indexing).map(Some)
+        indexed.map_err(SyncError::Indexing)
     }
 
     async fn sync(&self) -> Result<()> {
