@@ -137,7 +137,7 @@ pub(super) async fn _handle(
                 match item {
                     Ok(Either::Left(exchange)) => yield exchange,
                     Ok(Either::Right(n)) => next = n?,
-                    Err(e) => Err(anyhow!("reached timeout of {TIMEOUT_SECS}s"))?,
+                    Err(_) => Err(anyhow!("reached timeout of {TIMEOUT_SECS}s"))?,
                 }
             }
 
