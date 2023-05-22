@@ -7,6 +7,7 @@ use reqwest::StatusCode;
 
 use crate::{
     db,
+    repo::RepoRef,
     webserver::{self, middleware::User, Error, ErrorKind},
 };
 
@@ -19,23 +20,44 @@ pub struct ConversationPreview {
     pub title: String,
 }
 
+#[derive(serde::Deserialize)]
+pub(in crate::webserver) struct List {
+    repo_ref: Option<RepoRef>,
+}
+
 pub(in crate::webserver) async fn list(
     Extension(user): Extension<User>,
+    Query(query): Query<List>,
 ) -> webserver::Result<impl IntoResponse> {
     let db = db::get().await?;
 
     let user_id = user.0.ok_or_else(|| Error::user("missing user ID"))?;
 
-    let conversations = sqlx::query_as! {
-        ConversationPreview,
-        "SELECT thread_id, created_at, title \
-         FROM conversations \
-         WHERE user_id = ? \
-         ORDER BY created_at DESC",
-        user_id,
+    let conversations = if let Some(repo_ref) = query.repo_ref {
+        let repo_ref = repo_ref.to_string();
+        sqlx::query_as! {
+            ConversationPreview,
+            "SELECT thread_id, created_at, title \
+             FROM conversations \
+             WHERE user_id = ? AND repo_ref = ? \
+             ORDER BY created_at DESC",
+            user_id,
+            repo_ref,
+        }
+        .fetch_all(db)
+        .await
+    } else {
+        sqlx::query_as! {
+            ConversationPreview,
+            "SELECT thread_id, created_at, title \
+             FROM conversations \
+             WHERE user_id = ? \
+             ORDER BY created_at DESC",
+            user_id,
+        }
+        .fetch_all(db)
+        .await
     }
-    .fetch_all(db)
-    .await
     .map_err(Error::internal)?;
 
     Ok(Json(conversations))

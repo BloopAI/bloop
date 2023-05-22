@@ -52,6 +52,36 @@
     },
     "query": "SELECT repo_ref, llm_history, exchanges, path_aliases, code_chunks FROM conversations WHERE user_id = ? AND thread_id = ?"
   },
+  "bc60b0f34fd20feba2da3f16458770424534eacaba75e6f45b8218f32767671b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "thread_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "title",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT thread_id, created_at, title FROM conversations WHERE user_id = ? AND repo_ref = ? ORDER BY created_at DESC"
+  },
   "cc1b6ba03d478b999fd7e6f2a3b64c710af167c84eadf715108e61b2564e22c1": {
     "describe": {
       "columns": [],
