@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useTransition } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SelectToggleButton from '../../components/SelectToggleButton';
 import { ChevronDoubleIntersected, Modal, Sidebar } from '../../icons';
@@ -20,6 +20,7 @@ const ModeToggle = ({
 }: Props) => {
   const [searchParams] = useSearchParams();
   const { navigateFullResult } = useAppNavigation();
+  const [isPending, startTransition] = useTransition();
 
   const handleFull = useCallback(() => {
     navigateFullResult(repoName, relativePath, {
@@ -28,11 +29,15 @@ const ModeToggle = ({
   }, [searchParams, repoName, relativePath]);
 
   const handleModal = useCallback(() => {
-    setModeAndTransition(FullResultModeEnum.MODAL);
+    startTransition(() => {
+      setModeAndTransition(FullResultModeEnum.MODAL);
+    });
   }, []);
 
   const handleSidebar = useCallback(() => {
-    setModeAndTransition(FullResultModeEnum.SIDEBAR);
+    startTransition(() => {
+      setModeAndTransition(FullResultModeEnum.SIDEBAR);
+    });
   }, []);
 
   return (

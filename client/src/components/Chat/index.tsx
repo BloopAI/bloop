@@ -49,13 +49,14 @@ const Chat = () => {
     setSubmittedQuery,
     selectedLines,
     setSelectedLines,
+    threadId,
+    setThreadId,
   } = useContext(ChatContext);
   const { navigateConversationResults, navigateRepoPath, navigatedItem } =
     useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
   const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
-  const [threadId, setThreadId] = useState('');
   const [resp, setResp] = useState<{ thread_id: string } | null>(null);
   useOnClickOutside(chatRef, () => setChatOpen(false));
 
@@ -145,12 +146,15 @@ const Chat = () => {
                 isLoading: !newMessage.finished,
                 type: ChatMessageType.Answer,
                 loadingSteps: newMessage.search_steps.map(
-                  (s: { type: string; content: string }) =>
-                    s.type === 'PROC'
-                      ? `Reading ${
-                          s.content.length > 20 ? '...' : ''
-                        }${s.content.slice(-20)}`
-                      : s.content,
+                  (s: { type: string; content: string }) => ({
+                    ...s,
+                    displayText:
+                      s.type === 'PROC'
+                        ? `Reading ${
+                            s.content.length > 20 ? '...' : ''
+                          }${s.content.slice(-20)}`
+                        : s.content,
+                  }),
                 ),
                 text: newMessage.conclusion,
                 results: newMessage.results,
@@ -304,7 +308,9 @@ const Chat = () => {
                     setLoading(false);
                     setThreadId('');
                     setSubmittedQuery('');
-                    navigateRepoPath(tab.repoName);
+                    if (navigatedItem?.type === 'conversation-result') {
+                      navigateRepoPath(tab.repoName);
+                    }
                     focusInput();
                   }}
                 >
@@ -347,7 +353,7 @@ const Chat = () => {
                           conversation.length - 1
                         ] as ChatMessageServer
                       )?.loadingSteps?.length - 1
-                    ]
+                    ].displayText
                   : undefined
               }
               selectedLines={selectedLines}
