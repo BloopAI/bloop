@@ -10,6 +10,8 @@ type ContextType = {
   setShowTooltip: Dispatch<SetStateAction<boolean>>;
   tooltipText: string;
   setTooltipText: Dispatch<SetStateAction<string>>;
+  threadId: string;
+  setThreadId: Dispatch<SetStateAction<string>>;
   submittedQuery: string;
   setSubmittedQuery: Dispatch<SetStateAction<string>>;
   selectedLines: [number, number] | null;
@@ -27,6 +29,8 @@ export const ChatContext = createContext<ContextType>({
   setTooltipText: () => {},
   submittedQuery: '',
   setSubmittedQuery: () => {},
+  threadId: '',
+  setThreadId: () => {},
   selectedLines: null,
   setSelectedLines: () => {},
 });

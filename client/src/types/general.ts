@@ -178,11 +178,17 @@ export type MessageResultModify = {
   };
 };
 
+export type ChatLoadingStep = {
+  type: string;
+  content: string;
+  displayText: string;
+};
+
 export type ChatMessageServer = {
   author: ChatMessageAuthor.Server;
   text?: string;
   isLoading: boolean;
-  loadingSteps: string[];
+  loadingSteps: ChatLoadingStep[];
   error?: string;
   isFromHistory?: boolean;
   type: ChatMessageType;

@@ -13,8 +13,8 @@ type Props = {
 
 const typeMap = {
   link: {
-    default: 'text-label-muted hover:text-bg-main active:text-bg-main',
-    isLast: 'text-label-base',
+    default: 'text-label-base hover:text-bg-main active:text-bg-main',
+    isLast: 'text-label-title',
   },
   button: {
     default:

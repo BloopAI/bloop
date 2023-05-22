@@ -57,7 +57,7 @@ const Conversation = ({
                 )}
                 <p className="caption text-label-base flex-1">
                   {m.isLoading
-                    ? m.loadingSteps[m.loadingSteps.length - 1]
+                    ? m.loadingSteps[m.loadingSteps.length - 1].displayText
                     : 'Answer Ready'}
                 </p>
                 {!m.isLoading && !!m.results?.length ? (

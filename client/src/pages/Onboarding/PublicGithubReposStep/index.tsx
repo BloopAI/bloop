@@ -44,10 +44,14 @@ const PublicGithubReposStep = ({
     (e: FormEvent) => {
       e.preventDefault();
       setVerifying(true);
-      const cleanRef = newRepoValue
+      let cleanRef = newRepoValue
         .replace('https://', '')
         .replace('github.com/', '')
+        .replace(/\.git$/, '')
         .replace(/\/$/, '');
+      if (newRepoValue.startsWith('git@github.com:')) {
+        cleanRef = newRepoValue.slice(15).replace(/\.git$/, '');
+      }
       setNewRepoValue(cleanRef);
       axios(`https://api.github.com/repos/${cleanRef}`)
         .then((resp) => {

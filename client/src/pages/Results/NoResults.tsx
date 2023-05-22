@@ -1,16 +1,42 @@
-import React, { useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import Button from '../../components/Button';
 import Filters from '../../components/Filters';
 import PageHeader from '../../components/ResultsPageHeader';
+import { RepositoriesContext } from '../../context/repositoriesContext';
+import { SyncStatus } from '../../types/general';
 
 type Props = {
   suggestions: string[];
   isRepo?: boolean;
   isFolder?: boolean;
+  repo?: string;
+  refetchRepo?: () => void;
 };
 
-const NoResults = ({ suggestions, isRepo, isFolder }: Props) => {
+const NoResults = ({
+  suggestions,
+  isRepo,
+  isFolder,
+  repo,
+  refetchRepo,
+}: Props) => {
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+  const { repositories } = useContext(RepositoriesContext);
+
+  const repoState = useMemo(
+    () =>
+      repo
+        ? repositories?.find((r) => r.name === repo)?.sync_status
+        : undefined,
+    [repositories, repo],
+  );
+
+  useEffect(() => {
+    if (repoState === SyncStatus.Done && refetchRepo && isRepo) {
+      refetchRepo();
+    }
+  }, [repoState]);
+
   const items = useMemo(
     () =>
       suggestions.map((s) => (
