@@ -24,6 +24,7 @@ type Props = {
   setActive: (b: boolean) => void;
   setConversation: (b: ChatMessage[]) => void;
   setThreadId: (b: string) => void;
+  repoRef: string;
 };
 
 const AllConversations = ({
@@ -32,6 +33,7 @@ const AllConversations = ({
   setActive,
   setThreadId,
   setConversation,
+  repoRef,
 }: Props) => {
   const [openItem, setOpenItem] = useState<ChatMessage[] | null>(null);
   const [conversations, setConversations] = useState<AllConversationsResponse>(
@@ -41,12 +43,14 @@ const AllConversations = ({
   const [title, setTitle] = useState('');
 
   const fetchConversations = useCallback(() => {
-    getAllConversations().then(setConversations);
-  }, []);
+    getAllConversations(repoRef).then(setConversations);
+  }, [repoRef]);
 
   useEffect(() => {
-    fetchConversations();
-  }, [isHistoryOpen]);
+    if (isHistoryOpen) {
+      fetchConversations();
+    }
+  }, [isHistoryOpen, fetchConversations]);
 
   const onDelete = useCallback((threadId: string) => {
     deleteConversation(threadId).then(fetchConversations);

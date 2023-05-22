@@ -360,6 +360,7 @@ const Chat = () => {
         setActive={setChatOpen}
         setConversation={setConversation}
         setThreadId={setThreadId}
+        repoRef={tab.key}
       />
     </>
   );
