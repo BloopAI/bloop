@@ -199,7 +199,7 @@ fn str_to_query(field: Field, s: &str) -> DynQuery {
 
 /// Split a string into trigrams, returning a bigram or unigram if the string is shorter than 3
 /// characters.
-fn trigrams(s: &str) -> impl Iterator<Item = CompactString> {
+pub fn trigrams(s: &str) -> impl Iterator<Item = CompactString> {
     let mut chars = s.chars().collect::<SmallVec<[char; 6]>>();
 
     std::iter::from_fn(move || match chars.len() {
@@ -217,7 +217,7 @@ fn trigrams(s: &str) -> impl Iterator<Item = CompactString> {
 ///
 /// This permutes each character by ASCII lowercase and uppercase variants. Characters which do not
 /// have case variants remain unchanged.
-fn case_permutations(s: &str) -> impl Iterator<Item = CompactString> {
+pub fn case_permutations(s: &str) -> impl Iterator<Item = CompactString> {
     // This implements a bitmask-based algorithm. The purpose is not speed; rather, a bitmask is
     // a simple way to get all combinations of a set of flags without allocating, sorting, or doing
     // anything else that is fancy.

@@ -38,6 +38,7 @@ use super::{
 use crate::{
     background::SyncPipes,
     intelligence::TreeSitterFile,
+    query::compiler::{case_permutations, trigrams},
     repo::{iterator::*, FileCache, RepoMetadata, RepoRef, RepoRemote, Repository},
     semantic::Semantic,
     symbol::SymbolLocations,
@@ -295,20 +296,6 @@ impl Indexer<File> {
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
         // lifted from query::compiler
-        fn trigrams(s: &str) -> impl Iterator<Item = String> {
-            let mut chars = s.chars().collect::<Vec<_>>();
-
-            std::iter::from_fn(move || match chars.len() {
-                0 => None,
-                1 | 2 | 3 => Some(std::mem::take(&mut chars).into_iter().collect()),
-                _ => {
-                    let out = chars.iter().take(3).collect();
-                    chars.remove(0);
-                    Some(out)
-                }
-            })
-        }
-
         let reader = self.reader.read().await;
         let searcher = reader.searcher();
         let collector = TopDocs::with_limit(100);
@@ -318,7 +305,8 @@ impl Indexer<File> {
         // matched the query
         let repo_ref_term = Term::from_field_text(self.source.repo_ref, &repo_ref.to_string());
         let mut hits = trigrams(query_str)
-            .map(|token| Term::from_field_text(self.source.relative_path, &token))
+            .flat_map(|s| case_permutations(s.as_str()))
+            .map(|token| Term::from_field_text(self.source.relative_path, token.as_str()))
             .map(|term| {
                 BooleanQuery::intersection(vec![
                     Box::new(TermQuery::new(term, IndexRecordOption::Basic)),

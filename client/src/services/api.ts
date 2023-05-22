@@ -173,8 +173,12 @@ export const githubWebLogin = () =>
 
 export const getConfig = () => http.get('/config').then((r) => r.data);
 
-export const getAllConversations = (): Promise<AllConversationsResponse> =>
-  http.get('/answer/conversations').then((r) => r.data);
+export const getAllConversations = (
+  repo_ref: string,
+): Promise<AllConversationsResponse> =>
+  http
+    .get('/answer/conversations', { params: { repo_ref } })
+    .then((r) => r.data);
 
 export const getConversation = (
   thread_id: string,

@@ -142,6 +142,14 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
             suggestions={mockQuerySuggestions}
             isRepo={navigatedItem?.type === 'repo' && !navigatedItem?.path}
             isFolder={!!navigatedItem?.path}
+            repo={
+              navigatedItem?.type === 'repo' ? navigatedItem?.repo : undefined
+            }
+            refetchRepo={() =>
+              navigatedItem?.repo
+                ? searchQuery(buildRepoQuery(navigatedItem?.repo))
+                : {}
+            }
           />
         );
       case 'repo':

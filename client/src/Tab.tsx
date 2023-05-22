@@ -1,11 +1,8 @@
-import React, { useMemo, useState } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Settings from './components/Settings';
-import { RepoType, UITabType } from './types/general';
+import { UITabType } from './types/general';
 import { DeviceContextType } from './context/deviceContext';
-import { RepositoriesContext } from './context/repositoriesContext';
 import './index.css';
-import { AnalyticsContextProvider } from './context/providers/AnalyticsContextProvider';
 import ReportBugModal from './components/ReportBugModal';
 import { UIContextProvider } from './context/providers/UiContextProvider';
 import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
@@ -21,47 +18,24 @@ type Props = {
 };
 
 function Tab({ deviceContextValue, isActive, tab }: Props) {
-  const [repositories, setRepositories] = useState<RepoType[] | undefined>();
-
-  const reposContextValue = useMemo(
-    () => ({
-      repositories,
-      setRepositories,
-      localSyncError: false,
-      githubSyncError: false,
-    }),
-    [repositories],
-  );
-
   return (
     <div className={`${isActive ? '' : 'hidden'} `}>
       <BrowserRouter>
-        <AnalyticsContextProvider
-          forceAnalytics={deviceContextValue.forceAnalytics}
-          isSelfServe={deviceContextValue.isSelfServe}
-          envConfig={deviceContextValue.envConfig}
-        >
-          <DeviceContextProvider deviceContextValue={deviceContextValue}>
-            <UIContextProvider tab={tab}>
-              <AppNavigationProvider>
-                <SearchContextProvider tab={tab}>
-                  <RepositoriesContext.Provider value={reposContextValue}>
-                    <ChatContextProvider>
-                      <Routes>
-                        <Route
-                          path="*"
-                          element={<ContentContainer tab={tab} />}
-                        />
-                      </Routes>
-                      <Settings />
-                      <ReportBugModal />
-                    </ChatContextProvider>
-                  </RepositoriesContext.Provider>
-                </SearchContextProvider>
-              </AppNavigationProvider>
-            </UIContextProvider>
-          </DeviceContextProvider>
-        </AnalyticsContextProvider>
+        <DeviceContextProvider deviceContextValue={deviceContextValue}>
+          <UIContextProvider tab={tab}>
+            <AppNavigationProvider>
+              <SearchContextProvider tab={tab}>
+                <ChatContextProvider>
+                  <Routes>
+                    <Route path="*" element={<ContentContainer tab={tab} />} />
+                  </Routes>
+                  <Settings />
+                  <ReportBugModal />
+                </ChatContextProvider>
+              </SearchContextProvider>
+            </AppNavigationProvider>
+          </UIContextProvider>
+        </DeviceContextProvider>
       </BrowserRouter>
     </div>
   );
