@@ -308,7 +308,9 @@ const Chat = () => {
                     setLoading(false);
                     setThreadId('');
                     setSubmittedQuery('');
-                    navigateRepoPath(tab.repoName);
+                    if (navigatedItem?.type === 'conversation-result') {
+                      navigateRepoPath(tab.repoName);
+                    }
                     focusInput();
                   }}
                 >
