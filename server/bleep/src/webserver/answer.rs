@@ -107,6 +107,7 @@ pub(super) async fn _handle(
     let ctx = AppContext::new(app, user, query_id)
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
 
+    // confirm client compatibility with answer-api
     match ctx
         .llm_gateway
         .is_compatible(env!("CARGO_PKG_VERSION").parse().unwrap())
