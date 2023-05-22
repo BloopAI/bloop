@@ -113,9 +113,7 @@ const RepoCard = ({
       syncStatus.percentage < 100 ? (
         <div className="flex flex-col gap-2">
           <p className="body-s text-label-title">Indexing...</p>
-          <BarLoader
-            percentage={syncStatus.percentage}
-          />
+          <BarLoader percentage={syncStatus.percentage} />
           <p className="caption text-label-muted">
             {syncStatus.percentage}% complete
           </p>

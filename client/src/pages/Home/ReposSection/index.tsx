@@ -10,6 +10,7 @@ import { RepoType } from '../../../types/general';
 import { DeviceContext } from '../../../context/deviceContext';
 import RepoCardSkeleton from '../../../components/RepoCard/RepoCardSkeleton';
 import NoRepos from '../../../components/RepoCard/NoRepos';
+import { RepositoriesContext } from '../../../context/repositoriesContext';
 
 type Props = {
   reposToShow: RepoType[];
@@ -21,6 +22,7 @@ let eventSource: EventSource;
 
 const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
   const { apiUrl } = useContext(DeviceContext);
+  const { setRepositories } = useContext(RepositoriesContext);
   const [currentlySyncingRepo, setCurrentlySyncingRepo] = useState<{
     repoRef: string;
     percentage: number;
