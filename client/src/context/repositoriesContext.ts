@@ -6,11 +6,13 @@ type ContextType = {
   setRepositories: (r: RepoType[]) => void;
   localSyncError: boolean;
   githubSyncError: boolean;
+  fetchRepos: () => void;
 };
 
 export const RepositoriesContext = createContext<ContextType>({
   repositories: [],
   setRepositories: () => {},
+  fetchRepos: () => {},
   localSyncError: false,
   githubSyncError: false,
 });

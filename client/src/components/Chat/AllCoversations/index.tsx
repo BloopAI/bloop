@@ -89,7 +89,7 @@ const AllConversations = ({
         isHistoryOpen ? 'mr-0' : '-mr-97'
       } transition-all duration-300 ease-out-slow`}
     >
-      <div className="p-4 bg-chat-bg-sub border-b border-chat-bg-divider flex items-center gap-2 text-label-title">
+      <div className="p-4 bg-chat-bg-base/35 border-b border-chat-bg-border flex items-center gap-2 text-label-title">
         {!!openItem && (
           <ChipButton variant="filled" onClick={() => setOpenItem(null)}>
             <ArrowLeft sizeClassName="w-4 h-4" />
@@ -106,12 +106,16 @@ const AllConversations = ({
             Create new
           </ChipButton>
         )}
-        <ChipButton variant="filled" onClick={() => setHistoryOpen(false)}>
+        <ChipButton
+          variant="filled"
+          colorScheme="base"
+          onClick={() => setHistoryOpen(false)}
+        >
           <CloseSign sizeClassName="w-3.5 h-3.5" />
         </ChipButton>
       </div>
       {!openItem && (
-        <div className="flex flex-col gap-1 py-4 overflow-auto flex-1 pb-12 bg-chat-bg-sub">
+        <div className="flex flex-col gap-1 py-4 overflow-auto flex-1 pb-12">
           {conversations.map((c) => (
             <ConversationListItem
               key={c.thread_id}
