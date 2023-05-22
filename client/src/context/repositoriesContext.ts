@@ -3,7 +3,7 @@ import { RepoType } from '../types/general';
 
 type ContextType = {
   repositories?: RepoType[];
-  setRepositories: Dispatch<SetStateAction<RepoType[]>>;
+  setRepositories: Dispatch<SetStateAction<RepoType[] | undefined>>;
   localSyncError: boolean;
   githubSyncError: boolean;
 };

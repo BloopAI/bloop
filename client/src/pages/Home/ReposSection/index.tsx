@@ -37,7 +37,10 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
       try {
         const data = JSON.parse(ev.data);
         if (data.ev?.status_change) {
-          setRepositories((prev: RepoType[]) => {
+          setRepositories((prev: RepoType[] | undefined) => {
+            if (!prev) {
+              return prev;
+            }
             const index = prev.findIndex((r) => r.ref === data.ref);
             const newRepos = [...prev];
             newRepos[index] = {
