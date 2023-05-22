@@ -166,9 +166,23 @@ pub(super) async fn _handle(
                 Duration::from_secs(TIMEOUT_SECS),
             ) {
                 match item {
-                    Ok(Either::Left(exchange)) => yield exchange,
-                    Ok(Either::Right(n)) => next = n?,
-                    Err(_) => Err(anyhow!("reached timeout of {TIMEOUT_SECS}s"))?,
+                    Ok(Either::Right(next_action)) => match next_action {
+                        Ok(n) => next = n,
+                        err => {
+                            ctx.track_query(
+                                EventData::output_stage("error")
+                                    .with_payload("message", err.as_ref().unwrap_err().to_string()),
+                            );
+                            err?;
+                        }
+                    },
+                    Err(_) => {
+                        ctx.track_query(
+                            EventData::output_stage("error")
+                                .with_payload("timeout", TIMEOUT_SECS),
+                        );
+                        Err(anyhow!("reached timeout of {TIMEOUT_SECS}s"))?
+                    }
                 }
             }
 
