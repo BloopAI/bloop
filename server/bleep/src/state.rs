@@ -188,7 +188,7 @@ impl StateSource {
                     }
 
                     // in case the app terminated during indexing, make sure to re-queue it
-                    if repo.sync_status == SyncStatus::Indexing {
+                    if !repo.sync_status.indexable() {
                         repo.mark_queued();
                     }
                 });
