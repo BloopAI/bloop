@@ -4,7 +4,7 @@ import './index.css';
 import 'highlight.js/styles/vs2015.css';
 import Tab from './Tab';
 import { TabsContext } from './context/tabsContext';
-import { UITabType } from './types/general';
+import { RepoType, UITabType } from './types/general';
 import {
   getJsonFromStorage,
   getPlainFromStorage,
@@ -13,9 +13,11 @@ import {
   savePlainToStorage,
   TABS_KEY,
 } from './services/storage';
-import { initApi } from './services/api';
+import { getRepos, initApi } from './services/api';
 import { useComponentWillMount } from './hooks/useComponentWillMount';
 import { RepoSource } from './types';
+import { RepositoriesContext } from './context/repositoriesContext';
+import { AnalyticsContextProvider } from './context/providers/AnalyticsContextProvider';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -37,6 +39,7 @@ function App({ deviceContextValue }: Props) {
   const [activeTab, setActiveTab] = useState(
     getPlainFromStorage(LAST_ACTIVE_TAB_KEY) || 'initial',
   );
+  const [repositories, setRepositories] = useState<RepoType[] | undefined>();
 
   const handleAddTab = useCallback(
     (repoRef: string, repoName: string, name: string, source: RepoSource) => {
@@ -100,17 +103,51 @@ function App({ deviceContextValue }: Props) {
     [tabs, activeTab, handleAddTab, handleRemoveTab],
   );
 
+  const fetchRepos = useCallback(() => {
+    getRepos().then((data) => {
+      const list = data?.list?.sort((a, b) => (a.name < b.name ? -1 : 1)) || [];
+      setRepositories(list);
+    });
+  }, []);
+
+  useEffect(() => {
+    fetchRepos();
+    const intervalId = setInterval(fetchRepos, 5000);
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  const reposContextValue = useMemo(
+    () => ({
+      repositories,
+      setRepositories,
+      localSyncError: false,
+      githubSyncError: false,
+      fetchRepos,
+    }),
+    [repositories],
+  );
+
   return (
-    <TabsContext.Provider value={contextValue}>
-      {tabs.map((t) => (
-        <Tab
-          key={t.key}
-          deviceContextValue={deviceContextValue}
-          isActive={t.key === activeTab}
-          tab={t}
-        />
-      ))}
-    </TabsContext.Provider>
+    <AnalyticsContextProvider
+      forceAnalytics={deviceContextValue.forceAnalytics}
+      isSelfServe={deviceContextValue.isSelfServe}
+      envConfig={deviceContextValue.envConfig}
+    >
+      <RepositoriesContext.Provider value={reposContextValue}>
+        <TabsContext.Provider value={contextValue}>
+          {tabs.map((t) => (
+            <Tab
+              key={t.key}
+              deviceContextValue={deviceContextValue}
+              isActive={t.key === activeTab}
+              tab={t}
+            />
+          ))}
+        </TabsContext.Provider>
+      </RepositoriesContext.Provider>
+    </AnalyticsContextProvider>
   );
 }
 

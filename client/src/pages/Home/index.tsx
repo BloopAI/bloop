@@ -1,10 +1,9 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react';
 import ErrorFallback from '../../components/ErrorFallback';
 import LiteLoader from '../../components/Loaders/LiteLoader';
 import Button from '../../components/Button';
 import { CloseSign } from '../../icons';
-import { getRepos } from '../../services/api';
 import { RepositoriesContext } from '../../context/repositoriesContext';
 import { RepoProvider, RepoType, SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
@@ -24,7 +23,7 @@ const filterRepositories = (repos?: RepoType[]) => {
 };
 
 const HomePage = () => {
-  const { setRepositories, repositories } = useContext(RepositoriesContext);
+  const { fetchRepos, repositories } = useContext(RepositoriesContext);
   const { isSelfServe } = useContext(DeviceContext);
   const [popupOpen, setPopupOpen] = useState(false);
   const [addReposOpen, setAddReposOpen] = useState<
@@ -35,21 +34,12 @@ const HomePage = () => {
   );
   const { trackReposSynced } = useAnalytics();
 
-  const fetchRepos = useCallback(() => {
-    getRepos().then((data) => {
-      const list = data?.list?.sort((a, b) => (a.name < b.name ? -1 : 1)) || [];
-      setRepositories(list);
-      setReposToShow(filterRepositories(list));
-    });
-  }, []);
-
   useEffect(() => {
-    fetchRepos();
-    const intervalId = setInterval(fetchRepos, 10000);
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, []);
+    if (repositories) {
+      setReposToShow(filterRepositories(repositories));
+    }
+  }, [repositories]);
+
   return (
     <div className="w-full flex flex-col mx-auto max-w-6.5xl">
       <div className="p-8 pb-0">
