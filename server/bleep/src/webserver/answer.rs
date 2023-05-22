@@ -1111,7 +1111,7 @@ mod tests {
     #[test]
     fn test_trimming() {
         let long_string = std::iter::repeat("long string ")
-            .take(3000)
+            .take(2000)
             .collect::<String>();
 
         let conversation = Conversation {
