@@ -1,6 +1,5 @@
 import { RepositoriesContext } from '../../context/repositoriesContext';
 import { UIContextProvider } from '../../context/providers/UiContextProvider';
-import { RepoSource } from '../../types';
 import Settings from './index';
 
 export default {
@@ -11,9 +10,7 @@ export default {
 export const Default = () => {
   return (
     <div className="">
-      <UIContextProvider
-        tab={{ name: '', repoName: '', key: '', source: RepoSource.LOCAL }}
-      >
+      <UIContextProvider tab={{ name: '', key: '', repoName: '' }}>
         <RepositoriesContext.Provider
           value={{
             repositories: [],

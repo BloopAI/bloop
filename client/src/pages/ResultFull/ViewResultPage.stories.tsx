@@ -15,10 +15,7 @@ export const Default = () => {
   return (
     <MemoryRouter initialEntries={['']}>
       <Routes>
-        <Route
-          path="/"
-          element={<ViewResultPage data={codeSearch} isLoading={false} />}
-        />
+        <Route path="/" element={<ViewResultPage data={codeSearch} />} />
       </Routes>
     </MemoryRouter>
   );

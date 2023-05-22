@@ -20,7 +20,7 @@ type Props = {
   repoRef: string;
   provider: 'local' | 'github';
   isSyncing?: boolean;
-  syncStatus?: { percentage: number } | null;
+  syncStatus?: { indexStep: number; percentage: number } | null;
   onDelete: () => void;
 };
 
@@ -107,15 +107,18 @@ const RepoCard = ({
           />
         </div>
       </div>
-      {(sync_status === SyncStatus.Indexing ||
+      {isSyncing &&
+      (sync_status === SyncStatus.Indexing ||
         sync_status === SyncStatus.Syncing) &&
       syncStatus &&
-      syncStatus.percentage < 100 ? (
+      (syncStatus.indexStep === 0 || syncStatus.percentage < 100) ? (
         <div className="flex flex-col gap-2">
           <p className="body-s text-label-title">Indexing...</p>
-          <BarLoader percentage={syncStatus.percentage} />
+          <BarLoader
+            percentage={syncStatus.indexStep === 1 ? syncStatus.percentage : 1}
+          />
           <p className="caption text-label-muted">
-            {syncStatus.percentage}% complete
+            {syncStatus.indexStep === 1 ? syncStatus.percentage : 1}% complete
           </p>
         </div>
       ) : (

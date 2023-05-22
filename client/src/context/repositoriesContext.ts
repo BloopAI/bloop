@@ -1,9 +1,9 @@
-import { createContext, Dispatch, SetStateAction } from 'react';
+import { createContext } from 'react';
 import { RepoType } from '../types/general';
 
 type ContextType = {
   repositories?: RepoType[];
-  setRepositories: Dispatch<SetStateAction<RepoType[] | undefined>>;
+  setRepositories: (r: RepoType[]) => void;
   localSyncError: boolean;
   githubSyncError: boolean;
 };

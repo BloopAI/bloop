@@ -20,14 +20,14 @@ pub use repo::Repo;
 use tracing::debug;
 
 use crate::{
-    background::{SyncHandle, SyncPipes},
     query::parser::Query,
-    repo::{RepoError, RepoMetadata, RepoRef, Repository},
+    repo::{RepoMetadata, RepoRef, Repository},
     semantic::Semantic,
     state::RepositoryPool,
     Configuration,
 };
 
+pub type Progress = (RepoRef, usize, u8);
 pub type GlobalWriteHandleRef<'a> = [IndexWriteHandle<'a>];
 
 pub struct GlobalWriteHandle<'a> {
@@ -44,41 +44,19 @@ impl<'a> Deref for GlobalWriteHandle<'a> {
 }
 
 impl<'a> GlobalWriteHandle<'a> {
-    pub(crate) fn rollback(self) -> Result<()> {
+    pub fn rollback(self) -> Result<()> {
         for mut handle in self.handles {
             handle.rollback()?
         }
 
         Ok(())
     }
-
-    pub(crate) async fn commit(self) -> Result<()> {
+    pub async fn commit(self) -> Result<()> {
         for mut handle in self.handles {
             handle.commit().await?
         }
 
         Ok(())
-    }
-
-    pub(crate) async fn index(
-        &self,
-        sync_handle: &SyncHandle,
-        repo: &Repository,
-    ) -> Result<Arc<RepoMetadata>, RepoError> {
-        use rayon::prelude::*;
-
-        let metadata = repo.get_repo_metadata().await?;
-
-        tokio::task::block_in_place(|| {
-            self.handles
-                .par_iter()
-                .map(|handle| {
-                    handle.index(&sync_handle.reporef, repo, &metadata, sync_handle.pipes())
-                })
-                .collect::<Result<Vec<_>, _>>()
-        })?;
-
-        Ok(metadata)
     }
 }
 
@@ -86,6 +64,8 @@ pub struct Indexes {
     pub repo: Indexer<Repo>,
     pub file: Indexer<File>,
     write_mutex: tokio::sync::Mutex<()>,
+
+    progress: tokio::sync::broadcast::Sender<Progress>,
 }
 
 impl Indexes {
@@ -107,6 +87,8 @@ impl Indexes {
         }
         config.source.save_index_version()?;
 
+        let (progress, _) = tokio::sync::broadcast::channel(16);
+
         Ok(Self {
             repo: Indexer::create(
                 Repo::new(),
@@ -121,6 +103,7 @@ impl Indexes {
                 config.max_threads,
             )?,
             write_mutex: Default::default(),
+            progress,
         })
     }
 
@@ -131,9 +114,16 @@ impl Indexes {
         debug!(id, "lock acquired");
 
         Ok(GlobalWriteHandle {
-            handles: vec![self.repo.write_handle()?, self.file.write_handle()?],
+            handles: vec![
+                self.repo.write_handle(0, self.progress.clone())?,
+                self.file.write_handle(1, self.progress.clone())?,
+            ],
             _write_lock,
         })
+    }
+
+    pub fn subscribe(&self) -> tokio::sync::broadcast::Receiver<Progress> {
+        self.progress.subscribe()
     }
 }
 
@@ -145,7 +135,7 @@ pub trait Indexable: Send + Sync {
         repo: &Repository,
         metadata: &RepoMetadata,
         writer: &IndexWriter,
-        pipes: &SyncPipes,
+        progress: &(dyn Fn(u8) + Sync),
     ) -> Result<()>;
 
     fn delete_by_repo(&self, writer: &IndexWriter, repo: &Repository);
@@ -181,6 +171,7 @@ pub struct IndexWriteHandle<'a> {
     index: &'a tantivy::Index,
     reader: &'a RwLock<IndexReader>,
     writer: IndexWriter,
+    progress: Box<dyn Fn(RepoRef, u8) + Send + Sync>,
 }
 
 impl<'a> IndexWriteHandle<'a> {
@@ -198,10 +189,11 @@ impl<'a> IndexWriteHandle<'a> {
         reporef: &RepoRef,
         repo: &Repository,
         metadata: &RepoMetadata,
-        progress: &SyncPipes,
     ) -> Result<()> {
         self.source
-            .index_repository(reporef, repo, metadata, &self.writer, progress)
+            .index_repository(reporef, repo, metadata, &self.writer, &|p: u8| {
+                (self.progress)(reporef.clone(), p)
+            })
     }
 
     pub async fn commit(&mut self) -> Result<()> {
@@ -229,7 +221,11 @@ pub struct Indexer<T> {
 }
 
 impl<T: Indexable> Indexer<T> {
-    fn write_handle(&self) -> Result<IndexWriteHandle<'_>> {
+    fn write_handle(
+        &self,
+        id: usize,
+        progress: tokio::sync::broadcast::Sender<Progress>,
+    ) -> Result<IndexWriteHandle<'_>> {
         Ok(IndexWriteHandle {
             source: &self.source,
             index: &self.index,
@@ -237,6 +233,9 @@ impl<T: Indexable> Indexer<T> {
             writer: self
                 .index
                 .writer_with_num_threads(self.reindex_threads, self.reindex_buffer_size)?,
+            progress: Box::new(move |reporef, status| {
+                _ = progress.send((reporef, id, status));
+            }),
         })
     }
 

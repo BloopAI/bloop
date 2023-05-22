@@ -11,10 +11,7 @@ use tantivy::{
 use tracing::info;
 
 use super::Indexable;
-use crate::{
-    background::SyncPipes,
-    repo::{RepoMetadata, RepoRef, Repository},
-};
+use crate::repo::{RepoMetadata, RepoRef, Repository};
 
 pub struct Repo {
     schema: Schema,
@@ -75,7 +72,7 @@ impl Indexable for Repo {
         repo: &Repository,
         _metadata: &RepoMetadata,
         writer: &IndexWriter,
-        pipes: &SyncPipes,
+        progress: &(dyn Fn(u8) + Sync),
     ) -> Result<()> {
         // Make sure we delete any stale references to this repository when indexing.
         self.delete_by_repo(writer, repo);
@@ -89,7 +86,7 @@ impl Indexable for Repo {
             self.repo_ref => repo_ref.to_string(),
         ))?;
 
-        pipes.index_percent(100);
+        progress(100);
 
         info!(
             ?repo.disk_path,
