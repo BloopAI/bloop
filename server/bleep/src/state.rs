@@ -1,6 +1,6 @@
 use crate::{
     remotes::{gather_repo_roots, BackendCredential},
-    repo::{Backend, RepoError, RepoRef, Repository, SyncStatus},
+    repo::{Backend, RepoError, RepoRef, Repository},
 };
 use anyhow::Result;
 use clap::Args;
