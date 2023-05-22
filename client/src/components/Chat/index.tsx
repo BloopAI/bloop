@@ -22,6 +22,7 @@ import NLInput from './NLInput';
 import ChipButton from './ChipButton';
 import AllConversations from './AllCoversations';
 import Conversation from './Conversation';
+import StarsSvg from './StarsSvg';
 
 let prevEventSource: EventSource | undefined;
 
@@ -240,7 +241,7 @@ const Chat = () => {
       <button
         className={`fixed z-50 bottom-20 w-16 h-16 rounded-full cursor-pointer flex items-center justify-center ${
           isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
-        } border border-chat-bg-border bg-chat-bg-base transition-all duration-300 ease-out-slow`}
+        } border border-chat-bg-border bg-chat-bg-base shadow-float transition-all duration-300 ease-out-slow`}
         onClick={() => {
           setShowTooltip(false);
           setChatOpen(true);
@@ -267,11 +268,12 @@ const Chat = () => {
             </svg>
           </div>
         )}
-        <div className="absolute rounded-full top-0 left-0 right-0 bottom-0 bg-[url('/stars.png')] bg-cover flex z-0 overflow-hidden">
-          <div className="w-full h-full bg-[radial-gradient(47.73%_47.73%_at_50%_0%,transparent_0%,#0B0B14_100%)] animate-spin-extra-slow" />
+        <div className="absolute rounded-full top-0 left-0 right-0 bottom-0 flex z-0 overflow-hidden">
+          <StarsSvg />
+          <div className="absolute rounded-full top-0 left-0 right-0 bottom-0 z-10 chat-head-bg animate-spin-extra-slow" />
         </div>
         <div
-          className={`w-6 h-6 relative z-10 ${
+          className={`w-6 h-6 relative z-10 text-label-title ${
             isLoading ? 'animate-spin-extra-slow' : ''
           }`}
         >
