@@ -49,13 +49,14 @@ const Chat = () => {
     setSubmittedQuery,
     selectedLines,
     setSelectedLines,
+    threadId,
+    setThreadId,
   } = useContext(ChatContext);
   const { navigateConversationResults, navigateRepoPath, navigatedItem } =
     useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
   const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
-  const [threadId, setThreadId] = useState('');
   const [resp, setResp] = useState<{ thread_id: string } | null>(null);
   useOnClickOutside(chatRef, () => setChatOpen(false));
 

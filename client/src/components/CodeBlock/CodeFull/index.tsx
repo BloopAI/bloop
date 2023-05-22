@@ -92,8 +92,13 @@ const CodeFull = ({
     top: number;
     left: number;
   } | null>(null);
-  const { setSubmittedQuery, setChatOpen, setSelectedLines } =
-    useContext(ChatContext);
+  const {
+    setSubmittedQuery,
+    setChatOpen,
+    setSelectedLines,
+    setConversation,
+    setThreadId,
+  } = useContext(ChatContext);
   const { navigateRepoPath } = useAppNavigation();
 
   const [isSearchActive, setSearchActive] = useState(false);
@@ -386,6 +391,8 @@ const CodeFull = ({
                       <button
                         onClick={() => {
                           setChatOpen(true);
+                          setThreadId('');
+                          setConversation([]);
                           setSelectedLines([
                             currentSelection[0]![0],
                             currentSelection[1]![0],
@@ -407,6 +414,8 @@ const CodeFull = ({
                       </button>
                       <button
                         onClick={() => {
+                          setConversation([]);
+                          setThreadId('');
                           setSelectedLines([
                             currentSelection[0]![0],
                             currentSelection[1]![0],
