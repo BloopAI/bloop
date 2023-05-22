@@ -385,7 +385,11 @@ impl Indexer<File> {
                     v.push(additions(query_str, i, j));
                     v
                 });
+
             regex::RegexSetBuilder::new(all_regexes)
+                // Increased from the default to account for long paths. At the time of writing,
+                // the default was `10 * (1 << 20)`.
+                .size_limit(10 * (1 << 25))
                 .case_insensitive(true)
                 .build()
                 .unwrap()
