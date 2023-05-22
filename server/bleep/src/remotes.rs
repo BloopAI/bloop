@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
 use crate::{
+    background::SyncHandle,
     remotes,
     repo::{Backend, RepoError, RepoRef, Repository, SyncStatus},
     Application,
@@ -300,39 +301,23 @@ pub(crate) enum BackendCredential {
 }
 
 impl BackendCredential {
-    pub(crate) async fn sync(self, app: Application, repo_ref: RepoRef) -> Result<()> {
-        use BackendCredential::*;
+    pub(crate) async fn sync(self, sync_handle: &SyncHandle) -> Result<()> {
+        let SyncHandle { app, .. } = sync_handle;
 
-        let existing = app
-            .repo_pool
-            .update_async(&repo_ref, |_k, repo| {
-                if repo.sync_status == SyncStatus::Syncing {
-                    Err(RemoteError::SyncInProgress)
-                } else {
-                    repo.sync_status = SyncStatus::Syncing;
-                    Ok(())
-                }
-            })
-            .await;
+        use BackendCredential::*;
+        let existing = sync_handle.sync_lock().await;
 
         let Github(gh) = self;
         let synced = match existing {
             Some(Err(err)) => return Err(err),
             Some(Ok(_)) => {
-                let repo = app
-                    .repo_pool
-                    .read_async(&repo_ref, |_k, repo| repo.clone())
-                    .await
+                let repo = sync_handle
+                    .repo()
                     .expect("repo exists & locked, this shouldn't happen");
                 gh.auth.pull_repo(repo).await
             }
             None => {
-                create_repository(&app, &repo_ref).await;
-                let repo = app
-                    .repo_pool
-                    .read_async(&repo_ref, |_k, repo| repo.clone())
-                    .await
-                    .expect("repo just created & locked, this shouldn't happen");
+                let repo = create_repository(app, sync_handle).await;
                 gh.auth.clone_repo(repo).await
             }
         };
@@ -340,14 +325,12 @@ impl BackendCredential {
         let new_status = match synced {
             Ok(_) => SyncStatus::Queued,
             Err(ref err) => {
-                let repo = app
-                    .repo_pool
-                    .read_async(&repo_ref, |_k, repo| repo.clone())
-                    .await
+                let repo = sync_handle
+                    .repo()
                     .expect("repo exists & locked, this shouldn't happen");
 
                 // try cloning again
-                tokio::fs::remove_dir_all(&repo.disk_path).await;
+                _ = tokio::fs::remove_dir_all(&repo.disk_path).await;
 
                 match gh.auth.clone_repo(repo).await {
                     Ok(_) => SyncStatus::Queued,
@@ -358,9 +341,8 @@ impl BackendCredential {
             }
         };
 
-        app.repo_pool
-            .update_async(&repo_ref, |_k, v| v.sync_status = new_status)
-            .await
+        sync_handle
+            .set_status(|_| new_status)
             .expect("unlocking repo failed, this shouldn't happen");
 
         app.config.source.save_pool(app.repo_pool.clone())?;
@@ -368,24 +350,23 @@ impl BackendCredential {
     }
 }
 
-async fn create_repository<'a>(app: &'a Application, reporef: &RepoRef) {
-    let name = reporef.to_string();
+async fn create_repository<'a>(app: &'a Application, sync_handle: &SyncHandle) -> Repository {
+    let name = sync_handle.reporef.to_string();
     let disk_path = app
         .config
         .source
         .repo_path_for_name(&name.replace('/', "_"));
 
-    let remote = reporef.as_ref().into();
+    let remote = sync_handle.reporef.as_ref().into();
 
-    app.repo_pool
-        .entry_async(reporef.clone())
-        .await
-        .or_insert_with(|| Repository {
+    sync_handle
+        .create_new(|| Repository {
             disk_path,
             remote,
             sync_status: SyncStatus::Syncing,
             last_index_unix_secs: 0,
             last_commit_unix_secs: 0,
             most_common_lang: None,
-        });
+        })
+        .await
 }
