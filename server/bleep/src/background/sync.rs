@@ -55,17 +55,15 @@ impl PartialEq for SyncHandle {
 
 impl Drop for SyncHandle {
     fn drop(&mut self) {
-        let status = self
-            .set_status(|v| {
-                use SyncStatus::*;
-                match &v.sync_status {
-                    Indexing | Syncing => Error {
-                        message: "unknown".into(),
-                    },
-                    other => other.clone(),
-                }
-            })
-            .expect("the repo has been deleted from the db?");
+        let status = self.set_status(|v| {
+            use SyncStatus::*;
+            match &v.sync_status {
+                Indexing | Syncing => Error {
+                    message: "unknown".into(),
+                },
+                other => other.clone(),
+            }
+        });
 
         _ = self.app.config.source.save_pool(self.app.repo_pool.clone());
 
