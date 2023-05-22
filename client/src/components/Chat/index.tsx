@@ -22,6 +22,7 @@ import NLInput from './NLInput';
 import ChipButton from './ChipButton';
 import AllConversations from './AllCoversations';
 import Conversation from './Conversation';
+import DeprecatedClientModal from './DeprecatedClientModal';
 
 let prevEventSource: EventSource | undefined;
 
@@ -52,6 +53,7 @@ const Chat = () => {
   const { navigateConversationResults, navigateRepoPath, navigatedItem } =
     useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
   const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
   const [threadId, setThreadId] = useState('');
@@ -69,6 +71,7 @@ const Chat = () => {
       if (!query) {
         return;
       }
+      console.log('query', query);
       prevEventSource?.close();
       setInputValue('');
       setLoading(true);
@@ -94,12 +97,20 @@ const Chat = () => {
       let firstResultCame: boolean;
       let i = -1;
       eventSource.onerror = (err) => {
+        console.log('on error');
         console.log(err);
         firstResultCame = false;
         i = -1;
       };
       eventSource.onmessage = (ev) => {
         console.log(ev.data);
+        if (ev.data === '{"Err":"incompatible client"}') {
+          eventSource.close();
+          prevEventSource?.close();
+          setShowPopup(true);
+          setLoading(false);
+          return;
+        }
         i++;
         if (i === 0) {
           setThreadId(ev.data);
@@ -172,8 +183,11 @@ const Chat = () => {
             });
           }
         } catch (err) {
-          console.log(err);
+          console.log('failed to parse response', err);
         }
+      };
+      return () => {
+        eventSource.close();
       };
     },
     [tab, threadId, navigatedItem?.path, navigatedItem?.type, selectedLines],
@@ -360,6 +374,10 @@ const Chat = () => {
         setActive={setChatOpen}
         setConversation={setConversation}
         setThreadId={setThreadId}
+      />
+      <DeprecatedClientModal
+        isOpen={showPopup}
+        onClose={() => setShowPopup(false)}
       />
     </>
   );
