@@ -105,8 +105,10 @@ pub(super) async fn _handle(
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
-    let ctx = AppContext::new(app, user, query_id)
-        .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
+    let ctx = AppContext::new(app, user)
+        .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
+        .with_query_id(query_id)
+        .with_repo_ref(params.repo_ref.clone());
 
     // confirm client compatibility with answer-api
     match ctx
@@ -166,6 +168,7 @@ pub(super) async fn _handle(
                 Duration::from_secs(TIMEOUT_SECS),
             ) {
                 match item {
+                    Ok(Either::Left(exchange)) => yield exchange,
                     Ok(Either::Right(next_action)) => match next_action {
                         Ok(n) => next = n,
                         err => {
@@ -305,13 +308,12 @@ impl Conversation {
                     .send(self.update(Update::Step(SearchStep::Query(s.clone()))))
                     .await?;
 
-                ctx.track_query(EventData::input_stage("query").with_payload("q", &s));
-
-                match self.get_summarized_answer() {
+                let summarized_answer = self.get_summarized_answer();
+                match summarized_answer.as_ref() {
                     Some(summary) => {
                         info!("attaching summary of previous exchange: {summary}");
                         self.llm_history
-                            .push(llm_gateway::api::Message::assistant(&summary));
+                            .push(llm_gateway::api::Message::assistant(summary));
                         self.llm_history
                             .push(llm_gateway::api::Message::assistant(prompts::CONTINUE));
                     }
@@ -319,6 +321,12 @@ impl Conversation {
                         info!("no previous exchanges, skipping summary");
                     }
                 }
+
+                ctx.track_query(
+                    EventData::input_stage("query")
+                        .with_payload("q", &s)
+                        .with_payload("previous_answer_summary", &summarized_answer),
+                );
 
                 parser::parse_nl(&s)?
                     .as_semantic()
@@ -398,18 +406,21 @@ impl Conversation {
                     paths = semantic_paths;
                 }
 
+                let prompt = Some("§alias, path".to_owned())
+                    .into_iter()
+                    .chain(paths.iter().map(|p| format!("{}, {p}", self.path_alias(p))))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
                 ctx.track_query(
                     EventData::input_stage("path search")
                         .with_payload("query", &search)
                         .with_payload("is_semantic", is_semantic)
-                        .with_payload("results", &paths),
+                        .with_payload("results", &paths)
+                        .with_payload("raw_prompt", &prompt),
                 );
 
-                Some("§alias, path".to_owned())
-                    .into_iter()
-                    .chain(paths.iter().map(|p| format!("{}, {p}", self.path_alias(p))))
-                    .collect::<Vec<_>>()
-                    .join("\n")
+                prompt
             }
 
             Action::Code(query) => {
@@ -469,13 +480,16 @@ impl Conversation {
                     self.code_chunks.push(chunk.clone());
                 }
 
+                let prompt = serde_json::to_string(&chunks).unwrap();
+
                 ctx.track_query(
                     EventData::input_stage("semantic code search")
                         .with_payload("query", &query)
-                        .with_payload("chunks", &chunks),
+                        .with_payload("chunks", &chunks)
+                        .with_payload("raw_prompt", &prompt),
                 );
 
-                serde_json::to_string(&chunks).unwrap()
+                prompt
             }
 
             Action::Proc(question, path_aliases) => {
@@ -493,6 +507,10 @@ impl Conversation {
             .await?
             .try_collect::<String>()
             .await?;
+
+        ctx.track_query(
+            EventData::output_stage("llm_reply").with_payload("raw_response", &raw_response),
+        );
 
         let action = Action::deserialize_gpt(&raw_response)?;
         if !matches!(action, Action::Query(..)) {
@@ -722,13 +740,16 @@ impl Conversation {
             })
             .collect::<Vec<_>>();
 
+        let prompt = serde_json::to_string(&out)?;
+
         ctx.track_query(
             EventData::input_stage("process file")
                 .with_payload("question", question)
-                .with_payload("chunks", &out),
+                .with_payload("chunks", &out)
+                .with_payload("raw_prompt", &prompt),
         );
 
-        Ok(serde_json::to_string(&out)?)
+        Ok(prompt)
     }
 
     async fn answer(
@@ -877,8 +898,10 @@ impl Conversation {
 
         ctx.track_query(
             EventData::output_stage("answer")
-                .with_payload("context", &context)
-                .with_payload("response", &buffer),
+                .with_payload("query", self.last_exchange().query())
+                .with_payload("query_history", &query_history)
+                .with_payload("response", &buffer)
+                .with_payload("raw_prompt", &prompt),
         );
 
         Ok(())
@@ -1138,10 +1161,11 @@ struct AppContext {
     llm_gateway: llm_gateway::Client,
     query_id: uuid::Uuid,
     user: User,
+    repo_ref: Option<RepoRef>,
 }
 
 impl AppContext {
-    fn new(app: Application, user: User, query_id: uuid::Uuid) -> Result<Self> {
+    fn new(app: Application, user: User) -> Result<Self> {
         let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
             .temperature(0.0)
             .bearer(app.github_token()?.map(|s| s.expose_secret().clone()));
@@ -1149,9 +1173,20 @@ impl AppContext {
         Ok(Self {
             app,
             llm_gateway,
-            query_id,
+            query_id: uuid::Uuid::nil(),
             user,
+            repo_ref: None,
         })
+    }
+
+    fn with_query_id(mut self, query_id: uuid::Uuid) -> Self {
+        self.query_id = query_id;
+        self
+    }
+
+    fn with_repo_ref(mut self, repo_ref: RepoRef) -> Self {
+        self.repo_ref = Some(repo_ref);
+        self
     }
 
     fn model(mut self, model: &str) -> Self {
