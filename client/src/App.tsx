@@ -26,19 +26,15 @@ type Props = {
 function App({ deviceContextValue }: Props) {
   useComponentWillMount(() => initApi(deviceContextValue.apiUrl));
 
-  const [tabs, setTabs] = useState<UITabType[]>(
-    getJsonFromStorage(TABS_KEY) || [
-      {
-        key: 'initial',
-        name: 'Home',
-        repoName: '',
-        source: RepoSource.LOCAL,
-      },
-    ],
-  );
-  const [activeTab, setActiveTab] = useState(
-    getPlainFromStorage(LAST_ACTIVE_TAB_KEY) || 'initial',
-  );
+  const [tabs, setTabs] = useState<UITabType[]>([
+    {
+      key: 'initial',
+      name: 'Home',
+      repoName: '',
+      source: RepoSource.LOCAL,
+    },
+  ]);
+  const [activeTab, setActiveTab] = useState('initial');
   const [repositories, setRepositories] = useState<RepoType[] | undefined>();
 
   const handleAddTab = useCallback(
