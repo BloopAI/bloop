@@ -22,7 +22,7 @@ const PageTemplate = ({ children, withSearchBar, renderPage }: Props) => {
   const { setShowTooltip, setTooltipText } = useContext(ChatContext);
 
   const mainContainerStyle = useMemo(
-    () => ({ height: `calc(100vh - ${withSearchBar ? '6rem' : '9.5rem'})` }),
+    () => ({ height: `calc(100vh - ${withSearchBar ? '9.5rem' : '6rem'})` }),
     [withSearchBar],
   );
 

@@ -118,7 +118,7 @@
       --label-title: 238, 238, 238;
       --label-link: 104, 141, 222;
       --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
+      --chat-bg-base-hover: 43, 44, 66; /* #2B2C42 */
       --chat-bg-shade: 31, 32, 49;
       --chat-bg-sub: 21, 22, 32;
       --chat-bg-border: 57, 58, 74;
@@ -156,7 +156,7 @@
       --label-title: 21, 21, 21;
       --label-link: 78, 128, 238;
       --chat-bg-base: 226, 227, 243;
-      --chat-bg-base-hover: 211, 213, 240;
+      --chat-bg-base-hover: 194, 196, 233;
       --chat-bg-shade: 248, 248, 255;
       --chat-bg-sub: 211, 212, 236;
       --chat-bg-border: 195, 197, 225;
