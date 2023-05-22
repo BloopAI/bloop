@@ -70,7 +70,10 @@ const AllConversations = ({
           isLoading: false,
           type: ChatMessageType.Answer,
           loadingSteps: m.search_steps?.map(
-            (s: { type: string; content: string }) => s.content,
+            (s: { type: string; content: string }) => ({
+              ...s,
+              displayText: s.content,
+            }),
           ),
           text: m.conclusion,
           results: m.results,

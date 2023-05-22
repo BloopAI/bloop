@@ -2,12 +2,20 @@ import React, {
   ChangeEvent,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
-import { FeatherSelected, QuillIcon, SendIcon } from '../../icons';
+import {
+  FeatherSelected,
+  MagnifyTool,
+  PointClick,
+  QuillIcon,
+  SendIcon,
+} from '../../icons';
 import ClearButton from '../ClearButton';
 import Tooltip from '../Tooltip';
+import { ChatLoadingStep } from '../../types/general';
 import InputLoader from './InputLoader';
 
 type Props = {
@@ -18,7 +26,7 @@ type Props = {
   onStop?: () => void;
   onChange?: (e: ChangeEvent<HTMLTextAreaElement>) => void;
   onSubmit?: () => void;
-  loadingSteps?: string[];
+  loadingSteps?: ChatLoadingStep[];
   selectedLines?: [number, number] | null;
   setSelectedLines?: (l: [number, number] | null) => void;
 };
@@ -66,6 +74,12 @@ const NLInput = ({
     [isComposing, onSubmit],
   );
 
+  const shouldShowLoader = useMemo(
+    () =>
+      isStoppable && loadingSteps?.length && placeholder !== defaultPlaceholder,
+    [isStoppable, loadingSteps?.length, placeholder],
+  );
+
   return (
     <div
       className={`w-full flex items-start gap-2 rounded-lg 
@@ -76,14 +90,20 @@ const NLInput = ({
         : 'bg-chat-bg-base hover:text-label-title hover:border-chat-bg-border-hover'
     } transition-all ease-out duration-150 flex-grow-0 relative`}
     >
-      {isStoppable &&
-        loadingSteps?.length &&
-        placeholder !== defaultPlaceholder && (
-          <InputLoader loadingSteps={loadingSteps} />
+      {shouldShowLoader && <InputLoader loadingSteps={loadingSteps!} />}
+      <div className="pt-4.5">
+        {shouldShowLoader ? (
+          loadingSteps?.[loadingSteps?.length - 1]?.type === 'PROC' ? (
+            <PointClick />
+          ) : (
+            <MagnifyTool />
+          )
+        ) : selectedLines ? (
+          <FeatherSelected />
+        ) : (
+          <QuillIcon />
         )}
-      <span className="py-4">
-        {selectedLines ? <FeatherSelected /> : <QuillIcon />}
-      </span>
+      </div>
       <textarea
         className={`w-full py-4 bg-transparent rounded-lg outline-none focus:outline-0 resize-none
         placeholder:text-current placeholder:truncate placeholder:max-w-[19.5rem] flex-grow-0`}
