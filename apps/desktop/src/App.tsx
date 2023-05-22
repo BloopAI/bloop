@@ -8,6 +8,7 @@ import React, {
 import { invoke } from '@tauri-apps/api';
 import { open } from '@tauri-apps/api/shell';
 import { homeDir } from '@tauri-apps/api/path';
+import { relaunch } from '@tauri-apps/api/process';
 import { message, open as openDialog } from '@tauri-apps/api/dialog';
 import { listen } from '@tauri-apps/api/event';
 import * as tauriOs from '@tauri-apps/api/os';
@@ -157,6 +158,7 @@ function App() {
       envConfig,
       setEnvConfig,
       showNativeMessage: message,
+      relaunch,
     }),
     [homeDirectory, indexFolder, os, release, envConfig],
   );

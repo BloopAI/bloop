@@ -32,6 +32,7 @@ const CloudApp = () => {
       showNativeMessage: alert,
       envConfig,
       setEnvConfig,
+      relaunch: () => {},
     }),
     [envConfig],
   );
