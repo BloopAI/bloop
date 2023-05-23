@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
     mem,
+    panic::AssertUnwindSafe,
     path::{Component, PathBuf},
     str::FromStr,
     time::Duration,
@@ -179,11 +180,15 @@ pub(super) async fn _handle(
         Ok(sse::Event::default().data(params.thread_id.to_string()))
     });
 
-    let answer_stream = stream.map(|upd: Result<Exchange>| {
-        sse::Event::default()
-            .json_data(upd.map_err(|e| e.to_string()))
-            .map_err(anyhow::Error::new)
-    });
+    // We know the stream is unwind safe as it doesn't use synchronization primitives like locks.
+    let answer_stream = AssertUnwindSafe(stream)
+        .catch_unwind()
+        .map(|res| res.unwrap_or_else(|_| Err(anyhow!("stream panicked"))))
+        .map(|upd: Result<Exchange>| {
+            sse::Event::default()
+                .json_data(upd.map_err(|e| e.to_string()))
+                .map_err(anyhow::Error::new)
+        });
 
     let done_stream = futures::stream::once(async { Ok(sse::Event::default().data("[DONE]")) });
 
