@@ -1,3 +1,4 @@
+import { PureComponent } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Settings from './components/Settings';
 import { UITabType } from './types/general';
@@ -17,28 +18,34 @@ type Props = {
   tab: UITabType;
 };
 
-function Tab({ deviceContextValue, isActive, tab }: Props) {
-  return (
-    <div className={`${isActive ? '' : 'hidden'} `}>
-      <BrowserRouter>
-        <DeviceContextProvider deviceContextValue={deviceContextValue}>
-          <UIContextProvider tab={tab}>
-            <AppNavigationProvider>
-              <SearchContextProvider tab={tab}>
-                <ChatContextProvider>
-                  <Routes>
-                    <Route path="*" element={<ContentContainer tab={tab} />} />
-                  </Routes>
-                  <Settings />
-                  <ReportBugModal />
-                </ChatContextProvider>
-              </SearchContextProvider>
-            </AppNavigationProvider>
-          </UIContextProvider>
-        </DeviceContextProvider>
-      </BrowserRouter>
-    </div>
-  );
+class Tab extends PureComponent<Props> {
+  render() {
+    const { deviceContextValue, isActive, tab } = this.props;
+    return (
+      <div className={`${isActive ? '' : 'hidden'} `}>
+        <BrowserRouter>
+          <DeviceContextProvider deviceContextValue={deviceContextValue}>
+            <UIContextProvider tab={tab}>
+              <AppNavigationProvider>
+                <SearchContextProvider tab={tab}>
+                  <ChatContextProvider>
+                    <Routes>
+                      <Route
+                        path="*"
+                        element={<ContentContainer tab={tab} />}
+                      />
+                    </Routes>
+                    <Settings />
+                    <ReportBugModal />
+                  </ChatContextProvider>
+                </SearchContextProvider>
+              </AppNavigationProvider>
+            </UIContextProvider>
+          </DeviceContextProvider>
+        </BrowserRouter>
+      </div>
+    );
+  }
 }
 
 export default Tab;
