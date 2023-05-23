@@ -289,6 +289,8 @@ impl Indexer<File> {
     ///
     /// For example, the string `Cargo` can return documents whose path is `foo/Cargo.toml`,
     /// or `bar/Cargo.lock`. Constructs regexes that permit an edit-distance of 2.
+    ///
+    /// If the regex filter fails to build, an empty list is returned.
     pub async fn fuzzy_path_match(
         &self,
         repo_ref: &RepoRef,
@@ -385,12 +387,18 @@ impl Indexer<File> {
                     v.push(additions(query_str, i, j));
                     v
                 });
+
             regex::RegexSetBuilder::new(all_regexes)
+                // Increased from the default to account for long paths. At the time of writing,
+                // the default was `10 * (1 << 20)`.
+                .size_limit(10 * (1 << 25))
                 .case_insensitive(true)
                 .build()
-                .unwrap()
+                .ok()
         };
 
+        // if the regex filter fails to build for some reason, the filter defaults to returning
+        // false and zero results are produced
         hits.into_iter()
             .map(move |(addr, _)| {
                 let retrieved_doc = searcher
@@ -399,7 +407,12 @@ impl Indexer<File> {
                 FileReader.read_document(file_source, retrieved_doc)
             })
             .take(limit)
-            .filter(move |doc| regex_filter.is_match(&doc.relative_path))
+            .filter(move |doc| {
+                regex_filter
+                    .as_ref()
+                    .map(|f| f.is_match(&doc.relative_path))
+                    .unwrap_or_default()
+            })
     }
 
     pub async fn by_path(
