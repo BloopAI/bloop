@@ -196,6 +196,7 @@ impl ApiQuery {
     pub async fn query(self: Arc<Self>, indexes: Arc<Indexes>) -> Result<QueryResponse> {
         let query = self.q.clone();
         let compiled = parser::parse(&query)?;
+        tracing::debug!("compiled query as {compiled:?}");
         self.query_with(indexes, compiled).await
     }
 
@@ -230,12 +231,16 @@ impl ApiQuery {
         // homogenous results will work as expected: `repo:foo or repo:bar`.
         for q in &queries {
             if ContentReader.query_matches(q) {
+                tracing::trace!("executing with ContentReader");
                 return ContentReader.execute(&indexes.file, &queries, &self).await;
             } else if RepoReader.query_matches(q) {
+                tracing::trace!("executing with RepoReader");
                 return RepoReader.execute(&indexes.repo, &queries, &self).await;
             } else if FileReader.query_matches(q) {
+                tracing::trace!("executing with FileReader");
                 return FileReader.execute(&indexes.file, &queries, &self).await;
             } else if OpenReader.query_matches(q) {
+                tracing::trace!("executing with OpenReader");
                 return OpenReader.execute(&indexes.file, &queries, &self).await;
             }
         }

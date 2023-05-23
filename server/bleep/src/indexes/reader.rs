@@ -28,6 +28,7 @@ pub struct ContentDocument {
     pub branches: Option<String>,
 }
 
+#[derive(Debug)]
 pub struct FileDocument {
     pub relative_path: String,
     pub repo_name: String,
