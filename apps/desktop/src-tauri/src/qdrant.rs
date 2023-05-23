@@ -27,8 +27,8 @@ where
         app: &tauri::AppHandle<R>,
         _config: serde_json::Value,
     ) -> tauri::plugin::Result<()> {
-        let cache_dir = app.path_resolver().app_cache_dir().unwrap();
-        let qdrant_dir = cache_dir.join("qdrant");
+        let data_dir = app.path_resolver().app_data_dir().unwrap();
+        let qdrant_dir = data_dir.join("qdrant");
         let qd_config_dir = qdrant_dir.join("config");
         create_dir_all(&qd_config_dir).unwrap();
         write(

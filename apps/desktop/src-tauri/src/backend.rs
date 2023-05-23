@@ -38,8 +38,8 @@ where
             .resolve_resource("model")
             .expect("bad bundle");
 
-        let cache_dir = app.path_resolver().app_cache_dir().unwrap();
-        bundled.index_dir = cache_dir.join("bleep");
+        let data_dir = app.path_resolver().app_data_dir().unwrap();
+        bundled.index_dir = data_dir.join("bleep");
 
         Configuration::merge(
             bundled,
