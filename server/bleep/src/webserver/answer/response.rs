@@ -61,6 +61,24 @@ impl Exchange {
 
         self.conclusion = conclusion;
     }
+
+    pub fn summarize(&self) -> Option<String> {
+        if self.finished {
+            Some(
+                self.results
+                    .iter()
+                    .filter_map(|result| match result {
+                        SearchResult::Cite(cite) => Some(cite.summarize()),
+                        _ => None,
+                    })
+                    .chain(self.conclusion.clone())
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+            )
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -119,14 +137,6 @@ impl SearchResult {
             Self::Cite(cite) => Self::Cite(cite.substitute_path_alias(path_aliases)),
             Self::Modify(mod_) => Self::Modify(mod_.substitute_path_alias(path_aliases)),
             s => s,
-        }
-    }
-
-    pub fn summarize(&self) -> String {
-        match self {
-            Self::Cite(cite) => cite.summarize(),
-            Self::Conclude(conclude) => conclude.summarize(),
-            _ => String::default(),
         }
     }
 }
@@ -213,7 +223,7 @@ impl CiteResult {
         fn _summarize(s: &CiteResult) -> Option<String> {
             let comment = s.comment.as_ref()?;
             let path = s.path.as_ref()?;
-            Some(format!("'{comment}' in `{path}`",))
+            Some(format!("{path}: {comment}",))
         }
 
         _summarize(self).unwrap_or_default()
@@ -360,9 +370,5 @@ impl ConcludeResult {
             .and_then(serde_json::Value::as_str)
             .map(ToOwned::to_owned);
         Some(Self { comment })
-    }
-
-    fn summarize(&self) -> String {
-        self.comment.clone().unwrap_or_default()
     }
 }
