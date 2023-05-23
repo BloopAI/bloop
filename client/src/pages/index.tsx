@@ -72,7 +72,12 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
       return;
     }
 
-    setInputValue(query);
+    setInputValue(
+      query
+        .replace(/repo:\w*/, '')
+        .replace('open:true', '')
+        .trim(),
+    );
 
     switch (navigatedItem.type) {
       case 'repo':
