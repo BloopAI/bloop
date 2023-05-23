@@ -95,14 +95,21 @@ const Chat = () => {
       setSelectedLines(null);
       let firstResultCame: boolean;
       let i = -1;
+      let errorNum = 0;
       eventSource.onerror = (err) => {
         console.log(err);
         firstResultCame = false;
         i = -1;
+        errorNum += 1;
+        if (errorNum === 3) {
+          console.log('Closing SSE connection after 3 errors');
+          eventSource.close();
+        }
       };
       eventSource.onmessage = (ev) => {
         console.log(ev.data);
         i++;
+        errorNum = Math.max(errorNum - 1, 0);
         if (i === 0) {
           setThreadId(ev.data);
           return;
