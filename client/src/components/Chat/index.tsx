@@ -23,6 +23,7 @@ import ChipButton from './ChipButton';
 import AllConversations from './AllCoversations';
 import Conversation from './Conversation';
 import DeprecatedClientModal from './DeprecatedClientModal';
+import StarsSvg from './StarsSvg';
 
 let prevEventSource: EventSource | undefined;
 
@@ -49,6 +50,8 @@ const Chat = () => {
     setSubmittedQuery,
     selectedLines,
     setSelectedLines,
+    threadId,
+    setThreadId,
   } = useContext(ChatContext);
   const { navigateConversationResults, navigateRepoPath, navigatedItem } =
     useContext(AppNavigationContext);
@@ -56,7 +59,6 @@ const Chat = () => {
   const [showPopup, setShowPopup] = useState(false);
   const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
-  const [threadId, setThreadId] = useState('');
   const [resp, setResp] = useState<{ thread_id: string } | null>(null);
   useOnClickOutside(chatRef, () => setChatOpen(false));
 
@@ -96,11 +98,16 @@ const Chat = () => {
       setSelectedLines(null);
       let firstResultCame: boolean;
       let i = -1;
+      let errorNum = 0;
       eventSource.onerror = (err) => {
-        console.log('on error');
-        console.log(err);
+        console.log('SSE error', err);
         firstResultCame = false;
         i = -1;
+        errorNum += 1;
+        if (errorNum === 3) {
+          console.log('Closing SSE connection after 3 errors');
+          eventSource.close();
+        }
       };
       eventSource.onmessage = (ev) => {
         console.log(ev.data);
@@ -112,6 +119,7 @@ const Chat = () => {
           return;
         }
         i++;
+        errorNum = Math.max(errorNum - 1, 0);
         if (i === 0) {
           setThreadId(ev.data);
           return;
@@ -155,12 +163,15 @@ const Chat = () => {
                 isLoading: !newMessage.finished,
                 type: ChatMessageType.Answer,
                 loadingSteps: newMessage.search_steps.map(
-                  (s: { type: string; content: string }) =>
-                    s.type === 'PROC'
-                      ? `Reading ${
-                          s.content.length > 20 ? '...' : ''
-                        }${s.content.slice(-20)}`
-                      : s.content,
+                  (s: { type: string; content: string }) => ({
+                    ...s,
+                    displayText:
+                      s.type === 'PROC'
+                        ? `Reading ${
+                            s.content.length > 20 ? '...' : ''
+                          }${s.content.slice(-20)}`
+                        : s.content,
+                  }),
                 ),
                 text: newMessage.conclusion,
                 results: newMessage.results,
@@ -254,7 +265,7 @@ const Chat = () => {
       <button
         className={`fixed z-50 bottom-20 w-16 h-16 rounded-full cursor-pointer flex items-center justify-center ${
           isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
-        } border border-chat-bg-border bg-chat-bg-base transition-all duration-300 ease-out-slow`}
+        } border border-chat-bg-border bg-chat-bg-base shadow-float transition-all duration-300 ease-out-slow`}
         onClick={() => {
           setShowTooltip(false);
           setChatOpen(true);
@@ -281,11 +292,12 @@ const Chat = () => {
             </svg>
           </div>
         )}
-        <div className="absolute rounded-full top-0 left-0 right-0 bottom-0 bg-[url('/stars.png')] bg-cover flex z-0 overflow-hidden">
-          <div className="w-full h-full bg-[radial-gradient(47.73%_47.73%_at_50%_0%,transparent_0%,#0B0B14_100%)] animate-spin-extra-slow" />
+        <div className="absolute rounded-full top-0 left-0 right-0 bottom-0 flex z-0 overflow-hidden">
+          <StarsSvg />
+          <div className="absolute rounded-full top-0 left-0 right-0 bottom-0 z-10 chat-head-bg animate-spin-extra-slow" />
         </div>
         <div
-          className={`w-6 h-6 relative z-10 ${
+          className={`w-6 h-6 relative z-10 text-label-title ${
             isLoading ? 'animate-spin-extra-slow' : ''
           }`}
         >
@@ -296,7 +308,7 @@ const Chat = () => {
         ref={chatRef}
         className={`fixed z-50 bottom-20 rounded-xl group w-97 max-h-[30rem] flex flex-col justify-end ${
           !isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
-        } backdrop-blur-6 shadow-low bg-chat-bg-base/50 border border-chat-bg-border transition-all duration-300 ease-out-slow`}
+        } backdrop-blur-6 shadow-float bg-chat-bg-base/75 border border-chat-bg-border transition-all duration-300 ease-out-slow`}
       >
         <div className="w-full max-h-0 group-hover:max-h-96 transition-all duration-200 overflow-hidden flex-shrink-0">
           <div className="px-4 pt-4 flex flex-col">
@@ -316,7 +328,9 @@ const Chat = () => {
                     setLoading(false);
                     setThreadId('');
                     setSubmittedQuery('');
-                    navigateRepoPath(tab.repoName);
+                    if (navigatedItem?.type === 'conversation-result') {
+                      navigateRepoPath(tab.repoName);
+                    }
                     focusInput();
                   }}
                 >
@@ -359,7 +373,7 @@ const Chat = () => {
                           conversation.length - 1
                         ] as ChatMessageServer
                       )?.loadingSteps?.length - 1
-                    ]
+                    ].displayText
                   : undefined
               }
               selectedLines={selectedLines}
@@ -374,6 +388,7 @@ const Chat = () => {
         setActive={setChatOpen}
         setConversation={setConversation}
         setThreadId={setThreadId}
+        repoRef={tab.key}
       />
       <DeprecatedClientModal
         isOpen={showPopup}

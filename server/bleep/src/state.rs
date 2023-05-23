@@ -1,6 +1,6 @@
 use crate::{
     remotes::{gather_repo_roots, BackendCredential},
-    repo::{Backend, RepoError, RepoRef, Repository, SyncStatus},
+    repo::{Backend, RepoError, RepoRef, Repository},
 };
 use anyhow::Result;
 use clap::Args;
@@ -188,7 +188,7 @@ impl StateSource {
                     }
 
                     // in case the app terminated during indexing, make sure to re-queue it
-                    if repo.sync_status == SyncStatus::Indexing {
+                    if !repo.sync_status.indexable() {
                         repo.mark_queued();
                     }
                 });

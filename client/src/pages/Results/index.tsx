@@ -147,7 +147,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     <>
       <Filters isOpen={isFiltersOpen} toggleOpen={toggleFiltersOpen} />
       <div
-        className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content"
+        className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content pb-32"
         ref={ref}
       >
         <PageHeader

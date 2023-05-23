@@ -132,7 +132,7 @@ const RepositoryPage = ({ repositoryData }: Props) => {
           <Filters isOpen={true} toggleOpen={() => {}} showHeader={false} />
         </div>
       </div>
-      <div className="p-12 w-full overflow-y-auto">
+      <div className="p-12 pb-32 w-full overflow-y-auto">
         <RepositoryOverview repository={repository} syncState />
       </div>
     </div>

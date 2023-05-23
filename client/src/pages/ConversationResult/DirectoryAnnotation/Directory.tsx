@@ -6,6 +6,7 @@ import { FileTreeFileType, RepositoryFile } from '../../../types';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import { DirectoryItem } from '../../../types/api';
 import { mapDirResult } from '../../../mappers/results';
+import { colors } from '../CodeAnotation';
 
 type Props = {
   path: string;
@@ -36,7 +37,13 @@ const Directory = ({ path, repo, i, isReady }: Props) => {
   }, []);
 
   return (
-    <div id={`code-${i}`}>
+    <div id={`code-${i}`} className="relative">
+      <div
+        className="absolute top-2 left-2 w-0.5 h-6 z-10"
+        style={{
+          backgroundColor: `rgb(${colors[i % colors.length].join(', ')})`,
+        }}
+      />
       <RepositoryFiles
         files={files}
         onClick={fileClick}

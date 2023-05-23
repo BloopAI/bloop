@@ -36,7 +36,9 @@ use super::{
     DocumentRead, Indexable, Indexer,
 };
 use crate::{
+    background::SyncPipes,
     intelligence::TreeSitterFile,
+    query::compiler::{case_permutations, trigrams},
     repo::{iterator::*, FileCache, RepoMetadata, RepoRef, RepoRemote, Repository},
     semantic::Semantic,
     symbol::SymbolLocations,
@@ -170,7 +172,7 @@ impl Indexable for File {
         repo: &Repository,
         repo_metadata: &RepoMetadata,
         writer: &IndexWriter,
-        progress: &(dyn Fn(u8) + Sync),
+        pipes: &SyncPipes,
     ) -> Result<()> {
         let file_cache = repo.open_file_cache(&self.config.index_dir)?;
         let repo_name = reporef.indexed_name();
@@ -180,7 +182,7 @@ impl Indexable for File {
             let file_cache = file_cache.clone();
             move |file: RepoFile| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
-                progress(((completed as f32 / count as f32) * 100f32) as u8);
+                pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
 
                 let entry_disk_path = file.path.clone();
                 let workload = Workload {
@@ -248,7 +250,7 @@ impl Indexable for File {
             }
         }
 
-        progress(100);
+        pipes.index_percent(100);
         repo.save_file_cache(&self.config.index_dir, file_cache)?;
         Ok(())
     }
@@ -294,20 +296,6 @@ impl Indexer<File> {
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
         // lifted from query::compiler
-        fn trigrams(s: &str) -> impl Iterator<Item = String> {
-            let mut chars = s.chars().collect::<Vec<_>>();
-
-            std::iter::from_fn(move || match chars.len() {
-                0 => None,
-                1 | 2 | 3 => Some(std::mem::take(&mut chars).into_iter().collect()),
-                _ => {
-                    let out = chars.iter().take(3).collect();
-                    chars.remove(0);
-                    Some(out)
-                }
-            })
-        }
-
         let reader = self.reader.read().await;
         let searcher = reader.searcher();
         let collector = TopDocs::with_limit(100);
@@ -317,7 +305,8 @@ impl Indexer<File> {
         // matched the query
         let repo_ref_term = Term::from_field_text(self.source.repo_ref, &repo_ref.to_string());
         let mut hits = trigrams(query_str)
-            .map(|token| Term::from_field_text(self.source.relative_path, &token))
+            .flat_map(|s| case_permutations(s.as_str()))
+            .map(|token| Term::from_field_text(self.source.relative_path, token.as_str()))
             .map(|term| {
                 BooleanQuery::intersection(vec![
                     Box::new(TermQuery::new(term, IndexRecordOption::Basic)),

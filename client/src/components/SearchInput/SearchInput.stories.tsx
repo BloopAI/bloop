@@ -1,5 +1,6 @@
 import { MemoryRouter } from 'react-router-dom';
 import { SearchContextProvider } from '../../context/providers/SearchContextProvider';
+import { RepoSource } from '../../types';
 import SearchInput from './index';
 
 export default {
@@ -10,7 +11,9 @@ export default {
 export const Default = () => {
   return (
     <MemoryRouter initialEntries={['']}>
-      <SearchContextProvider>
+      <SearchContextProvider
+        tab={{ name: '', repoName: '', key: '', source: RepoSource.LOCAL }}
+      >
         <div className="relative">
           <SearchInput />
         </div>

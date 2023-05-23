@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { ChatLoadingStep } from '../../types/general';
 
-const InputLoader = ({ loadingSteps }: { loadingSteps: string[] }) => {
+const InputLoader = ({ loadingSteps }: { loadingSteps: ChatLoadingStep[] }) => {
   const [state, setState] = useState(-1);
   const steps = useRef(loadingSteps);
 

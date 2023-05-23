@@ -9,10 +9,7 @@ use std::{
 };
 use tracing::debug;
 
-use crate::{
-    indexes,
-    state::{get_relative_path, pretty_write_file},
-};
+use crate::state::{get_relative_path, pretty_write_file};
 
 pub(crate) mod iterator;
 use iterator::language;
@@ -251,27 +248,9 @@ impl Repository {
         }
     }
 
-    pub(crate) async fn index(
-        &self,
-        reporef: &RepoRef,
-        writers: &indexes::GlobalWriteHandle<'_>,
-    ) -> Result<Arc<RepoMetadata>, RepoError> {
-        use rayon::prelude::*;
-        let metadata = self.get_repo_metadata().await?;
-
-        tokio::task::block_in_place(|| {
-            writers
-                .par_iter()
-                .map(|handle| handle.index(reporef, self, &metadata))
-                .collect::<Result<Vec<_>, _>>()
-        })?;
-
-        Ok(metadata)
-    }
-
     /// Pre-scan the repository to provide supporting metadata for a
     /// new indexing operation
-    async fn get_repo_metadata(&self) -> Result<Arc<RepoMetadata>, RepoError> {
+    pub async fn get_repo_metadata(&self) -> Result<Arc<RepoMetadata>, RepoError> {
         let last_commit_unix_secs = gix::open(&self.disk_path)
             .context("failed to open git repo")
             .and_then(|repo| Ok(repo.head()?.peel_to_commit_in_place()?.time()?.seconds()))
@@ -301,8 +280,8 @@ impl Repository {
     pub(crate) fn sync_done_with(&mut self, metadata: Arc<RepoMetadata>) {
         self.last_index_unix_secs = get_unix_time(SystemTime::now());
         self.last_commit_unix_secs = metadata.last_commit_unix_secs;
-        self.sync_status = SyncStatus::Done;
         self.most_common_lang = metadata.langs.most_common_lang().map(|l| l.to_string());
+        self.sync_status = SyncStatus::Done;
     }
 
     fn file_cache_path(&self, index_dir: &Path) -> PathBuf {

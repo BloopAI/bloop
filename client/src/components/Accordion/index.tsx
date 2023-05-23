@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDownFilled, ChevronUpFilled } from '../../icons';
 import { ACCORDION_CHILDREN_ANIMATION } from '../../consts/animations';
@@ -25,6 +25,9 @@ const Accordion = ({
   defaultExpanded = true,
 }: Props) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  useEffect(() => {
+    setExpanded(defaultExpanded);
+  }, [defaultExpanded]);
   return (
     <div
       className={`rounded border hover:border-bg-border ${

@@ -1,24 +1,60 @@
-use anyhow::bail;
-use tracing::{debug, error, info};
+use tokio::sync::Semaphore;
+use tracing::{debug, info};
 
 use crate::{
-    indexes,
-    remotes::RemoteError,
-    repo::{RepoMetadata, RepoRef, Repository, SyncStatus},
+    repo::{RepoRef, SyncStatus},
     Application, Configuration,
 };
 
 use std::{future::Future, pin::Pin, sync::Arc, thread};
 
+mod sync;
+pub(crate) use sync::SyncHandle;
+
+mod control;
+pub(crate) use control::SyncPipes;
+
+mod notifyqueue;
+use notifyqueue::NotifyQueue;
+
+type ProgressStream = tokio::sync::broadcast::Sender<Progress>;
+
+#[derive(serde::Serialize, Clone)]
+pub struct Progress {
+    #[serde(rename = "ref")]
+    reporef: RepoRef,
+    #[serde(rename = "ev")]
+    event: ProgressEvent,
+}
+
+#[derive(serde::Serialize, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum ProgressEvent {
+    IndexPercent(u8),
+    StatusChange(SyncStatus),
+}
+
 type Task = Pin<Box<dyn Future<Output = ()> + Send + Sync>>;
+#[derive(Clone)]
+pub struct SyncQueue {
+    runner: BackgroundExecutor,
+    active: Arc<scc::HashMap<RepoRef, Arc<SyncHandle>>>,
+    tickets: Arc<Semaphore>,
+    queue: Arc<NotifyQueue>,
+
+    /// Report progress from indexing runs
+    progress: ProgressStream,
+}
 
 #[derive(Clone)]
 pub struct BackgroundExecutor {
     sender: flume::Sender<Task>,
 }
 
+pub struct BoundSyncQueue(Application, SyncQueue);
+
 impl BackgroundExecutor {
-    pub fn start(config: Arc<Configuration>) -> Self {
+    fn start(config: Arc<Configuration>) -> Self {
         let (sender, receiver) = flume::unbounded();
 
         let tokio: Arc<_> = tokio::runtime::Builder::new_multi_thread()
@@ -62,6 +98,7 @@ impl BackgroundExecutor {
             .unwrap();
     }
 
+    #[allow(unused)]
     pub async fn wait_for<T: Send + Sync + 'static>(
         &self,
         job: impl Future<Output = T> + Send + Sync + 'static,
@@ -72,213 +109,91 @@ impl BackgroundExecutor {
     }
 }
 
-pub struct IndexWriter(pub(super) Application);
-impl IndexWriter {
-    /// Pull or clone an existing, or new repo, respectively.
-    pub(crate) async fn sync_and_index(self, repositories: Vec<RepoRef>) -> anyhow::Result<()> {
-        let Self(app) = self;
-        let background = app.background.clone();
+impl SyncQueue {
+    pub fn start(config: Arc<Configuration>) -> Self {
+        let (progress, _) = tokio::sync::broadcast::channel(config.max_threads * 2);
 
-        let job = async move {
-            let mut set = tokio::task::JoinSet::new();
-
-            for reporef in repositories {
-                set.spawn(IndexWriter(app.clone()).sync_and_index_call(reporef));
-            }
-
-            while let Some(job) = set.join_next().await {
-                job??
-            }
-
-            Ok(())
+        let instance = Self {
+            tickets: Arc::new(Semaphore::new(config.max_threads)),
+            runner: BackgroundExecutor::start(config.clone()),
+            active: Default::default(),
+            queue: Default::default(),
+            progress,
         };
 
-        background.wait_for(job).await
-    }
+        {
+            let instance = instance.clone();
 
-    async fn sync_and_index_call(self, reporef: RepoRef) -> anyhow::Result<()> {
-        debug!(?reporef, "syncing repo");
-        let Self(Application { ref repo_pool, .. }) = self;
+            // We spawn the queue handler on the background executor
+            instance.runner.clone().spawn(async move {
+                while let (Ok(permit), next) = tokio::join!(
+                    instance.tickets.clone().acquire_owned(),
+                    instance.queue.pop()
+                ) {
+                    let active = Arc::clone(&instance.active);
+                    tokio::task::spawn(async move {
+                        info!(?next.reporef, "indexing");
+                        active
+                            .upsert_async(
+                                next.reporef.clone(),
+                                || next.clone(),
+                                |_, v| *v = next.clone(),
+                            )
+                            .await;
 
-        // skip indexing if the repo has been marked as removed
-        // if the ref is non-existent, sync it and add it to the pool
-        let removed = repo_pool
-            .read_async(&reporef, |_k, v| v.sync_status == SyncStatus::Removed)
-            .await
-            .unwrap_or(false);
+                        let result = next.run(permit).await;
+                        _ = active.remove(&next.reporef);
 
-        if !removed {
-            if let Err(err) = self.sync_repo(&reporef).await {
-                error!(?err, ?reporef, "failed to sync repository");
-                return Err(err);
-            }
+                        debug!(?result, "sync finished");
+                    });
+                }
+            });
         }
 
-        let indexed = self.index_repo(&reporef).await;
-        match indexed {
-            Ok(Some(state)) => {
-                repo_pool
-                    .update_async(&reporef, |_k, repo| repo.sync_done_with(state))
-                    .await
-                    .unwrap();
-                info!("commit complete; indexing done");
-            }
-            Ok(None) => {}
-            Err(err) => {
-                repo_pool
-                    .update_async(&reporef, |_k, repo| {
-                        repo.sync_status = SyncStatus::Error {
-                            message: err.to_string(),
-                        }
-                    })
-                    .await
-                    .unwrap();
-                error!(?err, ?reporef, "failed to index repository");
-            }
-        }
-
-        Ok(())
+        instance
     }
 
-    pub(crate) fn queue_sync_and_index(self, repositories: Vec<RepoRef>) {
-        tokio::task::spawn(self.sync_and_index(repositories));
+    pub fn bind(&self, app: Application) -> BoundSyncQueue {
+        BoundSyncQueue(app, self.clone())
+    }
+
+    pub fn subscribe(&self) -> tokio::sync::broadcast::Receiver<Progress> {
+        self.progress.subscribe()
+    }
+}
+
+impl BoundSyncQueue {
+    /// Enqueue repos for syncing which aren't already being synced or
+    /// in the queue.
+    pub(crate) async fn sync_and_index(self, repositories: Vec<RepoRef>) {
+        for reporef in repositories {
+            if self.1.queue.contains(&reporef).await || self.1.active.contains(&reporef) {
+                continue;
+            }
+
+            info!(%reporef, "queueing for sync");
+            let (handle, _) = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone());
+            self.1.queue.push(handle).await;
+        }
+    }
+
+    /// Pull or clone an existing, or new repo, respectively.
+    pub(crate) async fn wait_for_sync_and_index(
+        self,
+        reporef: RepoRef,
+    ) -> anyhow::Result<SyncStatus> {
+        let (handle, finished) = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone());
+        self.1.queue.push(handle).await;
+        Ok(finished.recv_async().await?)
     }
 
     pub(crate) async fn startup_scan(self) -> anyhow::Result<()> {
-        let Self(Application { repo_pool, .. }) = &self;
+        let Self(Application { repo_pool, .. }, _) = &self;
 
         let mut repos = vec![];
         repo_pool.scan_async(|k, _| repos.push(k.clone())).await;
 
-        self.sync_and_index(repos).await
-    }
-
-    async fn index_repo(&self, reporef: &RepoRef) -> anyhow::Result<Option<Arc<RepoMetadata>>> {
-        use SyncStatus::*;
-
-        let Self(Application {
-            config,
-            indexes,
-            repo_pool,
-            ..
-        }) = &self;
-
-        let writers = indexes.writers().await?;
-        let (key, repo) = repo_pool
-            .read_async(reporef, |k, v| (k.clone(), v.clone()))
-            .await
-            .unwrap();
-
-        let indexed = match repo.sync_status {
-            Uninitialized | Syncing | Indexing => return Ok(None),
-            Removed => {
-                repo_pool.remove(reporef);
-                let deleted = self.delete_repo_indexes(reporef, &repo, &writers).await;
-                if deleted.is_ok() {
-                    writers.commit().await?;
-                    config.source.save_pool(repo_pool.clone())?;
-                }
-                return deleted.map(|_| None);
-            }
-            RemoteRemoved => {
-                // Note we don't clean up here, leave the
-                // barebones behind.
-                //
-                // This is to be able to report to the user that
-                // something happened, and let them clean up in a
-                // subsequent action.
-                return Ok(None);
-            }
-            _ => {
-                repo_pool
-                    .update_async(reporef, |_, v| v.sync_status = Indexing)
-                    .await
-                    .unwrap();
-
-                repo.index(&key, &writers).await
-            }
-        };
-
-        writers.commit().await?;
-        config.source.save_pool(repo_pool.clone())?;
-
-        Ok(indexed?).map(Some)
-    }
-
-    //
-    //
-    // Helper functions
-    //
-    //
-    async fn sync_repo(&self, repo: &RepoRef) -> anyhow::Result<()> {
-        let IndexWriter(app) = self;
-
-        let repo = repo.clone();
-        let backend = repo.backend();
-        let creds = match app.credentials.for_repo(&repo) {
-            Some(creds) => creds,
-            None => {
-                let Some(path) = repo.local_path() else {
-		    bail!("no keys for backend {:?}", backend)
-		};
-
-                if !app.allow_path(path) {
-                    bail!("path not authorized {repo:?}")
-                }
-
-                self.0
-                    .repo_pool
-                    .entry_async(repo.to_owned())
-                    .await
-                    .or_insert_with(|| Repository::local_from(&repo));
-
-                // we _never_ touch the git repositories of local repos
-                return Ok(());
-            }
-        };
-
-        let synced = creds.sync(app.clone(), repo.clone()).await;
-        if let Err(RemoteError::RemoteNotFound) = synced {
-            self.0
-                .repo_pool
-                .update_async(&repo, |_, v| v.sync_status = SyncStatus::RemoteRemoved)
-                .await
-                .unwrap();
-
-            error!(?repo, "remote repository removed; disabling local syncing");
-
-            // we want indexing to pick this up later and handle the new state
-            // all local cleanups are done, so everything should be consistent
-            return Ok(());
-        }
-
-        Ok(synced?)
-    }
-
-    async fn delete_repo_indexes(
-        &self,
-        reporef: &RepoRef,
-        repo: &Repository,
-        writers: &indexes::GlobalWriteHandleRef<'_>,
-    ) -> anyhow::Result<()> {
-        let IndexWriter(Application {
-            config, semantic, ..
-        }) = self;
-
-        if let Some(semantic) = semantic {
-            semantic
-                .delete_points_by_path(&reporef.to_string(), std::iter::empty())
-                .await;
-        }
-
-        repo.delete_file_cache(&config.index_dir)?;
-        if !reporef.is_local() {
-            tokio::fs::remove_dir_all(&repo.disk_path).await?;
-        }
-
-        for handle in writers {
-            handle.delete(repo);
-        }
+        self.sync_and_index(repos).await;
 
         Ok(())
     }
