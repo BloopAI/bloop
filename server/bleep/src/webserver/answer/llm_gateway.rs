@@ -114,6 +114,17 @@ impl Client {
         self
     }
 
+    pub async fn is_compatible(
+        &self,
+        version: semver::Version,
+    ) -> Result<reqwest::Response, reqwest::Error> {
+        self.http
+            .get(format!("{}/v1/compatibility", self.base_url))
+            .query(&[("version", version)])
+            .send()
+            .await
+    }
+
     pub async fn chat(
         &self,
         messages: &[api::Message],

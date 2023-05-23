@@ -21,6 +21,7 @@ export type DeviceContextType = {
     version: string;
   };
   invokeTauriCommand: (c: string, payload?: any) => void;
+  relaunch: () => void;
   release: string;
   apiUrl: string;
   isRepoManagementAllowed: boolean;
@@ -44,6 +45,7 @@ export const DeviceContext = createContext<DeviceContextType>({
     version: '',
   },
   invokeTauriCommand: () => {},
+  relaunch: () => {},
   release: '0.0.0',
   apiUrl: '',
   isRepoManagementAllowed: true,

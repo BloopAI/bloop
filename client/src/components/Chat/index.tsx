@@ -22,6 +22,7 @@ import NLInput from './NLInput';
 import ChipButton from './ChipButton';
 import AllConversations from './AllCoversations';
 import Conversation from './Conversation';
+import DeprecatedClientModal from './DeprecatedClientModal';
 import StarsSvg from './StarsSvg';
 
 let prevEventSource: EventSource | undefined;
@@ -55,6 +56,7 @@ const Chat = () => {
   const { navigateConversationResults, navigateRepoPath, navigatedItem } =
     useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
   const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
   const [resp, setResp] = useState<{ thread_id: string } | null>(null);
@@ -71,6 +73,7 @@ const Chat = () => {
       if (!query) {
         return;
       }
+      console.log('query', query);
       prevEventSource?.close();
       setInputValue('');
       setLoading(true);
@@ -108,6 +111,13 @@ const Chat = () => {
       };
       eventSource.onmessage = (ev) => {
         console.log(ev.data);
+        if (ev.data === '{"Err":"incompatible client"}') {
+          eventSource.close();
+          prevEventSource?.close();
+          setShowPopup(true);
+          setLoading(false);
+          return;
+        }
         i++;
         errorNum = Math.max(errorNum - 1, 0);
         if (i === 0) {
@@ -184,8 +194,11 @@ const Chat = () => {
             });
           }
         } catch (err) {
-          console.log(err);
+          console.log('failed to parse response', err);
         }
+      };
+      return () => {
+        eventSource.close();
       };
     },
     [tab, threadId, navigatedItem?.path, navigatedItem?.type, selectedLines],
@@ -376,6 +389,10 @@ const Chat = () => {
         setConversation={setConversation}
         setThreadId={setThreadId}
         repoRef={tab.key}
+      />
+      <DeprecatedClientModal
+        isOpen={showPopup}
+        onClose={() => setShowPopup(false)}
       />
     </>
   );

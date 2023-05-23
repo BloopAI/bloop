@@ -88,7 +88,9 @@ pub(super) async fn _handle(
     Extension(app): Extension<Application>,
     Extension(user): Extension<User>,
     query_id: uuid::Uuid,
-) -> super::Result<impl IntoResponse> {
+) -> super::Result<
+    Sse<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>,
+> {
     let conversation_id = ConversationId {
         user_id: user
             .0
@@ -104,6 +106,28 @@ pub(super) async fn _handle(
 
     let ctx = AppContext::new(app, user, query_id)
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
+
+    // confirm client compatibility with answer-api
+    match ctx
+        .llm_gateway
+        .is_compatible(env!("CARGO_PKG_VERSION").parse().unwrap())
+        .await
+    {
+        Ok(res) if res.status() == StatusCode::OK => (),
+        other => {
+            if other.is_err() {
+                warn!("failed to check compatibility ... defaulting to `incompatible`")
+            }
+
+            let out_of_date = futures::stream::once(async {
+                Ok(sse::Event::default()
+                    .json_data(serde_json::json!({"Err": "incompatible client"}))
+                    .unwrap())
+            });
+            return Ok(Sse::new(Box::pin(out_of_date)));
+        }
+    };
+
     let q = params.q;
 
     let stream = async_stream::try_stream! {
@@ -156,14 +180,16 @@ pub(super) async fn _handle(
     });
 
     let answer_stream = stream.map(|upd: Result<Exchange>| {
-        sse::Event::default().json_data(upd.map_err(|e| e.to_string()))
+        sse::Event::default()
+            .json_data(upd.map_err(|e| e.to_string()))
+            .map_err(anyhow::Error::new)
     });
 
     let done_stream = futures::stream::once(async { Ok(sse::Event::default().data("[DONE]")) });
 
     let stream = thread_stream.chain(answer_stream).chain(done_stream);
 
-    Ok(Sse::new(stream))
+    Ok(Sse::new(Box::pin(stream)))
 }
 
 #[derive(Hash, PartialEq, Eq, Clone)]
