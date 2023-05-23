@@ -126,7 +126,11 @@ const CodeLine = ({
     return (
       <div
         className={`p-0 ${blameStyle} ${
-          isRemovedLine ? 'bg-[#4F2828]' : isNewLine ? 'bg-[#28432B]' : ''
+          isRemovedLine
+            ? 'bg-bg-danger/30'
+            : isNewLine
+            ? 'bg-bg-success/30'
+            : ''
         }`}
       ></div>
     );
@@ -252,7 +256,11 @@ const CodeLine = ({
           className={`${showLineNumbers ? 'px-1' : ''} text-center ${
             lineHidden ? 'p-0' : ''
           } ${
-            isRemovedLine ? 'bg-[#4F2828]' : isNewLine ? 'bg-[#28432B]' : ''
+            isRemovedLine
+              ? 'bg-bg-danger/30'
+              : isNewLine
+              ? 'bg-bg-success/30'
+              : ''
           }`}
         />
       )}
@@ -268,9 +276,9 @@ const CodeLine = ({
                : 'before:content-[attr(data-line)]'
            } ${
             isRemovedLine
-              ? 'bg-[#4F2828] text-label-base'
+              ? 'bg-bg-danger/30 text-label-base'
               : isNewLine
-              ? 'bg-[#28432B] text-label-base'
+              ? 'bg-bg-success/30 text-label-base'
               : 'text-label-muted'
           }`}
         />
@@ -295,9 +303,9 @@ const CodeLine = ({
         ref={codeRef}
         style={
           isNewLine
-            ? { backgroundColor: '#18261E' }
+            ? { backgroundColor: 'rgba(var(--bg-success), 0.3)' }
             : isRemovedLine
-            ? { backgroundColor: '#24191C' }
+            ? { backgroundColor: 'rgba(var(--bg-danger), 0.3)' }
             : {}
         }
       >

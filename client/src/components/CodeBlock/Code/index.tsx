@@ -120,8 +120,8 @@ const Code = ({
     for (let i = 0; i < lines.length; i++) {
       if (
         isDiff &&
-        !lines[i].tokens[0].token.content &&
-        lines[i].tokens[1].token.content === '-'
+        (lines[i].tokens[0]?.token.content === '-' ||
+          lines[i].tokens[1]?.token.content === '-')
       ) {
         continue;
       }

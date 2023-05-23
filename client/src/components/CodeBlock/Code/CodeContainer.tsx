@@ -62,13 +62,13 @@ const CodeContainer = ({
           }
           isNewLine={
             isDiff &&
-            !line.tokens[0].token.content &&
-            line.tokens[1].token.content === '+'
+            (line.tokens[0]?.token?.content === '+' ||
+              line.tokens[1]?.token?.content === '+')
           }
           isRemovedLine={
             isDiff &&
-            !line.tokens[0].token.content &&
-            line.tokens[1].token.content === '-'
+            (line.tokens[0]?.token?.content === '-' ||
+              line.tokens[1]?.token?.content === '-')
           }
         >
           {line.tokens.map((token, index) => (
