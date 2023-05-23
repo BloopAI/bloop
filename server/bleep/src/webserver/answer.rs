@@ -535,7 +535,8 @@ impl Conversation {
                     .with_context(|| format!("failed to read path: {path}"))?
                     .content
                     .lines()
-                    .map(str::to_owned)
+                    .enumerate()
+                    .map(|(i, line)| format!("{} {line}", i + 1))
                     .collect::<Vec<_>>();
 
                 Result::<_>::Ok((lines, path))
@@ -543,22 +544,31 @@ impl Conversation {
             // Buffer file loading to load multiple paths at once
             .buffered(10)
             .and_then(|(lines, path): (Vec<String>, String)| async move {
-                const MAX_TOKENS: usize = 3200;
+                const MAX_TOKENS: usize = 3400;
                 const LINE_OVERLAP: usize = 3;
 
                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
                 let iter = split_line_set_by_tokens(lines, bpe, MAX_TOKENS, LINE_OVERLAP)
                     .map(move |lines| Result::<_>::Ok((lines, path.clone())));
+
                 Ok(futures::stream::iter(iter))
             })
             .try_flatten()
             .map(|result| async {
                 let (lines, path) = result?;
 
+                // The unwraps here should never fail, we generated this string above to always
+                // have the same format.
+                let start_line = lines[0]
+                    .split_once(' ')
+                    .unwrap()
+                    .0
+                    .parse::<usize>()
+                    .unwrap();
+
                 // We store the lines separately, so that we can reference them later to trim
                 // this snippet by line number.
                 let contents = lines.join("\n");
-
                 let prompt = prompts::file_explanation(question, &path, &contents);
 
                 let json = ctx
@@ -636,7 +646,13 @@ impl Conversation {
                         Some(RelevantChunk {
                             range,
                             code: lines
-                                .get(range.start.saturating_sub(1)..range.end.saturating_sub(1))?
+                                .get(
+                                    range.start.saturating_sub(start_line)
+                                        ..range.end.saturating_sub(start_line),
+                                )?
+                                .iter()
+                                .map(|line| line.split_once(' ').unwrap().1)
+                                .collect::<Vec<_>>()
                                 .join("\n"),
                         })
                     })
