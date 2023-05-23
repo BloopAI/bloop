@@ -97,7 +97,7 @@ const Chat = () => {
       let i = -1;
       let errorNum = 0;
       eventSource.onerror = (err) => {
-        console.log(err);
+        console.log('SSE error', err);
         firstResultCame = false;
         i = -1;
         errorNum += 1;
