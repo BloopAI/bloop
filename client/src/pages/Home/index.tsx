@@ -89,7 +89,7 @@ const HomePage = () => {
             <p className="body-s text-label-title">Syncing repository</p>
             <p className="caption text-label-base">
               We are syncing your repository to bloop. This might take a couple
-              on minutes
+              of minutes
             </p>
           </div>
           <Button
