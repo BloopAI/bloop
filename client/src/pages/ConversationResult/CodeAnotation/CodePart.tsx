@@ -52,7 +52,7 @@ const CodePart = ({
               1 +
               (!nextPartStart
                 ? 5
-                : Math.max(Math.min(nextPartStart - endLine - 1, 5), 0)),
+                : Math.max(Math.min(nextPartStart - endLine, 5), 0)),
           )
         : null,
     [endLine, nextPartStart],

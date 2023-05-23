@@ -26,7 +26,9 @@ const NoResults = ({
   const repoState = useMemo(
     () =>
       repo
-        ? repositories?.find((r) => r.name === repo)?.sync_status
+        ? repositories?.find(
+            (r) => r.name === repo.replace(/^github\.com\//, ''),
+          )?.sync_status
         : undefined,
     [repositories, repo],
   );
