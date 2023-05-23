@@ -27,6 +27,11 @@ where
         app: &tauri::AppHandle<R>,
         _config: serde_json::Value,
     ) -> tauri::plugin::Result<()> {
+        _ = std::fs::rename(
+            app.path_resolver().app_cache_dir().unwrap(),
+            app.path_resolver().app_data_dir().unwrap(),
+        );
+
         let data_dir = app.path_resolver().app_data_dir().unwrap();
         let qdrant_dir = data_dir.join("qdrant");
         let qd_config_dir = qdrant_dir.join("config");

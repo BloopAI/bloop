@@ -51,6 +51,11 @@ where
         initialize_sentry(dsn);
     }
 
+    _ = std::fs::rename(
+        app.path_resolver().app_cache_dir().unwrap(),
+        app.path_resolver().app_data_dir().unwrap(),
+    );
+
     let app = app.handle();
     tokio::spawn(async move {
         let initialized = Application::initialize(
