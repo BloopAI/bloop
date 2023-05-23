@@ -265,13 +265,7 @@ impl Conversation {
             .len()
             .checked_sub(2)
             .and_then(|second_last| self.exchanges.get(second_last))
-            .map(|e| {
-                e.results
-                    .iter()
-                    .map(SearchResult::summarize)
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            })
+            .and_then(|exchange| exchange.summarize())
     }
 
     async fn step(
