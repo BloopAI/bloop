@@ -389,16 +389,10 @@ impl Conversation {
                         .semantic
                         .as_ref()
                         .context("semantic search is not enabled")?
-                        .search(&nl_query, 30, 0)
+                        .search(&nl_query, 30, 0, true)
                         .await?
                         .into_iter()
-                        .map(|v| {
-                            v.payload
-                                .into_iter()
-                                .map(|(k, v)| (k, super::semantic::kind_to_value(v.kind)))
-                                .collect::<HashMap<_, _>>()
-                        })
-                        .map(|chunk| chunk["relative_path"].as_str().unwrap().to_owned())
+                        .map(|chunk| chunk.relative_path.into_owned())
                         .collect::<HashSet<_>>()
                         .into_iter()
                         .collect();
@@ -444,34 +438,18 @@ impl Conversation {
                     .semantic
                     .as_ref()
                     .context("semantic search is not enabled")?
-                    .search(&nl_query, 10, 0)
+                    .search(&nl_query, 10, 0, true)
                     .await?
                     .into_iter()
-                    .map(|v| {
-                        v.payload
-                            .into_iter()
-                            .map(|(k, v)| (k, super::semantic::kind_to_value(v.kind)))
-                            .collect::<HashMap<_, _>>()
-                    })
                     .map(|chunk| {
-                        let relative_path = chunk["relative_path"].as_str().unwrap();
+                        let relative_path = chunk.relative_path;
 
                         CodeChunk {
-                            path: relative_path.to_owned(),
-                            alias: self.path_alias(relative_path) as u32,
-                            snippet: chunk["snippet"].as_str().unwrap().to_owned(),
-                            start_line: chunk["start_line"]
-                                .as_str()
-                                .unwrap()
-                                .parse::<u32>()
-                                .unwrap()
-                                .saturating_add(1),
-                            end_line: chunk["end_line"]
-                                .as_str()
-                                .unwrap()
-                                .parse::<u32>()
-                                .unwrap()
-                                .saturating_add(1),
+                            path: relative_path.clone().into_owned(),
+                            alias: self.path_alias(&relative_path) as u32,
+                            snippet: chunk.text.into_owned(),
+                            start_line: (chunk.start_line as u32).saturating_add(1),
+                            end_line: (chunk.end_line as u32).saturating_add(1),
                         }
                     })
                     .collect::<Vec<_>>();

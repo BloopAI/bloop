@@ -281,8 +281,8 @@ impl Semantic {
         &self,
         parsed_query: &SemanticQuery<'a>,
         vector: Embedding,
-        limit: u64,
-        offset: u64,
+        limit: u32,
+        offset: u32,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
         let repo_filter = {
             let conditions = parsed_query
@@ -363,10 +363,10 @@ impl Semantic {
         let response = self
             .qdrant
             .search_points(&SearchPoints {
-                limit,
+                limit: limit.into(),
                 vector,
                 collection_name: COLLECTION_NAME.to_string(),
-                offset: Some(offset),
+                offset: Some(offset.into()),
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
@@ -387,14 +387,33 @@ impl Semantic {
     pub async fn search<'a>(
         &self,
         parsed_query: &SemanticQuery<'a>,
-        limit: u64,
-        offset: u64,
-    ) -> anyhow::Result<Vec<ScoredPoint>> {
+        limit: u32,
+        offset: u32,
+        retrieve_more: bool,
+    ) -> anyhow::Result<Vec<Payload>> {
         let Some(query) = parsed_query.target() else {
             anyhow::bail!("no search target for query");
         };
         let vector = self.embed(query)?;
-        self.search_with(parsed_query, vector, limit, offset).await
+
+        // TODO: Remove the need for `retrieve_more`. It's here because:
+        // In /q `limit` is the maximum number of results returned (the actual number will often be lower due to deduplication)
+        // In /answer we want to retrieve `limit` results exactly
+        let results = self
+            .search_with(
+                parsed_query,
+                vector.clone(),
+                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+                offset,
+            )
+            .await
+            .map(|raw| {
+                raw.into_iter()
+                    .map(Payload::from_qdrant)
+                    .collect::<Vec<_>>()
+            })?;
+        let out = deduplicate_snippets(results, vector, limit);
+        Ok(out)
     }
 
     #[tracing::instrument(skip(self, repo_ref, relative_path, buffer))]
@@ -645,7 +664,7 @@ fn filter_overlapping_snippets(mut snippets: Vec<Payload>) -> Vec<Payload> {
 pub fn deduplicate_snippets(
     mut all_snippets: Vec<Payload>,
     query_embedding: Embedding,
-    output_count: usize,
+    output_count: u32,
 ) -> Vec<Payload> {
     all_snippets = filter_overlapping_snippets(all_snippets);
 
@@ -664,7 +683,14 @@ pub fn deduplicate_snippets(
             .iter()
             .map(|s| s.relative_path.as_ref())
             .collect::<Vec<_>>();
-        deduplicate_with_mmr(&query_embedding, &embeddings, &languages, &paths, lambda, k)
+        deduplicate_with_mmr(
+            &query_embedding,
+            &embeddings,
+            &languages,
+            &paths,
+            lambda,
+            k as usize,
+        )
     };
 
     info!("preserved idxs after MMR are {:?}", idxs);
