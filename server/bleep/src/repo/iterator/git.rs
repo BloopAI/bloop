@@ -143,6 +143,10 @@ impl FileSource for GitWalker {
                     return None;
                 }
 
+                if object.kind != gix::object::Kind::Blob {
+                    return None;
+                }
+
                 let buffer = String::from_utf8_lossy(&object.data).to_string();
 
                 Some(RepoFile {
