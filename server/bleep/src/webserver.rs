@@ -1,5 +1,6 @@
 use crate::{env::Feature, Application};
 
+use axum::routing::post;
 use axum::{http::StatusCode, response::IntoResponse, routing::get, Extension, Json};
 use std::{borrow::Cow, net::SocketAddr};
 use tower::Service;
@@ -12,6 +13,7 @@ pub mod answer;
 mod autocomplete;
 mod config;
 mod file;
+mod git;
 mod github;
 mod hoverable;
 mod index;
@@ -57,6 +59,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             get(repos::get_by_id).delete(repos::delete_by_id),
         )
         .route("/repos/sync/*path", get(repos::sync))
+        .route("/repos/branch", post(git::create_branch))
         // intelligence
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))
