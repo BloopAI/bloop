@@ -389,12 +389,30 @@ impl Semantic {
         parsed_query: &SemanticQuery<'a>,
         limit: u64,
         offset: u64,
-    ) -> anyhow::Result<Vec<ScoredPoint>> {
+        retrieve_more: bool,
+    ) -> anyhow::Result<Vec<Payload>> {
         let Some(query) = parsed_query.target() else {
             anyhow::bail!("no search target for query");
         };
         let vector = self.embed(query)?;
-        self.search_with(parsed_query, vector, limit, offset).await
+
+        // TODO: Remove the need for `retrieve_more`. It's here because:
+        // In /q `limit` is the maximum number of results returned (the actual number will often be lower due to deduplication)
+        // In /answer we want to retrieve `limit` results exactly
+        let results = self
+            .search_with(
+                parsed_query,
+                vector.clone(),
+                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+                offset,
+            )
+            .await
+            .map(|raw| {
+                raw.into_iter()
+                    .map(Payload::from_qdrant)
+                    .collect::<Vec<_>>()
+            })?;
+        Ok(deduplicate_snippets(results, vector, limit))
     }
 
     #[tracing::instrument(skip(self, repo_ref, relative_path, buffer))]
@@ -645,7 +663,7 @@ fn filter_overlapping_snippets(mut snippets: Vec<Payload>) -> Vec<Payload> {
 pub fn deduplicate_snippets(
     mut all_snippets: Vec<Payload>,
     query_embedding: Embedding,
-    output_count: usize,
+    output_count: u64,
 ) -> Vec<Payload> {
     all_snippets = filter_overlapping_snippets(all_snippets);
 
@@ -664,7 +682,14 @@ pub fn deduplicate_snippets(
             .iter()
             .map(|s| s.relative_path.as_ref())
             .collect::<Vec<_>>();
-        deduplicate_with_mmr(&query_embedding, &embeddings, &languages, &paths, lambda, k)
+        deduplicate_with_mmr(
+            &query_embedding,
+            &embeddings,
+            &languages,
+            &paths,
+            lambda,
+            k as usize,
+        )
     };
 
     info!("preserved idxs after MMR are {:?}", idxs);

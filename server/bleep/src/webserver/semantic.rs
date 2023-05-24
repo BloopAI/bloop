@@ -6,7 +6,6 @@ use crate::{
     },
     semantic::{self, Semantic},
 };
-use qdrant_client::qdrant::value::Kind;
 use tracing::error;
 
 pub(super) async fn complex_search(
@@ -35,25 +34,5 @@ pub(super) async fn complex_search(
             error!(?err, "qdrant query failed");
             Err(Error::new(ErrorKind::UpstreamService, "error"))
         }
-    }
-}
-
-pub fn kind_to_value(kind: Option<Kind>) -> serde_json::Value {
-    match kind {
-        Some(Kind::NullValue(_)) => serde_json::Value::Null,
-        Some(Kind::BoolValue(v)) => serde_json::Value::Bool(v),
-        Some(Kind::DoubleValue(v)) => {
-            serde_json::Value::Number(serde_json::Number::from_f64(v).unwrap())
-        }
-        Some(Kind::IntegerValue(v)) => serde_json::Value::Number(v.into()),
-        Some(Kind::StringValue(v)) => serde_json::Value::String(v),
-        Some(Kind::ListValue(v)) => serde_json::Value::Array(
-            v.values
-                .into_iter()
-                .map(|v| kind_to_value(v.kind))
-                .collect(),
-        ),
-        Some(Kind::StructValue(_v)) => todo!(),
-        None => serde_json::Value::Null,
     }
 }

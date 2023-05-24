@@ -8,31 +8,25 @@ use crate::{
     snippet::Snippet,
 };
 
-use super::{deduplicate_snippets, Semantic};
+use super::Semantic;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 pub async fn execute(
     semantic: Semantic,
     query: SemanticQuery<'_>,
     params: ApiQuery,
 ) -> Result<QueryResponse> {
-    let vector = semantic.embed(query.target().context("invalid query")?)?;
-    let query_result = semantic
-        .search_with(
+    let results = semantic
+        .search(
             &query,
-            vector.clone(),
             params.page_size as u64,
             ((params.page + 1) * params.page_size) as u64,
+            false,
         )
-        .await
-        .map(|raw| {
-            raw.into_iter()
-                .map(super::Payload::from_qdrant)
-                .collect::<Vec<_>>()
-        })?;
+        .await?;
 
-    let data = deduplicate_snippets(query_result, vector, params.page_size)
+    let data = results
         .into_iter()
         .fold(HashMap::new(), |mut acc, payload| {
             acc.entry((
