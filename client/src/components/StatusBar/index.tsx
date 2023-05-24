@@ -1,6 +1,6 @@
-import { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import Button from '../Button';
-import { DiscordLogo, PowerPlug } from '../../icons';
+import { DiscordLogo, Magazine, Papers, PowerPlug } from '../../icons';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { getDiscordLink } from '../../services/api';
@@ -54,6 +54,14 @@ const StatusBar = () => {
         {/*/>*/}
       </span>
       <span className="flex gap-3">
+        <Button
+          size="small"
+          variant="secondary"
+          onClick={() => openLink('https://bloop.ai/docs/')}
+        >
+          <Magazine />
+          Documentation
+        </Button>
         <Button
           size="small"
           variant="secondary"
