@@ -24,15 +24,15 @@
         };
 
         runtimeDeps =
-          with pkgs; ([ openssl_1_1.out rocksdb git zlib ]);
+          with pkgs; ([ openssl.out rocksdb git zlib ]);
 
         buildDeps = with pkgs;
           ([
             stdenv.cc.cc.lib
             glib.dev
             pkg-config
-            openssl_1_1.out
-            openssl_1_1.dev
+            openssl.out
+            openssl.dev
 
             protobuf
             onnxruntime-static
@@ -62,8 +62,8 @@
           LIBCLANG_PATH = "${libclang.lib}/lib";
           ROCKSDB_LIB_DIR = "${pkgs.rocksdb}/lib";
           ROCKSDB_INCLUDE_DIR = "${pkgs.rocksdb}/include";
-          OPENSSL_LIB_DIR = "${pkgs.openssl_1_1.out}/lib";
-          OPENSSL_INCLUDE_DIR = "${pkgs.openssl_1_1.dev}/include";
+          OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
+          OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
           OPENSSL_NO_VENDOR = "1";
           ORT_LIB_LOCATION = "${onnxruntime-static}/build";
         };
@@ -129,7 +129,7 @@
 
         devShell = (pkgs.mkShell {
           buildInputs = buildDeps ++ runtimeDeps ++ guiDeps
-            ++ (with pkgs; [ git-lfs cargo rustc rustfmt clippy ]);
+            ++ (with pkgs; [ git-lfs cargo rustc rustfmt clippy rust-analyzer ]);
         }).overrideAttrs (old: envVars);
 
       });
