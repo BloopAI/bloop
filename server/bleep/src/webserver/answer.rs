@@ -115,17 +115,23 @@ pub(super) async fn _handle(
         .await
     {
         Ok(res) if res.status() == StatusCode::OK => (),
-        other => {
-            if other.is_err() {
-                warn!("failed to check compatibility ... defaulting to `incompatible`")
-            }
-
+        Ok(res) if res.status() == StatusCode::NOT_ACCEPTABLE => {
             let out_of_date = futures::stream::once(async {
                 Ok(sse::Event::default()
                     .json_data(serde_json::json!({"Err": "incompatible client"}))
                     .unwrap())
             });
             return Ok(Sse::new(Box::pin(out_of_date)));
+        }
+        // the Ok(_) case should be unreachable
+        Ok(_) | Err(_) => {
+            warn!("failed to check compatibility ... defaulting to `incompatible`");
+            let failed_to_check = futures::stream::once(async {
+                Ok(sse::Event::default()
+                    .json_data(serde_json::json!({"Err": "failed to check compatibility"}))
+                    .unwrap())
+            });
+            return Ok(Sse::new(Box::pin(failed_to_check)));
         }
     };
 
