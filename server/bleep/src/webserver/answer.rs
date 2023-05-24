@@ -798,7 +798,7 @@ impl Conversation {
                 let trimmed_file_contents = tiktoken_rs::get_bpe_from_model("gpt-4")
                     .context("invalid model requested")?
                     .split_by_token_iter(&file_contents, false)
-                    .take(4000)
+                    .take(2000)
                     .collect::<Result<String>>()
                     .context("failed to tokenize file contents")?;
 
