@@ -1,5 +1,4 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { useRive } from '@rive-app/react-canvas';
 import { QuillIcon, Unlike } from '../../icons';
 import useAnalytics from '../../hooks/useAnalytics';
 import { saveUpvote } from '../../services/api';
@@ -7,6 +6,8 @@ import { DeviceContext } from '../../context/deviceContext';
 import { ChatMessageAuthor } from '../../types/general';
 import { ChatContext } from '../../context/chatContext';
 import Button from '../Button';
+import UpvoteBtn from './FeedbackBtns/Upvote';
+import DownvoteBtn from './FeedbackBtns/Downvote';
 
 type Props = {
   author: ChatMessageAuthor;
@@ -30,18 +31,11 @@ const ConversationMessage = ({
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showCommentInput, setShowCommentInput] = useState(false);
   const [comment, setComment] = useState('');
   const { trackUpvote } = useAnalytics();
   const { envConfig } = useContext(DeviceContext);
   const { setChatOpen } = useContext(ChatContext);
-  const RiveUpvoteInline = useRive({
-    src: '/like-blue.riv',
-    autoplay: false,
-  });
-  const RiveDownvoteInline = useRive({
-    src: '/like-red.riv',
-    autoplay: false,
-  });
 
   useEffect(() => {
     setChatOpen(true);
@@ -49,19 +43,11 @@ const ConversationMessage = ({
 
   const handleUpvote = useCallback(
     (isUpvote: boolean) => {
-      if (RiveUpvoteInline.rive && RiveDownvoteInline.rive) {
-        if (isUpvote) {
-          RiveUpvoteInline.rive.play();
-          RiveDownvoteInline.rive.reset();
-          RiveDownvoteInline.rive.drawFrame();
-        } else {
-          RiveDownvoteInline.rive.play();
-          RiveUpvoteInline.rive.reset();
-          RiveUpvoteInline.rive.drawFrame();
-        }
-      }
       setIsUpvote(isUpvote);
-      setTimeout(() => setIsDownvote(!isUpvote), 500); // to play animation
+      setIsDownvote(!isUpvote);
+      if (!isUpvote) {
+        setTimeout(() => setShowCommentInput(true), 500); // to play animation
+      }
       if (isUpvote) {
         trackUpvote(isUpvote, query, message || '', searchId);
         return saveUpvote({
@@ -73,13 +59,7 @@ const ConversationMessage = ({
         });
       }
     },
-    [
-      RiveUpvoteInline,
-      RiveDownvoteInline,
-      showInlineFeedback,
-      envConfig.tracking_id,
-      searchId,
-    ],
+    [showInlineFeedback, envConfig.tracking_id, searchId],
   );
 
   const handleSubmit = useCallback(() => {
@@ -119,8 +99,8 @@ const ConversationMessage = ({
         !isHistory &&
         !error &&
         !isSubmitted &&
-        !isDownvote && (
-          <div className="flex flex-col items-center gap-3">
+        !showCommentInput && (
+          <div className="flex flex-col items-center gap-3" key="feedback-btns">
             <p className="body-s text-label-title">
               How would you rate this response?
             </p>
@@ -134,7 +114,7 @@ const ConversationMessage = ({
                 } hover:bg-[linear-gradient(88.29deg,rgba(48,79,255,0.16)_0%,rgba(48,79,255,0.16)_100%)] 
               transition-all duration-75 ease-in-out`}
               >
-                <RiveUpvoteInline.RiveComponent className="w-4.5 h-4.5 transform scale-1 flex-shrink-0" />
+                <UpvoteBtn isUpvote={isUpvote} />
                 Good
               </button>
               <button
@@ -146,13 +126,13 @@ const ConversationMessage = ({
                 } hover:bg-[linear-gradient(88.29deg,rgba(251,113,133,0.16)_0%,rgba(251,113,133,0.16)_100%)] 
               transition-all duration-75 ease-in-out`}
               >
-                <RiveDownvoteInline.RiveComponent className="w-4.5 h-4.5 transform scale-1 flex-shrink-0" />
+                <DownvoteBtn isDownvote={isDownvote} />
                 Bad
               </button>
             </div>
           </div>
         )}
-      {isDownvote && !isSubmitted && (
+      {showInlineFeedback && showCommentInput && !isSubmitted && (
         <div className="w-full flex flex-col gap-4 bg-chat-bg-base border border-chat-bg-border rounded-lg p-4">
           <div className="flex flex-col gap-2">
             <div className="flex gap-1.5 items-center caption text-danger-300">
@@ -165,6 +145,7 @@ const ConversationMessage = ({
               placeholder="What was the issue with this response? How could it be improved?"
               rows={3}
               value={comment}
+              autoFocus={true}
               autoComplete="off"
               onChange={(e) => setComment(e.target.value)}
               className="body-s bg-transparent resize-none outline-0 outline-none focus:outline-0 focus:outline-none focus:placeholder:text-label-base"
@@ -174,7 +155,10 @@ const ConversationMessage = ({
             <Button
               variant="tertiary"
               size="small"
-              onClick={() => setIsDownvote(false)}
+              onClick={() => {
+                setIsDownvote(false);
+                setShowCommentInput(false);
+              }}
             >
               Cancel
             </Button>
@@ -184,7 +168,7 @@ const ConversationMessage = ({
           </div>
         </div>
       )}
-      {isSubmitted && (
+      {showInlineFeedback && isSubmitted && (
         <div className="w-full py-2 text-label-title body-s text-center">
           Thank you for your feedback!
         </div>
