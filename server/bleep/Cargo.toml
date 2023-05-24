@@ -111,15 +111,17 @@ tiktoken-rs = "0.4.2"
 semver = { version = "1", features = ["serde"] }
 
 # telemetry
-sentry = "0.31.1"
+sentry = "0.31.2"
 rudderanalytics = "1.1.2"
 async-stream = "0.3.5"
 erased-serde = "0.3.25"
 scc = { version= "1.8.0", features = ["serde"] }
-sentry-tracing = "0.31.1"
+sentry-tracing = "0.31.2"
 git-version = "0.3.5"
 gix = { version="0.44.1", features = ["blocking-http-transport-reqwest", "blocking-network-client", "pack-cache-lru-static"] }
 thread-priority = "0.13.1"
+diffy = "0.3.0"
+chbs = "0.1.1"
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.4"
