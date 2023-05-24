@@ -111,10 +111,27 @@ const Chat = () => {
       };
       eventSource.onmessage = (ev) => {
         console.log(ev.data);
-        if (ev.data === '{"Err":"incompatible client"}') {
+        if (
+          ev.data === '{"Err":"incompatible client"}' ||
+          ev.data === '{"Err":"failed to check compatibility"}'
+        ) {
           eventSource.close();
           prevEventSource?.close();
-          setShowPopup(true);
+          if (ev.data === '{"Err":"incompatible client"}') {
+            setShowPopup(true);
+          } else {
+            setConversation((prev) => {
+              const newConversation = prev.slice(0, -1);
+              const lastMessage: ChatMessage = {
+                author: ChatMessageAuthor.Server,
+                isLoading: false,
+                type: ChatMessageType.Answer,
+                error: 'Something went wrong',
+                loadingSteps: [],
+              };
+              return [...newConversation, lastMessage];
+            });
+          }
           setLoading(false);
           return;
         }
