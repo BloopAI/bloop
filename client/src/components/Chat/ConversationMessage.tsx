@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { QuillIcon, Unlike } from '../../icons';
 import useAnalytics from '../../hooks/useAnalytics';
 import { saveUpvote } from '../../services/api';
@@ -17,6 +18,7 @@ type Props = {
   searchId: string;
   isHistory?: boolean;
   showInlineFeedback: boolean;
+  scrollToBottom?: () => void;
 };
 
 const ConversationMessage = ({
@@ -27,6 +29,7 @@ const ConversationMessage = ({
   showInlineFeedback,
   query,
   searchId,
+  scrollToBottom,
 }: Props) => {
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
@@ -46,7 +49,10 @@ const ConversationMessage = ({
       setIsUpvote(isUpvote);
       setIsDownvote(!isUpvote);
       if (!isUpvote) {
-        setTimeout(() => setShowCommentInput(true), 500); // to play animation
+        setTimeout(() => {
+          setShowCommentInput(true);
+          setTimeout(() => scrollToBottom?.(), 10);
+        }, 500); // to play animation
       }
       if (isUpvote) {
         trackUpvote(isUpvote, query, message || '', searchId);
@@ -100,10 +106,15 @@ const ConversationMessage = ({
         !error &&
         !isSubmitted &&
         !showCommentInput && (
-          <div className="flex flex-col items-center gap-3" key="feedback-btns">
-            <p className="body-s text-label-title">
-              How would you rate this response?
-            </p>
+          <div
+            className="flex flex-col items-center gap-3 group-custom"
+            key="feedback-btns"
+          >
+            {!isUpvote && !isDownvote && (
+              <p className="body-s text-label-title">
+                How would you rate this response?
+              </p>
+            )}
             <div className="flex gap-1 items-center">
               <button
                 onClick={() => handleUpvote(true)}
@@ -123,6 +134,8 @@ const ConversationMessage = ({
                   isDownvote
                     ? 'bg-[linear-gradient(88.29deg,rgba(251,113,133,0.16)_0%,rgba(251,113,133,0.16)_100%)]'
                     : 'bg-[linear-gradient(88.29deg,rgba(251,113,133,0.16)_1.45%,rgba(191,191,191,0.08)_98.55%)]'
+                } ${
+                  isUpvote ? 'opacity-20 group-custom-hover:opacity-100' : ''
                 } hover:bg-[linear-gradient(88.29deg,rgba(251,113,133,0.16)_0%,rgba(251,113,133,0.16)_100%)] 
               transition-all duration-75 ease-in-out`}
               >
@@ -132,42 +145,52 @@ const ConversationMessage = ({
             </div>
           </div>
         )}
-      {showInlineFeedback && showCommentInput && !isSubmitted && (
-        <div className="w-full flex flex-col gap-4 bg-chat-bg-base border border-chat-bg-border rounded-lg p-4">
-          <div className="flex flex-col gap-2">
-            <div className="flex gap-1.5 items-center caption text-danger-300">
-              <div className="w-3.5 h-3.5">
-                <Unlike raw />
+      <AnimatePresence>
+        {showInlineFeedback && showCommentInput && !isSubmitted && (
+          <motion.div
+            className="w-full flex flex-col gap-4 bg-chat-bg-base border border-chat-bg-border rounded-lg"
+            initial={{ height: '23.625rem' }}
+            animate={{ height: '23.625rem' }}
+            exit={{ height: '0rem' }}
+            transition={{ duration: 0.15 }}
+          >
+            <div className="p-4 overflow-hidden box-border">
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-1.5 items-center caption text-danger-300">
+                  <div className="w-3.5 h-3.5">
+                    <Unlike raw />
+                  </div>
+                  <span>Bad response</span>
+                </div>
+                <textarea
+                  placeholder="What was the issue with this response? How could it be improved?"
+                  rows={3}
+                  value={comment}
+                  autoFocus={true}
+                  autoComplete="off"
+                  onChange={(e) => setComment(e.target.value)}
+                  className="body-s bg-transparent resize-none outline-0 outline-none focus:outline-0 focus:outline-none focus:placeholder:text-label-base"
+                />
               </div>
-              <span>Bad response</span>
+              <div className="flex w-full justify-end items-center gap-2">
+                <Button
+                  variant="tertiary"
+                  size="small"
+                  onClick={() => {
+                    setIsDownvote(false);
+                    setShowCommentInput(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button size="small" onClick={handleSubmit}>
+                  Submit
+                </Button>
+              </div>
             </div>
-            <textarea
-              placeholder="What was the issue with this response? How could it be improved?"
-              rows={3}
-              value={comment}
-              autoFocus={true}
-              autoComplete="off"
-              onChange={(e) => setComment(e.target.value)}
-              className="body-s bg-transparent resize-none outline-0 outline-none focus:outline-0 focus:outline-none focus:placeholder:text-label-base"
-            />
-          </div>
-          <div className="flex w-full justify-end items-center gap-2">
-            <Button
-              variant="tertiary"
-              size="small"
-              onClick={() => {
-                setIsDownvote(false);
-                setShowCommentInput(false);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button size="small" onClick={handleSubmit}>
-              Submit
-            </Button>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
       {showInlineFeedback && isSubmitted && (
         <div className="w-full py-2 text-label-title body-s text-center">
           Thank you for your feedback!

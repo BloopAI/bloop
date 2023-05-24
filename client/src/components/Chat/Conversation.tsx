@@ -1,4 +1,10 @@
-import React, { Fragment, useContext, useEffect, useRef } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+} from 'react';
 import {
   ChatMessage,
   ChatMessageAuthor,
@@ -23,7 +29,8 @@ const Conversation = ({
 }: Props) => {
   const messagesRef = useRef<HTMLDivElement>(null);
   const { navigateConversationResults } = useContext(AppNavigationContext);
-  useEffect(() => {
+
+  const scrollToBottom = useCallback(() => {
     if (messagesRef.current) {
       messagesRef.current?.scrollTo({
         left: 0,
@@ -31,7 +38,11 @@ const Conversation = ({
         behavior: 'smooth',
       });
     }
-  }, [conversation]);
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [conversation, scrollToBottom]);
 
   return (
     <div
@@ -89,6 +100,7 @@ const Conversation = ({
               }
               searchId={searchId}
               query={conversation[0].text || ''}
+              scrollToBottom={scrollToBottom}
             />
           ) : null}
         </Fragment>
