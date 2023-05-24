@@ -251,16 +251,19 @@ struct CodeChunk {
     end_line: u32,
 }
 
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+struct SeenPath {
+    path: String,
+    alias: u32,
+}
+
 impl Conversation {
     fn new(repo_ref: RepoRef) -> Self {
         // We start of with a conversation describing the operations that the LLM can perform, and
         // an initial (hidden) prompt that we pose to the user.
 
         Self {
-            llm_history: vec![
-                llm_gateway::api::Message::system(&prompts::system()),
-                llm_gateway::api::Message::assistant(prompts::INITIAL_PROMPT),
-            ],
+            llm_history: vec![llm_gateway::api::Message::system(&prompts::system())],
             exchanges: Vec::new(),
             paths: Vec::new(),
             code_chunks: Vec::new(),
@@ -314,11 +317,10 @@ impl Conversation {
                 let summarized_answer = self.get_summarized_answer();
                 match summarized_answer.as_ref() {
                     Some(summary) => {
+                        dbg!(&summary);
                         info!("attaching summary of previous exchange: {summary}");
                         self.llm_history
-                            .push(llm_gateway::api::Message::assistant(summary));
-                        self.llm_history
-                            .push(llm_gateway::api::Message::assistant(prompts::CONTINUE));
+                            .push(llm_gateway::api::Message::assistant(&summary));
                     }
                     None => {
                         info!("no previous exchanges, skipping summary");
@@ -417,7 +419,15 @@ impl Conversation {
                         .with_payload("raw_prompt", &prompt),
                 );
 
-                prompt
+                let formatted_paths = paths
+                    .iter()
+                    .map(|p| SeenPath {
+                        path: p.to_string(),
+                        alias: self.path_alias(p) as u32,
+                    })
+                    .collect::<Vec<_>>();
+
+                serde_json::to_string(&formatted_paths).unwrap()
             }
 
             Action::Code(query) => {
@@ -478,8 +488,9 @@ impl Conversation {
             }
         };
 
+        dbg!(&action_result);
         self.llm_history.push(llm_gateway::api::Message::user(
-            &(action_result + "\n\nAnswer only with a JSON action."),
+            &(action_result + "\n\nChoose a tool:"),
         ));
 
         let raw_response = ctx
@@ -493,6 +504,7 @@ impl Conversation {
             EventData::output_stage("llm_reply").with_payload("raw_response", &raw_response),
         );
 
+        dbg!(&raw_response);
         let action = Action::deserialize_gpt(&raw_response)?;
         if !matches!(action, Action::Query(..)) {
             self.llm_history
@@ -510,27 +522,6 @@ impl Conversation {
         question: String,
         path_aliases: Vec<usize>,
     ) -> Result<String> {
-        // filesystem agnostic trivial path normalization
-        //
-        // - a//b -> a/b
-        // - a/./b -> a/b
-        // - a/b/../c -> a/c (regardless of whether this exists)
-        // - ../b/c -> None
-        fn normalize(path: PathBuf) -> Option<PathBuf> {
-            let mut stack = vec![];
-            for c in path.components() {
-                match c {
-                    Component::Normal(s) => stack.push(s),
-                    Component::ParentDir if stack.is_empty() => return None,
-                    Component::ParentDir => {
-                        _ = stack.pop();
-                    }
-                    _ => (),
-                }
-            }
-            Some(stack.iter().collect::<PathBuf>())
-        }
-
         let paths = path_aliases
             .into_iter()
             .map(|i| self.paths.get(i).ok_or(i).cloned())
