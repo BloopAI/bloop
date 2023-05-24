@@ -130,6 +130,8 @@ const CodeFull = ({
           }
           return false;
         });
+        setScrollToIndex(undefined);
+        setSearchTerm('');
       }
     };
     window.addEventListener('keydown', toggleSearch);
@@ -335,6 +337,7 @@ const CodeFull = ({
         onCancel={() => {
           handleSearch('');
           setSearchActive(false);
+          setScrollToIndex(undefined);
         }}
         currentResult={currentResult}
         setCurrentResult={setCurrentResult}
