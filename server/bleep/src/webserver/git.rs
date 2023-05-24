@@ -23,7 +23,6 @@ use gix::{
         Kind, Tree,
     },
     traverse::tree::{visit::Action, Visit},
-    ObjectId,
 };
 
 type RepoPath = String;
@@ -31,9 +30,8 @@ type Diff = String;
 type Branch = String;
 type Commit = String;
 
-#[derive(Clone)]
-pub struct CreateNewCommit {
-    repo: gix::Repository,
+pub struct CreateNewCommit<'a> {
+    repo: &'a gix::Repository,
     changes: ChangeSet,
     path_deque: VecDeque<BString>,
     path: BString,
@@ -85,6 +83,19 @@ pub(super) async fn create_branch(
         branch_name,
     } = params;
 
+    let branch_name = branch_name.unwrap_or_else(|| {
+        use chbs::probability::Probability;
+        let config = chbs::config::BasicConfig {
+            words: 3,
+            separator: "-".into(),
+            capitalize_first: Probability::Never,
+            capitalize_words: Probability::Never,
+            ..Default::default()
+        };
+        let scheme = config.to_scheme();
+        scheme.generate()
+    });
+
     let git = app
         .repo_pool
         .read_async(&repo, |_k, v| gix::open(&v.disk_path))
@@ -92,18 +103,26 @@ pub(super) async fn create_branch(
         .unwrap()
         .unwrap();
 
-    let changes = CreateNewCommit::new(git, changes);
-    let branch_name = branch_name.unwrap_or_else(|| {
-        use chbs::probability::Probability;
-        let mut config = chbs::config::BasicConfig::default();
-        config.words = 3;
-        config.separator = "-".into();
-        config.capitalize_first = Probability::Never;
-        config.capitalize_words = Probability::Never;
-        let scheme = config.to_scheme();
-        scheme.generate()
-    });
-    let commit_id = changes.commit(&branch_name, "Committed by bloop");
+    let mut changes = CreateNewCommit::new(&git, changes);
+    let head = git.head_commit().unwrap();
+    head.tree()
+        .unwrap()
+        .traverse()
+        .breadthfirst(&mut changes)
+        .unwrap();
+
+    let root_tree = changes.to_tree();
+    let root_oid = git.write_object(&root_tree).unwrap();
+
+    let commit_id = git
+        .commit(
+            format!("refs/heads/{branch_name}"),
+            "Committed by bloop",
+            root_oid,
+            Some(head.id()),
+        )
+        .unwrap()
+        .detach();
 
     json(ApiResult {
         branch_name,
@@ -157,7 +176,7 @@ impl MirrorTree {
         })
     }
 
-    fn collapse(self: Rc<Self>, repo: &mut gix::Repository) -> Tree {
+    fn collapse(self: Rc<Self>, repo: &gix::Repository) -> Tree {
         let mut tree = {
             let mut lock = self.tree.lock().unwrap();
             std::mem::replace(&mut *lock, Tree::empty())
@@ -176,8 +195,8 @@ impl MirrorTree {
     }
 }
 
-impl CreateNewCommit {
-    fn new(repo: gix::Repository, changes: Vec<Change>) -> Self {
+impl<'a> CreateNewCommit<'a> {
+    fn new(repo: &'a gix::Repository, changes: Vec<Change>) -> Self {
         let root = MirrorTree::root();
         CreateNewCommit {
             path_deque: Default::default(),
@@ -204,31 +223,19 @@ impl CreateNewCommit {
         self.path.push_str(name);
     }
 
-    fn commit(mut self, branch_name: &str, message: impl AsRef<str>) -> ObjectId {
-        let tree = self.root.collapse(&mut self.repo);
-        let root_oid = self.repo.write_object(&tree).unwrap().detach();
-
-        let head = self.repo.head().unwrap();
-        println!("{:?}", branch_name);
-        self.repo
-            .commit(
-                format!("refs/heads/{branch_name}"),
-                message,
-                root_oid,
-                head.id(),
-            )
-            .unwrap()
-            .detach()
+    fn to_tree(&self) -> Tree {
+        self.root.clone().collapse(self.repo)
     }
 }
 
-impl Visit for CreateNewCommit {
+impl<'a> Visit for CreateNewCommit<'a> {
     fn pop_front_tracked_path_and_set_current(&mut self) {
         self.path = self
             .path_deque
             .pop_front()
             .expect("every call is matched with push_tracked_path_component");
 
+        println!("pop: {}, {}", self.path, self.current.filename);
         let parent = self
             .current
             .parent
@@ -244,6 +251,7 @@ impl Visit for CreateNewCommit {
         self.push_element(component);
         self.path_deque.push_back(self.path.clone());
 
+        println!("push: {}, {}", self.path, self.current.filename);
         let next = MirrorTree::new(component.to_str_lossy(), self.current.clone());
         self.current.children.lock().unwrap().push(next.clone());
         self.current = next;
@@ -262,6 +270,7 @@ impl Visit for CreateNewCommit {
             .changes
             .should_descend(self.path.to_str_lossy().as_ref())
         {
+            println!("going down {}", self.path);
             Action::Continue
         } else {
             self.current.tree.lock().unwrap().entries.push(Entry {
@@ -283,8 +292,10 @@ impl Visit for CreateNewCommit {
                 .detach();
 
             assert_eq!(obj.kind, Kind::Blob);
+            println!("{:?}", self.path);
 
-            let blob = changes.into_iter().fold(obj.data, |base, patch| {
+            let blob = changes.iter().fold(obj.data, |base, patch| {
+                println!("{}", patch);
                 diffy::apply(
                     String::from_utf8_lossy(&base).as_ref(),
                     &diffy::Patch::from_str(patch).unwrap(),
