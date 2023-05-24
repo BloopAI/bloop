@@ -281,8 +281,8 @@ impl Semantic {
         &self,
         parsed_query: &SemanticQuery<'a>,
         vector: Embedding,
-        limit: u32,
-        offset: u32,
+        limit: u64,
+        offset: u64,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
         let repo_filter = {
             let conditions = parsed_query
@@ -363,10 +363,10 @@ impl Semantic {
         let response = self
             .qdrant
             .search_points(&SearchPoints {
-                limit: limit.into(),
+                limit,
                 vector,
                 collection_name: COLLECTION_NAME.to_string(),
-                offset: Some(offset.into()),
+                offset: Some(offset),
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
@@ -387,8 +387,8 @@ impl Semantic {
     pub async fn search<'a>(
         &self,
         parsed_query: &SemanticQuery<'a>,
-        limit: u32,
-        offset: u32,
+        limit: u64,
+        offset: u64,
         retrieve_more: bool,
     ) -> anyhow::Result<Vec<Payload>> {
         let Some(query) = parsed_query.target() else {
@@ -412,8 +412,7 @@ impl Semantic {
                     .map(Payload::from_qdrant)
                     .collect::<Vec<_>>()
             })?;
-        let out = deduplicate_snippets(results, vector, limit);
-        Ok(out)
+        Ok(deduplicate_snippets(results, vector, limit))
     }
 
     #[tracing::instrument(skip(self, repo_ref, relative_path, buffer))]
@@ -664,7 +663,7 @@ fn filter_overlapping_snippets(mut snippets: Vec<Payload>) -> Vec<Payload> {
 pub fn deduplicate_snippets(
     mut all_snippets: Vec<Payload>,
     query_embedding: Embedding,
-    output_count: u32,
+    output_count: u64,
 ) -> Vec<Payload> {
     all_snippets = filter_overlapping_snippets(all_snippets);
 

@@ -20,8 +20,8 @@ pub async fn execute(
     let results = semantic
         .search(
             &query,
-            params.page_size as u32,
-            ((params.page + 1) * params.page_size) as u32,
+            params.page_size as u64,
+            ((params.page + 1) * params.page_size) as u64,
             false,
         )
         .await?;
