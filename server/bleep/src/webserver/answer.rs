@@ -713,7 +713,7 @@ impl Conversation {
                         .iter()
                         .map(|c| c.enumerate_lines())
                         .collect::<Vec<_>>(),
-                    "path": path,
+                    "path_alias": self.path_alias(&path),
                 })
             })
             .collect::<Vec<_>>();
