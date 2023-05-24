@@ -1,9 +1,8 @@
 use std::{
     borrow::Cow,
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, VecDeque},
     mem,
     panic::AssertUnwindSafe,
-    path::{Component, PathBuf},
     str::FromStr,
     time::Duration,
 };
@@ -231,7 +230,7 @@ pub(super) struct ConversationId {
 
 #[derive(Clone, Debug)]
 pub(super) struct Conversation {
-    llm_history: Vec<llm_gateway::api::Message>,
+    llm_history: VecDeque<llm_gateway::api::Message>,
     exchanges: Vec<Exchange>,
     paths: Vec<String>,
     code_chunks: Vec<CodeChunk>,
@@ -241,7 +240,7 @@ pub(super) struct Conversation {
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 struct CodeChunk {
     path: String,
-    #[serde(rename = "§ALIAS")]
+    #[serde(rename = "alias")]
     alias: u32,
     #[serde(rename = "snippet")]
     snippet: String,
@@ -263,7 +262,10 @@ impl Conversation {
         // an initial (hidden) prompt that we pose to the user.
 
         Self {
-            llm_history: vec![llm_gateway::api::Message::system(&prompts::system())],
+            llm_history: vec![llm_gateway::api::Message::system(&prompts::system(
+                &Vec::new(),
+            ))]
+            .into(),
             exchanges: Vec::new(),
             paths: Vec::new(),
             code_chunks: Vec::new(),
@@ -320,7 +322,7 @@ impl Conversation {
                         dbg!(&summary);
                         info!("attaching summary of previous exchange: {summary}");
                         self.llm_history
-                            .push(llm_gateway::api::Message::assistant(&summary));
+                            .push_back(llm_gateway::api::Message::assistant(&summary));
                     }
                     None => {
                         info!("no previous exchanges, skipping summary");
@@ -489,9 +491,14 @@ impl Conversation {
         };
 
         dbg!(&action_result);
-        self.llm_history.push(llm_gateway::api::Message::user(
+        self.llm_history.push_back(llm_gateway::api::Message::user(
             &(action_result + "\n\nChoose a tool:"),
         ));
+
+        let updated_system_prompt =
+            llm_gateway::api::Message::system(&prompts::system(&self.paths));
+        _ = self.llm_history.pop_front();
+        self.llm_history.push_front(updated_system_prompt);
 
         let raw_response = ctx
             .llm_gateway
@@ -508,7 +515,7 @@ impl Conversation {
         let action = Action::deserialize_gpt(&raw_response)?;
         if !matches!(action, Action::Query(..)) {
             self.llm_history
-                .push(llm_gateway::api::Message::assistant(&raw_response));
+                .push_back(llm_gateway::api::Message::assistant(&raw_response));
             trace!("handling raw action: {raw_response}");
         }
 
@@ -1327,7 +1334,8 @@ mod tests {
                 llm_gateway::api::Message::assistant("thud"),
                 llm_gateway::api::Message::user(&long_string),
                 llm_gateway::api::Message::user("corge"),
-            ],
+            ]
+            .into(),
             exchanges: Vec::new(),
             paths: Vec::new(),
             repo_ref: "github.com/foo/bar".parse().unwrap(),

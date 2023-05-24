@@ -21,7 +21,7 @@ impl fmt::Display for Tool {
     }
 }
 
-pub fn system() -> String {
+pub fn system(paths: &Vec<String>) -> String {
     let today = chrono::offset::Local::now();
     let tools = [
       Tool { 
@@ -54,8 +54,15 @@ pub fn system() -> String {
         s.push_str(&format!("{}\n", tool));
     }
 
+    if !paths.is_empty() {
+        s.push_str("## PATHS ##\nalias, path\n");
+        for (i, path) in paths.iter().enumerate() {
+            s.push_str(&format!("{}, {}\n", i, path));
+        }
+    }
+
     s.push_str(&format!(
-        r#"## RULES ##
+        r#"\n## RULES ##
 
 - Todays date is {today}
 - If the output of a tool is empty, try the same tool again with different arguments or try using a different tool
@@ -66,6 +73,7 @@ pub fn system() -> String {
 - To perform multiple actions, perform just one, wait for the response, then perform the next
 - When you are confident that you have enough information needed to answer the query, choose 'none'
 - If you have been instructed to modify the codebase choose 'none'
+- Only refer to path aliases that are under the PATHS heading above
 - Use the tools to find information related to the query, until all relevant information has been found.
 - If after attempting to gather information you are still unsure how to answer the query, choose 'none'
 - Always respond according to the schema of the tool that you want to use
