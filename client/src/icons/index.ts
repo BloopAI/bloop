@@ -100,3 +100,4 @@ export { default as GitHubLogoBig } from './GitHubLogo';
 export { default as Feather } from './Feather';
 export { default as FeatherSelected } from './FeatherSelected';
 export { default as Info } from './Info';
+export { default as Unlike } from './Unlike';
