@@ -197,11 +197,11 @@ impl BoundSyncQueue {
         self,
         job: impl Future<Output = T> + Send + Sync + 'static,
     ) -> T {
-        let (tx, rx) = tokio::sync::oneshot::channel();
+        let (tx, rx) = flume::bounded(1);
         self.1.runner.tokio.spawn(Box::pin(async move {
             _ = tx.send(job.await);
         }));
 
-        rx.blocking_recv().unwrap()
+        rx.recv().unwrap()
     }
 }
