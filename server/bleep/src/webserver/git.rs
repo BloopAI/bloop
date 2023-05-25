@@ -24,6 +24,7 @@ use gix::{
     },
     traverse::tree::{visit::Action, Visit},
 };
+use tracing::debug;
 
 type RepoPath = String;
 type Diff = String;
@@ -33,7 +34,7 @@ type Commit = String;
 pub struct CreateNewCommit<'a> {
     repo: &'a gix::Repository,
     changes: ChangeSet,
-    path_deque: VecDeque<BString>,
+    path_deque: VecDeque<(Rc<MirrorTree>, BString)>,
     path: BString,
     root: Rc<MirrorTree>,
     current: Rc<MirrorTree>,
@@ -98,6 +99,7 @@ pub(super) async fn create_branch(
         let scheme = config.to_scheme();
         format!("refs/heads/{}", scheme.generate())
     });
+    debug!(?branch_name, "creating new branch");
 
     let git = app
         .repo_pool
@@ -193,14 +195,16 @@ impl MirrorTree {
         };
 
         for child in self.children.lock().unwrap().drain(..) {
+            let filename = child.filename.clone().into();
             let child_tree = child.collapse(repo);
             tree.entries.push(Entry {
+                filename,
                 mode: EntryMode::Tree,
-                filename: self.filename.clone().into(),
                 oid: repo.write_object(&child_tree).unwrap().detach(),
             });
         }
 
+        tree.entries.sort();
         tree
     }
 }
@@ -240,31 +244,19 @@ impl<'a> CreateNewCommit<'a> {
 
 impl<'a> Visit for CreateNewCommit<'a> {
     fn pop_front_tracked_path_and_set_current(&mut self) {
-        self.path = self
+        (self.current, self.path) = self
             .path_deque
             .pop_front()
             .expect("every call is matched with push_tracked_path_component");
-
-        println!("pop: {}, {}", self.path, self.current.filename);
-        let parent = self
-            .current
-            .parent
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .clone();
-        _ = std::mem::replace(&mut self.current, parent);
     }
 
     fn push_back_tracked_path_component(&mut self, component: &BStr) {
         self.push_element(component);
-        self.path_deque.push_back(self.path.clone());
 
-        println!("push: {}, {}", self.path, self.current.filename);
         let next = MirrorTree::new(component.to_str_lossy(), self.current.clone());
         self.current.children.lock().unwrap().push(next.clone());
-        self.current = next;
+
+        self.path_deque.push_back((next, self.path.clone()));
     }
 
     fn push_path_component(&mut self, component: &BStr) {
@@ -280,7 +272,6 @@ impl<'a> Visit for CreateNewCommit<'a> {
             .changes
             .should_descend(self.path.to_str_lossy().as_ref())
         {
-            println!("going down {}", self.path);
             Action::Continue
         } else {
             self.current.tree.lock().unwrap().entries.push(Entry {
@@ -302,10 +293,8 @@ impl<'a> Visit for CreateNewCommit<'a> {
                 .detach();
 
             assert_eq!(obj.kind, Kind::Blob);
-            println!("{:?}", self.path);
-
             let blob = changes.iter().fold(obj.data, |base, patch| {
-                println!("{}", patch);
+                debug!(?patch, ?self.path, "applying patch");
                 diffy::apply(
                     String::from_utf8_lossy(&base).as_ref(),
                     &diffy::Patch::from_str(patch).unwrap(),
