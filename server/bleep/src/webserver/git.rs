@@ -11,7 +11,7 @@ use std::{
 
 use crate::repo::RepoRef;
 
-use super::prelude::*;
+use super::{middleware::User, prelude::*};
 
 use axum::Json;
 use chbs::scheme::ToScheme;
@@ -51,6 +51,7 @@ pub(super) struct Params {
     repo: RepoRef,
     branch_name: Option<String>,
     changes: Vec<Change>,
+    push: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -75,12 +76,14 @@ struct ChangeSet {
 
 pub(super) async fn create_branch(
     Extension(app): Extension<crate::Application>,
+    Extension(_user): Extension<User>,
     Json(params): Json<Params>,
 ) -> impl IntoResponse {
     let Params {
         repo,
         changes,
         branch_name,
+        push,
     } = params;
 
     let branch_name = branch_name.unwrap_or_else(|| {
@@ -93,7 +96,7 @@ pub(super) async fn create_branch(
             ..Default::default()
         };
         let scheme = config.to_scheme();
-        scheme.generate()
+        format!("refs/heads/{}", scheme.generate())
     });
 
     let git = app
@@ -116,13 +119,20 @@ pub(super) async fn create_branch(
 
     let commit_id = git
         .commit(
-            format!("refs/heads/{branch_name}"),
+            branch_name.clone(),
             "Committed by bloop",
             root_oid,
             Some(head.id()),
         )
         .unwrap()
         .detach();
+
+    if push.unwrap_or_default() {
+        let backend = app.credentials.for_repo(&repo).unwrap();
+        let index = app.write_index();
+        let branch_name = branch_name.clone();
+        index.wait_for(async move { backend.push(&app, &repo, &branch_name).await.unwrap() });
+    }
 
     json(ApiResult {
         branch_name,

@@ -122,6 +122,7 @@ gix = { version="0.44.1", features = ["blocking-http-transport-reqwest", "blocki
 thread-priority = "0.13.1"
 diffy = "0.3.0"
 chbs = "0.1.1"
+git2 = { version = "0.17.1", default-features = false, features = ["https"] }
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.4"

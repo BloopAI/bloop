@@ -50,6 +50,7 @@ pub struct SyncQueue {
 #[derive(Clone)]
 pub struct BackgroundExecutor {
     sender: flume::Sender<Task>,
+    tokio: tokio::runtime::Handle,
 }
 
 pub struct BoundSyncQueue(Application, SyncQueue);
@@ -84,13 +85,17 @@ impl BackgroundExecutor {
             .num_threads(config.max_threads)
             .build_global();
 
+        let tokio_ref = tokio.clone();
         thread::spawn(move || {
             while let Ok(task) = receiver.recv() {
-                tokio.spawn(task);
+                tokio_ref.spawn(task);
             }
         });
 
-        Self { sender }
+        Self {
+            sender,
+            tokio: tokio.handle().clone(),
+        }
     }
 
     fn spawn<T>(&self, job: impl Future<Output = T> + Send + Sync + 'static) {
@@ -99,16 +104,6 @@ impl BackgroundExecutor {
                 job.await;
             }))
             .unwrap();
-    }
-
-    #[allow(unused)]
-    pub async fn wait_for<T: Send + Sync + 'static>(
-        &self,
-        job: impl Future<Output = T> + Send + Sync + 'static,
-    ) -> T {
-        let (s, r) = flume::bounded(1);
-        self.spawn(async move { s.send_async(job.await).await.unwrap() });
-        r.recv_async().await.unwrap()
     }
 }
 
@@ -199,5 +194,17 @@ impl BoundSyncQueue {
         self.sync_and_index(repos).await;
 
         Ok(())
+    }
+
+    pub fn wait_for<T: Send + Sync + 'static>(
+        self,
+        job: impl Future<Output = T> + Send + Sync + 'static,
+    ) -> T {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.1.runner.tokio.spawn(Box::pin(async move {
+            _ = tx.send(job.await);
+        }));
+
+        rx.blocking_recv().unwrap()
     }
 }
