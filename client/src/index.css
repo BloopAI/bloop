@@ -1011,6 +1011,7 @@ body {
   background-color: rgb(var(--bg-sub));
   color: rgb(var(--label-title));
   overflow: hidden;
+  font-family: 'Inter', sans-serif;
 }
 
 input[type="search" i]::-webkit-search-cancel-button {
