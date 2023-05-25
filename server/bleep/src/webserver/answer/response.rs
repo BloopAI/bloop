@@ -170,6 +170,7 @@ pub struct ModifyResult {
     path: Option<String>,
     language: Option<String>,
     diff: Option<ModifyResultHunk>,
+    raw: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
@@ -278,10 +279,16 @@ impl ModifyResult {
                 ModifyResultHunk { header, lines }
             });
 
+        let raw = v
+            .get(2)
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string);
+
         Some(Self {
             path_alias,
             language,
             diff,
+            raw,
             ..Default::default()
         })
     }
