@@ -177,29 +177,25 @@ fn add_token_range<'s>(
     } else {
         start_byte
     };
+
     let end_byte = offsets.get(o.end).map_or(src.len(), |&(s, _)| s);
-    let Some(trimmed_end_byte) = src[..end_byte]
-        .char_indices()
-        .rev()
-        .find_map(|(i, c)| (!c.is_whitespace()).then_some(i)) else { return };
-    if trimmed_end_byte <= start_byte {
+
+    if end_byte <= start_byte {
         return;
     }
+
     debug_assert!(
         o.end - o.start < 256,
         "chunk too large: {} tokens in {:?} bytes {:?}",
         o.end - o.start,
         o,
-        line_start_byte..trimmed_end_byte
+        line_start_byte..end_byte
     );
+
     let start = point(src, line_start_byte, *last_line, *last_byte);
-    let end = point(src, trimmed_end_byte, *last_line, *last_byte);
+    let end = point(src, end_byte, *last_line, *last_byte);
     (*last_line, *last_byte) = (start.line, start.byte);
-    chunks.push(Chunk::new(
-        &src[line_start_byte..trimmed_end_byte],
-        start,
-        end,
-    ));
+    chunks.push(Chunk::new(&src[line_start_byte..end_byte], start, end));
 }
 
 /// This tries to split the code by lines and add as much tokens as possible until reaching
@@ -290,7 +286,7 @@ pub fn by_tokens<'s>(
                 start..end_limit,
                 &mut last_line,
                 &mut last_byte,
-                false,
+                true,
             );
         }
         if end_limit == offsets_len {
