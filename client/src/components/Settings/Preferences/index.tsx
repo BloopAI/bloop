@@ -8,6 +8,7 @@ import { Theme } from '../../../types';
 import { previewTheme } from '../../../utils';
 
 export const themesMap = {
+  system: 'System Preference',
   default: 'Default',
   'vsc-default-dark': 'VSCode Dark',
   abyss: 'Abyss',

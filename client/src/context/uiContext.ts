@@ -43,6 +43,6 @@ export const UIContext = createContext<ContextType>({
   isRightPanelOpen: false,
   setRightPanelOpen: () => {},
   tab: { key: 'initial', name: 'Home', repoName: '' },
-  theme: 'default',
+  theme: 'system',
   setTheme: () => {},
 });

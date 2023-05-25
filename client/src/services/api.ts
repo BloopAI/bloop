@@ -195,7 +195,121 @@ export const getAllConversations = (
 export const getConversation = (
   thread_id: string,
 ): Promise<ConversationType[]> =>
-  http.get(`/answer/conversations/${thread_id}`).then((r) => r.data);
+  Promise.resolve([
+    {
+      finished: true,
+      conclusion:
+        'The man page for HTTPie covers its usage, positional arguments, predefined content types, content processing options, output processing options, output options, sessions, authentication, network options, and SSL',
+      search_steps: [
+        {
+          type: 'QUERY',
+          content: 'summarize the man page for me',
+        },
+        {
+          type: 'PROC',
+          content: 'extras/man/https.1',
+        },
+        {
+          type: 'PROMPT',
+          content: 'awaiting prompt',
+        },
+      ],
+      results: [
+        {
+          Cite: {
+            path: 'extras/man/https.1',
+            comment:
+              'HTTPie is a modern, user-friendly command-line HTTP client',
+            start_line: 9,
+            end_line: 9,
+          },
+        },
+        {
+          Cite: {
+            path: 'extras/man/https.1',
+            comment: 'Synopsis: https [METHOD] URL [REQUEST_ITEM ...]',
+            start_line: 6,
+            end_line: 6,
+          },
+        },
+        {
+          Cite: {
+            path: 'extras/man/https.1',
+            comment: 'Positional arguments: METHOD, URL, REQUEST_ITEM',
+            start_line: 15,
+            end_line: 77,
+          },
+        },
+        {
+          Cite: {
+            path: 'extras/man/https.1',
+            comment: 'Predefined content types: --json, --form, --multipart',
+            start_line: 85,
+            end_line: 108,
+          },
+        },
+        {
+          Cite: {
+            path: 'extras/man/https.1',
+            comment: 'Content processing options: --compress',
+            start_line: 138,
+            end_line: 149,
+          },
+        },
+        {
+          Cite: {
+            path: 'extras/man/https.1',
+            comment:
+              'Output processing options: --pretty, --style, --unsorted, --sorted, --response-charset, --response-mime, --format-options',
+            start_line: 151,
+            end_line: 239,
+          },
+        },
+        {
+          Cite: {
+            path: 'extras/man/https.1',
+            comment:
+              'Output options: --print, --headers, --meta, --body, --verbose, --all, --stream, --output, --download, --continue, --quiet',
+            start_line: 241,
+            end_line: 354,
+          },
+        },
+        {
+          Cite: {
+            path: 'extras/man/https.1',
+            comment: 'Sessions: --session, --session-read-only',
+            start_line: 356,
+            end_line: 380,
+          },
+        },
+        {
+          Cite: {
+            path: 'extras/man/https.1',
+            comment: 'Authentication: --auth, --auth-type, --ignore-netrc',
+            start_line: 382,
+            end_line: 412,
+          },
+        },
+        {
+          Cite: {
+            path: 'extras/man/https.1',
+            comment:
+              'Network options: --offline, --proxy, --follow, --max-redirects, --max-headers, --timeout, --check-status, --path-as-is, --chunked',
+            start_line: 414,
+            end_line: 487,
+          },
+        },
+        {
+          Cite: {
+            path: 'extras/man/https.1',
+            comment: 'SSL options: --verify, --ssl, --ciphers, --cert',
+            start_line: 489,
+            end_line: 522,
+          },
+        },
+      ],
+    },
+  ]);
 
 export const deleteConversation = (
   thread_id: string,

@@ -41,7 +41,7 @@ export const UIContextProvider = ({
   );
   const [isRightPanelOpen, setRightPanelOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(
-    (getPlainFromStorage(THEME) as 'default' | null) || 'default',
+    (getPlainFromStorage(THEME) as 'system' | null) || 'system',
   );
 
   useEffect(() => {

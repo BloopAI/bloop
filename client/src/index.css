@@ -98,80 +98,237 @@
 
 
 @layer base {
+  body {
+    --default-dark-bg-base: 35, 35, 39; /* #232327 */
+    --default-dark-bg-base-hover: 48, 48, 57;
+    --default-dark-bg-shade: 41, 41, 47; /* #29292F */
+    --default-dark-bg-sub: 26, 26, 31; /* #1A1A1F */
+    --default-dark-bg-border: 48, 48, 55;
+    --default-dark-bg-border-hover: 68, 68, 81;
+    --default-dark-bg-main: 91, 110, 221;
+    --default-dark-bg-main-hover: 114, 133, 238;
+    --default-dark-bg-danger: 199, 54, 62;
+    --default-dark-bg-danger-hover: 215, 66, 74;
+    --default-dark-bg-success: 21, 128, 61;
+    --default-dark-bg-success-hover: 33, 197, 94;
+    --default-dark-label-control: 255, 255, 255;
+    --default-dark-label-faint: 57, 57, 57;
+    --default-dark-label-muted: 85, 85, 85;
+    --default-dark-label-base: 185, 185, 185; /* #B9B9B9 */
+    --default-dark-label-title: 238, 238, 238;
+    --default-dark-label-link: 104, 141, 222;
+    --default-dark-chat-bg-base: 37, 38, 56;
+    --default-dark-chat-bg-base-hover: 43, 44, 66; /* #2B2C42 */
+    --default-dark-chat-bg-shade: 31, 32, 49;
+    --default-dark-chat-bg-sub: 21, 22, 32;
+    --default-dark-chat-bg-border: 57, 58, 74;
+    --default-dark-chat-bg-border-hover: 71, 72, 98;
+    --default-dark-chat-bg-divider: 45, 45, 58;
+
+    --default-dark-bg-highlight: 253, 201, 0;
+
+    --default-dark-shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
+    --default-dark-shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
+    --default-dark-shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
+    --default-dark-shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+    --default-dark-shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+    --default-dark-shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+    --default-dark-onboarding-chats-img: url("../public/chatsImage-dark.png");
+
+    --default-light-bg-base: 243, 243, 243;
+    --default-light-bg-base-hover: 236, 236, 236;
+    --default-light-bg-shade: 249, 249, 249;
+    --default-light-bg-sub: 255, 255, 255;
+    --default-light-bg-border: 230, 230, 230;
+    --default-light-bg-border-hover: 211, 211, 211;
+    --default-light-bg-main: 93, 117, 255;
+    --default-light-bg-main-hover: 69, 89, 205;
+    --default-light-bg-danger: 215, 66, 74;
+    --default-light-bg-danger-hover: 199, 54, 62;
+    --default-light-bg-success: 21, 128, 61;
+    --default-light-bg-success-hover: 33, 197, 94;
+    --default-light-label-control: 255, 255, 255;
+    --default-light-label-faint: 173, 173, 173;
+    --default-light-label-muted: 98, 98, 98;
+    --default-light-label-base: 57, 57, 57;
+    --default-light-label-title: 21, 21, 21;
+    --default-light-label-link: 78, 128, 238;
+    --default-light-chat-bg-base: 226, 227, 243;
+    --default-light-chat-bg-base-hover: 194, 196, 233;
+    --default-light-chat-bg-shade: 248, 248, 255;
+    --default-light-chat-bg-sub: 211, 212, 236;
+    --default-light-chat-bg-border: 195, 197, 225;
+    --default-light-chat-bg-border-hover: 184, 187, 225;
+    --default-light-chat-bg-divider: 216, 217, 234;
+
+    --default-light-bg-highlight: 253, 201, 0;
+
+    --default-light-shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.08);
+    --default-light-shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.08);
+    --default-light-shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
+    --default-light-shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+    --default-light-shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
+    --default-light-shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+
+    --default-light-onboarding-chats-img: url("../public/chatsImage-light.png");
+  }
     [data-theme="default"], body:not([data-theme]) {
-      --bg-base: 35, 35, 39; /* #232327 */
-      --bg-base-hover: 48, 48, 57;
-      --bg-shade: 41, 41, 47; /* #29292F */
-      --bg-sub: 26, 26, 31; /* #1A1A1F */
-      --bg-border: 48, 48, 55;
-      --bg-border-hover: 68, 68, 81;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 85, 85, 85;
-      --label-base: 185, 185, 185; /* #B9B9B9 */
-      --label-title: 238, 238, 238;
-      --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66; /* #2B2C42 */
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
+      --bg-base: var(--default-dark-bg-base);
+      --bg-base-hover: var(--default-dark-bg-base-hover);
+      --bg-shade: var(--default-dark-bg-shade);
+      --bg-sub: var(--default-dark-bg-sub);
+      --bg-border: var(--default-dark-bg-border);
+      --bg-border-hover: var(--default-dark-bg-border-hover);
+      --bg-main: var(--default-dark-bg-main);
+      --bg-main-hover: var(--default-dark-bg-main-hover);
+      --bg-danger: var(--default-dark-bg-danger);
+      --bg-danger-hover: var(--default-dark-bg-danger-hover);
+      --bg-success: var(--default-dark-bg-success);
+      --bg-success-hover: var(--default-dark-bg-success-hover);
+      --label-control: var(--default-dark-label-control);
+      --label-faint: var(--default-dark-label-faint);
+      --label-muted: var(--default-dark-label-muted);
+      --label-base: var(--default-dark-label-base);
+      --label-title: var(--default-dark-label-title);
+      --label-link: var(--default-dark-label-link);
+      --chat-bg-base: var(--default-dark-chat-bg-base);
+      --chat-bg-base-hover: var(--default-dark-chat-bg-base-hover);
+      --chat-bg-shade: var(--default-dark-chat-bg-shade);
+      --chat-bg-sub: var(--default-dark-chat-bg-sub);
+      --chat-bg-border: var(--default-dark-chat-bg-border);
+      --chat-bg-border-hover: var(--default-dark-chat-bg-border-hover);
+      --chat-bg-divider: var(--default-dark-chat-bg-divider);
 
-      --bg-highlight: 253, 201, 0;
+      --bg-highlight: var(--default-dark-bg-highlight);
 
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+      --shadow-rings-blue: var(--default-dark-shadow-rings-blue);
+      --shadow-rings-gray: var(--default-dark-shadow-rings-gray);
+      --shadow-float: var(--default-dark-shadow-float);
+      --shadow-high: var(--default-dark-shadow-high);
+      --shadow-medium: var(--default-dark-shadow-medium);
+      --shadow-low: var(--default-dark-shadow-low);
 
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
+      --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
     }
+  @media (prefers-color-scheme: dark) {
+    [data-theme="system"] {
+      --bg-base: var(--default-dark-bg-base);
+      --bg-base-hover: var(--default-dark-bg-base-hover);
+      --bg-shade: var(--default-dark-bg-shade);
+      --bg-sub: var(--default-dark-bg-sub);
+      --bg-border: var(--default-dark-bg-border);
+      --bg-border-hover: var(--default-dark-bg-border-hover);
+      --bg-main: var(--default-dark-bg-main);
+      --bg-main-hover: var(--default-dark-bg-main-hover);
+      --bg-danger: var(--default-dark-bg-danger);
+      --bg-danger-hover: var(--default-dark-bg-danger-hover);
+      --bg-success: var(--default-dark-bg-success);
+      --bg-success-hover: var(--default-dark-bg-success-hover);
+      --label-control: var(--default-dark-label-control);
+      --label-faint: var(--default-dark-label-faint);
+      --label-muted: var(--default-dark-label-muted);
+      --label-base: var(--default-dark-label-base);
+      --label-title: var(--default-dark-label-title);
+      --label-link: var(--default-dark-label-link);
+      --chat-bg-base: var(--default-dark-chat-bg-base);
+      --chat-bg-base-hover: var(--default-dark-chat-bg-base-hover);
+      --chat-bg-shade: var(--default-dark-chat-bg-shade);
+      --chat-bg-sub: var(--default-dark-chat-bg-sub);
+      --chat-bg-border: var(--default-dark-chat-bg-border);
+      --chat-bg-border-hover: var(--default-dark-chat-bg-border-hover);
+      --chat-bg-divider: var(--default-dark-chat-bg-divider);
+
+      --bg-highlight: var(--default-dark-bg-highlight);
+
+      --shadow-rings-blue: var(--default-dark-shadow-rings-blue);
+      --shadow-rings-gray: var(--default-dark-shadow-rings-gray);
+      --shadow-float: var(--default-dark-shadow-float);
+      --shadow-high: var(--default-dark-shadow-high);
+      --shadow-medium: var(--default-dark-shadow-medium);
+      --shadow-low: var(--default-dark-shadow-low);
+
+      --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+    }
+  }
     [data-theme="default-light"] {
-      --bg-base: 243, 243, 243;
-      --bg-base-hover: 236, 236, 236;
-      --bg-shade: 249, 249, 249;
-      --bg-sub: 255, 255, 255;
-      --bg-border: 230, 230, 230;
-      --bg-border-hover: 211, 211, 211;
-      --bg-main: 93, 117, 255;
-      --bg-main-hover: 69, 89, 205;
-      --bg-danger: 215, 66, 74;
-      --bg-danger-hover: 199, 54, 62;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 173, 173, 173;
-      --label-muted: 98, 98, 98;
-      --label-base: 57, 57, 57;
-      --label-title: 21, 21, 21;
-      --label-link: 78, 128, 238;
-      --chat-bg-base: 226, 227, 243;
-      --chat-bg-base-hover: 194, 196, 233;
-      --chat-bg-shade: 248, 248, 255;
-      --chat-bg-sub: 211, 212, 236;
-      --chat-bg-border: 195, 197, 225;
-      --chat-bg-border-hover: 184, 187, 225;
-      --chat-bg-divider: 216, 217, 234;
+      --bg-base: var(--default-light-bg-base);
+      --bg-base-hover: var(--default-light-bg-base-hover);
+      --bg-shade: var(--default-light-bg-shade);
+      --bg-sub: var(--default-light-bg-sub);
+      --bg-border: var(--default-light-bg-border);
+      --bg-border-hover: var(--default-light-bg-border-hover);
+      --bg-main: var(--default-light-bg-main);
+      --bg-main-hover: var(--default-light-bg-main-hover);
+      --bg-danger: var(--default-light-bg-danger);
+      --bg-danger-hover: var(--default-light-bg-danger-hover);
+      --bg-success: var(--default-light-bg-success);
+      --bg-success-hover: var(--default-light-bg-success-hover);
+      --label-control: var(--default-light-label-control);
+      --label-faint: var(--default-light-label-faint);
+      --label-muted: var(--default-light-label-muted);
+      --label-base: var(--default-light-label-base);
+      --label-title: var(--default-light-label-title);
+      --label-link: var(--default-light-label-link);
+      --chat-bg-base: var(--default-light-chat-bg-base);
+      --chat-bg-base-hover: var(--default-light-chat-bg-base-hover);
+      --chat-bg-shade: var(--default-light-chat-bg-shade);
+      --chat-bg-sub: var(--default-light-chat-bg-sub);
+      --chat-bg-border: var(--default-light-chat-bg-border);
+      --chat-bg-border-hover: var(--default-light-chat-bg-border-hover);
+      --chat-bg-divider: var(--default-light-chat-bg-divider);
 
-      --bg-highlight: 253, 201, 0;
+      --bg-highlight: var(--default-light-bg-highlight);
 
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+      --shadow-rings-blue: var(--default-light-shadow-rings-blue);
+      --shadow-rings-gray: var(--default-light-shadow-rings-gray);
+      --shadow-float: var(--default-light-shadow-float);
+      --shadow-high: var(--default-light-shadow-high);
+      --shadow-medium: var(--default-light-shadow-medium);
+      --shadow-low: var(--default-light-shadow-low);
 
-      --onboarding-chats-img: url("../public/chatsImage-light.png");
+      --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
     }
+  @media (prefers-color-scheme: light) {
+    [data-theme="system"] {
+      --bg-base: var(--default-light-bg-base);
+      --bg-base-hover: var(--default-light-bg-base-hover);
+      --bg-shade: var(--default-light-bg-shade);
+      --bg-sub: var(--default-light-bg-sub);
+      --bg-border: var(--default-light-bg-border);
+      --bg-border-hover: var(--default-light-bg-border-hover);
+      --bg-main: var(--default-light-bg-main);
+      --bg-main-hover: var(--default-light-bg-main-hover);
+      --bg-danger: var(--default-light-bg-danger);
+      --bg-danger-hover: var(--default-light-bg-danger-hover);
+      --bg-success: var(--default-light-bg-success);
+      --bg-success-hover: var(--default-light-bg-success-hover);
+      --label-control: var(--default-light-label-control);
+      --label-faint: var(--default-light-label-faint);
+      --label-muted: var(--default-light-label-muted);
+      --label-base: var(--default-light-label-base);
+      --label-title: var(--default-light-label-title);
+      --label-link: var(--default-light-label-link);
+      --chat-bg-base: var(--default-light-chat-bg-base);
+      --chat-bg-base-hover: var(--default-light-chat-bg-base-hover);
+      --chat-bg-shade: var(--default-light-chat-bg-shade);
+      --chat-bg-sub: var(--default-light-chat-bg-sub);
+      --chat-bg-border: var(--default-light-chat-bg-border);
+      --chat-bg-border-hover: var(--default-light-chat-bg-border-hover);
+      --chat-bg-divider: var(--default-light-chat-bg-divider);
+
+      --bg-highlight: var(--default-light-bg-highlight);
+
+      --shadow-rings-blue: var(--default-light-shadow-rings-blue);
+      --shadow-rings-gray: var(--default-light-shadow-rings-gray);
+      --shadow-float: var(--default-light-shadow-float);
+      --shadow-high: var(--default-light-shadow-high);
+      --shadow-medium: var(--default-light-shadow-medium);
+      --shadow-low: var(--default-light-shadow-low);
+
+      --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+    }
+  }
     [data-theme="vsc-default-dark"] {
       --bg-base: 37, 37, 38;
       --bg-base-hover: 60, 60, 60;

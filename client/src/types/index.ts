@@ -52,6 +52,7 @@ export interface Repository {
 }
 
 export type Theme =
+  | 'system'
   | 'default'
   | 'default-light'
   | 'vsc-default-dark'
