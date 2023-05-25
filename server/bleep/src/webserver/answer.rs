@@ -62,7 +62,7 @@ pub(super) async fn handle(
 ) -> super::Result<impl IntoResponse> {
     let query_id = uuid::Uuid::new_v4();
     let response = _handle(
-        Query(params),
+        Query(params.clone()),
         Extension(app.clone()),
         Extension(user.clone()),
         query_id,
@@ -74,6 +74,8 @@ pub(super) async fn handle(
             &user,
             &QueryEvent {
                 query_id,
+                thread_id: params.thread_id,
+                repo_ref: Some(params.repo_ref.clone()),
                 data: EventData::output_stage("error")
                     .with_payload("status", err.status.as_u16())
                     .with_payload("message", err.message()),
@@ -108,6 +110,7 @@ pub(super) async fn _handle(
     let ctx = AppContext::new(app, user)
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .with_query_id(query_id)
+        .with_thread_id(params.thread_id)
         .with_repo_ref(params.repo_ref.clone());
 
     // confirm client compatibility with answer-api
@@ -1137,8 +1140,9 @@ impl Action {
 struct AppContext {
     app: Application,
     llm_gateway: llm_gateway::Client,
-    query_id: uuid::Uuid,
     user: User,
+    query_id: uuid::Uuid,
+    thread_id: uuid::Uuid,
     repo_ref: Option<RepoRef>,
 }
 
@@ -1151,14 +1155,20 @@ impl AppContext {
         Ok(Self {
             app,
             llm_gateway,
-            query_id: uuid::Uuid::nil(),
             user,
+            query_id: uuid::Uuid::nil(),
+            thread_id: uuid::Uuid::nil(),
             repo_ref: None,
         })
     }
 
     fn with_query_id(mut self, query_id: uuid::Uuid) -> Self {
         self.query_id = query_id;
+        self
+    }
+
+    fn with_thread_id(mut self, thread_id: uuid::Uuid) -> Self {
+        self.thread_id = thread_id;
         self
     }
 
@@ -1180,6 +1190,8 @@ impl AppContext {
     fn track_query(&self, data: EventData) {
         let event = QueryEvent {
             query_id: self.query_id,
+            thread_id: self.thread_id,
+            repo_ref: self.repo_ref.clone(),
             data,
         };
         self.app.track_query(&self.user, &event);
