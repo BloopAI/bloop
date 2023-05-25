@@ -251,7 +251,7 @@ impl<'a> Visit for CreateNewCommit<'a> {
     fn push_back_tracked_path_component(&mut self, component: &BStr) {
         self.push_element(component);
 
-        let next = MirrorTree::new(component.to_str_lossy(), self.current.clone());
+        let next = MirrorTree::new(component.to_str_lossy());
         self.current.children.lock().unwrap().push(next.clone());
 
         self.path_deque.push_back((next, self.path.clone()));
