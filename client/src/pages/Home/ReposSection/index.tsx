@@ -46,15 +46,16 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
             newRepos[index] = {
               ...newRepos[index],
               sync_status: data.ev?.status_change,
+              last_index: new Date().toISOString(),
             };
             return newRepos;
           });
         }
         if (data.ev?.index_percent) {
-          setCurrentlySyncingRepo((prev) => ({
+          setCurrentlySyncingRepo({
             repoRef: data.ref,
             percentage: data.ev?.index_percent || 1,
-          }));
+          });
         }
       } catch {}
     };
