@@ -1,17 +1,23 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useContext, useState } from 'react';
 import { MessageResultModify } from '../../../types/general';
 import Button from '../../../components/Button';
 import { GitPod } from '../../../icons';
+import { commitChanges } from '../../../services/api';
+import { DeviceContext } from '../../../context/deviceContext';
+import ThreeDotsLoader from '../../../components/Loaders/ThreeDotsLoader';
 import DiffCode from './DiffCode';
 
 type Props = {
   repoName: string;
+  repoRef: string;
   diffs: MessageResultModify['Modify'][];
 };
 
-const Diff = ({ diffs, repoName }: Props) => {
+const Diff = ({ diffs, repoName, repoRef }: Props) => {
+  const { openLink } = useContext(DeviceContext);
   const [staged, setStaged] = useState<number[]>([]);
   const [isSubmitted, setSubmitted] = useState(false);
+  const [gitpodLink, setGitPodLink] = useState('');
 
   const onStage = useCallback((i: number) => {
     setStaged((prev) => [...prev, i]);
@@ -23,17 +29,37 @@ const Diff = ({ diffs, repoName }: Props) => {
     setStaged(diffs.map((_, i) => i));
   }, []);
 
-  const onSubmit = useCallback(() => {
+  const onSubmit = useCallback(async () => {
     setSubmitted(true);
-  }, []);
+    const link = await commitChanges({
+      repo: repoRef,
+      push: true,
+      changes: staged.map((i) => {
+        return {
+          path: diffs[i].path,
+        };
+      }),
+    });
+    setGitPodLink(link);
+  }, [diffs, staged]);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="absolute top-8 right-8">
         {isSubmitted ? (
           <div>
-            <Button variant="secondary" size="small">
-              Preview in GitPod
+            <Button
+              variant="secondary"
+              size="small"
+              onClick={() => (gitpodLink ? openLink(gitpodLink) : {})}
+            >
+              {!gitpodLink ? (
+                <span className="px-4">
+                  <ThreeDotsLoader />
+                </span>
+              ) : (
+                'Preview in GitPod'
+              )}
               <GitPod />
             </Button>
           </div>

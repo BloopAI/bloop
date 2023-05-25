@@ -172,6 +172,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
         {!!diffs.length && (
           <Diff
             repoName={tab.repoName}
+            repoRef={tab.key}
             diffs={diffs}
             key={`${recordId}-${threadId}`}
           />

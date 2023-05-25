@@ -203,3 +203,7 @@ export const deleteConversation = (
   http
     .delete(`/answer/conversations`, { params: { thread_id } })
     .then((r) => r.data);
+
+export const commitChanges = (data: any) =>
+  new Promise((res) => setTimeout(() => res('https://bloop.ai'), 3000));
+// http.post('/repos/branch', data).then((r) => r.data);

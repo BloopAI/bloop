@@ -123,7 +123,7 @@ const DiffCode = ({
         <div className="relative py-4">
           <div className="overflow-auto">
             <Code
-              lineStart={data.diff.header?.old_start}
+              lineStart={data.diff.header?.old_start - 1}
               code={showRaw ? rawCode : data.diff.lines?.join('\n')}
               language={data.language}
               isDiff
