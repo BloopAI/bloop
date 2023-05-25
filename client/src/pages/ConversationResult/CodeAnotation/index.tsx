@@ -3,7 +3,7 @@ import FileModalContainer from '../../ResultModal/FileModalContainer';
 import AnnotatedFile from './AnnotatedFile';
 import FileComment from './FileComment';
 
-type Comment = {
+export type Comment = {
   start_line: number;
   end_line: number;
   comment: string;
