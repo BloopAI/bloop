@@ -42,7 +42,6 @@ pub struct CreateNewCommit<'a> {
 
 struct MirrorTree {
     filename: String,
-    parent: Mutex<Option<Rc<MirrorTree>>>,
     children: Mutex<Vec<Rc<MirrorTree>>>,
     tree: Mutex<Tree>,
 }
@@ -176,13 +175,12 @@ impl ChangeSet {
 
 impl MirrorTree {
     fn root() -> Rc<Self> {
-        Self::new("", None)
+        Self::new("")
     }
 
-    fn new(filename: impl Into<String>, parent: impl Into<Option<Rc<MirrorTree>>>) -> Rc<Self> {
+    fn new(filename: impl Into<String>) -> Rc<Self> {
         Rc::new(MirrorTree {
             filename: filename.into(),
-            parent: Mutex::new(parent.into()),
             children: Mutex::new(vec![]),
             tree: Mutex::new(Tree::empty()),
         })
