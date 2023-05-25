@@ -46,7 +46,12 @@ const Diff = ({ diffs, repoName }: Props) => {
               onClick={onSubmit}
               size="small"
               disabled={!staged.length}
-              title="Gitpod will commit your changes to a new branch"
+              tooltipText={
+                <span>
+                  We will commit your changes to a new branch
+                  <br /> which you can preview in GitPod
+                </span>
+              }
             >
               Commit staged changes ({staged.length})
             </Button>

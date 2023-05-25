@@ -24,12 +24,14 @@ type Props = {
 type OnlyIconProps = {
   onlyIcon: true;
   title: string;
+  tooltipText?: undefined;
   tooltipPlacement?: TippyProps['placement'];
 };
 
 type TextBtnProps = {
   onlyIcon?: false;
   tooltipPlacement?: never;
+  tooltipText?: string | ReactNode;
 };
 
 const variantStylesMap = {
@@ -85,6 +87,7 @@ const Button = forwardRef<
       title,
       tooltipPlacement,
       type = 'button',
+      tooltipText,
       ...rest
     },
     ref,
@@ -100,8 +103,8 @@ const Button = forwardRef<
         } transition-all duration-300 ease-in-bounce select-none`,
       [variant, className, size, onlyIcon],
     );
-    return (onlyIcon && !rest.disabled) || title ? (
-      <Tooltip text={title} placement={tooltipPlacement}>
+    return (onlyIcon && !rest.disabled) || tooltipText ? (
+      <Tooltip text={title || tooltipText} placement={tooltipPlacement}>
         <button {...rest} type={type} ref={ref} className={buttonClassName}>
           {children}
         </button>

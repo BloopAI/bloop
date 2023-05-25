@@ -160,16 +160,16 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
         loading={false}
       />
       <div className="flex flex-col gap-4 pb-44">
-        {citations.length && (
+        {!!Object.keys(citations).length && (
           <CodeAnnotation repoName={tab.repoName} citations={citations} />
         )}
-        {dirCitations.length && (
+        {!!Object.keys(dirCitations).length && (
           <DirectoryAnnotation
             repoName={tab.repoName}
             citations={dirCitations}
           />
         )}
-        {diffs.length && (
+        {!!diffs.length && (
           <Diff
             repoName={tab.repoName}
             diffs={diffs}
