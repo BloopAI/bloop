@@ -41,6 +41,7 @@ module.exports = {
         "chat-bg-divider": "rgb(var(--chat-bg-divider))",
         "bg-highlight": "rgb(var(--bg-highlight))",
         "bg-highlight/25": "rgba(var(--bg-highlight), 0.25)",
+        "danger-300": "#FB7185",
         sky: '#0EA4E9',
         violet: '#8B5CF6',
         pink: '#EC4899',

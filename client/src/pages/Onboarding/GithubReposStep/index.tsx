@@ -53,11 +53,7 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
   useEffect(() => {
     const githubRepos: RepoType[] =
       repositories?.filter(
-        (r: RepoType) =>
-          r.provider === RepoProvider.GitHub &&
-          [SyncStatus.Uninitialized, SyncStatus.Removed].includes(
-            r.sync_status,
-          ),
+        (r: RepoType) => r.provider === RepoProvider.GitHub,
       ) || [];
     const selectedRepos = onBoardingState[STEP_KEY];
 
@@ -73,6 +69,10 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
             selected,
             shortName: pathParts[pathParts.length - 1],
             folderName: pathParts[0],
+            alreadySynced: ![
+              SyncStatus.Uninitialized,
+              SyncStatus.Removed,
+            ].includes(r.sync_status),
           };
         })
         .sort((a, b) =>
@@ -107,17 +107,12 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
           isLoading={isLoading}
           onSync={handleNext}
         />
-        <div className="flex flex-col gap-4 mt-8">
-          <Button type="submit" variant="primary" disabled={nextButtonDisabled}>
-            Sync repository
+        {!disableSkip ? (
+          <Button variant="secondary" onClick={handleSkip}>
+            Skip this step
+            <ArrowRight />
           </Button>
-          {!disableSkip ? (
-            <Button variant="secondary" onClick={handleSkip}>
-              Skip this step
-              <ArrowRight />
-            </Button>
-          ) : null}
-        </div>
+        ) : null}
       </div>
       {handleBack ? <GoBackButton handleBack={handleBack} /> : null}
     </>

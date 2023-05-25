@@ -73,6 +73,7 @@ export type RepoUi = RepoType & {
   selected: boolean;
   shortName: string;
   folderName: string;
+  alreadySynced?: boolean;
 };
 
 export enum FullResultModeEnum {

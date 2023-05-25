@@ -12,7 +12,7 @@ import { ChevronDown } from '../../icons';
 import { conversationsCache } from '../../services/cache';
 import NewCode from './NewCode';
 import DiffCode from './DiffCode';
-import CodeAnnotation from './CodeAnotation';
+import CodeAnnotation, { Comment } from './CodeAnotation';
 import DirectoryAnnotation from './DirectoryAnnotation';
 
 type Props = {
@@ -43,7 +43,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
     ],
   );
   const citations = useMemo(() => {
-    const files: Record<string, any> = {};
+    const files: Record<string, Comment[]> = {};
     data
       .filter((d): d is MessageResultCite => 'Cite' in d)
       .forEach((c, i) => {
@@ -53,6 +53,15 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
           files[c.Cite.path] = [{ ...c.Cite, i }];
         }
       });
+    Object.keys(files).forEach((k) => {
+      files[k] = files[k].sort((a, b) =>
+        !a.start_line || !b.start_line
+          ? 0
+          : a.start_line < b.start_line
+          ? -1
+          : 1,
+      );
+    });
     return files;
   }, [data]);
   const dirCitations = useMemo(() => {

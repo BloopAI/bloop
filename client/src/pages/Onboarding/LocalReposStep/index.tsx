@@ -45,10 +45,6 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
 
           setRepos(
             data.list
-              .filter(
-                (r: RepoType) =>
-                  !repositories?.find((repo) => repo.ref === r.ref),
-              )
               .map((r: RepoType) => {
                 const pathParts = splitPath(r.ref);
                 const folder = `/${pathParts
@@ -58,6 +54,9 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
                   ...r,
                   folderName: folder,
                   shortName: pathParts[pathParts.length - 1],
+                  alreadySynced: !!repositories?.find(
+                    (repo) => repo.ref === r.ref,
+                  ),
                 };
               })
               .sort((a: RepoUi, b: RepoUi) => a.folderName > b.folderName),
@@ -90,7 +89,11 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
     <>
       <DialogText
         title="Sync local repositories"
-        description="Select the folders you want to add to bloop. You can always sync, unsync or remove unwanted repositories later."
+        description={
+          chosenFolder
+            ? 'Select the folders you want to add to bloop. You can always sync, unsync or remove unwanted repositories later.'
+            : ''
+        }
       />
       {chosenFolder ? (
         <div className="flex flex-col overflow-auto h-full relative">
@@ -105,38 +108,30 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
               setRepos([]);
             }}
           />
-          <div className={`flex flex-col gap-4 ${chosenFolder ? 'mt-4' : ''}`}>
-            <Button type="submit" variant="primary">
-              Sync repositories
+          {handleBack ? (
+            <Button variant="secondary" onClick={handleSkip}>
+              Skip this step
+              <ArrowRight />
             </Button>
-            {handleBack ? (
-              <Button variant="secondary" onClick={handleSkip}>
-                Skip this step
-                <ArrowRight />
-              </Button>
-            ) : null}
-          </div>
+          ) : null}
         </div>
       ) : (
         <div className="flex flex-col overflow-auto gap-8">
           <div className="py-5 px-3 flex flex-col gap-2 rounded-md bg-bg-sub items-center text-center">
             <p className="body-s-strong text-label-title">Scan a folder</p>
             <p className="body-s text-label-muted">
-              Scan a folder to sync it’s repositories
+              Scan a folder to sync it’s repositories.
             </p>
             <Button variant="secondary" onClick={handleChooseFolder}>
               Select folder
             </Button>
           </div>
-          <div className={`flex flex-col gap-4`}>
-            <Button disabled>Sync repository</Button>
-            {handleBack ? (
-              <Button variant="secondary" onClick={handleSkip}>
-                Skip this step
-                <ArrowRight />
-              </Button>
-            ) : null}
-          </div>
+          {handleBack ? (
+            <Button variant="secondary" onClick={handleSkip}>
+              Skip this step
+              <ArrowRight />
+            </Button>
+          ) : null}
         </div>
       )}
       {handleBack ? <GoBackButton handleBack={handleBack} /> : null}
