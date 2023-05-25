@@ -68,7 +68,7 @@ const RepoList = ({
                         className="caption text-bg-main"
                         onClick={onFolderChange}
                       >
-                        Choose folder
+                        Change folder
                       </button>
                     )}
                   </span>

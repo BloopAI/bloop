@@ -106,9 +106,6 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
             }}
           />
           <div className={`flex flex-col gap-4 ${chosenFolder ? 'mt-4' : ''}`}>
-            <Button type="submit" variant="primary">
-              Sync repositories
-            </Button>
             {handleBack ? (
               <Button variant="secondary" onClick={handleSkip}>
                 Skip this step
@@ -128,15 +125,12 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
               Select folder
             </Button>
           </div>
-          <div className={`flex flex-col gap-4`}>
-            <Button disabled>Sync repository</Button>
-            {handleBack ? (
-              <Button variant="secondary" onClick={handleSkip}>
-                Skip this step
-                <ArrowRight />
-              </Button>
-            ) : null}
-          </div>
+          {handleBack ? (
+            <Button variant="secondary" onClick={handleSkip}>
+              Skip this step
+              <ArrowRight />
+            </Button>
+          ) : null}
         </div>
       )}
       {handleBack ? <GoBackButton handleBack={handleBack} /> : null}

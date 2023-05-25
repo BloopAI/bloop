@@ -107,17 +107,12 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
           isLoading={isLoading}
           onSync={handleNext}
         />
-        <div className="flex flex-col gap-4 mt-8">
-          <Button type="submit" variant="primary" disabled={nextButtonDisabled}>
-            Sync repository
+        {!disableSkip ? (
+          <Button variant="secondary" onClick={handleSkip}>
+            Skip this step
+            <ArrowRight />
           </Button>
-          {!disableSkip ? (
-            <Button variant="secondary" onClick={handleSkip}>
-              Skip this step
-              <ArrowRight />
-            </Button>
-          ) : null}
-        </div>
+        ) : null}
       </div>
       {handleBack ? <GoBackButton handleBack={handleBack} /> : null}
     </>
