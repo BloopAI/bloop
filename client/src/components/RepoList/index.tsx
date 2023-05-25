@@ -1,5 +1,5 @@
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
-import { HardDrive, Lock } from '../../icons';
+import { CheckIcon, HardDrive, Lock } from '../../icons';
 import Button from '../Button';
 import SkeletonItem from '../SkeletonItem';
 import { RepoUi } from '../../types/general';
@@ -42,7 +42,9 @@ const RepoList = ({
 
   return (
     <div className={`relative`}>
-      <ul className="overflow-auto pb-6 rounded-md">
+      <ul
+        className={`overflow-auto ${repos.length > 3 ? 'pb-6' : ''} rounded-md`}
+      >
         {!isLoading ? (
           !filteredRepos.length ? (
             <div className="flex flex-col gap-2 py-6 text-center">
@@ -76,23 +78,35 @@ const RepoList = ({
                   ''
                 )}
                 <li className={listItemClassName} title={repo.name}>
-                  <div className="flex items-center justify-between w-full gap-2">
-                    <div className="py-1.5 flex items-center gap-2 overflow-hidden text-label-base group-hover:text-label-title">
-                      {source === 'local' ? <HardDrive /> : <Lock />}
+                  <div className="flex items-center justify-between w-full gap-2 h-full">
+                    <div className="flex items-center gap-2 overflow-hidden text-label-base group-hover:text-label-title">
+                      {repo.alreadySynced ? (
+                        <div className="text-bg-success w-5 h-5">
+                          <CheckIcon />
+                        </div>
+                      ) : source === 'local' ? (
+                        <HardDrive />
+                      ) : (
+                        <Lock />
+                      )}
                       <span className="whitespace-nowrap">
                         {repo.shortName}
                       </span>
                     </div>
-                    <Button
-                      variant="primary"
-                      size="small"
-                      className="opacity-0 group-hover:opacity-100"
-                      onClick={() => {
-                        handleSync(repo.ref);
-                      }}
-                    >
-                      Sync
-                    </Button>
+                    {repo.alreadySynced ? (
+                      <p className="caption">Already synced</p>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="small"
+                        className="opacity-0 group-hover:opacity-100"
+                        onClick={() => {
+                          handleSync(repo.ref);
+                        }}
+                      >
+                        Sync
+                      </Button>
+                    )}
                   </div>
                 </li>
               </Fragment>

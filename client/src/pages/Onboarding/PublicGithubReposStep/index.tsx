@@ -57,6 +57,8 @@ const PublicGithubReposStep = ({
         .then((resp) => {
           if (resp?.data?.visibility === 'public') {
             setVerified(true);
+            syncRepo(`github.com/${newRepoValue}`);
+            handleNext();
           } else {
             setErrorVerifying(true);
           }

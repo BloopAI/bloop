@@ -121,8 +121,20 @@ export const gitHubStatus = () =>
 
 export const getRepos = (): Promise<{ list: RepoType[] }> =>
   http.get('/repos').then((r) => r.data);
-export const scanLocalRepos = (path: string) =>
-  http.get(`/repos/scan`, { params: { path } }).then((r) => r.data);
+
+const localScanCache: Record<string, any> = {};
+export const scanLocalRepos = (path: string) => {
+  if (localScanCache[path]) {
+    return Promise.resolve(localScanCache[path]);
+  }
+  return http.get(`/repos/scan`, { params: { path } }).then((r) => {
+    localScanCache[path] = r.data;
+    setTimeout(() => {
+      delete localScanCache[path];
+    }, 1000 * 60 * 10); // 10 minutes
+    return r.data;
+  });
+};
 
 export const deleteRepo = (repoRef: string) =>
   http.delete(`/repos/indexed/${repoRef}`).then((r) => r.data);

@@ -53,11 +53,7 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
   useEffect(() => {
     const githubRepos: RepoType[] =
       repositories?.filter(
-        (r: RepoType) =>
-          r.provider === RepoProvider.GitHub &&
-          [SyncStatus.Uninitialized, SyncStatus.Removed].includes(
-            r.sync_status,
-          ),
+        (r: RepoType) => r.provider === RepoProvider.GitHub,
       ) || [];
     const selectedRepos = onBoardingState[STEP_KEY];
 
@@ -73,6 +69,10 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
             selected,
             shortName: pathParts[pathParts.length - 1],
             folderName: pathParts[0],
+            alreadySynced: ![
+              SyncStatus.Uninitialized,
+              SyncStatus.Removed,
+            ].includes(r.sync_status),
           };
         })
         .sort((a, b) =>

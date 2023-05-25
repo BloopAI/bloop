@@ -35,9 +35,9 @@ const SearchableRepoList = ({
 
   return (
     <div
-      className={`flex flex-col overflow-auto gap-8 fade-bottom ${
-        containerClassName || ''
-      }`}
+      className={`flex flex-col overflow-auto gap-8 ${
+        repos.length > 3 ? 'fade-bottom' : ''
+      } ${containerClassName || ''}`}
     >
       <TextInput
         type="search"

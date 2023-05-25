@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 import RepoCard from '../../../components/RepoCard';
-import { RepoType } from '../../../types/general';
+import { RepoType, SyncStatus } from '../../../types/general';
 import { DeviceContext } from '../../../context/deviceContext';
 import RepoCardSkeleton from '../../../components/RepoCard/RepoCardSkeleton';
 import NoRepos from '../../../components/RepoCard/NoRepos';
@@ -46,7 +46,10 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
             newRepos[index] = {
               ...newRepos[index],
               sync_status: data.ev?.status_change,
-              last_index: new Date().toISOString(),
+              last_index:
+                data.ev?.status_change === SyncStatus.Done
+                  ? new Date().toISOString()
+                  : '',
             };
             return newRepos;
           });
