@@ -6,14 +6,15 @@ import {
   ChatMessageServer,
   MessageResultCite,
   MessageResultDirectory,
+  MessageResultModify,
 } from '../../types/general';
 import { UIContext } from '../../context/uiContext';
 import { ChevronDown } from '../../icons';
 import { conversationsCache } from '../../services/cache';
 import NewCode from './NewCode';
-import DiffCode from './DiffCode';
 import CodeAnnotation, { Comment } from './CodeAnotation';
 import DirectoryAnnotation from './DirectoryAnnotation';
+import Diff from './Diff';
 
 type Props = {
   recordId: number;
@@ -77,8 +78,14 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
       });
     return files;
   }, [data]);
+  const diffs = useMemo(() => {
+    return data
+      .filter((d): d is MessageResultModify => 'Modify' in d && !!d.Modify.diff)
+      .map((d) => d.Modify);
+  }, [data]);
   const otherBlocks = useMemo(
-    () => data.filter((d) => !('Cite' in d || 'Directory' in d)),
+    () =>
+      data.filter((d) => !('Cite' in d || 'Directory' in d || 'Modify' in d)),
     [data],
   );
 
@@ -130,7 +137,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
 
   return (
     <div
-      className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content"
+      className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content relative"
       ref={containerRef}
       onScroll={handleScroll}
     >
@@ -153,15 +160,27 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
         loading={false}
       />
       <div className="flex flex-col gap-4 pb-44">
-        <CodeAnnotation repoName={tab.repoName} citations={citations} />
-        <DirectoryAnnotation repoName={tab.repoName} citations={dirCitations} />
+        {citations.length && (
+          <CodeAnnotation repoName={tab.repoName} citations={citations} />
+        )}
+        {dirCitations.length && (
+          <DirectoryAnnotation
+            repoName={tab.repoName}
+            citations={dirCitations}
+          />
+        )}
+        {diffs.length && (
+          <Diff
+            repoName={tab.repoName}
+            diffs={diffs}
+            key={`${recordId}-${threadId}`}
+          />
+        )}
         {otherBlocks.map((b, i) => {
           if ('New' in b && b.New.code && b.New.language) {
             return (
               <NewCode code={b.New.code} language={b.New.language} key={i} />
             );
-          } else if ('Modify' in b && b.Modify.diff) {
-            return <DiffCode data={b.Modify} key={i} repoName={tab.repoName} />;
           }
         })}
       </div>
