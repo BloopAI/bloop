@@ -22,7 +22,6 @@ impl fmt::Display for Tool {
 }
 
 pub fn system(paths: &Vec<String>) -> String {
-    let today = chrono::offset::Local::now();
     let tools = [
       Tool { 
         name: "codeSearch", 
@@ -37,7 +36,7 @@ pub fn system(paths: &Vec<String>) -> String {
         examples: "[[\"path\", \"server/src\"], [\"path\", \".tsx\"], [\"path\", \"examples/android\"]]"
       },
       Tool { 
-        name: "processSearch", 
+        name: "processFiles", 
         description: "Process a list of files to extract the line ranges which are relevant to the query.", 
         schema: "{\"name\": \"path\", \"args\": [SEARCH_TERMS // str]}", 
         examples: "[[\"path\", \"server/src\"], [\"path\", \".tsx\"], [\"path\", \"examples/android\"]]"
@@ -61,12 +60,12 @@ pub fn system(paths: &Vec<String>) -> String {
         }
     }
 
-    s.push_str(&format!(
-        r#"\n## RULES ##
+    s.push_str(
+        r#"
+## RULES ##
 
-- Todays date is {today}
 - If the output of a tool is empty, try the same tool again with different arguments or try using a different tool
-- In most cases you'll have to use codeSearch or pathSearch before using none
+- In most cases you'll have to use codeSearch or pathSearch before using 'none'
 - Respect action arg types, only types with brackets [] can be used as lists
 - Do not assume the structure of the codebase, or the existence of files or folders
 - Do NOT use a tool that you've used before with the same arguments
@@ -77,9 +76,10 @@ pub fn system(paths: &Vec<String>) -> String {
 - Use the tools to find information related to the query, until all relevant information has been found.
 - If after attempting to gather information you are still unsure how to answer the query, choose 'none'
 - Always respond according to the schema of the tool that you want to use
-- Output a list of [name, *args] to use a tool. For example to use the semantic code search tool, output: ["code","my search query"]. To use the process file tool, output: ["proc", "how does X work", [3, 6]]
-- Do NOT answer the user's query directly. You MUST use one of the tools above"#
-    ));
+- Output a list of [name, *args] to use a tool. For example to use codeSearch, output: ["code","my search query"]. To use processFiles, output: ["proc", "how does X work", [3, 6]]
+- Do NOT answer the user's query directly. You MUST use one of the tools above
+
+"#);
     s
 }
 
