@@ -21,7 +21,7 @@ const NavBar = ({ isSkeleton }: Props) => {
     setGithubConnected,
     setSettingsOpen,
   } = useContext(UIContext);
-  const { openLink, isSelfServe, os } = useContext(DeviceContext);
+  const { openLink, isSelfServe, os, envConfig } = useContext(DeviceContext);
   const { tabs, setActiveTab, activeTab, handleRemoveTab } =
     useContext(TabsContext);
 
@@ -85,7 +85,15 @@ const NavBar = ({ isSkeleton }: Props) => {
                 },
               },
             ]}
-            icon={<Person />}
+            icon={
+              envConfig.github_user?.avatar_url ? (
+                <div className="w-5 h-5 rounded-full overflow-hidden">
+                  <img src={envConfig.github_user?.avatar_url} alt="avatar" />
+                </div>
+              ) : (
+                <Person />
+              )
+            }
             dropdownBtnClassName="-mr-4"
             btnSize="tiny"
             btnVariant="tertiary"
