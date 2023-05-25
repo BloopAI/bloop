@@ -138,6 +138,10 @@ impl Auth {
         git_pull(self.git_cred(), &repo).await
     }
 
+    pub(crate) async fn push_repo(&self, repo: Repository, branch: &str) -> Result<()> {
+        git_push(self.git_cred(), &repo.disk_path, branch).await
+    }
+
     pub async fn check_repo(&self, repo: &Repository) -> Result<()> {
         let RepoRemote::Git(GitRemote {
             ref address, ..

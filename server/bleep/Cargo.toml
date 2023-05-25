@@ -121,6 +121,7 @@ git-version = "0.3.5"
 gix = { version="0.44.1", features = ["blocking-http-transport-reqwest", "blocking-network-client", "pack-cache-lru-static"] }
 chbs = "0.1.1"
 diffy = "0.3.0"
+git2 = { version = "0.17.1", default-features = false, features = ["https"] }
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.4"

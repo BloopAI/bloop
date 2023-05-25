@@ -83,6 +83,9 @@ pub(crate) enum RemoteError {
 
     #[error("git clone fetch: {0:?}")]
     GitCloneFetch(#[from] gix::clone::fetch::Error),
+
+    #[error("git push error: {0:?}")]
+    GitPush(#[from] git2::Error),
 }
 
 macro_rules! creds_callback(($auth:ident) => {{
@@ -102,6 +105,35 @@ macro_rules! creds_callback(($auth:ident) => {{
         Action::Erase(_) => Ok(None),
     }
 }});
+
+pub(crate) async fn git_push(auth: GitCreds, target: &Path, branch: &str) -> Result<()> {
+    let target = target.to_owned();
+    let branch = branch.to_owned();
+
+    tokio::task::spawn_blocking(move || {
+        let git = git2::Repository::open(target)?;
+        let mut remote = {
+            let remotes = git.remotes()?;
+            let remote_name = remotes.get(0).context("invalid repo, no remotes")?;
+            git.find_remote(remote_name)?
+        };
+        let cb = {
+            let mut cb = git2::RemoteCallbacks::new();
+            cb.credentials(|_, _, _| {
+                git2::Cred::userpass_plaintext(&auth.username, &auth.password)
+            });
+            cb
+        };
+
+        remote.push(
+            &[&branch],
+            Some(git2::PushOptions::new().remote_callbacks(cb)),
+        )?;
+
+        Ok(())
+    })
+    .await?
+}
 
 async fn git_clone(auth: GitCreds, url: &str, target: &Path) -> Result<()> {
     let url = url.to_owned();
@@ -301,6 +333,22 @@ pub(crate) enum BackendCredential {
 }
 
 impl BackendCredential {
+    pub(crate) async fn push(
+        self,
+        app: &Application,
+        reporef: &RepoRef,
+        branch: &str,
+    ) -> Result<()> {
+        let BackendCredential::Github(gh) = self;
+        let repo = app
+            .repo_pool
+            .read_async(reporef, |_, r| r.clone())
+            .await
+            .context("missing repo")?;
+
+        gh.auth.push_repo(repo, branch).await
+    }
+
     pub(crate) async fn sync(self, sync_handle: &SyncHandle) -> Result<()> {
         let SyncHandle { app, .. } = sync_handle;
 
