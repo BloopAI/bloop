@@ -3,6 +3,7 @@
 use std::time::Duration;
 
 use anyhow::bail;
+use axum::http::StatusCode;
 use futures::{Stream, StreamExt};
 use reqwest_eventsource::EventSource;
 use tracing::warn;
@@ -135,12 +136,15 @@ impl Client {
         let mut delay = INITIAL_DELAY;
         for _ in 0..self.max_retries {
             match self.chat_oneshot(messages).await {
-                Err(e) => {
-                    warn!("LLM request failed: {e}");
+                Err(true) => {
+                    warn!("LLM request failed, retrying ...");
                     tokio::time::sleep(delay).await;
                     delay = Duration::from_millis((delay.as_millis() as f32 * SCALE_FACTOR) as u64);
                 }
-
+                Err(false) => {
+                    warn!("LLM request failed, request not eligible for retry");
+                    bail!("request not eligible for retry");
+                }
                 Ok(stream) => return Ok(stream),
             }
         }
@@ -148,11 +152,12 @@ impl Client {
         bail!("request failed {} times", self.max_retries)
     }
 
-    /// Like `chat`, but without exponential backoff.
+    /// Like `chat`, but without exponential backoff. The error variant in the result contains a
+    /// boolean that indicates if the call to `chat_oneshot` is eligible for retry.
     async fn chat_oneshot(
         &self,
         messages: &[api::Message],
-    ) -> anyhow::Result<impl Stream<Item = anyhow::Result<String>>> {
+    ) -> Result<impl Stream<Item = anyhow::Result<String>>, bool> {
         let mut event_source = Box::pin(
             EventSource::new({
                 let mut builder = self.http.post(format!("{}/v1/q", self.base_url));
@@ -184,8 +189,26 @@ impl Client {
 
         match event_source.next().await {
             Some(Ok(reqwest_eventsource::Event::Open)) => {}
-            Some(Err(e)) => bail!("event source error: {:?}", e),
-            _ => bail!("event source failed to open"),
+            Some(Err(reqwest_eventsource::Error::InvalidStatusCode(status)))
+                if status == StatusCode::BAD_REQUEST =>
+            {
+                warn!("bad request to LLM");
+                return Err(false);
+            }
+            Some(Err(reqwest_eventsource::Error::InvalidStatusCode(status)))
+                if status == StatusCode::TOO_MANY_REQUESTS =>
+            {
+                warn!("too many requests to LLM");
+                return Err(true);
+            }
+            Some(Err(e)) => {
+                warn!("event source error: {:?}", e);
+                return Err(true);
+            }
+            _ => {
+                warn!("event source failed to open");
+                return Err(true);
+            }
         }
 
         Ok(event_source
