@@ -205,7 +205,10 @@ const Chat = () => {
               const lastMessage = {
                 ...prev.slice(-1)[0],
                 isLoading: false,
-                error: 'Something went wrong',
+                error:
+                  data.Err === 'request failed 5 times'
+                    ? 'Failed to get a response from OpenAI. Try again in a few moments.'
+                    : 'Something went wrong',
               };
               return [...newConversation, lastMessage];
             });
