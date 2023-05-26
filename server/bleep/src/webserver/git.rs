@@ -292,6 +292,8 @@ impl<'a> Visit for CreateNewCommit<'a> {
 
             assert_eq!(obj.kind, Kind::Blob);
             let blob = changes.iter().fold(obj.data, |base, patch| {
+                println!("{}", process_patch(patch));
+
                 match diffy::apply(
                     String::from_utf8_lossy(&base).as_ref(),
                     &diffy::Patch::from_str(patch).unwrap(),
@@ -330,6 +332,7 @@ impl<'a> Visit for CreateNewCommit<'a> {
 
 fn process_patch(patch: &str) -> String {
     let mut collected = vec![];
+
     let mut lines = patch.lines().peekable();
     if lines.peek().unwrap().starts_with("diff") {
         collected.push(lines.next().unwrap().into());
@@ -392,6 +395,9 @@ fn process_patch(patch: &str) -> String {
         acc.push(line);
     }
 
+    if patch.ends_with("\n\n") || patch.ends_with("\r\n\r\n") {
+        total -= 1;
+    }
     let old_size = total - add;
     let new_size = total - remove;
     collected.push(format!(
