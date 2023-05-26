@@ -1,7 +1,7 @@
 import { useCallback, useContext, useState } from 'react';
 import { MessageResultModify } from '../../../types/general';
 import Button from '../../../components/Button';
-import { GitPod } from '../../../icons';
+import { GitPod, Info } from '../../../icons';
 import { commitChanges } from '../../../services/api';
 import { DeviceContext } from '../../../context/deviceContext';
 import ThreeDotsLoader from '../../../components/Loaders/ThreeDotsLoader';
@@ -31,7 +31,6 @@ const Diff = ({ diffs, repoName, repoRef }: Props) => {
   }, []);
 
   const onSubmit = useCallback(async () => {
-    setSubmitted(true);
     try {
       const { branch_name, commit_id } = await commitChanges({
         repo: repoRef,
@@ -39,10 +38,12 @@ const Diff = ({ diffs, repoName, repoRef }: Props) => {
         changes: staged.map((i) => {
           return {
             path: diffs[i].path,
-            diff: diffs[i].raw,
+            diff: diffs[i].raw + '\n',
           };
         }),
       });
+      setError('');
+      setSubmitted(true);
       setGitPodLink(
         `https://gitpod.io/#https://${repoRef}/commit/${commit_id}`,
       );
@@ -56,24 +57,20 @@ const Diff = ({ diffs, repoName, repoRef }: Props) => {
       <div className="absolute top-8 right-8">
         {isSubmitted ? (
           <div>
-            {error ? (
-              <p className="body-s text-bg-danger">{error}</p>
-            ) : (
-              <Button
-                variant="secondary"
-                size="small"
-                onClick={() => (gitpodLink ? openLink(gitpodLink) : {})}
-              >
-                {!gitpodLink ? (
-                  <span className="px-4">
-                    <ThreeDotsLoader />
-                  </span>
-                ) : (
-                  'Preview in GitPod'
-                )}
-                <GitPod />
-              </Button>
-            )}
+            <Button
+              variant="secondary"
+              size="small"
+              onClick={() => (gitpodLink ? openLink(gitpodLink) : {})}
+            >
+              {!gitpodLink ? (
+                <span className="px-4">
+                  <ThreeDotsLoader />
+                </span>
+              ) : (
+                'Preview in GitPod'
+              )}
+              <GitPod />
+            </Button>
           </div>
         ) : (
           <div className="flex items-center gap-3">
@@ -96,6 +93,14 @@ const Diff = ({ diffs, repoName, repoRef }: Props) => {
           </div>
         )}
       </div>
+      {!!error && (
+        <div className="flex items-center rounded-4 gap-3 p-3 bg-bg-danger/8 text-bg-danger caption-strong">
+          <div className="w-5 h-5">
+            <Info raw />
+          </div>
+          <p>Committing your changes has failed. Please try again later.</p>
+        </div>
+      )}
       {diffs.map((d, i) => (
         <DiffCode
           key={i}
