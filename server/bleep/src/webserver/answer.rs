@@ -482,10 +482,12 @@ impl Conversation {
             &(action_result + "\n\nAnswer only with a JSON action."),
         ));
 
+        let messages = self.trimmed_history()?;
         let raw_response = ctx
             .llm_gateway
-            .chat(&self.trimmed_history()?)
-            .await?
+            .chat(&messages)
+            .await
+            .map_err(|e| ctx.handle_chat_err(e, &messages))?
             .try_collect::<String>()
             .await?;
 
@@ -595,10 +597,12 @@ impl Conversation {
                 let contents = lines.join("\n");
                 let prompt = prompts::file_explanation(question, &path, &contents);
 
+                let messages = &[llm_gateway::api::Message::system(&prompt)];
                 let json = ctx
                     .llm_gateway
-                    .chat(&[llm_gateway::api::Message::system(&prompt)])
-                    .await?
+                    .chat(messages)
+                    .await
+                    .map_err(|e| ctx.handle_chat_err(e, messages))?
                     .try_collect::<String>()
                     .await?;
 
@@ -852,7 +856,12 @@ impl Conversation {
 
         let messages = [llm_gateway::api::Message::system(&prompt)];
 
-        let mut stream = ctx.llm_gateway.chat(&messages).await?.boxed();
+        let mut stream = ctx
+            .llm_gateway
+            .chat(&messages)
+            .await
+            .map_err(|e| ctx.handle_chat_err(e, &messages))?
+            .boxed();
         let mut buffer = String::new();
         while let Some(token) = stream.next().await {
             buffer += &token?;
@@ -1233,6 +1242,19 @@ impl AppContext {
             data,
         };
         self.app.track_query(&self.user, &event);
+    }
+
+    fn handle_chat_err(
+        &self,
+        e: anyhow::Error,
+        messages: &[llm_gateway::api::Message],
+    ) -> anyhow::Error {
+        self.track_query(
+            EventData::output_stage("llm_error")
+                .with_payload("conversation", serde_json::to_string(messages).unwrap())
+                .with_payload("message", e.to_string()),
+        );
+        e
     }
 }
 
