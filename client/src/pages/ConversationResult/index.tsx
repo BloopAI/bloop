@@ -43,6 +43,17 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
       threadId,
     ],
   );
+  const isFinished = useMemo(
+    () =>
+      conversationsCache[threadId]?.[recordId]
+        ? true
+        : !(conversation[recordId] as ChatMessageServer).isLoading,
+    [
+      threadId,
+      recordId,
+      (conversation[recordId] as ChatMessageServer).isLoading,
+    ],
+  );
   const citations = useMemo(() => {
     const files: Record<string, Comment[]> = {};
     data
@@ -175,6 +186,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
             repoRef={tab.key}
             diffs={diffs}
             key={`${recordId}-${threadId}`}
+            isFinished={isFinished}
           />
         )}
         {otherBlocks.map((b, i) => {
