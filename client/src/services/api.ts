@@ -203,3 +203,6 @@ export const deleteConversation = (
   http
     .delete(`/answer/conversations`, { params: { thread_id } })
     .then((r) => r.data);
+
+export const commitChanges = (data: any) =>
+  http.post('/repos/branch', data).then((r) => r.data);

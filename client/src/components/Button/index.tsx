@@ -11,7 +11,12 @@ import Tooltip from '../Tooltip';
 
 type Props = {
   children: ReactNode;
-  variant?: 'primary' | 'secondary' | 'tertiary' | 'tertiary-outlined';
+  variant?:
+    | 'primary'
+    | 'primary-outlined'
+    | 'secondary'
+    | 'tertiary'
+    | 'tertiary-outlined';
   size?: 'tiny' | 'small' | 'medium' | 'large';
   className?: string;
 } & (OnlyIconProps | TextBtnProps);
@@ -19,17 +24,21 @@ type Props = {
 type OnlyIconProps = {
   onlyIcon: true;
   title: string;
+  tooltipText?: undefined;
   tooltipPlacement?: TippyProps['placement'];
 };
 
 type TextBtnProps = {
   onlyIcon?: false;
   tooltipPlacement?: never;
+  tooltipText?: string | ReactNode;
 };
 
 const variantStylesMap = {
   primary:
     'text-label-control bg-bg-main hover:bg-bg-main-hover focus:bg-bg-main-hover active:bg-bg-main active:shadow-rings-blue disabled:bg-bg-base disabled:text-label-muted disabled:hover:border-none disabled:hover:bg-bg-base disabled:active:shadow-none disabled:border-none',
+  'primary-outlined':
+    'text-bg-main bg-transparent border border-bg-main hover:border-bg-main-hover focus:border-bg-main-hover active:border-bg-main active:shadow-rings-blue disabled:bg-bg-base disabled:text-label-muted disabled:hover:border-none disabled:hover:bg-bg-base disabled:active:shadow-none disabled:border-none',
   secondary:
     'text-label-title bg-bg-base border border-bg-border hover:border-bg-border-hover hover:bg-bg-base-hover focus:border-bg-border-hover active:bg-bg-base disabled:bg-bg-base disabled:border-none disabled:text-label-muted shadow-low hover:shadow-none focus:shadow-none active:shadow-rings-gray disabled:shadow-none',
   tertiary:
@@ -78,6 +87,7 @@ const Button = forwardRef<
       title,
       tooltipPlacement,
       type = 'button',
+      tooltipText,
       ...rest
     },
     ref,
@@ -93,8 +103,8 @@ const Button = forwardRef<
         } transition-all duration-300 ease-in-bounce select-none`,
       [variant, className, size, onlyIcon],
     );
-    return onlyIcon && !rest.disabled ? (
-      <Tooltip text={title} placement={tooltipPlacement}>
+    return (onlyIcon && !rest.disabled) || tooltipText ? (
+      <Tooltip text={title || tooltipText} placement={tooltipPlacement}>
         <button {...rest} type={type} ref={ref} className={buttonClassName}>
           {children}
         </button>

@@ -176,6 +176,7 @@ export type MessageResultModify = {
       };
       lines: string[];
     };
+    raw: string;
   };
 };
 
