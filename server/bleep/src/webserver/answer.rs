@@ -22,7 +22,7 @@ use reqwest::StatusCode;
 use secrecy::ExposeSecret;
 use tiktoken_rs::CoreBPE;
 use tokio::sync::mpsc::Sender;
-use tracing::{info, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 use super::middleware::User;
 use crate::{
@@ -812,6 +812,10 @@ impl Conversation {
                     .collect()
             };
 
+            const PROMPT_HEADROOM: usize = 1500;
+            let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")?;
+            let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens("gpt-4", &s)?;
+
             // Order chunks by most recent.
             for chunk in code_chunks.iter().rev() {
                 let snippet = chunk
@@ -821,9 +825,19 @@ impl Conversation {
                     .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
                     .collect::<String>();
 
-                s += &format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
-            }
+                let formatted_snippet =
+                    format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
 
+                let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
+
+                if snippet_tokens >= remaining_prompt_tokens - PROMPT_HEADROOM {
+                    debug!("Breaking at {} tokens...", remaining_prompt_tokens);
+                    break;
+                }
+
+                remaining_prompt_tokens -= snippet_tokens;
+                debug!("{}", remaining_prompt_tokens);
+            }
             s
         };
 
