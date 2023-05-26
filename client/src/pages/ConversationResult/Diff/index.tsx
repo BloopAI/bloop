@@ -17,6 +17,7 @@ const Diff = ({ diffs, repoName, repoRef }: Props) => {
   const { openLink } = useContext(DeviceContext);
   const [staged, setStaged] = useState<number[]>([]);
   const [isSubmitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
   const [gitpodLink, setGitPodLink] = useState('');
 
   const onStage = useCallback((i: number) => {
@@ -31,17 +32,23 @@ const Diff = ({ diffs, repoName, repoRef }: Props) => {
 
   const onSubmit = useCallback(async () => {
     setSubmitted(true);
-    const { branch_name, commit_id } = await commitChanges({
-      repo: repoRef,
-      push: true,
-      changes: staged.map((i) => {
-        return {
-          path: diffs[i].path,
-          diff: diffs[i].raw,
-        };
-      }),
-    });
-    setGitPodLink(`https://gitpod.io/#https://${repoRef}/commit/${commit_id}`);
+    try {
+      const { branch_name, commit_id } = await commitChanges({
+        repo: repoRef,
+        push: true,
+        changes: staged.map((i) => {
+          return {
+            path: diffs[i].path,
+            diff: diffs[i].raw,
+          };
+        }),
+      });
+      setGitPodLink(
+        `https://gitpod.io/#https://${repoRef}/commit/${commit_id}`,
+      );
+    } catch (err) {
+      setError('There was an error making this commit');
+    }
   }, [diffs, staged]);
 
   return (
@@ -49,20 +56,24 @@ const Diff = ({ diffs, repoName, repoRef }: Props) => {
       <div className="absolute top-8 right-8">
         {isSubmitted ? (
           <div>
-            <Button
-              variant="secondary"
-              size="small"
-              onClick={() => (gitpodLink ? openLink(gitpodLink) : {})}
-            >
-              {!gitpodLink ? (
-                <span className="px-4">
-                  <ThreeDotsLoader />
-                </span>
-              ) : (
-                'Preview in GitPod'
-              )}
-              <GitPod />
-            </Button>
+            {error ? (
+              <p className="body-s text-bg-danger">{error}</p>
+            ) : (
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => (gitpodLink ? openLink(gitpodLink) : {})}
+              >
+                {!gitpodLink ? (
+                  <span className="px-4">
+                    <ThreeDotsLoader />
+                  </span>
+                ) : (
+                  'Preview in GitPod'
+                )}
+                <GitPod />
+              </Button>
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-3">
