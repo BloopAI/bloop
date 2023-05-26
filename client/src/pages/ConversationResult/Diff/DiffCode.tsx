@@ -92,13 +92,17 @@ const DiffCode = ({
         <div>
           {isSubmitted ? (
             isStaged ? (
-              <div className="flex items-center gap-1 text-label-muted caption-strong">
+              <div className="flex items-center gap-1 text-label-title caption-strong">
                 <div className="w-5 h-5 text-bg-success">
                   <CheckIcon />
                 </div>
                 Committed
               </div>
-            ) : null
+            ) : (
+              <Button size="small" disabled>
+                Stage change
+              </Button>
+            )
           ) : (
             <div>
               {isStaged ? (
