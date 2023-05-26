@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crate::state::{PersistedState, StateSource};
+use crate::{
+    repo::RepoRef,
+    state::{PersistedState, StateSource},
+};
 
 use rudderanalytics::{
     client::RudderAnalytics,
@@ -13,6 +16,8 @@ use tracing::{info, warn};
 #[derive(Debug, Clone)]
 pub struct QueryEvent {
     pub query_id: uuid::Uuid,
+    pub thread_id: uuid::Uuid,
+    pub repo_ref: Option<RepoRef>,
     pub data: EventData,
 }
 
@@ -137,6 +142,8 @@ impl RudderHub {
                         event: "openai query".to_owned(),
                         properties: Some(json!({
                             "query_id": ev.query_id,
+                            "thread_id": ev.thread_id,
+                            "repo_ref": ev.repo_ref.as_ref().map(ToString::to_string),
                             "data": ev.data,
                             "package_metadata": options.package_metadata,
                         })),
