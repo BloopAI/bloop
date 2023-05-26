@@ -402,7 +402,7 @@ fn process_patch(patch: &str) -> String {
     ));
     collected.extend(acc.drain(..).map(str::to_owned));
 
-    collected.join("\n") + "\n"
+    collected.join("\n")
 }
 
 fn parse_head(hunk_head: &str) -> (usize, usize, &str) {
