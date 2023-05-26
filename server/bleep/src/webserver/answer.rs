@@ -776,7 +776,7 @@ impl Conversation {
             }
 
             if !self.code_chunks.is_empty() {
-                s += "\n##### CODE CHUNKS #####\n\n";
+                s += "\n##### ENUMERATED CODE CHUNKS #####\n\n";
             }
 
             let code_chunks = if path_aliases.len() == 1 {
