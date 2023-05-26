@@ -827,7 +827,7 @@ impl Conversation {
                 let formatted_snippet =
                     format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
 
-                let snippet_tokens = bpe.split_by_token_ordinary_iter(&formatted_snippet).count();
+                let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
 
                 if snippet_tokens >= remaining_prompt_tokens - PROMPT_HEADROOM {
                     debug!("Breaking at {} tokens...", remaining_prompt_tokens);
