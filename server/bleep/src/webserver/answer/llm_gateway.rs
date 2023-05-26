@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use anyhow::bail;
+use anyhow::{anyhow, bail};
 use axum::http::StatusCode;
 use futures::{Stream, StreamExt};
 use reqwest_eventsource::EventSource;
@@ -71,6 +71,12 @@ impl api::Message {
     }
 }
 
+enum ChatError {
+    BadRequest,
+    TooManyRequests,
+    Other(anyhow::Error),
+}
+
 #[derive(Clone)]
 pub struct Client {
     http: reqwest::Client,
@@ -136,14 +142,18 @@ impl Client {
         let mut delay = INITIAL_DELAY;
         for _ in 0..self.max_retries {
             match self.chat_oneshot(messages).await {
-                Err(true) => {
+                Err(ChatError::TooManyRequests) => {
                     warn!("LLM request failed, retrying ...");
                     tokio::time::sleep(delay).await;
                     delay = Duration::from_millis((delay.as_millis() as f32 * SCALE_FACTOR) as u64);
                 }
-                Err(false) => {
+                Err(ChatError::BadRequest) => {
                     warn!("LLM request failed, request not eligible for retry");
                     bail!("request not eligible for retry");
+                }
+                Err(ChatError::Other(e)) => {
+                    warn!("{e}");
+                    return Err(e);
                 }
                 Ok(stream) => return Ok(stream),
             }
@@ -152,12 +162,11 @@ impl Client {
         bail!("request failed {} times", self.max_retries)
     }
 
-    /// Like `chat`, but without exponential backoff. The error variant in the result contains a
-    /// boolean that indicates if the call to `chat_oneshot` is eligible for retry.
+    /// Like `chat`, but without exponential backoff.
     async fn chat_oneshot(
         &self,
         messages: &[api::Message],
-    ) -> Result<impl Stream<Item = anyhow::Result<String>>, bool> {
+    ) -> Result<impl Stream<Item = anyhow::Result<String>>, ChatError> {
         let mut event_source = Box::pin(
             EventSource::new({
                 let mut builder = self.http.post(format!("{}/v1/q", self.base_url));
@@ -193,21 +202,19 @@ impl Client {
                 if status == StatusCode::BAD_REQUEST =>
             {
                 warn!("bad request to LLM");
-                return Err(false);
+                return Err(ChatError::BadRequest);
             }
             Some(Err(reqwest_eventsource::Error::InvalidStatusCode(status)))
                 if status == StatusCode::TOO_MANY_REQUESTS =>
             {
                 warn!("too many requests to LLM");
-                return Err(true);
+                return Err(ChatError::TooManyRequests);
             }
             Some(Err(e)) => {
-                warn!("event source error: {:?}", e);
-                return Err(true);
+                return Err(ChatError::Other(anyhow!("event source error: {:?}", e)));
             }
             _ => {
-                warn!("event source failed to open");
-                return Err(true);
+                return Err(ChatError::Other(anyhow!("event source failed to open")));
             }
         }
 
