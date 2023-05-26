@@ -485,8 +485,7 @@ impl Conversation {
         let raw_response = ctx
             .llm_gateway
             .clone()
-            .provider(llm_gateway::api::Provider::AzureOpenAi)
-            .model(Some("gpt-4-32k".to_string()))
+            .model(Some("gpt-4".to_string()))
             .chat(&self.trimmed_history()?)
             .await?
             .try_collect::<String>()
@@ -798,7 +797,7 @@ impl Conversation {
                 let trimmed_file_contents = tiktoken_rs::get_bpe_from_model("gpt-4")
                     .context("invalid model requested")?
                     .split_by_token_iter(&file_contents, false)
-                    .take(2000)
+                    .take(8000)
                     .collect::<Result<String>>()
                     .context("failed to tokenize file contents")?;
 
