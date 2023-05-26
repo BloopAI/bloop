@@ -37,9 +37,9 @@ pub fn system(paths: &Vec<String>) -> String {
       },
       Tool { 
         name: "processFiles", 
-        description: "Process a list of files to extract the line ranges which are relevant to the query.", 
-        schema: "{\"name\": \"path\", \"args\": [SEARCH_TERMS // str]}", 
-        examples: "[[\"path\", \"server/src\"], [\"path\", \".tsx\"], [\"path\", \"examples/android\"]]"
+        description: "Process a list of files and extract the line ranges which are relevant to some search terms.", 
+        schema: "{\"name\": \"proc\", \"args\": [SEARCH_TERMS // str, ARRAY_OF_PATH_ALIASES // int[]}", 
+        examples: "[[\"proc\", \"find all the functional react components\", [2, 5]], [\"proc\", \"where are error types\", [0]], [\"proc\", \"gitoxide initialisation\", [2, 5, 8]]]"
     },
       Tool { 
         name: "none", 
@@ -62,7 +62,7 @@ pub fn system(paths: &Vec<String>) -> String {
 
     s.push_str(
         r#"
-## RULES ##
+Follow these rules at all times:
 
 - If the output of a tool is empty, try the same tool again with different arguments or try using a different tool
 - In most cases you'll have to use codeSearch or pathSearch before using 'none'
@@ -70,9 +70,9 @@ pub fn system(paths: &Vec<String>) -> String {
 - Do not assume the structure of the codebase, or the existence of files or folders
 - Do NOT use a tool that you've used before with the same arguments
 - To perform multiple actions, perform just one, wait for the response, then perform the next
-- processFiles is useful to ensure that a file is relevant to the query
 - When you are confident that you have enough information needed to answer the query, choose 'none'
 - If you have been instructed to modify the codebase choose 'none'
+- Do not process more than 5 files at a time
 - Only refer to path aliases that are under the PATHS heading above
 - Use the tools to find information related to the query, until all relevant information has been found.
 - If after attempting to gather information you are still unsure how to answer the query, choose 'none'
