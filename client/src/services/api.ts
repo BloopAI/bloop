@@ -29,9 +29,9 @@ export const search = (
   global_regex: boolean = false,
 ): Promise<SearchResponse> => {
   return http
-    .get('/q', {
+    .get('/search', {
       params: {
-        q: `${q} global_regex:${global_regex}`,
+        q: `${q}`,
         page_size,
         page,
         calculate_totals: page === 0,
