@@ -835,6 +835,7 @@ impl Conversation {
                     break;
                 }
 
+                s += &formatted_snippet;
                 remaining_prompt_tokens -= snippet_tokens;
                 debug!("{}", remaining_prompt_tokens);
             }
