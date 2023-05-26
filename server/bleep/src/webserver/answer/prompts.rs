@@ -69,15 +69,9 @@ Follow these rules at all times:
 - Do not assume the structure of the codebase, or the existence of files or folders
 - Do NOT use a tool that you've used before with the same arguments
 - To perform multiple actions, perform just one, wait for the response, then perform the next
-- When you are confident that you have enough information needed to answer the query, choose 'none'
-- If you have been instructed to modify the codebase choose 'none'
-- If after making a path search the query can be answered by the existance of the paths, and there are more than 5 paths, choose 'none'
-- Only refer to path aliases that are under the PATHS heading above
-- Use the tools to find information related to the query, until all relevant information has been found.
-- If after attempting to gather information you are still unsure how to answer the query, choose 'none'
-- Always respond according to the schema of the tool that you want to use
-- Output a list of [name, *args] to use a tool. For example to use codeSearch, output: ["code","my search query"]. To use processFiles, output: ["proc", "how does X work", [3, 6]]
-- Do NOT answer the user's query directly. You MUST use one of the tools above
+- If after attempting to gather information you are still unsure how to answer the query, choose the "No tool left to take" tool
+- If the user asks you to change code, respond only with the best tool to find the code that needs to be changed
+- Todays date is {today}
 
 "#);
     s
@@ -152,13 +146,30 @@ pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str)
         Rule {
             title: "Update the code in an existing file",
             description: "Edit an existing code file by generating the diff between old and new versions. Changes should be as small as possible.",
-            schema: "[\"mod\",PATH ALIAS:INT,LANGUAGE:STRING,GIT DIFF:STRING]",
+            schema: "[\"mod\",PATH ALIAS:INT,LANGUAGE:STRING,DESCRIPTION:STRING,GIT DIFF WITHOUT LINE NUMBERS:STRING]",
             note: "This object can occur multiple times",
-            example: Some(r#"Where GIT DIFF describes the diff chunks for the file, including the git diff header.
-For example:
-@@ -1 +1 @@
--this is a git diff test example
-+this is a diff example"#),
+            example: Some(r#"DESCRIPTION is a natural language description of the changes
+            GIT DIFF WITHOUT LINE NUMBERS describes the unified diff for the file, including the git diff header. Do not include any line numbers
+            For example:
+            ```
+@@ -1,7 +1,6 @@
+-The Way that can be told of is not the eternal Way;
+-The name that can be named is not the eternal name.
+  The Nameless is the origin of Heaven and Earth;
+-The Named is the mother of all things.
++The named is the mother of all things.
++
+  Therefore let there always be non-being,
+    so we may see their subtlety,
+  And let there always be being,
+@@ -9,3 +8,6 @@
+  The two are the same,
+  But after they are produced,
+    they have different names.
++They both may be called deep and profound.
++Deeper and more profound,
++The door of all subtleties!
+```"#),
         },
         Rule {
             title: "Cite line ranges from the file",
@@ -227,6 +238,19 @@ What's the value of MAX_FILE_LEN?
 [
   ["con": "None of files in the context contain the value of MAX_FILE_LEN"]
 ]
+
+Remove b and c
+
+[
+  ["mod",2,"javascript","remove the last two lines", "@@ -1,3 +1 @@\na\n-b\n-c\n"]
+]
+
+Bump the dependency to 0.3
+
+[
+  ["mod",3,"javascript","remove the 2nd line, add a new 2nd line with 0.3", "@@ -1,2 +1,2 @@\n-import test from 'test';\n-import test2 from 'test2@0.2';\n+import test2 from 'test2@0.3';\n"]
+]
+
 
 #####
 

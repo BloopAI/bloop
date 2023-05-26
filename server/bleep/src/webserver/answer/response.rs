@@ -169,6 +169,7 @@ pub struct ModifyResult {
     path_alias: Option<u64>,
     path: Option<String>,
     language: Option<String>,
+    description: Option<String>,
     diff: Option<ModifyResultHunk>,
     raw: Option<String>,
 }
@@ -267,7 +268,7 @@ impl ModifyResult {
             .and_then(serde_json::Value::as_str)
             .map(ToOwned::to_owned);
         let diff = v
-            .get(2)
+            .get(3)
             .and_then(serde_json::Value::as_str)
             .map(|raw_hunk| {
                 let header = raw_hunk.lines().next().and_then(|s| s.parse().ok());
@@ -280,7 +281,7 @@ impl ModifyResult {
             });
 
         let raw = v
-            .get(2)
+            .get(3)
             .and_then(serde_json::Value::as_str)
             .map(str::to_string);
 
