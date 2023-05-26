@@ -8,6 +8,7 @@ import { MessageResultModify } from '../../../types/general';
 import { FileTreeFileType } from '../../../types';
 import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
 import FileModalContainer from '../../ResultModal/FileModalContainer';
+import StagedBtn from './StagedBtn';
 
 type Props = {
   data: MessageResultModify['Modify'];
@@ -106,14 +107,7 @@ const DiffCode = ({
           ) : (
             <div>
               {isStaged ? (
-                <Button
-                  size="small"
-                  variant="primary-outlined"
-                  onClick={() => onUnstage(i)}
-                >
-                  <CheckIcon />
-                  Staged
-                </Button>
+                <StagedBtn onClick={() => onUnstage(i)} />
               ) : (
                 <Button size="small" onClick={() => onStage(i)}>
                   Stage change
