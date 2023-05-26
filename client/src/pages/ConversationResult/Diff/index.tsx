@@ -31,6 +31,7 @@ const Diff = ({ diffs, repoName, repoRef }: Props) => {
   }, []);
 
   const onSubmit = useCallback(async () => {
+    setSubmitted(true);
     try {
       const { branch_name, commit_id } = await commitChanges({
         repo: repoRef,
@@ -43,11 +44,11 @@ const Diff = ({ diffs, repoName, repoRef }: Props) => {
         }),
       });
       setError('');
-      setSubmitted(true);
       setGitPodLink(
         `https://gitpod.io/#https://${repoRef}/commit/${commit_id}`,
       );
     } catch (err) {
+      setSubmitted(false);
       setError('There was an error making this commit');
     }
   }, [diffs, staged]);
@@ -58,12 +59,11 @@ const Diff = ({ diffs, repoName, repoRef }: Props) => {
         {isSubmitted ? (
           <div>
             <Button
-              variant="secondary"
               size="small"
               onClick={() => (gitpodLink ? openLink(gitpodLink) : {})}
             >
               {!gitpodLink ? (
-                <span className="px-4">
+                <span className="px-4 text-label-control">
                   <ThreeDotsLoader />
                 </span>
               ) : (
