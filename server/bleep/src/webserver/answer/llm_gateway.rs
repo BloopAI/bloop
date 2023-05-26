@@ -34,6 +34,7 @@ pub mod api {
     #[serde(rename_all = "lowercase")]
     pub enum Provider {
         OpenAi,
+        AzureOpenAi,
         Anthropic,
     }
 
@@ -106,6 +107,18 @@ impl Client {
     #[allow(unused)]
     pub fn max_tokens(mut self, max_tokens: impl Into<Option<u32>>) -> Self {
         self.max_tokens = max_tokens.into();
+        self
+    }
+
+    #[allow(unused)]
+    pub fn model(mut self, model: impl Into<Option<String>>) -> Self {
+        self.model = model.into();
+        self
+    }
+
+    #[allow(unused)]
+    pub fn provider(mut self, provider: impl Into<api::Provider>) -> Self {
+        self.provider = provider.into();
         self
     }
 
