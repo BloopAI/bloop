@@ -782,8 +782,7 @@ index b65a395..c012fc3 100644
 + "derive_builder 0.12.0",
   "dirs",
   "esaxx-rs",
-  "getrandom 0.2.9",
-"#;
+  "getrandom 0.2.9","#;
 
         assert_eq!(super::process_patch(patch), patch)
     }
