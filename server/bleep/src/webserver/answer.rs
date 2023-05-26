@@ -792,19 +792,17 @@ impl Conversation {
                     .with_context(|| format!("failed to read path: {}", path))?
                     .content;
 
-                let trimmed_file_contents = tiktoken_rs::get_bpe_from_model("gpt-4")
-                    .context("invalid model requested")?
-                    .split_by_token_iter(&file_contents, false)
-                    .take(4000)
-                    .collect::<Result<String>>()
-                    .context("failed to tokenize file contents")?;
+                let bpe =
+                    tiktoken_rs::get_bpe_from_model("gpt-4").context("invalid model requested")?;
+
+                let trimmed_file_contents = limit_tokens(&file_contents, bpe, 4000);
 
                 vec![CodeChunk {
                     alias: alias as u32,
                     path,
                     start_line: 1,
                     end_line: trimmed_file_contents.lines().count() as u32 + 1,
-                    snippet: trimmed_file_contents,
+                    snippet: trimmed_file_contents.to_owned(),
                 }]
             } else {
                 self.code_chunks
@@ -1067,15 +1065,40 @@ fn split_line_set_by_tokens(
 
         let mut subset = Vec::new();
 
-        while start < lines.len()
-            && bpe.split_by_token_ordinary_iter(&subset.join("\n")).count() < max_tokens
-        {
+        loop {
+            if start >= lines.len() {
+                break;
+            }
+
+            let text = subset.join("\n");
+
+            if limit_tokens(&text, bpe.clone(), max_tokens).len() < text.len() {
+                subset.pop();
+                start -= 1;
+                break;
+            }
+
             subset.push(lines[start].clone());
             start += 1;
         }
 
         Some(subset)
     })
+}
+
+fn limit_tokens(text: &str, bpe: CoreBPE, max_tokens: usize) -> &str {
+    let mut tokens = bpe.encode_ordinary(text);
+    tokens.truncate(max_tokens);
+
+    while !tokens.is_empty() {
+        if let Ok(s) = bpe.decode(tokens.clone()) {
+            return &text[..s.len()];
+        }
+
+        let _ = tokens.pop();
+    }
+
+    ""
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -1256,33 +1279,33 @@ mod tests {
         ];
 
         let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
-        let out = split_line_set_by_tokens(lines, bpe, 15, 3).collect::<Vec<_>>();
-
-        pretty_assertions::assert_eq!(
-            out,
+        let out = split_line_set_by_tokens(lines, bpe.clone(), 15, 3).collect::<Vec<_>>();
+        let expected = vec![
             vec![
-                vec![
-                    "fn main() {".to_string(),
-                    "    one();".to_string(),
-                    "    two();".to_string(),
-                    "    three();".to_string(),
-                    "    four();".to_string(),
-                ],
-                vec![
-                    "    two();".to_string(),
-                    "    three();".to_string(),
-                    "    four();".to_string(),
-                    "    five();".to_string(),
-                    "    six();".to_string(),
-                ],
-                vec![
-                    "    four();".to_string(),
-                    "    five();".to_string(),
-                    "    six();".to_string(),
-                    "}".to_string(),
-                ],
+                "fn main() {".to_string(),
+                "    one();".to_string(),
+                "    two();".to_string(),
+                "    three();".to_string(),
             ],
-        );
+            vec![
+                "    one();".to_string(),
+                "    two();".to_string(),
+                "    three();".to_string(),
+                "    four();".to_string(),
+                "    five();".to_string(),
+            ],
+            vec![
+                "    three();".to_string(),
+                "    four();".to_string(),
+                "    five();".to_string(),
+                "    six();".to_string(),
+                "}".to_string(),
+            ],
+        ];
+        pretty_assertions::assert_eq!(out, expected);
+        for segment in &expected {
+            assert!(dbg!(bpe.encode_ordinary(&dbg!(segment).join("\n")).len()) <= 15);
+        }
 
         let lines = vec![
             "fn main() {".to_string(),
@@ -1296,26 +1319,42 @@ mod tests {
         ];
 
         let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
-        let out = split_line_set_by_tokens(lines, bpe, 20, 2).collect::<Vec<_>>();
-
-        pretty_assertions::assert_eq!(
-            out,
+        let out = split_line_set_by_tokens(lines, bpe.clone(), 20, 2).collect::<Vec<_>>();
+        let expected = vec![
             vec![
-                vec![
-                    "fn main() {".to_string(),
-                    "    one();".to_string(),
-                    "    two();".to_string(),
-                    "    three();".to_string(),
-                    "    four();".to_string(),
-                    "    five();".to_string(),
-                    "    six();".to_string(),
-                ],
-                vec![
-                    "    five();".to_string(),
-                    "    six();".to_string(),
-                    "}".to_string(),
-                ],
+                "fn main() {".to_string(),
+                "    one();".to_string(),
+                "    two();".to_string(),
+                "    three();".to_string(),
+                "    four();".to_string(),
+                "    five();".to_string(),
             ],
-        );
+            vec![
+                "    four();".to_string(),
+                "    five();".to_string(),
+                "    six();".to_string(),
+                "}".to_string(),
+            ],
+        ];
+        pretty_assertions::assert_eq!(out, expected);
+        for segment in &expected {
+            assert!(dbg!(bpe.encode_ordinary(&dbg!(segment).join("\n")).len()) <= 20);
+        }
+    }
+
+    #[test]
+    fn test_limit_tokens() {
+        let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
+        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 1), "fn");
+
+        // Note: the following calls return a string that does not split the emoji, despite the
+        // tokenizer interpreting the tokens like that.
+        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 2), "fn");
+        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 3), "fn");
+
+        // Now we have a sufficient number of input tokens to overcome the emoji.
+        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 4), "fn 🚨");
+        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 5), "fn 🚨()");
+        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 6), "fn 🚨() {}");
     }
 }
