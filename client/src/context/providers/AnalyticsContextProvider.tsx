@@ -36,9 +36,10 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
     );
 
     analytics.ready(() => {
-      setAnalyticsLoaded(true);
-      analytics.track('Launch');
+      console.log('analytics ready');
     });
+    setAnalyticsLoaded(true);
+    analytics.track('Launch');
   };
 
   useEffect(() => {
