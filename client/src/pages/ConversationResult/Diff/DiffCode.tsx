@@ -16,6 +16,7 @@ type Props = {
   i: number;
   isStaged: boolean;
   isSubmitted: boolean;
+  isFinished: boolean;
   onStage: (i: number) => void;
   onUnstage: (i: number) => void;
 };
@@ -26,6 +27,7 @@ const DiffCode = ({
   i,
   isStaged,
   isSubmitted,
+  isFinished,
   onStage,
   onUnstage,
 }: Props) => {
@@ -66,7 +68,10 @@ const DiffCode = ({
                   ? 'text-label-title bg-bg-base border-bg-border shadow-low'
                   : 'text-label-base border-transparent'
               } transition-all duration-150 ease-in-bounce border`}
-              onClick={() => setShowRaw(false)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowRaw(false);
+              }}
             >
               Diff
             </button>
@@ -76,7 +81,10 @@ const DiffCode = ({
                   ? 'text-label-title bg-bg-base border-bg-border shadow-low'
                   : 'text-label-base border-transparent'
               } transition-all duration-150 ease-in-bounce border`}
-              onClick={() => setShowRaw(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowRaw(true);
+              }}
             >
               Raw
             </button>
@@ -91,7 +99,7 @@ const DiffCode = ({
           />
         </div>
         <div>
-          {isSubmitted ? (
+          {isFinished && isSubmitted ? (
             isStaged ? (
               <div className="flex items-center gap-1 text-label-title caption-strong">
                 <div className="w-5 h-5 text-bg-success">
@@ -104,7 +112,7 @@ const DiffCode = ({
                 Stage change
               </Button>
             )
-          ) : (
+          ) : isFinished ? (
             <div>
               {isStaged ? (
                 <StagedBtn onClick={() => onUnstage(i)} />
@@ -114,7 +122,7 @@ const DiffCode = ({
                 </Button>
               )}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
       {data.diff?.lines ? (

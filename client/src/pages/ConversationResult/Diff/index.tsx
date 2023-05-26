@@ -11,9 +11,10 @@ type Props = {
   repoName: string;
   repoRef: string;
   diffs: MessageResultModify['Modify'][];
+  isFinished: boolean;
 };
 
-const Diff = ({ diffs, repoName, repoRef }: Props) => {
+const Diff = ({ diffs, repoName, repoRef, isFinished }: Props) => {
   const { openLink } = useContext(DeviceContext);
   const [staged, setStaged] = useState<number[]>([]);
   const [isSubmitted, setSubmitted] = useState(false);
@@ -72,7 +73,7 @@ const Diff = ({ diffs, repoName, repoRef }: Props) => {
               <GitPod />
             </Button>
           </div>
-        ) : (
+        ) : isFinished ? (
           <div className="flex items-center gap-3">
             <Button onClick={onStageAll} variant="tertiary" size="small">
               Stage all
@@ -91,7 +92,7 @@ const Diff = ({ diffs, repoName, repoRef }: Props) => {
               Commit staged changes ({staged.length})
             </Button>
           </div>
-        )}
+        ) : null}
       </div>
       {!!error && (
         <div className="flex items-center rounded-4 gap-3 p-3 bg-bg-danger/8 text-bg-danger caption-strong">
@@ -111,6 +112,7 @@ const Diff = ({ diffs, repoName, repoRef }: Props) => {
           onUnstage={onUnstage}
           isSubmitted={isSubmitted}
           i={i}
+          isFinished={isFinished}
         />
       ))}
     </div>
