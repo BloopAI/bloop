@@ -46,21 +46,17 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
             newRepos[index] = {
               ...newRepos[index],
               sync_status: data.ev?.status_change,
-              last_index:
-                data.ev?.status_change === SyncStatus.Done
-                  ? new Date().toISOString()
-                  : '',
             };
             return newRepos;
           });
         }
         if (data.ev?.index_percent) {
-          setCurrentlySyncingRepo({
+          setCurrentlySyncingRepo((prev) => ({
             repoRef: data.ref,
             percentage: data.ev?.index_percent || 1,
-          });
+          }));
         }
-      } catch {}
+      } catch { }
     };
     eventSource.onerror = (err) => {
       console.error('EventSource failed:', err);
