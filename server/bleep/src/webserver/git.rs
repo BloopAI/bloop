@@ -292,12 +292,22 @@ impl<'a> Visit for CreateNewCommit<'a> {
 
             assert_eq!(obj.kind, Kind::Blob);
             let blob = changes.iter().fold(obj.data, |base, patch| {
-                debug!(?patch, ?self.path, "applying patch");
-                diffy::apply(
+                match diffy::apply(
                     String::from_utf8_lossy(&base).as_ref(),
                     &diffy::Patch::from_str(patch).unwrap(),
-                )
-                .unwrap()
+                ) {
+                    Ok(ok) => ok,
+                    Err(_) => {
+                        let processed = process_patch(patch);
+                        println!("{processed}");
+
+                        diffy::apply(
+                            String::from_utf8_lossy(&base).as_ref(),
+                            &diffy::Patch::from_str(&processed).unwrap(),
+                        )
+                        .unwrap()
+                    }
+                }
                 .into()
             });
 
@@ -316,4 +326,107 @@ impl<'a> Visit for CreateNewCommit<'a> {
         }
         Action::Continue
     }
+}
+
+fn process_patch(patch: &str) -> String {
+    let mut collected = vec![];
+    let mut lines = patch.lines().peekable();
+    if lines.peek().unwrap().starts_with("diff") {
+        collected.push(lines.next().unwrap().into());
+    }
+
+    if lines.peek().unwrap().starts_with("index") {
+        collected.push(lines.next().unwrap().into());
+    }
+
+    let Some(next) = lines.peek() else {
+	panic!("invalid diff");
+    };
+    if next.starts_with("---") {
+        collected.push(lines.next().unwrap().into());
+    }
+
+    let Some(next) = lines.peek() else {
+	panic!("invalid diff");
+    };
+    if next.starts_with("+++") {
+        collected.push(lines.next().unwrap().into());
+    }
+
+    let Some(first_hunk_head) = lines.next() else {
+	panic!("invalid diff");
+    };
+
+    if !first_hunk_head.starts_with("@@") {
+        panic!("no @@");
+    }
+
+    let mut acc = vec![];
+    let (mut add, mut remove, mut total) = (0, 0, 0);
+    let (mut old_start, mut new_start, mut head_text) = parse_head(first_hunk_head);
+
+    while let Some(line) = lines.next() {
+        if line.starts_with("@@") {
+            let old_size = total - add;
+            let new_size = total - remove;
+
+            collected.push(format!(
+                "@@ -{old_start},{old_size} +{new_start},{new_size} @@{head_text}"
+            ));
+
+            collected.extend(acc.drain(..).map(str::to_owned));
+
+            (add, remove, total) = (0, 0, 0);
+            (old_start, new_start, head_text) = parse_head(line);
+            continue;
+        }
+
+        total += 1;
+        if line.starts_with('-') {
+            remove += 1;
+        }
+        if line.starts_with('+') {
+            add += 1;
+        }
+
+        acc.push(line);
+    }
+
+    let old_size = total - add;
+    let new_size = total - remove;
+    collected.push(format!(
+        "@@ -{old_start},{old_size} +{new_start},{new_size} @@{head_text}"
+    ));
+    collected.extend(acc.drain(..).map(str::to_owned));
+
+    collected.join("\n")
+}
+
+fn parse_head(hunk_head: &str) -> (usize, usize, &str) {
+    let start_hunk = hunk_head
+        .split_once(" -")
+        .unwrap()
+        .1
+        .split_once(',')
+        .unwrap()
+        .0
+        .parse()
+        .unwrap();
+
+    let end_hunk = hunk_head
+        .split_once(" +")
+        .unwrap()
+        .1
+        .split_once(',')
+        .unwrap()
+        .0
+        .parse()
+        .unwrap();
+
+    let mut leftover = hunk_head.split("@@");
+    assert_eq!(Some(""), leftover.next());
+    _ = leftover.next().unwrap();
+    let text = leftover.next().unwrap();
+
+    (start_hunk, end_hunk, text)
 }
