@@ -392,7 +392,7 @@ fn process_patch(patch: &str) -> String {
         acc.push(line);
     }
 
-    if patch.ends_with("\n\n") || patch.ends_with("\r\n\r\n") {
+    if patch.ends_with("\n\n") || patch.ends_with("\r\n\r\n") || patch.ends_with("\n \n") {
         total -= 1;
     }
     let old_size = total - add;
