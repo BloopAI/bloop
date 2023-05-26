@@ -283,9 +283,8 @@ pub fn by_tokens<'s>(
         let diff = strategy.next_subdivision(end_limit - start);
         let mid = start + diff;
         // find nearest newlines or boundaries, set start accordingly
-        let next_newline_diff = (mid..end_limit)
-            .find(|&i| src[offsets[i].0..offsets[i + 1].0].contains('\n'))
-            .map(|t| t + 1);
+        let next_newline_diff =
+            (mid..end_limit).find(|&i| src[offsets[i].0..offsets[i + 1].0].contains('\n'));
         let prev_newline_diff = (start + (diff / 2)..mid)
             .rfind(|&i| src[offsets[i].0..offsets[i + 1].0].contains('\n'))
             .map(|t| t + 1);
@@ -422,6 +421,34 @@ mod tests {
             "bloop",
             "src/config.rs",
             SRC,
+            &tokenizer,
+            50..256,
+            max_lines,
+            OverlapStrategy::Partial(0.5),
+        );
+
+        for chunk in chunks {
+            let len = tokenizer.encode(chunk.data, false).unwrap().len();
+            assert!(
+                len.saturating_sub(256) < 10,
+                "chunk length ({len}) was not less than 256\n\n{}\n",
+                chunk.data
+            )
+        }
+    }
+
+    #[test]
+    pub fn chunks_over_long_lined_file() {
+        let tokenizer = minilm();
+        let max_lines = 15;
+
+        // squish SRC into one big single-lined string
+        let src = SRC.lines().collect::<String>();
+
+        let chunks = super::by_tokens(
+            "bloop",
+            "src/config.rs",
+            &src,
             &tokenizer,
             50..256,
             max_lines,
