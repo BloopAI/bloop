@@ -43,7 +43,7 @@ impl GitWalker {
     pub fn open_repository(
         dir: impl AsRef<Path>,
         filter: impl Into<Option<BranchFilter>>,
-    ) -> Result<impl FileSource> {
+    ) -> Result<Self> {
         let root_dir = dir.as_ref();
         let branches = filter.into().unwrap_or_default();
         let git = gix::open::Options::isolated()
@@ -143,11 +143,9 @@ impl FileSource for GitWalker {
                     return None;
                 }
 
-                if matches!(kind, FileType::Other) {
-                    return None;
-                }
-
-                let buffer = String::from_utf8_lossy(&object.data).to_string();
+                let buffer = (object.kind == gix::object::Kind::Blob)
+                    .then(|| String::from_utf8_lossy(&object.data).to_string())
+                    .unwrap_or_default();
 
                 Some(RepoFile {
                     path: file,
