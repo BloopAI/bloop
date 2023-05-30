@@ -1007,7 +1007,7 @@ impl Conversation {
     }
 
     fn trimmed_history(&self) -> Result<Vec<llm_gateway::api::Message>> {
-        const HEADROOM: usize = 4096;
+        const HEADROOM: usize = 2048;
 
         let mut tiktoken_msgs = self
             .llm_history
