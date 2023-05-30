@@ -1143,6 +1143,9 @@ fn limit_tokens(text: &str, bpe: CoreBPE, max_tokens: usize) -> &str {
 }
 
 /// Merge code chunks if they overlap.
+///
+/// This function assumes that the first paramter is a chunk which starts *before* the second
+/// parameter starts.
 fn merge_overlapping(a: &mut CodeChunk, b: CodeChunk) -> Option<CodeChunk> {
     if a.end_line >= b.start_line {
         a.snippet += "\n";
