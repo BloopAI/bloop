@@ -24,6 +24,7 @@ use gix::{
     },
     traverse::tree::{visit::Action, Visit},
 };
+use once_cell::sync::OnceCell;
 use tracing::debug;
 
 type RepoPath = String;
@@ -328,9 +329,26 @@ impl<'a> Visit for CreateNewCommit<'a> {
 }
 
 fn process_patch(patch: &str) -> String {
+    static RE: OnceCell<regex::Regex> = OnceCell::new();
+    let empty_line = RE.get_or_init(|| regex::Regex::new(r#"^\w*$"#).unwrap());
+
+    let patch = {
+        // remove empty lines from start and end
+
+        let rev = patch
+            .split('\n')
+            .rev()
+            .skip_while(|line| empty_line.is_match(line))
+            .collect::<Vec<_>>();
+
+        rev.into_iter()
+            .rev()
+            .skip_while(|line| empty_line.is_match(line))
+    };
+
     let mut collected = vec![];
 
-    let mut lines = patch.split('\n').peekable();
+    let mut lines = patch.peekable();
     if lines.peek().unwrap().starts_with("diff") {
         collected.push(lines.next().unwrap().into());
     }
@@ -392,9 +410,6 @@ fn process_patch(patch: &str) -> String {
         acc.push(line);
     }
 
-    if patch.ends_with("\n\n") || patch.ends_with("\r\n\r\n") || patch.ends_with("\n \n") {
-        total -= 1;
-    }
     let old_size = total - add;
     let new_size = total - remove;
     collected.push(format!(
