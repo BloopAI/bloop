@@ -70,6 +70,9 @@
 (formal_parameters
   (required_parameter
     (identifier) @local.definition.parameter))
+(formal_parameters
+  (optional_parameter
+    (identifier) @local.definition.parameter))
 
 ;; patterns
 

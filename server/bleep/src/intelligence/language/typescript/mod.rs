@@ -297,4 +297,17 @@ mod test {
             "#]],
         );
     }
+
+    fn optional_param_regression() {
+        test_scopes(
+            "TypeScript",
+            r#"
+            function foo(a?: string, b: string) {
+                return (a, b)
+            }
+            "#
+            .as_bytes(),
+            expect![],
+        );
+    }
 }

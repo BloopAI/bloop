@@ -354,4 +354,53 @@ mod test {
             "#]],
         )
     }
+
+    #[test]
+    fn catch_clause_regression() {
+        test_scopes(
+            "JavaScript",
+            r#"
+            try {
+                someFn();
+            } catch (err) {
+                return err;
+            } finally {
+                return 0;
+            }
+            "#
+            .as_bytes(),
+            expect![[r#"
+                scope {
+                    definitions: [],
+                    child scopes: [
+                        scope {
+                            definitions: [],
+                            child scopes: [],
+                        },
+                        scope {
+                            definitions: [
+                                err {
+                                    kind: "variable",
+                                    context: "} catch (§err§) {",
+                                    referenced in (1): [
+                                        `return §err§;`,
+                                    ],
+                                },
+                            ],
+                            child scopes: [
+                                scope {
+                                    definitions: [],
+                                    child scopes: [],
+                                },
+                            ],
+                        },
+                        scope {
+                            definitions: [],
+                            child scopes: [],
+                        },
+                    ],
+                }
+            "#]],
+        )
+    }
 }
