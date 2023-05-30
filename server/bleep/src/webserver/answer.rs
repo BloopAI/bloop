@@ -816,7 +816,8 @@ impl Conversation {
             let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")?;
             let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens("gpt-4", &s)?;
 
-            // Order chunks by most recent.
+            // Select as many recent chunks as possible
+            let mut recent_chunks = Vec::new();
             for chunk in code_chunks.iter().rev() {
                 let snippet = chunk
                     .snippet
@@ -835,10 +836,29 @@ impl Conversation {
                     break;
                 }
 
-                s += &formatted_snippet;
+                recent_chunks.push((chunk.clone(), formatted_snippet));
+
                 remaining_prompt_tokens -= snippet_tokens;
                 debug!("{}", remaining_prompt_tokens);
             }
+
+            // group recent chunks by path alias
+            let mut recent_chunks_by_alias: HashMap<_, _> =
+                recent_chunks
+                    .into_iter()
+                    .fold(HashMap::new(), |mut map, item| {
+                        map.entry(item.0.alias).or_insert_with(Vec::new).push(item);
+                        map
+                    });
+
+            // sort them in ascending order of line number and append to context
+            for chunks_by_alias in recent_chunks_by_alias.values_mut() {
+                chunks_by_alias.sort_by(|a, b| a.0.start_line.cmp(&b.0.start_line));
+                for (_, formatted_snippet) in chunks_by_alias {
+                    s += formatted_snippet;
+                }
+            }
+
             s
         };
 
