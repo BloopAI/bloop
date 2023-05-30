@@ -1055,7 +1055,7 @@ impl Conversation {
 
         let merge_overlapping = |a: &mut CodeChunk, b: CodeChunk| {
             if a.end_line >= b.start_line {
-                a.end_line = b.start_line;
+                a.end_line = b.end_line;
                 a.snippet += "\n";
                 a.snippet += &b
                     .snippet
