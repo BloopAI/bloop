@@ -32,14 +32,14 @@ fn rectify_str(input: &str) -> (Cow<str>, &str) {
         return ("\"\"".into(), "");
     }
 
-    for (len, c) in rest.chars().enumerate() {
-        rest = &rest[1..];
+    for (idx, c) in rest.char_indices() {
+        rest = advance(rest).unwrap();
 
         match c {
             '\\' => escape = !escape,
             '"' => {
                 if !escape {
-                    return (input[..len + 2].into(), rest);
+                    return (input[..idx + 2].into(), rest);
                 } else {
                     escape = false;
                 }
@@ -217,8 +217,9 @@ fn consume<F: Fn(char) -> bool + Copy>(mut rest: &str, f: F) -> (String, &str) {
     let mut buf = String::new();
 
     while rest.starts_with(f) {
-        buf.push(rest.chars().next().unwrap());
-        rest = &rest[1..];
+        let mut cs = rest.chars();
+        buf.push(cs.next().unwrap());
+        rest = cs.as_str();
     }
 
     (buf, rest)
@@ -226,6 +227,17 @@ fn consume<F: Fn(char) -> bool + Copy>(mut rest: &str, f: F) -> (String, &str) {
 
 fn consume_whitespace(rest: &str) -> &str {
     consume(rest, |c| c.is_whitespace()).1
+}
+
+// equivalent to:
+//
+//    rest = &rest[1..]
+//
+// but respects multibyte chars
+fn advance(rest: &str) -> Option<&str> {
+    let mut cs = rest.chars();
+    cs.next()?;
+    Some(cs.as_str())
 }
 
 #[cfg(test)]
@@ -257,6 +269,10 @@ mod tests {
         let (value, rest) = rectify_json("\"abc\"foo");
         assert_eq!(value, "\"abc\"");
         assert_eq!(rest, "foo");
+
+        let (value, rest) = rectify_json("\"当前");
+        assert_eq!(value, "\"当前\"");
+        assert_eq!(rest, "");
     }
 
     #[test]
