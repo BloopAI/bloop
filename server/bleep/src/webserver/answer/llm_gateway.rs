@@ -6,7 +6,7 @@ use anyhow::{anyhow, bail};
 use axum::http::StatusCode;
 use futures::{Stream, StreamExt};
 use reqwest_eventsource::EventSource;
-use tracing::warn;
+use tracing::{debug, warn};
 
 pub mod api {
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
@@ -143,16 +143,18 @@ impl Client {
         for _ in 0..self.max_retries {
             match self.chat_oneshot(messages).await {
                 Err(ChatError::TooManyRequests) => {
-                    warn!("LLM request failed, retrying ...");
+                    warn!("too many LLM requests, retrying in {delay:?}...");
                     tokio::time::sleep(delay).await;
                     delay = Duration::from_millis((delay.as_millis() as f32 * SCALE_FACTOR) as u64);
                 }
                 Err(ChatError::BadRequest) => {
-                    warn!("LLM request failed, request not eligible for retry");
+                    debug!("LLM message list: {messages:?}");
+                    error!("LLM request failed, request not eligible for retry");
                     bail!("request not eligible for retry");
                 }
                 Err(ChatError::Other(e)) => {
-                    warn!("{e}");
+                    debug!("LLM message list: {messages:?}");
+                    error!("LLM request failed due to unknown reason: {e}");
                     return Err(e);
                 }
                 Ok(stream) => return Ok(stream),
