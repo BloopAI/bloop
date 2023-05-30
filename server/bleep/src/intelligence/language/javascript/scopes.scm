@@ -13,6 +13,7 @@
   (for_statement)
   (for_in_statement)
   (switch_case)
+  (catch_clause)
   ;; assignments are permitted inside sequence exprs:
   ;;
   ;;     const a = 2;
@@ -243,6 +244,9 @@
 (labeled_statement
   (statement_identifier) @local.definition.label)
 
+;; catch clauses
+(catch_clause
+  (identifier) @local.definition.variable)
 
 ;; refs
 
