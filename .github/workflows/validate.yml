@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - "helm/**"
-  push:
+      - ".github/workflows/validate.yml"
 
 jobs:
   validate:
