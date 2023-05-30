@@ -1447,26 +1447,117 @@ mod tests {
 
     #[test]
     fn test_merge_nearby() {
-        let mut a = CodeChunk {
-            path: "foo.txt".into(),
-            alias: 0,
-            snippet: "fn main() {".into(),
-            start_line: 1,
-            end_line: 2,
-        };
+        {
+            let mut a = CodeChunk {
+                path: "foo.txt".into(),
+                alias: 0,
+                snippet: "fn main() {".into(),
+                start_line: 1,
+                end_line: 2,
+            };
 
-        let b = CodeChunk {
-            path: "foo.txt".into(),
-            alias: 0,
-            snippet: "}".into(),
-            start_line: 3,
-            end_line: 4,
-        };
+            let b = CodeChunk {
+                path: "foo.txt".into(),
+                alias: 0,
+                snippet: "}".into(),
+                start_line: 3,
+                end_line: 4,
+            };
 
-        let contents = "fn main() {\nprintln!(\"hello world\");\n}\n";
+            let contents = "fn main() {\nprintln!(\"hello world\");\n}\n";
 
-        assert_eq!(None, merge_nearby(&mut a, b.clone(), contents));
-        assert_eq!(a.end_line, b.end_line);
-        assert_eq!(a.snippet, contents.trim());
+            assert_eq!(None, merge_nearby(&mut a, b.clone(), contents));
+            assert_eq!(a.end_line, b.end_line);
+            assert_eq!(a.snippet, contents.trim());
+        }
+
+        {
+            let code = vec![
+                "/// Non reccursive function.",
+                "///",
+                "/// `n` the rank used to compute the member of the sequence.",
+                "pub fn fibonacci(n: i32) -> u64 {",
+                "    if n < 0 {",
+                "        panic!(\"{} is negative!\", n);",
+                "    } else if n == 0 {",
+                "        panic!(\"zero is not a right argument to fibonacci()!\");",
+                "    } else if n == 1 {",
+                "        return 1;",
+                "    }",
+                "",
+                "    let mut sum = 0;",
+                "    let mut last = 0;",
+                "    let mut curr = 1;",
+                "    for _i in 1..n {",
+                "        sum = last + curr;",
+                "        last = curr;",
+                "        curr = sum;",
+                "    }",
+                "    sum",
+                "}",
+            ]
+            .join("\n");
+
+            let mut a = CodeChunk {
+                path: "fib.rs".into(),
+                alias: 0,
+                snippet: vec![
+                    "pub fn fibonacci(n: i32) -> u64 {",
+                    "    if n < 0 {",
+                    "        panic!(\"{} is negative!\", n);",
+                    "    } else if n == 0 {",
+                    "        panic!(\"zero is not a right argument to fibonacci()!\");",
+                    "    } else if n == 1 {",
+                    "        return 1;",
+                    "    }",
+                ]
+                .join("\n"),
+                start_line: 4,
+                end_line: 12,
+            };
+
+            let b = CodeChunk {
+                path: "foo.rs".into(),
+                alias: 0,
+                snippet: vec![
+                    "    for _i in 1..n {",
+                    "        sum = last + curr;",
+                    "        last = curr;",
+                    "        curr = sum;",
+                    "    }",
+                ]
+                .join("\n"),
+
+                start_line: 16,
+                end_line: 21,
+            };
+
+            assert_eq!(None, merge_nearby(&mut a, b.clone(), &code));
+            assert_eq!(a.end_line, b.end_line);
+
+            assert_eq!(
+                a.snippet,
+                vec![
+                    "pub fn fibonacci(n: i32) -> u64 {",
+                    "    if n < 0 {",
+                    "        panic!(\"{} is negative!\", n);",
+                    "    } else if n == 0 {",
+                    "        panic!(\"zero is not a right argument to fibonacci()!\");",
+                    "    } else if n == 1 {",
+                    "        return 1;",
+                    "    }",
+                    "",
+                    "    let mut sum = 0;",
+                    "    let mut last = 0;",
+                    "    let mut curr = 1;",
+                    "    for _i in 1..n {",
+                    "        sum = last + curr;",
+                    "        last = curr;",
+                    "        curr = sum;",
+                    "    }",
+                ]
+                .join("\n")
+            );
+        }
     }
 }
