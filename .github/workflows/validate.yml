@@ -1,0 +1,37 @@
+name: Validate helm chart resources
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [main]
+    paths:
+      - "helm/**"
+  push:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install kubeval
+        run: |
+          wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+          tar xf kubeval-linux-amd64.tar.gz
+          sudo cp kubeval /usr/local/bin
+
+      - name: Run helm lint
+        run: |
+          helm lint helm/bloop
+
+      - name: Run kubeval
+        run: |
+          helm template helm/bloop > spec.yaml
+          kubeval --schema-location https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master spec.yaml

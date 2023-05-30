@@ -34,7 +34,7 @@ fullnameOverride: ""
 
 podAnnotations: {}
 
-securityContext:
+securityContext: {}
   # fsGroup: 65534
 
 podSecurityContext:
