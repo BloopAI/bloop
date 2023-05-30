@@ -335,67 +335,7 @@ impl Indexer<File> {
         // decsending order of number of matched trigrams
         hits.sort_by(|(_, a), (_, b)| b.cmp(a));
 
-        let regex_filter = {
-            fn additions(s: &str, i: usize, j: usize) -> String {
-                if i > j {
-                    additions(s, j, i)
-                } else {
-                    let mut s = s.to_owned();
-                    s.insert_str(j, ".?");
-                    s.insert_str(i, ".?");
-                    s
-                }
-            }
-
-            fn replacements(s: &str, i: usize, j: usize) -> String {
-                if i > j {
-                    replacements(s, j, i)
-                } else {
-                    let mut s = s.to_owned();
-                    s.remove(j);
-                    s.insert_str(j, ".?");
-
-                    s.remove(i);
-                    s.insert_str(i, ".?");
-
-                    s
-                }
-            }
-
-            fn one_of_each(s: &str, i: usize, j: usize) -> String {
-                if i > j {
-                    replacements(s, j, i)
-                } else {
-                    let mut s = s.to_owned();
-                    s.remove(j);
-                    s.insert_str(j, ".?");
-
-                    s.insert_str(i, ".?");
-                    s
-                }
-            }
-
-            let all_regexes = (0..=query_str.len())
-                .flat_map(|i| (0..=query_str.len()).map(move |j| (i, j)))
-                .filter(|(i, j)| i <= j)
-                .flat_map(|(i, j)| {
-                    let mut v = vec![];
-                    if j != query_str.len() {
-                        v.push(one_of_each(query_str, i, j));
-                        v.push(replacements(query_str, i, j));
-                    }
-                    v.push(additions(query_str, i, j));
-                    v
-                });
-
-            regex::RegexSetBuilder::new(all_regexes)
-                // Increased from the default to account for long paths. At the time of writing,
-                // the default was `10 * (1 << 20)`.
-                .size_limit(10 * (1 << 25))
-                .case_insensitive(true)
-                .build()
-                .ok()
-        };
+        let regex_filter = build_fuzzy_regex_filter(query_str);
 
         // if the regex filter fails to build for some reason, the filter defaults to returning
         // false and zero results are produced
@@ -703,5 +643,88 @@ impl File {
         }
 
         Ok(())
+    }
+}
+
+fn build_fuzzy_regex_filter(query_str: &str) -> Option<regex::RegexSet> {
+    fn additions(s: &str, i: usize, j: usize) -> String {
+        if i > j {
+            additions(s, j, i)
+        } else {
+            let mut s = s.to_owned();
+            s.insert_str(j, ".?");
+            s.insert_str(i, ".?");
+            s
+        }
+    }
+
+    fn replacements(s: &str, i: usize, j: usize) -> String {
+        if i > j {
+            replacements(s, j, i)
+        } else {
+            let mut s = s.to_owned();
+            s.remove(j);
+            s.insert_str(j, ".?");
+
+            s.remove(i);
+            s.insert_str(i, ".?");
+
+            s
+        }
+    }
+
+    fn one_of_each(s: &str, i: usize, j: usize) -> String {
+        if i > j {
+            one_of_each(s, j, i)
+        } else {
+            let mut s = s.to_owned();
+            s.remove(j);
+            s.insert_str(j, ".?");
+
+            s.insert_str(i, ".?");
+            s
+        }
+    }
+
+    let all_regexes = (query_str.char_indices().map(|(idx, _)| idx))
+        .flat_map(|i| (query_str.char_indices().map(|(idx, _)| idx)).map(move |j| (i, j)))
+        .filter(|(i, j)| i <= j)
+        .flat_map(|(i, j)| {
+            let mut v = vec![];
+            if j != query_str.len() {
+                v.push(one_of_each(query_str, i, j));
+                v.push(replacements(query_str, i, j));
+            }
+            v.push(additions(query_str, i, j));
+            v
+        });
+
+    regex::RegexSetBuilder::new(all_regexes)
+        // Increased from the default to account for long paths. At the time of writing,
+        // the default was `10 * (1 << 20)`.
+        .size_limit(10 * (1 << 25))
+        .case_insensitive(true)
+        .build()
+        .ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fuzzy_multibyte_should_compile() {
+        let multibyte_str = "查询解析器在哪";
+        let filter = build_fuzzy_regex_filter(&multibyte_str);
+        assert!(filter.is_some());
+
+        // tests removal of second character
+        assert!(filter.as_ref().unwrap().is_match("查解析器在哪"));
+
+        // tests replacement of second character with `n`
+        assert!(filter.as_ref().unwrap().is_match("查n析器在哪"));
+
+        // tests addition of character `n`
+        assert!(filter.as_ref().unwrap().is_match("查询解析器在哪n"));
     }
 }
