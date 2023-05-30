@@ -375,8 +375,8 @@ impl Indexer<File> {
                 }
             }
 
-            let all_regexes = (0..=query_str.len())
-                .flat_map(|i| (0..=query_str.len()).map(move |j| (i, j)))
+            let all_regexes = (query_str.char_indices().map(|(idx, _)| idx))
+                .flat_map(|i| (query_str.char_indices().map(|(idx, _)| idx)).map(move |j| (i, j)))
                 .filter(|(i, j)| i <= j)
                 .flat_map(|(i, j)| {
                     let mut v = vec![];
