@@ -293,22 +293,13 @@ impl<'a> Visit for CreateNewCommit<'a> {
 
             assert_eq!(obj.kind, Kind::Blob);
             let blob = changes.iter().fold(obj.data, |base, patch| {
-                println!("{}", process_patch(patch));
+                let processed = process_patch(patch);
+                let base = String::from_utf8_lossy(&base);
+                println!("{base}");
 
-                match diffy::Patch::from_str(patch) {
-                    Ok(ok) => diffy::apply(String::from_utf8_lossy(&base).as_ref(), &ok).unwrap(),
-                    Err(_) => {
-                        let processed = process_patch(patch);
-                        println!("{processed}");
-
-                        diffy::apply(
-                            String::from_utf8_lossy(&base).as_ref(),
-                            &diffy::Patch::from_str(&processed).unwrap(),
-                        )
-                        .unwrap()
-                    }
-                }
-                .into()
+                diffy::apply(base.as_ref(), &diffy::Patch::from_str(&processed).unwrap())
+                    .unwrap()
+                    .into()
             });
 
             let new_id = self.repo.write_blob(&blob).unwrap();
@@ -332,9 +323,8 @@ fn process_patch(patch: &str) -> String {
     static RE: OnceCell<regex::Regex> = OnceCell::new();
     let empty_line = RE.get_or_init(|| regex::Regex::new(r#"^\w*$"#).unwrap());
 
+    // remove empty lines from start and end
     let patch = {
-        // remove empty lines from start and end
-
         let rev = patch
             .split('\n')
             .rev()
