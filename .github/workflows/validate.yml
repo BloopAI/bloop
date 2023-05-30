@@ -19,7 +19,7 @@ jobs:
 
       - uses: azure/setup-helm@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }} # only needed if version is 'latest'
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install kubeval
         run: |
@@ -33,6 +33,5 @@ jobs:
 
       - name: Run kubeval
         run: |
-          alias kubeval="kubeval --schema-location https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master "
           helm template helm/bloop > spec.yaml
-          kubeval spec.yaml
+          kubeval --schema-location https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master spec.yaml
