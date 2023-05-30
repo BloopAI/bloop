@@ -25,19 +25,19 @@ pub fn system(paths: &Vec<String>) -> String {
     let tools = [
       Tool { 
         name: "codeSearch", 
-        description: "Search the files in a codebase semantically. Results will not necessarily match search terms exactly, but should be related.", 
+        description: "Search the contents of files in a codebase semantically. Results will not necessarily match search terms exactly, but should be related.", 
         schema: "{\"name\": \"code\", \"args\": [SEARCH_TERMS // str]}", 
         examples: "[[\"code\", \"backend error types\"], [\"code\", \"react functional components\"]]"
           },
       Tool { 
         name: "pathSearch", 
-        description: "Search files by path. Results may not be exact matches, but will be similar by some edit-distance.", 
+        description: "Search the pathnames in a codebase. Results may not be exact matches, but will be similar by some edit-distance. Use when you want to find a specific file or directory.", 
         schema: "{\"name\": \"path\", \"args\": [SEARCH_TERMS // str]}", 
         examples: "[[\"path\", \"server/src\"], [\"path\", \".tsx\"], [\"path\", \"examples/android\"]]"
       },
       Tool { 
         name: "processFiles", 
-        description: "Process a list of files and extract the line ranges which are relevant to the search terms.", 
+        description: "Read one or more files and extract the line ranges which are relevant to the search terms.", 
         schema: "{\"name\": \"proc\", \"args\": [SEARCH_TERMS // str, ARRAY_OF_PATH_ALIASES // int[]}", 
         examples: "[[\"proc\", \"find all the functional react components\", [2, 5]], [\"proc\", \"where are error types\", [0]], [\"proc\", \"gitoxide initialisation\", [2, 5, 8]]]"
     },
