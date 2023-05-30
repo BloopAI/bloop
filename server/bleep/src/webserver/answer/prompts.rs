@@ -37,7 +37,7 @@ pub fn system(paths: &Vec<String>) -> String {
       },
       Tool { 
         name: "processFiles", 
-        description: "Process a list of files and extract the line ranges which are relevant to some search terms.", 
+        description: "Process a list of files and extract the line ranges which are relevant to the search terms.", 
         schema: "{\"name\": \"proc\", \"args\": [SEARCH_TERMS // str, ARRAY_OF_PATH_ALIASES // int[]}", 
         examples: "[[\"proc\", \"find all the functional react components\", [2, 5]], [\"proc\", \"where are error types\", [0]], [\"proc\", \"gitoxide initialisation\", [2, 5, 8]]]"
     },
