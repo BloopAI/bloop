@@ -1,3 +1,4 @@
+use thread_priority::ThreadBuilderExt;
 use tokio::sync::Semaphore;
 use tracing::{debug, info};
 
@@ -72,11 +73,13 @@ impl BackgroundExecutor {
         _ = rayon::ThreadPoolBuilder::new()
             .spawn_handler(move |thread| {
                 let tokio_ref = tokio_ref.clone();
-                std::thread::spawn(move || {
-                    let _tokio = tokio_ref.enter();
-                    thread.run()
-                });
-                Ok(())
+                std::thread::Builder::new()
+                    .name("index-worker".to_owned())
+                    .spawn_with_priority(thread_priority::ThreadPriority::Max, move |_| {
+                        let _tokio = tokio_ref.enter();
+                        thread.run()
+                    })
+                    .map(|_| ())
             })
             .num_threads(config.max_threads)
             .build_global();
