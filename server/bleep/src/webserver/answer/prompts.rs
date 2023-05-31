@@ -70,6 +70,7 @@ pub fn system(paths: &Vec<String>) -> String {
 - Do not assume the structure of the codebase, or the existence of files or folders
 - Do NOT use a tool that you've used before with the same arguments
 - To perform multiple actions, perform just one, wait for the response, then perform the next
+- processFiles is useful to ensure that a file is relevant to the query
 - When you are confident that you have enough information needed to answer the query, choose 'none'
 - If you have been instructed to modify the codebase choose 'none'
 - Only refer to path aliases that are under the PATHS heading above

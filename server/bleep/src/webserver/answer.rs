@@ -773,6 +773,8 @@ impl Conversation {
                 }
             }
 
+            dbg!(&path_aliases);
+
             if !self.code_chunks.is_empty() {
                 s += "\n##### CODE CHUNKS #####\n\n";
             }
@@ -809,6 +811,7 @@ impl Conversation {
                     .cloned()
                     .collect()
             };
+            dbg!(&code_chunks);
 
             const PROMPT_HEADROOM: usize = 1500;
             let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")?;
