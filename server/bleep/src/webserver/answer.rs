@@ -312,7 +312,7 @@ impl Conversation {
         action: Action,
         exchange_tx: Sender<Exchange>,
     ) -> Result<Option<Action>> {
-        let action_result = match action {
+        let action_result = match action.clone() {
             Action::Query(s) => {
                 exchange_tx
                     .send(self.update(Update::Step(SearchStep::Query(s.clone()))))
@@ -492,9 +492,11 @@ impl Conversation {
             }
         };
 
-        self.llm_history.push_back(llm_gateway::api::Message::user(
-            &(action_result + "\n\nChoose a tool:"),
-        ));
+        self.llm_history.push_back(
+            llm_gateway::api::Message::user(&(action_result + "\n\nChoose a tool:"))
+                .trimmable(!matches!(&action, Action::Query(..))), // this message is trimmable as long
+                                                                   // as its not a user query action
+        );
 
         let updated_system_prompt =
             llm_gateway::api::Message::system(&prompts::system(&self.paths));
@@ -1041,8 +1043,14 @@ impl Conversation {
         while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < HEADROOM {
             tiktoken_msgs
                 .iter_mut()
-                .find(|m| m.role == "user" && m.content != "[HIDDEN]")
+                .zip(self.llm_history.iter())
+                .find(|(tiktoken_message, llm_message)| {
+                    llm_message.trimmable
+                        && tiktoken_message.role == "user"
+                        && tiktoken_message.content != "[HIDDEN]"
+                })
                 .context("could not find message to trim")?
+                .0
                 .content = "[HIDDEN]".into();
         }
 
@@ -1051,6 +1059,7 @@ impl Conversation {
             .map(|m| llm_gateway::api::Message {
                 role: m.role,
                 content: m.content,
+                trimmable: true,
             })
             .collect())
     }
@@ -1217,7 +1226,7 @@ fn merge_nearby(a: &mut CodeChunk, b: CodeChunk, contents: &str) -> Option<CodeC
     None
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum Action {
     /// A user-provided query.
@@ -1371,6 +1380,46 @@ mod tests {
             vec![
                 llm_gateway::api::Message::system("foo"),
                 llm_gateway::api::Message::user("[HIDDEN]"),
+                llm_gateway::api::Message::assistant("baz"),
+                llm_gateway::api::Message::user("[HIDDEN]"),
+                llm_gateway::api::Message::assistant("quux"),
+                llm_gateway::api::Message::user("fred"),
+                llm_gateway::api::Message::assistant("thud"),
+                llm_gateway::api::Message::user(&long_string),
+                llm_gateway::api::Message::user("corge"),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_trimming_exclude_user_query() {
+        let long_string = std::iter::repeat("long string ")
+            .take(2000)
+            .collect::<String>();
+
+        let conversation = Conversation {
+            llm_history: vec![
+                llm_gateway::api::Message::system("foo"),
+                llm_gateway::api::Message::user("bar").trimmable(false),
+                llm_gateway::api::Message::assistant("baz"),
+                llm_gateway::api::Message::user(&long_string),
+                llm_gateway::api::Message::assistant("quux"),
+                llm_gateway::api::Message::user("fred"),
+                llm_gateway::api::Message::assistant("thud"),
+                llm_gateway::api::Message::user(&long_string),
+                llm_gateway::api::Message::user("corge"),
+            ],
+            exchanges: Vec::new(),
+            paths: Vec::new(),
+            repo_ref: "github.com/foo/bar".parse().unwrap(),
+            code_chunks: vec![],
+        };
+
+        assert_eq!(
+            conversation.trimmed_history().unwrap(),
+            vec![
+                llm_gateway::api::Message::system("foo"),
+                llm_gateway::api::Message::user("bar"), // remains untrimmed
                 llm_gateway::api::Message::assistant("baz"),
                 llm_gateway::api::Message::user("[HIDDEN]"),
                 llm_gateway::api::Message::assistant("quux"),

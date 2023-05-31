@@ -13,6 +13,10 @@ pub mod api {
     pub struct Message {
         pub role: String,
         pub content: String,
+
+        // metadata
+        #[serde(default = "default_true")]
+        pub trimmable: bool,
     }
 
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -48,6 +52,10 @@ pub mod api {
     }
 
     pub type Result = std::result::Result<String, Error>;
+
+    fn default_true() -> bool {
+        true
+    }
 }
 
 impl api::Message {
@@ -55,6 +63,7 @@ impl api::Message {
         Self {
             role: role.to_owned(),
             content: content.to_owned(),
+            trimmable: true,
         }
     }
 
@@ -68,6 +77,11 @@ impl api::Message {
 
     pub fn assistant(content: &str) -> Self {
         Self::new("assistant", content)
+    }
+
+    pub fn trimmable(mut self, trimmable: bool) -> Self {
+        self.trimmable = trimmable;
+        self
     }
 }
 
