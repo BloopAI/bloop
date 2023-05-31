@@ -319,10 +319,9 @@ impl Conversation {
                 let summarized_answer = self.get_summarized_answer();
                 match summarized_answer.as_ref() {
                     Some(summary) => {
-                        dbg!(&summary);
                         info!("attaching summary of previous exchange: {summary}");
                         self.llm_history
-                            .push_back(llm_gateway::api::Message::assistant(&summary));
+                            .push_back(llm_gateway::api::Message::assistant(summary));
                     }
                     None => {
                         info!("no previous exchanges, skipping summary");
@@ -418,7 +417,7 @@ impl Conversation {
                         .with_payload("query", &search)
                         .with_payload("is_semantic", is_semantic)
                         .with_payload("results", &paths)
-                        .with_payload("raw_prompt", &prompt),
+                        .with_payload("raw_prompt", prompt),
                 );
 
                 let formatted_paths = paths
@@ -490,7 +489,6 @@ impl Conversation {
             }
         };
 
-        dbg!(&action_result);
         self.llm_history.push_back(llm_gateway::api::Message::user(
             &(action_result + "\n\nChoose a tool:"),
         ));
@@ -511,7 +509,6 @@ impl Conversation {
             EventData::output_stage("llm_reply").with_payload("raw_response", &raw_response),
         );
 
-        dbg!(&raw_response);
         let action = Action::deserialize_gpt(&raw_response)?;
         if !matches!(action, Action::Query(..)) {
             self.llm_history
@@ -773,8 +770,6 @@ impl Conversation {
                 }
             }
 
-            dbg!(&path_aliases);
-
             if !self.code_chunks.is_empty() {
                 s += "\n##### CODE CHUNKS #####\n\n";
             }
@@ -811,7 +806,6 @@ impl Conversation {
                     .cloned()
                     .collect()
             };
-            dbg!(&code_chunks);
 
             const PROMPT_HEADROOM: usize = 1500;
             let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")?;
@@ -1322,9 +1316,7 @@ mod tests {
 
     #[test]
     fn test_trimming() {
-        let long_string = std::iter::repeat("long string ")
-            .take(2000)
-            .collect::<String>();
+        let long_string = "long string ".repeat(2000);
 
         let conversation = Conversation {
             llm_history: vec![
