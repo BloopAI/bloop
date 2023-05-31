@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, VecDeque},
     mem,
     panic::AssertUnwindSafe,
     path::{Component, PathBuf},
@@ -231,7 +231,7 @@ pub(super) struct ConversationId {
 
 #[derive(Clone, Debug)]
 pub(super) struct Conversation {
-    llm_history: Vec<llm_gateway::api::Message>,
+    llm_history: VecDeque<llm_gateway::api::Message>,
     exchanges: Vec<Exchange>,
     paths: Vec<String>,
     code_chunks: Vec<CodeChunk>,
@@ -241,7 +241,7 @@ pub(super) struct Conversation {
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 struct CodeChunk {
     path: String,
-    #[serde(rename = "§ALIAS")]
+    #[serde(rename = "alias")]
     alias: u32,
     #[serde(rename = "snippet")]
     snippet: String,
@@ -251,16 +251,22 @@ struct CodeChunk {
     end_line: u32,
 }
 
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+struct SeenPath {
+    path: String,
+    alias: u32,
+}
+
 impl Conversation {
     fn new(repo_ref: RepoRef) -> Self {
         // We start of with a conversation describing the operations that the LLM can perform, and
         // an initial (hidden) prompt that we pose to the user.
 
         Self {
-            llm_history: vec![
-                llm_gateway::api::Message::system(&prompts::system()),
-                llm_gateway::api::Message::assistant(prompts::INITIAL_PROMPT),
-            ],
+            llm_history: vec![llm_gateway::api::Message::system(&prompts::system(
+                &Vec::new(),
+            ))]
+            .into(),
             exchanges: Vec::new(),
             paths: Vec::new(),
             code_chunks: Vec::new(),
@@ -316,9 +322,7 @@ impl Conversation {
                     Some(summary) => {
                         info!("attaching summary of previous exchange: {summary}");
                         self.llm_history
-                            .push(llm_gateway::api::Message::assistant(summary));
-                        self.llm_history
-                            .push(llm_gateway::api::Message::assistant(prompts::CONTINUE));
+                            .push_back(llm_gateway::api::Message::assistant(summary));
                     }
                     None => {
                         info!("no previous exchanges, skipping summary");
@@ -414,10 +418,18 @@ impl Conversation {
                         .with_payload("query", &search)
                         .with_payload("is_semantic", is_semantic)
                         .with_payload("results", &paths)
-                        .with_payload("raw_prompt", &prompt),
+                        .with_payload("raw_prompt", prompt),
                 );
 
-                prompt
+                let formatted_paths = paths
+                    .iter()
+                    .map(|p| SeenPath {
+                        path: p.to_string(),
+                        alias: self.path_alias(p) as u32,
+                    })
+                    .collect::<Vec<_>>();
+
+                serde_json::to_string(&formatted_paths).unwrap()
             }
 
             Action::Code(query) => {
@@ -478,9 +490,14 @@ impl Conversation {
             }
         };
 
-        self.llm_history.push(llm_gateway::api::Message::user(
-            &(action_result + "\n\nAnswer only with a JSON action."),
+        self.llm_history.push_back(llm_gateway::api::Message::user(
+            &(action_result + "\n\nChoose a tool:"),
         ));
+
+        let updated_system_prompt =
+            llm_gateway::api::Message::system(&prompts::system(&self.paths));
+        _ = self.llm_history.pop_front();
+        self.llm_history.push_front(updated_system_prompt);
 
         let raw_response = ctx
             .llm_gateway
@@ -496,7 +513,7 @@ impl Conversation {
         let action = Action::deserialize_gpt(&raw_response)?;
         if !matches!(action, Action::Query(..)) {
             self.llm_history
-                .push(llm_gateway::api::Message::assistant(&raw_response));
+                .push_back(llm_gateway::api::Message::assistant(&raw_response));
             trace!("handling raw action: {raw_response}");
         }
 
@@ -1321,9 +1338,7 @@ mod tests {
 
     #[test]
     fn test_trimming() {
-        let long_string = std::iter::repeat("long string ")
-            .take(2000)
-            .collect::<String>();
+        let long_string = "long string ".repeat(2000);
 
         let conversation = Conversation {
             llm_history: vec![
@@ -1336,7 +1351,8 @@ mod tests {
                 llm_gateway::api::Message::assistant("thud"),
                 llm_gateway::api::Message::user(&long_string),
                 llm_gateway::api::Message::user("corge"),
-            ],
+            ]
+            .into(),
             exchanges: Vec::new(),
             paths: Vec::new(),
             repo_ref: "github.com/foo/bar".parse().unwrap(),
