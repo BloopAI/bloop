@@ -137,27 +137,22 @@ pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str)
             example: Some(r#"The path is a relative path, with no leading slash. You must generate a trailing slash, for example: server/bleep/src/webserver/. On Windows, generate backslash separated components, for example: server\bleep\src\webserver\"#),
         },
         Rule {
-            title: "Write a new code file",
-            description: "Write a new code file that satisfies the query. Do not use this to demonstrate updating an existing file.",
-            schema: "[\"new\",LANGUAGE:STRING,CODE:STRING]",
-            note: "This object can occur multiple times",
-            example: None,
-        },
-        Rule {
-            title: "Update the code in an existing file",
-            description: "Edit an existing code file by generating the diff between old and new versions. Changes should be as small as possible.",
-            schema: "[\"mod\",PATH ALIAS:INT,LANGUAGE:STRING,DESCRIPTION:STRING,GIT DIFF WITHOUT LINE NUMBERS:STRING]",
+            title: "Write a new code file in a unified diff format",
+            description: "Write a new code file that satisfies the query.",
+            schema: "[\"new\",null,LANGUAGE:STRING,DESCRIPTION:STRING,GIT DIFF WITHOUT LINE NUMBERS:STRING,NEW PATH:STRING]",
             note: "This object can occur multiple times",
             example: Some(r#"DESCRIPTION is a natural language description of the changes
+            PATH ALIAS: Always `null`
+            NEW PATH: path for the newly created file.
             GIT DIFF WITHOUT LINE NUMBERS describes the unified diff for the file, including the git diff header. Do not include any line numbers
             For example:
             ```
 @@ -1,7 +1,6 @@
--The Way that can be told of is not the eternal Way;
--The name that can be named is not the eternal name.
+-   The Way that can be told of is not the eternal Way;
+-   The name that can be named is not the eternal name.
   The Nameless is the origin of Heaven and Earth;
--The Named is the mother of all things.
-+The named is the mother of all things.
+-   The Named is the mother of all things.
++   The named is the mother of all things.
 +
   Therefore let there always be non-being,
     so we may see their subtlety,
@@ -166,10 +161,19 @@ pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str)
   The two are the same,
   But after they are produced,
     they have different names.
-+They both may be called deep and profound.
-+Deeper and more profound,
-+The door of all subtleties!
++ They both may be called deep and profound.
++ Deeper and more profound,
++ The door of all subtleties!
 ```"#),
+        },
+        Rule {
+            title: "Update the code in an existing file",
+            description: "Edit an existing code file by generating the diff between old and new versions. Changes should be as small as possible.",
+            schema: "[\"mod\",PATH ALIAS:INT,LANGUAGE:STRING,DESCRIPTION:STRING,GIT DIFF WITHOUT LINE NUMBERS:STRING]",
+            note: "This object can occur multiple times",
+            example: Some(r#"DESCRIPTION is a natural language description of the changes
+            PATH ALIAS: a number referencing the file to edit
+            GIT DIFF WITHOUT LINE NUMBERS describes the unified diff for the file, including the git diff header. Do not include any line numbers."#),
         },
         Rule {
             title: "Cite line ranges from the file",

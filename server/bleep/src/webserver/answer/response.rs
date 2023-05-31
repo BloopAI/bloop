@@ -102,7 +102,7 @@ pub enum Update {
 pub enum SearchResult {
     Cite(CiteResult),
     Directory(DirectoryResult),
-    New(NewResult),
+    New(ModifyResult),
     Modify(ModifyResult),
     Conclude(ConcludeResult),
 }
@@ -114,7 +114,7 @@ impl SearchResult {
         match tag.as_str()? {
             "cite" => CiteResult::from_json_array(&v[1..]).map(Self::Cite),
             "dir" => DirectoryResult::from_json_array(&v[1..]).map(Self::Directory),
-            "new" => NewResult::from_json_array(&v[1..]).map(Self::New),
+            "new" => ModifyResult::from_json_array(&v[1..]).map(Self::Modify),
             "mod" => ModifyResult::from_json_array(&v[1..]).map(Self::Modify),
             "con" => ConcludeResult::from_json_array(&v[1..]).map(Self::Conclude),
             _ => None,
@@ -172,6 +172,7 @@ pub struct ModifyResult {
     description: Option<String>,
     diff: Option<ModifyResultHunk>,
     raw: Option<String>,
+    new_file: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
@@ -285,31 +286,38 @@ impl ModifyResult {
             .and_then(serde_json::Value::as_str)
             .map(str::to_string);
 
+        let new_file = v
+            .get(4)
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string);
+
         Some(Self {
             path_alias,
             language,
             diff,
             raw,
+            new_file,
             ..Default::default()
         })
     }
 
     fn substitute_path_alias(mut self, path_aliases: &[String]) -> Self {
-        self.path = self
-            .path_alias
-            .as_ref()
-            .and_then(|alias| {
-                if let Some(p) = path_aliases.get(*alias as usize) {
-                    Some(p)
-                } else {
-                    tracing::warn!("no path found for alias `{alias}`");
-                    for (idx, p) in path_aliases.iter().enumerate() {
-                        tracing::warn!("we have {idx}. {p}");
+        self.path = self.new_file.clone().or_else(|| {
+            self.path_alias
+                .as_ref()
+                .and_then(|alias| {
+                    if let Some(p) = path_aliases.get(*alias as usize) {
+                        Some(p)
+                    } else {
+                        tracing::warn!("no path found for alias `{alias}`");
+                        for (idx, p) in path_aliases.iter().enumerate() {
+                            tracing::warn!("we have {idx}. {p}");
+                        }
+                        None
                     }
-                    None
-                }
-            })
-            .map(ToOwned::to_owned);
+                })
+                .map(ToOwned::to_owned)
+        });
         self
     }
 }

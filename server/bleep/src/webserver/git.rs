@@ -296,6 +296,7 @@ impl<'a> Visit for CreateNewCommit<'a> {
                 let processed = process_patch(patch);
                 let base = String::from_utf8_lossy(&base);
                 println!("{base}");
+                println!("{processed}");
 
                 diffy::apply(base.as_ref(), &diffy::Patch::from_str(&processed).unwrap())
                     .unwrap()
@@ -331,9 +332,7 @@ fn process_patch(patch: &str) -> String {
             .skip_while(|line| empty_line.is_match(line))
             .collect::<Vec<_>>();
 
-        rev.into_iter()
-            .rev()
-            .skip_while(|line| empty_line.is_match(line))
+        rev.into_iter().rev()
     };
 
     let mut collected = vec![];
