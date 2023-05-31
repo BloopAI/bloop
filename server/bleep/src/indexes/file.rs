@@ -330,29 +330,55 @@ impl Indexer<File> {
                 map
             })
             .into_iter()
+            .map(move |(addr, count)| {
+                let retrieved_doc = searcher
+                    .doc(addr)
+                    .expect("failed to get document by address");
+                let doc = FileReader.read_document(file_source, retrieved_doc);
+                (doc, count)
+            })
             .collect::<Vec<_>>();
 
-        // decsending order of number of matched trigrams
-        hits.sort_by(|(_, a), (_, b)| b.cmp(a));
+        // order hits in
+        // - decsending order of number of matched trigrams
+        // - alphabetical order of relative paths to break ties
+        //
+        //
+        // for a list of hits like so:
+        //
+        //     apple.rs 2
+        //     ball.rs  3
+        //     cat.rs   2
+        //
+        // the ordering produced is:
+        //
+        //     ball.rs  3  -- highest number of hits
+        //     apple.rs 2  -- same numeber of hits, but alphabetically preceeds cat.rs
+        //     cat.rs   2
+        //
+        hits.sort_by(|(this_doc, this_count), (other_doc, other_count)| {
+            let order_count_desc = other_count.cmp(&this_count);
+            let order_path_asc = this_doc
+                .relative_path
+                .as_str()
+                .cmp(&other_doc.relative_path.as_str());
+
+            order_count_desc.then(order_path_asc)
+        });
 
         let regex_filter = build_fuzzy_regex_filter(query_str);
 
         // if the regex filter fails to build for some reason, the filter defaults to returning
         // false and zero results are produced
         hits.into_iter()
-            .map(move |(addr, _)| {
-                let retrieved_doc = searcher
-                    .doc(addr)
-                    .expect("failed to get document by address");
-                FileReader.read_document(file_source, retrieved_doc)
-            })
-            .take(limit)
+            .map(|(doc, _)| doc)
             .filter(move |doc| {
                 regex_filter
                     .as_ref()
                     .map(|f| f.is_match(&doc.relative_path))
                     .unwrap_or_default()
             })
+            .take(limit)
     }
 
     pub async fn by_path(
