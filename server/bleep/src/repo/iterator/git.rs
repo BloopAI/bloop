@@ -5,8 +5,12 @@ use gix::ThreadSafeRepository;
 use regex::RegexSet;
 use tracing::error;
 
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 
+#[allow(unused)]
 pub enum BranchFilter {
     All,
     Head,
@@ -36,7 +40,7 @@ fn human_readable_branch_name(r: &gix::Reference<'_>) -> String {
 
 pub struct GitWalker {
     git: ThreadSafeRepository,
-    entries: HashMap<(String, FileType, gix::ObjectId), Vec<String>>,
+    entries: HashMap<(String, FileType, gix::ObjectId), HashSet<String>>,
 }
 
 impl GitWalker {
@@ -51,34 +55,53 @@ impl GitWalker {
             .open(dir.as_ref())?;
 
         let local_git = git.to_thread_local();
-        let head = local_git
-            .head()?
+        let mut head = local_git.head()?;
+        let head_name = head
+            .clone()
             .try_into_referent()
             .map(|r| r.name().to_owned());
 
         let refs = local_git.references()?;
-        let entries = refs
-            .all()?
-            .filter_map(Result::ok)
-            .map(|r| {
-                (
-                    head.as_ref()
-                        .map(|head| head.as_ref() == r.name())
-                        .unwrap_or_default(),
-                    human_readable_branch_name(&r),
-                    r,
-                )
-            })
-            .filter(|(is_head, name, _)| branches.filter(*is_head, name))
-            .filter_map(|(is_head, branch, r)| -> Option<_> {
-                let tree = r
-                    .into_fully_peeled_id()
-                    .ok()?
-                    .object()
-                    .ok()?
-                    .peel_to_tree()
-                    .ok()?;
+        let trees = if head_name.is_none() && matches!(branches, BranchFilter::Head) {
+            // the current checkout is not a branch, so HEAD will not
+            // point to a real reference.
+            vec![(
+                true,
+                "HEAD".to_string(),
+                head.peel_to_commit_in_place()?.tree()?,
+            )]
+        } else {
+            refs.all()?
+                .filter_map(Result::ok)
+                .map(|r| {
+                    (
+                        head_name
+                            .as_ref()
+                            .map(|head| head.as_ref() == r.name())
+                            .unwrap_or_default(),
+                        human_readable_branch_name(&r),
+                        r,
+                    )
+                })
+                .filter(|(is_head, name, _)| branches.filter(*is_head, name))
+                .filter_map(|(is_head, branch, r)| -> Option<_> {
+                    Some((
+                        is_head,
+                        branch,
+                        r.into_fully_peeled_id()
+                            .ok()?
+                            .object()
+                            .ok()?
+                            .peel_to_tree()
+                            .ok()?,
+                    ))
+                })
+                .collect()
+        };
 
+        let entries = trees
+            .into_iter()
+            .filter_map(|(is_head, branch, tree)| -> Option<_> {
                 let files = tree.traverse().breadthfirst.files().unwrap().into_iter();
 
                 Some(
@@ -109,12 +132,12 @@ impl GitWalker {
                         FileType::Other
                     };
 
-                    let branches = acc.entry((file, kind, oid)).or_insert_with(Vec::new);
+                    let branches = acc.entry((file, kind, oid)).or_insert_with(HashSet::new);
                     if is_head {
-                        branches.push("head".to_string());
+                        branches.insert("HEAD".to_string());
                     }
 
-                    branches.push(branch);
+                    branches.insert(branch);
                     acc
                 },
             );
@@ -151,8 +174,8 @@ impl FileSource for GitWalker {
 
                 Some(RepoFile {
                     path: file,
+                    branches: branches.into_iter().collect(),
                     kind,
-                    branches,
                     buffer,
                 })
             })
