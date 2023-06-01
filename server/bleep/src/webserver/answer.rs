@@ -183,6 +183,7 @@ pub(super) async fn _handle(
                         }
                     },
                     Err(_) => {
+                        warn!("Timeout reached.");
                         ctx.track_query(
                             EventData::output_stage("error")
                                 .with_payload("timeout", TIMEOUT_SECS),

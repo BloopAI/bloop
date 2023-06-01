@@ -78,36 +78,39 @@ const Chat = () => {
       setInputValue('');
       setLoading(true);
       const eventSource = new EventSource(
-        `${apiUrl.replace('https:', '')}/answer?q=${query}&repo_ref=${tab.key}${
-          threadId ? `&thread_id=${threadId}` : ''
-        }${
-          navigatedItem?.type === 'repo' && navigatedItem?.path
-            ? `&relative_path=${navigatedItem?.path}&is_folder=true`
-            : ''
-        }${
-          navigatedItem?.type === 'full-result' && navigatedItem?.path
-            ? `&relative_path=${navigatedItem?.path}&is_folder=false`
-            : ''
-        }${
-          selectedLines
-            ? `&start=${selectedLines[0]}&end=${selectedLines[1]}`
-            : ''
+        `${apiUrl.replace('https:', '')}/answer?q=${query}&repo_ref=${tab.key}${threadId ? `&thread_id=${threadId}` : ''
+        }${navigatedItem?.type === 'repo' && navigatedItem?.path
+          ? `&relative_path=${navigatedItem?.path}&is_folder=true`
+          : ''
+        }${navigatedItem?.type === 'full-result' && navigatedItem?.path
+          ? `&relative_path=${navigatedItem?.path}&is_folder=false`
+          : ''
+        }${selectedLines
+          ? `&start=${selectedLines[0]}&end=${selectedLines[1]}`
+          : ''
         }`,
       );
       prevEventSource = eventSource;
       setSelectedLines(null);
       let firstResultCame: boolean;
       let i = -1;
-      let errorNum = 0;
       eventSource.onerror = (err) => {
         console.log('SSE error', err);
         firstResultCame = false;
         i = -1;
-        errorNum += 1;
-        if (errorNum === 3) {
-          console.log('Closing SSE connection after 3 errors');
-          eventSource.close();
-        }
+        console.log('Closing SSE connection...');
+        eventSource.close();
+        setConversation((prev) => {
+          const newConversation = prev.slice(0, -1);
+          const lastMessage: ChatMessage = {
+            author: ChatMessageAuthor.Server,
+            isLoading: false,
+            type: ChatMessageType.Answer,
+            error: 'Something went wrong',
+            loadingSteps: [],
+          };
+          return [...newConversation, lastMessage];
+        });
       };
       eventSource.onmessage = (ev) => {
         console.log(ev.data);
@@ -136,7 +139,6 @@ const Chat = () => {
           return;
         }
         i++;
-        errorNum = Math.max(errorNum - 1, 0);
         if (i === 0) {
           setThreadId(ev.data);
           return;
@@ -184,9 +186,8 @@ const Chat = () => {
                     ...s,
                     displayText:
                       s.type === 'PROC'
-                        ? `Reading ${
-                            s.content.length > 20 ? '...' : ''
-                          }${s.content.slice(-20)}`
+                        ? `Reading ${s.content.length > 20 ? '...' : ''
+                        }${s.content.slice(-20)}`
                         : s.content,
                   }),
                 ),
@@ -233,9 +234,8 @@ const Chat = () => {
       const [prefix, ending] = submittedQuery.split(':');
       const [lineStart, lineEnd] = ending.split('-');
       const filePath = prefix.slice(9);
-      userQuery = `Explain lines ${Number(lineStart) + 1} - ${
-        Number(lineEnd) + 1
-      } in ${filePath}`;
+      userQuery = `Explain lines ${Number(lineStart) + 1} - ${Number(lineEnd) + 1
+        } in ${filePath}`;
     }
     setConversation((prev) => [
       ...prev,
@@ -283,9 +283,8 @@ const Chat = () => {
   return (
     <>
       <button
-        className={`fixed z-50 bottom-20 w-16 h-16 rounded-full cursor-pointer flex items-center justify-center ${
-          isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
-        } border border-chat-bg-border bg-chat-bg-base shadow-float transition-all duration-300 ease-out-slow`}
+        className={`fixed z-50 bottom-20 w-16 h-16 rounded-full cursor-pointer flex items-center justify-center ${isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
+          } border border-chat-bg-border bg-chat-bg-base shadow-float transition-all duration-300 ease-out-slow`}
         onClick={() => {
           setShowTooltip(false);
           setChatOpen(true);
@@ -317,18 +316,16 @@ const Chat = () => {
           <div className="absolute rounded-full top-0 left-0 right-0 bottom-0 z-10 chat-head-bg animate-spin-extra-slow" />
         </div>
         <div
-          className={`w-6 h-6 relative z-10 text-label-title ${
-            isLoading ? 'animate-spin-extra-slow' : ''
-          }`}
+          className={`w-6 h-6 relative z-10 text-label-title ${isLoading ? 'animate-spin-extra-slow' : ''
+            }`}
         >
           {isLoading ? <LiteLoader raw /> : <Sparkle raw />}
         </div>
       </button>
       <div
         ref={chatRef}
-        className={`fixed z-50 bottom-20 rounded-xl group w-97 max-h-[30rem] flex flex-col justify-end ${
-          !isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
-        } backdrop-blur-6 shadow-float bg-chat-bg-base/75 border border-chat-bg-border transition-all duration-300 ease-out-slow`}
+        className={`fixed z-50 bottom-20 rounded-xl group w-97 max-h-[30rem] flex flex-col justify-end ${!isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
+          } backdrop-blur-6 shadow-float bg-chat-bg-base/75 border border-chat-bg-border transition-all duration-300 ease-out-slow`}
       >
         <div className="w-full max-h-0 group-hover:max-h-96 transition-all duration-200 overflow-hidden flex-shrink-0">
           <div className="px-4 pt-4 flex flex-col">
@@ -387,13 +384,13 @@ const Chat = () => {
                 (conversation[conversation.length - 1] as ChatMessageServer)
                   ?.isLoading
                   ? (conversation[conversation.length - 1] as ChatMessageServer)
-                      ?.loadingSteps?.[
-                      (
-                        conversation[
-                          conversation.length - 1
-                        ] as ChatMessageServer
-                      )?.loadingSteps?.length - 1
-                    ].displayText
+                    ?.loadingSteps?.[
+                    (
+                      conversation[
+                      conversation.length - 1
+                      ] as ChatMessageServer
+                    )?.loadingSteps?.length - 1
+                  ].displayText
                   : undefined
               }
               selectedLines={selectedLines}
