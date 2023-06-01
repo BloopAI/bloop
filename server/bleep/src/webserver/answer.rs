@@ -1078,6 +1078,8 @@ impl Conversation {
                                     a.push(next);
                                 }
                             }
+                        } else {
+                            a.push(next);
                         }
 
                         a
