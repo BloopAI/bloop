@@ -98,16 +98,23 @@ const Chat = () => {
       setSelectedLines(null);
       let firstResultCame: boolean;
       let i = -1;
-      let errorNum = 0;
       eventSource.onerror = (err) => {
         console.log('SSE error', err);
         firstResultCame = false;
         i = -1;
-        errorNum += 1;
-        if (errorNum === 3) {
-          console.log('Closing SSE connection after 3 errors');
-          eventSource.close();
-        }
+        console.log('Closing SSE connection...');
+        eventSource.close();
+        setConversation((prev) => {
+          const newConversation = prev.slice(0, -1);
+          const lastMessage: ChatMessage = {
+            author: ChatMessageAuthor.Server,
+            isLoading: false,
+            type: ChatMessageType.Answer,
+            error: 'Something went wrong',
+            loadingSteps: [],
+          };
+          return [...newConversation, lastMessage];
+        });
       };
       eventSource.onmessage = (ev) => {
         console.log(ev.data);
@@ -136,7 +143,6 @@ const Chat = () => {
           return;
         }
         i++;
-        errorNum = Math.max(errorNum - 1, 0);
         if (i === 0) {
           setThreadId(ev.data);
           return;

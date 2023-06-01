@@ -21,11 +21,11 @@ type Props = {
 };
 
 const LocalReposStep = ({ handleNext, handleBack }: Props) => {
-const [repos, setRepos] = useState<RepoUi[]>([]);
-const [chosenFolder, setChosenFolder] = useState<string | null>(null);
-const [isLoading, setLoading] = useState(true);
-const { homeDir, chooseFolder } = useContext(DeviceContext);
-const { repositories } = useContext(RepositoriesContext);
+  const [repos, setRepos] = useState<RepoUi[]>([]);
+  const [chosenFolder, setChosenFolder] = useState<string | null>(null);
+  const [isLoading, setLoading] = useState(true);
+  const { homeDir, chooseFolder } = useContext(DeviceContext);
+  const { repositories } = useContext(RepositoriesContext);
 
   const handleSkip = useCallback(
     (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
@@ -77,10 +77,10 @@ const { repositories } = useContext(RepositoriesContext);
       }
     }
     // @ts-ignore
-  if (typeof folder === 'string') {
-    setChosenFolder(folder);
-  }
-}, [chooseFolder, homeDir]);
+    if (typeof folder === 'string') {
+      setChosenFolder(folder);
+    }
+  }, [chooseFolder, homeDir]);
   return (
     <>
       <DialogText
