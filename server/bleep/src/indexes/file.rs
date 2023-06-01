@@ -357,11 +357,11 @@ impl Indexer<File> {
         //     cat.rs   2
         //
         hits.sort_by(|(this_doc, this_count), (other_doc, other_count)| {
-            let order_count_desc = other_count.cmp(&this_count);
+            let order_count_desc = other_count.cmp(this_count);
             let order_path_asc = this_doc
                 .relative_path
                 .as_str()
-                .cmp(&other_doc.relative_path.as_str());
+                .cmp(other_doc.relative_path.as_str());
 
             order_count_desc.then(order_path_asc)
         });
