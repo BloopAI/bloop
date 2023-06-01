@@ -33,6 +33,8 @@ If you encounter any index issues you can wipe the bloop cache and reindex. Inst
 
 ## Contributing
 
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/BloopAI/bloop)
+
 We welcome contributions big and small! Before jumping in please read [our contributors guide](./CONTRIBUTING.md) and [our code of conduct](./CODE_OF_CONDUCT.md).
 
 Here's how to find your way around the repo:
