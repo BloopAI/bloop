@@ -101,26 +101,23 @@ impl GitWalker {
 
         let entries = trees
             .into_iter()
-            .filter_map(|(is_head, branch, tree)| -> Option<_> {
+            .flat_map(|(is_head, branch, tree)| {
                 let files = tree.traverse().breadthfirst.files().unwrap().into_iter();
 
-                Some(
-                    files
-                        .map(move |entry| {
-                            let strpath = String::from_utf8_lossy(entry.filepath.as_ref());
-                            let full_path = root_dir.join(strpath.as_ref());
-                            (
-                                is_head,
-                                branch.clone(),
-                                full_path.to_string_lossy().to_string(),
-                                entry.mode,
-                                entry.oid,
-                            )
-                        })
-                        .filter(|(_, _, path, _, _)| should_index(path)),
-                )
+                files
+                    .map(move |entry| {
+                        let strpath = String::from_utf8_lossy(entry.filepath.as_ref());
+                        let full_path = root_dir.join(strpath.as_ref());
+                        (
+                            is_head,
+                            branch.clone(),
+                            full_path.to_string_lossy().to_string(),
+                            entry.mode,
+                            entry.oid,
+                        )
+                    })
+                    .filter(|(_, _, path, _, _)| should_index(path))
             })
-            .flatten()
             .fold(
                 HashMap::new(),
                 |mut acc, (is_head, branch, file, mode, oid)| {
