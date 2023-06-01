@@ -363,7 +363,6 @@ impl Conversation {
                     .await?;
 
                 // First, perform a lexical search for the path
-                // TODO: This should be fuzzy
                 let mut paths = ctx
                     .app
                     .indexes
@@ -371,6 +370,8 @@ impl Conversation {
                     .fuzzy_path_match(&self.repo_ref, &search, /* limit */ 50)
                     .await
                     .map(|c| c.relative_path)
+                    .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.
+                    .into_iter()
                     .collect::<Vec<_>>();
 
                 let is_semantic = paths.is_empty();
