@@ -21,13 +21,11 @@ type Props = {
 };
 
 const LocalReposStep = ({ handleNext, handleBack }: Props) => {
-  const [repos, setRepos] = useState<RepoUi[]>([]);
-  const [chosenFolder, setChosenFolder] = useState(
-    getPlainFromStorage(CHOSEN_SCAN_FOLDER_KEY),
-  );
-  const [isLoading, setLoading] = useState(true);
-  const { homeDir, chooseFolder } = useContext(DeviceContext);
-  const { repositories } = useContext(RepositoriesContext);
+const [repos, setRepos] = useState<RepoUi[]>([]);
+const [chosenFolder, setChosenFolder] = useState<string | null>(null);
+const [isLoading, setLoading] = useState(true);
+const { homeDir, chooseFolder } = useContext(DeviceContext);
+const { repositories } = useContext(RepositoriesContext);
 
   const handleSkip = useCallback(
     (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
@@ -79,12 +77,10 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
       }
     }
     // @ts-ignore
-    if (typeof folder === 'string') {
-      setChosenFolder(folder);
-      savePlainToStorage(CHOSEN_SCAN_FOLDER_KEY, folder);
-    }
-  }, [chooseFolder, homeDir]);
-
+  if (typeof folder === 'string') {
+    setChosenFolder(folder);
+  }
+}, [chooseFolder, homeDir]);
   return (
     <>
       <DialogText
