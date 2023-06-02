@@ -119,6 +119,7 @@ scc = { version= "1.8.0", features = ["serde"] }
 sentry-tracing = "0.31.1"
 git-version = "0.3.5"
 gix = { version="0.44.1", features = ["blocking-http-transport-reqwest", "blocking-network-client", "pack-cache-lru-static"] }
+thread-priority = "0.13.1"
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.4"
