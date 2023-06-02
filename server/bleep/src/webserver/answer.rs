@@ -252,6 +252,13 @@ struct CodeChunk {
     end_line: u32,
 }
 
+impl CodeChunk {
+    /// Returns true if a code-chunk contains an empty snippet or a snippet with only whitespace
+    fn is_empty(&self) -> bool {
+        self.snippet.trim().is_empty()
+    }
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 struct SeenPath {
     path: String,
@@ -471,7 +478,7 @@ impl Conversation {
                     })
                     .collect::<Vec<_>>();
 
-                for chunk in &chunks {
+                for chunk in chunks.iter().filter(|c| !c.is_empty()) {
                     self.code_chunks.push(chunk.clone());
                 }
 
@@ -717,13 +724,16 @@ impl Conversation {
             let alias = self.path_alias(path) as u32;
 
             for c in relevant_chunks {
-                self.code_chunks.push(CodeChunk {
+                let chunk = CodeChunk {
                     path: path.clone(),
                     alias,
                     snippet: c.code.clone(),
                     start_line: c.range.start as u32,
                     end_line: c.range.end as u32,
-                });
+                };
+                if !chunk.is_empty() {
+                    self.code_chunks.push(chunk);
+                }
             }
         }
 
@@ -792,10 +802,6 @@ impl Conversation {
                         s += &format!("{alias}, {}\n", &path);
                     }
                 }
-            }
-
-            if !self.code_chunks.is_empty() {
-                s += "\n##### CODE CHUNKS #####\n\n";
             }
 
             let code_chunks = if path_aliases.len() == 1 {
@@ -870,7 +876,12 @@ impl Conversation {
                         map
                     });
 
-            // sort them in ascending order of line number and append to context
+            // write the header if we have atleast one chunk
+            if !recent_chunks_by_alias.values().all(Vec::is_empty) {
+                s += "\n##### CODE CHUNKS #####\n\n";
+            }
+
+            // sort chunks in ascending order of line number and append to context
             for chunks_by_alias in recent_chunks_by_alias.values_mut() {
                 chunks_by_alias.sort_by(|a, b| a.0.start_line.cmp(&b.0.start_line));
                 for (_, formatted_snippet) in chunks_by_alias {
