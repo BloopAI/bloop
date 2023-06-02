@@ -2,9 +2,8 @@
 // https://github.com/Byron/gitoxide/blob/9e391e916402aafa7a20c704d11e21a91bda63b5/gix-traverse/src/tree/recorder.rs
 
 use std::{
-    borrow::Cow,
-    collections::{HashMap, HashSet, VecDeque},
-    path::Path,
+    collections::{BTreeMap, VecDeque},
+    path::{Path, PathBuf},
     rc::Rc,
     sync::Mutex,
 };
@@ -45,6 +44,7 @@ struct MirrorTree {
     filename: String,
     children: Mutex<Vec<Rc<MirrorTree>>>,
     tree: Mutex<Tree>,
+    changes: Mutex<ChangeSet>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,14 +65,14 @@ impl super::ApiResponse for ApiResult {}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Change {
-    pub path: RepoPath,
+    pub path: PathBuf,
     pub diff: Diff,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 struct ChangeSet {
-    dirs: HashSet<RepoPath>,
-    files: HashMap<RepoPath, Vec<Diff>>,
+    dirs: BTreeMap<RepoPath, ChangeSet>,
+    files: BTreeMap<RepoPath, Vec<Diff>>,
 }
 
 pub(super) async fn create_branch(
@@ -116,7 +116,7 @@ pub(super) async fn create_branch(
         .breadthfirst(&mut changes)
         .unwrap();
 
-    let root_tree = changes.to_tree();
+    let root_tree = changes.into_tree();
     let root_oid = git.write_object(&root_tree).unwrap();
 
     let commit_id = git
@@ -144,19 +144,24 @@ pub(super) async fn create_branch(
 
 impl From<Vec<Change>> for ChangeSet {
     fn from(value: Vec<Change>) -> Self {
-        let (files, dirs) = value.into_iter().fold(
-            (HashMap::default(), HashSet::default()),
-            |(mut files, mut dirs), Change { path, diff }| {
-                dirs.extend(
-                    AsRef::<Path>::as_ref(&path)
-                        .ancestors()
-                        .map(Path::to_string_lossy)
-                        .map(Cow::<'_, str>::into),
-                );
+        let (dirs, files) = value.into_iter().fold(
+            (BTreeMap::default(), BTreeMap::default()),
+            |(mut dirs, mut files), Change { path, diff }| {
+                let dir = match path.parent() {
+                    Some(parent) if parent != Path::new("") => {
+                        &mut dirs
+                            .entry(parent.to_string_lossy().to_string())
+                            .or_insert_with(ChangeSet::default)
+                            .files
+                    }
+                    _ => &mut files,
+                };
 
-                files.entry(path).or_insert_with(Vec::default).push(diff);
+                dir.entry(path.file_name().unwrap().to_string_lossy().to_string())
+                    .or_default()
+                    .push(diff);
 
-                (files, dirs)
+                (dirs, files)
             },
         );
 
@@ -165,26 +170,46 @@ impl From<Vec<Change>> for ChangeSet {
 }
 
 impl ChangeSet {
-    fn get(&self, file: &str) -> Option<&[Diff]> {
-        self.files.get(file).map(Vec::as_ref)
+    fn file(&mut self, filename: &str) -> Option<Vec<Diff>> {
+        self.files.remove(filename)
+    }
+
+    fn dir(&mut self, path: &str) -> Option<ChangeSet> {
+        self.dirs.remove(path)
     }
 
     fn should_descend(&self, dir: &str) -> bool {
-        self.dirs.iter().any(|d| d == dir)
+        self.dirs.contains_key(dir)
     }
 }
 
 impl MirrorTree {
-    fn root() -> Rc<Self> {
-        Self::new("")
+    fn root(changes: ChangeSet) -> Rc<Self> {
+        Self::new("", changes)
     }
 
-    fn new(filename: impl Into<String>) -> Rc<Self> {
+    fn new(filename: impl Into<String>, changes: ChangeSet) -> Rc<Self> {
         Rc::new(MirrorTree {
             filename: filename.into(),
             children: Mutex::new(vec![]),
             tree: Mutex::new(Tree::empty()),
+            changes: Mutex::new(changes),
         })
+    }
+
+    fn find_child(&self, name: &str) -> Option<Rc<MirrorTree>> {
+        for c in self.children.lock().unwrap().iter() {
+            if c.filename == name {
+                return Some(c.clone());
+            }
+        }
+
+        None
+    }
+
+    fn add_child(&self, child: Rc<MirrorTree>) -> Rc<MirrorTree> {
+        self.children.lock().unwrap().push(child.clone());
+        child
     }
 
     fn collapse(self: Rc<Self>, repo: &gix::Repository) -> Tree {
@@ -192,6 +217,16 @@ impl MirrorTree {
             let mut lock = self.tree.lock().unwrap();
             std::mem::replace(&mut *lock, Tree::empty())
         };
+
+        let changeset = std::mem::take(&mut *self.changes.lock().unwrap());
+        // make sure we add any newly created files into the directory structure
+        for (filename, patches) in changeset.files {
+            tree.entries.push(Entry {
+                filename: filename.into(),
+                mode: EntryMode::Blob,
+                oid: write_patched_file(repo, patches, vec![]),
+            });
+        }
 
         for child in self.children.lock().unwrap().drain(..) {
             let filename = child.filename.clone().into();
@@ -210,7 +245,8 @@ impl MirrorTree {
 
 impl<'a> CreateNewCommit<'a> {
     fn new(repo: &'a gix::Repository, changes: Vec<Change>) -> Self {
-        let root = MirrorTree::root();
+        let root = MirrorTree::root(changes.clone().into());
+
         CreateNewCommit {
             path_deque: Default::default(),
             path: Default::default(),
@@ -236,8 +272,27 @@ impl<'a> CreateNewCommit<'a> {
         self.path.push_str(name);
     }
 
-    fn to_tree(&self) -> Tree {
-        self.root.clone().collapse(self.repo)
+    fn into_tree(self) -> Tree {
+        let ChangeSet { dirs, .. } = self.changes;
+        for (path, contents) in dirs {
+            let path = Path::new(&path);
+            path.parent()
+                .expect("root or empty path")
+                .components()
+                .fold(self.root.clone(), |tree, component| {
+                    let filename = component.as_os_str().to_string_lossy();
+                    match tree.find_child(&filename) {
+                        Some(subtree) => subtree,
+                        None => tree.add_child(MirrorTree::new(filename, ChangeSet::default())),
+                    }
+                })
+                .add_child(MirrorTree::new(
+                    path.file_name().unwrap().to_string_lossy(),
+                    contents,
+                ));
+        }
+
+        self.root.collapse(self.repo)
     }
 }
 
@@ -252,7 +307,12 @@ impl<'a> Visit for CreateNewCommit<'a> {
     fn push_back_tracked_path_component(&mut self, component: &BStr) {
         self.push_element(component);
 
-        let next = MirrorTree::new(component.to_str_lossy());
+        let next = MirrorTree::new(
+            component.to_str_lossy(),
+            self.changes
+                .dir(&self.path.to_str_lossy())
+                .unwrap_or_default(),
+        );
         self.current.children.lock().unwrap().push(next.clone());
 
         self.path_deque.push_back((next, self.path.clone()));
@@ -278,12 +338,30 @@ impl<'a> Visit for CreateNewCommit<'a> {
                 filename: entry.filename.into(),
                 oid: entry.oid.into(),
             });
+
             Action::Skip
         }
     }
 
     fn visit_nontree(&mut self, entry: &tree::EntryRef<'_>) -> Action {
-        if let Some(changes) = self.changes.get(self.path.to_str_lossy().as_ref()) {
+        let dir_changes = self
+            .current
+            .changes
+            .lock()
+            .unwrap()
+            .file(&entry.filename.to_str_lossy());
+
+        let Some(changes) = dir_changes else {
+	    self.current.tree.lock().unwrap().entries.push(Entry {
+                mode: entry.mode,
+                filename: entry.filename.into(),
+                oid: entry.oid.into(),
+	    });
+
+	    return Action::Continue;
+	};
+
+        let oid = {
             let obj = self
                 .repo
                 .try_find_object(entry.oid)
@@ -292,32 +370,35 @@ impl<'a> Visit for CreateNewCommit<'a> {
                 .detach();
 
             assert_eq!(obj.kind, Kind::Blob);
-            let blob = changes.iter().fold(obj.data, |base, patch| {
-                let processed = process_patch(patch);
-                let base = String::from_utf8_lossy(&base);
-                println!("{base}");
-                println!("{processed}");
 
-                diffy::apply(base.as_ref(), &diffy::Patch::from_str(&processed).unwrap())
-                    .unwrap()
-                    .into()
-            });
+            write_patched_file(self.repo, changes, obj.data)
+        };
 
-            let new_id = self.repo.write_blob(&blob).unwrap();
-            self.current.tree.lock().unwrap().entries.push(Entry {
-                mode: entry.mode,
-                filename: entry.filename.into(),
-                oid: new_id.detach(),
-            });
-        } else {
-            self.current.tree.lock().unwrap().entries.push(Entry {
-                mode: entry.mode,
-                filename: entry.filename.into(),
-                oid: entry.oid.into(),
-            });
-        }
+        self.current.tree.lock().unwrap().entries.push(Entry {
+            mode: entry.mode,
+            filename: entry.filename.into(),
+            oid,
+        });
+
         Action::Continue
     }
+}
+
+fn write_patched_file(
+    repo: &gix::Repository,
+    changes: impl IntoIterator<Item = String>,
+    buf: Vec<u8>,
+) -> gix::ObjectId {
+    let blob = changes.into_iter().fold(buf, |base, patch| {
+        let processed = process_patch(&patch);
+        let base = String::from_utf8_lossy(&base);
+
+        diffy::apply(base.as_ref(), &diffy::Patch::from_str(&processed).unwrap())
+            .unwrap()
+            .into()
+    });
+
+    repo.write_blob(&blob).unwrap().into()
 }
 
 fn process_patch(patch: &str) -> String {
@@ -372,7 +453,7 @@ fn process_patch(patch: &str) -> String {
     let (mut add, mut remove, mut total) = (0, 0, 0);
     let (mut old_start, mut new_start, mut head_text) = parse_head(first_hunk_head);
 
-    while let Some(line) = lines.next() {
+    for line in lines {
         if line.starts_with("@@") {
             let old_size = total - add;
             let new_size = total - remove;
