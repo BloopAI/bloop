@@ -148,33 +148,38 @@ impl FileSource for GitWalker {
         self.entries.len()
     }
 
-    fn for_each(self, iterator: impl Fn(RepoFile) + Sync + Send) {
+    fn for_each(self, iterator: impl Fn(RepoDirEntry) + Sync + Send) {
         use rayon::prelude::*;
         self.entries
             .into_par_iter()
-            .filter_map(|((file, kind, oid), branches)| {
+            .filter_map(|((path, kind, oid), branches)| {
                 let git = self.git.to_thread_local();
                 let Ok(Some(object)) = git.try_find_object(oid) else {
-		    error!(?file, ?branches, "can't find object for file");
-		    return None;
-		};
+                    error!(?path, ?branches, "can't find object for file");
+                    return None;
+                };
 
                 if object.data.len() as u64 > MAX_FILE_LEN {
                     return None;
                 }
 
-                let buffer = match kind {
-                    FileType::File => String::from_utf8_lossy(&object.data).to_string(),
-                    FileType::Dir => String::default(),
+                let entry = match kind {
+                    FileType::File => {
+                        let buffer = String::from_utf8_lossy(&object.data).to_string();
+                        RepoDirEntry::File(RepoFile {
+                            path,
+                            branches: branches.into_iter().collect(),
+                            buffer,
+                        })
+                    }
+                    FileType::Dir => RepoDirEntry::Dir(RepoDir {
+                        path,
+                        branches: branches.into_iter().collect(),
+                    }),
                     FileType::Other => return None,
                 };
 
-                Some(RepoFile {
-                    path: file,
-                    branches: branches.into_iter().collect(),
-                    kind,
-                    buffer,
-                })
+                Some(entry)
             })
             .for_each(iterator)
     }

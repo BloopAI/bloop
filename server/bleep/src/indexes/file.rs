@@ -51,7 +51,7 @@ struct Workload<'a> {
     repo_name: &'a str,
     repo_metadata: &'a RepoMetadata,
     cache: &'a FileCache,
-    file: RepoFile,
+    dir_entry: RepoDirEntry,
 }
 
 #[derive(Clone)]
@@ -99,6 +99,9 @@ pub struct File {
 
     // list of branches in which this file can be found
     pub branches: Field,
+
+    // Whether this entry is a file or a directory
+    pub is_directory: Field,
 }
 
 impl File {
@@ -137,6 +140,8 @@ impl File {
         let raw_repo_name = builder.add_bytes_field("raw_repo_name", FAST);
         let raw_relative_path = builder.add_bytes_field("raw_relative_path", FAST);
 
+        let is_directory = builder.add_bool_field("is_directory", FAST);
+
         Self {
             entry_disk_path,
             repo_disk_path,
@@ -157,6 +162,7 @@ impl File {
             raw_repo_name,
             raw_relative_path,
             branches,
+            is_directory,
 
             #[cfg(feature = "debug")]
             histogram: Arc::new(Histogram::builder().build().unwrap().into()),
@@ -180,18 +186,18 @@ impl Indexable for File {
 
         let file_worker = |count: usize| {
             let file_cache = file_cache.clone();
-            move |file: RepoFile| {
+            move |dir_entry: RepoDirEntry| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
                 pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
 
-                let entry_disk_path = file.path.clone();
+                let entry_disk_path = dir_entry.path().unwrap_or_default().to_owned();
                 let workload = Workload {
                     repo_disk_path: &repo.disk_path,
                     repo_ref: reporef.to_string(),
                     repo_name: &repo_name,
                     cache: &file_cache,
                     repo_metadata,
-                    file,
+                    dir_entry,
                 };
 
                 debug!(entry_disk_path, "queueing entry");
@@ -484,7 +490,7 @@ impl Indexer<File> {
 }
 
 impl File {
-    #[tracing::instrument(fields(repo=%workload.repo_ref, entry_disk_path=?workload.file.path), skip_all)]
+    #[tracing::instrument(fields(repo=%workload.repo_ref, entry_disk_path=?workload.dir_entry.path()), skip_all)]
     fn worker(&self, workload: Workload<'_>, writer: &IndexWriter) -> Result<()> {
         let Workload {
             repo_ref,
@@ -492,14 +498,17 @@ impl File {
             repo_name,
             repo_metadata,
             cache,
-            mut file,
+            dir_entry,
         } = workload;
 
         #[cfg(feature = "debug")]
         let start = Instant::now();
+        trace!("processing file");
 
         let relative_path = {
-            let entry_srcpath = PathBuf::from(&file.path);
+            let entry_srcpath = PathBuf::from(dir_entry.path().ok_or(anyhow::anyhow!(
+                "dir entry is not a valid file or directory"
+            ))?);
             entry_srcpath
                 .strip_prefix(repo_disk_path)
                 .map(ToOwned::to_owned)
@@ -507,21 +516,14 @@ impl File {
         };
         let entry_pathbuf = repo_disk_path.join(&relative_path);
 
-        let relative_path_str = if file.kind.is_dir() {
-            format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy())
-        } else {
-            relative_path.to_string_lossy().to_string()
-        };
-        trace!("processing file");
-
         let content_hash = {
             let mut hash = blake3::Hasher::new();
             hash.update(crate::state::SCHEMA_VERSION.as_bytes());
-            hash.update(file.buffer.as_bytes());
+            hash.update(dir_entry.buffer().unwrap_or_default().as_bytes());
             hash.finalize().to_hex().to_string()
         };
-        trace!("adding cache entry");
 
+        trace!("adding cache entry");
         match cache.entry(entry_pathbuf.clone()) {
             Entry::Occupied(mut val) if val.get().value == content_hash => {
                 // skip processing if contents are up-to-date in the cache
@@ -537,108 +539,134 @@ impl File {
         }
         trace!("added cache entry");
 
-        let lang_str = if file.kind.is_file() {
-            repo_metadata
-                .langs
-                .get(&entry_pathbuf, file.buffer.as_ref())
-                .unwrap_or_else(|| {
-                    warn!(?entry_pathbuf, "Path not found in language map");
-                    ""
-                })
-        } else {
-            ""
-        };
-
-        // calculate symbol locations
-        let symbol_locations = if file.kind.is_file() {
-            // build a syntax aware representation of the file
-            let scope_graph = TreeSitterFile::try_build(file.buffer.as_bytes(), lang_str)
-                .and_then(TreeSitterFile::scope_graph);
-
-            match scope_graph {
-                // we have a graph, use that
-                Ok(graph) => SymbolLocations::TreeSitter(graph),
-                // no graph, it's empty
-                Err(err) => {
-                    warn!(?err, %lang_str, "failed to build scope graph");
-                    SymbolLocations::Empty
-                }
-            }
-        } else {
-            SymbolLocations::Empty
-        };
-
-        // flatten the list of symbols into a string with just text
-        let symbols = symbol_locations
-            .list()
-            .iter()
-            .map(|sym| file.buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
-            .collect::<HashSet<_>>()
-            .into_iter()
-            .collect::<Vec<_>>()
-            .join("\n");
-
-        let branches = file.branches.join("\n");
-
-        // add an NL if this file is not NL-terminated
-        if !file.buffer.ends_with('\n') {
-            file.buffer += "\n";
-        }
-
-        let line_end_indices = file
-            .buffer
-            .match_indices('\n')
-            .flat_map(|(i, _)| u32::to_le_bytes(i as u32))
-            .collect::<Vec<_>>();
-
-        // Skip files that are too long. This is not necessarily caught in the filesize check, e.g.
-        // for a file like `vocab.txt` which has thousands of very short lines.
-        if line_end_indices.len() > MAX_LINE_COUNT as usize {
-            return Ok(());
-        }
-
-        let lines_avg = file.buffer.len() as f64 / file.buffer.lines().count() as f64;
         let last_commit = repo_metadata.last_commit_unix_secs;
 
-        // produce vectors for this document if it is a file
-        if file.kind.is_file() {
-            if let Some(semantic) = &self.semantic {
-                tokio::task::block_in_place(|| {
-                    Handle::current().block_on(semantic.insert_points_for_buffer(
-                        repo_name,
-                        &repo_ref,
-                        &relative_path_str,
-                        &file.buffer,
-                        lang_str,
-                        &file.branches,
-                    ))
-                });
+        match dir_entry {
+            RepoDirEntry::Dir(dir) => {
+                let relative_path_str =
+                    format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy());
+                let branches = dir.branches.join("\n");
+                trace!("writing dir document");
+                #[cfg(feature = "debug")]
+                let buf_size = buffer.len();
+                writer.add_document(doc!(
+                        self.raw_repo_name => repo_name.as_bytes(),
+                        self.raw_relative_path => relative_path_str.as_bytes(),
+                        self.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
+                        self.entry_disk_path => entry_pathbuf.to_string_lossy().as_ref(),
+                        self.relative_path => relative_path_str,
+                        self.repo_ref => repo_ref,
+                        self.repo_name => repo_name,
+                        self.last_commit_unix_seconds => last_commit,
+                        self.branches => branches,
+                        self.is_directory => true,
+
+                        // nulls
+                        self.raw_content => Vec::<u8>::default(),
+                        self.content => String::default(),
+                        self.line_end_indices => Vec::<u8>::default(),
+                        self.lang => Vec::<u8>::default(),
+                        self.avg_line_length => f64::default(),
+                        self.symbol_locations => bincode::serialize(&SymbolLocations::default())?,
+                        self.symbols => String::default(),
+                ))?;
+                trace!("dir document written");
             }
+            RepoDirEntry::File(mut file) => {
+                let relative_path_str = relative_path.to_string_lossy().to_string();
+                let branches = file.branches.join("\n");
+                let lang_str = repo_metadata
+                    .langs
+                    .get(&entry_pathbuf, file.buffer.as_ref())
+                    .unwrap_or_else(|| {
+                        warn!(?entry_pathbuf, "Path not found in language map");
+                        ""
+                    });
+
+                let symbol_locations = {
+                    // build a syntax aware representation of the file
+                    let scope_graph = TreeSitterFile::try_build(file.buffer.as_bytes(), lang_str)
+                        .and_then(TreeSitterFile::scope_graph);
+
+                    match scope_graph {
+                        // we have a graph, use that
+                        Ok(graph) => SymbolLocations::TreeSitter(graph),
+                        // no graph, it's empty
+                        Err(err) => {
+                            warn!(?err, %lang_str, "failed to build scope graph");
+                            SymbolLocations::Empty
+                        }
+                    }
+                };
+
+                // flatten the list of symbols into a string with just text
+                let symbols = symbol_locations
+                    .list()
+                    .iter()
+                    .map(|sym| file.buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
+                    .collect::<HashSet<_>>()
+                    .into_iter()
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
+                // add an NL if this file is not NL-terminated
+                if !file.buffer.ends_with('\n') {
+                    file.buffer += "\n";
+                }
+
+                let line_end_indices = file
+                    .buffer
+                    .match_indices('\n')
+                    .flat_map(|(i, _)| u32::to_le_bytes(i as u32))
+                    .collect::<Vec<_>>();
+
+                // Skip files that are too long. This is not necessarily caught in the filesize check, e.g.
+                // for a file like `vocab.txt` which has thousands of very short lines.
+                if line_end_indices.len() > MAX_LINE_COUNT as usize {
+                    return Ok(());
+                }
+
+                let lines_avg = file.buffer.len() as f64 / file.buffer.lines().count() as f64;
+
+                if let Some(semantic) = &self.semantic {
+                    tokio::task::block_in_place(|| {
+                        Handle::current().block_on(semantic.insert_points_for_buffer(
+                            repo_name,
+                            &repo_ref,
+                            &relative_path_str,
+                            &file.buffer,
+                            lang_str,
+                            &file.branches,
+                        ))
+                    });
+                }
+
+                trace!("writing file document");
+                #[cfg(feature = "debug")]
+                let buf_size = buffer.len();
+                writer.add_document(doc!(
+                        self.raw_content => file.buffer.as_bytes(),
+                        self.raw_repo_name => repo_name.as_bytes(),
+                        self.raw_relative_path => relative_path_str.as_bytes(),
+                        self.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
+                        self.entry_disk_path => entry_pathbuf.to_string_lossy().as_ref(),
+                        self.relative_path => relative_path_str,
+                        self.repo_ref => repo_ref,
+                        self.repo_name => repo_name,
+                        self.content => file.buffer,
+                        self.line_end_indices => line_end_indices,
+                        self.lang => lang_str.to_ascii_lowercase().as_bytes(),
+                        self.avg_line_length => lines_avg,
+                        self.last_commit_unix_seconds => last_commit,
+                        self.symbol_locations => bincode::serialize(&symbol_locations)?,
+                        self.symbols => symbols,
+                        self.branches => branches,
+                        self.is_directory => false,
+                ))?;
+                trace!("file document written");
+            }
+            RepoDirEntry::Other => anyhow::bail!("dir entry was neither a file nor a directory"),
         }
-
-        trace!("writing document");
-        #[cfg(feature = "debug")]
-        let buf_size = buffer.len();
-        writer.add_document(doc!(
-            self.raw_content => file.buffer.as_bytes(),
-            self.raw_repo_name => repo_name.as_bytes(),
-            self.raw_relative_path => relative_path_str.as_bytes(),
-            self.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-            self.entry_disk_path => entry_pathbuf.to_string_lossy().as_ref(),
-            self.relative_path => relative_path_str,
-            self.repo_ref => repo_ref,
-            self.repo_name => repo_name,
-            self.content => file.buffer,
-            self.line_end_indices => line_end_indices,
-            self.lang => lang_str.to_ascii_lowercase().as_bytes(),
-            self.avg_line_length => lines_avg,
-            self.last_commit_unix_seconds => last_commit,
-            self.symbol_locations => bincode::serialize(&symbol_locations)?,
-            self.symbols => symbols,
-            self.branches => branches,
-        ))?;
-
-        trace!("document written");
 
         #[cfg(feature = "debug")]
         {
