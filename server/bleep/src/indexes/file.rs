@@ -378,6 +378,7 @@ impl Indexer<File> {
                     .map(|f| f.is_match(&doc.relative_path))
                     .unwrap_or_default()
             })
+            .filter(|doc| !doc.relative_path.ends_with(MAIN_SEPARATOR)) // omit directories
             .take(limit)
     }
 
