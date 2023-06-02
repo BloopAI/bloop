@@ -921,6 +921,7 @@ impl Conversation {
                     }
                     item
                 })
+                .flat_map(|v| v.expand())
                 .map(|s| s.substitute_path_alias(&self.paths))
                 .collect::<Vec<_>>();
 

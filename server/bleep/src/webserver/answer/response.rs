@@ -139,6 +139,13 @@ impl SearchResult {
             s => s,
         }
     }
+
+    pub(crate) fn expand(self) -> Vec<Self> {
+        match self {
+            SearchResult::Modify(modify) => modify.expand(),
+            _ => vec![self],
+        }
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
@@ -268,18 +275,11 @@ impl ModifyResult {
             .get(1)
             .and_then(serde_json::Value::as_str)
             .map(ToOwned::to_owned);
+
         let diff = v
             .get(3)
             .and_then(serde_json::Value::as_str)
-            .map(|raw_hunk| {
-                let header = raw_hunk.lines().next().and_then(|s| s.parse().ok());
-                let lines = raw_hunk
-                    .lines()
-                    .skip(1)
-                    .map(ToOwned::to_owned)
-                    .collect::<Vec<_>>();
-                ModifyResultHunk { header, lines }
-            });
+            .and_then(Self::parse_hunk);
 
         let raw = v
             .get(3)
@@ -319,6 +319,39 @@ impl ModifyResult {
                 .map(ToOwned::to_owned)
         });
         self
+    }
+
+    fn parse_hunk(raw_hunk: &str) -> Option<ModifyResultHunk> {
+        let mut raw = raw_hunk.lines();
+        let header = raw.next().and_then(|s| s.parse().ok());
+        let lines = raw.map(ToOwned::to_owned).collect::<Vec<_>>();
+
+        Some(ModifyResultHunk { header, lines })
+    }
+
+    fn expand(self) -> Vec<SearchResult> {
+        self.raw
+            .iter()
+            .flat_map(|raw_hunk| raw_hunk.split("\n@@"))
+            .map(|hunk| {
+                if hunk.starts_with("@@") {
+                    hunk.to_owned()
+                } else {
+                    format!("@@{hunk}")
+                }
+            })
+            .map(|raw| {
+                SearchResult::Modify(ModifyResult {
+                    diff: Self::parse_hunk(&raw),
+                    path_alias: self.path_alias,
+                    path: self.path.clone(),
+                    language: self.language.clone(),
+                    description: self.description.clone(),
+                    raw: Some(raw),
+                    new_file: self.new_file.clone(),
+                })
+            })
+            .collect::<Vec<_>>()
     }
 }
 
