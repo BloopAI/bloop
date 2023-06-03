@@ -72,7 +72,7 @@ tower = "0.4.13"
 tower-http = { version = "0.4.0", features = ["auth", "cors", "catch-panic", "fs"] }
 
 # api integrations
-octocrab = { git = "https://github.com/bloopai/octocrab", features = ["rustls"] }
+octocrab = { version = "0.24.0", features = ["rustls"] }
 reqwest = { version = "0.11.18", features = ["rustls-tls", "rustls", "cookies"], default-features = false }
 reqwest-eventsource = "0.4.0"
 secrecy = { version = "0.8.0", features = ["serde"] }

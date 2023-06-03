@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, ops::Not, path::Path, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, path::Path, sync::Arc};
 
 use crate::{query::parser::SemanticQuery, Configuration};
 
@@ -180,9 +180,7 @@ impl Semantic {
         qdrant_url: &str,
         config: Arc<Configuration>,
     ) -> Result<Self, SemanticError> {
-        let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url)))
-            .await
-            .unwrap();
+        let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url))).unwrap();
 
         match qdrant.has_collection(COLLECTION_NAME).await {
             Ok(has_collection) => {
