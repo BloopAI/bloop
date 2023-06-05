@@ -20,13 +20,40 @@ pub const MAX_FILE_LEN: u64 = AVG_LINE_LEN * MAX_LINE_COUNT;
 
 pub trait FileSource {
     fn len(&self) -> usize;
-    fn for_each(self, iterator: impl Fn(RepoFile) + Sync + Send);
+    fn for_each(self, iterator: impl Fn(RepoDirEntry) + Sync + Send);
+}
+
+pub enum RepoDirEntry {
+    Dir(RepoDir),
+    File(RepoFile),
+    Other,
+}
+
+impl RepoDirEntry {
+    pub fn path(&self) -> Option<&str> {
+        match self {
+            Self::File(file) => Some(file.path.as_str()),
+            Self::Dir(dir) => Some(dir.path.as_str()),
+            Self::Other => None,
+        }
+    }
+
+    pub fn buffer(&self) -> Option<&str> {
+        match self {
+            Self::File(file) => Some(file.buffer.as_str()),
+            _ => None,
+        }
+    }
+}
+
+pub struct RepoDir {
+    pub path: String,
+    pub branches: Vec<String>,
 }
 
 pub struct RepoFile {
     pub path: String,
     pub buffer: String,
-    pub kind: FileType,
     pub branches: Vec<String>,
 }
 
@@ -35,16 +62,6 @@ pub enum FileType {
     File,
     Dir,
     Other,
-}
-
-impl FileType {
-    pub fn is_dir(&self) -> bool {
-        matches!(self, Self::Dir)
-    }
-
-    pub fn is_file(&self) -> bool {
-        matches!(self, Self::File)
-    }
 }
 
 fn should_index_entry(de: &ignore::DirEntry) -> bool {

@@ -34,42 +34,39 @@ impl FileWalker {
     }
 }
 
+static HEAD: &str = "head";
+
 impl FileSource for FileWalker {
     fn len(&self) -> usize {
         self.file_list.len()
     }
 
-    fn for_each(self, iterator: impl Fn(RepoFile) + Sync + Send) {
+    fn for_each(self, iterator: impl Fn(RepoDirEntry) + Sync + Send) {
         use rayon::prelude::*;
         self.file_list
             .into_par_iter()
             .filter_map(|entry_disk_path| {
-                let buffer = if entry_disk_path.is_file() {
-                    match std::fs::read_to_string(&entry_disk_path) {
+                if entry_disk_path.is_file() {
+                    let buffer = match std::fs::read_to_string(&entry_disk_path) {
                         Err(err) => {
                             warn!(%err, ?entry_disk_path, "read failed; skipping");
                             return None;
                         }
                         Ok(buffer) => buffer,
-                    }
+                    };
+                    Some(RepoDirEntry::File(RepoFile {
+                        buffer,
+                        path: entry_disk_path.to_string_lossy().to_string(),
+                        branches: vec![HEAD.into()],
+                    }))
+                } else if entry_disk_path.is_dir() {
+                    Some(RepoDirEntry::Dir(RepoDir {
+                        path: entry_disk_path.to_string_lossy().to_string(),
+                        branches: vec![HEAD.into()],
+                    }))
                 } else {
-                    String::new()
-                };
-
-                let file_type = if entry_disk_path.is_dir() {
-                    FileType::Dir
-                } else if entry_disk_path.is_file() {
-                    FileType::File
-                } else {
-                    FileType::Other
-                };
-
-                Some(RepoFile {
-                    buffer,
-                    path: entry_disk_path.to_string_lossy().to_string(),
-                    kind: file_type,
-                    branches: vec!["head".into()],
-                })
+                    Some(RepoDirEntry::Other)
+                }
             })
             .for_each(iterator);
     }
