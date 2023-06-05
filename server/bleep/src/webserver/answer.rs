@@ -1408,7 +1408,8 @@ mod tests {
                 llm_gateway::api::Message::assistant("thud"),
                 llm_gateway::api::Message::user(&long_string),
                 llm_gateway::api::Message::user("corge"),
-            ],
+            ]
+            .into(),
             exchanges: Vec::new(),
             paths: Vec::new(),
             repo_ref: "github.com/foo/bar".parse().unwrap(),
