@@ -545,7 +545,7 @@ impl File {
             RepoDirEntry::Dir(dir) => {
                 trace!("writing dir document");
                 let doc = dir.build_document(
-                    &self,
+                    self,
                     repo_name,
                     relative_path.as_path(),
                     repo_disk_path,
@@ -562,7 +562,7 @@ impl File {
                 let buf_size = file.buffer.len();
                 let doc = file
                     .build_document(
-                        &self,
+                        self,
                         repo_name,
                         relative_path.as_path(),
                         repo_disk_path,
@@ -612,6 +612,7 @@ impl File {
 }
 
 impl RepoDir {
+    #[allow(clippy::too_many_arguments)]
     fn build_document(
         self,
         schema: &File,
@@ -651,6 +652,7 @@ impl RepoDir {
 }
 
 impl RepoFile {
+    #[allow(clippy::too_many_arguments)]
     fn build_document(
         mut self,
         schema: &File,
@@ -666,7 +668,7 @@ impl RepoFile {
         let branches = self.branches.join("\n");
         let lang_str = repo_metadata
             .langs
-            .get(&entry_pathbuf, self.buffer.as_ref())
+            .get(entry_pathbuf, self.buffer.as_ref())
             .unwrap_or_else(|| {
                 warn!(?entry_pathbuf, "Path not found in language map");
                 ""
@@ -721,7 +723,7 @@ impl RepoFile {
             tokio::task::block_in_place(|| {
                 Handle::current().block_on(semantic.insert_points_for_buffer(
                     repo_name,
-                    &repo_ref,
+                    repo_ref,
                     &relative_path_str,
                     &self.buffer,
                     lang_str,
