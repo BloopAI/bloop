@@ -289,11 +289,14 @@ impl Repository {
         index_dir.join(path_hash).with_extension("json")
     }
 
-    pub(crate) fn open_file_cache(&self, index_dir: &Path) -> Result<FileCache, RepoError> {
+    pub(crate) fn open_file_cache(&self, index_dir: &Path) -> FileCache {
         let file_name = self.file_cache_path(index_dir);
-        match std::fs::File::open(file_name) {
-            Ok(state) => Ok(Arc::new(serde_json::from_reader(state)?)),
-            Err(_) => Ok(Default::default()),
+        match std::fs::File::open(file_name)
+            .map_err(anyhow::Error::from)
+            .and_then(|f| serde_json::from_reader(f).context("bad cache"))
+        {
+            Ok(cache) => Arc::new(cache),
+            Err(_) => Default::default(),
         }
     }
 
