@@ -254,8 +254,7 @@ impl SyncHandle {
                 .await;
         }
 
-        repo.delete_file_cache(&config.index_dir)
-            .map_err(SyncError::FileCache)?;
+        repo.delete_file_cache(&config.index_dir);
 
         if !self.reporef.is_local() {
             tokio::fs::remove_dir_all(&repo.disk_path)

@@ -309,8 +309,8 @@ impl Repository {
         pretty_write_file(file_name, cache.as_ref())
     }
 
-    pub(crate) fn delete_file_cache(&self, index_dir: &Path) -> Result<(), RepoError> {
-        Ok(std::fs::remove_file(self.file_cache_path(index_dir))?)
+    pub(crate) fn delete_file_cache(&self, index_dir: &Path) {
+        _ = std::fs::remove_file(self.file_cache_path(index_dir))
     }
 }
 
