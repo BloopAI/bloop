@@ -105,9 +105,8 @@ fn run_command(command: &Path, qdrant_dir: &Path) -> Child {
 
 async fn wait_for_qdrant() {
     use qdrant_client::prelude::*;
-    let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url("http://127.0.0.1:6334")))
-        .await
-        .unwrap();
+    let qdrant =
+        QdrantClient::new(Some(QdrantClientConfig::from_url("http://127.0.0.1:6334"))).unwrap();
 
     for _ in 0..60 {
         if qdrant.health_check().await.is_ok() {
