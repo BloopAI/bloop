@@ -8,7 +8,7 @@ use std::{
     },
 };
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use async_trait::async_trait;
 use scc::hash_map::Entry;
 use tantivy::{
@@ -211,12 +211,16 @@ impl Indexable for File {
         if matches!(repo.remote, RepoRemote::Git { .. }) {
             let walker = GitWalker::open_repository(&repo.disk_path, None)?;
             let count = walker.len();
-            walker.for_each(file_worker(count));
+            walker.for_each(pipes, file_worker(count));
         } else {
             let walker = FileWalker::index_directory(&repo.disk_path);
             let count = walker.len();
-            walker.for_each(file_worker(count));
+            walker.for_each(pipes, file_worker(count));
         };
+
+        if pipes.is_cancelled() {
+            bail!("cancelled");
+        }
 
         info!(?repo.disk_path, "repo file indexing finished, took {:?}", start.elapsed());
 

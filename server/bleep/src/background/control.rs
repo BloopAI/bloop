@@ -1,9 +1,10 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use crate::repo::{RepoRef, SyncStatus};
 
 use super::{Progress, ProgressEvent};
 
-#[allow(unused)]
-pub enum ControlEvent {
+enum ControlEvent {
     /// Cancel whatever's happening, and return
     Cancel,
 }
@@ -13,6 +14,7 @@ pub struct SyncPipes {
     progress: super::ProgressStream,
     control_rx: flume::Receiver<ControlEvent>,
     control_tx: flume::Sender<ControlEvent>,
+    cancelled: AtomicBool,
 }
 
 impl SyncPipes {
@@ -23,6 +25,7 @@ impl SyncPipes {
             control_rx,
             control_tx,
             progress,
+            cancelled: false.into(),
         }
     }
 
@@ -38,5 +41,18 @@ impl SyncPipes {
             reporef: self.reporef.clone(),
             event: ProgressEvent::StatusChange(new),
         });
+    }
+
+    pub(crate) fn is_cancelled(&self) -> bool {
+        if let Ok(ControlEvent::Cancel) = self.control_rx.try_recv() {
+            self.cancelled.store(true, Ordering::SeqCst);
+            return true;
+        }
+
+        self.cancelled.load(Ordering::SeqCst)
+    }
+
+    pub(crate) fn cancel(&self) {
+        _ = self.control_tx.send(ControlEvent::Cancel);
     }
 }

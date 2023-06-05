@@ -159,17 +159,8 @@ pub(super) async fn delete_by_id(
         return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
     };
 
-    match app
-        .repo_pool
-        .update_async(&reporef, |_k, value| {
-            value.mark_removed();
-        })
-        .await
-    {
-        Some(_) => {
-            app.write_index().sync_and_index(vec![reporef]).await;
-            Ok(json(ReposResponse::Deleted))
-        }
+    match app.write_index().remove(reporef).await {
+        Some(_) => Ok(json(ReposResponse::Deleted)),
         None => Err(Error::new(ErrorKind::NotFound, "Repo not found")),
     }
 }
@@ -184,6 +175,19 @@ pub(super) async fn sync(
     };
 
     app.write_index().sync_and_index(vec![reporef]).await;
+    Ok(json(ReposResponse::SyncQueued))
+}
+
+/// Synchronize a repo by its id
+pub(super) async fn delete_sync(
+    Path(path): Path<Vec<String>>,
+    Extension(app): Extension<Application>,
+) -> impl IntoResponse {
+    let Ok(reporef) = RepoRef::from_components(&app.config.source.directory(), path) else {
+        return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
+    };
+
+    app.write_index().cancel(reporef).await;
     Ok(json(ReposResponse::SyncQueued))
 }
 

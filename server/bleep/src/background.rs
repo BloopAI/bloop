@@ -175,8 +175,37 @@ impl BoundSyncQueue {
             }
 
             info!(%reporef, "queueing for sync");
-            let (handle, _) = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone());
+            let handle = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone());
             self.1.queue.push(handle).await;
+        }
+    }
+
+    pub(crate) async fn remove(self, reporef: RepoRef) -> Option<()> {
+        if let Some(notifier) = self
+            .1
+            .active
+            .update_async(&reporef, |_k, v| {
+                v.pipes.cancel();
+                v.notify_done()
+            })
+            .await
+        {
+            // there's an active process we want to cancel
+            _ = notifier.recv_async().await;
+        }
+
+        self.0
+            .repo_pool
+            .update_async(&reporef, |_k, v| v.mark_removed())
+            .await?;
+
+        self.sync_and_index(vec![reporef]).await;
+        Some(())
+    }
+
+    pub(crate) async fn cancel(self, reporef: RepoRef) {
+        if let Some(active) = self.1.active.get_async(&reporef).await {
+            active.get().pipes.cancel();
         }
     }
 
@@ -185,7 +214,8 @@ impl BoundSyncQueue {
         self,
         reporef: RepoRef,
     ) -> anyhow::Result<SyncStatus> {
-        let (handle, finished) = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone());
+        let handle = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone());
+        let finished = handle.notify_done();
         self.1.queue.push(handle).await;
         Ok(finished.recv_async().await?)
     }

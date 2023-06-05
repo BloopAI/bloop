@@ -16,8 +16,9 @@ use super::control::SyncPipes;
 pub(crate) struct SyncHandle {
     pub(crate) reporef: RepoRef,
     pub(crate) app: Application,
-    pipes: Arc<SyncPipes>,
-    exited: flume::Sender<SyncStatus>,
+    pub(super) pipes: Arc<SyncPipes>,
+    pub(super) exited: flume::Sender<SyncStatus>,
+    pub(super) exit_signal: flume::Receiver<SyncStatus>,
 }
 
 type Result<T> = std::result::Result<T, SyncError>;
@@ -68,7 +69,7 @@ impl Drop for SyncHandle {
 
         _ = self.app.config.source.save_pool(self.app.repo_pool.clone());
 
-        info!(?status, %self.reporef, "normalized status after sync");
+        debug!(?status, %self.reporef, "normalized status after sync");
         if self
             .exited
             .send(status.unwrap_or(SyncStatus::Removed))
@@ -84,20 +85,22 @@ impl SyncHandle {
         app: Application,
         reporef: RepoRef,
         status: super::ProgressStream,
-    ) -> (Arc<Self>, flume::Receiver<SyncStatus>) {
+    ) -> Arc<Self> {
         let (exited, exit_signal) = flume::bounded(1);
         let pipes = SyncPipes::new(reporef.clone(), status).into();
 
-        (
-            Self {
-                app,
-                pipes,
-                reporef,
-                exited,
-            }
-            .into(),
+        Self {
+            app,
+            pipes,
+            reporef,
+            exited,
             exit_signal,
-        )
+        }
+        .into()
+    }
+
+    pub(super) fn notify_done(&self) -> flume::Receiver<SyncStatus> {
+        self.exit_signal.clone()
     }
 
     /// The permit that's taken here is exclusively for parallelism control.

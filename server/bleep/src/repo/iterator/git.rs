@@ -148,7 +148,7 @@ impl FileSource for GitWalker {
         self.entries.len()
     }
 
-    fn for_each(self, iterator: impl Fn(RepoDirEntry) + Sync + Send) {
+    fn for_each(self, pipes: &SyncPipes, iterator: impl Fn(RepoDirEntry) + Sync + Send) {
         use rayon::prelude::*;
         self.entries
             .into_par_iter()
@@ -181,6 +181,7 @@ impl FileSource for GitWalker {
 
                 Some(entry)
             })
+            .take_any_while(|_| !pipes.is_cancelled())
             .for_each(iterator)
     }
 }

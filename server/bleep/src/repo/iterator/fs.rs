@@ -41,7 +41,7 @@ impl FileSource for FileWalker {
         self.file_list.len()
     }
 
-    fn for_each(self, iterator: impl Fn(RepoDirEntry) + Sync + Send) {
+    fn for_each(self, pipes: &SyncPipes, iterator: impl Fn(RepoDirEntry) + Sync + Send) {
         use rayon::prelude::*;
         self.file_list
             .into_par_iter()
@@ -68,6 +68,7 @@ impl FileSource for FileWalker {
                     Some(RepoDirEntry::Other)
                 }
             })
+            .take_any_while(|_| !pipes.is_cancelled())
             .for_each(iterator);
     }
 }
