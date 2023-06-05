@@ -180,7 +180,7 @@ impl Indexable for File {
         writer: &IndexWriter,
         pipes: &SyncPipes,
     ) -> Result<()> {
-        let file_cache = repo.open_file_cache(&self.config.index_dir)?;
+        let file_cache = repo.open_file_cache(&self.config.index_dir);
         let repo_name = reporef.indexed_name();
         let processed = &AtomicU64::new(0);
 
