@@ -34,6 +34,8 @@ impl FileWalker {
     }
 }
 
+static HEAD: &str = "head";
+
 impl FileSource for FileWalker {
     fn len(&self) -> usize {
         self.file_list.len()
@@ -55,12 +57,12 @@ impl FileSource for FileWalker {
                     Some(RepoDirEntry::File(RepoFile {
                         buffer,
                         path: entry_disk_path.to_string_lossy().to_string(),
-                        branches: vec!["head".into()],
+                        branches: vec![HEAD.into()],
                     }))
                 } else if entry_disk_path.is_dir() {
                     Some(RepoDirEntry::Dir(RepoDir {
                         path: entry_disk_path.to_string_lossy().to_string(),
-                        branches: vec!["head".into()],
+                        branches: vec![HEAD.into()],
                     }))
                 } else {
                     Some(RepoDirEntry::Other)

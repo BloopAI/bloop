@@ -543,126 +543,37 @@ impl File {
 
         match dir_entry {
             RepoDirEntry::Dir(dir) => {
-                let relative_path_str =
-                    format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy());
-                let branches = dir.branches.join("\n");
                 trace!("writing dir document");
-                #[cfg(feature = "debug")]
-                let buf_size = buffer.len();
-                writer.add_document(doc!(
-                        self.raw_repo_name => repo_name.as_bytes(),
-                        self.raw_relative_path => relative_path_str.as_bytes(),
-                        self.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-                        self.entry_disk_path => entry_pathbuf.to_string_lossy().as_ref(),
-                        self.relative_path => relative_path_str,
-                        self.repo_ref => repo_ref,
-                        self.repo_name => repo_name,
-                        self.last_commit_unix_seconds => last_commit,
-                        self.branches => branches,
-                        self.is_directory => true,
-
-                        // nulls
-                        self.raw_content => Vec::<u8>::default(),
-                        self.content => String::default(),
-                        self.line_end_indices => Vec::<u8>::default(),
-                        self.lang => Vec::<u8>::default(),
-                        self.avg_line_length => f64::default(),
-                        self.symbol_locations => bincode::serialize(&SymbolLocations::default())?,
-                        self.symbols => String::default(),
-                ))?;
+                let doc = dir.build_document(
+                    &self,
+                    repo_name,
+                    relative_path.as_path(),
+                    repo_disk_path,
+                    entry_pathbuf.as_path(),
+                    repo_ref.as_str(),
+                    last_commit,
+                );
+                writer.add_document(doc)?;
                 trace!("dir document written");
             }
-            RepoDirEntry::File(mut file) => {
-                let relative_path_str = relative_path.to_string_lossy().to_string();
-                let branches = file.branches.join("\n");
-                let lang_str = repo_metadata
-                    .langs
-                    .get(&entry_pathbuf, file.buffer.as_ref())
-                    .unwrap_or_else(|| {
-                        warn!(?entry_pathbuf, "Path not found in language map");
-                        ""
-                    });
-
-                let symbol_locations = {
-                    // build a syntax aware representation of the file
-                    let scope_graph = TreeSitterFile::try_build(file.buffer.as_bytes(), lang_str)
-                        .and_then(TreeSitterFile::scope_graph);
-
-                    match scope_graph {
-                        // we have a graph, use that
-                        Ok(graph) => SymbolLocations::TreeSitter(graph),
-                        // no graph, it's empty
-                        Err(err) => {
-                            warn!(?err, %lang_str, "failed to build scope graph");
-                            SymbolLocations::Empty
-                        }
-                    }
-                };
-
-                // flatten the list of symbols into a string with just text
-                let symbols = symbol_locations
-                    .list()
-                    .iter()
-                    .map(|sym| file.buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
-                    .collect::<HashSet<_>>()
-                    .into_iter()
-                    .collect::<Vec<_>>()
-                    .join("\n");
-
-                // add an NL if this file is not NL-terminated
-                if !file.buffer.ends_with('\n') {
-                    file.buffer += "\n";
-                }
-
-                let line_end_indices = file
-                    .buffer
-                    .match_indices('\n')
-                    .flat_map(|(i, _)| u32::to_le_bytes(i as u32))
-                    .collect::<Vec<_>>();
-
-                // Skip files that are too long. This is not necessarily caught in the filesize check, e.g.
-                // for a file like `vocab.txt` which has thousands of very short lines.
-                if line_end_indices.len() > MAX_LINE_COUNT as usize {
-                    return Ok(());
-                }
-
-                let lines_avg = file.buffer.len() as f64 / file.buffer.lines().count() as f64;
-
-                if let Some(semantic) = &self.semantic {
-                    tokio::task::block_in_place(|| {
-                        Handle::current().block_on(semantic.insert_points_for_buffer(
-                            repo_name,
-                            &repo_ref,
-                            &relative_path_str,
-                            &file.buffer,
-                            lang_str,
-                            &file.branches,
-                        ))
-                    });
-                }
-
+            RepoDirEntry::File(file) => {
                 trace!("writing file document");
                 #[cfg(feature = "debug")]
-                let buf_size = buffer.len();
-                writer.add_document(doc!(
-                        self.raw_content => file.buffer.as_bytes(),
-                        self.raw_repo_name => repo_name.as_bytes(),
-                        self.raw_relative_path => relative_path_str.as_bytes(),
-                        self.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-                        self.entry_disk_path => entry_pathbuf.to_string_lossy().as_ref(),
-                        self.relative_path => relative_path_str,
-                        self.repo_ref => repo_ref,
-                        self.repo_name => repo_name,
-                        self.content => file.buffer,
-                        self.line_end_indices => line_end_indices,
-                        self.lang => lang_str.to_ascii_lowercase().as_bytes(),
-                        self.avg_line_length => lines_avg,
-                        self.last_commit_unix_seconds => last_commit,
-                        self.symbol_locations => bincode::serialize(&symbol_locations)?,
-                        self.symbols => symbols,
-                        self.branches => branches,
-                        self.is_directory => false,
-                ))?;
+                let buf_size = file.buffer.len();
+                let doc = file
+                    .build_document(
+                        &self,
+                        repo_name,
+                        relative_path.as_path(),
+                        repo_disk_path,
+                        entry_pathbuf.as_path(),
+                        repo_ref.as_str(),
+                        last_commit,
+                        repo_metadata,
+                    )
+                    .ok_or(anyhow::anyhow!("failed to build document"))?;
+                writer.add_document(doc)?;
+
                 trace!("file document written");
             }
             RepoDirEntry::Other => anyhow::bail!("dir entry was neither a file nor a directory"),
@@ -697,6 +608,147 @@ impl File {
         }
 
         Ok(())
+    }
+}
+
+impl RepoDir {
+    fn build_document(
+        self,
+        schema: &File,
+        repo_name: &str,
+        relative_path: &Path,
+        repo_disk_path: &Path,
+        entry_pathbuf: &Path,
+        repo_ref: &str,
+        last_commit: u64,
+    ) -> tantivy::schema::Document {
+        let relative_path_str = format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy());
+
+        let branches = self.branches.join("\n");
+
+        doc!(
+                schema.raw_repo_name => repo_name.as_bytes(),
+                schema.raw_relative_path => relative_path_str.as_bytes(),
+                schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
+                schema.entry_disk_path => entry_pathbuf.to_string_lossy().as_ref(),
+                schema.relative_path => relative_path_str,
+                schema.repo_ref => repo_ref,
+                schema.repo_name => repo_name,
+                schema.last_commit_unix_seconds => last_commit,
+                schema.branches => branches,
+                schema.is_directory => true,
+
+                // nulls
+                schema.raw_content => Vec::<u8>::default(),
+                schema.content => String::default(),
+                schema.line_end_indices => Vec::<u8>::default(),
+                schema.lang => Vec::<u8>::default(),
+                schema.avg_line_length => f64::default(),
+                schema.symbol_locations => bincode::serialize(&SymbolLocations::default()).unwrap(),
+                schema.symbols => String::default(),
+        )
+    }
+}
+
+impl RepoFile {
+    fn build_document(
+        mut self,
+        schema: &File,
+        repo_name: &str,
+        relative_path: &Path,
+        repo_disk_path: &Path,
+        entry_pathbuf: &Path,
+        repo_ref: &str,
+        last_commit: u64,
+        repo_metadata: &RepoMetadata,
+    ) -> Option<tantivy::schema::Document> {
+        let relative_path_str = relative_path.to_string_lossy().to_string();
+        let branches = self.branches.join("\n");
+        let lang_str = repo_metadata
+            .langs
+            .get(&entry_pathbuf, self.buffer.as_ref())
+            .unwrap_or_else(|| {
+                warn!(?entry_pathbuf, "Path not found in language map");
+                ""
+            });
+
+        let symbol_locations = {
+            // build a syntax aware representation of the file
+            let scope_graph = TreeSitterFile::try_build(self.buffer.as_bytes(), lang_str)
+                .and_then(TreeSitterFile::scope_graph);
+
+            match scope_graph {
+                // we have a graph, use that
+                Ok(graph) => SymbolLocations::TreeSitter(graph),
+                // no graph, it's empty
+                Err(err) => {
+                    warn!(?err, %lang_str, "failed to build scope graph");
+                    SymbolLocations::Empty
+                }
+            }
+        };
+
+        // flatten the list of symbols into a string with just text
+        let symbols = symbol_locations
+            .list()
+            .iter()
+            .map(|sym| self.buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        // add an NL if this file is not NL-terminated
+        if !self.buffer.ends_with('\n') {
+            self.buffer += "\n";
+        }
+
+        let line_end_indices = self
+            .buffer
+            .match_indices('\n')
+            .flat_map(|(i, _)| u32::to_le_bytes(i as u32))
+            .collect::<Vec<_>>();
+
+        // Skip files that are too long. This is not necessarily caught in the filesize check, e.g.
+        // for a file like `vocab.txt` which has thousands of very short lines.
+        if line_end_indices.len() > MAX_LINE_COUNT as usize {
+            return None;
+        }
+
+        let lines_avg = self.buffer.len() as f64 / self.buffer.lines().count() as f64;
+
+        if let Some(semantic) = &schema.semantic {
+            tokio::task::block_in_place(|| {
+                Handle::current().block_on(semantic.insert_points_for_buffer(
+                    repo_name,
+                    &repo_ref,
+                    &relative_path_str,
+                    &self.buffer,
+                    lang_str,
+                    &self.branches,
+                ))
+            });
+        }
+
+        Some(doc!(
+            schema.raw_content => self.buffer.as_bytes(),
+            schema.raw_repo_name => repo_name.as_bytes(),
+            schema.raw_relative_path => relative_path_str.as_bytes(),
+            schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
+            schema.entry_disk_path => entry_pathbuf.to_string_lossy().as_ref(),
+            schema.relative_path => relative_path_str,
+            schema.repo_ref => repo_ref,
+            schema.repo_name => repo_name,
+            schema.content => self.buffer,
+            schema.line_end_indices => line_end_indices,
+            schema.lang => lang_str.to_ascii_lowercase().as_bytes(),
+            schema.avg_line_length => lines_avg,
+            schema.last_commit_unix_seconds => last_commit,
+            schema.symbol_locations => bincode::serialize(&symbol_locations).unwrap(),
+            schema.symbols => symbols,
+            schema.branches => branches,
+            schema.is_directory => false,
+        ))
     }
 }
 
