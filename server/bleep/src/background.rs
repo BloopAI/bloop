@@ -181,31 +181,31 @@ impl BoundSyncQueue {
     }
 
     pub(crate) async fn remove(self, reporef: RepoRef) -> Option<()> {
-        if let Some(notifier) = self
+        let active = self
             .1
             .active
-            .update_async(&reporef, |_k, v| {
-                v.pipes.cancel();
-                v.notify_done()
+            .update_async(&reporef, |_, v| {
+                v.pipes.remove();
+                v.set_status(|_| SyncStatus::Removed);
             })
-            .await
-        {
-            // there's an active process we want to cancel
-            _ = notifier.recv_async().await;
+            .await;
+
+        if active.is_none() {
+            self.0
+                .repo_pool
+                .update_async(&reporef, |_k, v| v.mark_removed())
+                .await?;
+
+            self.sync_and_index(vec![reporef]).await;
         }
 
-        self.0
-            .repo_pool
-            .update_async(&reporef, |_k, v| v.mark_removed())
-            .await?;
-
-        self.sync_and_index(vec![reporef]).await;
         Some(())
     }
 
-    pub(crate) async fn cancel(self, reporef: RepoRef) {
+    pub(crate) async fn cancel(&self, reporef: RepoRef) {
         if let Some(active) = self.1.active.get_async(&reporef).await {
             active.get().pipes.cancel();
+            active.get().set_status(|_| SyncStatus::Cancelled);
         }
     }
 

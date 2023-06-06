@@ -102,7 +102,7 @@ impl Indexes {
 
             // knocking out our current file caches will force re-indexing qdrant
             repo_pool.scan(|_, repo| {
-                _ = repo.delete_file_cache(&config.index_dir);
+                repo.delete_file_cache(&config.index_dir);
             });
         }
         config.source.save_index_version()?;
