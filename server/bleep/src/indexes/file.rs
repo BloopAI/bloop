@@ -827,7 +827,7 @@ mod tests {
     #[test]
     fn fuzzy_multibyte_should_compile() {
         let multibyte_str = "查询解析器在哪";
-        let filter = build_fuzzy_regex_filter(&multibyte_str);
+        let filter = build_fuzzy_regex_filter(multibyte_str);
         assert!(filter.is_some());
 
         // tests removal of second character

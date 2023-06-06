@@ -1472,12 +1472,12 @@ mod tests {
         // Now we have a sufficient number of input tokens to overcome the emoji.
         assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 4), "fn 🚨");
         assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 5), "fn 🚨()");
-        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 6), "fn 🚨() {}");
+        assert_eq!(limit_tokens("fn 🚨() {}", bpe, 6), "fn 🚨() {}");
     }
 
     #[test]
     fn test_merge_overlapping_no_overlap() {
-        let code = vec![
+        let _code = vec![
             "/// Non recursive function.",
             "///",
             "/// `n` the rank used to compute the member of the sequence.",
@@ -1503,7 +1503,7 @@ mod tests {
         ]
         .join("\n");
 
-        let mut a = CodeChunk {
+        let a = CodeChunk {
             path: "fib.rs".into(),
             alias: 0,
             snippet: vec![
@@ -1547,7 +1547,7 @@ mod tests {
 
     #[test]
     fn test_merge_overlapping_consecutive() {
-        let code = vec![
+        let _code = vec![
             "/// Non recursive function.",
             "///",
             "/// `n` the rank used to compute the member of the sequence.",
@@ -1641,7 +1641,7 @@ mod tests {
 
     #[test]
     fn test_merge_overlapping_overlap() {
-        let code = vec![
+        let _code = vec![
             "/// Non recursive function.",
             "///",
             "/// `n` the rank used to compute the member of the sequence.",
@@ -1738,7 +1738,7 @@ mod tests {
 
     #[test]
     fn test_merge_overlapping_subset() {
-        let code = vec![
+        let _code = vec![
             "/// Non recursive function.",
             "///",
             "/// `n` the rank used to compute the member of the sequence.",
@@ -1795,7 +1795,7 @@ mod tests {
             end_line: 9,
         };
 
-        assert_eq!(None, merge_overlapping(&mut a, b.clone()));
+        assert_eq!(None, merge_overlapping(&mut a, b));
         assert_eq!(a.start_line, 4);
         assert_eq!(a.end_line, 12);
 
