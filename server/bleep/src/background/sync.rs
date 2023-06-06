@@ -17,8 +17,8 @@ pub(crate) struct SyncHandle {
     pub(crate) reporef: RepoRef,
     pub(crate) app: Application,
     pub(super) pipes: Arc<SyncPipes>,
-    pub(super) exited: flume::Sender<SyncStatus>,
-    pub(super) exit_signal: flume::Receiver<SyncStatus>,
+    exited: flume::Sender<SyncStatus>,
+    exit_signal: flume::Receiver<SyncStatus>,
 }
 
 type Result<T> = std::result::Result<T, SyncError>;
