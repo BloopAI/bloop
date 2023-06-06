@@ -3,37 +3,18 @@ use async_trait::async_trait;
 use tantivy::{
     doc,
     schema::{
-        Field, IndexRecordOption, Schema, SchemaBuilder, TextFieldIndexing, TextOptions, FAST,
-        STRING,
+        IndexRecordOption, Schema, SchemaBuilder, TextFieldIndexing, TextOptions, FAST, STRING,
     },
     IndexWriter, Term,
 };
 use tracing::info;
 
+pub use super::schema::Repo;
 use super::Indexable;
 use crate::{
     background::SyncPipes,
     repo::{RepoMetadata, RepoRef, Repository},
 };
-
-pub struct Repo {
-    schema: Schema,
-    // Path to the root of the repo on disk
-    pub disk_path: Field,
-    // Name of the org
-    pub org: Field,
-
-    // Indexed repo name, of the form:
-    //  local: repo
-    // github: github.com/org/repo
-    pub name: Field,
-    pub raw_name: Field,
-
-    // Unique repo identifier, of the form:
-    //  local: local//path/to/repo
-    // github: github.com/org/repo
-    pub repo_ref: Field,
-}
 
 impl Default for Repo {
     fn default() -> Self {
