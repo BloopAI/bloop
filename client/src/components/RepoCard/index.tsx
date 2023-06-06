@@ -1,6 +1,6 @@
 import { format as timeAgo } from 'timeago.js';
 import { MouseEvent, useCallback, useContext, useMemo } from 'react';
-import { GitHubLogo, MoreVertical, TrashCan } from '../../icons';
+import { GitHubLogo, MoreVertical, TrashCan, CloseSign } from '../../icons';
 import { MenuItemType, SyncStatus } from '../../types/general';
 import FileIcon from '../FileIcon';
 import { getFileExtensionForLang } from '../../utils';
@@ -8,7 +8,7 @@ import BarLoader from '../Loaders/BarLoader';
 import { UIContext } from '../../context/uiContext';
 import { TabsContext } from '../../context/tabsContext';
 import Dropdown from '../Dropdown/WithIcon';
-import { deleteRepo } from '../../services/api';
+import { deleteRepo, cancelSync } from '../../services/api';
 import { RepoSource } from '../../types';
 
 type Props = {
@@ -74,6 +74,31 @@ const RepoCard = ({
     [repoRef],
   );
 
+  const onCancelSync = useCallback(
+    (e: MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      cancelSync(repoRef);
+    },
+    [repoRef],
+  );
+
+  let dropdownItems = [{
+    type: MenuItemType.DANGER,
+    text: 'Remove',
+    icon: <TrashCan />,
+    onClick: onRepoRemove,
+  }];
+
+  if (sync_status === SyncStatus.Indexing ||
+      sync_status === SyncStatus.Syncing) {
+    dropdownItems.push({
+      type: MenuItemType.DANGER,
+      text: 'Cancel',
+      icon: <CloseSign />,
+       onClick: onCancelSync,
+    });
+  }
+
   return (
     <div
       className={`bg-bg-base hover:bg-bg-base-hover border border-bg-border rounded-md p-4 w-67 h-36 group
@@ -96,14 +121,7 @@ const RepoCard = ({
             btnOnlyIcon
             btnVariant="secondary"
             dropdownPlacement="bottom-end"
-            items={[
-              {
-                type: MenuItemType.DANGER,
-                text: 'Remove',
-                icon: <TrashCan />,
-                onClick: onRepoRemove,
-              },
-            ]}
+            items={dropdownItems}
           />
         </div>
       </div>
