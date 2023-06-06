@@ -280,7 +280,11 @@ impl Repository {
     pub(crate) fn sync_done_with(&mut self, metadata: Arc<RepoMetadata>) {
         self.last_index_unix_secs = get_unix_time(SystemTime::now());
         self.last_commit_unix_secs = metadata.last_commit_unix_secs;
-        self.most_common_lang = metadata.langs.most_common_lang().map(|l| l.to_string());
+        self.most_common_lang = metadata
+            .langs
+            .most_common_lang()
+            .map(|l| l.to_string())
+            .or_else(|| self.most_common_lang.take());
         self.sync_status = SyncStatus::Done;
     }
 
