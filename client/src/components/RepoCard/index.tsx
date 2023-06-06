@@ -1,6 +1,6 @@
 import { format as timeAgo } from 'timeago.js';
 import { MouseEvent, useCallback, useContext, useMemo } from 'react';
-import { GitHubLogo, MoreVertical, TrashCan, CloseSign } from '../../icons';
+import { GitHubLogo, MoreVertical, TrashCan, CloseSign, Eye } from '../../icons';
 import { MenuItemType, SyncStatus } from '../../types/general';
 import FileIcon from '../FileIcon';
 import { getFileExtensionForLang } from '../../utils';
@@ -8,7 +8,7 @@ import BarLoader from '../Loaders/BarLoader';
 import { UIContext } from '../../context/uiContext';
 import { TabsContext } from '../../context/tabsContext';
 import Dropdown from '../Dropdown/WithIcon';
-import { deleteRepo, cancelSync } from '../../services/api';
+import { deleteRepo, cancelSync, syncRepo } from '../../services/api';
 import { RepoSource } from '../../types';
 
 type Props = {
@@ -29,6 +29,7 @@ export const STATUS_MAP = {
   [SyncStatus.Removed]: { text: 'Removed', color: 'bg-red-500' },
   [SyncStatus.Uninitialized]: { text: 'Not synced', color: 'bg-bg-shade' },
   [SyncStatus.Queued]: { text: 'Queued...', color: 'bg-bg-shade' },
+  [SyncStatus.Cancelled]: { text: 'Cancelled...', color: 'bg-bg-shade' },
   [SyncStatus.Indexing]: { text: 'Indexing...', color: 'bg-yellow' },
   [SyncStatus.Syncing]: { text: 'Cloning...', color: 'bg-yellow' },
   [SyncStatus.Done]: { text: 'Last updated ', color: 'bg-green-500' },
@@ -82,6 +83,14 @@ const RepoCard = ({
     [repoRef],
   );
 
+  const onSync = useCallback(
+    (e: MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      syncRepo(repoRef);
+    },
+    [repoRef],
+  );
+
   let dropdownItems = [{
     type: MenuItemType.DANGER,
     text: 'Remove',
@@ -89,13 +98,24 @@ const RepoCard = ({
     onClick: onRepoRemove,
   }];
 
+  if (sync_status !== SyncStatus.Indexing &&
+      sync_status !== SyncStatus.Syncing &&
+      sync_status !== SyncStatus.Queued) {
+    dropdownItems.push({
+      type: MenuItemType.DEFAULT,
+      text: 'Sync',
+      icon: <Eye />,
+      onClick: onSync,
+    });
+  }
+
   if (sync_status === SyncStatus.Indexing ||
       sync_status === SyncStatus.Syncing) {
     dropdownItems.push({
       type: MenuItemType.DANGER,
       text: 'Cancel',
       icon: <CloseSign />,
-       onClick: onCancelSync,
+      onClick: onCancelSync,
     });
   }
 

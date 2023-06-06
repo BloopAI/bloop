@@ -43,6 +43,7 @@ export type FilterType = {
 };
 
 export enum SyncStatus {
+  Cancelled = 'cancelled',
   Uninitialized = 'uninitialized',
   Queued = 'queued',
   Done = 'done',
