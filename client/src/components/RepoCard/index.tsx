@@ -1,6 +1,12 @@
 import { format as timeAgo } from 'timeago.js';
 import { MouseEvent, useCallback, useContext, useMemo } from 'react';
-import { GitHubLogo, MoreVertical, TrashCan, CloseSign, Eye } from '../../icons';
+import {
+  GitHubLogo,
+  MoreVertical,
+  TrashCan,
+  CloseSign,
+  Eye,
+} from '../../icons';
 import { MenuItemType, SyncStatus } from '../../types/general';
 import FileIcon from '../FileIcon';
 import { getFileExtensionForLang } from '../../utils';
@@ -91,16 +97,20 @@ const RepoCard = ({
     [repoRef],
   );
 
-  let dropdownItems = [{
-    type: MenuItemType.DANGER,
-    text: 'Remove',
-    icon: <TrashCan />,
-    onClick: onRepoRemove,
-  }];
+  let dropdownItems = [
+    {
+      type: MenuItemType.DANGER,
+      text: 'Remove',
+      icon: <TrashCan />,
+      onClick: onRepoRemove,
+    },
+  ];
 
-  if (sync_status !== SyncStatus.Indexing &&
-      sync_status !== SyncStatus.Syncing &&
-      sync_status !== SyncStatus.Queued) {
+  if (
+    sync_status !== SyncStatus.Indexing &&
+    sync_status !== SyncStatus.Syncing &&
+    sync_status !== SyncStatus.Queued
+  ) {
     dropdownItems.push({
       type: MenuItemType.DEFAULT,
       text: 'Sync',
@@ -109,8 +119,10 @@ const RepoCard = ({
     });
   }
 
-  if (sync_status === SyncStatus.Indexing ||
-      sync_status === SyncStatus.Syncing) {
+  if (
+    sync_status === SyncStatus.Indexing ||
+    sync_status === SyncStatus.Syncing
+  ) {
     dropdownItems.push({
       type: MenuItemType.DANGER,
       text: 'Cancel',
