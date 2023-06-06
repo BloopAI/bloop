@@ -203,10 +203,13 @@ impl BoundSyncQueue {
     }
 
     pub(crate) async fn cancel(&self, reporef: RepoRef) {
-        if let Some(active) = self.1.active.get_async(&reporef).await {
-            active.get().pipes.cancel();
-            active.get().set_status(|_| SyncStatus::Cancelled);
-        }
+        self.1
+            .active
+            .update_async(&reporef, |_, v| {
+                v.pipes.cancel();
+                v.set_status(|_| SyncStatus::Cancelled);
+            })
+            .await;
     }
 
     /// Pull or clone an existing, or new repo, respectively.
