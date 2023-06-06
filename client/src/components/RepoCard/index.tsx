@@ -25,7 +25,6 @@ type Props = {
   lang: string;
   repoRef: string;
   provider: 'local' | 'github';
-  isSyncing?: boolean;
   syncStatus?: { percentage: number } | null;
   onDelete: () => void;
 };
@@ -48,7 +47,6 @@ const RepoCard = ({
   last_update,
   lang,
   provider,
-  isSyncing,
   syncStatus,
   repoRef,
   onDelete,
@@ -97,39 +95,43 @@ const RepoCard = ({
     [repoRef],
   );
 
-  let dropdownItems = [
-    {
-      type: MenuItemType.DANGER,
-      text: 'Remove',
-      icon: <TrashCan />,
-      onClick: onRepoRemove,
-    },
-  ];
+  const dropdownItems = useMemo(() => {
+    const items = [
+      {
+        type: MenuItemType.DANGER,
+        text: 'Remove',
+        icon: <TrashCan />,
+        onClick: onRepoRemove,
+      },
+    ];
 
-  if (
-    sync_status !== SyncStatus.Indexing &&
-    sync_status !== SyncStatus.Syncing &&
-    sync_status !== SyncStatus.Queued
-  ) {
-    dropdownItems.push({
-      type: MenuItemType.DEFAULT,
-      text: 'Sync',
-      icon: <Eye />,
-      onClick: onSync,
-    });
-  }
+    if (
+      sync_status !== SyncStatus.Indexing &&
+      sync_status !== SyncStatus.Syncing &&
+      sync_status !== SyncStatus.Queued
+    ) {
+      items.push({
+        type: MenuItemType.DEFAULT,
+        text: 'Sync',
+        icon: <Eye />,
+        onClick: onSync,
+      });
+    }
 
-  if (
-    sync_status === SyncStatus.Indexing ||
-    sync_status === SyncStatus.Syncing
-  ) {
-    dropdownItems.push({
-      type: MenuItemType.DANGER,
-      text: 'Cancel',
-      icon: <CloseSign />,
-      onClick: onCancelSync,
-    });
-  }
+    if (
+      sync_status === SyncStatus.Indexing ||
+      sync_status === SyncStatus.Syncing
+    ) {
+      items.push({
+        type: MenuItemType.DANGER,
+        text: 'Cancel',
+        icon: <CloseSign />,
+        onClick: onCancelSync,
+      });
+    }
+
+    return items;
+  }, [sync_status, onRepoRemove, onSync, onCancelSync]);
 
   return (
     <div
