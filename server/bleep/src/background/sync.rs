@@ -39,14 +39,14 @@ pub(super) enum SyncError {
     #[error("file cache cleanup failed: {0:?}")]
     State(RepoError),
 
-    #[error("file cache cleanup failed: {0:?}")]
-    FileCache(RepoError),
-
     #[error("folder cleanup failed: path: {0:?}, error: {1}")]
     RemoveLocal(PathBuf, std::io::Error),
 
     #[error("tantivy: {0:?}")]
     Tantivy(anyhow::Error),
+
+    #[error("cancelled by user")]
+    Cancelled,
 }
 
 impl PartialEq for SyncHandle {
@@ -134,6 +134,7 @@ impl SyncHandle {
                 // technically `sync_done_with` does this, but we want to send notifications
                 self.set_status(|_| SyncStatus::Done)
             }
+            Err(SyncError::Cancelled) => self.set_status(|_| SyncStatus::Cancelled),
             Err(err) => {
                 error!(?err, ?self.reporef, "failed to index repository");
                 self.set_status(|_| SyncStatus::Error {
@@ -194,6 +195,10 @@ impl SyncHandle {
             writers.commit().await.map_err(SyncError::Tantivy)?;
         } else {
             writers.rollback().map_err(SyncError::Tantivy)?;
+
+            if self.pipes.is_cancelled() {
+                return Err(SyncError::Cancelled);
+            }
         }
 
         indexed.map_err(SyncError::Indexing)

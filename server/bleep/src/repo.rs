@@ -329,13 +329,31 @@ pub struct RepoMetadata {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum SyncStatus {
+    /// There was an error during last sync & index
     Error { message: String },
+
+    /// Repository is not yet managed by bloop
     Uninitialized,
+
+    /// Removed by the user
     Removed,
-    Syncing,
+
+    /// Last sync & index cancelled by the user
+    Cancelled,
+
+    /// Queued for sync & index
     Queued,
+
+    /// Active VCS operation in progress
+    Syncing,
+
+    /// Active indexing in progress
     Indexing,
+
+    /// VCS remote has been removed
     RemoteRemoved,
+
+    /// Successfully indexed
     Done,
 }
 
