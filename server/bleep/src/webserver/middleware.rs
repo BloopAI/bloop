@@ -22,7 +22,7 @@ async fn local_user_mw<B>(
 ) -> Response {
     request
         .extensions_mut()
-        .insert(User(app.credentials.user().await));
+        .insert(User(app.credentials.user()));
 
     next.run(request).await
 }

@@ -72,12 +72,16 @@ where
         .await;
 
         if let Ok(backend) = initialized {
-            let username = backend.user().await;
-            sentry::configure_scope(|scope| {
-                scope.set_user(sentry_user().map(|mut user| {
-                    user.username = username;
-                    user
-                }));
+            sentry::Hub::main().configure_scope(|scope| {
+                let backend = backend.clone();
+                scope.add_event_processor(move |mut event| {
+                    event.user = Some(sentry_user()).map(|mut user| {
+                        user.username = backend.user();
+                        user
+                    });
+
+                    Some(event)
+                });
             });
 
             if let Err(_e) = backend.run().await {
@@ -104,40 +108,37 @@ where
 }
 
 fn initialize_sentry(dsn: &str) {
-    if sentry::Hub::current().client().is_some() {
-        tracing::info!("Sentry has already been initialized");
-        return;
+    if SENTRY
+        .set(sentry::init((
+            dsn,
+            sentry::ClientOptions {
+                release: sentry::release_name!(),
+                before_send: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
+                    true => Some(event),
+                    false => None,
+                })),
+                ..Default::default()
+            },
+        )))
+        .is_err()
+    {
+        // i don't see a way how this would trigger, but just to be on
+        // the safe side, make sure we blow up
+        panic!("in the disco");
     }
-
-    sentry::configure_scope(|scope| {
-        scope.set_user(sentry_user());
-    });
-
-    let guard = sentry::init((
-        dsn,
-        sentry::ClientOptions {
-            release: sentry::release_name!(),
-            before_send: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
-                true => Some(event),
-                false => None,
-            })),
-            ..Default::default()
-        },
-    ));
-    _ = SENTRY.set(guard);
 }
 
-fn sentry_user() -> Option<sentry::User> {
+fn sentry_user() -> sentry::User {
     let unique_device_id = format!(
         "{target}-{id}",
         target = std::env::consts::OS,
         id = get_device_id()
     );
 
-    Some(sentry::protocol::User {
+    sentry::User {
         id: Some(unique_device_id),
         ..Default::default()
-    })
+    }
 }
 
 #[cfg(all(not(test), target_os = "macos"))]

@@ -226,7 +226,7 @@ impl From<BackendCredential> for BackendEntry {
 pub struct Backends {
     /// If the environment is a Tauri app, or auth is instance-wide,
     /// This will refresh the correct user.
-    authenticated_user: Arc<tokio::sync::RwLock<Option<String>>>,
+    authenticated_user: Arc<std::sync::RwLock<Option<String>>>,
     backends: Arc<scc::HashMap<Backend, BackendEntry>>,
 }
 
@@ -287,11 +287,11 @@ impl Backends {
     }
 
     pub(crate) async fn set_user(&self, user: String) {
-        self.authenticated_user.write().await.replace(user);
+        self.authenticated_user.write().unwrap().replace(user);
     }
 
-    pub(crate) async fn user(&self) -> Option<String> {
-        self.authenticated_user.read().await.clone()
+    pub(crate) fn user(&self) -> Option<String> {
+        self.authenticated_user.read().unwrap().clone()
     }
 }
 

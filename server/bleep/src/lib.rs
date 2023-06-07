@@ -200,8 +200,8 @@ impl Application {
         LOGGER_INSTALLED.set(true).unwrap();
     }
 
-    pub async fn user(&self) -> Option<String> {
-        self.credentials.user().await
+    pub fn user(&self) -> Option<String> {
+        self.credentials.user()
     }
 
     pub async fn run(self) -> Result<()> {
