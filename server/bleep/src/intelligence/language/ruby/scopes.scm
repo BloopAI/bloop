@@ -22,10 +22,10 @@
 
 ;; var = _
 (assignment 
-  left: (identifier) @local.definition.variable)
-;; @@var = _
-(assignment 
-  left: (class_variable) @local.definition.variable)
+  left: 
+    [(identifier)
+     (class_variable)
+     (instance_variable)] @local.definition.variable)
 ;; Var = _
 (assignment 
   left: (constant) @local.definition.constant)
