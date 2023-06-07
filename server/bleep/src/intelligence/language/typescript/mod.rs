@@ -298,6 +298,7 @@ mod test {
         );
     }
 
+    #[test]
     fn optional_param_regression() {
         test_scopes(
             "TypeScript",
@@ -307,7 +308,47 @@ mod test {
             }
             "#
             .as_bytes(),
-            expect![],
+            expect![[r#"
+                scope {
+                    definitions: [
+                        foo {
+                            kind: "function",
+                            context: "function §foo§(a?: string, b: string) {",
+                        },
+                    ],
+                    child scopes: [
+                        scope {
+                            definitions: [
+                                a {
+                                    kind: "parameter",
+                                    context: "function foo(§a§?: string, b: string) {",
+                                    referenced in (1): [
+                                        `return (§a§, b)`,
+                                    ],
+                                },
+                                b {
+                                    kind: "parameter",
+                                    context: "function foo(a?: string, §b§: string) {",
+                                    referenced in (1): [
+                                        `return (a, §b§)`,
+                                    ],
+                                },
+                            ],
+                            child scopes: [
+                                scope {
+                                    definitions: [],
+                                    child scopes: [
+                                        scope {
+                                            definitions: [],
+                                            child scopes: [],
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                }
+            "#]],
         );
     }
 }
