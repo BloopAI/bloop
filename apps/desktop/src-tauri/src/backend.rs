@@ -72,6 +72,14 @@ where
         .await;
 
         if let Ok(backend) = initialized {
+            let username = backend.user().await;
+            sentry::configure_scope(|scope| {
+                scope.set_user(sentry_user().map(|mut user| {
+                    user.username = username;
+                    user
+                }));
+            });
+
             if let Err(_e) = backend.run().await {
                 app.emit_all(
                     "server-crashed",
@@ -101,18 +109,8 @@ fn initialize_sentry(dsn: &str) {
         return;
     }
 
-    let unique_device_id = format!(
-        "{target}-{id}",
-        target = std::env::consts::OS,
-        id = get_device_id()
-    );
-    let user = Some(sentry::protocol::User {
-        id: Some(unique_device_id),
-        ..Default::default()
-    });
-
     sentry::configure_scope(|scope| {
-        scope.set_user(user);
+        scope.set_user(sentry_user());
     });
 
     let guard = sentry::init((
@@ -127,6 +125,19 @@ fn initialize_sentry(dsn: &str) {
         },
     ));
     _ = SENTRY.set(guard);
+}
+
+fn sentry_user() -> Option<sentry::User> {
+    let unique_device_id = format!(
+        "{target}-{id}",
+        target = std::env::consts::OS,
+        id = get_device_id()
+    );
+
+    Some(sentry::protocol::User {
+        id: Some(unique_device_id),
+        ..Default::default()
+    })
 }
 
 #[cfg(all(not(test), target_os = "macos"))]
