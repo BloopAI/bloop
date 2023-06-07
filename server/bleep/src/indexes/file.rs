@@ -2,10 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     ops::Not,
     path::{Path, PathBuf, MAIN_SEPARATOR},
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc,
-    },
+    sync::atomic::{AtomicU64, Ordering},
 };
 
 use anyhow::Result;
@@ -15,10 +12,7 @@ use tantivy::{
     collector::TopDocs,
     doc,
     query::{BooleanQuery, QueryParser, TermQuery},
-    schema::{
-        BytesOptions, IndexRecordOption, Schema, Term, TextFieldIndexing, TextOptions, FAST,
-        STORED, STRING,
-    },
+    schema::{IndexRecordOption, Schema, Term},
     IndexWriter,
 };
 use tokenizers as _;
@@ -42,9 +36,7 @@ use crate::{
     intelligence::TreeSitterFile,
     query::compiler::{case_permutations, trigrams},
     repo::{iterator::*, FileCache, RepoMetadata, RepoRef, RepoRemote, Repository},
-    semantic::Semantic,
     symbol::SymbolLocations,
-    Configuration,
 };
 
 struct Workload<'a> {
@@ -54,72 +46,6 @@ struct Workload<'a> {
     repo_metadata: &'a RepoMetadata,
     cache: &'a FileCache,
     dir_entry: RepoDirEntry,
-}
-
-impl File {
-    pub fn new(config: Arc<Configuration>, semantic: Option<Semantic>) -> Self {
-        let mut builder = tantivy::schema::SchemaBuilder::new();
-        let trigram = TextOptions::default().set_stored().set_indexing_options(
-            TextFieldIndexing::default()
-                .set_tokenizer("default")
-                .set_index_option(IndexRecordOption::WithFreqsAndPositions),
-        );
-
-        let entry_disk_path = builder.add_text_field("entry_disk_path", STRING);
-        let repo_disk_path = builder.add_text_field("repo_disk_path", STRING);
-        let repo_ref = builder.add_text_field("repo_ref", STRING | STORED);
-        let repo_name = builder.add_text_field("repo_name", trigram.clone());
-        let relative_path = builder.add_text_field("relative_path", trigram.clone());
-
-        let content = builder.add_text_field("content", trigram.clone());
-        let line_end_indices =
-            builder.add_bytes_field("line_end_indices", BytesOptions::default().set_stored());
-
-        let symbols = builder.add_text_field("symbols", trigram.clone());
-        let symbol_locations =
-            builder.add_bytes_field("symbol_locations", BytesOptions::default().set_stored());
-
-        let branches = builder.add_text_field("branches", trigram);
-
-        let lang = builder.add_bytes_field(
-            "lang",
-            BytesOptions::default().set_stored().set_indexed() | FAST,
-        );
-        let avg_line_length = builder.add_f64_field("line_length", FAST);
-        let last_commit_unix_seconds = builder.add_u64_field("last_commit_unix_seconds", FAST);
-
-        let raw_content = builder.add_bytes_field("raw_content", FAST);
-        let raw_repo_name = builder.add_bytes_field("raw_repo_name", FAST);
-        let raw_relative_path = builder.add_bytes_field("raw_relative_path", FAST);
-
-        let is_directory = builder.add_bool_field("is_directory", FAST);
-
-        Self {
-            entry_disk_path,
-            repo_disk_path,
-            relative_path,
-            repo_ref,
-            repo_name,
-            content,
-            line_end_indices,
-            symbols,
-            symbol_locations,
-            lang,
-            avg_line_length,
-            last_commit_unix_seconds,
-            schema: builder.build(),
-            semantic,
-            config,
-            raw_content,
-            raw_repo_name,
-            raw_relative_path,
-            branches,
-            is_directory,
-
-            #[cfg(feature = "debug")]
-            histogram: Arc::new(Histogram::builder().build().unwrap().into()),
-        }
-    }
 }
 
 #[async_trait]
@@ -776,7 +702,7 @@ mod tests {
     #[test]
     fn fuzzy_multibyte_should_compile() {
         let multibyte_str = "查询解析器在哪";
-        let filter = build_fuzzy_regex_filter(&multibyte_str);
+        let filter = build_fuzzy_regex_filter(multibyte_str);
         assert!(filter.is_some());
 
         // tests removal of second character
