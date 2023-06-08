@@ -129,14 +129,8 @@ fn initialize_sentry(dsn: &str) {
 }
 
 fn sentry_user() -> sentry::User {
-    let unique_device_id = format!(
-        "{target}-{id}",
-        target = std::env::consts::OS,
-        id = get_device_id()
-    );
-
     sentry::User {
-        id: Some(unique_device_id),
+        id: Some(get_device_id()),
         ..Default::default()
     }
 }
@@ -160,7 +154,7 @@ fn get_device_id() -> String {
 
     let output = command.wait_with_output().unwrap();
     let result = std::str::from_utf8(&output.stdout).unwrap();
-    result.into()
+    format!("{target}-{id}", target = std::env::consts::OS, id = result)
 }
 
 #[cfg(all(not(test), target_os = "linux"))]
@@ -170,7 +164,7 @@ fn get_device_id() -> String {
     const STANDARD_MACHINE_ID: &str = "/etc/machine-id";
     const LEGACY_MACHINE_ID: &str = "/var/lib/dbus/machine-id";
 
-    std::fs::read_to_string(STANDARD_MACHINE_ID)
+    let result = std::fs::read_to_string(STANDARD_MACHINE_ID)
         .or_else(|_| {
             warn!(
                 "could not find machine-id at `{}`, looking in `{}`",
@@ -181,7 +175,9 @@ fn get_device_id() -> String {
         .unwrap_or_else(|_| {
             warn!("failed to determine machine-id");
             "unknown-machine-id".to_owned()
-        })
+        });
+
+    format!("{target}-{id}", target = std::env::consts::OS, id = result)
 }
 
 #[cfg(all(not(test), target_os = "windows"))]
@@ -207,7 +203,8 @@ fn get_device_id() -> String {
         .unwrap()
         .trim_start_matches("UUID") // remove the initial `UUID` header
         .trim(); // remove the leading and trailing newlines
-    result.into()
+
+    format!("{target}-{id}", target = std::env::consts::OS, id = result)
 }
 
 // ensure that the leading header and trailer are stripped

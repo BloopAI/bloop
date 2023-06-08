@@ -15,7 +15,7 @@ export const DeviceContextProvider = ({
     deviceContextValue.invokeTauriCommand('enable_telemetry');
     if (deviceContextValue.envConfig.sentry_dsn_fe) {
       initializeSentry(
-        deviceContextValue.envConfig.sentry_dsn_fe,
+        deviceContextValue.envConfig,
         deviceContextValue.release,
       );
     } else {
