@@ -1135,6 +1135,11 @@ fn split_line_set_by_tokens(
     max_tokens: usize,
     line_overlap: usize,
 ) -> impl Iterator<Item = Vec<String>> {
+    let line_tokens = lines
+        .iter()
+        .map(|line| bpe.encode_ordinary(line).len())
+        .collect::<Vec<_>>();
+
     let mut start = 0usize;
 
     std::iter::from_fn(move || {
@@ -1146,14 +1151,12 @@ fn split_line_set_by_tokens(
 
         let mut subset = Vec::new();
 
-        loop {
-            if start >= lines.len() {
-                break;
-            }
-
-            let text = subset.join("\n");
-
-            if limit_tokens(&text, bpe.clone(), max_tokens).len() < text.len() {
+        while start < lines.len() {
+            if line_tokens[start - subset.len()..start]
+                .iter()
+                .sum::<usize>()
+                > max_tokens
+            {
                 subset.pop();
                 start -= 1;
                 break;
