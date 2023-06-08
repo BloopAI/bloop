@@ -21,7 +21,7 @@ use console_subscriber as _;
 
 #[cfg(target_os = "windows")]
 use dunce::canonicalize;
-use scc::hash_map::Entry;
+
 use secrecy::SecretString;
 #[cfg(not(target_os = "windows"))]
 use std::fs::canonicalize;
@@ -91,9 +91,6 @@ pub struct Application {
     /// Main cookie encryption keypair
     cookie_key: axum_extra::extract::cookie::Key,
 
-    /// Conversational store cache
-    prior_conversational_store: Arc<scc::HashMap<String, Vec<(String, String)>>>,
-
     /// Analytics backend -- may be unintialized
     analytics: Option<Arc<analytics::RudderHub>>,
 }
@@ -154,7 +151,6 @@ impl Application {
         Ok(Self {
             indexes: Indexes::new(repo_pool.clone(), config.clone(), semantic.clone())?.into(),
             sync_queue: SyncQueue::start(config.clone()),
-            prior_conversational_store: Arc::default(),
             cookie_key: config.source.initialize_cookie_key()?,
             credentials: config.source.initialize_credentials()?.into(),
             repo_pool,
@@ -185,6 +181,20 @@ impl Application {
             },
         ));
 
+        sentry::configure_scope(|scope| {
+            scope.add_event_processor(|event| {
+                let Some(ref logger) = event.logger
+		else {
+		    return Some(event);
+		};
+
+                match logger.as_ref() {
+                    "tower_http::catch_panic" => None,
+                    _ => Some(event),
+                }
+            });
+        });
+
         _ = SENTRY_GUARD.set(guard);
     }
 
@@ -204,10 +214,8 @@ impl Application {
         LOGGER_INSTALLED.set(true).unwrap();
     }
 
-    pub fn track_query(&self, user: &webserver::middleware::User, event: &analytics::QueryEvent) {
-        if let Some(analytics) = self.analytics.as_ref() {
-            tokio::task::block_in_place(|| analytics.track_query(user, event.clone()))
-        }
+    pub fn user(&self) -> Option<String> {
+        self.credentials.user()
     }
 
     pub async fn run(self) -> Result<()> {
@@ -236,7 +244,7 @@ impl Application {
         Ok(())
     }
 
-    pub(crate) fn allow_path(&self, path: impl AsRef<Path>) -> bool {
+    fn allow_path(&self, path: impl AsRef<Path>) -> bool {
         if self.env.allow(env::Feature::AnyPathScan) {
             return true;
         }
@@ -249,57 +257,17 @@ impl Application {
         false
     }
 
-    //
-    //
-    // Repo actions
-    // To be performed on the background executor
-    //
-    //
-    pub(crate) fn write_index(&self) -> background::BoundSyncQueue {
+    fn track_query(&self, user: &webserver::middleware::User, event: &analytics::QueryEvent) {
+        if let Some(analytics) = self.analytics.as_ref() {
+            tokio::task::block_in_place(|| analytics.track_query(user, event.clone()))
+        }
+    }
+
+    fn write_index(&self) -> background::BoundSyncQueue {
         self.sync_queue.bind(self.clone())
     }
 
-    /// This gets the prior conversation. Be sure to drop the borrow before calling
-    /// [`add_conversation_entry`], lest we deadlock.
-    pub fn with_prior_conversation<T>(
-        &self,
-        user_id: &str,
-        f: impl Fn(&[(String, String)]) -> T,
-    ) -> T {
-        self.prior_conversational_store
-            .read(user_id, |_, v| f(&v[..]))
-            .unwrap_or_else(|| f(&[]))
-    }
-
-    /// add a new conversation entry to the store
-    pub fn add_conversation_entry(&self, user_id: String, query: String) {
-        match self.prior_conversational_store.entry(user_id) {
-            Entry::Occupied(mut o) => o.get_mut().push((query, String::new())),
-            Entry::Vacant(v) => {
-                v.insert_entry(vec![(query, String::new())]);
-            }
-        }
-    }
-
-    /// extend the last answer for the session by the given fragment
-    pub fn extend_conversation_answer(&self, user_id: String, fragment: &str) {
-        if let Entry::Occupied(mut o) = self.prior_conversational_store.entry(user_id) {
-            if let Some((_, ref mut answer)) = o.get_mut().last_mut() {
-                answer.push_str(fragment);
-            } else {
-                error!("No answer to add {fragment} to");
-            }
-        } else {
-            error!("We should not answer if there is no question. Fragment {fragment}");
-        }
-    }
-
-    /// clear the conversation history for a user
-    pub fn purge_prior_conversation(&self, user_id: &str) {
-        self.prior_conversational_store.remove(user_id);
-    }
-
-    pub fn github_token(&self) -> Result<Option<SecretString>> {
+    fn github_token(&self) -> Result<Option<SecretString>> {
         Ok(if self.env.allow(env::Feature::GithubDeviceFlow) {
             let Some(cred) = self.credentials.github() else {
                 bail!("missing Github token");
