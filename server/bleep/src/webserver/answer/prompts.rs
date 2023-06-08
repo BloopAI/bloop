@@ -38,13 +38,13 @@ pub fn system(paths: &Vec<String>) -> String {
         name: "processFiles", 
         description: "Read one or more files and extract the line ranges which are relevant to the search terms.", 
         schema: "{\"name\": \"proc\", \"args\": [SEARCH_TERMS // str, ARRAY_OF_PATH_ALIASES // int[]}", 
-        examples: "[[\"proc\", \"find all the functional react components\", [2, 5]], [\"proc\", \"where are error types\", [0]], [\"proc\", \"gitoxide initialisation\", [2, 5, 8]]]"
+        examples: "[[\"proc\", \"find all the functional react components\", [2,5]], [\"proc\", \"where are error types\", [0]], [\"proc\", \"gitoxide initialisation\", [2,5,8]]]"
     },
       Tool {
         name: "none", 
         description: "You have enough information to answer the user's query. This is the final step, and signals that you have enough information to respond to the user's query. ARRAY_OF_PATH_ALIASES contains the aliases of the paths which are particularly relevant to the query.", 
         schema: "{\"name\": \"none\", \"args\": [ARRAY_OF_PATH_ALIASES // int[]]}", 
-        examples: "[[\"none\", [1]], [\"none\", [3, 5]], [\"none\", []]]"
+        examples: "[[\"none\", [1]], [\"none\", [3,5]], [\"none\", []]]"
     }];
 
     let mut s = "Your job is to answer a question about a codebase. You should use a set of tools to gather information that will help you answer. The following tools are available:\n\n".to_string();
@@ -76,7 +76,7 @@ Follow these rules at all times:
 - Use the tools to find information related to the query, until all relevant information has been found.
 - If after attempting to gather information you are still unsure how to answer the query, choose 'none'
 - Always respond according to the schema of the tool that you want to use
-- Output a list of [name, *args] to use a tool. For example to use codeSearch, output: ["code","my search query"]. To use processFiles, output: ["proc", "how does X work", [3, 6]]
+- Output a list of [name, *args] to use a tool. For example to use codeSearch, output: ["code","my search query"]. To use processFiles, output: ["proc", "how does X work", [3,6]]
 - Do NOT answer the user's query directly. You MUST use one of the tools above
 
 "#);
@@ -99,16 +99,16 @@ Your job is to perform the following tasks:
 3. You MUST answer with only line ranges. DO NOT answer the question
 
 Q: find Kafka auth keys
-A: [[12, 15]]
+A: [[12,15]]
 
 Q: find where we submit payment requests
-A: [[37, 50]]
+A: [[37,50]]
 
 Q: auth code expiration
-A: [[486, 501], [520, 560], [590, 631]]
+A: [[486,501],[520,560],[590,631]]
 
 Q: library matrix multiplication
-A: [[68, 74], [82, 85], [103, 107], [187, 193]]
+A: [[68,74],[82,85],[103,107],[187,193]]
 
 Q: how combine result streams
 A: []

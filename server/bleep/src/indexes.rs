@@ -101,8 +101,9 @@ impl Indexes {
             std::fs::remove_dir_all(config.index_path("content"))?;
 
             // knocking out our current file caches will force re-indexing qdrant
-            repo_pool.scan(|_, repo| {
+            repo_pool.for_each(|_, repo| {
                 repo.delete_file_cache(&config.index_dir);
+                repo.last_index_unix_secs = 0;
             });
         }
         config.source.save_index_version()?;
