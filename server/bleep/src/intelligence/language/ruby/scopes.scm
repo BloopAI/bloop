@@ -173,7 +173,10 @@
 ;; a.prop
 ;; a.method()
 (call
-  receiver: (identifier) @local.reference)
+  receiver:
+   [(identifier)
+    (constant)
+    (instance_variable)] @local.reference)
 
 ;; foo()
 (call
@@ -183,7 +186,8 @@
 ;; method(a, b, c)
 (argument_list
   [(identifier)
-   (constant)] @local.reference)
+   (constant)
+   (instance_variable)] @local.reference)
 
 ;; *arg
 (splat_argument
