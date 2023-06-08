@@ -63,6 +63,7 @@ impl Drop for SyncHandle {
                 Indexing | Syncing => Error {
                     message: "unknown".into(),
                 },
+                Cancelling => Cancelled,
                 other => other.clone(),
             }
         });
@@ -121,6 +122,12 @@ impl SyncHandle {
             }
         }
 
+        if self.pipes.is_cancelled() && !self.pipes.is_removed() {
+            self.set_status(|_| SyncStatus::Cancelled);
+            debug!(?self.reporef, "cancelled while cloning");
+            return Err(SyncError::Cancelled);
+        }
+
         let indexed = self.index().await;
         let status = match indexed {
             Ok(Either::Left(status)) => Some(status),
@@ -148,7 +155,6 @@ impl SyncHandle {
     async fn index(&self) -> Result<Either<SyncStatus, Arc<RepoMetadata>>> {
         use SyncStatus::*;
         let Application {
-            ref config,
             ref indexes,
             ref repo_pool,
             ..
@@ -162,11 +168,7 @@ impl SyncHandle {
 
         let indexed = match repo.sync_status {
             current @ (Uninitialized | Syncing | Indexing) => return Ok(Either::Left(current)),
-            Removed => {
-                return self
-                    .delete_repo(repo_pool.clone(), &repo, writers, config)
-                    .await
-            }
+            Removed => return self.delete_repo(&repo, writers).await,
             RemoteRemoved => {
                 // Note we don't clean up here, leave the
                 // barebones behind.
@@ -187,10 +189,7 @@ impl SyncHandle {
                 writers.commit().await.map_err(SyncError::Tantivy)?;
                 indexed.map_err(SyncError::Indexing)
             }
-            Err(_) if self.pipes.is_removed() => {
-                self.delete_repo(repo_pool.clone(), &repo, writers, config)
-                    .await
-            }
+            Err(_) if self.pipes.is_removed() => self.delete_repo(&repo, writers).await,
             Err(_) if self.pipes.is_cancelled() => {
                 writers.rollback().map_err(SyncError::Tantivy)?;
                 debug!(?self.reporef, "index cancelled by user");
@@ -205,19 +204,18 @@ impl SyncHandle {
 
     async fn delete_repo(
         &self,
-        repo_pool: Arc<scc::HashMap<RepoRef, Repository>>,
         repo: &Repository,
         writers: indexes::GlobalWriteHandle<'_>,
-        config: &crate::Configuration,
     ) -> Result<Either<SyncStatus, Arc<RepoMetadata>>> {
-        repo_pool.remove(&self.reporef);
+        self.app.repo_pool.remove(&self.reporef);
 
         let deleted = self.delete_repo_indexes(repo, &writers).await;
         if deleted.is_ok() {
             writers.commit().await.map_err(SyncError::Tantivy)?;
-            config
+            self.app
+                .config
                 .source
-                .save_pool(repo_pool.clone())
+                .save_pool(self.app.repo_pool.clone())
                 .map_err(SyncError::State)?;
         }
 

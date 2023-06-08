@@ -206,8 +206,8 @@ impl BoundSyncQueue {
         self.1
             .active
             .update_async(&reporef, |_, v| {
+                v.set_status(|_| SyncStatus::Cancelling);
                 v.pipes.cancel();
-                v.set_status(|_| SyncStatus::Cancelled);
             })
             .await;
     }

@@ -338,6 +338,9 @@ pub enum SyncStatus {
     /// Removed by the user
     Removed,
 
+    /// The user requested cancelling the process
+    Cancelling,
+
     /// Last sync & index cancelled by the user
     Cancelled,
 
