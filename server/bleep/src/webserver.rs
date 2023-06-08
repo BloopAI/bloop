@@ -84,6 +84,8 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             .route("/remotes/github/status", get(github::status));
     }
 
+    api = api.route("/panic", get(|| async { panic!("dead") }));
+
     // Note: all routes above this point must be authenticated.
     // These middlewares MUST provide the `middleware::User` extension.
     if app.env.allow(Feature::AuthorizationRequired) {
