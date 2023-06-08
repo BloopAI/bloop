@@ -14,6 +14,7 @@ use tokio::sync::RwLock;
 pub mod file;
 pub mod reader;
 pub mod repo;
+mod schema;
 
 pub use file::File;
 pub use repo::Repo;
