@@ -313,8 +313,8 @@ impl Repository {
         pretty_write_file(file_name, cache.as_ref())
     }
 
-    pub(crate) fn delete_file_cache(&self, index_dir: &Path) -> Result<(), RepoError> {
-        Ok(std::fs::remove_file(self.file_cache_path(index_dir))?)
+    pub(crate) fn delete_file_cache(&self, index_dir: &Path) {
+        _ = std::fs::remove_file(self.file_cache_path(index_dir))
     }
 }
 
@@ -333,13 +333,34 @@ pub struct RepoMetadata {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum SyncStatus {
+    /// There was an error during last sync & index
     Error { message: String },
+
+    /// Repository is not yet managed by bloop
     Uninitialized,
+
+    /// Removed by the user
     Removed,
-    Syncing,
+
+    /// The user requested cancelling the process
+    Cancelling,
+
+    /// Last sync & index cancelled by the user
+    Cancelled,
+
+    /// Queued for sync & index
     Queued,
+
+    /// Active VCS operation in progress
+    Syncing,
+
+    /// Active indexing in progress
     Indexing,
+
+    /// VCS remote has been removed
     RemoteRemoved,
+
+    /// Successfully indexed
     Done,
 }
 

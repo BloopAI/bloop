@@ -8,7 +8,7 @@ use std::{
     },
 };
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use async_trait::async_trait;
 use scc::hash_map::Entry;
 use tantivy::{
@@ -211,12 +211,16 @@ impl Indexable for File {
         if matches!(repo.remote, RepoRemote::Git { .. }) {
             let walker = GitWalker::open_repository(&repo.disk_path, None)?;
             let count = walker.len();
-            walker.for_each(file_worker(count));
+            walker.for_each(pipes, file_worker(count));
         } else {
             let walker = FileWalker::index_directory(&repo.disk_path);
             let count = walker.len();
-            walker.for_each(file_worker(count));
+            walker.for_each(pipes, file_worker(count));
         };
+
+        if pipes.is_cancelled() {
+            bail!("cancelled");
+        }
 
         info!(?repo.disk_path, "repo file indexing finished, took {:?}", start.elapsed());
 
@@ -824,7 +828,7 @@ mod tests {
     #[test]
     fn fuzzy_multibyte_should_compile() {
         let multibyte_str = "查询解析器在哪";
-        let filter = build_fuzzy_regex_filter(&multibyte_str);
+        let filter = build_fuzzy_regex_filter(multibyte_str);
         assert!(filter.is_some());
 
         // tests removal of second character

@@ -16,8 +16,9 @@ use super::control::SyncPipes;
 pub(crate) struct SyncHandle {
     pub(crate) reporef: RepoRef,
     pub(crate) app: Application,
-    pipes: Arc<SyncPipes>,
+    pub(super) pipes: Arc<SyncPipes>,
     exited: flume::Sender<SyncStatus>,
+    exit_signal: flume::Receiver<SyncStatus>,
 }
 
 type Result<T> = std::result::Result<T, SyncError>;
@@ -38,14 +39,14 @@ pub(super) enum SyncError {
     #[error("file cache cleanup failed: {0:?}")]
     State(RepoError),
 
-    #[error("file cache cleanup failed: {0:?}")]
-    FileCache(RepoError),
-
     #[error("folder cleanup failed: path: {0:?}, error: {1}")]
     RemoveLocal(PathBuf, std::io::Error),
 
     #[error("tantivy: {0:?}")]
     Tantivy(anyhow::Error),
+
+    #[error("cancelled by user")]
+    Cancelled,
 }
 
 impl PartialEq for SyncHandle {
@@ -62,13 +63,14 @@ impl Drop for SyncHandle {
                 Indexing | Syncing => Error {
                     message: "unknown".into(),
                 },
+                Cancelling => Cancelled,
                 other => other.clone(),
             }
         });
 
         _ = self.app.config.source.save_pool(self.app.repo_pool.clone());
 
-        info!(?status, %self.reporef, "normalized status after sync");
+        debug!(?status, %self.reporef, "normalized status after sync");
         if self
             .exited
             .send(status.unwrap_or(SyncStatus::Removed))
@@ -84,20 +86,21 @@ impl SyncHandle {
         app: Application,
         reporef: RepoRef,
         status: super::ProgressStream,
-    ) -> (Arc<Self>, flume::Receiver<SyncStatus>) {
+    ) -> Arc<Self> {
         let (exited, exit_signal) = flume::bounded(1);
         let pipes = SyncPipes::new(reporef.clone(), status).into();
-
-        (
-            Self {
-                app,
-                pipes,
-                reporef,
-                exited,
-            }
-            .into(),
+        Self {
+            app,
+            pipes,
+            reporef,
+            exited,
             exit_signal,
-        )
+        }
+        .into()
+    }
+
+    pub(super) fn notify_done(&self) -> flume::Receiver<SyncStatus> {
+        self.exit_signal.clone()
     }
 
     /// The permit that's taken here is exclusively for parallelism control.
@@ -119,6 +122,12 @@ impl SyncHandle {
             }
         }
 
+        if self.pipes.is_cancelled() && !self.pipes.is_removed() {
+            self.set_status(|_| SyncStatus::Cancelled);
+            debug!(?self.reporef, "cancelled while cloning");
+            return Err(SyncError::Cancelled);
+        }
+
         let indexed = self.index().await;
         let status = match indexed {
             Ok(Either::Left(status)) => Some(status),
@@ -131,6 +140,7 @@ impl SyncHandle {
                 // technically `sync_done_with` does this, but we want to send notifications
                 self.set_status(|_| SyncStatus::Done)
             }
+            Err(SyncError::Cancelled) => self.set_status(|_| SyncStatus::Cancelled),
             Err(err) => {
                 error!(?err, ?self.reporef, "failed to index repository");
                 self.set_status(|_| SyncStatus::Error {
@@ -145,7 +155,6 @@ impl SyncHandle {
     async fn index(&self) -> Result<Either<SyncStatus, Arc<RepoMetadata>>> {
         use SyncStatus::*;
         let Application {
-            ref config,
             ref indexes,
             ref repo_pool,
             ..
@@ -159,19 +168,7 @@ impl SyncHandle {
 
         let indexed = match repo.sync_status {
             current @ (Uninitialized | Syncing | Indexing) => return Ok(Either::Left(current)),
-            Removed => {
-                repo_pool.remove(&self.reporef);
-                let deleted = self.delete_repo_indexes(&repo, &writers).await;
-                if deleted.is_ok() {
-                    writers.commit().await.map_err(SyncError::Tantivy)?;
-                    config
-                        .source
-                        .save_pool(repo_pool.clone())
-                        .map_err(SyncError::State)?;
-                }
-
-                return deleted.map(|_| Either::Left(Removed));
-            }
+            Removed => return self.delete_repo(&repo, writers).await,
             RemoteRemoved => {
                 // Note we don't clean up here, leave the
                 // barebones behind.
@@ -187,13 +184,42 @@ impl SyncHandle {
             }
         };
 
-        if indexed.is_ok() {
+        match indexed {
+            Ok(_) => {
+                writers.commit().await.map_err(SyncError::Tantivy)?;
+                indexed.map_err(SyncError::Indexing)
+            }
+            Err(_) if self.pipes.is_removed() => self.delete_repo(&repo, writers).await,
+            Err(_) if self.pipes.is_cancelled() => {
+                writers.rollback().map_err(SyncError::Tantivy)?;
+                debug!(?self.reporef, "index cancelled by user");
+                Err(SyncError::Cancelled)
+            }
+            Err(err) => {
+                writers.rollback().map_err(SyncError::Tantivy)?;
+                Err(SyncError::Indexing(err))
+            }
+        }
+    }
+
+    async fn delete_repo(
+        &self,
+        repo: &Repository,
+        writers: indexes::GlobalWriteHandle<'_>,
+    ) -> Result<Either<SyncStatus, Arc<RepoMetadata>>> {
+        self.app.repo_pool.remove(&self.reporef);
+
+        let deleted = self.delete_repo_indexes(repo, &writers).await;
+        if deleted.is_ok() {
             writers.commit().await.map_err(SyncError::Tantivy)?;
-        } else {
-            writers.rollback().map_err(SyncError::Tantivy)?;
+            self.app
+                .config
+                .source
+                .save_pool(self.app.repo_pool.clone())
+                .map_err(SyncError::State)?;
         }
 
-        indexed.map_err(SyncError::Indexing)
+        deleted.map(|_| Either::Left(SyncStatus::Removed))
     }
 
     async fn sync(&self) -> Result<()> {
@@ -251,8 +277,7 @@ impl SyncHandle {
                 .await;
         }
 
-        repo.delete_file_cache(&config.index_dir)
-            .map_err(SyncError::FileCache)?;
+        repo.delete_file_cache(&config.index_dir);
 
         if !self.reporef.is_local() {
             tokio::fs::remove_dir_all(&repo.disk_path)

@@ -84,10 +84,6 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
             lang={r.most_common_lang}
             key={ref + i}
             provider={r.provider}
-            isSyncing={
-              currentlySyncingRepo?.repoRef === ref &&
-              currentlySyncingRepo?.percentage !== 100
-            }
             syncStatus={
               currentlySyncingRepo?.repoRef === ref
                 ? currentlySyncingRepo

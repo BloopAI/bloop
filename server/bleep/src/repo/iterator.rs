@@ -12,6 +12,8 @@ pub(super) mod language;
 pub use fs::FileWalker;
 pub use git::GitWalker;
 
+use crate::background::SyncPipes;
+
 // Empirically calculated using:
 //     cat **/*.rs | awk '{SUM+=length;N+=1}END{print SUM/N}'
 pub const AVG_LINE_LEN: u64 = 30;
@@ -20,7 +22,7 @@ pub const MAX_FILE_LEN: u64 = AVG_LINE_LEN * MAX_LINE_COUNT;
 
 pub trait FileSource {
     fn len(&self) -> usize;
-    fn for_each(self, iterator: impl Fn(RepoDirEntry) + Sync + Send);
+    fn for_each(self, signal: &SyncPipes, iterator: impl Fn(RepoDirEntry) + Sync + Send);
 }
 
 pub enum RepoDirEntry {

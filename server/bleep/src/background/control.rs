@@ -1,28 +1,29 @@
+use std::sync::{Arc, RwLock};
+
 use crate::repo::{RepoRef, SyncStatus};
 
 use super::{Progress, ProgressEvent};
 
-#[allow(unused)]
-pub enum ControlEvent {
+enum ControlEvent {
     /// Cancel whatever's happening, and return
     Cancel,
+
+    /// Cancel and immediately remove the repo
+    Remove,
 }
 
 pub struct SyncPipes {
     reporef: RepoRef,
     progress: super::ProgressStream,
-    control_rx: flume::Receiver<ControlEvent>,
-    control_tx: flume::Sender<ControlEvent>,
+    event: Arc<RwLock<Option<ControlEvent>>>,
 }
 
 impl SyncPipes {
     pub(super) fn new(reporef: RepoRef, progress: super::ProgressStream) -> Self {
-        let (control_tx, control_rx) = flume::bounded(1);
         Self {
             reporef,
-            control_rx,
-            control_tx,
             progress,
+            event: Default::default(),
         }
     }
 
@@ -38,5 +39,23 @@ impl SyncPipes {
             reporef: self.reporef.clone(),
             event: ProgressEvent::StatusChange(new),
         });
+    }
+
+    pub(crate) fn is_cancelled(&self) -> bool {
+        use ControlEvent::*;
+        matches!(self.event.read().unwrap().as_ref(), Some(Cancel | Remove))
+    }
+
+    pub(crate) fn is_removed(&self) -> bool {
+        use ControlEvent::*;
+        matches!(self.event.read().unwrap().as_ref(), Some(Remove))
+    }
+
+    pub(crate) fn cancel(&self) {
+        *self.event.write().unwrap() = Some(ControlEvent::Cancel);
+    }
+
+    pub(crate) fn remove(&self) {
+        *self.event.write().unwrap() = Some(ControlEvent::Remove);
     }
 }
