@@ -13,6 +13,7 @@
  (then)
  (else)
  (method)
+ (singleton_method)
  (class)
  (module)
  (lambda)
@@ -150,11 +151,10 @@
    (instance_variable)] @local.reference)
 
 ;; {key: v}
-(hash
-  (pair
-    [(identifier)
-     (constant)
-     (instance_variable)] @local.reference))
+(pair
+  [(identifier)
+   (constant)
+   (instance_variable)] @local.reference)
 
 
 ;; a = b 
