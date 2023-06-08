@@ -181,6 +181,20 @@ impl Application {
             },
         ));
 
+        sentry::configure_scope(|scope| {
+            scope.add_event_processor(|event| {
+                let Some(ref logger) = event.logger
+		else {
+		    return Some(event);
+		};
+
+                match logger.as_ref() {
+                    "tower_http::catch_panic" => None,
+                    _ => Some(event),
+                }
+            });
+        });
+
         _ = SENTRY_GUARD.set(guard);
     }
 
