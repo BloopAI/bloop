@@ -141,6 +141,7 @@ impl RudderHub {
                         user_id: Some(self.tracking_id(user)),
                         event: "openai query".to_owned(),
                         properties: Some(json!({
+                            "device_id": self.device_id(),
                             "query_id": ev.query_id,
                             "thread_id": ev.thread_id,
                             "repo_ref": ev.repo_ref.as_ref().map(ToString::to_string),
