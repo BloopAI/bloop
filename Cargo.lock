@@ -3863,6 +3863,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f92be4933c13fd498862a9e02a3055f8a8d9c039ce33db97306fd5a6caa7f29b"
 
 [[package]]
+name = "libloading"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b67380fd3b2fbe7527a606e18729d21c6f3951633d0500574c4dc22d2d638b9f"
+dependencies = [
+ "cfg-if",
+ "winapi",
+]
+
+[[package]]
 name = "libsqlite3-sys"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4604,13 +4614,14 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "ort"
-version = "1.14.0"
-source = "git+https://github.com/bloopai/ort?branch=windows#0998a094249bde18349d34017cda4c27b5608d5f"
+version = "1.14.8"
+source = "git+https://github.com/bloopai/ort?branch=pub-env-ptr#d25bcf95c12453955349e44e2b9e29e516e3486d"
 dependencies = [
  "flate2",
  "half 2.2.1",
  "lazy_static",
  "libc",
+ "libloading",
  "ndarray",
  "tar",
  "thiserror",

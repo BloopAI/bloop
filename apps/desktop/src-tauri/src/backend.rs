@@ -37,6 +37,11 @@ where
             .path_resolver()
             .resolve_resource("model")
             .expect("bad bundle");
+        bundled.dylib_dir = Some(
+            app.path_resolver()
+                .resolve_resource("dylibs")
+                .expect("missing `apps/desktop/src-tauri/dylibs`"),
+        );
 
         let data_dir = app.path_resolver().app_data_dir().unwrap();
         bundled.index_dir = data_dir.join("bleep");

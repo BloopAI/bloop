@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, ops::Not, path::Path, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, env, ops::Not, path::Path, sync::Arc};
 
 use crate::{query::parser::SemanticQuery, Configuration};
 
@@ -183,6 +183,10 @@ impl Semantic {
                 }
             }
             Err(_) => return Err(SemanticError::QdrantInitializationError),
+        }
+
+        if let Some(dylib_dir) = config.dylib_dir.as_ref() {
+            init_ort_dylib(dylib_dir);
         }
 
         let environment = Arc::new(
@@ -512,6 +516,22 @@ impl Semantic {
     pub fn overlap_strategy(&self) -> chunk::OverlapStrategy {
         self.config.overlap.unwrap_or_default()
     }
+}
+
+/// Initialize the `ORT_DYLIB_PATH` variable, consumed by the `ort` crate.
+fn init_ort_dylib(dylib_dir: impl AsRef<Path>) {
+    if cfg!(windows) {
+        return;
+    }
+
+    #[cfg(target_os = "linux")]
+    let lib_name = "libonnxruntime.so";
+    #[cfg(target_os = "macos")]
+    let lib_name = "libonnxruntime.dylib";
+
+    let ort_dylib_path = dylib_dir.as_ref().join(lib_name);
+
+    env::set_var("ORT_DYLIB_PATH", ort_dylib_path);
 }
 
 // Exact match filter

@@ -64,7 +64,8 @@
         "signingIdentity": null
       },
       "resources": [
-        "model/*",
+        "../../../model/*",
+        "dylibs/*",
         "config/config.json"
       ],
       "shortDescription": "",
