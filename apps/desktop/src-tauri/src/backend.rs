@@ -81,7 +81,8 @@ where
                             .analytics
                             .as_ref()
                             .zip(auth.clone())
-                            .map(|(a, u)| a.tracking_id(&u.into()));
+                            .map(|(a, u)| a.tracking_id(&u.into()))
+                            .or_else(|| Some(get_device_id()));
                         user.username = auth;
                         user
                     });
