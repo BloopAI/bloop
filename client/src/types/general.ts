@@ -225,6 +225,7 @@ export type EnvConfig = {
   org_name?: string | null;
   tracking_id?: string;
   device_id?: string;
+  user_login?: string;
   github_user?: {
     login: string;
     avatar_url: string;
