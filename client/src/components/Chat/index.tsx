@@ -286,6 +286,18 @@ const Chat = () => {
     [inputValue, conversation],
   );
 
+  const handleNewConversation = useCallback(() => {
+    stopGenerating();
+    setConversation([]);
+    setLoading(false);
+    setThreadId('');
+    setSubmittedQuery('');
+    if (navigatedItem?.type === 'conversation-result') {
+      navigateRepoPath(tab.repoName);
+    }
+    focusInput();
+  }, [navigatedItem?.type]);
+
   return (
     <>
       <button
@@ -347,19 +359,7 @@ const Chat = () => {
                 <List /> All conversations
               </ChipButton>
               <div className="flex items-center gap-1">
-                <ChipButton
-                  onClick={() => {
-                    stopGenerating();
-                    setConversation([]);
-                    setLoading(false);
-                    setThreadId('');
-                    setSubmittedQuery('');
-                    if (navigatedItem?.type === 'conversation-result') {
-                      navigateRepoPath(tab.repoName);
-                    }
-                    focusInput();
-                  }}
-                >
+                <ChipButton onClick={handleNewConversation}>
                   Create new
                 </ChipButton>
                 <ChipButton variant="filled" onClick={() => setChatOpen(false)}>
@@ -415,6 +415,7 @@ const Chat = () => {
         setConversation={setConversation}
         setThreadId={setThreadId}
         repoRef={tab.key}
+        handleNewConversation={handleNewConversation}
       />
       <DeprecatedClientModal
         isOpen={showPopup}
