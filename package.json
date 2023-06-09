@@ -2,6 +2,7 @@
   "name": "@bloop/root",
   "private": true,
   "scripts": {
+    "start": "npm --prefix apps/desktop run tauri dev",
     "start-app": "npm --prefix apps/desktop run tauri-dev",
     "start-web": "npm --prefix client run dev",
     "build-app": "npm --prefix apps/desktop run tauri-build",
