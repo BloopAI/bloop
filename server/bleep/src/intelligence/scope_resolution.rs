@@ -246,7 +246,7 @@ impl ScopeGraph {
     // The smallest scope that encompasses `range`. Start at `start` and narrow down if possible.
     fn scope_by_range(&self, range: TextRange, start: NodeIndex<u32>) -> Option<NodeIndex<u32>> {
         let target_range = self.graph[start].range();
-        if target_range.contains(range) {
+        if target_range.contains(&range) {
             let child_scopes = self
                 .graph
                 .edges_directed(start, Direction::Incoming)

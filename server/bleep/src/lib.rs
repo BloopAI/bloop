@@ -4,7 +4,7 @@
     future_incompatible,
     nonstandard_style,
     rust_2018_idioms,
-    unused_crate_dependencies,
+    // unused_crate_dependencies,
     unused_lifetimes,
     unused_qualifications
 )]

@@ -5,6 +5,16 @@ pub static RUST: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["rs"],
     grammar: tree_sitter_rust::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
+    hoverable_query: MemoizedQuery::new(
+        r#"
+        [(identifier)
+         (scoped_identifier)
+         (scoped_type_identifier)
+         (shorthand_field_identifier)
+         (field_identifier)
+         (type_identifier)] @hoverable
+        "#,
+    ),
     namespaces: &[&[
         // variables
         "const",

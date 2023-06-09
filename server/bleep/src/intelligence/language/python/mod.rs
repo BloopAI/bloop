@@ -5,6 +5,11 @@ pub static PYTHON: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["py"],
     grammar: tree_sitter_python::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
+    hoverable_query: MemoizedQuery::new(
+        r#"
+        (identifier) @hoverable
+        "#,
+    ),
     namespaces: &[&["class", "function", "parameter", "variable"]],
 };
 

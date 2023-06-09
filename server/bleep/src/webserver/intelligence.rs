@@ -3,7 +3,7 @@ use std::sync::Arc;
 use super::prelude::*;
 use crate::{
     indexes::{reader::ContentDocument, Indexes},
-    intelligence::{code_navigation, NodeKind, ScopeGraph},
+    intelligence::{code_navigation, Language, NodeKind, ScopeGraph, TSLanguage},
     repo::RepoRef,
     snippet::{Snipper, Snippet},
     symbol::SymbolLocations,
@@ -29,7 +29,7 @@ pub(super) struct TokenInfoRequest {
 }
 
 /// The response from the `local-intel` endpoint.
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub(super) enum TokenInfoResponse {
     /// The response returned when the input range is a definition
@@ -44,6 +44,18 @@ pub(super) enum TokenInfoResponse {
         /// The other references in this document
         references: Vec<FileSymbols>,
     },
+}
+
+impl TokenInfoResponse {
+    fn is_empty(&self) -> bool {
+        match self {
+            Self::Reference {
+                definitions,
+                references,
+            } => definitions.is_empty() && references.is_empty(),
+            Self::Definition { references } => references.is_empty(),
+        }
+    }
 }
 
 impl super::ApiResponse for TokenInfoResponse {}
@@ -218,6 +230,144 @@ fn merge(
         .collect()
 }
 
+async fn search_nav(
+    indexes: Arc<Indexes>,
+    repo_ref: &RepoRef,
+    hovered_text: &str,
+    payload_range: std::ops::Range<usize>,
+    lang: Option<String>,
+) -> Result<TokenInfoResponse> {
+    use crate::{
+        indexes::{reader::ContentReader, DocumentRead},
+        query::compiler::trigrams,
+    };
+    use tantivy::{
+        collector::TopDocs,
+        query::{BooleanQuery, TermQuery},
+        schema::{IndexRecordOption, Term},
+    };
+
+    let associated_langs = match lang.as_deref().map(TSLanguage::from_id) {
+        Some(Language::Supported(config)) => config.language_ids,
+        _ => &[],
+    };
+
+    // produce search based results here
+    let target = regex::Regex::new(&format!(r"\b{hovered_text}\b")).expect("failed to build regex");
+    // perform a text search for hovered_text
+    let file_source = &indexes.file.source;
+    let indexer = &indexes.file;
+    let query = {
+        let repo_filter = Term::from_field_text(indexer.source.repo_ref, &repo_ref.to_string());
+        let terms = trigrams(hovered_text)
+            .map(|token| Term::from_field_text(indexer.source.content, token.as_str()))
+            .map(|term| {
+                Box::new(TermQuery::new(term, IndexRecordOption::Basic))
+                    as Box<dyn tantivy::query::Query>
+            })
+            .chain(std::iter::once(
+                Box::new(TermQuery::new(repo_filter, IndexRecordOption::Basic))
+                    as Box<dyn tantivy::query::Query>,
+            ))
+            .chain(std::iter::once(Box::new(BooleanQuery::union(
+                associated_langs
+                    .iter()
+                    .map(|l| {
+                        Term::from_field_bytes(
+                            indexer.source.lang,
+                            l.to_ascii_lowercase().as_bytes(),
+                        )
+                    })
+                    .map(|l| {
+                        Box::new(TermQuery::new(l, IndexRecordOption::Basic))
+                            as Box<dyn tantivy::query::Query>
+                    })
+                    .collect::<Vec<_>>(),
+            ))  as Box<dyn tantivy::query::Query>))
+            .collect::<Vec<Box<dyn tantivy::query::Query>>>();
+        BooleanQuery::intersection(terms)
+    };
+    let collector = TopDocs::with_limit(100);
+    let reader = indexes.file.reader.read().await;
+    let searcher = reader.searcher();
+    let results = searcher
+        .search(&query, &collector)
+        .expect("failed to search index");
+
+    // classify search results into defs and refs
+    let (definitions, references): (Vec<_>, Vec<_>) = results
+        .into_iter()
+        .map(|(_, doc_addr)| {
+            let retrieved_doc = searcher
+                .doc(doc_addr)
+                .expect("failed to get document by address");
+            let doc = ContentReader.read_document(file_source, retrieved_doc);
+            let hoverable_ranges = doc.hoverable_ranges().unwrap(); // infallible
+            let (defs, refs): (Vec<_>, Vec<_>) = target
+                .find_iter(&doc.content)
+                .map(|m| TextRange::from_byte_range(m.range(), &doc.line_end_indices))
+                .filter(|range| hoverable_ranges.iter().any(|r| r.contains(range)))
+                .filter(|range| {
+                    !(payload_range.start >= range.start.byte
+                        && payload_range.end <= range.end.byte)
+                })
+                .map(|range| {
+                    let start_byte = range.start.byte;
+                    let end_byte = range.end.byte;
+                    let is_def = doc
+                        .symbol_locations
+                        .scope_graph()
+                        .and_then(|graph| {
+                            graph
+                                .node_by_range(start_byte, end_byte)
+                                .map(|idx| matches!(graph.graph[idx], NodeKind::Def(_)))
+                        })
+                        .unwrap_or_default();
+                    let highlight = start_byte..end_byte;
+                    let snippet = Snipper::default()
+                        .expand(highlight, &doc.content, &doc.line_end_indices)
+                        .reify(&doc.content, &[]);
+                    (is_def, SymbolOccurrence { range, snippet })
+                })
+                .partition(|(is_def, _)| *is_def);
+
+            let mut defs = defs
+                .into_iter()
+                .map(|(_, occurrence)| occurrence)
+                .collect::<Vec<_>>();
+            defs.sort_by_key(|k| k.range);
+
+            let mut refs = refs
+                .into_iter()
+                .map(|(_, occurrence)| occurrence)
+                .collect::<Vec<_>>();
+            refs.sort_by_key(|k| k.range);
+
+            let file = doc.relative_path;
+
+            let def_symbols = FileSymbols {
+                file: file.clone(),
+                data: defs,
+            };
+
+            let ref_symbols = FileSymbols { file, data: refs };
+
+            (def_symbols, ref_symbols)
+        })
+        .unzip();
+
+    Ok(TokenInfoResponse::Reference {
+        definitions: definitions
+            .into_iter()
+            .filter(FileSymbols::is_populated)
+            .collect(),
+        references: references
+            .into_iter()
+            .filter(FileSymbols::is_populated)
+            .collect(),
+    })
+}
+
 pub(super) async fn handle(
     Query(payload): Query<TokenInfoRequest>,
     Extension(indexes): Extension<Arc<Indexes>>,
@@ -238,7 +388,19 @@ pub(super) async fn handle(
     let node = scope_graph.node_by_range(payload.start, payload.end);
 
     let idx = match node {
-        None => return Err(Error::user("provided range is not a valid token")),
+        None => {
+            let hovered_range = payload.start..payload.end;
+            let hovered_text = &content.content.as_str()[hovered_range.clone()];
+            return search_nav(
+                Arc::clone(&indexes),
+                repo_ref,
+                hovered_text,
+                hovered_range,
+                content.lang.clone(),
+            )
+            .await
+            .map(json);
+        }
         Some(idx) => idx,
     };
 
@@ -246,7 +408,16 @@ pub(super) async fn handle(
     let current_file = &content.relative_path;
     let kind = scope_graph.symbol_name_of(idx);
     let lang = content.lang.as_deref();
-    let all_docs = indexes.file.by_repo(repo_ref, lang).await;
+
+    let associated_langs = match lang.map(TSLanguage::from_id) {
+        Some(Language::Supported(config)) => config.language_ids,
+        _ => &[],
+    };
+
+    let all_docs = indexes
+        .file
+        .by_repo(repo_ref, associated_langs.into_iter())
+        .await;
 
     match &scope_graph.graph[idx] {
         // we are already at a def
@@ -268,7 +439,23 @@ pub(super) async fn handle(
             // merge the two
             let references = merge([local_references], repo_wide_references);
 
-            Ok(json(TokenInfoResponse::Definition { references }))
+            let response = TokenInfoResponse::Definition { references };
+
+            if response.is_empty() {
+                let hovered_range = payload.start..payload.end;
+                let hovered_text = &content.content.as_str()[hovered_range.clone()];
+                search_nav(
+                    Arc::clone(&indexes),
+                    repo_ref,
+                    hovered_text,
+                    hovered_range,
+                    content.lang.clone(),
+                )
+                .await
+                .map(json)
+            } else {
+                Ok(json(response))
+            }
         }
 
         // we are at a reference:
@@ -297,10 +484,26 @@ pub(super) async fn handle(
             };
             let references = merge([local_references], repo_wide_references);
 
-            Ok(json(TokenInfoResponse::Reference {
+            let response = TokenInfoResponse::Reference {
                 definitions,
                 references,
-            }))
+            };
+
+            if response.is_empty() {
+                let hovered_range = payload.start..payload.end;
+                let hovered_text = &content.content.as_str()[hovered_range.clone()];
+                search_nav(
+                    Arc::clone(&indexes),
+                    repo_ref,
+                    hovered_text,
+                    hovered_range,
+                    content.lang.clone(),
+                )
+                .await
+                .map(json)
+            } else {
+                Ok(json(response))
+            }
         }
 
         // we are at an import:
@@ -324,10 +527,26 @@ pub(super) async fn handle(
 
             let references = merge([local_references], repo_wide_references);
 
-            Ok(json(TokenInfoResponse::Reference {
+            let response = TokenInfoResponse::Reference {
                 definitions,
                 references,
-            }))
+            };
+
+            if response.is_empty() {
+                let hovered_range = payload.start..payload.end;
+                let hovered_text = &content.content.as_str()[hovered_range.clone()];
+                search_nav(
+                    Arc::clone(&indexes),
+                    repo_ref,
+                    hovered_text,
+                    hovered_range,
+                    content.lang.clone(),
+                )
+                .await
+                .map(json)
+            } else {
+                Ok(json(response))
+            }
         }
         _ => Err(Error::user(
             "provided range is not eligible for intelligence",
