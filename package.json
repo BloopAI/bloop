@@ -3,9 +3,9 @@
   "private": true,
   "scripts": {
     "start": "npm --prefix apps/desktop run tauri dev",
-    "start-app": "npm --prefix apps/desktop run tauri-dev",
+    "start-app": "npm --prefix apps/desktop run tauri dev",
     "start-web": "npm --prefix client run dev",
-    "build-app": "npm --prefix apps/desktop run tauri-build",
+    "build-app": "npm --prefix apps/desktop run tauri build",
     "build-web": "npm --prefix client run build",
     "tauri": "npm --prefix apps/desktop run tauri",
     "lint": "eslint client/src apps/**/src --ext ts --ext tsx --ext js --ext jsx --ext html",

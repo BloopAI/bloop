@@ -8,8 +8,6 @@
     "vite-build": "vite build",
     "build": "npm-run-all tsc vite-build",
     "preview": "vite preview",
-    "tauri": "tauri",
-    "tauri-dev": "cross-env BLOOP_LOG=debug tauri dev",
-    "tauri-build": "tauri build"
+    "tauri": "tauri"
   }
 }
