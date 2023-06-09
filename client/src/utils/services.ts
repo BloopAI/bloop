@@ -33,7 +33,8 @@ export const initializeSentry = (envConfig, release: string) => {
   });
 
   Sentry.setUser({
-    id: envConfig.device_id,
+    id: envConfig.tracking_id,
     username: envConfig.user_login,
+    device_id: envConfig.device_id,
   });
 };
