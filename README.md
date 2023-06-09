@@ -3,7 +3,16 @@
   <img alt="bloop logo" src="https://assets.bloop.ai/bloop_github_logo_light.png">
 </picture>
 
-bloop is a code-search engine that uses GPT-4 to answer questions about your code. Search both your local and remote repositories with natural language, regex and filtered queries.
+bloop is a developer assistant that uses GPT-4 to answer questions about your codebase. The agent searches both your local and remote repositories with natural language, regex and filtered queries.
+
+Some of the ways engineers use bloop to improve their efficiency when working on large codebases:
+- Summarising how large files work and how multiple files work together
+- Understand how to use open source libraries when documentation is lacking
+- Identify the origin of errors
+- Ask questions about English language codebases in other languages
+- Reduce code duplication by checking for existing functionality
+- Write new code, taking into account existing codebase context (eg: "write a dockerfile for this project")
+
 
 ## Features
 
@@ -16,7 +25,7 @@ bloop is a code-search engine that uses GPT-4 to answer questions about your cod
 
 bloop stands on the shoulders of the Rust ecosystem. Our search indexes are powered by [Tantivy](https://github.com/quickwit-oss/tantivy) and [Qdrant](https://github.com/qdrant/qdrant), and our multi-platform app is built with [Tauri](https://github.com/tauri-apps/tauri).
 
-![code search demo](https://assets.bloop.ai/bloop_gpt4_short.gif)
+![code search demo](https://assets.bloop.ai/github_auth_4k.gif)
 
 ## Get Started
 
