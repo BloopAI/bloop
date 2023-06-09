@@ -54,7 +54,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "ai.bloop.bloop",
+      "identifier": "bloop",
       "longDescription": "Helping developers find code faster",
       "macOS": {
         "entitlements": null,
@@ -64,8 +64,8 @@
         "signingIdentity": null
       },
       "resources": [
-        "config.json",
-        "model/*"
+        "model/*",
+        "config/config.json"
       ],
       "shortDescription": "",
       "targets": "all",

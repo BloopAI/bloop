@@ -193,6 +193,15 @@ impl Semantic {
                 .build()?,
         );
 
+        #[cfg(windows)]
+        {
+            unsafe {
+                let api_base = ort::sys::OrtGetApiBase();
+                let api = (*api_base).GetApi.as_ref().unwrap()(ort::sys::ORT_API_VERSION);
+                (*api).DisableTelemetryEvents.as_ref().unwrap()(environment.env_ptr());
+            }
+        }
+
         let threads = if let Ok(v) = std::env::var("NUM_OMP_THREADS") {
             str::parse(&v).unwrap_or(1)
         } else {

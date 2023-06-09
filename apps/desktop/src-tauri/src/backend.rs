@@ -27,7 +27,7 @@ where
     let configuration = {
         let path = app
             .path_resolver()
-            .resolve_resource("config.json")
+            .resolve_resource("config/config.json")
             .expect("failed to resolve resource");
 
         let mut bundled = Configuration::read(path).unwrap();

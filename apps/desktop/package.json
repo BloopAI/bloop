@@ -9,7 +9,7 @@
     "build": "npm-run-all tsc vite-build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri-dev": "./build.sh dev",
-    "tauri-build": "./build.sh build"
+    "tauri-dev": "cross-env BLOOP_LOG=debug tauri dev",
+    "tauri-build": "tauri build"
   }
 }

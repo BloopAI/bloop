@@ -746,15 +746,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "casey"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fabe85130dda9cf267715582ce6cf1ab581c8dfe3cb33f7065fee0f14e3fea14"
-dependencies = [
- "syn 1.0.109",
-]
-
-[[package]]
 name = "cast"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1738,8 +1729,7 @@ dependencies = [
 [[package]]
 name = "esaxx-rs"
 version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f748b253ceca9fed5f42f8b5ceb3851e93102199bc25b64b65369f76e5c0a35"
+source = "git+https://github.com/bloopai/esaxx-rs#76222cfd485e7c5dbccefb7f836b0fa5497dc03b"
 dependencies = [
  "cc",
 ]
@@ -4614,17 +4604,14 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "ort"
-version = "1.14.0-beta.0"
-source = "git+https://github.com/bloopai/ort?branch=merge-upstream#35ecbb4db857b4c2aea87ac995bf17bb1dcaf31c"
+version = "1.14.0"
+source = "git+https://github.com/bloopai/ort?branch=windows#0998a094249bde18349d34017cda4c27b5608d5f"
 dependencies = [
- "casey",
  "flate2",
  "half 2.2.1",
  "lazy_static",
  "libc",
  "ndarray",
- "num-complex",
- "num-traits",
  "tar",
  "thiserror",
  "tracing",
@@ -7754,7 +7741,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4b45063f47caea744e48f5baa99169bd8bd9b882d80a99941141327bbb00f99"
 dependencies = [
  "base64 0.21.2",
- "flate2",
  "log",
  "native-tls",
  "once_cell",
