@@ -25,6 +25,7 @@ type Props = {
   setConversation: (b: ChatMessage[]) => void;
   setThreadId: (b: string) => void;
   repoRef: string;
+  handleNewConversation: () => void;
 };
 
 const AllConversations = ({
@@ -34,6 +35,7 @@ const AllConversations = ({
   setThreadId,
   setConversation,
   repoRef,
+  handleNewConversation,
 }: Props) => {
   const [openItem, setOpenItem] = useState<ChatMessage[] | null>(null);
   const [conversations, setConversations] = useState<AllConversationsResponse>(
@@ -108,6 +110,7 @@ const AllConversations = ({
             onClick={() => {
               setHistoryOpen(false);
               setActive(true);
+              handleNewConversation();
             }}
           >
             Create new
