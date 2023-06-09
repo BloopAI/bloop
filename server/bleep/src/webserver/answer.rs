@@ -576,6 +576,8 @@ impl Conversation {
         let repo_ref = &self.repo_ref;
         let chunks = stream::iter(paths)
             .map(|path| async move {
+                tracing::debug!(?path, "reading file");
+
                 let lines = ctx
                     .app
                     .indexes
@@ -589,20 +591,24 @@ impl Conversation {
                     .map(|(i, line)| format!("{} {line}", i + 1))
                     .collect::<Vec<_>>();
 
-                Result::<_>::Ok((lines, path))
-            })
-            // Buffer file loading to load multiple paths at once
-            .buffered(10)
-            .and_then(|(lines, path): (Vec<String>, String)| async move {
                 const MAX_TOKENS: usize = 3400;
                 const LINE_OVERLAP: usize = 3;
 
                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
-                let iter = split_line_set_by_tokens(lines, bpe, MAX_TOKENS, LINE_OVERLAP)
-                    .map(move |lines| Result::<_>::Ok((lines, path.clone())));
 
-                Ok(futures::stream::iter(iter))
+                let iter = tokio::task::spawn_blocking(|| {
+                    split_line_set_by_tokens(lines, bpe, MAX_TOKENS, LINE_OVERLAP)
+                        .collect::<Vec<_>>()
+                })
+                .await
+                .context("failed to split by token")?
+                .into_iter()
+                .map(move |lines| Result::<_>::Ok((lines, path.clone())));
+
+                Result::<_>::Ok(futures::stream::iter(iter))
             })
+            // Buffer file loading to load multiple paths at once
+            .buffered(10)
             .try_flatten()
             .map(|result| async {
                 let (lines, path) = result?;
@@ -620,6 +626,8 @@ impl Conversation {
                 // this snippet by line number.
                 let contents = lines.join("\n");
                 let prompt = prompts::file_explanation(question, &path, &contents);
+
+                tracing::debug!(?path, "calling chat API on file");
 
                 let json = ctx
                     .llm_gateway
@@ -1127,6 +1135,11 @@ fn split_line_set_by_tokens(
     max_tokens: usize,
     line_overlap: usize,
 ) -> impl Iterator<Item = Vec<String>> {
+    let line_tokens = lines
+        .iter()
+        .map(|line| bpe.encode_ordinary(line).len())
+        .collect::<Vec<_>>();
+
     let mut start = 0usize;
 
     std::iter::from_fn(move || {
@@ -1138,14 +1151,12 @@ fn split_line_set_by_tokens(
 
         let mut subset = Vec::new();
 
-        loop {
-            if start >= lines.len() {
-                break;
-            }
-
-            let text = subset.join("\n");
-
-            if limit_tokens(&text, bpe.clone(), max_tokens).len() < text.len() {
+        while start < lines.len() {
+            if line_tokens[start - subset.len()..start]
+                .iter()
+                .sum::<usize>()
+                > max_tokens
+            {
                 subset.pop();
                 start -= 1;
                 break;
