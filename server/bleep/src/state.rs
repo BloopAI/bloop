@@ -65,10 +65,13 @@ impl<T: Serialize + DeserializeOwned + Default + Send + Sync> PersistedState<T> 
 
     fn load_or(name: &'static str, source: &StateSource, val: T) -> Self {
         let path = source.directory().join(name).with_extension("json");
-        Self {
+        let new = Self {
             state: Arc::new(read_file(&path).unwrap_or(val)),
             path,
-        }
+        };
+
+        new.store().unwrap();
+        new
     }
 
     pub fn store(&self) -> Result<()> {
