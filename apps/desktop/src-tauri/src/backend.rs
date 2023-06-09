@@ -76,7 +76,13 @@ where
                 let backend = backend.clone();
                 scope.add_event_processor(move |mut event| {
                     event.user = Some(sentry_user()).map(|mut user| {
-                        user.username = backend.user();
+                        let auth = backend.user();
+                        user.id = backend
+                            .analytics
+                            .as_ref()
+                            .zip(auth.clone())
+                            .map(|(a, u)| a.tracking_id(&u.into()));
+                        user.username = auth;
                         user
                     });
 
@@ -126,11 +132,13 @@ fn initialize_sentry(dsn: &str) {
         // the safe side, make sure we blow up
         panic!("in the disco");
     }
+
+    sentry::configure_scope(|scope| scope.set_user(Some(sentry_user())));
 }
 
 fn sentry_user() -> sentry::User {
     sentry::User {
-        id: Some(get_device_id()),
+        other: [("device_id".to_string(), get_device_id().into())].into(),
         ..Default::default()
     }
 }

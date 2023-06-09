@@ -12,6 +12,12 @@ use sentry::{Hub, SentryFutureExt};
 #[derive(Clone)]
 pub struct User(pub Option<String>);
 
+impl From<String> for User {
+    fn from(value: String) -> Self {
+        User(Some(value))
+    }
+}
+
 pub fn sentry_layer(router: Router) -> Router {
     router.layer(from_fn(sentry_layer_mw))
 }

@@ -92,7 +92,7 @@ pub struct Application {
     cookie_key: axum_extra::extract::cookie::Key,
 
     /// Analytics backend -- may be unintialized
-    analytics: Option<Arc<analytics::RudderHub>>,
+    pub analytics: Option<Arc<analytics::RudderHub>>,
 }
 
 impl Application {
