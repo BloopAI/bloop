@@ -8,8 +8,9 @@ import {
   useLocation,
   useNavigationType,
 } from 'react-router-dom';
+import { EnvConfig } from '../types/general';
 
-export const initializeSentry = (envConfig, release: string) => {
+export const initializeSentry = (envConfig: EnvConfig, release: string) => {
   if (!envConfig.sentry_dsn_fe) {
     return;
   }
