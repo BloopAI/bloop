@@ -184,6 +184,8 @@
               rustc
             ]);
 
+            src = pkgs.lib.sources.cleanSource ./.;
+
             shellHook = ''
               npm i
             '';
