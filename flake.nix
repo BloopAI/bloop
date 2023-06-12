@@ -1,8 +1,14 @@
 {
   description = "bloop";
 
+  nixConfig = {
+    extra-substituters = "https://bloopai.cachix.org";
+    extra-trusted-public-keys =
+      "bloopai.cachix.org-1:uSHFor+Jd3znikUnLc58xnHBXTcuIBSjdJxV5rLIMJU=";
+  };
+
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-23.05";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -23,8 +29,12 @@
           rustc = pkgs.rustc;
         };
 
-        runtimeDeps =
-          with pkgs; ([ openssl.out rocksdb git zlib ]);
+        runtimeDeps = with pkgs;
+          ([ openssl.out rocksdb git zlib ] ++ lib.optionals stdenv.isDarwin [
+            darwin.apple_sdk.frameworks.Foundation
+            darwin.apple_sdk.frameworks.CoreFoundation
+            darwin.apple_sdk.frameworks.Security
+          ]);
 
         buildDeps = with pkgs;
           ([
@@ -68,7 +78,7 @@
           ORT_LIB_LOCATION = "${onnxruntime-static}/build";
         };
 
-        bleep = (rustPlatform.buildRustPackage {
+        bleep = (rustPlatform.buildRustPackage rec {
           meta = with pkgs.lib; {
             description = "Search code. Fast.";
             homepage = "https://bloop.ai";
@@ -77,21 +87,16 @@
           };
 
           name = "bleep";
-          pname = "bleep";
+          pname = name;
           src = pkgs.lib.sources.cleanSource ./.;
 
-          buildFeatures = [ "dynamic-ort" ];
-
-          cargoBuildFlags = "-p bleep";
-          doCheck = false;
-
+          cargoTestFlags = "-p ${name}";
+          cargoBuildFlags = "-p ${name}";
           cargoLock = {
             lockFile = ./Cargo.lock;
             outputHashes = {
               "hyperpolyglot-0.1.7" =
-                "sha256-NftH6P+DmT2hggFxpBmvyekA/lv/JhbCJY8iMABhHp8=";
-              "octocrab-0.17.0" =
-                "sha256-UoHqwsOhfx5VBrK6z94Jk5aKpCxswcSBhiCNZAyq5a8=";
+                "sha256-g+ZJxthxOYPMacYi3fK304KVldiykAvcpTZctWKVVU0=";
               "tree-sitter-cpp-0.20.0" =
                 "sha256-h6mJdmQzJlxYIcY+d5IiaFghraUgBGZwqFPKwB3E4pQ=";
               "tree-sitter-go-0.19.1" =
@@ -103,7 +108,9 @@
             };
           };
 
+          nativeCheckInputs = buildDeps;
           nativeBuildInputs = buildDeps;
+          checkInputs = runtimeDeps;
           buildInputs = runtimeDeps;
         }).overrideAttrs (old: envVars);
 
@@ -128,8 +135,14 @@
         };
 
         devShell = (pkgs.mkShell {
-          buildInputs = buildDeps ++ runtimeDeps ++ guiDeps
-            ++ (with pkgs; [ git-lfs cargo rustc rustfmt clippy rust-analyzer ]);
+          buildInputs = buildDeps ++ runtimeDeps ++ guiDeps ++ (with pkgs; [
+            git-lfs
+            cargo
+            rustc
+            rustfmt
+            clippy
+            rust-analyzer
+          ]);
         }).overrideAttrs (old: envVars);
 
       });
