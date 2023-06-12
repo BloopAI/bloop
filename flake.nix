@@ -158,17 +158,23 @@
           onnxruntime-static = onnxruntime-static;
         };
 
-        devShell = (pkgs.mkShell {
-          buildInputs = buildDeps ++ runtimeDeps ++ guiDeps ++ (with pkgs; [
-            git-lfs
-            cargo
-            rustc
-            rustfmt
-            clippy
-            rust-analyzer
-            nixfmt
-          ]);
-        }).overrideAttrs (old: envVars);
+        devShells = {
+          default = (pkgs.mkShell {
+            buildInputs = buildDeps ++ runtimeDeps ++ guiDeps ++ (with pkgs; [
+              git-lfs
+              cargo
+              rustc
+              rustfmt
+              clippy
+              rust-analyzer
+              nixfmt
+            ]);
+
+            shellHook = ''
+              git lfs pull model
+            '';
+          }).overrideAttrs (old: envVars);
+        };
 
       });
 }
