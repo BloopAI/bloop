@@ -380,6 +380,25 @@ mod tests {
         let base_dir = cur_dir.ancestors().nth(2).unwrap();
         let walk = ignore::WalkBuilder::new(base_dir)
             .standard_filters(true)
+            .filter_entry(|de| {
+                let Some(ft) = de.file_type() else {
+		    return false;
+		};
+
+                // pretty crude, but do ignore generated files
+                if ft.is_dir() && de.file_name() == "target" {
+                    return false;
+                }
+
+                let is_file = ft.is_file() || ft.is_symlink();
+
+                !is_file
+                    || de
+                        .path()
+                        .extension()
+                        .and_then(|e| Some(e == "rs"))
+                        .unwrap_or_default()
+            })
             .build();
         let mut num_chunks = 0;
         let mut combined_size = 0;
