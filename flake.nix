@@ -117,11 +117,35 @@
         onnxruntime-static =
           import ./nix/onnxruntime.nix { inherit pkgs stdenv; };
 
+        frontend = (pkgs.buildNpmPackage rec {
+          meta = with pkgs.lib; {
+            description = "Search code. Fast.";
+            homepage = "https://bloop.ai";
+            license = licenses.asl20;
+            platforms = platforms.all;
+          };
+
+          name = "bleep-frontend";
+          pname = name;
+          src = pkgs.lib.sources.cleanSource ./.;
+
+          # The prepack script runs the build script, which we'd rather do in the build phase.
+          npmPackFlags = [ "--ignore-scripts" ];
+          npmDepsHash = "sha256-YvmdThbqlmQ9MXL+a7eyXJ33sQNStQah9MUW2zhc/Uc=";
+          makeCacheWritable = true;
+          npmBuildScript = "build-web";
+          installPhase = ''
+            mkdir -p $out
+            cp -r client/dist $out/dist
+          '';
+        });
+
       in {
         packages = {
-          bleep = bleep;
-
           default = bleep;
+
+          frontend = frontend;
+          bleep = bleep;
           docker = pkgs.dockerTools.buildImage {
             name = "bleep";
             config = { Cmd = [ "${bleep}/bin/bleep" ]; };
@@ -142,6 +166,7 @@
             rustfmt
             clippy
             rust-analyzer
+            nixfmt
           ]);
         }).overrideAttrs (old: envVars);
 
