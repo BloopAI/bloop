@@ -184,11 +184,8 @@
               rustc
             ]);
 
-            src = pkgs.lib.sources.cleanSource ./.;
-
-            setupHook = ''
-              git lfs install
-              git lfs pull
+            shellHook = ''
+              npm i
             '';
           }).overrideAttrs (old: envVars);
         };
