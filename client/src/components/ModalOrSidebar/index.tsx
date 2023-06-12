@@ -54,13 +54,13 @@ const initialSidebarStyles = (shouldStretch: boolean) => ({
 const backdropHidden = {
   opacity: 0,
   backdropFilter: 'blur(0)',
-  '-webkit-background-filter': 'blur(0)',
+  WebkitBackdropFilter: 'blur(0)',
 };
 
 const backdropVisible = {
   opacity: 1,
   backdropFilter: 'blur(1px)',
-  '-webkit-backdrop-filter': 'blur(1px)',
+  WebkitBackdropFilter: 'blur(1px)',
 };
 
 const ModalOrSidebar = ({
