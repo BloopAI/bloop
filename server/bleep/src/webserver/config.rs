@@ -42,10 +42,8 @@ pub(super) async fn handle(
     });
 
     let github_user = 'user: {
-        let Some(gh) = app.credentials.github() else {
-            break 'user None;
-        };
-        let Ok(crab) = gh.client() else {
+        let Some(crab) = user.github()
+	else {
             break 'user None;
         };
         crab.current().user().await.ok()
@@ -55,7 +53,7 @@ pub(super) async fn handle(
         analytics_data_plane: app.config.analytics_data_plane.clone(),
         analytics_key_fe: app.config.analytics_key_fe.clone(),
         sentry_dsn_fe: app.config.sentry_dsn_fe.clone(),
-        user_login: user.0,
+        user_login: user.login().map(str::to_owned),
         schema_version: crate::state::SCHEMA_VERSION.into(),
         bloop_version: env!("CARGO_PKG_VERSION").into(),
         bloop_commit: git_version::git_version!(fallback = "unknown").into(),

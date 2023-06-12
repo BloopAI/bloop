@@ -31,7 +31,7 @@ pub(in crate::webserver) async fn list(
 ) -> webserver::Result<impl IntoResponse> {
     let db = db::get().await?;
 
-    let user_id = user.0.ok_or_else(|| Error::user("missing user ID"))?;
+    let user_id = user.login().ok_or_else(|| Error::user("missing user ID"))?;
 
     let conversations = if let Some(repo_ref) = query.repo_ref {
         let repo_ref = repo_ref.to_string();
@@ -73,7 +73,7 @@ pub(in crate::webserver) async fn delete(
     Extension(user): Extension<User>,
 ) -> webserver::Result<()> {
     let db = db::get().await?;
-    let user_id = user.0.ok_or_else(|| Error::user("missing user ID"))?;
+    let user_id = user.login().ok_or_else(|| Error::user("missing user ID"))?;
 
     let result = sqlx::query! {
         "DELETE FROM conversations WHERE user_id = ? AND thread_id = ?",
@@ -95,7 +95,10 @@ pub(in crate::webserver) async fn thread(
     Path(thread_id): Path<uuid::Uuid>,
     Extension(user): Extension<User>,
 ) -> webserver::Result<impl IntoResponse> {
-    let user_id = user.0.ok_or_else(|| Error::user("missing user ID"))?;
+    let user_id = user
+        .login()
+        .ok_or_else(|| Error::user("missing user ID"))?
+        .to_owned();
     let conversation = Conversation::load(&ConversationId { thread_id, user_id })
         .await?
         .ok_or_else(|| Error::new(ErrorKind::NotFound, "thread was not found"))?;

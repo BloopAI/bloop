@@ -118,11 +118,11 @@ impl RudderHub {
     }
 
     pub fn tracking_id(&self, user: &crate::webserver::middleware::User) -> String {
-        match user.0 {
-            Some(ref username) => {
+        match user.login() {
+            Some(username) => {
                 let id = self
                     .user_store
-                    .entry(username.clone())
+                    .entry(username.to_string())
                     .or_default()
                     .get()
                     .tracking_id();

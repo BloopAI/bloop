@@ -1,6 +1,7 @@
 use super::prelude::*;
 use crate::Application;
 
+use anyhow::{bail, Context};
 use axum::{
     extract::State,
     http::Request,
@@ -10,11 +11,44 @@ use axum::{
 use sentry::{Hub, SentryFutureExt};
 
 #[derive(Clone)]
-pub struct User(pub Option<String>);
+pub enum User {
+    Unknown,
+    Authenticated {
+        login: String,
+        crab: Arc<dyn Fn() -> anyhow::Result<octocrab::Octocrab> + Send + Sync>,
+    },
+}
+
+impl User {
+    pub fn authenticated_without_upstream(login: String) -> Self {
+        User::Authenticated {
+            login,
+            crab: Arc::new(|| bail!("no upstream")),
+        }
+    }
+
+    pub(crate) fn login(&self) -> Option<&str> {
+        let User::Authenticated { login, .. }= self
+	else {
+	    return None;
+	};
+
+        Some(login)
+    }
+
+    pub(crate) fn github(&self) -> Option<octocrab::Octocrab> {
+        let User::Authenticated { crab, .. }= self
+	else {
+	    return None;
+	};
+
+        crab().ok()
+    }
+}
 
 impl From<String> for User {
     fn from(value: String) -> Self {
-        User(Some(value))
+        User::authenticated_without_upstream(value)
     }
 }
 
@@ -23,12 +57,12 @@ pub fn sentry_layer(router: Router) -> Router {
 }
 
 async fn sentry_layer_mw<B>(
-    Extension(User(username)): Extension<User>,
+    Extension(user): Extension<User>,
     request: Request<B>,
     next: Next<B>,
 ) -> Response {
     let hub = Hub::with(|hub| Hub::new_from_top(hub));
-    let username = username.to_owned();
+    let username = user.login().map(str::to_owned);
 
     hub.configure_scope(move |scope| {
         scope.add_event_processor(move |mut event| {
@@ -49,9 +83,19 @@ async fn local_user_mw<B>(
     mut request: Request<B>,
     next: Next<B>,
 ) -> Response {
-    request
-        .extensions_mut()
-        .insert(User(app.credentials.user()));
+    request.extensions_mut().insert(
+        app.clone()
+            .credentials
+            .user()
+            .map(|user| User::Authenticated {
+                login: user,
+                crab: Arc::new(move || {
+                    let gh = app.credentials.github().context("no github")?;
+                    Ok(gh.client()?)
+                }),
+            })
+            .unwrap_or_else(|| User::Unknown),
+    );
 
     next.run(request).await
 }
