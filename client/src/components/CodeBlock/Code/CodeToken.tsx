@@ -8,17 +8,21 @@ type Props = {
   highlight?: boolean;
   startHl?: boolean;
   endHl?: boolean;
+  isHoverable?: boolean;
+  onClick: () => void;
 };
 
 class CodeToken extends PureComponent<Props> {
   render() {
-    const { token, highlight, startHl, endHl } = this.props;
+    const { token, highlight, startHl, endHl, onClick, isHoverable } =
+      this.props;
     return (
       <span
         data-byte-range={`${token.byteRange?.start}-${token.byteRange?.end}`}
-        className={`token ${token.types
+        className={`token ${isHoverable ? 'cursor-pointer' : ''} ${token.types
           .filter((t) => t !== 'table')
           .join(' ')}`}
+        onClick={onClick}
       >
         <span
           className={`${highlight ? `bg-bg-highlight/25 py-0.5` : ''} ${

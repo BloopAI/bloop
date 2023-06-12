@@ -1,19 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import TooltipCode from '../../TooltipCode';
 import CodeToken from '../Code/CodeToken';
 import { Token as TokenType } from '../../../types/prism';
-import { Range, TokenInfo, TokenInfoItem } from '../../../types/results';
-import { getTokenInfo } from '../../../services/api';
-import { mapTokenInfoData } from '../../../mappers/results';
+import { Range } from '../../../types/results';
 
 type Props = {
-  language: string;
   token: TokenType;
-  relativePath: string;
-  repoName: string;
   lineHoverRanges: Range[];
-  repoPath: string;
-  onRefDefClick: (item: TokenInfoItem, filePath: string) => void;
+  getHoverableContent: (range: Range) => void;
 };
 
 const tokenHoverable = (tokenPosition: Range, ranges: Range[]) => {
@@ -30,79 +23,30 @@ const tokenHoverable = (tokenPosition: Range, ranges: Range[]) => {
   }
 };
 
-const Token = ({
-  language,
-  token,
-  lineHoverRanges,
-  repoName,
-  relativePath,
-  repoPath,
-  onRefDefClick,
-}: Props) => {
+const Token = ({ token, lineHoverRanges, getHoverableContent }: Props) => {
   const [hoverableRange, setHoverableRange] = useState(
     tokenHoverable(token.byteRange, lineHoverRanges),
-  );
-  const [isLoading, setLoading] = useState(false);
-
-  const [tokenInfo, setTokenInfo] = useState<TokenInfo>({
-    definitions: [],
-    references: [],
-  });
-
-  const getHoverableContent = useCallback(
-    (hoverableRange: Range) => {
-      if (hoverableRange && relativePath) {
-        setLoading(true);
-        getTokenInfo(
-          relativePath,
-          repoPath,
-          hoverableRange.start,
-          hoverableRange.end,
-        )
-          .then((data) => {
-            setTokenInfo(mapTokenInfoData(data));
-          })
-          .finally(() => setLoading(false));
-      }
-    },
-    [relativePath],
   );
 
   useEffect(() => {
     setHoverableRange(tokenHoverable(token.byteRange, lineHoverRanges));
   }, [token, lineHoverRanges]);
 
-  const onHover = useCallback(() => {
-    if (!document.getSelection()?.toString()) {
-      getHoverableContent(hoverableRange!);
-    }
-  }, [hoverableRange]);
-
-  const handleRefsDefsClick = useCallback(
-    (item: TokenInfoItem, filePath: string) => {
-      setTokenInfo({
-        definitions: [],
-        references: [],
-      });
-      onRefDefClick(item, filePath);
+  const onClick = useCallback(
+    (hoverableRange: Range) => {
+      if (!document.getSelection()?.toString()) {
+        getHoverableContent(hoverableRange!);
+      }
     },
-    [],
+    [getHoverableContent],
   );
 
-  return hoverableRange ? (
-    <TooltipCode
-      language={language}
-      data={tokenInfo}
-      position={'left'}
-      onHover={onHover}
-      repoName={repoName}
-      onRefDefClick={handleRefsDefsClick}
-      isLoading={isLoading}
-    >
-      <CodeToken token={token} />
-    </TooltipCode>
-  ) : (
-    <CodeToken token={token} />
+  return (
+    <CodeToken
+      token={token}
+      isHoverable={!!hoverableRange}
+      onClick={() => (hoverableRange ? onClick(hoverableRange) : {})}
+    />
   );
 };
 

@@ -79,6 +79,7 @@ const CodeContainer = ({
               highlight={token.highlight}
               startHl={token.startHl}
               endHl={token.endHl}
+              onClick={() => {}}
             />
           ))}
         </CodeLine>

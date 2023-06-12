@@ -12,7 +12,6 @@ export const TooltipCodeDefault = () => {
       <div>
         <div className="flex flex-col gap-8 items-center">
           <TooltipCode
-            isLoading={false}
             position={'left'}
             language={'javascript'}
             onHover={() => {}}
@@ -68,7 +67,6 @@ export const TooltipCodeDefault = () => {
             <span>Tooltip Left</span>
           </TooltipCode>
           <TooltipCode
-            isLoading={false}
             position={'center'}
             language={'javascript'}
             onHover={() => {}}
@@ -124,7 +122,6 @@ export const TooltipCodeDefault = () => {
             <span>Tooltip Center</span>
           </TooltipCode>
           <TooltipCode
-            isLoading={false}
             position={'right'}
             language={'javascript'}
             onHover={() => {}}

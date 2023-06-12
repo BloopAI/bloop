@@ -20,6 +20,7 @@ import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
 import { Feather, Info, Sparkle } from '../../../icons';
 import { ChatContext } from '../../../context/chatContext';
+import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
 import CodeContainer from './CodeContainer';
 
 export interface BlameLine {
@@ -282,12 +283,12 @@ const CodeFull = ({
 
   const handleCopy = useCallback(
     (e: React.ClipboardEvent<HTMLPreElement>) => {
-      if (codeToCopy) {
+      if (codeToCopy && code.split('\n').length > MAX_LINES_BEFORE_VIRTUALIZE) {
         e.preventDefault();
         copyToClipboard(codeToCopy);
       }
     },
-    [codeToCopy],
+    [codeToCopy, code],
   );
 
   const handleKeyEvent = useCallback(
@@ -355,7 +356,6 @@ const CodeFull = ({
             height={containerHeight}
             language={language}
             metadata={metadata}
-            scrollElement={scrollElement}
             relativePath={relativePath}
             repoPath={repoPath}
             repoName={repoName}

@@ -4,10 +4,14 @@ import React, {
   SetStateAction,
   useCallback,
   useMemo,
+  useState,
 } from 'react';
 import { Token as TokenType } from '../../../types/prism';
 import { hashCode, propsAreShallowEqual } from '../../../utils';
-import { TokenInfoItem } from '../../../types/results';
+import { Range, TokenInfoItem, TokenInfoWrapped } from '../../../types/results';
+import { getTokenInfo } from '../../../services/api';
+import { mapTokenInfoData } from '../../../mappers/results';
+import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
 import CodeContainerVirtualized from './CodeContainerVirtualized';
 import CodeContainerFull from './CodeContainerFull';
 import { Metadata, BlameLine } from './index';
@@ -39,8 +43,52 @@ const CodeContainer = ({
   tokens,
   setCurrentSelection,
   relativePath,
+  repoName,
+  repoPath,
+  onRefDefClick,
+  language,
   ...otherProps
 }: Props) => {
+  const [tokenInfo, setTokenInfo] = useState<TokenInfoWrapped>({
+    definitions: [],
+    references: [],
+    byteRange: null,
+    lineNumber: -1,
+  });
+
+  const getHoverableContent = useCallback(
+    (hoverableRange: Range, lineNumber?: number) => {
+      if (hoverableRange && relativePath) {
+        getTokenInfo(
+          relativePath,
+          repoPath,
+          hoverableRange.start,
+          hoverableRange.end,
+        ).then((data) => {
+          setTokenInfo({
+            ...mapTokenInfoData(data),
+            byteRange: hoverableRange,
+            lineNumber,
+          });
+        });
+      }
+    },
+    [relativePath],
+  );
+
+  const handleRefsDefsClick = useCallback(
+    (item: TokenInfoItem, filePath: string) => {
+      setTokenInfo({
+        definitions: [],
+        references: [],
+        byteRange: null,
+        lineNumber: -1,
+      });
+      onRefDefClick(item, filePath);
+    },
+    [],
+  );
+
   const pathHash = useMemo(
     () => (relativePath ? hashCode(relativePath) : ''),
     [relativePath],
@@ -65,13 +113,17 @@ const CodeContainer = ({
     });
   }, []);
 
-  return tokens.length > 5000 ? (
+  return tokens.length > MAX_LINES_BEFORE_VIRTUALIZE ? (
     <CodeContainerVirtualized
       pathHash={pathHash}
       onMouseSelectStart={onMouseSelectStart}
       onMouseSelectEnd={onMouseSelectEnd}
       tokens={tokens}
-      relativePath={relativePath}
+      getHoverableContent={getHoverableContent}
+      tokenInfo={tokenInfo}
+      handleRefsDefsClick={handleRefsDefsClick}
+      repoName={repoName}
+      language={language}
       {...otherProps}
     />
   ) : (
@@ -80,7 +132,11 @@ const CodeContainer = ({
       onMouseSelectStart={onMouseSelectStart}
       onMouseSelectEnd={onMouseSelectEnd}
       tokens={tokens}
-      relativePath={relativePath}
+      getHoverableContent={getHoverableContent}
+      tokenInfo={tokenInfo}
+      handleRefsDefsClick={handleRefsDefsClick}
+      repoName={repoName}
+      language={language}
       {...otherProps}
     />
   );
