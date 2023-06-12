@@ -172,8 +172,8 @@
 
             src = pkgs.lib.sources.cleanSource ./.;
 
-            shellHook = ''
-              git lfs pull model
+            setupHook = ''
+              git lfs install
             '';
           }).overrideAttrs (old: envVars);
         };
