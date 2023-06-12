@@ -170,6 +170,8 @@
               nixfmt
             ]);
 
+            src = pkgs.lib.sources.cleanSource ./.;
+
             shellHook = ''
               git lfs pull model
             '';
