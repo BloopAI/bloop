@@ -22,8 +22,10 @@ const Directory = ({ path, repo, i, isReady }: Props) => {
   useEffect(() => {
     if (isReady) {
       search(`open:true repo:${repo} path:${path}`).then((resp) => {
-        const data = mapDirResult(resp.data[0] as DirectoryItem);
-        setFiles(data.entries.sort(sortFiles));
+        if (resp.data?.[0]) {
+          const data = mapDirResult(resp.data[0] as DirectoryItem);
+          setFiles(data.entries.sort(sortFiles));
+        }
       });
     }
   }, [path, isReady]);
