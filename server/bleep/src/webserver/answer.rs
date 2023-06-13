@@ -96,8 +96,7 @@ pub(super) async fn _handle(
 > {
     let conversation_id = ConversationId {
         user_id: user
-            .0
-            .as_ref()
+            .login()
             .ok_or_else(|| super::Error::user("didn't have user ID"))?
             .to_string(),
         thread_id: params.thread_id,

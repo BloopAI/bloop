@@ -244,7 +244,7 @@ async fn authenticate_authorize_reissue<B>(
         bot_auth(auth_header, &app)
             .await
             .context("failed to authenticate bot request")
-            .map(|()| (User(None), jar))
+            .map(|()| (User::Unknown, jar))
     } else {
         Err(anyhow::anyhow!(
             "request had no auth cookie or `Authorization` header"
@@ -280,7 +280,13 @@ async fn user_auth(
     let need_refresh = auth_cookie.need_refresh();
 
     if member_checked && !need_refresh {
-        return Ok((User(Some(auth_cookie.user_id.clone())), jar));
+        return Ok((
+            User::Authenticated {
+                login: auth_cookie.user_id,
+                crab: Arc::new(move || make_octocrab(&auth_cookie.github_token)),
+            },
+            jar,
+        ));
     }
 
     if need_refresh {
@@ -352,7 +358,13 @@ async fn user_auth(
     cookie.set_same_site(SameSite::Strict);
     cookie.set_secure(true);
 
-    Ok((User(Some(user_name)), jar.add(cookie)))
+    Ok((
+        User::Authenticated {
+            login: user_name,
+            crab: Arc::new(move || make_octocrab(&auth_cookie.github_token)),
+        },
+        jar.add(cookie),
+    ))
 }
 
 async fn get_username(octocrab: &Octocrab) -> Result<String, anyhow::Error> {
