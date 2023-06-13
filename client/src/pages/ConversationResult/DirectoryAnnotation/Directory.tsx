@@ -41,7 +41,7 @@ const Directory = ({ path, repo, i, isReady }: Props) => {
   return (
     <div id={`code-${i}`} className="relative">
       <div
-        className="absolute top-2 left-2 w-0.5 h-6 z-10"
+        className="absolute top-3 left-2 w-0.5 h-7 z-10"
         style={{
           backgroundColor: `rgb(${colors[i % colors.length].join(', ')})`,
         }}

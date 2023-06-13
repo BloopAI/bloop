@@ -40,7 +40,7 @@ const DiffCode = ({ data, repoName }: Props) => {
 
   return (
     <div className="text-sm border border-bg-border rounded-md">
-      <div className="w-full bg-bg-base p-3 border-b border-bg-border select-none flex items-center justify-between">
+      <div className="w-full bg-bg-base px-3 h-13 border-b border-bg-border select-none flex items-center justify-between">
         <div
           className="flex items-center gap-2 max-w-[calc(100%-120px)] w-full cursor-pointer"
           onClick={() => onResultClick(data.path)}

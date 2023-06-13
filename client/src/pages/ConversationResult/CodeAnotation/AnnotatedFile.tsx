@@ -59,19 +59,17 @@ const AnnotatedFile = ({ filePath, onResultClick, repoName, cites }: Props) => {
     <div>
       <div className="text-sm border border-bg-border rounded-md flex-1 overflow-auto">
         <div
-          className="w-full bg-bg-shade py-1 px-3 border-b border-bg-border select-none cursor-pointer"
+          className="flex items-center gap-2 w-full bg-bg-shade h-13 px-3 border-b border-bg-border select-none cursor-pointer"
           onClick={() => onResultClick(filePath)}
         >
-          <div className="flex items-center gap-2 w-full h-11.5">
-            <FileIcon filename={filePath} />
-            <BreadcrumbsPath
-              path={filePath}
-              repo={repoName}
-              onClick={(path, type) =>
-                type === FileTreeFileType.FILE ? onResultClick(path) : {}
-              }
-            />
-          </div>
+          <FileIcon filename={filePath} />
+          <BreadcrumbsPath
+            path={filePath}
+            repo={repoName}
+            onClick={(path, type) =>
+              type === FileTreeFileType.FILE ? onResultClick(path) : {}
+            }
+          />
         </div>
         {cites.length ? (
           <div className="relative overflow-auto py-4">

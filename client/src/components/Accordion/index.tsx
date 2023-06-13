@@ -35,7 +35,7 @@ const Accordion = ({
       } overflow-hidden relative`}
     >
       <span
-        className={`bg-bg-shade hover:bg-base-hover flex flex-row px-4 py-2 justify-between items-center
+        className={`bg-bg-shade hover:bg-base-hover flex flex-row px-4 h-13 justify-between items-center
         select-none gap-2 group cursor-pointer`}
         onClick={() => setExpanded(!expanded)}
       >
