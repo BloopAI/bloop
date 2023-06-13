@@ -76,11 +76,11 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
           };
         })
         .sort((a, b) =>
-          a.folderName > b.folderName
+          a.folderName.toLowerCase() < b.folderName.toLowerCase()
             ? -1
-            : a.folderName < b.folderName
+            : a.folderName.toLowerCase() > b.folderName.toLowerCase()
             ? 1
-            : a.shortName < b.shortName
+            : a.shortName.toLowerCase() < b.shortName.toLowerCase()
             ? -1
             : 1,
         ),
