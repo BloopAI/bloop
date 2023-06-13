@@ -7,6 +7,7 @@ import useAppNavigation from '../../../hooks/useAppNavigation';
 import { DirectoryItem } from '../../../types/api';
 import { mapDirResult } from '../../../mappers/results';
 import { colors } from '../CodeAnotation';
+import { buildRepoQuery } from '../../../utils';
 
 type Props = {
   path: string;
@@ -21,9 +22,11 @@ const Directory = ({ path, repo, i, isReady }: Props) => {
 
   useEffect(() => {
     if (isReady) {
-      search(`open:true repo:${repo} path:${path}`).then((resp) => {
-        const data = mapDirResult(resp.data[0] as DirectoryItem);
-        setFiles(data.entries.sort(sortFiles));
+      search(buildRepoQuery(repo, path)).then((resp) => {
+        if (resp.data?.[0]) {
+          const data = mapDirResult(resp.data[0] as DirectoryItem);
+          setFiles(data.entries.sort(sortFiles));
+        }
       });
     }
   }, [path, isReady]);
@@ -39,7 +42,7 @@ const Directory = ({ path, repo, i, isReady }: Props) => {
   return (
     <div id={`code-${i}`} className="relative">
       <div
-        className="absolute top-2 left-2 w-0.5 h-6 z-10"
+        className="absolute top-3 left-2 w-0.5 h-7 z-10"
         style={{
           backgroundColor: `rgb(${colors[i % colors.length].join(', ')})`,
         }}

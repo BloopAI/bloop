@@ -76,7 +76,9 @@ const NLInput = ({
 
   const shouldShowLoader = useMemo(
     () =>
-      isStoppable && loadingSteps?.length && placeholder !== defaultPlaceholder,
+      isStoppable &&
+      !!loadingSteps?.length &&
+      placeholder !== defaultPlaceholder,
     [isStoppable, loadingSteps?.length, placeholder],
   );
 

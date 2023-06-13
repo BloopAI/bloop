@@ -27,6 +27,7 @@ import { FileSearchResponse, GeneralSearchResponse } from '../../types/api';
 import ErrorFallback from '../../components/ErrorFallback';
 import { getHoverables } from '../../services/api';
 import PageHeader from '../../components/ResultsPageHeader';
+import { buildRepoQuery } from '../../utils';
 import ResultsList from './ResultsList';
 
 type Props = {
@@ -74,7 +75,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     (repo, path, lineNumber) => {
       setScrollToLine(lineNumber ? lineNumber.join('_') : undefined);
       if (path && !(path.endsWith('/') || path.endsWith('\\'))) {
-        fileModalSearchQuery(`open:true repo:${repo} path:${path}`);
+        fileModalSearchQuery(buildRepoQuery(repo, path));
       } else {
         navigateRepoPath(repo, path);
       }

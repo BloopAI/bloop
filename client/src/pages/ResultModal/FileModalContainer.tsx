@@ -6,6 +6,7 @@ import { FileSearchResponse } from '../../types/api';
 import { FullResultModeEnum } from '../../types/general';
 import { mapFileResult, mapRanges } from '../../mappers/results';
 import { getHoverables } from '../../services/api';
+import { buildRepoQuery } from '../../utils';
 import ResultModal from './index';
 
 type Props = {
@@ -33,7 +34,7 @@ const FileModalContainer = ({
 
   useEffect(() => {
     if (isOpen) {
-      fileModalSearchQuery(`open:true repo:${repoName} path:${path}`);
+      fileModalSearchQuery(buildRepoQuery(repoName, path));
     }
   }, [repoName, path, isOpen]);
 

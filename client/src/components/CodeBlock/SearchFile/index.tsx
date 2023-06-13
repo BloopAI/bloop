@@ -75,7 +75,7 @@ const SearchFile = ({
     setPathParts(pp);
   }, [hlRanges, onFileClick]);
   return (
-    <div className="flex flex-row w-full justify-between bg-bg-shade p-3 border border-bg-border rounded-4 items-center">
+    <div className="flex flex-row w-full justify-between bg-bg-shade px-3 h-13 border border-bg-border rounded-4 items-center">
       <span className="flex flex-row gap-2 items-center w-full overflow-hidden">
         <FileIcon filename={filePath} />
         <div className="overflow-hidden flex-1">

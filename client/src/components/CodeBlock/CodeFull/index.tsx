@@ -296,7 +296,8 @@ const CodeFull = ({
       if (
         (event.ctrlKey || event.metaKey) &&
         event.key === 'a' &&
-        (event.target as HTMLElement)?.tagName !== 'INPUT'
+        (event.target as HTMLElement)?.tagName !== 'INPUT' &&
+        (event.target as HTMLElement)?.tagName !== 'TEXTAREA'
       ) {
         // Prevent the default action (i.e. selecting all text in the browser)
         event.preventDefault();

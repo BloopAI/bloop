@@ -101,3 +101,5 @@ export { default as Feather } from './Feather';
 export { default as FeatherSelected } from './FeatherSelected';
 export { default as Info } from './Info';
 export { default as Unlike } from './Unlike';
+export { default as Clock } from './Clock';
+export { default as SortAlphabetical } from './SortAlphabetical';
