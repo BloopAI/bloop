@@ -28,7 +28,7 @@ impl User {
     }
 
     pub(crate) fn login(&self) -> Option<&str> {
-        let User::Authenticated { login, .. }= self
+        let User::Authenticated { login, .. } = self
 	else {
 	    return None;
 	};
@@ -37,7 +37,7 @@ impl User {
     }
 
     pub(crate) fn github(&self) -> Option<octocrab::Octocrab> {
-        let User::Authenticated { crab, .. }= self
+        let User::Authenticated { crab, .. } = self
 	else {
 	    return None;
 	};
