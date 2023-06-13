@@ -162,6 +162,11 @@ export type TokenInfo = {
   definitions?: TokenInfoFile[];
 };
 
+export type TokenInfoWrapped = TokenInfo & {
+  byteRange: Range | null;
+  lineNumber?: number;
+};
+
 export type ResultClick = (
   repo: string,
   path?: string,

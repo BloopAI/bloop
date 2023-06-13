@@ -65,15 +65,7 @@ const CodeLine = ({
   lineNumberToShow = lineNumber + 1,
   leftHighlight,
 }: Props) => {
-  const [isHighlighted, setHighlighted] = useState(false);
   const codeRef = useRef<HTMLTableCellElement>(null);
-
-  useEffect(() => {
-    if (shouldHighlight) {
-      setHighlighted(true);
-      setTimeout(() => setHighlighted(false), 2000);
-    }
-  }, [shouldHighlight]);
 
   useEffect(() => {
     if (codeRef.current && searchTerm) {
@@ -139,17 +131,20 @@ const CodeLine = ({
   const style = useMemo(
     () => ({
       lineHeight: lineHidden ? '0' : '',
-      ...(highlightColor
-        ? {
-            borderLeft: `3px solid ${
-              leftHighlight ? highlightColor : 'transparent'
-            }`,
-            marginLeft: 4,
-          }
-        : {}),
+      borderLeft: `3px solid ${
+        leftHighlight || shouldHighlight
+          ? highlightColor || '#EAB408'
+          : 'transparent'
+      }`,
       ...stylesGenerated,
     }),
-    [lineHidden, stylesGenerated, highlightColor, leftHighlight],
+    [
+      lineHidden,
+      stylesGenerated,
+      highlightColor,
+      leftHighlight,
+      shouldHighlight,
+    ],
   );
   const [actualLineNumber] = useState(lineNumber);
 
@@ -299,7 +294,7 @@ const CodeLine = ({
       <div
         className={`${showLineNumbers ? 'pl-2' : ''} ${
           lineHidden ? 'p-0' : ''
-        } ${isHighlighted ? 'animate-flash-highlight rounded-4 pr-2' : ''}`}
+        }`}
         ref={codeRef}
         style={
           isNewLine
