@@ -27,7 +27,7 @@ use tracing::{debug, info, trace, warn};
 use super::middleware::User;
 use crate::{
     analytics::{EventData, QueryEvent},
-    db,
+    db::SqlDb,
     query::parser::{self, SemanticQuery},
     repo::RepoRef,
     Application,
@@ -102,7 +102,7 @@ pub(super) async fn _handle(
         thread_id: params.thread_id,
     };
 
-    let mut conversation = Conversation::load(&conversation_id)
+    let mut conversation = Conversation::load(&app.sql, &conversation_id)
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
@@ -199,7 +199,7 @@ pub(super) async fn _handle(
         }
 
         // Storing the conversation here allows us to make subsequent requests.
-        conversation.store(conversation_id).await?;
+        conversation.store(&ctx.app.sql, conversation_id).await?;
     };
 
     let thread_stream = futures::stream::once(async move {
@@ -958,9 +958,8 @@ impl Conversation {
         Ok(())
     }
 
-    async fn store(self, id: ConversationId) -> Result<()> {
+    async fn store(self, db: &SqlDb, id: ConversationId) -> Result<()> {
         info!("writing conversation {}-{}", id.user_id, id.thread_id);
-        let db = db::get().await?;
         let mut transaction = db.begin().await?;
 
         // Delete the old conversation for simplicity. This also deletes all its messages.
@@ -1009,9 +1008,7 @@ impl Conversation {
         Ok(())
     }
 
-    async fn load(id: &ConversationId) -> Result<Option<Self>> {
-        let db = db::get().await?;
-
+    async fn load(db: &SqlDb, id: &ConversationId) -> Result<Option<Self>> {
         let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
 
         let row = sqlx::query! {
@@ -1020,7 +1017,7 @@ impl Conversation {
             user_id,
             thread_id,
         }
-        .fetch_optional(db)
+        .fetch_optional(db.as_ref())
         .await?;
 
         let row = match row {
