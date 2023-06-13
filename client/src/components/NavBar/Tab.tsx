@@ -15,8 +15,10 @@ const Tab = ({ tabKey, name, source }: Props) => {
     <div
       key={tabKey}
       onClick={() => setActiveTab(tabKey)}
-      className={`pl-4 pr-3 border-r ${
-        tabKey === 'initial' ? 'border-l h-[calc(100%-7px)]' : 'h-full'
+      className={`border-r ${
+        tabKey === 'initial'
+          ? 'px-3 border-l h-[calc(100%-7px)]'
+          : 'pl-4 pr-3 h-full'
       } border-bg-border  flex items-center justify-center gap-2 ${
         activeTab === tabKey
           ? 'bg-bg-shade text-label-title'
