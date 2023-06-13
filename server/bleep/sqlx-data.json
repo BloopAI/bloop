@@ -52,6 +52,46 @@
     },
     "query": "SELECT repo_ref, llm_history, exchanges, path_aliases, code_chunks FROM conversations WHERE user_id = ? AND thread_id = ?"
   },
+  "6d9ff922135be51ec1990c0a7d951636008e902c3bf373c608fe9ae0fcbfe898": {
+    "describe": {
+      "columns": [
+        {
+          "name": "file_name",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "hash",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "branches",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT file_name, hash, branches FROM file_cache WHERE repo_ref = ?"
+  },
+  "9f862a56e79cc9ae6e9b896064a0057335b40225be0a8c8d29d9227de12ae364": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "DELETE FROM file_cache WHERE repo_ref = ?"
+  },
   "bc60b0f34fd20feba2da3f16458770424534eacaba75e6f45b8218f32767671b": {
     "describe": {
       "columns": [
@@ -121,5 +161,15 @@
       }
     },
     "query": "SELECT thread_id, created_at, title FROM conversations WHERE user_id = ? ORDER BY created_at DESC"
+  },
+  "e1d3766062ea8c4e068a454890f8aeb4f0cf8b2c0b5fb89d1a695fb4ab4f60e8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 4
+      }
+    },
+    "query": "INSERT INTO file_cache (repo_ref, file_name, hash, branches) VALUES (?, ?, ?, ?)"
   }
 }

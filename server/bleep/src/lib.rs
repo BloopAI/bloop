@@ -39,6 +39,7 @@ use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::EnvFilter;
 
 mod background;
+mod cache;
 mod collector;
 mod config;
 mod db;

@@ -9,26 +9,15 @@ use std::{
 };
 use tracing::debug;
 
-use crate::state::{get_relative_path, pretty_write_file};
+use crate::{
+    cache::FreshValue,
+    state::{get_relative_path, pretty_write_file},
+};
 
 pub(crate) mod iterator;
 use iterator::language;
 
 pub(crate) type FileCache = Arc<scc::HashMap<PathBuf, FreshValue<String>>>;
-
-#[derive(Serialize, Deserialize)]
-pub(crate) struct FreshValue<T> {
-    // default value is `false` on deserialize
-    #[serde(skip)]
-    pub(crate) fresh: bool,
-    pub(crate) value: T,
-}
-
-impl<T> From<T> for FreshValue<T> {
-    fn from(value: T) -> Self {
-        Self { fresh: true, value }
-    }
-}
 
 // Types of repo
 #[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
