@@ -113,7 +113,7 @@ const RepoCard = ({
     ) {
       items.push({
         type: MenuItemType.DEFAULT,
-        text: 'Sync',
+        text: 'Resync',
         icon: <Eye />,
         onClick: onSync,
       });
