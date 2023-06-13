@@ -112,7 +112,7 @@ export const splitPathForBreadcrumbs = (
 
 export const buildRepoQuery = (repo?: string, path?: string) => {
   return `open:true ${repo ? `repo:${repo}` : ''} ${
-    path ? `path:${path}` : ''
+    path ? `path:${path.includes(' ') ? `"${path}"` : path}` : ''
   }`;
 };
 

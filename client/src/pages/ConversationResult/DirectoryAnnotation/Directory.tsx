@@ -7,6 +7,7 @@ import useAppNavigation from '../../../hooks/useAppNavigation';
 import { DirectoryItem } from '../../../types/api';
 import { mapDirResult } from '../../../mappers/results';
 import { colors } from '../CodeAnotation';
+import { buildRepoQuery } from '../../../utils';
 
 type Props = {
   path: string;
@@ -21,7 +22,7 @@ const Directory = ({ path, repo, i, isReady }: Props) => {
 
   useEffect(() => {
     if (isReady) {
-      search(`open:true repo:${repo} path:${path}`).then((resp) => {
+      search(buildRepoQuery(repo, path)).then((resp) => {
         if (resp.data?.[0]) {
           const data = mapDirResult(resp.data[0] as DirectoryItem);
           setFiles(data.entries.sort(sortFiles));
