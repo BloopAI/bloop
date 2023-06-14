@@ -33,6 +33,7 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
     undefined,
   );
   const [collapsedFiles, setCollapsedFiles] = useState<number[]>([]);
+  const [fullExpandedFiles, setFullExpandedFiles] = useState<number[]>([]);
 
   const onResultClick = useCallback(
     (path: string, lineNumber?: number[]) => {
@@ -50,7 +51,7 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
     if (scrollTop) {
       repositionAnnotationsOnScroll(scrollTop, citations);
     }
-  }, [collapsedFiles]);
+  }, [collapsedFiles, fullExpandedFiles]);
 
   return (
     <div className="flex gap-3 w-full overflow-x-hidden">
@@ -68,13 +69,21 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
               setCollapsedFiles((prev) => prev.filter((fi) => fi !== index))
             }
             isCollapsed={collapsedFiles.includes(index)}
+            onFullExpand={() =>
+              setFullExpandedFiles((prev) => [...prev, index])
+            }
+            onFullCollapse={() =>
+              setFullExpandedFiles((prev) => prev.filter((fi) => fi !== index))
+            }
+            isFullExpanded={fullExpandedFiles.includes(index)}
           />
         ))}
       </div>
       <div className="relative flex flex-col gap-3 max-w-96 w-3/5 flex-grow-0 overflow-y-auto">
         {Object.keys(citations)
           .map((filePath, index) => {
-            return collapsedFiles.includes(index) ? (
+            return collapsedFiles.includes(index) ||
+              !fullExpandedFiles.includes(index) ? (
               <div
                 id={`comment-${citations[filePath][0].i}`}
                 className="flex flex-col gap-3 transition-all duration-75 ease-linear z-0"
@@ -84,7 +93,8 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
                     i={cite.i}
                     comment={cite.comment}
                     key={`${index}-${i}`}
-                    isCollapsed
+                    isCollapsed={collapsedFiles.includes(index)}
+                    isBoxed
                   />
                 ))}
               </div>

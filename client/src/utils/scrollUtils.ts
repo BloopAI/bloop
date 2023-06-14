@@ -77,13 +77,19 @@ export const repositionAnnotationsOnScroll = (
       const code = document.getElementById(`code-${c.i}`);
       const file = document.getElementById(`file-${index}`);
 
-      if (comment && (code || file)) {
+      if (comment && file) {
         const commentRect = comment.getBoundingClientRect();
-        const codeRect = (code || file)!.getBoundingClientRect();
+        const codeRect = (code || file).getBoundingClientRect();
+        const fileRect = file.getBoundingClientRect();
+
         const codeBottom =
-          codeRect.bottom +
+          Math.min(codeRect.bottom, fileRect.bottom) +
           scrollTop -
-          (!code ? 187 : code.dataset.last === 'true' ? 170 : 205); // calculate code bottom relative to parent
+          (!code || fileRect.bottom < codeRect.bottom
+            ? 187
+            : code.dataset.last === 'true'
+            ? 170
+            : 205); // calculate code bottom relative to parent
         const lowestPosition =
           codeBottom - commentRect.height - previousCommentsHeight;
         const maxTranslateY = previousCommentStopped

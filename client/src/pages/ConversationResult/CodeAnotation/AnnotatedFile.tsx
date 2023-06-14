@@ -25,6 +25,9 @@ type Props = {
   isCollapsed?: boolean;
   onExpand: () => void;
   onCollapse: () => void;
+  isFullExpanded?: boolean;
+  onFullExpand: () => void;
+  onFullCollapse: () => void;
 };
 
 const AnnotatedFile = ({
@@ -36,6 +39,9 @@ const AnnotatedFile = ({
   isCollapsed,
   onExpand,
   onCollapse,
+  isFullExpanded,
+  onFullExpand,
+  onFullCollapse,
 }: Props) => {
   const [file, setFile] = useState<File | null>(null);
   useEffect(() => {
@@ -71,10 +77,21 @@ const AnnotatedFile = ({
     return lines;
   }, [tokens]);
 
+  const fullHeight = useMemo(() => {
+    return (
+      cites.reduce(
+        (prev, cur) => prev + (cur.end_line - cur.start_line) + 10,
+        0,
+      ) *
+        20 +
+      16
+    );
+  }, [cites]);
+
   return (
     <div>
       <div
-        className="text-sm border border-bg-border rounded-md flex-1 overflow-auto"
+        className="text-sm border border-bg-border rounded-md flex-1 overflow-x-auto"
         id={`file-${index}`}
       >
         <div
@@ -111,7 +128,20 @@ const AnnotatedFile = ({
           </Button>
         </div>
         {!isCollapsed && cites.length ? (
-          <div className="relative overflow-auto py-4">
+          <div
+            className={`relative overflow-x-auto pt-4 ${
+              isFullExpanded ? '' : 'overflow-y-hidden'
+            } ${
+              fullHeight <= 350 ? 'pb-4' : ''
+            } transition-all duration-200 ease-linear`}
+            style={
+              fullHeight > 350
+                ? {
+                    maxHeight: isFullExpanded ? fullHeight : 350,
+                  }
+                : {}
+            }
+          >
             {cites.map((c, i) => (
               <CodePart
                 key={c.i}
@@ -127,6 +157,30 @@ const AnnotatedFile = ({
                 nextPartStart={cites[i + 1]?.start_line}
               />
             ))}
+            {fullHeight > 350 && (
+              <>
+                <div className="h-14" />
+                <div
+                  className={`bg-gradient-to-b from-transparent via-bg-sub/90 to-bg-sub pb-3 pt-6 
+              absolute bottom-0 left-0 right-0 flex justify-center align-center`}
+                >
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isFullExpanded) {
+                        onFullCollapse();
+                      } else {
+                        onFullExpand();
+                      }
+                    }}
+                  >
+                    Show {isFullExpanded ? 'less' : 'more'}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         ) : null}
       </div>
