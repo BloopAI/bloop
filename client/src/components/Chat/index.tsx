@@ -171,7 +171,6 @@ const Chat = () => {
               !newMessage.conclusion &&
               !firstResultCame
             ) {
-              setChatOpen(false);
               setConversation((prev) => {
                 navigateConversationResults(prev.length - 1, threadId);
                 return prev;
@@ -300,55 +299,17 @@ const Chat = () => {
 
   return (
     <>
-      <button
-        className={`fixed z-50 bottom-20 w-16 h-16 rounded-full cursor-pointer flex items-center justify-center ${
-          isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
-        } border border-chat-bg-border bg-chat-bg-base shadow-float transition-all duration-300 ease-out-slow`}
+      <div
+        ref={chatRef}
+        className={`fixed z-50 bottom-20 rounded-xl group w-97 max-h-[30rem] flex flex-col justify-end ${
+          isRightPanelOpen ? '-right-full' : 'right-8'
+        } backdrop-blur-6 shadow-float bg-chat-bg-base/75 border border-chat-bg-border transition-all duration-300 ease-out-slow`}
         onClick={() => {
           setShowTooltip(false);
           setChatOpen(true);
         }}
       >
-        {showTooltip && (
-          <div className="absolute -top-8 z-10 right-2.5 drop-shadow-sm select-none">
-            <div className="bg-chat-bg-base border border-chat-bg-border rounded-4 flex py-2 px-4 w-max body-s text-label-title">
-              {tooltipText}
-            </div>
-            <span className="absolute right-[2.375rem] -bottom-px w-3.5 h-0.5 bg-chat-bg-base z-10" />
-            <svg
-              width="97"
-              height="14"
-              viewBox="0 0 97 14"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="absolute -bottom-2 right-0 -z-10"
-            >
-              <path
-                d="M31.5 4V4.5H32C37.1106 4.5 41.1041 5.2109 44.6844 6.65285C48.2676 8.09598 51.4662 10.283 54.9751 13.2761C55.5683 13.7821 56.438 13.2356 56.2997 12.5031C55.9833 10.8263 55.9276 9.09472 56.9816 7.66601C58.0394 6.2322 60.3211 4.96159 65.0488 4.49761L65.5 4.45333V4V1V0.5H65H32H31.5V1V4Z"
-                className="fill-chat-bg-base stroke-chat-bg-border"
-              />
-            </svg>
-          </div>
-        )}
-        <div className="absolute rounded-full top-0 left-0 right-0 bottom-0 flex z-0 overflow-hidden">
-          <StarsSvg />
-          <div className="absolute rounded-full top-0 left-0 right-0 bottom-0 z-10 chat-head-bg animate-spin-extra-slow" />
-        </div>
-        <div
-          className={`w-6 h-6 relative z-10 text-label-title ${
-            isLoading ? 'animate-spin-extra-slow' : ''
-          }`}
-        >
-          {isLoading ? <LiteLoader raw /> : <Sparkle raw />}
-        </div>
-      </button>
-      <div
-        ref={chatRef}
-        className={`fixed z-50 bottom-20 rounded-xl group w-97 max-h-[30rem] flex flex-col justify-end ${
-          !isChatOpen || isRightPanelOpen ? '-right-full' : 'right-8'
-        } backdrop-blur-6 shadow-float bg-chat-bg-base/75 border border-chat-bg-border transition-all duration-300 ease-out-slow`}
-      >
-        <div className="w-full max-h-0 group-hover:max-h-96 transition-all duration-200 overflow-hidden flex-shrink-0">
+        <div className="w-full">
           <div className="px-4 pt-4 flex flex-col">
             <div className="flex justify-between gap-1 items-center">
               <ChipButton
@@ -362,15 +323,21 @@ const Chat = () => {
                 <ChipButton onClick={handleNewConversation}>
                   Create new
                 </ChipButton>
-                <ChipButton variant="filled" onClick={() => setChatOpen(false)}>
-                  <CloseSign sizeClassName="w-3.5 h-3.5" />
+                <ChipButton
+                  variant="filled"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setChatOpen(false);
+                  }}
+                >
+                  Hide
                 </ChipButton>
               </div>
             </div>
           </div>
         </div>
         <div className="p-4">
-          {!!conversation.length && (
+          {!!conversation.length && isChatOpen && (
             <Conversation
               conversation={conversation}
               searchId={resp?.thread_id || ''}
@@ -388,6 +355,8 @@ const Chat = () => {
                 (conversation[conversation.length - 1] as ChatMessageServer)
                   ?.loadingSteps
               }
+              showTooltip={showTooltip}
+              tooltipText={tooltipText}
               onStop={stopGenerating}
               placeholder={
                 (conversation[conversation.length - 1] as ChatMessageServer)
