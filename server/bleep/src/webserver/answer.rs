@@ -106,7 +106,7 @@ pub(super) async fn _handle(
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
-    let ctx = AppContext::new(app, user)
+    let mut ctx = AppContext::new(app, user)
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .with_query_id(query_id)
         .with_thread_id(params.thread_id)
@@ -200,6 +200,8 @@ pub(super) async fn _handle(
 
         // Storing the conversation here allows us to make subsequent requests.
         conversation.store(&ctx.app.sql, conversation_id).await?;
+
+        ctx.req_complete = true;
     };
 
     let thread_stream = futures::stream::once(async move {
@@ -1301,6 +1303,11 @@ struct AppContext {
     query_id: uuid::Uuid,
     thread_id: uuid::Uuid,
     repo_ref: Option<RepoRef>,
+
+    /// Indicate whether the request was answered.
+    ///
+    /// This is used in the `Drop` handler, in order to track cancelled answer queries.
+    req_complete: bool,
 }
 
 impl AppContext {
@@ -1316,6 +1323,7 @@ impl AppContext {
             query_id: uuid::Uuid::nil(),
             thread_id: uuid::Uuid::nil(),
             repo_ref: None,
+            req_complete: false,
         })
     }
 
@@ -1352,6 +1360,17 @@ impl AppContext {
             data,
         };
         self.app.track_query(&self.user, &event);
+    }
+}
+
+impl Drop for AppContext {
+    fn drop(&mut self) {
+        if !self.req_complete {
+            self.track_query(
+                EventData::output_stage("cancelled")
+                    .with_payload("message", "request was cancelled"),
+            );
+        }
     }
 }
 
