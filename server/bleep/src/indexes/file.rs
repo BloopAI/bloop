@@ -408,24 +408,9 @@ impl File {
             hash.finalize().to_hex().to_string()
         };
 
-        trace!("adding cache entry");
-        let branch_list = dir_entry.branches().unwrap_or_default();
-        match cache.entry(entry_pathbuf.clone()) {
-            Entry::Occupied(mut val)
-                if val.get().value.0 == content_hash && val.get().value.1 == branch_list =>
-            {
-                // skip processing if contents are up-to-date in the cache
-                val.get_mut().fresh = true;
-                return Ok(());
-            }
-            Entry::Occupied(mut val) => {
-                _ = val.insert((content_hash, branch_list.to_owned()).into());
-            }
-            Entry::Vacant(val) => {
-                _ = val.insert_entry((content_hash, branch_list.to_owned()).into());
-            }
+        if is_cache_fresh(cache, content_hash, &entry_pathbuf, &dir_entry) {
+            return Ok(());
         }
-        trace!("added cache entry");
 
         let last_commit = repo_metadata.last_commit_unix_secs;
 
@@ -640,6 +625,36 @@ impl RepoFile {
             schema.is_directory => false,
         ))
     }
+}
+
+#[tracing::instrument(skip(cache, dir_entry))]
+fn is_cache_fresh(
+    cache: &RepoCacheSnapshot,
+    content_hash: String,
+    entry_pathbuf: &PathBuf,
+    dir_entry: &RepoDirEntry,
+) -> bool {
+    let branch_list = dir_entry.branches().unwrap_or_default();
+    match cache.entry(entry_pathbuf.clone()) {
+        Entry::Occupied(mut val)
+            if val.get().value.0 == content_hash && val.get().value.1 == branch_list =>
+        {
+            // skip processing if contents are up-to-date in the cache
+            val.get_mut().fresh = true;
+
+            trace!("cache hit");
+            return true;
+        }
+        Entry::Occupied(mut val) => {
+            _ = val.insert((content_hash, branch_list.to_owned()).into());
+        }
+        Entry::Vacant(val) => {
+            _ = val.insert_entry((content_hash, branch_list.to_owned()).into());
+        }
+    }
+
+    trace!("cache miss");
+    false
 }
 
 fn build_fuzzy_regex_filter(query_str: &str) -> Option<regex::RegexSet> {
