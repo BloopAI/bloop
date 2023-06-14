@@ -1,4 +1,5 @@
 import { Align } from 'react-window';
+import { Comment } from '../pages/ConversationResult/CodeAnotation';
 
 type ReactWindowProps = {
   height: number;
@@ -58,4 +59,50 @@ export const getOffsetForIndexAndAlignment = (
         return maxOffset;
       }
   }
+};
+
+export const repositionAnnotationsOnScroll = (
+  scrollTop: number,
+  citations: Record<string, Comment[]>,
+) => {
+  let previousCommentsHeight = 0;
+  let stickedCommentsHeight = 0;
+  let previousCommentStopped = true;
+  Object.values(citations).forEach((fileCite, index) => {
+    fileCite.forEach((c: any) => {
+      const comment = document.getElementById(`comment-${c.i}`);
+      if (!comment) {
+        return;
+      }
+      const code = document.getElementById(`code-${c.i}`);
+      const file = document.getElementById(`file-${index}`);
+
+      if (comment && (code || file)) {
+        const commentRect = comment.getBoundingClientRect();
+        const codeRect = (code || file)!.getBoundingClientRect();
+        const codeBottom =
+          codeRect.bottom +
+          scrollTop -
+          (!code ? 187 : code.dataset.last === 'true' ? 170 : 205); // calculate code bottom relative to parent
+        const lowestPosition =
+          codeBottom - commentRect.height - previousCommentsHeight;
+        const maxTranslateY = previousCommentStopped
+          ? Math.max(
+              0,
+              Math.min(scrollTop - stickedCommentsHeight, lowestPosition),
+            )
+          : scrollTop - stickedCommentsHeight;
+        if (
+          maxTranslateY === lowestPosition &&
+          scrollTop > codeBottom &&
+          !previousCommentStopped
+        ) {
+          stickedCommentsHeight += commentRect.height + 12;
+        }
+        previousCommentStopped = maxTranslateY === lowestPosition;
+        previousCommentsHeight += commentRect.height + 12;
+        comment.style.transform = `translateY(${maxTranslateY}px)`;
+      }
+    });
+  });
 };

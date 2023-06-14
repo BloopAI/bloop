@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import FileModalContainer from '../../ResultModal/FileModalContainer';
+import { repositionAnnotationsOnScroll } from '../../../utils/scrollUtils';
 import AnnotatedFile from './AnnotatedFile';
 import FileComment from './FileComment';
 
@@ -31,6 +32,7 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
   const [scrollToLine, setScrollToLine] = useState<string | undefined>(
     undefined,
   );
+  const [collapsedFiles, setCollapsedFiles] = useState<number[]>([]);
 
   const onResultClick = useCallback(
     (path: string, lineNumber?: number[]) => {
@@ -41,29 +43,62 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
     [repoName],
   );
 
-  const comments = useMemo(() => {
-    return Object.values(citations)
-      .map((fc) => fc.map((c) => c))
-      .flat();
-  }, [citations]);
+  useEffect(() => {
+    const scrollTop = document.getElementById(
+      'results-page-container',
+    )?.scrollTop;
+    if (scrollTop) {
+      repositionAnnotationsOnScroll(scrollTop, citations);
+    }
+  }, [collapsedFiles]);
 
   return (
     <div className="flex gap-3 w-full overflow-x-hidden">
       <div className="flex flex-col gap-3 flex-1 overflow-hidden">
-        {Object.keys(citations).map((filePath) => (
+        {Object.keys(citations).map((filePath, index) => (
           <AnnotatedFile
             key={filePath}
             repoName={repoName}
             filePath={filePath}
             onResultClick={onResultClick}
             cites={citations[filePath]}
+            index={index}
+            onCollapse={() => setCollapsedFiles((prev) => [...prev, index])}
+            onExpand={() =>
+              setCollapsedFiles((prev) => prev.filter((fi) => fi !== index))
+            }
+            isCollapsed={collapsedFiles.includes(index)}
           />
         ))}
       </div>
       <div className="relative flex flex-col gap-3 max-w-96 w-3/5 flex-grow-0 overflow-y-auto">
-        {comments.map((cite, i) => (
-          <FileComment i={cite.i} comment={cite.comment} key={i} />
-        ))}
+        {Object.keys(citations)
+          .map((filePath, index) => {
+            return collapsedFiles.includes(index) ? (
+              <div
+                id={`comment-${citations[filePath][0].i}`}
+                className="flex flex-col gap-3 transition-all duration-75 ease-linear z-0"
+              >
+                {citations[filePath].map((cite, i) => (
+                  <FileComment
+                    i={cite.i}
+                    comment={cite.comment}
+                    key={`${index}-${i}`}
+                    isCollapsed
+                  />
+                ))}
+              </div>
+            ) : (
+              citations[filePath].map((cite, i) => (
+                <FileComment
+                  i={cite.i}
+                  comment={cite.comment}
+                  key={`${index}-${i}`}
+                />
+              ))
+            );
+          })
+          .flat()}
       </div>
       <FileModalContainer
         repoName={repoName}

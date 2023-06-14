@@ -6,11 +6,15 @@ import { search } from '../../../services/api';
 import { File } from '../../../types/api';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
 import { TokensLine } from '../../../types/results';
+import Button from '../../../components/Button';
+import { ChevronDownFilled, ChevronUpFilled } from '../../../icons';
+import { buildRepoQuery } from '../../../utils';
 import CodePart from './CodePart';
 
 type Props = {
   repoName: string;
   filePath: string;
+  index: number;
   onResultClick: (path: string, lineNum?: number[]) => void;
   cites: {
     start_line: number;
@@ -18,13 +22,25 @@ type Props = {
     comment: string;
     i: number;
   }[];
+  isCollapsed?: boolean;
+  onExpand: () => void;
+  onCollapse: () => void;
 };
 
-const AnnotatedFile = ({ filePath, onResultClick, repoName, cites }: Props) => {
+const AnnotatedFile = ({
+  filePath,
+  onResultClick,
+  repoName,
+  cites,
+  index,
+  isCollapsed,
+  onExpand,
+  onCollapse,
+}: Props) => {
   const [file, setFile] = useState<File | null>(null);
   useEffect(() => {
     if (repoName && filePath) {
-      search(`open:true repo:${repoName} path:${filePath}`).then((resp) => {
+      search(buildRepoQuery(repoName, filePath)).then((resp) => {
         setFile(resp.data[0].data as File);
       });
     }
@@ -57,21 +73,44 @@ const AnnotatedFile = ({ filePath, onResultClick, repoName, cites }: Props) => {
 
   return (
     <div>
-      <div className="text-sm border border-bg-border rounded-md flex-1 overflow-auto">
+      <div
+        className="text-sm border border-bg-border rounded-md flex-1 overflow-auto"
+        id={`file-${index}`}
+      >
         <div
-          className="flex items-center gap-2 w-full bg-bg-shade h-13 px-3 border-b border-bg-border select-none cursor-pointer"
+          className={`flex items-center justify-between gap-2 w-full bg-bg-shade h-13 px-3 ${
+            !isCollapsed ? 'border-b border-bg-border' : ''
+          } select-none cursor-pointer`}
           onClick={() => onResultClick(filePath)}
         >
-          <FileIcon filename={filePath} />
-          <BreadcrumbsPath
-            path={filePath}
-            repo={repoName}
-            onClick={(path, type) =>
-              type === FileTreeFileType.FILE ? onResultClick(path) : {}
-            }
-          />
+          <div className="flex items-center gap-2 w-full cursor-pointer">
+            <FileIcon filename={filePath} />
+            <BreadcrumbsPath
+              path={filePath}
+              repo={repoName}
+              onClick={(path, type) =>
+                type === FileTreeFileType.FILE ? onResultClick(path) : {}
+              }
+            />
+          </div>
+          <Button
+            onlyIcon
+            size="tiny"
+            variant="tertiary"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isCollapsed) {
+                onExpand();
+              } else {
+                onCollapse();
+              }
+            }}
+            title={isCollapsed ? 'Expand' : 'Collapse'}
+          >
+            {isCollapsed ? <ChevronDownFilled /> : <ChevronUpFilled />}
+          </Button>
         </div>
-        {cites.length ? (
+        {!isCollapsed && cites.length ? (
           <div className="relative overflow-auto py-4">
             {cites.map((c, i) => (
               <CodePart
