@@ -407,7 +407,7 @@ impl Conversation {
                         .search(&nl_query, 30, 0, true)
                         .await?
                         .into_iter()
-                        .map(|chunk| chunk.relative_path.into_owned())
+                        .map(|chunk| chunk.relative_path)
                         .collect::<HashSet<_>>()
                         .into_iter()
                         .collect();
@@ -468,9 +468,9 @@ impl Conversation {
                         let relative_path = chunk.relative_path;
 
                         CodeChunk {
-                            path: relative_path.clone().into_owned(),
+                            path: relative_path.to_owned(),
                             alias: self.path_alias(&relative_path) as u32,
-                            snippet: chunk.text.into_owned(),
+                            snippet: chunk.text.to_owned(),
                             start_line: (chunk.start_line as u32).saturating_add(1),
                             end_line: (chunk.end_line as u32).saturating_add(1),
                         }
