@@ -310,7 +310,7 @@ const Chat = () => {
         }}
       >
         {showTooltip && (
-          <div className="absolute -top-8 z-10 right-2.5 drop-shadow-sm">
+          <div className="absolute -top-8 z-10 right-2.5 drop-shadow-sm select-none">
             <div className="bg-chat-bg-base border border-chat-bg-border rounded-4 flex py-2 px-4 w-max body-s text-label-title">
               {tooltipText}
             </div>

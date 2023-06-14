@@ -36,7 +36,7 @@ const Accordion = ({
     >
       <span
         className={`bg-bg-shade hover:bg-base-hover flex flex-row px-4 h-13 justify-between items-center
-        select-none gap-2 group cursor-pointer`}
+         gap-2 group cursor-pointer`}
         onClick={() => setExpanded(!expanded)}
       >
         <span className="flex flex-row items-center gap-2 flex-1 overflow-hidden">
