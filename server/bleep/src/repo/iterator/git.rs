@@ -6,7 +6,7 @@ use regex::RegexSet;
 use tracing::error;
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap},
     path::Path,
 };
 
@@ -40,7 +40,7 @@ fn human_readable_branch_name(r: &gix::Reference<'_>) -> String {
 
 pub struct GitWalker {
     git: ThreadSafeRepository,
-    entries: HashMap<(String, FileType, gix::ObjectId), HashSet<String>>,
+    entries: HashMap<(String, FileType, gix::ObjectId), BTreeSet<String>>,
 }
 
 impl GitWalker {
@@ -129,7 +129,7 @@ impl GitWalker {
                         FileType::Other
                     };
 
-                    let branches = acc.entry((file, kind, oid)).or_insert_with(HashSet::new);
+                    let branches = acc.entry((file, kind, oid)).or_insert_with(BTreeSet::new);
                     if is_head {
                         branches.insert("HEAD".to_string());
                     }
