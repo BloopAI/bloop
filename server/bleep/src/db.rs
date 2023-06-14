@@ -1,4 +1,4 @@
-use std::{fs, path::Path, sync::Arc};
+use std::{path::Path, sync::Arc};
 
 use anyhow::{Context, Result};
 use sqlx::SqlitePool;
@@ -9,8 +9,7 @@ use crate::Configuration;
 pub type SqlDb = Arc<SqlitePool>;
 
 pub async fn init(config: &Configuration) -> Result<SqlitePool> {
-    fs::create_dir_all(&config.data_dir)?;
-    let data_dir = config.data_dir.to_string_lossy();
+    let data_dir = config.index_dir.to_string_lossy();
 
     match connect(&data_dir).await {
         Ok(pool) => Ok(pool),
