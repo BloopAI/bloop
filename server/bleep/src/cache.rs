@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use anyhow::Context;
 use sqlx::Sqlite;
@@ -21,7 +21,7 @@ impl<T> From<T> for FreshValue<T> {
 }
 
 pub(crate) type Branches = Vec<String>;
-pub(crate) type RepoCacheSnapshot = scc::HashMap<PathBuf, FreshValue<(String, Branches)>>;
+pub(crate) type RepoCacheSnapshot = Arc<scc::HashMap<PathBuf, FreshValue<(String, Branches)>>>;
 
 pub(crate) struct FileCache<'a> {
     db: &'a SqlDb,
@@ -50,7 +50,7 @@ impl<'a> FileCache<'a> {
             );
         }
 
-        Ok(output)
+        Ok(output.into())
     }
 
     pub(crate) async fn persist(

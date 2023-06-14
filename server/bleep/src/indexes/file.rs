@@ -33,9 +33,10 @@ use super::{
 };
 use crate::{
     background::SyncPipes,
+    cache::{FileCache, RepoCacheSnapshot},
     intelligence::TreeSitterFile,
     query::compiler::{case_permutations, trigrams},
-    repo::{iterator::*, FileCache, RepoMetadata, RepoRef, RepoRemote, Repository},
+    repo::{iterator::*, RepoMetadata, RepoRef, RepoRemote, Repository},
     symbol::SymbolLocations,
 };
 
@@ -44,13 +45,13 @@ struct Workload<'a> {
     repo_ref: String,
     repo_name: &'a str,
     repo_metadata: &'a RepoMetadata,
-    cache: &'a FileCache,
+    cache: &'a RepoCacheSnapshot,
     dir_entry: RepoDirEntry,
 }
 
 #[async_trait]
 impl Indexable for File {
-    fn index_repository(
+    async fn index_repository(
         &self,
         reporef: &RepoRef,
         repo: &Repository,
@@ -58,12 +59,13 @@ impl Indexable for File {
         writer: &IndexWriter,
         pipes: &SyncPipes,
     ) -> Result<()> {
-        let file_cache = repo.open_file_cache(&self.config.index_dir);
+        let file_cache = FileCache::new(&self.sql);
+        let repo_cache = file_cache.for_repo(reporef).await?;
         let repo_name = reporef.indexed_name();
         let processed = &AtomicU64::new(0);
 
         let file_worker = |count: usize| {
-            let file_cache = file_cache.clone();
+            let repo_cache = repo_cache.clone();
             move |dir_entry: RepoDirEntry| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
                 pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
@@ -73,7 +75,7 @@ impl Indexable for File {
                     repo_disk_path: &repo.disk_path,
                     repo_ref: reporef.to_string(),
                     repo_name: &repo_name,
-                    cache: &file_cache,
+                    cache: &repo_cache,
                     repo_metadata,
                     dir_entry,
                 };
@@ -105,7 +107,7 @@ impl Indexable for File {
         // files that are no longer tracked by the git index are to be removed
         // from the tantivy & qdrant indices
         let mut qdrant_remove_list = vec![];
-        file_cache.retain(|k, v| {
+        repo_cache.retain(|k, v| {
             if v.fresh.not() {
                 // delete from tantivy
                 writer.delete_term(Term::from_field_text(
@@ -139,7 +141,7 @@ impl Indexable for File {
         }
 
         pipes.index_percent(100);
-        repo.save_file_cache(&self.config.index_dir, file_cache)?;
+        file_cache.persist(reporef, repo_cache).await?;
         Ok(())
     }
 
@@ -407,17 +409,20 @@ impl File {
         };
 
         trace!("adding cache entry");
+        let branch_list = dir_entry.branches().unwrap_or_default();
         match cache.entry(entry_pathbuf.clone()) {
-            Entry::Occupied(mut val) if val.get().value == content_hash => {
+            Entry::Occupied(mut val)
+                if val.get().value.0 == content_hash && val.get().value.1 == branch_list =>
+            {
                 // skip processing if contents are up-to-date in the cache
                 val.get_mut().fresh = true;
                 return Ok(());
             }
             Entry::Occupied(mut val) => {
-                _ = val.insert(content_hash.into());
+                _ = val.insert((content_hash, branch_list.to_owned()).into());
             }
             Entry::Vacant(val) => {
-                _ = val.insert_entry(content_hash.into());
+                _ = val.insert_entry((content_hash, branch_list.to_owned()).into());
             }
         }
         trace!("added cache entry");

@@ -9,15 +9,10 @@ use std::{
 };
 use tracing::debug;
 
-use crate::{
-    cache::FreshValue,
-    state::{get_relative_path, pretty_write_file},
-};
+use crate::state::get_relative_path;
 
 pub(crate) mod iterator;
 use iterator::language;
-
-pub(crate) type FileCache = Arc<scc::HashMap<PathBuf, FreshValue<String>>>;
 
 // Types of repo
 #[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
@@ -275,35 +270,6 @@ impl Repository {
             .map(|l| l.to_string())
             .or_else(|| self.most_common_lang.take());
         self.sync_status = SyncStatus::Done;
-    }
-
-    fn file_cache_path(&self, index_dir: &Path) -> PathBuf {
-        let path_hash = blake3::hash(self.disk_path.to_string_lossy().as_bytes()).to_string();
-        index_dir.join(path_hash).with_extension("json")
-    }
-
-    pub(crate) fn open_file_cache(&self, index_dir: &Path) -> FileCache {
-        let file_name = self.file_cache_path(index_dir);
-        match std::fs::File::open(file_name)
-            .map_err(anyhow::Error::from)
-            .and_then(|f| serde_json::from_reader(f).context("bad cache"))
-        {
-            Ok(cache) => Arc::new(cache),
-            Err(_) => Default::default(),
-        }
-    }
-
-    pub(crate) fn save_file_cache(
-        &self,
-        index_dir: &Path,
-        cache: FileCache,
-    ) -> Result<(), RepoError> {
-        let file_name = self.file_cache_path(index_dir);
-        pretty_write_file(file_name, cache.as_ref())
-    }
-
-    pub(crate) fn delete_file_cache(&self, index_dir: &Path) {
-        _ = std::fs::remove_file(self.file_cache_path(index_dir))
     }
 }
 

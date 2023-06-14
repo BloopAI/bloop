@@ -94,7 +94,7 @@ pub struct Application {
     cookie_key: axum_extra::extract::cookie::Key,
 
     /// SQL database for persistent storage
-    sql: SqlDb,
+    pub sql: SqlDb,
 
     /// Analytics backend -- may be unintialized
     pub analytics: Option<Arc<analytics::RudderHub>>,
@@ -118,7 +118,7 @@ impl Application {
         let config = Arc::new(config);
         debug!(?config, "effective configuration");
 
-        let sqlite = db::init(&config).await?.into();
+        let sqlite = Arc::new(db::init(&config).await?);
 
         // Initialise Semantic index if `qdrant_url` set in config
         let semantic = match config.qdrant_url {
@@ -154,7 +154,14 @@ impl Application {
         let repo_pool = config.source.initialize_pool()?;
 
         Ok(Self {
-            indexes: Indexes::new(repo_pool.clone(), config.clone(), semantic.clone())?.into(),
+            indexes: Indexes::new(
+                repo_pool.clone(),
+                config.clone(),
+                sqlite.clone(),
+                semantic.clone(),
+            )
+            .await?
+            .into(),
             sync_queue: SyncQueue::start(config.clone()),
             cookie_key: config.source.initialize_cookie_key()?,
             credentials: config.source.initialize_credentials()?.into(),

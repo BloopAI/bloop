@@ -46,6 +46,14 @@ impl RepoDirEntry {
             _ => None,
         }
     }
+
+    pub fn branches(&self) -> Option<&[String]> {
+        match self {
+            RepoDirEntry::Dir(d) => Some(&d.branches),
+            RepoDirEntry::File(f) => Some(&f.branches),
+            RepoDirEntry::Other => None,
+        }
+    }
 }
 
 pub struct RepoDir {

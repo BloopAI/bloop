@@ -3,6 +3,7 @@ use tokio::sync::OwnedSemaphorePermit;
 use tracing::{debug, error, info};
 
 use crate::{
+    cache::FileCache,
     indexes,
     remotes::RemoteError,
     repo::{Backend, RepoError, RepoMetadata, RepoRef, Repository, SyncStatus},
@@ -44,6 +45,9 @@ pub(super) enum SyncError {
 
     #[error("tantivy: {0:?}")]
     Tantivy(anyhow::Error),
+
+    #[error("sql: {0:?}")]
+    Sql(anyhow::Error),
 
     #[error("cancelled by user")]
     Cancelled,
@@ -266,8 +270,8 @@ impl SyncHandle {
         writers: &indexes::GlobalWriteHandleRef<'_>,
     ) -> Result<()> {
         let Application {
-            ref config,
             ref semantic,
+            ref sql,
             ..
         } = self.app;
 
@@ -277,7 +281,10 @@ impl SyncHandle {
                 .await;
         }
 
-        repo.delete_file_cache(&config.index_dir);
+        FileCache::new(sql)
+            .delete_for_repo(&self.reporef)
+            .await
+            .map_err(SyncError::Sql)?;
 
         if !self.reporef.is_local() {
             tokio::fs::remove_dir_all(&repo.disk_path)
