@@ -48,6 +48,7 @@ export { default as Persons } from './Persons';
 export { default as PlusSignInBubble } from './PlusSignInBubble';
 export { default as PowerPlug } from './PowerPlug';
 export { default as Repository } from './Repository';
+export { default as RepositoryFilled } from './RepositoryFilled';
 export { default as ReturnKey } from './ReturnKey';
 export { default as Sidebar } from './Sidebar';
 export { default as Star } from './Star';
