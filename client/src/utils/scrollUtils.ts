@@ -70,26 +70,24 @@ export const repositionAnnotationsOnScroll = (
   let previousCommentStopped = true;
   Object.values(citations).forEach((fileCite, index) => {
     fileCite.forEach((c: any) => {
-      const comment = document.getElementById(`comment-${c.i}`);
+      const comment = document.querySelector(
+        `[data-active="true"] #comment-${c.i}`,
+      );
       if (!comment) {
         return;
       }
-      const code = document.getElementById(`code-${c.i}`);
-      const file = document.getElementById(`file-${index}`);
+      const code = document.querySelector(`[data-active="true"] #code-${c.i}`);
+      const file = document.querySelector(
+        `[data-active="true"] #file-${index}`,
+      );
 
-      if (comment && file) {
+      if (comment && file && comment instanceof HTMLElement) {
         const commentRect = comment.getBoundingClientRect();
         const codeRect = (code || file).getBoundingClientRect();
         const fileRect = file.getBoundingClientRect();
 
         const codeBottom =
-          Math.min(codeRect.bottom, fileRect.bottom) +
-          scrollTop -
-          (!code || fileRect.bottom < codeRect.bottom
-            ? 187
-            : code.dataset.last === 'true'
-            ? 170
-            : 205); // calculate code bottom relative to parent
+          Math.min(codeRect.bottom, fileRect.bottom) + scrollTop - 187; // calculate code bottom relative to parent
         const lowestPosition =
           codeBottom - commentRect.height - previousCommentsHeight;
         const maxTranslateY = previousCommentStopped

@@ -22,7 +22,10 @@ class Tab extends PureComponent<Props> {
   render() {
     const { deviceContextValue, isActive, tab } = this.props;
     return (
-      <div className={`${isActive ? '' : 'hidden'} `}>
+      <div
+        className={`${isActive ? '' : 'hidden'} `}
+        data-active={isActive ? 'true' : 'false'}
+      >
         <BrowserRouter>
           <DeviceContextProvider deviceContextValue={deviceContextValue}>
             <UIContextProvider tab={tab}>

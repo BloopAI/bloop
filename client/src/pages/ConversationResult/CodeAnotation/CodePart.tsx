@@ -57,20 +57,28 @@ const CodePart = ({
         : null,
     [endLine, nextPartStart],
   );
-  const slicedTokensMap = useMemo(() => {
-    if (start !== null && end !== null) {
-      return tokensMap.slice(start, end);
+  const slicedTokensMapStart = useMemo(() => {
+    if (start !== null && startLine !== null) {
+      return tokensMap.slice(start, startLine - 1);
     }
     return undefined;
-  }, [tokensMap, start, end]);
+  }, [tokensMap, startLine, start]);
+  const slicedTokensMapMain = useMemo(() => {
+    if (startLine !== null && endLine !== null) {
+      return tokensMap.slice(startLine - 1, endLine);
+    }
+    return undefined;
+  }, [tokensMap, startLine, endLine]);
+  const slicedTokensMapEnd = useMemo(() => {
+    if (endLine !== null && end !== null) {
+      return tokensMap.slice(endLine, end);
+    }
+    return undefined;
+  }, [tokensMap, endLine, end]);
 
   return (
-    <div
-      id={`code-${i}`}
-      data-last={isLast.toString()}
-      style={{ scrollMarginTop: 80 }}
-    >
-      {!slicedTokensMap?.length && (
+    <div>
+      {!slicedTokensMapMain?.length && (
         <div className="flex flex-col items-center py-8">
           <LiteLoader sizeClassName="w-7 h-7" />
           <p className="body-s text-label-base">Loading code line ranges...</p>
@@ -78,24 +86,46 @@ const CodePart = ({
       )}
       <div
         className={`${
-          !slicedTokensMap?.length ? 'opacity-0' : 'opacity-100'
+          !slicedTokensMapMain?.length ? 'opacity-0' : 'opacity-100'
         } cursor-pointer`}
         onClick={(e) => {
-          if (slicedTokensMap?.length) {
+          if (slicedTokensMapMain?.length) {
             e.stopPropagation();
             onResultClick(filePath, [Math.max(startLine - 1, 0), endLine - 1]);
           }
         }}
       >
-        {slicedTokensMap?.length && start !== null && (
-          <CodeContainer
-            lineStart={start}
-            tokensMap={slicedTokensMap}
-            lang={lang || 'plaintext'}
-            highlightColor={`rgba(${colors[i % colors.length].join(', ')}, 1)`}
-            highlightLines={[startLine - 1, endLine - 1]}
-          />
-        )}
+        <div>
+          {!!slicedTokensMapStart?.length && start !== null && (
+            <CodeContainer
+              lineStart={start}
+              tokensMap={slicedTokensMapStart}
+              lang={lang || 'plaintext'}
+            />
+          )}
+        </div>
+        <div id={`code-${i}`} style={{ scrollMarginTop: 80 }}>
+          {!!slicedTokensMapMain?.length && startLine !== null && (
+            <CodeContainer
+              lineStart={startLine}
+              tokensMap={slicedTokensMapMain}
+              lang={lang || 'plaintext'}
+              highlightColor={`rgba(${colors[i % colors.length].join(
+                ', ',
+              )}, 1)`}
+              highlightLines={[startLine - 1, endLine]}
+            />
+          )}
+        </div>
+        <div>
+          {!!slicedTokensMapEnd?.length && endLine !== null && (
+            <CodeContainer
+              lineStart={endLine}
+              tokensMap={slicedTokensMapEnd}
+              lang={lang || 'plaintext'}
+            />
+          )}
+        </div>
       </div>
       {!isLast && (!end || !nextPartStart || end < nextPartStart - 5) ? (
         <pre className={`bg-bg-sub my-0 px-2`}>
