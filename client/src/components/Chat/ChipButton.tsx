@@ -1,8 +1,8 @@
-import { PropsWithChildren } from 'react';
+import React, { PropsWithChildren } from 'react';
 
 type Props = {
   variant?: 'filled' | 'outlined';
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   colorScheme?: 'chat' | 'base';
 };
 
