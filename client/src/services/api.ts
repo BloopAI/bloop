@@ -137,13 +137,15 @@ export const scanLocalRepos = (path: string) => {
 };
 
 export const deleteRepo = (repoRef: string) =>
-  http.delete(`/repos/indexed/${repoRef}`).then((r) => r.data);
+  http
+    .delete(`/repos/indexed`, { params: { repo: repoRef } })
+    .then((r) => r.data);
 
 export const cancelSync = (repoRef: string) =>
-  http.delete(`/repos/sync/${repoRef}`).then((r) => r.data);
+  http.delete(`/repos/sync`, { params: { repo: repoRef } }).then((r) => r.data);
 
 export const syncRepo = (repoRef: string) =>
-  http.get(`/repos/sync/${repoRef}`).then((r) => r.data);
+  http.get(`/repos/sync`, { params: { repo: repoRef } }).then((r) => r.data);
 
 export const saveUserData = (userData: {
   email: string;
