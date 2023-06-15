@@ -85,7 +85,7 @@ const RepositoryFiles = ({
         ) : undefined
       }
     >
-      <div className="flex flex-col divide-y divide-bg-border overflow-auto bg-bg-sub">
+      <div className="flex flex-col divide-y divide-bg-border overflow-auto bg-bg-sub select-none">
         {(maxInitialFiles && files.length > maxInitialFiles
           ? files.slice(maxInitialFiles)
           : files

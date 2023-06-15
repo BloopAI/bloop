@@ -27,7 +27,7 @@ use tracing::{debug, info, trace, warn};
 use super::middleware::User;
 use crate::{
     analytics::{EventData, QueryEvent},
-    db,
+    db::SqlDb,
     query::parser::{self, SemanticQuery},
     repo::RepoRef,
     Application,
@@ -102,11 +102,11 @@ pub(super) async fn _handle(
         thread_id: params.thread_id,
     };
 
-    let mut conversation = Conversation::load(&conversation_id)
+    let mut conversation = Conversation::load(&app.sql, &conversation_id)
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
-    let ctx = AppContext::new(app, user)
+    let mut ctx = AppContext::new(app, user)
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .with_query_id(query_id)
         .with_thread_id(params.thread_id)
@@ -199,7 +199,9 @@ pub(super) async fn _handle(
         }
 
         // Storing the conversation here allows us to make subsequent requests.
-        conversation.store(conversation_id).await?;
+        conversation.store(&ctx.app.sql, conversation_id).await?;
+
+        ctx.req_complete = true;
     };
 
     let thread_stream = futures::stream::once(async move {
@@ -958,9 +960,8 @@ impl Conversation {
         Ok(())
     }
 
-    async fn store(self, id: ConversationId) -> Result<()> {
+    async fn store(self, db: &SqlDb, id: ConversationId) -> Result<()> {
         info!("writing conversation {}-{}", id.user_id, id.thread_id);
-        let db = db::get().await?;
         let mut transaction = db.begin().await?;
 
         // Delete the old conversation for simplicity. This also deletes all its messages.
@@ -1009,9 +1010,7 @@ impl Conversation {
         Ok(())
     }
 
-    async fn load(id: &ConversationId) -> Result<Option<Self>> {
-        let db = db::get().await?;
-
+    async fn load(db: &SqlDb, id: &ConversationId) -> Result<Option<Self>> {
         let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
 
         let row = sqlx::query! {
@@ -1020,7 +1019,7 @@ impl Conversation {
             user_id,
             thread_id,
         }
-        .fetch_optional(db)
+        .fetch_optional(db.as_ref())
         .await?;
 
         let row = match row {
@@ -1304,6 +1303,11 @@ struct AppContext {
     query_id: uuid::Uuid,
     thread_id: uuid::Uuid,
     repo_ref: Option<RepoRef>,
+
+    /// Indicate whether the request was answered.
+    ///
+    /// This is used in the `Drop` handler, in order to track cancelled answer queries.
+    req_complete: bool,
 }
 
 impl AppContext {
@@ -1319,6 +1323,7 @@ impl AppContext {
             query_id: uuid::Uuid::nil(),
             thread_id: uuid::Uuid::nil(),
             repo_ref: None,
+            req_complete: false,
         })
     }
 
@@ -1355,6 +1360,17 @@ impl AppContext {
             data,
         };
         self.app.track_query(&self.user, &event);
+    }
+}
+
+impl Drop for AppContext {
+    fn drop(&mut self) {
+        if !self.req_complete {
+            self.track_query(
+                EventData::output_stage("cancelled")
+                    .with_payload("message", "request was cancelled"),
+            );
+        }
     }
 }
 

@@ -13,6 +13,7 @@
 #[cfg(any(bench, test))]
 use criterion as _;
 
+use db::SqlDb;
 #[cfg(any(bench, test))]
 use git_version as _;
 
@@ -91,6 +92,9 @@ pub struct Application {
     /// Main cookie encryption keypair
     cookie_key: axum_extra::extract::cookie::Key,
 
+    /// SQL database for persistent storage
+    sql: SqlDb,
+
     /// Analytics backend -- may be unintialized
     pub analytics: Option<Arc<analytics::RudderHub>>,
 }
@@ -113,7 +117,7 @@ impl Application {
         let config = Arc::new(config);
         debug!(?config, "effective configuration");
 
-        db::init(&config).await?;
+        let sqlite = db::init(&config).await?.into();
 
         // Initialise Semantic index if `qdrant_url` set in config
         let semantic = match config.qdrant_url {
@@ -153,6 +157,7 @@ impl Application {
             sync_queue: SyncQueue::start(config.clone()),
             cookie_key: config.source.initialize_cookie_key()?,
             credentials: config.source.initialize_credentials()?.into(),
+            sql: sqlite,
             repo_pool,
             analytics,
             semantic,

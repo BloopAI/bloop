@@ -1,14 +1,14 @@
 use axum::{
-    extract::{Path, Query},
+    extract::{Path, Query, State},
     response::IntoResponse,
     Extension, Json,
 };
 use reqwest::StatusCode;
 
 use crate::{
-    db,
     repo::RepoRef,
     webserver::{self, middleware::User, Error, ErrorKind},
+    Application,
 };
 
 use super::{Conversation, ConversationId};
@@ -28,9 +28,9 @@ pub(in crate::webserver) struct List {
 pub(in crate::webserver) async fn list(
     Extension(user): Extension<User>,
     Query(query): Query<List>,
+    State(app): State<Application>,
 ) -> webserver::Result<impl IntoResponse> {
-    let db = db::get().await?;
-
+    let db = app.sql.as_ref();
     let user_id = user.login().ok_or_else(|| Error::user("missing user ID"))?;
 
     let conversations = if let Some(repo_ref) = query.repo_ref {
@@ -71,8 +71,9 @@ pub(in crate::webserver) struct Delete {
 pub(in crate::webserver) async fn delete(
     Query(params): Query<Delete>,
     Extension(user): Extension<User>,
+    State(app): State<Application>,
 ) -> webserver::Result<()> {
-    let db = db::get().await?;
+    let db = app.sql.as_ref();
     let user_id = user.login().ok_or_else(|| Error::user("missing user ID"))?;
 
     let result = sqlx::query! {
@@ -94,12 +95,14 @@ pub(in crate::webserver) async fn delete(
 pub(in crate::webserver) async fn thread(
     Path(thread_id): Path<uuid::Uuid>,
     Extension(user): Extension<User>,
+    State(app): State<Application>,
 ) -> webserver::Result<impl IntoResponse> {
     let user_id = user
         .login()
         .ok_or_else(|| Error::user("missing user ID"))?
         .to_owned();
-    let conversation = Conversation::load(&ConversationId { thread_id, user_id })
+
+    let conversation = Conversation::load(&app.sql, &ConversationId { thread_id, user_id })
         .await?
         .ok_or_else(|| Error::new(ErrorKind::NotFound, "thread was not found"))?;
 
