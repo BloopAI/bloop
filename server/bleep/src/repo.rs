@@ -201,16 +201,27 @@ impl<'de> Deserialize<'de> for RepoRef {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum BranchFilter {
     All,
     Head,
     Select(Vec<String>),
 }
 
-impl Into<iterator::BranchFilter> for &BranchFilter {
-    fn into(self) -> iterator::BranchFilter {
-        match self {
+impl From<&Option<BranchFilter>> for iterator::BranchFilter {
+    fn from(value: &Option<BranchFilter>) -> Self {
+        let Some(filter) = value
+	else {
+	    return Self::default();
+	};
+
+        filter.into()
+    }
+}
+
+impl From<&BranchFilter> for iterator::BranchFilter {
+    fn from(value: &BranchFilter) -> Self {
+        match value {
             BranchFilter::All => iterator::BranchFilter::All,
             BranchFilter::Head => iterator::BranchFilter::Head,
             BranchFilter::Select(regexes) => {

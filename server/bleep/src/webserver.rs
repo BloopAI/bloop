@@ -52,6 +52,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             "/repos/indexed",
             get(repos::indexed)
                 .put(repos::set_indexed)
+                .patch(repos::patch_indexed)
                 .delete(repos::delete_by_id),
         )
         .route("/repos/sync", get(repos::sync).delete(repos::delete_sync))
