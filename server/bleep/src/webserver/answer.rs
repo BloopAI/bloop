@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use axum::{
     extract::Query,
     response::{
@@ -341,15 +341,15 @@ impl Conversation {
 
                 ctx.track_query(
                     EventData::input_stage("query")
-                        .with_payload("q", &s)
+                        .with_payload("q", s)
                         .with_payload("previous_answer_summary", &summarized_answer),
                 );
 
-                s
+                s.clone()
             }
 
             Action::Answer { paths } => {
-                self.answer(ctx, exchange_tx, &paths).await?;
+                self.answer(ctx, exchange_tx, paths).await?;
                 return Ok(None);
             }
 
@@ -363,7 +363,7 @@ impl Conversation {
                     .app
                     .indexes
                     .file
-                    .fuzzy_path_match(&self.repo_ref, &query, /* limit */ 50)
+                    .fuzzy_path_match(&self.repo_ref, query, /* limit */ 50)
                     .await
                     .map(|c| c.relative_path)
                     .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.
@@ -408,7 +408,7 @@ impl Conversation {
 
                 ctx.track_query(
                     EventData::input_stage("path search")
-                        .with_payload("query", &query)
+                        .with_payload("query", query)
                         .with_payload("is_semantic", is_semantic)
                         .with_payload("results", &paths)
                         .with_payload("raw_prompt", prompt),
@@ -470,7 +470,7 @@ impl Conversation {
 
                 ctx.track_query(
                     EventData::input_stage("semantic code search")
-                        .with_payload("query", &query)
+                        .with_payload("query", query)
                         .with_payload("chunks", &chunks)
                         .with_payload("raw_prompt", &prompt),
                 );
@@ -484,10 +484,10 @@ impl Conversation {
         match &action {
             Action::Query(query) => self
                 .llm_history
-                .push_back(llm_gateway::api::Message::user(&query)),
+                .push_back(llm_gateway::api::Message::user(query)),
             _ => {
                 let function_name = match &action {
-                    Action::Answer { .. } => "answer",
+                    Action::Answer { .. } => "ans",
                     Action::Path { .. } => "path",
                     Action::Code { .. } => "code",
                     Action::Proc { .. } => "proc",
@@ -525,8 +525,6 @@ impl Conversation {
                 },
             )
             .await?;
-
-        dbg!(&raw_response);
 
         ctx.track_query(
             EventData::output_stage("llm_reply").with_payload("raw_response", &raw_response),
@@ -571,7 +569,7 @@ impl Conversation {
         }
 
         let paths = path_aliases
-            .into_iter()
+            .iter()
             .copied()
             .map(|i| self.paths.get(i).ok_or(i).cloned())
             .collect::<Result<Vec<_>, _>>()
@@ -803,7 +801,7 @@ impl Conversation {
             let mut s = "".to_owned();
 
             let mut path_aliases = aliases
-                .into_iter()
+                .iter()
                 .copied()
                 .filter(|alias| *alias < self.paths.len())
                 .collect::<Vec<_>>();
@@ -931,14 +929,21 @@ impl Conversation {
         while let Some(token) = stream.next().await {
             buffer += &token?;
 
+            if buffer.is_empty() {
+                continue;
+            }
+
             let (s, _) = partial_parse::rectify_json(&buffer);
 
             // this /should/ be infallible if rectify_json works
             let rectified_json: serde_json::Value =
                 serde_json::from_str(&s).expect("failed to rectify_json");
 
-            let json_array = as_array(rectified_json)
-                .ok_or(anyhow!("failed to parse `answer` response, expected array"))?;
+            let json_array = as_array(rectified_json.clone()).ok_or_else(|| {
+                anyhow!(
+                    "failed to parse `answer` response, expected array but buffer was `{buffer}`"
+                )
+            })?;
 
             let array_of_arrays = json_array
                 .clone()
@@ -1061,6 +1066,9 @@ impl Conversation {
     fn trimmed_history(&self) -> Result<Vec<llm_gateway::api::Message>> {
         const HEADROOM: usize = 2048;
 
+        // Switch from a `VecDeque` to a `Vec` here.
+        let mut llm_history = self.llm_history.iter().cloned().collect::<Vec<_>>();
+
         let mut tiktoken_msgs = self
             .llm_history
             .iter()
@@ -1084,7 +1092,7 @@ impl Conversation {
                 llm_gateway::api::Message::FunctionCall {
                     role,
                     function_call,
-                    content,
+                    content: _,
                 } => tiktoken_rs::ChatCompletionRequestMessage {
                     role: role.clone(),
                     content: serde_json::to_string(&function_call).unwrap(),
@@ -1094,20 +1102,24 @@ impl Conversation {
             .collect::<Vec<_>>();
 
         while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < HEADROOM {
-            tiktoken_msgs
+            let idx = llm_history
                 .iter_mut()
-                .find(|m| m.role == "user" && m.content != "[HIDDEN]")
-                .context("could not find message to trim")?
-                .content = "[HIDDEN]".into();
+                .position(|m| match m {
+                    llm_gateway::api::Message::PlainText {
+                        role,
+                        ref mut content,
+                    } if role == "user" && content != "[HIDDEN]" => {
+                        *content = "[HIDDEN]".into();
+                        true
+                    }
+                    _ => false,
+                })
+                .ok_or_else(|| anyhow!("could not find message to trim"))?;
+
+            tiktoken_msgs[idx].content = "[HIDDEN]".into();
         }
 
-        Ok(tiktoken_msgs
-            .into_iter()
-            .map(|m| llm_gateway::api::Message::PlainText {
-                role: m.role,
-                content: m.content,
-            })
-            .collect())
+        Ok(llm_history)
     }
 
     fn last_exchange(&mut self) -> &mut Exchange {

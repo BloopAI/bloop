@@ -13,7 +13,7 @@ use self::api::FunctionCall;
 pub mod api {
     use std::collections::HashMap;
 
-    #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct FunctionCall {
         pub name: Option<String>,
         pub arguments: String,
@@ -43,13 +43,9 @@ pub mod api {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub items: Option<Box<Parameter>>,
     }
-    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
     #[serde(untagged)]
     pub enum Message {
-        PlainText {
-            role: String,
-            content: String,
-        },
         FunctionReturn {
             role: String,
             name: String,
@@ -59,6 +55,13 @@ pub mod api {
             role: String,
             function_call: FunctionCall,
             content: (),
+        },
+        // NB: This has to be the last variant as this enum is marked `#[serde(untagged)]`, so
+        // deserialization will always try this variant last. Otherwise, it is possible to
+        // accidentally deserialize a `FunctionReturn` value as `PlainText`.
+        PlainText {
+            role: String,
+            content: String,
         },
     }
 
@@ -259,7 +262,7 @@ impl Client {
                     builder = builder.bearer_auth(bearer);
                 }
 
-                builder.json(dbg!(&api::Request {
+                builder.json(&api::Request {
                     messages: api::Messages {
                         messages: messages.to_owned(),
                     },
@@ -271,7 +274,7 @@ impl Client {
                     provider: self.provider,
                     model: self.model.clone(),
                     extra_stop_sequences: vec![],
-                }))
+                })
             })
             // We don't have a `Stream` body so this can't fail.
             .expect("couldn't clone requestbuilder")
