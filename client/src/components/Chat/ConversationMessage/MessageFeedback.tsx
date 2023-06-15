@@ -1,35 +1,31 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { QuillIcon, Unlike } from '../../icons';
-import useAnalytics from '../../hooks/useAnalytics';
-import { saveUpvote } from '../../services/api';
-import { DeviceContext } from '../../context/deviceContext';
-import { ChatMessageAuthor } from '../../types/general';
-import { ChatContext } from '../../context/chatContext';
-import Button from '../Button';
-import UpvoteBtn from './FeedbackBtns/Upvote';
-import DownvoteBtn from './FeedbackBtns/Downvote';
+import React, { useCallback, useContext, useState } from 'react';
+import { Unlike } from '../../../icons';
+import Button from '../../Button';
+import { saveUpvote } from '../../../services/api';
+import useAnalytics from '../../../hooks/useAnalytics';
+import { DeviceContext } from '../../../context/deviceContext';
+import UpvoteBtn from '../FeedbackBtns/Upvote';
+import DownvoteBtn from '../FeedbackBtns/Downvote';
 
 type Props = {
-  author: ChatMessageAuthor;
-  message?: string;
-  error?: string;
+  showInlineFeedback: boolean;
+  isHistory?: boolean;
+  scrollToBottom?: () => void;
   query: string;
   searchId: string;
-  isHistory?: boolean;
-  showInlineFeedback: boolean;
-  scrollToBottom?: () => void;
+  message?: string;
+  error: boolean;
 };
 
-const ConversationMessage = ({
-  author,
-  message,
-  error,
-  isHistory,
+const MessageFeedback = ({
   showInlineFeedback,
+  isHistory,
+  scrollToBottom,
   query,
   searchId,
-  scrollToBottom,
+  message,
+  error,
 }: Props) => {
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
@@ -38,11 +34,6 @@ const ConversationMessage = ({
   const [comment, setComment] = useState('');
   const { trackUpvote } = useAnalytics();
   const { envConfig } = useContext(DeviceContext);
-  const { setChatOpen } = useContext(ChatContext);
-
-  useEffect(() => {
-    setChatOpen(true);
-  }, []);
 
   const handleUpvote = useCallback(
     (isUpvote: boolean) => {
@@ -82,25 +73,6 @@ const ConversationMessage = ({
 
   return (
     <>
-      <div
-        className={`relative group-custom bg-chat-bg-shade flex items-center p-4 gap-3 border border-chat-bg-divider rounded-lg`}
-      >
-        {author === ChatMessageAuthor.User && (
-          <div className="relative">
-            <div className="w-6 h-6 rounded-full bg-chat-bg-sub overflow-hidden">
-              <img src={envConfig.github_user?.avatar_url} alt="avatar" />
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-4 h-3 bg-chat-bg-border box-content border-2 border-chat-bg-shade text-label-title rounded-full flex items-center justify-center">
-              <div className="w-1.5 h-2">
-                <QuillIcon raw />
-              </div>
-            </div>
-          </div>
-        )}
-        <pre className="body-s text-label-title whitespace-pre-wrap">
-          {message || error}
-        </pre>
-      </div>
       {showInlineFeedback &&
         !isHistory &&
         !error &&
@@ -200,4 +172,4 @@ const ConversationMessage = ({
   );
 };
 
-export default ConversationMessage;
+export default MessageFeedback;
