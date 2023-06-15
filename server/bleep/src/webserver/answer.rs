@@ -573,7 +573,7 @@ impl Conversation {
         }
 
         let question = &question;
-        let ctx = &ctx.clone().model("gpt-3.5-turbo");
+        let ctx = &ctx.clone().model("gpt-3.5-turbo-16k");
         let repo_ref = &self.repo_ref;
         let chunks = stream::iter(paths)
             .map(|path| async move {
@@ -592,7 +592,7 @@ impl Conversation {
                     .map(|(i, line)| format!("{} {line}", i + 1))
                     .collect::<Vec<_>>();
 
-                const MAX_TOKENS: usize = 3400;
+                const MAX_TOKENS: usize = 15400;
                 const LINE_OVERLAP: usize = 3;
 
                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
