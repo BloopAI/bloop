@@ -98,9 +98,9 @@ const ModalOrSidebar = ({
           <motion.div
             key="overlay"
             className={`fixed top-0 ${
-              fullOverlay ? '' : 'mt-24'
+              fullOverlay ? '' : 'mt-20'
             } bottom-0 left-0 right-0 bg-bg-base/75 cursor-alias ${
-              fullOverlay ? 'z-60' : 'z-20'
+              fullOverlay ? 'z-100' : 'z-60'
             }`}
             initial={backdropHidden}
             animate={backdropVisible}

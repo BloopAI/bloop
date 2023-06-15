@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import FileIcon from '../../../components/FileIcon';
 import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
 import { FileTreeFileType } from '../../../types';
@@ -89,6 +89,12 @@ const AnnotatedFile = ({
     );
   }, [cites]);
 
+  const handleResultClick = useCallback(() => {
+    if (!document.getSelection()?.toString()) {
+      onResultClick(filePath);
+    }
+  }, [onResultClick, filePath]);
+
   return (
     <div>
       <div
@@ -99,7 +105,7 @@ const AnnotatedFile = ({
           className={`flex items-center justify-between gap-2 w-full bg-bg-shade h-13 px-3 ${
             !isCollapsed ? 'border-b border-bg-border' : ''
           } cursor-pointer overflow-hidden`}
-          onClick={() => onResultClick(filePath)}
+          onClick={handleResultClick}
         >
           <div className="flex items-center gap-2 w-full cursor-pointer">
             <FileIcon filename={filePath} />

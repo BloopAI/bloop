@@ -89,7 +89,10 @@ const CodePart = ({
           !slicedTokensMapMain?.length ? 'opacity-0' : 'opacity-100'
         } cursor-pointer`}
         onClick={(e) => {
-          if (slicedTokensMapMain?.length) {
+          if (
+            slicedTokensMapMain?.length &&
+            !document.getSelection()?.toString()
+          ) {
             e.stopPropagation();
             onResultClick(filePath, [Math.max(startLine - 1, 0), endLine - 1]);
           }
