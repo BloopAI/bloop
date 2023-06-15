@@ -1,7 +1,7 @@
 use std::{collections::HashSet, hash::Hash, time::Duration};
 
 use crate::{
-    repo::{Backend, RepoRef, Repository, SyncStatus},
+    repo::{Backend, BranchFilter, RepoRef, Repository, SyncStatus},
     state::RepositoryPool,
     Application,
 };
@@ -27,6 +27,8 @@ pub(super) struct Repo {
     pub(super) last_update: DateTime<Utc>,
     pub(super) last_index: Option<DateTime<Utc>>,
     pub(super) most_common_lang: Option<String>,
+    pub(super) branch_filter: Option<BranchFilter>,
+    pub(super) branches: Vec<String>,
 }
 
 impl From<(&RepoRef, &Repository)> for Repo {
@@ -51,6 +53,28 @@ impl From<(&RepoRef, &Repository)> for Repo {
                 ),
             },
             most_common_lang: repo.most_common_lang.clone(),
+            branch_filter: repo.branch_filter.clone(),
+            branches: 'branch_list: {
+                let Ok(git) = gix::open(&repo.disk_path)
+		else {
+		    break 'branch_list vec![];
+		};
+
+                let Ok(refs) = git.references()
+		else {
+		    break 'branch_list vec![];
+		};
+
+                let Ok(refs) = refs.all()
+		else {
+		    break 'branch_list vec![];
+		};
+
+                use gix::bstr::ByteSlice;
+                refs.filter_map(Result::ok)
+                    .map(|r| r.name().shorten().to_str_lossy().to_string())
+                    .collect()
+            },
         }
     }
 }
@@ -70,6 +94,8 @@ impl Repo {
             last_update: origin.pushed_at.unwrap(),
             last_index: None,
             most_common_lang: None,
+            branch_filter: None,
+            branches: vec![],
         }
     }
 }
@@ -261,6 +287,31 @@ pub(super) async fn set_indexed(
         .await;
 
     json(ReposResponse::SyncQueued)
+}
+
+/// Patch a repository with the given payload
+/// This will automatically trigger a sync
+//
+pub(super) async fn patch_indexed(
+    Query(RepoParams { repo }): Query<RepoParams>,
+    Extension(app): Extension<Application>,
+    Json(patch): Json<RepositoryPatch>,
+) -> Result<impl IntoResponse> {
+    match app.repo_pool.get_async(&repo).await {
+        None => Err(Error::new(ErrorKind::NotFound, "Can't find repository")),
+        Some(mut entry) => {
+            // this should panic if we can't parse it
+            let _ = crate::repo::iterator::BranchFilter::from(&patch.branch_filter);
+            entry.get_mut().branch_filter = patch.branch_filter;
+            app.write_index().sync_and_index(vec![repo]).await;
+            Ok(json(ReposResponse::SyncQueued))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub(super) struct RepositoryPatch {
+    branch_filter: Option<BranchFilter>,
 }
 
 #[derive(Deserialize)]
