@@ -11,6 +11,7 @@ type Props = {
   children: React.ReactNode;
   shownItems?: React.ReactNode;
   defaultExpanded?: boolean;
+  onToggle?: (b: boolean) => void;
 };
 
 const zeroHeight = { height: 0 };
@@ -23,6 +24,7 @@ const Accordion = ({
   headerItems,
   shownItems,
   defaultExpanded = true,
+  onToggle,
 }: Props) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
   useEffect(() => {
@@ -37,7 +39,10 @@ const Accordion = ({
       <span
         className={`bg-bg-shade hover:bg-base-hover flex flex-row px-4 h-13 justify-between items-center
          gap-2 group cursor-pointer`}
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => {
+          setExpanded(!expanded);
+          onToggle?.(!expanded);
+        }}
       >
         <span className="flex flex-row items-center gap-2 flex-1 overflow-hidden">
           {icon}

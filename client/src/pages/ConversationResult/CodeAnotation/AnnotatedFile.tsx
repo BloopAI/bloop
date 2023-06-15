@@ -84,7 +84,8 @@ const AnnotatedFile = ({
         0,
       ) *
         20 +
-      16
+      16 +
+      56
     );
   }, [cites]);
 
@@ -97,7 +98,7 @@ const AnnotatedFile = ({
         <div
           className={`flex items-center justify-between gap-2 w-full bg-bg-shade h-13 px-3 ${
             !isCollapsed ? 'border-b border-bg-border' : ''
-          } cursor-pointer`}
+          } cursor-pointer overflow-hidden`}
           onClick={() => onResultClick(filePath)}
         >
           <div className="flex items-center gap-2 w-full cursor-pointer">
