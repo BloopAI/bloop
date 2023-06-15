@@ -98,7 +98,7 @@ pub mod api {
         None,
     }
 
-    #[derive(thiserror::Error, Debug, serde::Deserialize)]
+    #[derive(thiserror::Error, Debug, serde::Deserialize, serde::Serialize)]
     pub enum Error {
         #[error("bad OpenAI request")]
         BadOpenAiRequest,
@@ -259,7 +259,7 @@ impl Client {
                     builder = builder.bearer_auth(bearer);
                 }
 
-                builder.json(&api::Request {
+                builder.json(dbg!(&api::Request {
                     messages: api::Messages {
                         messages: messages.to_owned(),
                     },
@@ -271,7 +271,7 @@ impl Client {
                     provider: self.provider,
                     model: self.model.clone(),
                     extra_stop_sequences: vec![],
-                })
+                }))
             })
             // We don't have a `Stream` body so this can't fail.
             .expect("couldn't clone requestbuilder")

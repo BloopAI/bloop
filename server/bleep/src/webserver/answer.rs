@@ -349,7 +349,7 @@ impl Conversation {
             }
 
             Action::Answer { paths } => {
-                self.answer(ctx, exchange_tx, paths).await?;
+                self.answer(ctx, exchange_tx, &paths).await?;
                 return Ok(None);
             }
 
@@ -546,7 +546,7 @@ impl Conversation {
         &mut self,
         ctx: &AppContext,
         exchange_tx: Sender<Exchange>,
-        question: String,
+        question: &str,
         path_aliases: &[usize],
     ) -> Result<String> {
         // filesystem agnostic trivial path normalization
@@ -788,7 +788,7 @@ impl Conversation {
         &mut self,
         ctx: &AppContext,
         exchange_tx: Sender<Exchange>,
-        aliases: Vec<usize>,
+        aliases: &[usize],
     ) -> Result<()> {
         fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
             match v {
@@ -804,6 +804,7 @@ impl Conversation {
 
             let mut path_aliases = aliases
                 .into_iter()
+                .copied()
                 .filter(|alias| *alias < self.paths.len())
                 .collect::<Vec<_>>();
 
@@ -1063,10 +1064,32 @@ impl Conversation {
         let mut tiktoken_msgs = self
             .llm_history
             .iter()
-            .map(|m| tiktoken_rs::ChatCompletionRequestMessage {
-                role: m.role.clone(),
-                content: m.content.clone(),
-                name: None,
+            .map(|m| match m {
+                llm_gateway::api::Message::PlainText { role, content } => {
+                    tiktoken_rs::ChatCompletionRequestMessage {
+                        role: role.clone(),
+                        content: content.clone(),
+                        name: None,
+                    }
+                }
+                llm_gateway::api::Message::FunctionReturn {
+                    role,
+                    name,
+                    content,
+                } => tiktoken_rs::ChatCompletionRequestMessage {
+                    role: role.clone(),
+                    content: content.clone(),
+                    name: Some(name.clone()),
+                },
+                llm_gateway::api::Message::FunctionCall {
+                    role,
+                    function_call,
+                    content,
+                } => tiktoken_rs::ChatCompletionRequestMessage {
+                    role: role.clone(),
+                    content: serde_json::to_string(&function_call).unwrap(),
+                    name: None,
+                },
             })
             .collect::<Vec<_>>();
 
@@ -1080,7 +1103,7 @@ impl Conversation {
 
         Ok(tiktoken_msgs
             .into_iter()
-            .map(|m| llm_gateway::api::Message {
+            .map(|m| llm_gateway::api::Message::PlainText {
                 role: m.role,
                 content: m.content,
             })
@@ -1277,15 +1300,6 @@ enum Action {
 impl Action {
     /// Deserialize this action from the GPT-tagged enum variant format.
     ///
-    /// We convert:
-    ///
-    /// ```text
-    /// ["type", "value"]
-    /// ["type", "arg1", "arg2"]
-    /// ```
-    ///
-    /// To:
-    ///
     /// ```text
     /// {"type":"value"}
     /// {"type":["arg1", "arg2"]}
@@ -1294,7 +1308,10 @@ impl Action {
     /// So that we can deserialize using the serde-provided "tagged" enum representation.
     fn deserialize_gpt(call: &FunctionCall) -> Result<Self> {
         let mut map = serde_json::Map::new();
-        map.insert(call.name.unwrap(), serde_json::from_str(&call.arguments)?);
+        map.insert(
+            call.name.clone().unwrap(),
+            serde_json::from_str(&call.arguments)?,
+        );
 
         Ok(serde_json::from_value(serde_json::Value::Object(map))?)
     }
