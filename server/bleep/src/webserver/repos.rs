@@ -386,6 +386,7 @@ mod test {
                     last_commit_unix_secs: 123456,
                     last_index_unix_secs: 123456,
                     most_common_lang: None,
+                    branch_filter: Default::default(),
                 },
             )
             .unwrap();
@@ -403,6 +404,7 @@ mod test {
                     last_commit_unix_secs: 123456,
                     last_index_unix_secs: 123456,
                     most_common_lang: None,
+                    branch_filter: Default::default(),
                 },
             )
             .unwrap();
@@ -422,6 +424,7 @@ mod test {
                     last_commit_unix_secs: 123456,
                     last_index_unix_secs: 0,
                     most_common_lang: None,
+                    branch_filter: Default::default(),
                 },
             )
                 .into(),
@@ -440,6 +443,7 @@ mod test {
                 last_commit_unix_secs: 123456,
                 last_index_unix_secs: 0,
                 most_common_lang: None,
+                branch_filter: Default::default(),
             },
         )
             .into();
