@@ -9,6 +9,31 @@ use reqwest_eventsource::EventSource;
 use tracing::{debug, error, warn};
 
 pub mod api {
+    use std::collections::HashMap;
+
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    pub struct Function {
+        pub name: String,
+        pub description: String,
+        pub parameters: Parameters,
+    }
+
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    pub struct Parameters {
+        #[serde(rename = "type")]
+        pub _type: String,
+        pub properties: HashMap<String, Parameter>,
+        pub required: Vec<String>,
+    }
+
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    pub struct Parameter {
+        #[serde(rename = "type")]
+        pub _type: String,
+        pub description: Option<String>,
+        pub items: Option<Box<Parameter>>,
+    }
+
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
     pub struct Message {
         pub role: String,
@@ -20,9 +45,16 @@ pub mod api {
         pub messages: Vec<Message>,
     }
 
+    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+    pub struct Functions {
+        pub functions: Vec<Function>,
+    }
+
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Request {
         pub messages: Messages,
+        pub functions: Option<Functions>,
+        pub function_call_options: Option<FunctionCallOptions>,
         pub provider: Provider,
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
@@ -38,6 +70,13 @@ pub mod api {
         Anthropic,
     }
 
+    #[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
+    #[serde(rename_all = "lowercase")]
+    pub enum FunctionCallOptions {
+        Auto,
+        None,
+    }
+
     #[derive(thiserror::Error, Debug, serde::Deserialize)]
     pub enum Error {
         #[error("bad OpenAI request")]
@@ -45,6 +84,12 @@ pub mod api {
 
         #[error("incorrect configuration")]
         BadConfiguration,
+    }
+
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    pub struct FunctionCall {
+        pub name: String,
+        pub arguments: String,
     }
 
     pub type Result = std::result::Result<String, Error>;
@@ -135,13 +180,14 @@ impl Client {
     pub async fn chat(
         &self,
         messages: &[api::Message],
+        functions: Option<&[api::Function]>,
     ) -> anyhow::Result<impl Stream<Item = anyhow::Result<String>>> {
         const INITIAL_DELAY: Duration = Duration::from_millis(100);
         const SCALE_FACTOR: f32 = 1.5;
 
         let mut delay = INITIAL_DELAY;
         for _ in 0..self.max_retries {
-            match self.chat_oneshot(messages).await {
+            match self.chat_oneshot(messages, functions).await {
                 Err(ChatError::TooManyRequests) => {
                     warn!(?delay, "too many LLM requests, retrying with delay...");
                     tokio::time::sleep(delay).await;
@@ -172,6 +218,7 @@ impl Client {
     async fn chat_oneshot(
         &self,
         messages: &[api::Message],
+        functions: Option<&[api::Function]>,
     ) -> Result<impl Stream<Item = anyhow::Result<String>>, ChatError> {
         let mut event_source = Box::pin(
             EventSource::new({
@@ -181,10 +228,19 @@ impl Client {
                     builder = builder.bearer_auth(bearer);
                 }
 
+                let function_call_options = match functions {
+                    Some(_) => Some(api::FunctionCallOptions::Auto),
+                    _ => None,
+                };
+
                 builder.json(&api::Request {
                     messages: api::Messages {
                         messages: messages.to_owned(),
                     },
+                    functions: functions.map(|funcs| api::Functions {
+                        functions: funcs.to_owned(),
+                    }),
+                    function_call_options,
                     max_tokens: self.max_tokens,
                     temperature: self.temperature,
                     provider: self.provider,

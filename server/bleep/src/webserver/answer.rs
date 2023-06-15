@@ -491,21 +491,26 @@ impl Conversation {
             }
         };
 
-        self.llm_history.push_back(llm_gateway::api::Message::user(
-            &(action_result + "\n\nChoose a tool:"),
-        ));
+        self.llm_history
+            .push_back(llm_gateway::api::Message::user(&(action_result)));
 
         let updated_system_prompt =
             llm_gateway::api::Message::system(&prompts::system(&self.paths));
         _ = self.llm_history.pop_front();
         self.llm_history.push_front(updated_system_prompt);
 
+        let functions =
+            serde_json::from_value::<Vec<llm_gateway::api::Function>>(prompts::functions())
+                .unwrap();
+
         let raw_response = ctx
             .llm_gateway
-            .chat(&self.trimmed_history()?)
+            .chat(&self.trimmed_history()?, Some(&functions))
             .await?
             .try_collect::<String>()
             .await?;
+
+        dbg!(&raw_response);
 
         ctx.track_query(
             EventData::output_stage("llm_reply").with_payload("raw_response", &raw_response),
@@ -623,7 +628,7 @@ impl Conversation {
 
                 let json = ctx
                     .llm_gateway
-                    .chat(&[llm_gateway::api::Message::system(&prompt)])
+                    .chat(&[llm_gateway::api::Message::system(&prompt)], None)
                     .await?
                     .try_collect::<String>()
                     .await?;
@@ -902,8 +907,9 @@ impl Conversation {
 
         let messages = [llm_gateway::api::Message::system(&prompt)];
 
-        let mut stream = ctx.llm_gateway.chat(&messages).await?.boxed();
+        let mut stream = ctx.llm_gateway.chat(&messages, None).await?.boxed();
         let mut buffer = String::new();
+
         while let Some(token) = stream.next().await {
             buffer += &token?;
             let (s, _) = partial_parse::rectify_json(&buffer);
