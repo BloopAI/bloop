@@ -1,4 +1,10 @@
-import { ChevronRight, Globe2, HardDrive, LockFilled } from '../../icons';
+import {
+  ChevronRight,
+  Globe2,
+  HardDrive,
+  Repository,
+  RepositoryFilled,
+} from '../../icons';
 
 type Props = {
   type: 'local' | 'github' | 'public';
@@ -17,8 +23,8 @@ const typeMap = {
   },
   github: {
     icon: (
-      <div className="w-4 h-4">
-        <LockFilled raw />
+      <div className="w-3.5 h-4">
+        <RepositoryFilled raw />
       </div>
     ),
     title: 'Your GitHub repository',

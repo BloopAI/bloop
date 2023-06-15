@@ -59,7 +59,7 @@ const AnnotatedFile = ({ filePath, onResultClick, repoName, cites }: Props) => {
     <div>
       <div className="text-sm border border-bg-border rounded-md flex-1 overflow-auto">
         <div
-          className="flex items-center gap-2 w-full bg-bg-shade h-13 px-3 border-b border-bg-border select-none cursor-pointer"
+          className="flex items-center gap-2 w-full bg-bg-shade h-13 px-3 border-b border-bg-border cursor-pointer"
           onClick={() => onResultClick(filePath)}
         >
           <FileIcon filename={filePath} />

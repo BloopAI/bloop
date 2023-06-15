@@ -1,5 +1,5 @@
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
-import { CheckIcon, HardDrive, Lock } from '../../icons';
+import { CheckIcon, HardDrive, RepositoryFilled } from '../../icons';
 import Button from '../Button';
 import SkeletonItem from '../SkeletonItem';
 import { RepoUi } from '../../types/general';
@@ -100,7 +100,7 @@ const RepoList = ({
                       ) : source === 'local' ? (
                         <HardDrive />
                       ) : (
-                        <Lock />
+                        <RepositoryFilled />
                       )}
                       <span className="whitespace-nowrap">
                         {repo.shortName}
