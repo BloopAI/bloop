@@ -143,6 +143,18 @@ pub(super) async fn _handle(
 
     let q = params.q;
 
+    ctx.branch = 'branch: {
+        let Ok(parsed) = parser::parse_nl(&q)
+	else {
+	    break 'branch None;
+	};
+
+        parsed
+            .as_semantic()
+            .and_then(|s| s.branch.iter().next())
+            .map(|l| l.regex_str().to_string())
+    };
+
     let stream = async_stream::try_stream! {
         let mut action = Action::Query(q);
 
@@ -576,7 +588,7 @@ impl Conversation {
                     .app
                     .indexes
                     .file
-                    .by_path(repo_ref, &path)
+                    .by_path(repo_ref, &path, ctx.branch.as_deref())
                     .await
                     .with_context(|| format!("failed to read path: {path}"))?
                     .content
@@ -814,7 +826,7 @@ impl Conversation {
                     .app
                     .indexes
                     .file
-                    .by_path(&self.repo_ref, &path)
+                    .by_path(&self.repo_ref, &path, ctx.branch.as_deref())
                     .await
                     .with_context(|| format!("failed to read path: {}", path))?
                     .content;
@@ -1091,7 +1103,7 @@ impl Conversation {
                     .app
                     .indexes
                     .file
-                    .by_path(repo_ref, &path)
+                    .by_path(repo_ref, &path, ctx.branch.as_deref())
                     .await
                     .unwrap()
                     .content;
@@ -1296,6 +1308,7 @@ struct AppContext {
     query_id: uuid::Uuid,
     thread_id: uuid::Uuid,
     repo_ref: Option<RepoRef>,
+    branch: Option<String>,
 
     /// Indicate whether the request was answered.
     ///
@@ -1317,6 +1330,7 @@ impl AppContext {
             thread_id: uuid::Uuid::nil(),
             repo_ref: None,
             req_complete: false,
+            branch: None,
         })
     }
 

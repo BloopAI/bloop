@@ -11,7 +11,7 @@ use scc::hash_map::Entry;
 use tantivy::{
     collector::TopDocs,
     doc,
-    query::{BooleanQuery, QueryParser, TermQuery},
+    query::{BooleanQuery, Query, QueryParser, TermQuery},
     schema::{IndexRecordOption, Schema, Term},
     IndexWriter,
 };
@@ -277,6 +277,7 @@ impl Indexer<File> {
         &self,
         repo_ref: &RepoRef,
         relative_path: &str,
+        branch: Option<&str>,
     ) -> Result<ContentDocument> {
         let reader = self.reader.read().await;
         let searcher = reader.searcher();
@@ -290,10 +291,16 @@ impl Indexer<File> {
             file_index,
             vec![self.source.repo_disk_path, self.source.relative_path],
         );
+
+        let mut query_string =
+            format!(r#"repo_ref:"{repo_ref}" AND relative_path:"{relative_path}""#);
+
+        if let Some(b) = branch {
+            query_string += &format!(r#" AND branch:"{b}""#);
+        }
+
         let query = query_parser
-            .parse_query(&format!(
-                "repo_ref:\"{repo_ref}\" AND relative_path:\"{relative_path}\""
-            ))
+            .parse_query(&query_string)
             .expect("failed to parse tantivy query");
 
         self.top_hit(query, searcher).await
@@ -301,7 +308,7 @@ impl Indexer<File> {
 
     async fn top_hit(
         &self,
-        query: Box<dyn tantivy::query::Query>,
+        query: Box<dyn Query>,
         searcher: tantivy::Searcher,
     ) -> Result<ContentDocument> {
         let file_source = &self.source;
@@ -337,32 +344,40 @@ impl Indexer<File> {
     // TODO: Look at this again when:
     //  - directory retrieval is ready
     //  - unified referencing is ready
-    pub async fn by_repo(&self, repo_ref: &RepoRef, lang: Option<&str>) -> Vec<ContentDocument> {
+    pub async fn by_repo(
+        &self,
+        repo_ref: &RepoRef,
+        lang: Option<&str>,
+        branch: Option<&str>,
+    ) -> Vec<ContentDocument> {
         let reader = self.reader.read().await;
         let searcher = reader.searcher();
 
+        let mut query = vec![];
+
         // repo query
-        let path_query = Box::new(TermQuery::new(
+        query.push(Box::new(TermQuery::new(
             Term::from_field_text(self.source.repo_ref, &repo_ref.to_string()),
             IndexRecordOption::Basic,
-        ));
+        )) as Box<dyn Query>);
 
-        // if file has a recognised language, constrain by files of the same lang
-        let query = match lang {
-            Some(l) => BooleanQuery::intersection(vec![
-                path_query,
-                // language query
-                Box::new(TermQuery::new(
-                    Term::from_field_bytes(self.source.lang, l.to_ascii_lowercase().as_bytes()),
-                    IndexRecordOption::Basic,
-                )),
-            ]),
-            None => BooleanQuery::intersection(vec![path_query]),
+        if let Some(b) = branch {
+            query.push(Box::new(TermQuery::new(
+                Term::from_field_bytes(self.source.branches, b.as_bytes()),
+                IndexRecordOption::Basic,
+            )));
         };
+
+        if let Some(l) = lang {
+            query.push(Box::new(TermQuery::new(
+                Term::from_field_bytes(self.source.lang, l.to_ascii_lowercase().as_bytes()),
+                IndexRecordOption::Basic,
+            )));
+        }
 
         let collector = TopDocs::with_limit(100);
         searcher
-            .search(&query, &collector)
+            .search(&BooleanQuery::intersection(query), &collector)
             .expect("failed to search index")
             .into_iter()
             .map(|(_, doc_addr)| {

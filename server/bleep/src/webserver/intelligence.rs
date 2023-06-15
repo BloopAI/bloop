@@ -23,6 +23,9 @@ pub(super) struct TokenInfoRequest {
     /// The path to the file of interest, relative to the repo root
     relative_path: String,
 
+    /// Branch name to use for the lookup,
+    branch: Option<String>,
+
     /// The byte range to look for
     start: usize,
     end: usize,
@@ -226,7 +229,7 @@ pub(super) async fn handle(
 
     let content = indexes
         .file
-        .by_path(repo_ref, &payload.relative_path)
+        .by_path(repo_ref, &payload.relative_path, payload.branch.as_deref())
         .await
         .map_err(Error::user)?;
 
@@ -246,7 +249,10 @@ pub(super) async fn handle(
     let current_file = &content.relative_path;
     let kind = scope_graph.symbol_name_of(idx);
     let lang = content.lang.as_deref();
-    let all_docs = indexes.file.by_repo(repo_ref, lang).await;
+    let all_docs = indexes
+        .file
+        .by_repo(repo_ref, lang, payload.branch.as_deref())
+        .await;
 
     match &scope_graph.graph[idx] {
         // we are already at a def
