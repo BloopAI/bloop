@@ -1,4 +1,5 @@
 use anyhow::Context;
+use regex::RegexSet;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt::{self, Display},
@@ -201,6 +202,25 @@ impl<'de> Deserialize<'de> for RepoRef {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum BranchFilter {
+    All,
+    Head,
+    Select(Vec<String>),
+}
+
+impl Into<iterator::BranchFilter> for &BranchFilter {
+    fn into(self) -> iterator::BranchFilter {
+        match self {
+            BranchFilter::All => iterator::BranchFilter::All,
+            BranchFilter::Head => iterator::BranchFilter::Head,
+            BranchFilter::Select(regexes) => {
+                iterator::BranchFilter::Select(RegexSet::new(regexes).unwrap())
+            }
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Repository {
     pub disk_path: PathBuf,
     pub remote: RepoRemote,
@@ -208,6 +228,7 @@ pub struct Repository {
     pub last_commit_unix_secs: u64,
     pub last_index_unix_secs: u64,
     pub most_common_lang: Option<String>,
+    pub branch_filter: Option<BranchFilter>,
 }
 
 impl Repository {
@@ -245,6 +266,7 @@ impl Repository {
             disk_path,
             remote,
             most_common_lang: None,
+            branch_filter: None,
         }
     }
 

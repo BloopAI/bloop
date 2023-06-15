@@ -87,7 +87,10 @@ impl Indexable for File {
 
         let start = std::time::Instant::now();
         if matches!(repo.remote, RepoRemote::Git { .. }) {
-            let walker = GitWalker::open_repository(&repo.disk_path, None)?;
+            let walker = GitWalker::open_repository(
+                &repo.disk_path,
+                repo.branch_filter.as_ref().map(Into::into),
+            )?;
             let count = walker.len();
             walker.for_each(pipes, file_worker(count));
         } else {
