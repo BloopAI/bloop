@@ -32,7 +32,7 @@ pub fn functions() -> serde_json::Value {
                 }
             },
             {
-                "name": "read",
+                "name": "proc",
                 "description": "Read one or more files and extract the line ranges which are relevant to the search terms.",
                 "parameters": {
                     "type": "object",

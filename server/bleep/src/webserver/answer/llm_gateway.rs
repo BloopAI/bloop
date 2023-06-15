@@ -8,8 +8,16 @@ use futures::{Stream, StreamExt};
 use reqwest_eventsource::EventSource;
 use tracing::{debug, error, warn};
 
+use self::api::FunctionCall;
+
 pub mod api {
     use std::collections::HashMap;
+
+    #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+    pub struct FunctionCall {
+        pub name: Option<String>,
+        pub arguments: String,
+    }
 
     #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     pub struct Function {
@@ -30,14 +38,28 @@ pub mod api {
     pub struct Parameter {
         #[serde(rename = "type")]
         pub _type: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
         pub description: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
         pub items: Option<Box<Parameter>>,
     }
-
-    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
-    pub struct Message {
-        pub role: String,
-        pub content: String,
+    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+    #[serde(untagged)]
+    pub enum Message {
+        PlainText {
+            role: String,
+            content: String,
+        },
+        FunctionReturn {
+            role: String,
+            name: String,
+            content: String,
+        },
+        FunctionCall {
+            role: String,
+            function_call: FunctionCall,
+            content: (),
+        },
     }
 
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -54,7 +76,6 @@ pub mod api {
     pub struct Request {
         pub messages: Messages,
         pub functions: Option<Functions>,
-        pub function_call_options: Option<FunctionCallOptions>,
         pub provider: Provider,
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
@@ -86,33 +107,43 @@ pub mod api {
         BadConfiguration,
     }
 
-    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-    pub struct FunctionCall {
-        pub name: String,
-        pub arguments: String,
-    }
-
     pub type Result = std::result::Result<String, Error>;
 }
 
 impl api::Message {
-    pub fn new(role: &str, content: &str) -> Self {
-        Self {
+    pub fn new_text(role: &str, content: &str) -> Self {
+        Self::PlainText {
             role: role.to_owned(),
             content: content.to_owned(),
         }
     }
 
     pub fn system(content: &str) -> Self {
-        Self::new("system", content)
+        Self::new_text("system", content)
     }
 
     pub fn user(content: &str) -> Self {
-        Self::new("user", content)
+        Self::new_text("user", content)
     }
 
     pub fn assistant(content: &str) -> Self {
-        Self::new("assistant", content)
+        Self::new_text("assistant", content)
+    }
+
+    pub fn function_call(call: &FunctionCall) -> Self {
+        Self::FunctionCall {
+            role: "assistant".to_string(),
+            function_call: call.clone(),
+            content: (),
+        }
+    }
+
+    pub fn function_return(name: &str, content: &str) -> Self {
+        Self::FunctionReturn {
+            role: "function".to_string(),
+            name: name.to_string(),
+            content: content.to_string(),
+        }
     }
 }
 
@@ -228,11 +259,6 @@ impl Client {
                     builder = builder.bearer_auth(bearer);
                 }
 
-                let function_call_options = match functions {
-                    Some(_) => Some(api::FunctionCallOptions::Auto),
-                    _ => None,
-                };
-
                 builder.json(&api::Request {
                     messages: api::Messages {
                         messages: messages.to_owned(),
@@ -240,7 +266,6 @@ impl Client {
                     functions: functions.map(|funcs| api::Functions {
                         functions: funcs.to_owned(),
                     }),
-                    function_call_options,
                     max_tokens: self.max_tokens,
                     temperature: self.temperature,
                     provider: self.provider,
