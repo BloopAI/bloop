@@ -88,8 +88,10 @@ export const repositionAnnotationsOnScroll = (
 
         const codeBottom =
           Math.min(codeRect.bottom, fileRect.bottom) + scrollTop - 187; // calculate code bottom relative to parent
-        const lowestPosition =
-          codeBottom - commentRect.height - previousCommentsHeight;
+        const lowestPosition = Math.max(
+          codeBottom - commentRect.height - previousCommentsHeight,
+          0,
+        );
         const maxTranslateY = previousCommentStopped
           ? Math.max(
               0,
