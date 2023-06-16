@@ -41,7 +41,8 @@ type RenderPage =
 let prevRenderPage: RenderPage;
 
 const ContentContainer = ({ tab }: { tab: UITabType }) => {
-  const { setInputValue, globalRegex } = useContext(SearchContext);
+  const { setInputValue, globalRegex, selectedBranch } =
+    useContext(SearchContext);
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
 
   const { navigatedItem, query, navigateBack, navigateRepoPath } =
@@ -82,7 +83,13 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
     switch (navigatedItem.type) {
       case 'repo':
       case 'full-result':
-        searchQuery(buildRepoQuery(navigatedItem.repo, navigatedItem.path));
+        searchQuery(
+          buildRepoQuery(
+            navigatedItem.repo,
+            navigatedItem.path,
+            selectedBranch,
+          ),
+        );
         break;
       case 'home':
       case 'conversation-result':
@@ -93,7 +100,7 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
           : `${navigatedItem.query} repo:${tab.name}`;
         searchQuery(search, navigatedItem.page, globalRegex);
     }
-  }, [navigatedItem, tab.key, tab.name]);
+  }, [navigatedItem, tab.key, tab.name, selectedBranch]);
 
   const getRenderPage = useCallback(() => {
     let renderPage: RenderPage;
