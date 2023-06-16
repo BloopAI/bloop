@@ -22,9 +22,6 @@ use crate::{
 
 pub mod github;
 
-mod poll;
-pub(crate) use poll::*;
-
 type GitCreds = Account;
 
 pub(crate) type Result<T> = std::result::Result<T, RemoteError>;
