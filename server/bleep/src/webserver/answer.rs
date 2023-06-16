@@ -553,6 +553,7 @@ impl Conversation {
         // - a/./b -> a/b
         // - a/b/../c -> a/c (regardless of whether this exists)
         // - ../b/c -> None
+        #[allow(dead_code)]
         fn normalize(path: PathBuf) -> Option<PathBuf> {
             let mut stack = vec![];
             for c in path.components() {
@@ -1112,6 +1113,15 @@ impl Conversation {
                         *content = "[HIDDEN]".into();
                         true
                     }
+                    llm_gateway::api::Message::FunctionReturn {
+                        role: _,
+                        name: _,
+                        ref mut content,
+                    } if content != "[HIDDEN]" => {
+                        *content = "[HIDDEN]".into();
+                        true
+                    }
+                    llm_gateway::api::Message::FunctionCall { .. } => true, // Don't trim function calls
                     _ => false,
                 })
                 .ok_or_else(|| anyhow!("could not find message to trim"))?;

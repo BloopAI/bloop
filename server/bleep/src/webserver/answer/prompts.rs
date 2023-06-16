@@ -1,5 +1,3 @@
-pub const CONTINUE: &str = "Is there anything else I can help with?";
-
 pub fn functions() -> serde_json::Value {
     serde_json::json!(
         [
@@ -74,7 +72,7 @@ pub fn functions() -> serde_json::Value {
 }
 
 pub fn system(paths: &Vec<String>) -> String {
-    let mut s = "Your job is to answer a question about a codebase. You should use the functions to help you answer:\n\n".to_string();
+    let mut s = "Your job is to answer a question about a codebase. You should use the functions to help you answer.\n".to_string();
 
     if !paths.is_empty() {
         s.push_str("## PATHS ##\nalias, path\n");
