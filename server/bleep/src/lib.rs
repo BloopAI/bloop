@@ -51,6 +51,7 @@ mod webserver;
 pub mod analytics;
 pub mod indexes;
 pub mod intelligence;
+pub mod periodic;
 pub mod query;
 pub mod semantic;
 pub mod snippet;
@@ -240,8 +241,9 @@ impl Application {
             joins.spawn(self.write_index().startup_scan());
         } else {
             if !self.config.disable_background {
-                tokio::spawn(remotes::sync_github_status(self.clone()));
-                tokio::spawn(remotes::check_repo_updates(self.clone()));
+                tokio::spawn(periodic::sync_github_status(self.clone()));
+                tokio::spawn(periodic::check_repo_updates(self.clone()));
+                tokio::spawn(periodic::log_and_branch_rotate(self.clone()));
             }
 
             joins.spawn(webserver::start(self));
