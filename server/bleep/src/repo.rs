@@ -193,17 +193,6 @@ pub enum BranchFilter {
     Select(Vec<String>),
 }
 
-impl From<&Option<BranchFilter>> for iterator::BranchFilter {
-    fn from(value: &Option<BranchFilter>) -> Self {
-        let Some(filter) = value
-	else {
-	    return Self::default();
-	};
-
-        filter.into()
-    }
-}
-
 impl From<&BranchFilter> for iterator::BranchFilter {
     fn from(value: &BranchFilter) -> Self {
         match value {
