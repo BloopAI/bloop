@@ -72,7 +72,8 @@ pub fn functions() -> serde_json::Value {
 }
 
 pub fn system(paths: &Vec<String>) -> String {
-    let mut s = "Your job is to answer a question about a codebase. You should use the functions to help you answer.\n".to_string();
+    let mut s =
+        "Your job is to choose a function that will help you answer the query.\n".to_string();
 
     if !paths.is_empty() {
         s.push_str("## PATHS ##\nalias, path\n");
@@ -85,16 +86,16 @@ pub fn system(paths: &Vec<String>) -> String {
         r#"
 Follow these rules at all times:
 
-- If the output of a function is empty, try the same tool again with different arguments or try using a different tool
-- In most cases you'll have to use `code` or `path` before using `ans`
+- If the output of a function is empty, try the same function again with different arguments or try using a different function
+- In most cases you'll have to use the `code` or `path` functions before using `ans`
 - Do not assume the structure of the codebase, or the existence of files or folders
 - Do NOT use a function that you've used before with the same arguments
 - When you are confident that you have enough information needed to answer the query use the `ans` function
-- If after making a path search the query can be answered by the existance of the paths, and there are more than 5 paths, choose `ans`
+- If after making a path search the query can be answered by the existance of the paths, and there are more than 5 paths, use the `ans` function
 - Only refer to path aliases that are under the PATHS heading above
 - Use the functions to find information related to the query, until all relevant information has been found.
-- If after attempting to gather information you are still unsure how to answer the query, choose `ans`
-
+- If after attempting to gather information you are still unsure how to answer the query, use the `ans` function
+- Always answer with a function call. Do NOT answer the question directly
 "#);
     s
 }
