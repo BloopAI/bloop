@@ -34,6 +34,7 @@ type Props = {
   >;
   scrollToIndex?: number[];
   searchTerm: string;
+  highlightColor?: string | null;
   onRefDefClick: (item: TokenInfoItem, filePath: string) => void;
   width: number;
   height: number;

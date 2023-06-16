@@ -10,7 +10,7 @@ type Props = {
   endLine: number;
   i: number;
   isLast: boolean;
-  onResultClick: (path: string, lineNum?: number[]) => void;
+  onResultClick: (path: string, lineNum?: number[], color?: string) => void;
   lang?: string;
   tokensMap: TokensLine[];
   prevPartEnd?: number | null;
@@ -76,6 +76,11 @@ const CodePart = ({
     return undefined;
   }, [tokensMap, endLine, end]);
 
+  const highlightColor = useMemo(
+    () => `rgba(${colors[i % colors.length].join(',')},1)`,
+    [i],
+  );
+
   return (
     <div>
       {!slicedTokensMapMain?.length && (
@@ -94,7 +99,11 @@ const CodePart = ({
             !document.getSelection()?.toString()
           ) {
             e.stopPropagation();
-            onResultClick(filePath, [Math.max(startLine - 1, 0), endLine - 1]);
+            onResultClick(
+              filePath,
+              [Math.max(startLine - 1, 0), endLine - 1],
+              highlightColor,
+            );
           }
         }}
       >
@@ -113,9 +122,7 @@ const CodePart = ({
               lineStart={startLine}
               tokensMap={slicedTokensMapMain}
               lang={lang || 'plaintext'}
-              highlightColor={`rgba(${colors[i % colors.length].join(
-                ', ',
-              )}, 1)`}
+              highlightColor={highlightColor}
               highlightLines={[startLine - 1, endLine]}
             />
           )}

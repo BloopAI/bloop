@@ -19,6 +19,7 @@ type Props = {
   toggleBlock: (fold: boolean, start: number) => void;
   scrollToIndex?: number[];
   searchTerm: string;
+  highlightColor?: string | null;
   pathHash: string | number;
   onMouseSelectStart: (lineNum: number, charNum: number) => void;
   onMouseSelectEnd: (lineNum: number, charNum: number) => void;
@@ -36,6 +37,7 @@ const CodeContainerFull = ({
   metadata,
   toggleBlock,
   scrollToIndex,
+  highlightColor,
   searchTerm,
   getHoverableContent,
   pathHash,
@@ -116,6 +118,7 @@ const CodeContainerFull = ({
             index >= scrollToIndex[0] &&
             index <= scrollToIndex[1]
           }
+          highlightColor={highlightColor}
           searchTerm={searchTerm}
         >
           {line.map((token, i) => (

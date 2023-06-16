@@ -83,6 +83,10 @@ const CodeFull = ({
         .map((i) => Number(i)),
     [searchParams],
   );
+  const highlightColor = useMemo(
+    () => searchParams.get('highlight_color'),
+    [searchParams],
+  );
   const [scrollToIndex, setScrollToIndex] = useState(
     scrollLineNumber || undefined,
   );
@@ -329,7 +333,7 @@ const CodeFull = ({
       setPopupPosition(null);
     }
   }, [isOnResultPage, currentSelection]);
-
+  console.log(highlightColor);
   return (
     <div className="code-full-view w-full text-xs gap-10 flex flex-row relative">
       <SearchOnPage
@@ -369,6 +373,7 @@ const CodeFull = ({
             searchTerm={searchTerm}
             onRefDefClick={onRefDefClick}
             scrollToIndex={scrollToIndex}
+            highlightColor={highlightColor}
           />
           <AnimatePresence>
             {popupPosition && (

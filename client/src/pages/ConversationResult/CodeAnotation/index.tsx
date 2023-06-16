@@ -29,6 +29,7 @@ export const colors = [
 const CodeAnnotation = ({ repoName, citations }: Props) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [openPath, setOpenPath] = useState('');
+  const [highlightColor, setHighlightColor] = useState('');
   const [scrollToLine, setScrollToLine] = useState<string | undefined>(
     undefined,
   );
@@ -36,8 +37,9 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
   const [fullExpandedFiles, setFullExpandedFiles] = useState<number[]>([]);
 
   const onResultClick = useCallback(
-    (path: string, lineNumber?: number[]) => {
+    (path: string, lineNumber?: number[], color?: string) => {
       setScrollToLine(lineNumber ? lineNumber.join('_') : undefined);
+      setHighlightColor(color || '');
       setOpenPath(path);
       setModalOpen(true);
     },
@@ -116,6 +118,7 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
         isOpen={isModalOpen}
         onClose={() => setModalOpen(false)}
         scrollToLine={scrollToLine}
+        highlightColor={highlightColor}
       />
     </div>
   );

@@ -15,6 +15,7 @@ type Props = {
   isOpen: boolean;
   onClose: () => void;
   scrollToLine?: string;
+  highlightColor?: string;
 };
 
 const FileModalContainer = ({
@@ -23,6 +24,7 @@ const FileModalContainer = ({
   isOpen,
   onClose,
   scrollToLine,
+  highlightColor,
 }: Props) => {
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.MODAL,
@@ -46,6 +48,7 @@ const FileModalContainer = ({
           ? '?' +
             new URLSearchParams({
               scroll_line_index: scrollToLine.toString(),
+              ...(highlightColor ? { highlight_color: highlightColor } : {}),
             }).toString()
           : '',
       });
