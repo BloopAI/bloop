@@ -6,6 +6,9 @@ use tracing::{debug, warn};
 
 use crate::Configuration;
 
+mod query_log;
+pub use query_log::QueryLog;
+
 pub type SqlDb = Arc<SqlitePool>;
 
 pub async fn init(config: &Configuration) -> Result<SqlitePool> {

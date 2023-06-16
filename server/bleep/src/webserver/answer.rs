@@ -27,7 +27,7 @@ use tracing::{debug, info, trace, warn};
 use super::middleware::User;
 use crate::{
     analytics::{EventData, QueryEvent},
-    db::SqlDb,
+    db::{QueryLog, SqlDb},
     query::parser::{self, SemanticQuery},
     repo::RepoRef,
     Application,
@@ -94,6 +94,8 @@ pub(super) async fn _handle(
 ) -> super::Result<
     Sse<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>,
 > {
+    QueryLog::new(&app.sql).insert(&params.q).await?;
+
     let conversation_id = ConversationId {
         user_id: user
             .login()
