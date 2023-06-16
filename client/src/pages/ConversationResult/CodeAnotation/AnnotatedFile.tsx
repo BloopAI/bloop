@@ -83,7 +83,7 @@ const AnnotatedFile = ({
         (prev, cur) => prev + (cur.end_line - cur.start_line) + 10,
         0,
       ) *
-        20 +
+        21 +
       16 +
       56
     );
