@@ -13,6 +13,7 @@ use axum::{
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 use super::prelude::*;
 
@@ -297,15 +298,24 @@ pub(super) async fn patch_indexed(
     Extension(app): Extension<Application>,
     Json(patch): Json<RepositoryPatch>,
 ) -> Result<impl IntoResponse> {
-    match app.repo_pool.get_async(&repo).await {
-        None => Err(Error::new(ErrorKind::NotFound, "Can't find repository")),
-        Some(mut entry) => {
-            // this should panic if we can't parse it
-            let _ = crate::repo::iterator::BranchFilter::from(&patch.branch_filter);
-            entry.get_mut().branch_filter = patch.branch_filter;
+    let _parsed = patch
+        .branch_filter
+        .as_ref()
+        .map(crate::repo::iterator::BranchFilter::from);
+
+    let ok = app
+        .repo_pool
+        .update_async(&repo, |_k, v| {
+            v.branch_filter = patch.branch_filter;
+        })
+        .await;
+
+    match ok {
+        Some(_) => {
             app.write_index().sync_and_index(vec![repo]).await;
             Ok(json(ReposResponse::SyncQueued))
         }
+        None => Err(Error::new(ErrorKind::NotFound, "Can't find repository")),
     }
 }
 
