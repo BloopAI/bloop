@@ -1321,9 +1321,18 @@ enum Action {
 impl Action {
     /// Deserialize this action from the GPT-tagged enum variant format.
     ///
+    /// We convert (2 examples):
+    ///
     /// ```text
-    /// {"type":"value"}
-    /// {"type":["arg1", "arg2"]}
+    /// {"name": "Variant1", "args": {}}
+    /// {"name": "Variant2", "args": {"a":123}}
+    /// ```
+    ///
+    /// To:
+    ///
+    /// ```text
+    /// {"Variant1": {}}
+    /// {"Variant2": {"a":123}}
     /// ```
     ///
     /// So that we can deserialize using the serde-provided "tagged" enum representation.
