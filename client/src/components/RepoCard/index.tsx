@@ -53,7 +53,7 @@ const RepoCard = ({
   onDelete,
 }: Props) => {
   const { isGithubConnected } = useContext(UIContext);
-  const { handleAddTab } = useContext(TabsContext);
+  const { handleAddTab, tabs, handleRemoveTab } = useContext(TabsContext);
   const isGh = useMemo(() => provider === 'github', [provider]);
   const repoName = useMemo(() => {
     return !isGh ? name.split('/').reverse()[0] : name;
@@ -75,9 +75,12 @@ const RepoCard = ({
     (e: MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation();
       deleteRepo(repoRef);
+      if (tabs.find((t) => t.key === repoRef)) {
+        handleRemoveTab(repoRef);
+      }
       onDelete();
     },
-    [repoRef],
+    [repoRef, tabs],
   );
 
   const onCancelSync = useCallback(
