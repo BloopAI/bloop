@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, ops::Not, path::Path, sync::Arc};
 
-use crate::{query::parser::SemanticQuery, semantic::chunk::Chunk, Configuration};
+use crate::{query::parser::SemanticQuery, Configuration};
 
 use ndarray::Axis;
 use ort::{
@@ -433,8 +433,9 @@ impl Semantic {
         );
         debug!(chunk_count = chunks.len(), "found chunks");
 
-        let embedder = |c: &Chunk| self.embed(&format!("{repo_name}\t{relative_path}\n{}", c.data));
+        let embedder = |c: &str| self.embed(c);
         chunks.par_iter().for_each(|chunk| {
+            let data = format!("{repo_name}\t{relative_path}\n{}", chunk.data);
             let payload = Payload {
                 repo_name: repo_name.to_owned(),
                 repo_ref: repo_ref.to_owned(),
@@ -449,7 +450,7 @@ impl Semantic {
                 ..Default::default()
             };
 
-            let cached = chunk_cache.update_or_embed(chunk, embedder, payload);
+            let cached = chunk_cache.update_or_embed(&data, embedder, payload);
             if let Err(err) = cached {
                 warn!(?err, %repo_name, %relative_path, "embedding failed");
             }

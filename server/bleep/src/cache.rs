@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     repo::RepoRef,
-    semantic::{self, chunk::Chunk, make_kv_keyword_filter, Embedding, Payload},
+    semantic::{self, make_kv_keyword_filter, Embedding, Payload},
 };
 
 use super::db::SqlDb;
@@ -189,15 +189,15 @@ impl<'a> ChunkCache<'a> {
         Ok(Self { qdrant, cache })
     }
 
-    pub fn update_or_embed<'chunk>(
+    pub fn update_or_embed(
         &self,
-        chunk: &'a Chunk<'chunk>,
-        embedder: impl FnOnce(&'a Chunk) -> anyhow::Result<Embedding>,
+        data: &'a str,
+        embedder: impl FnOnce(&'a str) -> anyhow::Result<Embedding>,
         mut payload: Payload,
     ) -> anyhow::Result<()> {
         let id = {
             let mut bytes = [0; 16];
-            bytes.copy_from_slice(&blake3::hash(chunk.data.as_ref()).as_bytes()[16..32]);
+            bytes.copy_from_slice(&blake3::hash(data.as_ref()).as_bytes()[16..32]);
             Uuid::from_bytes(bytes).to_string()
         };
 
@@ -208,7 +208,7 @@ impl<'a> ChunkCache<'a> {
                 existing.get_mut().fresh = true;
             }
             scc::hash_map::Entry::Vacant(vacant) => {
-                payload.embedding = Some(embedder(chunk)?);
+                payload.embedding = Some(embedder(data)?);
                 vacant.insert_entry(payload.into());
             }
         }
