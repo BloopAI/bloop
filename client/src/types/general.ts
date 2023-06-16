@@ -69,6 +69,8 @@ export type RepoType = {
   last_index: string;
   sync_status: SyncStatus;
   most_common_lang: string;
+  branches: string[];
+  branch_filter: { select: string[] } | null;
 };
 
 export type RepoUi = RepoType & {

@@ -28,6 +28,7 @@ export const SearchContextProvider = ({
     )?.history || [],
   );
   const [globalRegex, setGlobalRegex] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
 
   useEffect(() => {
     const prevHistory = (
@@ -50,8 +51,10 @@ export const SearchContextProvider = ({
       setFilters,
       globalRegex,
       setGlobalRegex,
+      selectedBranch,
+      setSelectedBranch,
     }),
-    [inputValue, filters, searchHistory, globalRegex],
+    [inputValue, filters, searchHistory, globalRegex, selectedBranch],
   );
   return (
     <SearchContext.Provider value={searchContextValue}>
