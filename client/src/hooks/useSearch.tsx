@@ -19,7 +19,6 @@ export const useSearch = <T,>(
   query?: string,
   page: number = 0,
 ): SearchResponse<T> => {
-  const { selectedBranch } = useContext(SearchContext);
   const [status, setStatus] = useState<Status<T>>({
     loading: false,
   });
@@ -31,9 +30,6 @@ export const useSearch = <T,>(
       setStatus({ loading: true });
 
       const startTime = Date.now();
-      if (selectedBranch) {
-        query += ` branch:${selectedBranch}`;
-      }
 
       searchApiCall(query, page, undefined, globalRegex)
         .then((res: any) => {
@@ -45,7 +41,7 @@ export const useSearch = <T,>(
           setStatus({ loading: false, error });
         });
     },
-    [selectedBranch],
+    [],
   );
 
   useEffect(() => {

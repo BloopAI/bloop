@@ -203,6 +203,9 @@ function SearchInput() {
       if (!val.trim()) {
         return;
       }
+      if (!val.includes(' branch:') && selectedBranch) {
+        val += ` branch:${selectedBranch}`;
+      }
       navigateSearch(val);
       closeMenu();
       setSearchHistory((prev) => {
@@ -218,7 +221,7 @@ function SearchInput() {
         return newHistory;
       });
     },
-    [tab.name],
+    [tab.name, selectedBranch],
   );
 
   const handleClearHistory = useCallback(() => {

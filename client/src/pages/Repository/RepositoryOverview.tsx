@@ -11,6 +11,7 @@ import { highlightCode } from '../../utils/prism';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import { DeviceContext } from '../../context/deviceContext';
 import { buildRepoQuery } from '../../utils';
+import { SearchContext } from '../../context/searchContext';
 
 const md = new Remarkable({
   html: true,
@@ -33,6 +34,7 @@ type Props = {
 const RepositoryOverview = ({ syncState, repository }: Props) => {
   const [sortedFiles, setSortedFiles] = useState(repository.files);
   const { openLink } = useContext(DeviceContext);
+  const { selectedBranch } = useContext(SearchContext);
 
   const [readme, setReadme] = useState<{
     contents: string;
@@ -46,13 +48,15 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
       (file) => file.path.toLowerCase() === 'readme.md',
     );
     if (readmePath) {
-      searchQuery(buildRepoQuery(repository.name, readmePath.path));
+      searchQuery(
+        buildRepoQuery(repository.name, readmePath.path, selectedBranch),
+      );
     } else {
       setReadme(null);
     }
 
     setSortedFiles(repository.files.sort(sortFiles));
-  }, [repository.files]);
+  }, [repository.files, selectedBranch]);
 
   useEffect(() => {
     if (!readmeData) {
