@@ -1121,7 +1121,6 @@ impl Conversation {
                         *content = "[HIDDEN]".into();
                         true
                     }
-                    llm_gateway::api::Message::FunctionCall { .. } => true, // Don't trim function calls
                     _ => false,
                 })
                 .ok_or_else(|| anyhow!("could not find message to trim"))?;
