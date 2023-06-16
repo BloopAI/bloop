@@ -104,6 +104,14 @@ export const getTokenInfo = async (
     .then((r) => r.data);
 };
 
+export const indexRepoBranch = async (repoRef: string, branch: string) => {
+  return http.patch(
+    '/repos/indexed',
+    { branch_filter: { select: [branch] } },
+    { params: { repo: repoRef } },
+  );
+};
+
 export const getAutocomplete = async (
   q: string,
 ): Promise<SuggestionsResponse> => {

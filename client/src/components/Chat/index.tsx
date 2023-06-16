@@ -7,7 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
-import { CloseSign, List, LiteLoader, Sparkle } from '../../icons';
+import { List } from '../../icons';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import {
@@ -18,12 +18,12 @@ import {
 } from '../../types/general';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { ChatContext } from '../../context/chatContext';
+import { SearchContext } from '../../context/searchContext';
 import NLInput from './NLInput';
 import ChipButton from './ChipButton';
 import AllConversations from './AllCoversations';
 import Conversation from './Conversation';
 import DeprecatedClientModal from './DeprecatedClientModal';
-import StarsSvg from './StarsSvg';
 
 let prevEventSource: EventSource | undefined;
 
@@ -38,6 +38,7 @@ const blurInput = () => {
 const Chat = () => {
   const { isRightPanelOpen, setRightPanelOpen, tab } = useContext(UIContext);
   const { apiUrl } = useContext(DeviceContext);
+  const { selectedBranch } = useContext(SearchContext);
   const {
     conversation,
     setConversation,
@@ -78,9 +79,9 @@ const Chat = () => {
       setInputValue('');
       setLoading(true);
       const eventSource = new EventSource(
-        `${apiUrl.replace('https:', '')}/answer?q=${query}&repo_ref=${tab.key}${
-          threadId ? `&thread_id=${threadId}` : ''
-        }${
+        `${apiUrl.replace('https:', '')}/answer?q=${query}${
+          selectedBranch ? ` branch:${selectedBranch}` : ''
+        }&repo_ref=${tab.key}${threadId ? `&thread_id=${threadId}` : ''}${
           navigatedItem?.type === 'repo' && navigatedItem?.path
             ? `&relative_path=${navigatedItem?.path}&is_folder=true`
             : ''
@@ -226,7 +227,14 @@ const Chat = () => {
         eventSource.close();
       };
     },
-    [tab, threadId, navigatedItem?.path, navigatedItem?.type, selectedLines],
+    [
+      tab,
+      threadId,
+      navigatedItem?.path,
+      navigatedItem?.type,
+      selectedLines,
+      selectedBranch,
+    ],
   );
 
   useEffect(() => {
