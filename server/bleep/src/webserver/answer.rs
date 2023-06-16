@@ -344,16 +344,7 @@ impl Conversation {
                         .with_payload("previous_answer_summary", &summarized_answer),
                 );
 
-                parser::parse_nl(&s)?
-                    .as_semantic()
-                    .context("got a 'Grep' query")?
-                    .target
-                    .as_ref()
-                    .context("query was empty")?
-                    .as_plain()
-                    .context("user query was not plain text")?
-                    .clone()
-                    .into_owned()
+                s
             }
 
             Action::Prompt(_) => {
