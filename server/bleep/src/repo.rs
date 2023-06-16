@@ -202,6 +202,7 @@ impl<'de> Deserialize<'de> for RepoRef {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "snake_case")]
 pub enum BranchFilter {
     All,
     Head,
