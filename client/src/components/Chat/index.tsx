@@ -7,7 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
-import { CloseSign, List, LiteLoader, Sparkle } from '../../icons';
+import { List } from '../../icons';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import {
@@ -23,7 +23,6 @@ import ChipButton from './ChipButton';
 import AllConversations from './AllCoversations';
 import Conversation from './Conversation';
 import DeprecatedClientModal from './DeprecatedClientModal';
-import StarsSvg from './StarsSvg';
 
 let prevEventSource: EventSource | undefined;
 
@@ -44,8 +43,6 @@ const Chat = () => {
     isChatOpen,
     setChatOpen,
     setShowTooltip,
-    showTooltip,
-    tooltipText,
     submittedQuery,
     setSubmittedQuery,
     selectedLines,
@@ -327,10 +324,10 @@ const Chat = () => {
                   variant="filled"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setChatOpen(false);
+                    setChatOpen((prev) => !prev);
                   }}
                 >
-                  Hide
+                  {isChatOpen ? 'Hide' : 'Show'}
                 </ChipButton>
               </div>
             </div>
@@ -355,8 +352,6 @@ const Chat = () => {
                 (conversation[conversation.length - 1] as ChatMessageServer)
                   ?.loadingSteps
               }
-              showTooltip={showTooltip}
-              tooltipText={tooltipText}
               onStop={stopGenerating}
               placeholder={
                 (conversation[conversation.length - 1] as ChatMessageServer)
