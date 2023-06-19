@@ -166,7 +166,10 @@ const ResultFull = ({ data, isLoading }: Props) => {
               repoPath={result?.repoPath || ''}
             />
           </div>
-          <div className="overflow-scroll flex-1">
+          <div
+            className="overflow-scroll flex-1"
+            id="result-full-code-container"
+          >
             <div className={`flex py-3 px-8 h-full`}>
               {!result ? (
                 <div className="w-full h-full flex flex-col gap-3">

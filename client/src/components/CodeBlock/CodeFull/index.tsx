@@ -325,10 +325,11 @@ const CodeFull = ({
 
   const calculatePopupPosition = useCallback(
     (top: number, left: number) => {
-      if (!codeRef.current) {
+      const container = document.getElementById('result-full-code-container');
+      if (!container) {
         return null;
       }
-      const containerRect = codeRef.current?.getBoundingClientRect();
+      const containerRect = container?.getBoundingClientRect();
       if (
         isOnResultPage &&
         (currentSelection.length == 1 || currentSelection.length == 2)
@@ -351,6 +352,8 @@ const CodeFull = ({
 
       if (text) {
         setPopupPosition(calculatePopupPosition(clientY, clientX));
+      } else {
+        setPopupPosition(null);
       }
     };
 
@@ -427,6 +430,7 @@ const CodeFull = ({
                       <button
                         onClick={() => {
                           setChatOpen(true);
+                          setPopupPosition(null);
                           setThreadId('');
                           setConversation([]);
                           setSelectedLines([
@@ -462,6 +466,7 @@ const CodeFull = ({
                             }-${currentSelection[1]![0]}`,
                           );
                           setChatOpen(true);
+                          setPopupPosition(null);
                         }}
                         className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover caption text-label-title"
                       >
