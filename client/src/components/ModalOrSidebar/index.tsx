@@ -123,7 +123,7 @@ const ModalOrSidebar = ({
             className={`modal-or-sidebar overflow-hidden fixed flex flex-col ${
               isSidebar ? `border-y-0` : `rounded-md shadow-float`
             } bg-bg-shade border border-bg-border ${
-              isSidebar ? '' : 'z-70'
+              isSidebar ? '' : 'z-[110]'
             } ${containerClassName}`}
             animate={
               isSidebar

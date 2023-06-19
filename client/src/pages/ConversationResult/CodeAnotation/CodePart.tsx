@@ -8,12 +8,13 @@ type Props = {
   filePath: string;
   startLine: number;
   endLine: number;
+  start: number | null;
+  end: number | null;
   i: number;
   isLast: boolean;
   onResultClick: (path: string, lineNum?: number[], color?: string) => void;
   lang?: string;
   tokensMap: TokensLine[];
-  prevPartEnd?: number | null;
   nextPartStart?: number | null;
 };
 
@@ -26,37 +27,10 @@ const CodePart = ({
   onResultClick,
   lang,
   tokensMap,
-  prevPartEnd,
   nextPartStart,
+  start,
+  end,
 }: Props) => {
-  const start = useMemo(
-    () =>
-      startLine !== null
-        ? Math.max(
-            startLine -
-              1 -
-              (!prevPartEnd
-                ? 5
-                : Math.max(Math.min(startLine - 1 - prevPartEnd - 5, 5), 0)),
-            0,
-          )
-        : null,
-    [startLine, prevPartEnd],
-  );
-  const end = useMemo(
-    () =>
-      endLine !== null
-        ? Math.max(
-            1,
-            endLine -
-              1 +
-              (!nextPartStart
-                ? 5
-                : Math.max(Math.min(nextPartStart - endLine, 5), 0)),
-          )
-        : null,
-    [endLine, nextPartStart],
-  );
   const slicedTokensMapStart = useMemo(() => {
     if (start !== null && startLine !== null) {
       return tokensMap.slice(start, startLine - 1);

@@ -77,17 +77,54 @@ const AnnotatedFile = ({
     return lines;
   }, [tokens]);
 
+  const mappedCites = useMemo(() => {
+    return cites.map((c, i) => {
+      const start =
+        c.start_line !== null
+          ? Math.max(
+              c.start_line -
+                1 -
+                (!cites[i - 1]?.end_line
+                  ? 5
+                  : Math.max(
+                      Math.min(
+                        c.start_line - 1 - cites[i - 1]?.end_line - 5,
+                        5,
+                      ),
+                      0,
+                    )),
+              0,
+            )
+          : null;
+      const end =
+        c.end_line !== null
+          ? Math.max(
+              1,
+              c.end_line -
+                1 +
+                (!cites[i + 1]?.start_line
+                  ? 5
+                  : Math.max(
+                      Math.min(cites[i + 1]?.start_line - c.end_line, 5),
+                      0,
+                    )),
+            )
+          : null;
+      return { ...c, start, end };
+    });
+  }, [cites]);
+
   const fullHeight = useMemo(() => {
     return (
-      cites.reduce(
-        (prev, cur) => prev + (cur.end_line - cur.start_line) + 10,
+      mappedCites.reduce(
+        (prev, cur) => prev + ((cur.end || 0) - (cur.start || 0)),
         0,
       ) *
         21 +
       16 +
       56
     );
-  }, [cites]);
+  }, [mappedCites]);
 
   const handleResultClick = useCallback(() => {
     if (!document.getSelection()?.toString()) {
@@ -149,7 +186,7 @@ const AnnotatedFile = ({
                 : {}
             }
           >
-            {cites.map((c, i) => (
+            {mappedCites.map((c, i) => (
               <CodePart
                 key={c.i}
                 i={c.i}
@@ -160,8 +197,9 @@ const AnnotatedFile = ({
                 isLast={i === cites.length - 1}
                 onResultClick={onResultClick}
                 tokensMap={tokensMap}
-                prevPartEnd={cites[i - 1]?.end_line}
                 nextPartStart={cites[i + 1]?.start_line}
+                start={c.start}
+                end={c.end}
               />
             ))}
             {fullHeight > 350 && (
