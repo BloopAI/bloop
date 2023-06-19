@@ -519,6 +519,10 @@ impl Semantic {
 }
 
 /// Initialize the `ORT_DYLIB_PATH` variable, consumed by the `ort` crate.
+///
+/// This doesn't do anything on Windows, as tauri on Windows will automatically bundle any `.dll`
+/// files found in the `target/$profile` folder. The `ort` crate by default will also copy the
+/// built dynamic library over to the `target/$profile` folder, when using the download strategy.
 fn init_ort_dylib(dylib_dir: impl AsRef<Path>) {
     if cfg!(windows) {
         return;
