@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import {
+  ArrowOut,
   Checkmark,
   List,
   MagnifyTool,
@@ -11,6 +12,8 @@ import { ChatLoadingStep, ChatMessageAuthor } from '../../../types/general';
 import { ChatContext } from '../../../context/chatContext';
 import Button from '../../Button';
 import { AppNavigationContext } from '../../../context/appNavigationContext';
+import FileIcon from '../../FileIcon';
+import { FileModalContext } from '../../../context/fileModalContext';
 import MessageFeedback from './MessageFeedback';
 
 type Props = {
@@ -46,6 +49,7 @@ const ConversationMessage = ({
   const { envConfig } = useContext(DeviceContext);
   const { setChatOpen } = useContext(ChatContext);
   const { navigateConversationResults } = useContext(AppNavigationContext);
+  const { openFileModal } = useContext(FileModalContext);
 
   useEffect(() => {
     setChatOpen(true);
@@ -70,17 +74,26 @@ const ConversationMessage = ({
               {s.type === 'PROC' ? <PointClick /> : <MagnifyTool />}
               <span>{s.type === 'PROC' ? 'Reading ' : s.displayText}</span>
               {s.type === 'PROC' ? (
-                <p>
-                  {s.content.length > 40
-                    ? `...${s.content.slice(-40)}`
-                    : s.content}
-                </p>
+                <button
+                  className={`inline-flex items-center bg-chat-bg-shade rounded-4 overflow-hidden 
+                text-label-base hover:text-label-title border border-transparent hover:border-chat-bg-border 
+                cursor-pointer`}
+                  onClick={() => openFileModal(s.content)}
+                >
+                  <span className="flex gap-1 pr-1 py-0.5 items-center border-r border-chat-bg-border caption">
+                    <FileIcon filename={s.content} />
+                    {s.content.split('/').pop()}
+                  </span>
+                  <span className="p-1 inline-flex items-center justify-center">
+                    <ArrowOut sizeClassName="w-3.5 h-3.5" />
+                  </span>
+                </button>
               ) : null}
             </div>
           ))}
         </div>
       )}
-      {author === ChatMessageAuthor.Server && message && (
+      {author === ChatMessageAuthor.Server && (
         <div className="flex gap-2 px-4 items-center">
           {!isLoading ? (
             <div className="text-bg-success-hover h-5">
@@ -92,11 +105,7 @@ const ConversationMessage = ({
             </div>
           )}
           <div className="caption text-label-base flex-1 flex gap-2 items-center">
-            <p>
-              {isLoading
-                ? loadingSteps?.[loadingSteps.length - 1].displayText
-                : 'Answer Ready'}
-            </p>
+            <p>{isLoading ? 'Generating response...' : 'Answer Ready'}</p>
             <Button
               size="tiny"
               variant={isLoadingStepsShown ? 'tertiary-active' : 'tertiary'}
