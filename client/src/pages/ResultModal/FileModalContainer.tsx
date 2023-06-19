@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FullResult } from '../../types/results';
 import { useSearch } from '../../hooks/useSearch';
@@ -7,6 +7,7 @@ import { FullResultModeEnum } from '../../types/general';
 import { mapFileResult, mapRanges } from '../../mappers/results';
 import { getHoverables } from '../../services/api';
 import { buildRepoQuery } from '../../utils';
+import { SearchContext } from '../../context/searchContext';
 import ResultModal from './index';
 
 type Props = {
@@ -31,6 +32,7 @@ const FileModalContainer = ({
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
   const navigateBrowser = useNavigate();
+  const { selectedBranch } = useContext(SearchContext);
 
   useEffect(() => {
     if (isOpen) {
@@ -52,6 +54,7 @@ const FileModalContainer = ({
       getHoverables(
         fileResultData.data[0].data.relative_path,
         fileResultData.data[0].data.repo_ref,
+        selectedBranch ? selectedBranch : undefined,
       ).then((data) => {
         setOpenResult((prevState) => ({
           ...prevState!,
@@ -59,7 +62,7 @@ const FileModalContainer = ({
         }));
       });
     }
-  }, [fileResultData]);
+  }, [fileResultData, selectedBranch]);
 
   const handleModeChange = useCallback((m: FullResultModeEnum) => {
     setMode(m);

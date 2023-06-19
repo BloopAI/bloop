@@ -3,6 +3,7 @@ import React, {
   memo,
   SetStateAction,
   useCallback,
+  useContext,
   useMemo,
   useState,
 } from 'react';
@@ -12,6 +13,7 @@ import { Range, TokenInfoItem, TokenInfoWrapped } from '../../../types/results';
 import { getTokenInfo } from '../../../services/api';
 import { mapTokenInfoData } from '../../../mappers/results';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
+import { SearchContext } from '../../../context/searchContext';
 import CodeContainerVirtualized from './CodeContainerVirtualized';
 import CodeContainerFull from './CodeContainerFull';
 import { Metadata, BlameLine } from './index';
@@ -55,6 +57,7 @@ const CodeContainer = ({
     byteRange: null,
     lineNumber: -1,
   });
+  const { selectedBranch } = useContext(SearchContext);
 
   const getHoverableContent = useCallback(
     (hoverableRange: Range, lineNumber?: number) => {
@@ -64,6 +67,7 @@ const CodeContainer = ({
           repoPath,
           hoverableRange.start,
           hoverableRange.end,
+          selectedBranch ? selectedBranch : undefined,
         ).then((data) => {
           setTokenInfo({
             ...mapTokenInfoData(data),
@@ -73,7 +77,7 @@ const CodeContainer = ({
         });
       }
     },
-    [relativePath],
+    [relativePath, selectedBranch],
   );
 
   const handleRefsDefsClick = useCallback(
