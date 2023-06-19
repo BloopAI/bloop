@@ -109,7 +109,7 @@ const ResultFull = ({ data, isLoading }: Props) => {
   }, [result?.relativePath, isLoading]);
 
   const currentPath = useMemo(() => {
-    const pathParts = result?.relativePath.split('/') || [];
+    const pathParts = result?.relativePath?.split('/') || [];
     return pathParts.length > 1 ? pathParts.slice(0, -1).join('/') + '/' : '';
   }, [result]);
 
@@ -139,7 +139,7 @@ const ResultFull = ({ data, isLoading }: Props) => {
             className={`w-full border-b border-bg-border flex justify-between py-3 px-8`}
           >
             <div className="flex items-center gap-1 overflow-hidden">
-              <FileIcon filename={result?.relativePath.slice(-5) || ''} />
+              <FileIcon filename={result?.relativePath?.slice(-5) || ''} />
               {!!result && !!breadcrumbs.length ? (
                 <Breadcrumbs
                   pathParts={breadcrumbs}

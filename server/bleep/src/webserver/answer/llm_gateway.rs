@@ -8,11 +8,61 @@ use futures::{Stream, StreamExt};
 use reqwest_eventsource::EventSource;
 use tracing::{debug, error, warn};
 
+use self::api::FunctionCall;
+
 pub mod api {
+    use std::collections::HashMap;
+
+    #[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    pub struct FunctionCall {
+        pub name: Option<String>,
+        pub arguments: String,
+    }
+
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    pub struct Function {
+        pub name: String,
+        pub description: String,
+        pub parameters: Parameters,
+    }
+
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    pub struct Parameters {
+        #[serde(rename = "type")]
+        pub _type: String,
+        pub properties: HashMap<String, Parameter>,
+        pub required: Vec<String>,
+    }
+
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    pub struct Parameter {
+        #[serde(rename = "type")]
+        pub _type: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub description: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub items: Option<Box<Parameter>>,
+    }
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
-    pub struct Message {
-        pub role: String,
-        pub content: String,
+    #[serde(untagged)]
+    pub enum Message {
+        FunctionReturn {
+            role: String,
+            name: String,
+            content: String,
+        },
+        FunctionCall {
+            role: String,
+            function_call: FunctionCall,
+            content: (),
+        },
+        // NB: This has to be the last variant as this enum is marked `#[serde(untagged)]`, so
+        // deserialization will always try this variant last. Otherwise, it is possible to
+        // accidentally deserialize a `FunctionReturn` value as `PlainText`.
+        PlainText {
+            role: String,
+            content: String,
+        },
     }
 
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -20,9 +70,15 @@ pub mod api {
         pub messages: Vec<Message>,
     }
 
+    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+    pub struct Functions {
+        pub functions: Vec<Function>,
+    }
+
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct Request {
         pub messages: Messages,
+        pub functions: Option<Functions>,
         pub provider: Provider,
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
@@ -38,7 +94,14 @@ pub mod api {
         Anthropic,
     }
 
-    #[derive(thiserror::Error, Debug, serde::Deserialize)]
+    #[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
+    #[serde(rename_all = "lowercase")]
+    pub enum FunctionCallOptions {
+        Auto,
+        None,
+    }
+
+    #[derive(thiserror::Error, Debug, serde::Deserialize, serde::Serialize)]
     pub enum Error {
         #[error("bad OpenAI request")]
         BadOpenAiRequest,
@@ -51,23 +114,39 @@ pub mod api {
 }
 
 impl api::Message {
-    pub fn new(role: &str, content: &str) -> Self {
-        Self {
+    pub fn new_text(role: &str, content: &str) -> Self {
+        Self::PlainText {
             role: role.to_owned(),
             content: content.to_owned(),
         }
     }
 
     pub fn system(content: &str) -> Self {
-        Self::new("system", content)
+        Self::new_text("system", content)
     }
 
     pub fn user(content: &str) -> Self {
-        Self::new("user", content)
+        Self::new_text("user", content)
     }
 
     pub fn assistant(content: &str) -> Self {
-        Self::new("assistant", content)
+        Self::new_text("assistant", content)
+    }
+
+    pub fn function_call(call: &FunctionCall) -> Self {
+        Self::FunctionCall {
+            role: "assistant".to_string(),
+            function_call: call.clone(),
+            content: (),
+        }
+    }
+
+    pub fn function_return(name: &str, content: &str) -> Self {
+        Self::FunctionReturn {
+            role: "function".to_string(),
+            name: name.to_string(),
+            content: content.to_string(),
+        }
     }
 }
 
@@ -135,13 +214,14 @@ impl Client {
     pub async fn chat(
         &self,
         messages: &[api::Message],
+        functions: Option<&[api::Function]>,
     ) -> anyhow::Result<impl Stream<Item = anyhow::Result<String>>> {
         const INITIAL_DELAY: Duration = Duration::from_millis(100);
         const SCALE_FACTOR: f32 = 1.5;
 
         let mut delay = INITIAL_DELAY;
         for _ in 0..self.max_retries {
-            match self.chat_oneshot(messages).await {
+            match self.chat_oneshot(messages, functions).await {
                 Err(ChatError::TooManyRequests) => {
                     warn!(?delay, "too many LLM requests, retrying with delay...");
                     tokio::time::sleep(delay).await;
@@ -172,6 +252,7 @@ impl Client {
     async fn chat_oneshot(
         &self,
         messages: &[api::Message],
+        functions: Option<&[api::Function]>,
     ) -> Result<impl Stream<Item = anyhow::Result<String>>, ChatError> {
         let mut event_source = Box::pin(
             EventSource::new({
@@ -185,6 +266,9 @@ impl Client {
                     messages: api::Messages {
                         messages: messages.to_owned(),
                     },
+                    functions: functions.map(|funcs| api::Functions {
+                        functions: funcs.to_owned(),
+                    }),
                     max_tokens: self.max_tokens,
                     temperature: self.temperature,
                     provider: self.provider,

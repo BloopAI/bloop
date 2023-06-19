@@ -236,11 +236,13 @@ function getLineEnding(content: string): LineEndings | undefined {
   }
 }
 
-export const tokenizeCode = (code: string, lang: string) => {
+export const tokenizeCode = (code: string, lang?: string) => {
   const lineEndings = getLineEnding(code);
   const tokens = Prism.tokenize(
     code,
-    Prism.languages[lang] || Prism.languages.plaintext,
+    lang && Prism.languages[lang]
+      ? Prism.languages[lang]
+      : Prism.languages.plaintext,
   );
   return normalizeTokens(tokens, lineEndings!);
 };

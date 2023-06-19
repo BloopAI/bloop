@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FullResult } from '../../types/results';
 import { useSearch } from '../../hooks/useSearch';
@@ -7,25 +7,16 @@ import { FullResultModeEnum } from '../../types/general';
 import { mapFileResult, mapRanges } from '../../mappers/results';
 import { getHoverables } from '../../services/api';
 import { buildRepoQuery } from '../../utils';
+import { FileModalContext } from '../../context/fileModalContext';
 import ResultModal from './index';
 
 type Props = {
   repoName: string;
-  path: string;
-  isOpen: boolean;
-  onClose: () => void;
-  scrollToLine?: string;
-  highlightColor?: string;
 };
 
-const FileModalContainer = ({
-  repoName,
-  path,
-  isOpen,
-  onClose,
-  scrollToLine,
-  highlightColor,
-}: Props) => {
+const FileModalContainer = ({ repoName }: Props) => {
+  const { path, setIsFileModalOpen, isFileModalOpen, scrollToLine, highlightColor } =
+    useContext(FileModalContext);
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.MODAL,
   );
@@ -35,10 +26,10 @@ const FileModalContainer = ({
   const navigateBrowser = useNavigate();
 
   useEffect(() => {
-    if (isOpen) {
+    if (isFileModalOpen) {
       fileModalSearchQuery(buildRepoQuery(repoName, path));
     }
-  }, [repoName, path, isOpen]);
+  }, [repoName, path, isFileModalOpen]);
 
   useEffect(() => {
     if (fileResultData?.data?.length) {
@@ -68,9 +59,14 @@ const FileModalContainer = ({
     setMode(m);
   }, []);
 
+  useEffect(() => {
+    if (!isFileModalOpen) {
+      setOpenResult(null);
+    }
+  }, [isFileModalOpen]);
+
   const onResultClosed = useCallback(() => {
-    setOpenResult(null);
-    onClose();
+    setIsFileModalOpen(false);
   }, [mode]);
 
   return (

@@ -39,7 +39,7 @@ jobs:
         uses: nschloe/action-cached-lfs-checkout@v1
 
       - name: Setup nix
-        uses: cachix/install-nix-action@v20
+        uses: cachix/install-nix-action@v22
         with:
           github_access_token: "${{ secrets.GITHUB_TOKEN }}"
 

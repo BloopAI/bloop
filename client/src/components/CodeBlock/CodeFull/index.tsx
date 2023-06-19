@@ -12,7 +12,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
 import { Range, TokenInfoItem } from '../../../types/results';
-import { copyToClipboard } from '../../../utils';
+import {
+  calculatePopupPositionInsideContainer,
+  copyToClipboard,
+} from '../../../utils';
 import { Commit } from '../../../types';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import SearchOnPage from '../../SearchOnPage';
@@ -320,20 +323,44 @@ const CodeFull = ({
   );
   useKeyboardNavigation(handleKeyEvent);
 
-  useEffect(() => {
-    if (isOnResultPage && currentSelection.length == 2) {
-      const topLine = document.querySelector(
-        `[data-line-number="${currentSelection[0][0]}"]`,
-      );
-      if (topLine) {
-        const rect = topLine.getBoundingClientRect();
-        setPopupPosition({ top: rect.top - 40, left: rect.left + 40 });
+  const calculatePopupPosition = useCallback(
+    (top: number, left: number) => {
+      if (!codeRef.current) {
+        return null;
       }
-    } else {
-      setPopupPosition(null);
-    }
-  }, [isOnResultPage, currentSelection]);
-  console.log(highlightColor);
+      const containerRect = codeRef.current?.getBoundingClientRect();
+      if (
+        isOnResultPage &&
+        (currentSelection.length == 1 || currentSelection.length == 2)
+      ) {
+        if (currentSelection.length == 1) {
+          setCurrentSelection((prev) => [[0, 0], prev[0]!]);
+        }
+
+        return calculatePopupPositionInsideContainer(top, left, containerRect);
+      }
+      return null;
+    },
+    [isOnResultPage, currentSelection],
+  );
+
+  useEffect(() => {
+    const handleWindowMouseUp = (e: MouseEvent) => {
+      const text = window.getSelection()?.toString();
+      const { clientY, clientX } = e;
+
+      if (text) {
+        setPopupPosition(calculatePopupPosition(clientY, clientX));
+      }
+    };
+
+    window.addEventListener('mouseup', handleWindowMouseUp);
+
+    return () => {
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+    };
+  }, [calculatePopupPosition]);
+
   return (
     <div className="code-full-view w-full text-xs gap-10 flex flex-row relative">
       <SearchOnPage

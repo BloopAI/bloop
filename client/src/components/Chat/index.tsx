@@ -7,7 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
-import { CloseSign, List, LiteLoader, Sparkle } from '../../icons';
+import { List } from '../../icons';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import {
@@ -18,12 +18,12 @@ import {
 } from '../../types/general';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { ChatContext } from '../../context/chatContext';
+import { mapLoadingSteps } from '../../mappers/conversation';
 import NLInput from './NLInput';
 import ChipButton from './ChipButton';
 import AllConversations from './AllCoversations';
 import Conversation from './Conversation';
 import DeprecatedClientModal from './DeprecatedClientModal';
-import StarsSvg from './StarsSvg';
 
 let prevEventSource: EventSource | undefined;
 
@@ -44,8 +44,6 @@ const Chat = () => {
     isChatOpen,
     setChatOpen,
     setShowTooltip,
-    showTooltip,
-    tooltipText,
     submittedQuery,
     setSubmittedQuery,
     selectedLines,
@@ -59,7 +57,6 @@ const Chat = () => {
   const [showPopup, setShowPopup] = useState(false);
   const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
-  const [resp, setResp] = useState<{ thread_id: string } | null>(null);
   useOnClickOutside(chatRef, () => setChatOpen(false));
 
   useEffect(() => {
@@ -164,7 +161,6 @@ const Chat = () => {
         try {
           const data = JSON.parse(ev.data);
           if (data.Ok) {
-            setResp(data.Ok);
             const newMessage = data.Ok;
             if (
               newMessage.results?.length &&
@@ -184,17 +180,7 @@ const Chat = () => {
                 author: ChatMessageAuthor.Server,
                 isLoading: !newMessage.finished,
                 type: ChatMessageType.Answer,
-                loadingSteps: newMessage.search_steps.map(
-                  (s: { type: string; content: string }) => ({
-                    ...s,
-                    displayText:
-                      s.type === 'PROC'
-                        ? `Reading ${
-                            s.content.length > 20 ? '...' : ''
-                          }${s.content.slice(-20)}`
-                        : s.content,
-                  }),
-                ),
+                loadingSteps: mapLoadingSteps(newMessage.search_steps),
                 text: newMessage.conclusion,
                 results: newMessage.results,
               };
@@ -327,10 +313,10 @@ const Chat = () => {
                   variant="filled"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setChatOpen(false);
+                    setChatOpen((prev) => !prev);
                   }}
                 >
-                  Hide
+                  {isChatOpen ? 'Hide' : 'Show'}
                 </ChipButton>
               </div>
             </div>
@@ -340,7 +326,7 @@ const Chat = () => {
           {!!conversation.length && isChatOpen && (
             <Conversation
               conversation={conversation}
-              searchId={resp?.thread_id || ''}
+              searchId={threadId}
               isLoading={isLoading}
             />
           )}
@@ -355,8 +341,6 @@ const Chat = () => {
                 (conversation[conversation.length - 1] as ChatMessageServer)
                   ?.loadingSteps
               }
-              showTooltip={showTooltip}
-              tooltipText={tooltipText}
               onStop={stopGenerating}
               placeholder={
                 (conversation[conversation.length - 1] as ChatMessageServer)

@@ -11,6 +11,8 @@ import { AppNavigationProvider } from './context/providers/AppNavigationProvider
 import ContentContainer from './pages';
 import { SearchContextProvider } from './context/providers/SearchContextProvider';
 import { ChatContextProvider } from './context/providers/ChatContextProvider';
+import FileModalContainer from './pages/ResultModal/FileModalContainer';
+import { FileModalContextProvider } from './context/providers/FileModalContextProvider';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -32,14 +34,17 @@ class Tab extends PureComponent<Props> {
               <AppNavigationProvider>
                 <SearchContextProvider tab={tab}>
                   <ChatContextProvider>
-                    <Routes>
-                      <Route
-                        path="*"
-                        element={<ContentContainer tab={tab} />}
-                      />
-                    </Routes>
-                    <Settings />
-                    <ReportBugModal />
+                    <FileModalContextProvider>
+                      <Routes>
+                        <Route
+                          path="*"
+                          element={<ContentContainer tab={tab} />}
+                        />
+                      </Routes>
+                      <Settings />
+                      <ReportBugModal />
+                      <FileModalContainer repoName={tab.repoName} />
+                    </FileModalContextProvider>
                   </ChatContextProvider>
                 </SearchContextProvider>
               </AppNavigationProvider>

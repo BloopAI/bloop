@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import FileModalContainer from '../../ResultModal/FileModalContainer';
+import React, { useCallback, useContext, useState, useEffect } from 'react';
+import { FileModalContext } from '../../../context/fileModalContext';
 import { repositionAnnotationsOnScroll } from '../../../utils/scrollUtils';
 import AnnotatedFile from './AnnotatedFile';
 import FileComment from './FileComment';
@@ -27,21 +27,13 @@ export const colors = [
 ];
 
 const CodeAnnotation = ({ repoName, citations }: Props) => {
-  const [isModalOpen, setModalOpen] = useState(false);
-  const [openPath, setOpenPath] = useState('');
-  const [highlightColor, setHighlightColor] = useState('');
-  const [scrollToLine, setScrollToLine] = useState<string | undefined>(
-    undefined,
-  );
+  const { openFileModal } = useContext(FileModalContext);
   const [collapsedFiles, setCollapsedFiles] = useState<number[]>([]);
   const [fullExpandedFiles, setFullExpandedFiles] = useState<number[]>([]);
 
   const onResultClick = useCallback(
     (path: string, lineNumber?: number[], color?: string) => {
-      setScrollToLine(lineNumber ? lineNumber.join('_') : undefined);
-      setHighlightColor(color || '');
-      setOpenPath(path);
-      setModalOpen(true);
+      openFileModal(path, lineNumber?.join('_'), color);
     },
     [repoName],
   );
@@ -124,14 +116,6 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
           })
           .flat()}
       </div>
-      <FileModalContainer
-        repoName={repoName}
-        path={openPath}
-        isOpen={isModalOpen}
-        onClose={() => setModalOpen(false)}
-        scrollToLine={scrollToLine}
-        highlightColor={highlightColor}
-      />
     </div>
   );
 };

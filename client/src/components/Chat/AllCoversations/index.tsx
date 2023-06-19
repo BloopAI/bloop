@@ -16,6 +16,7 @@ import {
   ChatMessageType,
 } from '../../../types/general';
 import { conversationsCache } from '../../../services/cache';
+import { mapLoadingSteps } from '../../../mappers/conversation';
 import ConversationListItem from './ConversationListItem';
 
 type Props = {
@@ -75,12 +76,7 @@ const AllConversations = ({
           author: ChatMessageAuthor.Server,
           isLoading: false,
           type: ChatMessageType.Answer,
-          loadingSteps: m.search_steps?.map(
-            (s: { type: string; content: string }) => ({
-              ...s,
-              displayText: s.content,
-            }),
-          ),
+          loadingSteps: mapLoadingSteps(m.search_steps),
           text: m.conclusion,
           results: m.results,
           isFromHistory: true,
