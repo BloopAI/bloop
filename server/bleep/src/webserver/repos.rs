@@ -13,7 +13,6 @@ use axum::{
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
-use tracing::info;
 
 use super::prelude::*;
 

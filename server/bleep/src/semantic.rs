@@ -324,7 +324,7 @@ impl Semantic {
         let path_filter = {
             let conditions = parsed_query
                 .paths()
-                .map(|r| make_kv_text_filter("relative_path", r).into())
+                .map(|r| make_kv_text_filter("relative_path", &r).into())
                 .collect::<Vec<_>>();
             if conditions.is_empty() {
                 None
@@ -339,7 +339,7 @@ impl Semantic {
         let lang_filter = {
             let conditions = parsed_query
                 .langs()
-                .map(|l| make_kv_keyword_filter("lang", l).into())
+                .map(|l| make_kv_keyword_filter("lang", &l).into())
                 .collect::<Vec<_>>();
             // one of the above langs should match
             if conditions.is_empty() {
@@ -355,7 +355,7 @@ impl Semantic {
         let branch_filter = {
             let conditions = parsed_query
                 .branch()
-                .map(|l| make_kv_keyword_filter("branches", l).into())
+                .map(|l| make_kv_keyword_filter("branches", &l).into())
                 .collect::<Vec<_>>();
 
             if conditions.is_empty() {
@@ -408,7 +408,7 @@ impl Semantic {
         let Some(query) = parsed_query.target() else {
             anyhow::bail!("no search target for query");
         };
-        let vector = self.embed(query)?;
+        let vector = self.embed(&query)?;
 
         // TODO: Remove the need for `retrieve_more`. It's here because:
         // In /q `limit` is the maximum number of results returned (the actual number will often be lower due to deduplication)
