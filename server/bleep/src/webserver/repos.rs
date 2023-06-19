@@ -305,7 +305,19 @@ pub(super) async fn patch_indexed(
     let ok = app
         .repo_pool
         .update_async(&repo, |_k, v| {
-            v.branch_filter = patch.branch_filter;
+            let Some(BranchFilter::Select(ref mut old_list)) = v.branch_filter
+            else {
+		v.branch_filter = patch.branch_filter;
+		return;
+	    };
+
+            let Some(BranchFilter::Select(new_list)) = patch.branch_filter
+            else {
+		v.branch_filter = patch.branch_filter;
+		return;
+	    };
+
+            old_list.extend(new_list);
         })
         .await;
 
