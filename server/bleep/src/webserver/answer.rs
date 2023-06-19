@@ -485,12 +485,12 @@ impl Conversation {
             Action::Query(query) => {
                 self.llm_history
                     .push_back(llm_gateway::api::Message::user(&format!(
-                        "{query}\nRespond with a function:"
+                        "{query}\nOnly respond with a function_call."
                     )))
             }
             _ => {
                 let function_name = match &action {
-                    Action::Answer { .. } => "ans",
+                    Action::Answer { .. } => "none",
                     Action::Path { .. } => "path",
                     Action::Code { .. } => "code",
                     Action::Proc { .. } => "proc",
@@ -499,7 +499,7 @@ impl Conversation {
                 self.llm_history
                     .push_back(llm_gateway::api::Message::function_return(
                         function_name,
-                        &format!("{action_result}\nRespond with a function:"),
+                        &format!("{action_result}\nOnly respond with a function_call."),
                     ));
             }
         };
@@ -1308,7 +1308,7 @@ enum Action {
     Path {
         query: String,
     },
-    #[serde(rename = "ans")]
+    #[serde(rename = "none")]
     Answer {
         paths: Vec<usize>,
     },

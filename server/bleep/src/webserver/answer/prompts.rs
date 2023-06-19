@@ -51,7 +51,7 @@ pub fn functions() -> serde_json::Value {
                 }
             },
             {
-                "name": "ans",
+                "name": "none",
                 "description": "You have enough information to answer the user's query. This is the final step, and signals that you have enough information to respond to the user's query. Use this if the user has intructed you to modify some code.",
                 "parameters": {
                     "type": "object",
@@ -83,20 +83,18 @@ pub fn system(paths: &Vec<String>) -> String {
     }
 
     s.push_str(
-        r#"
-Follow these rules at all times:
+        r#"Follow these rules at all times:
 
 - If the output of a function is empty, try the same function again with different arguments or try using a different function
-- In most cases you'll have to use the `code` or `path` functions before using `ans`
+- In most cases respond with functions.code or functions.path functions before responding with functions.none
 - Do not assume the structure of the codebase, or the existence of files or folders
-- Do NOT use a function that you've used before with the same arguments
-- When you are confident that you have enough information needed to answer the query use the `ans` function
-- If after making a path search the query can be answered by the existance of the paths, and there are more than 5 paths, use the `ans` function
+- Do NOT respond with a function that you've used before with the same arguments
+- When you have enough information to answer the  user's query respond with functions.none
+- If after making a path search the query can be answered by the existance of the paths, and there are more than 5 paths, use the functions.none function
 - Only refer to path aliases that are under the PATHS heading above
-- Use the functions to find information related to the query, until all relevant information has been found.
-- If after attempting to gather information you are still unsure how to answer the query, use the `ans` function
-- Always answer with a function call. Do NOT answer the question directly
-"#);
+- Respond with functions to find information related to the query, until all relevant information has been found.
+- If after attempting to gather information you are still unsure how to answer the query, respond with the functions.none function
+- Always respond with a function call. Do NOT answer the question directly"#);
     s
 }
 
