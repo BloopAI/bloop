@@ -97,7 +97,13 @@ const Subheader = () => {
         {allBranches.length > 1 && (
           <DropdownNormal
             items={[
-              { type: MenuItemType.DEFAULT, text: 'All branches' },
+              {
+                type: MenuItemType.DEFAULT,
+                text: 'All branches',
+                onClick: () => {
+                  setSelectedBranch(null);
+                },
+              },
             ].concat(
               allBranches.map((b) => ({
                 type: MenuItemType.DEFAULT,

@@ -49,7 +49,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   const [scrollToLine, setScrollToLine] = useState<string | undefined>(
     undefined,
   );
-  const { filters, setFilters, inputValue, globalRegex } =
+  const { filters, setFilters, inputValue, globalRegex, selectedBranch } =
     useContext(SearchContext);
   const { setSymbolsCollapsed } = useContext(UIContext);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
@@ -135,6 +135,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
       getHoverables(
         fileResultData.data[0].data.relative_path,
         fileResultData.data[0].data.repo_ref,
+        selectedBranch ? selectedBranch : undefined,
       ).then((data) => {
         setOpenResult((prevState) => ({
           ...prevState!,
@@ -142,7 +143,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
         }));
       });
     }
-  }, [fileResultData]);
+  }, [fileResultData, selectedBranch]);
 
   return (
     <>

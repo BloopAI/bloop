@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import * as Sentry from '@sentry/react';
 import FileIcon from '../../components/FileIcon';
 import Breadcrumbs from '../../components/Breadcrumbs';
@@ -19,6 +25,7 @@ import { FileTreeFileType } from '../../types';
 import { getFileName } from '../../utils/file';
 import FileMenu from '../../components/FileMenu';
 import SkeletonItem from '../../components/SkeletonItem';
+import { SearchContext } from '../../context/searchContext';
 
 type Props = {
   data: any;
@@ -40,6 +47,7 @@ const ResultFull = ({ data, isLoading }: Props) => {
   const [isShareOpen, setShareOpen] = useState(false);
   const { navigateFullResult, navigateRepoPath } = useAppNavigation();
   const [result, setResult] = useState<FullResult | null>(null);
+  const { selectedBranch } = useContext(SearchContext);
 
   useEffect(() => {
     if (!data || data?.data?.[0]?.kind !== 'file') {
@@ -66,13 +74,17 @@ const ResultFull = ({ data, isLoading }: Props) => {
       },
     });
     setResult(mappedResult);
-    getHoverables(item.data.relative_path, item.data.repo_ref).then((data) => {
+    getHoverables(
+      item.data.relative_path,
+      item.data.repo_ref,
+      selectedBranch ? selectedBranch : undefined,
+    ).then((data) => {
       setResult((prevState) => ({
         ...prevState!,
         hoverableRanges: mapRanges(data.ranges),
       }));
     });
-  }, [data, isLoading]);
+  }, [data, isLoading, selectedBranch]);
 
   const navigateTo = useCallback(
     (path: string, isFile: boolean) => {
