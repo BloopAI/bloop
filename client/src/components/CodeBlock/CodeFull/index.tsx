@@ -427,6 +427,7 @@ const CodeFull = ({
                       <button
                         onClick={() => {
                           setChatOpen(true);
+                          setPopupPosition(null);
                           setThreadId('');
                           setConversation([]);
                           setSelectedLines([
@@ -462,6 +463,7 @@ const CodeFull = ({
                             }-${currentSelection[1]![0]}`,
                           );
                           setChatOpen(true);
+                          setPopupPosition(null);
                         }}
                         className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover caption text-label-title"
                       >
