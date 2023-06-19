@@ -482,9 +482,12 @@ impl Conversation {
         };
 
         match &action {
-            Action::Query(query) => self
-                .llm_history
-                .push_back(llm_gateway::api::Message::user(query)),
+            Action::Query(query) => {
+                self.llm_history
+                    .push_back(llm_gateway::api::Message::user(&format!(
+                        "{query}\nRespond with a function:"
+                    )))
+            }
             _ => {
                 let function_name = match &action {
                     Action::Answer { .. } => "ans",
@@ -496,7 +499,7 @@ impl Conversation {
                 self.llm_history
                     .push_back(llm_gateway::api::Message::function_return(
                         function_name,
-                        &(action_result),
+                        &format!("{action_result}\nRespond with a function:"),
                     ));
             }
         };
