@@ -117,7 +117,7 @@ const AnnotatedFile = ({
   const fullHeight = useMemo(() => {
     return (
       mappedCites.reduce(
-        (prev, cur) => prev + ((cur.end || 0) - (cur.start || 0)),
+        (prev, cur) => prev + Math.max((cur.end || 0) - (cur.start || 0), 0),
         0,
       ) *
         21 +
