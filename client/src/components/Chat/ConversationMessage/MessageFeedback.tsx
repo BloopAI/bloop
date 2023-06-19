@@ -79,7 +79,7 @@ const MessageFeedback = ({
         !isSubmitted &&
         !showCommentInput && (
           <div
-            className="flex flex-col items-center gap-3 group-custom"
+            className="flex flex-col items-center gap-3 group-custom mt-3"
             key="feedback-btns"
           >
             {!isUpvote && !isDownvote && (
