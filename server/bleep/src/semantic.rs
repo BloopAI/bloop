@@ -200,9 +200,7 @@ impl Semantic {
         #[cfg(windows)]
         {
             unsafe {
-                let api_base = ort::sys::OrtGetApiBase();
-                let api = (*api_base).GetApi.as_ref().unwrap()(ort::sys::ORT_API_VERSION);
-                (*api).DisableTelemetryEvents.as_ref().unwrap()(environment.env_ptr());
+                ort::ort().DisableTelemetryEvents.as_ref().unwrap()(environment.env_ptr());
             }
         }
 
@@ -524,18 +522,17 @@ impl Semantic {
 /// files found in the `target/$profile` folder. The `ort` crate by default will also copy the
 /// built dynamic library over to the `target/$profile` folder, when using the download strategy.
 fn init_ort_dylib(dylib_dir: impl AsRef<Path>) {
-    if cfg!(windows) {
-        return;
+    #[cfg(not(windows))]
+    {
+        #[cfg(target_os = "linux")]
+        let lib_name = "libonnxruntime.so";
+        #[cfg(target_os = "macos")]
+        let lib_name = "libonnxruntime.dylib";
+
+        let ort_dylib_path = dylib_dir.as_ref().join(lib_name);
+
+        env::set_var("ORT_DYLIB_PATH", ort_dylib_path);
     }
-
-    #[cfg(target_os = "linux")]
-    let lib_name = "libonnxruntime.so";
-    #[cfg(target_os = "macos")]
-    let lib_name = "libonnxruntime.dylib";
-
-    let ort_dylib_path = dylib_dir.as_ref().join(lib_name);
-
-    env::set_var("ORT_DYLIB_PATH", ort_dylib_path);
 }
 
 // Exact match filter
