@@ -10,6 +10,7 @@ type ContextType = {
     scrollToLine?: string,
     highlightColor?: string,
   ) => void;
+  highlightColor?: string;
 };
 
 export const FileModalContext = createContext<ContextType>({
@@ -18,4 +19,5 @@ export const FileModalContext = createContext<ContextType>({
   scrollToLine: undefined,
   setIsFileModalOpen: () => {},
   openFileModal: () => {},
+  highlightColor: '',
 });

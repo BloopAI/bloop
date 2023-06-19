@@ -15,8 +15,13 @@ type Props = {
 };
 
 const FileModalContainer = ({ repoName }: Props) => {
-  const { path, setIsFileModalOpen, isFileModalOpen, scrollToLine, highlightColor } =
-    useContext(FileModalContext);
+  const {
+    path,
+    setIsFileModalOpen,
+    isFileModalOpen,
+    scrollToLine,
+    highlightColor,
+  } = useContext(FileModalContext);
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.MODAL,
   );
