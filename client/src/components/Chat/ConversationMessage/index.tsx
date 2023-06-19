@@ -64,7 +64,7 @@ const ConversationMessage = ({
             isLoadingStepsShown ? 'mb-3' : ''
           } flex flex-col gap-3 px-4 overflow-hidden transition-all duration-200 ease-linear`}
           style={{
-            maxHeight: isLoadingStepsShown ? loadingSteps.length * 32 : 0,
+            maxHeight: isLoadingStepsShown ? loadingSteps.length * 36 : 0,
           }}
         >
           {loadingSteps.map((s, i) => (
@@ -81,8 +81,8 @@ const ConversationMessage = ({
                 cursor-pointer`}
                   onClick={() => openFileModal(s.content)}
                 >
-                  <span className="flex gap-1 pr-1 py-0.5 items-center border-r border-chat-bg-border caption">
-                    <FileIcon filename={s.content} />
+                  <span className="flex gap-1 px-1 py-0.5 items-center border-r border-chat-bg-border caption">
+                    <FileIcon filename={s.content} noMargin />
                     {s.content.split('/').pop()}
                   </span>
                   <span className="p-1 inline-flex items-center justify-center">
