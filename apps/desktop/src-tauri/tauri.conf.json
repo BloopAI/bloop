@@ -54,7 +54,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "bloop",
+      "identifier": "ai.bloop.bloop",
       "longDescription": "Helping developers find code faster",
       "macOS": {
         "entitlements": null,
