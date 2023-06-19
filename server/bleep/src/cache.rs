@@ -147,6 +147,7 @@ impl<'a> ChunkCache<'a> {
         repo_ref: &'a str,
         repo_name: &'a str,
         relative_path: &'a str,
+        content_hash: &'a str,
     ) -> anyhow::Result<ChunkCache<'a>> {
         let response = qdrant
             .search_points(&SearchPoints {
@@ -162,6 +163,7 @@ impl<'a> ChunkCache<'a> {
                         make_kv_keyword_filter("repo_ref", repo_ref),
                         make_kv_keyword_filter("repo_name", repo_name),
                         make_kv_keyword_filter("relative_path", relative_path),
+                        make_kv_keyword_filter("content_hash", content_hash),
                     ]
                     .into_iter()
                     .map(Into::into)

@@ -6,6 +6,7 @@ pub struct Payload {
     pub repo_name: String,
     pub repo_ref: String,
     pub relative_path: String,
+    pub content_hash: String,
     pub text: String,
     pub start_line: u64,
     pub end_line: u64,
@@ -27,6 +28,7 @@ impl PartialEq for Payload {
             && self.repo_name == other.repo_name
             && self.repo_ref == other.repo_ref
             && self.relative_path == other.relative_path
+            && self.content_hash == other.content_hash
             && self.text == other.text
             && self.start_line == other.start_line
             && self.end_line == other.end_line

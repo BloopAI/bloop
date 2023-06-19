@@ -408,7 +408,7 @@ impl File {
             hash.finalize().to_hex().to_string()
         };
 
-        if is_cache_fresh(cache, content_hash, &entry_pathbuf, &dir_entry) {
+        if is_cache_fresh(cache, &content_hash, &entry_pathbuf, &dir_entry) {
             return Ok(());
         }
 
@@ -439,6 +439,7 @@ impl File {
                         repo_name,
                         relative_path.as_path(),
                         repo_disk_path,
+                        &content_hash,
                         entry_pathbuf.as_path(),
                         repo_ref.as_str(),
                         last_commit,
@@ -532,6 +533,7 @@ impl RepoFile {
         repo_name: &str,
         relative_path: &Path,
         repo_disk_path: &Path,
+        content_hash: &str,
         entry_pathbuf: &Path,
         repo_ref: &str,
         last_commit: u64,
@@ -597,6 +599,7 @@ impl RepoFile {
                 Handle::current().block_on(semantic.insert_points_for_buffer(
                     repo_name,
                     repo_ref,
+                    content_hash,
                     &relative_path_str,
                     &self.buffer,
                     lang_str,
@@ -630,10 +633,11 @@ impl RepoFile {
 #[tracing::instrument(skip(cache, dir_entry))]
 fn is_cache_fresh(
     cache: &RepoCacheSnapshot,
-    content_hash: String,
+    content_hash: &str,
     entry_pathbuf: &PathBuf,
     dir_entry: &RepoDirEntry,
 ) -> bool {
+    let content_hash = content_hash.into();
     let branch_list = dir_entry.branches().unwrap_or_default();
     match cache.entry(entry_pathbuf.clone()) {
         Entry::Occupied(mut val)

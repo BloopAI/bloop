@@ -104,6 +104,7 @@ impl Payload {
             repo_name: val_str!(converted, "repo_name"),
             repo_ref: val_str!(converted, "repo_ref"),
             relative_path: val_str!(converted, "relative_path"),
+            content_hash: val_str!(converted, "content_hash"),
             text: val_str!(converted, "snippet"),
             branches: val_str!(converted, "branches"),
             start_line: val_parse_str!(converted, "start_line"),
@@ -123,6 +124,7 @@ impl Payload {
             ("repo_name".into(), self.repo_name.into()),
             ("repo_ref".into(), self.repo_ref.into()),
             ("relative_path".into(), self.relative_path.into()),
+            ("content_hash".into(), self.content_hash.into()),
             ("snippet".into(), self.text.into()),
             ("start_line".into(), self.start_line.to_string().into()),
             ("end_line".into(), self.end_line.to_string().into()),
@@ -407,20 +409,27 @@ impl Semantic {
         Ok(deduplicate_snippets(results, vector, limit))
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(skip(self, repo_ref, relative_path, buffer))]
     pub async fn insert_points_for_buffer(
         &self,
         repo_name: &str,
         repo_ref: &str,
+        content_hash: &str,
         relative_path: &str,
         buffer: &str,
         lang_str: &str,
         branches: &[String],
     ) {
-        let chunk_cache =
-            crate::cache::ChunkCache::for_file(&self.qdrant, repo_ref, repo_name, relative_path)
-                .await
-                .expect("qdrant error");
+        let chunk_cache = crate::cache::ChunkCache::for_file(
+            &self.qdrant,
+            repo_ref,
+            repo_name,
+            relative_path,
+            content_hash,
+        )
+        .await
+        .expect("qdrant error");
 
         let chunks = chunk::by_tokens(
             repo_name,
@@ -433,13 +442,20 @@ impl Semantic {
         );
         debug!(chunk_count = chunks.len(), "found chunks");
 
-        let embedder = |c: &str| self.embed(c);
+        let embedder = |c: &str| {
+            info!(?relative_path, "generating embedding");
+            self.embed(c)
+        };
         chunks.par_iter().for_each(|chunk| {
-            let data = format!("{repo_name}\t{relative_path}\n{}", chunk.data);
+            let data = format!(
+                "{repo_name}\t{relative_path}\n{content_hash}\n{}",
+                chunk.data,
+            );
             let payload = Payload {
                 repo_name: repo_name.to_owned(),
                 repo_ref: repo_ref.to_owned(),
                 relative_path: relative_path.to_owned(),
+                content_hash: content_hash.to_owned(),
                 text: chunk.data.to_owned(),
                 lang: lang_str.to_ascii_lowercase(),
                 branches: branches.to_owned(),
