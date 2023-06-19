@@ -55,7 +55,7 @@ impl<'a> FileCache<'a> {
     pub(crate) async fn for_repo(&self, reporef: &RepoRef) -> anyhow::Result<RepoCacheSnapshot> {
         let repo_str = reporef.to_string();
         let rows = sqlx::query! {
-            "SELECT file_name, hash, branches FROM file_cache \
+            "SELECT file_path, content_hash, branches FROM file_cache \
              WHERE repo_ref = ?",
             repo_str,
         }
@@ -65,8 +65,8 @@ impl<'a> FileCache<'a> {
         let output = scc::HashMap::default();
         for row in rows {
             _ = output.insert(
-                PathBuf::from(row.file_name),
-                (row.hash, serde_json::from_str(&row.branches)?).into(),
+                PathBuf::from(row.file_path),
+                (row.content_hash, serde_json::from_str(&row.branches)?).into(),
             );
         }
 
@@ -94,7 +94,7 @@ impl<'a> FileCache<'a> {
             let file = file_name.to_string_lossy();
             sqlx::query!(
                 "INSERT INTO file_cache \
-		 (repo_ref, file_name, hash, branches) \
+		 (repo_ref, file_path, content_hash, branches) \
                  VALUES (?, ?, ?, ?)",
                 repo_str,
                 file,
