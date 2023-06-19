@@ -58,8 +58,13 @@ const FileModalContainer = ({ repoName }: Props) => {
     setMode(m);
   }, []);
 
+  useEffect(() => {
+    if (!isFileModalOpen) {
+      setOpenResult(null);
+    }
+  }, [isFileModalOpen]);
+
   const onResultClosed = useCallback(() => {
-    setOpenResult(null);
     setIsFileModalOpen(false);
   }, [mode]);
 

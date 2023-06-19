@@ -6,6 +6,7 @@ import {
   MagnifyTool,
   PointClick,
   QuillIcon,
+  Sparkles,
 } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
 import { ChatLoadingStep, ChatMessageAuthor } from '../../../types/general';
@@ -133,21 +134,27 @@ const ConversationMessage = ({
       {message || (author === ChatMessageAuthor.Server && error) ? (
         <>
           <div
-            className={`relative group-custom bg-chat-bg-shade mt-3 flex items-center p-4 gap-3 border border-chat-bg-divider rounded-lg`}
+            className={`relative group-custom bg-chat-bg-shade mt-3 flex items-start p-4 gap-3 border border-chat-bg-divider rounded-lg`}
           >
-            {author === ChatMessageAuthor.User && (
-              <div className="relative">
-                <div className="w-6 h-6 rounded-full bg-chat-bg-sub overflow-hidden">
+            <div className="relative">
+              <div className="w-6 h-6 rounded-full bg-chat-bg-border overflow-hidden flex items-center justify-center">
+                {author === ChatMessageAuthor.User ? (
                   <img src={envConfig.github_user?.avatar_url} alt="avatar" />
-                </div>
+                ) : (
+                  <div className="w-3 h-3">
+                    <Sparkles raw />
+                  </div>
+                )}
+              </div>
+              {author === ChatMessageAuthor.User && (
                 <div className="absolute -bottom-1 -right-1 w-4 h-3 bg-chat-bg-border box-content border-2 border-chat-bg-shade text-label-title rounded-full flex items-center justify-center">
                   <div className="w-1.5 h-2">
                     <QuillIcon raw />
                   </div>
                 </div>
-              </div>
-            )}
-            <pre className="body-s text-label-title whitespace-pre-wrap">
+              )}
+            </div>
+            <pre className="body-s text-label-title whitespace-pre-wrap break-word">
               {message || error}
             </pre>
           </div>
