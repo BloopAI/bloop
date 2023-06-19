@@ -86,6 +86,10 @@ const CodeFull = ({
         .map((i) => Number(i)),
     [searchParams],
   );
+  const highlightColor = useMemo(
+    () => searchParams.get('highlight_color'),
+    [searchParams],
+  );
   const [scrollToIndex, setScrollToIndex] = useState(
     scrollLineNumber || undefined,
   );
@@ -396,6 +400,7 @@ const CodeFull = ({
             searchTerm={searchTerm}
             onRefDefClick={onRefDefClick}
             scrollToIndex={scrollToIndex}
+            highlightColor={highlightColor}
           />
           <AnimatePresence>
             {popupPosition && (

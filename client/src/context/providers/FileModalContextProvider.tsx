@@ -14,12 +14,17 @@ export const FileModalContextProvider = ({
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [path, setPath] = useState('');
   const [scrollToLine, setScrollToLine] = useState<string | undefined>();
+  const [highlightColor, setHighlightColor] = useState<string | undefined>();
 
-  const openFileModal = useCallback((p: string, line?: string) => {
-    setPath(p);
-    setScrollToLine(line);
-    setIsFileModalOpen(true);
-  }, []);
+  const openFileModal = useCallback(
+    (p: string, line?: string, color?: string) => {
+      setPath(p);
+      setScrollToLine(line);
+      setHighlightColor(color);
+      setIsFileModalOpen(true);
+    },
+    [],
+  );
 
   const contextValue = useMemo(
     () => ({
@@ -28,8 +33,9 @@ export const FileModalContextProvider = ({
       path,
       scrollToLine,
       openFileModal,
+      highlightColor,
     }),
-    [isFileModalOpen, path, scrollToLine, openFileModal],
+    [isFileModalOpen, path, scrollToLine, openFileModal, highlightColor],
   );
   return (
     <FileModalContext.Provider value={contextValue}>

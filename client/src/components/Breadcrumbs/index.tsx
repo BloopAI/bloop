@@ -79,7 +79,7 @@ const Breadcrumbs = ({
     <div className="flex items-center body-s flex-shrink-0 gap-1.5">
       {/* this div is hidden and used only to calculate the full width of breadcrumbs before truncation */}
       <div
-        className="fixed top-full opacity-0 left-0 flex flex-nowrap items-center body-s flex-shrink-0 gap-1.5"
+        className="fixed top-full opacity-0 left-0 flex flex-nowrap items-center body-s flex-shrink-0 gap-1.5 select-none"
         ref={containerRef}
       >
         {pathParts.map((p, i) => (

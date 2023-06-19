@@ -10,6 +10,7 @@ import {
 import { UIContext } from '../../context/uiContext';
 import { ChevronDown } from '../../icons';
 import { conversationsCache } from '../../services/cache';
+import { repositionAnnotationsOnScroll } from '../../utils/scrollUtils';
 import NewCode from './NewCode';
 import DiffCode from './DiffCode';
 import CodeAnnotation, { Comment } from './CodeAnotation';
@@ -88,39 +89,10 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
         (e: React.UIEvent<HTMLDivElement>) => {
           setScrolled(true);
           const scrollTop = (e.target as HTMLDivElement).scrollTop;
-          let previousCommentsHeight = 0;
-          let stickedCommentsHeight = 0;
-          Object.values(
+          repositionAnnotationsOnScroll(
+            scrollTop,
             Object.keys(citations).length ? citations : dirCitations,
-          ).forEach((fileCite) => {
-            fileCite.forEach((c: any) => {
-              const comment = document.getElementById(`comment-${c.i}`);
-              const code = document.getElementById(`code-${c.i}`);
-
-              if (comment && code) {
-                const commentRect = comment.getBoundingClientRect();
-                const codeRect = code.getBoundingClientRect();
-                const codeBottom =
-                  codeRect.bottom +
-                  scrollTop -
-                  (code.dataset.last === 'true' ? 170 : 205); // calculate code bottom relative to parent
-                const lowestPosition =
-                  codeBottom - commentRect.height - previousCommentsHeight;
-                const maxTranslateY = Math.max(
-                  0,
-                  Math.min(scrollTop - stickedCommentsHeight, lowestPosition),
-                );
-                if (
-                  maxTranslateY === lowestPosition &&
-                  scrollTop > codeBottom
-                ) {
-                  stickedCommentsHeight += commentRect.height + 12;
-                }
-                previousCommentsHeight += commentRect.height + 12;
-                comment.style.transform = `translateY(${maxTranslateY}px)`;
-              }
-            });
-          });
+          );
         },
         75,
         { trailing: true, leading: true },
@@ -133,6 +105,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
       className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content"
       ref={containerRef}
       onScroll={handleScroll}
+      id="results-page-container"
     >
       {containerRef.current &&
         containerRef.current.scrollHeight - containerRef.current.clientHeight >

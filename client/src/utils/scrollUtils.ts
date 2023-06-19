@@ -1,4 +1,5 @@
 import { Align } from 'react-window';
+import { Comment } from '../pages/ConversationResult/CodeAnotation';
 
 type ReactWindowProps = {
   height: number;
@@ -58,4 +59,56 @@ export const getOffsetForIndexAndAlignment = (
         return maxOffset;
       }
   }
+};
+
+export const repositionAnnotationsOnScroll = (
+  scrollTop: number,
+  citations: Record<string, Comment[]>,
+) => {
+  let previousCommentsHeight = 0;
+  let stickedCommentsHeight = 0;
+  let previousCommentStopped = true;
+  Object.values(citations).forEach((fileCite, index) => {
+    fileCite.forEach((c: any) => {
+      const comment = document.querySelector(
+        `[data-active="true"] #comment-${c.i}`,
+      );
+      if (!comment) {
+        return;
+      }
+      const code = document.querySelector(`[data-active="true"] #code-${c.i}`);
+      const file = document.querySelector(
+        `[data-active="true"] #file-${index}`,
+      );
+
+      if (comment && file && comment instanceof HTMLElement) {
+        const commentRect = comment.getBoundingClientRect();
+        const codeRect = (code || file).getBoundingClientRect();
+        const fileRect = file.getBoundingClientRect();
+
+        const codeBottom =
+          Math.min(codeRect.bottom, fileRect.bottom) + scrollTop - 187; // calculate code bottom relative to parent
+        const lowestPosition = Math.max(
+          codeBottom - commentRect.height - previousCommentsHeight,
+          0,
+        );
+        const maxTranslateY = previousCommentStopped
+          ? Math.max(
+              0,
+              Math.min(scrollTop - stickedCommentsHeight, lowestPosition),
+            )
+          : scrollTop - stickedCommentsHeight;
+        if (
+          maxTranslateY === lowestPosition &&
+          scrollTop > codeBottom &&
+          !previousCommentStopped
+        ) {
+          stickedCommentsHeight += commentRect.height + 12;
+        }
+        previousCommentStopped = maxTranslateY === lowestPosition;
+        previousCommentsHeight += commentRect.height + 12;
+        comment.style.transform = `translateY(${maxTranslateY}px)`;
+      }
+    });
+  });
 };

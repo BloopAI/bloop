@@ -5,7 +5,12 @@ type ContextType = {
   isFileModalOpen: boolean;
   scrollToLine: string | undefined;
   setIsFileModalOpen: Dispatch<SetStateAction<boolean>>;
-  openFileModal: (path: string, scrollToLine?: string) => void;
+  openFileModal: (
+    path: string,
+    scrollToLine?: string,
+    highlightColor?: string,
+  ) => void;
+  highlightColor?: string;
 };
 
 export const FileModalContext = createContext<ContextType>({
@@ -14,4 +19,5 @@ export const FileModalContext = createContext<ContextType>({
   scrollToLine: undefined,
   setIsFileModalOpen: () => {},
   openFileModal: () => {},
+  highlightColor: '',
 });
