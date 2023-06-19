@@ -97,6 +97,12 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
                     key={`${index}-${i}`}
                     isCollapsed={collapsedFiles.includes(index)}
                     isBoxed
+                    onClick={() => {
+                      setFullExpandedFiles((prev) => [...prev, index]);
+                      setCollapsedFiles((prev) =>
+                        prev.filter((fi) => fi !== index),
+                      );
+                    }}
                   />
                 ))}
               </div>
@@ -106,6 +112,12 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
                   i={cite.i}
                   comment={cite.comment}
                   key={`${index}-${i}`}
+                  onClick={() => {
+                    setFullExpandedFiles((prev) => [...prev, index]);
+                    setCollapsedFiles((prev) =>
+                      prev.filter((fi) => fi !== index),
+                    );
+                  }}
                 />
               ))
             );

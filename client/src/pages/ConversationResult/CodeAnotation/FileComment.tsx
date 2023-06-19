@@ -6,9 +6,10 @@ type Props = {
   comment: string;
   isCollapsed?: boolean;
   isBoxed?: boolean;
+  onClick?: () => void;
 };
 
-const FileComment = ({ i, comment, isCollapsed, isBoxed }: Props) => {
+const FileComment = ({ i, comment, isCollapsed, isBoxed, onClick }: Props) => {
   return (
     <div
       className={`bg-bg-base border border-bg-border rounded-4 ${
@@ -17,9 +18,14 @@ const FileComment = ({ i, comment, isCollapsed, isBoxed }: Props) => {
         transition-all duration-75 ease-linear cursor-pointer z-10`}
       id={isBoxed ? undefined : `comment-${i}`}
       onClick={() => {
-        document
-          .getElementById(`code-${i}`)
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        onClick?.();
+        setTimeout(
+          () =>
+            document
+              .getElementById(`code-${i}`)
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+          400,
+        );
       }}
     >
       {!isCollapsed && (
