@@ -298,7 +298,7 @@ impl Indexer<File> {
             format!(r#"repo_ref:"{repo_ref}" AND relative_path:"{relative_path}""#);
 
         if let Some(b) = branch {
-            query_string += &format!(r#" AND branch:"{b}""#);
+            query_string += &format!(r#" AND branches:"{b}""#);
         }
 
         let query = query_parser
