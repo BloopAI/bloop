@@ -39,7 +39,7 @@ const AnnotatedFile = ({ filePath, onResultClick, repoName, cites }: Props) => {
   );
 
   const tokens = useMemo(
-    () => (file?.contents && lang ? tokenizeCode(file?.contents, lang) : []),
+    () => (file?.contents ? tokenizeCode(file?.contents, lang) : []),
     [file?.contents, lang],
   );
 

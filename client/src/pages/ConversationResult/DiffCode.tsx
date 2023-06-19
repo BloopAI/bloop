@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useMemo, useState } from 'react';
 import Code from '../../components/CodeBlock/Code';
 import Button from '../../components/Button';
 import { Clipboard } from '../../icons';
@@ -7,7 +7,7 @@ import FileIcon from '../../components/FileIcon';
 import { MessageResultModify } from '../../types/general';
 import { FileTreeFileType } from '../../types';
 import BreadcrumbsPath from '../../components/BreadcrumbsPath';
-import FileModalContainer from '../ResultModal/FileModalContainer';
+import { FileModalContext } from '../../context/fileModalContext';
 
 type Props = {
   data: MessageResultModify['Modify'];
@@ -16,10 +16,7 @@ type Props = {
 
 const DiffCode = ({ data, repoName }: Props) => {
   const [showRaw, setShowRaw] = useState(false);
-  const [isModalOpen, setModalOpen] = useState(false);
-  const [scrollToLine, setScrollToLine] = useState<string | undefined>(
-    undefined,
-  );
+  const { openFileModal } = useContext(FileModalContext);
 
   const rawCode = useMemo(
     () =>
@@ -30,13 +27,9 @@ const DiffCode = ({ data, repoName }: Props) => {
     [data.diff.lines],
   );
 
-  const onResultClick = useCallback(
-    (path: string, lineNumber?: number[]) => {
-      setScrollToLine(lineNumber ? lineNumber.join('_') : undefined);
-      setModalOpen(true);
-    },
-    [repoName],
-  );
+  const onResultClick = useCallback((path: string, lineNumber?: number[]) => {
+    openFileModal(data.path, lineNumber?.join('_'));
+  }, []);
 
   return (
     <div className="text-sm border border-bg-border rounded-md">
@@ -100,13 +93,6 @@ const DiffCode = ({ data, repoName }: Props) => {
           </div>
         </div>
       ) : null}
-      <FileModalContainer
-        repoName={repoName}
-        path={data.path}
-        isOpen={isModalOpen}
-        onClose={() => setModalOpen(false)}
-        scrollToLine={scrollToLine}
-      />
     </div>
   );
 };

@@ -90,9 +90,13 @@ const CodeContainerFull = ({
         align = 'start';
       }
       scrollToItem = Math.max(0, Math.min(scrollToItem, tokens.length - 1));
-      document
-        .querySelector(`[data-line-number="${scrollToItem}"]`)
-        ?.scrollIntoView({ behavior: 'smooth', block: align });
+      let line = document.querySelector(
+        `.modal-or-sidebar [data-line-number="${scrollToItem}"]`,
+      );
+      if (!line) {
+        line = document.querySelector(`[data-line-number="${scrollToItem}"]`);
+      }
+      line?.scrollIntoView({ behavior: 'smooth', block: align });
     }
   }, [scrollToIndex]);
 

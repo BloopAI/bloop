@@ -1344,3 +1344,7 @@ h5, .h5 {
 .chat-head-bg {
   background: radial-gradient(47.73% 47.73% at 50% 0%,transparent 0%, rgb(var(--chat-bg-sub)) 100%);
 }
+
+.break-word {
+  word-break: break-word;
+}

@@ -1,9 +1,10 @@
-import React, { useCallback, useTransition } from 'react';
+import React, { useCallback, useContext, useTransition } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SelectToggleButton from '../../components/SelectToggleButton';
 import { ChevronDoubleIntersected, Modal, Sidebar } from '../../icons';
 import { FullResultModeEnum } from '../../types/general';
 import useAppNavigation from '../../hooks/useAppNavigation';
+import { FileModalContext } from '../../context/fileModalContext';
 
 type Props = {
   repoName: string;
@@ -21,8 +22,10 @@ const ModeToggle = ({
   const [searchParams] = useSearchParams();
   const { navigateFullResult } = useAppNavigation();
   const [isPending, startTransition] = useTransition();
+  const { setIsFileModalOpen } = useContext(FileModalContext);
 
   const handleFull = useCallback(() => {
+    setIsFileModalOpen(false);
     navigateFullResult(repoName, relativePath, {
       scroll_line_index: searchParams.get('scroll_line_index') || '',
     });

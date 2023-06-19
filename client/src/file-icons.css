@@ -173,8 +173,8 @@
 .link-icon:before         { font-family: octicons; font-size: 16px; top: 1px; content: "\f0b0"; }
 .package-icon:before      { font-family: octicons; font-size: 16px; top: 1px; content: "\f0c4"; }
 .secret-icon:before       { font-family: octicons; font-size: 16px; top: 1px; content: "\f08c"; }
-.squirrel-icon:before     { font-family: octicons; font-size: 16px; top: 1px; content: "\f0b2"; font-size: 15px; }
-.text-icon:before         { font-family: octicons; font-size: 16px; top: 1px; content: "\f011"; }
+.squirrel-icon:before     { font-family: octicons; font-size: 15px; top: 1px; content: "\f0b2"; }
+.text-icon:before         { font-family: octicons; font-size: 16px; top: 1px; content: "\f011"; width: 14px; }
 
 
 
@@ -551,110 +551,110 @@
   Seti icons
   https://github.com/jesseweed/seti-ui
 /*============================================================================*/
-.r-icon:before             { font-family: seti; content: "\E001"; font-size: 24px; display: block; }
-.apple-icon:before         { font-family: seti; content: "\E002"; font-size: 24px; display: block; }
-.audio-icon:before         { font-family: seti; content: "\E005"; font-size: 24px; display: block; }
-.babel-icon:before         { font-family: seti; content: "\E006"; font-size: 24px; display: block; }
-.binary-icon:before        { font-family: seti; content: "\E004"; font-size: 24px; display: block; }
-.bower-icon:before         { font-family: seti; content: "\E009"; font-size: 24px; display: block; }
-.csharp-icon:before        { font-family: seti; content: "\E00B"; font-size: 24px; display: block; }
-.c-icon:before             { font-family: seti; content: "\E00C"; font-size: 24px; display: block; }
-.cake-icon:before          { font-family: seti; content: "\E00D"; font-size: 24px; display: block; }
-.cakephp-icon:before       { font-family: seti; content: "\E00E"; font-size: 24px; display: block; }
-.coffee-icon:before        { font-family: seti; content: "\E011"; font-size: 24px; display: block; }
-.js-icon:before            { font-family: seti; content: "\E051"; font-size: 24px; display: block; }
-._1c-icon:before           { font-family: seti; content: "\E00A"; font-size: 24px; display: block; }
-.clojure-icon:before       { font-family: seti; content: "\E013"; font-size: 24px; display: block; }
-.cf-icon:before            { font-family: seti; content: "\E018"; font-size: 24px; display: block; }
-.config-icon:before        { font-family: seti; content: "\E019"; font-size: 24px; display: block; }
-.cpp-icon:before           { font-family: seti; content: "\E01A"; font-size: 24px; display: block; }
-.crystal-icon:before       { font-family: seti; content: "\E01B"; font-size: 24px; display: block; }
-.css3-icon:before          { font-family: seti; content: "\E01D"; font-size: 24px; display: block; }
-.graph-icon:before         { font-family: seti; content: "\E01E"; font-size: 24px; display: block; }
-.nvidia-icon:before        { font-family: seti; content: "\E01F"; font-size: 24px; display: block; }
-.dlang-icon:before         { font-family: seti; content: "\E020"; font-size: 24px; display: block; }
-.dart-icon:before          { font-family: seti; content: "\E021"; font-size: 24px; display: block; }
-.dbase-icon:before         { font-family: seti; content: "\E022"; font-size: 24px; display: block; }
-.default-icon:before       { font-family: seti; content: "\E023"; font-size: 24px; display: block; }
-.docker-icon:before        { font-family: seti; content: "\E025"; font-size: 24px; display: block; }
-.editorconfig-icon:before  { font-family: seti; content: "\E026"; font-size: 24px; display: block; }
-.html5-icon:before         { font-family: seti; content: "\E027"; font-size: 24px; display: block; }
-.elixir-icon:before        { font-family: seti; content: "\E028"; font-size: 24px; display: block; }
-.elm-icon:before           { font-family: seti; content: "\E02A"; font-size: 24px; display: block; }
-.eslint-icon:before        { font-family: seti; content: "\E02C"; font-size: 24px; display: block; }
-.fsharp-icon:before        { font-family: seti; content: "\E02E"; font-size: 24px; display: block; }
-.font-icon:before          { font-family: seti; content: "\E033"; font-size: 24px; display: block; }
-.git-icon:before           { font-family: seti; content: "\E034"; font-size: 24px; display: block; }
-.github-icon:before        { font-family: seti; content: "\E037"; font-size: 24px; display: block; }
-.go-icon:before            { font-family: seti; content: "\E039"; font-size: 24px; display: block; }
-.godot-icon:before         { font-family: seti; content: "\E03B"; font-size: 24px; display: block; }
-.gradle-icon:before        { font-family: seti; content: "\E03C"; font-size: 24px; display: block; }
-.graphql-icon:before       { font-family: seti; content: "\E03E"; font-size: 24px; display: block; }
-.grunt-icon:before         { font-family: seti; content: "\E03F"; font-size: 24px; display: block; }
-.gulp-icon:before          { font-family: seti; content: "\E040"; font-size: 24px; display: block; }
-.hack-icon:before          { font-family: seti; content: "\E041"; font-size: 24px; display: block; }
-.haml-icon:before          { font-family: seti; content: "\E042"; font-size: 24px; display: block; }
-.haskell-icon:before       { font-family: seti; content: "\E044"; font-size: 24px; display: block; }
-.haxe-icon:before          { font-family: seti; content: "\E045"; font-size: 24px; display: block; }
-.heroku-icon:before        { font-family: seti; content: "\E046"; font-size: 24px; display: block; }
-.image-icon:before         { font-family: seti; content: "\E04C"; font-size: 24px; display: block; }
-.ionic-icon:before         { font-family: seti; content: "\E04E"; font-size: 24px; display: block; }
-.jade-icon:before          { font-family: seti; content: "\E04F"; font-size: 24px; display: block; }
-.java-icon:before          { font-family: seti; content: "\E050"; font-size: 24px; display: block; }
-.jenkins-icon:before       { font-family: seti; content: "\E052"; font-size: 24px; display: block; }
-.jinja-icon:before         { font-family: seti; content: "\E053"; font-size: 24px; display: block; }
-.database-icon:before      { font-family: seti; content: "\E022"; font-size: 24px; display: block; }
-.julia-icon:before         { font-family: seti; content: "\E056"; font-size: 24px; display: block; }
-.karma-icon:before         { font-family: seti; content: "\E057"; font-size: 24px; display: block; }
-.kotlin-icon:before        { font-family: seti; content: "\E058"; font-size: 24px; display: block; }
-.shopify-icon:before       { font-family: seti; content: "\E05B"; font-size: 24px; display: block; }
-.ls-icon:before            { font-family: seti; content: "\E05C"; font-size: 24px; display: block; }
-.lua-icon:before           { font-family: seti; content: "\E05E"; font-size: 24px; display: block; }
-.checklist-icon:before     { font-family: seti; content: "\E05F"; font-size: 24px; display: block; }
-.markdown-icon:before      { font-family: seti; content: "\E060"; font-size: 24px; display: block; }
-._1c-alt-icon:before       { font-family: seti; content: "\E062"; font-size: 24px; display: block; }
-.mustache-icon:before      { font-family: seti; content: "\E063"; font-size: 24px; display: block; }
-.nimrod-icon:before        { font-family: seti; content: "\E065"; font-size: 24px; display: block; }
-.jupyter-icon:before       { font-family: seti; content: "\E066"; font-size: 24px; display: block; }
-.npm-icon:before           { font-family: seti; content: "\E067"; font-size: 24px; display: block; }
-.nunjucks-icon:before      { font-family: seti; content: "\E069"; font-size: 24px; display: block; }
-.ocaml-icon:before         { font-family: seti; content: "\E06A"; font-size: 24px; display: block; }
-.pdf-icon:before           { font-family: seti; content: "\E06D"; font-size: 24px; display: block; }
-.perl-icon:before          { font-family: seti; content: "\E06E"; font-size: 24px; display: block; }
-.psd-icon:before           { font-family: seti; content: "\E06F"; font-size: 24px; display: block; }
-.php-icon:before           { font-family: seti; content: "\E070"; font-size: 24px; display: block; }
-.powershell-icon:before    { font-family: seti; content: "\E074"; font-size: 24px; display: block; }
-.prolog-icon:before        { font-family: seti; content: "\E077"; font-size: 24px; display: block; }
-.pug-icon:before           { font-family: seti; content: "\E078"; font-size: 24px; display: block; }
-.puppet-icon:before        { font-family: seti; content: "\E079"; font-size: 24px; display: block; }
-.purescript-icon:before    { font-family: seti; content: "\E07A"; font-size: 24px; display: block; }
-.python-icon:before        { font-family: seti; content: "\E07B"; font-size: 24px; display: block; }
-.rails-icon:before         { font-family: seti; content: "\E07C"; font-size: 24px; display: block; }
-.react-icon:before         { font-family: seti; content: "\E07D"; font-size: 24px; display: block; }
-.reason-icon:before        { font-family: seti; content: "\E07E"; font-size: 24px; display: block; }
-.rollup-icon:before        { font-family: seti; content: "\E080"; font-size: 24px; display: block; }
-.ruby-icon:before          { font-family: seti; content: "\E081"; font-size: 24px; display: block; }
-.rust-icon:before          { font-family: seti; content: "\E082"; font-size: 24px; display: block; }
-.sass-icon:before          { font-family: seti; content: "\E084"; font-size: 24px; display: block; }
-.sbt-icon:before           { font-family: seti; content: "\E085"; font-size: 24px; display: block; }
-.scala-icon:before         { font-family: seti; content: "\E086"; font-size: 24px; display: block; }
-.terminal-icon:before      { font-family: seti; content: "\E089"; font-size: 24px; display: block; }
-.smarty-icon:before        { font-family: seti; content: "\E08B"; font-size: 24px; display: block; }
-.stylelint-icon:before     { font-family: seti; content: "\E08D"; font-size: 24px; display: block; }
-.stylus-icon:before        { font-family: seti; content: "\E08E"; font-size: 24px; display: block; }
-.sublime-icon:before       { font-family: seti; content: "\E08F"; font-size: 24px; display: block; }
-.svg-icon:before           { font-family: seti; content: "\E091"; font-size: 24px; display: block; }
-.swift-icon:before         { font-family: seti; content: "\E092"; font-size: 24px; display: block; }
-.terraform-icon:before     { font-family: seti; content: "\E093"; font-size: 24px; display: block; }
-.tex-icon:before           { font-family: seti; content: "\E094"; font-size: 24px; display: block; }
-.twig-icon:before          { font-family: seti; content: "\E098"; font-size: 24px; display: block; }
-.ts-icon:before            { font-family: seti; content: "\E099"; font-size: 24px; display: block; }
-.gnome-icon:before         { font-family: seti; content: "\E09A"; font-size: 24px; display: block; }
-.video-icon:before         { font-family: seti; content: "\E09B"; font-size: 24px; display: block; }
-.vue-icon:before           { font-family: seti; content: "\E09C"; font-size: 24px; display: block; }
-.webpack-icon:before       { font-family: seti; content: "\E09F"; font-size: 24px; display: block; }
-.windows-icon:before       { font-family: seti; content: "\E0A1"; font-size: 24px; display: block; }
-.word-icon:before          { font-family: seti; content: "\E0A2"; font-size: 24px; display: block; }
-.excel-icon:before         { font-family: seti; content: "\E0A3"; font-size: 24px; display: block; }
-.yarn-icon:before          { font-family: seti; content: "\E0A5"; font-size: 24px; display: block; }
-.zip-icon:before           { font-family: seti; content: "\E0A8"; font-size: 24px; display: block; }
+.r-icon:before             { font-family: seti; content: "\E001"; font-size: 24px; display: block; position: relative; left: -4px; }
+.apple-icon:before         { font-family: seti; content: "\E002"; font-size: 24px; display: block; position: relative; left: -4px; }
+.audio-icon:before         { font-family: seti; content: "\E005"; font-size: 24px; display: block; position: relative; left: -4px; }
+.babel-icon:before         { font-family: seti; content: "\E006"; font-size: 24px; display: block; position: relative; left: -4px; }
+.binary-icon:before        { font-family: seti; content: "\E004"; font-size: 24px; display: block; position: relative; left: -4px; }
+.bower-icon:before         { font-family: seti; content: "\E009"; font-size: 24px; display: block; position: relative; left: -4px; }
+.csharp-icon:before        { font-family: seti; content: "\E00B"; font-size: 24px; display: block; position: relative; left: -4px; }
+.c-icon:before             { font-family: seti; content: "\E00C"; font-size: 24px; display: block; position: relative; left: -4px; }
+.cake-icon:before          { font-family: seti; content: "\E00D"; font-size: 24px; display: block; position: relative; left: -4px; }
+.cakephp-icon:before       { font-family: seti; content: "\E00E"; font-size: 24px; display: block; position: relative; left: -4px; }
+.coffee-icon:before        { font-family: seti; content: "\E011"; font-size: 24px; display: block; position: relative; left: -4px; }
+.js-icon:before            { font-family: seti; content: "\E051"; font-size: 24px; display: block; position: relative; left: -4px; }
+._1c-icon:before           { font-family: seti; content: "\E00A"; font-size: 24px; display: block; position: relative; left: -4px; }
+.clojure-icon:before       { font-family: seti; content: "\E013"; font-size: 24px; display: block; position: relative; left: -4px; }
+.cf-icon:before            { font-family: seti; content: "\E018"; font-size: 24px; display: block; position: relative; left: -4px; }
+.config-icon:before        { font-family: seti; content: "\E019"; font-size: 24px; display: block; position: relative; left: -4px; }
+.cpp-icon:before           { font-family: seti; content: "\E01A"; font-size: 24px; display: block; position: relative; left: -4px; }
+.crystal-icon:before       { font-family: seti; content: "\E01B"; font-size: 24px; display: block; position: relative; left: -4px; }
+.css3-icon:before          { font-family: seti; content: "\E01D"; font-size: 24px; display: block; position: relative; left: -4px; }
+.graph-icon:before         { font-family: seti; content: "\E01E"; font-size: 24px; display: block; position: relative; left: -4px; }
+.nvidia-icon:before        { font-family: seti; content: "\E01F"; font-size: 24px; display: block; position: relative; left: -4px; }
+.dlang-icon:before         { font-family: seti; content: "\E020"; font-size: 24px; display: block; position: relative; left: -4px; }
+.dart-icon:before          { font-family: seti; content: "\E021"; font-size: 24px; display: block; position: relative; left: -4px; }
+.dbase-icon:before         { font-family: seti; content: "\E022"; font-size: 24px; display: block; position: relative; left: -4px; }
+.default-icon:before       { font-family: seti; content: "\E023"; font-size: 24px; display: block; position: relative; left: -4px; }
+.docker-icon:before        { font-family: seti; content: "\E025"; font-size: 24px; display: block; position: relative; left: -4px; }
+.editorconfig-icon:before  { font-family: seti; content: "\E026"; font-size: 24px; display: block; position: relative; left: -4px; }
+.html5-icon:before         { font-family: seti; content: "\E027"; font-size: 24px; display: block; position: relative; left: -4px; }
+.elixir-icon:before        { font-family: seti; content: "\E028"; font-size: 24px; display: block; position: relative; left: -4px; }
+.elm-icon:before           { font-family: seti; content: "\E02A"; font-size: 24px; display: block; position: relative; left: -4px; }
+.eslint-icon:before        { font-family: seti; content: "\E02C"; font-size: 24px; display: block; position: relative; left: -4px; }
+.fsharp-icon:before        { font-family: seti; content: "\E02E"; font-size: 24px; display: block; position: relative; left: -4px; }
+.font-icon:before          { font-family: seti; content: "\E033"; font-size: 24px; display: block; position: relative; left: -4px; }
+.git-icon:before           { font-family: seti; content: "\E034"; font-size: 24px; display: block; position: relative; left: -4px; }
+.github-icon:before        { font-family: seti; content: "\E037"; font-size: 24px; display: block; position: relative; left: -4px; }
+.go-icon:before            { font-family: seti; content: "\E039"; font-size: 24px; display: block; position: relative; left: -4px; }
+.godot-icon:before         { font-family: seti; content: "\E03B"; font-size: 24px; display: block; position: relative; left: -4px; }
+.gradle-icon:before        { font-family: seti; content: "\E03C"; font-size: 24px; display: block; position: relative; left: -4px; }
+.graphql-icon:before       { font-family: seti; content: "\E03E"; font-size: 24px; display: block; position: relative; left: -4px; }
+.grunt-icon:before         { font-family: seti; content: "\E03F"; font-size: 24px; display: block; position: relative; left: -4px; }
+.gulp-icon:before          { font-family: seti; content: "\E040"; font-size: 24px; display: block; position: relative; left: -4px; }
+.hack-icon:before          { font-family: seti; content: "\E041"; font-size: 24px; display: block; position: relative; left: -4px; }
+.haml-icon:before          { font-family: seti; content: "\E042"; font-size: 24px; display: block; position: relative; left: -4px; }
+.haskell-icon:before       { font-family: seti; content: "\E044"; font-size: 24px; display: block; position: relative; left: -4px; }
+.haxe-icon:before          { font-family: seti; content: "\E045"; font-size: 24px; display: block; position: relative; left: -4px; }
+.heroku-icon:before        { font-family: seti; content: "\E046"; font-size: 24px; display: block; position: relative; left: -4px; }
+.image-icon:before         { font-family: seti; content: "\E04C"; font-size: 24px; display: block; position: relative; left: -4px; }
+.ionic-icon:before         { font-family: seti; content: "\E04E"; font-size: 24px; display: block; position: relative; left: -4px; }
+.jade-icon:before          { font-family: seti; content: "\E04F"; font-size: 24px; display: block; position: relative; left: -4px; }
+.java-icon:before          { font-family: seti; content: "\E050"; font-size: 24px; display: block; position: relative; left: -4px; }
+.jenkins-icon:before       { font-family: seti; content: "\E052"; font-size: 24px; display: block; position: relative; left: -4px; }
+.jinja-icon:before         { font-family: seti; content: "\E053"; font-size: 24px; display: block; position: relative; left: -4px; }
+.database-icon:before      { font-family: seti; content: "\E022"; font-size: 24px; display: block; position: relative; left: -4px; }
+.julia-icon:before         { font-family: seti; content: "\E056"; font-size: 24px; display: block; position: relative; left: -4px; }
+.karma-icon:before         { font-family: seti; content: "\E057"; font-size: 24px; display: block; position: relative; left: -4px; }
+.kotlin-icon:before        { font-family: seti; content: "\E058"; font-size: 24px; display: block; position: relative; left: -4px; }
+.shopify-icon:before       { font-family: seti; content: "\E05B"; font-size: 24px; display: block; position: relative; left: -4px; }
+.ls-icon:before            { font-family: seti; content: "\E05C"; font-size: 24px; display: block; position: relative; left: -4px; }
+.lua-icon:before           { font-family: seti; content: "\E05E"; font-size: 24px; display: block; position: relative; left: -4px; }
+.checklist-icon:before     { font-family: seti; content: "\E05F"; font-size: 24px; display: block; position: relative; left: -4px; }
+.markdown-icon:before      { font-family: seti; content: "\E060"; font-size: 24px; display: block; position: relative; left: -4px; }
+._1c-alt-icon:before       { font-family: seti; content: "\E062"; font-size: 24px; display: block; position: relative; left: -4px; }
+.mustache-icon:before      { font-family: seti; content: "\E063"; font-size: 24px; display: block; position: relative; left: -4px; }
+.nimrod-icon:before        { font-family: seti; content: "\E065"; font-size: 24px; display: block; position: relative; left: -4px; }
+.jupyter-icon:before       { font-family: seti; content: "\E066"; font-size: 24px; display: block; position: relative; left: -4px; }
+.npm-icon:before           { font-family: seti; content: "\E067"; font-size: 24px; display: block; position: relative; left: -4px; }
+.nunjucks-icon:before      { font-family: seti; content: "\E069"; font-size: 24px; display: block; position: relative; left: -4px; }
+.ocaml-icon:before         { font-family: seti; content: "\E06A"; font-size: 24px; display: block; position: relative; left: -4px; }
+.pdf-icon:before           { font-family: seti; content: "\E06D"; font-size: 24px; display: block; position: relative; left: -4px; }
+.perl-icon:before          { font-family: seti; content: "\E06E"; font-size: 24px; display: block; position: relative; left: -4px; }
+.psd-icon:before           { font-family: seti; content: "\E06F"; font-size: 24px; display: block; position: relative; left: -4px; }
+.php-icon:before           { font-family: seti; content: "\E070"; font-size: 24px; display: block; position: relative; left: -4px; }
+.powershell-icon:before    { font-family: seti; content: "\E074"; font-size: 24px; display: block; position: relative; left: -4px; }
+.prolog-icon:before        { font-family: seti; content: "\E077"; font-size: 24px; display: block; position: relative; left: -4px; }
+.pug-icon:before           { font-family: seti; content: "\E078"; font-size: 24px; display: block; position: relative; left: -4px; }
+.puppet-icon:before        { font-family: seti; content: "\E079"; font-size: 24px; display: block; position: relative; left: -4px; }
+.purescript-icon:before    { font-family: seti; content: "\E07A"; font-size: 24px; display: block; position: relative; left: -4px; }
+.python-icon:before        { font-family: seti; content: "\E07B"; font-size: 24px; display: block; position: relative; left: -4px; }
+.rails-icon:before         { font-family: seti; content: "\E07C"; font-size: 24px; display: block; position: relative; left: -4px; }
+.react-icon:before         { font-family: seti; content: "\E07D"; font-size: 24px; display: block; position: relative; left: -4px; }
+.reason-icon:before        { font-family: seti; content: "\E07E"; font-size: 24px; display: block; position: relative; left: -4px; }
+.rollup-icon:before        { font-family: seti; content: "\E080"; font-size: 24px; display: block; position: relative; left: -4px; }
+.ruby-icon:before          { font-family: seti; content: "\E081"; font-size: 24px; display: block; position: relative; left: -4px; }
+.rust-icon:before          { font-family: seti; content: "\E082"; font-size: 24px; display: block; position: relative; left: -4px; }
+.sass-icon:before          { font-family: seti; content: "\E084"; font-size: 24px; display: block; position: relative; left: -4px; }
+.sbt-icon:before           { font-family: seti; content: "\E085"; font-size: 24px; display: block; position: relative; left: -4px; }
+.scala-icon:before         { font-family: seti; content: "\E086"; font-size: 24px; display: block; position: relative; left: -4px; }
+.terminal-icon:before      { font-family: seti; content: "\E089"; font-size: 24px; display: block; position: relative; left: -4px; }
+.smarty-icon:before        { font-family: seti; content: "\E08B"; font-size: 24px; display: block; position: relative; left: -4px; }
+.stylelint-icon:before     { font-family: seti; content: "\E08D"; font-size: 24px; display: block; position: relative; left: -4px; }
+.stylus-icon:before        { font-family: seti; content: "\E08E"; font-size: 24px; display: block; position: relative; left: -4px; }
+.sublime-icon:before       { font-family: seti; content: "\E08F"; font-size: 24px; display: block; position: relative; left: -4px; }
+.svg-icon:before           { font-family: seti; content: "\E091"; font-size: 24px; display: block; position: relative; left: -4px; }
+.swift-icon:before         { font-family: seti; content: "\E092"; font-size: 24px; display: block; position: relative; left: -4px; }
+.terraform-icon:before     { font-family: seti; content: "\E093"; font-size: 24px; display: block; position: relative; left: -4px; }
+.tex-icon:before           { font-family: seti; content: "\E094"; font-size: 24px; display: block; position: relative; left: -4px; }
+.twig-icon:before          { font-family: seti; content: "\E098"; font-size: 24px; display: block; position: relative; left: -4px; }
+.ts-icon:before            { font-family: seti; content: "\E099"; font-size: 24px; display: block; position: relative; left: -4px; }
+.gnome-icon:before         { font-family: seti; content: "\E09A"; font-size: 24px; display: block; position: relative; left: -4px; }
+.video-icon:before         { font-family: seti; content: "\E09B"; font-size: 24px; display: block; position: relative; left: -4px; }
+.vue-icon:before           { font-family: seti; content: "\E09C"; font-size: 24px; display: block; position: relative; left: -4px; }
+.webpack-icon:before       { font-family: seti; content: "\E09F"; font-size: 24px; display: block; position: relative; left: -4px; }
+.windows-icon:before       { font-family: seti; content: "\E0A1"; font-size: 24px; display: block; position: relative; left: -4px; }
+.word-icon:before          { font-family: seti; content: "\E0A2"; font-size: 24px; display: block; position: relative; left: -4px; }
+.excel-icon:before         { font-family: seti; content: "\E0A3"; font-size: 24px; display: block; position: relative; left: -4px; }
+.yarn-icon:before          { font-family: seti; content: "\E0A5"; font-size: 24px; display: block; position: relative; left: -4px; }
+.zip-icon:before           { font-family: seti; content: "\E0A8"; font-size: 24px; display: block; position: relative; left: -4px; }
