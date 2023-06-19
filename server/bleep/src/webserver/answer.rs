@@ -485,7 +485,7 @@ impl Conversation {
             Action::Query(query) => {
                 self.llm_history
                     .push_back(llm_gateway::api::Message::user(&format!(
-                        "{query}\nOnly respond with a function_call."
+                        "{query}\nDo not answer."
                     )))
             }
             _ => {
@@ -499,7 +499,7 @@ impl Conversation {
                 self.llm_history
                     .push_back(llm_gateway::api::Message::function_return(
                         function_name,
-                        &format!("{action_result}\nOnly respond with a function_call."),
+                        &format!("{action_result}\nDo not answer."),
                     ));
             }
         };
