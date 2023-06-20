@@ -95,7 +95,11 @@ export const repositionAnnotationsOnScroll = (
               Math.min(scrollTop - stickedCommentsHeight, lowestPosition),
             )
           : scrollTop - stickedCommentsHeight;
-        if (maxTranslateY === lowestPosition && scrollTop > codeBottom) {
+        if (
+          maxTranslateY === lowestPosition &&
+          scrollTop > codeBottom &&
+          !previousCommentStopped
+        ) {
           stickedCommentsHeight += commentRect.height + 12;
         }
         previousCommentStopped = maxTranslateY === lowestPosition;

@@ -25,7 +25,6 @@ import { Feather, Info, Sparkle } from '../../../icons';
 import { ChatContext } from '../../../context/chatContext';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
-import PortalContainer from '../../PortalContainer';
 import CodeContainer from './CodeContainer';
 
 export interface BlameLine {
@@ -327,15 +326,15 @@ const CodeFull = ({
 
   const calculatePopupPosition = useCallback(
     (top: number, left: number) => {
-      let container = findElementInCurrentTab('.code-modal-container');
-      if (!container) {
-        container = findElementInCurrentTab('#result-full-code-container');
-      }
+      const container = findElementInCurrentTab('#result-full-code-container');
       if (!container) {
         return null;
       }
       const containerRect = container?.getBoundingClientRect();
-      if (currentSelection.length == 1 || currentSelection.length == 2) {
+      if (
+        isOnResultPage &&
+        (currentSelection.length == 1 || currentSelection.length == 2)
+      ) {
         if (currentSelection.length == 1) {
           setCurrentSelection((prev) => [[0, 0], prev[0]!]);
         }
@@ -344,7 +343,7 @@ const CodeFull = ({
       }
       return null;
     },
-    [currentSelection],
+    [isOnResultPage, currentSelection],
   );
 
   useEffect(() => {
@@ -410,84 +409,82 @@ const CodeFull = ({
             scrollToIndex={scrollToIndex}
             highlightColor={highlightColor}
           />
-          <PortalContainer>
-            <AnimatePresence>
-              {popupPosition && (
-                <motion.div
-                  className="fixed z-[120]"
-                  style={popupPosition}
-                  initial={{ opacity: 0, transform: 'translateY(1rem)' }}
-                  animate={{ transform: 'translateY(0rem)', opacity: 1 }}
-                  exit={{ opacity: 0, transform: 'translateY(1rem)' }}
-                >
-                  <div className="bg-bg-base border border-bg-border rounded-md shadow-high flex overflow-hidden select-none">
-                    {codeToCopy.split('\n').length > 20 ? (
+          <AnimatePresence>
+            {popupPosition && (
+              <motion.div
+                className="fixed"
+                style={popupPosition}
+                initial={{ opacity: 0, transform: 'translateY(1rem)' }}
+                animate={{ transform: 'translateY(0rem)', opacity: 1 }}
+                exit={{ opacity: 0, transform: 'translateY(1rem)' }}
+              >
+                <div className="bg-bg-base border border-bg-border rounded-md shadow-high flex overflow-hidden select-none">
+                  {codeToCopy.length > 1500 ? (
+                    <button
+                      className="h-8 flex items-center justify-center gap-1 px-2 caption text-label-muted"
+                      disabled
+                    >
+                      <div className="w-4 h-4">
+                        <Info raw />
+                      </div>
+                      Select less code
+                    </button>
+                  ) : (
+                    <>
                       <button
-                        className="h-8 flex items-center justify-center gap-1 px-2 caption text-label-muted"
-                        disabled
+                        onClick={() => {
+                          setChatOpen(true);
+                          setPopupPosition(null);
+                          setThreadId('');
+                          setConversation([]);
+                          setSelectedLines([
+                            currentSelection[0]![0],
+                            currentSelection[1]![0],
+                          ]);
+                          setTimeout(
+                            () =>
+                              findElementInCurrentTab(
+                                '#question-input',
+                              )?.focus(),
+                            300,
+                          );
+                        }}
+                        className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover border-r border-bg-border caption text-label-title"
                       >
                         <div className="w-4 h-4">
-                          <Info raw />
+                          <Feather raw />
                         </div>
-                        Select less code
+                        Ask bloop
                       </button>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => {
-                            setChatOpen(true);
-                            setPopupPosition(null);
-                            setThreadId('');
-                            setConversation([]);
-                            setSelectedLines([
-                              currentSelection[0]![0],
-                              currentSelection[1]![0],
-                            ]);
-                            setTimeout(
-                              () =>
-                                findElementInCurrentTab(
-                                  '#question-input',
-                                )?.focus(),
-                              300,
-                            );
-                          }}
-                          className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover border-r border-bg-border caption text-label-title"
-                        >
-                          <div className="w-4 h-4">
-                            <Feather raw />
-                          </div>
-                          Ask bloop
-                        </button>
-                        <button
-                          onClick={() => {
-                            setConversation([]);
-                            setThreadId('');
-                            setSelectedLines([
-                              currentSelection[0]![0],
-                              currentSelection[1]![0],
-                            ]);
-                            setSubmittedQuery(
-                              `#explain_${relativePath}:${
-                                currentSelection[0]![0]
-                              }-${currentSelection[1]![0]}`,
-                            );
-                            setChatOpen(true);
-                            setPopupPosition(null);
-                          }}
-                          className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover caption text-label-title"
-                        >
-                          <div className="w-4 h-4">
-                            <Sparkle raw />
-                          </div>
-                          Explain
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </PortalContainer>
+                      <button
+                        onClick={() => {
+                          setConversation([]);
+                          setThreadId('');
+                          setSelectedLines([
+                            currentSelection[0]![0],
+                            currentSelection[1]![0],
+                          ]);
+                          setSubmittedQuery(
+                            `#explain_${relativePath}:${
+                              currentSelection[0]![0]
+                            }-${currentSelection[1]![0]}`,
+                          );
+                          setChatOpen(true);
+                          setPopupPosition(null);
+                        }}
+                        className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover caption text-label-title"
+                      >
+                        <div className="w-4 h-4">
+                          <Sparkle raw />
+                        </div>
+                        Explain
+                      </button>
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </pre>
       </div>
       {minimap && (
