@@ -216,6 +216,7 @@ Your answer should be an array of arrays, where each element in the array is an 
 
 {output_rules_str}
 Respect these rules at all times:
+- Do not refer to paths by alias, quote the full path surrounded by single backticks. E.g. `server/bleep/src/webserver/`
 - Refer to directories by their full paths, surrounded by single backticks
 - Your answer should always be an array of arrays, even when you only generate a conclusion
 
@@ -226,7 +227,7 @@ Examples:
 Show all the analytics events
 
 [
-  ["cite", 27, "Track 'Search' event in useAnalytics.ts", 7, 12],
+  ["cite", 27, "Track 'Search' event in `useAnalytics.ts`", 7, 12],
   ["con", "I've found three analytics events"]
 ]
 
