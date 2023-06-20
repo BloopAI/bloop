@@ -12,9 +12,9 @@ use qdrant_client::{
     qdrant::{
         point_id::PointIdOptions, r#match::MatchValue, vectors::VectorsOptions, vectors_config,
         with_payload_selector, with_vectors_selector, CollectionOperationResponse,
-        CreateCollection, Distance, FieldCondition, Filter, Match, PointId, ScoredPoint,
-        SearchPoints, Value, VectorParams, Vectors, VectorsConfig, WithPayloadSelector,
-        WithVectorsSelector,
+        CreateCollection, Distance, FieldCondition, Filter, Match, PointId, RetrievedPoint,
+        ScoredPoint, SearchPoints, Value, VectorParams, Vectors, VectorsConfig,
+        WithPayloadSelector, WithVectorsSelector,
     },
 };
 
@@ -77,45 +77,18 @@ impl Payload {
             ..
         } = orig;
 
-        let Some(PointId { point_id_options: Some(PointIdOptions::Uuid(id)) }) = id
-	else {
-	    // unless the db was corrupted/written by someone else,
-	    // this shouldn't happen
-	    unreachable!("corrupted db");
-	};
+        parse_payload(id, vectors, payload, score)
+    }
 
-        let embedding = if let Some(Vectors {
-            vectors_options: Some(VectorsOptions::Vector(v)),
-        }) = vectors
-        {
-            v.data
-        } else {
-            // this also should probably never happen
-            unreachable!("got non-vector value");
-        };
+    pub fn from_scroll(orig: RetrievedPoint) -> Payload {
+        let RetrievedPoint {
+            id,
+            payload,
+            vectors,
+            ..
+        } = orig;
 
-        let mut converted = payload
-            .into_iter()
-            .map(|(key, value)| (key, kind_to_value(value.kind)))
-            .collect::<HashMap<String, serde_json::Value>>();
-
-        Payload {
-            lang: val_str!(converted, "lang"),
-            repo_name: val_str!(converted, "repo_name"),
-            repo_ref: val_str!(converted, "repo_ref"),
-            relative_path: val_str!(converted, "relative_path"),
-            content_hash: val_str!(converted, "content_hash"),
-            text: val_str!(converted, "snippet"),
-            branches: val_str!(converted, "branches"),
-            start_line: val_parse_str!(converted, "start_line"),
-            end_line: val_parse_str!(converted, "end_line"),
-            start_byte: val_parse_str!(converted, "start_byte"),
-            end_byte: val_parse_str!(converted, "end_byte"),
-
-            id: Some(id),
-            score: Some(score),
-            embedding: Some(embedding),
-        }
+        parse_payload(id, vectors, payload, 0.0)
     }
 
     pub(crate) fn into_qdrant(self) -> HashMap<String, Value> {
@@ -132,6 +105,53 @@ impl Payload {
             ("end_byte".into(), self.end_byte.to_string().into()),
             ("branches".into(), self.branches.into()),
         ])
+    }
+}
+
+fn parse_payload(
+    id: Option<PointId>,
+    vectors: Option<Vectors>,
+    payload: HashMap<String, Value>,
+    score: f32,
+) -> Payload {
+    let Some(PointId { point_id_options: Some(PointIdOptions::Uuid(id)) }) = id
+	    else {
+	        // unless the db was corrupted/written by someone else,
+	        // this shouldn't happen
+	        unreachable!("corrupted db");
+	    };
+
+    let embedding = if let Some(Vectors {
+        vectors_options: Some(VectorsOptions::Vector(v)),
+    }) = vectors
+    {
+        v.data
+    } else {
+        // this also should probably never happen
+        unreachable!("got non-vector value");
+    };
+
+    let mut converted = payload
+        .into_iter()
+        .map(|(key, value)| (key, kind_to_value(value.kind)))
+        .collect::<HashMap<String, serde_json::Value>>();
+
+    Payload {
+        lang: val_str!(converted, "lang"),
+        repo_name: val_str!(converted, "repo_name"),
+        repo_ref: val_str!(converted, "repo_ref"),
+        relative_path: val_str!(converted, "relative_path"),
+        content_hash: val_str!(converted, "content_hash"),
+        text: val_str!(converted, "snippet"),
+        branches: val_str!(converted, "branches"),
+        start_line: val_parse_str!(converted, "start_line"),
+        end_line: val_parse_str!(converted, "end_line"),
+        start_byte: val_parse_str!(converted, "start_byte"),
+        end_byte: val_parse_str!(converted, "end_byte"),
+
+        id: Some(id),
+        score: Some(score),
+        embedding: Some(embedding),
     }
 }
 

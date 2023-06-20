@@ -4,7 +4,7 @@ use anyhow::Context;
 use qdrant_client::{
     prelude::QdrantClient,
     qdrant::{
-        with_payload_selector, with_vectors_selector, Filter, PointId, PointStruct, SearchPoints,
+        with_payload_selector, with_vectors_selector, Filter, PointId, PointStruct, ScrollPoints,
         WithPayloadSelector, WithVectorsSelector,
     },
 };
@@ -150,11 +150,8 @@ impl<'a> ChunkCache<'a> {
         content_hash: &'a str,
     ) -> anyhow::Result<ChunkCache<'a>> {
         let response = qdrant
-            .search_points(&SearchPoints {
-                limit: 10000,
-                vector: vec![0f32; semantic::EMBEDDING_DIMENSION],
+            .scroll(&ScrollPoints {
                 collection_name: semantic::COLLECTION_NAME.to_string(),
-                offset: None,
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
@@ -178,7 +175,7 @@ impl<'a> ChunkCache<'a> {
             .await?
             .result
             .into_iter()
-            .map(Payload::from_qdrant);
+            .map(Payload::from_scroll);
 
         let cache = scc::HashMap::default();
         for payload in response {
