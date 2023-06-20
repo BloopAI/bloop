@@ -352,8 +352,6 @@ const Chat = () => {
                 (conversation[conversation.length - 1] as ChatMessageServer)
                   ?.loadingSteps
               }
-              showTooltip={showTooltip}
-              tooltipText={tooltipText}
               onStop={stopGenerating}
               placeholder={
                 (conversation[conversation.length - 1] as ChatMessageServer)
