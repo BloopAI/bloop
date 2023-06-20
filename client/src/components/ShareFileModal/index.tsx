@@ -49,7 +49,7 @@ const ShareFileModal = ({
       </div>
       <div className="border-b border-bg-border p-3">
         <div className="flex items-center gap-1 overflow-hidden h-5">
-          <FileIcon filename={result?.relativePath.slice(-5) || 'a.js'} />
+          <FileIcon filename={result?.relativePath?.slice(-5) || 'a.js'} />
           <Breadcrumbs
             pathParts={breadcrumbs}
             activeStyle="secondary"
@@ -80,6 +80,7 @@ const ShareFileModal = ({
             lexicalBlocks: [],
           }}
           scrollElement={null}
+          closePopup={onClose}
         />
       </div>
     </ModalOrSidebar>

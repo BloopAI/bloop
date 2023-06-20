@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use axum::{
     extract::Query,
     response::{
@@ -30,6 +30,7 @@ use crate::{
     db::{QueryLog, SqlDb},
     query::parser::{self, SemanticQuery},
     repo::RepoRef,
+    webserver::answer::llm_gateway::api::FunctionCall,
     Application,
 };
 
@@ -334,7 +335,7 @@ impl Conversation {
         action: Action,
         exchange_tx: Sender<Exchange>,
     ) -> Result<Option<Action>> {
-        let action_result = match action {
+        let action_result = match &action {
             Action::Query(s) => {
                 exchange_tx
                     .send(self.update(Update::Step(SearchStep::Query(s.clone()))))
@@ -354,30 +355,21 @@ impl Conversation {
 
                 ctx.track_query(
                     EventData::input_stage("query")
-                        .with_payload("q", &s)
+                        .with_payload("q", s)
                         .with_payload("previous_answer_summary", &summarized_answer),
                 );
 
-                s
+                s.clone()
             }
 
-            Action::Prompt(_) => {
-                exchange_tx
-                    .send(self.update(Update::Step(SearchStep::Prompt("awaiting prompt".into()))))
-                    .await?;
-
+            Action::Answer { paths } => {
+                self.answer(ctx, exchange_tx, paths).await?;
                 return Ok(None);
             }
 
-            Action::Answer(aliases) => {
-                self.answer(ctx, exchange_tx, aliases).await?;
-                let action = Action::Prompt(prompts::CONTINUE.to_owned());
-                return Ok(Some(action));
-            }
-
-            Action::Path(search) => {
+            Action::Path { query } => {
                 exchange_tx
-                    .send(self.update(Update::Step(SearchStep::Path(search.clone()))))
+                    .send(self.update(Update::Step(SearchStep::Path(query.clone()))))
                     .await?;
 
                 // First, perform a lexical search for the path
@@ -385,7 +377,7 @@ impl Conversation {
                     .app
                     .indexes
                     .file
-                    .fuzzy_path_match(&self.repo_ref, &search, /* limit */ 50)
+                    .fuzzy_path_match(&self.repo_ref, query, /* limit */ 50)
                     .await
                     .map(|c| c.relative_path)
                     .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.
@@ -398,7 +390,7 @@ impl Conversation {
                 if paths.is_empty() {
                     // TODO: Semantic search should accept unparsed queries
                     let nl_query = SemanticQuery {
-                        target: Some(parser::Literal::Plain(Cow::Owned(search.clone()))),
+                        target: Some(parser::Literal::Plain(Cow::Owned(query.clone()))),
                         repos: [parser::Literal::Plain(Cow::Owned(
                             self.repo_ref.display_name(),
                         ))]
@@ -430,7 +422,7 @@ impl Conversation {
 
                 ctx.track_query(
                     EventData::input_stage("path search")
-                        .with_payload("query", &search)
+                        .with_payload("query", query)
                         .with_payload("is_semantic", is_semantic)
                         .with_payload("results", &paths)
                         .with_payload("raw_prompt", prompt),
@@ -447,7 +439,7 @@ impl Conversation {
                 serde_json::to_string(&formatted_paths).unwrap()
             }
 
-            Action::Code(query) => {
+            Action::Code { query } => {
                 // Semantic search.
 
                 exchange_tx
@@ -492,7 +484,7 @@ impl Conversation {
 
                 ctx.track_query(
                     EventData::input_stage("semantic code search")
-                        .with_payload("query", &query)
+                        .with_payload("query", query)
                         .with_payload("chunks", &chunks)
                         .with_payload("raw_prompt", &prompt),
                 );
@@ -500,25 +492,55 @@ impl Conversation {
                 prompt
             }
 
-            Action::Proc(question, path_aliases) => {
-                self.proc(ctx, exchange_tx, question, path_aliases).await?
-            }
+            Action::Proc { query, paths } => self.proc(ctx, exchange_tx, query, paths).await?,
         };
 
-        self.llm_history.push_back(llm_gateway::api::Message::user(
-            &(action_result + "\n\nChoose a tool:"),
-        ));
+        match &action {
+            Action::Query(query) => {
+                self.llm_history
+                    .push_back(llm_gateway::api::Message::user(&format!(
+                        "{query}\nDo not answer."
+                    )))
+            }
+            _ => {
+                let function_name = match &action {
+                    Action::Answer { .. } => "none",
+                    Action::Path { .. } => "path",
+                    Action::Code { .. } => "code",
+                    Action::Proc { .. } => "proc",
+                    Action::Query(_) => unreachable!(),
+                };
+                self.llm_history
+                    .push_back(llm_gateway::api::Message::function_return(
+                        function_name,
+                        &format!("{action_result}\nDo not answer."),
+                    ));
+            }
+        };
 
         let updated_system_prompt =
             llm_gateway::api::Message::system(&prompts::system(&self.paths));
         _ = self.llm_history.pop_front();
         self.llm_history.push_front(updated_system_prompt);
 
+        let functions =
+            serde_json::from_value::<Vec<llm_gateway::api::Function>>(prompts::functions())
+                .unwrap();
+
         let raw_response = ctx
             .llm_gateway
-            .chat(&self.trimmed_history()?)
+            .chat(&self.trimmed_history()?, Some(&functions))
             .await?
-            .try_collect::<String>()
+            .try_fold(
+                llm_gateway::api::FunctionCall::default(),
+                |acc, e| async move {
+                    let e: FunctionCall = serde_json::from_str(&e)?;
+                    Ok(FunctionCall {
+                        name: acc.name.or(e.name),
+                        arguments: acc.arguments + &e.arguments,
+                    })
+                },
+            )
             .await?;
 
         ctx.track_query(
@@ -528,8 +550,8 @@ impl Conversation {
         let action = Action::deserialize_gpt(&raw_response)?;
         if !matches!(action, Action::Query(..)) {
             self.llm_history
-                .push_back(llm_gateway::api::Message::assistant(&raw_response));
-            trace!("handling raw action: {raw_response}");
+                .push_back(llm_gateway::api::Message::function_call(&raw_response));
+            trace!("handling raw action: {raw_response:?}");
         }
 
         Ok(Some(action))
@@ -539,8 +561,8 @@ impl Conversation {
         &mut self,
         ctx: &AppContext,
         exchange_tx: Sender<Exchange>,
-        question: String,
-        path_aliases: Vec<usize>,
+        question: &str,
+        path_aliases: &[usize],
     ) -> Result<String> {
         // filesystem agnostic trivial path normalization
         //
@@ -548,6 +570,7 @@ impl Conversation {
         // - a/./b -> a/b
         // - a/b/../c -> a/c (regardless of whether this exists)
         // - ../b/c -> None
+        #[allow(dead_code)]
         fn normalize(path: PathBuf) -> Option<PathBuf> {
             let mut stack = vec![];
             for c in path.components() {
@@ -564,7 +587,8 @@ impl Conversation {
         }
 
         let paths = path_aliases
-            .into_iter()
+            .iter()
+            .copied()
             .map(|i| self.paths.get(i).ok_or(i).cloned())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|i| anyhow!("invalid path alias {i}"))?;
@@ -637,7 +661,7 @@ impl Conversation {
 
                 let json = ctx
                     .llm_gateway
-                    .chat(&[llm_gateway::api::Message::system(&prompt)])
+                    .chat(&[llm_gateway::api::Message::system(&prompt)], None)
                     .await?
                     .try_collect::<String>()
                     .await?;
@@ -780,7 +804,7 @@ impl Conversation {
         &mut self,
         ctx: &AppContext,
         exchange_tx: Sender<Exchange>,
-        aliases: Vec<usize>,
+        aliases: &[usize],
     ) -> Result<()> {
         fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
             match v {
@@ -795,7 +819,8 @@ impl Conversation {
             let mut s = "".to_owned();
 
             let mut path_aliases = aliases
-                .into_iter()
+                .iter()
+                .copied()
                 .filter(|alias| *alias < self.paths.len())
                 .collect::<Vec<_>>();
 
@@ -916,18 +941,27 @@ impl Conversation {
 
         let messages = [llm_gateway::api::Message::system(&prompt)];
 
-        let mut stream = ctx.llm_gateway.chat(&messages).await?.boxed();
+        let mut stream = ctx.llm_gateway.chat(&messages, None).await?.boxed();
         let mut buffer = String::new();
+
         while let Some(token) = stream.next().await {
             buffer += &token?;
+
+            if buffer.is_empty() {
+                continue;
+            }
+
             let (s, _) = partial_parse::rectify_json(&buffer);
 
             // this /should/ be infallible if rectify_json works
             let rectified_json: serde_json::Value =
                 serde_json::from_str(&s).expect("failed to rectify_json");
 
-            let json_array = as_array(rectified_json)
-                .ok_or(anyhow!("failed to parse `answer` response, expected array"))?;
+            let json_array = as_array(rectified_json.clone()).ok_or_else(|| {
+                anyhow!(
+                    "failed to parse `answer` response, expected array but buffer was `{buffer}`"
+                )
+            })?;
 
             let array_of_arrays = json_array
                 .clone()
@@ -1050,31 +1084,68 @@ impl Conversation {
     fn trimmed_history(&self) -> Result<Vec<llm_gateway::api::Message>> {
         const HEADROOM: usize = 2048;
 
+        // Switch from a `VecDeque` to a `Vec` here.
+        let mut llm_history = self.llm_history.iter().cloned().collect::<Vec<_>>();
+
         let mut tiktoken_msgs = self
             .llm_history
             .iter()
-            .map(|m| tiktoken_rs::ChatCompletionRequestMessage {
-                role: m.role.clone(),
-                content: m.content.clone(),
-                name: None,
+            .map(|m| match m {
+                llm_gateway::api::Message::PlainText { role, content } => {
+                    tiktoken_rs::ChatCompletionRequestMessage {
+                        role: role.clone(),
+                        content: content.clone(),
+                        name: None,
+                    }
+                }
+                llm_gateway::api::Message::FunctionReturn {
+                    role,
+                    name,
+                    content,
+                } => tiktoken_rs::ChatCompletionRequestMessage {
+                    role: role.clone(),
+                    content: content.clone(),
+                    name: Some(name.clone()),
+                },
+                llm_gateway::api::Message::FunctionCall {
+                    role,
+                    function_call,
+                    content: _,
+                } => tiktoken_rs::ChatCompletionRequestMessage {
+                    role: role.clone(),
+                    content: serde_json::to_string(&function_call).unwrap(),
+                    name: None,
+                },
             })
             .collect::<Vec<_>>();
 
         while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < HEADROOM {
-            tiktoken_msgs
+            let idx = llm_history
                 .iter_mut()
-                .find(|m| m.role == "user" && m.content != "[HIDDEN]")
-                .context("could not find message to trim")?
-                .content = "[HIDDEN]".into();
+                .position(|m| match m {
+                    llm_gateway::api::Message::PlainText {
+                        role,
+                        ref mut content,
+                    } if role == "user" && content != "[HIDDEN]" => {
+                        *content = "[HIDDEN]".into();
+                        true
+                    }
+                    llm_gateway::api::Message::FunctionReturn {
+                        role: _,
+                        name: _,
+                        ref mut content,
+                    } if content != "[HIDDEN]" => {
+                        *content = "[HIDDEN]".into();
+                        true
+                    }
+                    _ => false,
+                })
+                .ok_or_else(|| anyhow!("could not find message to trim"))?;
+
+            tiktoken_msgs[idx].content = "[HIDDEN]".into();
         }
 
-        Ok(tiktoken_msgs
-            .into_iter()
-            .map(|m| llm_gateway::api::Message {
-                role: m.role,
-                content: m.content,
-            })
-            .collect())
+        Ok(llm_history)
     }
 
     fn last_exchange(&mut self) -> &mut Exchange {
@@ -1248,55 +1319,48 @@ enum Action {
     /// A user-provided query.
     Query(String),
 
-    #[serde(rename = "ask")]
-    Prompt(String),
-    Path(String),
+    Path {
+        query: String,
+    },
     #[serde(rename = "none")]
-    Answer(Vec<usize>),
-    Code(String),
-    Proc(String, Vec<usize>),
+    Answer {
+        paths: Vec<usize>,
+    },
+    Code {
+        query: String,
+    },
+    Proc {
+        query: String,
+        paths: Vec<usize>,
+    },
 }
 
 impl Action {
     /// Deserialize this action from the GPT-tagged enum variant format.
     ///
-    /// We convert:
+    /// We convert (2 examples):
     ///
     /// ```text
-    /// ["type", "value"]
-    /// ["type", "arg1", "arg2"]
+    /// {"name": "Variant1", "args": {}}
+    /// {"name": "Variant2", "args": {"a":123}}
     /// ```
     ///
     /// To:
     ///
     /// ```text
-    /// {"type":"value"}
-    /// {"type":["arg1", "arg2"]}
+    /// {"Variant1": {}}
+    /// {"Variant2": {"a":123}}
     /// ```
     ///
     /// So that we can deserialize using the serde-provided "tagged" enum representation.
-    fn deserialize_gpt(s: &str) -> Result<Self> {
-        let mut array = serde_json::from_str::<Vec<serde_json::Value>>(s)
-            .with_context(|| format!("model response was not a JSON array: {s}"))?;
+    fn deserialize_gpt(call: &FunctionCall) -> Result<Self> {
+        let mut map = serde_json::Map::new();
+        map.insert(
+            call.name.clone().unwrap(),
+            serde_json::from_str(&call.arguments)?,
+        );
 
-        if array.is_empty() {
-            bail!("model returned an empty array");
-        }
-
-        let action = array.remove(0);
-        let action = action.as_str().context("model action was not a string")?;
-
-        let value = if array.len() < 2 {
-            array.pop().unwrap_or_default()
-        } else {
-            array.into()
-        };
-
-        let mut obj = serde_json::Map::new();
-        obj.insert(action.into(), value);
-        Ok(serde::Deserialize::deserialize(serde_json::Value::Object(
-            obj,
-        ))?)
+        Ok(serde_json::from_value(serde_json::Value::Object(map))?)
     }
 }
 

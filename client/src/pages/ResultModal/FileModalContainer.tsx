@@ -8,23 +8,21 @@ import { mapFileResult, mapRanges } from '../../mappers/results';
 import { getHoverables } from '../../services/api';
 import { buildRepoQuery } from '../../utils';
 import { SearchContext } from '../../context/searchContext';
+import { FileModalContext } from '../../context/fileModalContext';
 import ResultModal from './index';
 
 type Props = {
   repoName: string;
-  path: string;
-  isOpen: boolean;
-  onClose: () => void;
-  scrollToLine?: string;
 };
 
-const FileModalContainer = ({
-  repoName,
-  path,
-  isOpen,
-  onClose,
-  scrollToLine,
-}: Props) => {
+const FileModalContainer = ({ repoName }: Props) => {
+  const {
+    path,
+    setIsFileModalOpen,
+    isFileModalOpen,
+    scrollToLine,
+    highlightColor,
+  } = useContext(FileModalContext);
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.MODAL,
   );
@@ -35,10 +33,10 @@ const FileModalContainer = ({
   const { selectedBranch } = useContext(SearchContext);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isFileModalOpen) {
       fileModalSearchQuery(buildRepoQuery(repoName, path));
     }
-  }, [repoName, path, isOpen]);
+  }, [repoName, path, isFileModalOpen]);
 
   useEffect(() => {
     if (fileResultData?.data?.length) {
@@ -48,6 +46,7 @@ const FileModalContainer = ({
           ? '?' +
             new URLSearchParams({
               scroll_line_index: scrollToLine.toString(),
+              ...(highlightColor ? { highlight_color: highlightColor } : {}),
             }).toString()
           : '',
       });
@@ -68,9 +67,14 @@ const FileModalContainer = ({
     setMode(m);
   }, []);
 
+  useEffect(() => {
+    if (!isFileModalOpen) {
+      setOpenResult(null);
+    }
+  }, [isFileModalOpen]);
+
   const onResultClosed = useCallback(() => {
-    setOpenResult(null);
-    onClose();
+    setIsFileModalOpen(false);
   }, [mode]);
 
   return (

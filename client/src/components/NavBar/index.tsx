@@ -27,7 +27,7 @@ const NavBar = ({ isSkeleton }: Props) => {
 
   return (
     <div
-      className={`h-8 flex items-center px-8 bg-bg-base fixed top-0 left-0 right-0 z-50
+      className={`h-8 flex items-center px-8 bg-bg-base fixed top-0 left-0 right-0 z-80
        border-b border-bg-border backdrop-blur-8 select-none`}
       data-tauri-drag-region
     >

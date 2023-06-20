@@ -8,12 +8,13 @@ type Props = {
   filePath: string;
   startLine: number;
   endLine: number;
+  start: number | null;
+  end: number | null;
   i: number;
   isLast: boolean;
-  onResultClick: (path: string, lineNum?: number[]) => void;
+  onResultClick: (path: string, lineNum?: number[], color?: string) => void;
   lang?: string;
   tokensMap: TokensLine[];
-  prevPartEnd?: number | null;
   nextPartStart?: number | null;
 };
 
@@ -26,51 +27,37 @@ const CodePart = ({
   onResultClick,
   lang,
   tokensMap,
-  prevPartEnd,
   nextPartStart,
+  start,
+  end,
 }: Props) => {
-  const start = useMemo(
-    () =>
-      startLine !== null
-        ? Math.max(
-            startLine -
-              1 -
-              (!prevPartEnd
-                ? 5
-                : Math.max(Math.min(startLine - 1 - prevPartEnd - 5, 5), 0)),
-            0,
-          )
-        : null,
-    [startLine, prevPartEnd],
-  );
-  const end = useMemo(
-    () =>
-      endLine !== null
-        ? Math.max(
-            1,
-            endLine -
-              1 +
-              (!nextPartStart
-                ? 5
-                : Math.max(Math.min(nextPartStart - endLine, 5), 0)),
-          )
-        : null,
-    [endLine, nextPartStart],
-  );
-  const slicedTokensMap = useMemo(() => {
-    if (start !== null && end !== null) {
-      return tokensMap.slice(start, end);
+  const slicedTokensMapStart = useMemo(() => {
+    if (start !== null && startLine !== null) {
+      return tokensMap.slice(start, startLine - 1);
     }
     return undefined;
-  }, [tokensMap, start, end]);
+  }, [tokensMap, startLine, start]);
+  const slicedTokensMapMain = useMemo(() => {
+    if (startLine !== null && endLine !== null) {
+      return tokensMap.slice(startLine - 1, endLine);
+    }
+    return undefined;
+  }, [tokensMap, startLine, endLine]);
+  const slicedTokensMapEnd = useMemo(() => {
+    if (endLine !== null && end !== null) {
+      return tokensMap.slice(endLine, end);
+    }
+    return undefined;
+  }, [tokensMap, endLine, end]);
+
+  const highlightColor = useMemo(
+    () => `rgba(${colors[i % colors.length].join(',')},1)`,
+    [i],
+  );
 
   return (
-    <div
-      id={`code-${i}`}
-      data-last={isLast.toString()}
-      style={{ scrollMarginTop: 80 }}
-    >
-      {!slicedTokensMap?.length && (
+    <div>
+      {!slicedTokensMapMain?.length && (
         <div className="flex flex-col items-center py-8">
           <LiteLoader sizeClassName="w-7 h-7" />
           <p className="body-s text-label-base">Loading code line ranges...</p>
@@ -78,24 +65,51 @@ const CodePart = ({
       )}
       <div
         className={`${
-          !slicedTokensMap?.length ? 'opacity-0' : 'opacity-100'
+          !slicedTokensMapMain?.length ? 'opacity-0' : 'opacity-100'
         } cursor-pointer`}
         onClick={(e) => {
-          if (slicedTokensMap?.length) {
+          if (
+            slicedTokensMapMain?.length &&
+            !document.getSelection()?.toString()
+          ) {
             e.stopPropagation();
-            onResultClick(filePath, [Math.max(startLine - 1, 0), endLine - 1]);
+            onResultClick(
+              filePath,
+              [Math.max(startLine - 1, 0), endLine - 1],
+              highlightColor,
+            );
           }
         }}
       >
-        {slicedTokensMap?.length && start !== null && (
-          <CodeContainer
-            lineStart={start}
-            tokensMap={slicedTokensMap}
-            lang={lang || 'plaintext'}
-            highlightColor={`rgba(${colors[i % colors.length].join(', ')}, 1)`}
-            highlightLines={[startLine - 1, endLine - 1]}
-          />
-        )}
+        <div>
+          {!!slicedTokensMapStart?.length && start !== null && (
+            <CodeContainer
+              lineStart={start}
+              tokensMap={slicedTokensMapStart}
+              lang={lang || 'plaintext'}
+            />
+          )}
+        </div>
+        <div id={`code-${i}`} style={{ scrollMarginTop: 80 }}>
+          {!!slicedTokensMapMain?.length && startLine !== null && (
+            <CodeContainer
+              lineStart={startLine}
+              tokensMap={slicedTokensMapMain}
+              lang={lang || 'plaintext'}
+              highlightColor={highlightColor}
+              highlightLines={[startLine - 1, endLine]}
+            />
+          )}
+        </div>
+        <div>
+          {!!slicedTokensMapEnd?.length && endLine !== null && (
+            <CodeContainer
+              lineStart={endLine}
+              tokensMap={slicedTokensMapEnd}
+              lang={lang || 'plaintext'}
+            />
+          )}
+        </div>
       </div>
       {!isLast && (!end || !nextPartStart || end < nextPartStart - 5) ? (
         <pre className={`bg-bg-sub my-0 px-2`}>

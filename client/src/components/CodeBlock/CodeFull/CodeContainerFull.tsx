@@ -5,6 +5,7 @@ import { propsAreShallowEqual } from '../../../utils';
 import { Range, TokenInfoItem, TokenInfoWrapped } from '../../../types/results';
 import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
 import Token from './Token';
 import { Metadata, BlameLine } from './index';
 
@@ -19,6 +20,7 @@ type Props = {
   toggleBlock: (fold: boolean, start: number) => void;
   scrollToIndex?: number[];
   searchTerm: string;
+  highlightColor?: string | null;
   pathHash: string | number;
   onMouseSelectStart: (lineNum: number, charNum: number) => void;
   onMouseSelectEnd: (lineNum: number, charNum: number) => void;
@@ -36,6 +38,7 @@ const CodeContainerFull = ({
   metadata,
   toggleBlock,
   scrollToIndex,
+  highlightColor,
   searchTerm,
   getHoverableContent,
   pathHash,
@@ -57,7 +60,7 @@ const CodeContainerFull = ({
 
   useEffect(() => {
     if (tokenInfo.byteRange) {
-      const tokenElem = document.querySelector(
+      const tokenElem = findElementInCurrentTab(
         `[data-byte-range="${tokenInfo.byteRange.start}-${tokenInfo.byteRange.end}"]`,
       );
       if (tokenElem && tokenElem instanceof HTMLElement) {
@@ -90,9 +93,13 @@ const CodeContainerFull = ({
         align = 'start';
       }
       scrollToItem = Math.max(0, Math.min(scrollToItem, tokens.length - 1));
-      document
-        .querySelector(`[data-line-number="${scrollToItem}"]`)
-        ?.scrollIntoView({ behavior: 'smooth', block: align });
+      let line = findElementInCurrentTab(
+        `.modal-or-sidebar [data-line-number="${scrollToItem}"]`,
+      );
+      if (!line) {
+        line = findElementInCurrentTab(`[data-line-number="${scrollToItem}"]`);
+      }
+      line?.scrollIntoView({ behavior: 'smooth', block: align });
     }
   }, [scrollToIndex]);
 
@@ -116,6 +123,7 @@ const CodeContainerFull = ({
             index >= scrollToIndex[0] &&
             index <= scrollToIndex[1]
           }
+          highlightColor={highlightColor}
           searchTerm={searchTerm}
         >
           {line.map((token, i) => (

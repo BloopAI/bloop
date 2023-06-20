@@ -7,6 +7,7 @@ import { Range, TokenInfoItem, TokenInfoWrapped } from '../../../types/results';
 import { getOffsetForIndexAndAlignment } from '../../../utils/scrollUtils';
 import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
 import Token from './Token';
 import { Metadata, BlameLine } from './index';
 
@@ -21,6 +22,7 @@ type Props = {
   toggleBlock: (fold: boolean, start: number) => void;
   scrollToIndex?: number[];
   searchTerm: string;
+  highlightColor?: string | null;
   width: number;
   height: number;
   pathHash: string | number;
@@ -50,6 +52,7 @@ const CodeContainerVirtualized = ({
   tokenInfo,
   repoName,
   language,
+  highlightColor,
 }: Props) => {
   const ref = useRef<FixedSizeList>(null);
   const listProps = useMemo(
@@ -72,7 +75,7 @@ const CodeContainerVirtualized = ({
 
   useEffect(() => {
     if (tokenInfo.byteRange) {
-      const tokenElem = document.querySelector(
+      const tokenElem = findElementInCurrentTab(
         `[data-byte-range="${tokenInfo.byteRange.start}-${tokenInfo.byteRange.end}"]`,
       );
       if (tokenElem && tokenElem instanceof HTMLElement) {
@@ -134,6 +137,7 @@ const CodeContainerVirtualized = ({
             index >= scrollToIndex[0] &&
             index <= scrollToIndex[1]
           }
+          highlightColor={highlightColor}
           searchTerm={searchTerm}
           stylesGenerated={style}
         >

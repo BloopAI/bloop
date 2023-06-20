@@ -11,7 +11,12 @@ import Tooltip from '../Tooltip';
 
 type Props = {
   children: ReactNode;
-  variant?: 'primary' | 'secondary' | 'tertiary' | 'tertiary-outlined';
+  variant?:
+    | 'primary'
+    | 'secondary'
+    | 'tertiary'
+    | 'tertiary-outlined'
+    | 'tertiary-active';
   size?: 'tiny' | 'small' | 'medium' | 'large';
   className?: string;
 } & (OnlyIconProps | TextBtnProps);
@@ -34,6 +39,7 @@ const variantStylesMap = {
     'text-label-title bg-bg-base border border-bg-border hover:border-bg-border-hover hover:bg-bg-base-hover focus:border-bg-border-hover active:bg-bg-base disabled:bg-bg-base disabled:border-none disabled:text-label-muted shadow-low hover:shadow-none focus:shadow-none active:shadow-rings-gray disabled:shadow-none',
   tertiary:
     'text-label-muted bg-transparent hover:text-label-title focus:text-label-title hover:bg-bg-base-hover focus:bg-bg-base-hover active:text-label-title active:bg-transparent disabled:bg-bg-base disabled:text-label-muted',
+  'tertiary-active': 'text-label-title bg-bg-base-hover',
   'tertiary-outlined':
     'text-label-muted bg-transparent border border-bg-border hover:bg-bg-base-hover focus:bg-bg-base-hover active:bg-transparent hover:text-label-title focus:text-label-title active:text-label-title disabled:bg-bg-base disabled:text-label-muted disabled:border-transparent disabled:hover:border-transparent',
 };

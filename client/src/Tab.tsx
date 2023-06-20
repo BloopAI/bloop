@@ -11,6 +11,8 @@ import { AppNavigationProvider } from './context/providers/AppNavigationProvider
 import ContentContainer from './pages';
 import { SearchContextProvider } from './context/providers/SearchContextProvider';
 import { ChatContextProvider } from './context/providers/ChatContextProvider';
+import FileModalContainer from './pages/ResultModal/FileModalContainer';
+import { FileModalContextProvider } from './context/providers/FileModalContextProvider';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -22,21 +24,27 @@ class Tab extends PureComponent<Props> {
   render() {
     const { deviceContextValue, isActive, tab } = this.props;
     return (
-      <div className={`${isActive ? '' : 'hidden'} `}>
+      <div
+        className={`${isActive ? '' : 'hidden'} `}
+        data-active={isActive ? 'true' : 'false'}
+      >
         <BrowserRouter>
           <DeviceContextProvider deviceContextValue={deviceContextValue}>
             <UIContextProvider tab={tab}>
               <AppNavigationProvider>
                 <SearchContextProvider tab={tab}>
                   <ChatContextProvider>
-                    <Routes>
-                      <Route
-                        path="*"
-                        element={<ContentContainer tab={tab} />}
-                      />
-                    </Routes>
-                    <Settings />
-                    <ReportBugModal />
+                    <FileModalContextProvider>
+                      <Routes>
+                        <Route
+                          path="*"
+                          element={<ContentContainer tab={tab} />}
+                        />
+                      </Routes>
+                      <Settings />
+                      <ReportBugModal />
+                      <FileModalContainer repoName={tab.repoName} />
+                    </FileModalContextProvider>
                   </ChatContextProvider>
                 </SearchContextProvider>
               </AppNavigationProvider>

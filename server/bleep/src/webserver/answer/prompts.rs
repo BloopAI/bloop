@@ -1,56 +1,79 @@
-use std::fmt;
-
-pub const CONTINUE: &str = "Is there anything else I can help with?";
-
-#[derive(Debug)]
-struct Tool {
-    name: &'static str,
-    description: &'static str,
-    schema: &'static str,
-    examples: &'static str,
-}
-
-impl fmt::Display for Tool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}:", self.name)?;
-        writeln!(f, "\tdescription: {}", self.description)?;
-        writeln!(f, "\tschema: {}", self.schema)?;
-        writeln!(f, "\texamples: {:?}", self.examples)?;
-        Ok(())
-    }
+pub fn functions() -> serde_json::Value {
+    serde_json::json!(
+        [
+            {
+                "name": "code",
+                "description":  "Search the contents of files in a codebase semantically. Results will not necessarily match search terms exactly, but should be related.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The query with which to search. This should consist of keywords that might match something in the codebase, e.g. 'react functional components'."
+                        }
+                    },
+                    "required": ["query"]
+                }
+            },
+            {
+                "name": "path",
+                "description": "Search the pathnames in a codebase. Results may not be exact matches, but will be similar by some edit-distance. Use when you want to find a specific file or directory.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The query with which to search. This should consist of keywords that might match a path, e.g. 'server/src'."
+                        }
+                    },
+                    "required": ["query"]
+                }
+            },
+            {
+                "name": "proc",
+                "description": "Read one or more files and extract the line ranges which are relevant to the search terms.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The query with which to search the files."
+                        },
+                        "paths": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer",
+                                "description": "The indices of the paths to search."
+                            }
+                        }
+                    },
+                    "required": ["query", "paths"]
+                }
+            },
+            {
+                "name": "none",
+                "description": "You have enough information to answer the user's query. This is the final step, and signals that you have enough information to respond to the user's query. Use this if the user has intructed you to modify some code.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "paths": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer",
+                                "description": "The indices of the paths to answer with respect to. Can be empty if the answer is not related to a specific path."
+                            }
+                        }
+                    },
+                    "required": ["paths"]
+                }
+            }
+        ]
+    )
 }
 
 pub fn system(paths: &Vec<String>) -> String {
-    let tools = [
-      Tool {
-        name: "codeSearch", 
-        description: "Search the contents of files in a codebase semantically. Results will not necessarily match search terms exactly, but should be related.", 
-        schema: "{\"name\": \"code\", \"args\": [SEARCH_TERMS // str]}", 
-        examples: "[[\"code\", \"backend error types\"], [\"code\", \"react functional components\"]]"
-          },
-      Tool {
-        name: "pathSearch", 
-        description: "Search the pathnames in a codebase. Results may not be exact matches, but will be similar by some edit-distance. Use when you want to find a specific file or directory.", 
-        schema: "{\"name\": \"path\", \"args\": [SEARCH_TERMS // str]}", 
-        examples: "[[\"path\", \"server/src\"], [\"path\", \".tsx\"], [\"path\", \"examples/android\"]]"
-      },
-      Tool {
-        name: "processFiles", 
-        description: "Read one or more files and extract the line ranges which are relevant to the search terms.", 
-        schema: "{\"name\": \"proc\", \"args\": [SEARCH_TERMS // str, ARRAY_OF_PATH_ALIASES // int[]}", 
-        examples: "[[\"proc\", \"find all the functional react components\", [2,5]], [\"proc\", \"where are error types\", [0]], [\"proc\", \"gitoxide initialisation\", [2,5,8]]]"
-    },
-      Tool {
-        name: "none", 
-        description: "You have enough information to answer the user's query. This is the final step, and signals that you have enough information to respond to the user's query. ARRAY_OF_PATH_ALIASES contains the aliases of the paths which are particularly relevant to the query.", 
-        schema: "{\"name\": \"none\", \"args\": [ARRAY_OF_PATH_ALIASES // int[]]}", 
-        examples: "[[\"none\", [1]], [\"none\", [3,5]], [\"none\", []]]"
-    }];
-
-    let mut s = "Your job is to answer a question about a codebase. You should use a set of tools to gather information that will help you answer. The following tools are available:\n\n".to_string();
-    for tool in tools.iter() {
-        s.push_str(&format!("{}\n", tool));
-    }
+    let mut s =
+        "Your job is to choose a function that will help you answer the query.\n".to_string();
 
     if !paths.is_empty() {
         s.push_str("## PATHS ##\nalias, path\n");
@@ -60,26 +83,18 @@ pub fn system(paths: &Vec<String>) -> String {
     }
 
     s.push_str(
-        r#"
-Follow these rules at all times:
+        r#"Follow these rules at all times:
 
-- If the output of a tool is empty, try the same tool again with different arguments or try using a different tool
-- In most cases you'll have to use codeSearch or pathSearch before using 'none'
-- Respect action arg types, only types with brackets [] can be used as lists
+- If the output of a function is empty, try the same function again with different arguments or try using a different function
+- In most cases respond with functions.code or functions.path functions before responding with functions.none
 - Do not assume the structure of the codebase, or the existence of files or folders
-- Do NOT use a tool that you've used before with the same arguments
-- To perform multiple actions, perform just one, wait for the response, then perform the next
-- When you are confident that you have enough information needed to answer the query, choose 'none'
-- If you have been instructed to modify the codebase choose 'none'
-- If after making a path search the query can be answered by the existance of the paths, and there are more than 5 paths, choose 'none'
+- Do NOT respond with a function that you've used before with the same arguments
+- When you have enough information to answer the  user's query respond with functions.none
+- If after making a path search the query can be answered by the existance of the paths, and there are more than 5 paths, use the functions.none function
 - Only refer to path aliases that are under the PATHS heading above
-- Use the tools to find information related to the query, until all relevant information has been found.
-- If after attempting to gather information you are still unsure how to answer the query, choose 'none'
-- Always respond according to the schema of the tool that you want to use
-- Output a list of [name, *args] to use a tool. For example to use codeSearch, output: ["code","my search query"]. To use processFiles, output: ["proc", "how does X work", [3,6]]
-- Do NOT answer the user's query directly. You MUST use one of the tools above
-
-"#);
+- Respond with functions to find information related to the query, until all relevant information has been found.
+- If after attempting to gather information you are still unsure how to answer the query, respond with the functions.none function
+- Always respond with a function call. Do NOT answer the question directly"#);
     s
 }
 

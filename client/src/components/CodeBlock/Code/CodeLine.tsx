@@ -39,7 +39,7 @@ type Props = {
   searchTerm?: string;
   onMouseSelectStart?: (lineNum: number, charNum: number) => void;
   onMouseSelectEnd?: (lineNum: number, charNum: number) => void;
-  highlightColor?: string;
+  highlightColor?: string | null;
   leftHighlight?: boolean;
 };
 
