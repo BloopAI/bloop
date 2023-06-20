@@ -5,6 +5,7 @@ import { propsAreShallowEqual } from '../../../utils';
 import { Range, TokenInfoItem, TokenInfoWrapped } from '../../../types/results';
 import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
 import Token from './Token';
 import { Metadata, BlameLine } from './index';
 
@@ -59,7 +60,7 @@ const CodeContainerFull = ({
 
   useEffect(() => {
     if (tokenInfo.byteRange) {
-      const tokenElem = document.querySelector(
+      const tokenElem = findElementInCurrentTab(
         `[data-byte-range="${tokenInfo.byteRange.start}-${tokenInfo.byteRange.end}"]`,
       );
       if (tokenElem && tokenElem instanceof HTMLElement) {
@@ -92,11 +93,11 @@ const CodeContainerFull = ({
         align = 'start';
       }
       scrollToItem = Math.max(0, Math.min(scrollToItem, tokens.length - 1));
-      let line = document.querySelector(
+      let line = findElementInCurrentTab(
         `.modal-or-sidebar [data-line-number="${scrollToItem}"]`,
       );
       if (!line) {
-        line = document.querySelector(`[data-line-number="${scrollToItem}"]`);
+        line = findElementInCurrentTab(`[data-line-number="${scrollToItem}"]`);
       }
       line?.scrollIntoView({ behavior: 'smooth', block: align });
     }

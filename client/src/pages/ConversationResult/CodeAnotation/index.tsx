@@ -1,6 +1,7 @@
 import React, { useCallback, useContext, useState, useEffect } from 'react';
 import { FileModalContext } from '../../../context/fileModalContext';
 import { repositionAnnotationsOnScroll } from '../../../utils/scrollUtils';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
 import AnnotatedFile from './AnnotatedFile';
 import FileComment from './FileComment';
 
@@ -39,8 +40,8 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
   );
 
   useEffect(() => {
-    const scrollTop = document.getElementById(
-      'results-page-container',
+    const scrollTop = findElementInCurrentTab(
+      '#results-page-container',
     )?.scrollTop;
     if (scrollTop) {
       repositionAnnotationsOnScroll(scrollTop, citations);
