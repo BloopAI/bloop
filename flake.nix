@@ -54,6 +54,8 @@
 
         guiDeps = with pkgs;
           [ nodePackages.npm nodejs ] ++ (lib.optionals stdenv.isLinux [
+            gdk-pixbuf
+            gdk-pixbuf.dev
             zlib.dev
             dbus.dev
             libsoup.dev
