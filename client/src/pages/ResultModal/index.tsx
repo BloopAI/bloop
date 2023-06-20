@@ -177,6 +177,7 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
                 scrollElement={null}
                 containerWidth={window.innerWidth * 0.6 - 56}
                 containerHeight={window.innerHeight - 15 * 16 - 114}
+                closePopup={onResultClosed}
               />
             )}
           </div>
