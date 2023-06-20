@@ -255,3 +255,7 @@ Based on this history, answer the question: {query}
 Output only JSON."#
     )
 }
+
+pub fn reflection_prompt() -> String {
+    "In bulletpoints, how could the above answer be improved?".into()
+}

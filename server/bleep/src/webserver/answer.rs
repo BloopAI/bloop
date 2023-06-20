@@ -924,8 +924,32 @@ impl Conversation {
             .context("exchange did not have a user query")?;
 
         let prompt = prompts::final_explanation_prompt(&context, query, &query_history);
+        let mut messages = vec![llm_gateway::api::Message::system(&prompt)];
 
-        let messages = [llm_gateway::api::Message::system(&prompt)];
+        // Reflection. First generate a scratch response with GPT-3.5, reflect on it with GPT-4, then generate a final answer.
+        let ctx = &ctx.clone().model("gpt-3.5-turbo-16k");
+        let scratch_response = ctx
+            .llm_gateway
+            .chat(&messages, None)
+            .await?
+            .try_collect::<String>()
+            .await?;
+
+        messages.push(llm_gateway::api::Message::assistant(&scratch_response));
+        messages.push(llm_gateway::api::Message::assistant(
+            &prompts::reflection_prompt(),
+        ));
+
+        let ctx = &ctx.clone().model("gpt-4-0613");
+        let reflection_response = ctx
+            .llm_gateway
+            .chat(&messages, None)
+            .await?
+            .try_collect::<String>()
+            .await?;
+
+        messages.push(llm_gateway::api::Message::assistant(&reflection_response));
+        messages.push(llm_gateway::api::Message::user("Answer the query again"));
 
         let mut stream = ctx.llm_gateway.chat(&messages, None).await?.boxed();
         let mut buffer = String::new();
