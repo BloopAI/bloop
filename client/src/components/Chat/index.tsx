@@ -19,6 +19,7 @@ import {
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { ChatContext } from '../../context/chatContext';
 import { mapLoadingSteps } from '../../mappers/conversation';
+import { findElementInCurrentTab } from '../../utils/domUtils';
 import NLInput from './NLInput';
 import ChipButton from './ChipButton';
 import AllConversations from './AllCoversations';
@@ -28,11 +29,11 @@ import DeprecatedClientModal from './DeprecatedClientModal';
 let prevEventSource: EventSource | undefined;
 
 const focusInput = () => {
-  document.getElementById('question-input')?.focus();
+  findElementInCurrentTab('#question-input')?.focus();
 };
 
 const blurInput = () => {
-  document.getElementById('question-input')?.blur();
+  findElementInCurrentTab('#question-input')?.blur();
 };
 
 const Chat = () => {

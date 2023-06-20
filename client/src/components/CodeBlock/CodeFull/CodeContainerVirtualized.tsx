@@ -7,6 +7,7 @@ import { Range, TokenInfoItem, TokenInfoWrapped } from '../../../types/results';
 import { getOffsetForIndexAndAlignment } from '../../../utils/scrollUtils';
 import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
 import Token from './Token';
 import { Metadata, BlameLine } from './index';
 
@@ -74,7 +75,7 @@ const CodeContainerVirtualized = ({
 
   useEffect(() => {
     if (tokenInfo.byteRange) {
-      const tokenElem = document.querySelector(
+      const tokenElem = findElementInCurrentTab(
         `[data-byte-range="${tokenInfo.byteRange.start}-${tokenInfo.byteRange.end}"]`,
       );
       if (tokenElem && tokenElem instanceof HTMLElement) {

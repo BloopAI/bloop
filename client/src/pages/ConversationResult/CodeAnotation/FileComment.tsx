@@ -1,4 +1,5 @@
 import React from 'react';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
 import { colors } from './index';
 
 type Props = {
@@ -21,9 +22,10 @@ const FileComment = ({ i, comment, isCollapsed, isBoxed, onClick }: Props) => {
         onClick?.();
         setTimeout(
           () =>
-            document
-              .getElementById(`code-${i}`)
-              ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+            findElementInCurrentTab(`#code-${i}`)?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+            }),
           400,
         );
       }}

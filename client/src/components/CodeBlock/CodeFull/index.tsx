@@ -24,6 +24,7 @@ import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
 import { Feather, Info, Sparkle } from '../../../icons';
 import { ChatContext } from '../../../context/chatContext';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
 import CodeContainer from './CodeContainer';
 
 export interface BlameLine {
@@ -325,7 +326,7 @@ const CodeFull = ({
 
   const calculatePopupPosition = useCallback(
     (top: number, left: number) => {
-      const container = document.getElementById('result-full-code-container');
+      const container = findElementInCurrentTab('#result-full-code-container');
       if (!container) {
         return null;
       }
@@ -380,7 +381,10 @@ const CodeFull = ({
         searchValue={searchTerm}
         containerClassName="absolute top-0 -right-4"
       />
-      <div className={`${!minimap ? 'w-full' : ''}`} ref={codeRef}>
+      <div
+        className={`${!minimap ? 'w-full' : ''} overflow-auto`}
+        ref={codeRef}
+      >
         <pre
           className={`prism-code language-${lang} bg-bg-sub my-0 w-full h-full`}
           onCopy={handleCopy}
@@ -439,9 +443,9 @@ const CodeFull = ({
                           ]);
                           setTimeout(
                             () =>
-                              document
-                                .getElementById('question-input')
-                                ?.focus(),
+                              findElementInCurrentTab(
+                                '#question-input',
+                              )?.focus(),
                             300,
                           );
                         }}
