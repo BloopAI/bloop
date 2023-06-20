@@ -43,6 +43,7 @@
             pkg-config
             openssl.out
             openssl.dev
+            gdk-pixbuf
 
             protobuf
             onnxruntime-static
