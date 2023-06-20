@@ -176,7 +176,9 @@
             src = pkgs.lib.sources.cleanSource ./.;
 
             setupHook = ''
-              git lfs install
+              git lfs install --skip-smudge
+              git lfs pull
+              git lfs install --force 
             '';
           }).overrideAttrs (old: envVars);
         };
