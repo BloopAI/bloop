@@ -22,8 +22,9 @@ pub struct File {
     #[cfg(feature = "debug")]
     histogram: Arc<RwLock<Histogram>>,
 
-    /// Path to the indexed file or directory on disk
-    pub entry_disk_path: Field,
+    /// Unique ID for the file in a repo
+    pub unique_hash: Field,
+
     /// Path to the root of the repo on disk
     pub repo_disk_path: Field,
     /// Path to the file, relative to the repo root
@@ -73,7 +74,8 @@ impl File {
                 .set_index_option(IndexRecordOption::WithFreqsAndPositions),
         );
 
-        let entry_disk_path = builder.add_text_field("entry_disk_path", STRING);
+        let unique_hash = builder.add_text_field("unique_hash", STRING | STORED);
+
         let repo_disk_path = builder.add_text_field("repo_disk_path", STRING);
         let repo_ref = builder.add_text_field("repo_ref", STRING | STORED);
         let repo_name = builder.add_text_field("repo_name", trigram.clone());
@@ -103,9 +105,9 @@ impl File {
         let is_directory = builder.add_bool_field("is_directory", FAST);
 
         Self {
-            entry_disk_path,
             repo_disk_path,
             relative_path,
+            unique_hash,
             repo_ref,
             repo_name,
             content,

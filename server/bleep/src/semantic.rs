@@ -115,20 +115,21 @@ fn parse_payload(
     score: f32,
 ) -> Payload {
     let Some(PointId { point_id_options: Some(PointIdOptions::Uuid(id)) }) = id
-	    else {
-	        // unless the db was corrupted/written by someone else,
-	        // this shouldn't happen
-	        unreachable!("corrupted db");
-	    };
+    else {
+	// unless the db was corrupted/written by someone else,
+	// this shouldn't happen
+	unreachable!("corrupted db");
+    };
 
-    let embedding = if let Some(Vectors {
-        vectors_options: Some(VectorsOptions::Vector(v)),
-    }) = vectors
-    {
-        v.data
-    } else {
-        // this also should probably never happen
-        unreachable!("got non-vector value");
+    let embedding = match vectors {
+        None => None,
+        Some(Vectors {
+            vectors_options: Some(VectorsOptions::Vector(v)),
+        }) => Some(v.data),
+        _ => {
+            // this also should probably never happen
+            unreachable!("got non-vector value");
+        }
     };
 
     let mut converted = payload
@@ -151,7 +152,7 @@ fn parse_payload(
 
         id: Some(id),
         score: Some(score),
-        embedding: Some(embedding),
+        embedding,
     }
 }
 
@@ -441,15 +442,9 @@ impl Semantic {
         lang_str: &str,
         branches: &[String],
     ) {
-        let chunk_cache = crate::cache::ChunkCache::for_file(
-            &self.qdrant,
-            repo_ref,
-            repo_name,
-            relative_path,
-            content_hash,
-        )
-        .await
-        .expect("qdrant error");
+        let chunk_cache = crate::cache::ChunkCache::for_file(&self.qdrant, repo_ref, content_hash)
+            .await
+            .expect("qdrant error");
 
         let chunks = chunk::by_tokens(
             repo_name,
@@ -463,7 +458,7 @@ impl Semantic {
         debug!(chunk_count = chunks.len(), "found chunks");
 
         let embedder = |c: &str| {
-            info!(?relative_path, "generating embedding");
+            info!("generating embedding");
             self.embed(c)
         };
         chunks.par_iter().for_each(|chunk| {
@@ -493,10 +488,10 @@ impl Semantic {
         });
 
         match chunk_cache.commit().await {
-            Ok((upserted, deleted)) => {
+            Ok((new, updated, deleted)) => {
                 info!(
                     repo_name,
-                    relative_path, upserted, deleted, "Successful commit"
+                    relative_path, new, updated, deleted, "Successful commit"
                 )
             }
             Err(err) => {
@@ -505,10 +500,14 @@ impl Semantic {
         }
     }
 
-    pub async fn delete_points_by_path(&self, repo_ref: &str, paths: impl Iterator<Item = &str>) {
+    pub async fn delete_points_for_hash(
+        &self,
+        repo_ref: &str,
+        paths: impl Iterator<Item = String>,
+    ) {
         let repo_filter = make_kv_keyword_filter("repo_ref", repo_ref).into();
         let file_filter = paths
-            .map(|p| make_kv_keyword_filter("relative_path", p).into())
+            .map(|p| make_kv_keyword_filter("content_hash", &p).into())
             .collect::<Vec<_>>();
 
         let selector = Filter {

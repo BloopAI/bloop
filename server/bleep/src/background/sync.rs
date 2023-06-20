@@ -277,7 +277,7 @@ impl SyncHandle {
 
         if let Some(semantic) = semantic {
             semantic
-                .delete_points_by_path(&self.reporef.to_string(), std::iter::empty())
+                .delete_points_for_hash(&self.reporef.to_string(), std::iter::empty())
                 .await;
         }
 

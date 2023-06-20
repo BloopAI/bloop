@@ -1,6 +1,5 @@
 use std::{
     collections::{HashMap, HashSet},
-    ops::Not,
     path::{Path, PathBuf, MAIN_SEPARATOR},
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -111,17 +110,9 @@ impl Indexable for File {
         // from the tantivy & qdrant indices
         let mut qdrant_remove_list = vec![];
         repo_cache.retain(|k, v| {
-            if v.fresh.not() {
-                // delete from tantivy
-                writer.delete_term(Term::from_field_text(
-                    self.entry_disk_path,
-                    &k.to_string_lossy(),
-                ));
-
-                // delete from qdrant
-                if let Ok(relative_path) = k.strip_prefix(&repo.disk_path) {
-                    qdrant_remove_list.push(relative_path.to_string_lossy().to_string());
-                }
+            if !v.fresh {
+                writer.delete_term(Term::from_field_text(self.unique_hash, k));
+                qdrant_remove_list.push(k.to_string());
             }
 
             v.fresh
@@ -134,10 +125,7 @@ impl Indexable for File {
                 let reporef = reporef.to_string();
                 tokio::spawn(async move {
                     semantic
-                        .delete_points_by_path(
-                            reporef.as_str(),
-                            qdrant_remove_list.iter().map(|t| t.as_str()),
-                        )
+                        .delete_points_for_hash(reporef.as_str(), qdrant_remove_list.into_iter())
                         .await;
                 });
             }
@@ -161,23 +149,6 @@ impl Indexable for File {
 }
 
 impl Indexer<File> {
-    pub async fn file_body(&self, file_disk_path: &str) -> Result<ContentDocument> {
-        // Mostly taken from `by_path`, below.
-        //
-        // TODO: This can be unified with `by_path` below, but we first need to decide on a unified
-        // path referencing API throughout the webserver.
-
-        let reader = self.reader.read().await;
-        let searcher = reader.searcher();
-
-        let query = TermQuery::new(
-            Term::from_field_text(self.source.entry_disk_path, file_disk_path),
-            IndexRecordOption::Basic,
-        );
-
-        self.top_hit(Box::new(query), searcher).await
-    }
-
     /// Search this index for paths fuzzily matching a given string.
     ///
     /// For example, the string `Cargo` can return documents whose path is `foo/Cargo.toml`,
@@ -291,7 +262,7 @@ impl Indexer<File> {
         // XXX: can we use the bloop query language here instead?
         let query_parser = QueryParser::for_index(
             file_index,
-            vec![self.source.repo_disk_path, self.source.relative_path],
+            vec![self.source.repo_ref, self.source.relative_path],
         );
 
         let mut query_string =
@@ -419,14 +390,16 @@ impl File {
         };
         let entry_pathbuf = repo_disk_path.join(&relative_path);
 
-        let content_hash = {
+        let unique_hash = {
             let mut hash = blake3::Hasher::new();
             hash.update(crate::state::SCHEMA_VERSION.as_bytes());
+            hash.update(repo_ref.as_bytes());
             hash.update(dir_entry.buffer().unwrap_or_default().as_bytes());
             hash.finalize().to_hex().to_string()
         };
 
-        if is_cache_fresh(cache, &content_hash, &entry_pathbuf, &dir_entry) {
+        if is_cache_fresh(cache, &unique_hash, &entry_pathbuf, &dir_entry) {
+            info!("fresh; skipping");
             return Ok(());
         }
 
@@ -440,7 +413,6 @@ impl File {
                     repo_name,
                     relative_path.as_path(),
                     repo_disk_path,
-                    entry_pathbuf.as_path(),
                     repo_ref.as_str(),
                     last_commit,
                 );
@@ -457,7 +429,7 @@ impl File {
                         repo_name,
                         relative_path.as_path(),
                         repo_disk_path,
-                        &content_hash,
+                        &unique_hash,
                         entry_pathbuf.as_path(),
                         repo_ref.as_str(),
                         last_commit,
@@ -511,7 +483,6 @@ impl RepoDir {
         repo_name: &str,
         relative_path: &Path,
         repo_disk_path: &Path,
-        entry_pathbuf: &Path,
         repo_ref: &str,
         last_commit: u64,
     ) -> tantivy::schema::Document {
@@ -523,7 +494,6 @@ impl RepoDir {
                 schema.raw_repo_name => repo_name.as_bytes(),
                 schema.raw_relative_path => relative_path_str.as_bytes(),
                 schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-                schema.entry_disk_path => entry_pathbuf.to_string_lossy().as_ref(),
                 schema.relative_path => relative_path_str,
                 schema.repo_ref => repo_ref,
                 schema.repo_name => repo_name,
@@ -630,8 +600,8 @@ impl RepoFile {
             schema.raw_content => self.buffer.as_bytes(),
             schema.raw_repo_name => repo_name.as_bytes(),
             schema.raw_relative_path => relative_path_str.as_bytes(),
+            schema.unique_hash => content_hash,
             schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-            schema.entry_disk_path => entry_pathbuf.to_string_lossy().as_ref(),
             schema.relative_path => relative_path_str,
             schema.repo_ref => repo_ref,
             schema.repo_name => repo_name,
@@ -657,9 +627,9 @@ fn is_cache_fresh(
 ) -> bool {
     let content_hash = content_hash.into();
     let branch_list = dir_entry.branches().unwrap_or_default();
-    match cache.entry(entry_pathbuf.clone()) {
+    match cache.entry(content_hash) {
         Entry::Occupied(mut val)
-            if val.get().value.0 == content_hash && val.get().value.1 == branch_list =>
+            if &val.get().value.0 == entry_pathbuf && val.get().value.1 == branch_list =>
         {
             // skip processing if contents are up-to-date in the cache
             val.get_mut().fresh = true;
@@ -668,10 +638,10 @@ fn is_cache_fresh(
             return true;
         }
         Entry::Occupied(mut val) => {
-            _ = val.insert((content_hash, branch_list.to_owned()).into());
+            _ = val.insert((entry_pathbuf.to_owned(), branch_list.to_owned()).into());
         }
         Entry::Vacant(val) => {
-            _ = val.insert_entry((content_hash, branch_list.to_owned()).into());
+            _ = val.insert_entry((entry_pathbuf.to_owned(), branch_list.to_owned()).into());
         }
     }
 
