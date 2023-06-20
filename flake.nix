@@ -1,11 +1,11 @@
 {
   description = "bloop";
 
-  nixConfig = {
-    extra-substituters = "https://bloopai.cachix.org";
-    extra-trusted-public-keys =
-      "bloopai.cachix.org-1:uSHFor+Jd3znikUnLc58xnHBXTcuIBSjdJxV5rLIMJU=";
-  };
+  # nixConfig = {
+  #   extra-substituters = "https://bloopai.cachix.org";
+  #   extra-trusted-public-keys =
+  #     "bloopai.cachix.org-1:uSHFor+Jd3znikUnLc58xnHBXTcuIBSjdJxV5rLIMJU=";
+  # };
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-23.05";
