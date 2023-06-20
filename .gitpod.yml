@@ -4,21 +4,35 @@
 
 # Learn more from ready-to-use templates: https://www.gitpod.io/docs/introduction/getting-started/quickstart
 
+image:
+  file: .gitpod.Dockerfile
+
 tasks:
-  - init: |
+  - name: Backend
+    init: |
+
+      # Setup Git LFS
       git lfs install --skip-smudge
       git lfs pull
       git lfs install --force
-      nix develop
-      gp sync-done nix
-  - name: Backend
-    init: |
-      gp sync-await nix
+
+      # Cache build artifacts
       cargo build -p bleep
-    command: cargo run -p bleep
-  - name: Frontend
-    init: |
-      gp sync-await nix
       npm i
-    command: npm run start-web
+
+    command: |
+
+      # Outputs of 'nix develop' is already being cached from .gitpod.Dockerfile
+      # We're just re-running it here to refresh the nix store.
+      # Also note that we're not running this inside an `init` task because only `/workspace` dir is persisted between prebuilds.
+      nix develop
+      
+      gp sync-done backend
+      cargo run -p bleep
+    openMode: split-left
+
+  - name: Frontend
+    command: |
+      gp sync-await backend
+      npm run start-web
     openMode: split-right
