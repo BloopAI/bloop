@@ -80,6 +80,7 @@ const ShareFileModal = ({
             lexicalBlocks: [],
           }}
           scrollElement={null}
+          closePopup={onClose}
         />
       </div>
     </ModalOrSidebar>

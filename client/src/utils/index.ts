@@ -252,6 +252,8 @@ export const calculatePopupPositionInsideContainer = (
   const popupWidth = 170; // Adjust as needed
   const popupHeight = 34; // Adjust as needed
 
+  top -= popupHeight + 15;
+
   // Adjust top position to ensure the popup stays within the container
   if (top < containerRect.top) {
     top = containerRect.top;

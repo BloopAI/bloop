@@ -278,6 +278,7 @@ const Chat = () => {
     setLoading(false);
     setThreadId('');
     setSubmittedQuery('');
+    setSelectedLines(null);
     if (navigatedItem?.type === 'conversation-result') {
       navigateRepoPath(tab.repoName);
     }
