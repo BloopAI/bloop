@@ -393,12 +393,15 @@ impl File {
         let unique_hash = {
             let mut hash = blake3::Hasher::new();
             hash.update(crate::state::SCHEMA_VERSION.as_bytes());
+            hash.update(relative_path.to_string_lossy().as_ref().as_ref());
             hash.update(repo_ref.as_bytes());
             hash.update(dir_entry.buffer().unwrap_or_default().as_bytes());
             hash.finalize().to_hex().to_string()
         };
 
-        if is_cache_fresh(cache, &unique_hash, &entry_pathbuf, &dir_entry) {
+        if matches!(dir_entry, RepoDirEntry::File(_))
+            && is_cache_fresh(cache, &unique_hash, &entry_pathbuf, &dir_entry)
+        {
             info!("fresh; skipping");
             return Ok(());
         }
@@ -521,7 +524,7 @@ impl RepoFile {
         repo_name: &str,
         relative_path: &Path,
         repo_disk_path: &Path,
-        content_hash: &str,
+        unique_hash: &str,
         entry_pathbuf: &Path,
         repo_ref: &str,
         last_commit: u64,
@@ -587,7 +590,7 @@ impl RepoFile {
                 Handle::current().block_on(semantic.insert_points_for_buffer(
                     repo_name,
                     repo_ref,
-                    content_hash,
+                    unique_hash,
                     &relative_path_str,
                     &self.buffer,
                     lang_str,
@@ -600,7 +603,7 @@ impl RepoFile {
             schema.raw_content => self.buffer.as_bytes(),
             schema.raw_repo_name => repo_name.as_bytes(),
             schema.raw_relative_path => relative_path_str.as_bytes(),
-            schema.unique_hash => content_hash,
+            schema.unique_hash => unique_hash,
             schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
             schema.relative_path => relative_path_str,
             schema.repo_ref => repo_ref,
@@ -621,13 +624,13 @@ impl RepoFile {
 #[tracing::instrument(skip(cache, dir_entry))]
 fn is_cache_fresh(
     cache: &RepoCacheSnapshot,
-    content_hash: &str,
+    unique_hash: &str,
     entry_pathbuf: &PathBuf,
     dir_entry: &RepoDirEntry,
 ) -> bool {
-    let content_hash = content_hash.into();
+    let unique_hash = unique_hash.to_string();
     let branch_list = dir_entry.branches().unwrap_or_default();
-    match cache.entry(content_hash) {
+    match cache.entry(unique_hash.clone()) {
         Entry::Occupied(mut val)
             if &val.get().value.0 == entry_pathbuf && val.get().value.1 == branch_list =>
         {

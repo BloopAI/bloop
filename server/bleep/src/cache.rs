@@ -154,21 +154,17 @@ pub struct ChunkCache<'a> {
 impl<'a> ChunkCache<'a> {
     pub async fn for_file(
         qdrant: &'a QdrantClient,
-        repo_ref: &'a str,
         content_hash: &'a str,
     ) -> anyhow::Result<ChunkCache<'a>> {
         let response = qdrant
             .scroll(&ScrollPoints {
                 collection_name: semantic::COLLECTION_NAME.to_string(),
-                limit: Some(1000),
+                limit: Some(1_000_000),
                 filter: Some(Filter {
-                    must: [
-                        make_kv_keyword_filter("repo_ref", repo_ref),
-                        make_kv_keyword_filter("content_hash", content_hash),
-                    ]
-                    .into_iter()
-                    .map(Into::into)
-                    .collect(),
+                    must: [make_kv_keyword_filter("content_hash", content_hash)]
+                        .into_iter()
+                        .map(Into::into)
+                        .collect(),
                     ..Default::default()
                 }),
                 with_payload: Some(WithPayloadSelector {

@@ -436,13 +436,13 @@ impl Semantic {
         &self,
         repo_name: &str,
         repo_ref: &str,
-        content_hash: &str,
+        unique_hash: &str,
         relative_path: &str,
         buffer: &str,
         lang_str: &str,
         branches: &[String],
     ) {
-        let chunk_cache = crate::cache::ChunkCache::for_file(&self.qdrant, repo_ref, content_hash)
+        let chunk_cache = crate::cache::ChunkCache::for_file(&self.qdrant, unique_hash)
             .await
             .expect("qdrant error");
 
@@ -463,14 +463,14 @@ impl Semantic {
         };
         chunks.par_iter().for_each(|chunk| {
             let data = format!(
-                "{repo_name}\t{relative_path}\n{content_hash}\n{}",
+                "{repo_name}\t{relative_path}\n{unique_hash}\n{}",
                 chunk.data,
             );
             let payload = Payload {
                 repo_name: repo_name.to_owned(),
                 repo_ref: repo_ref.to_owned(),
                 relative_path: relative_path.to_owned(),
-                content_hash: content_hash.to_owned(),
+                content_hash: unique_hash.to_owned(),
                 text: chunk.data.to_owned(),
                 lang: lang_str.to_ascii_lowercase(),
                 branches: branches.to_owned(),
