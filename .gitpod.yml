@@ -12,9 +12,13 @@ tasks:
       nix develop
       gp sync-done nix
   - name: Backend
-    init: gp sync-await nix && cargo build -p bleep
+    init: |
+      gp sync-await nix
+      cargo build -p bleep
     command: cargo run -p bleep
   - name: Frontend
-    init: gp sync-await nix && npm i
+    init: |
+      gp sync-await nix
+      npm i
     command: npm run start-web
     openMode: split-right
