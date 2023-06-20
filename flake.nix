@@ -65,6 +65,7 @@
             dmidecode
             appimage-run
             appimagekit
+            gdk-pixbuf
           ] ++ lib.optionals stdenv.isDarwin [
             darwin.apple_sdk.frameworks.Carbon
             darwin.apple_sdk.frameworks.WebKit
