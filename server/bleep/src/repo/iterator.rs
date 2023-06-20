@@ -10,7 +10,7 @@ mod git;
 pub(super) mod language;
 
 pub use fs::FileWalker;
-pub use git::GitWalker;
+pub use git::{BranchFilter, GitWalker};
 
 use crate::background::SyncPipes;
 

@@ -10,7 +10,6 @@ use std::{
     path::Path,
 };
 
-#[allow(unused)]
 pub enum BranchFilter {
     All,
     Head,

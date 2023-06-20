@@ -77,7 +77,7 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
       <div>
         <h4>Files in {repository.name}</h4>
       </div>
-      <div className="select-none">
+      <div className="">
         <RepositoryFiles
           files={sortedFiles}
           onClick={fileClick}

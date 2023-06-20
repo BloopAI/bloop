@@ -238,3 +238,47 @@ export const previewTheme = (key: string) => {
     300, // longest color transition
   );
 };
+
+export const calculatePopupPositionInsideContainer = (
+  top: number,
+  left: number,
+  containerRect: DOMRect,
+) => {
+  const viewportWidth =
+    window.innerWidth || document.documentElement.clientWidth;
+  const viewportHeight =
+    window.innerHeight || document.documentElement.clientHeight;
+
+  const popupWidth = 170; // Adjust as needed
+  const popupHeight = 34; // Adjust as needed
+
+  // Adjust top position to ensure the popup stays within the container
+  if (top < containerRect.top) {
+    top = containerRect.top;
+  } else if (top > containerRect.bottom) {
+    top = containerRect.bottom - popupHeight;
+  }
+
+  // Adjust left position to ensure the popup stays within the container
+  if (left < containerRect.left) {
+    left = containerRect.left;
+  } else if (left > containerRect.right) {
+    left = containerRect.right - popupWidth;
+  }
+
+  // Adjust top position to ensure the popup stays within the viewport
+  if (top < 0) {
+    top = 0;
+  } else if (top + popupHeight > viewportHeight) {
+    top = viewportHeight - popupHeight;
+  }
+
+  // Adjust left position to ensure the popup stays within the viewport
+  if (left < 0) {
+    left = 0;
+  } else if (left + popupWidth > viewportWidth) {
+    left = viewportWidth - popupWidth;
+  }
+
+  return { top, left };
+};

@@ -20,6 +20,26 @@
     },
     "query": "DELETE FROM conversations WHERE user_id = ? AND thread_id = ?"
   },
+  "4bf8d04acb2c99669237578467e50ac6822cb46053bced5d7d7a9dc374353e0d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "DELETE FROM query_log WHERE created_at < ?"
+  },
+  "4d56665709831e4733eacc0b36fdd947d757c1b1bb1e7cf23c8eb6bbb79df7cc": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "INSERT INTO query_log (raw_query) VALUES (?)"
+  },
   "62232655ca97e3b53fc70fb9024cd9b30e409723130a5ee8d6d2fe61912bbb9b": {
     "describe": {
       "columns": [
@@ -101,6 +121,24 @@
       }
     },
     "query": "DELETE FROM file_cache WHERE repo_ref = ?"
+  },
+  "ac1299cb16ae8ff77ded6a11241b84414352c12e55ce40b89e5b85109c7dc523": {
+    "describe": {
+      "columns": [
+        {
+          "name": "raw_query",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT raw_query FROM query_log WHERE created_at > ?"
   },
   "bc60b0f34fd20feba2da3f16458770424534eacaba75e6f45b8218f32767671b": {
     "describe": {

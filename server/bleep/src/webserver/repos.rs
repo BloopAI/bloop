@@ -1,12 +1,12 @@
 use std::{collections::HashSet, hash::Hash, time::Duration};
 
 use crate::{
-    repo::{Backend, RepoRef, Repository, SyncStatus},
+    repo::{Backend, BranchFilter, RepoRef, Repository, SyncStatus},
     state::RepositoryPool,
     Application,
 };
 use axum::{
-    extract::{Path, Query},
+    extract::Query,
     http::StatusCode,
     response::{sse, IntoResponse, Sse},
     Extension, Json,
@@ -27,6 +27,8 @@ pub(super) struct Repo {
     pub(super) last_update: DateTime<Utc>,
     pub(super) last_index: Option<DateTime<Utc>>,
     pub(super) most_common_lang: Option<String>,
+    pub(super) branch_filter: Option<BranchFilter>,
+    pub(super) branches: Vec<String>,
 }
 
 impl From<(&RepoRef, &Repository)> for Repo {
@@ -51,6 +53,28 @@ impl From<(&RepoRef, &Repository)> for Repo {
                 ),
             },
             most_common_lang: repo.most_common_lang.clone(),
+            branch_filter: repo.branch_filter.clone(),
+            branches: 'branch_list: {
+                let Ok(git) = gix::open(&repo.disk_path)
+		else {
+		    break 'branch_list vec![];
+		};
+
+                let Ok(refs) = git.references()
+		else {
+		    break 'branch_list vec![];
+		};
+
+                let Ok(refs) = refs.all()
+		else {
+		    break 'branch_list vec![];
+		};
+
+                use gix::bstr::ByteSlice;
+                refs.filter_map(Result::ok)
+                    .map(|r| r.name().shorten().to_str_lossy().to_string())
+                    .collect()
+            },
         }
     }
 }
@@ -70,6 +94,8 @@ impl Repo {
             last_update: origin.pushed_at.unwrap(),
             last_index: None,
             most_common_lang: None,
+            branch_filter: None,
+            branches: vec![],
         }
     }
 }
@@ -117,34 +143,46 @@ pub(super) async fn index_status(Extension(app): Extension<Application>) -> impl
     )
 }
 
+#[derive(Deserialize)]
+pub(super) struct IndexedParams {
+    repo: Option<RepoRef>,
+}
+
+#[derive(Deserialize)]
+pub(super) struct RepoParams {
+    repo: RepoRef,
+}
+
 /// Retrieve all indexed repositories
 //
-pub(super) async fn indexed(Extension(app): Extension<Application>) -> impl IntoResponse {
+pub(super) async fn indexed(
+    Query(IndexedParams { repo }): Query<IndexedParams>,
+    app: Extension<Application>,
+) -> Result<impl IntoResponse> {
+    if let Some(repo) = repo {
+        return get_by_id(Query(RepoParams { repo }), app).await;
+    }
+
     let mut repos = vec![];
-    app.repo_pool
+    app.0
+        .repo_pool
         .scan_async(|k, v| repos.push(Repo::from((k, v))))
         .await;
 
-    json(ReposResponse::List(repos))
+    Ok(json(ReposResponse::List(repos)))
 }
 
 /// Get details of an indexed repository based on their id
 pub(super) async fn get_by_id(
-    Path(path): Path<Vec<String>>,
+    Query(RepoParams { repo }): Query<RepoParams>,
     Extension(app): Extension<Application>,
-) -> Result<impl IntoResponse> {
-    let Ok(reporef) = RepoRef::from_components(&app.config.source.directory(), path) else {
-        return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
-    };
-
+) -> Result<Json<super::Response<'static>>> {
     match app
         .repo_pool
-        .read_async(&reporef, |k, v| {
-            json(ReposResponse::Item(Repo::from((k, v))))
-        })
+        .read_async(&repo, |k, v| ReposResponse::Item(Repo::from((k, v))))
         .await
     {
-        Some(result) => Ok(result),
+        Some(result) => Ok(json(result)),
         None => Err(Error::new(ErrorKind::NotFound, "Can't find repository")),
     }
 }
@@ -152,14 +190,10 @@ pub(super) async fn get_by_id(
 /// Delete a repository from the disk and any indexes
 //
 pub(super) async fn delete_by_id(
-    Path(path): Path<Vec<String>>,
+    Query(RepoParams { repo }): Query<RepoParams>,
     Extension(app): Extension<Application>,
-) -> impl IntoResponse {
-    let Ok(reporef) = RepoRef::from_components(&app.config.source.directory(), path) else {
-        return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
-    };
-
-    match app.write_index().remove(reporef).await {
+) -> Result<impl IntoResponse> {
+    match app.write_index().remove(repo).await {
         Some(_) => Ok(json(ReposResponse::Deleted)),
         None => Err(Error::new(ErrorKind::NotFound, "Repo not found")),
     }
@@ -167,27 +201,19 @@ pub(super) async fn delete_by_id(
 
 /// Synchronize a repo by its id
 pub(super) async fn sync(
-    Path(path): Path<Vec<String>>,
+    Query(RepoParams { repo }): Query<RepoParams>,
     Extension(app): Extension<Application>,
-) -> impl IntoResponse {
-    let Ok(reporef) = RepoRef::from_components(&app.config.source.directory(), path) else {
-        return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
-    };
-
-    app.write_index().sync_and_index(vec![reporef]).await;
+) -> Result<impl IntoResponse> {
+    app.write_index().sync_and_index(vec![repo]).await;
     Ok(json(ReposResponse::SyncQueued))
 }
 
 /// Synchronize a repo by its id
 pub(super) async fn delete_sync(
-    Path(path): Path<Vec<String>>,
+    Query(RepoParams { repo }): Query<RepoParams>,
     Extension(app): Extension<Application>,
-) -> impl IntoResponse {
-    let Ok(reporef) = RepoRef::from_components(&app.config.source.directory(), path) else {
-        return Err(Error::new(ErrorKind::NotFound, "Can't find repository"));
-    };
-
-    app.write_index().cancel(reporef).await;
+) -> Result<impl IntoResponse> {
+    app.write_index().cancel(repo).await;
     Ok(json(ReposResponse::SyncQueued))
 }
 
@@ -263,6 +289,52 @@ pub(super) async fn set_indexed(
     json(ReposResponse::SyncQueued)
 }
 
+/// Patch a repository with the given payload
+/// This will automatically trigger a sync
+//
+pub(super) async fn patch_indexed(
+    Query(RepoParams { repo }): Query<RepoParams>,
+    Extension(app): Extension<Application>,
+    Json(patch): Json<RepositoryPatch>,
+) -> Result<impl IntoResponse> {
+    let _parsed = patch
+        .branch_filter
+        .as_ref()
+        .map(crate::repo::iterator::BranchFilter::from);
+
+    let ok = app
+        .repo_pool
+        .update_async(&repo, |_k, v| {
+            let Some(BranchFilter::Select(ref mut old_list)) = v.branch_filter
+            else {
+		v.branch_filter = patch.branch_filter;
+		return;
+	    };
+
+            let Some(BranchFilter::Select(new_list)) = patch.branch_filter
+            else {
+		v.branch_filter = patch.branch_filter;
+		return;
+	    };
+
+            old_list.extend(new_list);
+        })
+        .await;
+
+    match ok {
+        Some(_) => {
+            app.write_index().sync_and_index(vec![repo]).await;
+            Ok(json(ReposResponse::SyncQueued))
+        }
+        None => Err(Error::new(ErrorKind::NotFound, "Can't find repository")),
+    }
+}
+
+#[derive(Deserialize)]
+pub(super) struct RepositoryPatch {
+    branch_filter: Option<BranchFilter>,
+}
+
 #[derive(Deserialize)]
 pub(super) struct ScanRequest {
     /// The path to scan
@@ -335,6 +407,7 @@ mod test {
                     last_commit_unix_secs: 123456,
                     last_index_unix_secs: 123456,
                     most_common_lang: None,
+                    branch_filter: Default::default(),
                 },
             )
             .unwrap();
@@ -352,6 +425,7 @@ mod test {
                     last_commit_unix_secs: 123456,
                     last_index_unix_secs: 123456,
                     most_common_lang: None,
+                    branch_filter: Default::default(),
                 },
             )
             .unwrap();
@@ -371,6 +445,7 @@ mod test {
                     last_commit_unix_secs: 123456,
                     last_index_unix_secs: 0,
                     most_common_lang: None,
+                    branch_filter: Default::default(),
                 },
             )
                 .into(),
@@ -389,6 +464,7 @@ mod test {
                 last_commit_unix_secs: 123456,
                 last_index_unix_secs: 0,
                 most_common_lang: None,
+                branch_filter: Default::default(),
             },
         )
             .into();

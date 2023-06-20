@@ -50,16 +50,12 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/repos/status", get(repos::index_status))
         .route(
             "/repos/indexed",
-            get(repos::indexed).put(repos::set_indexed),
+            get(repos::indexed)
+                .put(repos::set_indexed)
+                .patch(repos::patch_indexed)
+                .delete(repos::delete_by_id),
         )
-        .route(
-            "/repos/indexed/*path",
-            get(repos::get_by_id).delete(repos::delete_by_id),
-        )
-        .route(
-            "/repos/sync/*path",
-            get(repos::sync).delete(repos::delete_sync),
-        )
+        .route("/repos/sync", get(repos::sync).delete(repos::delete_sync))
         // intelligence
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))

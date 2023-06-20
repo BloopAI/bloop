@@ -27,7 +27,7 @@ use tracing::{debug, info, trace, warn};
 use super::middleware::User;
 use crate::{
     analytics::{EventData, QueryEvent},
-    db::SqlDb,
+    db::{QueryLog, SqlDb},
     query::parser::{self, SemanticQuery},
     repo::RepoRef,
     Application,
@@ -94,6 +94,8 @@ pub(super) async fn _handle(
 ) -> super::Result<
     Sse<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>,
 > {
+    QueryLog::new(&app.sql).insert(&params.q).await?;
+
     let conversation_id = ConversationId {
         user_id: user
             .login()
@@ -106,7 +108,7 @@ pub(super) async fn _handle(
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
-    let ctx = AppContext::new(app, user)
+    let mut ctx = AppContext::new(app, user)
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .with_query_id(query_id)
         .with_thread_id(params.thread_id)
@@ -140,6 +142,18 @@ pub(super) async fn _handle(
     };
 
     let q = params.q;
+
+    ctx.branch = 'branch: {
+        let Ok(parsed) = parser::parse_nl(&q)
+	else {
+	    break 'branch None;
+	};
+
+        parsed
+            .as_semantic()
+            .and_then(|s| s.branch.iter().next())
+            .map(|l| l.regex_str().to_string())
+    };
 
     let stream = async_stream::try_stream! {
         let mut action = Action::Query(q);
@@ -200,6 +214,8 @@ pub(super) async fn _handle(
 
         // Storing the conversation here allows us to make subsequent requests.
         conversation.store(&ctx.app.sql, conversation_id).await?;
+
+        ctx.req_complete = true;
     };
 
     let thread_stream = futures::stream::once(async move {
@@ -342,16 +358,7 @@ impl Conversation {
                         .with_payload("previous_answer_summary", &summarized_answer),
                 );
 
-                parser::parse_nl(&s)?
-                    .as_semantic()
-                    .context("got a 'Grep' query")?
-                    .target
-                    .as_ref()
-                    .context("query was empty")?
-                    .as_plain()
-                    .context("user query was not plain text")?
-                    .clone()
-                    .into_owned()
+                s
             }
 
             Action::Prompt(_) => {
@@ -571,7 +578,7 @@ impl Conversation {
         }
 
         let question = &question;
-        let ctx = &ctx.clone().model("gpt-3.5-turbo");
+        let ctx = &ctx.clone().model("gpt-3.5-turbo-16k");
         let repo_ref = &self.repo_ref;
         let chunks = stream::iter(paths)
             .map(|path| async move {
@@ -581,7 +588,7 @@ impl Conversation {
                     .app
                     .indexes
                     .file
-                    .by_path(repo_ref, &path)
+                    .by_path(repo_ref, &path, ctx.branch.as_deref())
                     .await
                     .with_context(|| format!("failed to read path: {path}"))?
                     .content
@@ -590,7 +597,7 @@ impl Conversation {
                     .map(|(i, line)| format!("{} {line}", i + 1))
                     .collect::<Vec<_>>();
 
-                const MAX_TOKENS: usize = 3400;
+                const MAX_TOKENS: usize = 15400;
                 const LINE_OVERLAP: usize = 3;
 
                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
@@ -819,7 +826,7 @@ impl Conversation {
                     .app
                     .indexes
                     .file
-                    .by_path(&self.repo_ref, &path)
+                    .by_path(&self.repo_ref, &path, ctx.branch.as_deref())
                     .await
                     .with_context(|| format!("failed to read path: {}", path))?
                     .content;
@@ -1096,7 +1103,7 @@ impl Conversation {
                     .app
                     .indexes
                     .file
-                    .by_path(repo_ref, &path)
+                    .by_path(repo_ref, &path, ctx.branch.as_deref())
                     .await
                     .unwrap()
                     .content;
@@ -1301,6 +1308,12 @@ struct AppContext {
     query_id: uuid::Uuid,
     thread_id: uuid::Uuid,
     repo_ref: Option<RepoRef>,
+    branch: Option<String>,
+
+    /// Indicate whether the request was answered.
+    ///
+    /// This is used in the `Drop` handler, in order to track cancelled answer queries.
+    req_complete: bool,
 }
 
 impl AppContext {
@@ -1316,6 +1329,8 @@ impl AppContext {
             query_id: uuid::Uuid::nil(),
             thread_id: uuid::Uuid::nil(),
             repo_ref: None,
+            req_complete: false,
+            branch: None,
         })
     }
 
@@ -1352,6 +1367,17 @@ impl AppContext {
             data,
         };
         self.app.track_query(&self.user, &event);
+    }
+}
+
+impl Drop for AppContext {
+    fn drop(&mut self) {
+        if !self.req_complete {
+            self.track_query(
+                EventData::output_stage("cancelled")
+                    .with_payload("message", "request was cancelled"),
+            );
+        }
     }
 }
 
