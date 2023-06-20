@@ -134,6 +134,25 @@ A: "#
 }
 
 pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str) -> String {
+    format!(
+        r#"{context}
+
+Above is code and paths that can help answer the user's question.
+
+#####
+
+{query_history}
+
+Above is the query and answer history. The user can see the previous queries and answers on their screen, but not anything else.
+Based on this history, write a detailed answer to the question: {query}"#
+    )
+}
+
+pub fn reflection_prompt() -> String {
+    "In bulletpoints, how could the above answer be improved? Does the response answer the question?".into()
+}
+
+pub fn final_explanation_prompt_format() -> String {
     struct Rule<'a> {
         title: &'a str,
         description: &'a str,
@@ -211,13 +230,14 @@ For example:
         .collect::<String>();
 
     format!(
-        r#"{context}Your job is to answer a query about a codebase using the information above. 
-Your answer should be an array of arrays, where each element in the array is an instance of one of the following objects:
+        r#"Now answer the question using the following rules:
 
 {output_rules_str}
+
 Respect these rules at all times:
 - Refer to directories by their full paths, surrounded by single backticks
 - Your answer should always be an array of arrays, even when you only generate a conclusion
+- Your answer should take into account the previous feedback, and answer improvements
 
 #####
 
@@ -245,17 +265,6 @@ What's the value of MAX_FILE_LEN?
 
 #####
 
-{query_history}
-
-Above is the query and answer history. The user can see the previous queries and answers on their screen, but not anything else.
-Based on this history, answer the question: {query}
-
-#####
-
 Output only JSON."#
     )
-}
-
-pub fn reflection_prompt() -> String {
-    "In bulletpoints, how could the above answer be improved?".into()
 }

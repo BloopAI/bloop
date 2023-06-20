@@ -936,7 +936,7 @@ impl Conversation {
             .await?;
 
         messages.push(llm_gateway::api::Message::assistant(&scratch_response));
-        messages.push(llm_gateway::api::Message::assistant(
+        messages.push(llm_gateway::api::Message::user(
             &prompts::reflection_prompt(),
         ));
 
@@ -949,7 +949,9 @@ impl Conversation {
             .await?;
 
         messages.push(llm_gateway::api::Message::assistant(&reflection_response));
-        messages.push(llm_gateway::api::Message::user("Answer the query again"));
+
+        let final_explanation_prompt_format_prompt = prompts::final_explanation_prompt_format();
+        messages.push(llm_gateway::api::Message::user(&final_explanation_prompt_format_prompt));
 
         let mut stream = ctx.llm_gateway.chat(&messages, None).await?.boxed();
         let mut buffer = String::new();
