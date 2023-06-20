@@ -630,7 +630,7 @@ fn is_cache_fresh(
 ) -> bool {
     let unique_hash = unique_hash.to_string();
     let branch_list = dir_entry.branches().unwrap_or_default();
-    match cache.entry(unique_hash.clone()) {
+    match cache.entry(unique_hash) {
         Entry::Occupied(mut val)
             if &val.get().value.0 == entry_pathbuf && val.get().value.1 == branch_list =>
         {
