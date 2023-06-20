@@ -44,7 +44,7 @@ jobs:
       - run: env
 
       - name: Setup nix
-        uses: cachix/install-nix-action@v20
+        uses: cachix/install-nix-action@v22
         with:
           github_access_token: "${{ secrets.GITHUB_TOKEN }}"
 
@@ -105,7 +105,7 @@ jobs:
           profile: minimal
           target: ${{ matrix.target }}
 
-      - uses: cachix/install-nix-action@v20
+      - uses: cachix/install-nix-action@v22
         with:
           github_access_token: "${{ secrets.GITHUB_TOKEN }}"
 
