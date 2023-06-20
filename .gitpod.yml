@@ -5,7 +5,12 @@
 # Learn more from ready-to-use templates: https://www.gitpod.io/docs/introduction/getting-started/quickstart
 
 tasks:
-  - init: nix develop && gp sync-done nix
+  - init: |
+      git lfs install --skip-smudge
+      git lfs pull
+      git lfs install --force
+      nix develop
+      gp sync-done nix
   - name: Backend
     init: gp sync-await nix && cargo build -p bleep
     command: cargo run -p bleep
