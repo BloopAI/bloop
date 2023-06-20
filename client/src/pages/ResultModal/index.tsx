@@ -164,7 +164,7 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
             />
           )}
           <div
-            className={`flex px-2 py-4 bg-bg-sub h-[calc(100vh-15rem)] overflow-y-auto p-3 pr-12`}
+            className={`flex px-2 py-4 bg-bg-sub h-[calc(100vh-15rem)] overflow-y-auto p-3 pr-12 code-modal-container`}
           >
             {!!result && (
               <CodeFull
