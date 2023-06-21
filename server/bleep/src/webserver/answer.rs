@@ -45,6 +45,30 @@ use response::{Exchange, SearchResult, SearchStep, Update};
 const TIMEOUT_SECS: u64 = 60;
 
 #[derive(Clone, Debug, serde::Deserialize)]
+pub struct Vote {
+    pub positive: bool,
+    pub thread_id: uuid::Uuid,
+    pub query_id: uuid::Uuid,
+    pub repo_ref: Option<RepoRef>,
+}
+
+pub(super) async fn vote(
+    Query(params): Query<Vote>,
+    Extension(app): Extension<Application>,
+    Extension(user): Extension<User>,
+) {
+    app.track_query(
+        &user,
+        &QueryEvent {
+            query_id: params.query_id,
+            thread_id: params.thread_id,
+            repo_ref: params.repo_ref,
+            data: EventData::output_stage("vote").with_payload("positive", params.positive),
+        },
+    );
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
     pub q: String,
     pub repo_ref: RepoRef,
@@ -95,6 +119,7 @@ pub(super) async fn _handle(
 ) -> super::Result<
     Sse<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>,
 > {
+    app.identify(&user);
     let conversation_id = ConversationId {
         user_id: user
             .login()
@@ -513,9 +538,11 @@ impl Conversation {
             serde_json::from_value::<Vec<llm_gateway::api::Function>>(prompts::functions())
                 .unwrap();
 
+        let trimmed_history = self.trimmed_history()?;
+
         let raw_response = ctx
             .llm_gateway
-            .chat(&self.trimmed_history()?, Some(&functions))
+            .chat(&trimmed_history, Some(&functions))
             .await?
             .try_fold(
                 llm_gateway::api::FunctionCall::default(),
@@ -530,7 +557,11 @@ impl Conversation {
             .await?;
 
         ctx.track_query(
-            EventData::output_stage("llm_reply").with_payload("raw_response", &raw_response),
+            EventData::output_stage("llm_reply")
+                .with_payload("full_history", &self.llm_history)
+                .with_payload("trimmed_history", &trimmed_history)
+                .with_payload("last_message", self.llm_history.back())
+                .with_payload("raw_response", &raw_response),
         );
 
         let action = Action::deserialize_gpt(&raw_response)?;

@@ -268,6 +268,12 @@ impl Application {
         }
     }
 
+    fn identify(&self, user: &webserver::middleware::User) {
+        if let Some(analytics) = self.analytics.as_ref() {
+            tokio::task::block_in_place(|| analytics.identify(user))
+        }
+    }
+
     fn write_index(&self) -> background::BoundSyncQueue {
         self.sync_queue.bind(self.clone())
     }

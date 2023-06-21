@@ -7,7 +7,7 @@ use crate::{
 
 use rudderanalytics::{
     client::RudderAnalytics,
-    message::{Message, Track},
+    message::{Identify, Message, Track},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -130,6 +130,17 @@ impl RudderHub {
                 id
             }
             None => self.device_id.to_string(),
+        }
+    }
+
+    pub fn identify(&self, user: &crate::webserver::middleware::User) {
+        if let Err(err) = self.client.send(&Message::Identify(Identify {
+            user_id: Some(self.tracking_id(user)),
+            ..Default::default()
+        })) {
+            warn!(?err, "failed to send analytics event");
+        } else {
+            info!("sent analytics event...");
         }
     }
 
