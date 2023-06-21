@@ -16,6 +16,12 @@ use serde::{Deserialize, Serialize};
 
 use super::prelude::*;
 
+#[derive(Serialize, Debug, PartialEq, Eq)]
+pub(super) struct Branch {
+    last_commit_unix_secs: u64,
+    name: String,
+}
+
 #[derive(Serialize, Debug, Eq)]
 pub(super) struct Repo {
     pub(super) provider: Backend,
@@ -28,7 +34,7 @@ pub(super) struct Repo {
     pub(super) last_index: Option<DateTime<Utc>>,
     pub(super) most_common_lang: Option<String>,
     pub(super) branch_filter: Option<BranchFilter>,
-    pub(super) branches: Vec<String>,
+    pub(super) branches: Vec<Branch>,
 }
 
 impl From<(&RepoRef, &Repository)> for Repo {
@@ -71,9 +77,30 @@ impl From<(&RepoRef, &Repository)> for Repo {
 		};
 
                 use gix::bstr::ByteSlice;
-                refs.filter_map(Result::ok)
-                    .map(|r| r.name().shorten().to_str_lossy().to_string())
-                    .collect()
+                let mut branches = refs
+                    .filter_map(Result::ok)
+                    .filter_map(|mut r| {
+                        let name = r.name().shorten().to_str_lossy().to_string();
+                        let last_commit_unix_secs = r
+                            .peel_to_id_in_place()
+                            .ok()?
+                            .object()
+                            .ok()?
+                            .try_into_commit()
+                            .ok()?
+                            .time()
+                            .ok()?
+                            .seconds() as u64;
+
+                        Some(Branch {
+                            name,
+                            last_commit_unix_secs,
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
+                branches.sort_by_key(|b| b.last_commit_unix_secs);
+                branches
             },
         }
     }
