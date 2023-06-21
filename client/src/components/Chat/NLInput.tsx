@@ -11,6 +11,12 @@ import ClearButton from '../ClearButton';
 import Tooltip from '../Tooltip';
 import { ChatLoadingStep } from '../../types/general';
 import LiteLoader from '../Loaders/LiteLoader';
+import PromptGuidePopup from '../PromptGuidePopup';
+import {
+  getPlainFromStorage,
+  PROMPT_GUIDE_DONE,
+  savePlainToStorage,
+} from '../../services/storage';
 import InputLoader from './InputLoader';
 
 type Props = {
@@ -42,6 +48,7 @@ const NLInput = ({
 }: Props) => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setComposition] = useState(false);
+  const [isPromptGuideOpen, setPromptGuideOpen] = useState(false);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -77,6 +84,17 @@ const NLInput = ({
     [isStoppable, loadingSteps?.length, placeholder],
   );
 
+  const handleInputFocus = useCallback(() => {
+    if (!getPlainFromStorage(PROMPT_GUIDE_DONE)) {
+      setPromptGuideOpen(true);
+    }
+  }, []);
+
+  const handlePromptGuideClose = useCallback(() => {
+    setPromptGuideOpen(false);
+    savePlainToStorage(PROMPT_GUIDE_DONE, 'true');
+  }, []);
+
   return (
     <div
       className={`w-full flex items-start gap-2 rounded-lg 
@@ -87,6 +105,10 @@ const NLInput = ({
         : 'bg-chat-bg-base hover:text-label-title hover:border-chat-bg-border-hover'
     } transition-all ease-out duration-150 flex-grow-0 relative`}
     >
+      <PromptGuidePopup
+        isOpen={isPromptGuideOpen}
+        onClose={handlePromptGuideClose}
+      />
       {shouldShowLoader && <InputLoader loadingSteps={loadingSteps!} />}
       <div className="pt-4.5">
         {isStoppable ? (
@@ -116,6 +138,7 @@ const NLInput = ({
         onCompositionStart={() => setComposition(true)}
         onCompositionEnd={() => setComposition(false)}
         onKeyDown={handleKeyDown}
+        onFocus={handleInputFocus}
       />
       {isStoppable || selectedLines ? (
         <div className="relative top-[18px]">
