@@ -187,7 +187,7 @@
 
             src = pkgs.lib.sources.cleanSource ./.;
 
-            setupHook = ''
+            shellHook = ''
               npm i
             '';
           }).overrideAttrs (old: envVars);
