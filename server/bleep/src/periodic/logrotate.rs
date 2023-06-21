@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashSet};
 
 use chrono::{Duration, Utc};
 use rand::{distributions, thread_rng, Rng};
@@ -35,7 +35,7 @@ pub(crate) async fn log_and_branch_rotate(app: crate::Application) {
 }
 
 fn update_branch_filters(
-    map: scc::HashMap<String, Vec<String>>,
+    map: scc::HashMap<String, HashSet<String>>,
     repo_pool: &RepositoryPool,
 ) -> Vec<crate::repo::RepoRef> {
     let mut to_sync = vec![];
@@ -46,7 +46,13 @@ fn update_branch_filters(
         };
 
         repo_pool.update(&reporef, |_, v| {
-            let new_filter = Some(BranchFilter::Select(std::mem::take(branches)));
+            let branches = {
+                let mut b = std::mem::take(branches);
+                b.insert("HEAD".into());
+                b.into_iter().collect()
+            };
+
+            let new_filter = Some(BranchFilter::Select(branches));
             if new_filter != v.branch_filter {
                 v.branch_filter = new_filter;
                 to_sync.push(reporef.clone());
@@ -56,7 +62,7 @@ fn update_branch_filters(
     to_sync
 }
 
-fn collect_branches_for_repos(queries: Vec<String>) -> scc::HashMap<String, Vec<String>> {
+fn collect_branches_for_repos(queries: Vec<String>) -> scc::HashMap<String, HashSet<String>> {
     let map = scc::HashMap::default();
     queries.par_iter().for_each(|q| {
         let parsed = parser::parse_nl(q);
@@ -85,9 +91,13 @@ fn collect_branches_for_repos(queries: Vec<String>) -> scc::HashMap<String, Vec<
     map
 }
 
-fn record_branch<'a>(map: &scc::HashMap<String, Vec<String>>, r: Cow<'a, str>, b: Cow<'a, str>) {
+fn record_branch<'a>(
+    map: &scc::HashMap<String, HashSet<String>>,
+    r: Cow<'a, str>,
+    b: Cow<'a, str>,
+) {
     map.entry(r.to_string())
-        .or_insert_with(Vec::new)
+        .or_insert_with(HashSet::default)
         .get_mut()
-        .push(b.to_string())
+        .insert(b.to_string());
 }
