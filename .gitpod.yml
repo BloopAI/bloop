@@ -17,22 +17,14 @@ tasks:
       git lfs install --force
 
       # Cache build artifacts
-      cargo build -p bleep
-      npm i
+      nix develop -c cargo build -p bleep
+      nix develop -c npm i
 
     command: |
-
-      # Outputs of 'nix develop' is already being cached from .gitpod.Dockerfile
-      # We're just re-running it here to refresh the nix store.
-      # Also note that we're not running this inside an `init` task because only `/workspace` dir is persisted between prebuilds.
-      nix develop
-      
-      gp sync-done backend
-      cargo run -p bleep
+      nix develop -c cargo run -p bleep
     openMode: split-left
 
   - name: Frontend
     command: |
-      gp sync-await backend
-      npm run start-web
+      nix develop -c npm run start-web
     openMode: split-right
