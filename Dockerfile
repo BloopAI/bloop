@@ -30,14 +30,14 @@ RUN --mount=target=/root/.cache/sccache,type=cache --mount=target=/build/target,
     cargo --locked build -p bleep --release && \
     cp /build/target/release/bleep / && \
     sccache --show-stats && \
-    mkdir /dylibs && \
-    cp /build/target/release/libonnxruntime.so /dylibs/
+    mkdir /dylib && \
+    cp /build/target/release/libonnxruntime.so /dylib/
 
 FROM debian:bookworm-slim
 VOLUME ["/repos", "/data"]
 RUN apt-get update && apt-get -y install openssl ca-certificates libprotobuf-lite32 && apt-get clean
 COPY model /model
 COPY --from=builder /bleep /
-COPY --from=builder /dylibs /dylibs
+COPY --from=builder /dylib /dylib
 COPY --from=frontend /build/client/dist /frontend
-ENTRYPOINT ["/bleep", "--host=0.0.0.0", "--source-dir=/repos", "--index-dir=/data", "--model-dir=/model", "--dylib-dir=/dylibs/"]
+ENTRYPOINT ["/bleep", "--host=0.0.0.0", "--source-dir=/repos", "--index-dir=/data", "--model-dir=/model", "--dylib-dir=/dylib"]
