@@ -1,11 +1,11 @@
 {
   description = "bloop";
 
-  nixConfig = {
-    extra-substituters = "https://bloopai.cachix.org";
-    extra-trusted-public-keys =
-      "bloopai.cachix.org-1:uSHFor+Jd3znikUnLc58xnHBXTcuIBSjdJxV5rLIMJU=";
-  };
+  # nixConfig = {
+  #   extra-substituters = "https://bloopai.cachix.org";
+  #   extra-trusted-public-keys =
+  #     "bloopai.cachix.org-1:uSHFor+Jd3znikUnLc58xnHBXTcuIBSjdJxV5rLIMJU=";
+  # };
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-23.05";
@@ -54,6 +54,8 @@
 
         guiDeps = with pkgs;
           [ nodePackages.npm nodejs ] ++ (lib.optionals stdenv.isLinux [
+            gdk-pixbuf
+            gdk-pixbuf.dev
             zlib.dev
             dbus.dev
             libsoup.dev
@@ -158,17 +160,25 @@
           onnxruntime-static = onnxruntime-static;
         };
 
-        devShell = (pkgs.mkShell {
-          buildInputs = buildDeps ++ runtimeDeps ++ guiDeps ++ (with pkgs; [
-            git-lfs
-            cargo
-            rustc
-            rustfmt
-            clippy
-            rust-analyzer
-            nixfmt
-          ]);
-        }).overrideAttrs (old: envVars);
+        devShells = {
+          default = (pkgs.mkShell {
+            buildInputs = buildDeps ++ runtimeDeps ++ guiDeps ++ (with pkgs; [
+              git-lfs
+              cargo
+              rustc
+              rustfmt
+              clippy
+              rust-analyzer
+              nixfmt
+            ]);
+
+            src = pkgs.lib.sources.cleanSource ./.;
+
+            setupHook = ''
+              git lfs install
+            '';
+          }).overrideAttrs (old: envVars);
+        };
 
       });
 }
