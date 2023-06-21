@@ -14,3 +14,7 @@ RUN git lfs install --skip-smudge \
     && source "$HOME/.nix-profile/etc/profile.d/nix.sh" \
     && nix run nixpkgs#cachix use bloopai \
     && nix develop
+
+ENV CARGO_TARGET_DIR=$HOME/cargo_target
+RUN mkdir -p $CARGO_TARGET_DIR && chown gitpod:gitpod $CARGO_TARGET_DIR \
+    nix develop -c cargo build
