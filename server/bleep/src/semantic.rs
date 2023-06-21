@@ -194,15 +194,9 @@ impl Semantic {
                 .with_name("Encode")
                 .with_log_level(LoggingLevel::Warning)
                 .with_execution_providers([ExecutionProvider::cpu()])
+                .with_telemetry(false)
                 .build()?,
         );
-
-        #[cfg(windows)]
-        {
-            unsafe {
-                ort::ort().DisableTelemetryEvents.as_ref().unwrap()(environment.env_ptr());
-            }
-        }
 
         let threads = if let Ok(v) = std::env::var("NUM_OMP_THREADS") {
             str::parse(&v).unwrap_or(1)
