@@ -1,4 +1,4 @@
-FROM gitpod/workspace-full:latest
+FROM gitpod/workspace-nix:latest
 
 ARG onetime_cache_dir="/tmp/.workdir"
 
