@@ -10,10 +10,11 @@ use ort::{
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
-        r#match::MatchValue, vectors::VectorsOptions, vectors_config, with_payload_selector,
-        with_vectors_selector, CollectionOperationResponse, CreateCollection, Distance,
-        FieldCondition, Filter, Match, PointId, PointStruct, ScoredPoint, SearchPoints, Value,
-        VectorParams, Vectors, VectorsConfig, WithPayloadSelector, WithVectorsSelector,
+        quantization_config::Quantization, r#match::MatchValue, vectors::VectorsOptions,
+        vectors_config, with_payload_selector, with_vectors_selector, CollectionOperationResponse,
+        CreateCollection, Distance, FieldCondition, Filter, Match, PointId, PointStruct,
+        QuantizationConfig, ScalarQuantization, ScoredPoint, SearchPoints, Value, VectorParams,
+        Vectors, VectorsConfig, WithPayloadSelector, WithVectorsSelector,
     },
 };
 
@@ -149,6 +150,13 @@ fn collection_config() -> CreateCollection {
             config: Some(vectors_config::Config::Params(VectorParams {
                 size: 384,
                 distance: Distance::Cosine.into(),
+                ..Default::default()
+            })),
+        }),
+        quantization_config: Some(QuantizationConfig {
+            quantization: Some(Quantization::Scalar(ScalarQuantization {
+                r#type: 1, // Int8
+                quantile: Some(0.99),
                 ..Default::default()
             })),
         }),
