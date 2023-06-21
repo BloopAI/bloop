@@ -399,13 +399,6 @@ impl File {
             hash.finalize().to_hex().to_string()
         };
 
-        if matches!(dir_entry, RepoDirEntry::File(_))
-            && is_cache_fresh(cache, &unique_hash, &entry_pathbuf, &dir_entry)
-        {
-            info!("fresh; skipping");
-            return Ok(());
-        }
-
         let last_commit = repo_metadata.last_commit_unix_secs;
 
         match dir_entry {
@@ -421,6 +414,12 @@ impl File {
                 );
                 writer.add_document(doc)?;
                 trace!("dir document written");
+            }
+            RepoDirEntry::File(_)
+                if is_cache_fresh(cache, &unique_hash, &entry_pathbuf, &dir_entry) =>
+            {
+                info!("fresh; skipping");
+                return Ok(());
             }
             RepoDirEntry::File(file) => {
                 trace!("writing file document");
