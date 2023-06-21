@@ -561,6 +561,7 @@ impl Conversation {
                 .with_payload("full_history", &self.llm_history)
                 .with_payload("trimmed_history", &trimmed_history)
                 .with_payload("last_message", self.llm_history.back())
+                .with_payload("functions", &functions)
                 .with_payload("raw_response", &raw_response),
         );
 
