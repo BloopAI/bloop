@@ -5,6 +5,16 @@ pub static TYPESCRIPT: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["ts", "tsx"],
     grammar: tree_sitter_typescript::language_tsx,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
+    hoverable_query: MemoizedQuery::new(
+        r#"
+        [(identifier)
+         (property_identifier)
+         (shorthand_property_identifier)
+         (shorthand_property_identifier_pattern)
+         (statement_identifier)
+         (type_identifier)] @hoverable
+        "#,
+    ),
     namespaces: &[&[
         //variables
         "constant",

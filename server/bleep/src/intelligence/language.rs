@@ -55,6 +55,9 @@ pub struct TSLanguageConfig {
     /// Compiled tree-sitter scope query for this language.
     pub scope_query: MemoizedQuery,
 
+    /// Compiled tree-sitter hoverables query
+    pub hoverable_query: MemoizedQuery,
+
     /// Namespaces defined by this language,
     /// E.g.: type namespace, variable namespace, function namespace
     pub namespaces: NameSpaces,
@@ -98,7 +101,12 @@ impl TSLanguage {
         ALL_LANGUAGES
             .iter()
             .copied()
-            .find(|target| target.language_ids.iter().any(|&id| id == lang_id))
+            .find(|target| {
+                target
+                    .language_ids
+                    .iter()
+                    .any(|&id| id.to_lowercase() == lang_id.to_lowercase())
+            })
             .map_or(Language::Unsupported, Language::Supported)
     }
 }

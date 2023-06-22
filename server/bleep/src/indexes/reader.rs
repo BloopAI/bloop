@@ -9,11 +9,13 @@ use tantivy::{
 
 use super::{file::File, repo::Repo, DocumentRead};
 use crate::{
+    intelligence::TreeSitterFile,
     query::{
         compiler::Compiler,
         parser::{self, Query, Target},
     },
     symbol::SymbolLocations,
+    text_range::TextRange,
 };
 
 #[derive(Default, Debug, Clone)]
@@ -26,6 +28,14 @@ pub struct ContentDocument {
     pub line_end_indices: Vec<u32>,
     pub symbol_locations: SymbolLocations,
     pub branches: Option<String>,
+}
+
+impl ContentDocument {
+    pub fn hoverable_ranges(&self) -> Option<Vec<TextRange>> {
+        TreeSitterFile::try_build(self.content.as_bytes(), self.lang.as_ref()?)
+            .and_then(TreeSitterFile::hoverable_ranges)
+            .ok()
+    }
 }
 
 #[derive(Debug)]
