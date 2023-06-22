@@ -37,3 +37,7 @@ playwright-report
 
 # local config
 /local_config.json
+
+apps/desktop/src-tauri/dylibs/*.so
+apps/desktop/src-tauri/dylibs/*.dylib
+apps/desktop/src-tauri/dylibs/*.dll
