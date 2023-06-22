@@ -111,6 +111,9 @@ jsonwebtoken = { version = "8.3.0", features = ["use_pem"] }
 tiktoken-rs = "0.4.2"
 semver = { version = "1", features = ["serde"] }
 
+# vendored deps
+openssl-sys = { version = "0.9.88", features = ["vendored"] }
+
 # telemetry
 sentry = "0.31.4"
 rudderanalytics = "1.1.2"

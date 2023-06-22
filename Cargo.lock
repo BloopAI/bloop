@@ -505,6 +505,7 @@ dependencies = [
  "notify-debouncer-mini",
  "octocrab",
  "once_cell",
+ "openssl-sys",
  "ort",
  "pest",
  "pest_derive",
