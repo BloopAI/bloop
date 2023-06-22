@@ -101,7 +101,7 @@ const CodeContainerFull = ({
       }
       line?.scrollIntoView({ behavior: 'smooth', block: align });
     }
-  }, [scrollToIndex]);
+  }, [scrollToIndex, tokens.length]);
 
   return (
     <div ref={ref} className="relative">
