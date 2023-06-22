@@ -127,8 +127,12 @@ stdenv.mkDerivation rec {
 
   postBuild = null;
 
-  installPhase = ''
-    find .. \( -name \*.a -o -name \*.so -o -name \*.dylib \) -exec cp --parents \{\} $out/lib \;
+  postInstall = ''
+    # perform parts of `tools/ci_build/github/linux/copy_strip_binary.sh`
+    install -m644 -Dt $out/include \
+      ../include/onnxruntime/core/framework/provider_options.h \
+      ../include/onnxruntime/core/providers/cpu/cpu_provider_factory.h \
+      ../include/onnxruntime/core/session/onnxruntime_*.h
   '';
 
   passthru = { protobuf = pkgs.protobuf; };
