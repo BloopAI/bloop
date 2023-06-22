@@ -13,11 +13,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [ onnxruntime ]
+        package: [ onnxruntime14 ]
         target: [
           x86_64-unknown-linux-gnu,
           x86_64-darwin,
-          aarch64-darwin,
         ]
 
         include:
@@ -37,7 +36,7 @@ jobs:
         with:
           script: |
             const target = ${{ matrix.cross }} && '-${{ matrix.target }}' || ''
-            const package_name = '${{ matrix.package }}-static' + target
+            const package_name = '${{ matrix.package }}' + target
             core.setOutput('package-name', package_name)
 
       - uses: actions/checkout@v3
@@ -71,55 +70,3 @@ jobs:
         with:
           name: "${{ matrix.package }}_${{ matrix.target }}"
           path: ${{ env.PACKAGE_NAME }}_bundle
-
-  qdrant-rustup:
-    strategy:
-      fail-fast: false
-      matrix:
-        package: [ qdrant ]
-        target: [
-          x86_64-unknown-linux-gnu,
-          x86_64-apple-darwin,
-          aarch64-apple-darwin,
-        ]
-
-        include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-            cross: false
-
-          - target: x86_64-apple-darwin
-            os: macos-11
-            cross: false
-
-          - target: aarch64-apple-darwin
-            os: macos-11
-            cross: true
-
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Install Rust stable
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          target: ${{ matrix.target }}
-
-      - uses: cachix/install-nix-action@v22
-        with:
-          github_access_token: "${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Install dependencies
-        run: "nix profile install nixpkgs#protobuf"
-
-      - name: Build qdrant
-        env:
-          VERSION: 1.1.0
-        run: |
-          cargo install --target ${{ matrix.target }} --git https://github.com/qdrant/qdrant --tag v$VERSION --locked --root . qdrant
-
-      - name: Upload binaries
-        uses: actions/upload-artifact@v3
-        with:
-          name: "${{ matrix.package }}_${{ matrix.target }}"
-          path: bin
