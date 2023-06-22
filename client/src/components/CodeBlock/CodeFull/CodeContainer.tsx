@@ -87,7 +87,7 @@ const CodeContainer = ({
       });
       onRefDefClick(item, filePath);
     },
-    [],
+    [onRefDefClick],
   );
 
   const pathHash = useMemo(
