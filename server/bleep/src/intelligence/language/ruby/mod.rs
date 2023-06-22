@@ -5,6 +5,11 @@ pub static RUBY: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["rb"],
     grammar: tree_sitter_ruby::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
+    hoverable_query: MemoizedQuery::new(
+        r#"
+        (identifier) @hoverable
+        "#,
+    ),
     namespaces: &[
         // everything is an object
         &["variable", "constant", "class", "method", "module"],
