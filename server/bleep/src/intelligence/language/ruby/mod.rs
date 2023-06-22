@@ -323,4 +323,38 @@ mod tests {
             "#]],
         )
     }
+
+    // tests global decls
+    #[test]
+    fn globals() {
+        test_scopes(
+            "Ruby",
+            r#"
+            def foo()
+                $var = 2
+            end
+            "#
+            .as_bytes(),
+            expect![[r#"
+                scope {
+                    definitions: [
+                        foo {
+                            kind: "method",
+                            context: "def §foo§()",
+                        },
+                        $var {
+                            kind: "constant",
+                            context: "§$var§ = 2",
+                        },
+                    ],
+                    child scopes: [
+                        scope {
+                            definitions: [],
+                            child scopes: [],
+                        },
+                    ],
+                }
+            "#]],
+        )
+    }
 }
