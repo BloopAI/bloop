@@ -278,7 +278,7 @@ pub(super) async fn handle(
 
     let all_docs = indexes
         .file
-        .by_repo(repo_ref, associated_langs.into_iter())
+        .by_repo(repo_ref, associated_langs.iter())
         .await;
 
     match &scope_graph.graph[idx] {

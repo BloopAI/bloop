@@ -36,7 +36,7 @@ impl Point {
         let line = line_end_indices
             .iter()
             .position(|&line_end_byte| (line_end_byte as usize) > byte)
-            .unwrap_or(0) as usize;
+            .unwrap_or(0);
 
         let column = line
             .checked_sub(1)
