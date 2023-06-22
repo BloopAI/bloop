@@ -468,7 +468,7 @@ async fn search_nav(
             .collect::<Vec<Box<dyn tantivy::query::Query>>>();
         BooleanQuery::intersection(terms)
     };
-    let collector = TopDocs::with_limit(100);
+    let collector = TopDocs::with_limit(500);
     let reader = indexes.file.reader.read().await;
     let searcher = reader.searcher();
     let results = searcher

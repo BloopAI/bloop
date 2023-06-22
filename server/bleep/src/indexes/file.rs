@@ -366,7 +366,7 @@ impl Indexer<File> {
         // if file has a recognised language, constrain by files of the same lang
         let query = BooleanQuery::intersection(vec![repo_query, lang_query]);
 
-        let collector = TopDocs::with_limit(100);
+        let collector = TopDocs::with_limit(500);
         searcher
             .search(&query, &collector)
             .expect("failed to search index")
