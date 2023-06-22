@@ -906,10 +906,14 @@ impl Conversation {
                 s += "\n##### CODE CHUNKS #####\n\n";
             }
 
-            // sort chunks in ascending order of line number and append to context
-            for chunks_by_alias in recent_chunks_by_alias.values_mut() {
-                chunks_by_alias.sort_by(|a, b| a.0.start_line.cmp(&b.0.start_line));
-                for (_, formatted_snippet) in chunks_by_alias {
+            // sort by alias, then sort by lines
+            let mut aliases = recent_chunks_by_alias.keys().copied().collect::<Vec<_>>();
+            aliases.sort();
+
+            for alias in aliases {
+                let chunks = recent_chunks_by_alias.get_mut(&alias).unwrap();
+                chunks.sort_by(|a, b| a.0.start_line.cmp(&b.0.start_line));
+                for (_, formatted_snippet) in chunks {
                     s += formatted_snippet;
                 }
             }
@@ -1275,7 +1279,7 @@ fn merge_overlapping(a: &mut CodeChunk, b: CodeChunk) -> Option<CodeChunk> {
 /// This function assumes that the input chunks do not overlap, and that the first paramter is a
 /// chunk which ends *before* the second parameter starts.
 fn merge_nearby(a: &mut CodeChunk, b: CodeChunk, contents: &str) -> Option<CodeChunk> {
-    const NEAR_THRESHOLD: u32 = 5;
+    const NEAR_THRESHOLD: u32 = 20;
 
     // This should never underflow, as we already merge overlapping chunks before getting
     // here.
