@@ -47,7 +47,7 @@ type Props = {
   dropdownPlacement?: TippyProps['placement'];
 };
 
-const sizesMap = {
+export const sizesMap = {
   small: 'w-44',
   medium: 'w-72',
   large: 'w-100',

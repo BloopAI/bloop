@@ -69,7 +69,7 @@ export type RepoType = {
   last_index: string;
   sync_status: SyncStatus;
   most_common_lang: string;
-  branches: string[];
+  branches: { name: string; last_commit_unix_secs: number }[];
   branch_filter: { select: string[] } | null;
 };
 

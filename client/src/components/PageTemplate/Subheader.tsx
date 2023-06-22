@@ -3,28 +3,10 @@ import SearchInput from '../SearchInput';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { splitPath } from '../../utils';
 import Breadcrumbs from '../Breadcrumbs';
-import { RepositoriesContext } from '../../context/repositoriesContext';
-import { UIContext } from '../../context/uiContext';
-import { DropdownNormal } from '../Dropdown';
-import { MenuItemType } from '../../types/general';
-import { indexRepoBranch } from '../../services/api';
-import { SearchContext } from '../../context/searchContext';
+import BranchSelector from './BranchSelector';
 
 const Subheader = () => {
   const { navigationHistory, navigateBack } = useContext(AppNavigationContext);
-  const { tab } = useContext(UIContext);
-  const { repositories } = useContext(RepositoriesContext);
-  const { selectedBranch, setSelectedBranch } = useContext(SearchContext);
-
-  const allBranches = useMemo(() => {
-    return repositories?.find((r) => r.ref === tab.key)?.branches || [];
-  }, [repositories, tab.key]);
-
-  const indexedBranches = useMemo(() => {
-    return (
-      repositories?.find((r) => r.ref === tab.key)?.branch_filter?.select || []
-    );
-  }, [repositories, tab.key]);
 
   const breadcrumbs = useMemo(() => {
     const reversedHistory = [...navigationHistory].reverse();
@@ -94,36 +76,7 @@ const Subheader = () => {
         <SearchInput />
       </div>
       <div className="flex-grow flex items-center justify-end max-w-[25%]">
-        {allBranches.length > 1 && (
-          <DropdownNormal
-            items={[
-              {
-                type: MenuItemType.DEFAULT,
-                text: 'All branches',
-                onClick: () => {
-                  setSelectedBranch(null);
-                },
-              },
-            ].concat(
-              allBranches.map((b) => ({
-                type: MenuItemType.DEFAULT,
-                text: b,
-                onClick: () => {
-                  setSelectedBranch(b);
-                  if (!indexedBranches.includes(b)) {
-                    indexRepoBranch(tab.key, b);
-                  }
-                },
-              })),
-            )}
-            btnClassName="w-full ellipsis"
-            titleClassName="ellipsis"
-            selected={{
-              type: MenuItemType.DEFAULT,
-              text: selectedBranch || 'All branches',
-            }}
-          />
-        )}
+        <BranchSelector />
       </div>
     </div>
   );
