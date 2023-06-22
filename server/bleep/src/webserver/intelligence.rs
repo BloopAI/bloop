@@ -230,6 +230,186 @@ fn merge(
         .collect()
 }
 
+pub(super) async fn handle(
+    Query(payload): Query<TokenInfoRequest>,
+    Extension(indexes): Extension<Arc<Indexes>>,
+) -> Result<impl IntoResponse> {
+    let repo_ref = &payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
+
+    let content = indexes
+        .file
+        .by_path(repo_ref, &payload.relative_path)
+        .await
+        .map_err(Error::user)?;
+    let hovered_range = payload.start..payload.end;
+    let hovered_text = &content.content.as_str()[hovered_range.clone()];
+
+    let scope_graph = match content.symbol_locations {
+        SymbolLocations::TreeSitter(ref graph) => graph,
+        _ => return Err(Error::user("Intelligence is unavailable for this language")),
+    };
+
+    let node = scope_graph.node_by_range(payload.start, payload.end);
+
+    let idx = match node {
+        None => {
+            return search_nav(
+                Arc::clone(&indexes),
+                repo_ref,
+                hovered_text,
+                hovered_range,
+                content.lang.clone(),
+            )
+            .await
+            .map(json);
+        }
+        Some(idx) => idx,
+    };
+
+    let src = &content.content;
+    let current_file = &content.relative_path;
+    let kind = scope_graph.symbol_name_of(idx);
+    let lang = content.lang.as_deref();
+
+    let associated_langs = match lang.map(TSLanguage::from_id) {
+        Some(Language::Supported(config)) => config.language_ids,
+        _ => &[],
+    };
+
+    let all_docs = indexes
+        .file
+        .by_repo(repo_ref, associated_langs.into_iter())
+        .await;
+
+    match &scope_graph.graph[idx] {
+        // we are already at a def
+        // - find refs from the current file
+        // - find refs from other files
+        NodeKind::Def(d) => {
+            // fetch local references with scope-graphs
+            let local_references = handle_definition_local(scope_graph, idx, &content);
+
+            // fetch repo-wide references with trivial search, only if the def is
+            // a top-level def (typically functions, ADTs, consts)
+            let repo_wide_references = if scope_graph.is_top_level(idx) {
+                let token = d.name(src.as_bytes());
+                handle_definition_repo_wide(token, kind, current_file, &all_docs)
+            } else {
+                vec![]
+            };
+
+            // merge the two
+            let references = merge([local_references], repo_wide_references);
+
+            let response = TokenInfoResponse::Definition { references };
+
+            if response.is_empty() {
+                search_nav(
+                    Arc::clone(&indexes),
+                    repo_ref,
+                    hovered_text,
+                    hovered_range,
+                    content.lang.clone(),
+                )
+                .await
+                .map(json)
+            } else {
+                Ok(json(response))
+            }
+        }
+
+        // we are at a reference:
+        // - find def from the current file
+        // - find defs from other files
+        // - find refs from the current file
+        // - find refs from other files
+        //
+        // the ordering here prefers occurrences from the current file, over occurrences
+        // from other files.
+        NodeKind::Ref(r) => {
+            // fetch local (defs, refs) with scope-graphs
+            let (local_definitions, local_references) =
+                handle_reference_local(scope_graph, idx, &content);
+
+            // fetch repo-wide (defs, refs) with trivial search
+            let token = r.name(src.as_bytes());
+            let (repo_wide_definitions, repo_wide_references) =
+                handle_reference_repo_wide(token, kind, current_file, &all_docs);
+
+            // if we already have a local-def, do not search globally
+            let definitions = if local_definitions.data.is_empty() {
+                merge([], repo_wide_definitions)
+            } else {
+                merge([local_definitions], [])
+            };
+            let references = merge([local_references], repo_wide_references);
+
+            let response = TokenInfoResponse::Reference {
+                definitions,
+                references,
+            };
+
+            if response.is_empty() {
+                search_nav(
+                    Arc::clone(&indexes),
+                    repo_ref,
+                    hovered_text,
+                    hovered_range,
+                    content.lang.clone(),
+                )
+                .await
+                .map(json)
+            } else {
+                Ok(json(response))
+            }
+        }
+
+        // we are at an import:
+        //
+        // an import is in an of itself a "definition" of a name in the current tree,
+        // it is the first time a name is introduced in a tree. however the original
+        // definition of this name can only exist in other trees (or not exist at all).
+        NodeKind::Import(i) => {
+            // fetch local refs with scope-graph
+            let local_references = handle_definition_local(scope_graph, idx, &content);
+
+            // fetch repo-wide defs with trivial search
+            let token = i.name(src.as_bytes());
+            let (repo_wide_definitions, repo_wide_references) =
+                handle_reference_repo_wide(token, kind, current_file, &all_docs);
+
+            let definitions = repo_wide_definitions
+                .into_iter()
+                .filter(FileSymbols::is_populated)
+                .collect();
+
+            let references = merge([local_references], repo_wide_references);
+
+            let response = TokenInfoResponse::Reference {
+                definitions,
+                references,
+            };
+
+            if response.is_empty() {
+                search_nav(
+                    Arc::clone(&indexes),
+                    repo_ref,
+                    hovered_text,
+                    hovered_range,
+                    content.lang.clone(),
+                )
+                .await
+                .map(json)
+            } else {
+                Ok(json(response))
+            }
+        }
+        _ => Err(Error::user(
+            "provided range is not eligible for intelligence",
+        )),
+    }
+}
+
 async fn search_nav(
     indexes: Arc<Indexes>,
     repo_ref: &RepoRef,
@@ -283,7 +463,8 @@ async fn search_nav(
                             as Box<dyn tantivy::query::Query>
                     })
                     .collect::<Vec<_>>(),
-            ))  as Box<dyn tantivy::query::Query>))
+            ))
+                as Box<dyn tantivy::query::Query>))
             .collect::<Vec<Box<dyn tantivy::query::Query>>>();
         BooleanQuery::intersection(terms)
     };
@@ -366,192 +547,6 @@ async fn search_nav(
             .filter(FileSymbols::is_populated)
             .collect(),
     })
-}
-
-pub(super) async fn handle(
-    Query(payload): Query<TokenInfoRequest>,
-    Extension(indexes): Extension<Arc<Indexes>>,
-) -> Result<impl IntoResponse> {
-    let repo_ref = &payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
-
-    let content = indexes
-        .file
-        .by_path(repo_ref, &payload.relative_path)
-        .await
-        .map_err(Error::user)?;
-
-    let scope_graph = match content.symbol_locations {
-        SymbolLocations::TreeSitter(ref graph) => graph,
-        _ => return Err(Error::user("Intelligence is unavailable for this language")),
-    };
-
-    let node = scope_graph.node_by_range(payload.start, payload.end);
-
-    let idx = match node {
-        None => {
-            let hovered_range = payload.start..payload.end;
-            let hovered_text = &content.content.as_str()[hovered_range.clone()];
-            return search_nav(
-                Arc::clone(&indexes),
-                repo_ref,
-                hovered_text,
-                hovered_range,
-                content.lang.clone(),
-            )
-            .await
-            .map(json);
-        }
-        Some(idx) => idx,
-    };
-
-    let src = &content.content;
-    let current_file = &content.relative_path;
-    let kind = scope_graph.symbol_name_of(idx);
-    let lang = content.lang.as_deref();
-
-    let associated_langs = match lang.map(TSLanguage::from_id) {
-        Some(Language::Supported(config)) => config.language_ids,
-        _ => &[],
-    };
-
-    let all_docs = indexes
-        .file
-        .by_repo(repo_ref, associated_langs.into_iter())
-        .await;
-
-    match &scope_graph.graph[idx] {
-        // we are already at a def
-        // - find refs from the current file
-        // - find refs from other files
-        NodeKind::Def(d) => {
-            // fetch local references with scope-graphs
-            let local_references = handle_definition_local(scope_graph, idx, &content);
-
-            // fetch repo-wide references with trivial search, only if the def is
-            // a top-level def (typically functions, ADTs, consts)
-            let repo_wide_references = if scope_graph.is_top_level(idx) {
-                let token = d.name(src.as_bytes());
-                handle_definition_repo_wide(token, kind, current_file, &all_docs)
-            } else {
-                vec![]
-            };
-
-            // merge the two
-            let references = merge([local_references], repo_wide_references);
-
-            let response = TokenInfoResponse::Definition { references };
-
-            if response.is_empty() {
-                let hovered_range = payload.start..payload.end;
-                let hovered_text = &content.content.as_str()[hovered_range.clone()];
-                search_nav(
-                    Arc::clone(&indexes),
-                    repo_ref,
-                    hovered_text,
-                    hovered_range,
-                    content.lang.clone(),
-                )
-                .await
-                .map(json)
-            } else {
-                Ok(json(response))
-            }
-        }
-
-        // we are at a reference:
-        // - find def from the current file
-        // - find defs from other files
-        // - find refs from the current file
-        // - find refs from other files
-        //
-        // the ordering here prefers occurrences from the current file, over occurrences
-        // from other files.
-        NodeKind::Ref(r) => {
-            // fetch local (defs, refs) with scope-graphs
-            let (local_definitions, local_references) =
-                handle_reference_local(scope_graph, idx, &content);
-
-            // fetch repo-wide (defs, refs) with trivial search
-            let token = r.name(src.as_bytes());
-            let (repo_wide_definitions, repo_wide_references) =
-                handle_reference_repo_wide(token, kind, current_file, &all_docs);
-
-            // if we already have a local-def, do not search globally
-            let definitions = if local_definitions.data.is_empty() {
-                merge([], repo_wide_definitions)
-            } else {
-                merge([local_definitions], [])
-            };
-            let references = merge([local_references], repo_wide_references);
-
-            let response = TokenInfoResponse::Reference {
-                definitions,
-                references,
-            };
-
-            if response.is_empty() {
-                let hovered_range = payload.start..payload.end;
-                let hovered_text = &content.content.as_str()[hovered_range.clone()];
-                search_nav(
-                    Arc::clone(&indexes),
-                    repo_ref,
-                    hovered_text,
-                    hovered_range,
-                    content.lang.clone(),
-                )
-                .await
-                .map(json)
-            } else {
-                Ok(json(response))
-            }
-        }
-
-        // we are at an import:
-        //
-        // an import is in an of itself a "definition" of a name in the current tree,
-        // it is the first time a name is introduced in a tree. however the original
-        // definition of this name can only exist in other trees (or not exist at all).
-        NodeKind::Import(i) => {
-            // fetch local refs with scope-graph
-            let local_references = handle_definition_local(scope_graph, idx, &content);
-
-            // fetch repo-wide defs with trivial search
-            let token = i.name(src.as_bytes());
-            let (repo_wide_definitions, repo_wide_references) =
-                handle_reference_repo_wide(token, kind, current_file, &all_docs);
-
-            let definitions = repo_wide_definitions
-                .into_iter()
-                .filter(FileSymbols::is_populated)
-                .collect();
-
-            let references = merge([local_references], repo_wide_references);
-
-            let response = TokenInfoResponse::Reference {
-                definitions,
-                references,
-            };
-
-            if response.is_empty() {
-                let hovered_range = payload.start..payload.end;
-                let hovered_text = &content.content.as_str()[hovered_range.clone()];
-                search_nav(
-                    Arc::clone(&indexes),
-                    repo_ref,
-                    hovered_text,
-                    hovered_range,
-                    content.lang.clone(),
-                )
-                .await
-                .map(json)
-            } else {
-                Ok(json(response))
-            }
-        }
-        _ => Err(Error::user(
-            "provided range is not eligible for intelligence",
-        )),
-    }
 }
 
 #[cfg(test)]

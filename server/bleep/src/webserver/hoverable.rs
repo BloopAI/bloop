@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::prelude::*;
-use crate::{indexes::Indexes, intelligence::TreeSitterFile, repo::RepoRef, text_range::TextRange};
+use crate::{indexes::Indexes, repo::RepoRef, text_range::TextRange};
 
 use axum::{extract::Query, response::IntoResponse, Extension};
 use serde::{Deserialize, Serialize};
@@ -35,12 +35,9 @@ pub(super) async fn handle(
         Err(e) => return Err(Error::user(e)),
     };
 
-    let ranges = TreeSitterFile::try_build(
-        document.content.as_bytes(),
-        document.lang.expect("requires language detection").as_str(),
-    )
-    .and_then(TreeSitterFile::hoverable_ranges)
-    .unwrap();
+    let ranges = document
+        .hoverable_ranges()
+        .ok_or(Error::user("no hoverable ranges for language"))?;
 
     Ok(json(HoverableResponse { ranges }))
 }
