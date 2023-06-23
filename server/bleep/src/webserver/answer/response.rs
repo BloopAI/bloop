@@ -20,6 +20,7 @@ impl Exchange {
             Update::Step(search_step) => self.search_steps.push(search_step),
             Update::Filesystem(search_results) => self.set_results(search_results),
             Update::Article(text) => *self.conclusion.get_or_insert_with(String::new) += &text,
+            Update::Finalize => self.finished = true,
         }
     }
 
@@ -98,6 +99,7 @@ pub enum Update {
     Step(SearchStep),
     Filesystem(Vec<SearchResult>),
     Article(String),
+    Finalize,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
