@@ -1002,7 +1002,7 @@ impl Conversation {
                 .collect::<Vec<_>>();
 
             exchange_tx
-                .send(self.update(Update::Result(search_results)))
+                .send(self.update(Update::Filesystem(search_results)))
                 .await?;
         }
 

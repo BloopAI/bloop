@@ -18,7 +18,7 @@ impl Exchange {
     pub fn apply_update(&mut self, update: Update) {
         match update {
             Update::Step(search_step) => self.search_steps.push(search_step),
-            Update::Result(search_results) => self.set_results(search_results),
+            Update::Filesystem(search_results) => self.set_results(search_results),
         }
     }
 
@@ -95,7 +95,7 @@ pub enum SearchStep {
 #[derive(Debug)]
 pub enum Update {
     Step(SearchStep),
-    Result(Vec<SearchResult>),
+    Filesystem(Vec<SearchResult>),
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
