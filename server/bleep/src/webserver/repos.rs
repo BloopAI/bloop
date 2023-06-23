@@ -85,7 +85,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
                         last_commit_unix_secs,
                     })
                 })
-                .filter(|b| b.name != "origin/HEAD")
+                .filter(|b| b.name != "origin/HEAD" && b.name.starts_with("origin/"))
                 .collect::<Vec<_>>();
 
             branches.sort_by_key(|b| b.last_commit_unix_secs);
@@ -95,7 +95,10 @@ impl From<(&RepoRef, &Repository)> for Repo {
         let branch_filter = match repo.branch_filter.clone() {
             Some(All) => Select(vec![".*".to_string()]),
             Some(Head) => Select(vec![head]),
-            Some(select @ Select(_)) => select,
+            Some(Select(mut list)) => {
+                list.insert(0, head);
+                Select(list)
+            }
             None => Select(vec![head]),
         };
 
