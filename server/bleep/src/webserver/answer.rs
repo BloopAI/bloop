@@ -1007,7 +1007,7 @@ impl Conversation {
         }
 
         ctx.track_query(
-            EventData::output_stage("answer")
+            EventData::output_stage("answer_filesystem")
                 .with_payload("query", self.last_exchange().query())
                 .with_payload("query_history", &query_history)
                 .with_payload("response", &buffer)
