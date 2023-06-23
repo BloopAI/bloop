@@ -1289,6 +1289,7 @@ enum Action {
     },
     #[serde(rename = "none")]
     Answer {
+        mode: String,
         paths: Vec<usize>,
     },
     Code {
