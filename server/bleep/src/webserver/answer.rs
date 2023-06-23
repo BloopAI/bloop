@@ -2,8 +2,8 @@ use std::{
     borrow::Cow,
     collections::{HashMap, HashSet, VecDeque},
     mem,
-    pin::pin,
     panic::AssertUnwindSafe,
+    pin::pin,
     str::FromStr,
     time::Duration,
 };
@@ -914,10 +914,22 @@ impl Conversation {
             .collect::<Vec<_>>();
 
         let mut stream = pin!(ctx.llm_gateway.chat(&messages, None).await?);
-
+        let mut response = String::new();
         while let Some(fragment) = stream.next().await {
-            exchange_tx.send(self.update(Update::Article(fragment?))).await?;
+            let fragment = fragment?;
+            response += &fragment;
+            exchange_tx
+                .send(self.update(Update::Article(fragment)))
+                .await?;
         }
+
+        ctx.track_query(
+            EventData::output_stage("answer_article")
+                .with_payload("query", self.last_exchange().query())
+                .with_payload("query_history", &query_history)
+                .with_payload("response", &response)
+                .with_payload("raw_prompt", &system_message),
+        );
 
         Ok(())
     }
