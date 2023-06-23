@@ -357,7 +357,11 @@ impl Conversation {
             }
 
             Action::Answer { paths, mode } => {
-                self.answer(ctx, exchange_tx, paths, mode).await?;
+                match mode {
+                    AnswerMode::FileSystem => self.answer_filesystem(ctx, exchange_tx, paths).await?,
+                    AnswerMode::Article => self.answer_article().await?,
+                }
+
                 return Ok(None);
             }
 
@@ -770,12 +774,15 @@ impl Conversation {
         Ok(prompt)
     }
 
-    async fn answer(
+    async fn answer_article(&mut self) -> Result<()> {
+        todo!()
+    }
+
+    async fn answer_filesystem(
         &mut self,
         ctx: &AppContext,
         exchange_tx: Sender<Exchange>,
         aliases: &[usize],
-        mode: AnswerMode,
     ) -> Result<()> {
         fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
             match v {
