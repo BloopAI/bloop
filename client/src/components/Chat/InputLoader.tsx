@@ -3,6 +3,7 @@ import { ChatLoadingStep } from '../../types/general';
 
 const InputLoader = ({ loadingSteps }: { loadingSteps: ChatLoadingStep[] }) => {
   const [state, setState] = useState(-1);
+  const [currIndex, setCurrIndex] = useState(-1);
   const steps = useRef(loadingSteps);
 
   useEffect(() => {
@@ -36,6 +37,7 @@ const InputLoader = ({ loadingSteps }: { loadingSteps: ChatLoadingStep[] }) => {
         currentLoadingItemIndex++;
         currentLoadingItemState = 0;
       }
+      setCurrIndex(currentLoadingItemIndex);
       setState(currentLoadingItemState);
     }
     (function animationLoop(i) {
@@ -60,6 +62,9 @@ const InputLoader = ({ loadingSteps }: { loadingSteps: ChatLoadingStep[] }) => {
           ][state]
         }`}
       />
+      <div className="absolute top-4 left-11">
+        {loadingSteps?.[currIndex]?.displayText}
+      </div>
     </div>
   );
 };
