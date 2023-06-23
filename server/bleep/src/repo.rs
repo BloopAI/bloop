@@ -199,6 +199,8 @@ impl From<&BranchFilter> for iterator::BranchFilter {
             BranchFilter::All => iterator::BranchFilter::All,
             BranchFilter::Head => iterator::BranchFilter::Head,
             BranchFilter::Select(regexes) => {
+                let mut regexes = regexes.clone();
+                regexes.push("HEAD".into());
                 iterator::BranchFilter::Select(RegexSet::new(regexes).unwrap())
             }
         }

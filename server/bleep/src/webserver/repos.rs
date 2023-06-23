@@ -12,6 +12,7 @@ use axum::{
     Extension, Json,
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
+use gix::refs::FullNameRef;
 use serde::{Deserialize, Serialize};
 
 use super::prelude::*;
@@ -33,12 +34,72 @@ pub(super) struct Repo {
     pub(super) last_update: DateTime<Utc>,
     pub(super) last_index: Option<DateTime<Utc>>,
     pub(super) most_common_lang: Option<String>,
-    pub(super) branch_filter: Option<BranchFilter>,
+    pub(super) branch_filter: BranchFilter,
     pub(super) branches: Vec<Branch>,
 }
 
 impl From<(&RepoRef, &Repository)> for Repo {
     fn from((key, repo): (&RepoRef, &Repository)) -> Self {
+        use crate::repo::BranchFilter::*;
+        let (head, branches) = 'branch_list: {
+            let default = ("HEAD".to_string(), vec![]);
+            let Ok(git) = gix::open(&repo.disk_path)
+	    else {
+		break 'branch_list default;
+	    };
+
+            let head = git
+                .head()
+                .ok()
+                .and_then(|head| head.referent_name().map(FullNameRef::to_owned))
+                .map(|name| name.as_bstr().to_string())
+                .unwrap_or_else(|| default.0.clone());
+
+            let Ok(refs) = git.references()
+	    else {
+		break 'branch_list default;
+	    };
+
+            let Ok(refs) = refs.all()
+	    else {
+		break 'branch_list default;
+	    };
+
+            use gix::bstr::ByteSlice;
+            let mut branches = refs
+                .filter_map(Result::ok)
+                .filter_map(|mut r| {
+                    let name = r.name().shorten().to_str_lossy().to_string();
+                    let last_commit_unix_secs = r
+                        .peel_to_id_in_place()
+                        .ok()?
+                        .object()
+                        .ok()?
+                        .try_into_commit()
+                        .ok()?
+                        .time()
+                        .ok()?
+                        .seconds() as u64;
+
+                    Some(Branch {
+                        name,
+                        last_commit_unix_secs,
+                    })
+                })
+                .filter(|b| b.name != "origin/HEAD")
+                .collect::<Vec<_>>();
+
+            branches.sort_by_key(|b| b.last_commit_unix_secs);
+            (head, branches)
+        };
+
+        let branch_filter = match repo.branch_filter.clone() {
+            Some(All) => Select(vec![".*".to_string()]),
+            Some(Head) => Select(vec![head]),
+            Some(select @ Select(_)) => select,
+            None => Select(vec![head]),
+        };
+
         Repo {
             provider: key.backend(),
             name: key.display_name(),
@@ -59,49 +120,8 @@ impl From<(&RepoRef, &Repository)> for Repo {
                 ),
             },
             most_common_lang: repo.most_common_lang.clone(),
-            branch_filter: repo.branch_filter.clone(),
-            branches: 'branch_list: {
-                let Ok(git) = gix::open(&repo.disk_path)
-		else {
-		    break 'branch_list vec![];
-		};
-
-                let Ok(refs) = git.references()
-		else {
-		    break 'branch_list vec![];
-		};
-
-                let Ok(refs) = refs.all()
-		else {
-		    break 'branch_list vec![];
-		};
-
-                use gix::bstr::ByteSlice;
-                let mut branches = refs
-                    .filter_map(Result::ok)
-                    .filter_map(|mut r| {
-                        let name = r.name().shorten().to_str_lossy().to_string();
-                        let last_commit_unix_secs = r
-                            .peel_to_id_in_place()
-                            .ok()?
-                            .object()
-                            .ok()?
-                            .try_into_commit()
-                            .ok()?
-                            .time()
-                            .ok()?
-                            .seconds() as u64;
-
-                        Some(Branch {
-                            name,
-                            last_commit_unix_secs,
-                        })
-                    })
-                    .collect::<Vec<_>>();
-
-                branches.sort_by_key(|b| b.last_commit_unix_secs);
-                branches
-            },
+            branch_filter,
+            branches,
         }
     }
 }
@@ -121,7 +141,7 @@ impl Repo {
             last_update: origin.pushed_at.unwrap(),
             last_index: None,
             most_common_lang: None,
-            branch_filter: None,
+            branch_filter: crate::repo::BranchFilter::Select(vec![]),
             branches: vec![],
         }
     }
