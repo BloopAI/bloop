@@ -34,7 +34,7 @@ const BranchItem = ({
       }}
     >
       <TextField
-        value={name}
+        value={name.replace('origin/', '')}
         icon={
           selectedBranch === name ? (
             <span className="w-5 h-5 text-bg-success">

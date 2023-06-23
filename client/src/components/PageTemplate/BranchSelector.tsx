@@ -185,7 +185,7 @@ const BranchSelector = () => {
           className="ellipsis"
         >
           <TextField
-            value={selectedBranch || 'All branches'}
+            value={selectedBranch?.replace('origin/', '') || 'All branches'}
             className="ellipsis"
           />
           <span>{isOpen ? <ChevronUpFilled /> : <ChevronDownFilled />}</span>
