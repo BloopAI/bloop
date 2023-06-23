@@ -80,7 +80,7 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
             name={r.name}
             repoRef={ref}
             sync_status={r.sync_status}
-            last_update={r.last_index}
+            last_index={r.last_index}
             lang={r.most_common_lang}
             key={ref + i}
             provider={r.provider}

@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react';
 import TextField from '../TextField';
 import { CheckIcon } from '../../icons';
 import { indexRepoBranch } from '../../services/api';
-import ThreeDotsLoader from '../Loaders/ThreeDotsLoader';
 
 type Props = {
   name: string;
@@ -11,7 +9,6 @@ type Props = {
   setOpen: (b: boolean) => void;
   repoRef: string;
   isIndexed: boolean;
-  fetchRepos: () => void;
 };
 
 const BranchItem = ({
@@ -21,21 +18,20 @@ const BranchItem = ({
   setOpen,
   repoRef,
   isIndexed,
-  fetchRepos,
 }: Props) => {
-  const [isIndexing, setIndexing] = useState(false);
-
-  useEffect(() => {
-    if (isIndexed) {
-      setIndexing(false);
-    }
-  }, [isIndexed]);
-
   return (
-    <div
+    <button
       className={`p-2.5 group w-full text-left hover:bg-bg-base-hover active:bg-transparent 
       text-label-base hover:text-label-title focus:text-label-title active:text-label-title cursor-pointer 
       flex items-center justify-between rounded text-sm duration-100`}
+      onClick={() => {
+        if (isIndexed) {
+          setSelectedBranch(name);
+          setOpen(false);
+        } else {
+          indexRepoBranch(repoRef, name);
+        }
+      }}
     >
       <TextField
         value={name}
@@ -49,26 +45,13 @@ const BranchItem = ({
         className="ellipsis w-full"
       />
       {selectedBranch !== name && (
-        <button
+        <span
           className={`caption-strong text-bg-main hover:text-bg-main-hover py-1 px-1.5`}
-          disabled={isIndexing}
-          onClick={() => {
-            if (isIndexed) {
-              setSelectedBranch(name);
-              setOpen(false);
-            } else {
-              setIndexing(true);
-              indexRepoBranch(repoRef, name).then(() => {
-                fetchRepos();
-                setTimeout(() => fetchRepos(), 1000);
-              });
-            }
-          }}
         >
-          {isIndexed ? 'Switch' : isIndexing ? <ThreeDotsLoader /> : 'Sync'}
-        </button>
+          {isIndexed ? 'Switch' : 'Sync'}
+        </span>
       )}
-    </div>
+    </button>
   );
 };
 
