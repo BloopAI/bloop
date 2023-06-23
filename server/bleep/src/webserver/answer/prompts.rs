@@ -140,7 +140,7 @@ A: "#
     )
 }
 
-pub fn final_explanation_prompt(context: &str) -> String {
+pub fn answer_filesystem_prompt(context: &str) -> String {
     struct Rule<'a> {
         title: &'a str,
         description: &'a str,

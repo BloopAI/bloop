@@ -929,7 +929,7 @@ impl Conversation {
             *content += "\n\nOutput only JSON.";
         }
 
-        let system_message = prompts::final_explanation_prompt(&context);
+        let system_message = prompts::answer_filesystem_prompt(&context);
         let messages = Some(llm_gateway::api::Message::system(&system_message))
             .into_iter()
             .chain(query_history.iter().cloned())
