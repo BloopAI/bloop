@@ -792,6 +792,139 @@ impl Conversation {
         Ok(prompt)
     }
 
+    async fn answer_context(
+        &mut self,
+        ctx: &AppContext,
+        aliases: &[usize],
+    ) -> String {
+        fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
+            match v {
+                serde_json::Value::Array(a) => Some(a),
+                _ => None,
+            }
+        }
+
+        self.canonicalize_code_chunks(ctx).await;
+
+        let mut s = "".to_owned();
+
+        let mut path_aliases = aliases
+            .iter()
+            .copied()
+            .filter(|alias| *alias < self.paths.len())
+            .collect::<Vec<_>>();
+
+        path_aliases.sort();
+        path_aliases.dedup();
+
+        if !self.paths.is_empty() {
+            s += "##### PATHS #####\npath alias, path\n";
+
+            if path_aliases.len() == 1 {
+                // Only show matching path
+                let alias = path_aliases[0];
+                let path = self.paths[alias].clone();
+                s += &format!("{alias}, {}\n", &path);
+            } else {
+                // Show all paths that have been seen
+                for (alias, path) in self.paths.iter().enumerate() {
+                    s += &format!("{alias}, {}\n", &path);
+                }
+            }
+        }
+
+        let code_chunks = if path_aliases.len() == 1 {
+            let alias = path_aliases[0];
+            let path = self.paths[alias].clone();
+
+            let file_contents = ctx
+                .app
+                .indexes
+                .file
+                .by_path(&self.repo_ref, &path)
+                .await
+                .with_context(|| format!("failed to read path: {}", path))?
+                .content;
+
+            let bpe =
+                tiktoken_rs::get_bpe_from_model("gpt-4").context("invalid model requested")?;
+
+            let trimmed_file_contents = limit_tokens(&file_contents, bpe, 4000);
+
+            vec![CodeChunk {
+                alias: alias as u32,
+                path,
+                start_line: 1,
+                end_line: trimmed_file_contents.lines().count() as u32 + 1,
+                snippet: trimmed_file_contents.to_owned(),
+            }]
+        } else {
+            self.code_chunks
+                .iter()
+                .filter(|c| path_aliases.contains(&(c.alias as usize)))
+                .cloned()
+                .collect()
+        };
+
+        const PROMPT_HEADROOM: usize = 1500;
+        let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")?;
+        let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens("gpt-4", &s)?;
+
+        // Select as many recent chunks as possible
+        let mut recent_chunks = Vec::new();
+        for chunk in code_chunks.iter().rev() {
+            let snippet = chunk
+                .snippet
+                .lines()
+                .enumerate()
+                .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
+                .collect::<String>();
+
+            let formatted_snippet =
+                format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
+
+            let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
+
+            if snippet_tokens >= remaining_prompt_tokens - PROMPT_HEADROOM {
+                debug!("Breaking at {} tokens...", remaining_prompt_tokens);
+                break;
+            }
+
+            recent_chunks.push((chunk.clone(), formatted_snippet));
+
+            remaining_prompt_tokens -= snippet_tokens;
+            debug!("{}", remaining_prompt_tokens);
+        }
+
+        // group recent chunks by path alias
+        let mut recent_chunks_by_alias: HashMap<_, _> =
+            recent_chunks
+                .into_iter()
+                .fold(HashMap::new(), |mut map, item| {
+                    map.entry(item.0.alias).or_insert_with(Vec::new).push(item);
+                    map
+                });
+
+        // write the header if we have atleast one chunk
+        if !recent_chunks_by_alias.values().all(Vec::is_empty) {
+            s += "\n##### CODE CHUNKS #####\n\n";
+        }
+
+        // sort by alias, then sort by lines
+        let mut aliases = recent_chunks_by_alias.keys().copied().collect::<Vec<_>>();
+        aliases.sort();
+
+        for alias in aliases {
+            let chunks = recent_chunks_by_alias.get_mut(&alias).unwrap();
+            chunks.sort_by(|a, b| a.0.start_line.cmp(&b.0.start_line));
+            for (_, formatted_snippet) in chunks {
+                s += formatted_snippet;
+            }
+        }
+
+        s
+    }
+
     async fn answer_article(&mut self, ctx: &AppContext) -> Result<()> {
         todo!()
     }
@@ -802,134 +935,7 @@ impl Conversation {
         exchange_tx: Sender<Exchange>,
         aliases: &[usize],
     ) -> Result<()> {
-        fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
-            match v {
-                serde_json::Value::Array(a) => Some(a),
-                _ => None,
-            }
-        }
-
-        let context = {
-            self.canonicalize_code_chunks(ctx).await;
-
-            let mut s = "".to_owned();
-
-            let mut path_aliases = aliases
-                .iter()
-                .copied()
-                .filter(|alias| *alias < self.paths.len())
-                .collect::<Vec<_>>();
-
-            path_aliases.sort();
-            path_aliases.dedup();
-
-            if !self.paths.is_empty() {
-                s += "##### PATHS #####\npath alias, path\n";
-
-                if path_aliases.len() == 1 {
-                    // Only show matching path
-                    let alias = path_aliases[0];
-                    let path = self.paths[alias].clone();
-                    s += &format!("{alias}, {}\n", &path);
-                } else {
-                    // Show all paths that have been seen
-                    for (alias, path) in self.paths.iter().enumerate() {
-                        s += &format!("{alias}, {}\n", &path);
-                    }
-                }
-            }
-
-            let code_chunks = if path_aliases.len() == 1 {
-                let alias = path_aliases[0];
-                let path = self.paths[alias].clone();
-
-                let file_contents = ctx
-                    .app
-                    .indexes
-                    .file
-                    .by_path(&self.repo_ref, &path)
-                    .await
-                    .with_context(|| format!("failed to read path: {}", path))?
-                    .content;
-
-                let bpe =
-                    tiktoken_rs::get_bpe_from_model("gpt-4").context("invalid model requested")?;
-
-                let trimmed_file_contents = limit_tokens(&file_contents, bpe, 4000);
-
-                vec![CodeChunk {
-                    alias: alias as u32,
-                    path,
-                    start_line: 1,
-                    end_line: trimmed_file_contents.lines().count() as u32 + 1,
-                    snippet: trimmed_file_contents.to_owned(),
-                }]
-            } else {
-                self.code_chunks
-                    .iter()
-                    .filter(|c| path_aliases.contains(&(c.alias as usize)))
-                    .cloned()
-                    .collect()
-            };
-
-            const PROMPT_HEADROOM: usize = 1500;
-            let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")?;
-            let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens("gpt-4", &s)?;
-
-            // Select as many recent chunks as possible
-            let mut recent_chunks = Vec::new();
-            for chunk in code_chunks.iter().rev() {
-                let snippet = chunk
-                    .snippet
-                    .lines()
-                    .enumerate()
-                    .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
-                    .collect::<String>();
-
-                let formatted_snippet =
-                    format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
-
-                let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
-
-                if snippet_tokens >= remaining_prompt_tokens - PROMPT_HEADROOM {
-                    debug!("Breaking at {} tokens...", remaining_prompt_tokens);
-                    break;
-                }
-
-                recent_chunks.push((chunk.clone(), formatted_snippet));
-
-                remaining_prompt_tokens -= snippet_tokens;
-                debug!("{}", remaining_prompt_tokens);
-            }
-
-            // group recent chunks by path alias
-            let mut recent_chunks_by_alias: HashMap<_, _> =
-                recent_chunks
-                    .into_iter()
-                    .fold(HashMap::new(), |mut map, item| {
-                        map.entry(item.0.alias).or_insert_with(Vec::new).push(item);
-                        map
-                    });
-
-            // write the header if we have atleast one chunk
-            if !recent_chunks_by_alias.values().all(Vec::is_empty) {
-                s += "\n##### CODE CHUNKS #####\n\n";
-            }
-
-            // sort by alias, then sort by lines
-            let mut aliases = recent_chunks_by_alias.keys().copied().collect::<Vec<_>>();
-            aliases.sort();
-
-            for alias in aliases {
-                let chunks = recent_chunks_by_alias.get_mut(&alias).unwrap();
-                chunks.sort_by(|a, b| a.0.start_line.cmp(&b.0.start_line));
-                for (_, formatted_snippet) in chunks {
-                    s += formatted_snippet;
-                }
-            }
-
-            s
-        };
+        let context = self.answer_context(ctx, aliases).await;
 
         let query_history = self.query_history().join("\n");
         let query = self
