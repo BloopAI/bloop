@@ -792,11 +792,7 @@ impl Conversation {
         Ok(prompt)
     }
 
-    async fn answer_context(
-        &mut self,
-        ctx: &AppContext,
-        aliases: &[usize],
-    ) -> String {
+    async fn answer_context(&mut self, ctx: &AppContext, aliases: &[usize]) -> Result<String> {
         self.canonicalize_code_chunks(ctx).await;
 
         let mut s = "".to_owned();
@@ -873,8 +869,7 @@ impl Conversation {
                 .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
                 .collect::<String>();
 
-            let formatted_snippet =
-                format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
+            let formatted_snippet = format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
 
             let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
 
@@ -915,11 +910,11 @@ impl Conversation {
             }
         }
 
-        s
+        Ok(s)
     }
 
     async fn answer_article(&mut self, ctx: &AppContext, aliases: &[usize]) -> Result<()> {
-        let context = self.answer_context(ctx, aliases).await;
+        let context = self.answer_context(ctx, aliases).await?;
         let query_history = self.query_history().join("\n");
         let query = self
             .last_exchange()
@@ -932,7 +927,7 @@ impl Conversation {
 
         let mut stream = ctx.llm_gateway.chat(&messages, None).await?.boxed();
         let mut buffer = String::new();
-        
+
         stream.try_collect::<String>().await?;
 
         todo!()
@@ -944,7 +939,7 @@ impl Conversation {
         exchange_tx: Sender<Exchange>,
         aliases: &[usize],
     ) -> Result<()> {
-        let context = self.answer_context(ctx, aliases).await;
+        let context = self.answer_context(ctx, aliases).await?;
         let query_history = self.query_history().join("\n");
         let query = self
             .last_exchange()
