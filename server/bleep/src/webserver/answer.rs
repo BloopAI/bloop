@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
     collections::{HashMap, HashSet, VecDeque},
-    mem,
+    fmt, mem,
     panic::AssertUnwindSafe,
     path::{Component, PathBuf},
     str::FromStr,
@@ -107,7 +107,7 @@ pub(super) async fn _handle(
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
-    let mut ctx = AppContext::new(app, user)
+    let mut ctx = AppContext::new(app, user, conversation_id.to_string())
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .with_query_id(query_id)
         .with_thread_id(params.thread_id)
@@ -230,6 +230,12 @@ pub(super) async fn _handle(
 pub(super) struct ConversationId {
     thread_id: uuid::Uuid,
     user_id: String,
+}
+
+impl fmt::Display for ConversationId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}::{}", self.user_id, self.thread_id)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1370,10 +1376,11 @@ struct AppContext {
 }
 
 impl AppContext {
-    fn new(app: Application, user: User) -> Result<Self> {
+    fn new(app: Application, user: User, session_id: String) -> Result<Self> {
         let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
             .temperature(0.0)
-            .bearer(app.github_token()?.map(|s| s.expose_secret().clone()));
+            .bearer(app.github_token()?.map(|s| s.expose_secret().clone()))
+            .session_id(session_id);
 
         Ok(Self {
             app,
