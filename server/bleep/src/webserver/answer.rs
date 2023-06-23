@@ -353,7 +353,7 @@ impl Conversation {
                     AnswerMode::Filesystem => {
                         self.answer_filesystem(ctx, exchange_tx, paths).await?
                     }
-                    AnswerMode::Article => self.answer_article(ctx).await?,
+                    AnswerMode::Article => self.answer_article(ctx, paths).await?,
                 }
 
                 return Ok(None);
@@ -797,13 +797,6 @@ impl Conversation {
         ctx: &AppContext,
         aliases: &[usize],
     ) -> String {
-        fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
-            match v {
-                serde_json::Value::Array(a) => Some(a),
-                _ => None,
-            }
-        }
-
         self.canonicalize_code_chunks(ctx).await;
 
         let mut s = "".to_owned();
@@ -925,7 +918,23 @@ impl Conversation {
         s
     }
 
-    async fn answer_article(&mut self, ctx: &AppContext) -> Result<()> {
+    async fn answer_article(&mut self, ctx: &AppContext, aliases: &[usize]) -> Result<()> {
+        let context = self.answer_context(ctx, aliases).await;
+        let query_history = self.query_history().join("\n");
+        let query = self
+            .last_exchange()
+            .query()
+            .context("exchange did not have a user query")?;
+
+        let prompt = prompts::answer_article_prompt(&context, query, &query_history);
+
+        let messages = [llm_gateway::api::Message::system(&prompt)];
+
+        let mut stream = ctx.llm_gateway.chat(&messages, None).await?.boxed();
+        let mut buffer = String::new();
+        
+        stream.try_collect::<String>().await?;
+
         todo!()
     }
 
@@ -936,7 +945,6 @@ impl Conversation {
         aliases: &[usize],
     ) -> Result<()> {
         let context = self.answer_context(ctx, aliases).await;
-
         let query_history = self.query_history().join("\n");
         let query = self
             .last_exchange()
@@ -955,6 +963,13 @@ impl Conversation {
 
             if buffer.is_empty() {
                 continue;
+            }
+
+            fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
+                match v {
+                    serde_json::Value::Array(a) => Some(a),
+                    _ => None,
+                }
             }
 
             let (s, _) = partial_parse::rectify_json(&buffer);
