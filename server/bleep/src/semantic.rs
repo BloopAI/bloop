@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, env, ops::Not, path::Path, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, ops::Not, path::Path, sync::Arc};
 
 use crate::{query::parser::SemanticQuery, Configuration};
 
@@ -185,16 +185,11 @@ impl Semantic {
             Err(_) => return Err(SemanticError::QdrantInitializationError),
         }
 
-        if let Some(dylib_dir) = config.dylib_dir.as_ref() {
-            init_ort_dylib(dylib_dir);
-        }
-
         let environment = Arc::new(
             Environment::builder()
                 .with_name("Encode")
                 .with_log_level(LoggingLevel::Warning)
                 .with_execution_providers([ExecutionProvider::cpu()])
-                .with_telemetry(false)
                 .build()?,
         );
 
@@ -507,25 +502,6 @@ impl Semantic {
 
     pub fn overlap_strategy(&self) -> chunk::OverlapStrategy {
         self.config.overlap.unwrap_or_default()
-    }
-}
-
-/// Initialize the `ORT_DYLIB_PATH` variable, consumed by the `ort` crate.
-///
-/// This doesn't do anything on Windows, as tauri on Windows will automatically bundle any `.dll`
-/// files found in the `target/$profile` folder. The `ort` crate by default will also copy the
-/// built dynamic library over to the `target/$profile` folder, when using the download strategy.
-fn init_ort_dylib(dylib_dir: impl AsRef<Path>) {
-    #[cfg(not(windows))]
-    {
-        #[cfg(target_os = "linux")]
-        let lib_name = "libonnxruntime.so";
-        #[cfg(target_os = "macos")]
-        let lib_name = "libonnxruntime.dylib";
-
-        let ort_dylib_path = dylib_dir.as_ref().join(lib_name);
-
-        env::set_var("ORT_DYLIB_PATH", ort_dylib_path);
     }
 }
 

@@ -64,16 +64,15 @@
         "signingIdentity": null
       },
       "resources": [
-        "model/*",
-        "dylibs/*",
-        "config/config.json"
+        "config.json",
+        "model/*"
       ],
       "shortDescription": "",
       "targets": "all",
       "windows": {
-        "certificateThumbprint": "b955de6f8483ad3b14497e798a6eef48a137931b",
+        "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
-        "timestampUrl": "http://timestamp.sectigo.com"
+        "timestampUrl": ""
       }
     },
     "security": {
