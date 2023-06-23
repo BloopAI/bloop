@@ -348,8 +348,8 @@ impl Conversation {
                 s.clone()
             }
 
-            Action::Answer { paths } => {
-                self.answer(ctx, exchange_tx, paths).await?;
+            Action::Answer { paths, mode } => {
+                self.answer(ctx, exchange_tx, paths, mode).await?;
                 return Ok(None);
             }
 
@@ -791,6 +791,7 @@ impl Conversation {
         ctx: &AppContext,
         exchange_tx: Sender<Exchange>,
         aliases: &[usize],
+        mode: AnswerMode,
     ) -> Result<()> {
         fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
             match v {
