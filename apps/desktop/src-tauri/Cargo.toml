@@ -1,6 +1,6 @@
 [package]
 name = "bloop"
-version = "0.4.6"
+version = "0.4.5"
 description = "Search code. Fast."
 authors = ["Bloop AI Developers"]
 license = "Apache-2.0"
