@@ -284,3 +284,14 @@ Respect these rules at all times:
 "#
     )
 }
+
+pub fn hypothetical_document_prompt(query: &str) -> String {
+    format!(
+        r#"Write a short code fragment that could hypothetically be returned by a code search engine as the answer to the query: {query}
+
+- The code should be written one of these languages: [Rust, Typescript, TSX, YAML]
+- Your code fragment should be between 5 and 10 lines long
+- Surround the code with triple backticks
+- Only generate a single code fragment"#
+    )
+}

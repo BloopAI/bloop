@@ -504,7 +504,7 @@ impl Conversation {
                     .send(self.update(Update::Step(SearchStep::Code(query.clone()))))
                     .await?;
 
-                let nl_query = SemanticQuery {
+                let mut nl_query = SemanticQuery {
                     target: Some(parser::Literal::Plain(Cow::Owned(query.clone()))),
                     repos: [parser::Literal::Plain(Cow::Owned(
                         self.repo_ref.display_name(),
@@ -512,6 +512,26 @@ impl Conversation {
                     .into(),
                     ..Default::default()
                 };
+
+                let mut document_history = self.llm_history.clone();
+                document_history.push_back(llm_gateway::api::Message::system(
+                    &prompts::hypothetical_document_prompt(nl_query.target().unwrap()),
+                ));
+                let history_len = std::cmp::max(document_history.len() as i32 - 5, 1) as usize;
+                let last_n_history = &document_history.make_contiguous()[history_len..];
+                dbg!(&last_n_history);
+
+                let ctx = &ctx.clone().model("gpt-3.5-turbo-0613");
+                let hypothetical_document = ctx
+                    .llm_gateway
+                    .chat(last_n_history, None)
+                    .await?
+                    .try_collect::<String>()
+                    .await?;
+
+                dbg!(&hypothetical_document);
+                // Set NL query target to document embedding
+                nl_query.target = Some(parser::Literal::Plain(Cow::Owned(hypothetical_document)));
 
                 let chunks = ctx
                     .app
