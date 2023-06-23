@@ -935,7 +935,7 @@ impl Conversation {
             .query()
             .context("exchange did not have a user query")?;
 
-        let prompt = prompts::final_explanation_prompt(&context, query, &query_history);
+        let prompt = prompts::answer_filesystem_prompt(&context, query, &query_history);
 
         let messages = [llm_gateway::api::Message::system(&prompt)];
 
