@@ -56,7 +56,6 @@ spec:
           - --source-dir=/data/repos
           - --index-dir=/data/index
           - --model-dir=/model
-          - --dylib-dir=/dylib
           - --frontend-dist=/frontend
           - --answer-api-url={{ .Values.bloop.answerApiUrl }}
           - --qdrant-url=http://{{ include "qdrant.fullname" . }}:6334

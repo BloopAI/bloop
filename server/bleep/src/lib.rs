@@ -20,11 +20,11 @@ use git_version as _;
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
 
-#[cfg(windows)]
+#[cfg(target_os = "windows")]
 use dunce::canonicalize;
 
 use secrecy::SecretString;
-#[cfg(not(windows))]
+#[cfg(not(target_os = "windows"))]
 use std::fs::canonicalize;
 
 use crate::{background::SyncQueue, indexes::Indexes, semantic::Semantic, state::RepositoryPool};
