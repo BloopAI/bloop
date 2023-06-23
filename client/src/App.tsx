@@ -6,8 +6,6 @@ import Tab from './Tab';
 import { TabsContext } from './context/tabsContext';
 import { RepoType, UITabType } from './types/general';
 import {
-  getJsonFromStorage,
-  getPlainFromStorage,
   LAST_ACTIVE_TAB_KEY,
   saveJsonToStorage,
   savePlainToStorage,
@@ -38,12 +36,19 @@ function App({ deviceContextValue }: Props) {
   const [repositories, setRepositories] = useState<RepoType[] | undefined>();
 
   const handleAddTab = useCallback(
-    (repoRef: string, repoName: string, name: string, source: RepoSource) => {
+    (
+      repoRef: string,
+      repoName: string,
+      name: string,
+      source: RepoSource,
+      branch?: string | null,
+    ) => {
       const newTab = {
         key: repoRef,
         name,
         repoName,
         source,
+        branch,
       };
       setTabs((prev) => {
         const existing = prev.find((t) => t.key === newTab.key);

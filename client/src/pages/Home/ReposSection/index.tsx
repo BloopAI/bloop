@@ -92,6 +92,7 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
             onDelete={() => {
               setReposToShow((prev) => prev.filter((r) => r.ref !== ref));
             }}
+            indexedBranches={r.branch_filter?.select}
           />
         ))}
       </div>

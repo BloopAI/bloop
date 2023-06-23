@@ -28,7 +28,9 @@ export const SearchContextProvider = ({
     )?.history || [],
   );
   const [globalRegex, setGlobalRegex] = useState(false);
-  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(
+    tab.branch || null,
+  );
 
   useEffect(() => {
     const prevHistory = (

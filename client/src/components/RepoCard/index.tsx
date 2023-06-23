@@ -27,6 +27,7 @@ type Props = {
   provider: 'local' | 'github';
   syncStatus?: { percentage: number } | null;
   onDelete: () => void;
+  indexedBranches?: string[];
 };
 
 export const STATUS_MAP = {
@@ -51,6 +52,7 @@ const RepoCard = ({
   syncStatus,
   repoRef,
   onDelete,
+  indexedBranches,
 }: Props) => {
   const { isGithubConnected } = useContext(UIContext);
   const { handleAddTab, tabs, handleRemoveTab } = useContext(TabsContext);
@@ -68,6 +70,7 @@ const RepoCard = ({
       isGh ? repoRef : repoName,
       repoName,
       isGh ? RepoSource.GH : RepoSource.LOCAL,
+      indexedBranches?.[0],
     );
   }, [repoName, provider, isGithubConnected, sync_status, last_index]);
 
