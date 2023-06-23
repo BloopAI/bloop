@@ -83,10 +83,11 @@ pub fn system(paths: &Vec<String>) -> String {
     }
 
     s.push_str(
-        r#"Follow these rules at all times:
+        r#"
+Follow these rules at all times:
 
 - If the output of a function is empty, try the same function again with different arguments or try using a different function
-- In most cases respond with functions.code or functions.path functions before responding with functions.none
+- In most cases respond with functions.code or functions.path functions before responding with functions.none. If you already have enough information to answer the query, or the user is referring to some information that you already have, respond with function.none
 - Do not assume the structure of the codebase, or the existence of files or folders
 - Do NOT respond with a function that you've used before with the same arguments
 - When you have enough information to answer the user's query respond with functions.none
@@ -185,7 +186,7 @@ For example:
         },
         Rule {
             title: "Conclusion",
-            description: "Summarise your previous steps. Provide as much information as is necessary to answer the query. If you do not have enough information needed to answer the query, do not make up an answer.",
+            description: "Summarise your previous steps. Provide as much information as is necessary to answer the query.",
             schema: "[\"con\",SUMMARY:STRING]",
             note: "This is mandatory and must appear once at the end",
             example: None,
@@ -212,7 +213,9 @@ For example:
         .collect::<String>();
 
     format!(
-        r#"{context}Your job is to answer a query about a codebase using the information above. 
+        r#"{context}
+        
+Your job is to answer a query about a codebase using the information above. 
 Your answer should be an array of arrays, where each element in the array is an instance of one of the following objects:
 
 {output_rules_str}
@@ -243,6 +246,12 @@ What's the value of MAX_FILE_LEN?
 
 [
   ["con": "None of files in the context contain the value of MAX_FILE_LEN"]
+]
+
+Where are payment requests handled?
+
+[
+  ["con", "I'm sorry I could not find any references to payment requests"]
 ]
 
 #####
