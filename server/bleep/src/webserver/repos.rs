@@ -12,7 +12,6 @@ use axum::{
     Extension, Json,
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
-use gix::refs::FullNameRef;
 use serde::{Deserialize, Serialize};
 
 use super::prelude::*;
@@ -51,8 +50,8 @@ impl From<(&RepoRef, &Repository)> for Repo {
             let head = git
                 .head()
                 .ok()
-                .and_then(|head| head.referent_name().map(FullNameRef::to_owned))
-                .map(|name| name.as_bstr().to_string())
+                .and_then(|head| head.try_into_referent())
+                .map(|r| format!("origin/{}", r.name().shorten().to_string()))
                 .unwrap_or_else(|| default.0.clone());
 
             let Ok(refs) = git.references()
