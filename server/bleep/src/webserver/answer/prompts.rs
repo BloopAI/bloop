@@ -258,7 +258,7 @@ Output only JSON."#
     )
 }
 
-pub fn answer_article_prompt(context: &str, query: &str, query_history: &str) -> String {
+pub fn answer_article_prompt(context: &str) -> String {
     format!(
         r#"{context}Your job is to answer a query about a codebase using the information above. 
 
@@ -268,13 +268,6 @@ Respect these rules at all times:
 - Do not refer to paths by alias, quote the full path surrounded by single backticks. E.g. `server/bleep/src/webserver/`
 - Refer to directories by their full paths, surrounded by single backticks
 - Your answer should always be an array of arrays, even when you only generate a conclusion
-
-#####
-
-{query_history}
-
-Above is the query and answer history. The user can see the previous queries and answers on their screen, but not anything else.
-Based on this history, answer the question: {query}
 
 #####
 
