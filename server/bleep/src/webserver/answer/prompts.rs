@@ -56,6 +56,11 @@ pub fn functions() -> serde_json::Value {
                 "parameters": {
                     "type": "object",
                     "properties": {
+                        "mode": {
+                            "type": "string",
+                            "enum": ["article", "filesystem"],
+                            "description": "The type of answer to provide. If the user's query is an explain or how query, choose article. Otherwise choose filesystem."
+                        },
                         "paths": {
                             "type": "array",
                             "items": {
@@ -64,9 +69,9 @@ pub fn functions() -> serde_json::Value {
                             }
                         }
                     },
-                    "required": ["paths"]
+                    "required": ["mode", "paths"]
                 }
-            }
+            },
         ]
     )
 }
