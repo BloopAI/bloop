@@ -923,6 +923,10 @@ impl Conversation {
                 .await?;
         }
 
+        exchange_tx
+            .send(self.update(Update::Finalize))
+            .await?;
+
         ctx.track_query(
             EventData::output_stage("answer_article")
                 .with_payload("query", self.last_exchange().query())
