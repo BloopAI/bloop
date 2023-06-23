@@ -20,6 +20,7 @@ const BranchSelector = () => {
   const [search, setSearch] = useState('');
   const [isOpen, setOpen] = useState(false);
   const [isIndexing, setIndexing] = useState(false);
+  const [indexingBranch, setIndexingBranch] = useState('');
   const [percentage, setPercentage] = useState(0);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   useOnClickOutside(contextMenuRef, () => setOpen(false));
@@ -108,6 +109,7 @@ const BranchSelector = () => {
           setOpen={setOpen}
           repoRef={tab.key}
           isIndexed={indexedBranches.includes(itemName)}
+          onIndex={setIndexingBranch}
         />
       ));
   }, [branchesToShow, indexedBranches, selectedBranch]);
@@ -131,11 +133,19 @@ const BranchSelector = () => {
           >
             {isIndexing ? (
               <div className="bg-bg-shade text-label-title caption-strong px-3 py-2.5 flex flex-col gap-2">
-                <p className="body-s text-label-title">Indexing branch...</p>
-                <BarLoader percentage={percentage} />
-                <p className="caption text-label-muted">
-                  {percentage}% complete
+                <p className="body-s text-label-title">
+                  {percentage
+                    ? `Indexing ${indexingBranch.replace('origin/', '')}...`
+                    : `${indexingBranch.replace('origin/', '')} queued...`}
                 </p>
+                {!!percentage && (
+                  <>
+                    <BarLoader percentage={percentage} />
+                    <p className="caption text-label-muted">
+                      {percentage}% complete
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <>
@@ -167,6 +177,7 @@ const BranchSelector = () => {
                         setOpen={setOpen}
                         repoRef={tab.key}
                         isIndexed={true}
+                        onIndex={() => {}}
                       />
                     )}
                     {items}

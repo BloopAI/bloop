@@ -9,6 +9,7 @@ type Props = {
   setOpen: (b: boolean) => void;
   repoRef: string;
   isIndexed: boolean;
+  onIndex: (b: string) => void;
 };
 
 const BranchItem = ({
@@ -18,6 +19,7 @@ const BranchItem = ({
   setOpen,
   repoRef,
   isIndexed,
+  onIndex,
 }: Props) => {
   return (
     <button
@@ -30,6 +32,7 @@ const BranchItem = ({
           setOpen(false);
         } else {
           indexRepoBranch(repoRef, name);
+          onIndex(name);
         }
       }}
     >
