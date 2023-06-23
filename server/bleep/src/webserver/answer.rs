@@ -350,7 +350,9 @@ impl Conversation {
 
             Action::Answer { paths, mode } => {
                 match mode {
-                    AnswerMode::FileSystem => self.answer_filesystem(ctx, exchange_tx, paths).await?,
+                    AnswerMode::Filesystem => {
+                        self.answer_filesystem(ctx, exchange_tx, paths).await?
+                    }
                     AnswerMode::Article => self.answer_article(ctx).await?,
                 }
 
