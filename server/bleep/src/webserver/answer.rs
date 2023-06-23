@@ -1330,6 +1330,7 @@ impl Action {
     }
 }
 
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
 enum AnswerMode {
     Article,
     Filesystem,
