@@ -7,7 +7,12 @@ pub static RUBY: TSLanguageConfig = TSLanguageConfig {
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
     hoverable_query: MemoizedQuery::new(
         r#"
-        (identifier) @hoverable
+        [(identifier)
+        (class_variable)
+        (instance_variable)
+        (constant)
+        (global_variable)
+        (hash_key_symbol)] @hoverable
         "#,
     ),
     namespaces: &[
