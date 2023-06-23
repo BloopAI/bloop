@@ -359,7 +359,7 @@ impl Conversation {
             Action::Answer { paths, mode } => {
                 match mode {
                     AnswerMode::FileSystem => self.answer_filesystem(ctx, exchange_tx, paths).await?,
-                    AnswerMode::Article => self.answer_article().await?,
+                    AnswerMode::Article => self.answer_article(ctx).await?,
                 }
 
                 return Ok(None);
@@ -774,7 +774,7 @@ impl Conversation {
         Ok(prompt)
     }
 
-    async fn answer_article(&mut self) -> Result<()> {
+    async fn answer_article(&mut self, ctx: &AppContext) -> Result<()> {
         todo!()
     }
 
