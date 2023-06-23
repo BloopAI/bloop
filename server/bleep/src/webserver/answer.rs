@@ -608,24 +608,18 @@ impl Conversation {
                     .collect::<Vec<_>>();
 
                 const MAX_TOKENS: usize = 15400;
-                const LINE_OVERLAP: usize = 3;
 
                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
 
-                let iter = tokio::task::spawn_blocking(|| {
-                    split_line_set_by_tokens(lines, bpe, MAX_TOKENS, LINE_OVERLAP)
-                        .collect::<Vec<_>>()
-                })
-                .await
-                .context("failed to split by token")?
-                .into_iter()
-                .map(move |lines| Result::<_>::Ok((lines, path.clone())));
+                let iter =
+                    tokio::task::spawn_blocking(|| trim_lines_by_tokens(lines, bpe, MAX_TOKENS))
+                        .await
+                        .context("failed to split by token")?;
 
-                Result::<_>::Ok(futures::stream::iter(iter))
+                Result::<_>::Ok((iter, path.clone()))
             })
             // Buffer file loading to load multiple paths at once
             .buffered(10)
-            .try_flatten()
             .map(|result| async {
                 let (lines, path) = result?;
 
@@ -1234,6 +1228,26 @@ fn split_line_set_by_tokens(
     })
 }
 
+fn trim_lines_by_tokens(lines: Vec<String>, bpe: CoreBPE, max_tokens: usize) -> Vec<String> {
+    let line_tokens = lines
+        .iter()
+        .map(|line| bpe.encode_ordinary(line).len())
+        .collect::<Vec<_>>();
+
+    let mut trimmed_lines = Vec::new();
+
+    // Push lines to `trimmed_lines` until we reach the maximum number of tokens.
+    let mut i = 0usize;
+    let mut tokens = 0usize;
+    while i < lines.len() && tokens < max_tokens {
+        tokens += line_tokens[i];
+        trimmed_lines.push(lines[i].clone());
+        i += 1;
+    }
+
+    trimmed_lines
+}
+
 fn limit_tokens(text: &str, bpe: CoreBPE, max_tokens: usize) -> &str {
     let mut tokens = bpe.encode_ordinary(text);
     tokens.truncate(max_tokens);
@@ -1476,6 +1490,41 @@ mod tests {
                 llm_gateway::api::Message::user("corge"),
             ]
         );
+    }
+
+    #[test]
+    fn test_trim_lines_by_tokens() {
+        let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
+
+        let lines = vec![
+            "fn main() {".to_string(),
+            "    one();".to_string(),
+            "    two();".to_string(),
+            "    three();".to_string(),
+            "    four();".to_string(),
+            "    five();".to_string(),
+            "    six();".to_string(),
+            "}".to_string(),
+        ];
+        assert_eq!(
+            trim_lines_by_tokens(lines, bpe.clone(), 15),
+            vec![
+                "fn main() {".to_string(),
+                "    one();".to_string(),
+                "    two();".to_string(),
+                "    three();".to_string(),
+                "    four();".to_string()
+            ]
+        );
+
+        let lines = vec!["fn main() {".to_string(), "    one();".to_string()];
+        assert_eq!(
+            trim_lines_by_tokens(lines, bpe.clone(), 15),
+            vec!["fn main() {".to_string(), "    one();".to_string()]
+        );
+
+        let expected: Vec<String> = vec![];
+        assert_eq!(trim_lines_by_tokens(vec![], bpe, 15), expected);
     }
 
     #[test]
