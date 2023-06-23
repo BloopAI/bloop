@@ -67,7 +67,6 @@
       },
       "resources": [
         "model/*",
-        "dylibs/*",
         "config/config.json"
       ],
       "shortDescription": "",
