@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     collections::{HashMap, HashSet, VecDeque},
     mem,
+    pin::pin,
     panic::AssertUnwindSafe,
     str::FromStr,
     time::Duration,
@@ -361,7 +362,7 @@ impl Conversation {
                     AnswerMode::Filesystem => {
                         self.answer_filesystem(ctx, exchange_tx, paths).await?
                     }
-                    AnswerMode::Article => self.answer_article(ctx, paths).await?,
+                    AnswerMode::Article => self.answer_article(ctx, exchange_tx, paths).await?,
                 }
 
                 return Ok(None);
@@ -897,10 +898,14 @@ impl Conversation {
         Ok(s)
     }
 
-    async fn answer_article(&mut self, ctx: &AppContext, aliases: &[usize]) -> Result<()> {
+    async fn answer_article(
+        &mut self,
+        ctx: &AppContext,
+        exchange_tx: Sender<Exchange>,
+        aliases: &[usize],
+    ) -> Result<()> {
         let context = self.answer_context(ctx, aliases).await?;
         let query_history = self.query_history().collect::<Vec<_>>();
-        let prompt = prompts::answer_article_prompt(&context);
 
         let system_message = prompts::answer_article_prompt(&context);
         let messages = Some(llm_gateway::api::Message::system(&system_message))
@@ -908,14 +913,13 @@ impl Conversation {
             .chain(query_history.iter().cloned())
             .collect::<Vec<_>>();
 
-        let output = ctx
-            .llm_gateway
-            .chat(&messages, None)
-            .await?
-            .try_collect::<String>()
-            .await?;
+        let mut stream = pin!(ctx.llm_gateway.chat(&messages, None).await?);
 
-        todo!()
+        while let Some(fragment) = stream.next().await {
+            exchange_tx.send(self.update(Update::Article(fragment?))).await?;
+        }
+
+        Ok(())
     }
 
     async fn answer_filesystem(
