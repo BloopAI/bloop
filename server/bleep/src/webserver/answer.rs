@@ -1314,7 +1314,7 @@ enum Action {
     },
     #[serde(rename = "none")]
     Answer {
-        mode: String,
+        mode: AnswerMode,
         paths: Vec<usize>,
     },
     Code {
@@ -1353,6 +1353,11 @@ impl Action {
 
         Ok(serde_json::from_value(serde_json::Value::Object(map))?)
     }
+}
+
+enum AnswerMode {
+    Article,
+    Filesystem,
 }
 
 #[derive(Clone)]
