@@ -925,10 +925,12 @@ impl Conversation {
 
         let messages = [llm_gateway::api::Message::system(&prompt)];
 
-        let mut stream = ctx.llm_gateway.chat(&messages, None).await?.boxed();
-        let mut buffer = String::new();
-
-        stream.try_collect::<String>().await?;
+        let output = ctx
+            .llm_gateway
+            .chat(&messages, None)
+            .await?
+            .try_collect::<String>()
+            .await?;
 
         todo!()
     }
