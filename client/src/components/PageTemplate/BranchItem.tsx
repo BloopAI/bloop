@@ -30,45 +30,51 @@ const BranchItem = ({
     <button
       className={`p-2.5 group w-full text-left hover:bg-bg-base-hover active:bg-transparent 
       text-label-base hover:text-label-title focus:text-label-title active:text-label-title cursor-pointer 
-      flex items-center justify-between rounded text-sm duration-100 relative`}
+      flex items-center justify-between rounded body-s duration-100 relative`}
       disabled={syncClicked && !isIndexed}
       onClick={() => {
         if (isIndexed) {
           setSelectedBranch(name);
           setOpen(false);
-        } else {
-          indexRepoBranch(repoRef, name);
-          setSyncClicked(true);
         }
       }}
     >
       <TextField
         value={name.replace('origin/', '')}
-        icon={
-          selectedBranch === name ? (
-            <span className="w-5 h-5 text-bg-success">
-              <CheckIcon />
-            </span>
-          ) : undefined
-        }
-        className="ellipsis w-full"
+        className={`ellipsis w-full ${
+          selectedBranch == name ? 'font-bold' : ''
+        }`}
       />
       {selectedBranch !== name && (
-        <span
+        <button
           className={`caption-strong ${
             syncClicked && !isIndexed
               ? 'text-label-base'
               : 'text-bg-main hover:text-bg-main-hover'
-          } py-1 px-1.5`}
+          } py-1 px-1.5 ${
+            isIndexed
+              ? ''
+              : 'opacity-0 group-hover:opacity-100 transition-all duration-200'
+          }`}
+          onClick={() => {
+            if (!isIndexed) {
+              indexRepoBranch(repoRef, name);
+              setSyncClicked(true);
+            }
+          }}
         >
-          {isIndexed
-            ? 'Switch'
-            : isIndexing
-            ? 'Indexing...'
-            : syncClicked
-            ? 'Queued...'
-            : 'Sync'}
-        </span>
+          {isIndexed ? (
+            <span className="text-bg-main-hover">
+              <CheckIcon />
+            </span>
+          ) : isIndexing ? (
+            'Indexing...'
+          ) : syncClicked ? (
+            'Queued...'
+          ) : (
+            'Sync'
+          )}
+        </button>
       )}
       {syncClicked && !isIndexed && isIndexing && (
         <div className="absolute bottom-1.5 left-0 w-full px-2">

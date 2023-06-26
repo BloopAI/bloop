@@ -11,6 +11,7 @@ import { UIContext } from '../../context/uiContext';
 import TextInput from '../TextInput';
 import { RepoType, SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
+import CloudFeaturePopup from '../CloudFeaturePopup';
 import BranchItem from './BranchItem';
 
 let eventSource: EventSource;
@@ -18,13 +19,14 @@ let eventSource: EventSource;
 const BranchSelector = () => {
   const [search, setSearch] = useState('');
   const [isOpen, setOpen] = useState(false);
+  const [isPopupOpen, setPopupOpen] = useState(false);
   const [isIndexing, setIndexing] = useState(false);
   const [indexingBranch, setIndexingBranch] = useState('');
   const [percentage, setPercentage] = useState(0);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   useOnClickOutside(contextMenuRef, () => setOpen(false));
 
-  const { apiUrl } = useContext(DeviceContext);
+  const { apiUrl, isSelfServe } = useContext(DeviceContext);
   const { tab } = useContext(UIContext);
   const { repositories, setRepositories } = useContext(RepositoriesContext);
   const { selectedBranch, setSelectedBranch } = useContext(SearchContext);
@@ -134,6 +136,10 @@ const BranchSelector = () => {
 
   return allBranches.length > 1 ? (
     <div ref={contextMenuRef} className="max-w-full">
+      <CloudFeaturePopup
+        isOpen={isPopupOpen}
+        onClose={() => setPopupOpen(false)}
+      />
       <Tippy
         onHide={() => setOpen(false)}
         visible={isOpen}
@@ -193,7 +199,13 @@ const BranchSelector = () => {
           variant="secondary"
           size="medium"
           type="button"
-          onClick={() => setOpen((prev) => !prev)}
+          onClick={() => {
+            if (isSelfServe) {
+              setOpen((prev) => !prev);
+            } else {
+              setPopupOpen(true);
+            }
+          }}
           className="ellipsis"
         >
           <TextField
