@@ -294,7 +294,7 @@ impl Conversation {
         }
     }
 
-    fn query_history(&self) -> Vec<String> {
+    fn query_history(&self) -> Vec<llm_gateway::api::Message> {
         self.exchanges
             .iter()
             .flat_map(|e| match (e.query(), e.conclusion()) {
@@ -915,13 +915,13 @@ impl Conversation {
             s
         };
 
-        let query_history = self.query_history().join("\n");
+        let query_history = self.query_history();
         let query = self
             .last_exchange()
             .query()
             .context("exchange did not have a user query")?;
 
-        let prompt = prompts::final_explanation_prompt(&context, query, &query_history);
+        let prompt = prompts::final_explanation_prompt(&context, query);
 
         let messages = [llm_gateway::api::Message::system(&prompt)];
 
