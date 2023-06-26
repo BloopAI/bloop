@@ -219,3 +219,5 @@ export const deleteConversation = (
   http
     .delete(`/answer/conversations`, { params: { thread_id } })
     .then((r) => r.data);
+
+export const getIndexQueue = () => http('/repos/queue').then((r) => r.data);

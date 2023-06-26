@@ -12,6 +12,7 @@ import TextInput from '../TextInput';
 import { RepoType, SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
 import BarLoader from '../Loaders/BarLoader';
+import { getIndexQueue } from '../../services/api';
 import BranchItem from './BranchItem';
 
 let eventSource: EventSource;
@@ -90,6 +91,14 @@ const BranchSelector = () => {
       };
     }
   }, [currentRepo?.sync_status, tab.key]);
+
+  useEffect(() => {
+    const poll = () => getIndexQueue().then(console.log);
+    let timerId = setInterval(poll, 500);
+    return () => {
+      clearInterval(timerId);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isIndexing) {
