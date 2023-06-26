@@ -31,13 +31,18 @@ impl NotifyQueue {
         q.push_back(item);
     }
 
-    pub(super) async fn pop(&self) -> Arc<SyncHandle> {
-        let permit = self.available.acquire().await.expect("fatal");
-        let mut q = self.queue.write().await;
+    pub(super) async fn pop_if(&self, pred: impl Fn(&SyncHandle) -> bool) -> Arc<SyncHandle> {
+        loop {
+            let permit = self.available.acquire().await.expect("fatal");
+            let mut q = self.queue.write().await;
 
-        permit.forget();
+            let first = q.iter().position(|h| (pred)(&h));
 
-        q.pop_front().expect("the semaphore should guard this")
+            if let Some(pos) = first {
+                permit.forget();
+                return q.remove(pos).expect("locked");
+            }
+        }
     }
 
     #[allow(unused)]

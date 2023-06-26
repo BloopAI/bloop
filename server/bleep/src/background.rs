@@ -131,24 +131,30 @@ impl SyncQueue {
             instance.runner.clone().spawn(async move {
                 while let (Ok(permit), next) = tokio::join!(
                     instance.tickets.clone().acquire_owned(),
-                    instance.queue.pop()
+                    instance
+                        .queue
+                        .pop_if(|h| !instance.active.contains(&h.reporef))
                 ) {
                     let active = Arc::clone(&instance.active);
-                    tokio::task::spawn(async move {
-                        info!(?next.reporef, "indexing");
-                        active
-                            .upsert_async(
-                                next.reporef.clone(),
-                                || next.clone(),
-                                |_, v| *v = next.clone(),
-                            )
-                            .await;
+                    match active
+                        .insert_async(next.reporef.clone(), next.clone())
+                        .await
+                    {
+                        Ok(_) => {
+                            tokio::task::spawn(async move {
+                                info!(?next.reporef, "indexing");
 
-                        let result = next.run(permit).await;
-                        _ = active.remove(&next.reporef);
+                                let result = next.run(permit).await;
+                                _ = active.remove(&next.reporef);
 
-                        debug!(?result, "sync finished");
-                    });
+                                debug!(?result, "sync finished");
+                            });
+                        }
+                        Err((_, next)) => {
+                            // this shouldn't happen, but we can handle it gracefully
+                            instance.queue.push(next).await
+                        }
+                    };
                 }
             });
         }
