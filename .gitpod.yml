@@ -21,10 +21,12 @@ tasks:
 
       # this is working around a gitpod bug
       # https://github.com/gitpod-io/gitpod/issues/524
-      tar czpf target.tar.gz target
+      cp -r ~/.cargo .
+      tar czpf target.tar.gz target .cargo
 
     command: |
       tar xzpf target.tar.gz && rm target.tar.gz
+      mv .cargo ~
       nix develop -c cargo run -p bleep --qdrant-url http://localhost:6334
     openMode: split-left
 
@@ -36,5 +38,5 @@ tasks:
 
   - name: Qdrant
     command: |
-      nix run nixpkgs#qdrant -- --config-file qdrant/config.yaml
+      nix run nixpkgs#qdrant -- --config-path qdrant/config.yaml
     openMode: split-right
