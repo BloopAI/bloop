@@ -11,6 +11,7 @@ import { hashCode, propsAreShallowEqual } from '../../../utils';
 import { Range, TokenInfoWrapped } from '../../../types/results';
 import { getTokenInfo } from '../../../services/api';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
+import { mapTokenInfo } from '../../../mappers/results';
 import CodeContainerVirtualized from './CodeContainerVirtualized';
 import CodeContainerFull from './CodeContainerFull';
 import { Metadata, BlameLine } from './index';
@@ -65,7 +66,7 @@ const CodeContainer = ({
           hoverableRange.end,
         ).then((data) => {
           setTokenInfo({
-            data: data.data,
+            data: mapTokenInfo(data.data),
             byteRange: hoverableRange,
             lineNumber,
           });
