@@ -11,8 +11,6 @@ import { UIContext } from '../../context/uiContext';
 import TextInput from '../TextInput';
 import { RepoType, SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
-import BarLoader from '../Loaders/BarLoader';
-import { getIndexQueue } from '../../services/api';
 import BranchItem from './BranchItem';
 
 let eventSource: EventSource;
@@ -49,56 +47,60 @@ const BranchSelector = () => {
 
   useEffect(() => {
     setIndexing(currentRepo?.sync_status !== SyncStatus.Done);
-    if (currentRepo?.sync_status !== SyncStatus.Done) {
-      eventSource?.close();
-      eventSource = new EventSource(
-        `${apiUrl.replace('https:', '')}/repos/status`,
-      );
-      eventSource.onmessage = (ev) => {
-        try {
-          const data = JSON.parse(ev.data);
-          if (data.ref !== tab.key) {
-            return;
+    eventSource?.close();
+    eventSource = new EventSource(
+      `${apiUrl.replace('https:', '')}/repos/status`,
+    );
+    eventSource.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        if (data.ref !== tab.key) {
+          return;
+        }
+        if (data.ev?.status_change) {
+          if (data.ev.status_change.branch_filter) {
+            setIndexingBranch(data.ev.status_change.branch_filter.select[0]);
+            setPercentage(1);
           }
-          if (data.ev?.status_change) {
-            setRepositories((prev: RepoType[] | undefined) => {
-              if (!prev) {
-                return prev;
-              }
-              const index = prev.findIndex((r) => r.ref === data.ref);
-              const newRepos = [...prev];
-              newRepos[index] = {
-                ...newRepos[index],
-                sync_status: data.ev?.status_change,
-                last_index:
-                  data.ev?.status_change === SyncStatus.Done
-                    ? new Date().toISOString()
-                    : '',
-              };
-              return newRepos;
-            });
-          }
-          if (data.ev?.index_percent) {
-            setPercentage(data.ev?.index_percent || 1);
-          }
-        } catch {}
-      };
-      eventSource.onerror = (err) => {
-        console.error('EventSource failed:', err);
-      };
-      return () => {
-        eventSource?.close();
-      };
-    }
-  }, [currentRepo?.sync_status, tab.key]);
-
-  useEffect(() => {
-    const poll = () => getIndexQueue().then(console.log);
-    let timerId = setInterval(poll, 500);
-    return () => {
-      clearInterval(timerId);
+          setRepositories((prev: RepoType[] | undefined) => {
+            if (!prev) {
+              return prev;
+            }
+            const index = prev.findIndex((r) => r.ref === data.ref);
+            const newRepos = [...prev];
+            newRepos[index] = {
+              ...newRepos[index],
+              sync_status: data.ev?.status_change,
+              last_index:
+                data.ev?.status_change === SyncStatus.Done
+                  ? new Date().toISOString()
+                  : '',
+              branch_filter: {
+                select:
+                  data.ev.status_change.branch_filter &&
+                  data.ev.status_change.status === SyncStatus.Done
+                    ? [
+                        ...(newRepos[index].branch_filter?.select || []),
+                        data.ev.status_change.branch_filter.select[0],
+                      ]
+                    : newRepos[index].branch_filter?.select || [],
+              },
+            };
+            return newRepos;
+          });
+        }
+        if (data.ev?.index_percent) {
+          setPercentage(data.ev?.index_percent || 1);
+        }
+      } catch {}
     };
-  }, []);
+    eventSource.onerror = (err) => {
+      console.error('EventSource failed:', err);
+    };
+    return () => {
+      eventSource?.close();
+    };
+  }, [currentRepo?.sync_status, tab.key]);
 
   useEffect(() => {
     if (!isIndexing) {
@@ -118,10 +120,17 @@ const BranchSelector = () => {
           setOpen={setOpen}
           repoRef={tab.key}
           isIndexed={indexedBranches.includes(itemName)}
-          onIndex={setIndexingBranch}
+          isIndexing={indexingBranch === itemName}
+          percentage={percentage}
         />
       ));
-  }, [branchesToShow, indexedBranches, selectedBranch]);
+  }, [
+    branchesToShow,
+    indexedBranches,
+    selectedBranch,
+    indexingBranch,
+    percentage,
+  ]);
 
   return allBranches.length > 1 ? (
     <div ref={contextMenuRef} className="max-w-full">
@@ -140,23 +149,6 @@ const BranchSelector = () => {
          sizesMap.medium
        } flex flex-col max-w-full`}
           >
-            {/*{isIndexing ? (*/}
-            {/*  <div className="bg-bg-shade text-label-title caption-strong px-3 py-2.5 flex flex-col gap-2">*/}
-            {/*    <p className="body-s text-label-title">*/}
-            {/*      {percentage*/}
-            {/*        ? `Indexing ${indexingBranch.replace('origin/', '')}...`*/}
-            {/*        : `${indexingBranch.replace('origin/', '')} queued...`}*/}
-            {/*    </p>*/}
-            {/*    {!!percentage && (*/}
-            {/*      <>*/}
-            {/*        <BarLoader percentage={percentage} />*/}
-            {/*        <p className="caption text-label-muted">*/}
-            {/*          {percentage}% complete*/}
-            {/*        </p>*/}
-            {/*      </>*/}
-            {/*    )}*/}
-            {/*  </div>*/}
-            {/*) : (*/}
             <>
               <div className="bg-bg-shade text-label-title caption-strong px-3 py-2.5 block">
                 Switch branch
@@ -186,14 +178,14 @@ const BranchSelector = () => {
                       setOpen={setOpen}
                       repoRef={tab.key}
                       isIndexed={true}
-                      onIndex={() => {}}
+                      isIndexing={false}
+                      percentage={100}
                     />
                   )}
                   {items}
                 </div>
               )}
             </>
-            {/*)}*/}
           </div>
         )}
       >

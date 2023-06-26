@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import TextField from '../TextField';
 import { CheckIcon } from '../../icons';
 import { indexRepoBranch } from '../../services/api';
+import ProgressBar from '../ProgressBar';
 
 type Props = {
   name: string;
@@ -9,7 +11,8 @@ type Props = {
   setOpen: (b: boolean) => void;
   repoRef: string;
   isIndexed: boolean;
-  onIndex: (b: string) => void;
+  isIndexing: boolean;
+  percentage: number;
 };
 
 const BranchItem = ({
@@ -19,20 +22,23 @@ const BranchItem = ({
   setOpen,
   repoRef,
   isIndexed,
-  onIndex,
+  isIndexing,
+  percentage,
 }: Props) => {
+  const [syncClicked, setSyncClicked] = useState(false);
   return (
     <button
       className={`p-2.5 group w-full text-left hover:bg-bg-base-hover active:bg-transparent 
       text-label-base hover:text-label-title focus:text-label-title active:text-label-title cursor-pointer 
-      flex items-center justify-between rounded text-sm duration-100`}
+      flex items-center justify-between rounded text-sm duration-100 relative`}
+      disabled={syncClicked && !isIndexed}
       onClick={() => {
         if (isIndexed) {
           setSelectedBranch(name);
           setOpen(false);
         } else {
           indexRepoBranch(repoRef, name);
-          onIndex(name);
+          setSyncClicked(true);
         }
       }}
     >
@@ -49,10 +55,25 @@ const BranchItem = ({
       />
       {selectedBranch !== name && (
         <span
-          className={`caption-strong text-bg-main hover:text-bg-main-hover py-1 px-1.5`}
+          className={`caption-strong ${
+            syncClicked && !isIndexed
+              ? 'text-label-base'
+              : 'text-bg-main hover:text-bg-main-hover'
+          } py-1 px-1.5`}
         >
-          {isIndexed ? 'Switch' : 'Sync'}
+          {isIndexed
+            ? 'Switch'
+            : isIndexing
+            ? 'Indexing...'
+            : syncClicked
+            ? 'Queued...'
+            : 'Sync'}
         </span>
+      )}
+      {syncClicked && !isIndexed && isIndexing && (
+        <div className="absolute bottom-1.5 left-0 w-full px-2">
+          <ProgressBar progress={percentage} />
+        </div>
       )}
     </button>
   );
