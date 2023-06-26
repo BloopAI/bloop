@@ -13,8 +13,7 @@ tasks:
 
       # Setup Git LFS
       git lfs pull model
-      # the rest of the git lfs stuff is coming from nix setup anyway
-      git lfs uninstall
+      git lfs install --skip-smudge
 
       # Cache build artifacts
       nix develop -c cargo build -p bleep
@@ -28,7 +27,7 @@ tasks:
     command: |
       tar xzpf target.tar.gz && rm target.tar.gz
       mv .cargo ~
-      nix develop -c cargo run -p bleep --qdrant-url http://localhost:6334
+      nix develop -c cargo run -p bleep -- --qdrant-url http://localhost:6334
     openMode: split-left
 
   - name: Frontend
