@@ -90,7 +90,7 @@ const ReportBugModal = ({
       }
       setSubmitted(true);
     },
-    [],
+    [form, envConfig.tracking_id],
   );
   const resetState = useCallback(() => {
     if (serverCrashedMessage) {
