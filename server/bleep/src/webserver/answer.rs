@@ -914,7 +914,7 @@ impl Conversation {
             s
         };
 
-        let query_history = self.query_history();
+        let query_history = self.query_history().collect::<Vec<_>>();
         let query = self
             .last_exchange()
             .query()
@@ -975,7 +975,7 @@ impl Conversation {
                 .with_payload("query", self.last_exchange().query())
                 .with_payload("query_history", &query_history)
                 .with_payload("response", &buffer)
-                .with_payload("raw_prompt", &prompt),
+                .with_payload("system_message", &system_message),
         );
 
         Ok(())
