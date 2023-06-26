@@ -923,7 +923,7 @@ impl Conversation {
         let system_message = prompts::final_explanation_prompt(&context, query);
         let messages = Some(llm_gateway::api::Message::system(&system_message))
             .into_iter()
-            .chain(query_history)
+            .chain(query_history.iter().cloned())
             .collect::<Vec<_>>();
 
         let mut stream = ctx.llm_gateway.chat(&messages, None).await?.boxed();
