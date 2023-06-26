@@ -12,8 +12,9 @@ tasks:
     init: |
 
       # Setup Git LFS
-      git lfs install --skip-smudge
-      git lfs pull
+      git lfs pull model
+      # the rest of the git lfs stuff is coming from nix setup anyway
+      git lfs uninstall
 
       # Cache build artifacts
       nix develop -c cargo build -p bleep
