@@ -1379,6 +1379,7 @@ impl Action {
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
 enum AnswerMode {
     Article,
     Filesystem,
