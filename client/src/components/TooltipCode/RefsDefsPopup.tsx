@@ -141,31 +141,33 @@ const RefsDefsPopup = ({
                     activeStyle="secondary"
                   />
                 </div>
-                {d.data.map((line, i) => (
-                  <div
-                    key={i}
-                    className="py-2 px-3 code-s flex gap-1 cursor-pointer overflow-auto"
-                    onClick={() =>
-                      onRefDefClick(line.snippet.line_range.start, d.file)
-                    }
-                  >
+                {d.data
+                  .filter((dd) => filters.includes(dd.kind))
+                  .map((line, i) => (
                     <div
-                      className={`uppercase caption w-8 flex-shrink-0 flex-grow-0 ${
-                        colorMap[line.kind]
-                      }`}
+                      key={i}
+                      className="py-2 px-3 code-s flex gap-1 cursor-pointer overflow-auto"
+                      onClick={() =>
+                        onRefDefClick(line.snippet.line_range.start, d.file)
+                      }
                     >
-                      {line.kind.slice(0, 3)}
+                      <div
+                        className={`uppercase caption w-8 flex-shrink-0 flex-grow-0 ${
+                          colorMap[line.kind]
+                        }`}
+                      >
+                        {line.kind.slice(0, 3)}
+                      </div>
+                      <Code
+                        code={line.snippet.data}
+                        lineStart={line.snippet.line_range.start}
+                        highlights={line.snippet.highlights}
+                        language={language}
+                        removePaddings
+                        lineHoverEffect
+                      />
                     </div>
-                    <Code
-                      code={line.snippet.data}
-                      lineStart={line.snippet.line_range.start}
-                      highlights={line.snippet.highlights}
-                      language={language}
-                      removePaddings
-                      lineHoverEffect
-                    />
-                  </div>
-                ))}
+                  ))}
               </div>
             ))}
         </div>
