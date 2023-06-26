@@ -217,12 +217,12 @@ const CodeFull = ({
   const tokens = useMemo(() => tokenizeCode(code, lang), [code, lang]);
 
   const onRefDefClick = useCallback(
-    (item: TokenInfoItem, filePath: string) => {
+    (lineNum: number, filePath: string) => {
       if (filePath === relativePath) {
-        setScrollToIndex([item.line, item.line]);
+        setScrollToIndex([lineNum, lineNum]);
       } else {
         navigateRepoPath(repoName, filePath, {
-          scroll_line_index: `${item.line}_${item.line}`,
+          scroll_line_index: `${lineNum}_${lineNum}`,
         });
       }
     },

@@ -158,32 +158,3 @@ export const mapFileResult = (fileItem: FileItem) => {
     ),
   };
 };
-
-const mapTokenInfo = (tokenInfoItem: TokenInfoItem[]): TokenInfoFile[] => {
-  return tokenInfoItem?.map((definition) => {
-    return {
-      path: definition.file,
-      items: definition.data.map((item) => {
-        const trimmedLen =
-          item.snippet.data.length - item.snippet.data.trimStart().length;
-        return {
-          code: item.snippet.data.replace('\n', '').trim(),
-          line: item.start.line,
-          highlights: item.snippet.highlights.map((r) => ({
-            start: r.start - trimmedLen,
-            end: r.end - trimmedLen,
-          })),
-        };
-      }),
-    };
-  });
-};
-
-export const mapTokenInfoData = (tokenInfo: TokenInfoResponse): TokenInfo => {
-  return {
-    definitions: tokenInfo.definitions
-      ? mapTokenInfo(tokenInfo.definitions)
-      : [],
-    references: tokenInfo.references ? mapTokenInfo(tokenInfo.references) : [],
-  };
-};

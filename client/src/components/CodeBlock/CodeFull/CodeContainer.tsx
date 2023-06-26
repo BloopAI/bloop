@@ -8,9 +8,8 @@ import React, {
 } from 'react';
 import { Token as TokenType } from '../../../types/prism';
 import { hashCode, propsAreShallowEqual } from '../../../utils';
-import { Range, TokenInfoItem, TokenInfoWrapped } from '../../../types/results';
+import { Range, TokenInfoWrapped } from '../../../types/results';
 import { getTokenInfo } from '../../../services/api';
-import { mapTokenInfoData } from '../../../mappers/results';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
 import CodeContainerVirtualized from './CodeContainerVirtualized';
 import CodeContainerFull from './CodeContainerFull';
@@ -35,7 +34,7 @@ type Props = {
   scrollToIndex?: number[];
   searchTerm: string;
   highlightColor?: string | null;
-  onRefDefClick: (item: TokenInfoItem, filePath: string) => void;
+  onRefDefClick: (lineNum: number, filePath: string) => void;
   width: number;
   height: number;
 };
@@ -51,8 +50,7 @@ const CodeContainer = ({
   ...otherProps
 }: Props) => {
   const [tokenInfo, setTokenInfo] = useState<TokenInfoWrapped>({
-    definitions: [],
-    references: [],
+    data: [],
     byteRange: null,
     lineNumber: -1,
   });
@@ -67,7 +65,7 @@ const CodeContainer = ({
           hoverableRange.end,
         ).then((data) => {
           setTokenInfo({
-            ...mapTokenInfoData(data),
+            data: data.data,
             byteRange: hoverableRange,
             lineNumber,
           });
@@ -78,14 +76,13 @@ const CodeContainer = ({
   );
 
   const handleRefsDefsClick = useCallback(
-    (item: TokenInfoItem, filePath: string) => {
+    (lineNum: number, filePath: string) => {
       setTokenInfo({
-        definitions: [],
-        references: [],
+        data: [],
         byteRange: null,
         lineNumber: -1,
       });
-      onRefDefClick(item, filePath);
+      onRefDefClick(lineNum, filePath);
     },
     [onRefDefClick],
   );

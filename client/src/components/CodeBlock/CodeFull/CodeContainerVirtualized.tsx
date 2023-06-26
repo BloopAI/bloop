@@ -3,7 +3,7 @@ import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import CodeLine from '../Code/CodeLine';
 import { Token as TokenType } from '../../../types/prism';
 import { propsAreShallowEqual } from '../../../utils';
-import { Range, TokenInfoItem, TokenInfoWrapped } from '../../../types/results';
+import { Range, TokenInfoWrapped } from '../../../types/results';
 import { getOffsetForIndexAndAlignment } from '../../../utils/scrollUtils';
 import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
@@ -30,7 +30,7 @@ type Props = {
   getHoverableContent: (range: Range, lineNumber: number) => void;
   onMouseSelectEnd: (lineNum: number, charNum: number) => void;
   tokenInfo: TokenInfoWrapped;
-  handleRefsDefsClick: (item: TokenInfoItem, filePath: string) => void;
+  handleRefsDefsClick: (lineNum: number, filePath: string) => void;
 };
 
 const CodeContainerVirtualized = ({

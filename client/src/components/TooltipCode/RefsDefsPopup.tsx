@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { TippyProps } from '@tippyjs/react';
 import BreadcrumbsPath from '../BreadcrumbsPath';
 import Code from '../CodeBlock/Code';
-import { TokenInfo, TokenInfoItem, TokenInfoType } from '../../types/results';
+import { TokenInfoType, TokenInfoWrapped } from '../../types/results';
 import Badge from './Badge';
 import { TypeMap } from './index';
 
@@ -49,9 +49,9 @@ const getTailPosition = (
 
 type Props = {
   placement: TippyProps['placement'];
-  data: TokenInfo;
+  data: TokenInfoWrapped;
   repoName: string;
-  onRefDefClick: (lineNum: TokenInfoItem, filePath: string) => void;
+  onRefDefClick: (lineNum: number, filePath: string) => void;
   language: string;
 };
 
@@ -79,7 +79,19 @@ const RefsDefsPopup = ({
 
   const tailPosition = useMemo(() => getTailPosition(placement), [placement]);
 
-  return !(data.definitions?.length || data.references?.length) ? null : (
+  const references = useMemo(() => {
+    return data.data.filter(
+      (d) => d.data.filter((t) => t.kind === TypeMap.REF).length,
+    );
+  }, [data.data]);
+
+  const definitions = useMemo(() => {
+    return data.data.filter(
+      (d) => d.data.filter((t) => t.kind === TypeMap.DEF).length,
+    );
+  }, [data.data]);
+
+  return !data.data?.length ? null : (
     <div className="relative py-[10px] w-fit z-10">
       <span
         className={`absolute ${
@@ -103,56 +115,51 @@ const RefsDefsPopup = ({
               type={TypeMap.DEF}
               onClick={toggleFilter}
               active={filters.includes(TypeMap.DEF)}
-              disabled={!data.definitions?.length}
+              disabled={!definitions?.length}
               tooltipText="The line of code where identifier is defined"
             />
             <Badge
               type={TypeMap.REF}
               onClick={toggleFilter}
               active={filters.includes(TypeMap.REF)}
-              disabled={!data.references?.length}
+              disabled={!references?.length}
               tooltipText="The line of code where the identifier is referenced"
             />
           </div>
         </div>
         <div className="bg-bg-base rounded-b text-xs overflow-auto max-h-80">
-          {[
-            ...(data.definitions || []).map((d) => ({
-              ...d,
-              kind: TypeMap.DEF,
-            })),
-            ...(data.references || []).map((d) => ({
-              ...d,
-              kind: TypeMap.REF,
-            })),
-          ]
-            .filter((d) => filters.includes(d.kind))
+          {data.data
+            .filter(
+              (d) => d.data.filter((dd) => filters.includes(dd.kind)).length,
+            )
             .map((d, i) => (
-              <div className="border-b border-bg-border" key={d.path + i}>
+              <div className="border-b border-bg-border" key={d.file + i}>
                 <div className="px-3 pt-2">
                   <BreadcrumbsPath
-                    path={d.path}
+                    path={d.file}
                     repo={repoName}
                     activeStyle="secondary"
                   />
                 </div>
-                {d.items.map((line, i) => (
+                {d.data.map((line, i) => (
                   <div
                     key={i}
                     className="py-2 px-3 code-s flex gap-1 cursor-pointer overflow-auto"
-                    onClick={() => onRefDefClick(line, d.path)}
+                    onClick={() =>
+                      onRefDefClick(line.snippet.line_range.start, d.file)
+                    }
                   >
                     <div
                       className={`uppercase caption w-8 flex-shrink-0 flex-grow-0 ${
-                        colorMap[d.kind]
+                        colorMap[line.kind]
                       }`}
                     >
-                      {d.kind.slice(0, 3)}
+                      {line.kind.slice(0, 3)}
                     </div>
                     <Code
-                      code={line.code}
-                      lineStart={line.line}
-                      highlights={line.highlights}
+                      code={line.snippet.data}
+                      lineStart={line.snippet.line_range.start}
+                      highlights={line.snippet.highlights}
                       language={language}
                       removePaddings
                       lineHoverEffect
