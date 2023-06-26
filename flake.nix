@@ -186,10 +186,6 @@
             ]);
 
             src = pkgs.lib.sources.cleanSource ./.;
-
-            shellHook = ''
-              npm i
-            '';
           }).overrideAttrs (old: envVars);
         };
 

@@ -26,10 +26,16 @@ tasks:
 
     command: |
       tar xzpf target.tar.gz && rm target.tar.gz
-      nix develop -c cargo run -p bleep
+      nix develop -c cargo run -p bleep --qdrant-url http://localhost:6334
     openMode: split-left
 
   - name: Frontend
     command: |
+      nix develop -c npm i
       nix develop -c npm run start-web
+    openMode: split-right
+
+  - name: Qdrant
+    command: |
+      nix run nixpkgs#qdrant -- --config-file qdrant/config.yaml
     openMode: split-right
