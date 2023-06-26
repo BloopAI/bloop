@@ -294,7 +294,7 @@ impl Conversation {
         }
     }
 
-    fn query_history(&self) -> Vec<llm_gateway::api::Message> {
+    fn query_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> {
         self.exchanges
             .iter()
             .flat_map(|e| match (e.query(), e.conclusion()) {
@@ -303,7 +303,6 @@ impl Conversation {
                 _ => vec![],
             })
             .map(|(author, message)| format!("{author}: {message}"))
-            .collect()
     }
 
     // Generate a summary of the last exchange
