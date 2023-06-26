@@ -46,13 +46,8 @@ fn update_branch_filters(
         };
 
         repo_pool.update(&reporef, |_, v| {
-            let branches = {
-                let mut b = std::mem::take(branches);
-                b.insert("HEAD".into());
-                b.into_iter().collect()
-            };
-
-            let new_filter = Some(BranchFilter::Select(branches));
+            let effective = std::mem::take(branches).into_iter().collect();
+            let new_filter = Some(BranchFilter::Select(effective));
             if new_filter != v.branch_filter {
                 v.branch_filter = new_filter;
                 to_sync.push(reporef.clone());

@@ -2,6 +2,7 @@ use anyhow::Context;
 use regex::RegexSet;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
+    collections::BTreeSet,
     fmt::{self, Display},
     path::{Path, PathBuf},
     str::FromStr,
@@ -193,6 +194,25 @@ pub enum BranchFilter {
     Select(Vec<String>),
 }
 
+impl BranchFilter {
+    pub(crate) fn patch(&self, old: Option<&BranchFilter>) -> Option<BranchFilter> {
+        let Some(BranchFilter::Select(ref old_list)) = old
+        else {
+	    return Some(self.clone());
+	};
+
+        let BranchFilter::Select(new_list) = self
+        else {
+	    return Some(self.clone());
+	};
+
+        let mut updated = old_list.iter().collect::<BTreeSet<_>>();
+        updated.extend(new_list);
+
+        Some(BranchFilter::Select(updated.into_iter().cloned().collect()))
+    }
+}
+
 impl From<&BranchFilter> for iterator::BranchFilter {
     fn from(value: &BranchFilter) -> Self {
         match value {
@@ -286,7 +306,11 @@ impl Repository {
         self.sync_status = SyncStatus::Queued;
     }
 
-    pub(crate) fn sync_done_with(&mut self, metadata: Arc<RepoMetadata>) {
+    pub(crate) fn sync_done_with(
+        &mut self,
+        new_branch_filters: Option<&BranchFilter>,
+        metadata: Arc<RepoMetadata>,
+    ) {
         self.last_index_unix_secs = get_unix_time(SystemTime::now());
         self.last_commit_unix_secs = metadata.last_commit_unix_secs;
         self.most_common_lang = metadata
@@ -294,6 +318,11 @@ impl Repository {
             .most_common_lang()
             .map(|l| l.to_string())
             .or_else(|| self.most_common_lang.take());
+
+        if let Some(bf) = new_branch_filters {
+            self.branch_filter = bf.patch(self.branch_filter.as_ref());
+        }
+
         self.sync_status = SyncStatus::Done;
     }
 }

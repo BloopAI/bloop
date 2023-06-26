@@ -1,12 +1,13 @@
 use std::{collections::HashSet, hash::Hash, time::Duration};
 
 use crate::{
+    background::QueuedRepoStatus,
     repo::{Backend, BranchFilter, RepoRef, Repository, SyncStatus},
     state::RepositoryPool,
     Application,
 };
 use axum::{
-    extract::Query,
+    extract::{Query, State},
     http::StatusCode,
     response::{sse, IntoResponse, Sse},
     Extension, Json,
@@ -51,7 +52,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
                 .head()
                 .ok()
                 .and_then(|head| head.try_into_referent())
-                .map(|r| format!("origin/{}", r.name().shorten().to_string()))
+                .map(|r| format!("origin/{}", r.name().shorten()))
                 .unwrap_or_else(|| default.0.clone());
 
             let Ok(refs) = git.references()
@@ -166,6 +167,7 @@ impl PartialEq for Repo {
 pub(super) enum ReposResponse {
     List(Vec<Repo>),
     Item(Repo),
+    SyncQueue(Vec<QueuedRepoStatus>),
     SyncQueued,
     Deleted,
 }
@@ -202,11 +204,17 @@ pub(super) struct RepoParams {
     repo: RepoRef,
 }
 
+/// Live report of the state of the sync queue
+//
+pub(super) async fn queue(State(app): State<Application>) -> impl IntoResponse {
+    json(ReposResponse::SyncQueue(app.sync_queue.read_queue().await))
+}
+
 /// Retrieve all indexed repositories
 //
 pub(super) async fn indexed(
     Query(IndexedParams { repo }): Query<IndexedParams>,
-    app: Extension<Application>,
+    app: State<Application>,
 ) -> Result<impl IntoResponse> {
     if let Some(repo) = repo {
         return get_by_id(Query(RepoParams { repo }), app).await;
@@ -224,7 +232,7 @@ pub(super) async fn indexed(
 /// Get details of an indexed repository based on their id
 pub(super) async fn get_by_id(
     Query(RepoParams { repo }): Query<RepoParams>,
-    Extension(app): Extension<Application>,
+    State(app): State<Application>,
 ) -> Result<Json<super::Response<'static>>> {
     match app
         .repo_pool
@@ -240,7 +248,7 @@ pub(super) async fn get_by_id(
 //
 pub(super) async fn delete_by_id(
     Query(RepoParams { repo }): Query<RepoParams>,
-    Extension(app): Extension<Application>,
+    State(app): State<Application>,
 ) -> Result<impl IntoResponse> {
     match app.write_index().remove(repo).await {
         Some(_) => Ok(json(ReposResponse::Deleted)),
@@ -251,7 +259,7 @@ pub(super) async fn delete_by_id(
 /// Synchronize a repo by its id
 pub(super) async fn sync(
     Query(RepoParams { repo }): Query<RepoParams>,
-    Extension(app): Extension<Application>,
+    State(app): State<Application>,
 ) -> Result<impl IntoResponse> {
     app.write_index().sync_and_index(vec![repo]).await;
     Ok(json(ReposResponse::SyncQueued))
@@ -260,7 +268,7 @@ pub(super) async fn sync(
 /// Synchronize a repo by its id
 pub(super) async fn delete_sync(
     Query(RepoParams { repo }): Query<RepoParams>,
-    Extension(app): Extension<Application>,
+    State(app): State<Application>,
 ) -> Result<impl IntoResponse> {
     app.write_index().cancel(repo).await;
     Ok(json(ReposResponse::SyncQueued))
@@ -268,7 +276,7 @@ pub(super) async fn delete_sync(
 
 /// List all repositories that are either indexed, or available for indexing
 //
-pub(super) async fn available(Extension(app): Extension<Application>) -> impl IntoResponse {
+pub(super) async fn available(State(app): State<Application>) -> impl IntoResponse {
     let unknown_github = app
         .credentials
         .github()
@@ -317,7 +325,7 @@ pub(super) struct SetIndexed {
 /// This will automatically trigger a sync of currently un-indexed repositories.
 //
 pub(super) async fn set_indexed(
-    Extension(app): Extension<Application>,
+    State(app): State<Application>,
     Json(new_list): Json<SetIndexed>,
 ) -> impl IntoResponse {
     let mut repo_list = new_list.indexed.into_iter().collect::<HashSet<_>>();
@@ -343,45 +351,21 @@ pub(super) async fn set_indexed(
 //
 pub(super) async fn patch_indexed(
     Query(RepoParams { repo }): Query<RepoParams>,
-    Extension(app): Extension<Application>,
+    State(app): State<Application>,
     Json(patch): Json<RepositoryPatch>,
-) -> Result<impl IntoResponse> {
-    let _parsed = patch
-        .branch_filter
-        .as_ref()
-        .map(crate::repo::iterator::BranchFilter::from);
+) -> impl IntoResponse {
+    let _parsed = crate::repo::iterator::BranchFilter::from(&patch.branch_filter);
 
-    let ok = app
-        .repo_pool
-        .update_async(&repo, |_k, v| {
-            let Some(BranchFilter::Select(ref mut old_list)) = v.branch_filter
-            else {
-		v.branch_filter = patch.branch_filter;
-		return;
-	    };
-
-            let Some(BranchFilter::Select(new_list)) = patch.branch_filter
-            else {
-		v.branch_filter = patch.branch_filter;
-		return;
-	    };
-
-            old_list.extend(new_list);
-        })
+    app.write_index()
+        .sync_and_index_branches(repo, patch.branch_filter)
         .await;
 
-    match ok {
-        Some(_) => {
-            app.write_index().sync_and_index(vec![repo]).await;
-            Ok(json(ReposResponse::SyncQueued))
-        }
-        None => Err(Error::new(ErrorKind::NotFound, "Can't find repository")),
-    }
+    json(ReposResponse::SyncQueued)
 }
 
 #[derive(Deserialize)]
 pub(super) struct RepositoryPatch {
-    branch_filter: Option<BranchFilter>,
+    branch_filter: BranchFilter,
 }
 
 #[derive(Deserialize)]
@@ -394,7 +378,7 @@ pub(super) struct ScanRequest {
 ///
 pub(super) async fn scan_local(
     Query(scan_request): Query<ScanRequest>,
-    Extension(app): Extension<Application>,
+    State(app): State<Application>,
 ) -> impl IntoResponse {
     let root = std::path::Path::new(&scan_request.path);
 

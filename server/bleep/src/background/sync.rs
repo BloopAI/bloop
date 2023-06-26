@@ -16,6 +16,7 @@ use super::control::SyncPipes;
 
 pub(crate) struct SyncHandle {
     pub(crate) reporef: RepoRef,
+    pub(crate) new_branch_filters: Option<crate::repo::BranchFilter>,
     pub(crate) app: Application,
     pub(super) pipes: Arc<SyncPipes>,
     exited: flume::Sender<SyncStatus>,
@@ -90,6 +91,7 @@ impl SyncHandle {
         app: Application,
         reporef: RepoRef,
         status: super::ProgressStream,
+        new_branch_filters: Option<crate::repo::BranchFilter>,
     ) -> Arc<Self> {
         let (exited, exit_signal) = flume::bounded(1);
         let pipes = SyncPipes::new(reporef.clone(), status).into();
@@ -97,6 +99,7 @@ impl SyncHandle {
             app,
             pipes,
             reporef,
+            new_branch_filters,
             exited,
             exit_signal,
         }
@@ -137,9 +140,9 @@ impl SyncHandle {
             Ok(Either::Left(status)) => Some(status),
             Ok(Either::Right(state)) => {
                 info!("commit complete; indexing done");
-                self.app
-                    .repo_pool
-                    .update(&self.reporef, |_k, repo| repo.sync_done_with(state));
+                self.app.repo_pool.update(&self.reporef, |_k, repo| {
+                    repo.sync_done_with(self.new_branch_filters.as_ref(), state)
+                });
 
                 // technically `sync_done_with` does this, but we want to send notifications
                 self.set_status(|_| SyncStatus::Done)
@@ -165,10 +168,17 @@ impl SyncHandle {
         } = self.app;
 
         let writers = indexes.writers().await.map_err(SyncError::Tantivy)?;
-        let repo = repo_pool
-            .read_async(&self.reporef, |_k, v| v.clone())
-            .await
-            .unwrap();
+        let repo = {
+            let mut orig = repo_pool
+                .read_async(&self.reporef, |_k, v| v.clone())
+                .await
+                .unwrap();
+
+            if let Some(ref bf) = self.new_branch_filters {
+                orig.branch_filter = bf.patch(orig.branch_filter.as_ref());
+            }
+            orig
+        };
 
         let indexed = match repo.sync_status {
             current @ (Uninitialized | Syncing | Indexing) => return Ok(Either::Left(current)),

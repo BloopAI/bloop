@@ -20,7 +20,7 @@ impl BranchFilter {
     fn filter(&self, is_head: bool, branch: &str) -> bool {
         match self {
             BranchFilter::All => true,
-            BranchFilter::Select(patterns) => patterns.is_match(branch),
+            BranchFilter::Select(patterns) => is_head || patterns.is_match(branch),
             BranchFilter::Head => is_head,
         }
     }
