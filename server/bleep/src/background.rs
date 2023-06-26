@@ -3,7 +3,7 @@ use tokio::sync::Semaphore;
 use tracing::{debug, info};
 
 use crate::{
-    repo::{RepoRef, SyncStatus},
+    repo::{BranchFilter, RepoRef, SyncStatus},
     Application, Configuration,
 };
 
@@ -32,7 +32,10 @@ pub struct Progress {
 #[serde(rename_all = "snake_case")]
 pub enum ProgressEvent {
     IndexPercent(u8),
-    StatusChange(SyncStatus),
+    StatusChange {
+        branch_filter: Option<BranchFilter>,
+        status: SyncStatus,
+    },
 }
 
 type Task = Pin<Box<dyn Future<Output = ()> + Send + Sync>>;
@@ -197,7 +200,7 @@ impl SyncQueue {
 #[derive(serde::Serialize, Debug)]
 pub(crate) struct QueuedRepoStatus {
     reporef: RepoRef,
-    branch_filter: Option<crate::repo::BranchFilter>,
+    branch_filter: Option<BranchFilter>,
     state: QueueState,
 }
 
@@ -228,7 +231,7 @@ impl BoundSyncQueue {
     pub(crate) async fn sync_and_index_branches(
         self,
         reporef: RepoRef,
-        new_branches: crate::repo::BranchFilter,
+        new_branches: BranchFilter,
     ) {
         info!(%reporef, ?new_branches, "queueing for sync with branches");
         let handle = SyncHandle::new(

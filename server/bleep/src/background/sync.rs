@@ -328,7 +328,7 @@ impl SyncHandle {
             repo.sync_status.clone()
         })?;
 
-        self.pipes.status(new_status.clone());
+        self.pipes.status(self, new_status.clone());
         Some(new_status)
     }
 
@@ -343,7 +343,7 @@ impl SyncHandle {
             .get()
             .clone();
 
-        self.pipes.status(current.sync_status.clone());
+        self.pipes.status(self, current.sync_status.clone());
         current
     }
 
@@ -362,7 +362,7 @@ impl SyncHandle {
             .await;
 
         if let Some(Ok(new)) = new {
-            self.pipes.status(new);
+            self.pipes.status(self, new);
             Some(Ok(()))
         } else {
             new.map(|inner| inner.map(|_| ()))
