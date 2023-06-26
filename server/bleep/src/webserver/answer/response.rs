@@ -21,8 +21,14 @@ impl Exchange {
     pub fn apply_update(&mut self, update: Update) {
         match update {
             Update::Step(search_step) => self.search_steps.push(search_step),
-            Update::Filesystem(search_results) => self.set_results(search_results),
-            Update::Article(text) => *self.conclusion.get_or_insert_with(String::new) += &text,
+            Update::Filesystem(search_results) => {
+                self.set_results(search_results);
+                self.mode = AnswerMode::Filesystem;
+            },
+            Update::Article(text) => {
+                *self.conclusion.get_or_insert_with(String::new) += &text;
+                self.mode = AnswerMode::Article;
+            },
             Update::Finalize => self.finished = true,
         }
     }
