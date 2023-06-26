@@ -135,7 +135,7 @@ A: "#
     )
 }
 
-pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str) -> String {
+pub fn final_explanation_prompt(context: &str, query: &str) -> String {
     struct Rule<'a> {
         title: &'a str,
         description: &'a str,
@@ -248,10 +248,7 @@ What's the value of MAX_FILE_LEN?
 
 #####
 
-{query_history}
-
-Above is the query and answer history. The user can see the previous queries and answers on their screen, but not anything else.
-Based on this history, answer the question: {query}
+Answer the question: {query}
 
 #####
 
