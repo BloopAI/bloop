@@ -270,8 +270,20 @@ pub fn answer_article_prompt(context: &str, query: &str, query_history: &str) ->
 Summarise your previous steps. Provide as much information as is necessary to answer the query. If you do not have enough information needed to answer the query, do not make up an answer.
 
 Respect these rules at all times:
-- Do not refer to paths by alias, quote the full path surrounded by single backticks. E.g. `server/bleep/src/webserver/`
-- Refer to directories by their full paths, surrounded by single backticks
+- Do not refer to paths by alias
+- Link ALL paths AND code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, etc) by embedding them in a markdown link, with the URL corresponding to the full path, and the anchor following the form `LX` or `LX-LY`, where X represents the starting line number, and Y represents the ending line number, if the reference is more than one line.
+  - For example, to refer to lines 50 to 78 in a sentence, respond with something like: The compiler is initialized in [`src/foo.rs`](src/foo.rs#L50-L78)
+  - For example, to refer to the `new` function on a struct, respond with something like: The [`new`](src/bar.rs#L26-53) function initializes the struct
+  - For example, to refer to the `foo` field on a struct and link a single line, respond with something like: The [`foo`](src/foo.rs#L138) field contains foos.
+- Do not print out line numbers directly, only in a link
+- Do not refer to more lines than necessary when creating a line range, be precise
+- Do NOT output bare symbols. ALL symbols must include a link
+  - E.g. Do not simply write `Bar`, write [`Bar`](src/bar.rs#L100-L105).
+  - E.g. Do not simply write "Foos are functions that create `Foo` values out of thin air." Instead, write: "Foos are functions that create [`Foo`](src/foo.rs#L80-L120) values out of thin air."
+- Link all fields
+  - E.g. Do not simply write: "It has one main field: `foo`." Instead, write: "It has one main field: [`foo`](src/foo.rs#L193)."
+- Link all symbols, even when there are multiple in one sentence
+  - E.g. Do not simply write: "Bars are [`Foo`]( that return a list filled with `Bar` variants." Instead, write: "Bars are functions that return a list filled with [`Bar`](src/bar.rs#L38-L57) variants."
 
 #####
 
