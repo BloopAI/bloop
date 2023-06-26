@@ -14,7 +14,6 @@ tasks:
       # Setup Git LFS
       git lfs install --skip-smudge
       git lfs pull
-      git lfs install --force
 
       # Cache build artifacts
       nix develop -c cargo build -p bleep
