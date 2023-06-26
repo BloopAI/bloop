@@ -84,7 +84,10 @@ impl<'a> CodeNavigationContext<'a> {
                 .then(|| self.repo_wide_references())
                 .unwrap_or_default();
 
+            let imports = self.imports();
+
             local_definitions
+                .or(imports)
                 .into_iter()
                 .chain(repo_wide_definitions)
                 .chain(local_references.into_iter())
@@ -94,9 +97,9 @@ impl<'a> CodeNavigationContext<'a> {
             let local_references = self.local_references();
             let repo_wide_definitions = self.repo_wide_definitions();
 
-            local_references
+            repo_wide_definitions
                 .into_iter()
-                .chain(repo_wide_definitions)
+                .chain(local_references)
                 .collect()
         } else {
             Vec::new()
@@ -170,7 +173,6 @@ impl<'a> CodeNavigationContext<'a> {
         let node_idx = scope_graph.node_by_range(self.token.start_byte, self.token.end_byte)?;
         let mut data = scope_graph
             .definitions(node_idx)
-            .chain(scope_graph.imports(node_idx))
             .map(|idx| Occurrence {
                 kind: OccurrenceKind::Definition,
                 range: scope_graph.graph[idx].range(),
@@ -226,6 +228,7 @@ impl<'a> CodeNavigationContext<'a> {
             .definitions(node_idx)
             .chain(scope_graph.imports(node_idx))
             .flat_map(|idx| scope_graph.references(idx))
+            .chain(scope_graph.references(node_idx))
             .map(|idx| Occurrence {
                 kind: OccurrenceKind::Reference,
                 range: scope_graph.graph[idx].range(),
@@ -276,6 +279,26 @@ impl<'a> CodeNavigationContext<'a> {
                 })
             })
             .collect()
+    }
+
+    fn imports(&self) -> Option<FileSymbols> {
+        let scope_graph = self.source_document().symbol_locations.scope_graph()?;
+        let node_idx = scope_graph.node_by_range(self.token.start_byte, self.token.end_byte)?;
+        let mut data = scope_graph
+            .imports(node_idx)
+            .map(|idx| Occurrence {
+                kind: OccurrenceKind::Definition,
+                range: scope_graph.graph[idx].range(),
+                snippet: to_occurrence(&self.source_document(), scope_graph.graph[idx].range()),
+            })
+            .collect::<Vec<_>>();
+
+        data.sort_by_key(|occurrence| occurrence.range.start.byte);
+
+        data.is_empty().not().then(|| FileSymbols {
+            file: self.token.relative_path.to_owned(),
+            data,
+        })
     }
 }
 
