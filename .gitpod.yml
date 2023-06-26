@@ -20,7 +20,12 @@ tasks:
       nix develop -c cargo build -p bleep
       nix develop -c npm i
 
+      # this is working around a gitpod bug
+      # https://github.com/gitpod-io/gitpod/issues/524
+      tar czpf target.tar.gz target
+
     command: |
+      tar xzpf target.tar.gz && rm target.tar.gz
       nix develop -c cargo run -p bleep
     openMode: split-left
 
