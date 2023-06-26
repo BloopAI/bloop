@@ -265,9 +265,9 @@ Output only JSON."#
 
 pub fn answer_article_prompt(context: &str, query: &str, query_history: &str) -> String {
     format!(
-        r#"{context}Your job is to answer a query about a codebase using the information above. 
+        r#"{context}Your job is to answer a query about a codebase using the information above.
 
-Summarise your previous steps. Provide as much information as is necessary to answer the query. If you do not have enough information needed to answer the query, do not make up an answer.
+Provide only as much information as is necessary to answer the query, but be concise. Keep number of quoted lines to a minimum when possible. If you do not have enough information needed to answer the query, do not make up an answer.
 
 Respect these rules at all times:
 - Do not refer to paths by alias
