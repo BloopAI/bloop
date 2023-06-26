@@ -131,60 +131,60 @@ const BranchSelector = () => {
          sizesMap.medium
        } flex flex-col max-w-full`}
           >
-            {isIndexing ? (
-              <div className="bg-bg-shade text-label-title caption-strong px-3 py-2.5 flex flex-col gap-2">
-                <p className="body-s text-label-title">
-                  {percentage
-                    ? `Indexing ${indexingBranch.replace('origin/', '')}...`
-                    : `${indexingBranch.replace('origin/', '')} queued...`}
-                </p>
-                {!!percentage && (
-                  <>
-                    <BarLoader percentage={percentage} />
-                    <p className="caption text-label-muted">
-                      {percentage}% complete
-                    </p>
-                  </>
-                )}
+            {/*{isIndexing ? (*/}
+            {/*  <div className="bg-bg-shade text-label-title caption-strong px-3 py-2.5 flex flex-col gap-2">*/}
+            {/*    <p className="body-s text-label-title">*/}
+            {/*      {percentage*/}
+            {/*        ? `Indexing ${indexingBranch.replace('origin/', '')}...`*/}
+            {/*        : `${indexingBranch.replace('origin/', '')} queued...`}*/}
+            {/*    </p>*/}
+            {/*    {!!percentage && (*/}
+            {/*      <>*/}
+            {/*        <BarLoader percentage={percentage} />*/}
+            {/*        <p className="caption text-label-muted">*/}
+            {/*          {percentage}% complete*/}
+            {/*        </p>*/}
+            {/*      </>*/}
+            {/*    )}*/}
+            {/*  </div>*/}
+            {/*) : (*/}
+            <>
+              <div className="bg-bg-shade text-label-title caption-strong px-3 py-2.5 block">
+                Switch branch
               </div>
-            ) : (
-              <>
-                <div className="bg-bg-shade text-label-title caption-strong px-3 py-2.5 block">
-                  Switch branch
+              <div className="border-b border-bg-border">
+                <TextInput
+                  value={search}
+                  name={'search'}
+                  onChange={(e) => setSearch(e.target.value)}
+                  type="search"
+                  placeholder="Search branches..."
+                  noBorder
+                />
+              </div>
+              {branchesToShow.length < 1 ? (
+                <div className="p-1.5 body-s text-label-base text-center">
+                  No branches found
                 </div>
-                <div className="border-b border-bg-border">
-                  <TextInput
-                    value={search}
-                    name={'search'}
-                    onChange={(e) => setSearch(e.target.value)}
-                    type="search"
-                    placeholder="Search branches..."
-                    noBorder
-                  />
+              ) : (
+                <div className="flex flex-col p-1.5 gap-1 overflow-y-auto">
+                  {!search && (
+                    <BranchItem
+                      key="all"
+                      name="All branches"
+                      selectedBranch={selectedBranch || 'All branches'}
+                      setSelectedBranch={() => setSelectedBranch(null)}
+                      setOpen={setOpen}
+                      repoRef={tab.key}
+                      isIndexed={true}
+                      onIndex={() => {}}
+                    />
+                  )}
+                  {items}
                 </div>
-                {branchesToShow.length < 1 ? (
-                  <div className="p-1.5 body-s text-label-base text-center">
-                    No branches found
-                  </div>
-                ) : (
-                  <div className="flex flex-col p-1.5 gap-1 overflow-y-auto">
-                    {!search && (
-                      <BranchItem
-                        key="all"
-                        name="All branches"
-                        selectedBranch={selectedBranch || 'All branches'}
-                        setSelectedBranch={() => setSelectedBranch(null)}
-                        setOpen={setOpen}
-                        repoRef={tab.key}
-                        isIndexed={true}
-                        onIndex={() => {}}
-                      />
-                    )}
-                    {items}
-                  </div>
-                )}
-              </>
-            )}
+              )}
+            </>
+            {/*)}*/}
           </div>
         )}
       >
