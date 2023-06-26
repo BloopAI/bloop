@@ -287,11 +287,97 @@ Respect these rules at all times:
 
 pub fn hypothetical_document_prompt(query: &str) -> String {
     format!(
-        r#"Write a short code fragment that could hypothetically be returned by a code search engine as the answer to the query: {query}
+        r#"Write three code snippets that could hypothetically be returned by a code search engine as the answer to the query: {query}
 
-- The code should be written one of these languages: [Rust, Typescript, TSX, YAML]
-- Your code fragment should be between 5 and 10 lines long
-- Surround the code with triple backticks
-- Only generate a single code fragment"#
+- All three snippets should be written in any one of these languages: [Rust, Typescript, TSX, YAML]
+- The snippets should not be too similar to one another
+- Each snippet should be between 5 and 10 lines long
+- Surround the snippets in triple backticks
+
+For example:
+
+What's the Qdrant threshold?
+
+```rust
+SearchPoints {{
+    limit,
+    vector: vectors.get(idx).unwrap().clone(),
+    collection_name: COLLECTION_NAME.to_string(),
+    offset: Some(offset),
+    score_threshold: Some(0.3),
+    with_payload: Some(WithPayloadSelector {{
+        selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
+    }}),
+```
+
+```python
+memories = self.client.search(
+    collection_name=self.collection_name,
+    limit=k,
+    score_threshold=threshold,
+    search_params=SearchParams(
+        quantization=QuantizationSearchParams(
+            ignore=False,
+            rescore=True
+        )
     )
+```
+
+```typescript
+const res = await qdrant.search(collectionName, {{
+    vector: embedding,
+    score_threshold:
+    distanceMetric === "Cosine" ? 1 - threshold : threshold,
+    with_payload: true,
+}});
+```
+"#
+    )
+}
+
+pub fn try_parse_hypothetical_document(document: &str) -> Vec<String> {
+    let pattern = r"```([\s\S]*?)```";
+    let re = regex::Regex::new(pattern).unwrap();
+
+    re.captures_iter(document)
+        .map(|m| m[1].trim().to_string())
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_hypothetical_document() {
+        let document = r#"Here is some pointless text
+
+        ```rust
+pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str) -> String {
+    struct Rule<'a> {
+        title: &'a str,
+        description: &'a str,
+        note: &'a str,
+        schema: &'a str,```
+
+Here is some more pointless text
+
+```
+pub fn functions() -> serde_json::Value {
+    serde_json::json!(
+```"#;
+        let expected = vec![
+            r#"rust
+pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str) -> String {
+    struct Rule<'a> {
+        title: &'a str,
+        description: &'a str,
+        note: &'a str,
+        schema: &'a str,"#,
+            r#"pub fn functions() -> serde_json::Value {
+    serde_json::json!("#,
+        ];
+
+        assert_eq!(try_parse_hypothetical_document(document), expected);
+    }
 }

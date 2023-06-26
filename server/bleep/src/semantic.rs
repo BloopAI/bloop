@@ -12,8 +12,9 @@ use qdrant_client::{
     qdrant::{
         r#match::MatchValue, vectors::VectorsOptions, vectors_config, with_payload_selector,
         with_vectors_selector, CollectionOperationResponse, CreateCollection, Distance,
-        FieldCondition, Filter, Match, PointId, PointStruct, ScoredPoint, SearchPoints, Value,
-        VectorParams, Vectors, VectorsConfig, WithPayloadSelector, WithVectorsSelector,
+        FieldCondition, Filter, Match, PointId, PointStruct, ScoredPoint, SearchBatchPoints,
+        SearchPoints, Value, VectorParams, Vectors, VectorsConfig, WithPayloadSelector,
+        WithVectorsSelector,
     },
 };
 
@@ -347,6 +348,7 @@ impl Semantic {
                 vector,
                 collection_name: COLLECTION_NAME.to_string(),
                 offset: Some(offset),
+                score_threshold: Some(0.3),
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
@@ -362,6 +364,129 @@ impl Semantic {
             .await?;
 
         Ok(response.result)
+    }
+
+    pub async fn batch_search_with<'a>(
+        &self,
+        parsed_queries: &[&SemanticQuery<'a>],
+        vectors: Vec<Embedding>,
+        limit: u64,
+        offset: u64,
+    ) -> anyhow::Result<Vec<ScoredPoint>> {
+        let parsed_query = parsed_queries.get(0).unwrap(); // Parse the first query
+        let repo_filter = {
+            let conditions = parsed_query
+                .repos()
+                .map(|r| {
+                    if r.contains('/') && !r.starts_with("github.com/") {
+                        format!("github.com/{r}")
+                    } else {
+                        r.to_string()
+                    }
+                })
+                .map(|r| make_kv_keyword_filter("repo_name", r.as_str()).into())
+                .collect::<Vec<_>>();
+            // one of the above repos should match
+            if conditions.is_empty() {
+                None
+            } else {
+                Some(Filter {
+                    should: conditions,
+                    ..Default::default()
+                })
+            }
+        };
+
+        let path_filter = {
+            let conditions = parsed_query
+                .paths()
+                .map(|r| make_kv_text_filter("relative_path", r).into())
+                .collect::<Vec<_>>();
+            if conditions.is_empty() {
+                None
+            } else {
+                Some(Filter {
+                    should: conditions,
+                    ..Default::default()
+                })
+            }
+        };
+
+        let lang_filter = {
+            let conditions = parsed_query
+                .langs()
+                .map(|l| make_kv_keyword_filter("lang", l).into())
+                .collect::<Vec<_>>();
+            // one of the above langs should match
+            if conditions.is_empty() {
+                None
+            } else {
+                Some(Filter {
+                    should: conditions,
+                    ..Default::default()
+                })
+            }
+        };
+
+        let branch_filter = {
+            let conditions = parsed_query
+                .branch()
+                .map(|l| make_kv_keyword_filter("branches", l).into())
+                .collect::<Vec<_>>();
+
+            if conditions.is_empty() {
+                None
+            } else {
+                Some(Filter {
+                    should: conditions,
+                    ..Default::default()
+                })
+            }
+        };
+
+        let filters: Vec<_> = [repo_filter, path_filter, lang_filter, branch_filter]
+            .into_iter()
+            .flatten()
+            .map(Into::into)
+            .collect();
+
+        let search_points = parsed_queries
+            .iter()
+            .enumerate()
+            .map(|(idx, _)| SearchPoints {
+                limit,
+                vector: vectors.get(idx).unwrap().clone(),
+                collection_name: COLLECTION_NAME.to_string(),
+                offset: Some(offset),
+                score_threshold: None,
+                with_payload: Some(WithPayloadSelector {
+                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
+                }),
+                filter: Some(Filter {
+                    must: filters.clone(),
+                    ..Default::default()
+                }),
+                with_vectors: Some(WithVectorsSelector {
+                    selector_options: Some(with_vectors_selector::SelectorOptions::Enable(true)),
+                }),
+                ..Default::default()
+            })
+            .collect::<Vec<SearchPoints>>();
+
+        let response = self
+            .qdrant
+            .search_batch_points(&SearchBatchPoints {
+                collection_name: COLLECTION_NAME.to_string(),
+                search_points,
+                ..Default::default()
+            })
+            .await?;
+
+        dbg!(&response.result);
+        let scored_points: Vec<ScoredPoint> =
+            response.result.into_iter().flat_map(|r| r.result).collect();
+        dbg!(&scored_points.len());
+        Ok(scored_points)
     }
 
     pub async fn search<'a>(
@@ -393,6 +518,43 @@ impl Semantic {
                     .collect::<Vec<_>>()
             })?;
         Ok(deduplicate_snippets(results, vector, limit))
+    }
+
+    pub async fn batch_search<'a>(
+        &self,
+        parsed_queries: &[&SemanticQuery<'a>],
+        limit: u64,
+        offset: u64,
+        retrieve_more: bool,
+    ) -> anyhow::Result<Vec<Payload>> {
+        if parsed_queries.iter().any(|q| q.target().is_none()) {
+            anyhow::bail!("no search target for query");
+        };
+
+        let vectors = parsed_queries
+            .iter()
+            .map(|q| self.embed(q.target().unwrap()))
+            .collect::<anyhow::Result<Vec<_>>>()?;
+
+        // TODO: Remove the need for `retrieve_more`. It's here because:
+        // In /q `limit` is the maximum number of results returned (the actual number will often be lower due to deduplication)
+        // In /answer we want to retrieve `limit` results exactly
+        let results = self
+            .batch_search_with(
+                parsed_queries,
+                vectors.clone(),
+                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+                offset,
+            )
+            .await
+            .map(|raw| {
+                raw.into_iter()
+                    .map(Payload::from_qdrant)
+                    .collect::<Vec<_>>()
+            })?;
+
+        let target_vector = vectors.get(0).unwrap().clone();
+        Ok(deduplicate_snippets(results, target_vector, limit))
     }
 
     #[tracing::instrument(skip(self, repo_ref, relative_path, buffer))]

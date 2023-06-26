@@ -504,7 +504,7 @@ impl Conversation {
                     .send(self.update(Update::Step(SearchStep::Code(query.clone()))))
                     .await?;
 
-                let mut nl_query = SemanticQuery {
+                let nl_query = SemanticQuery {
                     target: Some(parser::Literal::Plain(Cow::Owned(query.clone()))),
                     repos: [parser::Literal::Plain(Cow::Owned(
                         self.repo_ref.display_name(),
@@ -513,33 +513,44 @@ impl Conversation {
                     ..Default::default()
                 };
 
-                let mut document_history = self.llm_history.clone();
-                document_history.push_back(llm_gateway::api::Message::system(
-                    &prompts::hypothetical_document_prompt(nl_query.target().unwrap()),
-                ));
-                let history_len = std::cmp::max(document_history.len() as i32 - 5, 1) as usize;
-                let last_n_history = &document_history.make_contiguous()[history_len..];
-                dbg!(&last_n_history);
-
-                let ctx = &ctx.clone().model("gpt-3.5-turbo-0613");
-                let hypothetical_document = ctx
-                    .llm_gateway
-                    .chat(last_n_history, None)
-                    .await?
-                    .try_collect::<String>()
-                    .await?;
-
-                dbg!(&hypothetical_document);
-                // Set NL query target to document embedding
-                nl_query.target = Some(parser::Literal::Plain(Cow::Owned(hypothetical_document)));
-
-                let chunks = ctx
+                let mut payloads: Vec<crate::semantic::Payload<'_>> = ctx
                     .app
                     .semantic
                     .as_ref()
                     .context("semantic search is not enabled")?
                     .search(&nl_query, 10, 0, true)
-                    .await?
+                    .await?;
+
+                let hyde_queries: Vec<String> = self.hyde(ctx, query).await?;
+                if !hyde_queries.is_empty() {
+                    let hyde_semantic_queries = hyde_queries
+                        .into_iter()
+                        .map(|q| SemanticQuery {
+                            target: Some(parser::Literal::Plain(Cow::Owned(q))),
+                            repos: [parser::Literal::Plain(Cow::Owned(
+                                self.repo_ref.display_name(),
+                            ))]
+                            .into(),
+                            ..Default::default()
+                        })
+                        .collect::<Vec<SemanticQuery>>();
+
+                    let tmp = hyde_semantic_queries
+                        .iter()
+                        .collect::<Vec<&SemanticQuery>>();
+
+                    let hyde_payloads = ctx
+                        .app
+                        .semantic
+                        .as_ref()
+                        .context("semantic search is not enabled")?
+                        .batch_search(tmp.as_slice(), 10, 0, true)
+                        .await?;
+
+                    payloads.extend(hyde_payloads);
+                }
+
+                let chunks = payloads
                     .into_iter()
                     .map(|chunk| {
                         let relative_path = chunk.relative_path;
@@ -640,6 +651,38 @@ impl Conversation {
         }
 
         Ok(Some(action))
+    }
+
+    async fn hyde(&mut self, ctx: &AppContext, query: &str) -> Result<Vec<String>> {
+        let mut history = self.llm_history.clone();
+        let mut hyde_context = vec![llm_gateway::api::Message::system(
+            &prompts::hypothetical_document_prompt(query),
+        )];
+
+        // let last_n_interactions = 5; // Maximum number of conversation interactions
+        // let trimmed_history = history
+        //     .iter()
+        //     .filter(|m| matches!(m, llm_gateway::api::Message::FunctionCall { .. }))
+        //     .rev()
+        //     .take(last_n_interactions)
+        //     .cloned()
+        //     .collect::<Vec<llm_gateway::api::Message>>();
+
+        let ctx = &ctx.clone().model("gpt-3.5-turbo-0613");
+        let response = ctx
+            .llm_gateway
+            .chat(&hyde_context, None)
+            .await?
+            .try_collect::<String>()
+            .await?;
+
+        dbg!(&response);
+        let hyde_docs = prompts::try_parse_hypothetical_document(&response);
+        // Print each doc
+        for doc in hyde_docs.iter() {
+            println!("{}", doc);
+        }
+        Ok(hyde_docs)
     }
 
     async fn proc(
