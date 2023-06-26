@@ -1,3 +1,5 @@
+use super::AnswerMode;
+
 /// A continually updated conversation exchange.
 ///
 /// This contains the query from the user, the intermediate steps the model takes, and the final
@@ -5,6 +7,7 @@
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Exchange {
     finished: bool,
+    mode: AnswerMode,
     conclusion: Option<String>,
     search_steps: Vec<SearchStep>,
     pub results: Vec<SearchResult>,
