@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     collections::{HashMap, HashSet, VecDeque},
+    fmt::Write,
     mem,
     panic::AssertUnwindSafe,
     path::{Component, PathBuf},
@@ -743,6 +744,130 @@ impl Conversation {
             .filter_map(|res| async { res.ok() })
             .collect::<Vec<_>>()
             .await;
+
+        let ranges = 'start: {
+            let mut prompt = String::new();
+            writeln!(
+                &mut prompt,
+                r#"
+Below is a listing of code chunks followed by a list of identifiers in the chunk.
+Your job is to perform the following tasks:
+1. Find out which identifiers are relevant to answer the query: "{question}"
+2. DO NOT cite identifiers that you are not given above
+3. DO NOT cite identifiers that are local variables.
+4. DO NOT cite identifiers that may be from external libraries or the standard library.
+5. You MUST answer with the index of each identifier. DO NOT answer the question
+6. Reply with exactly one index per line.
+                "#
+            );
+
+            let examples = r#"
+
+#####
+
+EXAMPLES
+
+path: src/intelligence.rs
+code:
+pub fn scope_graph(self) -> Result<ScopeGraph, TreeSitterFileError> {
+    let query = self
+        .language
+        .scope_query
+        .query(self.language.grammar)
+        .map_err(TreeSitterFileError::QueryError)?;
+    let root_node = self.tree.root_node();
+
+    Ok(ResolutionMethod::Generic.build_scope(query, root_node, self.src, self.language))
+}
+
+identifiers:
+0. scope_graph
+1. Result
+2. ScopeGraph
+3. TreeSitterFileError
+4. query
+5. root_node
+6. ResolutionMethod
+7. build_scope
+
+The identifiers relevant to the query "How are scope graphs built?" are:
+6
+7
+"#;
+
+            writeln!(&mut prompt, "{examples}");
+            writeln!(&mut prompt, "#####\n");
+
+            let mut idx = 0;
+            let mut idents = Vec::new(); // (path, token_text, token_range)
+            for (relevant_chunks, path) in &processed {
+                let repo_ref = ctx.repo_ref.clone().unwrap(); // this is expected to be set
+                let document = ctx
+                    .app
+                    .indexes
+                    .file
+                    .by_path(&repo_ref, &path)
+                    .await
+                    .unwrap();
+
+                if let Some(hr) = document.hoverable_ranges() {
+                    for rc in relevant_chunks {
+                        let identifiers = hr
+                            .iter()
+                            .filter(|r| {
+                                r.start.line + 1 >= rc.range.start && r.end.line + 1 <= rc.range.end
+                            })
+                            .map(|r| {
+                                (
+                                    &document.content.as_str()[r.start.byte..r.end.byte],
+                                    r.clone(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+
+                        writeln!(
+                            &mut prompt,
+                            "path: {path}\ncode:\n{}\n\nidentifiers:\n",
+                            rc.code
+                        );
+                        for i in identifiers.iter() {
+                            writeln!(&mut prompt, "{idx}. {}", i.0);
+                            idx += 1;
+                            idents.push((path.clone(), i.0.to_owned(), i.1.clone()));
+                        }
+                        writeln!(&mut prompt, "{}", "#".repeat(10));
+                    }
+                } else {
+                    break 'start String::default();
+                }
+            }
+
+            writeln!(
+                &mut prompt,
+                "The identifiers relevant to the query \"{question}\" are:"
+            );
+            println!("{prompt}");
+
+            let selected_indices = ctx
+                .llm_gateway
+                .chat(&[llm_gateway::api::Message::system(&prompt)], None)
+                .await?
+                .try_collect::<String>()
+                .await?;
+
+            let mut selected_idents = Vec::new();
+            for idx in dbg!(selected_indices)
+                .trim()
+                .lines()
+                .map(|l| l.parse::<usize>().unwrap())
+            {
+                if let Some(i) = idents.get(idx) {
+                    selected_idents.push(dbg!(i));
+                }
+            }
+
+            prompt
+        };
 
         for (relevant_chunks, path) in &processed {
             let alias = self.path_alias(path) as u32;
