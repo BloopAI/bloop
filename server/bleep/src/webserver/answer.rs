@@ -921,7 +921,10 @@ impl Conversation {
             .context("exchange did not have a user query")?;
 
         let system_message = prompts::final_explanation_prompt(&context, query);
-        let messages = Some(llm_gateway::api::Message::system(&system_message)).into_iter().chain(query_history).collect();
+        let messages = Some(llm_gateway::api::Message::system(&system_message))
+            .into_iter()
+            .chain(query_history)
+            .collect::<Vec<_>>();
 
         let mut stream = ctx.llm_gateway.chat(&messages, None).await?.boxed();
         let mut buffer = String::new();
