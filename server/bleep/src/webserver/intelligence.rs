@@ -3,7 +3,10 @@ use std::sync::Arc;
 use super::prelude::*;
 use crate::{
     indexes::{reader::ContentDocument, Indexes},
-    intelligence::{code_navigation, Language, NodeKind, ScopeGraph, TSLanguage},
+    intelligence::{
+        code_navigation::{CodeNavigationContext, FileSymbols, Token},
+        Language, NodeKind, ScopeGraph, TSLanguage,
+    },
     repo::RepoRef,
     snippet::{Snipper, Snippet},
     symbol::SymbolLocations,
@@ -30,42 +33,11 @@ pub(super) struct TokenInfoRequest {
 
 /// The response from the `local-intel` endpoint.
 #[derive(Serialize, Debug)]
-#[serde(rename_all = "snake_case", tag = "kind")]
 pub(super) struct TokenInfoResponse {
     data: Vec<FileSymbols>,
 }
 
 impl super::ApiResponse for TokenInfoResponse {}
-
-#[derive(Debug, Serialize)]
-pub(super) struct FileSymbols {
-    // FIXME: choose a better name
-    /// The file to which the following occurrences belong
-    file: String,
-
-    /// A collection of symbol locations with context in this file
-    data: Vec<Occurrence>,
-}
-
-impl FileSymbols {
-    fn is_populated(&self) -> bool {
-        !self.data.is_empty()
-    }
-}
-
-#[derive(Serialize, Debug)]
-pub struct Occurrence {
-    kind: OccurrenceKind,
-    range: TextRange,
-    snippet: Snippet,
-}
-
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum OccurrenceKind {
-    Reference,
-    Definition,
-}
 
 // fn handle_definition_local(
 //     scope_graph: &ScopeGraph,
@@ -203,24 +175,47 @@ pub(super) async fn handle(
     Query(payload): Query<TokenInfoRequest>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<impl IntoResponse> {
-    let repo_ref = &payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
-    let content = indexes
-        .file
-        .by_path(repo_ref, &payload.relative_path)
-        .await
-        .map_err(Error::user)?;
+    let repo_ref = payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
 
-    let lang = content.lang.as_deref();
-    let associated_langs = match lang.map(TSLanguage::from_id) {
-        Some(Language::Supported(config)) => config.language_ids,
-        _ => &[],
+    let token = Token {
+        relative_path: payload.relative_path.as_str(),
+        start_byte: payload.start,
+        end_byte: payload.end,
     };
-    let all_docs = indexes
-        .file
-        .by_repo(repo_ref, associated_langs.iter())
-        .await;
 
-    todo!()
+    let all_docs = {
+        let content = indexes
+            .file
+            .by_path(&repo_ref, &payload.relative_path)
+            .await
+            .map_err(Error::user)?;
+        let lang = content.lang.as_deref();
+        let associated_langs = match lang.map(TSLanguage::from_id) {
+            Some(Language::Supported(config)) => config.language_ids,
+            _ => &[],
+        };
+        indexes
+            .file
+            .by_repo(&repo_ref, associated_langs.iter())
+            .await
+    };
+
+    let source_document_idx = all_docs
+        .iter()
+        .position(|doc| doc.relative_path == payload.relative_path)
+        .ok_or(Error::internal("invalid language"))?;
+
+    let ctx = CodeNavigationContext {
+        repo_ref,
+        token,
+        indexes: Arc::clone(&indexes),
+        all_docs,
+        source_document_idx,
+    };
+
+    Ok(json(TokenInfoResponse {
+        data: ctx.token_info(),
+    }))
 }
 
 // async fn search_nav(

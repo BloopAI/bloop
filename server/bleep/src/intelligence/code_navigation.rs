@@ -16,7 +16,7 @@ use petgraph::graph::NodeIndex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
-pub(super) struct FileSymbols {
+pub struct FileSymbols {
     /// The file to which the following occurrences belong
     file: String,
 
@@ -47,16 +47,104 @@ pub enum OccurrenceKind {
 pub enum CodeNavigationError {}
 
 pub struct CodeNavigationContext<'a> {
-    repo_ref: RepoRef,
-    token: Token<'a>,
-    indexes: Arc<Indexes>,
-    all_docs: Vec<ContentDocument>,
-    source_document_idx: usize,
+    pub repo_ref: RepoRef,
+    pub token: Token<'a>,
+    pub indexes: Arc<Indexes>,
+    pub all_docs: Vec<ContentDocument>,
+    pub source_document_idx: usize,
 }
 
 impl<'a> CodeNavigationContext<'a> {
-    fn source_document(&self) -> ContentDocument {
-        self.all_docs[self.source_document_idx]
+    fn source_document(&self) -> &ContentDocument {
+        self.all_docs.get(self.source_document_idx).unwrap()
+    }
+
+    pub fn token_info(&self) -> Vec<FileSymbols> {
+        if self.is_definition() {
+            let local_references = self.local_references();
+            let repo_wide_references = self
+                .is_top_level()
+                .then(|| self.repo_wide_references())
+                .unwrap_or_default();
+
+            local_references
+                .into_iter()
+                .chain(repo_wide_references)
+                .collect()
+        } else if self.is_reference() {
+            let local_definitions = self.local_definitions();
+            let repo_wide_definitions = local_definitions
+                .is_none()
+                .then(|| self.repo_wide_definitions())
+                .unwrap_or_default();
+
+            let local_references = self.local_references();
+            let repo_wide_references = local_definitions
+                .is_none()
+                .then(|| self.repo_wide_references())
+                .unwrap_or_default();
+
+            local_definitions
+                .into_iter()
+                .chain(repo_wide_definitions)
+                .chain(local_references.into_iter())
+                .chain(repo_wide_references)
+                .collect()
+        } else if self.is_import() {
+            let local_references = self.local_references();
+            let repo_wide_definitions = self.repo_wide_definitions();
+
+            local_references
+                .into_iter()
+                .chain(repo_wide_definitions)
+                .collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn is_definition(&self) -> bool {
+        self.source_document()
+            .symbol_locations
+            .scope_graph()
+            .and_then(|sg| {
+                let idx = sg.node_by_range(self.token.start_byte, self.token.end_byte)?;
+                Some(matches!(sg.get_node(idx).unwrap(), NodeKind::Def(_)))
+            })
+            .unwrap_or_default()
+    }
+
+    fn is_reference(&self) -> bool {
+        self.source_document()
+            .symbol_locations
+            .scope_graph()
+            .and_then(|sg| {
+                let idx = sg.node_by_range(self.token.start_byte, self.token.end_byte)?;
+                Some(matches!(sg.get_node(idx).unwrap(), NodeKind::Ref(_)))
+            })
+            .unwrap_or_default()
+    }
+
+    fn is_import(&self) -> bool {
+        self.source_document()
+            .symbol_locations
+            .scope_graph()
+            .and_then(|sg| {
+                let idx = sg.node_by_range(self.token.start_byte, self.token.end_byte)?;
+                Some(matches!(sg.get_node(idx).unwrap(), NodeKind::Import(_)))
+            })
+            .unwrap_or_default()
+    }
+
+    fn is_top_level(&self) -> bool {
+        self.source_document()
+            .symbol_locations
+            .scope_graph()
+            .and_then(|sg| {
+                let idx = sg.node_by_range(self.token.start_byte, self.token.end_byte)?;
+                Some(sg.is_top_level(idx))
+            })
+            .unwrap_or_default()
     }
 
     fn non_source_documents(&self) -> impl Iterator<Item = &ContentDocument> {
@@ -192,9 +280,9 @@ impl<'a> CodeNavigationContext<'a> {
 }
 
 pub struct Token<'a> {
-    relative_path: &'a str,
-    start_byte: usize,
-    end_byte: usize,
+    pub relative_path: &'a str,
+    pub start_byte: usize,
+    pub end_byte: usize,
 }
 
 fn to_occurrence(doc: &ContentDocument, range: TextRange) -> Snippet {
