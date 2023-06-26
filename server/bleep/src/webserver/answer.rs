@@ -654,19 +654,9 @@ impl Conversation {
     }
 
     async fn hyde(&mut self, ctx: &AppContext, query: &str) -> Result<Vec<String>> {
-        let mut history = self.llm_history.clone();
-        let mut hyde_context = vec![llm_gateway::api::Message::system(
+        let hyde_context = vec![llm_gateway::api::Message::system(
             &prompts::hypothetical_document_prompt(query),
         )];
-
-        // let last_n_interactions = 5; // Maximum number of conversation interactions
-        // let trimmed_history = history
-        //     .iter()
-        //     .filter(|m| matches!(m, llm_gateway::api::Message::FunctionCall { .. }))
-        //     .rev()
-        //     .take(last_n_interactions)
-        //     .cloned()
-        //     .collect::<Vec<llm_gateway::api::Message>>();
 
         let ctx = &ctx.clone().model("gpt-3.5-turbo-0613");
         let response = ctx
@@ -680,7 +670,7 @@ impl Conversation {
         let hyde_docs = prompts::try_parse_hypothetical_document(&response);
         // Print each doc
         for doc in hyde_docs.iter() {
-            println!("{}", doc);
+            println!("{}\n", doc);
         }
         Ok(hyde_docs)
     }

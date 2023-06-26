@@ -482,10 +482,8 @@ impl Semantic {
             })
             .await?;
 
-        dbg!(&response.result);
         let scored_points: Vec<ScoredPoint> =
             response.result.into_iter().flat_map(|r| r.result).collect();
-        dbg!(&scored_points.len());
         Ok(scored_points)
     }
 
