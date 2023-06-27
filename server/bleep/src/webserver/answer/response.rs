@@ -55,7 +55,8 @@ impl Exchange {
                 self.mode = AnswerMode::Filesystem;
             },
             Update::Article(text) => {
-                *self.conclusion.get_or_insert_with(String::new) += &text;
+                let results = self.results.get_or_insert_with(|| Results::Article(String::new()));
+                *results.as_article_mut().unwrap() += &text;
                 self.mode = AnswerMode::Article;
             },
             Update::Finalize => self.finished = true,
