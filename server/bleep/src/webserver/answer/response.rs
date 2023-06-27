@@ -33,6 +33,13 @@ impl Results {
             Self::Filesystem(results) => Some(results)
         }
     }
+
+    fn as_article_mut(&mut self) -> Option<&mut String> {
+        match self {
+            Self::Article(text) => Some(text),
+            Self::Filesystem(_) => None,
+        }
+    }
 }
 
 impl Exchange {
