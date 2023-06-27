@@ -6,6 +6,7 @@ use std::{
     panic::AssertUnwindSafe,
     path::{Component, PathBuf},
     str::FromStr,
+    sync::Arc,
     time::Duration,
 };
 
@@ -745,7 +746,8 @@ impl Conversation {
             .collect::<Vec<_>>()
             .await;
 
-        let ranges = 'start: {
+        let new_paths = {
+            info!("starting identifier discovery");
             let mut prompt = String::new();
             writeln!(
                 &mut prompt,
@@ -837,8 +839,6 @@ The identifiers relevant to the query "How are scope graphs built?" are:
                         }
                         writeln!(&mut prompt, "{}", "#".repeat(10));
                     }
-                } else {
-                    break 'start String::default();
                 }
             }
 
@@ -862,11 +862,81 @@ The identifiers relevant to the query "How are scope graphs built?" are:
                 .map(|l| l.parse::<usize>().unwrap())
             {
                 if let Some(i) = idents.get(idx) {
-                    selected_idents.push(dbg!(i));
+                    selected_idents.push(i);
                 }
             }
 
-            prompt
+            use crate::{
+                intelligence::{
+                    code_navigation::{CodeNavigationContext, FileSymbols, Token},
+                    Language, TSLanguage,
+                },
+                text_range::TextRange,
+            };
+
+            let idents_by_path: HashMap<String, Vec<(String, TextRange)>> = selected_idents
+                .into_iter()
+                .fold(HashMap::new(), |mut map, (path, text, range)| {
+                    map.entry(path.to_owned())
+                        .or_insert_with(Vec::new)
+                        .push((text.to_owned(), range.clone()));
+                    map
+                });
+
+            let mut new_paths = Vec::new();
+            for (relative_path, idents) in idents_by_path.iter() {
+                println!(
+                    "{relative_path}: {:?}",
+                    idents.iter().map(|i| i.0.as_str()).collect::<Vec<_>>()
+                );
+                let repo_ref = ctx.repo_ref.clone().unwrap();
+                let all_docs = {
+                    let content = ctx
+                        .app
+                        .indexes
+                        .file
+                        .by_path(&repo_ref, &relative_path)
+                        .await
+                        .unwrap();
+                    let lang = content.lang.as_deref();
+                    let associated_langs = match lang.map(TSLanguage::from_id) {
+                        Some(Language::Supported(config)) => config.language_ids,
+                        _ => &[],
+                    };
+                    ctx.app
+                        .indexes
+                        .file
+                        .by_repo(&repo_ref, associated_langs.iter())
+                        .await
+                };
+
+                let source_document_idx = all_docs
+                    .iter()
+                    .position(|doc| &doc.relative_path == relative_path)
+                    .unwrap();
+
+                for (text, range) in idents.iter() {
+                    let token = Token {
+                        relative_path: relative_path.as_str(),
+                        start_byte: range.start.byte,
+                        end_byte: range.end.byte,
+                    };
+                    let ctx = CodeNavigationContext {
+                        repo_ref: &repo_ref,
+                        token,
+                        indexes: Arc::clone(&ctx.app.indexes),
+                        all_docs: all_docs.as_slice(),
+                        source_document_idx,
+                    };
+                    new_paths.extend(ctx.token_info().into_iter().map(|fs| fs.file));
+                }
+            }
+
+            new_paths.retain(|p| !idents_by_path.contains_key(p));
+
+            println!("{:?}", new_paths);
+
+            new_paths
         };
 
         for (relevant_chunks, path) in &processed {
@@ -899,7 +969,10 @@ The identifiers relevant to the query "How are scope graphs built?" are:
             })
             .collect::<Vec<_>>();
 
-        let prompt = serde_json::to_string(&out)?;
+        let prompt = serde_json::to_string(&serde_json::json!({
+            "chunks": out,
+            "relevant_paths": new_paths,
+        }))?;
 
         ctx.track_query(
             EventData::input_stage("process file")

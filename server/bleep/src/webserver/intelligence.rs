@@ -78,10 +78,10 @@ pub(super) async fn handle(
         .ok_or(Error::internal("invalid language"))?;
 
     let ctx = CodeNavigationContext {
-        repo_ref: repo_ref.clone(),
+        repo_ref: &repo_ref,
         token,
         indexes: Arc::clone(&indexes),
-        all_docs,
+        all_docs: all_docs.as_slice(),
         source_document_idx,
     };
 
