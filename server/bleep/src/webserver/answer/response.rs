@@ -10,7 +10,7 @@ pub struct Exchange {
     mode: AnswerMode,
     conclusion: Option<String>,
     search_steps: Vec<SearchStep>,
-    pub results: Vec<SearchResult>,
+    pub results: Option<Results>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
