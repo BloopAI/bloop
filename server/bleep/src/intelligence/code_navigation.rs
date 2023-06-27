@@ -2,9 +2,9 @@
 //! - scope-graph based handler that operates only in the owning file
 //! - search based handler that operates on any file belonging to the repo
 
-use std::{collections::BTreeSet, ops::Not, sync::Arc};
+use std::{ops::Not, sync::Arc};
 
-use super::{NodeKind, ScopeGraph};
+use super::NodeKind;
 use crate::{
     indexes::{reader::ContentDocument, Indexes},
     repo::RepoRef,
@@ -12,34 +12,28 @@ use crate::{
     text_range::TextRange,
 };
 
-use petgraph::graph::NodeIndex;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct FileSymbols {
     /// The file to which the following occurrences belong
-    file: String,
+    pub file: String,
 
     /// A collection of symbol locations with context in this file
-    data: Vec<Occurrence>,
-}
-
-impl FileSymbols {
-    fn is_populated(&self) -> bool {
-        !self.data.is_empty()
-    }
+    pub data: Vec<Occurrence>,
 }
 
 #[derive(Serialize, Debug)]
 pub struct Occurrence {
-    kind: OccurrenceKind,
-    range: TextRange,
-    snippet: Snippet,
+    pub kind: OccurrenceKind,
+    pub range: TextRange,
+    pub snippet: Snippet,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum OccurrenceKind {
+    #[default]
     Reference,
     Definition,
 }
@@ -156,11 +150,11 @@ impl<'a> CodeNavigationContext<'a> {
             .filter(|doc| doc.relative_path != self.source_document().relative_path)
     }
 
-    fn active_token_range(&self) -> std::ops::Range<usize> {
+    pub fn active_token_range(&self) -> std::ops::Range<usize> {
         self.token.start_byte..self.token.end_byte
     }
 
-    fn active_token_text(&self) -> &str {
+    pub fn active_token_text(&self) -> &str {
         self.source_document()
             .content
             .as_str()
