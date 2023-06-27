@@ -46,15 +46,15 @@ pub enum OccurrenceKind {
 
 pub enum CodeNavigationError {}
 
-pub struct CodeNavigationContext<'a> {
-    pub repo_ref: RepoRef,
+pub struct CodeNavigationContext<'a, 'r, 'd> {
+    pub repo_ref: &'r RepoRef,
     pub token: Token<'a>,
     pub indexes: Arc<Indexes>,
-    pub all_docs: Vec<ContentDocument>,
+    pub all_docs: &'d [ContentDocument],
     pub source_document_idx: usize,
 }
 
-impl<'a> CodeNavigationContext<'a> {
+impl<'a, 'r, 'd> CodeNavigationContext<'a, 'r, 'd> {
     fn source_document(&self) -> &ContentDocument {
         self.all_docs.get(self.source_document_idx).unwrap()
     }
