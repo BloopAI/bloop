@@ -284,8 +284,9 @@ Respect these rules at all times:
   - E.g. Do not simply write: "It has one main field: `foo`." Instead, write: "It has one main field: [`foo`](src/foo.rs#L193)."
 - Link all symbols, even when there are multiple in one sentence
   - E.g. Do not simply write: "Bars are [`Foo`]( that return a list filled with `Bar` variants." Instead, write: "Bars are functions that return a list filled with [`Bar`](src/bar.rs#L38-L57) variants."
-- When quoting code in a code block, use the following info string format: language,LX-LY
-  - For example, to quote lines 10 to 15 in a Rust file, use `rust,L10-L15`
+- When quoting code in a code block, use the following info string format: language,path:PATH,lines:LX-LY
+  - For example, to quote lines 10 to 15 in `src/main.c`, use `c,path:src/main.c,lines:L10-L15`
+  - For example, to quote lines 154 to 190 in `index.js`, use `javascript,path:index.js,lines:L154-L190`
 
 #####
 
