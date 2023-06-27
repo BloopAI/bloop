@@ -1,7 +1,7 @@
 import Tippy from '@tippyjs/react';
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import TextField from '../TextField';
-import { ChevronDownFilled, ChevronUpFilled } from '../../icons';
+import { Branch, ChevronDownFilled, ChevronUpFilled } from '../../icons';
 import Button from '../Button';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
 import { sizesMap } from '../ContextMenu';
@@ -175,19 +175,6 @@ const BranchSelector = () => {
                 </div>
               ) : (
                 <div className="flex flex-col p-1.5 gap-1 overflow-y-auto">
-                  {!search && (
-                    <BranchItem
-                      key="all"
-                      name="All branches"
-                      selectedBranch={selectedBranch || 'All branches'}
-                      setSelectedBranch={() => setSelectedBranch(null)}
-                      setOpen={setOpen}
-                      repoRef={tab.key}
-                      isIndexed={true}
-                      isIndexing={false}
-                      percentage={100}
-                    />
-                  )}
                   {items}
                 </div>
               )}
@@ -210,6 +197,7 @@ const BranchSelector = () => {
         >
           <TextField
             value={selectedBranch?.replace('origin/', '') || 'All branches'}
+            icon={<Branch />}
             className="ellipsis"
           />
           <span>{isOpen ? <ChevronUpFilled /> : <ChevronDownFilled />}</span>
