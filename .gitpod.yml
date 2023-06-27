@@ -7,6 +7,10 @@
 image:
   file: .gitpod.Dockerfile
 
+additionalRepositories:
+  - url: https://github.com/bloopai/answer-api
+    checkoutLocation: answer-api
+
 tasks:
   - name: Backend
     init: |
@@ -39,4 +43,9 @@ tasks:
   - name: Qdrant
     command: |
       nix run nixpkgs#qdrant -- --config-path qdrant/config.yaml
-    openMode: split-right
+    openMode: tab-after
+
+  - name: answer-api
+    command: |
+      nix run /workspace/answer-api#
+    openMode: tab-after
