@@ -19,6 +19,15 @@ pub enum Results {
     Filesystem(Vec<SearchResult>),
 }
 
+impl Results {
+    fn as_filesystem_mut(&mut self) -> Option<&mut Vec<SearchResult>> {
+        match self {
+            Self::Article(_) => None,
+            Self::Filesystem(results) => Some(results)
+        }
+    }
+}
+
 impl Exchange {
     /// Advance this exchange.
     ///
