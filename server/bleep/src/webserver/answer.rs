@@ -3,7 +3,6 @@ use std::{
     collections::{HashMap, HashSet, VecDeque},
     mem,
     panic::AssertUnwindSafe,
-    path::{Component, PathBuf},
     str::FromStr,
     time::Duration,
 };
@@ -550,28 +549,6 @@ impl Conversation {
         question: &str,
         path_aliases: &[usize],
     ) -> Result<String> {
-        // filesystem agnostic trivial path normalization
-        //
-        // - a//b -> a/b
-        // - a/./b -> a/b
-        // - a/b/../c -> a/c (regardless of whether this exists)
-        // - ../b/c -> None
-        #[allow(dead_code)]
-        fn normalize(path: PathBuf) -> Option<PathBuf> {
-            let mut stack = vec![];
-            for c in path.components() {
-                match c {
-                    Component::Normal(s) => stack.push(s),
-                    Component::ParentDir if stack.is_empty() => return None,
-                    Component::ParentDir => {
-                        _ = stack.pop();
-                    }
-                    _ => (),
-                }
-            }
-            Some(stack.iter().collect::<PathBuf>())
-        }
-
         let paths = path_aliases
             .iter()
             .copied()
@@ -588,7 +565,11 @@ impl Conversation {
         }
 
         let question = &question;
-        let ctx = &ctx.clone().model("gpt-3.5-turbo-16k");
+        let ctx = &ctx
+            .clone()
+            .model("gpt-3.5-turbo-16k")
+            .frequency_penalty(0.1); // Set low frequency penalty to discourage long outputs
+
         let repo_ref = &self.repo_ref;
         let chunks = stream::iter(paths)
             .map(|path| async move {
@@ -1187,47 +1168,6 @@ impl Conversation {
     }
 }
 
-fn split_line_set_by_tokens(
-    lines: Vec<String>,
-    bpe: CoreBPE,
-    max_tokens: usize,
-    line_overlap: usize,
-) -> impl Iterator<Item = Vec<String>> {
-    let line_tokens = lines
-        .iter()
-        .map(|line| bpe.encode_ordinary(line).len())
-        .collect::<Vec<_>>();
-
-    let mut start = 0usize;
-
-    std::iter::from_fn(move || {
-        if start >= lines.len() {
-            return None;
-        }
-
-        start = start.saturating_sub(line_overlap);
-
-        let mut subset = Vec::new();
-
-        while start < lines.len() {
-            if line_tokens[start - subset.len()..start]
-                .iter()
-                .sum::<usize>()
-                > max_tokens
-            {
-                subset.pop();
-                start -= 1;
-                break;
-            }
-
-            subset.push(lines[start].clone());
-            start += 1;
-        }
-
-        Some(subset)
-    })
-}
-
 fn trim_lines_by_tokens(lines: Vec<String>, bpe: CoreBPE, max_tokens: usize) -> Vec<String> {
     let line_tokens = lines
         .iter()
@@ -1412,6 +1352,17 @@ impl AppContext {
 
     fn with_repo_ref(mut self, repo_ref: RepoRef) -> Self {
         self.repo_ref = Some(repo_ref);
+        self
+    }
+
+    fn frequency_penalty(mut self, frequency_penalty: f32) -> Self {
+        self.llm_gateway.frequency_penalty = Some(frequency_penalty);
+        self
+    }
+
+    #[allow(unused)]
+    fn presence_penalty(mut self, presence_penalty: f32) -> Self {
+        self.llm_gateway.presence_penalty = Some(presence_penalty);
         self
     }
 
