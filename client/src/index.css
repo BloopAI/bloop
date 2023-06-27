@@ -1348,3 +1348,8 @@ h5, .h5 {
 .break-word {
   word-break: break-word;
 }
+
+.article-response a {
+  color: rgb(var(--label-link));
+  text-decoration: underline;
+}

@@ -52,8 +52,12 @@ const Chat = () => {
     threadId,
     setThreadId,
   } = useContext(ChatContext);
-  const { navigateConversationResults, navigateRepoPath, navigatedItem } =
-    useContext(AppNavigationContext);
+  const {
+    navigateConversationResults,
+    navigateRepoPath,
+    navigatedItem,
+    navigateArticleResponse,
+  } = useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const chatRef = useRef(null);
@@ -164,12 +168,16 @@ const Chat = () => {
           if (data.Ok) {
             const newMessage = data.Ok;
             if (
-              newMessage.results?.length &&
-              !newMessage.conclusion &&
+              ((newMessage.results?.length && !newMessage.conclusion) ||
+                (newMessage.conclusion && newMessage.mode === 'article')) &&
               !firstResultCame
             ) {
               setConversation((prev) => {
-                navigateConversationResults(prev.length - 1, threadId);
+                if (newMessage.mode === 'article') {
+                  navigateArticleResponse(prev.length - 1, threadId);
+                } else {
+                  navigateConversationResults(prev.length - 1, threadId);
+                }
                 return prev;
               });
               firstResultCame = true;
