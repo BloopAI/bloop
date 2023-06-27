@@ -915,12 +915,7 @@ impl Conversation {
         };
 
         let query_history = self.query_history().collect::<Vec<_>>();
-        let query = self
-            .last_exchange()
-            .query()
-            .context("exchange did not have a user query")?;
-
-        let system_message = prompts::final_explanation_prompt(&context, query);
+        let system_message = prompts::final_explanation_prompt(&context);
         let messages = Some(llm_gateway::api::Message::system(&system_message))
             .into_iter()
             .chain(query_history.iter().cloned())
