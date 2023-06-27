@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{ops::Not, sync::Arc};
 
 use super::prelude::*;
 use crate::{
@@ -170,12 +170,12 @@ async fn search_nav(
 
     let data = results
         .into_iter()
-        .map(|(_, doc_addr)| {
+        .filter_map(|(_, doc_addr)| {
             let retrieved_doc = searcher
                 .doc(doc_addr)
                 .expect("failed to get document by address");
             let doc = ContentReader.read_document(file_source, retrieved_doc);
-            let hoverable_ranges = doc.hoverable_ranges().unwrap(); // infallible
+            let hoverable_ranges = doc.hoverable_ranges()?;
             let data = target
                 .find_iter(&doc.content)
                 .map(|m| TextRange::from_byte_range(m.range(), &doc.line_end_indices))
@@ -218,10 +218,10 @@ async fn search_nav(
 
             let file = doc.relative_path;
 
-            FileSymbols {
+            data.is_empty().not().then(|| FileSymbols {
                 file: file.clone(),
                 data,
-            }
+            })
         })
         .collect::<Vec<_>>();
 
