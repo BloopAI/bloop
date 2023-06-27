@@ -168,8 +168,9 @@ const Chat = () => {
           if (data.Ok) {
             const newMessage = data.Ok;
             if (
-              ((newMessage.results?.length && !newMessage.conclusion) ||
-                (newMessage.conclusion && newMessage.mode === 'article')) &&
+              ((newMessage.results?.Filesystem?.length &&
+                !newMessage.conclusion) ||
+                newMessage.results?.Article?.length) &&
               !firstResultCame
             ) {
               setConversation((prev) => {

@@ -17,7 +17,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
   const data = useMemo(
     () => conversationsCache[threadId]?.[recordId] || conversation[recordId],
     [
-      (conversation[recordId] as ChatMessageServer)?.text,
+      (conversation[recordId] as ChatMessageServer)?.results,
       (conversation[recordId] as ChatMessageServer)?.isLoading,
       recordId,
       threadId,
@@ -43,8 +43,11 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
         }}
       >
         {data?.isLoading
-          ? data?.text.replace(/\[\`[^`]*$|\[\`[^`]+\`\]\([^)]*$/, '')
-          : data?.text}
+          ? data?.results?.Article?.replace(
+              /\[\`[^`]*$|\[\`[^`]+\`\]\([^)]*$/,
+              '',
+            )
+          : data?.results?.Article}
       </ReactMarkdown>
     </div>
   );

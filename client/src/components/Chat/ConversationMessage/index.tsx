@@ -8,7 +8,12 @@ import {
   Sparkles,
 } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
-import { ChatLoadingStep, ChatMessageAuthor } from '../../../types/general';
+import {
+  ArticleResult,
+  ChatLoadingStep,
+  ChatMessageAuthor,
+  FileSystemResult,
+} from '../../../types/general';
 import { ChatContext } from '../../../context/chatContext';
 import Button from '../../Button';
 import { AppNavigationContext } from '../../../context/appNavigationContext';
@@ -27,7 +32,7 @@ type Props = {
   scrollToBottom?: () => void;
   isLoading?: boolean;
   loadingSteps?: ChatLoadingStep[];
-  results?: any[];
+  results?: FileSystemResult & ArticleResult;
   i: number;
 };
 
@@ -48,7 +53,8 @@ const ConversationMessage = ({
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
   const { envConfig } = useContext(DeviceContext);
   const { setChatOpen } = useContext(ChatContext);
-  const { navigateConversationResults } = useContext(AppNavigationContext);
+  const { navigateConversationResults, navigateArticleResponse } =
+    useContext(AppNavigationContext);
   const { openFileModal } = useContext(FileModalContext);
 
   useEffect(() => {
@@ -76,7 +82,7 @@ const ConversationMessage = ({
               {s.type === 'PROC' ? (
                 <FileChip
                   onClick={() => openFileModal(s.content)}
-                  fileName={s.content.split('/').pop()}
+                  fileName={s.content.split('/').pop() || ''}
                 />
               ) : null}
             </div>
@@ -106,12 +112,17 @@ const ConversationMessage = ({
               <List />
             </Button>
           </div>
-          {!isLoading && !!results?.length ? (
+          {!isLoading &&
+          (!!results?.Filesystem?.length || !!results?.Article) ? (
             <div className="flex items-center justify-end justify-self-end">
               <button
                 className="text-bg-main body-s mr-2"
                 onClick={() => {
-                  navigateConversationResults(i, searchId);
+                  if (results?.Article) {
+                    navigateArticleResponse(i, searchId);
+                  } else {
+                    navigateConversationResults(i, searchId);
+                  }
                 }}
               >
                 View

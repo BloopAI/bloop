@@ -187,6 +187,19 @@ export type ChatLoadingStep = {
   displayText: string;
 };
 
+export type FileSystemResult = {
+  Filesystem?: (
+    | MessageResultCite
+    | MessageResultNew
+    | MessageResultModify
+    | MessageResultDirectory
+  )[];
+};
+
+export type ArticleResult = {
+  Article?: string;
+};
+
 export type ChatMessageServer = {
   author: ChatMessageAuthor.Server;
   text?: string;
@@ -195,12 +208,7 @@ export type ChatMessageServer = {
   error?: string;
   isFromHistory?: boolean;
   type: ChatMessageType;
-  results?: (
-    | MessageResultCite
-    | MessageResultNew
-    | MessageResultModify
-    | MessageResultDirectory
-  )[];
+  results?: FileSystemResult & ArticleResult;
 };
 
 export type ChatMessage = ChatMessageUser | ChatMessageServer;
