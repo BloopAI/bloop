@@ -13,6 +13,12 @@ pub struct Exchange {
     pub results: Vec<SearchResult>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub enum Results {
+    Article(String),
+    Filesystem(Vec<SearchResult>),
+}
+
 impl Exchange {
     /// Advance this exchange.
     ///
