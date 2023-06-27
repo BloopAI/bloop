@@ -287,7 +287,10 @@ const Chat = () => {
     setThreadId('');
     setSubmittedQuery('');
     setSelectedLines(null);
-    if (navigatedItem?.type === 'conversation-result') {
+    if (
+      navigatedItem?.type === 'conversation-result' ||
+      navigatedItem?.type === 'article-response'
+    ) {
       navigateRepoPath(tab.repoName);
     }
     focusInput();

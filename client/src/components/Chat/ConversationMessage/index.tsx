@@ -1,6 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
 import {
-  ArrowOut,
   Checkmark,
   List,
   MagnifyTool,
@@ -13,9 +12,9 @@ import { ChatLoadingStep, ChatMessageAuthor } from '../../../types/general';
 import { ChatContext } from '../../../context/chatContext';
 import Button from '../../Button';
 import { AppNavigationContext } from '../../../context/appNavigationContext';
-import FileIcon from '../../FileIcon';
 import { FileModalContext } from '../../../context/fileModalContext';
 import MessageFeedback from './MessageFeedback';
+import FileChip from './FileChip';
 
 type Props = {
   author: ChatMessageAuthor;
@@ -75,20 +74,10 @@ const ConversationMessage = ({
               {s.type === 'PROC' ? <PointClick /> : <MagnifyTool />}
               <span>{s.type === 'PROC' ? 'Reading ' : s.displayText}</span>
               {s.type === 'PROC' ? (
-                <button
-                  className={`inline-flex items-center bg-chat-bg-shade rounded-4 overflow-hidden 
-                text-label-base hover:text-label-title border border-transparent hover:border-chat-bg-border 
-                cursor-pointer`}
+                <FileChip
                   onClick={() => openFileModal(s.content)}
-                >
-                  <span className="flex gap-1 px-1 py-0.5 items-center border-r border-chat-bg-border caption">
-                    <FileIcon filename={s.content} noMargin />
-                    {s.content.split('/').pop()}
-                  </span>
-                  <span className="p-1 inline-flex items-center justify-center">
-                    <ArrowOut sizeClassName="w-3.5 h-3.5" />
-                  </span>
-                </button>
+                  fileName={s.content.split('/').pop()}
+                />
               ) : null}
             </div>
           ))}
