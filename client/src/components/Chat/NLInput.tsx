@@ -16,7 +16,7 @@ import InputLoader from './InputLoader';
 type Props = {
   id?: string;
   value?: string;
-  placeholder?: string;
+  generationInProgress?: boolean;
   isStoppable?: boolean;
   onStop?: () => void;
   onChange?: (e: ChangeEvent<HTMLTextAreaElement>) => void;
@@ -32,7 +32,7 @@ const NLInput = ({
   id,
   value,
   onChange,
-  placeholder = defaultPlaceholder,
+  generationInProgress,
   isStoppable,
   onStop,
   onSubmit,
@@ -70,11 +70,8 @@ const NLInput = ({
   );
 
   const shouldShowLoader = useMemo(
-    () =>
-      isStoppable &&
-      !!loadingSteps?.length &&
-      placeholder !== defaultPlaceholder,
-    [isStoppable, loadingSteps?.length, placeholder],
+    () => isStoppable && !!loadingSteps?.length && generationInProgress,
+    [isStoppable, loadingSteps?.length, generationInProgress],
   );
 
   return (
@@ -104,7 +101,7 @@ const NLInput = ({
       <textarea
         className={`w-full py-4 bg-transparent rounded-lg outline-none focus:outline-0 resize-none
         placeholder:text-current placeholder:truncate placeholder:max-w-[19.5rem] flex-grow-0`}
-        placeholder={placeholder}
+        placeholder={shouldShowLoader ? '' : defaultPlaceholder}
         id={id}
         value={value}
         onChange={onChange}
@@ -112,7 +109,7 @@ const NLInput = ({
         autoComplete="off"
         spellCheck="false"
         ref={inputRef}
-        disabled={isStoppable && placeholder !== defaultPlaceholder}
+        disabled={isStoppable && generationInProgress}
         onCompositionStart={() => setComposition(true)}
         onCompositionEnd={() => setComposition(false)}
         onKeyDown={handleKeyDown}
