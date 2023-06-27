@@ -53,9 +53,18 @@ impl Exchange {
     }
 
     /// Set the current search result list.
-    fn set_results(&mut self, mut results: Vec<SearchResult>) {
+    fn set_results(&mut self, mut new_results: Vec<SearchResult>) {
+        let results = match self.results.get_or_insert_with(|| Results::Filesystem(Vec::new())) {
+            r @ Results::Article(_) => {
+                *r = Results::Filesystem(Vec::new());
+                r.as_filesystem_mut().unwrap()
+            }
+
+            Results::Filesystem(results) => results,
+        };
+
         // fish out the conclusion from the result list, if any
-        let conclusion = results
+        let conclusion = new_results
             .iter()
             .position(SearchResult::is_conclusion)
             .and_then(|idx| results.remove(idx).conclusion());
@@ -72,8 +81,8 @@ impl Exchange {
         //
         // we only update the search results when the latest update
         // gives us more than what we already have
-        if self.results.len() <= results.len() {
-            self.results = results;
+        if results.len() <= new_results.len() {
+            *results = new_results;
         }
 
         self.conclusion = conclusion;
