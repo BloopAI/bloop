@@ -294,7 +294,7 @@ impl Conversation {
         }
     }
 
-    fn query_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> {
+    fn query_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
         self.exchanges
             .iter()
             .flat_map(|e| {
