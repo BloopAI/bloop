@@ -170,7 +170,7 @@ impl<'a> CodeNavigationContext<'a> {
             .map(|idx| Occurrence {
                 kind: OccurrenceKind::Definition,
                 range: scope_graph.graph[idx].range(),
-                snippet: to_occurrence(&self.source_document(), scope_graph.graph[idx].range()),
+                snippet: to_occurrence(self.source_document(), scope_graph.graph[idx].range()),
             })
             .collect::<Vec<_>>();
 
@@ -226,7 +226,7 @@ impl<'a> CodeNavigationContext<'a> {
             .map(|idx| Occurrence {
                 kind: OccurrenceKind::Reference,
                 range: scope_graph.graph[idx].range(),
-                snippet: to_occurrence(&self.source_document(), scope_graph.graph[idx].range()),
+                snippet: to_occurrence(self.source_document(), scope_graph.graph[idx].range()),
             })
             .collect::<Vec<_>>();
 
@@ -283,7 +283,7 @@ impl<'a> CodeNavigationContext<'a> {
             .map(|idx| Occurrence {
                 kind: OccurrenceKind::Definition,
                 range: scope_graph.graph[idx].range(),
-                snippet: to_occurrence(&self.source_document(), scope_graph.graph[idx].range()),
+                snippet: to_occurrence(self.source_document(), scope_graph.graph[idx].range()),
             })
             .collect::<Vec<_>>();
 
