@@ -133,9 +133,10 @@ impl RudderHub {
         }
     }
 
-    pub fn identify(&self, user: &crate::webserver::middleware::User) {
+    pub fn identify(&self, user: &crate::webserver::middleware::User, org_name: Option<String>) {
         if let Err(err) = self.client.send(&Message::Identify(Identify {
             user_id: Some(self.tracking_id(user)),
+            traits: org_name.map(|n| serde_json::json!({ "organization": n })),
             ..Default::default()
         })) {
             warn!(?err, "failed to send analytics event");
@@ -167,6 +168,18 @@ impl RudderHub {
                     }
                 }
             }
+        }
+    }
+
+    pub fn track_synced_repos(&self, count: usize, org_name: String) {
+        if let Err(err) = self.client.send(&Message::Track(Track {
+            event: "track_synced_repos".into(),
+            properties: Some(serde_json::json!({ "count": count, "organization": org_name })),
+            ..Default::default()
+        })) {
+            warn!(?err, "failed to send analytics event");
+        } else {
+            info!("sent analytics event...");
         }
     }
 }

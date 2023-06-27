@@ -270,8 +270,17 @@ impl Application {
 
     fn identify(&self, user: &webserver::middleware::User) {
         if let Some(analytics) = self.analytics.as_ref() {
-            tokio::task::block_in_place(|| analytics.identify(user))
+            tokio::task::block_in_place(|| analytics.identify(user, self.org_name()))
         }
+    }
+
+    fn org_name(&self) -> Option<String> {
+        self.credentials
+            .github()
+            .and_then(|state| match state.auth {
+                remotes::github::Auth::App { org, .. } => Some(org),
+                _ => None,
+            })
     }
 
     fn write_index(&self) -> background::BoundSyncQueue {

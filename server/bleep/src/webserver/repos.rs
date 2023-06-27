@@ -245,6 +245,10 @@ pub(super) async fn set_indexed(
     Extension(app): Extension<Application>,
     Json(new_list): Json<SetIndexed>,
 ) -> impl IntoResponse {
+    if let (Some(analytics), Some(org_name)) = (&app.analytics, app.org_name()) {
+        analytics.track_synced_repos(new_list.indexed.len(), org_name);
+    }
+
     let mut repo_list = new_list.indexed.into_iter().collect::<HashSet<_>>();
 
     app.repo_pool
