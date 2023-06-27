@@ -26,6 +26,13 @@ impl Results {
             Self::Filesystem(results) => Some(results)
         }
     }
+
+    fn as_filesystem(&self) -> Option<&Vec<SearchResult>> {
+        match self {
+            Self::Article(_) => None,
+            Self::Filesystem(results) => Some(results)
+        }
+    }
 }
 
 impl Exchange {
@@ -101,7 +108,10 @@ impl Exchange {
         if self.finished {
             Some(
                 self.results
-                    .iter()
+                    .as_ref()
+                    .and_then(|result| result.as_filesystem())
+                    .into_iter()
+                    .flatten()
                     .filter_map(|result| match result {
                         SearchResult::Cite(cite) => Some(cite.summarize()),
                         _ => None,
