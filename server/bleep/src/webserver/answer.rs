@@ -297,12 +297,22 @@ impl Conversation {
     fn query_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> {
         self.exchanges
             .iter()
-            .flat_map(|e| match (e.query(), e.conclusion()) {
-                (Some(q), Some(c)) => vec![("user", q), ("assistant", c)],
-                (Some(q), None) => vec![("user", q)],
-                _ => vec![],
+            .flat_map(|e| {
+                let query = e.query().map(|q| llm_gateway::api::Message::PlainText {
+                    role: "user".to_owned(),
+                    content: q.to_owned(),
+                });
+
+                let conclusion = e.conclusion().map(|c| llm_gateway::api::Message::PlainText {
+                    role: "assistant".to_owned(),
+                    content: c.to_owned(),
+                });
+
+                query
+                    .into_iter()
+                    .chain(conclusion.into_iter())
+                    .collect::<Vec<_>>()
             })
-            .map(|(author, message)| format!("{author}: {message}"))
     }
 
     // Generate a summary of the last exchange
