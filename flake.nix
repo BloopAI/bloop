@@ -79,6 +79,7 @@
           OPENSSL_NO_VENDOR = "1";
           ORT_STRATEGY = "system";
           ORT_LIB_LOCATION = "${onnxruntime14}/lib";
+          ORT_DYLIB_PATH = "${onnxruntime14}/lib/libonnxruntime.so";
         };
 
         bleep = (rustPlatform.buildRustPackage rec {

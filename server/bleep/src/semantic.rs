@@ -525,7 +525,9 @@ fn init_ort_dylib(dylib_dir: impl AsRef<Path>) {
 
         let ort_dylib_path = dylib_dir.as_ref().join(lib_name);
 
-        env::set_var("ORT_DYLIB_PATH", ort_dylib_path);
+        if env::var("ORT_DYLIB_PATH").is_err() {
+            env::set_var("ORT_DYLIB_PATH", ort_dylib_path);
+        }
     }
 }
 
