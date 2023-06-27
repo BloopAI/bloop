@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context, Result, bail};
 use axum::{
     extract::Query,
     response::{
@@ -924,7 +924,20 @@ impl Conversation {
             s
         };
 
-        let query_history = self.query_history().collect::<Vec<_>>();
+        let mut query_history = self.query_history().collect::<Vec<_>>();
+
+        {
+            let (role, content) = query_history.last_mut().context("query history was empty")?
+                .as_plaintext_mut()
+                .context("last message was not plaintext")?;
+
+            if role != "user" {
+                bail!("last message was not a user message");
+            }
+
+            *content += "\n\nOutput only JSON.";
+        }
+
         let system_message = prompts::final_explanation_prompt(&context);
         let messages = Some(llm_gateway::api::Message::system(&system_message))
             .into_iter()
