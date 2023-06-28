@@ -59,7 +59,7 @@ pub fn functions() -> serde_json::Value {
                         "mode": {
                             "type": "string",
                             "enum": ["article", "filesystem"],
-                            "description": "The type of answer to provide. If the user's query is an explain or how query, choose article. Otherwise choose filesystem."
+                            "description": "The type of answer to provide. If the user's query is best answered with the location of one or multiple files and folders with no explanation choose filesystem. If the user's query is best answered with any explanation, choose article."
                         },
                         "paths": {
                             "type": "array",
@@ -262,7 +262,8 @@ pub fn answer_article_prompt(context: &str) -> String {
     format!(
         r#"{context}Your job is to answer a query about a codebase using the information above.
 
-Provide only as much information as is necessary to answer the query, but be concise. Keep number of quoted lines to a minimum when possible. If you do not have enough information needed to answer the query, do not make up an answer.
+Provide only as much information and code as is necessary to answer the query, but be concise. Keep number of quoted lines to a minimum when possible. If you do not have enough information needed to answer the query, do not make up an answer.
+When referring to code, you must provide an example in a code block.
 
 Respect these rules at all times:
 - Do not refer to paths by alias
@@ -282,6 +283,7 @@ Respect these rules at all times:
 - When quoting code in a code block, use the following info string format: language,path:PATH,lines:LX-LY
   - For example, to quote lines 10 to 15 in `src/main.c`, use `c,path:src/main.c,lines:L10-L15`
   - For example, to quote lines 154 to 190 in `index.js`, use `javascript,path:index.js,lines:L154-L190`
+- Always begin your answer with an appropriate title
 
 #####
 
