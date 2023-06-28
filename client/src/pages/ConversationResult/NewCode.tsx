@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import Code from '../../components/CodeBlock/Code';
 import Button from '../../components/Button';
-import { Clipboard } from '../../icons';
+import { CheckIcon, Clipboard } from '../../icons';
 import { copyToClipboard } from '../../utils';
 
 type Props = {
@@ -9,6 +10,7 @@ type Props = {
 };
 
 const NewCode = ({ code, language }: Props) => {
+  const [codeCopied, setCodeCopied] = useState(false);
   return (
     <div className="text-sm p-4 border border-bg-border rounded-md relative bg-bg-shade">
       <div className="overflow-auto">
@@ -22,10 +24,14 @@ const NewCode = ({ code, language }: Props) => {
         <Button
           variant="secondary"
           size="small"
-          onClick={() => copyToClipboard(code)}
+          onClick={() => {
+            copyToClipboard(code);
+            setCodeCopied(true);
+            setTimeout(() => setCodeCopied(false), 2000);
+          }}
         >
-          <Clipboard />
-          Copy
+          {codeCopied ? <CheckIcon /> : <Clipboard />}
+          {codeCopied ? 'Copied' : 'Copy'}
         </Button>
       </div>
     </div>
