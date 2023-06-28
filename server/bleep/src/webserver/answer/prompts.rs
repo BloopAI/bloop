@@ -31,7 +31,7 @@ pub fn functions() -> serde_json::Value {
             },
             {
                 "name": "proc",
-                "description": "Read one or more files and extract the line ranges which are relevant to the search terms.",
+                "description": "Read one or more files and extract the line ranges which are relevant to the search terms. Do not proc more than 10 files at a time.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -43,7 +43,7 @@ pub fn functions() -> serde_json::Value {
                             "type": "array",
                             "items": {
                                 "type": "integer",
-                                "description": "The indices of the paths to search."
+                                "description": "The indices of the paths to search. paths.len() <= 10"
                             }
                         }
                     },
