@@ -7,7 +7,7 @@ use crate::{
 
 use rudderanalytics::{
     client::RudderAnalytics,
-    message::{Identify, Message, Track},
+    message::{Message, Track},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -133,12 +133,11 @@ impl RudderHub {
         }
     }
 
-    pub fn identify(&self, user: &crate::webserver::middleware::User, org_name: Option<String>) {
-        if let Err(err) = self.client.send(&Message::Identify(Identify {
-            user_id: Some(self.tracking_id(user)),
-            traits: org_name.map(|n| serde_json::json!({ "organization": n })),
-            ..Default::default()
-        })) {
+    /// Send a message, logging an error if it occurs.
+    ///
+    /// This function will `block_in_place`.
+    pub fn send(&self, message: Message) {
+        if let Err(err) = tokio::task::block_in_place(|| self.client.send(&message)) {
             warn!(?err, "failed to send analytics event");
         } else {
             info!("sent analytics event...");

@@ -185,6 +185,19 @@ pub(super) async fn authorized(
         .await
         .expect("can't retrieve user name");
 
+    app.with_analytics(|analytics| {
+        use rudderanalytics::message::{Identify, Message};
+        analytics.send(Message::Identify(Identify {
+            user_id: Some(user_name.clone()),
+            traits: Some(serde_json::json!({
+                "organization": app.org_name(),
+                "device_id": analytics.device_id(),
+                "is_cloud_instance": app.env.is_cloud_instance(),
+            })),
+            ..Default::default()
+        }));
+    });
+
     (
         jar.add(AuthCookie::new(gh_token, user_name).to_cookie()),
         Redirect::to("/"),
