@@ -923,9 +923,7 @@ impl Conversation {
                 .await?;
         }
 
-        exchange_tx
-            .send(self.update(Update::Finalize))
-            .await?;
+        exchange_tx.send(self.update(Update::Finalize)).await?;
 
         ctx.track_query(
             EventData::output_stage("answer_article")

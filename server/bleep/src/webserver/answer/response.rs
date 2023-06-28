@@ -23,14 +23,14 @@ impl Results {
     fn as_filesystem_mut(&mut self) -> Option<&mut Vec<SearchResult>> {
         match self {
             Self::Article(_) => None,
-            Self::Filesystem(results) => Some(results)
+            Self::Filesystem(results) => Some(results),
         }
     }
 
     fn as_filesystem(&self) -> Option<&Vec<SearchResult>> {
         match self {
             Self::Article(_) => None,
-            Self::Filesystem(results) => Some(results)
+            Self::Filesystem(results) => Some(results),
         }
     }
 
@@ -53,12 +53,14 @@ impl Exchange {
             Update::Filesystem(search_results) => {
                 self.set_results(search_results);
                 self.mode = AnswerMode::Filesystem;
-            },
+            }
             Update::Article(text) => {
-                let results = self.results.get_or_insert_with(|| Results::Article(String::new()));
+                let results = self
+                    .results
+                    .get_or_insert_with(|| Results::Article(String::new()));
                 *results.as_article_mut().unwrap() += &text;
                 self.mode = AnswerMode::Article;
-            },
+            }
             Update::Finalize => self.finished = true,
         }
     }
@@ -78,7 +80,10 @@ impl Exchange {
 
     /// Set the current search result list.
     fn set_results(&mut self, mut new_results: Vec<SearchResult>) {
-        let results = match self.results.get_or_insert_with(|| Results::Filesystem(Vec::new())) {
+        let results = match self
+            .results
+            .get_or_insert_with(|| Results::Filesystem(Vec::new()))
+        {
             r @ Results::Article(_) => {
                 *r = Results::Filesystem(Vec::new());
                 r.as_filesystem_mut().unwrap()
@@ -91,7 +96,7 @@ impl Exchange {
         let conclusion = new_results
             .iter()
             .position(SearchResult::is_conclusion)
-            .and_then(|idx| results.remove(idx).conclusion());
+            .and_then(|idx| new_results.remove(idx).conclusion());
 
         if conclusion.is_some() {
             self.finished = true;
