@@ -2,7 +2,7 @@ use std::{ops::Not, sync::Arc};
 
 use super::prelude::*;
 use crate::{
-    indexes::Indexes,
+    indexes::{reader::ContentDocument, Indexes},
     intelligence::{
         code_navigation::{CodeNavigationContext, FileSymbols, Occurrence, OccurrenceKind, Token},
         Language, NodeKind, TSLanguage,
@@ -55,12 +55,12 @@ pub(super) async fn handle(
         end_byte: payload.end,
     };
 
-    let content = indexes
+    let source_document = indexes
         .file
         .by_path(&repo_ref, &payload.relative_path)
         .await
         .map_err(Error::user)?;
-    let lang = content.lang.as_deref();
+    let lang = source_document.lang.as_deref();
     let all_docs = {
         let associated_langs = match lang.map(TSLanguage::from_id) {
             Some(Language::Supported(config)) => config.language_ids,
@@ -93,7 +93,7 @@ pub(super) async fn handle(
             &repo_ref,
             ctx.active_token_text(),
             ctx.active_token_range(),
-            lang.map(str::to_string),
+            &source_document,
         )
         .await
         .map(TokenInfoResponse::new)
@@ -108,7 +108,7 @@ async fn search_nav(
     repo_ref: &RepoRef,
     hovered_text: &str,
     payload_range: std::ops::Range<usize>,
-    lang: Option<String>,
+    source_document: &ContentDocument,
 ) -> Result<Vec<FileSymbols>> {
     use crate::{
         indexes::{reader::ContentReader, DocumentRead},
@@ -120,7 +120,7 @@ async fn search_nav(
         schema::{IndexRecordOption, Term},
     };
 
-    let associated_langs = match lang.as_deref().map(TSLanguage::from_id) {
+    let associated_langs = match source_document.lang.as_deref().map(TSLanguage::from_id) {
         Some(Language::Supported(config)) => config.language_ids,
         _ => &[],
     };
@@ -168,6 +168,19 @@ async fn search_nav(
         .search(&query, &collector)
         .expect("failed to search index");
 
+    // if the hovered token is a def, ignore all other search-based defs
+    let ignore_defs = {
+        source_document
+            .symbol_locations
+            .scope_graph()
+            .and_then(|graph| {
+                graph
+                    .node_by_range(payload_range.start, payload_range.end)
+                    .map(|idx| matches!(graph.graph[idx], NodeKind::Def(_)))
+            })
+            .unwrap_or_default()
+    };
+
     let data = results
         .into_iter()
         .filter_map(|(_, doc_addr)| {
@@ -214,6 +227,7 @@ async fn search_nav(
                         snippet,
                     }
                 })
+                .filter(|o| !(ignore_defs && o.is_definition())) // if ignore_defs is true & o is a def, omit it
                 .collect::<Vec<_>>();
 
             let file = doc.relative_path;

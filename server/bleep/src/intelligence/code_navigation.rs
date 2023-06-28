@@ -30,6 +30,12 @@ pub struct Occurrence {
     pub snippet: Snippet,
 }
 
+impl Occurrence {
+    pub fn is_definition(&self) -> bool {
+        matches!(self.kind, OccurrenceKind::Definition)
+    }
+}
+
 #[derive(Serialize, Debug, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum OccurrenceKind {
