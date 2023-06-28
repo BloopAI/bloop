@@ -60,9 +60,14 @@ const CodeContainerFull = ({
 
   useEffect(() => {
     if (tokenInfo.byteRange) {
-      const tokenElem = findElementInCurrentTab(
-        `[data-byte-range="${tokenInfo.byteRange.start}-${tokenInfo.byteRange.end}"]`,
+      let tokenElem = findElementInCurrentTab(
+        `.code-modal-container [data-byte-range="${tokenInfo.byteRange.start}-${tokenInfo.byteRange.end}"]`,
       );
+      if (!tokenElem) {
+        tokenElem = findElementInCurrentTab(
+          `#result-full-code-container [data-byte-range="${tokenInfo.byteRange.start}-${tokenInfo.byteRange.end}"]`,
+        );
+      }
       if (tokenElem && tokenElem instanceof HTMLElement) {
         setPopupPosition({
           top: tokenElem.offsetTop + 10,
