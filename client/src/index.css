@@ -1278,6 +1278,11 @@ h5, .h5 {
   margin: revert;
 }
 
+.article-response h1, .article-response h2, .article-response h3, .article-response h4, .article-response h5,
+.article-response h6 {
+  @apply text-label-title;
+}
+
 .readme h1, .readme h2 {
   border-bottom: 1px solid rgb(var(--bg-border));
   padding-bottom: 0.6rem;
@@ -1337,6 +1342,7 @@ h5, .h5 {
 .article-response code {
   background-color: rgb(var(--bg-shade));
   border: 1px solid rgb(var(--bg-border));
+  font-family: Menlo, sans-serif;
   border-radius: 4px;
 }
 

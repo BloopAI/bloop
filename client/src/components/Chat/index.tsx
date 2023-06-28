@@ -104,8 +104,7 @@ const Chat = () => {
         console.log('SSE error', err);
         firstResultCame = false;
         i = -1;
-        console.log('Closing SSE connection...');
-        eventSource.close();
+        stopGenerating();
         setConversation((prev) => {
           const newConversation = prev.slice(0, -1);
           const lastMessage: ChatMessage = {
@@ -175,6 +174,7 @@ const Chat = () => {
             ) {
               setConversation((prev) => {
                 if (newMessage.mode === 'article') {
+                  setChatOpen(false);
                   navigateArticleResponse(prev.length - 1, threadId);
                 } else {
                   navigateConversationResults(prev.length - 1, threadId);

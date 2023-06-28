@@ -26,7 +26,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
   );
 
   return (
-    <div className="p-8 flex-1 overflow-x-auto mx-auto max-w-3xl box-content article-response">
+    <div className="p-8 flex-1 overflow-x-auto mx-auto max-w-3xl box-content article-response body-m text-label-base pb-44">
       <ReactMarkdown
         components={{
           a(props) {
@@ -34,7 +34,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
             const [start, end] = lines?.split('-').map((l) => l.slice(1)) || [];
             return (
               <FileChip
-                fileName={filePath.split('/').pop() || ''}
+                fileName={filePath || ''}
                 onClick={() =>
                   openFileModal(filePath, start ? `${start}_${end}` : undefined)
                 }
@@ -61,7 +61,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
                           : ''
                       }`
                     : ''
-                }${children[0]}`}
+                }${children[0].replace(/\n$/, '')}`}
                 language={matchLang[1]}
               />
             ) : (
