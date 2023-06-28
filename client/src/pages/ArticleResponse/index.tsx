@@ -5,6 +5,7 @@ import { ChatMessageServer } from '../../types/general';
 import { ChatContext } from '../../context/chatContext';
 import { FileModalContext } from '../../context/fileModalContext';
 import FileChip from '../../components/Chat/ConversationMessage/FileChip';
+import NewCode from '../ConversationResult/NewCode';
 
 type Props = {
   recordId: number;
@@ -38,6 +39,16 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
                   openFileModal(filePath, start ? `${start}_${end}` : undefined)
                 }
               />
+            );
+          },
+          code({ node, inline, className, children, ...props }) {
+            const match = /language-(\w+)/.exec(className || '');
+            return !inline && match?.[1] && typeof children[0] === 'string' ? (
+              <NewCode code={children[0]} language={match[1]} />
+            ) : (
+              <code {...props} className={className}>
+                {children}
+              </code>
             );
           },
         }}
