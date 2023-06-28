@@ -1,8 +1,6 @@
 use std::{
     env, fs,
     path::{Path, PathBuf},
-    thread,
-    time::Duration,
 };
 
 fn main() {
@@ -29,10 +27,6 @@ fn main() {
 
     if let Some(dylib_name) = dylib_name {
         let dylib_path = profile_dir.join(dylib_name);
-
-        while !dylib_path.exists() {
-            thread::sleep(Duration::from_millis(500));
-        }
 
         fs::copy(dylib_path, Path::new(".").join("dylibs").join(dylib_name)).unwrap();
     }
