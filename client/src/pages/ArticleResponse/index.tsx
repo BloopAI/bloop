@@ -42,9 +42,28 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
             );
           },
           code({ node, inline, className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className || '');
-            return !inline && match?.[1] && typeof children[0] === 'string' ? (
-              <NewCode code={children[0]} language={match[1]} />
+            const matchLang = /language-(\w+)/.exec(className || '');
+            const matchPath = /path:(.+),/.exec(className || '');
+            const matchLines = /lines:(.+)/.exec(className || '');
+            return !inline &&
+              matchLang?.[1] &&
+              typeof children[0] === 'string' ? (
+              <NewCode
+                code={`${
+                  matchPath?.[1]
+                    ? `// ${matchPath[1]}${
+                        matchLines?.[1]
+                          ? `:${matchLines?.[1]
+                              .split('-')
+                              .map((l) => l.slice(1))
+                              .join(':')}
+`
+                          : ''
+                      }`
+                    : ''
+                }${children[0]}`}
+                language={matchLang[1]}
+              />
             ) : (
               <code {...props} className={className}>
                 {children}
