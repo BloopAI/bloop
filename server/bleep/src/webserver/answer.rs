@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{anyhow, Context, Result, bail};
+use anyhow::{anyhow, bail, Context, Result};
 use axum::{
     extract::Query,
     response::{
@@ -927,7 +927,9 @@ impl Conversation {
         let mut query_history = self.query_history().collect::<Vec<_>>();
 
         {
-            let (role, content) = query_history.last_mut().context("query history was empty")?
+            let (role, content) = query_history
+                .last_mut()
+                .context("query history was empty")?
                 .as_plaintext_mut()
                 .context("last message was not plaintext")?;
 

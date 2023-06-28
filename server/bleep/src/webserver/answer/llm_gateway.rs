@@ -152,7 +152,7 @@ impl api::Message {
     pub fn as_plaintext_mut(&mut self) -> Option<(&mut String, &mut String)> {
         match self {
             Self::PlainText { role, content } => Some((role, content)),
-            _ => None
+            _ => None,
         }
     }
 }
