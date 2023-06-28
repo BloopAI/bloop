@@ -1,20 +1,20 @@
 import Tippy, { TippyProps } from '@tippyjs/react/headless';
-import { TokenInfo, TokenInfoItem } from '../../types/results';
+import { TokenInfoWrapped } from '../../types/results';
 import RefsDefsPopup from './RefsDefsPopup';
 
 type Props = {
   language: string;
-  data: TokenInfo;
+  data: TokenInfoWrapped;
   position: 'left' | 'center' | 'right';
   children: React.ReactNode;
   onHover: () => void;
   repoName: string;
-  onRefDefClick: (lineNum: TokenInfoItem, filePath: string) => void;
+  onRefDefClick: (lineNum: number, filePath: string) => void;
 };
 
 export const TypeMap = {
-  REF: 'references',
-  DEF: 'definitions',
+  REF: 'reference',
+  DEF: 'definition',
 } as const;
 
 const positionMapping = {

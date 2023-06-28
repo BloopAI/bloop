@@ -1,4 +1,5 @@
 import { Token } from './prism';
+import { TokenInfoResponse } from './api';
 import { FileTreeFileType, RepositoryFile } from './index';
 
 export type BaseSymbolType =
@@ -155,16 +156,17 @@ export type TokenInfoFile = {
   items: TokenInfoItem[];
 };
 
-export type TokenInfoType = 'references' | 'definitions';
+export type TokenInfoType = 'reference' | 'definition';
 
 export type TokenInfo = {
   references?: TokenInfoFile[];
   definitions?: TokenInfoFile[];
 };
 
-export type TokenInfoWrapped = TokenInfo & {
+export type TokenInfoWrapped = {
   byteRange: Range | null;
   lineNumber?: number;
+  data: TokenInfoResponse['data'];
 };
 
 export type ResultClick = (

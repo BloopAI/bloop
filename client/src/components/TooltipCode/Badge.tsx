@@ -10,8 +10,8 @@ type Props = {
 };
 
 const colorMap = {
-  references: 'bg-bg-danger',
-  definitions: 'bg-bg-success',
+  reference: 'bg-bg-danger',
+  definition: 'bg-bg-success',
   mod: 'bg-violet',
   ret: 'bg-sky',
 };

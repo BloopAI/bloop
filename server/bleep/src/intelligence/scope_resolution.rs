@@ -129,6 +129,10 @@ impl ScopeGraph {
         }
     }
 
+    pub fn get_node(&self, node_idx: NodeIndex<u32>) -> Option<&NodeKind> {
+        self.graph.node_weight(node_idx)
+    }
+
     /// Insert a local scope into the scope-graph
     pub fn insert_local_scope(&mut self, new: LocalScope) {
         if let Some(parent_scope) = self.scope_by_range(new.range, self.root_idx) {

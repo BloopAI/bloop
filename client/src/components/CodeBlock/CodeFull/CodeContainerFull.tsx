@@ -26,7 +26,7 @@ type Props = {
   onMouseSelectEnd: (lineNum: number, charNum: number) => void;
   getHoverableContent: (range: Range) => void;
   tokenInfo: TokenInfoWrapped;
-  handleRefsDefsClick: (item: TokenInfoItem, filePath: string) => void;
+  handleRefsDefsClick: (lineNum: number, filePath: string) => void;
 };
 
 const CodeContainerFull = ({

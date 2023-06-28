@@ -18,46 +18,87 @@ export const TooltipCodeDefault = () => {
             repoName={'bloop'}
             onRefDefClick={() => {}}
             data={{
-              references: [
+              byteRange: { start: 0, end: 12 },
+              data: [
                 {
-                  path: '/src/root/service/longFolderName/oneMoreNestedFolder/index.tsx',
-                  items: [
+                  file: '/src/root/service/longFolderName/oneMoreNestedFolder/index.tsx',
+                  data: [
                     {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
+                      kind: 'definition',
+                      snippet: {
+                        data: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
+                        line_range: {
+                          start: 12,
+                          end: 12,
+                        },
+                        symbols: [],
+                        highlights: [],
+                      },
+                      range: {
+                        start: {
+                          line: 12,
+                          column: 1,
+                          byte: 1,
+                        },
+                        end: {
+                          line: 12,
+                          column: 21,
+                          byte: 21,
+                        },
+                      },
                     },
                   ],
                 },
-              ],
-              definitions: [
                 {
-                  path: '/src/root/service',
-                  items: [
+                  file: '/src/root/service',
+                  data: [
                     {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
+                      kind: 'definition',
+                      snippet: {
+                        data: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
+                        line_range: {
+                          start: 12,
+                          end: 12,
+                        },
+                        symbols: [],
+                        highlights: [],
+                      },
+                      range: {
+                        start: {
+                          line: 12,
+                          column: 1,
+                          byte: 1,
+                        },
+                        end: {
+                          line: 12,
+                          column: 21,
+                          byte: 21,
+                        },
+                      },
                     },
                     {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
-                    },
-                  ],
-                },
-                {
-                  path: '/src/root/controller',
-                  items: [
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
-                    },
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
+                      kind: 'reference',
+                      snippet: {
+                        data: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
+                        line_range: {
+                          start: 12,
+                          end: 12,
+                        },
+                        symbols: [],
+                        highlights: [],
+                      },
+                      range: {
+                        start: {
+                          line: 12,
+                          column: 1,
+                          byte: 1,
+                        },
+                        end: {
+                          line: 12,
+                          column: 21,
+                          byte: 21,
+                        },
+                      },
                     },
                   ],
                 },
@@ -73,46 +114,87 @@ export const TooltipCodeDefault = () => {
             onRefDefClick={() => {}}
             repoName={'bloop'}
             data={{
-              references: [
+              byteRange: { start: 0, end: 12 },
+              data: [
                 {
-                  path: '/src/root/service',
-                  items: [
+                  file: '/src/root/service/longFolderName/oneMoreNestedFolder/index.tsx',
+                  data: [
                     {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
+                      kind: 'definition',
+                      snippet: {
+                        data: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
+                        line_range: {
+                          start: 12,
+                          end: 12,
+                        },
+                        symbols: [],
+                        highlights: [],
+                      },
+                      range: {
+                        start: {
+                          line: 12,
+                          column: 1,
+                          byte: 1,
+                        },
+                        end: {
+                          line: 12,
+                          column: 21,
+                          byte: 21,
+                        },
+                      },
                     },
                   ],
                 },
-              ],
-              definitions: [
                 {
-                  path: '/src/root/service',
-                  items: [
+                  file: '/src/root/service',
+                  data: [
                     {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
+                      kind: 'definition',
+                      snippet: {
+                        data: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
+                        line_range: {
+                          start: 12,
+                          end: 12,
+                        },
+                        symbols: [],
+                        highlights: [],
+                      },
+                      range: {
+                        start: {
+                          line: 12,
+                          column: 1,
+                          byte: 1,
+                        },
+                        end: {
+                          line: 12,
+                          column: 21,
+                          byte: 21,
+                        },
+                      },
                     },
                     {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
-                    },
-                  ],
-                },
-                {
-                  path: '/src/root/controller',
-                  items: [
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
-                    },
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
+                      kind: 'reference',
+                      snippet: {
+                        data: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
+                        line_range: {
+                          start: 12,
+                          end: 12,
+                        },
+                        symbols: [],
+                        highlights: [],
+                      },
+                      range: {
+                        start: {
+                          line: 12,
+                          column: 1,
+                          byte: 1,
+                        },
+                        end: {
+                          line: 12,
+                          column: 21,
+                          byte: 21,
+                        },
+                      },
                     },
                   ],
                 },
@@ -128,46 +210,87 @@ export const TooltipCodeDefault = () => {
             onRefDefClick={() => {}}
             repoName={'bloop'}
             data={{
-              references: [
+              byteRange: { start: 0, end: 12 },
+              data: [
                 {
-                  path: '/src/root/service',
-                  items: [
+                  file: '/src/root/service/longFolderName/oneMoreNestedFolder/index.tsx',
+                  data: [
                     {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
+                      kind: 'definition',
+                      snippet: {
+                        data: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
+                        line_range: {
+                          start: 12,
+                          end: 12,
+                        },
+                        symbols: [],
+                        highlights: [],
+                      },
+                      range: {
+                        start: {
+                          line: 12,
+                          column: 1,
+                          byte: 1,
+                        },
+                        end: {
+                          line: 12,
+                          column: 21,
+                          byte: 21,
+                        },
+                      },
                     },
                   ],
                 },
-              ],
-              definitions: [
                 {
-                  path: '/src/root/service',
-                  items: [
+                  file: '/src/root/service',
+                  data: [
                     {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
+                      kind: 'definition',
+                      snippet: {
+                        data: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
+                        line_range: {
+                          start: 12,
+                          end: 12,
+                        },
+                        symbols: [],
+                        highlights: [],
+                      },
+                      range: {
+                        start: {
+                          line: 12,
+                          column: 1,
+                          byte: 1,
+                        },
+                        end: {
+                          line: 12,
+                          column: 21,
+                          byte: 21,
+                        },
+                      },
                     },
                     {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
-                    },
-                  ],
-                },
-                {
-                  path: '/src/root/controller',
-                  items: [
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
-                    },
-                    {
-                      code: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
-                      line: 12,
-                      highlights: [],
+                      kind: 'reference',
+                      snippet: {
+                        data: 'func Adapt(fn Command) func(cmd *cobra.Command, args []string) error {',
+                        line_range: {
+                          start: 12,
+                          end: 12,
+                        },
+                        symbols: [],
+                        highlights: [],
+                      },
+                      range: {
+                        start: {
+                          line: 12,
+                          column: 1,
+                          byte: 1,
+                        },
+                        end: {
+                          line: 12,
+                          column: 21,
+                          byte: 21,
+                        },
+                      },
                     },
                   ],
                 },
