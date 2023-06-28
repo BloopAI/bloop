@@ -6,6 +6,8 @@ import { ChatContext } from '../../context/chatContext';
 import { FileModalContext } from '../../context/fileModalContext';
 import FileChip from '../../components/Chat/ConversationMessage/FileChip';
 import NewCode from '../ConversationResult/NewCode';
+import { UIContext } from '../../context/uiContext';
+import CodeWithBreadcrumbs from './CodeWithBreadcrumbs';
 
 type Props = {
   recordId: number;
@@ -15,6 +17,7 @@ type Props = {
 const ArticleResponse = ({ recordId, threadId }: Props) => {
   const { conversation } = useContext(ChatContext);
   const { openFileModal } = useContext(FileModalContext);
+  const { tab } = useContext(UIContext);
   const data = useMemo(
     () => conversationsCache[threadId]?.[recordId] || conversation[recordId],
     [
@@ -27,7 +30,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
 
   return (
     <div className="overflow-auto p-8 w-screen">
-      <div className="flex-1 mx-auto max-w-3xl box-content article-response body-m text-label-base pb-44">
+      <div className="flex-1 mx-auto max-w-3xl box-content article-response body-m text-label-base pb-44 break-word">
         <ReactMarkdown
           components={{
             a(props) {
@@ -50,25 +53,35 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
               const matchLang = /language-(\w+)/.exec(className || '');
               const matchPath = /path:(.+),/.exec(className || '');
               const matchLines = /lines:(.+)/.exec(className || '');
+              const code =
+                typeof children[0] === 'string'
+                  ? children[0].replace(/\n$/, '')
+                  : '';
+              const lines =
+                matchLines?.[1].split('-').map((l) => Number(l.slice(1))) || [];
               return !inline &&
                 matchLang?.[1] &&
                 typeof children[0] === 'string' ? (
-                <NewCode
-                  code={`${
-                    matchPath?.[1]
-                      ? `// ${matchPath[1]}${
-                          matchLines?.[1]
-                            ? `:${matchLines?.[1]
-                                .split('-')
-                                .map((l) => l.slice(1))
-                                .join(':')}
-`
-                            : ''
-                        }`
-                      : ''
-                  }${children[0].replace(/\n$/, '')}`}
-                  language={matchLang[1]}
-                />
+                matchPath?.[1] ? (
+                  <CodeWithBreadcrumbs
+                    code={code}
+                    language={matchLang[1]}
+                    filePath={matchPath[1]}
+                    onResultClick={() =>
+                      openFileModal(
+                        matchPath[1],
+                        lines[0]
+                          ? `${lines[0]}_${lines[1] || lines[0]}`
+                          : undefined,
+                      )
+                    }
+                    endLine={lines[1]}
+                    startLine={lines[0]}
+                    repoName={tab.repoName}
+                  />
+                ) : (
+                  <NewCode code={code} language={matchLang[1]} />
+                )
               ) : (
                 <code {...props} className={className}>
                   {children}
