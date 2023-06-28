@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use axum::{
     extract::Query,
     response::{
@@ -293,16 +293,25 @@ impl Conversation {
         }
     }
 
-    fn query_history(&self) -> Vec<String> {
-        self.exchanges
-            .iter()
-            .flat_map(|e| match (e.query(), e.conclusion()) {
-                (Some(q), Some(c)) => vec![("user", q), ("assistant", c)],
-                (Some(q), None) => vec![("user", q)],
-                _ => vec![],
-            })
-            .map(|(author, message)| format!("{author}: {message}"))
-            .collect()
+    fn query_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
+        self.exchanges.iter().flat_map(|e| {
+            let query = e.query().map(|q| llm_gateway::api::Message::PlainText {
+                role: "user".to_owned(),
+                content: q.to_owned(),
+            });
+
+            let conclusion = e
+                .conclusion()
+                .map(|c| llm_gateway::api::Message::PlainText {
+                    role: "assistant".to_owned(),
+                    content: c.to_owned(),
+                });
+
+            query
+                .into_iter()
+                .chain(conclusion.into_iter())
+                .collect::<Vec<_>>()
+        })
     }
 
     // Generate a summary of the last exchange
@@ -896,15 +905,27 @@ impl Conversation {
             s
         };
 
-        let query_history = self.query_history().join("\n");
-        let query = self
-            .last_exchange()
-            .query()
-            .context("exchange did not have a user query")?;
+        let mut query_history = self.query_history().collect::<Vec<_>>();
 
-        let prompt = prompts::final_explanation_prompt(&context, query, &query_history);
+        {
+            let (role, content) = query_history
+                .last_mut()
+                .context("query history was empty")?
+                .as_plaintext_mut()
+                .context("last message was not plaintext")?;
 
-        let messages = [llm_gateway::api::Message::system(&prompt)];
+            if role != "user" {
+                bail!("last message was not a user message");
+            }
+
+            *content += "\n\nOutput only JSON.";
+        }
+
+        let system_message = prompts::final_explanation_prompt(&context);
+        let messages = Some(llm_gateway::api::Message::system(&system_message))
+            .into_iter()
+            .chain(query_history.iter().cloned())
+            .collect::<Vec<_>>();
 
         let mut stream = ctx.llm_gateway.chat(&messages, None).await?.boxed();
         let mut buffer = String::new();
@@ -958,7 +979,7 @@ impl Conversation {
                 .with_payload("query", self.last_exchange().query())
                 .with_payload("query_history", &query_history)
                 .with_payload("response", &buffer)
-                .with_payload("raw_prompt", &prompt),
+                .with_payload("system_message", &system_message),
         );
 
         Ok(())
