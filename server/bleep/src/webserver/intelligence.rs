@@ -231,44 +231,54 @@ async fn search_nav(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text_range::Point;
+    use crate::{snippet::Snippet, text_range::Point};
 
     #[test]
-    fn serialize_response_reference() {
+    fn serialize_response() {
         let expected = serde_json::json!({
-            "kind": "reference",
-            "definitions": [{
-                "file": "server/bleep/src/symbol.rs",
-                "data": [{
-                    "start": { "byte": 2620, "line": 90, "column": 0  },
-                    "end": { "byte": 2627, "line": 90, "column": 0  },
-                    "snippet": {
-                        "highlights": [ { "start": 12, "end": 19 } ],
-                        "data": "        let indexes = Indexes::new(self.clone(), threads).await?;\n",
-                        "line_range": { "start": 91, "end": 92 },
-                        "symbols": [],
-                    }
-                }]
-            }],
-            "references": [{
-                "file": "server/bleep/src/intelligence/scope_resolution.rs",
-                "data": [{
-                    "start": { "byte": 2725, "line": 93, "column": 0  },
-                    "end": { "byte": 2732, "line": 93, "column": 0  },
-                    "snippet": {
-                        "highlights": [ { "start": 12, "end": 19 } ],
-                        "symbols": [],
-                        "line_range": { "start": 94, "end": 95 },
-                        "data": "            indexes.reindex().await?;\n"
-                    }
-                }]
-            }]
+            "data": [
+                {
+                    "file": "server/bleep/src/symbol.rs",
+                    "data": [{
+                        "kind": "definition",
+                        "range": {
+                            "start": { "byte": 2620, "line": 90, "column": 0  },
+                            "end": { "byte": 2627, "line": 90, "column": 0  },
+                        },
+                        "snippet": {
+                            "highlights": [ { "start": 12, "end": 19 } ],
+                            "data": "        let indexes = Indexes::new(self.clone(), threads).await?;\n",
+                            "line_range": { "start": 91, "end": 92 },
+                            "symbols": []
+                        }
+                    }]
+
+                },
+                {
+                    "file": "server/bleep/src/intelligence/scope_resolution.rs",
+                    "data": [{
+                        "kind": "reference",
+                        "range": {
+                            "start": { "byte": 2725, "line": 93, "column": 0  },
+                            "end": { "byte": 2732, "line": 93, "column": 0  },
+                        },
+                        "snippet": {
+                            "highlights": [ { "start": 12, "end": 19 } ],
+                            "data": "            indexes.reindex().await?;\n",
+                            "line_range": { "start": 94, "end": 95 },
+                            "symbols": []
+                        }
+                    }]
+                }
+            ]
         });
 
-        let observed = serde_json::to_value(TokenInfoResponse::Reference {
-            definitions: vec![FileSymbols {
-                file: "server/bleep/src/symbol.rs".into(),
-                data: vec![SymbolOccurrence {
+        let observed = serde_json::to_value(TokenInfoResponse {
+            data: vec![
+                FileSymbols {
+                    file: "server/bleep/src/symbol.rs".into(),
+                    data: vec![Occurrence {
+                    kind: OccurrenceKind::Definition,
                     range: TextRange {
                         start: Point {
                             byte: 2620,
@@ -289,82 +299,35 @@ mod tests {
                         symbols: vec![],
                     },
                 }],
-            }],
-            references: vec![FileSymbols {
-                file: "server/bleep/src/intelligence/scope_resolution.rs".into(),
-                data: vec![SymbolOccurrence {
-                    range: TextRange {
-                        start: Point {
-                            byte: 2725,
-                            line: 93,
-                            column: 0,
+                },
+                FileSymbols {
+                    file: "server/bleep/src/intelligence/scope_resolution.rs".into(),
+                    data: vec![Occurrence {
+                        kind: OccurrenceKind::Reference,
+                        range: TextRange {
+                            start: Point {
+                                byte: 2725,
+                                line: 93,
+                                column: 0,
+                            },
+                            end: Point {
+                                byte: 2732,
+                                line: 93,
+                                column: 0,
+                            },
                         },
-                        end: Point {
-                            byte: 2732,
-                            line: 93,
-                            column: 0,
+                        snippet: Snippet {
+                            line_range: 94..95,
+                            data: "            indexes.reindex().await?;\n".to_owned(),
+                            highlights: vec![12..19],
+                            symbols: vec![],
                         },
-                    },
-                    snippet: Snippet {
-                        line_range: 94..95,
-                        data: "            indexes.reindex().await?;\n".to_owned(),
-                        highlights: vec![12..19],
-                        symbols: vec![],
-                    },
-                }],
-            }],
+                    }],
+                },
+            ],
         })
         .unwrap();
 
         pretty_assertions::assert_eq!(expected, observed)
-    }
-
-    #[test]
-    fn serialize_response_definition() {
-        let expected = serde_json::json!({
-            "kind": "definition",
-            "references": [{
-                "file": "server/bleep/benches/snippets.rs",
-                "data": [{
-                    "start": { "byte": 2725, "line": 93, "column": 0 },
-                    "end": { "byte": 2732, "line": 93, "column": 0  },
-                    "snippet": {
-                        "highlights": [ { "start": 12, "end": 19 } ],
-                        "line_range": { "start": 94, "end": 95 },
-                        "data": "            indexes.reindex().await?;\n",
-                        "symbols": []
-                    }
-                }]
-            }]
-        });
-
-        let observed = serde_json::to_value(TokenInfoResponse::Definition {
-            references: vec![FileSymbols {
-                file: "server/bleep/benches/snippets.rs".into(),
-                data: vec![SymbolOccurrence {
-                    range: TextRange {
-                        start: Point {
-                            byte: 2725,
-                            line: 93,
-                            column: 0,
-                        },
-                        end: Point {
-                            byte: 2732,
-                            line: 93,
-                            column: 0,
-                        },
-                    },
-                    snippet: Snippet {
-                        line_range: 94..95,
-                        data: "            indexes.reindex().await?;\n".to_owned(),
-                        highlights: vec![12..19],
-                        symbols: vec![],
-                    },
-                }],
-            }],
-        })
-        .unwrap();
-
-        assert_eq!(expected, observed)
     }
 }
