@@ -19,7 +19,6 @@ use axum::{
 };
 use futures::{future::Either, stream, StreamExt, TryStreamExt};
 use reqwest::StatusCode;
-use secrecy::ExposeSecret;
 use tiktoken_rs::CoreBPE;
 use tokio::sync::mpsc::Sender;
 use tracing::{debug, info, trace, warn};
@@ -28,18 +27,20 @@ use super::middleware::User;
 use crate::{
     analytics::{EventData, QueryEvent},
     db::{QueryLog, SqlDb},
-    query::parser::{self, SemanticQuery},
+    query::parser,
     repo::RepoRef,
-    webserver::answer::llm_gateway::api::FunctionCall,
     Application,
 };
 
+mod context;
 pub mod conversations;
 mod llm_gateway;
 mod partial_parse;
 mod prompts;
 mod response;
 
+use context::AppContext;
+use llm_gateway::api::FunctionCall;
 use response::{Exchange, SearchResult, SearchStep, Update};
 
 const TIMEOUT_SECS: u64 = 60;
@@ -97,6 +98,8 @@ pub(super) async fn _handle(
 > {
     QueryLog::new(&app.sql).insert(&params.q).await?;
 
+    let q = params.q.clone();
+    let thread_id = params.thread_id.to_string();
     let conversation_id = ConversationId {
         user_id: user
             .login()
@@ -109,11 +112,8 @@ pub(super) async fn _handle(
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
-    let mut ctx = AppContext::new(app, user)
-        .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
-        .with_query_id(query_id)
-        .with_thread_id(params.thread_id)
-        .with_repo_ref(params.repo_ref.clone());
+    let mut ctx = AppContext::new(app, user, params, query_id)
+        .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
 
     // confirm client compatibility with answer-api
     match ctx
@@ -140,20 +140,6 @@ pub(super) async fn _handle(
             });
             return Ok(Sse::new(Box::pin(failed_to_check)));
         }
-    };
-
-    let q = params.q;
-
-    ctx.branch = 'branch: {
-        let Ok(parsed) = parser::parse_nl(&q)
-	else {
-	    break 'branch None;
-	};
-
-        parsed
-            .as_semantic()
-            .and_then(|s| s.branch.iter().next())
-            .map(|l| l.regex_str().to_string())
     };
 
     let stream = async_stream::try_stream! {
@@ -219,9 +205,8 @@ pub(super) async fn _handle(
         ctx.req_complete = true;
     };
 
-    let thread_stream = futures::stream::once(async move {
-        Ok(sse::Event::default().data(params.thread_id.to_string()))
-    });
+    let thread_stream =
+        futures::stream::once(async move { Ok(sse::Event::default().data(thread_id)) });
 
     // We know the stream is unwind safe as it doesn't use synchronization primitives like locks.
     let answer_stream = AssertUnwindSafe(stream)
@@ -359,7 +344,16 @@ impl Conversation {
                         .with_payload("previous_answer_summary", &summarized_answer),
                 );
 
-                s.clone()
+                parser::parse_nl(s)?
+                    .as_semantic()
+                    .context("got a 'Grep' query")?
+                    .target
+                    .as_ref()
+                    .context("query was empty")?
+                    .as_plain()
+                    .context("user query was not plain text")?
+                    .clone()
+                    .into_owned()
             }
 
             Action::Answer { paths } => {
@@ -389,21 +383,9 @@ impl Conversation {
                 // If there are no lexical results, perform a semantic search.
                 if paths.is_empty() {
                     // TODO: Semantic search should accept unparsed queries
-                    let nl_query = SemanticQuery {
-                        target: Some(parser::Literal::Plain(Cow::Owned(query.clone()))),
-                        repos: [parser::Literal::Plain(Cow::Owned(
-                            self.repo_ref.display_name(),
-                        ))]
-                        .into(),
-                        ..Default::default()
-                    };
-
+                    let nl_query = parser::Literal::Plain(Cow::Owned(query.clone()));
                     let semantic_paths = ctx
-                        .app
-                        .semantic
-                        .as_ref()
-                        .context("semantic search is not enabled")?
-                        .search(&nl_query, 30, 0, true)
+                        .semantic_search(nl_query, 30, 0, true)
                         .await?
                         .into_iter()
                         .map(|chunk| chunk.relative_path)
@@ -446,21 +428,9 @@ impl Conversation {
                     .send(self.update(Update::Step(SearchStep::Code(query.clone()))))
                     .await?;
 
-                let nl_query = SemanticQuery {
-                    target: Some(parser::Literal::Plain(Cow::Owned(query.clone()))),
-                    repos: [parser::Literal::Plain(Cow::Owned(
-                        self.repo_ref.display_name(),
-                    ))]
-                    .into(),
-                    ..Default::default()
-                };
-
+                let nl_query = parser::Literal::Plain(Cow::Owned(query.clone()));
                 let chunks = ctx
-                    .app
-                    .semantic
-                    .as_ref()
-                    .context("semantic search is not enabled")?
-                    .search(&nl_query, 10, 0, true)
+                    .semantic_search(nl_query, 10, 0, true)
                     .await?
                     .into_iter()
                     .map(|chunk| {
@@ -603,16 +573,12 @@ impl Conversation {
 
         let question = &question;
         let ctx = &ctx.clone().model("gpt-3.5-turbo-16k");
-        let repo_ref = &self.repo_ref;
         let chunks = stream::iter(paths)
             .map(|path| async move {
                 tracing::debug!(?path, "reading file");
 
                 let lines = ctx
-                    .app
-                    .indexes
-                    .file
-                    .by_path(repo_ref, &path, ctx.branch.as_deref())
+                    .file_search(&path)
                     .await
                     .with_context(|| format!("failed to read path: {path}"))?
                     .content
@@ -848,10 +814,7 @@ impl Conversation {
                 let path = self.paths[alias].clone();
 
                 let file_contents = ctx
-                    .app
-                    .indexes
-                    .file
-                    .by_path(&self.repo_ref, &path, ctx.branch.as_deref())
+                    .file_search(&path)
                     .await
                     .with_context(|| format!("failed to read path: {}", path))?
                     .content;
@@ -1165,20 +1128,11 @@ impl Conversation {
             chunks_by_path.entry(c.path.clone()).or_default().push(c);
         }
 
-        let repo_ref = &self.repo_ref;
         self.code_chunks = futures::stream::iter(chunks_by_path)
             .then(|(path, mut chunks)| async move {
                 chunks.sort_by_key(|c| c.start_line);
 
-                let contents = ctx
-                    .app
-                    .indexes
-                    .file
-                    .by_path(repo_ref, &path, ctx.branch.as_deref())
-                    .await
-                    .unwrap()
-                    .content;
-
+                let contents = ctx.file_search(&path).await.unwrap().content;
                 chunks
                     .into_iter()
                     .fold(Vec::<CodeChunk>::new(), |mut a, next| {
@@ -1361,87 +1315,6 @@ impl Action {
         );
 
         Ok(serde_json::from_value(serde_json::Value::Object(map))?)
-    }
-}
-
-#[derive(Clone)]
-struct AppContext {
-    app: Application,
-    llm_gateway: llm_gateway::Client,
-    user: User,
-    query_id: uuid::Uuid,
-    thread_id: uuid::Uuid,
-    repo_ref: Option<RepoRef>,
-    branch: Option<String>,
-
-    /// Indicate whether the request was answered.
-    ///
-    /// This is used in the `Drop` handler, in order to track cancelled answer queries.
-    req_complete: bool,
-}
-
-impl AppContext {
-    fn new(app: Application, user: User) -> Result<Self> {
-        let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
-            .temperature(0.0)
-            .bearer(app.github_token()?.map(|s| s.expose_secret().clone()));
-
-        Ok(Self {
-            app,
-            llm_gateway,
-            user,
-            query_id: uuid::Uuid::nil(),
-            thread_id: uuid::Uuid::nil(),
-            repo_ref: None,
-            req_complete: false,
-            branch: None,
-        })
-    }
-
-    fn with_query_id(mut self, query_id: uuid::Uuid) -> Self {
-        self.query_id = query_id;
-        self
-    }
-
-    fn with_thread_id(mut self, thread_id: uuid::Uuid) -> Self {
-        self.thread_id = thread_id;
-        self
-    }
-
-    fn with_repo_ref(mut self, repo_ref: RepoRef) -> Self {
-        self.repo_ref = Some(repo_ref);
-        self
-    }
-
-    fn model(mut self, model: &str) -> Self {
-        if model.is_empty() {
-            self.llm_gateway.model = None;
-        } else {
-            self.llm_gateway.model = Some(model.to_owned());
-        }
-
-        self
-    }
-
-    fn track_query(&self, data: EventData) {
-        let event = QueryEvent {
-            query_id: self.query_id,
-            thread_id: self.thread_id,
-            repo_ref: self.repo_ref.clone(),
-            data,
-        };
-        self.app.track_query(&self.user, &event);
-    }
-}
-
-impl Drop for AppContext {
-    fn drop(&mut self) {
-        if !self.req_complete {
-            self.track_query(
-                EventData::output_stage("cancelled")
-                    .with_payload("message", "request was cancelled"),
-            );
-        }
     }
 }
 

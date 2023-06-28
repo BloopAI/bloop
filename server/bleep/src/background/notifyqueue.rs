@@ -36,7 +36,7 @@ impl NotifyQueue {
             let permit = self.available.acquire().await.expect("fatal");
             let mut q = self.queue.write().await;
 
-            let first = q.iter().position(|h| (pred)(&h));
+            let first = q.iter().position(|h| (pred)(h));
 
             if let Some(pos) = first {
                 permit.forget();
