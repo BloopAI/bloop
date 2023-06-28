@@ -71,7 +71,9 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
                       openFileModal(
                         matchPath[1],
                         lines[0]
-                          ? `${lines[0]}_${lines[1] || lines[0]}`
+                          ? `${lines[0]}_${
+                              lines[0] + code.split('\n').length - 1
+                            }`
                           : undefined,
                       )
                     }

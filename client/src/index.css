@@ -1193,6 +1193,15 @@ h5, .h5 {
   font-size: 0.75rem;
   line-height: 150%;
 }
+
+.code-m {
+  font-family: Menlo, sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 160%;
+}
+
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -1340,10 +1349,12 @@ h5, .h5 {
 }
 
 .article-response code {
-  background-color: rgb(var(--bg-shade));
-  border: 1px solid rgb(var(--bg-border));
+  /*background-color: rgb(var(--bg-shade));*/
+  color: #14B8A6;
+  /*border: 1px solid rgb(var(--bg-border));*/
   font-family: Menlo, sans-serif;
   border-radius: 4px;
+  font-size: 0.95em;
 }
 
 .article-response pre>code {

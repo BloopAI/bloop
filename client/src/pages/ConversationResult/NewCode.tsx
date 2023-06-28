@@ -22,7 +22,7 @@ const NewCode = ({ code, language }: Props) => {
         }`}
       >
         <Button
-          variant="secondary"
+          variant="tertiary"
           size="small"
           onClick={() => {
             copyToClipboard(code);
