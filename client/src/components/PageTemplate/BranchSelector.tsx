@@ -48,6 +48,12 @@ const BranchSelector = () => {
   }, [currentRepo, tab.key]);
 
   useEffect(() => {
+    if (!indexedBranches.includes(selectedBranch || '')) {
+      setSelectedBranch(indexedBranches[0] || null);
+    }
+  }, [indexedBranches]);
+
+  useEffect(() => {
     setIndexing(currentRepo?.sync_status !== SyncStatus.Done);
     eventSource?.close();
     eventSource = new EventSource(
