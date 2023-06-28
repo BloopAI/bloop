@@ -14,7 +14,7 @@ RUN npm run build-web
 FROM rust:slim-bookworm as builder
 WORKDIR /build
 RUN apt-get update && \
-    apt-get -y install make clang libc-dev curl cmake python3 protobuf-compiler pkg-config libssl3 libssl-dev git && \
+    apt-get -y install make clang libc-dev curl cmake make perl python3 protobuf-compiler pkg-config libssl3 libssl-dev git && \
     apt-get -y clean && \
     curl -sLo sccache.tar.gz https://github.com/mozilla/sccache/releases/download/v0.3.3/sccache-v0.3.3-x86_64-unknown-linux-musl.tar.gz && \
     tar xzf sccache.tar.gz && \
