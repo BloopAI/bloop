@@ -33,7 +33,7 @@ const BranchSelector = () => {
 
   const currentRepo = useMemo(() => {
     return repositories?.find((r) => r.ref === tab.key);
-  }, [repositories]);
+  }, [repositories, tab.key]);
 
   const allBranches = useMemo(() => {
     return [...(currentRepo?.branches || [])].reverse();
@@ -51,7 +51,7 @@ const BranchSelector = () => {
     if (!indexedBranches.includes(selectedBranch || '')) {
       setSelectedBranch(indexedBranches[0] || null);
     }
-  }, [indexedBranches]);
+  }, [indexedBranches, selectedBranch]);
 
   useEffect(() => {
     setIndexing(currentRepo?.sync_status !== SyncStatus.Done);
