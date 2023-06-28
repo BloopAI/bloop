@@ -302,7 +302,7 @@ impl Conversation {
             });
 
             let conclusion = e
-                .conclusion()
+                .answer()
                 .map(|c| llm_gateway::api::Message::PlainText {
                     role: "assistant".to_owned(),
                     content: c.to_owned(),
@@ -315,13 +315,17 @@ impl Conversation {
         })
     }
 
-    // Generate a summary of the last exchange
-    fn get_summarized_answer(&self) -> Option<String> {
+    /// Retrieve the second last exchange, if it exists.
+    ///
+    /// This is useful when creating a new exchange; because it already exists in the exchange
+    /// list, the second last exchange should be equivalent to the last completed exchange.
+    // TODO: This API is unwieldy. Logic accessing this function should be refactored to work when
+    // appending to the exchange instead.
+    fn second_last_exchange(&self) -> Option<&Exchange> {
         self.exchanges
             .len()
             .checked_sub(2)
             .and_then(|second_last| self.exchanges.get(second_last))
-            .and_then(|exchange| exchange.summarize())
     }
 
     async fn step(
@@ -336,22 +340,35 @@ impl Conversation {
                     .send(self.update(Update::Step(SearchStep::Query(s.clone()))))
                     .await?;
 
-                let summarized_answer = self.get_summarized_answer();
-                match summarized_answer.as_ref() {
-                    Some(summary) => {
-                        info!("attaching summary of previous exchange: {summary}");
-                        self.llm_history
-                            .push_back(llm_gateway::api::Message::assistant(summary));
+                let previous_answer = if let Some(e) = self.second_last_exchange() {
+                    if let Some(body) = e.answer_summarized() {
+                        match e.mode {
+                            AnswerMode::Article => Some({
+                                let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
+                                limit_tokens(&body, bpe, 200).to_owned()
+                            }),
+
+                            AnswerMode::Filesystem => Some(body),
+                        }
+                    } else {
+                        None
                     }
-                    None => {
-                        info!("no previous exchanges, skipping summary");
-                    }
-                }
+                } else {
+                    None
+                };
+
+                if let Some(summary) = &previous_answer {
+                    info!("attaching summary of previous exchange: {summary}");
+                    self.llm_history
+                        .push_back(llm_gateway::api::Message::assistant(summary));
+                } else {
+                    info!("no previous exchanges, skipping summary");
+                };
 
                 ctx.track_query(
                     EventData::input_stage("query")
                         .with_payload("q", s)
-                        .with_payload("previous_answer_summary", &summarized_answer),
+                        .with_payload("previous_answer_summary", &previous_answer),
                 );
 
                 s.clone()
@@ -1378,7 +1395,7 @@ impl Action {
 
 #[derive(Debug, Default, Clone, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
-enum AnswerMode {
+pub enum AnswerMode {
     Article,
     #[default]
     Filesystem,

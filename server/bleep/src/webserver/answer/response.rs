@@ -7,7 +7,7 @@ use super::AnswerMode;
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Exchange {
     finished: bool,
-    mode: AnswerMode,
+    pub mode: AnswerMode,
     conclusion: Option<String>,
     search_steps: Vec<SearchStep>,
     pub results: Option<Results>,
@@ -31,6 +31,13 @@ impl Results {
         match self {
             Self::Article(_) => None,
             Self::Filesystem(results) => Some(results),
+        }
+    }
+
+    fn as_article(&self) -> Option<&str> {
+        match self {
+            Self::Article(text) => Some(text.as_str()),
+            Self::Filesystem(_) => None,
         }
     }
 
@@ -73,9 +80,50 @@ impl Exchange {
         })
     }
 
-    /// Get the conslusion associated with this exchange, if it has been made.
-    pub fn conclusion(&self) -> Option<&str> {
-        self.conclusion.as_deref()
+    /// Get the answer associated with this exchange, if it has been made.
+    ///
+    /// If the final answer is in `filesystem` format, this returns a conclusion. If the the final
+    /// answer is an `article`, this returns the full text.
+    pub fn answer(&self) -> Option<&str> {
+        match self.mode {
+            AnswerMode::Article => {
+                if self.finished {
+                    self.results.as_ref().and_then(Results::as_article)
+                } else {
+                    None
+                }
+            }
+            AnswerMode::Filesystem => self.conclusion.as_deref(),
+        }
+    }
+
+    /// Like `answer`, but returns a summary for `filesystem` answers.
+    pub fn answer_summarized(&self) -> Option<String> {
+        if self.finished {
+            match self.mode {
+                AnswerMode::Article => self
+                    .results
+                    .as_ref()
+                    .and_then(Results::as_article)
+                    .map(str::to_owned),
+                AnswerMode::Filesystem => Some(
+                    self.results
+                        .as_ref()
+                        .and_then(|result| result.as_filesystem())
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|result| match result {
+                            SearchResult::Cite(cite) => Some(cite.summarize()),
+                            _ => None,
+                        })
+                        .chain(self.conclusion.clone())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                ),
+            }
+        } else {
+            None
+        }
     }
 
     /// Set the current search result list.
@@ -115,27 +163,6 @@ impl Exchange {
         }
 
         self.conclusion = conclusion;
-    }
-
-    pub fn summarize(&self) -> Option<String> {
-        if self.finished {
-            Some(
-                self.results
-                    .as_ref()
-                    .and_then(|result| result.as_filesystem())
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|result| match result {
-                        SearchResult::Cite(cite) => Some(cite.summarize()),
-                        _ => None,
-                    })
-                    .chain(self.conclusion.clone())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            )
-        } else {
-            None
-        }
     }
 }
 
