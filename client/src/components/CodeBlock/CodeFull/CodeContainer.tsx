@@ -7,16 +7,16 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { SearchContext } from '../../../context/searchContext';
 import { Token as TokenType } from '../../../types/prism';
 import { hashCode, propsAreShallowEqual } from '../../../utils';
 import { Range, TokenInfoItem, TokenInfoWrapped } from '../../../types/results';
 import { getTokenInfo } from '../../../services/api';
-import { mapTokenInfoData } from '../../../mappers/results';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
-import { SearchContext } from '../../../context/searchContext';
 import CodeContainerVirtualized from './CodeContainerVirtualized';
 import CodeContainerFull from './CodeContainerFull';
 import { Metadata, BlameLine } from './index';
+import { mapTokenInfoData } from '../../../mappers/results';
 
 type Props = {
   language: string;
