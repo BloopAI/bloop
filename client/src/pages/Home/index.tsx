@@ -5,9 +5,8 @@ import LiteLoader from '../../components/Loaders/LiteLoader';
 import Button from '../../components/Button';
 import { CloseSign } from '../../icons';
 import { RepositoriesContext } from '../../context/repositoriesContext';
-import { RepoProvider, RepoType, SyncStatus } from '../../types/general';
+import { RepoType, SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
-import useAnalytics from '../../hooks/useAnalytics';
 import AddRepos from './AddRepos';
 import ReposSection from './ReposSection';
 import AddRepoCard from './AddRepoCard';
@@ -32,7 +31,6 @@ const HomePage = () => {
   const [reposToShow, setReposToShow] = useState<RepoType[]>(
     filterRepositories(repositories),
   );
-  const { trackReposSynced } = useAnalytics();
 
   useEffect(() => {
     if (repositories) {
@@ -61,17 +59,6 @@ const HomePage = () => {
         addRepos={addReposOpen}
         onClose={(isSubmitted) => {
           if (isSubmitted) {
-            trackReposSynced({
-              localRepos:
-                (repositories?.filter((r) => r.provider === RepoProvider.Local)
-                  .length || 0) + (addReposOpen === 'local' ? 1 : 0),
-              githubRepos:
-                (repositories?.filter(
-                  (r) =>
-                    r.provider === RepoProvider.GitHub &&
-                    r.sync_status !== SyncStatus.Uninitialized,
-                ).length || 0) + (addReposOpen === 'local' ? 0 : 1),
-            });
             fetchRepos();
             setTimeout(() => fetchRepos(), 1000);
             setPopupOpen(true);

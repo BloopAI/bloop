@@ -21,8 +21,9 @@ type Props = {
   author: ChatMessageAuthor;
   message?: string;
   error?: string;
-  query: string;
-  searchId: string;
+  threadId: string;
+  queryId: string;
+  repoRef: string;
   isHistory?: boolean;
   showInlineFeedback: boolean;
   scrollToBottom?: () => void;
@@ -38,8 +39,9 @@ const ConversationMessage = ({
   error,
   isHistory,
   showInlineFeedback,
-  query,
-  searchId,
+  threadId,
+  queryId,
+  repoRef,
   scrollToBottom,
   isLoading,
   loadingSteps,
@@ -122,7 +124,7 @@ const ConversationMessage = ({
               <button
                 className="text-bg-main body-s mr-2"
                 onClick={() => {
-                  navigateConversationResults(i, searchId);
+                  navigateConversationResults(i, threadId);
                 }}
               >
                 View
@@ -161,9 +163,9 @@ const ConversationMessage = ({
           <MessageFeedback
             showInlineFeedback={showInlineFeedback}
             isHistory={isHistory}
-            query={query}
-            searchId={searchId}
-            message={message}
+            threadId={threadId}
+            queryId={queryId}
+            repoRef={repoRef}
             error={!!error}
             scrollToBottom={scrollToBottom}
           />

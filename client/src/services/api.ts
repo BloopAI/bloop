@@ -208,3 +208,18 @@ export const deleteConversation = (
   http
     .delete(`/answer/conversations`, { params: { thread_id } })
     .then((r) => r.data);
+
+export const upvoteAnswer = (
+  thread_id: string,
+  query_id: string,
+  repo_ref: string,
+  feedback: { type: 'positive' } | { type: 'negative'; feedback: string },
+): Promise<ConversationType> =>
+  http
+    .post(`/answer/vote`, {
+      thread_id,
+      query_id,
+      repo_ref,
+      feedback,
+    })
+    .then((r) => r.data);

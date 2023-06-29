@@ -4,14 +4,18 @@ import Message from './ConversationMessage';
 
 type Props = {
   conversation: ChatMessage[];
-  searchId: string;
+  threadId: string;
+  queryId: string;
+  repoRef: string;
   isLoading?: boolean;
   isHistory?: boolean;
 };
 
 const Conversation = ({
   conversation,
-  searchId,
+  threadId,
+  queryId,
+  repoRef,
   isLoading,
   isHistory,
 }: Props) => {
@@ -60,8 +64,9 @@ const Conversation = ({
             i === conversation.length - 1 &&
             !m.isFromHistory
           }
-          searchId={searchId}
-          query={conversation[0].text || ''}
+          threadId={threadId}
+          queryId={queryId}
+          repoRef={repoRef}
           scrollToBottom={scrollToBottom}
         />
       ))}

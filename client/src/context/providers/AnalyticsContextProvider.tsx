@@ -43,22 +43,6 @@ export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = ({
   };
 
   useEffect(() => {
-    if (analyticsLoaded && envConfig.tracking_id) {
-      analytics.identify(
-        envConfig.tracking_id.trim(),
-        {
-          isSelfServe: isSelfServe,
-          githubUsername: envConfig.github_user?.login || '',
-          orgName: envConfig.org_name || '',
-          deviceId: envConfig.device_id?.trim(),
-        },
-        {},
-        () => {},
-      );
-    }
-  }, [analyticsLoaded, envConfig.tracking_id]);
-
-  useEffect(() => {
     loadAnalytics();
   }, [envConfig.analytics_key_fe]);
 

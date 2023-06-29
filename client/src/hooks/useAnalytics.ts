@@ -13,68 +13,8 @@ const useAnalytics = () => {
     [analytics],
   );
 
-  const trackUpvote = useCallback(
-    (
-      isUpvote: boolean,
-      query: string,
-      answer: string,
-      searchId: string,
-      comment?: string,
-    ) => {
-      analytics?.track('Upvote', {
-        isUpvote,
-        query,
-        answer,
-        searchId,
-        comment,
-      });
-    },
-    [analytics],
-  );
-
-  const trackReposSelected = useCallback(
-    ({
-      localRepos,
-      githubRepos,
-      publicGithubRepos,
-      where,
-    }: {
-      localRepos: number;
-      githubRepos: number;
-      publicGithubRepos?: number;
-      where: string;
-    }) => {
-      analytics?.track('Repos Selected', {
-        localRepos,
-        githubRepos,
-        publicGithubRepos,
-        where,
-      });
-    },
-    [analytics],
-  );
-
-  const trackReposSynced = useCallback(
-    ({
-      localRepos,
-      githubRepos,
-    }: {
-      localRepos: number;
-      githubRepos: number;
-    }) => {
-      analytics?.track('Repos Synced', {
-        localRepos,
-        githubRepos,
-      });
-    },
-    [analytics],
-  );
-
   return {
     trackSearch,
-    trackReposSelected,
-    trackUpvote,
-    trackReposSynced,
   };
 };
 
