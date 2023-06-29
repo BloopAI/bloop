@@ -85,7 +85,7 @@ pub mod api {
         pub model: Option<String>,
         #[serde(default)]
         pub extra_stop_sequences: Vec<String>,
-        pub session_id: Option<String>,
+        pub session_reference_id: Option<String>,
     }
 
     #[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
