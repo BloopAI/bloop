@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useContext,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -11,7 +12,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
-import { Range, TokenInfoItem } from '../../../types/results';
+import { Range } from '../../../types/results';
 import {
   calculatePopupPositionInsideContainer,
   copyToClipboard,
@@ -115,6 +116,7 @@ const CodeFull = ({
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const [currentResult, setCurrentResult] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
 
   useEffect(() => {
     const toggleSearch = (e: KeyboardEvent) => {
@@ -229,28 +231,24 @@ const CodeFull = ({
     [repoName, relativePath],
   );
 
-  const handleSearch = useCallback(
-    (value: string) => {
-      setSearchTerm(value);
-      if (value === '') {
-        setSearchResults([]);
-        setCurrentResult(0);
-        return;
+  useEffect(() => {
+    if (deferredSearchTerm === '') {
+      setSearchResults([]);
+      setCurrentResult(0);
+      return;
+    }
+    const lines = code.split('\n');
+    const results = lines.reduce(function (prev: number[], cur, i) {
+      if (cur.toLowerCase().includes(deferredSearchTerm.toLowerCase())) {
+        prev.push(i);
       }
-      const lines = code.split('\n');
-      const results = lines.reduce(function (prev: number[], cur, i) {
-        if (cur.toLowerCase().includes(value.toLowerCase())) {
-          prev.push(i);
-        }
-        return prev;
-      }, []);
-      const currentlyHighlightedLine = searchResults[currentResult - 1];
-      const indexInNewResults = results.indexOf(currentlyHighlightedLine);
-      setSearchResults(results);
-      setCurrentResult(indexInNewResults >= 0 ? indexInNewResults + 1 : 1);
-    },
-    [code, searchResults, currentResult],
-  );
+      return prev;
+    }, []);
+    const currentlyHighlightedLine = searchResults[currentResult - 1];
+    const indexInNewResults = results.indexOf(currentlyHighlightedLine);
+    setSearchResults(results);
+    setCurrentResult(indexInNewResults >= 0 ? indexInNewResults + 1 : 1);
+  }, [deferredSearchTerm]);
 
   useEffect(() => {
     if (searchResults[currentResult - 1]) {
@@ -368,11 +366,11 @@ const CodeFull = ({
   return (
     <div className="code-full-view w-full text-xs gap-10 flex flex-row relative">
       <SearchOnPage
-        handleSearch={handleSearch}
+        handleSearch={setSearchTerm}
         isSearchActive={isSearchActive}
         resultNum={searchResults.length}
         onCancel={() => {
-          handleSearch('');
+          setSearchTerm('');
           setSearchActive(false);
           setScrollToIndex(undefined);
         }}
@@ -404,7 +402,7 @@ const CodeFull = ({
             blameLines={blameLines}
             toggleBlock={toggleBlock}
             setCurrentSelection={setCurrentSelection}
-            searchTerm={searchTerm}
+            searchTerm={deferredSearchTerm}
             onRefDefClick={onRefDefClick}
             scrollToIndex={scrollToIndex}
             highlightColor={highlightColor}

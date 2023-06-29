@@ -62,7 +62,7 @@ const InputLoader = ({ loadingSteps }: { loadingSteps: ChatLoadingStep[] }) => {
           ][state]
         }`}
       />
-      <div className="absolute top-4 left-11">
+      <div className="absolute top-4 left-11 right-9 ellipsis">
         {loadingSteps?.[currIndex]?.displayText}
       </div>
     </div>
