@@ -288,6 +288,7 @@ impl DocumentRead for OpenReader {
     {
         Compiler::new()
             .literal(schema.repo_name, |q| q.repo.clone())
+            .literal(schema.branches, |q| q.branch.clone())
             .literal(schema.relative_path, |q| match &q.path {
                 // We coerce path searches to always return sibling files. These are sorted later
                 // by users of this reader.
