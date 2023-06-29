@@ -82,6 +82,8 @@ pub mod api {
         pub provider: Provider,
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
+        pub presence_penalty: Option<f32>,
+        pub frequency_penalty: Option<f32>,
         pub model: Option<String>,
         #[serde(default)]
         pub extra_stop_sequences: Vec<String>,
@@ -148,6 +150,13 @@ impl api::Message {
             content: content.to_string(),
         }
     }
+
+    pub fn as_plaintext_mut(&mut self) -> Option<(&mut String, &mut String)> {
+        match self {
+            Self::PlainText { role, content } => Some((role, content)),
+            _ => None,
+        }
+    }
 }
 
 enum ChatError {
@@ -165,6 +174,8 @@ pub struct Client {
     pub bearer_token: Option<String>,
     pub temperature: Option<f32>,
     pub max_tokens: Option<u32>,
+    pub presence_penalty: Option<f32>,
+    pub frequency_penalty: Option<f32>,
     pub provider: api::Provider,
     pub model: Option<String>,
 }
@@ -180,6 +191,8 @@ impl Client {
             provider: api::Provider::OpenAi,
             temperature: None,
             max_tokens: None,
+            presence_penalty: None,
+            frequency_penalty: None,
             model: None,
         }
     }
@@ -271,6 +284,8 @@ impl Client {
                     }),
                     max_tokens: self.max_tokens,
                     temperature: self.temperature,
+                    presence_penalty: self.presence_penalty,
+                    frequency_penalty: self.frequency_penalty,
                     provider: self.provider,
                     model: self.model.clone(),
                     extra_stop_sequences: vec![],

@@ -27,4 +27,11 @@ impl SymbolLocations {
             Self::Empty => Vec::new(),
         }
     }
+
+    pub fn scope_graph(&self) -> Option<&ScopeGraph> {
+        match self {
+            Self::TreeSitter(graph) => Some(graph),
+            Self::Empty => None,
+        }
+    }
 }

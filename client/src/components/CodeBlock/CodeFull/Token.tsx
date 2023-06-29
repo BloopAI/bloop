@@ -6,7 +6,7 @@ import { Range } from '../../../types/results';
 type Props = {
   token: TokenType;
   lineHoverRanges: Range[];
-  getHoverableContent: (range: Range) => void;
+  getHoverableContent: (hoverableRange: Range, tokenRange: Range) => void;
 };
 
 const tokenHoverable = (tokenPosition: Range, ranges: Range[]) => {
@@ -32,21 +32,14 @@ const Token = ({ token, lineHoverRanges, getHoverableContent }: Props) => {
     setHoverableRange(tokenHoverable(token.byteRange, lineHoverRanges));
   }, [token, lineHoverRanges]);
 
-  const onClick = useCallback(
-    (hoverableRange: Range) => {
-      if (!document.getSelection()?.toString()) {
-        getHoverableContent(hoverableRange!);
-      }
-    },
-    [getHoverableContent],
-  );
+  const onClick = useCallback(() => {
+    if (!document.getSelection()?.toString() && hoverableRange) {
+      getHoverableContent(hoverableRange!, token.byteRange);
+    }
+  }, [getHoverableContent, hoverableRange]);
 
   return (
-    <CodeToken
-      token={token}
-      isHoverable={!!hoverableRange}
-      onClick={() => (hoverableRange ? onClick(hoverableRange) : {})}
-    />
+    <CodeToken token={token} isHoverable={!!hoverableRange} onClick={onClick} />
   );
 };
 

@@ -69,16 +69,15 @@ impl AppContext {
         })
     }
 
-    fn semantic_query_params(&self) -> SemanticQuery<'_> {
-        let Ok(ParsedQuery::Semantic(mut parsed)) = parser::parse_nl(&self.query)
-	    else {
-		return SemanticQuery {
-		    ..SemanticQuery::default()
-		};
-            };
+    pub(super) fn frequency_penalty(mut self, frequency_penalty: f32) -> Self {
+        self.llm_gateway.frequency_penalty = Some(frequency_penalty);
+        self
+    }
 
-        parsed.target = None;
-        parsed
+    #[allow(unused)]
+    pub(super) fn presence_penalty(mut self, presence_penalty: f32) -> Self {
+        self.llm_gateway.presence_penalty = Some(presence_penalty);
+        self
     }
 
     pub(super) fn model(mut self, model: &str) -> Self {
@@ -144,6 +143,18 @@ impl AppContext {
             .file
             .fuzzy_path_match(&self.repo_ref, query, self.branch.as_deref(), 50)
             .await
+    }
+
+    fn semantic_query_params(&self) -> SemanticQuery<'_> {
+        let Ok(ParsedQuery::Semantic(mut parsed)) = parser::parse_nl(&self.query)
+	    else {
+		return SemanticQuery {
+		    ..SemanticQuery::default()
+		};
+            };
+
+        parsed.target = None;
+        parsed
     }
 }
 

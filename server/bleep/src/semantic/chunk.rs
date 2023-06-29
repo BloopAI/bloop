@@ -344,12 +344,17 @@ pub fn by_lines(src: &str, size: usize) -> Vec<Chunk<'_>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
+    use std::{env, path::PathBuf};
 
     fn minilm() -> Tokenizer {
-        let cur_dir = env::current_dir().unwrap();
-        let base_dir = cur_dir.ancestors().nth(2).unwrap();
-        let tok_json = base_dir.join("model/tokenizer.json");
+        let tok_json = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("model")
+            .join("tokenizer.json");
+        println!("{tok_json:?}");
         let tokenizer = tokenizers::Tokenizer::from_file(tok_json).unwrap();
         tokenizer
     }

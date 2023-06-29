@@ -327,10 +327,10 @@ impl Indexer<File> {
     // TODO: Look at this again when:
     //  - directory retrieval is ready
     //  - unified referencing is ready
-    pub async fn by_repo(
+    pub async fn by_repo<S: AsRef<str>>(
         &self,
         repo_ref: &RepoRef,
-        lang: Option<&str>,
+        langs: impl Iterator<Item = S>,
         branch: Option<&str>,
     ) -> Vec<ContentDocument> {
         let reader = self.reader.read().await;
@@ -351,16 +351,25 @@ impl Indexer<File> {
             )));
         };
 
-        if let Some(l) = lang {
-            query.push(Box::new(TermQuery::new(
-                Term::from_field_bytes(self.source.lang, l.to_ascii_lowercase().as_bytes()),
-                IndexRecordOption::Basic,
-            )));
-        }
+        query.push({
+            let queries = langs
+                .map(|lang| {
+                    Box::new(TermQuery::new(
+                        Term::from_field_bytes(
+                            self.source.lang,
+                            lang.as_ref().to_ascii_lowercase().as_bytes(),
+                        ),
+                        IndexRecordOption::Basic,
+                    )) as Box<dyn Query>
+                })
+                .collect::<Vec<_>>();
+            Box::new(BooleanQuery::union(queries))
+        });
 
-        let collector = TopDocs::with_limit(100);
+        let query = BooleanQuery::intersection(query);
+        let collector = TopDocs::with_limit(500);
         searcher
-            .search(&BooleanQuery::intersection(query), &collector)
+            .search(&query, &collector)
             .expect("failed to search index")
             .into_iter()
             .map(|(_, doc_addr)| {

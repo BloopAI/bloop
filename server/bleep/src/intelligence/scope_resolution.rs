@@ -13,7 +13,7 @@ pub use scope::{LocalScope, ScopeStack};
 use super::{NameSpaceMethods, TSLanguageConfig, ALL_LANGUAGES};
 use crate::{symbol::Symbol, text_range::TextRange};
 
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use petgraph::{
     graph::{Graph, NodeIndex},
@@ -129,6 +129,10 @@ impl ScopeGraph {
         }
     }
 
+    pub fn get_node(&self, node_idx: NodeIndex<u32>) -> Option<&NodeKind> {
+        self.graph.node_weight(node_idx)
+    }
+
     /// Insert a local scope into the scope-graph
     pub fn insert_local_scope(&mut self, new: LocalScope) {
         if let Some(parent_scope) = self.scope_by_range(new.range, self.root_idx) {
@@ -162,6 +166,14 @@ impl ScopeGraph {
             self.graph
                 .add_edge(new_idx, target_scope, EdgeKind::DefToScope);
         }
+    }
+
+    /// Insert a def into the scope-graph, at the root scope
+    pub fn insert_global_def(&mut self, new: LocalDef) {
+        let new_def = NodeKind::Def(new);
+        let new_idx = self.graph.add_node(new_def);
+        self.graph
+            .add_edge(new_idx, self.root_idx, EdgeKind::DefToScope);
     }
 
     /// Insert an import into the scope-graph
@@ -246,7 +258,7 @@ impl ScopeGraph {
     // The smallest scope that encompasses `range`. Start at `start` and narrow down if possible.
     fn scope_by_range(&self, range: TextRange, start: NodeIndex<u32>) -> Option<NodeIndex<u32>> {
         let target_range = self.graph[start].range();
-        if target_range.contains(range) {
+        if target_range.contains(&range) {
             let child_scopes = self
                 .graph
                 .edges_directed(start, Direction::Incoming)
@@ -408,16 +420,34 @@ fn scope_res_generic(
 ) -> ScopeGraph {
     let namespaces = language.namespaces;
 
+    enum Scoping {
+        Global,
+        Hoisted,
+        Local,
+    }
+
     // extract supported capture groups
     struct LocalDefCapture<'a> {
         index: u32,
         symbol: Option<&'a str>,
-        is_hoisted: bool,
+        scoping: Scoping,
     }
 
     struct LocalRefCapture<'a> {
         index: u32,
         symbol: Option<&'a str>,
+    }
+
+    impl FromStr for Scoping {
+        type Err = String;
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            match s {
+                "hoist" => Ok(Self::Hoisted),
+                "global" => Ok(Self::Global),
+                "local" => Ok(Self::Local),
+                s => Err(s.to_owned()),
+            }
+        }
     }
 
     // every capture of the form:
@@ -444,24 +474,24 @@ fn scope_res_generic(
             [scoping, "definition", sym] => {
                 let index = i;
                 let symbol = Some(sym.to_owned());
-                let is_hoisted = *scoping == "hoist";
+                let scoping = Scoping::from_str(scoping).expect("invalid scope keyword");
 
                 let l = LocalDefCapture {
                     index,
                     symbol,
-                    is_hoisted,
+                    scoping,
                 };
                 local_def_captures.push(l)
             }
             [scoping, "definition"] => {
                 let index = i;
                 let symbol = None;
-                let is_hoisted = *scoping == "hoist";
+                let scoping = Scoping::from_str(scoping).expect("invalid scope keyword");
 
                 let l = LocalDefCapture {
                     index,
                     symbol,
-                    is_hoisted,
+                    scoping,
                 };
                 local_def_captures.push(l)
             }
@@ -525,7 +555,7 @@ fn scope_res_generic(
     for LocalDefCapture {
         index,
         symbol,
-        is_hoisted,
+        scoping,
     } in local_def_captures
     {
         if let Some(ranges) = capture_map.get(&index) {
@@ -534,11 +564,11 @@ fn scope_res_generic(
                 let symbol_id = symbol.and_then(|s| namespaces.symbol_id_of(s));
                 let local_def = LocalDef::new(*range, symbol_id);
 
-                if is_hoisted {
-                    scope_graph.insert_hoisted_def(local_def);
-                } else {
-                    scope_graph.insert_local_def(local_def);
-                }
+                match scoping {
+                    Scoping::Hoisted => scope_graph.insert_hoisted_def(local_def),
+                    Scoping::Global => scope_graph.insert_global_def(local_def),
+                    Scoping::Local => scope_graph.insert_local_def(local_def),
+                };
             }
         }
     }

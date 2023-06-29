@@ -159,31 +159,27 @@ export const mapFileResult = (fileItem: FileItem) => {
   };
 };
 
-const mapTokenInfo = (tokenInfoItem: TokenInfoItem[]): TokenInfoFile[] => {
-  return tokenInfoItem?.map((definition) => {
-    return {
-      path: definition.file,
-      items: definition.data.map((item) => {
-        const trimmedLen =
-          item.snippet.data.length - item.snippet.data.trimStart().length;
+export const mapTokenInfo = (tokenInfo: TokenInfoResponse['data']) => {
+  const map: Record<string, any> = {};
+  tokenInfo.forEach((t) => {
+    map[t.file] = [
+      ...(map[t.file] || []),
+      ...t.data.map((td) => {
+        const trimmed = td.snippet.data.trimStart();
+        const lengthDiff = td.snippet.data.length - trimmed.length;
         return {
-          code: item.snippet.data.replace('\n', '').trim(),
-          line: item.start.line,
-          highlights: item.snippet.highlights.map((r) => ({
-            start: r.start - trimmedLen,
-            end: r.end - trimmedLen,
-          })),
+          ...td,
+          snippet: {
+            ...td.snippet,
+            data: trimmed,
+            highlights: td.snippet.highlights.map((h) => {
+              return { start: h.start - lengthDiff, end: h.end - lengthDiff };
+            }),
+          },
         };
       }),
-    };
+    ];
   });
-};
 
-export const mapTokenInfoData = (tokenInfo: TokenInfoResponse): TokenInfo => {
-  return {
-    definitions: tokenInfo.definitions
-      ? mapTokenInfo(tokenInfo.definitions)
-      : [],
-    references: tokenInfo.references ? mapTokenInfo(tokenInfo.references) : [],
-  };
+  return Object.entries(map).map(([file, data]) => ({ file, data }));
 };

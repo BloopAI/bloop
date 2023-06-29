@@ -3,12 +3,11 @@ use std::{
     collections::{HashMap, HashSet, VecDeque},
     mem,
     panic::AssertUnwindSafe,
-    path::{Component, PathBuf},
     str::FromStr,
     time::Duration,
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use axum::{
     extract::Query,
     response::{
@@ -305,16 +304,25 @@ impl Conversation {
         }
     }
 
-    fn query_history(&self) -> Vec<String> {
-        self.exchanges
-            .iter()
-            .flat_map(|e| match (e.query(), e.conclusion()) {
-                (Some(q), Some(c)) => vec![("user", q), ("assistant", c)],
-                (Some(q), None) => vec![("user", q)],
-                _ => vec![],
-            })
-            .map(|(author, message)| format!("{author}: {message}"))
-            .collect()
+    fn query_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
+        self.exchanges.iter().flat_map(|e| {
+            let query = e.query().map(|q| llm_gateway::api::Message::PlainText {
+                role: "user".to_owned(),
+                content: q.to_owned(),
+            });
+
+            let conclusion = e
+                .conclusion()
+                .map(|c| llm_gateway::api::Message::PlainText {
+                    role: "assistant".to_owned(),
+                    content: c.to_owned(),
+                });
+
+            query
+                .into_iter()
+                .chain(conclusion.into_iter())
+                .collect::<Vec<_>>()
+        })
     }
 
     // Generate a summary of the last exchange
@@ -470,7 +478,7 @@ impl Conversation {
             Action::Query(query) => {
                 self.llm_history
                     .push_back(llm_gateway::api::Message::user(&format!(
-                        "{query}\nDo not answer."
+                        "{query}\nCall a function. Do not answer."
                     )))
             }
             _ => {
@@ -484,7 +492,7 @@ impl Conversation {
                 self.llm_history
                     .push_back(llm_gateway::api::Message::function_return(
                         function_name,
-                        &format!("{action_result}\nDo not answer."),
+                        &format!("{action_result}\nCall a function. Do not answer."),
                     ));
             }
         };
@@ -535,28 +543,6 @@ impl Conversation {
         question: &str,
         path_aliases: &[usize],
     ) -> Result<String> {
-        // filesystem agnostic trivial path normalization
-        //
-        // - a//b -> a/b
-        // - a/./b -> a/b
-        // - a/b/../c -> a/c (regardless of whether this exists)
-        // - ../b/c -> None
-        #[allow(dead_code)]
-        fn normalize(path: PathBuf) -> Option<PathBuf> {
-            let mut stack = vec![];
-            for c in path.components() {
-                match c {
-                    Component::Normal(s) => stack.push(s),
-                    Component::ParentDir if stack.is_empty() => return None,
-                    Component::ParentDir => {
-                        _ = stack.pop();
-                    }
-                    _ => (),
-                }
-            }
-            Some(stack.iter().collect::<PathBuf>())
-        }
-
         let paths = path_aliases
             .iter()
             .copied()
@@ -573,7 +559,11 @@ impl Conversation {
         }
 
         let question = &question;
-        let ctx = &ctx.clone().model("gpt-3.5-turbo-16k");
+        let ctx = &ctx
+            .clone()
+            .model("gpt-3.5-turbo-16k")
+            .frequency_penalty(0.1); // Set low frequency penalty to discourage long outputs
+
         let chunks = stream::iter(paths)
             .map(|path| async move {
                 let lines = ctx
@@ -587,24 +577,18 @@ impl Conversation {
                     .collect::<Vec<_>>();
 
                 const MAX_TOKENS: usize = 15400;
-                const LINE_OVERLAP: usize = 3;
 
                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
 
-                let iter = tokio::task::spawn_blocking(|| {
-                    split_line_set_by_tokens(lines, bpe, MAX_TOKENS, LINE_OVERLAP)
-                        .collect::<Vec<_>>()
-                })
-                .await
-                .context("failed to split by token")?
-                .into_iter()
-                .map(move |lines| Result::<_>::Ok((lines, path.clone())));
+                let iter =
+                    tokio::task::spawn_blocking(|| trim_lines_by_tokens(lines, bpe, MAX_TOKENS))
+                        .await
+                        .context("failed to split by token")?;
 
-                Result::<_>::Ok(futures::stream::iter(iter))
+                Result::<_>::Ok((iter, path.clone()))
             })
             // Buffer file loading to load multiple paths at once
             .buffered(10)
-            .try_flatten()
             .map(|result| async {
                 let (lines, path) = result?;
 
@@ -881,10 +865,14 @@ impl Conversation {
                 s += "\n##### CODE CHUNKS #####\n\n";
             }
 
-            // sort chunks in ascending order of line number and append to context
-            for chunks_by_alias in recent_chunks_by_alias.values_mut() {
-                chunks_by_alias.sort_by(|a, b| a.0.start_line.cmp(&b.0.start_line));
-                for (_, formatted_snippet) in chunks_by_alias {
+            // sort by alias, then sort by lines
+            let mut aliases = recent_chunks_by_alias.keys().copied().collect::<Vec<_>>();
+            aliases.sort();
+
+            for alias in aliases {
+                let chunks = recent_chunks_by_alias.get_mut(&alias).unwrap();
+                chunks.sort_by(|a, b| a.0.start_line.cmp(&b.0.start_line));
+                for (_, formatted_snippet) in chunks {
                     s += formatted_snippet;
                 }
             }
@@ -892,15 +880,27 @@ impl Conversation {
             s
         };
 
-        let query_history = self.query_history().join("\n");
-        let query = self
-            .last_exchange()
-            .query()
-            .context("exchange did not have a user query")?;
+        let mut query_history = self.query_history().collect::<Vec<_>>();
 
-        let prompt = prompts::final_explanation_prompt(&context, query, &query_history);
+        {
+            let (role, content) = query_history
+                .last_mut()
+                .context("query history was empty")?
+                .as_plaintext_mut()
+                .context("last message was not plaintext")?;
 
-        let messages = [llm_gateway::api::Message::system(&prompt)];
+            if role != "user" {
+                bail!("last message was not a user message");
+            }
+
+            *content += "\n\nOutput only JSON.";
+        }
+
+        let system_message = prompts::final_explanation_prompt(&context);
+        let messages = Some(llm_gateway::api::Message::system(&system_message))
+            .into_iter()
+            .chain(query_history.iter().cloned())
+            .collect::<Vec<_>>();
 
         let mut stream = ctx.llm_gateway.chat(&messages, None).await?.boxed();
         let mut buffer = String::new();
@@ -954,7 +954,7 @@ impl Conversation {
                 .with_payload("query", self.last_exchange().query())
                 .with_payload("query_history", &query_history)
                 .with_payload("response", &buffer)
-                .with_payload("raw_prompt", &prompt),
+                .with_payload("system_message", &system_message),
         );
 
         Ok(())
@@ -1155,45 +1155,24 @@ impl Conversation {
     }
 }
 
-fn split_line_set_by_tokens(
-    lines: Vec<String>,
-    bpe: CoreBPE,
-    max_tokens: usize,
-    line_overlap: usize,
-) -> impl Iterator<Item = Vec<String>> {
+fn trim_lines_by_tokens(lines: Vec<String>, bpe: CoreBPE, max_tokens: usize) -> Vec<String> {
     let line_tokens = lines
         .iter()
         .map(|line| bpe.encode_ordinary(line).len())
         .collect::<Vec<_>>();
 
-    let mut start = 0usize;
+    let mut trimmed_lines = Vec::new();
 
-    std::iter::from_fn(move || {
-        if start >= lines.len() {
-            return None;
-        }
+    // Push lines to `trimmed_lines` until we reach the maximum number of tokens.
+    let mut i = 0usize;
+    let mut tokens = 0usize;
+    while i < lines.len() && tokens < max_tokens {
+        tokens += line_tokens[i];
+        trimmed_lines.push(lines[i].clone());
+        i += 1;
+    }
 
-        start = start.saturating_sub(line_overlap);
-
-        let mut subset = Vec::new();
-
-        while start < lines.len() {
-            if line_tokens[start - subset.len()..start]
-                .iter()
-                .sum::<usize>()
-                > max_tokens
-            {
-                subset.pop();
-                start -= 1;
-                break;
-            }
-
-            subset.push(lines[start].clone());
-            start += 1;
-        }
-
-        Some(subset)
-    })
+    trimmed_lines
 }
 
 fn limit_tokens(text: &str, bpe: CoreBPE, max_tokens: usize) -> &str {
@@ -1241,7 +1220,7 @@ fn merge_overlapping(a: &mut CodeChunk, b: CodeChunk) -> Option<CodeChunk> {
 /// This function assumes that the input chunks do not overlap, and that the first paramter is a
 /// chunk which ends *before* the second parameter starts.
 fn merge_nearby(a: &mut CodeChunk, b: CodeChunk, contents: &str) -> Option<CodeChunk> {
-    const NEAR_THRESHOLD: u32 = 5;
+    const NEAR_THRESHOLD: u32 = 20;
 
     // This should never underflow, as we already merge overlapping chunks before getting
     // here.
@@ -1362,46 +1341,8 @@ mod tests {
     }
 
     #[test]
-    fn test_split_line_set_by_tokens() {
-        let lines = vec![
-            "fn main() {".to_string(),
-            "    one();".to_string(),
-            "    two();".to_string(),
-            "    three();".to_string(),
-            "    four();".to_string(),
-            "    five();".to_string(),
-            "    six();".to_string(),
-            "}".to_string(),
-        ];
-
+    fn test_trim_lines_by_tokens() {
         let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
-        let out = split_line_set_by_tokens(lines, bpe.clone(), 15, 3).collect::<Vec<_>>();
-        let expected = vec![
-            vec![
-                "fn main() {".to_string(),
-                "    one();".to_string(),
-                "    two();".to_string(),
-                "    three();".to_string(),
-            ],
-            vec![
-                "    one();".to_string(),
-                "    two();".to_string(),
-                "    three();".to_string(),
-                "    four();".to_string(),
-                "    five();".to_string(),
-            ],
-            vec![
-                "    three();".to_string(),
-                "    four();".to_string(),
-                "    five();".to_string(),
-                "    six();".to_string(),
-                "}".to_string(),
-            ],
-        ];
-        pretty_assertions::assert_eq!(out, expected);
-        for segment in &expected {
-            assert!(dbg!(bpe.encode_ordinary(&dbg!(segment).join("\n")).len()) <= 15);
-        }
 
         let lines = vec![
             "fn main() {".to_string(),
@@ -1413,29 +1354,25 @@ mod tests {
             "    six();".to_string(),
             "}".to_string(),
         ];
-
-        let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
-        let out = split_line_set_by_tokens(lines, bpe.clone(), 20, 2).collect::<Vec<_>>();
-        let expected = vec![
+        assert_eq!(
+            trim_lines_by_tokens(lines, bpe.clone(), 15),
             vec![
                 "fn main() {".to_string(),
                 "    one();".to_string(),
                 "    two();".to_string(),
                 "    three();".to_string(),
-                "    four();".to_string(),
-                "    five();".to_string(),
-            ],
-            vec![
-                "    four();".to_string(),
-                "    five();".to_string(),
-                "    six();".to_string(),
-                "}".to_string(),
-            ],
-        ];
-        pretty_assertions::assert_eq!(out, expected);
-        for segment in &expected {
-            assert!(dbg!(bpe.encode_ordinary(&dbg!(segment).join("\n")).len()) <= 20);
-        }
+                "    four();".to_string()
+            ]
+        );
+
+        let lines = vec!["fn main() {".to_string(), "    one();".to_string()];
+        assert_eq!(
+            trim_lines_by_tokens(lines, bpe.clone(), 15),
+            vec!["fn main() {".to_string(), "    one();".to_string()]
+        );
+
+        let expected: Vec<String> = vec![];
+        assert_eq!(trim_lines_by_tokens(vec![], bpe, 15), expected);
     }
 
     #[test]

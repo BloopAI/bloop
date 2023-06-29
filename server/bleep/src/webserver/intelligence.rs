@@ -1,17 +1,18 @@
-use std::sync::Arc;
+use std::{ops::Not, sync::Arc};
 
 use super::prelude::*;
 use crate::{
     indexes::{reader::ContentDocument, Indexes},
-    intelligence::{code_navigation, NodeKind, ScopeGraph},
+    intelligence::{
+        code_navigation::{CodeNavigationContext, FileSymbols, Occurrence, OccurrenceKind, Token},
+        Language, NodeKind, TSLanguage,
+    },
     repo::RepoRef,
-    snippet::{Snipper, Snippet},
-    symbol::SymbolLocations,
+    snippet::Snipper,
     text_range::TextRange,
 };
 
 use axum::{extract::Query, response::IntoResponse, Extension};
-use petgraph::graph::NodeIndex;
 use serde::{Deserialize, Serialize};
 
 /// The request made to the `local-intel` endpoint.
@@ -32,356 +33,280 @@ pub(super) struct TokenInfoRequest {
 }
 
 /// The response from the `local-intel` endpoint.
-#[derive(Serialize)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub(super) enum TokenInfoResponse {
-    /// The response returned when the input range is a definition
-    Definition {
-        /// A file-wise grouping of references, across this repo
-        references: Vec<FileSymbols>,
-    },
-    /// The response returned when the input range is a reference
-    Reference {
-        /// The original definition(s) for this reference
-        definitions: Vec<FileSymbols>,
-        /// The other references in this document
-        references: Vec<FileSymbols>,
-    },
+#[derive(Serialize, Debug)]
+pub(super) struct TokenInfoResponse {
+    data: Vec<FileSymbols>,
 }
 
-impl super::ApiResponse for TokenInfoResponse {}
-
-#[derive(Debug, Serialize)]
-pub(super) struct FileSymbols {
-    // FIXME: choose a better name
-    /// The file to which the following occurrences belong
-    file: String,
-
-    /// A collection of symbol locations with context in this file
-    data: Vec<SymbolOccurrence>,
-}
-
-impl FileSymbols {
-    fn is_populated(&self) -> bool {
-        !self.data.is_empty()
+impl TokenInfoResponse {
+    fn new(data: Vec<FileSymbols>) -> Self {
+        Self { data }
     }
 }
 
-/// An occurrence of a single symbol in a document, along with some context
-#[derive(Debug, Serialize)]
-pub(super) struct SymbolOccurrence {
-    /// The precise range of this symbol
-    #[serde(flatten)]
-    pub(super) range: TextRange,
-
-    /// A few lines of surrounding context
-    pub(super) snippet: Snippet,
-}
-
-fn handle_definition_local(
-    scope_graph: &ScopeGraph,
-    idx: NodeIndex<u32>,
-    doc: &ContentDocument,
-) -> FileSymbols {
-    let file = doc.relative_path.clone();
-    let handler = code_navigation::CurrentFileHandler {
-        scope_graph,
-        idx,
-        doc,
-    };
-    let data = handler
-        .handle_definition()
-        .into_iter()
-        .map(|range| to_occurrence(doc, range))
-        .collect();
-    FileSymbols { file, data }
-}
-
-fn handle_definition_repo_wide(
-    token: &[u8],
-    kind: Option<&str>,
-    start_file: &str,
-    all_docs: &[ContentDocument],
-) -> Vec<FileSymbols> {
-    all_docs
-        .iter()
-        .filter(|doc| doc.relative_path != start_file) // do not look in the current file
-        .filter_map(|doc| match &doc.symbol_locations {
-            SymbolLocations::TreeSitter(scope_graph) => {
-                let file = doc.relative_path.clone();
-                let handler = code_navigation::RepoWideHandler {
-                    token,
-                    kind,
-                    scope_graph,
-                    doc,
-                };
-                let data = handler
-                    .handle_definition()
-                    .into_iter()
-                    .map(|range| to_occurrence(doc, range))
-                    .collect();
-                Some(FileSymbols { file, data })
-            }
-            _ => None,
-        })
-        .collect()
-}
-
-fn handle_reference_local(
-    scope_graph: &ScopeGraph,
-    idx: NodeIndex<u32>,
-    doc: &ContentDocument,
-) -> (FileSymbols, FileSymbols) {
-    let file = &doc.relative_path;
-    let handler = code_navigation::CurrentFileHandler {
-        scope_graph,
-        idx,
-        doc,
-    };
-    let (defs, refs) = handler.handle_reference();
-    let def_data = FileSymbols {
-        file: file.clone(),
-        data: defs
-            .into_iter()
-            .map(|range| to_occurrence(doc, range))
-            .collect(),
-    };
-    let ref_data = FileSymbols {
-        file: file.clone(),
-        data: refs
-            .into_iter()
-            .map(|range| to_occurrence(doc, range))
-            .collect(),
-    };
-
-    (def_data, ref_data)
-}
-
-fn handle_reference_repo_wide(
-    token: &[u8],
-    kind: Option<&str>,
-    start_file: &str,
-    all_docs: &[ContentDocument],
-) -> (Vec<FileSymbols>, Vec<FileSymbols>) {
-    all_docs
-        .iter()
-        .filter(|doc| doc.relative_path != start_file) // do not look in the current file
-        .filter_map(|doc| match &doc.symbol_locations {
-            SymbolLocations::TreeSitter(scope_graph) => {
-                let file = doc.relative_path.clone();
-                let handler = code_navigation::RepoWideHandler {
-                    token,
-                    kind,
-                    scope_graph,
-                    doc,
-                };
-                let (defs, refs) = handler.handle_reference();
-
-                let def_data = FileSymbols {
-                    file: file.clone(),
-                    data: defs
-                        .into_iter()
-                        .map(|range| to_occurrence(doc, range))
-                        .collect(),
-                };
-                let ref_data = FileSymbols {
-                    file,
-                    data: refs
-                        .into_iter()
-                        .map(|range| to_occurrence(doc, range))
-                        .collect(),
-                };
-
-                Some((def_data, ref_data))
-            }
-            _ => None,
-        })
-        .unzip()
-}
-
-fn to_occurrence(doc: &ContentDocument, range: TextRange) -> SymbolOccurrence {
-    let src = &doc.content;
-    let line_end_indices = &doc.line_end_indices;
-    let highlight = range.start.byte..range.end.byte;
-    let snippet = Snipper::default()
-        .expand(highlight, src, line_end_indices)
-        .reify(src, &[]);
-
-    SymbolOccurrence { range, snippet }
-}
-
-// helper to merge two sets of file-symbols and omit the empty results
-fn merge(
-    a: impl IntoIterator<Item = FileSymbols>,
-    b: impl IntoIterator<Item = FileSymbols>,
-) -> Vec<FileSymbols> {
-    a.into_iter()
-        .chain(b.into_iter())
-        .filter(FileSymbols::is_populated)
-        .collect()
-}
+impl super::ApiResponse for TokenInfoResponse {}
 
 pub(super) async fn handle(
     Query(payload): Query<TokenInfoRequest>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<impl IntoResponse> {
-    let repo_ref = &payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
+    let repo_ref = payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
 
-    let content = indexes
+    let token = Token {
+        relative_path: payload.relative_path.as_str(),
+        start_byte: payload.start,
+        end_byte: payload.end,
+    };
+
+    let source_document = indexes
         .file
-        .by_path(repo_ref, &payload.relative_path, payload.branch.as_deref())
+        .by_path(&repo_ref, &payload.relative_path, payload.branch.as_deref())
         .await
         .map_err(Error::user)?;
-
-    let scope_graph = match content.symbol_locations {
-        SymbolLocations::TreeSitter(ref graph) => graph,
-        _ => return Err(Error::user("Intelligence is unavailable for this language")),
+    let lang = source_document.lang.as_deref();
+    let all_docs = {
+        let associated_langs = match lang.map(TSLanguage::from_id) {
+            Some(Language::Supported(config)) => config.language_ids,
+            _ => &[],
+        };
+        indexes
+            .file
+            .by_repo(
+                &repo_ref,
+                associated_langs.iter(),
+                payload.branch.as_deref(),
+            )
+            .await
     };
 
-    let node = scope_graph.node_by_range(payload.start, payload.end);
+    let source_document_idx = all_docs
+        .iter()
+        .position(|doc| doc.relative_path == payload.relative_path)
+        .ok_or(Error::internal("invalid language"))?;
 
-    let idx = match node {
-        None => return Err(Error::user("provided range is not a valid token")),
-        Some(idx) => idx,
+    let ctx = CodeNavigationContext {
+        repo_ref: repo_ref.clone(),
+        token,
+        all_docs,
+        source_document_idx,
     };
 
-    let src = &content.content;
-    let current_file = &content.relative_path;
-    let kind = scope_graph.symbol_name_of(idx);
-    let lang = content.lang.as_deref();
-    let all_docs = indexes
-        .file
-        .by_repo(repo_ref, lang, payload.branch.as_deref())
-        .await;
-
-    match &scope_graph.graph[idx] {
-        // we are already at a def
-        // - find refs from the current file
-        // - find refs from other files
-        NodeKind::Def(d) => {
-            // fetch local references with scope-graphs
-            let local_references = handle_definition_local(scope_graph, idx, &content);
-
-            // fetch repo-wide references with trivial search, only if the def is
-            // a top-level def (typically functions, ADTs, consts)
-            let repo_wide_references = if scope_graph.is_top_level(idx) {
-                let token = d.name(src.as_bytes());
-                handle_definition_repo_wide(token, kind, current_file, &all_docs)
-            } else {
-                vec![]
-            };
-
-            // merge the two
-            let references = merge([local_references], repo_wide_references);
-
-            Ok(json(TokenInfoResponse::Definition { references }))
-        }
-
-        // we are at a reference:
-        // - find def from the current file
-        // - find defs from other files
-        // - find refs from the current file
-        // - find refs from other files
-        //
-        // the ordering here prefers occurrences from the current file, over occurrences
-        // from other files.
-        NodeKind::Ref(r) => {
-            // fetch local (defs, refs) with scope-graphs
-            let (local_definitions, local_references) =
-                handle_reference_local(scope_graph, idx, &content);
-
-            // fetch repo-wide (defs, refs) with trivial search
-            let token = r.name(src.as_bytes());
-            let (repo_wide_definitions, repo_wide_references) =
-                handle_reference_repo_wide(token, kind, current_file, &all_docs);
-
-            // if we already have a local-def, do not search globally
-            let definitions = if local_definitions.data.is_empty() {
-                merge([], repo_wide_definitions)
-            } else {
-                merge([local_definitions], [])
-            };
-            let references = merge([local_references], repo_wide_references);
-
-            Ok(json(TokenInfoResponse::Reference {
-                definitions,
-                references,
-            }))
-        }
-
-        // we are at an import:
-        //
-        // an import is in an of itself a "definition" of a name in the current tree,
-        // it is the first time a name is introduced in a tree. however the original
-        // definition of this name can only exist in other trees (or not exist at all).
-        NodeKind::Import(i) => {
-            // fetch local refs with scope-graph
-            let local_references = handle_definition_local(scope_graph, idx, &content);
-
-            // fetch repo-wide defs with trivial search
-            let token = i.name(src.as_bytes());
-            let (repo_wide_definitions, repo_wide_references) =
-                handle_reference_repo_wide(token, kind, current_file, &all_docs);
-
-            let definitions = repo_wide_definitions
-                .into_iter()
-                .filter(FileSymbols::is_populated)
-                .collect();
-
-            let references = merge([local_references], repo_wide_references);
-
-            Ok(json(TokenInfoResponse::Reference {
-                definitions,
-                references,
-            }))
-        }
-        _ => Err(Error::user(
-            "provided range is not eligible for intelligence",
-        )),
+    let data = ctx.token_info();
+    if data.is_empty() {
+        search_nav(
+            Arc::clone(&indexes),
+            &repo_ref,
+            ctx.active_token_text(),
+            ctx.active_token_range(),
+            payload.branch.as_deref(),
+            &source_document,
+        )
+        .await
+        .map(TokenInfoResponse::new)
+        .map(json)
+    } else {
+        Ok(json(TokenInfoResponse { data }))
     }
+}
+
+async fn search_nav(
+    indexes: Arc<Indexes>,
+    repo_ref: &RepoRef,
+    hovered_text: &str,
+    payload_range: std::ops::Range<usize>,
+    branch: Option<&str>,
+    source_document: &ContentDocument,
+) -> Result<Vec<FileSymbols>> {
+    use crate::{
+        indexes::{reader::ContentReader, DocumentRead},
+        query::compiler::trigrams,
+    };
+    use tantivy::{
+        collector::TopDocs,
+        query::{BooleanQuery, TermQuery},
+        schema::{IndexRecordOption, Term},
+    };
+
+    let associated_langs = match source_document.lang.as_deref().map(TSLanguage::from_id) {
+        Some(Language::Supported(config)) => config.language_ids,
+        _ => &[],
+    };
+
+    // produce search based results here
+    let target = regex::Regex::new(&format!(r"\b{hovered_text}\b")).expect("failed to build regex");
+    // perform a text search for hovered_text
+    let file_source = &indexes.file.source;
+    let indexer = &indexes.file;
+    let query = {
+        let repo_filter = Term::from_field_text(indexer.source.repo_ref, &repo_ref.to_string());
+        let terms = trigrams(hovered_text)
+            .map(|token| Term::from_field_text(indexer.source.content, token.as_str()))
+            .map(|term| {
+                Box::new(TermQuery::new(term, IndexRecordOption::Basic))
+                    as Box<dyn tantivy::query::Query>
+            })
+            .chain(std::iter::once(
+                Box::new(TermQuery::new(repo_filter, IndexRecordOption::Basic))
+                    as Box<dyn tantivy::query::Query>,
+            ))
+            .chain(branch.into_iter().map(|b| {
+                Box::new(TermQuery::new(
+                    Term::from_field_bytes(indexer.source.branches, b.as_bytes()),
+                    IndexRecordOption::Basic,
+                )) as Box<dyn tantivy::query::Query>
+            }))
+            .chain(std::iter::once(Box::new(BooleanQuery::union(
+                associated_langs
+                    .iter()
+                    .map(|l| {
+                        Term::from_field_bytes(
+                            indexer.source.lang,
+                            l.to_ascii_lowercase().as_bytes(),
+                        )
+                    })
+                    .map(|l| {
+                        Box::new(TermQuery::new(l, IndexRecordOption::Basic))
+                            as Box<dyn tantivy::query::Query>
+                    })
+                    .collect::<Vec<_>>(),
+            ))
+                as Box<dyn tantivy::query::Query>))
+            .collect::<Vec<Box<dyn tantivy::query::Query>>>();
+
+        BooleanQuery::intersection(terms)
+    };
+    let collector = TopDocs::with_limit(500);
+    let reader = indexes.file.reader.read().await;
+    let searcher = reader.searcher();
+    let results = searcher
+        .search(&query, &collector)
+        .expect("failed to search index");
+
+    // if the hovered token is a def, ignore all other search-based defs
+    let ignore_defs = {
+        source_document
+            .symbol_locations
+            .scope_graph()
+            .and_then(|graph| {
+                graph
+                    .node_by_range(payload_range.start, payload_range.end)
+                    .map(|idx| matches!(graph.graph[idx], NodeKind::Def(_)))
+            })
+            .unwrap_or_default()
+    };
+
+    let data = results
+        .into_iter()
+        .filter_map(|(_, doc_addr)| {
+            let retrieved_doc = searcher
+                .doc(doc_addr)
+                .expect("failed to get document by address");
+            let doc = ContentReader.read_document(file_source, retrieved_doc);
+            let hoverable_ranges = doc.hoverable_ranges()?;
+            let data = target
+                .find_iter(&doc.content)
+                .map(|m| TextRange::from_byte_range(m.range(), &doc.line_end_indices))
+                .filter(|range| hoverable_ranges.iter().any(|r| r.contains(range)))
+                .filter(|range| {
+                    !(payload_range.start >= range.start.byte
+                        && payload_range.end <= range.end.byte)
+                })
+                .map(|range| {
+                    let start_byte = range.start.byte;
+                    let end_byte = range.end.byte;
+                    let is_def = doc
+                        .symbol_locations
+                        .scope_graph()
+                        .and_then(|graph| {
+                            graph
+                                .node_by_range(start_byte, end_byte)
+                                .map(|idx| matches!(graph.graph[idx], NodeKind::Def(_)))
+                        })
+                        .map(|d| {
+                            if d {
+                                OccurrenceKind::Definition
+                            } else {
+                                OccurrenceKind::Reference
+                            }
+                        })
+                        .unwrap_or_default();
+                    let highlight = start_byte..end_byte;
+                    let snippet = Snipper::default()
+                        .expand(highlight, &doc.content, &doc.line_end_indices)
+                        .reify(&doc.content, &[]);
+
+                    Occurrence {
+                        kind: is_def,
+                        range,
+                        snippet,
+                    }
+                })
+                .filter(|o| !(ignore_defs && o.is_definition())) // if ignore_defs is true & o is a def, omit it
+                .collect::<Vec<_>>();
+
+            let file = doc.relative_path;
+
+            data.is_empty().not().then(|| FileSymbols {
+                file: file.clone(),
+                data,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    Ok(data)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text_range::Point;
+    use crate::{snippet::Snippet, text_range::Point};
 
     #[test]
-    fn serialize_response_reference() {
+    fn serialize_response() {
         let expected = serde_json::json!({
-            "kind": "reference",
-            "definitions": [{
-                "file": "server/bleep/src/symbol.rs",
-                "data": [{
-                    "start": { "byte": 2620, "line": 90, "column": 0  },
-                    "end": { "byte": 2627, "line": 90, "column": 0  },
-                    "snippet": {
-                        "highlights": [ { "start": 12, "end": 19 } ],
-                        "data": "        let indexes = Indexes::new(self.clone(), threads).await?;\n",
-                        "line_range": { "start": 91, "end": 92 },
-                        "symbols": [],
-                    }
-                }]
-            }],
-            "references": [{
-                "file": "server/bleep/src/intelligence/scope_resolution.rs",
-                "data": [{
-                    "start": { "byte": 2725, "line": 93, "column": 0  },
-                    "end": { "byte": 2732, "line": 93, "column": 0  },
-                    "snippet": {
-                        "highlights": [ { "start": 12, "end": 19 } ],
-                        "symbols": [],
-                        "line_range": { "start": 94, "end": 95 },
-                        "data": "            indexes.reindex().await?;\n"
-                    }
-                }]
-            }]
+            "data": [
+                {
+                    "file": "server/bleep/src/symbol.rs",
+                    "data": [{
+                        "kind": "definition",
+                        "range": {
+                            "start": { "byte": 2620, "line": 90, "column": 0  },
+                            "end": { "byte": 2627, "line": 90, "column": 0  },
+                        },
+                        "snippet": {
+                            "highlights": [ { "start": 12, "end": 19 } ],
+                            "data": "        let indexes = Indexes::new(self.clone(), threads).await?;\n",
+                            "line_range": { "start": 91, "end": 92 },
+                            "symbols": []
+                        }
+                    }]
+
+                },
+                {
+                    "file": "server/bleep/src/intelligence/scope_resolution.rs",
+                    "data": [{
+                        "kind": "reference",
+                        "range": {
+                            "start": { "byte": 2725, "line": 93, "column": 0  },
+                            "end": { "byte": 2732, "line": 93, "column": 0  },
+                        },
+                        "snippet": {
+                            "highlights": [ { "start": 12, "end": 19 } ],
+                            "data": "            indexes.reindex().await?;\n",
+                            "line_range": { "start": 94, "end": 95 },
+                            "symbols": []
+                        }
+                    }]
+                }
+            ]
         });
 
-        let observed = serde_json::to_value(TokenInfoResponse::Reference {
-            definitions: vec![FileSymbols {
-                file: "server/bleep/src/symbol.rs".into(),
-                data: vec![SymbolOccurrence {
+        let observed = serde_json::to_value(TokenInfoResponse {
+            data: vec![
+                FileSymbols {
+                    file: "server/bleep/src/symbol.rs".into(),
+                    data: vec![Occurrence {
+                    kind: OccurrenceKind::Definition,
                     range: TextRange {
                         start: Point {
                             byte: 2620,
@@ -402,82 +327,35 @@ mod tests {
                         symbols: vec![],
                     },
                 }],
-            }],
-            references: vec![FileSymbols {
-                file: "server/bleep/src/intelligence/scope_resolution.rs".into(),
-                data: vec![SymbolOccurrence {
-                    range: TextRange {
-                        start: Point {
-                            byte: 2725,
-                            line: 93,
-                            column: 0,
+                },
+                FileSymbols {
+                    file: "server/bleep/src/intelligence/scope_resolution.rs".into(),
+                    data: vec![Occurrence {
+                        kind: OccurrenceKind::Reference,
+                        range: TextRange {
+                            start: Point {
+                                byte: 2725,
+                                line: 93,
+                                column: 0,
+                            },
+                            end: Point {
+                                byte: 2732,
+                                line: 93,
+                                column: 0,
+                            },
                         },
-                        end: Point {
-                            byte: 2732,
-                            line: 93,
-                            column: 0,
+                        snippet: Snippet {
+                            line_range: 94..95,
+                            data: "            indexes.reindex().await?;\n".to_owned(),
+                            highlights: vec![12..19],
+                            symbols: vec![],
                         },
-                    },
-                    snippet: Snippet {
-                        line_range: 94..95,
-                        data: "            indexes.reindex().await?;\n".to_owned(),
-                        highlights: vec![12..19],
-                        symbols: vec![],
-                    },
-                }],
-            }],
+                    }],
+                },
+            ],
         })
         .unwrap();
 
         pretty_assertions::assert_eq!(expected, observed)
-    }
-
-    #[test]
-    fn serialize_response_definition() {
-        let expected = serde_json::json!({
-            "kind": "definition",
-            "references": [{
-                "file": "server/bleep/benches/snippets.rs",
-                "data": [{
-                    "start": { "byte": 2725, "line": 93, "column": 0 },
-                    "end": { "byte": 2732, "line": 93, "column": 0  },
-                    "snippet": {
-                        "highlights": [ { "start": 12, "end": 19 } ],
-                        "line_range": { "start": 94, "end": 95 },
-                        "data": "            indexes.reindex().await?;\n",
-                        "symbols": []
-                    }
-                }]
-            }]
-        });
-
-        let observed = serde_json::to_value(TokenInfoResponse::Definition {
-            references: vec![FileSymbols {
-                file: "server/bleep/benches/snippets.rs".into(),
-                data: vec![SymbolOccurrence {
-                    range: TextRange {
-                        start: Point {
-                            byte: 2725,
-                            line: 93,
-                            column: 0,
-                        },
-                        end: Point {
-                            byte: 2732,
-                            line: 93,
-                            column: 0,
-                        },
-                    },
-                    snippet: Snippet {
-                        line_range: 94..95,
-                        data: "            indexes.reindex().await?;\n".to_owned(),
-                        highlights: vec![12..19],
-                        symbols: vec![],
-                    },
-                }],
-            }],
-        })
-        .unwrap();
-
-        assert_eq!(expected, observed)
     }
 }

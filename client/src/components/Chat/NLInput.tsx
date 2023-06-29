@@ -11,12 +11,18 @@ import ClearButton from '../ClearButton';
 import Tooltip from '../Tooltip';
 import { ChatLoadingStep } from '../../types/general';
 import LiteLoader from '../Loaders/LiteLoader';
+import PromptGuidePopup from '../PromptGuidePopup';
+import {
+  getPlainFromStorage,
+  PROMPT_GUIDE_DONE,
+  savePlainToStorage,
+} from '../../services/storage';
 import InputLoader from './InputLoader';
 
 type Props = {
   id?: string;
   value?: string;
-  placeholder?: string;
+  generationInProgress?: boolean;
   isStoppable?: boolean;
   showTooltip?: boolean;
   tooltipText?: string;
@@ -34,7 +40,7 @@ const NLInput = ({
   id,
   value,
   onChange,
-  placeholder = defaultPlaceholder,
+  generationInProgress,
   isStoppable,
   onStop,
   onSubmit,
@@ -46,6 +52,7 @@ const NLInput = ({
 }: Props) => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setComposition] = useState(false);
+  const [isPromptGuideOpen, setPromptGuideOpen] = useState(false);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -74,12 +81,20 @@ const NLInput = ({
   );
 
   const shouldShowLoader = useMemo(
-    () =>
-      isStoppable &&
-      !!loadingSteps?.length &&
-      placeholder !== defaultPlaceholder,
-    [isStoppable, loadingSteps?.length, placeholder],
+    () => isStoppable && !!loadingSteps?.length && generationInProgress,
+    [isStoppable, loadingSteps?.length, generationInProgress],
   );
+
+  const handleInputFocus = useCallback(() => {
+    if (!getPlainFromStorage(PROMPT_GUIDE_DONE)) {
+      setPromptGuideOpen(true);
+    }
+  }, []);
+
+  const handlePromptGuideClose = useCallback(() => {
+    setPromptGuideOpen(false);
+    savePlainToStorage(PROMPT_GUIDE_DONE, 'true');
+  }, []);
 
   return (
     <div
@@ -91,6 +106,10 @@ const NLInput = ({
         : 'bg-chat-bg-base hover:text-label-title hover:border-chat-bg-border-hover'
     } transition-all ease-out duration-150 flex-grow-0 relative`}
     >
+      <PromptGuidePopup
+        isOpen={isPromptGuideOpen}
+        onClose={handlePromptGuideClose}
+      />
       {shouldShowLoader && <InputLoader loadingSteps={loadingSteps!} />}
       <div className="pt-4.5">
         {isStoppable ? (
@@ -108,7 +127,7 @@ const NLInput = ({
       <textarea
         className={`w-full py-4 bg-transparent rounded-lg outline-none focus:outline-0 resize-none
         placeholder:text-current placeholder:truncate placeholder:max-w-[19.5rem] flex-grow-0`}
-        placeholder={placeholder}
+        placeholder={shouldShowLoader ? '' : defaultPlaceholder}
         id={id}
         value={value}
         onChange={onChange}
@@ -116,10 +135,11 @@ const NLInput = ({
         autoComplete="off"
         spellCheck="false"
         ref={inputRef}
-        disabled={isStoppable && placeholder !== defaultPlaceholder}
+        disabled={isStoppable && generationInProgress}
         onCompositionStart={() => setComposition(true)}
         onCompositionEnd={() => setComposition(false)}
         onKeyDown={handleKeyDown}
+        onFocus={handleInputFocus}
       />
       {isStoppable || selectedLines ? (
         <div className="relative top-[18px]">

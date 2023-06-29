@@ -65,6 +65,23 @@ impl<'a> TreeSitterFile<'a> {
         })
     }
 
+    pub fn hoverable_ranges(
+        self,
+    ) -> Result<Vec<crate::text_range::TextRange>, TreeSitterFileError> {
+        let query = self
+            .language
+            .hoverable_query
+            .query(self.language.grammar)
+            .map_err(TreeSitterFileError::QueryError)?;
+        let root_node = self.tree.root_node();
+        let mut cursor = tree_sitter::QueryCursor::new();
+        Ok(cursor
+            .matches(query, root_node, self.src)
+            .flat_map(|m| m.captures)
+            .map(|c| c.node.range().into())
+            .collect::<Vec<_>>())
+    }
+
     /// Produce a lexical scope-graph for this TreeSitterFile.
     pub fn scope_graph(self) -> Result<ScopeGraph, TreeSitterFileError> {
         let query = self

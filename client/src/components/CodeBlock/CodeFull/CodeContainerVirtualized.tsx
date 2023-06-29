@@ -3,7 +3,7 @@ import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import CodeLine from '../Code/CodeLine';
 import { Token as TokenType } from '../../../types/prism';
 import { propsAreShallowEqual } from '../../../utils';
-import { Range, TokenInfoItem, TokenInfoWrapped } from '../../../types/results';
+import { Range, TokenInfoWrapped } from '../../../types/results';
 import { getOffsetForIndexAndAlignment } from '../../../utils/scrollUtils';
 import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
@@ -27,10 +27,14 @@ type Props = {
   height: number;
   pathHash: string | number;
   onMouseSelectStart: (lineNum: number, charNum: number) => void;
-  getHoverableContent: (range: Range, lineNumber: number) => void;
+  getHoverableContent: (
+    hoverableRange: Range,
+    tokenRange: Range,
+    lineNumber: number,
+  ) => void;
   onMouseSelectEnd: (lineNum: number, charNum: number) => void;
   tokenInfo: TokenInfoWrapped;
-  handleRefsDefsClick: (item: TokenInfoItem, filePath: string) => void;
+  handleRefsDefsClick: (lineNum: number, filePath: string) => void;
 };
 
 const CodeContainerVirtualized = ({
@@ -74,10 +78,15 @@ const CodeContainerVirtualized = ({
   useOnClickOutside(popupRef, () => setPopupVisible(false));
 
   useEffect(() => {
-    if (tokenInfo.byteRange) {
-      const tokenElem = findElementInCurrentTab(
-        `[data-byte-range="${tokenInfo.byteRange.start}-${tokenInfo.byteRange.end}"]`,
+    if (tokenInfo.tokenRange) {
+      let tokenElem = findElementInCurrentTab(
+        `.code-modal-container [data-byte-range="${tokenInfo.tokenRange.start}-${tokenInfo.tokenRange.end}"]`,
       );
+      if (!tokenElem) {
+        tokenElem = findElementInCurrentTab(
+          `#result-full-code-container [data-byte-range="${tokenInfo.tokenRange.start}-${tokenInfo.tokenRange.end}"]`,
+        );
+      }
       if (tokenElem && tokenElem instanceof HTMLElement) {
         setPopupPosition({
           top: 10,
@@ -146,7 +155,9 @@ const CodeContainerVirtualized = ({
               key={`cell-${index}-${i}`}
               lineHoverRanges={metadata.hoverableRanges[index]}
               token={token}
-              getHoverableContent={(range) => getHoverableContent(range, index)}
+              getHoverableContent={(hr, tr) =>
+                getHoverableContent(hr, tr, index)
+              }
             />
           ))}
           {!!popupPosition &&

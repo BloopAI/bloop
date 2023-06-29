@@ -31,7 +31,7 @@ pub fn functions() -> serde_json::Value {
             },
             {
                 "name": "proc",
-                "description": "Read one or more files and extract the line ranges which are relevant to the search terms.",
+                "description": "Read one or more files and extract the line ranges which are relevant to the search terms. Do not proc more than 10 files at a time.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -43,7 +43,7 @@ pub fn functions() -> serde_json::Value {
                             "type": "array",
                             "items": {
                                 "type": "integer",
-                                "description": "The indices of the paths to search."
+                                "description": "The indices of the paths to search. paths.len() <= 10"
                             }
                         }
                     },
@@ -52,7 +52,7 @@ pub fn functions() -> serde_json::Value {
             },
             {
                 "name": "none",
-                "description": "You have enough information to answer the user's query. This is the final step, and signals that you have enough information to respond to the user's query. Use this if the user has intructed you to modify some code.",
+                "description": "You have enough information to answer the user's query. This is the final step, and signals that you have enough information to respond to the user's query. Use this if the user has instructed you to modify some code.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -72,8 +72,7 @@ pub fn functions() -> serde_json::Value {
 }
 
 pub fn system(paths: &Vec<String>) -> String {
-    let mut s =
-        "Your job is to choose a function that will help you answer the query.\n".to_string();
+    let mut s = "".to_string();
 
     if !paths.is_empty() {
         s.push_str("## PATHS ##\nalias, path\n");
@@ -89,11 +88,14 @@ pub fn system(paths: &Vec<String>) -> String {
 - In most cases respond with functions.code or functions.path functions before responding with functions.none
 - Do not assume the structure of the codebase, or the existence of files or folders
 - Do NOT respond with a function that you've used before with the same arguments
-- When you have enough information to answer the  user's query respond with functions.none
-- If after making a path search the query can be answered by the existance of the paths, and there are more than 5 paths, use the functions.none function
+- When you have enough information to answer the user's query respond with functions.none
+- If after making a path search the query can be answered by the existence of the paths, and there are more than 5 paths, use the functions.none function
 - Only refer to path aliases that are under the PATHS heading above
-- Respond with functions to find information related to the query, until all relevant information has been found.
+- Respond with functions to find information related to the query, until all relevant information has been found
+- If you have already called functions.code or functions.path but they did not return any relevant information, try again with a substantively different query. The terms in your new query should not overlap with terms in previous queries
 - If after attempting to gather information you are still unsure how to answer the query, respond with the functions.none function
+- If the query is a greeting, or not a question or an instruction use functions.none
+- Always use a function, even if the query is not in English
 - Always respond with a function call. Do NOT answer the question directly"#);
     s
 }
@@ -133,7 +135,7 @@ A: "#
     )
 }
 
-pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str) -> String {
+pub fn final_explanation_prompt(context: &str) -> String {
     struct Rule<'a> {
         title: &'a str,
         description: &'a str,
@@ -216,6 +218,7 @@ Your answer should be an array of arrays, where each element in the array is an 
 
 {output_rules_str}
 Respect these rules at all times:
+- Do not refer to paths by alias, quote the full path surrounded by single backticks. E.g. `server/bleep/src/webserver/`
 - Refer to directories by their full paths, surrounded by single backticks
 - Your answer should always be an array of arrays, even when you only generate a conclusion
 
@@ -226,7 +229,7 @@ Examples:
 Show all the analytics events
 
 [
-  ["cite", 27, "Track 'Search' event in useAnalytics.ts", 7, 12],
+  ["cite", 27, "Track 'Search' event in `useAnalytics.ts`", 7, 12],
   ["con", "I've found three analytics events"]
 ]
 
@@ -243,12 +246,6 @@ What's the value of MAX_FILE_LEN?
   ["con": "None of files in the context contain the value of MAX_FILE_LEN"]
 ]
 
-#####
-
-{query_history}
-
-Above is the query and answer history. The user can see the previous queries and answers on their screen, but not anything else.
-Based on this history, answer the question: {query}
 
 #####
 

@@ -17,6 +17,7 @@
   (for_statement)
   (for_in_statement)
   (switch_case)
+  (catch_clause)
   ;; assignments are permitted inside sequence exprs:
   ;;
   ;;     const a = 2;
@@ -202,6 +203,10 @@
 ;; interface T
 (interface_declaration
   (type_identifier) @local.definition.interface)
+
+;; catch clauses
+(catch_clause
+  (identifier) @local.definition.variable)
 
 
 ;; refs

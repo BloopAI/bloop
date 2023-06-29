@@ -5,6 +5,16 @@ pub static TYPESCRIPT: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["ts", "tsx"],
     grammar: tree_sitter_typescript::language_tsx,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
+    hoverable_query: MemoizedQuery::new(
+        r#"
+        [(identifier)
+         (property_identifier)
+         (shorthand_property_identifier)
+         (shorthand_property_identifier_pattern)
+         (statement_identifier)
+         (type_identifier)] @hoverable
+        "#,
+    ),
     namespaces: &[&[
         //variables
         "constant",
@@ -298,6 +308,7 @@ mod test {
         );
     }
 
+    #[test]
     fn optional_param_regression() {
         test_scopes(
             "TypeScript",
@@ -307,7 +318,47 @@ mod test {
             }
             "#
             .as_bytes(),
-            expect![],
+            expect![[r#"
+                scope {
+                    definitions: [
+                        foo {
+                            kind: "function",
+                            context: "function §foo§(a?: string, b: string) {",
+                        },
+                    ],
+                    child scopes: [
+                        scope {
+                            definitions: [
+                                a {
+                                    kind: "parameter",
+                                    context: "function foo(§a§?: string, b: string) {",
+                                    referenced in (1): [
+                                        `return (§a§, b)`,
+                                    ],
+                                },
+                                b {
+                                    kind: "parameter",
+                                    context: "function foo(a?: string, §b§: string) {",
+                                    referenced in (1): [
+                                        `return (a, §b§)`,
+                                    ],
+                                },
+                            ],
+                            child scopes: [
+                                scope {
+                                    definitions: [],
+                                    child scopes: [
+                                        scope {
+                                            definitions: [],
+                                            child scopes: [],
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                }
+            "#]],
         );
     }
 }

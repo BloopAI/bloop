@@ -352,20 +352,11 @@ const Chat = () => {
                 (conversation[conversation.length - 1] as ChatMessageServer)
                   ?.loadingSteps
               }
-              onStop={stopGenerating}
-              placeholder={
+              generationInProgress={
                 (conversation[conversation.length - 1] as ChatMessageServer)
                   ?.isLoading
-                  ? (conversation[conversation.length - 1] as ChatMessageServer)
-                      ?.loadingSteps?.[
-                      (
-                        conversation[
-                          conversation.length - 1
-                        ] as ChatMessageServer
-                      )?.loadingSteps?.length - 1
-                    ].displayText
-                  : undefined
               }
+              onStop={stopGenerating}
               selectedLines={selectedLines}
               setSelectedLines={setSelectedLines}
             />
