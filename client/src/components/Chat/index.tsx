@@ -99,6 +99,7 @@ const Chat = () => {
       prevEventSource = eventSource;
       setSelectedLines(null);
       let firstResultCame: boolean;
+      let conclusionCame: boolean;
       let i = -1;
       eventSource.onerror = (err) => {
         console.log('SSE error', err);
@@ -182,6 +183,10 @@ const Chat = () => {
                 return prev;
               });
               firstResultCame = true;
+            }
+            if (newMessage.conclusion && !conclusionCame) {
+              setChatOpen(true);
+              conclusionCame = true;
             }
             setConversation((prev) => {
               const newConversation = prev?.slice(0, -1) || [];
@@ -276,9 +281,11 @@ const Chat = () => {
         return;
       }
       blurInput();
-      setSubmittedQuery(inputValue);
+      setSubmittedQuery(
+        submittedQuery === inputValue ? `${inputValue} ` : inputValue, // to trigger new search if query hasn't changed
+      );
     },
-    [inputValue, conversation],
+    [inputValue, conversation, submittedQuery],
   );
 
   const handleNewConversation = useCallback(() => {
