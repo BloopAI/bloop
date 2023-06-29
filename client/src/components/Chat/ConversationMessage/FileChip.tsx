@@ -5,9 +5,10 @@ import { ArrowOut } from '../../../icons';
 type Props = {
   onClick: () => void;
   fileName: string;
+  skipIcon?: boolean;
 };
 
-const FileChip = ({ onClick, fileName }: Props) => {
+const FileChip = ({ onClick, fileName, skipIcon }: Props) => {
   return (
     <button
       className={`inline-flex items-center bg-chat-bg-shade rounded-4 overflow-hidden 
@@ -16,7 +17,7 @@ const FileChip = ({ onClick, fileName }: Props) => {
       onClick={onClick}
     >
       <span className="flex gap-1 px-1 py-0.5 items-center border-r border-chat-bg-border code-s">
-        <FileIcon filename={fileName} noMargin />
+        {!skipIcon && <FileIcon filename={fileName} noMargin />}
         {fileName}
       </span>
       <span className="p-1 inline-flex items-center justify-center">

@@ -1,4 +1,4 @@
-import { useContext, useMemo } from 'react';
+import { ReactElement, useContext, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { conversationsCache } from '../../services/cache';
 import { ChatMessageServer } from '../../types/general';
@@ -37,9 +37,23 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
               const [filePath, lines] = props.href?.split('#') || [];
               const [start, end] =
                 lines?.split('-').map((l) => l.slice(1)) || [];
+              let fileName: string = '';
+              if (props.children?.[0]) {
+                if (typeof props.children[0] === 'string') {
+                  fileName = props.children?.[0];
+                }
+                const child = props.children[0] as ReactElement;
+                if (
+                  child?.props &&
+                  typeof child.props.children?.[0] === 'string'
+                ) {
+                  fileName = child.props.children?.[0];
+                }
+              }
               return (
                 <FileChip
-                  fileName={filePath || ''}
+                  fileName={fileName || filePath || ''}
+                  skipIcon={!!fileName && fileName !== filePath}
                   onClick={() =>
                     openFileModal(
                       filePath,
