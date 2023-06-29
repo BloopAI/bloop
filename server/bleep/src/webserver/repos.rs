@@ -97,6 +97,9 @@ impl From<(&RepoRef, &Repository)> for Repo {
             Some(All) => Select(vec![".*".to_string()]),
             Some(Head) => Select(vec![head]),
             Some(Select(mut list)) => {
+                if let Some(pos) = list.iter().position(|i| i == &head) {
+                    list.remove(pos);
+                }
                 list.insert(0, head);
                 Select(list)
             }
