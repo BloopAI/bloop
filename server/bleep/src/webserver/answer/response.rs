@@ -192,7 +192,6 @@ pub enum Update {
 pub enum SearchResult {
     Cite(CiteResult),
     Directory(DirectoryResult),
-    New(NewResult),
     Modify(ModifyResult),
     Conclude(ConcludeResult),
 }
@@ -204,7 +203,6 @@ impl SearchResult {
         match tag.as_str()? {
             "cite" => CiteResult::from_json_array(&v[1..]).map(Self::Cite),
             "dir" => DirectoryResult::from_json_array(&v[1..]).map(Self::Directory),
-            "new" => NewResult::from_json_array(&v[1..]).map(Self::New),
             "mod" => ModifyResult::from_json_array(&v[1..]).map(Self::Modify),
             "con" => ConcludeResult::from_json_array(&v[1..]).map(Self::Conclude),
             _ => None,
@@ -245,12 +243,6 @@ pub struct CiteResult {
 pub struct DirectoryResult {
     path: Option<String>,
     comment: Option<String>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
-pub struct NewResult {
-    language: Option<String>,
-    code: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
@@ -331,20 +323,6 @@ impl DirectoryResult {
             .and_then(serde_json::Value::as_str)
             .map(ToOwned::to_owned);
         Some(Self { path, comment })
-    }
-}
-
-impl NewResult {
-    fn from_json_array(v: &[serde_json::Value]) -> Option<Self> {
-        let language = v
-            .get(0)
-            .and_then(serde_json::Value::as_str)
-            .map(ToOwned::to_owned);
-        let code = v
-            .get(1)
-            .and_then(serde_json::Value::as_str)
-            .map(ToOwned::to_owned);
-        Some(Self { language, code })
     }
 }
 

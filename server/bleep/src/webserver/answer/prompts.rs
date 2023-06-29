@@ -59,7 +59,7 @@ pub fn functions() -> serde_json::Value {
                         "mode": {
                             "type": "string",
                             "enum": ["article", "filesystem"],
-                            "description": "The type of answer to provide. If the user's query is best answered with the location of one or multiple files and folders with no explanation choose filesystem. If the user's query is best answered with any explanation, choose article. If the user's query is neither, choose filesystem."
+                            "description": "The type of answer to provide. If the user's query is best answered with the location of one or multiple files and folders with no explanation choose filesystem. If the user's query is best answered with any explanation, or they're instructing you to write new code choose article. If the user's query is neither, choose filesystem."
                         },
                         "paths": {
                             "type": "array",
@@ -165,9 +165,9 @@ pub fn answer_filesystem_prompt(context: &str) -> String {
             example: Some(r#"The path is a relative path, with no leading slash. You must generate a trailing slash, for example: server/bleep/src/webserver/. On Windows, generate backslash separated components, for example: server\bleep\src\webserver\"#),
         },
         Rule {
-            title: "Write a new code file",
-            description: "Write a new code file that satisfies the query. Do not use this to demonstrate updating an existing file.",
-            schema: "[\"new\",LANGUAGE:STRING,CODE:STRING]",
+            title: "Cite line ranges from the file",
+            description: "START LINE and END LINE should focus on the code mentioned in the COMMENT. COMMENT should be a detailed explanation.",
+            schema: "[\"cite\",PATH ALIAS:INT,COMMENT:STRING,START LINE:INT,END LINE:INT]",
             note: "This object can occur multiple times",
             example: None,
         },
@@ -181,13 +181,6 @@ For example:
 @@ -1 +1 @@
 -this is a git diff test example
 +this is a diff example"#),
-        },
-        Rule {
-            title: "Cite line ranges from the file",
-            description: "START LINE and END LINE should focus on the code mentioned in the COMMENT. COMMENT should be a detailed explanation.",
-            schema: "[\"cite\",PATH ALIAS:INT,COMMENT:STRING,START LINE:INT,END LINE:INT]",
-            note: "This object can occur multiple times",
-            example: None,
         },
         Rule {
             title: "Conclusion",
