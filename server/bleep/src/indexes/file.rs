@@ -16,7 +16,7 @@ use tantivy::{
 };
 use tokenizers as _;
 use tokio::runtime::Handle;
-use tracing::{debug, info, trace, warn};
+use tracing::{info, trace, warn};
 
 pub use super::schema::File;
 
@@ -159,6 +159,7 @@ impl Indexer<File> {
         &self,
         repo_ref: &RepoRef,
         query_str: &str,
+        branch: Option<&str>,
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
         // lifted from query::compiler
@@ -174,13 +175,22 @@ impl Indexer<File> {
             .flat_map(|s| case_permutations(s.as_str()))
             .map(|token| Term::from_field_text(self.source.relative_path, token.as_str()))
             .map(|term| {
-                BooleanQuery::intersection(vec![
+                let mut query: Vec<Box<dyn Query>> = vec![
                     Box::new(TermQuery::new(term, IndexRecordOption::Basic)),
                     Box::new(TermQuery::new(
                         repo_ref_term.clone(),
                         IndexRecordOption::Basic,
                     )),
-                ])
+                ];
+
+                if let Some(b) = branch {
+                    query.push(Box::new(TermQuery::new(
+                        Term::from_field_bytes(self.source.branches, b.as_bytes()),
+                        IndexRecordOption::Basic,
+                    )));
+                };
+
+                BooleanQuery::intersection(query)
             })
             .flat_map(|query| {
                 searcher

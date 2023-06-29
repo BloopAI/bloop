@@ -371,10 +371,7 @@ impl Conversation {
 
                 // First, perform a lexical search for the path
                 let mut paths = ctx
-                    .app
-                    .indexes
-                    .file
-                    .fuzzy_path_match(&self.repo_ref, query, /* limit */ 50)
+                    .fuzzy_path_search(query)
                     .await
                     .map(|c| c.relative_path)
                     .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.

@@ -5,8 +5,8 @@ use uuid::Uuid;
 
 use crate::{
     analytics::{EventData, QueryEvent},
-    indexes::reader::ContentDocument,
-    query::parser::{self, ParsedQuery, SemanticQuery},
+    indexes::reader::{ContentDocument, FileDocument},
+    query::parser::{self, Literal, ParsedQuery, SemanticQuery},
     repo::RepoRef,
     semantic::Payload,
     webserver::middleware::User,
@@ -103,13 +103,14 @@ impl AppContext {
 
     pub(super) async fn semantic_search(
         &self,
-        query: parser::Literal<'_>,
+        query: Literal<'_>,
         limit: u64,
         offset: u64,
         retrieve_more: bool,
     ) -> Result<Vec<Payload>> {
         let query = SemanticQuery {
             target: Some(query),
+            repos: [Literal::Plain(self.repo_ref.display_name().into())].into(),
             ..self.semantic_query_params()
         };
 
@@ -128,6 +129,21 @@ impl AppContext {
 
         debug!(%repo_ref, path, ?branch, %self.thread_id, "executing file search");
         self.app.indexes.file.by_path(repo_ref, path, branch).await
+    }
+
+    pub(super) async fn fuzzy_path_search<'a>(
+        &'a self,
+        query: &str,
+    ) -> impl Iterator<Item = FileDocument> + 'a {
+        let branch = self.branch.as_deref();
+        let repo_ref = &self.repo_ref;
+
+        debug!(%repo_ref, query, ?branch, %self.thread_id, "executing fuzzy search");
+        self.app
+            .indexes
+            .file
+            .fuzzy_path_match(&self.repo_ref, query, self.branch.as_deref(), 50)
+            .await
     }
 }
 
