@@ -2,7 +2,7 @@ import React, { memo, useEffect, useRef, useState } from 'react';
 import CodeLine from '../Code/CodeLine';
 import { Token as TokenType } from '../../../types/prism';
 import { propsAreShallowEqual } from '../../../utils';
-import { Range, TokenInfoItem, TokenInfoWrapped } from '../../../types/results';
+import { Range, TokenInfoWrapped } from '../../../types/results';
 import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
@@ -24,7 +24,7 @@ type Props = {
   pathHash: string | number;
   onMouseSelectStart: (lineNum: number, charNum: number) => void;
   onMouseSelectEnd: (lineNum: number, charNum: number) => void;
-  getHoverableContent: (range: Range) => void;
+  getHoverableContent: (hoverableRange: Range, tokenRange: Range) => void;
   tokenInfo: TokenInfoWrapped;
   handleRefsDefsClick: (lineNum: number, filePath: string) => void;
 };
@@ -59,13 +59,13 @@ const CodeContainerFull = ({
   useOnClickOutside(popupRef, () => setPopupVisible(false));
 
   useEffect(() => {
-    if (tokenInfo.byteRange) {
+    if (tokenInfo.tokenRange) {
       let tokenElem = findElementInCurrentTab(
-        `.code-modal-container [data-byte-range="${tokenInfo.byteRange.start}-${tokenInfo.byteRange.end}"]`,
+        `.code-modal-container [data-byte-range="${tokenInfo.tokenRange.start}-${tokenInfo.tokenRange.end}"]`,
       );
       if (!tokenElem) {
         tokenElem = findElementInCurrentTab(
-          `#result-full-code-container [data-byte-range="${tokenInfo.byteRange.start}-${tokenInfo.byteRange.end}"]`,
+          `#result-full-code-container [data-byte-range="${tokenInfo.tokenRange.start}-${tokenInfo.tokenRange.end}"]`,
         );
       }
       if (tokenElem && tokenElem instanceof HTMLElement) {

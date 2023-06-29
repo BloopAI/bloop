@@ -164,7 +164,8 @@ export type TokenInfo = {
 };
 
 export type TokenInfoWrapped = {
-  byteRange: Range | null;
+  hoverableRange: Range | null;
+  tokenRange: Range | null;
   lineNumber?: number;
   data: TokenInfoResponse['data'];
 };

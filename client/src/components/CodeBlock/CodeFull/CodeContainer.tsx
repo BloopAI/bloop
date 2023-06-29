@@ -52,12 +52,13 @@ const CodeContainer = ({
 }: Props) => {
   const [tokenInfo, setTokenInfo] = useState<TokenInfoWrapped>({
     data: [],
-    byteRange: null,
+    hoverableRange: null,
+    tokenRange: null,
     lineNumber: -1,
   });
 
   const getHoverableContent = useCallback(
-    (hoverableRange: Range, lineNumber?: number) => {
+    (hoverableRange: Range, tokenRange: Range, lineNumber?: number) => {
       if (hoverableRange && relativePath) {
         getTokenInfo(
           relativePath,
@@ -67,7 +68,8 @@ const CodeContainer = ({
         ).then((data) => {
           setTokenInfo({
             data: mapTokenInfo(data.data),
-            byteRange: hoverableRange,
+            hoverableRange,
+            tokenRange,
             lineNumber,
           });
         });
@@ -80,7 +82,8 @@ const CodeContainer = ({
     (lineNum: number, filePath: string) => {
       setTokenInfo({
         data: [],
-        byteRange: null,
+        hoverableRange: null,
+        tokenRange: null,
         lineNumber: -1,
       });
       onRefDefClick(lineNum, filePath);
