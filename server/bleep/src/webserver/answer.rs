@@ -1376,11 +1376,11 @@ struct AppContext {
 }
 
 impl AppContext {
-    fn new(app: Application, user: User, session_id: String) -> Result<Self> {
+    fn new(app: Application, user: User, session_reference_id: String) -> Result<Self> {
         let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
             .temperature(0.0)
             .bearer(app.github_token()?.map(|s| s.expose_secret().clone()))
-            .session_id(session_id);
+            .session_reference_id(session_reference_id);
 
         Ok(Self {
             app,
