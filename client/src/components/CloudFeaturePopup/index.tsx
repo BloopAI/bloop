@@ -21,7 +21,7 @@ const CloudFeaturePopup = ({ isOpen, onClose }: Props) => {
       setIsModalSidebarTransition={() => {}}
       shouldStretch={false}
       fullOverlay
-      containerClassName="max-w-xl max-h-[80vh]"
+      containerClassName="max-w-[34rem] max-h-[80vh]"
     >
       <div className="relative bg-bg-shade overflow-auto">
         <div>

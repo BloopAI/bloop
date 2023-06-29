@@ -39,13 +39,16 @@ const BranchSelector = () => {
     return [...(currentRepo?.branches || [])].reverse();
   }, [currentRepo, tab.key]);
 
-  const branchesToShow = useMemo(() => {
-    return allBranches.filter((b) => b.name.includes(search));
-  }, [allBranches, search]);
-
   const indexedBranches = useMemo(() => {
     return currentRepo?.branch_filter?.select || [];
   }, [currentRepo, tab.key]);
+
+  const branchesToShow = useMemo(() => {
+    return indexedBranches
+      .map((b) => ({ name: b }))
+      .concat(allBranches.filter((b) => !indexedBranches.includes(b.name)))
+      .filter((b) => b.name.includes(search));
+  }, [allBranches, search, indexedBranches]);
 
   useEffect(() => {
     if (!indexedBranches.includes(selectedBranch || '')) {
