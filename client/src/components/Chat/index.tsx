@@ -52,8 +52,12 @@ const Chat = () => {
     threadId,
     setThreadId,
   } = useContext(ChatContext);
-  const { navigateConversationResults, navigateRepoPath, navigatedItem } =
-    useContext(AppNavigationContext);
+  const {
+    navigateConversationResults,
+    navigateRepoPath,
+    navigatedItem,
+    navigateArticleResponse,
+  } = useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const chatRef = useRef(null);
@@ -100,8 +104,7 @@ const Chat = () => {
         console.log('SSE error', err);
         firstResultCame = false;
         i = -1;
-        console.log('Closing SSE connection...');
-        eventSource.close();
+        stopGenerating();
         setConversation((prev) => {
           const newConversation = prev.slice(0, -1);
           const lastMessage: ChatMessage = {
@@ -164,12 +167,18 @@ const Chat = () => {
           if (data.Ok) {
             const newMessage = data.Ok;
             if (
-              newMessage.results?.length &&
-              !newMessage.conclusion &&
+              ((newMessage.results?.Filesystem?.length &&
+                !newMessage.conclusion) ||
+                newMessage.results?.Article?.length) &&
               !firstResultCame
             ) {
               setConversation((prev) => {
-                navigateConversationResults(prev.length - 1, threadId);
+                if (newMessage.mode === 'article') {
+                  setChatOpen(false);
+                  navigateArticleResponse(prev.length - 1, threadId);
+                } else {
+                  navigateConversationResults(prev.length - 1, threadId);
+                }
                 return prev;
               });
               firstResultCame = true;
@@ -279,7 +288,10 @@ const Chat = () => {
     setThreadId('');
     setSubmittedQuery('');
     setSelectedLines(null);
-    if (navigatedItem?.type === 'conversation-result') {
+    if (
+      navigatedItem?.type === 'conversation-result' ||
+      navigatedItem?.type === 'article-response'
+    ) {
       navigateRepoPath(tab.repoName);
     }
     focusInput();

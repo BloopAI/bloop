@@ -1193,6 +1193,15 @@ h5, .h5 {
   font-size: 0.75rem;
   line-height: 150%;
 }
+
+.code-m {
+  font-family: Menlo, sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 160%;
+}
+
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -1266,11 +1275,21 @@ h5, .h5 {
 }
 
 .readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p, .readme span, .readme div {
+  cursor: auto;
+}
+
+.readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p, .readme span, .readme div,
+.article-response h1, .article-response h2, .article-response h3, .article-response h4, .article-response h5,
+.article-response h6, .article-response p {
   -webkit-user-select: initial;
   -moz-user-select: initial;
   user-select: initial;
-  cursor: auto;
   margin: revert;
+}
+
+.article-response h1, .article-response h2, .article-response h3, .article-response h4, .article-response h5,
+.article-response h6 {
+  @apply text-label-title;
 }
 
 .readme h1, .readme h2 {
@@ -1278,37 +1297,37 @@ h5, .h5 {
   padding-bottom: 0.6rem;
 }
 
-.readme h1 {
+.readme h1, .article-response h1 {
   font-size: 2rem;
 }
 
-.readme h2 {
+.readme h2, .article-response h2 {
   font-size: 1.5rem;
 }
 
-.readme h3 {
+.readme h3, .article-response h3 {
   font-size: 1.25rem
 }
 
-.readme h4 {
+.readme h4, .article-response h4 {
   font-size: 1rem
 }
 
-.readme h5 {
+.readme h5, .article-response h5 {
   font-size: .875rem
 }
 
-.readme h6 {
+.readme h6, .article-response h6 {
   font-size: .85rem
 }
 
-.readme ul {
+.readme ul, .article-response ul {
   list-style: revert;
   margin: revert;
   padding: revert;
 }
 
-.readme ol {
+.readme ol, .article-response ol {
   list-style: revert;
   margin: revert;
   padding: revert;
@@ -1316,6 +1335,35 @@ h5, .h5 {
 
 .readme a {
   color: rgb(var(--label-link));
+}
+
+.article-response a {
+  background-color: rgb(var(--bg-shade));
+  border: 1px solid rgb(var(--bg-border));
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+.article-response li>p {
+  margin: 0;
+  display: unset;
+}
+
+.article-response code {
+  /*background-color: rgb(var(--bg-shade));*/
+  color: #14B8A6;
+  /*border: 1px solid rgb(var(--bg-border));*/
+  font-family: Menlo, sans-serif;
+  border-radius: 4px;
+  font-size: 0.95em;
+}
+
+.article-response pre>code {
+  background-color: rgb(var(--bg-shade));
+  border: 1px solid rgb(var(--bg-border));
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: var(--shadow-low);
 }
 
 .hljs-addition {

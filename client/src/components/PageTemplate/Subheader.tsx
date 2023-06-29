@@ -39,7 +39,10 @@ const Subheader = () => {
             onClick,
           };
         }
-        if (item.type === 'conversation-result') {
+        if (
+          item.type === 'conversation-result' ||
+          item.type === 'article-response'
+        ) {
           return {
             label: 'Results',
             onClick,

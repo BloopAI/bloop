@@ -27,6 +27,7 @@ type ContextType = {
     pathParams?: Record<string, string>,
   ) => void;
   navigateConversationResults: (messageIndex: number, searchId: string) => void;
+  navigateArticleResponse: (messageIndex: number, searchId: string) => void;
   query: string;
 };
 
@@ -41,5 +42,6 @@ export const AppNavigationContext = createContext<ContextType>({
   navigateSearch: (query, page) => {},
   navigateFullResult: (repo, path) => {},
   navigateConversationResults: (recordId, searchId) => {},
+  navigateArticleResponse: (recordId, searchId) => {},
   query: '',
 });

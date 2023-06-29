@@ -3,19 +3,13 @@ import NavBar from '../NavBar';
 import StatusBar from '../StatusBar';
 import Chat from '../Chat';
 import { ChatContext } from '../../context/chatContext';
+import { RenderPage } from '../../pages';
 import Subheader from './Subheader';
 
 type Props = {
   children: React.ReactNode;
   withSearchBar: boolean;
-  renderPage:
-    | 'results'
-    | 'repo'
-    | 'full-result'
-    | 'nl-result'
-    | 'no-results'
-    | 'home'
-    | 'conversation-result';
+  renderPage: RenderPage;
 };
 
 const PageTemplate = ({ children, withSearchBar, renderPage }: Props) => {
