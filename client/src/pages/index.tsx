@@ -20,6 +20,7 @@ import NoResults from './Results/NoResults';
 import HomePage from './Home';
 import Onboarding from './Onboarding';
 import ConversationResult from './ConversationResult';
+import ArticleResponse from './ArticleResponse';
 
 const mockQuerySuggestions = [
   'repo:cobra-ats  error:“no apples”',
@@ -29,14 +30,15 @@ const mockQuerySuggestions = [
   'lang:tsx apples',
 ];
 
-type RenderPage =
+export type RenderPage =
   | 'results'
   | 'repo'
   | 'full-result'
   | 'nl-result'
   | 'no-results'
   | 'home'
-  | 'conversation-result';
+  | 'conversation-result'
+  | 'article-response';
 
 let prevRenderPage: RenderPage;
 
@@ -86,6 +88,7 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
         break;
       case 'home':
       case 'conversation-result':
+      case 'article-response':
         break;
       default:
         const search = navigatedItem.query!.includes(`repo:${tab.name}`)
@@ -95,16 +98,21 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
     }
   }, [navigatedItem, tab.key, tab.name]);
 
-  const getRenderPage = useCallback(() => {
+  const getRenderPage = useCallback((): RenderPage => {
     let renderPage: RenderPage;
     if (tab.key === 'initial') {
       return 'home';
     }
-    if (navigatedItem?.type === 'conversation-result') {
-      return 'conversation-result';
-    }
-    if (navigatedItem?.type === 'full-result') {
-      return 'full-result';
+    if (
+      navigatedItem?.type &&
+      ['conversation-result', 'full-result', 'article-response'].includes(
+        navigatedItem.type,
+      )
+    ) {
+      return navigatedItem.type as
+        | 'conversation-result'
+        | 'full-result'
+        | 'article-response';
     }
     if (!data?.data?.[0] && !loading) {
       return 'no-results';
@@ -127,7 +135,7 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
     return renderPage;
   }, [navigatedItem, data, loading, tab.key]);
 
-  const renderPage = useMemo(
+  const renderPage: RenderPage = useMemo(
     () => getRenderPage(),
     [data, loading, navigatedItem, query, navigatedItem?.threadId],
   );
@@ -166,6 +174,13 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
       case 'conversation-result':
         return (
           <ConversationResult
+            recordId={navigatedItem?.recordId!}
+            threadId={navigatedItem?.threadId!}
+          />
+        );
+      case 'article-response':
+        return (
+          <ArticleResponse
             recordId={navigatedItem?.recordId!}
             threadId={navigatedItem?.threadId!}
           />

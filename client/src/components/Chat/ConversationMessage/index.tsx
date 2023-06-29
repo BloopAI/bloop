@@ -1,6 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
 import {
-  ArrowOut,
   Checkmark,
   List,
   MagnifyTool,
@@ -9,13 +8,18 @@ import {
   Sparkles,
 } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
-import { ChatLoadingStep, ChatMessageAuthor } from '../../../types/general';
+import {
+  ArticleResult,
+  ChatLoadingStep,
+  ChatMessageAuthor,
+  FileSystemResult,
+} from '../../../types/general';
 import { ChatContext } from '../../../context/chatContext';
 import Button from '../../Button';
 import { AppNavigationContext } from '../../../context/appNavigationContext';
-import FileIcon from '../../FileIcon';
 import { FileModalContext } from '../../../context/fileModalContext';
 import MessageFeedback from './MessageFeedback';
+import FileChip from './FileChip';
 
 type Props = {
   author: ChatMessageAuthor;
@@ -28,7 +32,7 @@ type Props = {
   scrollToBottom?: () => void;
   isLoading?: boolean;
   loadingSteps?: ChatLoadingStep[];
-  results?: any[];
+  results?: FileSystemResult & ArticleResult;
   i: number;
 };
 
@@ -49,7 +53,8 @@ const ConversationMessage = ({
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
   const { envConfig } = useContext(DeviceContext);
   const { setChatOpen } = useContext(ChatContext);
-  const { navigateConversationResults } = useContext(AppNavigationContext);
+  const { navigateConversationResults, navigateArticleResponse } =
+    useContext(AppNavigationContext);
   const { openFileModal } = useContext(FileModalContext);
 
   useEffect(() => {
@@ -75,20 +80,10 @@ const ConversationMessage = ({
               {s.type === 'PROC' ? <PointClick /> : <MagnifyTool />}
               <span>{s.type === 'PROC' ? 'Reading ' : s.displayText}</span>
               {s.type === 'PROC' ? (
-                <button
-                  className={`inline-flex items-center bg-chat-bg-shade rounded-4 overflow-hidden 
-                text-label-base hover:text-label-title border border-transparent hover:border-chat-bg-border 
-                cursor-pointer`}
+                <FileChip
                   onClick={() => openFileModal(s.content)}
-                >
-                  <span className="flex gap-1 px-1 py-0.5 items-center border-r border-chat-bg-border caption">
-                    <FileIcon filename={s.content} noMargin />
-                    {s.content.split('/').pop()}
-                  </span>
-                  <span className="p-1 inline-flex items-center justify-center">
-                    <ArrowOut sizeClassName="w-3.5 h-3.5" />
-                  </span>
-                </button>
+                  fileName={s.content.split('/').pop() || ''}
+                />
               ) : null}
             </div>
           ))}
@@ -117,12 +112,17 @@ const ConversationMessage = ({
               <List />
             </Button>
           </div>
-          {!isLoading && !!results?.length ? (
+          {!isLoading &&
+          (!!results?.Filesystem?.length || !!results?.Article) ? (
             <div className="flex items-center justify-end justify-self-end">
               <button
                 className="text-bg-main body-s mr-2"
                 onClick={() => {
-                  navigateConversationResults(i, searchId);
+                  if (results?.Article) {
+                    navigateArticleResponse(i, searchId);
+                  } else {
+                    navigateConversationResults(i, searchId);
+                  }
                 }}
               >
                 View

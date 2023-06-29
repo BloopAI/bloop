@@ -1,3 +1,5 @@
+use super::AnswerMode;
+
 /// A continually updated conversation exchange.
 ///
 /// This contains the query from the user, the intermediate steps the model takes, and the final
@@ -5,9 +7,46 @@
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Exchange {
     finished: bool,
+    pub mode: AnswerMode,
     conclusion: Option<String>,
     search_steps: Vec<SearchStep>,
-    pub results: Vec<SearchResult>,
+    pub results: Option<Results>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub enum Results {
+    Article(String),
+    Filesystem(Vec<SearchResult>),
+}
+
+impl Results {
+    fn as_filesystem_mut(&mut self) -> Option<&mut Vec<SearchResult>> {
+        match self {
+            Self::Article(_) => None,
+            Self::Filesystem(results) => Some(results),
+        }
+    }
+
+    fn as_filesystem(&self) -> Option<&Vec<SearchResult>> {
+        match self {
+            Self::Article(_) => None,
+            Self::Filesystem(results) => Some(results),
+        }
+    }
+
+    fn as_article(&self) -> Option<&str> {
+        match self {
+            Self::Article(text) => Some(text.as_str()),
+            Self::Filesystem(_) => None,
+        }
+    }
+
+    fn as_article_mut(&mut self) -> Option<&mut String> {
+        match self {
+            Self::Article(text) => Some(text),
+            Self::Filesystem(_) => None,
+        }
+    }
 }
 
 impl Exchange {
@@ -18,7 +57,21 @@ impl Exchange {
     pub fn apply_update(&mut self, update: Update) {
         match update {
             Update::Step(search_step) => self.search_steps.push(search_step),
-            Update::Result(search_results) => self.set_results(search_results),
+            Update::Filesystem(search_results) => {
+                self.set_results(search_results);
+                self.mode = AnswerMode::Filesystem;
+            }
+            Update::Article(text) => {
+                let results = self
+                    .results
+                    .get_or_insert_with(|| Results::Article(String::new()));
+                *results.as_article_mut().unwrap() += &text;
+                self.mode = AnswerMode::Article;
+            }
+            Update::Finalize(conclusion) => {
+                self.conclusion = Some(conclusion);
+                self.finished = true
+            }
         }
     }
 
@@ -30,18 +83,71 @@ impl Exchange {
         })
     }
 
-    /// Get the conslusion associated with this exchange, if it has been made.
-    pub fn conclusion(&self) -> Option<&str> {
-        self.conclusion.as_deref()
+    /// Get the answer associated with this exchange, if it has been made.
+    ///
+    /// If the final answer is in `filesystem` format, this returns a conclusion. If the the final
+    /// answer is an `article`, this returns the full text.
+    pub fn answer(&self) -> Option<&str> {
+        match self.mode {
+            AnswerMode::Article => {
+                if self.finished {
+                    self.results.as_ref().and_then(Results::as_article)
+                } else {
+                    None
+                }
+            }
+            AnswerMode::Filesystem => self.conclusion.as_deref(),
+        }
+    }
+
+    /// Like `answer`, but returns a summary for `filesystem` answers.
+    pub fn answer_summarized(&self) -> Option<String> {
+        if self.finished {
+            match self.mode {
+                AnswerMode::Article => self
+                    .results
+                    .as_ref()
+                    .and_then(Results::as_article)
+                    .map(str::to_owned),
+                AnswerMode::Filesystem => Some(
+                    self.results
+                        .as_ref()
+                        .and_then(|result| result.as_filesystem())
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|result| match result {
+                            SearchResult::Cite(cite) => Some(cite.summarize()),
+                            _ => None,
+                        })
+                        .chain(self.conclusion.clone())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                ),
+            }
+        } else {
+            None
+        }
     }
 
     /// Set the current search result list.
-    fn set_results(&mut self, mut results: Vec<SearchResult>) {
+    fn set_results(&mut self, mut new_results: Vec<SearchResult>) {
+        let results = match self
+            .results
+            .get_or_insert_with(|| Results::Filesystem(Vec::new()))
+        {
+            r @ Results::Article(_) => {
+                *r = Results::Filesystem(Vec::new());
+                r.as_filesystem_mut().unwrap()
+            }
+
+            Results::Filesystem(results) => results,
+        };
+
         // fish out the conclusion from the result list, if any
-        let conclusion = results
+        let conclusion = new_results
             .iter()
             .position(SearchResult::is_conclusion)
-            .and_then(|idx| results.remove(idx).conclusion());
+            .and_then(|idx| new_results.remove(idx).conclusion());
 
         if conclusion.is_some() {
             self.finished = true;
@@ -55,29 +161,11 @@ impl Exchange {
         //
         // we only update the search results when the latest update
         // gives us more than what we already have
-        if self.results.len() <= results.len() {
-            self.results = results;
+        if results.len() <= new_results.len() {
+            *results = new_results;
         }
 
         self.conclusion = conclusion;
-    }
-
-    pub fn summarize(&self) -> Option<String> {
-        if self.finished {
-            Some(
-                self.results
-                    .iter()
-                    .filter_map(|result| match result {
-                        SearchResult::Cite(cite) => Some(cite.summarize()),
-                        _ => None,
-                    })
-                    .chain(self.conclusion.clone())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            )
-        } else {
-            None
-        }
     }
 }
 
@@ -95,7 +183,9 @@ pub enum SearchStep {
 #[derive(Debug)]
 pub enum Update {
     Step(SearchStep),
-    Result(Vec<SearchResult>),
+    Filesystem(Vec<SearchResult>),
+    Article(String),
+    Finalize(String),
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]

@@ -56,6 +56,11 @@ pub fn functions() -> serde_json::Value {
                 "parameters": {
                     "type": "object",
                     "properties": {
+                        "mode": {
+                            "type": "string",
+                            "enum": ["article", "filesystem"],
+                            "description": "The type of answer to provide. If the user's query is best answered with the location of one or multiple files and folders with no explanation choose filesystem. If the user's query is best answered with any explanation, choose article. If the user's query is neither, choose filesystem."
+                        },
                         "paths": {
                             "type": "array",
                             "items": {
@@ -64,9 +69,9 @@ pub fn functions() -> serde_json::Value {
                             }
                         }
                     },
-                    "required": ["paths"]
+                    "required": ["mode", "paths"]
                 }
-            }
+            },
         ]
     )
 }
@@ -135,7 +140,7 @@ A: "#
     )
 }
 
-pub fn final_explanation_prompt(context: &str) -> String {
+pub fn answer_filesystem_prompt(context: &str) -> String {
     struct Rule<'a> {
         title: &'a str,
         description: &'a str,
@@ -220,6 +225,7 @@ Your answer should be an array of arrays, where each element in the array is an 
 Respect these rules at all times:
 - Do not refer to paths by alias, quote the full path surrounded by single backticks. E.g. `server/bleep/src/webserver/`
 - Refer to directories by their full paths, surrounded by single backticks
+- If the query is a greeting, or not a question or an instruction just generate a conclusion
 - Your answer should always be an array of arrays, even when you only generate a conclusion
 
 #####
@@ -250,5 +256,38 @@ What's the value of MAX_FILE_LEN?
 #####
 
 Output only JSON."#
+    )
+}
+
+pub fn answer_article_prompt(context: &str) -> String {
+    format!(
+        r#"{context}Your job is to answer a query about a codebase using the information above.
+
+Provide only as much information and code as is necessary to answer the query, but be concise. Keep number of quoted lines to a minimum when possible. If you do not have enough information needed to answer the query, do not make up an answer.
+When referring to code, you must provide an example in a code block.
+
+Respect these rules at all times:
+- Do not refer to paths by alias
+- Link ALL paths AND code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, etc) by embedding them in a markdown link, with the URL corresponding to the full path, and the anchor following the form `LX` or `LX-LY`, where X represents the starting line number, and Y represents the ending line number, if the reference is more than one line.
+  - For example, to refer to lines 50 to 78 in a sentence, respond with something like: The compiler is initialized in [`src/foo.rs`](src/foo.rs#L50-L78)
+  - For example, to refer to the `new` function on a struct, respond with something like: The [`new`](src/bar.rs#L26-53) function initializes the struct
+  - For example, to refer to the `foo` field on a struct and link a single line, respond with something like: The [`foo`](src/foo.rs#L138) field contains foos.
+- Do not print out line numbers directly, only in a link
+- Do not refer to more lines than necessary when creating a line range, be precise
+- Do NOT output bare symbols. ALL symbols must include a link
+  - E.g. Do not simply write `Bar`, write [`Bar`](src/bar.rs#L100-L105).
+  - E.g. Do not simply write "Foos are functions that create `Foo` values out of thin air." Instead, write: "Foos are functions that create [`Foo`](src/foo.rs#L80-L120) values out of thin air."
+- Link all fields
+  - E.g. Do not simply write: "It has one main field: `foo`." Instead, write: "It has one main field: [`foo`](src/foo.rs#L193)."
+- Link all symbols, even when there are multiple in one sentence
+  - E.g. Do not simply write: "Bars are [`Foo`]( that return a list filled with `Bar` variants." Instead, write: "Bars are functions that return a list filled with [`Bar`](src/bar.rs#L38-L57) variants."
+- When quoting code in a code block, use the following info string format: language,path:PATH,lines:LX-LY
+  - For example, to quote lines 10 to 15 in `src/main.c`, use `c,path:src/main.c,lines:L10-L15`
+  - For example, to quote lines 154 to 190 in `index.js`, use `javascript,path:index.js,lines:L154-L190`
+- Always begin your answer with an appropriate title
+
+#####
+
+"#
     )
 }

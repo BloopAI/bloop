@@ -4,6 +4,7 @@ import PageHeader from '../../components/ResultsPageHeader';
 import { ChatContext } from '../../context/chatContext';
 import {
   ChatMessageServer,
+  FileSystemResult,
   MessageResultCite,
   MessageResultDirectory,
 } from '../../types/general';
@@ -34,9 +35,11 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
   const data = useMemo(
     () =>
       (
-        (conversationsCache[threadId]?.[recordId] ||
-          conversation[recordId]) as ChatMessageServer
-      )?.results || [],
+        (
+          (conversationsCache[threadId]?.[recordId] ||
+            conversation[recordId]) as ChatMessageServer
+        )?.results as FileSystemResult
+      )?.Filesystem || [],
     [
       (conversation[recordId] as ChatMessageServer)?.results,
       recordId,
