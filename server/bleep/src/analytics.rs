@@ -181,6 +181,18 @@ impl RudderHub {
             info!("sent analytics event...");
         }
     }
+
+    pub fn delete_repo(&self, org_name: String) {
+        if let Err(err) = self.client.send(&Message::Track(Track {
+            event: "delete_repo".into(),
+            properties: Some(serde_json::json!({ "organization": org_name })),
+            ..Default::default()
+        })) {
+            warn!(?err, "failed to send analytics event");
+        } else {
+            info!("sent analytics event...");
+        }
+    }
 }
 
 impl From<Option<String>> for DeviceId {

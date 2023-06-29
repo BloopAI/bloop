@@ -167,6 +167,10 @@ pub(super) async fn delete_by_id(
     Query(RepoParams { repo }): Query<RepoParams>,
     Extension(app): Extension<Application>,
 ) -> Result<impl IntoResponse> {
+    if let (Some(analytics), Some(org_name)) = (&app.analytics, app.org_name()) {
+        analytics.delete_repo(org_name);
+    }
+
     match app.write_index().remove(repo).await {
         Some(_) => Ok(json(ReposResponse::Deleted)),
         None => Err(Error::new(ErrorKind::NotFound, "Repo not found")),
