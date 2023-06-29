@@ -8,8 +8,6 @@ pub static RUST: TSLanguageConfig = TSLanguageConfig {
     hoverable_query: MemoizedQuery::new(
         r#"
         [(identifier)
-         (scoped_identifier)
-         (scoped_type_identifier)
          (shorthand_field_identifier)
          (field_identifier)
          (type_identifier)] @hoverable
