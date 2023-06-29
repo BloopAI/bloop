@@ -301,12 +301,10 @@ impl Conversation {
                 content: q.to_owned(),
             });
 
-            let conclusion = e
-                .answer()
-                .map(|c| llm_gateway::api::Message::PlainText {
-                    role: "assistant".to_owned(),
-                    content: c.to_owned(),
-                });
+            let conclusion = e.answer().map(|c| llm_gateway::api::Message::PlainText {
+                role: "assistant".to_owned(),
+                content: c.to_owned(),
+            });
 
             query
                 .into_iter()
