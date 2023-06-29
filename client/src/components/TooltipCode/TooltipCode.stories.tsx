@@ -18,7 +18,8 @@ export const TooltipCodeDefault = () => {
             repoName={'bloop'}
             onRefDefClick={() => {}}
             data={{
-              byteRange: { start: 0, end: 12 },
+              tokenRange: { start: 0, end: 12 },
+              hoverableRange: { start: 0, end: 12 },
               data: [
                 {
                   file: '/src/root/service/longFolderName/oneMoreNestedFolder/index.tsx',
@@ -114,7 +115,8 @@ export const TooltipCodeDefault = () => {
             onRefDefClick={() => {}}
             repoName={'bloop'}
             data={{
-              byteRange: { start: 0, end: 12 },
+              tokenRange: { start: 0, end: 12 },
+              hoverableRange: { start: 0, end: 12 },
               data: [
                 {
                   file: '/src/root/service/longFolderName/oneMoreNestedFolder/index.tsx',
@@ -210,7 +212,8 @@ export const TooltipCodeDefault = () => {
             onRefDefClick={() => {}}
             repoName={'bloop'}
             data={{
-              byteRange: { start: 0, end: 12 },
+              tokenRange: { start: 0, end: 12 },
+              hoverableRange: { start: 0, end: 12 },
               data: [
                 {
                   file: '/src/root/service/longFolderName/oneMoreNestedFolder/index.tsx',
