@@ -732,11 +732,15 @@ impl Conversation {
 Below is a listing of code chunks followed by a list of identifiers in the chunk.
 Your job is to perform the following tasks:
 1. Find out which identifiers are relevant to answer the query: "{question}"
-2. DO NOT cite identifiers that you are not given above
-3. DO NOT cite identifiers that are local variables.
-4. DO NOT cite identifiers that may be from external libraries or the standard library.
-5. You MUST answer with the index of each identifier. DO NOT answer the question.
-6. Reply with exactly one index per line.
+2. Reply with one item per line. The format of the item is as follows:
+   - a single letter 'r' or 'd': indicating whether you need references to the identifier or the definition of the identifier to answer the question.
+   - followed by the index of the identifier
+   An example of this is 'r16', which indicates that references to the 16th identifier are relevant to answering the query.
+   Another example is 'd10', which indicates that definition of 10th identifier is relevant to answering the query.
+3. DO NOT cite identifiers that you are not given above
+4. DO NOT cite identifiers that are local variables.
+5. DO NOT cite identifiers that may be from external libraries or the standard library.
+6. DO NOT answer the question. Answer in the given format, one item per line.
                 "#
             );
 
@@ -780,13 +784,11 @@ identifiers:
 7. query
 8. root_node
 9. ResolutionMethod
-10. build_scope
 
 The identifiers relevant to the query "How are scope graphs built?" are:
-0
-2
-9
-10
+d0
+d2
+d9
 "#;
 
             writeln!(&mut prompt, "{examples}");
@@ -902,24 +904,32 @@ The identifiers relevant to the query "How are scope graphs built?" are:
                 .await?;
 
             let mut selected_idents = Vec::new();
-            for idx in dbg!(selected_indices)
+            for (kind, idx) in dbg!(selected_indices)
                 .trim()
                 .lines()
-                .map(|l| l.parse::<usize>().unwrap())
+                .map(|l| match l.split_at(1) {
+                    ("r", n) => (OccurrenceKind::Reference, n.parse::<usize>().unwrap()),
+                    ("d", n) => (OccurrenceKind::Definition, n.parse::<usize>().unwrap()),
+                    _ => panic!(),
+                })
             {
-                if let Some(i) = idents.get(idx) {
-                    selected_idents.push(i);
+                if let Some((path, text, range)) = idents.get(idx) {
+                    selected_idents.push((path, text, range, kind));
                 }
             }
 
-            let idents_by_path: HashMap<String, Vec<(String, TextRange)>> = selected_idents
-                .into_iter()
-                .fold(HashMap::new(), |mut map, (path, text, range)| {
-                    map.entry(path.to_owned())
-                        .or_insert_with(Vec::new)
-                        .push((text.to_owned(), range.clone()));
-                    map
-                });
+            let idents_by_path: HashMap<String, Vec<(String, TextRange, OccurrenceKind)>> =
+                selected_idents.into_iter().fold(
+                    HashMap::new(),
+                    |mut map, (path, text, range, kind)| {
+                        map.entry(path.to_owned()).or_insert_with(Vec::new).push((
+                            text.to_owned(),
+                            range.clone(),
+                            kind,
+                        ));
+                        map
+                    },
+                );
 
             let mut code_nav_chunks = Vec::new();
             for (relative_path, idents) in idents_by_path.iter() {
@@ -953,7 +963,7 @@ The identifiers relevant to the query "How are scope graphs built?" are:
                     .position(|doc| &doc.relative_path == relative_path)
                     .unwrap();
 
-                for (text, range) in idents.iter() {
+                for (text, range, kind) in idents.iter() {
                     let token = Token {
                         relative_path: relative_path.as_str(),
                         start_byte: range.start.byte,
@@ -969,14 +979,17 @@ The identifiers relevant to the query "How are scope graphs built?" are:
                         snippet_context_after: 5,
                     };
 
-                    code_nav_chunks.extend(ctx.token_info().into_iter());
+                    code_nav_chunks.extend(ctx.token_info().into_iter().map(|mut fs| {
+                        fs.data.retain(|o| o.kind == *kind);
+                        fs
+                    }));
                 }
             }
             code_nav_chunks
         };
 
-        // keep only newly discovered files
-        code_nav_chunks.retain(|fs| self.paths.iter().position(|f| f == &fs.file).is_none());
+        // // keep only newly discovered files
+        // code_nav_chunks.retain(|fs| self.paths.iter().position(|f| f == &fs.file).is_none());
 
         let c = code_nav_chunks
             .into_iter()
