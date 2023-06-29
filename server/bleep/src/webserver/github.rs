@@ -160,5 +160,33 @@ async fn poll_for_oauth_token(
         error!(?err, "failed to save credentials to disk");
     }
 
+    let user_name = app
+        .credentials
+        .github()
+        // We just initialized this above.
+        .expect("github credentials were not initialized")
+        .client()
+        // We know the builder won't fail as we just built it above.
+        .expect("failed to get octocrab client")
+        .current()
+        .user()
+        .await
+        // There is no sensible way to track this error, so we panic if it fails.
+        .expect("failed to get current user info")
+        .login;
+
+    app.with_analytics(|analytics| {
+        use rudderanalytics::message::{Identify, Message};
+        analytics.send(Message::Identify(Identify {
+            user_id: Some(user_name.clone()),
+            traits: Some(serde_json::json!({
+                "organization": app.org_name(),
+                "device_id": analytics.device_id(),
+                "is_cloud_instance": app.env.is_cloud_instance(),
+            })),
+            ..Default::default()
+        }));
+    });
+
     debug!("github auth complete");
 }
