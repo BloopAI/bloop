@@ -59,7 +59,7 @@ pub fn functions() -> serde_json::Value {
                         "mode": {
                             "type": "string",
                             "enum": ["article", "filesystem"],
-                            "description": "The type of answer to provide. If the user's query is best answered with the location of one or multiple files and folders with no explanation choose filesystem. If the user's query is best answered with any explanation, choose article."
+                            "description": "The type of answer to provide. If the user's query is best answered with the location of one or multiple files and folders with no explanation choose filesystem. If the user's query is best answered with any explanation, choose article. If the user's query is neither, choose filesystem."
                         },
                         "paths": {
                             "type": "array",
@@ -225,6 +225,7 @@ Your answer should be an array of arrays, where each element in the array is an 
 Respect these rules at all times:
 - Do not refer to paths by alias, quote the full path surrounded by single backticks. E.g. `server/bleep/src/webserver/`
 - Refer to directories by their full paths, surrounded by single backticks
+- If the query is a greeting, or not a question or an instruction just generate a conclusion
 - Your answer should always be an array of arrays, even when you only generate a conclusion
 
 #####
