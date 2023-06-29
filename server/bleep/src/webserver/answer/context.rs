@@ -1,5 +1,6 @@
 use anyhow::Result;
 use secrecy::ExposeSecret;
+use tracing::debug;
 use uuid::Uuid;
 
 use crate::{
@@ -50,11 +51,7 @@ impl AppContext {
             .bearer(app.github_token()?.map(|s| s.expose_secret().clone()));
 
         let branch = if let Ok(ParsedQuery::Semantic(parsed)) = parser::parse_nl(&q) {
-            parsed
-                .branch
-                .iter()
-                .next()
-                .map(|b| b.regex_str().to_string())
+            parsed.branch.iter().next().map(|b| b.unwrap().to_string())
         } else {
             None
         };
@@ -116,6 +113,7 @@ impl AppContext {
             ..self.semantic_query_params()
         };
 
+        debug!(?query, "executing semantic query");
         self.app
             .semantic
             .as_ref()
@@ -125,11 +123,11 @@ impl AppContext {
     }
 
     pub(super) async fn file_search(&self, path: &str) -> Result<ContentDocument> {
-        self.app
-            .indexes
-            .file
-            .by_path(&self.repo_ref, path, self.branch.as_deref())
-            .await
+        let branch = self.branch.as_deref();
+        let repo_ref = &self.repo_ref;
+
+        debug!(%repo_ref, path, ?branch, "executing file search");
+        self.app.indexes.file.by_path(repo_ref, path, branch).await
     }
 }
 

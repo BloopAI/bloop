@@ -252,6 +252,13 @@ impl<'a> Literal<'a> {
             Self::Plain(s) | Self::Regex(s) => Self::Regex(s),
         }
     }
+
+    pub fn unwrap(&self) -> Cow<'a, str> {
+        match self {
+            Literal::Plain(v) => v.clone(),
+            Literal::Regex(v) => v.clone(),
+        }
+    }
 }
 
 impl<'a> From<Pair<'a, Rule>> for Literal<'a> {

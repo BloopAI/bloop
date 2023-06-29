@@ -142,8 +142,20 @@ pub(super) async fn _handle(
         }
     };
 
+    let query = parser::parse_nl(&q)
+        .context("parse error")?
+        .as_semantic()
+        .context("got a 'Grep' query")?
+        .target
+        .as_ref()
+        .context("query was empty")?
+        .as_plain()
+        .context("user query was not plain text")?
+        .clone()
+        .into_owned();
+
     let stream = async_stream::try_stream! {
-        let mut action = Action::Query(q);
+        let mut action = Action::Query(query);
 
         conversation.exchanges.push(Exchange::default());
 
@@ -321,9 +333,9 @@ impl Conversation {
         exchange_tx: Sender<Exchange>,
     ) -> Result<Option<Action>> {
         let action_result = match &action {
-            Action::Query(s) => {
+            Action::Query(query) => {
                 exchange_tx
-                    .send(self.update(Update::Step(SearchStep::Query(s.clone()))))
+                    .send(self.update(Update::Step(SearchStep::Query(query.clone()))))
                     .await?;
 
                 let summarized_answer = self.get_summarized_answer();
@@ -340,20 +352,11 @@ impl Conversation {
 
                 ctx.track_query(
                     EventData::input_stage("query")
-                        .with_payload("q", s)
+                        .with_payload("q", query)
                         .with_payload("previous_answer_summary", &summarized_answer),
                 );
 
-                parser::parse_nl(s)?
-                    .as_semantic()
-                    .context("got a 'Grep' query")?
-                    .target
-                    .as_ref()
-                    .context("query was empty")?
-                    .as_plain()
-                    .context("user query was not plain text")?
-                    .clone()
-                    .into_owned()
+                query.to_string()
             }
 
             Action::Answer { paths } => {
@@ -465,6 +468,7 @@ impl Conversation {
             Action::Proc { query, paths } => self.proc(ctx, exchange_tx, query, paths).await?,
         };
 
+        debug!(?action, %ctx.thread_id, "chosen next action");
         match &action {
             Action::Query(query) => {
                 self.llm_history
