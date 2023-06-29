@@ -17,7 +17,6 @@ import { mapTokenInfo } from '../../../mappers/results';
 import CodeContainerVirtualized from './CodeContainerVirtualized';
 import CodeContainerFull from './CodeContainerFull';
 import { Metadata, BlameLine } from './index';
-import { mapTokenInfoData } from '../../../mappers/results';
 
 type Props = {
   language: string;
