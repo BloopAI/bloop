@@ -431,20 +431,6 @@ impl Conversation {
                     paths = semantic_paths;
                 }
 
-                let prompt = Some("§alias, path".to_owned())
-                    .into_iter()
-                    .chain(paths.iter().map(|p| format!("{}, {p}", self.path_alias(p))))
-                    .collect::<Vec<_>>()
-                    .join("\n");
-
-                ctx.track_query(
-                    EventData::input_stage("path search")
-                        .with_payload("query", query)
-                        .with_payload("is_semantic", is_semantic)
-                        .with_payload("results", &paths)
-                        .with_payload("raw_prompt", prompt),
-                );
-
                 let formatted_paths = paths
                     .iter()
                     .map(|p| SeenPath {
@@ -453,7 +439,17 @@ impl Conversation {
                     })
                     .collect::<Vec<_>>();
 
-                serde_json::to_string(&formatted_paths).unwrap()
+                let prompt = serde_json::to_string(&formatted_paths).unwrap();
+
+                ctx.track_query(
+                    EventData::input_stage("path search")
+                        .with_payload("query", query)
+                        .with_payload("is_semantic", is_semantic)
+                        .with_payload("results", &paths)
+                        .with_payload("raw_prompt", &prompt),
+                );
+
+                prompt
             }
 
             Action::Code { query } => {
@@ -614,6 +610,7 @@ impl Conversation {
                     .by_path(repo_ref, &path)
                     .await
                     .with_context(|| format!("failed to read path: {path}"))?
+                    .with_context(|| format!("path does not exist in the index: {path}"))?
                     .content
                     .lines()
                     .enumerate()
@@ -827,27 +824,34 @@ impl Conversation {
             let alias = path_aliases[0];
             let path = self.paths[alias].clone();
 
-            let file_contents = ctx
+            let doc = ctx
                 .app
                 .indexes
                 .file
                 .by_path(&self.repo_ref, &path)
                 .await
-                .with_context(|| format!("failed to read path: {}", path))?
-                .content;
+                .with_context(|| format!("failed to read path: {}", path))?;
 
-            let bpe =
-                tiktoken_rs::get_bpe_from_model("gpt-4").context("invalid model requested")?;
+            match doc {
+                Some(doc) => {
+                    let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")
+                        .context("invalid model requested")?;
 
-            let trimmed_file_contents = limit_tokens(&file_contents, bpe, 4000);
+                    let trimmed_file_contents = limit_tokens(&doc.content, bpe, 4000);
 
-            vec![CodeChunk {
-                alias: alias as u32,
-                path,
-                start_line: 1,
-                end_line: trimmed_file_contents.lines().count() as u32 + 1,
-                snippet: trimmed_file_contents.to_owned(),
-            }]
+                    vec![CodeChunk {
+                        alias: alias as u32,
+                        path,
+                        start_line: 1,
+                        end_line: trimmed_file_contents.lines().count() as u32 + 1,
+                        snippet: trimmed_file_contents.to_owned(),
+                    }]
+                }
+                None => {
+                    warn!("only path alias did not return any results");
+                    vec![]
+                }
+            }
         } else {
             self.code_chunks
                 .iter()
@@ -1240,6 +1244,7 @@ impl Conversation {
                     .by_path(repo_ref, &path)
                     .await
                     .unwrap()
+                    .unwrap_or_else(|| panic!("path did not exist in the index: {path}"))
                     .content;
 
                 chunks
