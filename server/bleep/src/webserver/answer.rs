@@ -579,8 +579,6 @@ impl Conversation {
         let ctx = &ctx.clone().model("gpt-3.5-turbo-16k");
         let chunks = stream::iter(paths)
             .map(|path| async move {
-                tracing::debug!(?path, "reading file");
-
                 let lines = ctx
                     .file_search(&path)
                     .await
@@ -627,8 +625,7 @@ impl Conversation {
                 let contents = lines.join("\n");
                 let prompt = prompts::file_explanation(question, &path, &contents);
 
-                tracing::debug!(?path, "calling chat API on file");
-
+                debug!(?path, "sending file to LLM");
                 let json = ctx
                     .llm_gateway
                     .chat(&[llm_gateway::api::Message::system(&prompt)], None)

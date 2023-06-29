@@ -79,7 +79,7 @@ impl Indexable for File {
                     dir_entry,
                 };
 
-                debug!(entry_disk_path, "queueing entry");
+                trace!(entry_disk_path, "queueing entry");
                 if let Err(err) = self.worker(workload, writer) {
                     warn!(%err, entry_disk_path, "indexing failed; skipping");
                 }

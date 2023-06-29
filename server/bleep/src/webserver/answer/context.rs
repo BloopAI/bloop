@@ -113,7 +113,7 @@ impl AppContext {
             ..self.semantic_query_params()
         };
 
-        debug!(?query, "executing semantic query");
+        debug!(?query, %self.thread_id, "executing semantic query");
         self.app
             .semantic
             .as_ref()
@@ -126,7 +126,7 @@ impl AppContext {
         let branch = self.branch.as_deref();
         let repo_ref = &self.repo_ref;
 
-        debug!(%repo_ref, path, ?branch, "executing file search");
+        debug!(%repo_ref, path, ?branch, %self.thread_id, "executing file search");
         self.app.indexes.file.by_path(repo_ref, path, branch).await
     }
 }
