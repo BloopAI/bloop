@@ -38,9 +38,6 @@ use std::{path::Path, sync::Arc};
 use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::EnvFilter;
 
-// Included to require `vendored` feature in dep tree.
-use openssl_sys as _;
-
 mod background;
 mod collector;
 mod config;
