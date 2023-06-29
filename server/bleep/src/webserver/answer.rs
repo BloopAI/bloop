@@ -30,8 +30,13 @@ use super::middleware::User;
 use crate::{
     analytics::{EventData, QueryEvent},
     db::SqlDb,
+    intelligence::{
+        code_navigation::{CodeNavigationContext, FileSymbols, OccurrenceKind, Token},
+        Language, NodeKind, TSLanguage,
+    },
     query::parser::{self, SemanticQuery},
     repo::RepoRef,
+    text_range::TextRange,
     webserver::answer::llm_gateway::api::FunctionCall,
     Application,
 };
@@ -240,6 +245,7 @@ pub(super) struct Conversation {
     exchanges: Vec<Exchange>,
     paths: Vec<String>,
     code_chunks: Vec<CodeChunk>,
+    code_nav_chunks: Vec<CodeChunk>,
     repo_ref: RepoRef,
 }
 
@@ -282,6 +288,7 @@ impl Conversation {
             exchanges: Vec::new(),
             paths: Vec::new(),
             code_chunks: Vec::new(),
+            code_nav_chunks: Vec::new(),
             repo_ref,
         }
     }
@@ -552,26 +559,34 @@ impl Conversation {
         question: &str,
         path_aliases: &[usize],
     ) -> Result<String> {
-        // filesystem agnostic trivial path normalization
-        //
-        // - a//b -> a/b
-        // - a/./b -> a/b
-        // - a/b/../c -> a/c (regardless of whether this exists)
-        // - ../b/c -> None
-        #[allow(dead_code)]
-        fn normalize(path: PathBuf) -> Option<PathBuf> {
-            let mut stack = vec![];
-            for c in path.components() {
-                match c {
-                    Component::Normal(s) => stack.push(s),
-                    Component::ParentDir if stack.is_empty() => return None,
-                    Component::ParentDir => {
-                        _ = stack.pop();
-                    }
-                    _ => (),
+        #[derive(
+            serde::Deserialize, serde::Serialize, PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug,
+        )]
+        struct Range {
+            start: usize,
+            end: usize,
+        }
+
+        #[derive(serde::Serialize)]
+        struct RelevantChunk {
+            #[serde(flatten)]
+            range: Range,
+            code: String,
+        }
+
+        impl RelevantChunk {
+            fn enumerate_lines(&self) -> Self {
+                Self {
+                    range: self.range,
+                    code: self
+                        .code
+                        .lines()
+                        .enumerate()
+                        .map(|(i, line)| format!("{} {line}", i + self.range.start))
+                        .collect::<Vec<_>>()
+                        .join("\n"),
                 }
             }
-            Some(stack.iter().collect::<PathBuf>())
         }
 
         let paths = path_aliases
@@ -654,44 +669,6 @@ impl Conversation {
                     .try_collect::<String>()
                     .await?;
 
-                #[derive(
-                    serde::Deserialize,
-                    serde::Serialize,
-                    PartialEq,
-                    Eq,
-                    PartialOrd,
-                    Ord,
-                    Copy,
-                    Clone,
-                    Debug,
-                )]
-                struct Range {
-                    start: usize,
-                    end: usize,
-                }
-
-                #[derive(serde::Serialize)]
-                struct RelevantChunk {
-                    #[serde(flatten)]
-                    range: Range,
-                    code: String,
-                }
-
-                impl RelevantChunk {
-                    fn enumerate_lines(&self) -> Self {
-                        Self {
-                            range: self.range,
-                            code: self
-                                .code
-                                .lines()
-                                .enumerate()
-                                .map(|(i, line)| format!("{} {line}", i + self.range.start))
-                                .collect::<Vec<_>>()
-                                .join("\n"),
-                        }
-                    }
-                }
-
                 let mut line_ranges: Vec<Range> = serde_json::from_str::<Vec<Range>>(&json)?
                     .into_iter()
                     .filter(|r| r.start > 0 && r.end > 0)
@@ -746,7 +723,7 @@ impl Conversation {
             .collect::<Vec<_>>()
             .await;
 
-        let new_paths = {
+        let mut code_nav_chunks = {
             info!("starting identifier discovery");
             let mut prompt = String::new();
             writeln!(
@@ -758,7 +735,7 @@ Your job is to perform the following tasks:
 2. DO NOT cite identifiers that you are not given above
 3. DO NOT cite identifiers that are local variables.
 4. DO NOT cite identifiers that may be from external libraries or the standard library.
-5. You MUST answer with the index of each identifier. DO NOT answer the question
+5. You MUST answer with the index of each identifier. DO NOT answer the question.
 6. Reply with exactly one index per line.
                 "#
             );
@@ -768,6 +745,19 @@ Your job is to perform the following tasks:
 #####
 
 EXAMPLES
+
+path: src/language.rs
+code:
+pub fn build_scope(self) -> ScopeGraph {
+    scope_res_generic(&self)
+}
+
+identifiers:
+0. build_scope
+1. ScopeGraph
+2. scope_res_generic
+
+##########
 
 path: src/intelligence.rs
 code:
@@ -783,18 +773,20 @@ pub fn scope_graph(self) -> Result<ScopeGraph, TreeSitterFileError> {
 }
 
 identifiers:
-0. scope_graph
-1. Result
-2. ScopeGraph
-3. TreeSitterFileError
-4. query
-5. root_node
-6. ResolutionMethod
-7. build_scope
+3. scope_graph
+4. Result
+5. ScopeGraph
+6. TreeSitterFileError
+7. query
+8. root_node
+9. ResolutionMethod
+10. build_scope
 
 The identifiers relevant to the query "How are scope graphs built?" are:
-6
-7
+0
+2
+9
+10
 "#;
 
             writeln!(&mut prompt, "{examples}");
@@ -812,7 +804,56 @@ The identifiers relevant to the query "How are scope graphs built?" are:
                     .await
                     .unwrap();
 
-                if let Some(hr) = document.hoverable_ranges() {
+                // let hoverables = document.hoverable_ranges().map(|h| {
+                //     h.into_iter()
+                //         .filter(|range| {
+                //             document
+                //                 .symbol_locations
+                //                 .scope_graph()
+                //                 .and_then(|sg| {
+                //                     let node_idx =
+                //                         sg.node_by_range(range.start.byte, range.end.byte)?;
+                //                     let is_def = matches!(
+                //                         sg.get_node(node_idx).unwrap(),
+                //                         NodeKind::Def(_) | NodeKind::Import(_)
+                //                     );
+                //                     let is_var = matches!(
+                //                         dbg!(sg.symbol_name_of(node_idx)),
+                //                         Some("variable") | Some("var") | Some("parameter")
+                //                     );
+                //                     let is_local = !sg.is_top_level(node_idx);
+                //                     // we want only defs but not variables
+                //                     Some(is_def && !is_var)
+                //                 })
+                //                 .unwrap_or(true)
+                //         })
+                //         .collect::<Vec<_>>()
+                // });
+                let hoverables = document.symbol_locations.scope_graph().map(|sg| {
+                    sg.graph
+                        .node_indices()
+                        .filter(|idx| {
+                            matches!(
+                                sg.get_node(*idx).unwrap(),
+                                NodeKind::Def(_) | NodeKind::Ref(_)
+                            )
+                        })
+                        .filter(|idx| {
+                            !matches!(
+                                sg.symbol_name_of(*idx),
+                                Some("var")
+                                    | Some("variable")
+                                    | Some("parameter")
+                                    | Some("local")
+                                    | Some("property")
+                                    | Some("field")
+                            )
+                        })
+                        .map(|idx| sg.get_node(idx).unwrap().range())
+                        .collect::<Vec<_>>()
+                });
+
+                if let Some(hr) = hoverables {
                     for rc in relevant_chunks {
                         let identifiers = hr
                             .iter()
@@ -827,17 +868,22 @@ The identifiers relevant to the query "How are scope graphs built?" are:
                             })
                             .collect::<Vec<_>>();
 
-                        writeln!(
-                            &mut prompt,
-                            "path: {path}\ncode:\n{}\n\nidentifiers:\n",
-                            rc.code
-                        );
-                        for i in identifiers.iter() {
-                            writeln!(&mut prompt, "{idx}. {}", i.0);
-                            idx += 1;
-                            idents.push((path.clone(), i.0.to_owned(), i.1.clone()));
+                        if !identifiers.is_empty() {
+                            writeln!(
+                                &mut prompt,
+                                "path: {path}\ncode:\n{}\n\nidentifiers:\n",
+                                rc.code
+                            );
+                            for i in identifiers.iter() {
+                                // push only unique idents
+                                if !idents.iter().any(|(_, text, _)| text == i.0) {
+                                    idents.push((path.clone(), i.0.to_owned(), i.1.clone()));
+                                    writeln!(&mut prompt, "{idx}. {}", i.0);
+                                    idx += 1;
+                                }
+                            }
+                            writeln!(&mut prompt, "{}", "#".repeat(10));
                         }
-                        writeln!(&mut prompt, "{}", "#".repeat(10));
                     }
                 }
             }
@@ -866,14 +912,6 @@ The identifiers relevant to the query "How are scope graphs built?" are:
                 }
             }
 
-            use crate::{
-                intelligence::{
-                    code_navigation::{CodeNavigationContext, FileSymbols, Token},
-                    Language, TSLanguage,
-                },
-                text_range::TextRange,
-            };
-
             let idents_by_path: HashMap<String, Vec<(String, TextRange)>> = selected_idents
                 .into_iter()
                 .fold(HashMap::new(), |mut map, (path, text, range)| {
@@ -883,7 +921,7 @@ The identifiers relevant to the query "How are scope graphs built?" are:
                     map
                 });
 
-            let mut new_paths = Vec::new();
+            let mut code_nav_chunks = Vec::new();
             for (relative_path, idents) in idents_by_path.iter() {
                 println!(
                     "{relative_path}: {:?}",
@@ -927,17 +965,40 @@ The identifiers relevant to the query "How are scope graphs built?" are:
                         indexes: Arc::clone(&ctx.app.indexes),
                         all_docs: all_docs.as_slice(),
                         source_document_idx,
+                        snippet_context_before: 3,
+                        snippet_context_after: 5,
                     };
-                    new_paths.extend(ctx.token_info().into_iter().map(|fs| fs.file));
+
+                    code_nav_chunks.extend(ctx.token_info().into_iter());
                 }
             }
-
-            new_paths.retain(|p| !idents_by_path.contains_key(p));
-
-            println!("{:?}", new_paths);
-
-            new_paths
+            code_nav_chunks
         };
+
+        // keep only newly discovered files
+        code_nav_chunks.retain(|fs| self.paths.iter().position(|f| f == &fs.file).is_none());
+
+        let c = code_nav_chunks
+            .into_iter()
+            .flat_map(|fs| {
+                fs.data
+                    .into_iter()
+                    .map(|occurrence| {
+                        let alias = self.path_alias(&fs.file) as u32;
+                        let chunk = CodeChunk {
+                            path: fs.file.clone(),
+                            alias,
+                            snippet: occurrence.snippet.data,
+                            start_line: occurrence.snippet.line_range.start as u32,
+                            end_line: occurrence.snippet.line_range.end as u32,
+                        };
+                        chunk
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .inspect(|chunk| println!(">> {} {}", chunk.path, chunk.snippet))
+            .collect::<Vec<_>>();
+        self.code_nav_chunks.extend_from_slice(c.as_slice());
 
         for (relevant_chunks, path) in &processed {
             let alias = self.path_alias(path) as u32;
@@ -969,10 +1030,7 @@ The identifiers relevant to the query "How are scope graphs built?" are:
             })
             .collect::<Vec<_>>();
 
-        let prompt = serde_json::to_string(&serde_json::json!({
-            "chunks": out,
-            "relevant_paths": new_paths,
-        }))?;
+        let prompt = serde_json::to_string(&out)?;
 
         ctx.track_query(
             EventData::input_stage("process file")
@@ -1114,6 +1172,21 @@ The identifiers relevant to the query "How are scope graphs built?" are:
                 for (_, formatted_snippet) in chunks {
                     s += formatted_snippet;
                 }
+            }
+
+            // add last 5 code-nav chunks to context
+            for chunk in self.code_nav_chunks.iter().rev().take(5) {
+                let snippet = chunk
+                    .snippet
+                    .lines()
+                    .enumerate()
+                    .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
+                    .collect::<String>();
+
+                let formatted_snippet =
+                    format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
+
+                s += &formatted_snippet;
             }
 
             s
@@ -1266,6 +1339,7 @@ The identifiers relevant to the query "How are scope graphs built?" are:
             exchanges,
             paths: path_aliases,
             code_chunks,
+            code_nav_chunks: Vec::new(),
         }))
     }
 
@@ -1658,6 +1732,7 @@ mod tests {
             paths: Vec::new(),
             repo_ref: "github.com/foo/bar".parse().unwrap(),
             code_chunks: vec![],
+            code_nav_chunks: vec![],
         };
 
         assert_eq!(

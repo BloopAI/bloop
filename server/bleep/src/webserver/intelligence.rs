@@ -83,6 +83,8 @@ pub(super) async fn handle(
         indexes: Arc::clone(&indexes),
         all_docs: all_docs.as_slice(),
         source_document_idx,
+        snippet_context_before: 0,
+        snippet_context_after: 0,
     };
 
     let data = ctx.token_info();
