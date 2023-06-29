@@ -36,7 +36,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
             a(props) {
               const [filePath, lines] = props.href?.split('#') || [];
               const [start, end] =
-                lines?.split('-').map((l) => l.slice(1)) || [];
+                lines?.split('-').map((l) => Number(l.slice(1))) || [];
               let fileName: string = '';
               if (props.children?.[0]) {
                 if (typeof props.children[0] === 'string') {
@@ -57,7 +57,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
                   onClick={() =>
                     openFileModal(
                       filePath,
-                      start ? `${start}_${end}` : undefined,
+                      start ? `${start - 1}_${end - 1}` : undefined,
                     )
                   }
                 />
@@ -84,15 +84,15 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
                     onResultClick={() =>
                       openFileModal(
                         matchPath[1],
-                        lines[0]
-                          ? `${lines[0]}_${
-                              lines[0] + code.split('\n').length - 1
+                        lines[0] - 1
+                          ? `${lines[0] - 1}_${
+                              lines[0] - 1 + code.split('\n').length - 1
                             }`
                           : undefined,
                       )
                     }
-                    endLine={lines[1]}
-                    startLine={lines[0]}
+                    endLine={lines[1] - 1}
+                    startLine={lines[0] - 1}
                     repoName={tab.repoName}
                   />
                 ) : (

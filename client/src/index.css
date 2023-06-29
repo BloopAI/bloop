@@ -1280,7 +1280,7 @@ h5, .h5 {
 
 .readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p, .readme span, .readme div,
 .article-response h1, .article-response h2, .article-response h3, .article-response h4, .article-response h5,
-.article-response h6, .article-response p, .article-response span, .article-response div {
+.article-response h6, .article-response p {
   -webkit-user-select: initial;
   -moz-user-select: initial;
   user-select: initial;
@@ -1346,6 +1346,7 @@ h5, .h5 {
 
 .article-response li>p {
   margin: 0;
+  display: unset;
 }
 
 .article-response code {

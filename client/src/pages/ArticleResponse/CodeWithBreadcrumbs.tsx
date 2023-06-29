@@ -32,7 +32,7 @@ const CodeWithBreadcrumbs = ({
 
   return (
     <div
-      className="text-sm border border-bg-border rounded-md flex-1 overflow-x-auto cursor-pointer"
+      className="text-sm border border-bg-border rounded-md flex-1 overflow-x-auto cursor-pointer my-4"
       onClick={handleResultClick}
     >
       <div
