@@ -547,7 +547,7 @@ const PromptGuidePopup = ({ isOpen, onClose }: Props) => {
             <h4 className="h4 text-label-title">Prompt guide</h4>
             <p className="body-s text-label-base">
               Like ChatGPT, bloop responds best to certain prompts. We’ve
-              compiled a really quick guide on how be to prompt bloop.
+              compiled a really quick guide on how better to prompt bloop.
             </p>
           </div>
           <div className="flex justify-between gap-3 w-full">
