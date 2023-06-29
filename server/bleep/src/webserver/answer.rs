@@ -1,3 +1,4 @@
+use rand::{seq::SliceRandom, SeedableRng};
 use std::{
     borrow::Cow,
     collections::{HashMap, HashSet, VecDeque},
@@ -938,7 +939,22 @@ impl Conversation {
                 .await?;
         }
 
-        exchange_tx.send(self.update(Update::Finalize)).await?;
+        let article_conclusion_messages = vec![
+            "I hope that was useful, can I help with anything else?",
+            "Is there anything else I can help you with?",
+            "Can I help you with anything else?",
+        ];
+
+        exchange_tx
+            .send(
+                self.update(Update::Finalize(
+                    article_conclusion_messages
+                        .choose(&mut rand::rngs::StdRng::from_entropy())
+                        .unwrap()
+                        .to_string(),
+                )),
+            )
+            .await?;
 
         ctx.track_query(
             EventData::output_stage("answer_article")

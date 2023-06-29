@@ -68,7 +68,10 @@ impl Exchange {
                 *results.as_article_mut().unwrap() += &text;
                 self.mode = AnswerMode::Article;
             }
-            Update::Finalize => self.finished = true,
+            Update::Finalize(conclusion) => {
+                self.conclusion = Some(conclusion);
+                self.finished = true
+            }
         }
     }
 
@@ -182,7 +185,7 @@ pub enum Update {
     Step(SearchStep),
     Filesystem(Vec<SearchResult>),
     Article(String),
-    Finalize,
+    Finalize(String),
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
