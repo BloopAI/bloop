@@ -90,10 +90,12 @@ const BranchSelector = () => {
                 select:
                   data.ev.status_change.branch_filter &&
                   data.ev.status_change.status === SyncStatus.Done
-                    ? [
-                        ...(newRepos[index].branch_filter?.select || []),
-                        data.ev.status_change.branch_filter.select[0],
-                      ]
+                    ? Array.from(
+                        new Set([
+                          ...(newRepos[index].branch_filter?.select || []),
+                          data.ev.status_change.branch_filter.select[0],
+                        ]),
+                      )
                     : newRepos[index].branch_filter?.select || [],
               },
             };
@@ -196,7 +198,7 @@ const BranchSelector = () => {
           size="medium"
           type="button"
           onClick={() => {
-            if (isSelfServe) {
+            if (true) {
               setOpen((prev) => !prev);
             } else {
               setPopupOpen(true);
