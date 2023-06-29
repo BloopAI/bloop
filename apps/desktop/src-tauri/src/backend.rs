@@ -77,12 +77,13 @@ where
                 scope.add_event_processor(move |mut event| {
                     event.user = Some(sentry_user()).map(|mut user| {
                         let auth = backend.user();
-                        user.id = backend
-                            .analytics
-                            .as_ref()
-                            .zip(auth.clone())
-                            .map(|(a, u)| a.tracking_id(&u.into()))
-                            .or_else(|| Some(get_device_id()));
+                        user.id = Some(
+                            if let (Some(analytics), Some(username)) = (&backend.analytics, &auth) {
+                                analytics.tracking_id(Some(username))
+                            } else {
+                                get_device_id()
+                            },
+                        );
                         user.username = auth;
                         user
                     });

@@ -264,7 +264,7 @@ impl Application {
 
     fn track_query(&self, user: &webserver::middleware::User, event: &analytics::QueryEvent) {
         if let Some(analytics) = self.analytics.as_ref() {
-            tokio::task::block_in_place(|| analytics.track_query(user, event.clone()))
+            analytics.track_query(user, event.clone());
         }
     }
 

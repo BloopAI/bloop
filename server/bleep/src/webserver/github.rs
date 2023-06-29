@@ -28,14 +28,46 @@ pub(super) enum GithubCredentialStatus {
 /// Get the status of the Github OAuth authentication
 //
 pub(super) async fn status(Extension(app): Extension<Application>) -> impl IntoResponse {
+    let github = app.credentials.github();
+
+    if github.is_some() {
+        let username = app
+            .credentials
+            .github()
+            // We just initialized this above.
+            .expect("github credentials were not initialized")
+            .client()
+            // We know the builder won't fail as we just built it above.
+            .expect("failed to get octocrab client")
+            .current()
+            .user()
+            .await
+            // There is no sensible way to track this error, so we panic if it fails.
+            .expect("failed to get current user info")
+            .login;
+
+        app.with_analytics(|analytics| {
+            use rudderanalytics::message::{Identify, Message};
+            analytics.send(Message::Identify(Identify {
+                user_id: Some(analytics.tracking_id(Some(&username))),
+                traits: Some(serde_json::json!({
+                    "organization": app.org_name(),
+                    "device_id": analytics.device_id(),
+                    "is_cloud_instance": app.env.is_cloud_instance(),
+                    "github_username": username,
+                })),
+                ..Default::default()
+            }));
+        });
+    }
+
     (
         StatusCode::OK,
-        json(GithubResponse::Status(
-            app.credentials
-                .github()
-                .map(|_| GithubCredentialStatus::Ok)
-                .unwrap_or(GithubCredentialStatus::Missing),
-        )),
+        json(GithubResponse::Status(if github.is_some() {
+            GithubCredentialStatus::Ok
+        } else {
+            GithubCredentialStatus::Missing
+        })),
     )
 }
 
@@ -159,34 +191,6 @@ async fn poll_for_oauth_token(
     if let Err(err) = saved {
         error!(?err, "failed to save credentials to disk");
     }
-
-    let user_name = app
-        .credentials
-        .github()
-        // We just initialized this above.
-        .expect("github credentials were not initialized")
-        .client()
-        // We know the builder won't fail as we just built it above.
-        .expect("failed to get octocrab client")
-        .current()
-        .user()
-        .await
-        // There is no sensible way to track this error, so we panic if it fails.
-        .expect("failed to get current user info")
-        .login;
-
-    app.with_analytics(|analytics| {
-        use rudderanalytics::message::{Identify, Message};
-        analytics.send(Message::Identify(Identify {
-            user_id: Some(user_name.clone()),
-            traits: Some(serde_json::json!({
-                "organization": app.org_name(),
-                "device_id": analytics.device_id(),
-                "is_cloud_instance": app.env.is_cloud_instance(),
-            })),
-            ..Default::default()
-        }));
-    });
 
     debug!("github auth complete");
 }

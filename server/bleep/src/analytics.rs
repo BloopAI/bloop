@@ -92,7 +92,7 @@ pub struct DeviceId(String);
 #[derive(Serialize, Deserialize)]
 pub struct UserState {
     #[serde(default)]
-    tracking_id: String,
+    pub tracking_id: String,
 }
 
 impl RudderHub {
@@ -114,28 +114,29 @@ impl RudderHub {
     }
 
     pub fn device_id(&self) -> String {
-        self.device_id.to_string()
+        self.device_id.0.trim().to_owned()
     }
 
-    pub fn tracking_id(&self, user: &crate::webserver::middleware::User) -> String {
-        match user.login() {
+    pub fn tracking_id(&self, username: Option<&str>) -> String {
+        match username {
             Some(username) => {
                 let id = self
                     .user_store
-                    .entry(username.to_string())
+                    .entry(username.to_owned())
                     .or_default()
                     .get()
-                    .tracking_id();
+                    .tracking_id
+                    .clone();
                 _ = self.user_store.store();
                 id
             }
-            None => self.device_id.to_string(),
+            None => self.device_id(),
         }
     }
 
     /// Send a message, logging an error if it occurs.
     ///
-    /// This function will `block_in_place`.
+    /// This will internally `block_in_place`.
     pub fn send(&self, message: Message) {
         if let Err(err) = tokio::task::block_in_place(|| self.client.send(&message)) {
             warn!(?err, "failed to send analytics event");
@@ -149,7 +150,7 @@ impl RudderHub {
             if let Some(filter) = &options.event_filter {
                 if let Some(ev) = (filter)(event) {
                     if let Err(err) = self.client.send(&Message::Track(Track {
-                        user_id: Some(self.tracking_id(user)),
+                        user_id: Some(self.tracking_id(user.login())),
                         event: "openai query".to_owned(),
                         properties: Some(json!({
                             "device_id": self.device_id(),
@@ -170,28 +171,18 @@ impl RudderHub {
         }
     }
 
-    pub fn track_synced_repos(&self, count: usize, org_name: String) {
-        if let Err(err) = self.client.send(&Message::Track(Track {
+    pub fn track_synced_repos(
+        &self,
+        count: usize,
+        username: Option<&str>,
+        org_name: Option<String>,
+    ) {
+        self.send(Message::Track(Track {
+            user_id: Some(self.tracking_id(username)),
             event: "track_synced_repos".into(),
             properties: Some(serde_json::json!({ "count": count, "organization": org_name })),
             ..Default::default()
-        })) {
-            warn!(?err, "failed to send analytics event");
-        } else {
-            info!("sent analytics event...");
-        }
-    }
-
-    pub fn delete_repo(&self, org_name: String) {
-        if let Err(err) = self.client.send(&Message::Track(Track {
-            event: "delete_repo".into(),
-            properties: Some(serde_json::json!({ "organization": org_name })),
-            ..Default::default()
-        })) {
-            warn!(?err, "failed to send analytics event");
-        } else {
-            info!("sent analytics event...");
-        }
+        }));
     }
 }
 
@@ -204,21 +195,9 @@ impl From<Option<String>> for DeviceId {
     }
 }
 
-impl ToString for DeviceId {
-    fn to_string(&self) -> String {
-        self.0.to_string()
-    }
-}
-
 impl Default for DeviceId {
     fn default() -> Self {
         Self(uuid::Uuid::new_v4().to_string())
-    }
-}
-
-impl UserState {
-    pub fn tracking_id(&self) -> String {
-        self.tracking_id.clone()
     }
 }
 

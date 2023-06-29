@@ -188,11 +188,12 @@ pub(super) async fn authorized(
     app.with_analytics(|analytics| {
         use rudderanalytics::message::{Identify, Message};
         analytics.send(Message::Identify(Identify {
-            user_id: Some(user_name.clone()),
+            user_id: Some(analytics.tracking_id(Some(&user_name))),
             traits: Some(serde_json::json!({
                 "organization": app.org_name(),
                 "device_id": analytics.device_id(),
                 "is_cloud_instance": app.env.is_cloud_instance(),
+                "github_username": user_name,
             })),
             ..Default::default()
         }));

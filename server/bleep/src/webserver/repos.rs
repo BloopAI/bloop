@@ -14,7 +14,7 @@ use axum::{
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::prelude::*;
+use super::{prelude::*, middleware::User};
 
 #[derive(Serialize, Debug, Eq)]
 pub(super) struct Repo {
@@ -166,14 +166,26 @@ pub(super) async fn get_by_id(
 pub(super) async fn delete_by_id(
     Query(RepoParams { repo }): Query<RepoParams>,
     Extension(app): Extension<Application>,
+    Extension(user): Extension<User>,
 ) -> Result<impl IntoResponse> {
-    if let (Some(analytics), Some(org_name)) = (&app.analytics, app.org_name()) {
-        analytics.delete_repo(org_name);
-    }
+    // TODO: We can refactor `repo_pool` to also hold queued repos, instead of doing a calculation
+    // like this which is prone to timing issues.
+    let num_repos = app.repo_pool.len();
+    let found = app.write_index().remove(repo).await.is_some();
+    let num_deleted = if found {
+        1
+    } else {
+        0
+    };
 
-    match app.write_index().remove(repo).await {
-        Some(_) => Ok(json(ReposResponse::Deleted)),
-        None => Err(Error::new(ErrorKind::NotFound, "Repo not found")),
+    app.with_analytics(|analytics| {
+        analytics.track_synced_repos(num_repos - num_deleted, user.login(), app.org_name());
+    });
+
+    if found {
+        Ok(json(ReposResponse::Deleted))
+    } else {
+        Err(Error::new(ErrorKind::NotFound, "Repo not found"))
     }
 }
 
@@ -181,8 +193,17 @@ pub(super) async fn delete_by_id(
 pub(super) async fn sync(
     Query(RepoParams { repo }): Query<RepoParams>,
     Extension(app): Extension<Application>,
+    Extension(user): Extension<User>,
 ) -> Result<impl IntoResponse> {
-    app.write_index().sync_and_index(vec![repo]).await;
+    // TODO: We can refactor `repo_pool` to also hold queued repos, instead of doing a calculation
+    // like this which is prone to timing issues.
+    let num_repos = app.repo_pool.len();
+    let num_queued = app.write_index().sync_and_index(vec![repo]).await;
+
+    app.with_analytics(|analytics| {
+        analytics.track_synced_repos(num_repos + num_queued, user.login(), app.org_name());
+    });
+
     Ok(json(ReposResponse::SyncQueued))
 }
 
@@ -247,13 +268,14 @@ pub(super) struct SetIndexed {
 //
 pub(super) async fn set_indexed(
     Extension(app): Extension<Application>,
+    Extension(user): Extension<User>,
     Json(new_list): Json<SetIndexed>,
 ) -> impl IntoResponse {
-    if let (Some(analytics), Some(org_name)) = (&app.analytics, app.org_name()) {
-        analytics.track_synced_repos(new_list.indexed.len(), org_name);
-    }
-
     let mut repo_list = new_list.indexed.into_iter().collect::<HashSet<_>>();
+
+    app.with_analytics(|analytics| {
+        analytics.track_synced_repos(repo_list.len(), user.login(), app.org_name());
+    });
 
     app.repo_pool
         .for_each_async(|k, existing| {

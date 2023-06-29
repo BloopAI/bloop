@@ -1,7 +1,7 @@
 use super::prelude::*;
 use crate::Application;
 
-use anyhow::{bail, Context};
+use anyhow::Context;
 use axum::{
     extract::State,
     http::Request,
@@ -20,13 +20,6 @@ pub enum User {
 }
 
 impl User {
-    pub fn authenticated_without_upstream(login: String) -> Self {
-        User::Authenticated {
-            login,
-            crab: Arc::new(|| bail!("no upstream")),
-        }
-    }
-
     pub(crate) fn login(&self) -> Option<&str> {
         let User::Authenticated { login, .. } = self
 	else {
@@ -43,12 +36,6 @@ impl User {
 	};
 
         crab().ok()
-    }
-}
-
-impl From<String> for User {
-    fn from(value: String) -> Self {
-        User::authenticated_without_upstream(value)
     }
 }
 

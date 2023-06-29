@@ -27,7 +27,7 @@ pub(super) async fn handle(
     let tracking_id = app
         .analytics
         .as_ref()
-        .map(|a| a.tracking_id(&user))
+        .map(|a| a.tracking_id(user.login()))
         .unwrap_or_default();
 
     let device_id = app
