@@ -612,11 +612,11 @@ mod tests {
         );
 
         assert_eq!(
-            parse("org:bloopai repo:enterprise-search branch:main ParseError").unwrap(),
+            parse("org:bloopai repo:enterprise-search branch:origin/main ParseError").unwrap(),
             vec![Query {
                 repo: Some(Literal::Plain("enterprise-search".into())),
                 org: Some(Literal::Plain("bloopai".into())),
-                branch: Some(Literal::Plain("main".into())),
+                branch: Some(Literal::Plain("origin/main".into())),
                 target: Some(Target::Content(Literal::Plain("ParseError".into()))),
                 ..Query::default()
             }],
