@@ -1,9 +1,5 @@
-use std::{
-    path::PathBuf,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
-use anyhow::Context;
 use qdrant_client::{
     prelude::QdrantClient,
     qdrant::{
@@ -22,11 +18,20 @@ use crate::{
 
 use super::db::SqlDb;
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Hash, Eq)]
 pub(crate) struct FreshValue<T> {
     // default value is `false` on deserialize
     pub(crate) fresh: bool,
     pub(crate) value: T,
+}
+
+impl<T> PartialEq for FreshValue<T>
+where
+    T: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.value.eq(&other.value)
+    }
 }
 
 impl<T> FreshValue<T> {
@@ -45,7 +50,7 @@ impl<T> From<T> for FreshValue<T> {
 }
 
 pub(crate) type Branches = Vec<String>;
-pub(crate) type RepoCacheSnapshot = Arc<scc::HashMap<String, FreshValue<(PathBuf, Branches)>>>;
+pub(crate) type RepoCacheSnapshot = Arc<scc::HashMap<String, FreshValue<()>>>;
 
 pub(crate) struct FileCache<'a> {
     db: &'a SqlDb,
@@ -59,7 +64,7 @@ impl<'a> FileCache<'a> {
     pub(crate) async fn for_repo(&self, reporef: &RepoRef) -> anyhow::Result<RepoCacheSnapshot> {
         let repo_str = reporef.to_string();
         let rows = sqlx::query! {
-            "SELECT file_path, content_hash, branches FROM file_cache \
+            "SELECT cache_hash FROM file_cache \
              WHERE repo_ref = ?",
             repo_str,
         }
@@ -68,14 +73,7 @@ impl<'a> FileCache<'a> {
 
         let output = scc::HashMap::default();
         for row in rows {
-            _ = output.insert(
-                row.content_hash,
-                (
-                    PathBuf::from(row.file_path),
-                    serde_json::from_str(&row.branches)?,
-                )
-                    .into(),
-            );
+            _ = output.insert(row.cache_hash, FreshValue::stale(()));
         }
 
         Ok(output.into())
@@ -95,19 +93,14 @@ impl<'a> FileCache<'a> {
             keys
         };
 
-        for k in keys {
-            let (hash, entry) = cache.remove(&k).context("can't happen")?;
-            let branches = serde_json::to_string(&entry.value.1)?;
+        for hash in keys {
             let repo_str = reporef.to_string();
-            let file_name = entry.value.0.to_string_lossy().to_string();
             sqlx::query!(
                 "INSERT INTO file_cache \
-		 (repo_ref, file_path, content_hash, branches) \
-                 VALUES (?, ?, ?, ?)",
+		 (repo_ref, cache_hash) \
+                 VALUES (?, ?)",
                 repo_str,
-                file_name,
                 hash,
-                branches
             )
             .execute(&mut tx)
             .await?;

@@ -44,7 +44,7 @@ pub struct FileDocument {
     pub repo_name: String,
     pub repo_ref: String,
     pub lang: Option<String>,
-    pub branches: Option<String>,
+    pub branches: String,
 }
 
 pub struct RepoDocument {
@@ -183,7 +183,7 @@ impl DocumentRead for FileReader {
         let repo_ref = read_text_field(&doc, schema.repo_ref);
         let repo_name = read_text_field(&doc, schema.repo_name);
         let lang = read_lang_field(&doc, schema.lang);
-        let branches = read_lang_field(&doc, schema.branches);
+        let branches = read_text_field(&doc, schema.branches);
 
         FileDocument {
             relative_path,

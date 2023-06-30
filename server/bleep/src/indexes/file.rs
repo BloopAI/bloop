@@ -409,7 +409,7 @@ impl File {
         };
         let entry_pathbuf = repo_disk_path.join(&relative_path);
 
-        let unique_hash = {
+        let semantic_hash = {
             let mut hash = blake3::Hasher::new();
             hash.update(crate::state::SCHEMA_VERSION.as_bytes());
             hash.update(relative_path.to_string_lossy().as_ref().as_ref());
@@ -418,9 +418,21 @@ impl File {
             hash.finalize().to_hex().to_string()
         };
 
+        let tantivy_hash = {
+            let branch_list = dir_entry.branches().unwrap_or_default();
+            let mut hash = blake3::Hasher::new();
+            hash.update(semantic_hash.as_ref());
+            hash.update(branch_list.join("\n").as_bytes());
+            hash.finalize().to_hex().to_string()
+        };
+
         let last_commit = repo_metadata.last_commit_unix_secs;
 
         match dir_entry {
+            _ if is_cache_fresh(cache, &tantivy_hash, &entry_pathbuf, &dir_entry) => {
+                info!("fresh; skipping");
+                return Ok(());
+            }
             RepoDirEntry::Dir(dir) => {
                 trace!("writing dir document");
                 let doc = dir.build_document(
@@ -430,15 +442,10 @@ impl File {
                     repo_disk_path,
                     repo_ref.as_str(),
                     last_commit,
+                    tantivy_hash,
                 );
                 writer.add_document(doc)?;
                 trace!("dir document written");
-            }
-            RepoDirEntry::File(_)
-                if is_cache_fresh(cache, &unique_hash, &entry_pathbuf, &dir_entry) =>
-            {
-                info!("fresh; skipping");
-                return Ok(());
             }
             RepoDirEntry::File(file) => {
                 trace!("writing file document");
@@ -450,7 +457,8 @@ impl File {
                         repo_name,
                         relative_path.as_path(),
                         repo_disk_path,
-                        &unique_hash,
+                        semantic_hash,
+                        tantivy_hash,
                         entry_pathbuf.as_path(),
                         repo_ref.as_str(),
                         last_commit,
@@ -506,6 +514,7 @@ impl RepoDir {
         repo_disk_path: &Path,
         repo_ref: &str,
         last_commit: u64,
+        tantivy_cache_key: String,
     ) -> tantivy::schema::Document {
         let relative_path_str = format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy());
 
@@ -521,6 +530,7 @@ impl RepoDir {
                 schema.last_commit_unix_seconds => last_commit,
                 schema.branches => branches,
                 schema.is_directory => true,
+                schema.unique_hash => tantivy_cache_key,
 
                 // nulls
                 schema.raw_content => Vec::<u8>::default(),
@@ -542,7 +552,8 @@ impl RepoFile {
         repo_name: &str,
         relative_path: &Path,
         repo_disk_path: &Path,
-        unique_hash: &str,
+        semantic_cache_key: String,
+        tantivy_cache_key: String,
         entry_pathbuf: &Path,
         repo_ref: &str,
         last_commit: u64,
@@ -608,7 +619,7 @@ impl RepoFile {
                 Handle::current().block_on(semantic.insert_points_for_buffer(
                     repo_name,
                     repo_ref,
-                    unique_hash,
+                    &semantic_cache_key,
                     &relative_path_str,
                     &self.buffer,
                     lang_str,
@@ -621,7 +632,7 @@ impl RepoFile {
             schema.raw_content => self.buffer.as_bytes(),
             schema.raw_repo_name => repo_name.as_bytes(),
             schema.raw_relative_path => relative_path_str.as_bytes(),
-            schema.unique_hash => unique_hash,
+            schema.unique_hash => tantivy_cache_key,
             schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
             schema.relative_path => relative_path_str,
             schema.repo_ref => repo_ref,
@@ -646,23 +657,16 @@ fn is_cache_fresh(
     entry_pathbuf: &PathBuf,
     dir_entry: &RepoDirEntry,
 ) -> bool {
-    let unique_hash = unique_hash.to_string();
-    let branch_list = dir_entry.branches().unwrap_or_default();
-    match cache.entry(unique_hash) {
-        Entry::Occupied(mut val)
-            if &val.get().value.0 == entry_pathbuf && val.get().value.1 == branch_list =>
-        {
+    match cache.entry(unique_hash.into()) {
+        Entry::Occupied(mut val) => {
             // skip processing if contents are up-to-date in the cache
             val.get_mut().fresh = true;
 
             trace!("cache hit");
             return true;
         }
-        Entry::Occupied(mut val) => {
-            _ = val.insert((entry_pathbuf.to_owned(), branch_list.to_owned()).into());
-        }
         Entry::Vacant(val) => {
-            _ = val.insert_entry((entry_pathbuf.to_owned(), branch_list.to_owned()).into());
+            _ = val.insert_entry(().into());
         }
     }
 

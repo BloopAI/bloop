@@ -148,6 +148,7 @@ pub struct FileResultData {
     relative_path: HighlightedString,
     repo_ref: String,
     lang: Option<String>,
+    branches: String,
 }
 
 #[derive(Serialize, Debug)]
@@ -470,6 +471,7 @@ impl ExecuteQuery for FileReader {
                     repo_name: f.repo_name,
                     repo_ref: f.repo_ref,
                     lang: f.lang,
+                    branches: f.branches,
                 })
             })
             .collect::<Vec<QueryResult>>();
