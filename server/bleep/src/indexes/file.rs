@@ -334,30 +334,39 @@ impl Indexer<File> {
     // TODO: Look at this again when:
     //  - directory retrieval is ready
     //  - unified referencing is ready
-    pub async fn by_repo(&self, repo_ref: &RepoRef, lang: Option<&str>) -> Vec<ContentDocument> {
+    pub async fn by_repo<S: AsRef<str>>(
+        &self,
+        repo_ref: &RepoRef,
+        langs: impl Iterator<Item = S>,
+    ) -> Vec<ContentDocument> {
         let reader = self.reader.read().await;
         let searcher = reader.searcher();
 
         // repo query
-        let path_query = Box::new(TermQuery::new(
+        let repo_query = Box::new(TermQuery::new(
             Term::from_field_text(self.source.repo_ref, &repo_ref.to_string()),
             IndexRecordOption::Basic,
         ));
 
-        // if file has a recognised language, constrain by files of the same lang
-        let query = match lang {
-            Some(l) => BooleanQuery::intersection(vec![
-                path_query,
-                // language query
-                Box::new(TermQuery::new(
-                    Term::from_field_bytes(self.source.lang, l.to_ascii_lowercase().as_bytes()),
-                    IndexRecordOption::Basic,
-                )),
-            ]),
-            None => BooleanQuery::intersection(vec![path_query]),
+        let lang_query = {
+            let queries = langs
+                .map(|lang| {
+                    Box::new(TermQuery::new(
+                        Term::from_field_bytes(
+                            self.source.lang,
+                            lang.as_ref().to_ascii_lowercase().as_bytes(),
+                        ),
+                        IndexRecordOption::Basic,
+                    )) as Box<dyn tantivy::query::Query>
+                })
+                .collect::<Vec<_>>();
+            Box::new(BooleanQuery::union(queries))
         };
 
-        let collector = TopDocs::with_limit(100);
+        // if file has a recognised language, constrain by files of the same lang
+        let query = BooleanQuery::intersection(vec![repo_query, lang_query]);
+
+        let collector = TopDocs::with_limit(500);
         searcher
             .search(&query, &collector)
             .expect("failed to search index")

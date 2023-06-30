@@ -1,14 +1,15 @@
+use rand::{seq::SliceRandom, SeedableRng};
 use std::{
     borrow::Cow,
     collections::{HashMap, HashSet, VecDeque},
     mem,
     panic::AssertUnwindSafe,
-    path::{Component, PathBuf},
+    pin::pin,
     str::FromStr,
     time::Duration,
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use axum::{
     extract::Query,
     response::{
@@ -332,25 +333,36 @@ impl Conversation {
         }
     }
 
-    fn query_history(&self) -> Vec<String> {
-        self.exchanges
-            .iter()
-            .flat_map(|e| match (e.query(), e.conclusion()) {
-                (Some(q), Some(c)) => vec![("user", q), ("assistant", c)],
-                (Some(q), None) => vec![("user", q)],
-                _ => vec![],
-            })
-            .map(|(author, message)| format!("{author}: {message}"))
-            .collect()
+    fn query_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
+        self.exchanges.iter().flat_map(|e| {
+            let query = e.query().map(|q| llm_gateway::api::Message::PlainText {
+                role: "user".to_owned(),
+                content: q.to_owned(),
+            });
+
+            let conclusion = e.answer().map(|c| llm_gateway::api::Message::PlainText {
+                role: "assistant".to_owned(),
+                content: c.to_owned(),
+            });
+
+            query
+                .into_iter()
+                .chain(conclusion.into_iter())
+                .collect::<Vec<_>>()
+        })
     }
 
-    // Generate a summary of the last exchange
-    fn get_summarized_answer(&self) -> Option<String> {
+    /// Retrieve the second last exchange, if it exists.
+    ///
+    /// This is useful when creating a new exchange; because it already exists in the exchange
+    /// list, the second last exchange should be equivalent to the last completed exchange.
+    // TODO: This API is unwieldy. Logic accessing this function should be refactored to work when
+    // appending to the exchange instead.
+    fn second_last_exchange(&self) -> Option<&Exchange> {
         self.exchanges
             .len()
             .checked_sub(2)
             .and_then(|second_last| self.exchanges.get(second_last))
-            .and_then(|exchange| exchange.summarize())
     }
 
     async fn step(
@@ -365,29 +377,48 @@ impl Conversation {
                     .send(self.update(Update::Step(SearchStep::Query(s.clone()))))
                     .await?;
 
-                let summarized_answer = self.get_summarized_answer();
-                match summarized_answer.as_ref() {
-                    Some(summary) => {
-                        info!("attaching summary of previous exchange: {summary}");
-                        self.llm_history
-                            .push_back(llm_gateway::api::Message::assistant(summary));
+                let previous_answer = if let Some(e) = self.second_last_exchange() {
+                    if let Some(body) = e.answer_summarized() {
+                        match e.mode {
+                            AnswerMode::Article => Some({
+                                let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
+                                limit_tokens(&body, bpe, 200).to_owned()
+                            }),
+
+                            AnswerMode::Filesystem => Some(body),
+                        }
+                    } else {
+                        None
                     }
-                    None => {
-                        info!("no previous exchanges, skipping summary");
-                    }
-                }
+                } else {
+                    None
+                };
+
+                if let Some(summary) = &previous_answer {
+                    info!("attaching summary of previous exchange: {summary}");
+                    self.llm_history
+                        .push_back(llm_gateway::api::Message::assistant(summary));
+                } else {
+                    info!("no previous exchanges, skipping summary");
+                };
 
                 ctx.track_query(
                     EventData::input_stage("query")
                         .with_payload("q", s)
-                        .with_payload("previous_answer_summary", &summarized_answer),
+                        .with_payload("previous_answer_summary", &previous_answer),
                 );
 
                 s.clone()
             }
 
-            Action::Answer { paths } => {
-                self.answer(ctx, exchange_tx, paths).await?;
+            Action::Answer { paths, mode } => {
+                match mode {
+                    AnswerMode::Filesystem => {
+                        self.answer_filesystem(ctx, exchange_tx, paths).await?
+                    }
+                    AnswerMode::Article => self.answer_article(ctx, exchange_tx, paths).await?,
+                }
+
                 return Ok(None);
             }
 
@@ -523,7 +554,7 @@ impl Conversation {
             Action::Query(query) => {
                 self.llm_history
                     .push_back(llm_gateway::api::Message::user(&format!(
-                        "{query}\nDo not answer."
+                        "{query}\nCall a function. Do not answer."
                     )))
             }
             _ => {
@@ -537,7 +568,7 @@ impl Conversation {
                 self.llm_history
                     .push_back(llm_gateway::api::Message::function_return(
                         function_name,
-                        &format!("{action_result}\nDo not answer."),
+                        &format!("{action_result}\nCall a function. Do not answer."),
                     ));
             }
         };
@@ -595,28 +626,6 @@ impl Conversation {
         question: &str,
         path_aliases: &[usize],
     ) -> Result<String> {
-        // filesystem agnostic trivial path normalization
-        //
-        // - a//b -> a/b
-        // - a/./b -> a/b
-        // - a/b/../c -> a/c (regardless of whether this exists)
-        // - ../b/c -> None
-        #[allow(dead_code)]
-        fn normalize(path: PathBuf) -> Option<PathBuf> {
-            let mut stack = vec![];
-            for c in path.components() {
-                match c {
-                    Component::Normal(s) => stack.push(s),
-                    Component::ParentDir if stack.is_empty() => return None,
-                    Component::ParentDir => {
-                        _ = stack.pop();
-                    }
-                    _ => (),
-                }
-            }
-            Some(stack.iter().collect::<PathBuf>())
-        }
-
         let paths = path_aliases
             .iter()
             .copied()
@@ -633,7 +642,11 @@ impl Conversation {
         }
 
         let question = &question;
-        let ctx = &ctx.clone().model("gpt-3.5-turbo-16k");
+        let ctx = &ctx
+            .clone()
+            .model("gpt-3.5-turbo-16k")
+            .frequency_penalty(0.1); // Set low frequency penalty to discourage long outputs
+
         let repo_ref = &self.repo_ref;
         let chunks = stream::iter(paths)
             .map(|path| async move {
@@ -653,24 +666,18 @@ impl Conversation {
                     .collect::<Vec<_>>();
 
                 const MAX_TOKENS: usize = 15400;
-                const LINE_OVERLAP: usize = 3;
 
                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
 
-                let iter = tokio::task::spawn_blocking(|| {
-                    split_line_set_by_tokens(lines, bpe, MAX_TOKENS, LINE_OVERLAP)
-                        .collect::<Vec<_>>()
-                })
-                .await
-                .context("failed to split by token")?
-                .into_iter()
-                .map(move |lines| Result::<_>::Ok((lines, path.clone())));
+                let iter =
+                    tokio::task::spawn_blocking(|| trim_lines_by_tokens(lines, bpe, MAX_TOKENS))
+                        .await
+                        .context("failed to split by token")?;
 
-                Result::<_>::Ok(futures::stream::iter(iter))
+                Result::<_>::Ok((iter, path.clone()))
             })
             // Buffer file loading to load multiple paths at once
             .buffered(10)
-            .try_flatten()
             .map(|result| async {
                 let (lines, path) = result?;
 
@@ -831,146 +838,209 @@ impl Conversation {
         Ok(prompt)
     }
 
-    async fn answer(
+    async fn answer_context(&mut self, ctx: &AppContext, aliases: &[usize]) -> Result<String> {
+        self.canonicalize_code_chunks(ctx).await;
+
+        let mut s = "".to_owned();
+
+        let mut path_aliases = aliases
+            .iter()
+            .copied()
+            .filter(|alias| *alias < self.paths.len())
+            .collect::<Vec<_>>();
+
+        path_aliases.sort();
+        path_aliases.dedup();
+
+        if !self.paths.is_empty() {
+            s += "##### PATHS #####\npath alias, path\n";
+
+            if path_aliases.len() == 1 {
+                // Only show matching path
+                let alias = path_aliases[0];
+                let path = self.paths[alias].clone();
+                s += &format!("{alias}, {}\n", &path);
+            } else {
+                // Show all paths that have been seen
+                for (alias, path) in self.paths.iter().enumerate() {
+                    s += &format!("{alias}, {}\n", &path);
+                }
+            }
+        }
+
+        let code_chunks = if path_aliases.len() == 1 {
+            let alias = path_aliases[0];
+            let path = self.paths[alias].clone();
+
+            let file_contents = ctx
+                .app
+                .indexes
+                .file
+                .by_path(&self.repo_ref, &path)
+                .await
+                .with_context(|| format!("failed to read path: {}", path))?
+                .content;
+
+            let bpe =
+                tiktoken_rs::get_bpe_from_model("gpt-4").context("invalid model requested")?;
+
+            let trimmed_file_contents = limit_tokens(&file_contents, bpe, 4000);
+
+            vec![CodeChunk {
+                alias: alias as u32,
+                path,
+                start_line: 1,
+                end_line: trimmed_file_contents.lines().count() as u32 + 1,
+                snippet: trimmed_file_contents.to_owned(),
+            }]
+        } else {
+            self.code_chunks
+                .iter()
+                .filter(|c| path_aliases.contains(&(c.alias as usize)))
+                .cloned()
+                .collect()
+        };
+
+        const PROMPT_HEADROOM: usize = 1500;
+        let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")?;
+        let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens("gpt-4", &s)?;
+
+        // Select as many recent chunks as possible
+        let mut recent_chunks = Vec::new();
+        for chunk in code_chunks.iter().rev() {
+            let snippet = chunk
+                .snippet
+                .lines()
+                .enumerate()
+                .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
+                .collect::<String>();
+
+            let formatted_snippet = format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
+
+            let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
+
+            if snippet_tokens >= remaining_prompt_tokens - PROMPT_HEADROOM {
+                debug!("Breaking at {} tokens...", remaining_prompt_tokens);
+                break;
+            }
+
+            recent_chunks.push((chunk.clone(), formatted_snippet));
+
+            remaining_prompt_tokens -= snippet_tokens;
+            debug!("{}", remaining_prompt_tokens);
+        }
+
+        // group recent chunks by path alias
+        let mut recent_chunks_by_alias: HashMap<_, _> =
+            recent_chunks
+                .into_iter()
+                .fold(HashMap::new(), |mut map, item| {
+                    map.entry(item.0.alias).or_insert_with(Vec::new).push(item);
+                    map
+                });
+
+        // write the header if we have atleast one chunk
+        if !recent_chunks_by_alias.values().all(Vec::is_empty) {
+            s += "\n##### CODE CHUNKS #####\n\n";
+        }
+
+        // sort by alias, then sort by lines
+        let mut aliases = recent_chunks_by_alias.keys().copied().collect::<Vec<_>>();
+        aliases.sort();
+
+        for alias in aliases {
+            let chunks = recent_chunks_by_alias.get_mut(&alias).unwrap();
+            chunks.sort_by(|a, b| a.0.start_line.cmp(&b.0.start_line));
+            for (_, formatted_snippet) in chunks {
+                s += formatted_snippet;
+            }
+        }
+
+        Ok(s)
+    }
+
+    async fn answer_article(
         &mut self,
         ctx: &AppContext,
         exchange_tx: Sender<Exchange>,
         aliases: &[usize],
     ) -> Result<()> {
-        fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
-            match v {
-                serde_json::Value::Array(a) => Some(a),
-                _ => None,
-            }
+        let context = self.answer_context(ctx, aliases).await?;
+        let query_history = self.query_history().collect::<Vec<_>>();
+
+        let system_message = prompts::answer_article_prompt(&context);
+        let messages = Some(llm_gateway::api::Message::system(&system_message))
+            .into_iter()
+            .chain(query_history.iter().cloned())
+            .collect::<Vec<_>>();
+
+        let mut stream = pin!(ctx.llm_gateway.chat(&messages, None).await?);
+        let mut response = String::new();
+        while let Some(fragment) = stream.next().await {
+            let fragment = fragment?;
+            response += &fragment;
+            exchange_tx
+                .send(self.update(Update::Article(fragment)))
+                .await?;
         }
 
-        let context = {
-            self.canonicalize_code_chunks(ctx).await;
+        let article_conclusion_messages = vec![
+            "I hope that was useful, can I help with anything else?",
+            "Is there anything else I can help you with?",
+            "Can I help you with anything else?",
+        ];
 
-            let mut s = "".to_owned();
+        exchange_tx
+            .send(
+                self.update(Update::Finalize(
+                    article_conclusion_messages
+                        .choose(&mut rand::rngs::StdRng::from_entropy())
+                        .unwrap()
+                        .to_string(),
+                )),
+            )
+            .await?;
 
-            let mut path_aliases = aliases
-                .iter()
-                .copied()
-                .filter(|alias| *alias < self.paths.len())
-                .collect::<Vec<_>>();
+        ctx.track_query(
+            EventData::output_stage("answer_article")
+                .with_payload("query", self.last_exchange().query())
+                .with_payload("query_history", &query_history)
+                .with_payload("response", &response)
+                .with_payload("raw_prompt", &system_message),
+        );
 
-            path_aliases.sort();
-            path_aliases.dedup();
+        Ok(())
+    }
 
-            if !self.paths.is_empty() {
-                s += "##### PATHS #####\npath alias, path\n";
+    async fn answer_filesystem(
+        &mut self,
+        ctx: &AppContext,
+        exchange_tx: Sender<Exchange>,
+        aliases: &[usize],
+    ) -> Result<()> {
+        let context = self.answer_context(ctx, aliases).await?;
 
-                if path_aliases.len() == 1 {
-                    // Only show matching path
-                    let alias = path_aliases[0];
-                    let path = self.paths[alias].clone();
-                    s += &format!("{alias}, {}\n", &path);
-                } else {
-                    // Show all paths that have been seen
-                    for (alias, path) in self.paths.iter().enumerate() {
-                        s += &format!("{alias}, {}\n", &path);
-                    }
-                }
+        let mut query_history = self.query_history().collect::<Vec<_>>();
+
+        {
+            let (role, content) = query_history
+                .last_mut()
+                .context("query history was empty")?
+                .as_plaintext_mut()
+                .context("last message was not plaintext")?;
+
+            if role != "user" {
+                bail!("last message was not a user message");
             }
 
-            let code_chunks = if path_aliases.len() == 1 {
-                let alias = path_aliases[0];
-                let path = self.paths[alias].clone();
+            *content += "\n\nOutput only JSON.";
+        }
 
-                let file_contents = ctx
-                    .app
-                    .indexes
-                    .file
-                    .by_path(&self.repo_ref, &path)
-                    .await
-                    .with_context(|| format!("failed to read path: {}", path))?
-                    .content;
-
-                let bpe =
-                    tiktoken_rs::get_bpe_from_model("gpt-4").context("invalid model requested")?;
-
-                let trimmed_file_contents = limit_tokens(&file_contents, bpe, 4000);
-
-                vec![CodeChunk {
-                    alias: alias as u32,
-                    path,
-                    start_line: 1,
-                    end_line: trimmed_file_contents.lines().count() as u32 + 1,
-                    snippet: trimmed_file_contents.to_owned(),
-                }]
-            } else {
-                self.code_chunks
-                    .iter()
-                    .filter(|c| path_aliases.contains(&(c.alias as usize)))
-                    .cloned()
-                    .collect()
-            };
-
-            const PROMPT_HEADROOM: usize = 1500;
-            let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")?;
-            let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens("gpt-4", &s)?;
-
-            // Select as many recent chunks as possible
-            let mut recent_chunks = Vec::new();
-            for chunk in code_chunks.iter().rev() {
-                let snippet = chunk
-                    .snippet
-                    .lines()
-                    .enumerate()
-                    .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
-                    .collect::<String>();
-
-                let formatted_snippet =
-                    format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
-
-                let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
-
-                if snippet_tokens >= remaining_prompt_tokens - PROMPT_HEADROOM {
-                    debug!("Breaking at {} tokens...", remaining_prompt_tokens);
-                    break;
-                }
-
-                recent_chunks.push((chunk.clone(), formatted_snippet));
-
-                remaining_prompt_tokens -= snippet_tokens;
-                debug!("{}", remaining_prompt_tokens);
-            }
-
-            // group recent chunks by path alias
-            let mut recent_chunks_by_alias: HashMap<_, _> =
-                recent_chunks
-                    .into_iter()
-                    .fold(HashMap::new(), |mut map, item| {
-                        map.entry(item.0.alias).or_insert_with(Vec::new).push(item);
-                        map
-                    });
-
-            // write the header if we have atleast one chunk
-            if !recent_chunks_by_alias.values().all(Vec::is_empty) {
-                s += "\n##### CODE CHUNKS #####\n\n";
-            }
-
-            // sort chunks in ascending order of line number and append to context
-            for chunks_by_alias in recent_chunks_by_alias.values_mut() {
-                chunks_by_alias.sort_by(|a, b| a.0.start_line.cmp(&b.0.start_line));
-                for (_, formatted_snippet) in chunks_by_alias {
-                    s += formatted_snippet;
-                }
-            }
-
-            s
-        };
-
-        let query_history = self.query_history().join("\n");
-        let query = self
-            .last_exchange()
-            .query()
-            .context("exchange did not have a user query")?;
-
-        let prompt = prompts::final_explanation_prompt(&context, query, &query_history);
-
-        let messages = [llm_gateway::api::Message::system(&prompt)];
+        let system_message = prompts::answer_filesystem_prompt(&context);
+        let messages = Some(llm_gateway::api::Message::system(&system_message))
+            .into_iter()
+            .chain(query_history.iter().cloned())
+            .collect::<Vec<_>>();
 
         let mut stream = ctx.llm_gateway.chat(&messages, None).await?.boxed();
         let mut buffer = String::new();
@@ -980,6 +1050,13 @@ impl Conversation {
 
             if buffer.is_empty() {
                 continue;
+            }
+
+            fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
+                match v {
+                    serde_json::Value::Array(a) => Some(a),
+                    _ => None,
+                }
             }
 
             let (s, _) = partial_parse::rectify_json(&buffer);
@@ -1015,16 +1092,16 @@ impl Conversation {
                 .collect::<Vec<_>>();
 
             exchange_tx
-                .send(self.update(Update::Result(search_results)))
+                .send(self.update(Update::Filesystem(search_results)))
                 .await?;
         }
 
         ctx.track_query(
-            EventData::output_stage("answer")
+            EventData::output_stage("answer_filesystem")
                 .with_payload("query", self.last_exchange().query())
                 .with_payload("query_history", &query_history)
                 .with_payload("response", &buffer)
-                .with_payload("raw_prompt", &prompt),
+                .with_payload("system_message", &system_message),
         );
 
         Ok(())
@@ -1234,45 +1311,24 @@ impl Conversation {
     }
 }
 
-fn split_line_set_by_tokens(
-    lines: Vec<String>,
-    bpe: CoreBPE,
-    max_tokens: usize,
-    line_overlap: usize,
-) -> impl Iterator<Item = Vec<String>> {
+fn trim_lines_by_tokens(lines: Vec<String>, bpe: CoreBPE, max_tokens: usize) -> Vec<String> {
     let line_tokens = lines
         .iter()
         .map(|line| bpe.encode_ordinary(line).len())
         .collect::<Vec<_>>();
 
-    let mut start = 0usize;
+    let mut trimmed_lines = Vec::new();
 
-    std::iter::from_fn(move || {
-        if start >= lines.len() {
-            return None;
-        }
+    // Push lines to `trimmed_lines` until we reach the maximum number of tokens.
+    let mut i = 0usize;
+    let mut tokens = 0usize;
+    while i < lines.len() && tokens < max_tokens {
+        tokens += line_tokens[i];
+        trimmed_lines.push(lines[i].clone());
+        i += 1;
+    }
 
-        start = start.saturating_sub(line_overlap);
-
-        let mut subset = Vec::new();
-
-        while start < lines.len() {
-            if line_tokens[start - subset.len()..start]
-                .iter()
-                .sum::<usize>()
-                > max_tokens
-            {
-                subset.pop();
-                start -= 1;
-                break;
-            }
-
-            subset.push(lines[start].clone());
-            start += 1;
-        }
-
-        Some(subset)
-    })
+    trimmed_lines
 }
 
 fn limit_tokens(text: &str, bpe: CoreBPE, max_tokens: usize) -> &str {
@@ -1320,7 +1376,7 @@ fn merge_overlapping(a: &mut CodeChunk, b: CodeChunk) -> Option<CodeChunk> {
 /// This function assumes that the input chunks do not overlap, and that the first paramter is a
 /// chunk which ends *before* the second parameter starts.
 fn merge_nearby(a: &mut CodeChunk, b: CodeChunk, contents: &str) -> Option<CodeChunk> {
-    const NEAR_THRESHOLD: u32 = 5;
+    const NEAR_THRESHOLD: u32 = 20;
 
     // This should never underflow, as we already merge overlapping chunks before getting
     // here.
@@ -1355,6 +1411,7 @@ enum Action {
     },
     #[serde(rename = "none")]
     Answer {
+        mode: AnswerMode,
         paths: Vec<usize>,
     },
     Code {
@@ -1393,6 +1450,14 @@ impl Action {
 
         Ok(serde_json::from_value(serde_json::Value::Object(map))?)
     }
+}
+
+#[derive(Debug, Default, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AnswerMode {
+    Article,
+    #[default]
+    Filesystem,
 }
 
 #[derive(Clone)]
@@ -1439,6 +1504,17 @@ impl AppContext {
 
     fn with_repo_ref(mut self, repo_ref: RepoRef) -> Self {
         self.repo_ref = Some(repo_ref);
+        self
+    }
+
+    fn frequency_penalty(mut self, frequency_penalty: f32) -> Self {
+        self.llm_gateway.frequency_penalty = Some(frequency_penalty);
+        self
+    }
+
+    #[allow(unused)]
+    fn presence_penalty(mut self, presence_penalty: f32) -> Self {
+        self.llm_gateway.presence_penalty = Some(presence_penalty);
         self
     }
 
@@ -1520,46 +1596,8 @@ mod tests {
     }
 
     #[test]
-    fn test_split_line_set_by_tokens() {
-        let lines = vec![
-            "fn main() {".to_string(),
-            "    one();".to_string(),
-            "    two();".to_string(),
-            "    three();".to_string(),
-            "    four();".to_string(),
-            "    five();".to_string(),
-            "    six();".to_string(),
-            "}".to_string(),
-        ];
-
+    fn test_trim_lines_by_tokens() {
         let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
-        let out = split_line_set_by_tokens(lines, bpe.clone(), 15, 3).collect::<Vec<_>>();
-        let expected = vec![
-            vec![
-                "fn main() {".to_string(),
-                "    one();".to_string(),
-                "    two();".to_string(),
-                "    three();".to_string(),
-            ],
-            vec![
-                "    one();".to_string(),
-                "    two();".to_string(),
-                "    three();".to_string(),
-                "    four();".to_string(),
-                "    five();".to_string(),
-            ],
-            vec![
-                "    three();".to_string(),
-                "    four();".to_string(),
-                "    five();".to_string(),
-                "    six();".to_string(),
-                "}".to_string(),
-            ],
-        ];
-        pretty_assertions::assert_eq!(out, expected);
-        for segment in &expected {
-            assert!(dbg!(bpe.encode_ordinary(&dbg!(segment).join("\n")).len()) <= 15);
-        }
 
         let lines = vec![
             "fn main() {".to_string(),
@@ -1571,29 +1609,25 @@ mod tests {
             "    six();".to_string(),
             "}".to_string(),
         ];
-
-        let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
-        let out = split_line_set_by_tokens(lines, bpe.clone(), 20, 2).collect::<Vec<_>>();
-        let expected = vec![
+        assert_eq!(
+            trim_lines_by_tokens(lines, bpe.clone(), 15),
             vec![
                 "fn main() {".to_string(),
                 "    one();".to_string(),
                 "    two();".to_string(),
                 "    three();".to_string(),
-                "    four();".to_string(),
-                "    five();".to_string(),
-            ],
-            vec![
-                "    four();".to_string(),
-                "    five();".to_string(),
-                "    six();".to_string(),
-                "}".to_string(),
-            ],
-        ];
-        pretty_assertions::assert_eq!(out, expected);
-        for segment in &expected {
-            assert!(dbg!(bpe.encode_ordinary(&dbg!(segment).join("\n")).len()) <= 20);
-        }
+                "    four();".to_string()
+            ]
+        );
+
+        let lines = vec!["fn main() {".to_string(), "    one();".to_string()];
+        assert_eq!(
+            trim_lines_by_tokens(lines, bpe.clone(), 15),
+            vec!["fn main() {".to_string(), "    one();".to_string()]
+        );
+
+        let expected: Vec<String> = vec![];
+        assert_eq!(trim_lines_by_tokens(vec![], bpe, 15), expected);
     }
 
     #[test]

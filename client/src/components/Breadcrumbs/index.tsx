@@ -2,11 +2,14 @@ import {
   Fragment,
   MouseEvent,
   ReactElement,
+  useCallback,
   useEffect,
   useRef,
   useState,
+  ClipboardEvent,
 } from 'react';
 import { Range } from '../../types/results';
+import { copyToClipboard, isWindowsPath } from '../../utils';
 import BreadcrumbSection from './BreadcrumbSection';
 import BreadcrumbsCollapsed from './BreadcrumbsCollapsed';
 
@@ -32,6 +35,7 @@ const Breadcrumbs = ({
   separator = '/',
   type = 'link',
   limitSectionWidth,
+  path,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [formattedPathParts, setFormattedPathParts] =
@@ -75,8 +79,26 @@ const Breadcrumbs = ({
     setFormattedPathParts(partsToShow);
   }, [pathParts]);
 
+  const onCopy = useCallback(
+    (e: ClipboardEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      copyToClipboard(
+        document
+          .getSelection()
+          ?.toString()
+          .split(separator)
+          .map((part) => part.trim())
+          .join(isWindowsPath(path) ? '\\' : '/') || '',
+      );
+    },
+    [path],
+  );
+
   return (
-    <div className="flex items-center body-s flex-shrink-0 gap-1.5">
+    <div
+      className="flex items-center body-s flex-shrink-0 gap-1.5"
+      onCopy={onCopy}
+    >
       {/* this div is hidden and used only to calculate the full width of breadcrumbs before truncation */}
       <div
         className="fixed top-full opacity-0 left-0 flex flex-nowrap items-center body-s flex-shrink-0 gap-1.5 select-none"

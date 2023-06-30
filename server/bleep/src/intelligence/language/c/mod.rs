@@ -5,6 +5,14 @@ pub static C: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["c", "h"],
     grammar: tree_sitter_c::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
+    hoverable_query: MemoizedQuery::new(
+        r"
+        [(identifier)
+        (field_identifier)
+        (statement_identifier)
+        (type_identifier)] @hoverable
+        ",
+    ),
     namespaces: &[&[
         // imports
         "header",

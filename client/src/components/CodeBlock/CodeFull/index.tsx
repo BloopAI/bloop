@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useContext,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -11,7 +12,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
-import { Range, TokenInfoItem } from '../../../types/results';
+import { Range } from '../../../types/results';
 import {
   calculatePopupPositionInsideContainer,
   copyToClipboard,
@@ -20,10 +21,12 @@ import { Commit } from '../../../types';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import SearchOnPage from '../../SearchOnPage';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
-import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
 import { Feather, Info, Sparkle } from '../../../icons';
 import { ChatContext } from '../../../context/chatContext';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
+import PortalContainer from '../../PortalContainer';
+import { UIContext } from '../../../context/uiContext';
 import CodeContainer from './CodeContainer';
 
 export interface BlameLine {
@@ -53,7 +56,7 @@ type Props = {
   repoName: string;
   containerWidth: number;
   containerHeight: number;
-  isOnResultPage?: boolean;
+  closePopup?: () => void;
 };
 
 const CodeFull = ({
@@ -67,7 +70,7 @@ const CodeFull = ({
   repoName,
   containerWidth,
   containerHeight,
-  isOnResultPage,
+  closePopup,
 }: Props) => {
   const [foldableRanges, setFoldableRanges] = useState<Record<number, number>>(
     {},
@@ -94,7 +97,6 @@ const CodeFull = ({
     scrollLineNumber || undefined,
   );
   const ref = useRef<HTMLPreElement>(null);
-  useOnClickOutside(ref, () => setCurrentSelection([]));
 
   const [popupPosition, setPopupPosition] = useState<{
     top: number;
@@ -107,12 +109,14 @@ const CodeFull = ({
     setConversation,
     setThreadId,
   } = useContext(ChatContext);
+  const { setRightPanelOpen } = useContext(UIContext);
   const { navigateRepoPath } = useAppNavigation();
 
   const [isSearchActive, setSearchActive] = useState(false);
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const [currentResult, setCurrentResult] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
 
   useEffect(() => {
     const toggleSearch = (e: KeyboardEvent) => {
@@ -215,40 +219,36 @@ const CodeFull = ({
   const tokens = useMemo(() => tokenizeCode(code, lang), [code, lang]);
 
   const onRefDefClick = useCallback(
-    (item: TokenInfoItem, filePath: string) => {
+    (lineNum: number, filePath: string) => {
       if (filePath === relativePath) {
-        setScrollToIndex([item.line, item.line]);
+        setScrollToIndex([lineNum, lineNum]);
       } else {
         navigateRepoPath(repoName, filePath, {
-          scroll_line_index: `${item.line}_${item.line}`,
+          scroll_line_index: `${lineNum}_${lineNum}`,
         });
       }
     },
     [repoName, relativePath],
   );
 
-  const handleSearch = useCallback(
-    (value: string) => {
-      setSearchTerm(value);
-      if (value === '') {
-        setSearchResults([]);
-        setCurrentResult(0);
-        return;
+  useEffect(() => {
+    if (deferredSearchTerm === '') {
+      setSearchResults([]);
+      setCurrentResult(0);
+      return;
+    }
+    const lines = code.split('\n');
+    const results = lines.reduce(function (prev: number[], cur, i) {
+      if (cur.toLowerCase().includes(deferredSearchTerm.toLowerCase())) {
+        prev.push(i);
       }
-      const lines = code.split('\n');
-      const results = lines.reduce(function (prev: number[], cur, i) {
-        if (cur.toLowerCase().includes(value.toLowerCase())) {
-          prev.push(i);
-        }
-        return prev;
-      }, []);
-      const currentlyHighlightedLine = searchResults[currentResult - 1];
-      const indexInNewResults = results.indexOf(currentlyHighlightedLine);
-      setSearchResults(results);
-      setCurrentResult(indexInNewResults >= 0 ? indexInNewResults + 1 : 1);
-    },
-    [code, searchResults, currentResult],
-  );
+      return prev;
+    }, []);
+    const currentlyHighlightedLine = searchResults[currentResult - 1];
+    const indexInNewResults = results.indexOf(currentlyHighlightedLine);
+    setSearchResults(results);
+    setCurrentResult(indexInNewResults >= 0 ? indexInNewResults + 1 : 1);
+  }, [deferredSearchTerm]);
 
   useEffect(() => {
     if (searchResults[currentResult - 1]) {
@@ -325,53 +325,52 @@ const CodeFull = ({
 
   const calculatePopupPosition = useCallback(
     (top: number, left: number) => {
-      const container = document.getElementById('result-full-code-container');
+      let container = findElementInCurrentTab('.code-modal-container');
+      if (!container) {
+        container = findElementInCurrentTab('#result-full-code-container');
+      }
       if (!container) {
         return null;
       }
       const containerRect = container?.getBoundingClientRect();
-      if (
-        isOnResultPage &&
-        (currentSelection.length == 1 || currentSelection.length == 2)
-      ) {
-        if (currentSelection.length == 1) {
-          setCurrentSelection((prev) => [[0, 0], prev[0]!]);
-        }
-
+      if (currentSelection.length !== 0) {
         return calculatePopupPositionInsideContainer(top, left, containerRect);
       }
       return null;
     },
-    [isOnResultPage, currentSelection],
+    [currentSelection],
   );
 
   useEffect(() => {
     const handleWindowMouseUp = (e: MouseEvent) => {
-      const text = window.getSelection()?.toString();
       const { clientY, clientX } = e;
 
-      if (text) {
-        setPopupPosition(calculatePopupPosition(clientY, clientX));
-      } else {
-        setPopupPosition(null);
-      }
+      setTimeout(() => {
+        const text = window.getSelection()?.toString();
+        if (text) {
+          setPopupPosition(calculatePopupPosition(clientY, clientX));
+        } else {
+          setPopupPosition(null);
+          setCurrentSelection([]);
+        }
+      }, 50);
     };
 
-    window.addEventListener('mouseup', handleWindowMouseUp);
+    codeRef.current?.addEventListener('mouseup', handleWindowMouseUp);
 
     return () => {
-      window.removeEventListener('mouseup', handleWindowMouseUp);
+      codeRef.current?.removeEventListener('mouseup', handleWindowMouseUp);
     };
   }, [calculatePopupPosition]);
 
   return (
     <div className="code-full-view w-full text-xs gap-10 flex flex-row relative">
       <SearchOnPage
-        handleSearch={handleSearch}
+        handleSearch={setSearchTerm}
         isSearchActive={isSearchActive}
         resultNum={searchResults.length}
         onCancel={() => {
-          handleSearch('');
+          setSearchTerm('');
           setSearchActive(false);
           setScrollToIndex(undefined);
         }}
@@ -380,7 +379,10 @@ const CodeFull = ({
         searchValue={searchTerm}
         containerClassName="absolute top-0 -right-4"
       />
-      <div className={`${!minimap ? 'w-full' : ''}`} ref={codeRef}>
+      <div
+        className={`${!minimap ? 'w-full' : ''} overflow-auto`}
+        ref={codeRef}
+      >
         <pre
           className={`prism-code language-${lang} bg-bg-sub my-0 w-full h-full`}
           onCopy={handleCopy}
@@ -400,87 +402,96 @@ const CodeFull = ({
             blameLines={blameLines}
             toggleBlock={toggleBlock}
             setCurrentSelection={setCurrentSelection}
-            searchTerm={searchTerm}
+            searchTerm={deferredSearchTerm}
             onRefDefClick={onRefDefClick}
             scrollToIndex={scrollToIndex}
             highlightColor={highlightColor}
           />
-          <AnimatePresence>
-            {popupPosition && (
-              <motion.div
-                className="fixed"
-                style={popupPosition}
-                initial={{ opacity: 0, transform: 'translateY(1rem)' }}
-                animate={{ transform: 'translateY(0rem)', opacity: 1 }}
-                exit={{ opacity: 0, transform: 'translateY(1rem)' }}
-              >
-                <div className="bg-bg-base border border-bg-border rounded-md shadow-high flex overflow-hidden select-none">
-                  {codeToCopy.length > 1500 ? (
-                    <button
-                      className="h-8 flex items-center justify-center gap-1 px-2 caption text-label-muted"
-                      disabled
-                    >
-                      <div className="w-4 h-4">
-                        <Info raw />
-                      </div>
-                      Select less code
-                    </button>
-                  ) : (
-                    <>
+          <PortalContainer>
+            <AnimatePresence>
+              {popupPosition && (
+                <motion.div
+                  className="fixed z-[120]"
+                  style={popupPosition}
+                  initial={{ opacity: 0, transform: 'translateY(1rem)' }}
+                  animate={{ transform: 'translateY(0rem)', opacity: 1 }}
+                  exit={{ opacity: 0, transform: 'translateY(1rem)' }}
+                >
+                  <div className="bg-bg-base border border-bg-border rounded-md shadow-high flex overflow-hidden select-none">
+                    {codeToCopy.split('\n').length > 20 ? (
                       <button
-                        onClick={() => {
-                          setChatOpen(true);
-                          setPopupPosition(null);
-                          setThreadId('');
-                          setConversation([]);
-                          setSelectedLines([
-                            currentSelection[0]![0],
-                            currentSelection[1]![0],
-                          ]);
-                          setTimeout(
-                            () =>
-                              document
-                                .getElementById('question-input')
-                                ?.focus(),
-                            300,
-                          );
-                        }}
-                        className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover border-r border-bg-border caption text-label-title"
+                        className="h-8 flex items-center justify-center gap-1 px-2 caption text-label-muted"
+                        disabled
                       >
                         <div className="w-4 h-4">
-                          <Feather raw />
+                          <Info raw />
                         </div>
-                        Ask bloop
+                        Select less code
                       </button>
-                      <button
-                        onClick={() => {
-                          setConversation([]);
-                          setThreadId('');
-                          setSelectedLines([
-                            currentSelection[0]![0],
-                            currentSelection[1]![0],
-                          ]);
-                          setSubmittedQuery(
-                            `#explain_${relativePath}:${
-                              currentSelection[0]![0]
-                            }-${currentSelection[1]![0]}`,
-                          );
-                          setChatOpen(true);
-                          setPopupPosition(null);
-                        }}
-                        className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover caption text-label-title"
-                      >
-                        <div className="w-4 h-4">
-                          <Sparkle raw />
-                        </div>
-                        Explain
-                      </button>
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                    ) : (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            console.log('here');
+                            setChatOpen(true);
+                            setPopupPosition(null);
+                            setRightPanelOpen(false);
+                            setThreadId('');
+                            setConversation([]);
+                            setSelectedLines([
+                              currentSelection[0]![0],
+                              currentSelection[1]![0],
+                            ]);
+                            closePopup?.();
+                            setTimeout(
+                              () =>
+                                findElementInCurrentTab(
+                                  '#question-input',
+                                )?.focus(),
+                              300,
+                            );
+                          }}
+                          className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover border-r border-bg-border caption text-label-title"
+                        >
+                          <div className="w-4 h-4">
+                            <Feather raw />
+                          </div>
+                          Ask bloop
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConversation([]);
+                            setThreadId('');
+                            setSelectedLines([
+                              currentSelection[0]![0],
+                              currentSelection[1]![0],
+                            ]);
+                            setRightPanelOpen(false);
+                            setSubmittedQuery(
+                              `#explain_${relativePath}:${
+                                currentSelection[0]![0]
+                              }-${currentSelection[1]![0]}`,
+                            );
+                            setChatOpen(true);
+                            setPopupPosition(null);
+                            closePopup?.();
+                          }}
+                          className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover caption text-label-title"
+                        >
+                          <div className="w-4 h-4">
+                            <Sparkle raw />
+                          </div>
+                          Explain
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </PortalContainer>
         </pre>
       </div>
       {minimap && (

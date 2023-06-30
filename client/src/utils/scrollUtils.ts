@@ -1,5 +1,6 @@
 import { Align } from 'react-window';
 import { Comment } from '../pages/ConversationResult/CodeAnotation';
+import { findElementInCurrentTab } from './domUtils';
 
 type ReactWindowProps = {
   height: number;
@@ -70,16 +71,12 @@ export const repositionAnnotationsOnScroll = (
   let previousCommentStopped = true;
   Object.values(citations).forEach((fileCite, index) => {
     fileCite.forEach((c: any) => {
-      const comment = document.querySelector(
-        `[data-active="true"] #comment-${c.i}`,
-      );
+      const comment = findElementInCurrentTab(`#comment-${c.i}`);
       if (!comment) {
         return;
       }
-      const code = document.querySelector(`[data-active="true"] #code-${c.i}`);
-      const file = document.querySelector(
-        `[data-active="true"] #file-${index}`,
-      );
+      const code = findElementInCurrentTab(`#code-${c.i}`);
+      const file = findElementInCurrentTab(`#file-${index}`);
 
       if (comment && file && comment instanceof HTMLElement) {
         const commentRect = comment.getBoundingClientRect();
@@ -98,11 +95,7 @@ export const repositionAnnotationsOnScroll = (
               Math.min(scrollTop - stickedCommentsHeight, lowestPosition),
             )
           : scrollTop - stickedCommentsHeight;
-        if (
-          maxTranslateY === lowestPosition &&
-          scrollTop > codeBottom &&
-          !previousCommentStopped
-        ) {
+        if (maxTranslateY === lowestPosition && scrollTop > codeBottom) {
           stickedCommentsHeight += commentRect.height + 12;
         }
         previousCommentStopped = maxTranslateY === lowestPosition;

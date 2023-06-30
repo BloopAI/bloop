@@ -17,6 +17,7 @@ import {
 } from '../../../types/general';
 import { conversationsCache } from '../../../services/cache';
 import { mapLoadingSteps } from '../../../mappers/conversation';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
 import ConversationListItem from './ConversationListItem';
 
 type Props = {
@@ -158,7 +159,7 @@ const AllConversations = ({
             }
             setHistoryOpen(false);
             setActive(true);
-            document.getElementById('question-input')?.focus();
+            findElementInCurrentTab('#question-input')?.focus();
           }}
         >
           <NLInput />

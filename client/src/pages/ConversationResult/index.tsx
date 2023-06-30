@@ -4,6 +4,7 @@ import PageHeader from '../../components/ResultsPageHeader';
 import { ChatContext } from '../../context/chatContext';
 import {
   ChatMessageServer,
+  FileSystemResult,
   MessageResultCite,
   MessageResultDirectory,
 } from '../../types/general';
@@ -34,9 +35,11 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
   const data = useMemo(
     () =>
       (
-        (conversationsCache[threadId]?.[recordId] ||
-          conversation[recordId]) as ChatMessageServer
-      )?.results || [],
+        (
+          (conversationsCache[threadId]?.[recordId] ||
+            conversation[recordId]) as ChatMessageServer
+        )?.results as FileSystemResult
+      )?.Filesystem || [],
     [
       (conversation[recordId] as ChatMessageServer)?.results,
       recordId,
@@ -102,41 +105,49 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
 
   return (
     <div
-      className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content"
+      className="overflow-auto w-screen"
       ref={containerRef}
       onScroll={handleScroll}
       id="results-page-container"
     >
-      {containerRef.current &&
-        containerRef.current.scrollHeight - containerRef.current.clientHeight >
-          180 &&
-        !isScrolled && (
-          <div className="fixed z-30 left-1/2 bottom-24 transform -translate-x-1/2">
-            <div
-              className={`rounded-full bg-bg-main text-label-control shadow-low caption 
+      <div className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content">
+        {containerRef.current &&
+          containerRef.current.scrollHeight -
+            containerRef.current.clientHeight >
+            180 &&
+          !isScrolled && (
+            <div className="fixed z-30 left-1/2 bottom-24 transform -translate-x-1/2">
+              <div
+                className={`rounded-full bg-bg-main text-label-control shadow-low caption 
                 flex gap-1 items-center justify-center pl-4 pr-3 py-2 select-none`}
-            >
-              More results <ChevronDown />
+              >
+                More results <ChevronDown />
+              </div>
             </div>
-          </div>
-        )}
-      <PageHeader
-        resultsNumber={data?.length}
-        showCollapseControls={false}
-        loading={false}
-      />
-      <div className="flex flex-col gap-4 pb-44">
-        <CodeAnnotation repoName={tab.repoName} citations={citations} />
-        <DirectoryAnnotation repoName={tab.repoName} citations={dirCitations} />
-        {otherBlocks.map((b, i) => {
-          if ('New' in b && b.New.code && b.New.language) {
-            return (
-              <NewCode code={b.New.code} language={b.New.language} key={i} />
-            );
-          } else if ('Modify' in b && b.Modify.diff) {
-            return <DiffCode data={b.Modify} key={i} repoName={tab.repoName} />;
-          }
-        })}
+          )}
+        <PageHeader
+          resultsNumber={data?.length}
+          showCollapseControls={false}
+          loading={false}
+        />
+        <div className="flex flex-col gap-4 pb-44">
+          <CodeAnnotation repoName={tab.repoName} citations={citations} />
+          <DirectoryAnnotation
+            repoName={tab.repoName}
+            citations={dirCitations}
+          />
+          {otherBlocks.map((b, i) => {
+            if ('New' in b && b.New.code && b.New.language) {
+              return (
+                <NewCode code={b.New.code} language={b.New.language} key={i} />
+              );
+            } else if ('Modify' in b && b.Modify.diff) {
+              return (
+                <DiffCode data={b.Modify} key={i} repoName={tab.repoName} />
+              );
+            }
+          })}
+        </div>
       </div>
     </div>
   );

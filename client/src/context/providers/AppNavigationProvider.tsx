@@ -122,6 +122,23 @@ export const AppNavigationProvider = (prop: {
     [navigatedItem],
   );
 
+  const navigateArticleResponse = useCallback(
+    (messageIndex: number, threadId: string) => {
+      if (
+        navigatedItem?.type !== 'article-response' ||
+        navigatedItem?.recordId !== messageIndex ||
+        navigatedItem?.threadId !== threadId
+      ) {
+        saveState({
+          type: 'article-response',
+          recordId: messageIndex,
+          threadId,
+        });
+      }
+    },
+    [navigatedItem],
+  );
+
   const navigateFullResult = useCallback(
     (repo: string, path: string, pathParams?: Record<string, string>) => {
       saveState({
@@ -170,6 +187,7 @@ export const AppNavigationProvider = (prop: {
         navigateHome,
         navigateForward,
         navigateConversationResults,
+        navigateArticleResponse,
         query: query || '',
       }}
     >

@@ -5,6 +5,16 @@ pub static JAVASCRIPT: TSLanguageConfig = TSLanguageConfig {
     file_extensions: &["js", "jsx"],
     grammar: tree_sitter_javascript::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
+    hoverable_query: MemoizedQuery::new(
+        r#"
+        [(identifier)
+         (property_identifier)
+         (shorthand_property_identifier)
+         (shorthand_property_identifier_pattern)
+         (private_property_identifier)
+         (statement_identifier)] @hoverable
+        "#,
+    ),
     namespaces: &[&[
         //variables
         "constant",

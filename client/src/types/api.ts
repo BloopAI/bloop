@@ -1,4 +1,5 @@
-import { SymbolType, Range } from './results';
+import { SymbolType, Range, TokenInfoType } from './results';
+import { ArticleResult, FileSystemResult } from './general';
 
 export interface RangeLine {
   byte: number;
@@ -184,9 +185,36 @@ export interface TokenInfoItem {
 }
 
 export interface TokenInfoResponse {
-  kind: 'reference' | 'definition';
-  references?: TokenInfoItem[];
-  definitions?: TokenInfoItem[];
+  data: {
+    file: string;
+    data: {
+      kind: TokenInfoType;
+      range: {
+        start: {
+          byte: number;
+          line: number;
+          column: number;
+        };
+        end: {
+          byte: number;
+          line: number;
+          column: number;
+        };
+      };
+      snippet: {
+        data: string;
+        highlights: {
+          start: number;
+          end: number;
+        }[];
+        symbols: never[];
+        line_range: {
+          start: number;
+          end: number;
+        };
+      };
+    }[];
+  }[];
 }
 
 export type AllConversationsResponse = {
@@ -199,7 +227,7 @@ export type ConversationType = {
   finished: boolean;
   search_steps: { content: string; type: string }[];
   conclusion: string;
-  results: any[];
+  results: FileSystemResult & ArticleResult;
 };
 
 export interface SuggestionsResponse {

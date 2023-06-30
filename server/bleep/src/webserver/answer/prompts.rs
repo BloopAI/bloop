@@ -31,7 +31,7 @@ pub fn functions() -> serde_json::Value {
             },
             {
                 "name": "proc",
-                "description": "Read one or more files and extract the line ranges which are relevant to the search terms.",
+                "description": "Read one or more files and extract the line ranges which are relevant to the search terms. Do not proc more than 10 files at a time.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -43,7 +43,7 @@ pub fn functions() -> serde_json::Value {
                             "type": "array",
                             "items": {
                                 "type": "integer",
-                                "description": "The indices of the paths to search."
+                                "description": "The indices of the paths to search. paths.len() <= 10"
                             }
                         }
                     },
@@ -52,10 +52,15 @@ pub fn functions() -> serde_json::Value {
             },
             {
                 "name": "none",
-                "description": "You have enough information to answer the user's query. This is the final step, and signals that you have enough information to respond to the user's query. Use this if the user has intructed you to modify some code.",
+                "description": "You have enough information to answer the user's query. This is the final step, and signals that you have enough information to respond to the user's query. Use this if the user has instructed you to modify some code.",
                 "parameters": {
                     "type": "object",
                     "properties": {
+                        "mode": {
+                            "type": "string",
+                            "enum": ["article", "filesystem"],
+                            "description": "The type of answer to provide. If the user's query is best answered with the location of one or multiple files and folders with no explanation choose filesystem. If the user's query is best answered with any explanation, or they're instructing you to write new code choose article. If the user's query is neither, choose filesystem."
+                        },
                         "paths": {
                             "type": "array",
                             "items": {
@@ -64,16 +69,15 @@ pub fn functions() -> serde_json::Value {
                             }
                         }
                     },
-                    "required": ["paths"]
+                    "required": ["mode", "paths"]
                 }
-            }
+            },
         ]
     )
 }
 
 pub fn system(paths: &Vec<String>) -> String {
-    let mut s =
-        "Your job is to choose a function that will help you answer the query.\n".to_string();
+    let mut s = "".to_string();
 
     if !paths.is_empty() {
         s.push_str("## PATHS ##\nalias, path\n");
@@ -89,11 +93,14 @@ pub fn system(paths: &Vec<String>) -> String {
 - In most cases respond with functions.code or functions.path functions before responding with functions.none
 - Do not assume the structure of the codebase, or the existence of files or folders
 - Do NOT respond with a function that you've used before with the same arguments
-- When you have enough information to answer the  user's query respond with functions.none
-- If after making a path search the query can be answered by the existance of the paths, and there are more than 5 paths, use the functions.none function
+- When you have enough information to answer the user's query respond with functions.none
+- If after making a path search the query can be answered by the existence of the paths, and there are more than 5 paths, use the functions.none function
 - Only refer to path aliases that are under the PATHS heading above
-- Respond with functions to find information related to the query, until all relevant information has been found.
+- Respond with functions to find information related to the query, until all relevant information has been found
+- If you have already called functions.code or functions.path but they did not return any relevant information, try again with a substantively different query. The terms in your new query should not overlap with terms in previous queries
 - If after attempting to gather information you are still unsure how to answer the query, respond with the functions.none function
+- If the query is a greeting, or not a question or an instruction use functions.none
+- Always use a function, even if the query is not in English
 - Always respond with a function call. Do NOT answer the question directly"#);
     s
 }
@@ -133,7 +140,7 @@ A: "#
     )
 }
 
-pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str) -> String {
+pub fn answer_filesystem_prompt(context: &str) -> String {
     struct Rule<'a> {
         title: &'a str,
         description: &'a str,
@@ -158,9 +165,9 @@ pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str)
             example: Some(r#"The path is a relative path, with no leading slash. You must generate a trailing slash, for example: server/bleep/src/webserver/. On Windows, generate backslash separated components, for example: server\bleep\src\webserver\"#),
         },
         Rule {
-            title: "Write a new code file",
-            description: "Write a new code file that satisfies the query. Do not use this to demonstrate updating an existing file.",
-            schema: "[\"new\",LANGUAGE:STRING,CODE:STRING]",
+            title: "Cite line ranges from the file",
+            description: "START LINE and END LINE should focus on the code mentioned in the COMMENT. COMMENT should be a detailed explanation.",
+            schema: "[\"cite\",PATH ALIAS:INT,COMMENT:STRING,START LINE:INT,END LINE:INT]",
             note: "This object can occur multiple times",
             example: None,
         },
@@ -174,13 +181,6 @@ For example:
 @@ -1 +1 @@
 -this is a git diff test example
 +this is a diff example"#),
-        },
-        Rule {
-            title: "Cite line ranges from the file",
-            description: "START LINE and END LINE should focus on the code mentioned in the COMMENT. COMMENT should be a detailed explanation.",
-            schema: "[\"cite\",PATH ALIAS:INT,COMMENT:STRING,START LINE:INT,END LINE:INT]",
-            note: "This object can occur multiple times",
-            example: None,
         },
         Rule {
             title: "Conclusion",
@@ -216,7 +216,9 @@ Your answer should be an array of arrays, where each element in the array is an 
 
 {output_rules_str}
 Respect these rules at all times:
+- Do not refer to paths by alias, quote the full path surrounded by single backticks. E.g. `server/bleep/src/webserver/`
 - Refer to directories by their full paths, surrounded by single backticks
+- If the query is a greeting, or not a question or an instruction just generate a conclusion
 - Your answer should always be an array of arrays, even when you only generate a conclusion
 
 #####
@@ -226,7 +228,7 @@ Examples:
 Show all the analytics events
 
 [
-  ["cite", 27, "Track 'Search' event in useAnalytics.ts", 7, 12],
+  ["cite", 27, "Track 'Search' event in `useAnalytics.ts`", 7, 12],
   ["con", "I've found three analytics events"]
 ]
 
@@ -243,15 +245,42 @@ What's the value of MAX_FILE_LEN?
   ["con": "None of files in the context contain the value of MAX_FILE_LEN"]
 ]
 
-#####
-
-{query_history}
-
-Above is the query and answer history. The user can see the previous queries and answers on their screen, but not anything else.
-Based on this history, answer the question: {query}
 
 #####
 
 Output only JSON."#
+    )
+}
+
+pub fn answer_article_prompt(context: &str) -> String {
+    format!(
+        r#"{context}Your job is to answer a query about a codebase using the information above.
+
+Provide only as much information and code as is necessary to answer the query, but be concise. Keep number of quoted lines to a minimum when possible. If you do not have enough information needed to answer the query, do not make up an answer.
+When referring to code, you must provide an example in a code block.
+
+Respect these rules at all times:
+- Do not refer to paths by alias
+- Link ALL paths AND code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, etc) by embedding them in a markdown link, with the URL corresponding to the full path, and the anchor following the form `LX` or `LX-LY`, where X represents the starting line number, and Y represents the ending line number, if the reference is more than one line.
+  - For example, to refer to lines 50 to 78 in a sentence, respond with something like: The compiler is initialized in [`src/foo.rs`](src/foo.rs#L50-L78)
+  - For example, to refer to the `new` function on a struct, respond with something like: The [`new`](src/bar.rs#L26-53) function initializes the struct
+  - For example, to refer to the `foo` field on a struct and link a single line, respond with something like: The [`foo`](src/foo.rs#L138) field contains foos.
+- Do not print out line numbers directly, only in a link
+- Do not refer to more lines than necessary when creating a line range, be precise
+- Do NOT output bare symbols. ALL symbols must include a link
+  - E.g. Do not simply write `Bar`, write [`Bar`](src/bar.rs#L100-L105).
+  - E.g. Do not simply write "Foos are functions that create `Foo` values out of thin air." Instead, write: "Foos are functions that create [`Foo`](src/foo.rs#L80-L120) values out of thin air."
+- Link all fields
+  - E.g. Do not simply write: "It has one main field: `foo`." Instead, write: "It has one main field: [`foo`](src/foo.rs#L193)."
+- Link all symbols, even when there are multiple in one sentence
+  - E.g. Do not simply write: "Bars are [`Foo`]( that return a list filled with `Bar` variants." Instead, write: "Bars are functions that return a list filled with [`Bar`](src/bar.rs#L38-L57) variants."
+- When quoting code in a code block, use the following info string format: language,path:PATH,lines:LX-LY
+  - For example, to quote lines 10 to 15 in `src/main.c`, use `c,path:src/main.c,lines:L10-L15`
+  - For example, to quote lines 154 to 190 in `index.js`, use `javascript,path:index.js,lines:L154-L190`
+- Always begin your answer with an appropriate title
+
+#####
+
+"#
     )
 }

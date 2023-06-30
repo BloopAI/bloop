@@ -19,6 +19,7 @@ import {
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { ChatContext } from '../../context/chatContext';
 import { mapLoadingSteps } from '../../mappers/conversation';
+import { findElementInCurrentTab } from '../../utils/domUtils';
 import NLInput from './NLInput';
 import ChipButton from './ChipButton';
 import AllConversations from './AllCoversations';
@@ -28,11 +29,11 @@ import DeprecatedClientModal from './DeprecatedClientModal';
 let prevEventSource: EventSource | undefined;
 
 const focusInput = () => {
-  document.getElementById('question-input')?.focus();
+  findElementInCurrentTab('#question-input')?.focus();
 };
 
 const blurInput = () => {
-  document.getElementById('question-input')?.blur();
+  findElementInCurrentTab('#question-input')?.blur();
 };
 
 const Chat = () => {
@@ -53,8 +54,12 @@ const Chat = () => {
     queryId,
     setQueryId,
   } = useContext(ChatContext);
-  const { navigateConversationResults, navigateRepoPath, navigatedItem } =
-    useContext(AppNavigationContext);
+  const {
+    navigateConversationResults,
+    navigateRepoPath,
+    navigatedItem,
+    navigateArticleResponse,
+  } = useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const chatRef = useRef(null);
@@ -96,13 +101,13 @@ const Chat = () => {
       prevEventSource = eventSource;
       setSelectedLines(null);
       let firstResultCame: boolean;
+      let conclusionCame: boolean;
       let i = -1;
       eventSource.onerror = (err) => {
         console.log('SSE error', err);
         firstResultCame = false;
         i = -1;
-        console.log('Closing SSE connection...');
-        eventSource.close();
+        stopGenerating();
         setConversation((prev) => {
           const newConversation = prev.slice(0, -1);
           const lastMessage: ChatMessage = {
@@ -167,15 +172,25 @@ const Chat = () => {
           if (data.Ok) {
             const newMessage = data.Ok;
             if (
-              newMessage.results?.length &&
-              !newMessage.conclusion &&
+              ((newMessage.results?.Filesystem?.length &&
+                !newMessage.conclusion) ||
+                newMessage.results?.Article?.length) &&
               !firstResultCame
             ) {
               setConversation((prev) => {
-                navigateConversationResults(prev.length - 1, threadId);
+                if (newMessage.mode === 'article') {
+                  setChatOpen(false);
+                  navigateArticleResponse(prev.length - 1, threadId);
+                } else {
+                  navigateConversationResults(prev.length - 1, threadId);
+                }
                 return prev;
               });
               firstResultCame = true;
+            }
+            if (newMessage.conclusion && !conclusionCame) {
+              setChatOpen(true);
+              conclusionCame = true;
             }
             setConversation((prev) => {
               const newConversation = prev?.slice(0, -1) || [];
@@ -270,9 +285,11 @@ const Chat = () => {
         return;
       }
       blurInput();
-      setSubmittedQuery(inputValue);
+      setSubmittedQuery(
+        submittedQuery === inputValue ? `${inputValue} ` : inputValue, // to trigger new search if query hasn't changed
+      );
     },
-    [inputValue, conversation],
+    [inputValue, conversation, submittedQuery],
   );
 
   const handleNewConversation = useCallback(() => {
@@ -281,7 +298,11 @@ const Chat = () => {
     setLoading(false);
     setThreadId('');
     setSubmittedQuery('');
-    if (navigatedItem?.type === 'conversation-result') {
+    setSelectedLines(null);
+    if (
+      navigatedItem?.type === 'conversation-result' ||
+      navigatedItem?.type === 'article-response'
+    ) {
       navigateRepoPath(tab.repoName);
     }
     focusInput();
@@ -347,20 +368,11 @@ const Chat = () => {
                 (conversation[conversation.length - 1] as ChatMessageServer)
                   ?.loadingSteps
               }
-              onStop={stopGenerating}
-              placeholder={
+              generationInProgress={
                 (conversation[conversation.length - 1] as ChatMessageServer)
                   ?.isLoading
-                  ? (conversation[conversation.length - 1] as ChatMessageServer)
-                      ?.loadingSteps?.[
-                      (
-                        conversation[
-                          conversation.length - 1
-                        ] as ChatMessageServer
-                      )?.loadingSteps?.length - 1
-                    ].displayText
-                  : undefined
               }
+              onStop={stopGenerating}
               selectedLines={selectedLines}
               setSelectedLines={setSelectedLines}
             />
