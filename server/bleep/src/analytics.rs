@@ -149,7 +149,7 @@ impl RudderHub {
         if let Some(options) = &self.options {
             if let Some(filter) = &options.event_filter {
                 if let Some(ev) = (filter)(event) {
-                    if let Err(err) = self.client.send(&Message::Track(Track {
+                    self.send(Message::Track(Track {
                         user_id: Some(self.tracking_id(user.login())),
                         event: "openai query".to_owned(),
                         properties: Some(json!({
@@ -161,11 +161,7 @@ impl RudderHub {
                             "package_metadata": options.package_metadata,
                         })),
                         ..Default::default()
-                    })) {
-                        warn!(?err, "failed to send analytics event");
-                    } else {
-                        info!("sent analytics event...");
-                    }
+                    }));
                 }
             }
         }
