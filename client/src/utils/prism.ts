@@ -2,7 +2,7 @@
  * https://github.com/FormidableLabs/prism-react-renderer/blob/master/src/utils/normalizeTokens.js
  * */
 
-import Prism from 'prismjs';
+import Prism, { TokenStream } from 'prismjs';
 import 'prismjs/components/prism-typescript.min';
 import 'prismjs/components/prism-jsx.min';
 import 'prismjs/components/prism-tsx.min';
@@ -145,7 +145,7 @@ const normalizeTokens = (
     while (
       (i = tokenArrIndexStack[stackIndex]++) < tokenArrSizeStack[stackIndex]
     ) {
-      let content;
+      let content: string | TokenStream = '';
       let types = typeArrStack[stackIndex];
 
       const tokenArr = tokenArrStack[stackIndex];
