@@ -30,6 +30,7 @@ pub use schema::{Embedding, Payload};
 
 const COLLECTION_NAME: &str = "documents";
 const SCORE_THRESHOLD: f32 = 0.3;
+const EMBEDDING_DIM: usize = 384;
 
 #[derive(Error, Debug)]
 pub enum SemanticError {
@@ -149,7 +150,7 @@ fn collection_config() -> CreateCollection {
         collection_name: COLLECTION_NAME.to_string(),
         vectors_config: Some(VectorsConfig {
             config: Some(vectors_config::Config::Params(VectorParams {
-                size: 384,
+                size: EMBEDDING_DIM as u64,
                 distance: Distance::Cosine.into(),
                 ..Default::default()
             })),
@@ -396,8 +397,9 @@ impl Semantic {
                     .collect::<Vec<_>>()
             })?;
 
-        // TODO: Deduplicate with respect to all vectors
-        let target_vector = vectors.first().unwrap().clone();
+        // deduplicate with mmr with respect to the mean of query vectors
+        // TODO: implement a more robust multi-vector deduplication strategy
+        let target_vector = mean_pool(vectors);
         Ok(deduplicate_snippets(results, target_vector, limit))
     }
 
@@ -627,6 +629,19 @@ fn norm(a: &[f32]) -> f32 {
 
 fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     dot(a, b) / (norm(a) * norm(b))
+}
+
+// Calculate the element-wise mean of the embeddings
+fn mean_pool(embeddings: Vec<Vec<f32>>) -> Vec<f32> {
+    let len = embeddings.len() as f32;
+    let mut result = vec![0.0; EMBEDDING_DIM];
+    for embedding in embeddings {
+        for (i, v) in embedding.iter().enumerate() {
+            result[i] += v;
+        }
+    }
+    result.iter_mut().for_each(|v| *v /= len);
+    result
 }
 
 // returns a list of indices to preserve from `snippets`

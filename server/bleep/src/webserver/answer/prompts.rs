@@ -289,7 +289,7 @@ pub fn hypothetical_document_prompt(query: &str) -> String {
     format!(
         r#"Write three code snippets that could hypothetically be returned by a code search engine as the answer to the query: {query}
 
-- All three snippets should be written in any one of these languages: [Rust, Typescript, TSX, YAML]
+- Write these snippets in a variety of programming languages
 - The snippets should not be too similar to one another
 - Each snippet should be between 5 and 10 lines long
 - Surround the snippets in triple backticks
