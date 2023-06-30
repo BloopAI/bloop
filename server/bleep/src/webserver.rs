@@ -1,6 +1,11 @@
 use crate::{env::Feature, Application};
 
-use axum::{http::StatusCode, response::IntoResponse, routing::get, Extension, Json};
+use axum::{
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{get, post},
+    Extension, Json,
+};
 use std::{borrow::Cow, net::SocketAddr};
 use tower::Service;
 use tower_http::services::{ServeDir, ServeFile};
@@ -69,7 +74,8 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route(
             "/answer/conversations/:thread_id",
             get(answer::conversations::thread),
-        );
+        )
+        .route("/answer/vote", post(answer::vote));
 
     if app.env.allow(Feature::AnyPathScan) {
         api = api.route("/repos/scan", get(repos::scan_local));

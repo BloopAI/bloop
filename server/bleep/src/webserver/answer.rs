@@ -16,11 +16,12 @@ use axum::{
         sse::{self, Sse},
         IntoResponse,
     },
-    Extension,
+    Extension, Json,
 };
 use futures::{future::Either, stream, StreamExt, TryStreamExt};
 use reqwest::StatusCode;
 use secrecy::ExposeSecret;
+use serde_json::json;
 use tiktoken_rs::CoreBPE;
 use tokio::sync::mpsc::Sender;
 use tracing::{debug, info, trace, warn};
@@ -44,6 +45,37 @@ mod response;
 use response::{Exchange, SearchResult, SearchStep, Update};
 
 const TIMEOUT_SECS: u64 = 60;
+
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct Vote {
+    pub feedback: VoteFeedback,
+    pub thread_id: uuid::Uuid,
+    pub query_id: uuid::Uuid,
+    pub repo_ref: Option<RepoRef>,
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "lowercase", tag = "type")]
+pub enum VoteFeedback {
+    Positive,
+    Negative { feedback: String },
+}
+
+pub(super) async fn vote(
+    Extension(app): Extension<Application>,
+    Extension(user): Extension<User>,
+    Json(params): Json<Vote>,
+) {
+    app.track_query(
+        &user,
+        &QueryEvent {
+            query_id: params.query_id,
+            thread_id: params.thread_id,
+            repo_ref: params.repo_ref,
+            data: EventData::output_stage("vote").with_payload("feedback", params.feedback),
+        },
+    );
+}
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Params {
@@ -206,8 +238,14 @@ pub(super) async fn _handle(
         ctx.req_complete = true;
     };
 
-    let thread_stream = futures::stream::once(async move {
-        Ok(sse::Event::default().data(params.thread_id.to_string()))
+    let init_stream = futures::stream::once(async move {
+        Ok(sse::Event::default()
+            .json_data(json!({
+                "thread_id": params.thread_id.to_string(),
+                "query_id": query_id,
+            }))
+            // This should never happen, so we force an unwrap.
+            .expect("failed to serialize initialization object"))
     });
 
     // We know the stream is unwind safe as it doesn't use synchronization primitives like locks.
@@ -222,7 +260,7 @@ pub(super) async fn _handle(
 
     let done_stream = futures::stream::once(async { Ok(sse::Event::default().data("[DONE]")) });
 
-    let stream = thread_stream.chain(answer_stream).chain(done_stream);
+    let stream = init_stream.chain(answer_stream).chain(done_stream);
 
     Ok(Sse::new(Box::pin(stream)))
 }
@@ -544,9 +582,11 @@ impl Conversation {
             serde_json::from_value::<Vec<llm_gateway::api::Function>>(prompts::functions())
                 .unwrap();
 
+        let trimmed_history = self.trimmed_history()?;
+
         let raw_response = ctx
             .llm_gateway
-            .chat(&self.trimmed_history()?, Some(&functions))
+            .chat(&trimmed_history, Some(&functions))
             .await?
             .try_fold(
                 llm_gateway::api::FunctionCall::default(),
@@ -561,7 +601,12 @@ impl Conversation {
             .await?;
 
         ctx.track_query(
-            EventData::output_stage("llm_reply").with_payload("raw_response", &raw_response),
+            EventData::output_stage("llm_reply")
+                .with_payload("full_history", &self.llm_history)
+                .with_payload("trimmed_history", &trimmed_history)
+                .with_payload("last_message", self.llm_history.back())
+                .with_payload("functions", &functions)
+                .with_payload("raw_response", &raw_response),
         );
 
         let action = Action::deserialize_gpt(&raw_response)?;

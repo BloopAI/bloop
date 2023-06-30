@@ -81,4 +81,8 @@ impl Environment {
     pub(crate) fn allow(&self, f: Feature) -> bool {
         0 < self.0 as u64 & f as u64
     }
+
+    pub fn is_cloud_instance(&self) -> bool {
+        self.allow(GithubInstallation)
+    }
 }

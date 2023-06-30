@@ -141,7 +141,9 @@ const AllConversations = ({
         <div className="flex-1 px-4 py-2 overflow-auto pb-10">
           <Conversation
             conversation={openItem}
-            searchId={openThreadId}
+            threadId={openThreadId}
+            queryId={''}
+            repoRef={repoRef}
             isLoading={false}
             isHistory
           />

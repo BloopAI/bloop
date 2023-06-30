@@ -51,6 +51,8 @@ const Chat = () => {
     setSelectedLines,
     threadId,
     setThreadId,
+    queryId,
+    setQueryId,
   } = useContext(ChatContext);
   const {
     navigateConversationResults,
@@ -146,7 +148,9 @@ const Chat = () => {
         }
         i++;
         if (i === 0) {
-          setThreadId(ev.data);
+          const data = JSON.parse(ev.data);
+          setThreadId(data.thread_id);
+          setQueryId(data.query_id);
           return;
         }
         if (ev.data === '[DONE]') {
@@ -347,7 +351,9 @@ const Chat = () => {
           {!!conversation.length && isChatOpen && (
             <Conversation
               conversation={conversation}
-              searchId={threadId}
+              threadId={threadId}
+              queryId={queryId}
+              repoRef={tab.key}
               isLoading={isLoading}
             />
           )}

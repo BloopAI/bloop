@@ -264,8 +264,22 @@ impl Application {
 
     fn track_query(&self, user: &webserver::middleware::User, event: &analytics::QueryEvent) {
         if let Some(analytics) = self.analytics.as_ref() {
-            tokio::task::block_in_place(|| analytics.track_query(user, event.clone()))
+            analytics.track_query(user, event.clone());
         }
+    }
+
+    /// Run a closure over the current `analytics` instance, if it exists.
+    fn with_analytics<R>(&self, f: impl FnOnce(&Arc<analytics::RudderHub>) -> R) -> Option<R> {
+        self.analytics.as_ref().map(f)
+    }
+
+    fn org_name(&self) -> Option<String> {
+        self.credentials
+            .github()
+            .and_then(|state| match state.auth {
+                remotes::github::Auth::App { org, .. } => Some(org),
+                _ => None,
+            })
     }
 
     fn write_index(&self) -> background::BoundSyncQueue {

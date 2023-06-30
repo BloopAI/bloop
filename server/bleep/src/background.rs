@@ -166,9 +166,12 @@ impl SyncQueue {
 }
 
 impl BoundSyncQueue {
-    /// Enqueue repos for syncing which aren't already being synced or
-    /// in the queue.
-    pub(crate) async fn sync_and_index(self, repositories: Vec<RepoRef>) {
+    /// Enqueue repos for syncing which aren't already being synced or in the queue.
+    ///
+    /// Returns the number of new repositories queued for syncing.
+    pub(crate) async fn sync_and_index(self, repositories: Vec<RepoRef>) -> usize {
+        let mut num_queued = 0;
+
         for reporef in repositories {
             if self.1.queue.contains(&reporef).await || self.1.active.contains(&reporef) {
                 continue;
@@ -177,7 +180,10 @@ impl BoundSyncQueue {
             info!(%reporef, "queueing for sync");
             let handle = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone());
             self.1.queue.push(handle).await;
+            num_queued += 1;
         }
+
+        num_queued
     }
 
     pub(crate) async fn remove(self, reporef: RepoRef) -> Option<()> {

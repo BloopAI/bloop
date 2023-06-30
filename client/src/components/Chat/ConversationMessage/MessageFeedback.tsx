@@ -2,8 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import React, { useCallback, useContext, useState } from 'react';
 import { Unlike } from '../../../icons';
 import Button from '../../Button';
-import { saveUpvote } from '../../../services/api';
-import useAnalytics from '../../../hooks/useAnalytics';
+import { upvoteAnswer } from '../../../services/api';
 import { DeviceContext } from '../../../context/deviceContext';
 import UpvoteBtn from '../FeedbackBtns/Upvote';
 import DownvoteBtn from '../FeedbackBtns/Downvote';
@@ -12,9 +11,9 @@ type Props = {
   showInlineFeedback: boolean;
   isHistory?: boolean;
   scrollToBottom?: () => void;
-  query: string;
-  searchId: string;
-  message?: string;
+  threadId: string;
+  queryId: string;
+  repoRef: string;
   error: boolean;
 };
 
@@ -22,9 +21,9 @@ const MessageFeedback = ({
   showInlineFeedback,
   isHistory,
   scrollToBottom,
-  query,
-  searchId,
-  message,
+  threadId,
+  queryId,
+  repoRef,
   error,
 }: Props) => {
   const [isUpvote, setIsUpvote] = useState(false);
@@ -32,7 +31,6 @@ const MessageFeedback = ({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [comment, setComment] = useState('');
-  const { trackUpvote } = useAnalytics();
   const { envConfig } = useContext(DeviceContext);
 
   const handleUpvote = useCallback(
@@ -46,30 +44,20 @@ const MessageFeedback = ({
         }, 500); // to play animation
       }
       if (isUpvote) {
-        trackUpvote(isUpvote, query, message || '', searchId);
-        return saveUpvote({
-          unique_id: envConfig.tracking_id || '',
-          is_upvote: isUpvote,
-          query: query,
-          snippet_id: searchId,
-          text: message || '',
-        });
+        return upvoteAnswer(threadId, queryId, repoRef, { type: 'positive' });
       }
     },
-    [showInlineFeedback, envConfig.tracking_id, searchId],
+    [showInlineFeedback, envConfig.tracking_id, threadId, queryId, repoRef],
   );
 
   const handleSubmit = useCallback(() => {
-    trackUpvote(isUpvote, query, message || '', searchId, comment);
     setIsSubmitted(true);
-    return saveUpvote({
-      unique_id: envConfig.tracking_id || '',
-      is_upvote: isUpvote,
-      query: query,
-      snippet_id: searchId,
-      text: comment,
+    setTimeout(() => scrollToBottom?.(), 150);
+    return upvoteAnswer(threadId, queryId, repoRef, {
+      type: 'negative',
+      feedback: comment,
     });
-  }, [comment, isUpvote, searchId]);
+  }, [comment, isUpvote, threadId, queryId, repoRef]);
 
   return (
     <>
@@ -120,9 +108,9 @@ const MessageFeedback = ({
       <AnimatePresence>
         {showInlineFeedback && showCommentInput && !isSubmitted && (
           <motion.div
-            className="w-full flex flex-col gap-4 bg-chat-bg-base border border-chat-bg-border rounded-lg"
-            initial={{ height: '23.625rem' }}
-            animate={{ height: '23.625rem' }}
+            className="w-full flex flex-col gap-4 bg-chat-bg-base border border-chat-bg-border rounded-lg mt-3"
+            initial={{ height: '9.625rem' }}
+            animate={{ height: '9.625rem' }}
             exit={{ height: '0rem' }}
             transition={{ duration: 0.15 }}
           >

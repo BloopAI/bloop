@@ -16,6 +16,7 @@ export const ChatContextProvider = ({ children }: PropsWithChildren<Props>) => {
     null,
   );
   const [threadId, setThreadId] = useState('');
+  const [queryId, setQueryId] = useState('');
 
   const contextValue = useMemo(
     () => ({
@@ -33,6 +34,8 @@ export const ChatContextProvider = ({ children }: PropsWithChildren<Props>) => {
       setSelectedLines,
       threadId,
       setThreadId,
+      queryId,
+      setQueryId,
     }),
     [
       conversation,
@@ -42,6 +45,7 @@ export const ChatContextProvider = ({ children }: PropsWithChildren<Props>) => {
       submittedQuery,
       selectedLines,
       threadId,
+      queryId,
     ],
   );
   return (
