@@ -87,6 +87,7 @@ pub mod api {
         pub model: Option<String>,
         #[serde(default)]
         pub extra_stop_sequences: Vec<String>,
+        pub session_reference_id: Option<String>,
     }
 
     #[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
@@ -178,6 +179,7 @@ pub struct Client {
     pub frequency_penalty: Option<f32>,
     pub provider: api::Provider,
     pub model: Option<String>,
+    pub session_reference_id: Option<String>,
 }
 
 impl Client {
@@ -194,6 +196,7 @@ impl Client {
             presence_penalty: None,
             frequency_penalty: None,
             model: None,
+            session_reference_id: None,
         }
     }
 
@@ -210,6 +213,11 @@ impl Client {
 
     pub fn bearer(mut self, bearer: impl Into<Option<String>>) -> Self {
         self.bearer_token = bearer.into();
+        self
+    }
+
+    pub fn session_reference_id(mut self, session_reference_id: String) -> Self {
+        self.session_reference_id = Some(session_reference_id);
         self
     }
 
@@ -289,6 +297,7 @@ impl Client {
                     provider: self.provider,
                     model: self.model.clone(),
                     extra_stop_sequences: vec![],
+                    session_reference_id: self.session_reference_id.clone(),
                 })
             })
             // We don't have a `Stream` body so this can't fail.
