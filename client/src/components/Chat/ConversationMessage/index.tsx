@@ -139,7 +139,7 @@ const ConversationMessage = ({
             className={`relative group-custom bg-chat-bg-shade mt-3 flex items-start p-4 gap-3 border border-chat-bg-divider rounded-lg`}
           >
             <div className="relative">
-              <div className="w-6 h-6 rounded-full bg-chat-bg-border overflow-hidden flex items-center justify-center">
+              <div className="w-6 h-6 rounded-full bg-chat-bg-border overflow-hidden flex items-center justify-center select-none">
                 {author === ChatMessageAuthor.User ? (
                   <img src={envConfig.github_user?.avatar_url} alt="avatar" />
                 ) : (

@@ -22,6 +22,8 @@ type ContextType = {
   tab: { key: string; name: string; repoName: string };
   theme: Theme;
   setTheme: (s: Theme) => void;
+  isPromptGuideOpen: boolean;
+  setPromptGuideOpen: (b: boolean) => void;
 };
 
 export const UIContext = createContext<ContextType>({
@@ -42,6 +44,8 @@ export const UIContext = createContext<ContextType>({
   setShouldShowWelcome: () => {},
   isRightPanelOpen: false,
   setRightPanelOpen: () => {},
+  isPromptGuideOpen: false,
+  setPromptGuideOpen: () => {},
   tab: { key: 'initial', name: 'Home', repoName: '' },
   theme: 'system',
   setTheme: () => {},

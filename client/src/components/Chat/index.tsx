@@ -365,8 +365,29 @@ const Chat = () => {
               onChange={(e) => setInputValue(e.target.value)}
               isStoppable={isLoading}
               loadingSteps={
-                (conversation[conversation.length - 1] as ChatMessageServer)
-                  ?.loadingSteps
+                conversation[conversation.length - 1]?.author ===
+                ChatMessageAuthor.Server
+                  ? [
+                      ...(
+                        conversation[
+                          conversation.length - 1
+                        ] as ChatMessageServer
+                      ).loadingSteps,
+                      ...((
+                        conversation[
+                          conversation.length - 1
+                        ] as ChatMessageServer
+                      )?.results?.Article?.length
+                        ? [
+                            {
+                              displayText: 'Responding...',
+                              content: '',
+                              type: '',
+                            },
+                          ]
+                        : []),
+                    ]
+                  : undefined
               }
               generationInProgress={
                 (conversation[conversation.length - 1] as ChatMessageServer)

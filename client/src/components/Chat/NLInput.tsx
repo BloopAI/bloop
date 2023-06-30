@@ -1,6 +1,7 @@
 import React, {
   ChangeEvent,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -11,12 +12,8 @@ import ClearButton from '../ClearButton';
 import Tooltip from '../Tooltip';
 import { ChatLoadingStep } from '../../types/general';
 import LiteLoader from '../Loaders/LiteLoader';
-import PromptGuidePopup from '../PromptGuidePopup';
-import {
-  getPlainFromStorage,
-  PROMPT_GUIDE_DONE,
-  savePlainToStorage,
-} from '../../services/storage';
+import { getPlainFromStorage, PROMPT_GUIDE_DONE } from '../../services/storage';
+import { UIContext } from '../../context/uiContext';
 import InputLoader from './InputLoader';
 
 type Props = {
@@ -48,7 +45,7 @@ const NLInput = ({
 }: Props) => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setComposition] = useState(false);
-  const [isPromptGuideOpen, setPromptGuideOpen] = useState(false);
+  const { setPromptGuideOpen } = useContext(UIContext);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -87,11 +84,6 @@ const NLInput = ({
     }
   }, []);
 
-  const handlePromptGuideClose = useCallback(() => {
-    setPromptGuideOpen(false);
-    savePlainToStorage(PROMPT_GUIDE_DONE, 'true');
-  }, []);
-
   return (
     <div
       className={`w-full flex items-start gap-2 rounded-lg 
@@ -102,10 +94,6 @@ const NLInput = ({
         : 'bg-chat-bg-base hover:text-label-title hover:border-chat-bg-border-hover'
     } transition-all ease-out duration-150 flex-grow-0 relative`}
     >
-      <PromptGuidePopup
-        isOpen={isPromptGuideOpen}
-        onClose={handlePromptGuideClose}
-      />
       {shouldShowLoader && <InputLoader loadingSteps={loadingSteps!} />}
       <div className="pt-4.5">
         {isStoppable ? (
