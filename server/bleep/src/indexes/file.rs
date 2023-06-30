@@ -429,7 +429,7 @@ impl File {
         let last_commit = repo_metadata.last_commit_unix_secs;
 
         match dir_entry {
-            _ if is_cache_fresh(cache, &tantivy_hash, &entry_pathbuf, &dir_entry) => {
+            _ if is_cache_fresh(cache, &tantivy_hash, &entry_pathbuf) => {
                 info!("fresh; skipping");
                 return Ok(());
             }
@@ -650,13 +650,8 @@ impl RepoFile {
     }
 }
 
-#[tracing::instrument(skip(cache, dir_entry))]
-fn is_cache_fresh(
-    cache: &RepoCacheSnapshot,
-    unique_hash: &str,
-    entry_pathbuf: &PathBuf,
-    dir_entry: &RepoDirEntry,
-) -> bool {
+#[tracing::instrument(skip(cache))]
+fn is_cache_fresh(cache: &RepoCacheSnapshot, unique_hash: &str, entry_pathbuf: &PathBuf) -> bool {
     match cache.entry(unique_hash.into()) {
         Entry::Occupied(mut val) => {
             // skip processing if contents are up-to-date in the cache

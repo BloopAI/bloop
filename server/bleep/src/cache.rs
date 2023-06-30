@@ -18,7 +18,7 @@ use crate::{
 
 use super::db::SqlDb;
 
-#[derive(serde::Serialize, serde::Deserialize, Hash, Eq)]
+#[derive(serde::Serialize, serde::Deserialize, Eq)]
 pub(crate) struct FreshValue<T> {
     // default value is `false` on deserialize
     pub(crate) fresh: bool,
@@ -49,7 +49,6 @@ impl<T> From<T> for FreshValue<T> {
     }
 }
 
-pub(crate) type Branches = Vec<String>;
 pub(crate) type RepoCacheSnapshot = Arc<scc::HashMap<String, FreshValue<()>>>;
 
 pub(crate) struct FileCache<'a> {
