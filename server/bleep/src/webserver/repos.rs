@@ -14,7 +14,7 @@ use axum::{
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::{prelude::*, middleware::User};
+use super::{middleware::User, prelude::*};
 
 #[derive(Serialize, Debug, Eq)]
 pub(super) struct Repo {
@@ -172,11 +172,7 @@ pub(super) async fn delete_by_id(
     // like this which is prone to timing issues.
     let num_repos = app.repo_pool.len();
     let found = app.write_index().remove(repo).await.is_some();
-    let num_deleted = if found {
-        1
-    } else {
-        0
-    };
+    let num_deleted = if found { 1 } else { 0 };
 
     app.with_analytics(|analytics| {
         analytics.track_synced_repos(num_repos - num_deleted, user.login(), app.org_name());
