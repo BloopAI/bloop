@@ -75,6 +75,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
         );
       },
       code({ node, inline, className, children, ...props }: CodeProps) {
+        console.log('className', className);
         const matchLang = /language-(\w+)/.exec(className || '');
         const matchPath = /path:(.+),/.exec(className || '');
         const matchLines = /lines:(.+)/.exec(className || '');
@@ -88,17 +89,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
               code={code}
               language={matchLang[1]}
               filePath={matchPath[1]}
-              onResultClick={() =>
-                openFileModal(
-                  matchPath[1],
-                  lines[0] - 1
-                    ? `${lines[0] - 1}_${
-                        lines[0] - 1 + code.split('\n').length - 1
-                      }`
-                    : undefined,
-                )
-              }
-              endLine={lines[1] - 1}
+              onResultClick={openFileModal}
               startLine={lines[0] - 1}
               repoName={tab.repoName}
             />
