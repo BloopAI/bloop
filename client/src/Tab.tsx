@@ -1,4 +1,4 @@
-import { PureComponent } from 'react';
+import React, { PureComponent } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Settings from './components/Settings';
 import { UITabType } from './types/general';
@@ -13,6 +13,7 @@ import { SearchContextProvider } from './context/providers/SearchContextProvider
 import { ChatContextProvider } from './context/providers/ChatContextProvider';
 import FileModalContainer from './pages/ResultModal/FileModalContainer';
 import { FileModalContextProvider } from './context/providers/FileModalContextProvider';
+import PromptGuidePopup from './components/PromptGuidePopup';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -44,6 +45,7 @@ class Tab extends PureComponent<Props> {
                       <Settings />
                       <ReportBugModal />
                       <FileModalContainer repoName={tab.repoName} />
+                      <PromptGuidePopup />
                     </ChatContextProvider>
                   </SearchContextProvider>
                 </AppNavigationProvider>

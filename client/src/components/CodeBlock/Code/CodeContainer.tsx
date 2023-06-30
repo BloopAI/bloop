@@ -12,6 +12,7 @@ type Props = {
   onlySymbolLines?: boolean;
   removePaddings?: boolean;
   lineHoverEffect?: boolean;
+  canWrap?: boolean;
   isDiff?: boolean;
   highlightColor?: string;
   tokensMap: TokensLine[];
@@ -31,6 +32,7 @@ const CodeContainer = ({
   symbols,
   tokensMap,
   highlightLines,
+  canWrap,
 }: Props) => {
   const getSymbols = (lineNumber: number) => {
     if (symbols?.length) {
@@ -99,7 +101,11 @@ const CodeContainer = ({
       <pre
         className={`prism-code language-${lang} text-label-base my-0 ${
           removePaddings ? '' : 'px-2'
-        } ${onlySymbolLines ? 'overflow-hidden' : ''}`}
+        } ${onlySymbolLines ? 'overflow-hidden' : ''} ${
+          canWrap && codeLines.length < 2
+            ? '!whitespace-pre-wrap'
+            : 'overflow-auto'
+        }`}
       >
         <div>{codeLines}</div>
       </pre>

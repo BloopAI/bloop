@@ -20,6 +20,7 @@ type Props = {
   removePaddings?: boolean;
   lineHoverEffect?: boolean;
   isDiff?: boolean;
+  canWrap?: boolean;
   highlightColor?: string;
   onTokensLoaded?: () => void;
 };
@@ -37,6 +38,7 @@ const Code = ({
   highlightColor,
   isDiff,
   onTokensLoaded,
+  canWrap,
 }: Props) => {
   const lang = useMemo(
     () => getPrismLanguage(language) || 'plaintext',
@@ -150,6 +152,7 @@ const Code = ({
       isDiff={isDiff}
       lineHoverEffect={lineHoverEffect}
       removePaddings={removePaddings}
+      canWrap={canWrap}
     />
   );
 };

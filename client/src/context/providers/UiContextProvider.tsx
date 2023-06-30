@@ -40,6 +40,7 @@ export const UIContextProvider = ({
     !getPlainFromStorage(ONBOARDING_DONE_KEY),
   );
   const [isRightPanelOpen, setRightPanelOpen] = useState(false);
+  const [isPromptGuideOpen, setPromptGuideOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(
     (getPlainFromStorage(THEME) as 'system' | null) || 'system',
   );
@@ -80,6 +81,8 @@ export const UIContextProvider = ({
       tab,
       theme,
       setTheme,
+      isPromptGuideOpen,
+      setPromptGuideOpen,
     }),
     [
       isSettingsOpen,
@@ -93,6 +96,7 @@ export const UIContextProvider = ({
       isRightPanelOpen,
       tab,
       theme,
+      isPromptGuideOpen,
     ],
   );
   return (
