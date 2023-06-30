@@ -2,7 +2,7 @@
  * https://github.com/FormidableLabs/prism-react-renderer/blob/master/src/utils/normalizeTokens.js
  * */
 
-import Prism from 'prismjs';
+import Prism, { TokenStream } from 'prismjs';
 import 'prismjs/components/prism-typescript.min';
 import 'prismjs/components/prism-jsx.min';
 import 'prismjs/components/prism-tsx.min';
@@ -145,7 +145,7 @@ const normalizeTokens = (
     while (
       (i = tokenArrIndexStack[stackIndex]++) < tokenArrSizeStack[stackIndex]
     ) {
-      let content;
+      let content: string | TokenStream = '';
       let types = typeArrStack[stackIndex];
 
       const tokenArr = tokenArrStack[stackIndex];
@@ -157,7 +157,7 @@ const normalizeTokens = (
       if (typeof token === 'string') {
         types = stackIndex > 0 ? types : ['plain'];
         content = token;
-      } else {
+      } else if (!!token) {
         types = appendTypes(types, token.type);
         if (token.alias) {
           types = appendTypes(types, token.alias);
@@ -224,7 +224,7 @@ export const getPrismLanguage = (lang: string) => {
 };
 
 function getLineEnding(content: string): LineEndings | undefined {
-  const matched = content.match(/\r\n|\r|\n/);
+  const matched = content?.match(/\r\n|\r|\n/);
   if (matched) {
     const returned = {
       '\r': 'CR',
