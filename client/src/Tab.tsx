@@ -31,10 +31,10 @@ class Tab extends PureComponent<Props> {
         <BrowserRouter>
           <DeviceContextProvider deviceContextValue={deviceContextValue}>
             <UIContextProvider tab={tab}>
-              <AppNavigationProvider>
-                <SearchContextProvider tab={tab}>
-                  <ChatContextProvider>
-                    <FileModalContextProvider>
+              <FileModalContextProvider>
+                <AppNavigationProvider>
+                  <SearchContextProvider tab={tab}>
+                    <ChatContextProvider>
                       <Routes>
                         <Route
                           path="*"
@@ -44,10 +44,10 @@ class Tab extends PureComponent<Props> {
                       <Settings />
                       <ReportBugModal />
                       <FileModalContainer repoName={tab.repoName} />
-                    </FileModalContextProvider>
-                  </ChatContextProvider>
-                </SearchContextProvider>
-              </AppNavigationProvider>
+                    </ChatContextProvider>
+                  </SearchContextProvider>
+                </AppNavigationProvider>
+              </FileModalContextProvider>
             </UIContextProvider>
           </DeviceContextProvider>
         </BrowserRouter>
