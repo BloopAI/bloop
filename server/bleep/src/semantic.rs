@@ -29,6 +29,7 @@ mod schema;
 pub use schema::{Embedding, Payload};
 
 const COLLECTION_NAME: &str = "documents";
+const SCORE_THRESHOLD: f32 = 0.3;
 
 #[derive(Error, Debug)]
 pub enum SemanticError {
@@ -265,82 +266,6 @@ impl Semantic {
         limit: u64,
         offset: u64,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
-        let repo_filter = {
-            let conditions = parsed_query
-                .repos()
-                .map(|r| {
-                    if r.contains('/') && !r.starts_with("github.com/") {
-                        format!("github.com/{r}")
-                    } else {
-                        r.to_string()
-                    }
-                })
-                .map(|r| make_kv_keyword_filter("repo_name", r.as_str()).into())
-                .collect::<Vec<_>>();
-            // one of the above repos should match
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let path_filter = {
-            let conditions = parsed_query
-                .paths()
-                .map(|r| make_kv_text_filter("relative_path", r).into())
-                .collect::<Vec<_>>();
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let lang_filter = {
-            let conditions = parsed_query
-                .langs()
-                .map(|l| make_kv_keyword_filter("lang", l).into())
-                .collect::<Vec<_>>();
-            // one of the above langs should match
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let branch_filter = {
-            let conditions = parsed_query
-                .branch()
-                .map(|l| make_kv_keyword_filter("branches", l).into())
-                .collect::<Vec<_>>();
-
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let filters = [repo_filter, path_filter, lang_filter, branch_filter]
-            .into_iter()
-            .flatten()
-            .map(Into::into)
-            .collect();
-
         let response = self
             .qdrant
             .search_points(&SearchPoints {
@@ -348,12 +273,12 @@ impl Semantic {
                 vector,
                 collection_name: COLLECTION_NAME.to_string(),
                 offset: Some(offset),
-                score_threshold: Some(0.3),
+                score_threshold: Some(SCORE_THRESHOLD),
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
                 filter: Some(Filter {
-                    must: filters,
+                    must: build_conditions(parsed_query),
                     ..Default::default()
                 }),
                 with_vectors: Some(WithVectorsSelector {
@@ -373,92 +298,17 @@ impl Semantic {
         limit: u64,
         offset: u64,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
-        let parsed_query = parsed_queries.get(0).unwrap(); // Parse the first query
-        let repo_filter = {
-            let conditions = parsed_query
-                .repos()
-                .map(|r| {
-                    if r.contains('/') && !r.starts_with("github.com/") {
-                        format!("github.com/{r}")
-                    } else {
-                        r.to_string()
-                    }
-                })
-                .map(|r| make_kv_keyword_filter("repo_name", r.as_str()).into())
-                .collect::<Vec<_>>();
-            // one of the above repos should match
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
+        // Queries should contain the same filters, so we get the first one
+        let parsed_query = parsed_queries.first().unwrap();
+        let filters = build_conditions(parsed_query);
 
-        let path_filter = {
-            let conditions = parsed_query
-                .paths()
-                .map(|r| make_kv_text_filter("relative_path", r).into())
-                .collect::<Vec<_>>();
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let lang_filter = {
-            let conditions = parsed_query
-                .langs()
-                .map(|l| make_kv_keyword_filter("lang", l).into())
-                .collect::<Vec<_>>();
-            // one of the above langs should match
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let branch_filter = {
-            let conditions = parsed_query
-                .branch()
-                .map(|l| make_kv_keyword_filter("branches", l).into())
-                .collect::<Vec<_>>();
-
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let filters: Vec<_> = [repo_filter, path_filter, lang_filter, branch_filter]
-            .into_iter()
-            .flatten()
-            .map(Into::into)
-            .collect();
-
-        let search_points = parsed_queries
+        let search_points = vectors
             .iter()
-            .enumerate()
-            .map(|(idx, _)| SearchPoints {
+            .map(|vec| SearchPoints {
                 limit,
-                vector: vectors.get(idx).unwrap().clone(),
-                collection_name: COLLECTION_NAME.to_string(),
+                vector: vec.clone(),
                 offset: Some(offset),
-                score_threshold: None,
+                score_threshold: Some(SCORE_THRESHOLD),
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
@@ -482,9 +332,7 @@ impl Semantic {
             })
             .await?;
 
-        let scored_points: Vec<ScoredPoint> =
-            response.result.into_iter().flat_map(|r| r.result).collect();
-        Ok(scored_points)
+        Ok(response.result.into_iter().flat_map(|r| r.result).collect())
     }
 
     pub async fn search<'a>(
@@ -534,9 +382,6 @@ impl Semantic {
             .map(|q| self.embed(q.target().unwrap()))
             .collect::<anyhow::Result<Vec<_>>>()?;
 
-        // TODO: Remove the need for `retrieve_more`. It's here because:
-        // In /q `limit` is the maximum number of results returned (the actual number will often be lower due to deduplication)
-        // In /answer we want to retrieve `limit` results exactly
         let results = self
             .batch_search_with(
                 parsed_queries,
@@ -551,7 +396,8 @@ impl Semantic {
                     .collect::<Vec<_>>()
             })?;
 
-        let target_vector = vectors.get(0).unwrap().clone();
+        // TODO: Deduplicate with respect to all vectors
+        let target_vector = vectors.first().unwrap().clone();
         Ok(deduplicate_snippets(results, target_vector, limit))
     }
 
@@ -689,6 +535,86 @@ fn make_kv_text_filter(key: &str, value: &str) -> FieldCondition {
         }),
         ..Default::default()
     }
+}
+
+fn build_conditions(query: &SemanticQuery<'_>) -> Vec<qdrant_client::qdrant::Condition> {
+    let repo_filter = {
+        let conditions = query
+            .repos()
+            .map(|r| {
+                if r.contains('/') && !r.starts_with("github.com/") {
+                    format!("github.com/{r}")
+                } else {
+                    r.to_string()
+                }
+            })
+            .map(|r| make_kv_keyword_filter("repo_name", r.as_str()).into())
+            .collect::<Vec<_>>();
+        // one of the above repos should match
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(Filter {
+                should: conditions,
+                ..Default::default()
+            })
+        }
+    };
+
+    let path_filter = {
+        let conditions = query
+            .paths()
+            .map(|r| make_kv_text_filter("relative_path", r).into())
+            .collect::<Vec<_>>();
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(Filter {
+                should: conditions,
+                ..Default::default()
+            })
+        }
+    };
+
+    let lang_filter = {
+        let conditions = query
+            .langs()
+            .map(|l| make_kv_keyword_filter("lang", l).into())
+            .collect::<Vec<_>>();
+        // one of the above langs should match
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(Filter {
+                should: conditions,
+                ..Default::default()
+            })
+        }
+    };
+
+    let branch_filter = {
+        let conditions = query
+            .branch()
+            .map(|l| make_kv_keyword_filter("branches", l).into())
+            .collect::<Vec<_>>();
+
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(Filter {
+                should: conditions,
+                ..Default::default()
+            })
+        }
+    };
+
+    let filters: Vec<_> = [repo_filter, path_filter, lang_filter, branch_filter]
+        .into_iter()
+        .flatten()
+        .map(Into::into)
+        .collect();
+
+    filters
 }
 
 fn dot(a: &[f32], b: &[f32]) -> f32 {

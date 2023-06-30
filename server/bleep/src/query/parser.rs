@@ -68,6 +68,14 @@ impl<'a> SemanticQuery<'a> {
     pub fn branch(&self) -> impl Iterator<Item = &Cow<'_, str>> {
         self.branch.iter().filter_map(|t| t.as_plain())
     }
+
+    pub fn from_str(query: String, repo_ref: String) -> Self {
+        Self {
+            target: Some(Literal::Plain(Cow::Owned(query))),
+            repos: [Literal::Plain(Cow::Owned(repo_ref))].into(),
+            ..Default::default()
+        }
+    }
 }
 
 impl<'a> Query<'a> {

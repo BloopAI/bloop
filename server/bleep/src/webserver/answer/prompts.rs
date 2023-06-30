@@ -335,7 +335,7 @@ const res = await qdrant.search(collectionName, {{
     )
 }
 
-pub fn try_parse_hypothetical_document(document: &str) -> Vec<String> {
+pub fn try_parse_hypothetical_documents(document: &str) -> Vec<String> {
     let pattern = r"```([\s\S]*?)```";
     let re = regex::Regex::new(pattern).unwrap();
 
@@ -378,6 +378,6 @@ pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str)
     serde_json::json!("#,
         ];
 
-        assert_eq!(try_parse_hypothetical_document(document), expected);
+        assert_eq!(try_parse_hypothetical_documents(document), expected);
     }
 }
