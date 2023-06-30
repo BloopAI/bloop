@@ -3,9 +3,11 @@ import React, {
   memo,
   SetStateAction,
   useCallback,
+  useContext,
   useMemo,
   useState,
 } from 'react';
+import { SearchContext } from '../../../context/searchContext';
 import { Token as TokenType } from '../../../types/prism';
 import { hashCode, propsAreShallowEqual } from '../../../utils';
 import { Range, TokenInfoWrapped } from '../../../types/results';
@@ -56,6 +58,7 @@ const CodeContainer = ({
     tokenRange: null,
     lineNumber: -1,
   });
+  const { selectedBranch } = useContext(SearchContext);
 
   const getHoverableContent = useCallback(
     (hoverableRange: Range, tokenRange: Range, lineNumber?: number) => {
@@ -65,6 +68,7 @@ const CodeContainer = ({
           repoPath,
           hoverableRange.start,
           hoverableRange.end,
+          selectedBranch ? selectedBranch : undefined,
         ).then((data) => {
           setTokenInfo({
             data: mapTokenInfo(data.data),
@@ -75,7 +79,7 @@ const CodeContainer = ({
         });
       }
     },
-    [relativePath],
+    [relativePath, selectedBranch],
   );
 
   const handleRefsDefsClick = useCallback(

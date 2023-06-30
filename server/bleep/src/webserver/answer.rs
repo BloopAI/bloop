@@ -20,7 +20,6 @@ use axum::{
 };
 use futures::{future::Either, stream, StreamExt, TryStreamExt};
 use reqwest::StatusCode;
-use secrecy::ExposeSecret;
 use serde_json::json;
 use tiktoken_rs::CoreBPE;
 use tokio::sync::mpsc::Sender;
@@ -29,19 +28,21 @@ use tracing::{debug, info, trace, warn};
 use super::middleware::User;
 use crate::{
     analytics::{EventData, QueryEvent},
-    db::SqlDb,
-    query::parser::{self, SemanticQuery},
+    db::{QueryLog, SqlDb},
+    query::parser,
     repo::RepoRef,
-    webserver::answer::llm_gateway::api::FunctionCall,
     Application,
 };
 
+mod context;
 pub mod conversations;
 mod llm_gateway;
 mod partial_parse;
 mod prompts;
 mod response;
 
+use context::AppContext;
+use llm_gateway::api::FunctionCall;
 use response::{Exchange, SearchResult, SearchStep, Update};
 
 const TIMEOUT_SECS: u64 = 60;
@@ -128,6 +129,10 @@ pub(super) async fn _handle(
 ) -> super::Result<
     Sse<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>,
 > {
+    QueryLog::new(&app.sql).insert(&params.q).await?;
+
+    let q = params.q.clone();
+    let thread_id = params.thread_id.to_string();
     let conversation_id = ConversationId {
         user_id: user
             .login()
@@ -140,11 +145,8 @@ pub(super) async fn _handle(
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
-    let mut ctx = AppContext::new(app, user, conversation_id.to_string())
-        .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
-        .with_query_id(query_id)
-        .with_thread_id(params.thread_id)
-        .with_repo_ref(params.repo_ref.clone());
+    let mut ctx = AppContext::new(app, user, params, query_id, conversation_id.to_string())
+        .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
 
     // confirm client compatibility with answer-api
     match ctx
@@ -173,10 +175,20 @@ pub(super) async fn _handle(
         }
     };
 
-    let q = params.q;
+    let query = parser::parse_nl(&q)
+        .context("parse error")?
+        .as_semantic()
+        .context("got a 'Grep' query")?
+        .target
+        .as_ref()
+        .context("query was empty")?
+        .as_plain()
+        .context("user query was not plain text")?
+        .clone()
+        .into_owned();
 
     let stream = async_stream::try_stream! {
-        let mut action = Action::Query(q);
+        let mut action = Action::Query(query);
 
         conversation.exchanges.push(Exchange::default());
 
@@ -241,7 +253,7 @@ pub(super) async fn _handle(
     let init_stream = futures::stream::once(async move {
         Ok(sse::Event::default()
             .json_data(json!({
-                "thread_id": params.thread_id.to_string(),
+                "thread_id": thread_id,
                 "query_id": query_id,
             }))
             // This should never happen, so we force an unwrap.
@@ -378,9 +390,9 @@ impl Conversation {
         exchange_tx: Sender<Exchange>,
     ) -> Result<Option<Action>> {
         let action_result = match &action {
-            Action::Query(s) => {
+            Action::Query(query) => {
                 exchange_tx
-                    .send(self.update(Update::Step(SearchStep::Query(s.clone()))))
+                    .send(self.update(Update::Step(SearchStep::Query(query.clone()))))
                     .await?;
 
                 let previous_answer = if let Some(e) = self.second_last_exchange() {
@@ -410,11 +422,11 @@ impl Conversation {
 
                 ctx.track_query(
                     EventData::input_stage("query")
-                        .with_payload("q", s)
+                        .with_payload("q", query)
                         .with_payload("previous_answer_summary", &previous_answer),
                 );
 
-                s.clone()
+                query.to_string()
             }
 
             Action::Answer { paths, mode } => {
@@ -435,10 +447,7 @@ impl Conversation {
 
                 // First, perform a lexical search for the path
                 let mut paths = ctx
-                    .app
-                    .indexes
-                    .file
-                    .fuzzy_path_match(&self.repo_ref, query, /* limit */ 50)
+                    .fuzzy_path_search(query)
                     .await
                     .map(|c| c.relative_path)
                     .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.
@@ -450,24 +459,12 @@ impl Conversation {
                 // If there are no lexical results, perform a semantic search.
                 if paths.is_empty() {
                     // TODO: Semantic search should accept unparsed queries
-                    let nl_query = SemanticQuery {
-                        target: Some(parser::Literal::Plain(Cow::Owned(query.clone()))),
-                        repos: [parser::Literal::Plain(Cow::Owned(
-                            self.repo_ref.display_name(),
-                        ))]
-                        .into(),
-                        ..Default::default()
-                    };
-
+                    let nl_query = parser::Literal::Plain(Cow::Owned(query.clone()));
                     let semantic_paths = ctx
-                        .app
-                        .semantic
-                        .as_ref()
-                        .context("semantic search is not enabled")?
-                        .search(&nl_query, 30, 0, true)
+                        .semantic_search(nl_query, 30, 0, true)
                         .await?
                         .into_iter()
-                        .map(|chunk| chunk.relative_path.into_owned())
+                        .map(|chunk| chunk.relative_path)
                         .collect::<HashSet<_>>()
                         .into_iter()
                         .collect();
@@ -507,30 +504,18 @@ impl Conversation {
                     .send(self.update(Update::Step(SearchStep::Code(query.clone()))))
                     .await?;
 
-                let nl_query = SemanticQuery {
-                    target: Some(parser::Literal::Plain(Cow::Owned(query.clone()))),
-                    repos: [parser::Literal::Plain(Cow::Owned(
-                        self.repo_ref.display_name(),
-                    ))]
-                    .into(),
-                    ..Default::default()
-                };
-
+                let nl_query = parser::Literal::Plain(Cow::Owned(query.clone()));
                 let chunks = ctx
-                    .app
-                    .semantic
-                    .as_ref()
-                    .context("semantic search is not enabled")?
-                    .search(&nl_query, 10, 0, true)
+                    .semantic_search(nl_query, 10, 0, true)
                     .await?
                     .into_iter()
                     .map(|chunk| {
                         let relative_path = chunk.relative_path;
 
                         CodeChunk {
-                            path: relative_path.clone().into_owned(),
+                            path: relative_path.to_owned(),
                             alias: self.path_alias(&relative_path) as u32,
-                            snippet: chunk.text.into_owned(),
+                            snippet: chunk.text.to_owned(),
                             start_line: (chunk.start_line as u32).saturating_add(1),
                             end_line: (chunk.end_line as u32).saturating_add(1),
                         }
@@ -556,6 +541,7 @@ impl Conversation {
             Action::Proc { query, paths } => self.proc(ctx, exchange_tx, query, paths).await?,
         };
 
+        debug!(?action, %ctx.thread_id, "chosen next action");
         match &action {
             Action::Query(query) => {
                 self.llm_history
@@ -653,16 +639,10 @@ impl Conversation {
             .model("gpt-3.5-turbo-16k")
             .frequency_penalty(0.1); // Set low frequency penalty to discourage long outputs
 
-        let repo_ref = &self.repo_ref;
         let chunks = stream::iter(paths)
             .map(|path| async move {
-                tracing::debug!(?path, "reading file");
-
                 let lines = ctx
-                    .app
-                    .indexes
-                    .file
-                    .by_path(repo_ref, &path)
+                    .file_search(&path)
                     .await
                     .with_context(|| format!("failed to read path: {path}"))?
                     .content
@@ -701,8 +681,7 @@ impl Conversation {
                 let contents = lines.join("\n");
                 let prompt = prompts::file_explanation(question, &path, &contents);
 
-                tracing::debug!(?path, "calling chat API on file");
-
+                debug!(?path, "sending file to LLM");
                 let json = ctx
                     .llm_gateway
                     .chat(&[llm_gateway::api::Message::system(&prompt)], None)
@@ -879,10 +858,7 @@ impl Conversation {
             let path = self.paths[alias].clone();
 
             let file_contents = ctx
-                .app
-                .indexes
-                .file
-                .by_path(&self.repo_ref, &path)
+                .file_search(&path)
                 .await
                 .with_context(|| format!("failed to read path: {}", path))?
                 .content;
@@ -1025,7 +1001,6 @@ impl Conversation {
         aliases: &[usize],
     ) -> Result<()> {
         let context = self.answer_context(ctx, aliases).await?;
-
         let mut query_history = self.query_history().collect::<Vec<_>>();
 
         {
@@ -1279,20 +1254,11 @@ impl Conversation {
             chunks_by_path.entry(c.path.clone()).or_default().push(c);
         }
 
-        let repo_ref = &self.repo_ref;
         self.code_chunks = futures::stream::iter(chunks_by_path)
             .then(|(path, mut chunks)| async move {
                 chunks.sort_by_key(|c| c.start_line);
 
-                let contents = ctx
-                    .app
-                    .indexes
-                    .file
-                    .by_path(repo_ref, &path)
-                    .await
-                    .unwrap()
-                    .content;
-
+                let contents = ctx.file_search(&path).await.unwrap().content;
                 chunks
                     .into_iter()
                     .fold(Vec::<CodeChunk>::new(), |mut a, next| {
@@ -1464,97 +1430,6 @@ pub enum AnswerMode {
     Article,
     #[default]
     Filesystem,
-}
-
-#[derive(Clone)]
-struct AppContext {
-    app: Application,
-    llm_gateway: llm_gateway::Client,
-    user: User,
-    query_id: uuid::Uuid,
-    thread_id: uuid::Uuid,
-    repo_ref: Option<RepoRef>,
-
-    /// Indicate whether the request was answered.
-    ///
-    /// This is used in the `Drop` handler, in order to track cancelled answer queries.
-    req_complete: bool,
-}
-
-impl AppContext {
-    fn new(app: Application, user: User, session_reference_id: String) -> Result<Self> {
-        let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
-            .temperature(0.0)
-            .bearer(app.github_token()?.map(|s| s.expose_secret().clone()))
-            .session_reference_id(session_reference_id);
-
-        Ok(Self {
-            app,
-            llm_gateway,
-            user,
-            query_id: uuid::Uuid::nil(),
-            thread_id: uuid::Uuid::nil(),
-            repo_ref: None,
-            req_complete: false,
-        })
-    }
-
-    fn with_query_id(mut self, query_id: uuid::Uuid) -> Self {
-        self.query_id = query_id;
-        self
-    }
-
-    fn with_thread_id(mut self, thread_id: uuid::Uuid) -> Self {
-        self.thread_id = thread_id;
-        self
-    }
-
-    fn with_repo_ref(mut self, repo_ref: RepoRef) -> Self {
-        self.repo_ref = Some(repo_ref);
-        self
-    }
-
-    fn frequency_penalty(mut self, frequency_penalty: f32) -> Self {
-        self.llm_gateway.frequency_penalty = Some(frequency_penalty);
-        self
-    }
-
-    #[allow(unused)]
-    fn presence_penalty(mut self, presence_penalty: f32) -> Self {
-        self.llm_gateway.presence_penalty = Some(presence_penalty);
-        self
-    }
-
-    fn model(mut self, model: &str) -> Self {
-        if model.is_empty() {
-            self.llm_gateway.model = None;
-        } else {
-            self.llm_gateway.model = Some(model.to_owned());
-        }
-
-        self
-    }
-
-    fn track_query(&self, data: EventData) {
-        let event = QueryEvent {
-            query_id: self.query_id,
-            thread_id: self.thread_id,
-            repo_ref: self.repo_ref.clone(),
-            data,
-        };
-        self.app.track_query(&self.user, &event);
-    }
-}
-
-impl Drop for AppContext {
-    fn drop(&mut self) {
-        if !self.req_complete {
-            self.track_query(
-                EventData::output_stage("cancelled")
-                    .with_payload("message", "request was cancelled"),
-            );
-        }
-    }
 }
 
 #[cfg(test)]

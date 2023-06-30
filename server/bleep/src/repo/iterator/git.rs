@@ -6,11 +6,10 @@ use regex::RegexSet;
 use tracing::error;
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap},
     path::Path,
 };
 
-#[allow(unused)]
 pub enum BranchFilter {
     All,
     Head,
@@ -21,7 +20,7 @@ impl BranchFilter {
     fn filter(&self, is_head: bool, branch: &str) -> bool {
         match self {
             BranchFilter::All => true,
-            BranchFilter::Select(patterns) => patterns.is_match(branch),
+            BranchFilter::Select(patterns) => is_head || patterns.is_match(branch),
             BranchFilter::Head => is_head,
         }
     }
@@ -40,7 +39,7 @@ fn human_readable_branch_name(r: &gix::Reference<'_>) -> String {
 
 pub struct GitWalker {
     git: ThreadSafeRepository,
-    entries: HashMap<(String, FileType, gix::ObjectId), HashSet<String>>,
+    entries: HashMap<(String, FileType, gix::ObjectId), BTreeSet<String>>,
 }
 
 impl GitWalker {
@@ -129,12 +128,13 @@ impl GitWalker {
                         FileType::Other
                     };
 
-                    let branches = acc.entry((file, kind, oid)).or_insert_with(HashSet::new);
+                    let branches = acc.entry((file, kind, oid)).or_insert_with(BTreeSet::new);
                     if is_head {
                         branches.insert("HEAD".to_string());
                     }
 
-                    branches.insert(branch);
+                    // the HEAD branch will not have an origin prefix
+                    branches.insert(format!("origin/{}", branch.trim_start_matches("origin/")));
                     acc
                 },
             );

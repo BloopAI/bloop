@@ -10,7 +10,7 @@ mod git;
 pub(super) mod language;
 
 pub use fs::FileWalker;
-pub use git::GitWalker;
+pub use git::{BranchFilter, GitWalker};
 
 use crate::background::SyncPipes;
 
@@ -44,6 +44,14 @@ impl RepoDirEntry {
         match self {
             Self::File(file) => Some(file.buffer.as_str()),
             _ => None,
+        }
+    }
+
+    pub fn branches(&self) -> Option<&[String]> {
+        match self {
+            RepoDirEntry::Dir(d) => Some(&d.branches),
+            RepoDirEntry::File(f) => Some(&f.branches),
+            RepoDirEntry::Other => None,
         }
     }
 }

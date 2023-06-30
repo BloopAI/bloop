@@ -10,6 +10,8 @@ type ContextType = {
   setFilters: React.Dispatch<React.SetStateAction<FilterType[]>>;
   globalRegex: boolean;
   setGlobalRegex: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedBranch: string | null;
+  setSelectedBranch: React.Dispatch<React.SetStateAction<string | null>>;
 };
 
 export const SearchContext = createContext<ContextType>({
@@ -21,4 +23,6 @@ export const SearchContext = createContext<ContextType>({
   setFilters: (f) => {},
   globalRegex: false,
   setGlobalRegex: (b) => {},
+  selectedBranch: null,
+  setSelectedBranch: () => {},
 });

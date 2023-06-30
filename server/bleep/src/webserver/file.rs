@@ -11,6 +11,7 @@ use super::prelude::*;
 pub(super) struct Params {
     pub repo_ref: RepoRef,
     pub path: PathBuf,
+    pub branch: Option<String>,
 
     /// 1-indexed line number at which to start the snippet
     pub line_start: Option<isize>,
@@ -36,6 +37,7 @@ pub(super) async fn handle<'a>(
         .by_path(
             &params.repo_ref,
             params.path.to_str().context("invalid file path")?,
+            params.branch.as_deref(),
         )
         .await
         .map_err(Error::internal)?;
@@ -93,7 +95,8 @@ cccccc
                     repo_ref: "local//repo".into(),
                     path: "file".into(),
                     line_start: None,
-                    line_end: None
+                    line_end: None,
+                    branch: None,
                 }
             )
             .unwrap_or_else(|_| panic!("bad")),
@@ -108,7 +111,8 @@ cccccc
                     repo_ref: "local//repo".into(),
                     path: "file".into(),
                     line_start: Some(1),
-                    line_end: None
+                    line_end: None,
+                    branch: None,
                 }
             )
             .unwrap_or_else(|_| panic!("bad")),
@@ -123,7 +127,8 @@ cccccc
                     repo_ref: "local//repo".into(),
                     path: "file".into(),
                     line_start: Some(2),
-                    line_end: None
+                    line_end: None,
+                    branch: None,
                 }
             )
             .unwrap_or_else(|_| panic!("bad")),
@@ -139,6 +144,7 @@ cccccc
                     path: "file".into(),
                     line_start: Some(3),
                     line_end: Some(3),
+                    branch: None,
                 }
             )
             .unwrap_or_else(|_| panic!("bad")),
@@ -154,6 +160,7 @@ cccccc
                     path: "file".into(),
                     line_start: Some(2),
                     line_end: Some(3),
+                    branch: None,
                 }
             )
             .unwrap_or_else(|_| panic!("bad")),

@@ -1,11 +1,9 @@
-use std::sync::Arc;
-
 use tantivy::schema::{
     BytesOptions, Field, IndexRecordOption, Schema, SchemaBuilder, TextFieldIndexing, TextOptions,
     FAST, STORED, STRING,
 };
 
-use crate::{semantic::Semantic, Configuration};
+use crate::{db::SqlDb, semantic::Semantic};
 
 #[cfg(feature = "debug")]
 use {
@@ -17,15 +15,16 @@ use {
 /// single repository on disk.
 #[derive(Clone)]
 pub struct File {
-    pub(super) config: Arc<Configuration>,
     pub(super) schema: Schema,
     pub(super) semantic: Option<Semantic>,
+    pub(super) sql: SqlDb,
 
     #[cfg(feature = "debug")]
     histogram: Arc<RwLock<Histogram>>,
 
-    /// Path to the indexed file or directory on disk
-    pub entry_disk_path: Field,
+    /// Unique ID for the file in a repo
+    pub unique_hash: Field,
+
     /// Path to the root of the repo on disk
     pub repo_disk_path: Field,
     /// Path to the file, relative to the repo root
@@ -67,7 +66,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn new(config: Arc<Configuration>, semantic: Option<Semantic>) -> Self {
+    pub fn new(sql: SqlDb, semantic: Option<Semantic>) -> Self {
         let mut builder = tantivy::schema::SchemaBuilder::new();
         let trigram = TextOptions::default().set_stored().set_indexing_options(
             TextFieldIndexing::default()
@@ -75,7 +74,8 @@ impl File {
                 .set_index_option(IndexRecordOption::WithFreqsAndPositions),
         );
 
-        let entry_disk_path = builder.add_text_field("entry_disk_path", STRING);
+        let unique_hash = builder.add_text_field("unique_hash", STRING | STORED);
+
         let repo_disk_path = builder.add_text_field("repo_disk_path", STRING);
         let repo_ref = builder.add_text_field("repo_ref", STRING | STORED);
         let repo_name = builder.add_text_field("repo_name", trigram.clone());
@@ -105,9 +105,9 @@ impl File {
         let is_directory = builder.add_bool_field("is_directory", FAST);
 
         Self {
-            entry_disk_path,
             repo_disk_path,
             relative_path,
+            unique_hash,
             repo_ref,
             repo_name,
             content,
@@ -119,12 +119,12 @@ impl File {
             last_commit_unix_seconds,
             schema: builder.build(),
             semantic,
-            config,
             raw_content,
             raw_repo_name,
             raw_relative_path,
             branches,
             is_directory,
+            sql,
 
             #[cfg(feature = "debug")]
             histogram: Arc::new(Histogram::builder().build().unwrap().into()),

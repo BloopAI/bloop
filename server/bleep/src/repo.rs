@@ -1,6 +1,8 @@
 use anyhow::Context;
+use regex::RegexSet;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
+    collections::BTreeSet,
     fmt::{self, Display},
     path::{Path, PathBuf},
     str::FromStr,
@@ -9,26 +11,10 @@ use std::{
 };
 use tracing::debug;
 
-use crate::state::{get_relative_path, pretty_write_file};
+use crate::state::get_relative_path;
 
 pub(crate) mod iterator;
 use iterator::language;
-
-pub(crate) type FileCache = Arc<scc::HashMap<PathBuf, FreshValue<String>>>;
-
-#[derive(Serialize, Deserialize)]
-pub(crate) struct FreshValue<T> {
-    // default value is `false` on deserialize
-    #[serde(skip)]
-    pub(crate) fresh: bool,
-    pub(crate) value: T,
-}
-
-impl<T> From<T> for FreshValue<T> {
-    fn from(value: T) -> Self {
-        Self { fresh: true, value }
-    }
-}
 
 // Types of repo
 #[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
@@ -200,6 +186,47 @@ impl<'de> Deserialize<'de> for RepoRef {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum BranchFilter {
+    All,
+    Head,
+    Select(Vec<String>),
+}
+
+impl BranchFilter {
+    pub(crate) fn patch(&self, old: Option<&BranchFilter>) -> Option<BranchFilter> {
+        let Some(BranchFilter::Select(ref old_list)) = old
+        else {
+	    return Some(self.clone());
+	};
+
+        let BranchFilter::Select(new_list) = self
+        else {
+	    return Some(self.clone());
+	};
+
+        let mut updated = old_list.iter().collect::<BTreeSet<_>>();
+        updated.extend(new_list);
+
+        Some(BranchFilter::Select(updated.into_iter().cloned().collect()))
+    }
+}
+
+impl From<&BranchFilter> for iterator::BranchFilter {
+    fn from(value: &BranchFilter) -> Self {
+        match value {
+            BranchFilter::All => iterator::BranchFilter::All,
+            BranchFilter::Head => iterator::BranchFilter::Head,
+            BranchFilter::Select(regexes) => {
+                let mut regexes = regexes.clone();
+                regexes.push("HEAD".into());
+                iterator::BranchFilter::Select(RegexSet::new(regexes).unwrap())
+            }
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Repository {
     pub disk_path: PathBuf,
@@ -208,6 +235,7 @@ pub struct Repository {
     pub last_commit_unix_secs: u64,
     pub last_index_unix_secs: u64,
     pub most_common_lang: Option<String>,
+    pub branch_filter: Option<BranchFilter>,
 }
 
 impl Repository {
@@ -245,6 +273,7 @@ impl Repository {
             disk_path,
             remote,
             most_common_lang: None,
+            branch_filter: None,
         }
     }
 
@@ -277,7 +306,11 @@ impl Repository {
         self.sync_status = SyncStatus::Queued;
     }
 
-    pub(crate) fn sync_done_with(&mut self, metadata: Arc<RepoMetadata>) {
+    pub(crate) fn sync_done_with(
+        &mut self,
+        new_branch_filters: Option<&BranchFilter>,
+        metadata: Arc<RepoMetadata>,
+    ) {
         self.last_index_unix_secs = get_unix_time(SystemTime::now());
         self.last_commit_unix_secs = metadata.last_commit_unix_secs;
         self.most_common_lang = metadata
@@ -285,36 +318,12 @@ impl Repository {
             .most_common_lang()
             .map(|l| l.to_string())
             .or_else(|| self.most_common_lang.take());
-        self.sync_status = SyncStatus::Done;
-    }
 
-    fn file_cache_path(&self, index_dir: &Path) -> PathBuf {
-        let path_hash = blake3::hash(self.disk_path.to_string_lossy().as_bytes()).to_string();
-        index_dir.join(path_hash).with_extension("json")
-    }
-
-    pub(crate) fn open_file_cache(&self, index_dir: &Path) -> FileCache {
-        let file_name = self.file_cache_path(index_dir);
-        match std::fs::File::open(file_name)
-            .map_err(anyhow::Error::from)
-            .and_then(|f| serde_json::from_reader(f).context("bad cache"))
-        {
-            Ok(cache) => Arc::new(cache),
-            Err(_) => Default::default(),
+        if let Some(bf) = new_branch_filters {
+            self.branch_filter = bf.patch(self.branch_filter.as_ref());
         }
-    }
 
-    pub(crate) fn save_file_cache(
-        &self,
-        index_dir: &Path,
-        cache: FileCache,
-    ) -> Result<(), RepoError> {
-        let file_name = self.file_cache_path(index_dir);
-        pretty_write_file(file_name, cache.as_ref())
-    }
-
-    pub(crate) fn delete_file_cache(&self, index_dir: &Path) {
-        _ = std::fs::remove_file(self.file_cache_path(index_dir))
+        self.sync_status = SyncStatus::Done;
     }
 }
 

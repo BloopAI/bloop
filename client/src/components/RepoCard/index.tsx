@@ -21,12 +21,13 @@ type Props = {
   name: string;
   description?: string;
   sync_status: SyncStatus;
-  last_update: string;
+  last_index: string;
   lang: string;
   repoRef: string;
   provider: 'local' | 'github';
   syncStatus?: { percentage: number } | null;
   onDelete: () => void;
+  indexedBranches?: string[];
 };
 
 export const STATUS_MAP = {
@@ -45,12 +46,13 @@ export const STATUS_MAP = {
 const RepoCard = ({
   name,
   sync_status,
-  last_update,
+  last_index,
   lang,
   provider,
   syncStatus,
   repoRef,
   onDelete,
+  indexedBranches,
 }: Props) => {
   const { isGithubConnected } = useContext(UIContext);
   const { handleAddTab, tabs, handleRemoveTab } = useContext(TabsContext);
@@ -60,7 +62,7 @@ const RepoCard = ({
   }, [name, provider]);
 
   const handleClick = useCallback(() => {
-    if (!last_update || last_update === '1970-01-01T00:00:00Z') {
+    if (!last_index || last_index === '1970-01-01T00:00:00Z') {
       return;
     }
     handleAddTab(
@@ -68,8 +70,9 @@ const RepoCard = ({
       isGh ? repoRef : repoName,
       repoName,
       isGh ? RepoSource.GH : RepoSource.LOCAL,
+      indexedBranches?.[0],
     );
-  }, [repoName, provider, isGithubConnected, sync_status]);
+  }, [repoName, provider, isGithubConnected, sync_status, last_index]);
 
   const onRepoRemove = useCallback(
     (e: MouseEvent<HTMLButtonElement>) => {
@@ -191,7 +194,7 @@ const RepoCard = ({
           <p className="select-none">
             {STATUS_MAP[typeof sync_status === 'string' ? sync_status : 'error']
               ?.text || sync_status}
-            {sync_status === 'done' && timeAgo(last_update)}
+            {sync_status === 'done' && timeAgo(last_index)}
           </p>
         </div>
       )}

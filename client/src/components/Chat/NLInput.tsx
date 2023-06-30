@@ -21,6 +21,8 @@ type Props = {
   value?: string;
   generationInProgress?: boolean;
   isStoppable?: boolean;
+  showTooltip?: boolean;
+  tooltipText?: string;
   onStop?: () => void;
   onChange?: (e: ChangeEvent<HTMLTextAreaElement>) => void;
   onSubmit?: () => void;
@@ -42,6 +44,8 @@ const NLInput = ({
   loadingSteps,
   selectedLines,
   setSelectedLines,
+  showTooltip,
+  tooltipText,
 }: Props) => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setComposition] = useState(false);

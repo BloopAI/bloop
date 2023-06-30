@@ -22,9 +22,6 @@ use crate::{
 
 pub mod github;
 
-mod poll;
-pub(crate) use poll::*;
-
 type GitCreds = Account;
 
 pub(crate) type Result<T> = std::result::Result<T, RemoteError>;
@@ -367,6 +364,7 @@ async fn create_repository<'a>(app: &'a Application, sync_handle: &SyncHandle) -
             last_index_unix_secs: 0,
             last_commit_unix_secs: 0,
             most_common_lang: None,
+            branch_filter: None,
         })
         .await
 }

@@ -49,23 +49,23 @@ pub struct SemanticQuery<'a> {
 }
 
 impl<'a> SemanticQuery<'a> {
-    pub fn repos(&self) -> impl Iterator<Item = &Cow<'_, str>> {
+    pub fn repos(&'a self) -> impl Iterator<Item = Cow<'a, str>> {
         self.repos.iter().filter_map(|t| t.as_plain())
     }
 
-    pub fn paths(&self) -> impl Iterator<Item = &Cow<'_, str>> {
+    pub fn paths(&'a self) -> impl Iterator<Item = Cow<'a, str>> {
         self.paths.iter().filter_map(|t| t.as_plain())
     }
 
-    pub fn langs(&self) -> impl Iterator<Item = &Cow<'_, str>> {
-        self.langs.iter()
+    pub fn langs(&'a self) -> impl Iterator<Item = Cow<'a, str>> {
+        self.langs.iter().cloned()
     }
 
-    pub fn target(&self) -> Option<&Cow<'_, str>> {
+    pub fn target(&self) -> Option<Cow<'a, str>> {
         self.target.as_ref().and_then(|t| t.as_plain())
     }
 
-    pub fn branch(&self) -> impl Iterator<Item = &Cow<'_, str>> {
+    pub fn branch(&'a self) -> impl Iterator<Item = Cow<'a, str>> {
         self.branch.iter().filter_map(|t| t.as_plain())
     }
 }
@@ -211,7 +211,7 @@ impl<'a> Default for Literal<'a> {
     }
 }
 
-impl Literal<'_> {
+impl<'a> Literal<'a> {
     fn join_as_regex(self, rhs: Self) -> Self {
         let lhs = self.regex_str();
         let rhs = rhs.regex_str();
@@ -228,9 +228,9 @@ impl Literal<'_> {
     ///
     /// If this literal is a regex, it is returned as-is. If it is a plain text literal, it is
     /// escaped first before returning.
-    pub fn regex_str(&self) -> Cow<'_, str> {
+    pub fn regex_str(&self) -> Cow<'a, str> {
         match self {
-            Self::Plain(text) => Cow::Owned(regex::escape(text)),
+            Self::Plain(text) => regex::escape(text).into(),
             Self::Regex(r) => r.clone(),
         }
     }
@@ -239,9 +239,9 @@ impl Literal<'_> {
         Regex::new(&self.regex_str())
     }
 
-    pub fn as_plain(&self) -> Option<&Cow<str>> {
+    pub fn as_plain(&self) -> Option<Cow<'a, str>> {
         match self {
-            Self::Plain(p) => Some(p),
+            Self::Plain(p) => Some(p.clone()),
             Self::Regex(..) => None,
         }
     }
@@ -250,6 +250,13 @@ impl Literal<'_> {
     fn make_regex(&mut self) {
         *self = match std::mem::take(self) {
             Self::Plain(s) | Self::Regex(s) => Self::Regex(s),
+        }
+    }
+
+    pub fn unwrap(&self) -> Cow<'a, str> {
+        match self {
+            Literal::Plain(v) => v.clone(),
+            Literal::Regex(v) => v.clone(),
         }
     }
 }
@@ -605,11 +612,11 @@ mod tests {
         );
 
         assert_eq!(
-            parse("org:bloopai repo:enterprise-search branch:main ParseError").unwrap(),
+            parse("org:bloopai repo:enterprise-search branch:origin/main ParseError").unwrap(),
             vec![Query {
                 repo: Some(Literal::Plain("enterprise-search".into())),
                 org: Some(Literal::Plain("bloopai".into())),
-                branch: Some(Literal::Plain("main".into())),
+                branch: Some(Literal::Plain("origin/main".into())),
                 target: Some(Target::Content(Literal::Plain("ParseError".into()))),
                 ..Query::default()
             }],

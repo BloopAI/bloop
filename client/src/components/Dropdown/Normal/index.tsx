@@ -45,7 +45,7 @@ const Dropdown = ({
   }, [visible]);
 
   return (
-    <div className="relative select-none" ref={ref}>
+    <div className="relative select-none max-w-full" ref={ref}>
       <ContextMenu
         items={items}
         visible={visible}

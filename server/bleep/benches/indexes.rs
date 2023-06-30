@@ -55,7 +55,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
 
         let file = File::new(
-            app.config.clone(),
+            app.sql.clone(),
             Some(
                 Semantic::initialize(&model_dir, "http://127.0.0.1:6334", Arc::clone(&app.config))
                     .await

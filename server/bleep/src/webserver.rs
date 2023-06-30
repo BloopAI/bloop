@@ -52,11 +52,13 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/index", get(index::handle))
         // repo management
         .route("/repos", get(repos::available))
+        .route("/repos/queue", get(repos::queue))
         .route("/repos/status", get(repos::index_status))
         .route(
             "/repos/indexed",
             get(repos::indexed)
                 .put(repos::set_indexed)
+                .patch(repos::patch_indexed)
                 .delete(repos::delete_by_id),
         )
         .route("/repos/sync", get(repos::sync).delete(repos::delete_sync))
