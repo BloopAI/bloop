@@ -157,7 +157,7 @@ const normalizeTokens = (
       if (typeof token === 'string') {
         types = stackIndex > 0 ? types : ['plain'];
         content = token;
-      } else {
+      } else if (!!token) {
         types = appendTypes(types, token.type);
         if (token.alias) {
           types = appendTypes(types, token.alias);
@@ -224,7 +224,7 @@ export const getPrismLanguage = (lang: string) => {
 };
 
 function getLineEnding(content: string): LineEndings | undefined {
-  const matched = content.match(/\r\n|\r|\n/);
+  const matched = content?.match(/\r\n|\r|\n/);
   if (matched) {
     const returned = {
       '\r': 'CR',

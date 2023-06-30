@@ -1350,20 +1350,17 @@ h5, .h5 {
 }
 
 .article-response code {
-  /*background-color: rgb(var(--bg-shade));*/
   color: #14B8A6;
-  /*border: 1px solid rgb(var(--bg-border));*/
   font-family: Menlo, sans-serif;
   border-radius: 4px;
   font-size: 0.95em;
 }
 
-.article-response pre>code {
+.article-response pre:has(code) {
   background-color: rgb(var(--bg-shade));
   border: 1px solid rgb(var(--bg-border));
   border-radius: 8px;
-  padding: 16px;
-  box-shadow: var(--shadow-low);
+  padding: 12px;
 }
 
 .hljs-addition {

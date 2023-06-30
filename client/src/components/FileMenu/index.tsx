@@ -13,7 +13,7 @@ type Props = {
 const FileMenu = ({ repoPath, relativePath }: Props) => {
   const { os, openFolderInExplorer } = useContext(DeviceContext);
 
-  return repoPath.startsWith('local') ? (
+  return repoPath?.startsWith('local') ? (
     <span className="flex-shrink-0">
       <DropdownWithIcon
         items={[
