@@ -7,9 +7,8 @@ import Code from '../../components/CodeBlock/Code';
 type Props = {
   filePath: string;
   repoName: string;
-  onResultClick: (path: string, lines?: [number, number]) => void;
+  onResultClick: (path: string, lines?: string) => void;
   startLine: number;
-  endLine: number;
   language: string;
   code: string;
 };
@@ -19,16 +18,25 @@ const CodeWithBreadcrumbs = ({
   repoName,
   onResultClick,
   startLine,
-  endLine,
   language,
   code,
 }: Props) => {
-  const handleResultClick = useCallback((e: MouseEvent) => {
-    if (!document.getSelection()?.toString()) {
-      e.stopPropagation();
-      onResultClick(filePath, [Math.max(startLine - 1, 0), endLine - 1]);
-    }
-  }, []);
+  const handleResultClick = useCallback(
+    (e: MouseEvent) => {
+      if (!document.getSelection()?.toString()) {
+        e.stopPropagation();
+        onResultClick(
+          filePath,
+          startLine
+            ? `${Math.max(startLine, 0)}_${
+                startLine + code.split('\n').length - 1
+              }`
+            : undefined,
+        );
+      }
+    },
+    [filePath, startLine, code, onResultClick],
+  );
 
   return (
     <div
