@@ -133,7 +133,8 @@ impl GitWalker {
                         branches.insert("HEAD".to_string());
                     }
 
-                    branches.insert(branch);
+                    // the HEAD branch will not have an origin prefix
+                    branches.insert(format!("origin/{}", branch.trim_start_matches("origin/")));
                     acc
                 },
             );
