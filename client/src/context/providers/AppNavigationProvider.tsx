@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useContext, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { buildRepoQuery } from '../../utils';
 import { NavigationItem, SearchType } from '../../types/general';
 import { AppNavigationContext } from '../appNavigationContext';
+import { FileModalContext } from '../fileModalContext';
 
 export const AppNavigationProvider = (prop: {
   value?: string;
@@ -12,6 +13,7 @@ export const AppNavigationProvider = (prop: {
   const [forwardNavigation, setForwardNavigation] = useState<NavigationItem[]>(
     [],
   );
+  const { setIsFileModalOpen } = useContext(FileModalContext);
   const navigateBrowser = useNavigate();
 
   const navigatedItem = useMemo(
@@ -93,6 +95,7 @@ export const AppNavigationProvider = (prop: {
       if (path === '/') {
         path = undefined;
       }
+      setIsFileModalOpen(false);
 
       saveState({
         type: 'repo',
