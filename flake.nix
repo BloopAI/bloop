@@ -70,6 +70,11 @@
             darwin.apple_sdk.frameworks.AppKit
           ]);
 
+        onnxruntime_lib = if stdenv.isDarwin then
+          "libonnxruntime.dylib"
+        else
+          "libonnxruntime.so";
+
         envVars = {
           LIBCLANG_PATH = "${libclang.lib}/lib";
           ROCKSDB_LIB_DIR = "${pkgs.rocksdb}/lib";
@@ -79,7 +84,7 @@
           OPENSSL_NO_VENDOR = "1";
           ORT_STRATEGY = "system";
           ORT_LIB_LOCATION = "${onnxruntime14}/lib";
-          ORT_DYLIB_PATH = "${onnxruntime14}/lib/libonnxruntime.so";
+          ORT_DYLIB_PATH = "${onnxruntime14}/lib/${onnxruntime_lib}";
         };
 
         bleep = (rustPlatform.buildRustPackage rec {
