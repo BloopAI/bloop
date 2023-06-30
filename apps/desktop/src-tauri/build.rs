@@ -1,6 +1,8 @@
 use std::{
     env, fs,
     path::{Path, PathBuf},
+    thread,
+    time::Duration,
 };
 
 fn main() {
@@ -25,10 +27,25 @@ fn main() {
     tauri_build::build()
 }
 
+fn wait(dylib_path: &Path) {
+    for _ in 0..10 {
+        if dylib_path.exists() {
+            return;
+        }
+
+        thread::sleep(Duration::from_millis(500));
+    }
+
+    panic!("timeout waiting for ort download");
+}
+
 #[cfg(target_os = "macos")]
 fn copy(profile_dir: &Path) {
     let dylib_name = "libonnxruntime.dylib";
     let dylib_path = profile_dir.join(dylib_name);
+
+    wait(&dylib_path);
+
     fs::copy(
         dylib_path,
         Path::new(".").join("frameworks").join(dylib_name),
@@ -48,6 +65,7 @@ fn copy(profile_dir: &Path) {
 
     if let Some(dylib_name) = dylib_name {
         let dylib_path = profile_dir.join(dylib_name);
+        wait(&dylib_path);
         fs::copy(dylib_path, Path::new(".").join("dylibs").join(dylib_name)).unwrap();
     }
 }
