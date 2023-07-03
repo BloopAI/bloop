@@ -105,7 +105,7 @@ pub(super) async fn handle(
     }
 }
 
-async fn search_nav(
+pub async fn search_nav(
     indexes: Arc<Indexes>,
     repo_ref: &RepoRef,
     hovered_text: &str,

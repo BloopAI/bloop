@@ -723,6 +723,10 @@ impl Conversation {
             .collect::<Vec<_>>()
             .await;
 
+        let original_question = self
+            .last_exchange()
+            .query()
+            .expect("proc: agent-code-nav: no query");
         let mut code_nav_chunks = {
             info!("starting identifier discovery");
             let mut prompt = String::new();
@@ -731,7 +735,7 @@ impl Conversation {
                 r#"
 Below is a listing of code chunks followed by a list of identifiers in the chunk.
 Your job is to perform the following tasks:
-1. Find out which identifiers are relevant to answer the query: "{question}"
+1. Find out which identifiers are relevant to answer the query: "{original_question}"
 2. Reply with one item per line. The format of the item is as follows:
    - a single letter 'r' or 'd': indicating whether you need references to the identifier or the definition of the identifier to answer the question.
    - followed by the index of the identifier
@@ -896,6 +900,7 @@ d9
             );
             println!("{prompt}");
 
+            let ctx = &ctx.clone().model("gpt-3.5-turbo");
             let selected_indices = ctx
                 .llm_gateway
                 .chat(&[llm_gateway::api::Message::system(&prompt)], None)
@@ -938,15 +943,15 @@ d9
                     idents.iter().map(|i| i.0.as_str()).collect::<Vec<_>>()
                 );
                 let repo_ref = ctx.repo_ref.clone().unwrap();
+                let source_document = ctx
+                    .app
+                    .indexes
+                    .file
+                    .by_path(&repo_ref, &relative_path)
+                    .await
+                    .unwrap();
                 let all_docs = {
-                    let content = ctx
-                        .app
-                        .indexes
-                        .file
-                        .by_path(&repo_ref, &relative_path)
-                        .await
-                        .unwrap();
-                    let lang = content.lang.as_deref();
+                    let lang = source_document.lang.as_deref();
                     let associated_langs = match lang.map(TSLanguage::from_id) {
                         Some(Language::Supported(config)) => config.language_ids,
                         _ => &[],
@@ -969,7 +974,7 @@ d9
                         start_byte: range.start.byte,
                         end_byte: range.end.byte,
                     };
-                    let ctx = CodeNavigationContext {
+                    let nav_ctx = CodeNavigationContext {
                         repo_ref: &repo_ref,
                         token,
                         indexes: Arc::clone(&ctx.app.indexes),
@@ -979,7 +984,20 @@ d9
                         snippet_context_after: 5,
                     };
 
-                    code_nav_chunks.extend(ctx.token_info().into_iter().map(|mut fs| {
+                    let mut token_info = nav_ctx.token_info();
+                    if token_info.is_empty() {
+                        token_info = super::intelligence::search_nav(
+                            Arc::clone(&ctx.app.indexes),
+                            &repo_ref,
+                            nav_ctx.active_token_text(),
+                            nav_ctx.active_token_range(),
+                            &source_document,
+                        )
+                        .await
+                        .unwrap_or_default();
+                    }
+
+                    code_nav_chunks.extend(token_info.into_iter().map(|mut fs| {
                         fs.data.retain(|o| o.kind == *kind);
                         fs
                     }));
@@ -1069,6 +1087,8 @@ d9
         }
 
         let context = {
+            self.code_chunks
+                .extend(std::mem::take(&mut self.code_nav_chunks));
             self.canonicalize_code_chunks(ctx).await;
 
             let mut s = "".to_owned();
@@ -1188,19 +1208,19 @@ d9
             }
 
             // add last 5 code-nav chunks to context
-            for chunk in self.code_nav_chunks.iter().rev().take(5) {
-                let snippet = chunk
-                    .snippet
-                    .lines()
-                    .enumerate()
-                    .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
-                    .collect::<String>();
+            // for chunk in self.code_nav_chunks.iter().rev().take(5) {
+            //     let snippet = chunk
+            //         .snippet
+            //         .lines()
+            //         .enumerate()
+            //         .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
+            //         .collect::<String>();
 
-                let formatted_snippet =
-                    format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
+            //     let formatted_snippet =
+            //         format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
 
-                s += &formatted_snippet;
-            }
+            //     s += &formatted_snippet;
+            // }
 
             s
         };
