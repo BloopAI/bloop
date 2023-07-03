@@ -1,5 +1,4 @@
 import React, { PureComponent } from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Settings from './components/Settings';
 import { UITabType } from './types/general';
 import { DeviceContextType } from './context/deviceContext';
@@ -15,8 +14,6 @@ import FileModalContainer from './pages/ResultModal/FileModalContainer';
 import { FileModalContextProvider } from './context/providers/FileModalContextProvider';
 import PromptGuidePopup from './components/PromptGuidePopup';
 import Onboarding from './pages/Onboarding';
-import PageTemplate from './components/PageTemplate';
-import HomePage from './pages/Home';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -38,12 +35,7 @@ class Tab extends PureComponent<Props> {
               <AppNavigationProvider tab={tab}>
                 <SearchContextProvider tab={tab}>
                   <ChatContextProvider>
-                    <Routes>
-                      <Route
-                        path="*"
-                        element={<ContentContainer tab={tab} />}
-                      />
-                    </Routes>
+                    <ContentContainer tab={tab} />
                     <Settings />
                     <ReportBugModal />
                     <FileModalContainer repoName={tab.repoName} />
