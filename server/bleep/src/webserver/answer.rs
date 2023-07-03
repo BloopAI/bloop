@@ -509,8 +509,8 @@ impl Conversation {
                 let hyde_docs = self.hyde(ctx, query).await?;
                 if !hyde_docs.is_empty() {
                     let hyde_queries = hyde_docs
-                        .into_iter()
-                        .map(|q| SemanticQuery::from_str(q, self.repo_ref.display_name()))
+                        .iter()
+                        .map(|q| SemanticQuery::from_str(q.into(), self.repo_ref.display_name()))
                         .collect::<Vec<_>>();
 
                     let hyde_results = ctx
@@ -553,6 +553,7 @@ impl Conversation {
                 ctx.track_query(
                     EventData::input_stage("semantic code search")
                         .with_payload("query", query)
+                        .with_payload("hyde_queries", &hyde_docs)
                         .with_payload("chunks", &chunks)
                         .with_payload("raw_prompt", &prompt),
                 );
@@ -645,11 +646,10 @@ impl Conversation {
             .try_collect::<String>()
             .await?;
 
-        dbg!(&response);
         let documents = prompts::try_parse_hypothetical_documents(&response);
 
         for doc in documents.iter() {
-            println!("{}\n", doc);
+            info!("{}\n", doc);
         }
 
         Ok(documents)
