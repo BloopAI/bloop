@@ -140,7 +140,7 @@ pub(super) async fn _handle(
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
-    let mut ctx = AppContext::new(app, user, conversation_id.to_string())
+    let ctx = AppContext::new(app, user, conversation_id.to_string())
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .with_query_id(query_id)
         .with_thread_id(params.thread_id)
@@ -176,6 +176,7 @@ pub(super) async fn _handle(
     let q = params.q;
 
     let stream = async_stream::try_stream! {
+        let mut cancellation_track = CancellationTrack::new(ctx.clone());
         let mut action = Action::Query(q);
 
         conversation.exchanges.push(Exchange::default());
@@ -235,7 +236,7 @@ pub(super) async fn _handle(
         // Storing the conversation here allows us to make subsequent requests.
         conversation.store(&ctx.app.sql, conversation_id).await?;
 
-        ctx.req_complete = true;
+        cancellation_track.complete();
     };
 
     let init_stream = futures::stream::once(async move {
@@ -1479,11 +1480,6 @@ struct AppContext {
     query_id: uuid::Uuid,
     thread_id: uuid::Uuid,
     repo_ref: Option<RepoRef>,
-
-    /// Indicate whether the request was answered.
-    ///
-    /// This is used in the `Drop` handler, in order to track cancelled answer queries.
-    req_complete: bool,
 }
 
 impl AppContext {
@@ -1500,7 +1496,6 @@ impl AppContext {
             query_id: uuid::Uuid::nil(),
             thread_id: uuid::Uuid::nil(),
             repo_ref: None,
-            req_complete: false,
         })
     }
 
@@ -1551,10 +1546,41 @@ impl AppContext {
     }
 }
 
-impl Drop for AppContext {
+/// This struct exists to track cancellation on `drop`, unless explicitly marked as completed.
+///
+/// Query control flow can be complex, as there are several points where an error may be returned
+/// via `?`. Rather than dealing with this in a complex way, we can simply use `Drop` destructors
+/// to send cancellation messages to our analytics provider.
+///
+/// By default, this struct will send a cancellation message. However, calling `.complete()` will
+/// "diffuse" the tracker, and disable the cancellation message from sending on drop.
+struct CancellationTrack {
+    ctx: AppContext,
+
+    /// Indicate whether the request was answered.
+    ///
+    /// This is used in the `Drop` handler, in order to track cancelled answer queries.
+    complete: bool,
+}
+
+impl CancellationTrack {
+    fn new(ctx: AppContext) -> Self {
+        Self {
+            ctx,
+            complete: false,
+        }
+    }
+
+    /// Mark this token as "completed", preventing a message from sending on drop.
+    fn complete(&mut self) {
+        self.complete = true;
+    }
+}
+
+impl Drop for CancellationTrack {
     fn drop(&mut self) {
-        if !self.req_complete {
-            self.track_query(
+        if !self.complete {
+            self.ctx.track_query(
                 EventData::output_stage("cancelled")
                     .with_payload("message", "request was cancelled"),
             );
