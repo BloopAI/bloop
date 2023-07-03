@@ -94,5 +94,7 @@ export const getNavItemFromURL = (location: Location, repoName: string) => {
   if (recordId) {
     navItem.recordId = Number(recordId);
   }
-  return [navItem];
+  return navItem.type === 'repo' && !navItem.path
+    ? [navItem]
+    : [{ type: 'repo', repo: repoName }, navItem];
 };

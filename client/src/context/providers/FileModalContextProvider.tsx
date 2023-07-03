@@ -55,6 +55,12 @@ export const FileModalContextProvider = ({
       } else {
         delete pathParams.modalPath;
       }
+      if (
+        JSON.stringify(pathParams) ===
+        JSON.stringify(prev[prev.length - 1].pathParams)
+      ) {
+        return prev;
+      }
       return [
         ...prev,
         {
