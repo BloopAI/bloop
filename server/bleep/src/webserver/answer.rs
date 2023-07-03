@@ -647,7 +647,7 @@ impl Conversation {
         let question = &question;
         let ctx = &ctx
             .clone()
-            .model("gpt-3.5-turbo-16k")
+            .model("gpt-3.5-turbo-16k-0613")
             .frequency_penalty(0.1); // Set low frequency penalty to discourage long outputs
 
         let repo_ref = &self.repo_ref;
