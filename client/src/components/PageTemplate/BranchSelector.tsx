@@ -81,7 +81,7 @@ const BranchSelector = () => {
             const newRepos = [...prev];
             newRepos[index] = {
               ...newRepos[index],
-              sync_status: data.ev?.status_change,
+              sync_status: data.ev?.status_change.status,
               last_index:
                 data.ev?.status_change === SyncStatus.Done
                   ? new Date().toISOString()
