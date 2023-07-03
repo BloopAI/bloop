@@ -49,7 +49,7 @@ fn copy(profile_dir: &Path) {
 }
 
 fn wait_for(dylib_path: &Path) {
-    for _ in 0..10 {
+    for _ in 0..30 {
         if dylib_path.exists() {
             return;
         }
