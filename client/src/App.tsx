@@ -50,6 +50,16 @@ const buildURLPart = (navItem: NavigationItem) => {
         path: navItem.path || '',
         ...navItem.pathParams,
       }).toString()}`;
+    case 'conversation-result':
+      return `conversation-result?${new URLSearchParams({
+        threadId: navItem.threadId?.toString() || '',
+        recordId: navItem.recordId?.toString() || '',
+      }).toString()}`;
+    case 'article-response':
+      return `article-response?${new URLSearchParams({
+        threadId: navItem.threadId?.toString() || '',
+        recordId: navItem.recordId?.toString() || '',
+      }).toString()}`;
     default:
       return '';
   }
@@ -102,6 +112,14 @@ const getNavItemFromURL = (location: Location, repoName: string) => {
   if (scrollToLine) {
     navItem.pathParams.scrollToLine = scrollToLine;
   }
+  const threadId = new URLSearchParams(location.search).get('threadId');
+  if (threadId) {
+    navItem.threadId = threadId;
+  }
+  const recordId = new URLSearchParams(location.search).get('recordId');
+  if (recordId) {
+    navItem.recordId = Number(recordId);
+  }
   return [navItem];
 };
 
@@ -134,6 +152,7 @@ function App({ deviceContextValue }: Props) {
         return;
       }
       const lastNav = tab.navigationHistory[tab.navigationHistory.length - 1];
+      console.log('lastNav', lastNav, buildURLPart(lastNav));
       navigate(
         `/${encodeURIComponent(activeTab)}/${
           lastNav ? buildURLPart(lastNav) : ''

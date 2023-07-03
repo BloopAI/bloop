@@ -1,9 +1,19 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import throttle from 'lodash.throttle';
 import PageHeader from '../../components/ResultsPageHeader';
 import { ChatContext } from '../../context/chatContext';
 import {
+  ChatMessage,
+  ChatMessageAuthor,
   ChatMessageServer,
+  ChatMessageType,
   FileSystemResult,
   MessageResultCite,
   MessageResultDirectory,
@@ -12,6 +22,8 @@ import { UIContext } from '../../context/uiContext';
 import { ChevronDown } from '../../icons';
 import { conversationsCache } from '../../services/cache';
 import { repositionAnnotationsOnScroll } from '../../utils/scrollUtils';
+import { getConversation } from '../../services/api';
+import { mapLoadingSteps } from '../../mappers/conversation';
 import NewCode from './NewCode';
 import DiffCode from './DiffCode';
 import CodeAnnotation, { Comment } from './CodeAnotation';
@@ -27,25 +39,67 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
   const { tab } = useContext(UIContext);
   const [isScrolled, setScrolled] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [data, setData] = useState(
+    (
+      (
+        (conversationsCache[threadId]?.[recordId] ||
+          conversation[recordId]) as ChatMessageServer
+      )?.results as FileSystemResult
+    )?.Filesystem || [],
+  );
 
-  useEffect(() => {
-    setScrolled(false);
-  }, [recordId]);
-
-  const data = useMemo(
-    () =>
+  const getData = useCallback(() => {
+    setData(
       (
         (
           (conversationsCache[threadId]?.[recordId] ||
             conversation[recordId]) as ChatMessageServer
         )?.results as FileSystemResult
       )?.Filesystem || [],
-    [
-      (conversation[recordId] as ChatMessageServer)?.results,
-      recordId,
-      threadId,
-    ],
-  );
+    );
+  }, [
+    (conversation[recordId] as ChatMessageServer)?.results,
+    recordId,
+    threadId,
+  ]);
+
+  useEffect(() => {
+    getData();
+  }, [getData]);
+
+  useEffect(() => {
+    if (!conversationsCache[threadId]?.[recordId] && !conversation[recordId]) {
+      getConversation(threadId).then((resp) => {
+        const conv: ChatMessage[] = [];
+        resp.forEach((m) => {
+          const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
+          if (userQuery) {
+            conv.push({
+              author: ChatMessageAuthor.User,
+              text: userQuery.content,
+              isFromHistory: true,
+            });
+          }
+          conv.push({
+            author: ChatMessageAuthor.Server,
+            isLoading: false,
+            type: ChatMessageType.Answer,
+            loadingSteps: mapLoadingSteps(m.search_steps),
+            text: m.conclusion,
+            results: m.results,
+            isFromHistory: true,
+          });
+        });
+        conversationsCache[threadId] = conv;
+        getData();
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    setScrolled(false);
+  }, [recordId]);
+
   const citations = useMemo(() => {
     const files: Record<string, Comment[]> = {};
     data

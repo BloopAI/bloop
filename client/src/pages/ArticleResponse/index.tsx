@@ -2,19 +2,29 @@ import {
   AnchorHTMLAttributes,
   DetailedHTMLProps,
   ReactElement,
+  useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useState,
 } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { CodeProps } from 'react-markdown/lib/ast-to-react';
 import { ReactMarkdownProps } from 'react-markdown/lib/complex-types';
 import { conversationsCache } from '../../services/cache';
-import { ChatMessageServer } from '../../types/general';
+import {
+  ChatMessage,
+  ChatMessageAuthor,
+  ChatMessageServer,
+  ChatMessageType,
+} from '../../types/general';
 import { ChatContext } from '../../context/chatContext';
 import { FileModalContext } from '../../context/fileModalContext';
 import FileChip from '../../components/Chat/ConversationMessage/FileChip';
 import NewCode from '../ConversationResult/NewCode';
 import { UIContext } from '../../context/uiContext';
+import { getConversation } from '../../services/api';
+import { mapLoadingSteps } from '../../mappers/conversation';
 import CodeWithBreadcrumbs from './CodeWithBreadcrumbs';
 
 type Props = {
@@ -26,15 +36,51 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
   const { conversation } = useContext(ChatContext);
   const { openFileModal } = useContext(FileModalContext);
   const { tab } = useContext(UIContext);
-  const data = useMemo(
-    () => conversationsCache[threadId]?.[recordId] || conversation[recordId],
-    [
-      (conversation[recordId] as ChatMessageServer)?.results,
-      (conversation[recordId] as ChatMessageServer)?.isLoading,
-      recordId,
-      threadId,
-    ],
+  const [data, setData] = useState(
+    conversationsCache[threadId]?.[recordId] || conversation[recordId],
   );
+
+  const getData = useCallback(() => {
+    setData(conversationsCache[threadId]?.[recordId] || conversation[recordId]);
+  }, [
+    (conversation[recordId] as ChatMessageServer)?.results,
+    (conversation[recordId] as ChatMessageServer)?.isLoading,
+    recordId,
+    threadId,
+  ]);
+
+  useEffect(() => {
+    getData();
+  }, [getData]);
+
+  useEffect(() => {
+    if (!conversationsCache[threadId]?.[recordId] && !conversation[recordId]) {
+      getConversation(threadId).then((resp) => {
+        const conv: ChatMessage[] = [];
+        resp.forEach((m) => {
+          const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
+          if (userQuery) {
+            conv.push({
+              author: ChatMessageAuthor.User,
+              text: userQuery.content,
+              isFromHistory: true,
+            });
+          }
+          conv.push({
+            author: ChatMessageAuthor.Server,
+            isLoading: false,
+            type: ChatMessageType.Answer,
+            loadingSteps: mapLoadingSteps(m.search_steps),
+            text: m.conclusion,
+            results: m.results,
+            isFromHistory: true,
+          });
+        });
+        conversationsCache[threadId] = conv;
+        getData();
+      });
+    }
+  }, []);
 
   const components = useMemo(() => {
     return {
