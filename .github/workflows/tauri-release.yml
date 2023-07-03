@@ -115,7 +115,7 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_RELEASE_VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
         with:
-          args: -- --target "${{ matrix.target }}" -v
+          args: -- --target "${{ matrix.target }}" -v -- --offline
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
