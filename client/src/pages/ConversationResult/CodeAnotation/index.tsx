@@ -80,6 +80,7 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
             return collapsedFiles.includes(index) ||
               !fullExpandedFiles.includes(index) ? (
               <div
+                key={`comment-${citations[filePath][0].i}`}
                 id={`comment-${citations[filePath][0].i}`}
                 className="flex flex-col gap-3 transition-all duration-75 ease-linear z-0"
               >

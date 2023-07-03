@@ -121,7 +121,6 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
         );
       },
       code({ node, inline, className, children, ...props }: CodeProps) {
-        console.log('className', className);
         const matchLang = /language-(\w+)/.exec(className || '');
         const matchPath = /path:(.+),/.exec(className || '');
         const matchLines = /lines:(.+)/.exec(className || '');
