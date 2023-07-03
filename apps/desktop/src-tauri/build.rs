@@ -45,11 +45,13 @@ fn copy(profile_dir: &Path) {
 
     let dylib_path = profile_dir.join(dylib_name);
     wait_for(&dylib_path);
+    println!("target: {target_path:?}, {:?}", env::current_dir());
     fs::copy(dylib_path, target_path).unwrap();
 }
 
 fn wait_for(dylib_path: &Path) {
-    for _ in 0..30 {
+    println!("waiting for: {dylib_path:?}");
+    for _ in 0..100 {
         if dylib_path.exists() {
             return;
         }

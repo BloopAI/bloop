@@ -64,10 +64,6 @@ jobs:
           profile: minimal
           target: ${{ matrix.target }}
 
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "bloop-tauri-release-1"
-
       - name: Run tests
         run: |
           cargo --locked test --verbose --release -p bloop

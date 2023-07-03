@@ -38,7 +38,14 @@ where
             .resolve_resource("model")
             .expect("bad bundle");
 
-        bundled.dylib_dir = Some(if cfg!(target_os = "macos") {
+        bundled.dylib_dir = Some(if cfg!(all(target_os = "macos", debug_assertions)) {
+            app.path_resolver()
+                .resolve_resource("dylibs")
+                .expect("missing `apps/desktop/src-tauri/dylibs`")
+                .parent()
+                .expect("invalid path")
+                .to_owned()
+        } else if cfg!(target_os = "macos") {
             app.path_resolver()
                 .resolve_resource("dylibs")
                 .expect("missing `apps/desktop/src-tauri/dylibs`")
