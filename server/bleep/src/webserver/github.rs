@@ -51,9 +51,9 @@ pub(super) async fn status(Extension(app): Extension<Application>) -> impl IntoR
             analytics.send(Message::Identify(Identify {
                 user_id: Some(analytics.tracking_id(Some(&username))),
                 traits: Some(serde_json::json!({
-                    "organization": app.org_name(),
+                    "org_name": app.org_name(),
                     "device_id": analytics.device_id(),
-                    "is_cloud_instance": app.env.is_cloud_instance(),
+                    "is_self_serve": app.env.is_cloud_instance(),
                     "github_username": username,
                 })),
                 ..Default::default()
