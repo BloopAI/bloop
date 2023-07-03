@@ -198,7 +198,7 @@ const BranchSelector = () => {
           size="medium"
           type="button"
           onClick={() => {
-            if (true) {
+            if (isSelfServe) {
               setOpen((prev) => !prev);
             } else {
               setPopupOpen(true);
