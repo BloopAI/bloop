@@ -171,6 +171,16 @@ impl Indexer<File> {
         // hits is a mapping between a document address and the number of trigrams in it that
         // matched the query
         let repo_ref_term = Term::from_field_text(self.source.repo_ref, &repo_ref.to_string());
+        let branch_term = branch
+            .map(|b| {
+                trigrams(b)
+                    .map(|token| Term::from_field_text(self.source.branches, token.as_str()))
+                    .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
+                    .map(Box::new)
+                    .map(|q| q as Box<dyn Query>)
+                    .collect::<Vec<_>>()
+            })
+            .map(|qs| BooleanQuery::intersection(qs));
         let mut hits = trigrams(query_str)
             .flat_map(|s| case_permutations(s.as_str()))
             .map(|token| Term::from_field_text(self.source.relative_path, token.as_str()))
@@ -183,11 +193,8 @@ impl Indexer<File> {
                     )),
                 ];
 
-                if let Some(b) = branch {
-                    query.push(Box::new(TermQuery::new(
-                        Term::from_field_bytes(self.source.branches, b.as_bytes()),
-                        IndexRecordOption::Basic,
-                    )));
+                if let Some(b) = branch_term.as_ref() {
+                    query.push(Box::new(b.clone()));
                 };
 
                 BooleanQuery::intersection(query)
@@ -344,11 +351,18 @@ impl Indexer<File> {
             IndexRecordOption::Basic,
         )) as Box<dyn Query>);
 
-        if let Some(b) = branch {
-            query.push(Box::new(TermQuery::new(
-                Term::from_field_bytes(self.source.branches, b.as_bytes()),
-                IndexRecordOption::Basic,
-            )));
+        let branch_term = branch
+            .map(|b| {
+                trigrams(b)
+                    .map(|token| Term::from_field_text(self.source.branches, token.as_str()))
+                    .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
+                    .map(Box::new)
+                    .map(|q| q as Box<dyn Query>)
+                    .collect::<Vec<_>>()
+            })
+            .map(|qs| BooleanQuery::intersection(qs));
+        if let Some(b) = branch_term {
+            query.push(Box::new(b) as Box<dyn Query>);
         };
 
         query.push({
