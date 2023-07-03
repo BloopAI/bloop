@@ -51,7 +51,7 @@ fn copy(profile_dir: &Path) {
 
 fn wait_for(dylib_path: &Path) {
     println!("waiting for: {dylib_path:?}");
-    for _ in 0..100 {
+    for _ in 0..1000 {
         if dylib_path.exists() {
             return;
         }
