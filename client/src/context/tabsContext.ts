@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import { UITabType } from '../types/general';
+import { NavigationItem, UITabType } from '../types/general';
 import { RepoSource } from '../types';
 
 type ContextType = {
@@ -10,17 +10,29 @@ type ContextType = {
     repoName: string,
     name: string,
     source: RepoSource,
+    history?: NavigationItem[],
   ) => void;
   handleRemoveTab: (t: string) => void;
   setActiveTab: (t: string) => void;
+  updateTabNavHistory: (
+    t: string,
+    history: (prev: NavigationItem[]) => NavigationItem[],
+  ) => void;
 };
 
 export const TabsContext = createContext<ContextType>({
   tabs: [
-    { key: 'initial', name: 'Home', repoName: '', source: RepoSource.LOCAL },
+    {
+      key: 'initial',
+      name: 'Home',
+      repoName: '',
+      source: RepoSource.LOCAL,
+      navigationHistory: [],
+    },
   ],
   activeTab: 'initial',
   handleAddTab: () => {},
   handleRemoveTab: () => {},
   setActiveTab: () => {},
+  updateTabNavHistory: () => {},
 });

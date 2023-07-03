@@ -13,6 +13,7 @@ import { message, open as openDialog } from '@tauri-apps/api/dialog';
 import { listen } from '@tauri-apps/api/event';
 import * as tauriOs from '@tauri-apps/api/os';
 import { getVersion } from '@tauri-apps/api/app';
+import { BrowserRouter } from 'react-router-dom';
 import ClientApp from '../../../client/src/App';
 import '../../../client/src/index.css';
 import useKeyboardNavigation from '../../../client/src/hooks/useKeyboardNavigation';
@@ -166,7 +167,9 @@ function App() {
     <>
       <TextSearch contentRoot={contentContainer.current} />
       <div ref={contentContainer}>
-        <ClientApp deviceContextValue={deviceContextValue} />
+        <BrowserRouter>
+          <ClientApp deviceContextValue={deviceContextValue} />
+        </BrowserRouter>
       </div>
     </>
   );

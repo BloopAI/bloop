@@ -14,6 +14,9 @@ import { ChatContextProvider } from './context/providers/ChatContextProvider';
 import FileModalContainer from './pages/ResultModal/FileModalContainer';
 import { FileModalContextProvider } from './context/providers/FileModalContextProvider';
 import PromptGuidePopup from './components/PromptGuidePopup';
+import Onboarding from './pages/Onboarding';
+import PageTemplate from './components/PageTemplate';
+import HomePage from './pages/Home';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -29,30 +32,29 @@ class Tab extends PureComponent<Props> {
         className={`${isActive ? '' : 'hidden'} `}
         data-active={isActive ? 'true' : 'false'}
       >
-        <BrowserRouter>
-          <DeviceContextProvider deviceContextValue={deviceContextValue}>
-            <UIContextProvider tab={tab}>
-              <FileModalContextProvider>
-                <AppNavigationProvider>
-                  <SearchContextProvider tab={tab}>
-                    <ChatContextProvider>
-                      <Routes>
-                        <Route
-                          path="*"
-                          element={<ContentContainer tab={tab} />}
-                        />
-                      </Routes>
-                      <Settings />
-                      <ReportBugModal />
-                      <FileModalContainer repoName={tab.repoName} />
-                      <PromptGuidePopup />
-                    </ChatContextProvider>
-                  </SearchContextProvider>
-                </AppNavigationProvider>
-              </FileModalContextProvider>
-            </UIContextProvider>
-          </DeviceContextProvider>
-        </BrowserRouter>
+        <DeviceContextProvider deviceContextValue={deviceContextValue}>
+          <UIContextProvider tab={tab}>
+            <FileModalContextProvider>
+              <AppNavigationProvider tab={tab}>
+                <SearchContextProvider tab={tab}>
+                  <ChatContextProvider>
+                    <Routes>
+                      <Route
+                        path="*"
+                        element={<ContentContainer tab={tab} />}
+                      />
+                    </Routes>
+                    <Settings />
+                    <ReportBugModal />
+                    <FileModalContainer repoName={tab.repoName} />
+                    <PromptGuidePopup />
+                    <Onboarding />
+                  </ChatContextProvider>
+                </SearchContextProvider>
+              </AppNavigationProvider>
+            </FileModalContextProvider>
+          </UIContextProvider>
+        </DeviceContextProvider>
       </div>
     );
   }

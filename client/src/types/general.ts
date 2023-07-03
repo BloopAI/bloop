@@ -94,6 +94,7 @@ export type UITabType = {
   name: string;
   repoName: string;
   source: RepoSource;
+  navigationHistory: NavigationItem[];
 };
 
 export type TabHistoryType = {
