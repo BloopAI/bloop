@@ -27,7 +27,28 @@ fn main() {
     tauri_build::build()
 }
 
-fn wait(dylib_path: &Path) {
+fn copy(profile_dir: &Path) {
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+
+    let (dylib_name, target_path) = match target_os.as_str() {
+        "macos" => {
+            let name = "libonnxruntime.dylib";
+            (name, Path::new(".").join("frameworks").join(name))
+        }
+        "linux" => {
+            let name = "libonnxruntime.so";
+            (name, Path::new(".").join("dylibs").join(name))
+        }
+        "windows" => return,
+        other => panic!("unknown OS {other}"),
+    };
+
+    let dylib_path = profile_dir.join(dylib_name);
+    wait_for(&dylib_path);
+    fs::copy(dylib_path, target_path).unwrap();
+}
+
+fn wait_for(dylib_path: &Path) {
     for _ in 0..10 {
         if dylib_path.exists() {
             return;
@@ -37,35 +58,4 @@ fn wait(dylib_path: &Path) {
     }
 
     panic!("timeout waiting for ort download");
-}
-
-#[cfg(target_os = "macos")]
-fn copy(profile_dir: &Path) {
-    let dylib_name = "libonnxruntime.dylib";
-    let dylib_path = profile_dir.join(dylib_name);
-
-    wait(&dylib_path);
-
-    fs::copy(
-        dylib_path,
-        Path::new(".").join("frameworks").join(dylib_name),
-    )
-    .unwrap();
-}
-
-#[cfg(not(target_os = "macos"))]
-fn copy(profile_dir: &Path) {
-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let dylib_name = match target_os.as_str() {
-        "linux" => Some("libonnxruntime.so"),
-        "macos" => Some("libonnxruntime.dylib"),
-        "windows" => None,
-        other => panic!("unknown OS {other}"),
-    };
-
-    if let Some(dylib_name) = dylib_name {
-        let dylib_path = profile_dir.join(dylib_name);
-        wait(&dylib_path);
-        fs::copy(dylib_path, Path::new(".").join("dylibs").join(dylib_name)).unwrap();
-    }
 }

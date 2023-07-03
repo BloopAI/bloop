@@ -44,7 +44,9 @@ where
                 .expect("missing `apps/desktop/src-tauri/dylibs`")
                 .parent()
                 .expect("invalid path")
-                .join("frameworks")
+                .parent()
+                .expect("invalid path")
+                .join("Frameworks")
         } else {
             app.path_resolver()
                 .resolve_resource("dylibs")
