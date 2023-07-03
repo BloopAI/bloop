@@ -96,5 +96,5 @@ export const getNavItemFromURL = (location: Location, repoName: string) => {
   }
   return navItem.type === 'repo' && !navItem.path
     ? [navItem]
-    : [{ type: 'repo', repo: repoName }, navItem];
+    : [{ type: 'repo' as NavigationItem['type'], repo: repoName }, navItem];
 };
