@@ -34,7 +34,7 @@ class Tab extends PureComponent<Props> {
       >
         <DeviceContextProvider deviceContextValue={deviceContextValue}>
           <UIContextProvider tab={tab}>
-            <FileModalContextProvider>
+            <FileModalContextProvider tab={tab}>
               <AppNavigationProvider tab={tab}>
                 <SearchContextProvider tab={tab}>
                   <ChatContextProvider>

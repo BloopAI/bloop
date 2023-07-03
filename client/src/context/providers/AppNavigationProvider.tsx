@@ -15,7 +15,8 @@ export const AppNavigationProvider = ({
   const [forwardNavigation, setForwardNavigation] = useState<NavigationItem[]>(
     [],
   );
-  const { setIsFileModalOpen } = useContext(FileModalContext);
+  const { setIsFileModalOpen, isFileModalOpen, openFileModal } =
+    useContext(FileModalContext);
   const { updateTabNavHistory } = useContext(TabsContext);
 
   const navigatedItem = useMemo(
@@ -25,6 +26,21 @@ export const AppNavigationProvider = ({
         : undefined,
     [tab.navigationHistory],
   );
+
+  useEffect(() => {
+    // open file modal if the app is opened through a URL with modal params
+    if (
+      tab.navigationHistory.length === 1 &&
+      navigatedItem?.pathParams?.modalPath &&
+      !isFileModalOpen
+    ) {
+      openFileModal(
+        navigatedItem.pathParams.modalPath,
+        navigatedItem.pathParams.modalScrollToLine,
+        navigatedItem.pathParams.modalHighlightColor,
+      );
+    }
+  }, [tab.navigationHistory, navigatedItem, isFileModalOpen]);
 
   const buildQuery = (navigationItem: NavigationItem) => {
     const { query, path, repo, type } = navigationItem;

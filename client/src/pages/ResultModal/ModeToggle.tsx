@@ -27,7 +27,7 @@ const ModeToggle = ({
   const handleFull = useCallback(() => {
     setIsFileModalOpen(false);
     navigateFullResult(repoName, relativePath, {
-      scroll_line_index: searchParams.get('scroll_line_index') || '',
+      scrollToLine: searchParams.get('modalScrollToLine') || '',
     });
   }, [searchParams, repoName, relativePath]);
 

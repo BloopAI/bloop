@@ -7,27 +7,17 @@ import React, {
   useState,
 } from 'react';
 import * as Sentry from '@sentry/react';
-import { useNavigate } from 'react-router-dom';
-import {
-  FullResult,
-  ResultClick,
-  ResultItemType,
-  ResultType,
-} from '../../types/results';
+import { ResultClick, ResultItemType, ResultType } from '../../types/results';
 import Filters from '../../components/Filters';
 import { SearchContext } from '../../context/searchContext';
 import { mapFiltersData } from '../../mappers/filter';
-import { mapFileResult, mapRanges, mapResults } from '../../mappers/results';
-import { FullResultModeEnum } from '../../types/general';
+import { mapResults } from '../../mappers/results';
 import { UIContext } from '../../context/uiContext';
 import useAppNavigation from '../../hooks/useAppNavigation';
-import ResultModal from '../ResultModal';
-import { useSearch } from '../../hooks/useSearch';
-import { FileSearchResponse, GeneralSearchResponse } from '../../types/api';
+import { GeneralSearchResponse } from '../../types/api';
 import ErrorFallback from '../../components/ErrorFallback';
-import { getHoverables } from '../../services/api';
 import PageHeader from '../../components/ResultsPageHeader';
-import { buildRepoQuery } from '../../utils';
+import { FileModalContext } from '../../context/fileModalContext';
 import ResultsList from './ResultsList';
 
 type Props = {
@@ -42,20 +32,11 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [results, setResults] = useState<ResultType[]>([]);
-  const [mode, setMode] = useState<FullResultModeEnum>(
-    FullResultModeEnum.SIDEBAR,
-  );
-  const [openResult, setOpenResult] = useState<FullResult | null>(null);
-  const [scrollToLine, setScrollToLine] = useState<string | undefined>(
-    undefined,
-  );
   const { filters, setFilters, inputValue, globalRegex } =
     useContext(SearchContext);
+  const { openFileModal } = useContext(FileModalContext);
   const { setSymbolsCollapsed } = useContext(UIContext);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
-  const { searchQuery: fileModalSearchQuery, data: fileResultData } =
-    useSearch<FileSearchResponse>();
-  const navigateBrowser = useNavigate();
 
   const toggleFiltersOpen = useCallback(() => {
     setIsFiltersOpen((prev) => !prev);
@@ -73,14 +54,13 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
 
   const onResultClick = useCallback<ResultClick>(
     (repo, path, lineNumber) => {
-      setScrollToLine(lineNumber ? lineNumber.join('_') : undefined);
       if (path && !(path.endsWith('/') || path.endsWith('\\'))) {
-        fileModalSearchQuery(buildRepoQuery(repo, path));
+        openFileModal(path, lineNumber ? lineNumber.join('_') : undefined);
       } else {
         navigateRepoPath(repo, path);
       }
     },
-    [fileModalSearchQuery, navigateRepoPath],
+    [navigateRepoPath, openFileModal],
   );
 
   const handlePageChange = useCallback(
@@ -90,20 +70,6 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
     },
     [inputValue, globalRegex],
   );
-
-  const handleModeChange = useCallback((m: FullResultModeEnum) => {
-    setMode(m);
-    if (m === FullResultModeEnum.SIDEBAR) {
-      setIsFiltersOpen(false);
-    }
-  }, []);
-
-  const onResultClosed = useCallback(() => {
-    if (mode === FullResultModeEnum.SIDEBAR) {
-      setIsFiltersOpen(true);
-    }
-    setOpenResult(null);
-  }, [mode]);
 
   useEffect(() => {
     setSymbolsCollapsed(onlySymbolResults);
@@ -120,29 +86,6 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
       setPage(resultsData.metadata.page!);
     }
   }, [resultsData]);
-
-  useEffect(() => {
-    if (fileResultData) {
-      setOpenResult(mapFileResult(fileResultData.data[0]));
-      navigateBrowser({
-        search: scrollToLine
-          ? '?' +
-            new URLSearchParams({
-              scroll_line_index: scrollToLine.toString(),
-            }).toString()
-          : '',
-      });
-      getHoverables(
-        fileResultData.data[0].data.relative_path,
-        fileResultData.data[0].data.repo_ref,
-      ).then((data) => {
-        setOpenResult((prevState) => ({
-          ...prevState!,
-          hoverableRanges: mapRanges(data.ranges),
-        }));
-      });
-    }
-  }, [fileResultData]);
 
   return (
     <>
@@ -165,13 +108,6 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
           loading={loading}
         />
       </div>
-
-      <ResultModal
-        result={openResult}
-        onResultClosed={onResultClosed}
-        mode={mode}
-        setMode={handleModeChange}
-      />
     </>
   );
 };

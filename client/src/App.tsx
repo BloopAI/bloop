@@ -37,10 +37,19 @@ const buildURLPart = (navItem: NavigationItem) => {
       }#${navItem.query}`;
     case 'repo':
       return `repo${
-        navItem.path ? `?path=${encodeURIComponent(navItem.path)}` : ''
+        navItem.path
+          ? '?' +
+            new URLSearchParams({
+              path: navItem.path,
+              ...navItem.pathParams,
+            }).toString()
+          : ''
       }`;
     case 'full-result':
-      return `file?path=${encodeURIComponent(navItem.path || '')}`;
+      return `full-result?${new URLSearchParams({
+        path: navItem.path || '',
+        ...navItem.pathParams,
+      }).toString()}`;
     default:
       return '';
   }
@@ -64,8 +73,35 @@ const getNavItemFromURL = (location: Location, repoName: string) => {
     searchType: 0,
     repo: repoName,
   };
-  navItem.query = location.hash;
+  navItem.query = location.hash.slice(1);
   navItem.path = new URLSearchParams(location.search).get('path') || undefined;
+  navItem.pathParams = {};
+  const modalPath = new URLSearchParams(location.search).get('modalPath');
+  if (modalPath) {
+    navItem.pathParams.modalPath = modalPath;
+  }
+  const modalScrollToLine = new URLSearchParams(location.search).get(
+    'modalScrollToLine',
+  );
+  if (modalScrollToLine) {
+    navItem.pathParams.modalScrollToLine = modalScrollToLine;
+  }
+  const modalHighlightColor = new URLSearchParams(location.search).get(
+    'modalHighlightColor',
+  );
+  if (modalHighlightColor) {
+    navItem.pathParams.highlightColor = modalHighlightColor;
+  }
+  const highlightColor = new URLSearchParams(location.search).get(
+    'highlightColor',
+  );
+  if (highlightColor) {
+    navItem.pathParams.highlightColor = highlightColor;
+  }
+  const scrollToLine = new URLSearchParams(location.search).get('scrollToLine');
+  if (scrollToLine) {
+    navItem.pathParams.scrollToLine = scrollToLine;
+  }
   return [navItem];
 };
 
