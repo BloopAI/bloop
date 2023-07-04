@@ -1,11 +1,14 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 use qdrant_client::{
     prelude::QdrantClient,
     qdrant::{
-        points_selector::PointsSelectorOneOf, with_payload_selector, with_vectors_selector, Filter,
-        PointId, PointStruct, PointsIdsList, PointsSelector, ScrollPoints, WithPayloadSelector,
-        WithVectorsSelector,
+        point_id::PointIdOptions, points_selector::PointsSelectorOneOf, with_payload_selector,
+        with_vectors_selector, Filter, PayloadIncludeSelector, PointId, PointStruct, PointsIdsList,
+        PointsSelector, ScrollPoints, Value, WithPayloadSelector, WithVectorsSelector,
     },
 };
 use sqlx::Sqlite;
@@ -141,7 +144,7 @@ impl<'a> FileCache<'a> {
 
 pub struct ChunkCache<'a> {
     qdrant: &'a QdrantClient,
-    cache: scc::HashMap<String, FreshValue<Payload>>,
+    cache: scc::HashMap<String, FreshValue<HashMap<String, Value>>>,
     update: RwLock<Vec<(PointsSelector, qdrant_client::client::Payload)>>,
     new: RwLock<Vec<PointStruct>>,
     tantivy_cache_key: &'a str,
@@ -175,7 +178,11 @@ impl<'a> ChunkCache<'a> {
                     ..Default::default()
                 }),
                 with_payload: Some(WithPayloadSelector {
-                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
+                    selector_options: Some(with_payload_selector::SelectorOptions::Include(
+                        PayloadIncludeSelector {
+                            fields: vec!["branches".to_string()],
+                        },
+                    )),
                 }),
                 with_vectors: Some(WithVectorsSelector {
                     selector_options: Some(with_vectors_selector::SelectorOptions::Enable(false)),
@@ -184,15 +191,18 @@ impl<'a> ChunkCache<'a> {
             })
             .await?
             .result
-            .into_iter()
-            .map(Payload::from_scroll);
+            .into_iter();
 
         let cache = scc::HashMap::default();
-        for payload in response {
-            _ = cache.insert(
-                payload.id.as_ref().unwrap().clone(),
-                FreshValue::stale(payload),
-            );
+        for point in response {
+            let Some(PointId { point_id_options: Some(PointIdOptions::Uuid(id)) }) = point.id
+	    else {
+		// unless the db was corrupted/written by someone else,
+		// this shouldn't happen
+		unreachable!("corrupted db");
+	    };
+
+            _ = cache.insert(id, FreshValue::stale(point.payload));
         }
 
         Ok(Self {
@@ -211,10 +221,16 @@ impl<'a> ChunkCache<'a> {
         payload: Payload,
     ) -> anyhow::Result<()> {
         let id = self.cache_key(data);
+        let update_payload = payload.into_qdrant();
 
         match self.cache.entry(id) {
             scc::hash_map::Entry::Occupied(mut existing) => {
-                if payload != existing.get().value {
+                if !existing
+                    .get()
+                    .value
+                    .iter()
+                    .all(|(k, v)| update_payload.get(k) == Some(v))
+                {
                     self.update.write().unwrap().push((
                         PointsSelector {
                             points_selector_one_of: Some(PointsSelectorOneOf::Points(
@@ -223,7 +239,7 @@ impl<'a> ChunkCache<'a> {
                                 },
                             )),
                         },
-                        qdrant_client::client::Payload::new_from_hashmap(payload.into_qdrant()),
+                        qdrant_client::client::Payload::new_from_hashmap(update_payload),
                     ));
                 }
                 existing.get_mut().fresh = true;
@@ -232,7 +248,7 @@ impl<'a> ChunkCache<'a> {
                 self.new.write().unwrap().push(PointStruct {
                     id: Some(PointId::from(vacant.key().clone())),
                     vectors: Some(embedder(data)?.into()),
-                    payload: payload.into_qdrant(),
+                    payload: update_payload,
                 });
             }
         }
