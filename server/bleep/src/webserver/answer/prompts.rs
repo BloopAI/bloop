@@ -260,11 +260,11 @@ Provide only as much information and code as is necessary to answer the query, b
 When referring to code, you must provide an example in a code block.
 
 Respect these rules at all times:
-- Do not refer to paths by alias
+- Do not refer to paths by alias, expand to the full path
 - Link ALL paths AND code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, etc) by embedding them in a markdown link, with the URL corresponding to the full path, and the anchor following the form `LX` or `LX-LY`, where X represents the starting line number, and Y represents the ending line number, if the reference is more than one line.
   - For example, to refer to lines 50 to 78 in a sentence, respond with something like: The compiler is initialized in [`src/foo.rs`](src/foo.rs#L50-L78)
   - For example, to refer to the `new` function on a struct, respond with something like: The [`new`](src/bar.rs#L26-53) function initializes the struct
-  - For example, to refer to the `foo` field on a struct and link a single line, respond with something like: The [`foo`](src/foo.rs#L138) field contains foos.
+  - For example, to refer to the `foo` field on a struct and link a single line, respond with something like: The [`foo`](src/foo.rs#L138) field contains foos. Do not respond with something like [`foo`](src/foo.rs#L138-L138)
 - Do not print out line numbers directly, only in a link
 - Do not refer to more lines than necessary when creating a line range, be precise
 - Do NOT output bare symbols. ALL symbols must include a link
@@ -277,10 +277,6 @@ Respect these rules at all times:
 - When quoting code in a code block, use the following info string format: language,path:PATH,lines:LX-LY
   - For example, to quote lines 10 to 15 in `src/main.c`, use `c,path:src/main.c,lines:L10-L15`
   - For example, to quote lines 154 to 190 in `index.js`, use `javascript,path:index.js,lines:L154-L190`
-- Always begin your answer with an appropriate title
-
-#####
-
-"#
+- Always begin your answer with an appropriate title"#
     )
 }
