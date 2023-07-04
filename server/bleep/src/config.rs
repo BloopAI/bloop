@@ -99,6 +99,10 @@ pub struct Configuration {
     /// Sentry Data Source Name for frontend
     pub sentry_dsn_fe: Option<String>,
 
+    #[clap(long)]
+    /// Path to dynamic libraries used in the app.
+    pub dylib_dir: Option<PathBuf>,
+
     //
     // Semantic values
     //
@@ -195,13 +199,13 @@ impl Configuration {
     pub fn cli_overriding_config_file() -> Result<Self> {
         let cli = Self::from_cli()?;
         let Ok(file) = cli
-	    .config_file
-	    .as_ref()
-	    .context("no config file specified")
-	    .and_then(Self::read) else
-	{
-	    return Ok(cli);
-	};
+            .config_file
+            .as_ref()
+            .context("no config file specified")
+            .and_then(Self::read) else
+        {
+            return Ok(cli);
+        };
 
         Ok(Self::merge(file, cli))
     }
@@ -285,6 +289,8 @@ impl Configuration {
             sentry_dsn: b.sentry_dsn.or(a.sentry_dsn),
 
             sentry_dsn_fe: b.sentry_dsn_fe.or(a.sentry_dsn_fe),
+
+            dylib_dir: b.dylib_dir.or(a.dylib_dir),
         }
     }
 }
