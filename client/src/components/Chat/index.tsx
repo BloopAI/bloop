@@ -347,7 +347,7 @@ const Chat = () => {
             </div>
           </div>
         </div>
-        <div className="p-4">
+        <div className="p-4 overflow-auto">
           {!!conversation.length && isChatOpen && (
             <Conversation
               conversation={conversation}
