@@ -141,19 +141,20 @@ pub struct ChunkCache<'a> {
     cache: scc::HashMap<String, FreshValue<Payload>>,
     update: RwLock<Vec<(PointsSelector, qdrant_client::client::Payload)>>,
     new: RwLock<Vec<PointStruct>>,
+    tantivy_cache_key: &'a str,
 }
 
 impl<'a> ChunkCache<'a> {
     pub async fn for_file(
         qdrant: &'a QdrantClient,
-        content_hash: &'a str,
+        tantivy_cache_key: &'a str,
     ) -> anyhow::Result<ChunkCache<'a>> {
         let response = qdrant
             .scroll(&ScrollPoints {
                 collection_name: semantic::COLLECTION_NAME.to_string(),
                 limit: Some(1_000_000),
                 filter: Some(Filter {
-                    must: [make_kv_keyword_filter("content_hash", content_hash)]
+                    must: [make_kv_keyword_filter("content_hash", tantivy_cache_key)]
                         .into_iter()
                         .map(Into::into)
                         .collect(),
@@ -181,6 +182,7 @@ impl<'a> ChunkCache<'a> {
         }
 
         Ok(Self {
+            tantivy_cache_key,
             qdrant,
             cache,
             update: Default::default(),
@@ -194,11 +196,7 @@ impl<'a> ChunkCache<'a> {
         embedder: impl FnOnce(&'a str) -> anyhow::Result<Embedding>,
         payload: Payload,
     ) -> anyhow::Result<()> {
-        let id = {
-            let mut bytes = [0; 16];
-            bytes.copy_from_slice(&blake3::hash(data.as_ref()).as_bytes()[16..32]);
-            Uuid::from_bytes(bytes).to_string()
-        };
+        let id = self.cache_key(data);
 
         match self.cache.entry(id) {
             scc::hash_map::Entry::Occupied(mut existing) => {
@@ -226,6 +224,20 @@ impl<'a> ChunkCache<'a> {
         }
 
         Ok(())
+    }
+
+    /// Generate a content hash from the embedding data, and pin it to
+    /// the containing file's content id.
+    fn cache_key(&self, data: &str) -> String {
+        let id = {
+            let mut bytes = [0; 16];
+            let mut hasher = blake3::Hasher::new();
+            hasher.update(self.tantivy_cache_key.as_bytes());
+            hasher.update(data.as_ref());
+            bytes.copy_from_slice(&hasher.finalize().as_bytes()[16..32]);
+            Uuid::from_bytes(bytes).to_string()
+        };
+        id
     }
 
     pub async fn commit(self) -> anyhow::Result<(usize, usize, usize)> {

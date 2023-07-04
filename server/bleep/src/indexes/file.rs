@@ -180,7 +180,7 @@ impl Indexer<File> {
                     .map(|q| q as Box<dyn Query>)
                     .collect::<Vec<_>>()
             })
-            .map(|qs| BooleanQuery::intersection(qs));
+            .map(BooleanQuery::intersection);
         let mut hits = trigrams(query_str)
             .flat_map(|s| case_permutations(s.as_str()))
             .map(|token| Term::from_field_text(self.source.relative_path, token.as_str()))
@@ -360,7 +360,7 @@ impl Indexer<File> {
                     .map(|q| q as Box<dyn Query>)
                     .collect::<Vec<_>>()
             })
-            .map(|qs| BooleanQuery::intersection(qs));
+            .map(BooleanQuery::intersection);
         if let Some(b) = branch_term {
             query.push(Box::new(b) as Box<dyn Query>);
         };

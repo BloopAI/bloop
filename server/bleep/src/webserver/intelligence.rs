@@ -162,7 +162,7 @@ async fn search_nav(
                             .map(|q| q as Box<dyn tantivy::query::Query>)
                             .collect::<Vec<_>>()
                     })
-                    .map(|b| BooleanQuery::intersection(b))
+                    .map(BooleanQuery::intersection)
                     .map(Box::new)
                     .map(|b| b as Box<dyn tantivy::query::Query>),
             )

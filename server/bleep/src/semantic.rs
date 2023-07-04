@@ -462,10 +462,7 @@ impl Semantic {
             self.embed(c)
         };
         chunks.par_iter().for_each(|chunk| {
-            let data = format!(
-                "{repo_name}\t{relative_path}\n{unique_hash}\n{}",
-                chunk.data,
-            );
+            let data = format!("{repo_name}\t{relative_path}\n{}", chunk.data,);
             let payload = Payload {
                 repo_name: repo_name.to_owned(),
                 repo_ref: repo_ref.to_owned(),
