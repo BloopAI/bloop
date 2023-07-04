@@ -88,6 +88,11 @@ fn default_thread_id() -> uuid::Uuid {
     uuid::Uuid::new_v4()
 }
 
+enum AgentError {
+    Timeout(Duration),
+    Processing(anyhow::Error),
+}
+
 pub(super) async fn handle(
     Query(params): Query<Params>,
     Extension(app): Extension<Application>,
@@ -139,15 +144,18 @@ pub(super) async fn _handle(
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
-    let ctx = AppContext::new(app, user, conversation_id.to_string())
+    let gh_token = app
+        .github_token()
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
-        .with_query_id(query_id)
-        .with_thread_id(params.thread_id)
-        .with_repo_ref(params.repo_ref.clone());
+        .map(|s| s.expose_secret().clone());
+
+    let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
+        .temperature(0.0)
+        .bearer(gh_token)
+        .session_reference_id(conversation_id.to_string());
 
     // confirm client compatibility with answer-api
-    match ctx
-        .llm_gateway
+    match llm_gateway
         .is_compatible(env!("CARGO_PKG_VERSION").parse().unwrap())
         .await
     {
@@ -172,7 +180,7 @@ pub(super) async fn _handle(
         }
     };
 
-    let q = params.q;
+    let Params { q, thread_id, .. } = params;
 
     let stream = async_stream::try_stream! {
         let mut action = Action::Query(q);
@@ -181,16 +189,20 @@ pub(super) async fn _handle(
         conversation.exchanges.push(Exchange::default());
 
         let mut agent = Agent {
+            app,
             conversation,
             exchange_tx,
-            ctx: ctx.clone(),
+            llm_gateway,
+            user,
+            thread_id,
+            query_id,
             complete: false,
         };
 
         let mut left_stream = tokio_stream::wrappers::ReceiverStream::new(exchange_rx)
             .map(Either::Left);
 
-        loop {
+        let result = 'outer: loop {
             // The main loop. Here, we create two streams that operate simultaneously; the update
             // stream, which sends updates back to the HTTP event stream response, and the action
             // stream, which returns a single item when there is a new action available to execute.
@@ -203,42 +215,50 @@ pub(super) async fn _handle(
                 .into_stream()
                 .map(Either::Right);
 
+            let timeout = Duration::from_secs(TIMEOUT_SECS);
+
             let mut next = None;
             for await item in tokio_stream::StreamExt::timeout(
                 stream::select(&mut left_stream, right_stream),
-                Duration::from_secs(TIMEOUT_SECS),
+                timeout,
             ) {
                 match item {
                     Ok(Either::Left(exchange)) => yield exchange,
                     Ok(Either::Right(next_action)) => match next_action {
                         Ok(n) => next = n,
-                        err => {
-                            ctx.track_query(
-                                EventData::output_stage("error")
-                                    .with_payload("message", err.as_ref().unwrap_err().to_string()),
-                            );
-                            err?;
-                        }
+                        Err(e) => break 'outer Err(AgentError::Processing(e)),
                     },
-                    Err(_) => {
-                        warn!("Timeout reached.");
-                        ctx.track_query(
-                            EventData::output_stage("error")
-                                .with_payload("timeout", TIMEOUT_SECS),
-                        );
-                        Err(anyhow!("reached timeout of {TIMEOUT_SECS}s"))?
-                    }
+                    Err(_) => break 'outer Err(AgentError::Timeout(timeout)),
                 }
             }
 
             match next {
                 Some(a) => action = a,
-                None => break,
+                None => break Ok(()),
+            }
+        };
+
+        match result {
+            Ok(_) => {}
+            Err(AgentError::Timeout(duration)) => {
+                warn!("Timeout reached.");
+                agent.track_query(
+                    EventData::output_stage("error")
+                        .with_payload("timeout", duration.as_secs()),
+                );
+                Err(anyhow!("reached timeout of {duration:?}"))?;
+            }
+            Err(AgentError::Processing(e)) => {
+                agent.track_query(
+                    EventData::output_stage("error")
+                        .with_payload("message", e.to_string()),
+                );
+                Err(e)?;
             }
         }
 
         // Storing the conversation here allows us to make subsequent requests.
-        agent.conversation.store(&ctx.app.sql, conversation_id).await?;
+        agent.conversation.store(&agent.app.sql, conversation_id).await?;
         agent.complete();
     };
 
@@ -524,11 +544,15 @@ impl Conversation {
         Ok(llm_history)
     }
 
-    fn last_exchange(&mut self) -> &mut Exchange {
+    fn last_exchange(&self) -> &Exchange {
+        self.exchanges.last().expect("exchange list was empty")
+    }
+
+    fn last_exchange_mut(&mut self) -> &mut Exchange {
         self.exchanges.last_mut().expect("exchange list was empty")
     }
 
-    async fn canonicalize_code_chunks(&mut self, ctx: &AppContext) {
+    async fn canonicalize_code_chunks(&mut self, app: &Application) {
         let mut chunks_by_path = HashMap::<_, Vec<_>>::new();
 
         for c in mem::take(&mut self.code_chunks) {
@@ -540,8 +564,7 @@ impl Conversation {
             .then(|(path, mut chunks)| async move {
                 chunks.sort_by_key(|c| c.start_line);
 
-                let contents = ctx
-                    .app
+                let contents = app
                     .indexes
                     .file
                     .by_path(repo_ref, &path)
@@ -575,9 +598,14 @@ impl Conversation {
 }
 
 struct Agent {
+    app: Application,
     conversation: Conversation,
     exchange_tx: Sender<Exchange>,
-    ctx: AppContext,
+
+    llm_gateway: llm_gateway::Client,
+    user: User,
+    thread_id: uuid::Uuid,
+    query_id: uuid::Uuid,
 
     /// Indicate whether the request was answered.
     ///
@@ -596,7 +624,7 @@ struct Agent {
 impl Drop for Agent {
     fn drop(&mut self) {
         if !self.complete {
-            self.ctx.track_query(
+            self.track_query(
                 EventData::output_stage("cancelled")
                     .with_payload("message", "request was cancelled"),
             );
@@ -608,6 +636,25 @@ impl Agent {
     /// Mark this agent as "completed", preventing an analytics message from sending on drop.
     fn complete(&mut self) {
         self.complete = true;
+    }
+
+    async fn update(&mut self, update: Update) -> Result<()> {
+        let exc = self.conversation.last_exchange_mut();
+        exc.apply_update(update);
+        self.exchange_tx
+            .send(exc.clone())
+            .await
+            .map_err(|_| anyhow!("exchange_tx was closed"))
+    }
+
+    fn track_query(&self, data: EventData) {
+        let event = QueryEvent {
+            query_id: self.query_id,
+            thread_id: self.thread_id,
+            repo_ref: Some(self.conversation.repo_ref.clone()),
+            data,
+        };
+        self.app.track_query(&self.user, &event);
     }
 
     async fn step(&mut self, action: Action) -> Result<Option<Action>> {
@@ -642,7 +689,7 @@ impl Agent {
                     info!("no previous exchanges, skipping summary");
                 };
 
-                self.ctx.track_query(
+                self.track_query(
                     EventData::input_stage("query")
                         .with_payload("q", s)
                         .with_payload("previous_answer_summary", &previous_answer),
@@ -666,7 +713,6 @@ impl Agent {
 
                 // First, perform a lexical search for the path
                 let mut paths = self
-                    .ctx
                     .app
                     .indexes
                     .file
@@ -688,7 +734,6 @@ impl Agent {
                     );
 
                     let semantic_paths = self
-                        .ctx
                         .app
                         .semantic
                         .as_ref()
@@ -714,7 +759,7 @@ impl Agent {
 
                 let prompt = serde_json::to_string(&formatted_paths).unwrap();
 
-                self.ctx.track_query(
+                self.track_query(
                     EventData::input_stage("path search")
                         .with_payload("query", query)
                         .with_payload("is_semantic", is_semantic)
@@ -735,7 +780,6 @@ impl Agent {
                 );
 
                 let mut results = self
-                    .ctx
                     .app
                     .semantic
                     .as_ref()
@@ -756,7 +800,6 @@ impl Agent {
                         .collect::<Vec<_>>();
 
                     let hyde_results = self
-                        .ctx
                         .app
                         .semantic
                         .as_ref()
@@ -793,7 +836,7 @@ impl Agent {
 
                 let prompt = serde_json::to_string(&chunks).unwrap();
 
-                self.ctx.track_query(
+                self.track_query(
                     EventData::input_stage("semantic code search")
                         .with_payload("query", query)
                         .with_payload("hyde_queries", &hyde_docs)
@@ -846,7 +889,6 @@ impl Agent {
         let trimmed_history = self.conversation.trimmed_history()?;
 
         let raw_response = self
-            .ctx
             .llm_gateway
             .chat(&trimmed_history, Some(&functions))
             .await?
@@ -862,7 +904,7 @@ impl Agent {
             )
             .await?;
 
-        self.ctx.track_query(
+        self.track_query(
             EventData::output_stage("llm_reply")
                 .with_payload("full_history", &self.conversation.llm_history)
                 .with_payload("trimmed_history", &trimmed_history)
@@ -888,10 +930,9 @@ impl Agent {
         )];
 
         let response = self
-            .ctx
+            .llm_gateway
             .clone()
             .model("gpt-3.5-turbo-0613")
-            .llm_gateway
             .chat(&prompt, None)
             .await?
             .try_collect::<String>()
@@ -922,23 +963,17 @@ impl Agent {
             self.update(u).await?;
         }
 
-        let question = &question;
-        let ctx = &self
-            .ctx
-            .clone()
-            .model("gpt-3.5-turbo-16k-0613")
-            .frequency_penalty(0.1); // Set low frequency penalty to discourage long outputs
-
-        let repo_ref = &self.conversation.repo_ref;
+        // Immutable reborrow of `self`, to copy freely to async closures.
+        let self_ = &*self;
         let chunks = stream::iter(paths)
             .map(|path| async move {
                 tracing::debug!(?path, "reading file");
 
-                let lines = ctx
+                let lines = self_
                     .app
                     .indexes
                     .file
-                    .by_path(repo_ref, &path)
+                    .by_path(&self_.conversation.repo_ref, &path)
                     .await
                     .with_context(|| format!("failed to read path: {path}"))?
                     .with_context(|| format!("path does not exist in the index: {path}"))?
@@ -980,8 +1015,12 @@ impl Agent {
 
                 tracing::debug!(?path, "calling chat API on file");
 
-                let json = ctx
+                let json = self_
                     .llm_gateway
+                    .clone()
+                    .model("gpt-3.5-turbo-16k-0613")
+                    // Set low frequency penalty to discourage long outputs.
+                    .frequency_penalty(0.1)
                     .chat(&[llm_gateway::api::Message::system(&prompt)], None)
                     .await?
                     .try_collect::<String>()
@@ -1111,7 +1150,7 @@ impl Agent {
 
         let prompt = serde_json::to_string(&out)?;
 
-        ctx.track_query(
+        self.track_query(
             EventData::input_stage("process file")
                 .with_payload("question", question)
                 .with_payload("chunks", &out)
@@ -1122,7 +1161,7 @@ impl Agent {
     }
 
     async fn answer_context(&mut self, aliases: &[usize]) -> Result<String> {
-        self.conversation.canonicalize_code_chunks(&self.ctx).await;
+        self.conversation.canonicalize_code_chunks(&self.app).await;
 
         let mut s = "".to_owned();
 
@@ -1156,7 +1195,6 @@ impl Agent {
             let path = self.conversation.paths[alias].clone();
 
             let doc = self
-                .ctx
                 .app
                 .indexes
                 .file
@@ -1261,7 +1299,7 @@ impl Agent {
             .chain(query_history.iter().cloned())
             .collect::<Vec<_>>();
 
-        let mut stream = pin!(self.ctx.llm_gateway.chat(&messages, None).await?);
+        let mut stream = pin!(self.llm_gateway.chat(&messages, None).await?);
         let mut response = String::new();
         while let Some(fragment) = stream.next().await {
             let fragment = fragment?;
@@ -1283,7 +1321,7 @@ impl Agent {
         ))
         .await?;
 
-        self.ctx.track_query(
+        self.track_query(
             EventData::output_stage("answer_article")
                 .with_payload("query", self.conversation.last_exchange().query())
                 .with_payload("query_history", &query_history)
@@ -1319,7 +1357,7 @@ impl Agent {
             .chain(query_history.iter().cloned())
             .collect::<Vec<_>>();
 
-        let mut stream = self.ctx.llm_gateway.chat(&messages, None).await?.boxed();
+        let mut stream = self.llm_gateway.chat(&messages, None).await?.boxed();
         let mut buffer = String::new();
 
         while let Some(token) = stream.next().await {
@@ -1371,7 +1409,7 @@ impl Agent {
             self.update(Update::Filesystem(search_results)).await?;
         }
 
-        self.ctx.track_query(
+        self.track_query(
             EventData::output_stage("answer_filesystem")
                 .with_payload("query", self.conversation.last_exchange().query())
                 .with_payload("query_history", &query_history)
@@ -1380,15 +1418,6 @@ impl Agent {
         );
 
         Ok(())
-    }
-
-    async fn update(&mut self, update: Update) -> Result<()> {
-        let exc = self.conversation.last_exchange();
-        exc.apply_update(update);
-        self.exchange_tx
-            .send(exc.clone())
-            .await
-            .map_err(|_| anyhow!("exchange_tx was closed"))
     }
 }
 
@@ -1539,80 +1568,6 @@ pub enum AnswerMode {
     Article,
     #[default]
     Filesystem,
-}
-
-#[derive(Clone)]
-struct AppContext {
-    app: Application,
-    llm_gateway: llm_gateway::Client,
-    user: User,
-    query_id: uuid::Uuid,
-    thread_id: uuid::Uuid,
-    repo_ref: Option<RepoRef>,
-}
-
-impl AppContext {
-    fn new(app: Application, user: User, session_reference_id: String) -> Result<Self> {
-        let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
-            .temperature(0.0)
-            .bearer(app.github_token()?.map(|s| s.expose_secret().clone()))
-            .session_reference_id(session_reference_id);
-
-        Ok(Self {
-            app,
-            llm_gateway,
-            user,
-            query_id: uuid::Uuid::nil(),
-            thread_id: uuid::Uuid::nil(),
-            repo_ref: None,
-        })
-    }
-
-    fn with_query_id(mut self, query_id: uuid::Uuid) -> Self {
-        self.query_id = query_id;
-        self
-    }
-
-    fn with_thread_id(mut self, thread_id: uuid::Uuid) -> Self {
-        self.thread_id = thread_id;
-        self
-    }
-
-    fn with_repo_ref(mut self, repo_ref: RepoRef) -> Self {
-        self.repo_ref = Some(repo_ref);
-        self
-    }
-
-    fn frequency_penalty(mut self, frequency_penalty: f32) -> Self {
-        self.llm_gateway.frequency_penalty = Some(frequency_penalty);
-        self
-    }
-
-    #[allow(unused)]
-    fn presence_penalty(mut self, presence_penalty: f32) -> Self {
-        self.llm_gateway.presence_penalty = Some(presence_penalty);
-        self
-    }
-
-    fn model(mut self, model: &str) -> Self {
-        if model.is_empty() {
-            self.llm_gateway.model = None;
-        } else {
-            self.llm_gateway.model = Some(model.to_owned());
-        }
-
-        self
-    }
-
-    fn track_query(&self, data: EventData) {
-        let event = QueryEvent {
-            query_id: self.query_id,
-            thread_id: self.thread_id,
-            repo_ref: self.repo_ref.clone(),
-            data,
-        };
-        self.app.track_query(&self.user, &event);
-    }
 }
 
 #[cfg(test)]
