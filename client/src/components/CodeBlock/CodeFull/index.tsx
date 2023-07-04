@@ -224,13 +224,21 @@ const CodeFull = ({
   const tokens = useMemo(() => tokenizeCode(code, lang), [code, lang]);
 
   const onRefDefClick = useCallback(
-    (lineNum: number, filePath: string, type: TokenInfoType) => {
+    (
+      lineNum: number,
+      filePath: string,
+      type: TokenInfoType,
+      tokenName: string,
+      tokenRange: string,
+    ) => {
       if (filePath === relativePath) {
         setScrollToIndex([lineNum, lineNum]);
       } else {
         navigateFullResult(repoName, filePath, {
           scrollToLine: `${lineNum}_${lineNum}`,
           type,
+          tokenName,
+          tokenRange,
         });
       }
     },

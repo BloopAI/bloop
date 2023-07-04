@@ -41,6 +41,8 @@ type Props = {
     lineNum: number,
     filePath: string,
     type: TokenInfoType,
+    tokenName: string,
+    tokenRange: string,
   ) => void;
   width: number;
   height: number;
@@ -106,7 +108,13 @@ const CodeContainer = ({
   );
 
   const handleRefsDefsClick = useCallback(
-    (lineNum: number, filePath: string, type: TokenInfoType) => {
+    (
+      lineNum: number,
+      filePath: string,
+      type: TokenInfoType,
+      tokenName: string,
+      tokenRange: string,
+    ) => {
       setTokenInfo({
         data: { references: [], definitions: [] },
         hoverableRange: null,
@@ -114,7 +122,7 @@ const CodeContainer = ({
         isLoading: false,
         lineNumber: -1,
       });
-      onRefDefClick(lineNum, filePath, type);
+      onRefDefClick(lineNum, filePath, type, tokenName, tokenRange);
     },
     [onRefDefClick],
   );

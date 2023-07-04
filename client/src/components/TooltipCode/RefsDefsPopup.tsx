@@ -52,6 +52,8 @@ type Props = {
     lineNum: number,
     filePath: string,
     type: TokenInfoType,
+    tokenName: string,
+    tokenRange: string,
   ) => void;
   language: string;
   relativePath: string;

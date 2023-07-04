@@ -6,7 +6,8 @@ import Breadcrumbs, { PathParts } from '../Breadcrumbs';
 import {
   ArrowJumpLeft,
   CodeIcon,
-  // Def,
+  Def,
+  Ref,
   FolderFilled,
   RegexIcon,
 } from '../../icons';
@@ -48,20 +49,29 @@ const Subheader = () => {
         ) {
           const label = splitPath(item.path);
           return {
-            // label: (
-            //   <div className="flex items-center gap-1">
-            //     {label[label.length - 1] || label[label.length - 2]}{' '}
-            //     {!!item.pathParams?.type && (
-            //       <div className="flex items-center gap-1 h-5 px-1 rounded-4 border border-bg-border bg-bg-shade text-bg-success">
-            //         <Def raw sizeClassName="w-3.5 h-3.5" />
-            //         <span className="text-label-base code-s">
-            //           {item.pathParams?.type}
-            //         </span>
-            //       </div>
-            //     )}
-            //   </div>
-            // ),
-            label: label[label.length - 1] || label[label.length - 2],
+            label: (
+              <div className="flex items-center gap-1">
+                {label[label.length - 1] || label[label.length - 2]}{' '}
+                {!!item.pathParams?.type && (
+                  <div
+                    className={`flex items-center gap-1 h-5 px-1 rounded-4 border border-bg-border bg-bg-shade ${
+                      item.pathParams.type === 'definition'
+                        ? 'text-bg-success'
+                        : 'text-bg-danger'
+                    }`}
+                  >
+                    {item.pathParams.type === 'definition' ? (
+                      <Def raw sizeClassName="w-3.5 h-3.5" />
+                    ) : (
+                      <Ref raw sizeClassName="w-3.5 h-3.5" />
+                    )}
+                    <span className="text-label-base code-s">
+                      {item.pathParams?.tokenName}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ),
             icon:
               item.type === 'full-result' ? (
                 <FileIcon
@@ -72,7 +82,7 @@ const Subheader = () => {
                 <FolderFilled sizeClassName="w-4 h-4" raw />
               ),
             onClick,
-            // type: item.pathParams?.type,
+            type: item.pathParams?.type,
           };
         }
         if (
