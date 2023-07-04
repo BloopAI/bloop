@@ -99,7 +99,7 @@ jobs:
         id: release-version
         run: echo "RELEASE_VERSION=$(cat apps/desktop/src-tauri/tauri.conf.json | jq '.package.version' | tr -d '"')" >> "$GITHUB_OUTPUT"
 
-      - uses: tauri-apps/tauri-action@dev
+      - uses: tauri-apps/tauri-action@v0.4.2
         env:
           ORT_LIB_LOCATION: ${{ github.workspace }}/lib/${{ matrix.target }}/onnxruntime
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
