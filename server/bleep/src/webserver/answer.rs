@@ -39,9 +39,9 @@ pub mod conversations;
 mod llm_gateway;
 mod partial_parse;
 mod prompts;
-mod response;
+mod exchange;
 
-use response::{Exchange, SearchResult, SearchStep, Update};
+use exchange::{Exchange, SearchStep, Update};
 
 const TIMEOUT_SECS: u64 = 60;
 
@@ -385,13 +385,13 @@ impl Conversation {
 
                 let previous_answer = if let Some(e) = self.second_last_exchange() {
                     if let Some(body) = e.answer_summarized() {
-                        match e.mode {
-                            AnswerMode::Article => Some({
+                        match e.outcome.as_ref() {
+                            Some(exchange::Outcome::Article(..)) => Some({
                                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
                                 limit_tokens(&body, bpe, 200).to_owned()
                             }),
 
-                            AnswerMode::Filesystem => Some(body),
+                            _ => Some(body),
                         }
                     } else {
                         None
@@ -1036,7 +1036,7 @@ impl Conversation {
 
         exchange_tx
             .send(
-                self.update(Update::Finalize(
+                self.update(Update::Conclude(
                     article_conclusion_messages
                         .choose(&mut rand::rngs::StdRng::from_entropy())
                         .unwrap()
@@ -1126,7 +1126,7 @@ impl Conversation {
                 .iter()
                 .map(Vec::as_slice)
                 .filter_map(|v| {
-                    let item = SearchResult::from_json_array(v);
+                    let item = exchange::FileAction::from_json_array(v);
                     if item.is_none() {
                         warn!("failed to build search result from: {v:?}");
                     }
