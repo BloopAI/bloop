@@ -175,7 +175,6 @@ pub(super) async fn _handle(
     let q = params.q;
 
     let stream = async_stream::try_stream! {
-        let mut cancellation_track = CancellationTrack::new(ctx.clone());
         let mut action = Action::Query(q);
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
@@ -185,6 +184,7 @@ pub(super) async fn _handle(
             conversation,
             exchange_tx,
             ctx: ctx.clone(),
+            complete: false,
         };
 
         let mut left_stream = tokio_stream::wrappers::ReceiverStream::new(exchange_rx)
@@ -239,8 +239,7 @@ pub(super) async fn _handle(
 
         // Storing the conversation here allows us to make subsequent requests.
         agent.conversation.store(&ctx.app.sql, conversation_id).await?;
-
-        cancellation_track.complete();
+        agent.complete();
     };
 
     let init_stream = futures::stream::once(async move {
@@ -376,7 +375,7 @@ impl Conversation {
             .and_then(|second_last| self.exchanges.get(second_last))
     }
 
-    async fn store(self, db: &SqlDb, id: ConversationId) -> Result<()> {
+    async fn store(&self, db: &SqlDb, id: ConversationId) -> Result<()> {
         info!("writing conversation {}-{}", id.user_id, id.thread_id);
         let mut transaction = db.begin().await?;
 
@@ -579,9 +578,38 @@ struct Agent {
     conversation: Conversation,
     exchange_tx: Sender<Exchange>,
     ctx: AppContext,
+
+    /// Indicate whether the request was answered.
+    ///
+    /// This is used in the `Drop` handler, in order to track cancelled answer queries.
+    complete: bool,
+}
+
+/// We use a `Drop` implementation to track agent query cancellation.
+///
+/// Query control flow can be complex, as there are several points where an error may be returned
+/// via `?`. Rather than dealing with this in a complex way, we can simply use `Drop` destructors
+/// to send cancellation messages to our analytics provider.
+///
+/// By default, dropping an agent struct will send a cancellation message. However, calling
+/// `.complete()` will "diffuse" tracking, and disable the cancellation message from sending on drop.
+impl Drop for Agent {
+    fn drop(&mut self) {
+        if !self.complete {
+            self.ctx.track_query(
+                EventData::output_stage("cancelled")
+                    .with_payload("message", "request was cancelled"),
+            );
+        }
+    }
 }
 
 impl Agent {
+    /// Mark this agent as "completed", preventing an analytics message from sending on drop.
+    fn complete(&mut self) {
+        self.complete = true;
+    }
+
     async fn step(&mut self, action: Action) -> Result<Option<Action>> {
         let action_result = match &action {
             Action::Query(s) => {
@@ -1584,48 +1612,6 @@ impl AppContext {
             data,
         };
         self.app.track_query(&self.user, &event);
-    }
-}
-
-/// This struct exists to track cancellation on `drop`, unless explicitly marked as completed.
-///
-/// Query control flow can be complex, as there are several points where an error may be returned
-/// via `?`. Rather than dealing with this in a complex way, we can simply use `Drop` destructors
-/// to send cancellation messages to our analytics provider.
-///
-/// By default, this struct will send a cancellation message. However, calling `.complete()` will
-/// "diffuse" the tracker, and disable the cancellation message from sending on drop.
-struct CancellationTrack {
-    ctx: AppContext,
-
-    /// Indicate whether the request was answered.
-    ///
-    /// This is used in the `Drop` handler, in order to track cancelled answer queries.
-    complete: bool,
-}
-
-impl CancellationTrack {
-    fn new(ctx: AppContext) -> Self {
-        Self {
-            ctx,
-            complete: false,
-        }
-    }
-
-    /// Mark this token as "completed", preventing a message from sending on drop.
-    fn complete(&mut self) {
-        self.complete = true;
-    }
-}
-
-impl Drop for CancellationTrack {
-    fn drop(&mut self) {
-        if !self.complete {
-            self.ctx.track_query(
-                EventData::output_stage("cancelled")
-                    .with_payload("message", "request was cancelled"),
-            );
-        }
     }
 }
 
