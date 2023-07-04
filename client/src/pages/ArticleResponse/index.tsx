@@ -68,7 +68,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
             onClick={() =>
               openFileModal(
                 filePath,
-                start ? `${start - 1}_${end - 1}` : undefined,
+                start ? `${start - 1}_${(end ?? start) - 1}` : undefined,
               )
             }
           />
