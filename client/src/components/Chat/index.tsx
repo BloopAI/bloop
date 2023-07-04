@@ -82,9 +82,9 @@ const Chat = () => {
       setInputValue('');
       setLoading(true);
       const eventSource = new EventSource(
-        `${apiUrl.replace('https:', '')}/answer?q=${query}&repo_ref=${tab.key}${
-          threadId ? `&thread_id=${threadId}` : ''
-        }${
+        `${apiUrl.replace('https:', '')}/answer?q=${encodeURIComponent(
+          query,
+        )}&repo_ref=${tab.key}${threadId ? `&thread_id=${threadId}` : ''}${
           navigatedItem?.type === 'repo' && navigatedItem?.path
             ? `&relative_path=${navigatedItem?.path}&is_folder=true`
             : ''

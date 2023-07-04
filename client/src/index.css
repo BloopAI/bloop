@@ -1297,43 +1297,43 @@ h5, .h5 {
   padding-bottom: 0.6rem;
 }
 
-.readme h1, .article-response h1 {
+.readme h1, .article-response h1, .markdown h1 {
   font-size: 2rem;
 }
 
-.readme h2, .article-response h2 {
+.readme h2, .article-response h2, .markdown h2 {
   font-size: 1.5rem;
 }
 
-.readme h3, .article-response h3 {
+.readme h3, .article-response h3, .markdown h3 {
   font-size: 1.25rem
 }
 
-.readme h4, .article-response h4 {
+.readme h4, .article-response h4, .markdown h4 {
   font-size: 1rem
 }
 
-.readme h5, .article-response h5 {
+.readme h5, .article-response h5, .markdown h5 {
   font-size: .875rem
 }
 
-.readme h6, .article-response h6 {
+.readme h6, .article-response h6, .markdown h6 {
   font-size: .85rem
 }
 
-.readme ul, .article-response ul {
+.readme ul, .article-response ul, .markdown ul {
   list-style: revert;
   margin: revert;
   padding: revert;
 }
 
-.readme ol, .article-response ol {
+.readme ol, .article-response ol, .markdown ol {
   list-style: revert;
   margin: revert;
   padding: revert;
 }
 
-.readme a {
+.readme a, .markdown a {
   color: rgb(var(--label-link));
 }
 
@@ -1352,8 +1352,14 @@ h5, .h5 {
 .article-response code {
   color: #14B8A6;
   font-family: Menlo, sans-serif;
-  border-radius: 4px;
   font-size: 0.95em;
+}
+
+.markdown code {
+  background-color: rgb(var(--bg-shade));
+  border: 1px solid rgb(var(--bg-border));
+  padding: 1px 3px;
+  border-radius: 4px;
 }
 
 .article-response pre:has(code) {
