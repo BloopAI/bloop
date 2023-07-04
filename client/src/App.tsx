@@ -112,7 +112,10 @@ function App({ deviceContextValue }: Props) {
           repo.provider === RepoProvider.GitHub
             ? RepoSource.GH
             : RepoSource.LOCAL,
-          getNavItemFromURL(location, repo.name),
+          getNavItemFromURL(
+            location,
+            repo.provider === RepoProvider.GitHub ? repo.ref : repo.name,
+          ),
         );
         setLoading(false);
       }
