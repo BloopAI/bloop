@@ -44,6 +44,7 @@
             pkg-config
             openssl.out
             openssl.dev
+            llvm.bintools
 
             protobuf
           ] ++ lib.optionals stdenv.isDarwin [
@@ -85,6 +86,7 @@
           ORT_STRATEGY = "system";
           ORT_LIB_LOCATION = "${onnxruntime14}/lib";
           ORT_DYLIB_PATH = "${onnxruntime14}/lib/${onnxruntime_lib}";
+          RUSTFLAGS = "-C link-arg=-fuse-ld=lld";
         };
 
         bleep = (rustPlatform.buildRustPackage rec {
