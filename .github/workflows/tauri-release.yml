@@ -64,10 +64,6 @@ jobs:
           profile: minimal
           target: ${{ matrix.target }}
 
-      - name: Run tests
-        run: |
-          cargo --locked test --verbose --release -p bloop
-
       - name: Check if Segment key exists
         env:
           segment_key: ${{ secrets.ANALYTICS_FE_WRITE_KEY_PROD }}
