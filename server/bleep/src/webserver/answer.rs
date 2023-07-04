@@ -1,6 +1,5 @@
 use rand::{seq::SliceRandom, SeedableRng};
 use std::{
-    borrow::Cow,
     collections::{HashMap, HashSet, VecDeque},
     fmt, mem,
     panic::AssertUnwindSafe,
@@ -30,7 +29,7 @@ use super::middleware::User;
 use crate::{
     analytics::{EventData, QueryEvent},
     db::SqlDb,
-    query::parser::{self, SemanticQuery},
+    query::parser::SemanticQuery,
     repo::RepoRef,
     webserver::answer::llm_gateway::api::FunctionCall,
     Application,
@@ -451,14 +450,8 @@ impl Conversation {
                 // If there are no lexical results, perform a semantic search.
                 if paths.is_empty() {
                     // TODO: Semantic search should accept unparsed queries
-                    let nl_query = SemanticQuery {
-                        target: Some(parser::Literal::Plain(Cow::Owned(query.clone()))),
-                        repos: [parser::Literal::Plain(Cow::Owned(
-                            self.repo_ref.display_name(),
-                        ))]
-                        .into(),
-                        ..Default::default()
-                    };
+                    let nl_query: SemanticQuery<'_> =
+                        SemanticQuery::from_str(query.into(), self.repo_ref.display_name());
 
                     let semantic_paths = ctx
                         .app
@@ -498,28 +491,45 @@ impl Conversation {
             }
 
             Action::Code { query } => {
-                // Semantic search.
-
                 exchange_tx
                     .send(self.update(Update::Step(SearchStep::Code(query.clone()))))
                     .await?;
 
-                let nl_query = SemanticQuery {
-                    target: Some(parser::Literal::Plain(Cow::Owned(query.clone()))),
-                    repos: [parser::Literal::Plain(Cow::Owned(
-                        self.repo_ref.display_name(),
-                    ))]
-                    .into(),
-                    ..Default::default()
-                };
+                let nl_query: SemanticQuery<'_> =
+                    SemanticQuery::from_str(query.into(), self.repo_ref.display_name());
 
-                let chunks = ctx
+                let mut results = ctx
                     .app
                     .semantic
                     .as_ref()
                     .context("semantic search is not enabled")?
                     .search(&nl_query, 10, 0, true)
-                    .await?
+                    .await?;
+
+                let hyde_docs = self.hyde(ctx, query).await?;
+                if !hyde_docs.is_empty() {
+                    let hyde_queries = hyde_docs
+                        .iter()
+                        .map(|q| SemanticQuery::from_str(q.into(), self.repo_ref.display_name()))
+                        .collect::<Vec<_>>();
+
+                    let hyde_results = ctx
+                        .app
+                        .semantic
+                        .as_ref()
+                        .context("semantic search is not enabled")?
+                        .batch_search(
+                            hyde_queries.iter().collect::<Vec<&_>>().as_slice(),
+                            10,
+                            0,
+                            true,
+                        )
+                        .await?;
+
+                    results.extend(hyde_results);
+                }
+
+                let chunks = results
                     .into_iter()
                     .map(|chunk| {
                         let relative_path = chunk.relative_path;
@@ -543,6 +553,7 @@ impl Conversation {
                 ctx.track_query(
                     EventData::input_stage("semantic code search")
                         .with_payload("query", query)
+                        .with_payload("hyde_queries", &hyde_docs)
                         .with_payload("chunks", &chunks)
                         .with_payload("raw_prompt", &prompt),
                 );
@@ -620,6 +631,28 @@ impl Conversation {
         }
 
         Ok(Some(action))
+    }
+
+    async fn hyde(&mut self, ctx: &AppContext, query: &str) -> Result<Vec<String>> {
+        let prompt = vec![llm_gateway::api::Message::system(
+            &prompts::hypothetical_document_prompt(query),
+        )];
+
+        let ctx = &ctx.clone().model("gpt-3.5-turbo-0613");
+        let response = ctx
+            .llm_gateway
+            .chat(&prompt, None)
+            .await?
+            .try_collect::<String>()
+            .await?;
+
+        let documents = prompts::try_parse_hypothetical_documents(&response);
+
+        for doc in documents.iter() {
+            info!("{}\n", doc);
+        }
+
+        Ok(documents)
     }
 
     async fn proc(

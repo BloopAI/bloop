@@ -12,8 +12,9 @@ use qdrant_client::{
     qdrant::{
         r#match::MatchValue, vectors::VectorsOptions, vectors_config, with_payload_selector,
         with_vectors_selector, CollectionOperationResponse, CreateCollection, Distance,
-        FieldCondition, Filter, Match, PointId, PointStruct, ScoredPoint, SearchPoints, Value,
-        VectorParams, Vectors, VectorsConfig, WithPayloadSelector, WithVectorsSelector,
+        FieldCondition, Filter, Match, PointId, PointStruct, ScoredPoint, SearchBatchPoints,
+        SearchPoints, Value, VectorParams, Vectors, VectorsConfig, WithPayloadSelector,
+        WithVectorsSelector,
     },
 };
 
@@ -28,6 +29,8 @@ mod schema;
 pub use schema::{Embedding, Payload};
 
 const COLLECTION_NAME: &str = "documents";
+const SCORE_THRESHOLD: f32 = 0.3;
+const EMBEDDING_DIM: usize = 384;
 
 #[derive(Error, Debug)]
 pub enum SemanticError {
@@ -147,7 +150,7 @@ fn collection_config() -> CreateCollection {
         collection_name: COLLECTION_NAME.to_string(),
         vectors_config: Some(VectorsConfig {
             config: Some(vectors_config::Config::Params(VectorParams {
-                size: 384,
+                size: EMBEDDING_DIM as u64,
                 distance: Distance::Cosine.into(),
                 ..Default::default()
             })),
@@ -269,82 +272,6 @@ impl Semantic {
         limit: u64,
         offset: u64,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
-        let repo_filter = {
-            let conditions = parsed_query
-                .repos()
-                .map(|r| {
-                    if r.contains('/') && !r.starts_with("github.com/") {
-                        format!("github.com/{r}")
-                    } else {
-                        r.to_string()
-                    }
-                })
-                .map(|r| make_kv_keyword_filter("repo_name", r.as_str()).into())
-                .collect::<Vec<_>>();
-            // one of the above repos should match
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let path_filter = {
-            let conditions = parsed_query
-                .paths()
-                .map(|r| make_kv_text_filter("relative_path", r).into())
-                .collect::<Vec<_>>();
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let lang_filter = {
-            let conditions = parsed_query
-                .langs()
-                .map(|l| make_kv_keyword_filter("lang", l).into())
-                .collect::<Vec<_>>();
-            // one of the above langs should match
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let branch_filter = {
-            let conditions = parsed_query
-                .branch()
-                .map(|l| make_kv_keyword_filter("branches", l).into())
-                .collect::<Vec<_>>();
-
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let filters = [repo_filter, path_filter, lang_filter, branch_filter]
-            .into_iter()
-            .flatten()
-            .map(Into::into)
-            .collect();
-
         let response = self
             .qdrant
             .search_points(&SearchPoints {
@@ -352,11 +279,12 @@ impl Semantic {
                 vector,
                 collection_name: COLLECTION_NAME.to_string(),
                 offset: Some(offset),
+                score_threshold: Some(SCORE_THRESHOLD),
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
                 filter: Some(Filter {
-                    must: filters,
+                    must: build_conditions(parsed_query),
                     ..Default::default()
                 }),
                 with_vectors: Some(WithVectorsSelector {
@@ -367,6 +295,50 @@ impl Semantic {
             .await?;
 
         Ok(response.result)
+    }
+
+    pub async fn batch_search_with<'a>(
+        &self,
+        parsed_queries: &[&SemanticQuery<'a>],
+        vectors: Vec<Embedding>,
+        limit: u64,
+        offset: u64,
+    ) -> anyhow::Result<Vec<ScoredPoint>> {
+        // Queries should contain the same filters, so we get the first one
+        let parsed_query = parsed_queries.first().unwrap();
+        let filters = build_conditions(parsed_query);
+
+        let search_points = vectors
+            .iter()
+            .map(|vec| SearchPoints {
+                limit,
+                vector: vec.clone(),
+                offset: Some(offset),
+                score_threshold: Some(SCORE_THRESHOLD),
+                with_payload: Some(WithPayloadSelector {
+                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
+                }),
+                filter: Some(Filter {
+                    must: filters.clone(),
+                    ..Default::default()
+                }),
+                with_vectors: Some(WithVectorsSelector {
+                    selector_options: Some(with_vectors_selector::SelectorOptions::Enable(true)),
+                }),
+                ..Default::default()
+            })
+            .collect::<Vec<SearchPoints>>();
+
+        let response = self
+            .qdrant
+            .search_batch_points(&SearchBatchPoints {
+                collection_name: COLLECTION_NAME.to_string(),
+                search_points,
+                ..Default::default()
+            })
+            .await?;
+
+        Ok(response.result.into_iter().flat_map(|r| r.result).collect())
     }
 
     pub async fn search<'a>(
@@ -398,6 +370,42 @@ impl Semantic {
                     .collect::<Vec<_>>()
             })?;
         Ok(deduplicate_snippets(results, vector, limit))
+    }
+
+    pub async fn batch_search<'a>(
+        &self,
+        parsed_queries: &[&SemanticQuery<'a>],
+        limit: u64,
+        offset: u64,
+        retrieve_more: bool,
+    ) -> anyhow::Result<Vec<Payload>> {
+        if parsed_queries.iter().any(|q| q.target().is_none()) {
+            anyhow::bail!("no search target for query");
+        };
+
+        let vectors = parsed_queries
+            .iter()
+            .map(|q| self.embed(q.target().unwrap()))
+            .collect::<anyhow::Result<Vec<_>>>()?;
+
+        let results = self
+            .batch_search_with(
+                parsed_queries,
+                vectors.clone(),
+                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+                offset,
+            )
+            .await
+            .map(|raw| {
+                raw.into_iter()
+                    .map(Payload::from_qdrant)
+                    .collect::<Vec<_>>()
+            })?;
+
+        // deduplicate with mmr with respect to the mean of query vectors
+        // TODO: implement a more robust multi-vector deduplication strategy
+        let target_vector = mean_pool(vectors);
+        Ok(deduplicate_snippets(results, target_vector, limit))
     }
 
     #[tracing::instrument(skip(self, repo_ref, relative_path, buffer))]
@@ -557,6 +565,86 @@ fn make_kv_text_filter(key: &str, value: &str) -> FieldCondition {
     }
 }
 
+fn build_conditions(query: &SemanticQuery<'_>) -> Vec<qdrant_client::qdrant::Condition> {
+    let repo_filter = {
+        let conditions = query
+            .repos()
+            .map(|r| {
+                if r.contains('/') && !r.starts_with("github.com/") {
+                    format!("github.com/{r}")
+                } else {
+                    r.to_string()
+                }
+            })
+            .map(|r| make_kv_keyword_filter("repo_name", r.as_str()).into())
+            .collect::<Vec<_>>();
+        // one of the above repos should match
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(Filter {
+                should: conditions,
+                ..Default::default()
+            })
+        }
+    };
+
+    let path_filter = {
+        let conditions = query
+            .paths()
+            .map(|r| make_kv_text_filter("relative_path", r).into())
+            .collect::<Vec<_>>();
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(Filter {
+                should: conditions,
+                ..Default::default()
+            })
+        }
+    };
+
+    let lang_filter = {
+        let conditions = query
+            .langs()
+            .map(|l| make_kv_keyword_filter("lang", l).into())
+            .collect::<Vec<_>>();
+        // one of the above langs should match
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(Filter {
+                should: conditions,
+                ..Default::default()
+            })
+        }
+    };
+
+    let branch_filter = {
+        let conditions = query
+            .branch()
+            .map(|l| make_kv_keyword_filter("branches", l).into())
+            .collect::<Vec<_>>();
+
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(Filter {
+                should: conditions,
+                ..Default::default()
+            })
+        }
+    };
+
+    let filters: Vec<_> = [repo_filter, path_filter, lang_filter, branch_filter]
+        .into_iter()
+        .flatten()
+        .map(Into::into)
+        .collect();
+
+    filters
+}
+
 fn dot(a: &[f32], b: &[f32]) -> f32 {
     a.iter().zip(b.iter()).map(|(ai, bi)| ai * bi).sum()
 }
@@ -567,6 +655,19 @@ fn norm(a: &[f32]) -> f32 {
 
 fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     dot(a, b) / (norm(a) * norm(b))
+}
+
+// Calculate the element-wise mean of the embeddings
+fn mean_pool(embeddings: Vec<Vec<f32>>) -> Vec<f32> {
+    let len = embeddings.len() as f32;
+    let mut result = vec![0.0; EMBEDDING_DIM];
+    for embedding in embeddings {
+        for (i, v) in embedding.iter().enumerate() {
+            result[i] += v;
+        }
+    }
+    result.iter_mut().for_each(|v| *v /= len);
+    result
 }
 
 // returns a list of indices to preserve from `snippets`
