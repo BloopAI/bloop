@@ -2,7 +2,15 @@ import React, { useContext, useMemo } from 'react';
 import SearchInput from '../SearchInput';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { splitPath } from '../../utils';
-import Breadcrumbs from '../Breadcrumbs';
+import Breadcrumbs, { PathParts } from '../Breadcrumbs';
+import {
+  ArrowJumpLeft,
+  CodeIcon,
+  // Def,
+  FolderFilled,
+  RegexIcon,
+} from '../../icons';
+import FileIcon from '../FileIcon';
 import BranchSelector from './BranchSelector';
 
 const Subheader = () => {
@@ -20,8 +28,12 @@ const Subheader = () => {
     if (historyPart.length === 1 && historyPart[0].type === 'repo') {
       return [];
     }
+    const lastResultsIndex = historyPart.findLastIndex(
+      (n) => n.type === 'article-response' || n.type === 'conversation-result',
+    );
     let resultsInList: boolean;
-    return historyPart
+    let pathToFileInList: boolean;
+    let list: PathParts[] = historyPart
       .map((item, i) => {
         const onClick = () => navigateBack(-(historyPart.length - 1 - i));
         if (item.type === 'repo' && !item.path) {
@@ -36,8 +48,31 @@ const Subheader = () => {
         ) {
           const label = splitPath(item.path);
           return {
+            // label: (
+            //   <div className="flex items-center gap-1">
+            //     {label[label.length - 1] || label[label.length - 2]}{' '}
+            //     {!!item.pathParams?.type && (
+            //       <div className="flex items-center gap-1 h-5 px-1 rounded-4 border border-bg-border bg-bg-shade text-bg-success">
+            //         <Def raw sizeClassName="w-3.5 h-3.5" />
+            //         <span className="text-label-base code-s">
+            //           {item.pathParams?.type}
+            //         </span>
+            //       </div>
+            //     )}
+            //   </div>
+            // ),
             label: label[label.length - 1] || label[label.length - 2],
+            icon:
+              item.type === 'full-result' ? (
+                <FileIcon
+                  noMargin
+                  filename={label[label.length - 1] || label[label.length - 2]}
+                />
+              ) : (
+                <FolderFilled sizeClassName="w-4 h-4" raw />
+              ),
             onClick,
+            // type: item.pathParams?.type,
           };
         }
         if (
@@ -46,13 +81,24 @@ const Subheader = () => {
         ) {
           return {
             label: 'Results',
+            icon:
+              i !== historyPart.length - 1 ? (
+                <CodeIcon sizeClassName="w-4 h-4" raw />
+              ) : undefined,
             onClick,
+            type: 'results',
           };
         }
+        return {
+          label: item.query || 'Regex search',
+          icon: <RegexIcon sizeClassName="w-3 h-3" raw />,
+          onClick,
+          type: 'search',
+        };
       })
       .reverse()
-      .filter((i): i is { label: string; onClick: () => void } => {
-        if (i?.label === 'Results') {
+      .filter((i, index, array) => {
+        if (i?.type === 'results') {
           if (resultsInList) {
             return false; // remove clusters of Results
           }
@@ -60,14 +106,44 @@ const Subheader = () => {
         } else {
           resultsInList = false;
         }
+        if (
+          i?.type !== 'results' &&
+          i?.type !== 'search' &&
+          index !== array.length - 1
+        ) {
+          if (pathToFileInList && !i?.type) {
+            return false; // remove clusters of navigation items
+          }
+          pathToFileInList = true;
+        } else {
+          pathToFileInList = false;
+        }
         return !!i;
       })
       .reverse();
+    if (
+      list.length > 2 &&
+      list.find((i) => i.label === 'Results') &&
+      lastResultsIndex !== historyPart.length - 1
+    ) {
+      list = [
+        ...list.slice(0, 1),
+        {
+          label: 'Back to results',
+          icon: <ArrowJumpLeft sizeClassName="w-4 h-4" raw />,
+          underline: true,
+          onClick: () =>
+            navigateBack(-(historyPart.length - 1 - lastResultsIndex)),
+        },
+        ...list.slice(1),
+      ];
+    }
+    return list;
   }, [navigationHistory]);
 
   return (
     <div className="w-full bg-bg-shade py-2 pl-8 pr-6 flex items-center justify-between border-b border-bg-border shadow-medium relative z-70">
-      <div className="flex flex-grow flex-col gap-3 justify-center overflow-hidden">
+      <div className="overflow-hidden">
         <Breadcrumbs
           pathParts={breadcrumbs}
           path={''}

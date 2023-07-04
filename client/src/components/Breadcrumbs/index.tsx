@@ -1,4 +1,4 @@
-import {
+import React, {
   Fragment,
   MouseEvent,
   ReactElement,
@@ -13,13 +13,22 @@ import { copyToClipboard, isWindowsPath } from '../../utils';
 import BreadcrumbSection from './BreadcrumbSection';
 import BreadcrumbsCollapsed from './BreadcrumbsCollapsed';
 
-export type PathParts = {
+type HighlightedString = {
   label: string;
+  highlight?: Range;
+};
+
+type ItemElement = {
+  label: ReactElement<any, any>;
+  highlight?: never;
+};
+
+export type PathParts = {
   icon?: ReactElement<any, any>;
   link?: string;
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
-  highlight?: Range;
-};
+  underline?: boolean;
+} & (HighlightedString | ItemElement);
 
 type Props = {
   pathParts: PathParts[];
@@ -107,6 +116,7 @@ const Breadcrumbs = ({
         {pathParts.map((p, i) => (
           <Fragment key={i}>
             <span className={`flex items-center gap-1 flex-shrink-0`}>
+              {/*// @ts-ignore*/}
               <BreadcrumbSection
                 icon={p.icon}
                 label={p.label}
@@ -131,6 +141,7 @@ const Breadcrumbs = ({
             <BreadcrumbsCollapsed items={p} type={type} />
           ) : (
             <span className={`flex items-center gap-1 flex-shrink-0`}>
+              {/*// @ts-ignore*/}
               <BreadcrumbSection
                 icon={p.icon}
                 label={p.label}

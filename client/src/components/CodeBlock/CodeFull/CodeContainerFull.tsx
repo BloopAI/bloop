@@ -2,7 +2,7 @@ import React, { memo, useEffect, useRef, useState } from 'react';
 import CodeLine from '../Code/CodeLine';
 import { Token as TokenType } from '../../../types/prism';
 import { propsAreShallowEqual } from '../../../utils';
-import { Range, TokenInfoWrapped } from '../../../types/results';
+import { Range, TokenInfoType, TokenInfoWrapped } from '../../../types/results';
 import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
@@ -26,7 +26,11 @@ type Props = {
   onMouseSelectEnd: (lineNum: number, charNum: number) => void;
   getHoverableContent: (hoverableRange: Range, tokenRange: Range) => void;
   tokenInfo: TokenInfoWrapped;
-  handleRefsDefsClick: (lineNum: number, filePath: string) => void;
+  handleRefsDefsClick: (
+    lineNum: number,
+    filePath: string,
+    type: TokenInfoType,
+  ) => void;
   relativePath: string;
 };
 

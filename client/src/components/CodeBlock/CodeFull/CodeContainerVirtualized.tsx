@@ -3,7 +3,7 @@ import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import CodeLine from '../Code/CodeLine';
 import { Token as TokenType } from '../../../types/prism';
 import { propsAreShallowEqual } from '../../../utils';
-import { Range, TokenInfoWrapped } from '../../../types/results';
+import { Range, TokenInfoType, TokenInfoWrapped } from '../../../types/results';
 import { getOffsetForIndexAndAlignment } from '../../../utils/scrollUtils';
 import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
@@ -34,7 +34,11 @@ type Props = {
   ) => void;
   onMouseSelectEnd: (lineNum: number, charNum: number) => void;
   tokenInfo: TokenInfoWrapped;
-  handleRefsDefsClick: (lineNum: number, filePath: string) => void;
+  handleRefsDefsClick: (
+    lineNum: number,
+    filePath: string,
+    type: TokenInfoType,
+  ) => void;
   relativePath: string;
 };
 

@@ -15,6 +15,7 @@ export type ItemProps = {
   type: MenuItemType;
   disabled?: boolean;
   tooltip?: string;
+  underline?: boolean;
 };
 
 const Item = ({
@@ -26,6 +27,7 @@ const Item = ({
   disabled,
   tooltip,
   onMouseOver,
+  underline,
 }: ItemProps) => {
   const { t } = useTranslation();
   const [selected, setSelected] = useState(false);
@@ -56,12 +58,15 @@ const Item = ({
           : type === MenuItemType.DANGER
           ? 'hover:bg-bg-base-hover active:bg-transparent text-bg-danger cursor-pointer'
           : 'hover:bg-bg-base-hover active:bg-transparent text-label-base hover:text-label-title focus:text-label-title active:text-label-title cursor-pointer'
-      } flex items-center justify-between rounded text-sm duration-100`}
+      } flex items-center justify-between rounded text-sm duration-100 relative`}
       onClick={handleClick}
       disabled={disabled}
       onMouseOver={onMouseOver}
       onFocus={onMouseOver}
     >
+      {underline && (
+        <div className="absolute -bottom-px -left-1 -right-1 h-px bg-bg-border " />
+      )}
       {showConfirmation ? (
         <TextField value={t('Confirm')} icon={<CheckIcon />} />
       ) : (

@@ -10,7 +10,7 @@ import React, {
 import { SearchContext } from '../../../context/searchContext';
 import { Token as TokenType } from '../../../types/prism';
 import { hashCode, propsAreShallowEqual } from '../../../utils';
-import { Range, TokenInfoWrapped } from '../../../types/results';
+import { Range, TokenInfoType, TokenInfoWrapped } from '../../../types/results';
 import { getTokenInfo } from '../../../services/api';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
 import { mapTokenInfo } from '../../../mappers/results';
@@ -37,7 +37,11 @@ type Props = {
   scrollToIndex?: number[];
   searchTerm: string;
   highlightColor?: string | null;
-  onRefDefClick: (lineNum: number, filePath: string) => void;
+  onRefDefClick: (
+    lineNum: number,
+    filePath: string,
+    type: TokenInfoType,
+  ) => void;
   width: number;
   height: number;
 };
@@ -102,7 +106,7 @@ const CodeContainer = ({
   );
 
   const handleRefsDefsClick = useCallback(
-    (lineNum: number, filePath: string) => {
+    (lineNum: number, filePath: string, type: TokenInfoType) => {
       setTokenInfo({
         data: { references: [], definitions: [] },
         hoverableRange: null,
@@ -110,7 +114,7 @@ const CodeContainer = ({
         isLoading: false,
         lineNumber: -1,
       });
-      onRefDefClick(lineNum, filePath);
+      onRefDefClick(lineNum, filePath, type);
     },
     [onRefDefClick],
   );
