@@ -436,15 +436,17 @@ impl Semantic {
         &self,
         repo_name: &str,
         repo_ref: &str,
-        unique_hash: &str,
+        tantivy_cache_key: &str,
         relative_path: &str,
         buffer: &str,
         lang_str: &str,
         branches: &[String],
+        is_cold_run: bool,
     ) {
-        let chunk_cache = crate::cache::ChunkCache::for_file(&self.qdrant, unique_hash)
-            .await
-            .expect("qdrant error");
+        let chunk_cache =
+            crate::cache::ChunkCache::for_file(&self.qdrant, tantivy_cache_key, is_cold_run)
+                .await
+                .expect("qdrant error");
 
         let chunks = chunk::by_tokens(
             repo_name,
@@ -467,7 +469,7 @@ impl Semantic {
                 repo_name: repo_name.to_owned(),
                 repo_ref: repo_ref.to_owned(),
                 relative_path: relative_path.to_owned(),
-                content_hash: unique_hash.to_owned(),
+                content_hash: tantivy_cache_key.to_owned(),
                 text: chunk.data.to_owned(),
                 lang: lang_str.to_ascii_lowercase(),
                 branches: branches.to_owned(),

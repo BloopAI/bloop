@@ -49,19 +49,26 @@ impl<T> From<T> for FreshValue<T> {
     }
 }
 
-pub(crate) type RepoCacheSnapshot = Arc<scc::HashMap<String, FreshValue<()>>>;
+/// Snapshot of the current state of a FileCache
+/// Since it's atomically (as in ACID) read from SQLite, this will be
+/// representative at a single point in time
+pub(crate) type FileCacheSnapshot = Arc<scc::HashMap<String, FreshValue<()>>>;
 
+/// Unique content in a repository, where every entry is a file
+/// The cache keys are directly mirrored in Tantivy, as Tantivy can't
+/// upsert content
 pub(crate) struct FileCache<'a> {
     db: &'a SqlDb,
+    reporef: &'a RepoRef,
 }
 
 impl<'a> FileCache<'a> {
-    pub(crate) fn new(db: &'a SqlDb) -> Self {
-        Self { db }
+    pub(crate) fn new(db: &'a SqlDb, reporef: &'a RepoRef) -> Self {
+        Self { db, reporef }
     }
 
-    pub(crate) async fn for_repo(&self, reporef: &RepoRef) -> anyhow::Result<RepoCacheSnapshot> {
-        let repo_str = reporef.to_string();
+    pub(crate) async fn retrieve(&self) -> anyhow::Result<FileCacheSnapshot> {
+        let repo_str = self.reporef.to_string();
         let rows = sqlx::query! {
             "SELECT cache_hash FROM file_cache \
              WHERE repo_ref = ?",
@@ -78,13 +85,9 @@ impl<'a> FileCache<'a> {
         Ok(output.into())
     }
 
-    pub(crate) async fn persist(
-        &self,
-        reporef: &RepoRef,
-        cache: RepoCacheSnapshot,
-    ) -> anyhow::Result<()> {
+    pub(crate) async fn persist(&self, cache: FileCacheSnapshot) -> anyhow::Result<()> {
         let mut tx = self.db.begin().await?;
-        self.delete_tx(&mut tx, reporef).await?;
+        self.delete_tx(&mut tx, self.reporef).await?;
 
         let keys = {
             let mut keys = vec![];
@@ -93,7 +96,7 @@ impl<'a> FileCache<'a> {
         };
 
         for hash in keys {
-            let repo_str = reporef.to_string();
+            let repo_str = self.reporef.to_string();
             sqlx::query!(
                 "INSERT INTO file_cache \
 		 (repo_ref, cache_hash) \
@@ -110,9 +113,9 @@ impl<'a> FileCache<'a> {
         Ok(())
     }
 
-    pub(crate) async fn delete_for_repo(&self, reporef: &RepoRef) -> anyhow::Result<()> {
+    pub(crate) async fn delete(&self) -> anyhow::Result<()> {
         let mut tx = self.db.begin().await?;
-        self.delete_tx(&mut tx, reporef).await?;
+        self.delete_tx(&mut tx, self.reporef).await?;
         tx.commit().await?;
 
         Ok(())
@@ -148,7 +151,18 @@ impl<'a> ChunkCache<'a> {
     pub async fn for_file(
         qdrant: &'a QdrantClient,
         tantivy_cache_key: &'a str,
+        is_cold_run: bool,
     ) -> anyhow::Result<ChunkCache<'a>> {
+        if is_cold_run {
+            return Ok(Self {
+                tantivy_cache_key,
+                qdrant,
+                cache: Default::default(),
+                update: Default::default(),
+                new: Default::default(),
+            });
+        }
+
         let response = qdrant
             .scroll(&ScrollPoints {
                 collection_name: semantic::COLLECTION_NAME.to_string(),

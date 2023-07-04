@@ -107,9 +107,8 @@ impl Indexes {
                 repo.last_index_unix_secs = 0;
             });
 
-            let cache = FileCache::new(&sql);
             for reporef in refs {
-                cache.delete_for_repo(&reporef).await?;
+                FileCache::new(&sql, &reporef).delete().await?;
             }
         }
         config.source.save_index_version()?;

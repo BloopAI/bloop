@@ -32,7 +32,7 @@ use super::{
 };
 use crate::{
     background::SyncPipes,
-    cache::{FileCache, RepoCacheSnapshot},
+    cache::{FileCache, FileCacheSnapshot},
     intelligence::TreeSitterFile,
     query::compiler::{case_permutations, trigrams},
     repo::{iterator::*, RepoMetadata, RepoRef, RepoRemote, Repository},
@@ -44,7 +44,7 @@ struct Workload<'a> {
     repo_ref: String,
     repo_name: &'a str,
     repo_metadata: &'a RepoMetadata,
-    cache: &'a RepoCacheSnapshot,
+    cache: &'a FileCacheSnapshot,
     dir_entry: RepoDirEntry,
 }
 
@@ -58,13 +58,13 @@ impl Indexable for File {
         writer: &IndexWriter,
         pipes: &SyncPipes,
     ) -> Result<()> {
-        let file_cache = FileCache::new(&self.sql);
-        let repo_cache = file_cache.for_repo(reporef).await?;
+        let file_cache = FileCache::new(&self.sql, reporef);
+        let cache_snapshot = file_cache.retrieve().await?;
         let repo_name = reporef.indexed_name();
         let processed = &AtomicU64::new(0);
 
         let file_worker = |count: usize| {
-            let repo_cache = repo_cache.clone();
+            let cache_snapshot = cache_snapshot.clone();
             move |dir_entry: RepoDirEntry| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
                 pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
@@ -74,7 +74,7 @@ impl Indexable for File {
                     repo_disk_path: &repo.disk_path,
                     repo_ref: reporef.to_string(),
                     repo_name: &repo_name,
-                    cache: &repo_cache,
+                    cache: &cache_snapshot,
                     repo_metadata,
                     dir_entry,
                 };
@@ -109,7 +109,7 @@ impl Indexable for File {
         // files that are no longer tracked by the git index are to be removed
         // from the tantivy & qdrant indices
         let mut qdrant_remove_list = vec![];
-        repo_cache.retain(|k, v| {
+        cache_snapshot.retain(|k, v| {
             if !v.fresh {
                 writer.delete_term(Term::from_field_text(self.unique_hash, k));
                 qdrant_remove_list.push(k.to_string());
@@ -132,7 +132,7 @@ impl Indexable for File {
         }
 
         pipes.index_percent(100);
-        file_cache.persist(reporef, repo_cache).await?;
+        file_cache.persist(cache_snapshot).await?;
         Ok(())
     }
 
@@ -477,6 +477,7 @@ impl File {
                         repo_ref.as_str(),
                         last_commit,
                         repo_metadata,
+                        cache.len() == 0,
                     )
                     .ok_or(anyhow::anyhow!("failed to build document"))?;
                 writer.add_document(doc)?;
@@ -572,6 +573,7 @@ impl RepoFile {
         repo_ref: &str,
         last_commit: u64,
         repo_metadata: &RepoMetadata,
+        is_cold_run: bool,
     ) -> Option<tantivy::schema::Document> {
         let relative_path_str = relative_path.to_string_lossy().to_string();
         let branches = self.branches.join("\n");
@@ -638,6 +640,7 @@ impl RepoFile {
                     &self.buffer,
                     lang_str,
                     &self.branches,
+                    is_cold_run,
                 ))
             });
         }
@@ -665,7 +668,7 @@ impl RepoFile {
 }
 
 #[tracing::instrument(skip(cache))]
-fn is_cache_fresh(cache: &RepoCacheSnapshot, unique_hash: &str, entry_pathbuf: &PathBuf) -> bool {
+fn is_cache_fresh(cache: &FileCacheSnapshot, unique_hash: &str, entry_pathbuf: &PathBuf) -> bool {
     match cache.entry(unique_hash.into()) {
         Entry::Occupied(mut val) => {
             // skip processing if contents are up-to-date in the cache
