@@ -17,8 +17,8 @@ impl Exchange {
     pub fn apply_update(&mut self, update: Update) {
         match update {
             Update::Step(search_step) => self.search_steps.push(search_step),
-            Update::Filesystem(file_actions) => {
-                self.set_file_actions(file_actions);
+            Update::Filesystem(file_results) => {
+                self.set_file_results(file_results);
             }
             Update::Article(text) => {
                 let outcome = self
@@ -64,11 +64,11 @@ impl Exchange {
 
         match self.outcome.as_ref()? {
             Outcome::Article(article) => Some(article.clone()),
-            Outcome::Filesystem(file_actions) => Some(
-                file_actions
+            Outcome::Filesystem(file_results) => Some(
+                file_results
                     .iter()
-                    .filter_map(|action| match action {
-                        FileAction::Cite(cite) => Some(cite.summarize()),
+                    .filter_map(|result| match result {
+                        FileResult::Cite(cite) => Some(cite.summarize()),
                         _ => None,
                     })
                     .chain(self.conclusion.clone())
@@ -79,7 +79,7 @@ impl Exchange {
     }
 
     /// Set the current search result list.
-    fn set_file_actions(&mut self, mut new_results: Vec<FileAction>) {
+    fn set_file_results(&mut self, mut new_results: Vec<FileResult>) {
         let results = self
             .outcome
             .get_or_insert_with(|| Outcome::Filesystem(Vec::new()))
@@ -92,14 +92,14 @@ impl Exchange {
         // fish out the conclusion from the result list, if any
         let conclusion = new_results
             .iter()
-            .position(FileAction::is_conclusion)
+            .position(FileResult::is_conclusion)
             .and_then(|idx| new_results.remove(idx).conclusion());
 
         // we always want the results to be additive, however
         // some updates may result in fewer number of search results
         //
         // this can occur when the partially parsed json is not
-        // sufficient to produce a search result (as in the case of a ModifyAction)
+        // sufficient to produce a search result (as in the case of a ModifyResult)
         //
         // we only update the search results when the latest update
         // gives us more than what we already have
@@ -114,11 +114,11 @@ impl Exchange {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub enum Outcome {
     Article(String),
-    Filesystem(Vec<FileAction>),
+    Filesystem(Vec<FileResult>),
 }
 
 impl Outcome {
-    fn as_filesystem_mut(&mut self) -> Option<&mut Vec<FileAction>> {
+    fn as_filesystem_mut(&mut self) -> Option<&mut Vec<FileResult>> {
         match self {
             Self::Article(_) => None,
             Self::Filesystem(outcome) => Some(outcome),
@@ -154,28 +154,28 @@ pub enum SearchStep {
 #[derive(Debug)]
 pub enum Update {
     Step(SearchStep),
-    Filesystem(Vec<FileAction>),
+    Filesystem(Vec<FileResult>),
     Article(String),
     Conclude(String),
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub enum FileAction {
-    Cite(CiteAction),
-    Directory(DirectoryAction),
-    Modify(ModifyAction),
-    Conclude(ConcludeAction),
+pub enum FileResult {
+    Cite(CiteResult),
+    Directory(DirectoryResult),
+    Modify(ModifyResult),
+    Conclude(ConcludeResult),
 }
 
-impl FileAction {
+impl FileResult {
     pub fn from_json_array(v: &[serde_json::Value]) -> Option<Self> {
         let tag = v.first()?;
 
         match tag.as_str()? {
-            "cite" => CiteAction::from_json_array(&v[1..]).map(Self::Cite),
-            "dir" => DirectoryAction::from_json_array(&v[1..]).map(Self::Directory),
-            "mod" => ModifyAction::from_json_array(&v[1..]).map(Self::Modify),
-            "con" => ConcludeAction::from_json_array(&v[1..]).map(Self::Conclude),
+            "cite" => CiteResult::from_json_array(&v[1..]).map(Self::Cite),
+            "dir" => DirectoryResult::from_json_array(&v[1..]).map(Self::Directory),
+            "mod" => ModifyResult::from_json_array(&v[1..]).map(Self::Modify),
+            "con" => ConcludeResult::from_json_array(&v[1..]).map(Self::Conclude),
             _ => None,
         }
     }
@@ -186,7 +186,7 @@ impl FileAction {
 
     fn conclusion(self) -> Option<String> {
         match self {
-            Self::Conclude(ConcludeAction { comment }) => comment,
+            Self::Conclude(ConcludeResult { comment }) => comment,
             _ => None,
         }
     }
@@ -201,7 +201,7 @@ impl FileAction {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
-pub struct CiteAction {
+pub struct CiteResult {
     #[serde(skip)]
     path_alias: Option<u64>,
     path: Option<String>,
@@ -211,28 +211,28 @@ pub struct CiteAction {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
-pub struct DirectoryAction {
+pub struct DirectoryResult {
     path: Option<String>,
     comment: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
-pub struct ModifyAction {
+pub struct ModifyResult {
     #[serde(skip)]
     path_alias: Option<u64>,
     path: Option<String>,
     language: Option<String>,
-    diff: Option<ModifyActionHunk>,
+    diff: Option<ModifyResultHunk>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
-struct ModifyActionHunk {
-    header: Option<ModifyActionHunkHeader>,
+struct ModifyResultHunk {
+    header: Option<ModifyResultHunkHeader>,
     lines: Vec<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
-struct ModifyActionHunkHeader {
+struct ModifyResultHunkHeader {
     old_start: Option<usize>,
     old_lines: Option<usize>,
     new_start: Option<usize>,
@@ -240,11 +240,11 @@ struct ModifyActionHunkHeader {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
-pub struct ConcludeAction {
+pub struct ConcludeResult {
     comment: Option<String>,
 }
 
-impl CiteAction {
+impl CiteResult {
     fn from_json_array(v: &[serde_json::Value]) -> Option<Self> {
         let path_alias = v.get(0).and_then(serde_json::Value::as_u64);
         let comment = v
@@ -273,7 +273,7 @@ impl CiteAction {
     }
 
     fn summarize(&self) -> String {
-        fn _summarize(s: &CiteAction) -> Option<String> {
+        fn _summarize(s: &CiteResult) -> Option<String> {
             let comment = s.comment.as_ref()?;
             let path = s.path.as_ref()?;
             Some(format!("{path}: {comment}",))
@@ -283,7 +283,7 @@ impl CiteAction {
     }
 }
 
-impl DirectoryAction {
+impl DirectoryResult {
     fn from_json_array(v: &[serde_json::Value]) -> Option<Self> {
         let path = v
             .get(0)
@@ -297,7 +297,7 @@ impl DirectoryAction {
     }
 }
 
-impl ModifyAction {
+impl ModifyResult {
     fn from_json_array(v: &[serde_json::Value]) -> Option<Self> {
         let path_alias = v.get(0).and_then(serde_json::Value::as_u64);
         let language = v
@@ -314,7 +314,7 @@ impl ModifyAction {
                     .skip(1)
                     .map(ToOwned::to_owned)
                     .collect::<Vec<_>>();
-                ModifyActionHunk { header, lines }
+                ModifyResultHunk { header, lines }
             });
 
         Some(Self {
@@ -345,7 +345,7 @@ impl ModifyAction {
     }
 }
 
-impl std::str::FromStr for ModifyActionHunkHeader {
+impl std::str::FromStr for ModifyResultHunkHeader {
     type Err = ();
 
     // a header looks like
@@ -402,7 +402,7 @@ impl std::str::FromStr for ModifyActionHunkHeader {
     }
 }
 
-impl ConcludeAction {
+impl ConcludeResult {
     fn from_json_array(v: &[serde_json::Value]) -> Option<Self> {
         let comment = v
             .get(0)

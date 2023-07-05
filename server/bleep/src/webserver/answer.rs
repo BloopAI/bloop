@@ -1356,7 +1356,7 @@ impl Agent {
                 .iter()
                 .map(Vec::as_slice)
                 .filter_map(|v| {
-                    let item = exchange::FileAction::from_json_array(v);
+                    let item = exchange::FileResult::from_json_array(v);
                     if item.is_none() {
                         warn!("failed to build search result from: {v:?}");
                     }
