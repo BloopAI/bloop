@@ -200,6 +200,27 @@ impl Client {
         }
     }
 
+    pub fn model(mut self, model: &str) -> Self {
+        if model.is_empty() {
+            self.model = None;
+        } else {
+            self.model = Some(model.to_owned());
+        }
+
+        self
+    }
+
+    pub fn frequency_penalty(mut self, frequency: impl Into<Option<f32>>) -> Self {
+        self.frequency_penalty = frequency.into();
+        self
+    }
+
+    #[allow(unused)]
+    pub fn presence_penalty(mut self, presence_penalty: impl Into<Option<f32>>) -> Self {
+        self.presence_penalty = presence_penalty.into();
+        self
+    }
+
     pub fn temperature(mut self, temperature: impl Into<Option<f32>>) -> Self {
         self.temperature = temperature.into();
         self
