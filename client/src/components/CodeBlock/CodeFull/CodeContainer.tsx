@@ -4,6 +4,7 @@ import React, {
   SetStateAction,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -14,6 +15,7 @@ import { Range, TokenInfoType, TokenInfoWrapped } from '../../../types/results';
 import { getTokenInfo } from '../../../services/api';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
 import { mapTokenInfo } from '../../../mappers/results';
+import { AppNavigationContext } from '../../../context/appNavigationContext';
 import CodeContainerVirtualized from './CodeContainerVirtualized';
 import CodeContainerFull from './CodeContainerFull';
 import { Metadata, BlameLine } from './index';
@@ -66,6 +68,7 @@ const CodeContainer = ({
     lineNumber: -1,
   });
   const { selectedBranch } = useContext(SearchContext);
+  const { navigatedItem } = useContext(AppNavigationContext);
 
   const getHoverableContent = useCallback(
     (hoverableRange: Range, tokenRange: Range, lineNumber?: number) => {
@@ -106,6 +109,15 @@ const CodeContainer = ({
     },
     [relativePath, selectedBranch],
   );
+
+  useEffect(() => {
+    if (navigatedItem?.pathParams?.tokenRange) {
+      const [start, end] = navigatedItem?.pathParams?.tokenRange
+        .split('_')
+        .map((l) => Number(l));
+      getHoverableContent({ start, end }, { start, end });
+    }
+  }, [navigatedItem?.pathParams?.tokenRange, getHoverableContent]);
 
   const handleRefsDefsClick = useCallback(
     (
