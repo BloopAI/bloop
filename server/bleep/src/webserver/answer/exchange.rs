@@ -1,4 +1,6 @@
 use crate::query::parser::SemanticQuery;
+use anyhow::{Context, Result};
+use tracing::trace;
 
 /// A continually updated conversation exchange.
 ///
@@ -67,24 +69,29 @@ impl Exchange {
         }
     }
 
-    /// Like `answer`, but returns a summary for `filesystem` answers.
-    pub fn answer_summarized(&self) -> Option<String> {
-        self.conclusion.as_ref()?;
-
-        match self.outcome.as_ref()? {
-            Outcome::Article(article) => Some(article.clone()),
-            Outcome::Filesystem(file_results) => Some(
-                file_results
-                    .iter()
-                    .filter_map(|result| match result {
-                        FileResult::Cite(cite) => Some(cite.summarize()),
-                        _ => None,
-                    })
-                    .chain(self.conclusion.clone())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            ),
+    /// Like `answer`, but returns a summary for `filesystem` answers, or a trimmed `article`.
+    pub fn answer_summarized(&self) -> Result<Option<String>> {
+        if self.conclusion.as_ref().is_none() {
+            return Ok(None);
         }
+
+        Ok(Some(match self.outcome.as_ref() {
+            None => return Ok(None),
+            Some(Outcome::Article(article)) => {
+                let article = trim_code(article);
+                let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
+                super::limit_tokens(&article, bpe, 500).to_owned()
+            }
+            Some(Outcome::Filesystem(file_results)) => file_results
+                .iter()
+                .filter_map(|result| match result {
+                    FileResult::Cite(cite) => Some(cite.summarize()),
+                    _ => None,
+                })
+                .chain(self.conclusion.clone())
+                .collect::<Vec<_>>()
+                .join("\n"),
+        }))
     }
 
     /// Set the current search result list.
@@ -418,5 +425,143 @@ impl ConcludeResult {
             .and_then(serde_json::Value::as_str)
             .map(ToOwned::to_owned);
         Some(Self { comment })
+    }
+}
+
+fn trim_code(s: &str) -> String {
+    #[derive(serde::Deserialize, Debug)]
+    enum CodeChunk {
+        QuotedCode {
+            #[serde(rename = "Code")]
+            _code: String,
+            #[serde(rename = "Language")]
+            language: String,
+            #[serde(rename = "Path")]
+            path: String,
+            #[serde(rename = "StartLine")]
+            start_line: u32,
+            #[serde(rename = "EndLine")]
+            end_line: u32,
+        },
+        GeneratedCode {
+            #[serde(rename = "Code")]
+            _code: String,
+            #[serde(rename = "Language")]
+            language: String,
+        },
+    }
+
+    fn try_trim_xml(text: &str) -> Result<String> {
+        dbg!(text);
+        let code_chunk =
+            serde_xml_rs::from_str(text).context("couldn't parse as XML code block")?;
+
+        dbg!(&code_chunk);
+
+        Ok(match code_chunk {
+            CodeChunk::QuotedCode {
+                _code,
+                language,
+                path,
+                start_line,
+                end_line,
+            } => {
+                format!(
+                    "<QuotedCode>\n\
+                    <Code>[REDACTED]</Code>\n\
+                    <Language>{language}</Language>\n\
+                    <Path>{path}</Path>\n\
+                    <StartLine>{start_line}</StartLine>\n\
+                    <EndLine>{end_line}</EndLine>\n\
+                    </QuotedCode>"
+                )
+            }
+
+            CodeChunk::GeneratedCode { _code, language } => {
+                format!(
+                    "<GeneratedCode>\n\
+                    <Code>[REDACTED]</Code>\n\
+                    <Language>{language}</Language>\n\
+                    </GeneratedCode>"
+                )
+            }
+        })
+    }
+
+    let arena = comrak::Arena::new();
+    let options = comrak::ComrakOptions::default();
+    let root = comrak::parse_document(&arena, s, &options);
+
+    for child in root.children() {
+        let mut node = child.data.borrow_mut();
+        if let comrak::nodes::NodeValue::HtmlBlock(html_block) = &mut node.value {
+            match try_trim_xml(&html_block.literal) {
+                Ok(trimmed) => html_block.literal = trimmed,
+                Err(e) => trace!("failed to trim XML: {e}"),
+            }
+        }
+    }
+
+    let mut out = Vec::<u8>::new();
+    comrak::format_commonmark(root, &options, &mut out).unwrap();
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+
+    #[test]
+    fn test_trim_code() {
+        let input = "Sample Markdown test.
+
+<QuotedCode>
+<Code>
+fn foo() -> i32 {
+    42
+}
+</Code>
+<Language>Rust</Language>
+<Path>src/main.rs</Path>
+<StartLine>10</StartLine>
+<EndLine>12</EndLine>
+</QuotedCode>
+
+<GeneratedCode>
+<Code>
+fn foo() -> i32 {
+    42
+}
+</Code>
+<Language>Rust</Language>
+</GeneratedCode>
+
+test
+test
+test";
+
+        let expected = "Sample Markdown test.
+
+<QuotedCode>
+<Code>[REDACTED]</Code>
+<Language>Rust</Language>
+<Path>src/main.rs</Path>
+<StartLine>10</StartLine>
+<EndLine>12</EndLine>
+</QuotedCode>
+
+<GeneratedCode>
+<Code>[REDACTED]</Code>
+<Language>Rust</Language>
+</GeneratedCode>
+
+test
+test
+test
+";
+
+        assert_eq!(expected, trim_code(input));
     }
 }

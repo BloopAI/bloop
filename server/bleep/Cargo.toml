@@ -123,6 +123,7 @@ sentry-tracing = "0.31.5"
 git-version = "0.3.5"
 gix = { version="0.47.0", features = ["blocking-http-transport-reqwest-rust-tls", "pack-cache-lru-static"] }
 thread-priority = "0.13.1"
+serde-xml-rs = "0.6.0"
 # We use the git version here, so that we can pull in recent changes that make footnotes work. The
 # latest crates.io version at the time of writing does not include necessary patches.
 comrak = { default-features = false, git = "https://github.com/kivikakk/comrak" }

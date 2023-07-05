@@ -1376,19 +1376,7 @@ impl Agent {
 
     /// Attach a summary of the most recent exchange to the LLM history.
     fn finalize(&mut self) -> Result<()> {
-        let exchange = self.conversation.last_exchange();
-
-        let summarized_answer = if let Some(body) = exchange.answer_summarized() {
-            match exchange.outcome.as_ref() {
-                Some(exchange::Outcome::Article(..)) => Some({
-                    let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
-                    limit_tokens(&body, bpe, 200).to_owned()
-                }),
-                _ => Some(body),
-            }
-        } else {
-            None
-        };
+        let summarized_answer = self.conversation.last_exchange().answer_summarized()?;
 
         if let Some(summary) = &summarized_answer {
             info!("attaching summary of previous exchange: {summary}");
