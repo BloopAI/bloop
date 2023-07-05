@@ -79,7 +79,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
                         .ok()?
                         .time()
                         .ok()?
-                        .seconds() as u64;
+                        .seconds;
 
                     Some(Branch {
                         name,

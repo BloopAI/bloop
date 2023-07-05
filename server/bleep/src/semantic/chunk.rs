@@ -400,8 +400,7 @@ mod tests {
                 !is_file
                     || de
                         .path()
-                        .extension()
-                        .and_then(|e| Some(e == "rs"))
+                        .extension().map(|e| e == "rs")
                         .unwrap_or_default()
             })
             .build();

@@ -40,7 +40,8 @@ pub(super) async fn handle<'a>(
             params.branch.as_deref(),
         )
         .await
-        .map_err(Error::internal)?;
+        .map_err(Error::internal)?
+        .ok_or_else(|| Error::user("file not found").with_status(StatusCode::NOT_FOUND))?;
 
     Ok(json(FileResponse {
         contents: split_by_lines(&doc.content, &doc.line_end_indices, &params)?.to_string(),

@@ -268,7 +268,7 @@ impl Indexer<File> {
         repo_ref: &RepoRef,
         relative_path: &str,
         branch: Option<&str>,
-    ) -> Result<ContentDocument> {
+    ) -> Result<Option<ContentDocument>> {
         let reader = self.reader.read().await;
         let searcher = reader.searcher();
 
@@ -300,7 +300,7 @@ impl Indexer<File> {
         &self,
         query: Box<dyn Query>,
         searcher: tantivy::Searcher,
-    ) -> Result<ContentDocument> {
+    ) -> Result<Option<ContentDocument>> {
         let file_source = &self.source;
 
         let collector = TopDocs::with_limit(1);
@@ -310,14 +310,16 @@ impl Indexer<File> {
 
         match search_results.as_slice() {
             // no paths matched, the input path was not well formed
-            [] => Err(anyhow::Error::msg("no path found")),
+            [] => Ok(None),
 
             // exactly one path, good
             [(_, doc_addr)] => {
                 let retrieved_doc = searcher
                     .doc(*doc_addr)
                     .expect("failed to get document by address");
-                Ok(ContentReader.read_document(file_source, retrieved_doc))
+                Ok(Some(
+                    ContentReader.read_document(file_source, retrieved_doc),
+                ))
             }
 
             // more than one path matched, this can occur when top docs is no

@@ -26,11 +26,6 @@ pub(super) struct AppContext {
     pub(super) repo_ref: RepoRef,
     pub(super) branch: Option<String>,
     query: String,
-
-    /// Indicate whether the request was answered.
-    ///
-    /// This is used in the `Drop` handler, in order to track cancelled answer queries.
-    pub(super) req_complete: bool,
 }
 
 impl AppContext {
@@ -67,7 +62,6 @@ impl AppContext {
             query_id,
             thread_id,
             query: q,
-            req_complete: false,
         })
     }
 
@@ -124,7 +118,37 @@ impl AppContext {
             .await
     }
 
-    pub(super) async fn file_search(&self, path: &str) -> Result<ContentDocument> {
+    pub(super) async fn batch_search(
+        &self,
+        query: &[Literal<'_>],
+        limit: u64,
+        offset: u64,
+        retrieve_more: bool,
+    ) -> Result<Vec<Payload>> {
+        let queries = query
+            .iter()
+            .map(|query| SemanticQuery {
+                target: Some(query.clone()),
+                repos: [Literal::Plain(self.repo_ref.display_name().into())].into(),
+                ..self.semantic_query_params()
+            })
+            .collect::<Vec<_>>();
+
+        debug!(?query, %self.thread_id, "executing semantic query");
+        self.app
+            .semantic
+            .as_ref()
+            .unwrap()
+            .batch_search(
+                queries.iter().collect::<Vec<&_>>().as_slice(),
+                limit,
+                offset,
+                retrieve_more,
+            )
+            .await
+    }
+
+    pub(super) async fn file_search(&self, path: &str) -> Result<Option<ContentDocument>> {
         let branch = self.branch.as_deref();
         let repo_ref = &self.repo_ref;
 
@@ -157,16 +181,5 @@ impl AppContext {
 
         parsed.target = None;
         parsed
-    }
-}
-
-impl Drop for AppContext {
-    fn drop(&mut self) {
-        if !self.req_complete {
-            self.track_query(
-                EventData::output_stage("cancelled")
-                    .with_payload("message", "request was cancelled"),
-            );
-        }
     }
 }

@@ -1,6 +1,5 @@
 use rand::{seq::SliceRandom, SeedableRng};
 use std::{
-    borrow::Cow,
     collections::{HashMap, HashSet, VecDeque},
     fmt, mem,
     panic::AssertUnwindSafe,
@@ -29,7 +28,7 @@ use super::middleware::User;
 use crate::{
     analytics::{EventData, QueryEvent},
     db::{QueryLog, SqlDb},
-    query::parser,
+    query::parser::{self},
     repo::RepoRef,
     Application,
 };
@@ -145,7 +144,7 @@ pub(super) async fn _handle(
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
-    let mut ctx = AppContext::new(app, user, params, query_id, conversation_id.to_string())
+    let ctx = AppContext::new(app, user, params, query_id, conversation_id.to_string())
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?;
 
     // confirm client compatibility with answer-api
@@ -188,6 +187,7 @@ pub(super) async fn _handle(
         .into_owned();
 
     let stream = async_stream::try_stream! {
+        let mut cancellation_track = CancellationTrack::new(ctx.clone());
         let mut action = Action::Query(query);
 
         conversation.exchanges.push(Exchange::default());
@@ -247,7 +247,7 @@ pub(super) async fn _handle(
         // Storing the conversation here allows us to make subsequent requests.
         conversation.store(&ctx.app.sql, conversation_id).await?;
 
-        ctx.req_complete = true;
+        cancellation_track.complete();
     };
 
     let init_stream = futures::stream::once(async move {
@@ -459,9 +459,8 @@ impl Conversation {
                 // If there are no lexical results, perform a semantic search.
                 if paths.is_empty() {
                     // TODO: Semantic search should accept unparsed queries
-                    let nl_query = parser::Literal::Plain(Cow::Owned(query.clone()));
                     let semantic_paths = ctx
-                        .semantic_search(nl_query, 30, 0, true)
+                        .semantic_search(query.into(), 30, 0, true)
                         .await?
                         .into_iter()
                         .map(|chunk| chunk.relative_path)
@@ -472,20 +471,6 @@ impl Conversation {
                     paths = semantic_paths;
                 }
 
-                let prompt = Some("§alias, path".to_owned())
-                    .into_iter()
-                    .chain(paths.iter().map(|p| format!("{}, {p}", self.path_alias(p))))
-                    .collect::<Vec<_>>()
-                    .join("\n");
-
-                ctx.track_query(
-                    EventData::input_stage("path search")
-                        .with_payload("query", query)
-                        .with_payload("is_semantic", is_semantic)
-                        .with_payload("results", &paths)
-                        .with_payload("raw_prompt", prompt),
-                );
-
                 let formatted_paths = paths
                     .iter()
                     .map(|p| SeenPath {
@@ -494,20 +479,39 @@ impl Conversation {
                     })
                     .collect::<Vec<_>>();
 
-                serde_json::to_string(&formatted_paths).unwrap()
+                let prompt = serde_json::to_string(&formatted_paths).unwrap();
+
+                ctx.track_query(
+                    EventData::input_stage("path search")
+                        .with_payload("query", query)
+                        .with_payload("is_semantic", is_semantic)
+                        .with_payload("results", &paths)
+                        .with_payload("raw_prompt", &prompt),
+                );
+
+                prompt
             }
 
             Action::Code { query } => {
-                // Semantic search.
-
                 exchange_tx
                     .send(self.update(Update::Step(SearchStep::Code(query.clone()))))
                     .await?;
 
-                let nl_query = parser::Literal::Plain(Cow::Owned(query.clone()));
-                let chunks = ctx
-                    .semantic_search(nl_query, 10, 0, true)
-                    .await?
+                let mut results = ctx.semantic_search(query.into(), 10, 0, true).await?;
+
+                let hyde_docs = self.hyde(ctx, query).await?;
+                if !hyde_docs.is_empty() {
+                    let hyde_queries = hyde_docs
+                        .iter()
+                        .map(Into::into)
+                        .collect::<Vec<parser::Literal<'static>>>();
+
+                    let hyde_results = ctx.batch_search(&hyde_queries, 10, 0, true).await?;
+
+                    results.extend(hyde_results);
+                }
+
+                let chunks = results
                     .into_iter()
                     .map(|chunk| {
                         let relative_path = chunk.relative_path;
@@ -531,6 +535,7 @@ impl Conversation {
                 ctx.track_query(
                     EventData::input_stage("semantic code search")
                         .with_payload("query", query)
+                        .with_payload("hyde_queries", &hyde_docs)
                         .with_payload("chunks", &chunks)
                         .with_payload("raw_prompt", &prompt),
                 );
@@ -611,6 +616,28 @@ impl Conversation {
         Ok(Some(action))
     }
 
+    async fn hyde(&mut self, ctx: &AppContext, query: &str) -> Result<Vec<String>> {
+        let prompt = vec![llm_gateway::api::Message::system(
+            &prompts::hypothetical_document_prompt(query),
+        )];
+
+        let ctx = &ctx.clone().model("gpt-3.5-turbo-0613");
+        let response = ctx
+            .llm_gateway
+            .chat(&prompt, None)
+            .await?
+            .try_collect::<String>()
+            .await?;
+
+        let documents = prompts::try_parse_hypothetical_documents(&response);
+
+        for doc in documents.iter() {
+            info!("{}\n", doc);
+        }
+
+        Ok(documents)
+    }
+
     async fn proc(
         &mut self,
         ctx: &AppContext,
@@ -636,7 +663,7 @@ impl Conversation {
         let question = &question;
         let ctx = &ctx
             .clone()
-            .model("gpt-3.5-turbo-16k")
+            .model("gpt-3.5-turbo-16k-0613")
             .frequency_penalty(0.1); // Set low frequency penalty to discourage long outputs
 
         let chunks = stream::iter(paths)
@@ -645,6 +672,7 @@ impl Conversation {
                     .file_search(&path)
                     .await
                     .with_context(|| format!("failed to read path: {path}"))?
+                    .with_context(|| format!("path does not exist in the index: {path}"))?
                     .content
                     .lines()
                     .enumerate()
@@ -857,24 +885,31 @@ impl Conversation {
             let alias = path_aliases[0];
             let path = self.paths[alias].clone();
 
-            let file_contents = ctx
+            let doc = ctx
                 .file_search(&path)
                 .await
-                .with_context(|| format!("failed to read path: {}", path))?
-                .content;
+                .with_context(|| format!("failed to read path: {}", path))?;
 
-            let bpe =
-                tiktoken_rs::get_bpe_from_model("gpt-4").context("invalid model requested")?;
+            match doc {
+                Some(doc) => {
+                    let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")
+                        .context("invalid model requested")?;
 
-            let trimmed_file_contents = limit_tokens(&file_contents, bpe, 4000);
+                    let trimmed_file_contents = limit_tokens(&doc.content, bpe, 4000);
 
-            vec![CodeChunk {
-                alias: alias as u32,
-                path,
-                start_line: 1,
-                end_line: trimmed_file_contents.lines().count() as u32 + 1,
-                snippet: trimmed_file_contents.to_owned(),
-            }]
+                    vec![CodeChunk {
+                        alias: alias as u32,
+                        path,
+                        start_line: 1,
+                        end_line: trimmed_file_contents.lines().count() as u32 + 1,
+                        snippet: trimmed_file_contents.to_owned(),
+                    }]
+                }
+                None => {
+                    warn!("only path alias did not return any results");
+                    vec![]
+                }
+            }
         } else {
             self.code_chunks
                 .iter()
@@ -1258,7 +1293,7 @@ impl Conversation {
             .then(|(path, mut chunks)| async move {
                 chunks.sort_by_key(|c| c.start_line);
 
-                let contents = ctx.file_search(&path).await.unwrap().content;
+                let contents = ctx.file_search(&path).await.unwrap().unwrap().content;
                 chunks
                     .into_iter()
                     .fold(Vec::<CodeChunk>::new(), |mut a, next| {
@@ -1430,6 +1465,48 @@ pub enum AnswerMode {
     Article,
     #[default]
     Filesystem,
+}
+
+/// This struct exists to track cancellation on `drop`, unless explicitly marked as completed.
+///
+/// Query control flow can be complex, as there are several points where an error may be returned
+/// via `?`. Rather than dealing with this in a complex way, we can simply use `Drop` destructors
+/// to send cancellation messages to our analytics provider.
+///
+/// By default, this struct will send a cancellation message. However, calling `.complete()` will
+/// "diffuse" the tracker, and disable the cancellation message from sending on drop.
+struct CancellationTrack {
+    ctx: AppContext,
+
+    /// Indicate whether the request was answered.
+    ///
+    /// This is used in the `Drop` handler, in order to track cancelled answer queries.
+    complete: bool,
+}
+
+impl CancellationTrack {
+    fn new(ctx: AppContext) -> Self {
+        Self {
+            ctx,
+            complete: false,
+        }
+    }
+
+    /// Mark this token as "completed", preventing a message from sending on drop.
+    fn complete(&mut self) {
+        self.complete = true;
+    }
+}
+
+impl Drop for CancellationTrack {
+    fn drop(&mut self) {
+        if !self.complete {
+            self.ctx.track_query(
+                EventData::output_stage("cancelled")
+                    .with_payload("message", "request was cancelled"),
+            );
+        }
+    }
 }
 
 #[cfg(test)]

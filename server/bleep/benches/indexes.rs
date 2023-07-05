@@ -73,7 +73,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         b.iter_batched(
             || {
                 doc! {
-                    file.entry_disk_path => "js-sample-big-symbols.js",
                     file.repo_ref => "local//bloop",
                     file.repo_name => "bloop",
                     file.relative_path => "js-sample-big-symbols.js",

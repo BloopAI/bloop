@@ -62,7 +62,8 @@ pub(super) async fn handle(
         .file
         .by_path(&repo_ref, &payload.relative_path, payload.branch.as_deref())
         .await
-        .map_err(Error::user)?;
+        .map_err(Error::user)?
+        .ok_or_else(|| Error::user("path not found").with_status(StatusCode::NOT_FOUND))?;
     let lang = source_document.lang.as_deref();
     let all_docs = {
         let associated_langs = match lang.map(TSLanguage::from_id) {

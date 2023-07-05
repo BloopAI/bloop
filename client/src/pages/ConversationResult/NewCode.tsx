@@ -12,7 +12,7 @@ type Props = {
 const NewCode = ({ code, language }: Props) => {
   const [codeCopied, setCodeCopied] = useState(false);
   return (
-    <div className="text-sm p-4 pr-20 border border-bg-border rounded-md relative bg-bg-shade">
+    <div className="text-sm p-4 pr-20 border border-bg-border rounded-md relative bg-bg-shade my-4">
       <div className="overflow-auto">
         <Code showLines={false} code={code} language={language} canWrap />
       </div>

@@ -84,7 +84,7 @@ const Chat = () => {
       setInputValue('');
       setLoading(true);
       const eventSource = new EventSource(
-        `${apiUrl.replace('https:', '')}/answer?q=${query}${
+        `${apiUrl.replace('https:', '')}/answer?q=${encodeURIComponent(query)}${
           selectedBranch ? ` branch:${selectedBranch}` : ''
         }&repo_ref=${tab.key}${threadId ? `&thread_id=${threadId}` : ''}${
           navigatedItem?.type === 'repo' && navigatedItem?.path
@@ -356,7 +356,7 @@ const Chat = () => {
             </div>
           </div>
         </div>
-        <div className="p-4">
+        <div className="p-4 overflow-auto">
           {!!conversation.length && isChatOpen && (
             <Conversation
               conversation={conversation}

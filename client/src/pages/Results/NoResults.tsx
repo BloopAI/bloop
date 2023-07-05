@@ -13,6 +13,9 @@ type Props = {
   refetchRepo?: () => void;
 };
 
+const MAX_RETRIES = 2;
+let n = 0;
+
 const NoResults = ({
   suggestions,
   isRepo,
@@ -34,8 +37,14 @@ const NoResults = ({
   );
 
   useEffect(() => {
-    if (repoState === SyncStatus.Done && refetchRepo && isRepo) {
+    if (
+      repoState === SyncStatus.Done &&
+      refetchRepo &&
+      isRepo &&
+      n < MAX_RETRIES
+    ) {
       refetchRepo();
+      n++;
     }
   }, [repoState]);
 

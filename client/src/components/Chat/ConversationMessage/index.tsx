@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import {
   Checkmark,
   List,
@@ -156,8 +157,12 @@ const ConversationMessage = ({
                 </div>
               )}
             </div>
-            <pre className="body-s text-label-title whitespace-pre-wrap break-word">
-              {message || error}
+            <pre className="body-s text-label-title whitespace-pre-wrap break-word markdown">
+              {author === ChatMessageAuthor.Server ? (
+                <ReactMarkdown>{message || error || ''}</ReactMarkdown>
+              ) : (
+                message
+              )}
             </pre>
           </div>
           <MessageFeedback

@@ -38,7 +38,8 @@ pub(super) async fn handle(
         .by_path(repo_ref, &payload.relative_path, payload.branch.as_deref())
         .await
     {
-        Ok(doc) => doc,
+        Ok(Some(doc)) => doc,
+        Ok(None) => return Err(Error::user("file not found").with_status(StatusCode::NOT_FOUND)),
         Err(e) => return Err(Error::user(e)),
     };
 

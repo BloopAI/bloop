@@ -68,7 +68,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
             onClick={() =>
               openFileModal(
                 filePath,
-                start ? `${start - 1}_${end - 1}` : undefined,
+                start ? `${start - 1}_${(end ?? start) - 1}` : undefined,
               )
             }
           />
@@ -88,17 +88,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
               code={code}
               language={matchLang[1]}
               filePath={matchPath[1]}
-              onResultClick={() =>
-                openFileModal(
-                  matchPath[1],
-                  lines[0] - 1
-                    ? `${lines[0] - 1}_${
-                        lines[0] - 1 + code.split('\n').length - 1
-                      }`
-                    : undefined,
-                )
-              }
-              endLine={lines[1] - 1}
+              onResultClick={openFileModal}
               startLine={lines[0] - 1}
               repoName={tab.repoName}
             />

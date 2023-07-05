@@ -282,8 +282,8 @@ impl Repository {
     pub async fn get_repo_metadata(&self) -> Result<Arc<RepoMetadata>, RepoError> {
         let last_commit_unix_secs = gix::open(&self.disk_path)
             .context("failed to open git repo")
-            .and_then(|repo| Ok(repo.head()?.peel_to_commit_in_place()?.time()?.seconds()))
-            .unwrap_or(0) as u64;
+            .and_then(|repo| Ok(repo.head()?.peel_to_commit_in_place()?.time()?.seconds))
+            .unwrap_or(0);
 
         let langs = Default::default();
 
