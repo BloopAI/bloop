@@ -154,6 +154,11 @@ pub struct Configuration {
     /// Bot secret token
     pub bot_secret: Option<SecretString>,
 
+    #[clap(long)]
+    /// Replicate API key
+    #[serde(serialize_with = "serialize_secret_opt_str", default)]
+    pub replicate_api_key: Option<SecretString>,
+
     //
     // Cloud deployment values
     //
@@ -280,6 +285,8 @@ impl Configuration {
             instance_domain: b.instance_domain.or(a.instance_domain),
 
             bot_secret: b.bot_secret.or(a.bot_secret),
+
+            replicate_api_key: b.replicate_api_key.or(a.replicate_api_key),
 
             analytics_key: b.analytics_key.or(a.analytics_key),
             analytics_key_fe: b.analytics_key_fe.or(a.analytics_key_fe),

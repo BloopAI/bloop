@@ -645,10 +645,6 @@ impl Conversation {
         }
 
         let question = &question;
-        let ctx = &ctx
-            .clone()
-            .model("gpt-3.5-turbo-16k-0613")
-            .frequency_penalty(0.1); // Set low frequency penalty to discourage long outputs
 
         let repo_ref = &self.repo_ref;
         let chunks = stream::iter(paths)
@@ -669,14 +665,9 @@ impl Conversation {
                     .map(|(i, line)| format!("{} {line}", i + 1))
                     .collect::<Vec<_>>();
 
-                const MAX_TOKENS: usize = 15400;
+                const MAX_TOKENS: usize = 1500;
 
-                let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
-
-                let iter =
-                    tokio::task::spawn_blocking(|| trim_lines_by_tokens(lines, bpe, MAX_TOKENS))
-                        .await
-                        .context("failed to split by token")?;
+                let iter = trim_lines_by_tokens(lines, &ctx.tokenizer, MAX_TOKENS);
 
                 Result::<_>::Ok((iter, path.clone()))
             })
@@ -701,12 +692,9 @@ impl Conversation {
 
                 tracing::debug!(?path, "calling chat API on file");
 
-                let json = ctx
-                    .llm_gateway
-                    .chat(&[llm_gateway::api::Message::system(&prompt)], None)
-                    .await?
-                    .try_collect::<String>()
-                    .await?;
+                let replicate_api_key = ctx.app.config.replicate_api_key.as_ref().unwrap().clone();
+                let json = make_prediction(&prompt, replicate_api_key.expose_secret()).await?;
+                info!("Here is the result of proc: {}", &json);
 
                 #[derive(
                     serde::Deserialize,
@@ -1323,10 +1311,20 @@ impl Conversation {
     }
 }
 
-fn trim_lines_by_tokens(lines: Vec<String>, bpe: CoreBPE, max_tokens: usize) -> Vec<String> {
+fn trim_lines_by_tokens(
+    lines: Vec<String>,
+    tokenizer: &tokenizers::Tokenizer,
+    max_tokens: usize,
+) -> Vec<String> {
     let line_tokens = lines
         .iter()
-        .map(|line| bpe.encode_ordinary(line).len())
+        .map(|line| {
+            tokenizer
+                .encode(line.clone(), false)
+                .unwrap()
+                .get_ids()
+                .len()
+        })
         .collect::<Vec<_>>();
 
     let mut trimmed_lines = Vec::new();
@@ -1464,6 +1462,81 @@ impl Action {
     }
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct PredictionRequest {
+    version: String,
+    input: InputData,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct InputData {
+    prompt: String,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct PredictionResponse {
+    id: String,
+    input: InputData,
+    output: Option<String>,
+    status: String,
+    error: Option<String>,
+}
+
+async fn poll_prediction(prediction_id: &str, api_token: &str) -> Result<String> {
+    let client = reqwest::Client::new();
+    let url = format!("https://api.replicate.com/v1/predictions/{}", prediction_id);
+
+    for _ in 0..60 {
+        let response = client
+            .get(&url)
+            .header("Authorization", format!("Token {}", api_token))
+            .header("Content-Type", "application/json")
+            .send()
+            .await?
+            .json::<PredictionResponse>()
+            .await?;
+
+        if response.status == "succeeded" {
+            let output = response.output.unwrap();
+            return Ok(output);
+        } else if response.status == "failed" {
+            let error: Option<String> = response.error;
+            return Err(anyhow!("Prediction failed: {:?}", error));
+        }
+
+        std::thread::sleep(Duration::from_secs(1));
+    }
+
+    Err(anyhow!("Prediction timed out"))
+}
+
+async fn make_prediction(prompt: &str, api_token: &str) -> Result<String> {
+    let client = reqwest::Client::new();
+    let url = "https://api.replicate.com/v1/predictions";
+
+    let body = serde_json::json!({
+        "version": "240246dbf56bccbc314a84796e0e1282525933c68ab7ef259fc2e529e239a70e",
+        "input": { "prompt": prompt }
+    });
+
+    let response = client
+        .post(url)
+        .header("Authorization", format!("Token {}", api_token))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await?
+        .json::<PredictionResponse>()
+        .await?;
+
+    let prediction_id = response.id;
+
+    println!("Prediction ID: {}", prediction_id);
+
+    let output = poll_prediction(&prediction_id, api_token).await?;
+    Ok(output)
+}
+
 #[derive(Debug, Default, Clone, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AnswerMode {
@@ -1480,6 +1553,7 @@ struct AppContext {
     query_id: uuid::Uuid,
     thread_id: uuid::Uuid,
     repo_ref: Option<RepoRef>,
+    tokenizer: tokenizers::tokenizer::Tokenizer,
 }
 
 impl AppContext {
@@ -1489,6 +1563,9 @@ impl AppContext {
             .bearer(app.github_token()?.map(|s| s.expose_secret().clone()))
             .session_reference_id(session_reference_id);
 
+        let tokenizer =
+            tokenizers::tokenizer::Tokenizer::from_file("model/gpt-neo/tokenizer.json").unwrap();
+
         Ok(Self {
             app,
             llm_gateway,
@@ -1496,6 +1573,7 @@ impl AppContext {
             query_id: uuid::Uuid::nil(),
             thread_id: uuid::Uuid::nil(),
             repo_ref: None,
+            tokenizer,
         })
     }
 
@@ -1631,41 +1709,6 @@ mod tests {
                 llm_gateway::api::Message::user("corge"),
             ]
         );
-    }
-
-    #[test]
-    fn test_trim_lines_by_tokens() {
-        let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
-
-        let lines = vec![
-            "fn main() {".to_string(),
-            "    one();".to_string(),
-            "    two();".to_string(),
-            "    three();".to_string(),
-            "    four();".to_string(),
-            "    five();".to_string(),
-            "    six();".to_string(),
-            "}".to_string(),
-        ];
-        assert_eq!(
-            trim_lines_by_tokens(lines, bpe.clone(), 15),
-            vec![
-                "fn main() {".to_string(),
-                "    one();".to_string(),
-                "    two();".to_string(),
-                "    three();".to_string(),
-                "    four();".to_string()
-            ]
-        );
-
-        let lines = vec!["fn main() {".to_string(), "    one();".to_string()];
-        assert_eq!(
-            trim_lines_by_tokens(lines, bpe.clone(), 15),
-            vec!["fn main() {".to_string(), "    one();".to_string()]
-        );
-
-        let expected: Vec<String> = vec![];
-        assert_eq!(trim_lines_by_tokens(vec![], bpe, 15), expected);
     }
 
     #[test]
