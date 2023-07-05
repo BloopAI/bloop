@@ -6,7 +6,7 @@ on:
     paths:
       - ".github/workflows/tauri-release.yml"
   release:
-    types: [published, prereleased]
+    types: [published]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -64,11 +64,13 @@ jobs:
           profile: minimal
           target: ${{ matrix.target }}
 
-      - name: Check if Segment key exists
+      - name: Check if keys exist
         env:
-          segment_key: ${{ secrets.ANALYTICS_FE_WRITE_KEY_PROD }}
-          sentry_key_fe: ${{ secrets.SENTRY_DSN_FE }}
-        if: ${{ env.segment_key == '' || env.sentry_key_fe == '' }}
+          analytics_key: ${{ secrets.ANALYTICS_BE_WRITE_KEY_PROD }}
+          analytics_fe_key: ${{ secrets.ANALYTICS_FE_WRITE_KEY_PROD }}
+          sentry_dsn: ${{ secrets.SENTRY_DSN_BE }}
+          sentry_dsn_fe: ${{ secrets.SENTRY_DSN_FE }}
+        if: ${{ env.analytics_fe_key == '' || env.sentry_dsn_fe == '' || env.analytics_key == '' || env.sentry_dsn == ''}}
         run: exit 1
 
       - name: Set environment
