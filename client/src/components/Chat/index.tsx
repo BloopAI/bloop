@@ -172,13 +172,13 @@ const Chat = () => {
           if (data.Ok) {
             const newMessage = data.Ok;
             if (
-              ((newMessage.results?.Filesystem?.length &&
+              ((newMessage.outcome?.Filesystem?.length &&
                 !newMessage.conclusion) ||
-                newMessage.results?.Article?.length) &&
+                newMessage.outcome?.Article?.length) &&
               !firstResultCame
             ) {
               setConversation((prev) => {
-                if (newMessage.mode === 'article') {
+                if (newMessage.outcome?.Article?.length) {
                   setChatOpen(false);
                   navigateArticleResponse(prev.length - 1, threadId);
                 } else {
@@ -197,11 +197,11 @@ const Chat = () => {
               const lastMessage = prev?.slice(-1)[0];
               const messageToAdd = {
                 author: ChatMessageAuthor.Server,
-                isLoading: !newMessage.finished,
+                isLoading: true,
                 type: ChatMessageType.Answer,
                 loadingSteps: mapLoadingSteps(newMessage.search_steps),
                 text: newMessage.conclusion,
-                results: newMessage.results,
+                results: newMessage.outcome,
               };
               const lastMessages: ChatMessage[] =
                 lastMessage?.author === ChatMessageAuthor.Server
