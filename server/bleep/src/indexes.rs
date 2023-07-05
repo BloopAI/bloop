@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use tantivy::{
     collector::{Collector, MultiFruit},
     schema::Schema,
-    tokenizer::NgramTokenizer,
+    tokenizer::{NgramTokenizer, WhitespaceTokenizer},
     DocAddress, Document, IndexReader, IndexWriter, Score,
 };
 use tokio::sync::RwLock;
@@ -260,6 +260,9 @@ impl<T: Indexable> Indexer<T> {
             .tokenizers()
             .register("default", NgramTokenizer::new(1, 3, false));
 
+        index
+            .tokenizers()
+            .register("whitespace", WhitespaceTokenizer);
         Ok(index)
     }
 

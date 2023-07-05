@@ -100,8 +100,8 @@ impl DocumentRead for ContentReader {
         let repo_ref = read_text_field(&doc, schema.repo_ref);
         let repo_name = read_text_field(&doc, schema.repo_name);
         let content = read_text_field(&doc, schema.content);
+        let branches = Some(read_text_field(&doc, schema.branches));
         let lang = read_lang_field(&doc, schema.lang);
-        let branches = read_lang_field(&doc, schema.branches);
 
         let line_end_indices = doc
             .get_first(schema.line_end_indices)

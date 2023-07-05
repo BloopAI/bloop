@@ -149,23 +149,12 @@ async fn search_nav(
                 Box::new(TermQuery::new(repo_filter, IndexRecordOption::Basic))
                     as Box<dyn tantivy::query::Query>,
             ))
-            .chain(
-                branch
-                    .into_iter()
-                    .map(|b| {
-                        trigrams(b)
-                            .map(|token| {
-                                Term::from_field_text(indexer.source.branches, token.as_str())
-                            })
-                            .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
-                            .map(Box::new)
-                            .map(|q| q as Box<dyn tantivy::query::Query>)
-                            .collect::<Vec<_>>()
-                    })
-                    .map(BooleanQuery::intersection)
-                    .map(Box::new)
-                    .map(|b| b as Box<dyn tantivy::query::Query>),
-            )
+            .chain(branch.into_iter().map(|b| {
+                Box::new(TermQuery::new(
+                    Term::from_field_text(indexer.source.branches, b),
+                    IndexRecordOption::Basic,
+                )) as Box<dyn tantivy::query::Query>
+            }))
             .chain(std::iter::once(Box::new(BooleanQuery::union(
                 associated_langs
                     .iter()
