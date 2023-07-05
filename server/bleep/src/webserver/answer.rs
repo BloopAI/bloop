@@ -257,6 +257,8 @@ pub(super) async fn _handle(
             }
         }
 
+        agent.finalize()?;
+
         // Storing the conversation here allows us to make subsequent requests.
         agent.conversation.store(&agent.app.sql, conversation_id).await?;
         agent.complete();
@@ -380,19 +382,6 @@ impl Conversation {
                 .chain(conclusion.into_iter())
                 .collect::<Vec<_>>()
         })
-    }
-
-    /// Retrieve the second last exchange, if it exists.
-    ///
-    /// This is useful when creating a new exchange; because it already exists in the exchange
-    /// list, the second last exchange should be equivalent to the last completed exchange.
-    // TODO: This API is unwieldy. Logic accessing this function should be refactored to work when
-    // appending to the exchange instead.
-    fn second_last_exchange(&self) -> Option<&Exchange> {
-        self.exchanges
-            .len()
-            .checked_sub(2)
-            .and_then(|second_last| self.exchanges.get(second_last))
     }
 
     async fn store(&self, db: &SqlDb, id: ConversationId) -> Result<()> {
@@ -663,37 +652,7 @@ impl Agent {
                 self.update(Update::Step(SearchStep::Query(s.clone())))
                     .await?;
 
-                let previous_answer = if let Some(e) = self.conversation.second_last_exchange() {
-                    if let Some(body) = e.answer_summarized() {
-                        match e.outcome.as_ref() {
-                            Some(exchange::Outcome::Article(..)) => Some({
-                                let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
-                                limit_tokens(&body, bpe, 200).to_owned()
-                            }),
-
-                            _ => Some(body),
-                        }
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
-
-                if let Some(summary) = &previous_answer {
-                    info!("attaching summary of previous exchange: {summary}");
-                    self.conversation
-                        .llm_history
-                        .push_back(llm_gateway::api::Message::assistant(summary));
-                } else {
-                    info!("no previous exchanges, skipping summary");
-                };
-
-                self.track_query(
-                    EventData::input_stage("query")
-                        .with_payload("q", s)
-                        .with_payload("previous_answer_summary", &previous_answer),
-                );
+                self.track_query(EventData::input_stage("query").with_payload("q", s));
 
                 s.clone()
             }
@@ -1416,6 +1375,34 @@ impl Agent {
                 .with_payload("response", &buffer)
                 .with_payload("system_message", &system_message),
         );
+
+        Ok(())
+    }
+
+    /// Attach a summary of the most recent exchange to the LLM history.
+    fn finalize(&mut self) -> Result<()> {
+        let exchange = self.conversation.last_exchange();
+
+        let summarized_answer = if let Some(body) = exchange.answer_summarized() {
+            match exchange.outcome.as_ref() {
+                Some(exchange::Outcome::Article(..)) => Some({
+                    let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
+                    limit_tokens(&body, bpe, 200).to_owned()
+                }),
+                _ => Some(body),
+            }
+        } else {
+            None
+        };
+
+        if let Some(summary) = &summarized_answer {
+            info!("attaching summary of previous exchange: {summary}");
+            self.conversation
+                .llm_history
+                .push_back(llm_gateway::api::Message::assistant(summary));
+        } else {
+            info!("no previous exchanges, skipping summary");
+        }
 
         Ok(())
     }
