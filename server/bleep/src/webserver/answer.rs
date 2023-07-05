@@ -36,12 +36,12 @@ use crate::{
 };
 
 pub mod conversations;
+mod exchange;
 mod llm_gateway;
 mod partial_parse;
 mod prompts;
-mod response;
 
-use response::{Exchange, SearchResult, SearchStep, Update};
+use exchange::{Exchange, SearchStep, Update};
 
 const TIMEOUT_SECS: u64 = 60;
 
@@ -86,6 +86,11 @@ pub struct Params {
 
 fn default_thread_id() -> uuid::Uuid {
     uuid::Uuid::new_v4()
+}
+
+enum AgentError {
+    Timeout(Duration),
+    Processing(anyhow::Error),
 }
 
 pub(super) async fn handle(
@@ -139,15 +144,18 @@ pub(super) async fn _handle(
         .await?
         .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
 
-    let ctx = AppContext::new(app, user, conversation_id.to_string())
+    let gh_token = app
+        .github_token()
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
-        .with_query_id(query_id)
-        .with_thread_id(params.thread_id)
-        .with_repo_ref(params.repo_ref.clone());
+        .map(|s| s.expose_secret().clone());
+
+    let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
+        .temperature(0.0)
+        .bearer(gh_token)
+        .session_reference_id(conversation_id.to_string());
 
     // confirm client compatibility with answer-api
-    match ctx
-        .llm_gateway
+    match llm_gateway
         .is_compatible(env!("CARGO_PKG_VERSION").parse().unwrap())
         .await
     {
@@ -172,15 +180,29 @@ pub(super) async fn _handle(
         }
     };
 
-    let q = params.q;
+    let Params { q, thread_id, .. } = params;
 
     let stream = async_stream::try_stream! {
-        let mut cancellation_track = CancellationTrack::new(ctx.clone());
         let mut action = Action::Query(q);
+        let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
         conversation.exchanges.push(Exchange::default());
 
-        loop {
+        let mut agent = Agent {
+            app,
+            conversation,
+            exchange_tx,
+            llm_gateway,
+            user,
+            thread_id,
+            query_id,
+            complete: false,
+        };
+
+        let mut left_stream = tokio_stream::wrappers::ReceiverStream::new(exchange_rx)
+            .map(Either::Left);
+
+        let result = 'outer: loop {
             // The main loop. Here, we create two streams that operate simultaneously; the update
             // stream, which sends updates back to the HTTP event stream response, and the action
             // stream, which returns a single item when there is a new action available to execute.
@@ -188,54 +210,58 @@ pub(super) async fn _handle(
 
             use futures::future::FutureExt;
 
-            let (update_tx, update_rx) = tokio::sync::mpsc::channel(10);
-
-            let left_stream = tokio_stream::wrappers::ReceiverStream::new(update_rx)
-                .map(Either::Left);
-
-            let right_stream = conversation
-                .step(&ctx, action, update_tx)
+            let right_stream = agent
+                .step(action)
                 .into_stream()
                 .map(Either::Right);
 
+            let timeout = Duration::from_secs(TIMEOUT_SECS);
+
             let mut next = None;
             for await item in tokio_stream::StreamExt::timeout(
-                stream::select(left_stream, right_stream),
-                Duration::from_secs(TIMEOUT_SECS),
+                stream::select(&mut left_stream, right_stream),
+                timeout,
             ) {
                 match item {
                     Ok(Either::Left(exchange)) => yield exchange,
                     Ok(Either::Right(next_action)) => match next_action {
-                        Ok(n) => next = n,
-                        err => {
-                            ctx.track_query(
-                                EventData::output_stage("error")
-                                    .with_payload("message", err.as_ref().unwrap_err().to_string()),
-                            );
-                            err?;
-                        }
+                        Ok(n) => break next = n,
+                        Err(e) => break 'outer Err(AgentError::Processing(e)),
                     },
-                    Err(_) => {
-                        warn!("Timeout reached.");
-                        ctx.track_query(
-                            EventData::output_stage("error")
-                                .with_payload("timeout", TIMEOUT_SECS),
-                        );
-                        Err(anyhow!("reached timeout of {TIMEOUT_SECS}s"))?
-                    }
+                    Err(_) => break 'outer Err(AgentError::Timeout(timeout)),
                 }
             }
 
             match next {
                 Some(a) => action = a,
-                None => break,
+                None => break Ok(()),
+            }
+        };
+
+        match result {
+            Ok(_) => {}
+            Err(AgentError::Timeout(duration)) => {
+                warn!("Timeout reached.");
+                agent.track_query(
+                    EventData::output_stage("error")
+                        .with_payload("timeout", duration.as_secs()),
+                );
+                Err(anyhow!("reached timeout of {duration:?}"))?;
+            }
+            Err(AgentError::Processing(e)) => {
+                agent.track_query(
+                    EventData::output_stage("error")
+                        .with_payload("message", e.to_string()),
+                );
+                Err(e)?;
             }
         }
 
-        // Storing the conversation here allows us to make subsequent requests.
-        conversation.store(&ctx.app.sql, conversation_id).await?;
+        agent.finalize()?;
 
-        cancellation_track.complete();
+        // Storing the conversation here allows us to make subsequent requests.
+        agent.conversation.store(&agent.app.sql, conversation_id).await?;
+        agent.complete();
     };
 
     let init_stream = futures::stream::once(async move {
@@ -358,800 +384,7 @@ impl Conversation {
         })
     }
 
-    /// Retrieve the second last exchange, if it exists.
-    ///
-    /// This is useful when creating a new exchange; because it already exists in the exchange
-    /// list, the second last exchange should be equivalent to the last completed exchange.
-    // TODO: This API is unwieldy. Logic accessing this function should be refactored to work when
-    // appending to the exchange instead.
-    fn second_last_exchange(&self) -> Option<&Exchange> {
-        self.exchanges
-            .len()
-            .checked_sub(2)
-            .and_then(|second_last| self.exchanges.get(second_last))
-    }
-
-    async fn step(
-        &mut self,
-        ctx: &AppContext,
-        action: Action,
-        exchange_tx: Sender<Exchange>,
-    ) -> Result<Option<Action>> {
-        let action_result = match &action {
-            Action::Query(s) => {
-                exchange_tx
-                    .send(self.update(Update::Step(SearchStep::Query(s.clone()))))
-                    .await?;
-
-                let previous_answer = if let Some(e) = self.second_last_exchange() {
-                    if let Some(body) = e.answer_summarized() {
-                        match e.mode {
-                            AnswerMode::Article => Some({
-                                let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
-                                limit_tokens(&body, bpe, 200).to_owned()
-                            }),
-
-                            AnswerMode::Filesystem => Some(body),
-                        }
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
-
-                if let Some(summary) = &previous_answer {
-                    info!("attaching summary of previous exchange: {summary}");
-                    self.llm_history
-                        .push_back(llm_gateway::api::Message::assistant(summary));
-                } else {
-                    info!("no previous exchanges, skipping summary");
-                };
-
-                ctx.track_query(
-                    EventData::input_stage("query")
-                        .with_payload("q", s)
-                        .with_payload("previous_answer_summary", &previous_answer),
-                );
-
-                s.clone()
-            }
-
-            Action::Answer { paths, mode } => {
-                match mode {
-                    AnswerMode::Filesystem => {
-                        self.answer_filesystem(ctx, exchange_tx, paths).await?
-                    }
-                    AnswerMode::Article => self.answer_article(ctx, exchange_tx, paths).await?,
-                }
-
-                return Ok(None);
-            }
-
-            Action::Path { query } => {
-                exchange_tx
-                    .send(self.update(Update::Step(SearchStep::Path(query.clone()))))
-                    .await?;
-
-                // First, perform a lexical search for the path
-                let mut paths = ctx
-                    .app
-                    .indexes
-                    .file
-                    .fuzzy_path_match(&self.repo_ref, query, /* limit */ 50)
-                    .await
-                    .map(|c| c.relative_path)
-                    .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.
-                    .into_iter()
-                    .collect::<Vec<_>>();
-
-                let is_semantic = paths.is_empty();
-
-                // If there are no lexical results, perform a semantic search.
-                if paths.is_empty() {
-                    // TODO: Semantic search should accept unparsed queries
-                    let nl_query: SemanticQuery<'_> =
-                        SemanticQuery::from_str(query.into(), self.repo_ref.display_name());
-
-                    let semantic_paths = ctx
-                        .app
-                        .semantic
-                        .as_ref()
-                        .context("semantic search is not enabled")?
-                        .search(&nl_query, 30, 0, true)
-                        .await?
-                        .into_iter()
-                        .map(|chunk| chunk.relative_path.into_owned())
-                        .collect::<HashSet<_>>()
-                        .into_iter()
-                        .collect();
-
-                    paths = semantic_paths;
-                }
-
-                let formatted_paths = paths
-                    .iter()
-                    .map(|p| SeenPath {
-                        path: p.to_string(),
-                        alias: self.path_alias(p) as u32,
-                    })
-                    .collect::<Vec<_>>();
-
-                let prompt = serde_json::to_string(&formatted_paths).unwrap();
-
-                ctx.track_query(
-                    EventData::input_stage("path search")
-                        .with_payload("query", query)
-                        .with_payload("is_semantic", is_semantic)
-                        .with_payload("results", &paths)
-                        .with_payload("raw_prompt", &prompt),
-                );
-
-                prompt
-            }
-
-            Action::Code { query } => {
-                exchange_tx
-                    .send(self.update(Update::Step(SearchStep::Code(query.clone()))))
-                    .await?;
-
-                let nl_query: SemanticQuery<'_> =
-                    SemanticQuery::from_str(query.into(), self.repo_ref.display_name());
-
-                let mut results = ctx
-                    .app
-                    .semantic
-                    .as_ref()
-                    .context("semantic search is not enabled")?
-                    .search(&nl_query, 10, 0, true)
-                    .await?;
-
-                let hyde_docs = self.hyde(ctx, query).await?;
-                if !hyde_docs.is_empty() {
-                    let hyde_queries = hyde_docs
-                        .iter()
-                        .map(|q| SemanticQuery::from_str(q.into(), self.repo_ref.display_name()))
-                        .collect::<Vec<_>>();
-
-                    let hyde_results = ctx
-                        .app
-                        .semantic
-                        .as_ref()
-                        .context("semantic search is not enabled")?
-                        .batch_search(
-                            hyde_queries.iter().collect::<Vec<&_>>().as_slice(),
-                            10,
-                            0,
-                            true,
-                        )
-                        .await?;
-
-                    results.extend(hyde_results);
-                }
-
-                let chunks = results
-                    .into_iter()
-                    .map(|chunk| {
-                        let relative_path = chunk.relative_path;
-
-                        CodeChunk {
-                            path: relative_path.clone().into_owned(),
-                            alias: self.path_alias(&relative_path) as u32,
-                            snippet: chunk.text.into_owned(),
-                            start_line: (chunk.start_line as u32).saturating_add(1),
-                            end_line: (chunk.end_line as u32).saturating_add(1),
-                        }
-                    })
-                    .collect::<Vec<_>>();
-
-                for chunk in chunks.iter().filter(|c| !c.is_empty()) {
-                    self.code_chunks.push(chunk.clone());
-                }
-
-                let prompt = serde_json::to_string(&chunks).unwrap();
-
-                ctx.track_query(
-                    EventData::input_stage("semantic code search")
-                        .with_payload("query", query)
-                        .with_payload("hyde_queries", &hyde_docs)
-                        .with_payload("chunks", &chunks)
-                        .with_payload("raw_prompt", &prompt),
-                );
-
-                prompt
-            }
-
-            Action::Proc { query, paths } => self.proc(ctx, exchange_tx, query, paths).await?,
-        };
-
-        match &action {
-            Action::Query(query) => {
-                self.llm_history
-                    .push_back(llm_gateway::api::Message::user(&format!(
-                        "{query}\nCall a function. Do not answer."
-                    )))
-            }
-            _ => {
-                let function_name = match &action {
-                    Action::Answer { .. } => "none",
-                    Action::Path { .. } => "path",
-                    Action::Code { .. } => "code",
-                    Action::Proc { .. } => "proc",
-                    Action::Query(_) => unreachable!(),
-                };
-                self.llm_history
-                    .push_back(llm_gateway::api::Message::function_return(
-                        function_name,
-                        &format!("{action_result}\nCall a function. Do not answer."),
-                    ));
-            }
-        };
-
-        let updated_system_prompt =
-            llm_gateway::api::Message::system(&prompts::system(&self.paths));
-        _ = self.llm_history.pop_front();
-        self.llm_history.push_front(updated_system_prompt);
-
-        let functions =
-            serde_json::from_value::<Vec<llm_gateway::api::Function>>(prompts::functions())
-                .unwrap();
-
-        let trimmed_history = self.trimmed_history()?;
-
-        let raw_response = ctx
-            .llm_gateway
-            .chat(&trimmed_history, Some(&functions))
-            .await?
-            .try_fold(
-                llm_gateway::api::FunctionCall::default(),
-                |acc, e| async move {
-                    let e: FunctionCall = serde_json::from_str(&e)?;
-                    Ok(FunctionCall {
-                        name: acc.name.or(e.name),
-                        arguments: acc.arguments + &e.arguments,
-                    })
-                },
-            )
-            .await?;
-
-        ctx.track_query(
-            EventData::output_stage("llm_reply")
-                .with_payload("full_history", &self.llm_history)
-                .with_payload("trimmed_history", &trimmed_history)
-                .with_payload("last_message", self.llm_history.back())
-                .with_payload("functions", &functions)
-                .with_payload("raw_response", &raw_response),
-        );
-
-        let action = Action::deserialize_gpt(&raw_response)?;
-        if !matches!(action, Action::Query(..)) {
-            self.llm_history
-                .push_back(llm_gateway::api::Message::function_call(&raw_response));
-            trace!("handling raw action: {raw_response:?}");
-        }
-
-        Ok(Some(action))
-    }
-
-    async fn hyde(&mut self, ctx: &AppContext, query: &str) -> Result<Vec<String>> {
-        let prompt = vec![llm_gateway::api::Message::system(
-            &prompts::hypothetical_document_prompt(query),
-        )];
-
-        let ctx = &ctx.clone().model("gpt-3.5-turbo-0613");
-        let response = ctx
-            .llm_gateway
-            .chat(&prompt, None)
-            .await?
-            .try_collect::<String>()
-            .await?;
-
-        let documents = prompts::try_parse_hypothetical_documents(&response);
-
-        for doc in documents.iter() {
-            info!("{}\n", doc);
-        }
-
-        Ok(documents)
-    }
-
-    async fn proc(
-        &mut self,
-        ctx: &AppContext,
-        exchange_tx: Sender<Exchange>,
-        question: &str,
-        path_aliases: &[usize],
-    ) -> Result<String> {
-        let paths = path_aliases
-            .iter()
-            .copied()
-            .map(|i| self.paths.get(i).ok_or(i).cloned())
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|i| anyhow!("invalid path alias {i}"))?;
-
-        for u in paths
-            .iter()
-            .map(|p| Update::Step(SearchStep::Proc(p.clone())))
-            .collect::<Vec<_>>()
-        {
-            exchange_tx.send(self.update(u)).await?;
-        }
-
-        let question = &question;
-        let ctx = &ctx
-            .clone()
-            .model("gpt-3.5-turbo-16k-0613")
-            .frequency_penalty(0.1); // Set low frequency penalty to discourage long outputs
-
-        let repo_ref = &self.repo_ref;
-        let chunks = stream::iter(paths)
-            .map(|path| async move {
-                tracing::debug!(?path, "reading file");
-
-                let lines = ctx
-                    .app
-                    .indexes
-                    .file
-                    .by_path(repo_ref, &path)
-                    .await
-                    .with_context(|| format!("failed to read path: {path}"))?
-                    .with_context(|| format!("path does not exist in the index: {path}"))?
-                    .content
-                    .lines()
-                    .enumerate()
-                    .map(|(i, line)| format!("{} {line}", i + 1))
-                    .collect::<Vec<_>>();
-
-                const MAX_TOKENS: usize = 15400;
-
-                let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
-
-                let iter =
-                    tokio::task::spawn_blocking(|| trim_lines_by_tokens(lines, bpe, MAX_TOKENS))
-                        .await
-                        .context("failed to split by token")?;
-
-                Result::<_>::Ok((iter, path.clone()))
-            })
-            // Buffer file loading to load multiple paths at once
-            .buffered(10)
-            .map(|result| async {
-                let (lines, path) = result?;
-
-                // The unwraps here should never fail, we generated this string above to always
-                // have the same format.
-                let start_line = lines[0]
-                    .split_once(' ')
-                    .unwrap()
-                    .0
-                    .parse::<usize>()
-                    .unwrap();
-
-                // We store the lines separately, so that we can reference them later to trim
-                // this snippet by line number.
-                let contents = lines.join("\n");
-                let prompt = prompts::file_explanation(question, &path, &contents);
-
-                tracing::debug!(?path, "calling chat API on file");
-
-                let json = ctx
-                    .llm_gateway
-                    .chat(&[llm_gateway::api::Message::system(&prompt)], None)
-                    .await?
-                    .try_collect::<String>()
-                    .await?;
-
-                #[derive(
-                    serde::Deserialize,
-                    serde::Serialize,
-                    PartialEq,
-                    Eq,
-                    PartialOrd,
-                    Ord,
-                    Copy,
-                    Clone,
-                    Debug,
-                )]
-                struct Range {
-                    start: usize,
-                    end: usize,
-                }
-
-                #[derive(serde::Serialize)]
-                struct RelevantChunk {
-                    #[serde(flatten)]
-                    range: Range,
-                    code: String,
-                }
-
-                impl RelevantChunk {
-                    fn enumerate_lines(&self) -> Self {
-                        Self {
-                            range: self.range,
-                            code: self
-                                .code
-                                .lines()
-                                .enumerate()
-                                .map(|(i, line)| format!("{} {line}", i + self.range.start))
-                                .collect::<Vec<_>>()
-                                .join("\n"),
-                        }
-                    }
-                }
-
-                let mut line_ranges: Vec<Range> = serde_json::from_str::<Vec<Range>>(&json)?
-                    .into_iter()
-                    .filter(|r| r.start > 0 && r.end > 0)
-                    .map(|mut r| {
-                        r.end = r.end.min(r.start + 20); // Cap relevant chunk size by line number
-                        r
-                    })
-                    .collect();
-
-                line_ranges.sort();
-                line_ranges.dedup();
-
-                let relevant_chunks = line_ranges
-                    .into_iter()
-                    .fold(Vec::<Range>::new(), |mut exps, next| {
-                        if let Some(prev) = exps.last_mut() {
-                            if prev.end + 10 >= next.start {
-                                prev.end = next.end;
-                                return exps;
-                            }
-                        }
-
-                        exps.push(next);
-                        exps
-                    })
-                    .into_iter()
-                    .filter_map(|range| {
-                        Some(RelevantChunk {
-                            range,
-                            code: lines
-                                .get(
-                                    range.start.saturating_sub(start_line)
-                                        ..range.end.saturating_sub(start_line),
-                                )?
-                                .iter()
-                                .map(|line| line.split_once(' ').unwrap().1)
-                                .collect::<Vec<_>>()
-                                .join("\n"),
-                        })
-                    })
-                    .collect::<Vec<_>>();
-
-                Ok::<_, anyhow::Error>((relevant_chunks, path))
-            });
-
-        let processed = chunks
-            // This box seems unnecessary, but it avoids a compiler bug:
-            // https://github.com/rust-lang/rust/issues/64552
-            .boxed()
-            .buffered(5)
-            .filter_map(|res| async { res.ok() })
-            .collect::<Vec<_>>()
-            .await;
-
-        for (relevant_chunks, path) in &processed {
-            let alias = self.path_alias(path) as u32;
-
-            for c in relevant_chunks {
-                let chunk = CodeChunk {
-                    path: path.clone(),
-                    alias,
-                    snippet: c.code.clone(),
-                    start_line: c.range.start as u32,
-                    end_line: c.range.end as u32,
-                };
-                if !chunk.is_empty() {
-                    self.code_chunks.push(chunk);
-                }
-            }
-        }
-
-        let out = processed
-            .into_iter()
-            .map(|(relevant_chunks, path)| {
-                serde_json::json!({
-                    "relevant_chunks": relevant_chunks
-                        .iter()
-                        .map(|c| c.enumerate_lines())
-                        .collect::<Vec<_>>(),
-                    "path_alias": self.path_alias(&path),
-                })
-            })
-            .collect::<Vec<_>>();
-
-        let prompt = serde_json::to_string(&out)?;
-
-        ctx.track_query(
-            EventData::input_stage("process file")
-                .with_payload("question", question)
-                .with_payload("chunks", &out)
-                .with_payload("raw_prompt", &prompt),
-        );
-
-        Ok(prompt)
-    }
-
-    async fn answer_context(&mut self, ctx: &AppContext, aliases: &[usize]) -> Result<String> {
-        self.canonicalize_code_chunks(ctx).await;
-
-        let mut s = "".to_owned();
-
-        let mut path_aliases = aliases
-            .iter()
-            .copied()
-            .filter(|alias| *alias < self.paths.len())
-            .collect::<Vec<_>>();
-
-        path_aliases.sort();
-        path_aliases.dedup();
-
-        if !self.paths.is_empty() {
-            s += "##### PATHS #####\npath alias, path\n";
-
-            if path_aliases.len() == 1 {
-                // Only show matching path
-                let alias = path_aliases[0];
-                let path = self.paths[alias].clone();
-                s += &format!("{alias}, {}\n", &path);
-            } else {
-                // Show all paths that have been seen
-                for (alias, path) in self.paths.iter().enumerate() {
-                    s += &format!("{alias}, {}\n", &path);
-                }
-            }
-        }
-
-        let code_chunks = if path_aliases.len() == 1 {
-            let alias = path_aliases[0];
-            let path = self.paths[alias].clone();
-
-            let doc = ctx
-                .app
-                .indexes
-                .file
-                .by_path(&self.repo_ref, &path)
-                .await
-                .with_context(|| format!("failed to read path: {}", path))?;
-
-            match doc {
-                Some(doc) => {
-                    let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")
-                        .context("invalid model requested")?;
-
-                    let trimmed_file_contents = limit_tokens(&doc.content, bpe, 4000);
-
-                    vec![CodeChunk {
-                        alias: alias as u32,
-                        path,
-                        start_line: 1,
-                        end_line: trimmed_file_contents.lines().count() as u32 + 1,
-                        snippet: trimmed_file_contents.to_owned(),
-                    }]
-                }
-                None => {
-                    warn!("only path alias did not return any results");
-                    vec![]
-                }
-            }
-        } else {
-            self.code_chunks
-                .iter()
-                .filter(|c| path_aliases.contains(&(c.alias as usize)))
-                .cloned()
-                .collect()
-        };
-
-        const PROMPT_HEADROOM: usize = 1500;
-        let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")?;
-        let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens("gpt-4", &s)?;
-
-        // Select as many recent chunks as possible
-        let mut recent_chunks = Vec::new();
-        for chunk in code_chunks.iter().rev() {
-            let snippet = chunk
-                .snippet
-                .lines()
-                .enumerate()
-                .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
-                .collect::<String>();
-
-            let formatted_snippet = format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
-
-            let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
-
-            if snippet_tokens >= remaining_prompt_tokens - PROMPT_HEADROOM {
-                debug!("Breaking at {} tokens...", remaining_prompt_tokens);
-                break;
-            }
-
-            recent_chunks.push((chunk.clone(), formatted_snippet));
-
-            remaining_prompt_tokens -= snippet_tokens;
-            debug!("{}", remaining_prompt_tokens);
-        }
-
-        // group recent chunks by path alias
-        let mut recent_chunks_by_alias: HashMap<_, _> =
-            recent_chunks
-                .into_iter()
-                .fold(HashMap::new(), |mut map, item| {
-                    map.entry(item.0.alias).or_insert_with(Vec::new).push(item);
-                    map
-                });
-
-        // write the header if we have atleast one chunk
-        if !recent_chunks_by_alias.values().all(Vec::is_empty) {
-            s += "\n##### CODE CHUNKS #####\n\n";
-        }
-
-        // sort by alias, then sort by lines
-        let mut aliases = recent_chunks_by_alias.keys().copied().collect::<Vec<_>>();
-        aliases.sort();
-
-        for alias in aliases {
-            let chunks = recent_chunks_by_alias.get_mut(&alias).unwrap();
-            chunks.sort_by(|a, b| a.0.start_line.cmp(&b.0.start_line));
-            for (_, formatted_snippet) in chunks {
-                s += formatted_snippet;
-            }
-        }
-
-        Ok(s)
-    }
-
-    async fn answer_article(
-        &mut self,
-        ctx: &AppContext,
-        exchange_tx: Sender<Exchange>,
-        aliases: &[usize],
-    ) -> Result<()> {
-        let context = self.answer_context(ctx, aliases).await?;
-        let query_history = self.query_history().collect::<Vec<_>>();
-
-        let system_message = prompts::answer_article_prompt(&context);
-        let messages = Some(llm_gateway::api::Message::system(&system_message))
-            .into_iter()
-            .chain(query_history.iter().cloned())
-            .collect::<Vec<_>>();
-
-        let mut stream = pin!(ctx.llm_gateway.chat(&messages, None).await?);
-        let mut response = String::new();
-        while let Some(fragment) = stream.next().await {
-            let fragment = fragment?;
-            response += &fragment;
-            exchange_tx
-                .send(self.update(Update::Article(fragment)))
-                .await?;
-        }
-
-        let article_conclusion_messages = vec![
-            "I hope that was useful, can I help with anything else?",
-            "Is there anything else I can help you with?",
-            "Can I help you with anything else?",
-        ];
-
-        exchange_tx
-            .send(
-                self.update(Update::Finalize(
-                    article_conclusion_messages
-                        .choose(&mut rand::rngs::StdRng::from_entropy())
-                        .unwrap()
-                        .to_string(),
-                )),
-            )
-            .await?;
-
-        ctx.track_query(
-            EventData::output_stage("answer_article")
-                .with_payload("query", self.last_exchange().query())
-                .with_payload("query_history", &query_history)
-                .with_payload("response", &response)
-                .with_payload("raw_prompt", &system_message),
-        );
-
-        Ok(())
-    }
-
-    async fn answer_filesystem(
-        &mut self,
-        ctx: &AppContext,
-        exchange_tx: Sender<Exchange>,
-        aliases: &[usize],
-    ) -> Result<()> {
-        let context = self.answer_context(ctx, aliases).await?;
-
-        let mut query_history = self.query_history().collect::<Vec<_>>();
-
-        {
-            let (role, content) = query_history
-                .last_mut()
-                .context("query history was empty")?
-                .as_plaintext_mut()
-                .context("last message was not plaintext")?;
-
-            if role != "user" {
-                bail!("last message was not a user message");
-            }
-
-            *content += "\n\nOutput only JSON.";
-        }
-
-        let system_message = prompts::answer_filesystem_prompt(&context);
-        let messages = Some(llm_gateway::api::Message::system(&system_message))
-            .into_iter()
-            .chain(query_history.iter().cloned())
-            .collect::<Vec<_>>();
-
-        let mut stream = ctx.llm_gateway.chat(&messages, None).await?.boxed();
-        let mut buffer = String::new();
-
-        while let Some(token) = stream.next().await {
-            buffer += &token?;
-
-            if buffer.is_empty() {
-                continue;
-            }
-
-            fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
-                match v {
-                    serde_json::Value::Array(a) => Some(a),
-                    _ => None,
-                }
-            }
-
-            let (s, _) = partial_parse::rectify_json(&buffer);
-
-            // this /should/ be infallible if rectify_json works
-            let rectified_json: serde_json::Value =
-                serde_json::from_str(&s).expect("failed to rectify_json");
-
-            let json_array = as_array(rectified_json.clone()).ok_or_else(|| {
-                anyhow!(
-                    "failed to parse `answer` response, expected array but buffer was `{buffer}`"
-                )
-            })?;
-
-            let array_of_arrays = json_array
-                .clone()
-                .into_iter()
-                .map(as_array)
-                .collect::<Option<Vec<Vec<_>>>>()
-                .unwrap_or_else(|| vec![json_array]);
-
-            let search_results = array_of_arrays
-                .iter()
-                .map(Vec::as_slice)
-                .filter_map(|v| {
-                    let item = SearchResult::from_json_array(v);
-                    if item.is_none() {
-                        warn!("failed to build search result from: {v:?}");
-                    }
-                    item
-                })
-                .map(|s| s.substitute_path_alias(&self.paths))
-                .collect::<Vec<_>>();
-
-            exchange_tx
-                .send(self.update(Update::Filesystem(search_results)))
-                .await?;
-        }
-
-        ctx.track_query(
-            EventData::output_stage("answer_filesystem")
-                .with_payload("query", self.last_exchange().query())
-                .with_payload("query_history", &query_history)
-                .with_payload("response", &buffer)
-                .with_payload("system_message", &system_message),
-        );
-
-        Ok(())
-    }
-
-    async fn store(self, db: &SqlDb, id: ConversationId) -> Result<()> {
+    async fn store(&self, db: &SqlDb, id: ConversationId) -> Result<()> {
         info!("writing conversation {}-{}", id.user_id, id.thread_id);
         let mut transaction = db.begin().await?;
 
@@ -1300,17 +533,15 @@ impl Conversation {
         Ok(llm_history)
     }
 
-    fn last_exchange(&mut self) -> &mut Exchange {
+    fn last_exchange(&self) -> &Exchange {
+        self.exchanges.last().expect("exchange list was empty")
+    }
+
+    fn last_exchange_mut(&mut self) -> &mut Exchange {
         self.exchanges.last_mut().expect("exchange list was empty")
     }
 
-    fn update(&mut self, update: Update) -> Exchange {
-        let exc = self.last_exchange();
-        exc.apply_update(update);
-        exc.clone()
-    }
-
-    async fn canonicalize_code_chunks(&mut self, ctx: &AppContext) {
+    async fn canonicalize_code_chunks(&mut self, app: &Application) {
         let mut chunks_by_path = HashMap::<_, Vec<_>>::new();
 
         for c in mem::take(&mut self.code_chunks) {
@@ -1322,8 +553,7 @@ impl Conversation {
             .then(|(path, mut chunks)| async move {
                 chunks.sort_by_key(|c| c.start_line);
 
-                let contents = ctx
-                    .app
+                let contents = app
                     .indexes
                     .file
                     .by_path(repo_ref, &path)
@@ -1353,6 +583,828 @@ impl Conversation {
             .flat_map(futures::stream::iter)
             .collect()
             .await;
+    }
+}
+
+struct Agent {
+    app: Application,
+    conversation: Conversation,
+    exchange_tx: Sender<Exchange>,
+
+    llm_gateway: llm_gateway::Client,
+    user: User,
+    thread_id: uuid::Uuid,
+    query_id: uuid::Uuid,
+
+    /// Indicate whether the request was answered.
+    ///
+    /// This is used in the `Drop` handler, in order to track cancelled answer queries.
+    complete: bool,
+}
+
+/// We use a `Drop` implementation to track agent query cancellation.
+///
+/// Query control flow can be complex, as there are several points where an error may be returned
+/// via `?`. Rather than dealing with this in a complex way, we can simply use `Drop` destructors
+/// to send cancellation messages to our analytics provider.
+///
+/// By default, dropping an agent struct will send a cancellation message. However, calling
+/// `.complete()` will "diffuse" tracking, and disable the cancellation message from sending on drop.
+impl Drop for Agent {
+    fn drop(&mut self) {
+        if !self.complete {
+            self.track_query(
+                EventData::output_stage("cancelled")
+                    .with_payload("message", "request was cancelled"),
+            );
+        }
+    }
+}
+
+impl Agent {
+    /// Mark this agent as "completed", preventing an analytics message from sending on drop.
+    fn complete(&mut self) {
+        self.complete = true;
+    }
+
+    async fn update(&mut self, update: Update) -> Result<()> {
+        let exc = self.conversation.last_exchange_mut();
+        exc.apply_update(update);
+        self.exchange_tx
+            .send(exc.clone())
+            .await
+            .map_err(|_| anyhow!("exchange_tx was closed"))
+    }
+
+    fn track_query(&self, data: EventData) {
+        let event = QueryEvent {
+            query_id: self.query_id,
+            thread_id: self.thread_id,
+            repo_ref: Some(self.conversation.repo_ref.clone()),
+            data,
+        };
+        self.app.track_query(&self.user, &event);
+    }
+
+    async fn step(&mut self, action: Action) -> Result<Option<Action>> {
+        let action_result = match &action {
+            Action::Query(s) => {
+                self.update(Update::Step(SearchStep::Query(s.clone())))
+                    .await?;
+
+                self.track_query(EventData::input_stage("query").with_payload("q", s));
+
+                s.clone()
+            }
+
+            Action::Answer { paths, mode } => {
+                match mode {
+                    AnswerMode::Filesystem => self.answer_filesystem(paths).await?,
+                    AnswerMode::Article => self.answer_article(paths).await?,
+                }
+
+                return Ok(None);
+            }
+
+            Action::Path { query } => {
+                self.update(Update::Step(SearchStep::Path(query.clone())))
+                    .await?;
+
+                // First, perform a lexical search for the path
+                let mut paths = self
+                    .app
+                    .indexes
+                    .file
+                    .fuzzy_path_match(&self.conversation.repo_ref, query, /* limit */ 50)
+                    .await
+                    .map(|c| c.relative_path)
+                    .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.
+                    .into_iter()
+                    .collect::<Vec<_>>();
+
+                let is_semantic = paths.is_empty();
+
+                // If there are no lexical results, perform a semantic search.
+                if paths.is_empty() {
+                    // TODO: Semantic search should accept unparsed queries
+                    let nl_query: SemanticQuery<'_> = SemanticQuery::from_str(
+                        query.into(),
+                        self.conversation.repo_ref.display_name(),
+                    );
+
+                    let semantic_paths = self
+                        .app
+                        .semantic
+                        .as_ref()
+                        .context("semantic search is not enabled")?
+                        .search(&nl_query, 30, 0, true)
+                        .await?
+                        .into_iter()
+                        .map(|chunk| chunk.relative_path.into_owned())
+                        .collect::<HashSet<_>>()
+                        .into_iter()
+                        .collect();
+
+                    paths = semantic_paths;
+                }
+
+                let formatted_paths = paths
+                    .iter()
+                    .map(|p| SeenPath {
+                        path: p.to_string(),
+                        alias: self.conversation.path_alias(p) as u32,
+                    })
+                    .collect::<Vec<_>>();
+
+                let prompt = serde_json::to_string(&formatted_paths).unwrap();
+
+                self.track_query(
+                    EventData::input_stage("path search")
+                        .with_payload("query", query)
+                        .with_payload("is_semantic", is_semantic)
+                        .with_payload("results", &paths)
+                        .with_payload("raw_prompt", &prompt),
+                );
+
+                prompt
+            }
+
+            Action::Code { query } => {
+                self.update(Update::Step(SearchStep::Code(query.clone())))
+                    .await?;
+
+                let nl_query: SemanticQuery<'_> = SemanticQuery::from_str(
+                    query.into(),
+                    self.conversation.repo_ref.display_name(),
+                );
+
+                let mut results = self
+                    .app
+                    .semantic
+                    .as_ref()
+                    .context("semantic search is not enabled")?
+                    .search(&nl_query, 10, 0, true)
+                    .await?;
+
+                let hyde_docs = self.hyde(query).await?;
+                if !hyde_docs.is_empty() {
+                    let hyde_queries = hyde_docs
+                        .iter()
+                        .map(|q| {
+                            SemanticQuery::from_str(
+                                q.into(),
+                                self.conversation.repo_ref.display_name(),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+
+                    let hyde_results = self
+                        .app
+                        .semantic
+                        .as_ref()
+                        .context("semantic search is not enabled")?
+                        .batch_search(
+                            hyde_queries.iter().collect::<Vec<&_>>().as_slice(),
+                            10,
+                            0,
+                            true,
+                        )
+                        .await?;
+
+                    results.extend(hyde_results);
+                }
+
+                let chunks = results
+                    .into_iter()
+                    .map(|chunk| {
+                        let relative_path = chunk.relative_path;
+
+                        CodeChunk {
+                            path: relative_path.clone().into_owned(),
+                            alias: self.conversation.path_alias(&relative_path) as u32,
+                            snippet: chunk.text.into_owned(),
+                            start_line: (chunk.start_line as u32).saturating_add(1),
+                            end_line: (chunk.end_line as u32).saturating_add(1),
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                for chunk in chunks.iter().filter(|c| !c.is_empty()) {
+                    self.conversation.code_chunks.push(chunk.clone());
+                }
+
+                let prompt = serde_json::to_string(&chunks).unwrap();
+
+                self.track_query(
+                    EventData::input_stage("semantic code search")
+                        .with_payload("query", query)
+                        .with_payload("hyde_queries", &hyde_docs)
+                        .with_payload("chunks", &chunks)
+                        .with_payload("raw_prompt", &prompt),
+                );
+
+                prompt
+            }
+
+            Action::Proc { query, paths } => self.proc(query, paths).await?,
+        };
+
+        match &action {
+            Action::Query(query) => {
+                self.conversation
+                    .llm_history
+                    .push_back(llm_gateway::api::Message::user(&format!(
+                        "{query}\nCall a function. Do not answer."
+                    )))
+            }
+            _ => {
+                let function_name = match &action {
+                    Action::Answer { .. } => "none",
+                    Action::Path { .. } => "path",
+                    Action::Code { .. } => "code",
+                    Action::Proc { .. } => "proc",
+                    Action::Query(_) => unreachable!(),
+                };
+                self.conversation.llm_history.push_back(
+                    llm_gateway::api::Message::function_return(
+                        function_name,
+                        &format!("{action_result}\nCall a function. Do not answer."),
+                    ),
+                );
+            }
+        };
+
+        let updated_system_prompt =
+            llm_gateway::api::Message::system(&prompts::system(&self.conversation.paths));
+        _ = self.conversation.llm_history.pop_front();
+        self.conversation
+            .llm_history
+            .push_front(updated_system_prompt);
+
+        let functions =
+            serde_json::from_value::<Vec<llm_gateway::api::Function>>(prompts::functions())
+                .unwrap();
+
+        let trimmed_history = self.conversation.trimmed_history()?;
+
+        let raw_response = self
+            .llm_gateway
+            .chat(&trimmed_history, Some(&functions))
+            .await?
+            .try_fold(
+                llm_gateway::api::FunctionCall::default(),
+                |acc, e| async move {
+                    let e: FunctionCall = serde_json::from_str(&e)?;
+                    Ok(FunctionCall {
+                        name: acc.name.or(e.name),
+                        arguments: acc.arguments + &e.arguments,
+                    })
+                },
+            )
+            .await?;
+
+        self.track_query(
+            EventData::output_stage("llm_reply")
+                .with_payload("full_history", &self.conversation.llm_history)
+                .with_payload("trimmed_history", &trimmed_history)
+                .with_payload("last_message", self.conversation.llm_history.back())
+                .with_payload("functions", &functions)
+                .with_payload("raw_response", &raw_response),
+        );
+
+        let action = Action::deserialize_gpt(&raw_response)?;
+        if !matches!(action, Action::Query(..)) {
+            self.conversation
+                .llm_history
+                .push_back(llm_gateway::api::Message::function_call(&raw_response));
+            trace!("handling raw action: {raw_response:?}");
+        }
+
+        Ok(Some(action))
+    }
+
+    async fn hyde(&self, query: &str) -> Result<Vec<String>> {
+        let prompt = vec![llm_gateway::api::Message::system(
+            &prompts::hypothetical_document_prompt(query),
+        )];
+
+        let response = self
+            .llm_gateway
+            .clone()
+            .model("gpt-3.5-turbo-0613")
+            .chat(&prompt, None)
+            .await?
+            .try_collect::<String>()
+            .await?;
+
+        let documents = prompts::try_parse_hypothetical_documents(&response);
+
+        for doc in documents.iter() {
+            info!("{}\n", doc);
+        }
+
+        Ok(documents)
+    }
+
+    async fn proc(&mut self, question: &str, path_aliases: &[usize]) -> Result<String> {
+        let paths = path_aliases
+            .iter()
+            .copied()
+            .map(|i| self.conversation.paths.get(i).ok_or(i).cloned())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|i| anyhow!("invalid path alias {i}"))?;
+
+        for u in paths
+            .iter()
+            .map(|p| Update::Step(SearchStep::Proc(p.clone())))
+            .collect::<Vec<_>>()
+        {
+            self.update(u).await?;
+        }
+
+        // Immutable reborrow of `self`, to copy freely to async closures.
+        let self_ = &*self;
+        let chunks = stream::iter(paths)
+            .map(|path| async move {
+                tracing::debug!(?path, "reading file");
+
+                let lines = self_
+                    .app
+                    .indexes
+                    .file
+                    .by_path(&self_.conversation.repo_ref, &path)
+                    .await
+                    .with_context(|| format!("failed to read path: {path}"))?
+                    .with_context(|| format!("path does not exist in the index: {path}"))?
+                    .content
+                    .lines()
+                    .enumerate()
+                    .map(|(i, line)| format!("{} {line}", i + 1))
+                    .collect::<Vec<_>>();
+
+                const MAX_TOKENS: usize = 15400;
+
+                let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
+
+                let iter =
+                    tokio::task::spawn_blocking(|| trim_lines_by_tokens(lines, bpe, MAX_TOKENS))
+                        .await
+                        .context("failed to split by token")?;
+
+                Result::<_>::Ok((iter, path.clone()))
+            })
+            // Buffer file loading to load multiple paths at once
+            .buffered(10)
+            .map(|result| async {
+                let (lines, path) = result?;
+
+                // The unwraps here should never fail, we generated this string above to always
+                // have the same format.
+                let start_line = lines[0]
+                    .split_once(' ')
+                    .unwrap()
+                    .0
+                    .parse::<usize>()
+                    .unwrap();
+
+                // We store the lines separately, so that we can reference them later to trim
+                // this snippet by line number.
+                let contents = lines.join("\n");
+                let prompt = prompts::file_explanation(question, &path, &contents);
+
+                tracing::debug!(?path, "calling chat API on file");
+
+                let json = self_
+                    .llm_gateway
+                    .clone()
+                    .model("gpt-3.5-turbo-16k-0613")
+                    // Set low frequency penalty to discourage long outputs.
+                    .frequency_penalty(0.1)
+                    .chat(&[llm_gateway::api::Message::system(&prompt)], None)
+                    .await?
+                    .try_collect::<String>()
+                    .await?;
+
+                #[derive(
+                    serde::Deserialize,
+                    serde::Serialize,
+                    PartialEq,
+                    Eq,
+                    PartialOrd,
+                    Ord,
+                    Copy,
+                    Clone,
+                    Debug,
+                )]
+                struct Range {
+                    start: usize,
+                    end: usize,
+                }
+
+                #[derive(serde::Serialize)]
+                struct RelevantChunk {
+                    #[serde(flatten)]
+                    range: Range,
+                    code: String,
+                }
+
+                impl RelevantChunk {
+                    fn enumerate_lines(&self) -> Self {
+                        Self {
+                            range: self.range,
+                            code: self
+                                .code
+                                .lines()
+                                .enumerate()
+                                .map(|(i, line)| format!("{} {line}", i + self.range.start))
+                                .collect::<Vec<_>>()
+                                .join("\n"),
+                        }
+                    }
+                }
+
+                let mut line_ranges: Vec<Range> = serde_json::from_str::<Vec<Range>>(&json)?
+                    .into_iter()
+                    .filter(|r| r.start > 0 && r.end > 0)
+                    .map(|mut r| {
+                        r.end = r.end.min(r.start + 20); // Cap relevant chunk size by line number
+                        r
+                    })
+                    .collect();
+
+                line_ranges.sort();
+                line_ranges.dedup();
+
+                let relevant_chunks = line_ranges
+                    .into_iter()
+                    .fold(Vec::<Range>::new(), |mut exps, next| {
+                        if let Some(prev) = exps.last_mut() {
+                            if prev.end + 10 >= next.start {
+                                prev.end = next.end;
+                                return exps;
+                            }
+                        }
+
+                        exps.push(next);
+                        exps
+                    })
+                    .into_iter()
+                    .filter_map(|range| {
+                        Some(RelevantChunk {
+                            range,
+                            code: lines
+                                .get(
+                                    range.start.saturating_sub(start_line)
+                                        ..range.end.saturating_sub(start_line),
+                                )?
+                                .iter()
+                                .map(|line| line.split_once(' ').unwrap().1)
+                                .collect::<Vec<_>>()
+                                .join("\n"),
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
+                Ok::<_, anyhow::Error>((relevant_chunks, path))
+            });
+
+        let processed = chunks
+            // This box seems unnecessary, but it avoids a compiler bug:
+            // https://github.com/rust-lang/rust/issues/64552
+            .boxed()
+            .buffered(5)
+            .filter_map(|res| async { res.ok() })
+            .collect::<Vec<_>>()
+            .await;
+
+        for (relevant_chunks, path) in &processed {
+            let alias = self.conversation.path_alias(path) as u32;
+
+            for c in relevant_chunks {
+                let chunk = CodeChunk {
+                    path: path.to_owned(),
+                    alias,
+                    snippet: c.code.clone(),
+                    start_line: c.range.start as u32,
+                    end_line: c.range.end as u32,
+                };
+                if !chunk.is_empty() {
+                    self.conversation.code_chunks.push(chunk);
+                }
+            }
+        }
+
+        let out = processed
+            .into_iter()
+            .map(|(relevant_chunks, path)| {
+                serde_json::json!({
+                    "relevant_chunks": relevant_chunks
+                        .iter()
+                        .map(|c| c.enumerate_lines())
+                        .collect::<Vec<_>>(),
+                    "path_alias": self.conversation.path_alias(&path),
+                })
+            })
+            .collect::<Vec<_>>();
+
+        let prompt = serde_json::to_string(&out)?;
+
+        self.track_query(
+            EventData::input_stage("process file")
+                .with_payload("question", question)
+                .with_payload("chunks", &out)
+                .with_payload("raw_prompt", &prompt),
+        );
+
+        Ok(prompt)
+    }
+
+    async fn answer_context(&mut self, aliases: &[usize]) -> Result<String> {
+        self.conversation.canonicalize_code_chunks(&self.app).await;
+
+        let mut s = "".to_owned();
+
+        let mut path_aliases = aliases
+            .iter()
+            .copied()
+            .filter(|alias| *alias < self.conversation.paths.len())
+            .collect::<Vec<_>>();
+
+        path_aliases.sort();
+        path_aliases.dedup();
+
+        if !self.conversation.paths.is_empty() {
+            s += "##### PATHS #####\npath alias, path\n";
+
+            if path_aliases.len() == 1 {
+                // Only show matching path
+                let alias = path_aliases[0];
+                let path = self.conversation.paths[alias].clone();
+                s += &format!("{alias}, {}\n", &path);
+            } else {
+                // Show all paths that have been seen
+                for (alias, path) in self.conversation.paths.iter().enumerate() {
+                    s += &format!("{alias}, {}\n", &path);
+                }
+            }
+        }
+
+        let code_chunks = if path_aliases.len() == 1 {
+            let alias = path_aliases[0];
+            let path = self.conversation.paths[alias].clone();
+
+            let doc = self
+                .app
+                .indexes
+                .file
+                .by_path(&self.conversation.repo_ref, &path)
+                .await
+                .with_context(|| format!("failed to read path: {}", path))?;
+
+            match doc {
+                Some(doc) => {
+                    let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")
+                        .context("invalid model requested")?;
+
+                    let trimmed_file_contents = limit_tokens(&doc.content, bpe, 4000);
+
+                    vec![CodeChunk {
+                        alias: alias as u32,
+                        path,
+                        start_line: 1,
+                        end_line: trimmed_file_contents.lines().count() as u32 + 1,
+                        snippet: trimmed_file_contents.to_owned(),
+                    }]
+                }
+                None => {
+                    warn!("only path alias did not return any results");
+                    vec![]
+                }
+            }
+        } else {
+            self.conversation
+                .code_chunks
+                .iter()
+                .filter(|c| path_aliases.contains(&(c.alias as usize)))
+                .cloned()
+                .collect()
+        };
+
+        const PROMPT_HEADROOM: usize = 1500;
+        let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")?;
+        let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens("gpt-4", &s)?;
+
+        // Select as many recent chunks as possible
+        let mut recent_chunks = Vec::new();
+        for chunk in code_chunks.iter().rev() {
+            let snippet = chunk
+                .snippet
+                .lines()
+                .enumerate()
+                .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
+                .collect::<String>();
+
+            let formatted_snippet = format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
+
+            let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
+
+            if snippet_tokens >= remaining_prompt_tokens - PROMPT_HEADROOM {
+                debug!("Breaking at {} tokens...", remaining_prompt_tokens);
+                break;
+            }
+
+            recent_chunks.push((chunk.clone(), formatted_snippet));
+
+            remaining_prompt_tokens -= snippet_tokens;
+            debug!("{}", remaining_prompt_tokens);
+        }
+
+        // group recent chunks by path alias
+        let mut recent_chunks_by_alias: HashMap<_, _> =
+            recent_chunks
+                .into_iter()
+                .fold(HashMap::new(), |mut map, item| {
+                    map.entry(item.0.alias).or_insert_with(Vec::new).push(item);
+                    map
+                });
+
+        // write the header if we have atleast one chunk
+        if !recent_chunks_by_alias.values().all(Vec::is_empty) {
+            s += "\n##### CODE CHUNKS #####\n\n";
+        }
+
+        // sort by alias, then sort by lines
+        let mut aliases = recent_chunks_by_alias.keys().copied().collect::<Vec<_>>();
+        aliases.sort();
+
+        for alias in aliases {
+            let chunks = recent_chunks_by_alias.get_mut(&alias).unwrap();
+            chunks.sort_by(|a, b| a.0.start_line.cmp(&b.0.start_line));
+            for (_, formatted_snippet) in chunks {
+                s += formatted_snippet;
+            }
+        }
+
+        Ok(s)
+    }
+
+    async fn answer_article(&mut self, aliases: &[usize]) -> Result<()> {
+        let context = self.answer_context(aliases).await?;
+        let query_history = self.conversation.query_history().collect::<Vec<_>>();
+
+        let system_message = prompts::answer_article_prompt(&context);
+        let messages = Some(llm_gateway::api::Message::system(&system_message))
+            .into_iter()
+            .chain(query_history.iter().cloned())
+            .collect::<Vec<_>>();
+
+        let mut stream = pin!(self.llm_gateway.chat(&messages, None).await?);
+        let mut response = String::new();
+        while let Some(fragment) = stream.next().await {
+            let fragment = fragment?;
+            response += &fragment;
+            self.update(Update::Article(fragment)).await?;
+        }
+
+        let article_conclusion_messages = vec![
+            "I hope that was useful, can I help with anything else?",
+            "Is there anything else I can help you with?",
+            "Can I help you with anything else?",
+        ];
+
+        self.update(Update::Conclude(
+            article_conclusion_messages
+                .choose(&mut rand::rngs::StdRng::from_entropy())
+                .unwrap()
+                .to_string(),
+        ))
+        .await?;
+
+        self.track_query(
+            EventData::output_stage("answer_article")
+                .with_payload("query", self.conversation.last_exchange().query())
+                .with_payload("query_history", &query_history)
+                .with_payload("response", &response)
+                .with_payload("raw_prompt", &system_message),
+        );
+
+        Ok(())
+    }
+
+    async fn answer_filesystem(&mut self, aliases: &[usize]) -> Result<()> {
+        let context = self.answer_context(aliases).await?;
+
+        let mut query_history = self.conversation.query_history().collect::<Vec<_>>();
+
+        {
+            let (role, content) = query_history
+                .last_mut()
+                .context("query history was empty")?
+                .as_plaintext_mut()
+                .context("last message was not plaintext")?;
+
+            if role != "user" {
+                bail!("last message was not a user message");
+            }
+
+            *content += "\n\nOutput only JSON.";
+        }
+
+        let system_message = prompts::answer_filesystem_prompt(&context);
+        let messages = Some(llm_gateway::api::Message::system(&system_message))
+            .into_iter()
+            .chain(query_history.iter().cloned())
+            .collect::<Vec<_>>();
+
+        let mut stream = self.llm_gateway.chat(&messages, None).await?.boxed();
+        let mut buffer = String::new();
+
+        while let Some(token) = stream.next().await {
+            buffer += &token?;
+
+            if buffer.is_empty() {
+                continue;
+            }
+
+            fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
+                match v {
+                    serde_json::Value::Array(a) => Some(a),
+                    _ => None,
+                }
+            }
+
+            let (s, _) = partial_parse::rectify_json(&buffer);
+
+            // this /should/ be infallible if rectify_json works
+            let rectified_json: serde_json::Value =
+                serde_json::from_str(&s).expect("failed to rectify_json");
+
+            let json_array = as_array(rectified_json.clone()).ok_or_else(|| {
+                anyhow!(
+                    "failed to parse `answer` response, expected array but buffer was `{buffer}`"
+                )
+            })?;
+
+            let array_of_arrays = json_array
+                .clone()
+                .into_iter()
+                .map(as_array)
+                .collect::<Option<Vec<Vec<_>>>>()
+                .unwrap_or_else(|| vec![json_array]);
+
+            let search_results = array_of_arrays
+                .iter()
+                .map(Vec::as_slice)
+                .filter_map(|v| {
+                    let item = exchange::FileResult::from_json_array(v);
+                    if item.is_none() {
+                        warn!("failed to build search result from: {v:?}");
+                    }
+                    item
+                })
+                .map(|s| s.substitute_path_alias(&self.conversation.paths))
+                .collect::<Vec<_>>();
+
+            self.update(Update::Filesystem(search_results)).await?;
+        }
+
+        self.track_query(
+            EventData::output_stage("answer_filesystem")
+                .with_payload("query", self.conversation.last_exchange().query())
+                .with_payload("query_history", &query_history)
+                .with_payload("response", &buffer)
+                .with_payload("system_message", &system_message),
+        );
+
+        Ok(())
+    }
+
+    /// Attach a summary of the most recent exchange to the LLM history.
+    fn finalize(&mut self) -> Result<()> {
+        let exchange = self.conversation.last_exchange();
+
+        let summarized_answer = if let Some(body) = exchange.answer_summarized() {
+            match exchange.outcome.as_ref() {
+                Some(exchange::Outcome::Article(..)) => Some({
+                    let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
+                    limit_tokens(&body, bpe, 200).to_owned()
+                }),
+                _ => Some(body),
+            }
+        } else {
+            None
+        };
+
+        if let Some(summary) = &summarized_answer {
+            info!("attaching summary of previous exchange: {summary}");
+            self.conversation
+                .llm_history
+                .push_back(llm_gateway::api::Message::assistant(summary));
+        } else {
+            info!("no previous exchanges, skipping summary");
+        }
+
+        Ok(())
     }
 }
 
@@ -1503,122 +1555,6 @@ pub enum AnswerMode {
     Article,
     #[default]
     Filesystem,
-}
-
-#[derive(Clone)]
-struct AppContext {
-    app: Application,
-    llm_gateway: llm_gateway::Client,
-    user: User,
-    query_id: uuid::Uuid,
-    thread_id: uuid::Uuid,
-    repo_ref: Option<RepoRef>,
-}
-
-impl AppContext {
-    fn new(app: Application, user: User, session_reference_id: String) -> Result<Self> {
-        let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
-            .temperature(0.0)
-            .bearer(app.github_token()?.map(|s| s.expose_secret().clone()))
-            .session_reference_id(session_reference_id);
-
-        Ok(Self {
-            app,
-            llm_gateway,
-            user,
-            query_id: uuid::Uuid::nil(),
-            thread_id: uuid::Uuid::nil(),
-            repo_ref: None,
-        })
-    }
-
-    fn with_query_id(mut self, query_id: uuid::Uuid) -> Self {
-        self.query_id = query_id;
-        self
-    }
-
-    fn with_thread_id(mut self, thread_id: uuid::Uuid) -> Self {
-        self.thread_id = thread_id;
-        self
-    }
-
-    fn with_repo_ref(mut self, repo_ref: RepoRef) -> Self {
-        self.repo_ref = Some(repo_ref);
-        self
-    }
-
-    fn frequency_penalty(mut self, frequency_penalty: f32) -> Self {
-        self.llm_gateway.frequency_penalty = Some(frequency_penalty);
-        self
-    }
-
-    #[allow(unused)]
-    fn presence_penalty(mut self, presence_penalty: f32) -> Self {
-        self.llm_gateway.presence_penalty = Some(presence_penalty);
-        self
-    }
-
-    fn model(mut self, model: &str) -> Self {
-        if model.is_empty() {
-            self.llm_gateway.model = None;
-        } else {
-            self.llm_gateway.model = Some(model.to_owned());
-        }
-
-        self
-    }
-
-    fn track_query(&self, data: EventData) {
-        let event = QueryEvent {
-            query_id: self.query_id,
-            thread_id: self.thread_id,
-            repo_ref: self.repo_ref.clone(),
-            data,
-        };
-        self.app.track_query(&self.user, &event);
-    }
-}
-
-/// This struct exists to track cancellation on `drop`, unless explicitly marked as completed.
-///
-/// Query control flow can be complex, as there are several points where an error may be returned
-/// via `?`. Rather than dealing with this in a complex way, we can simply use `Drop` destructors
-/// to send cancellation messages to our analytics provider.
-///
-/// By default, this struct will send a cancellation message. However, calling `.complete()` will
-/// "diffuse" the tracker, and disable the cancellation message from sending on drop.
-struct CancellationTrack {
-    ctx: AppContext,
-
-    /// Indicate whether the request was answered.
-    ///
-    /// This is used in the `Drop` handler, in order to track cancelled answer queries.
-    complete: bool,
-}
-
-impl CancellationTrack {
-    fn new(ctx: AppContext) -> Self {
-        Self {
-            ctx,
-            complete: false,
-        }
-    }
-
-    /// Mark this token as "completed", preventing a message from sending on drop.
-    fn complete(&mut self) {
-        self.complete = true;
-    }
-}
-
-impl Drop for CancellationTrack {
-    fn drop(&mut self) {
-        if !self.complete {
-            self.ctx.track_query(
-                EventData::output_stage("cancelled")
-                    .with_payload("message", "request was cancelled"),
-            );
-        }
-    }
 }
 
 #[cfg(test)]

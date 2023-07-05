@@ -1,52 +1,12 @@
-use super::AnswerMode;
-
 /// A continually updated conversation exchange.
 ///
 /// This contains the query from the user, the intermediate steps the model takes, and the final
-/// conclusion from the model alongside results, if any.
+/// conclusion from the model alongside the outcome, if any.
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Exchange {
-    finished: bool,
-    pub mode: AnswerMode,
-    conclusion: Option<String>,
     search_steps: Vec<SearchStep>,
-    pub results: Option<Results>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub enum Results {
-    Article(String),
-    Filesystem(Vec<SearchResult>),
-}
-
-impl Results {
-    fn as_filesystem_mut(&mut self) -> Option<&mut Vec<SearchResult>> {
-        match self {
-            Self::Article(_) => None,
-            Self::Filesystem(results) => Some(results),
-        }
-    }
-
-    fn as_filesystem(&self) -> Option<&Vec<SearchResult>> {
-        match self {
-            Self::Article(_) => None,
-            Self::Filesystem(results) => Some(results),
-        }
-    }
-
-    fn as_article(&self) -> Option<&str> {
-        match self {
-            Self::Article(text) => Some(text.as_str()),
-            Self::Filesystem(_) => None,
-        }
-    }
-
-    fn as_article_mut(&mut self) -> Option<&mut String> {
-        match self {
-            Self::Article(text) => Some(text),
-            Self::Filesystem(_) => None,
-        }
-    }
+    pub outcome: Option<Outcome>,
+    conclusion: Option<String>,
 }
 
 impl Exchange {
@@ -57,20 +17,17 @@ impl Exchange {
     pub fn apply_update(&mut self, update: Update) {
         match update {
             Update::Step(search_step) => self.search_steps.push(search_step),
-            Update::Filesystem(search_results) => {
-                self.set_results(search_results);
-                self.mode = AnswerMode::Filesystem;
+            Update::Filesystem(file_results) => {
+                self.set_file_results(file_results);
             }
             Update::Article(text) => {
-                let results = self
-                    .results
-                    .get_or_insert_with(|| Results::Article(String::new()));
-                *results.as_article_mut().unwrap() += &text;
-                self.mode = AnswerMode::Article;
+                let outcome = self
+                    .outcome
+                    .get_or_insert_with(|| Outcome::Article(String::new()));
+                *outcome.as_article_mut().unwrap() += &text;
             }
-            Update::Finalize(conclusion) => {
+            Update::Conclude(conclusion) => {
                 self.conclusion = Some(conclusion);
-                self.finished = true
             }
         }
     }
@@ -88,70 +45,55 @@ impl Exchange {
     /// If the final answer is in `filesystem` format, this returns a conclusion. If the the final
     /// answer is an `article`, this returns the full text.
     pub fn answer(&self) -> Option<&str> {
-        match self.mode {
-            AnswerMode::Article => {
-                if self.finished {
-                    self.results.as_ref().and_then(Results::as_article)
+        match self.outcome {
+            Some(Outcome::Article(..)) => {
+                if self.conclusion.is_some() {
+                    self.outcome.as_ref().and_then(Outcome::as_article)
                 } else {
                     None
                 }
             }
-            AnswerMode::Filesystem => self.conclusion.as_deref(),
+            Some(Outcome::Filesystem(..)) => self.conclusion.as_deref(),
+            None => None,
         }
     }
 
     /// Like `answer`, but returns a summary for `filesystem` answers.
     pub fn answer_summarized(&self) -> Option<String> {
-        if self.finished {
-            match self.mode {
-                AnswerMode::Article => self
-                    .results
-                    .as_ref()
-                    .and_then(Results::as_article)
-                    .map(str::to_owned),
-                AnswerMode::Filesystem => Some(
-                    self.results
-                        .as_ref()
-                        .and_then(|result| result.as_filesystem())
-                        .into_iter()
-                        .flatten()
-                        .filter_map(|result| match result {
-                            SearchResult::Cite(cite) => Some(cite.summarize()),
-                            _ => None,
-                        })
-                        .chain(self.conclusion.clone())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                ),
-            }
-        } else {
-            None
+        self.conclusion.as_ref()?;
+
+        match self.outcome.as_ref()? {
+            Outcome::Article(article) => Some(article.clone()),
+            Outcome::Filesystem(file_results) => Some(
+                file_results
+                    .iter()
+                    .filter_map(|result| match result {
+                        FileResult::Cite(cite) => Some(cite.summarize()),
+                        _ => None,
+                    })
+                    .chain(self.conclusion.clone())
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+            ),
         }
     }
 
     /// Set the current search result list.
-    fn set_results(&mut self, mut new_results: Vec<SearchResult>) {
-        let results = match self
-            .results
-            .get_or_insert_with(|| Results::Filesystem(Vec::new()))
-        {
-            r @ Results::Article(_) => {
-                *r = Results::Filesystem(Vec::new());
-                r.as_filesystem_mut().unwrap()
-            }
-
-            Results::Filesystem(results) => results,
-        };
+    fn set_file_results(&mut self, mut new_results: Vec<FileResult>) {
+        let results = self
+            .outcome
+            .get_or_insert_with(|| Outcome::Filesystem(Vec::new()))
+            .as_filesystem_mut()
+            // We know this will never happen, as the LLM selects either article or filesystem
+            // mode, and cannot mix updates. This is guaranteed by the use of two different
+            // prompts.
+            .expect("encountered article outcome");
 
         // fish out the conclusion from the result list, if any
         let conclusion = new_results
             .iter()
-            .position(SearchResult::is_conclusion)
+            .position(FileResult::is_conclusion)
             .and_then(|idx| new_results.remove(idx).conclusion());
-
-        if conclusion.is_some() {
-            self.finished = true;
-        }
 
         // we always want the results to be additive, however
         // some updates may result in fewer number of search results
@@ -170,6 +112,35 @@ impl Exchange {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub enum Outcome {
+    Article(String),
+    Filesystem(Vec<FileResult>),
+}
+
+impl Outcome {
+    fn as_filesystem_mut(&mut self) -> Option<&mut Vec<FileResult>> {
+        match self {
+            Self::Article(_) => None,
+            Self::Filesystem(outcome) => Some(outcome),
+        }
+    }
+
+    fn as_article(&self) -> Option<&str> {
+        match self {
+            Self::Article(text) => Some(text.as_str()),
+            Self::Filesystem(_) => None,
+        }
+    }
+
+    fn as_article_mut(&mut self) -> Option<&mut String> {
+        match self {
+            Self::Article(text) => Some(text),
+            Self::Filesystem(_) => None,
+        }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 #[serde(rename_all = "UPPERCASE", tag = "type", content = "content")]
 #[non_exhaustive]
 pub enum SearchStep {
@@ -183,20 +154,20 @@ pub enum SearchStep {
 #[derive(Debug)]
 pub enum Update {
     Step(SearchStep),
-    Filesystem(Vec<SearchResult>),
+    Filesystem(Vec<FileResult>),
     Article(String),
-    Finalize(String),
+    Conclude(String),
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub enum SearchResult {
+pub enum FileResult {
     Cite(CiteResult),
     Directory(DirectoryResult),
     Modify(ModifyResult),
     Conclude(ConcludeResult),
 }
 
-impl SearchResult {
+impl FileResult {
     pub fn from_json_array(v: &[serde_json::Value]) -> Option<Self> {
         let tag = v.first()?;
 
