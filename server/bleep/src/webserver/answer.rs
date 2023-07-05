@@ -225,7 +225,7 @@ pub(super) async fn _handle(
                 match item {
                     Ok(Either::Left(exchange)) => yield exchange,
                     Ok(Either::Right(next_action)) => match next_action {
-                        Ok(n) => next = n,
+                        Ok(n) => break next = n,
                         Err(e) => break 'outer Err(AgentError::Processing(e)),
                     },
                     Err(_) => break 'outer Err(AgentError::Timeout(timeout)),
