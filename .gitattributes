@@ -3,12 +3,6 @@ apps/desktop/src-tauri/model/model.onnx filter=lfs diff=lfs merge=lfs -text
 apps/desktop/src-tauri/model/special_tokens_map.json filter=lfs diff=lfs merge=lfs -text
 apps/desktop/src-tauri/model/tokenizer.json filter=lfs diff=lfs merge=lfs -text
 apps/desktop/src-tauri/model/tokenizer_config.json filter=lfs diff=lfs merge=lfs -text
-apps/desktop/src-tauri/model/gpt-2/merges.txt filter=lfs diff=lfs merge=lfs -text
-apps/desktop/src-tauri/model/gpt-2/special_tokens_map.json filter=lfs diff=lfs merge=lfs -text
-apps/desktop/src-tauri/model/gpt-2/tokenizer_config.json filter=lfs diff=lfs merge=lfs -text
-apps/desktop/src-tauri/model/gpt-2/vocab.json filter=lfs diff=lfs merge=lfs -text
-apps/desktop/src-tauri/model/gpt-2/ filter=lfs diff=lfs merge=lfs -text
-apps/desktop/src-tauri/model/gpt-2/tokenizer.json filter=lfs diff=lfs merge=lfs -text
 apps/desktop/src-tauri/bin/qdrant-x86_64-apple-darwin filter=lfs diff=lfs merge=lfs -text
 apps/desktop/src-tauri/bin/qdrant-aarch64-apple-darwin filter=lfs diff=lfs merge=lfs -text
 apps/desktop/src-tauri/bin/qdrant-x86_64-unknown-linux-gnu filter=lfs diff=lfs merge=lfs -text
