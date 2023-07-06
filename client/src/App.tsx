@@ -117,9 +117,9 @@ function App({ deviceContextValue }: Props) {
             repo.provider === RepoProvider.GitHub ? repo.ref : repo.name,
           ),
         );
-        setLoading(false);
       }
     }
+    setLoading(false);
   }, [repositories, isLoading, repositories]);
 
   useEffect(() => {

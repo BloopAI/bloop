@@ -10,7 +10,11 @@ const SelfServeStep = () => {
   const location = useLocation();
 
   useEffect(() => {
-    githubWebLogin(location.pathname).then((resp) => {
+    githubWebLogin(
+      encodeURIComponent(
+        `${location.pathname}${location.search}${location.hash}`,
+      ),
+    ).then((resp) => {
       setLoginUrl(resp.oauth_url);
     });
   }, []);
