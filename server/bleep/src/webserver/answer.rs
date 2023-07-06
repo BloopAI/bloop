@@ -563,10 +563,7 @@ impl Conversation {
             chunks_by_path.entry(c.path.clone()).or_default().push(c);
         }
 
-        let branch = self
-            .last_exchange()
-            .query
-            .first_branch();
+        let branch = self.last_exchange().query.first_branch();
 
         let branch_str = branch.as_deref();
 

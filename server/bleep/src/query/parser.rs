@@ -88,7 +88,11 @@ impl<'a> SemanticQuery<'a> {
         SemanticQuery {
             repos: self.repos.into_iter().map(Literal::into_owned).collect(),
             paths: self.paths.into_iter().map(Literal::into_owned).collect(),
-            langs: self.langs.into_iter().map(|c| c.into_owned().into()).collect(),
+            langs: self
+                .langs
+                .into_iter()
+                .map(|c| c.into_owned().into())
+                .collect(),
             branch: self.branch.into_iter().map(Literal::into_owned).collect(),
             target: self.target.map(Literal::into_owned),
         }
