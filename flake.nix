@@ -136,7 +136,10 @@
           buildInputs = runtimeDeps;
         }).overrideAttrs (old: envVars);
 
-        onnxruntime14 = import ./nix/onnxruntime.nix { inherit pkgs stdenv; };
+        onnxruntime14 = import ./nix/onnxruntime.nix {
+          inherit pkgs;
+          inherit (llvm) stdenv;
+        };
 
         frontend = (pkgs.buildNpmPackage rec {
           meta = with pkgs.lib; {
