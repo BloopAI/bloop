@@ -4,9 +4,10 @@
 /// conclusion from the model alongside the outcome, if any.
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Exchange {
-    search_steps: Vec<SearchStep>,
+    pub branch: Option<String>,
+    pub search_steps: Vec<SearchStep>,
     pub outcome: Option<Outcome>,
-    conclusion: Option<String>,
+    pub conclusion: Option<String>,
 }
 
 impl Exchange {

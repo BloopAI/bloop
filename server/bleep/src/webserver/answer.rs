@@ -205,7 +205,7 @@ pub(super) async fn _handle(
         let mut action = Action::Query(sanitized_query);
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
-        conversation.exchanges.push(Exchange::default());
+        conversation.exchanges.push(Exchange { branch, ..Default::default()});
         let mut agent = Agent {
             app,
             conversation,
@@ -214,7 +214,6 @@ pub(super) async fn _handle(
             user,
             thread_id,
             query_id,
-            branch,
             query: q,
             complete: false,
         };
@@ -561,7 +560,9 @@ impl Conversation {
         self.exchanges.last_mut().expect("exchange list was empty")
     }
 
-    async fn canonicalize_code_chunks(&mut self, branch: Option<&str>, app: &Application) {
+    async fn canonicalize_code_chunks(&mut self, app: &Application) {
+        let branch_str = self.last_exchange().branch.clone();
+        let branch = branch_str.as_deref();
         let mut chunks_by_path = HashMap::<_, Vec<_>>::new();
 
         for c in mem::take(&mut self.code_chunks) {
@@ -617,7 +618,6 @@ struct Agent {
     query_id: uuid::Uuid,
 
     query: String,
-    branch: Option<String>,
 
     /// Indicate whether the request was answered.
     ///
@@ -907,7 +907,7 @@ impl Agent {
                 tracing::debug!(?path, "reading file");
 
                 let lines = self_
-                    .file_search(&path)
+                    .get_file_content(&path)
                     .await?
                     .with_context(|| format!("path does not exist in the index: {path}"))?
                     .content
@@ -1094,9 +1094,7 @@ impl Agent {
     }
 
     async fn answer_context(&mut self, aliases: &[usize]) -> Result<String> {
-        self.conversation
-            .canonicalize_code_chunks(self.branch.as_deref(), &self.app)
-            .await;
+        self.conversation.canonicalize_code_chunks(&self.app).await;
 
         let mut s = "".to_owned();
 
@@ -1128,7 +1126,7 @@ impl Agent {
         let code_chunks = if path_aliases.len() == 1 {
             let alias = path_aliases[0];
             let path = self.conversation.paths[alias].clone();
-            let doc = self.file_search(&path).await?;
+            let doc = self.get_file_content(&path).await?;
 
             match doc {
                 Some(doc) => {
@@ -1434,15 +1432,15 @@ impl Agent {
             .await
     }
 
-    async fn file_search(&self, path: &str) -> Result<Option<ContentDocument>> {
-        let branch = self.branch.as_deref();
+    async fn get_file_content(&self, path: &str) -> Result<Option<ContentDocument>> {
+        let branch = self.conversation.last_exchange().branch.clone();
         let repo_ref = &self.conversation.repo_ref;
 
         debug!(%repo_ref, path, ?branch, %self.thread_id, "executing file search");
         self.app
             .indexes
             .file
-            .by_path(repo_ref, path, branch)
+            .by_path(repo_ref, path, branch.as_deref())
             .await
             .with_context(|| format!("failed to read path: {}", path))
     }
@@ -1451,14 +1449,14 @@ impl Agent {
         &'a self,
         query: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
-        let branch = self.branch.as_deref();
+        let branch = self.conversation.last_exchange().branch.clone();
         let repo_ref = &self.conversation.repo_ref;
 
         debug!(%repo_ref, query, ?branch, %self.thread_id, "executing fuzzy search");
         self.app
             .indexes
             .file
-            .fuzzy_path_match(repo_ref, query, branch, 50)
+            .fuzzy_path_match(repo_ref, query, branch.as_deref(), 50)
             .await
     }
 
