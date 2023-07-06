@@ -185,8 +185,10 @@ export const getUpvote = (params: {
 export const getDiscordLink = () =>
   axios.get(`${DB_API}/discord-url`).then((r) => r.data);
 
-export const githubWebLogin = () =>
-  http.get('/auth/login/start').then((r) => r.data);
+export const githubWebLogin = (redirect_to: string) =>
+  http
+    .get('/auth/login/start', { params: { redirect_to } })
+    .then((r) => r.data);
 
 export const getConfig = () => http.get('/config').then((r) => r.data);
 
