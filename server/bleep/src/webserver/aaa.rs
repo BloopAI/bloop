@@ -91,10 +91,16 @@ impl AuthCookie {
 const STATE_LEN: usize = 32;
 type State = String;
 
+#[derive(serde::Deserialize)]
+pub(super) struct RedirectQuery {
+    redirect_to: Option<String>,
+}
+
 /// Initiate a new login using a web-based OAuth flow.
 pub(super) async fn login(
     Extension(app): Extension<Application>,
     Extension(auth_layer): Extension<Arc<AuthLayer>>,
+    Query(RedirectQuery { redirect_to }): Query<RedirectQuery>,
 ) -> impl IntoResponse {
     auth_layer.clean_old_states();
     if auth_layer.initialized_login.len() >= MAX_PARALLEL_PENDING_LOGINS {
@@ -114,13 +120,17 @@ pub(super) async fn login(
         .expect("github client id must be provided")
         .expose_secret();
 
-    let redirect_uri = format!(
+    let mut redirect_uri = format!(
         "https://{}/api/auth/login/complete",
         app.config
             .instance_domain
             .as_ref()
             .expect("instance domain must be provided")
     );
+
+    if let Some(uri) = redirect_to {
+        redirect_uri = format!("{redirect_uri}%3Fredirect_to={uri}");
+    }
 
     let github_oauth_url = &format!(
         "https://github.com/login/oauth/authorize\
@@ -141,6 +151,7 @@ pub(super) async fn login(
 pub(super) struct AuthorizedParams {
     state: State,
     code: String,
+    redirect_to: Option<String>,
 }
 
 /// Complete the login flow.
@@ -152,7 +163,11 @@ pub(super) async fn authorized(
     Query(params): Query<AuthorizedParams>,
     jar: PrivateCookieJar,
 ) -> impl IntoResponse {
-    let AuthorizedParams { state, code } = params;
+    let AuthorizedParams {
+        state,
+        code,
+        redirect_to,
+    } = params;
 
     auth_layer
         .initialized_login
@@ -201,7 +216,11 @@ pub(super) async fn authorized(
 
     (
         jar.add(AuthCookie::new(gh_token, user_name).to_cookie()),
-        Redirect::to("/"),
+        if let Some(uri) = redirect_to {
+            Redirect::to(&uri)
+        } else {
+            Redirect::to("/")
+        },
     )
 }
 
