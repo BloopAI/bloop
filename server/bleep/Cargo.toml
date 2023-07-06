@@ -9,6 +9,7 @@ build = "build.rs"
 default = ["dynamic-ort"]
 debug = ["console-subscriber", "histogram"]
 dynamic-ort = ["ort/load-dynamic"]
+ee = []
 
 [[bin]]
 name = "bleep"

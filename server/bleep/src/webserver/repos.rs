@@ -18,13 +18,13 @@ use serde::{Deserialize, Serialize};
 use super::{middleware::User, prelude::*};
 
 #[derive(Serialize, Debug, PartialEq, Eq)]
-pub(super) struct Branch {
+pub(crate) struct Branch {
     last_commit_unix_secs: u64,
     name: String,
 }
 
 #[derive(Serialize, Debug, Eq)]
-pub(super) struct Repo {
+pub(crate) struct Repo {
     pub(super) provider: Backend,
     pub(super) name: String,
     #[serde(rename = "ref")]
@@ -167,7 +167,7 @@ impl PartialEq for Repo {
 
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
-pub(super) enum ReposResponse {
+pub(crate) enum ReposResponse {
     List(Vec<Repo>),
     Item(Repo),
     SyncQueue(Vec<QueuedRepoStatus>),
@@ -176,6 +176,23 @@ pub(super) enum ReposResponse {
 }
 
 impl super::ApiResponse for ReposResponse {}
+
+pub(super) fn router() -> Router {
+    use axum::routing::*;
+    let mut indexed = get(indexed).put(set_indexed).delete(delete_by_id);
+
+    #[cfg(feature = "ee")]
+    {
+        indexed = indexed.patch(crate::ee::webserver::patch_indexed);
+    }
+
+    Router::new()
+        .route("/", get(available))
+        .route("/queue", get(queue))
+        .route("/status", get(index_status))
+        .route("/indexed", indexed)
+        .route("/sync", get(sync).delete(delete_sync))
+}
 
 /// Get a stream of status notifications about the indexing of each repository
 /// This endpoint opens an SSE stream
@@ -203,8 +220,8 @@ pub(super) struct IndexedParams {
 }
 
 #[derive(Deserialize)]
-pub(super) struct RepoParams {
-    repo: RepoRef,
+pub(crate) struct RepoParams {
+    pub(crate) repo: RepoRef,
 }
 
 /// Live report of the state of the sync queue
@@ -373,28 +390,6 @@ pub(super) async fn set_indexed(
         .await;
 
     json(ReposResponse::SyncQueued)
-}
-
-/// Patch a repository with the given payload
-/// This will automatically trigger a sync
-//
-pub(super) async fn patch_indexed(
-    Query(RepoParams { repo }): Query<RepoParams>,
-    State(app): State<Application>,
-    Json(patch): Json<RepositoryPatch>,
-) -> impl IntoResponse {
-    let _parsed = crate::repo::iterator::BranchFilter::from(&patch.branch_filter);
-
-    app.write_index()
-        .add_branches_for_repo(repo, patch.branch_filter)
-        .await;
-
-    json(ReposResponse::SyncQueued)
-}
-
-#[derive(Deserialize)]
-pub(super) struct RepositoryPatch {
-    branch_filter: BranchFilter,
 }
 
 #[derive(Deserialize)]

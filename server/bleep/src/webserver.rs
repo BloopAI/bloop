@@ -23,20 +23,18 @@ mod index;
 mod intelligence;
 pub mod middleware;
 mod query;
-mod repos;
+pub mod repos;
 mod semantic;
 
 pub type Router<S = Application> = axum::Router<S>;
 
 #[allow(unused)]
-pub(in crate::webserver) mod prelude {
-    pub(in crate::webserver) use super::{json, EndpointError, Error, ErrorKind, Result, Router};
-    pub(in crate::webserver) use crate::indexes::Indexes;
-    pub(in crate::webserver) use axum::{
-        extract::Query, http::StatusCode, response::IntoResponse, Extension,
-    };
-    pub(in crate::webserver) use serde::{Deserialize, Serialize};
-    pub(in crate::webserver) use std::sync::Arc;
+pub(crate) mod prelude {
+    pub(crate) use super::{json, EndpointError, Error, ErrorKind, Result, Router};
+    pub(crate) use crate::indexes::Indexes;
+    pub(crate) use axum::{extract::Query, http::StatusCode, response::IntoResponse, Extension};
+    pub(crate) use serde::{Deserialize, Serialize};
+    pub(crate) use std::sync::Arc;
 }
 
 pub async fn start(app: Application) -> anyhow::Result<()> {
@@ -51,17 +49,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         // indexing
         .route("/index", get(index::handle))
         // repo management
-        .route("/repos", get(repos::available))
-        .route("/repos/queue", get(repos::queue))
-        .route("/repos/status", get(repos::index_status))
-        .route(
-            "/repos/indexed",
-            get(repos::indexed)
-                .put(repos::set_indexed)
-                .patch(repos::patch_indexed)
-                .delete(repos::delete_by_id),
-        )
-        .route("/repos/sync", get(repos::sync).delete(repos::delete_sync))
+        .nest("/repos", repos::router())
         // intelligence
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))
@@ -136,16 +124,16 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn json<'a, T>(val: T) -> Json<Response<'a>>
+pub(crate) fn json<'a, T>(val: T) -> Json<Response<'a>>
 where
     Response<'a>: From<T>,
 {
     Json(Response::from(val))
 }
 
-type Result<T, E = Error> = std::result::Result<T, E>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-struct Error {
+pub struct Error {
     status: StatusCode,
     body: Json<Response<'static>>,
 }
@@ -217,7 +205,7 @@ impl IntoResponse for Error {
 
 /// The response upon encountering an error
 #[derive(serde::Serialize, PartialEq, Eq, Debug)]
-struct EndpointError<'a> {
+pub struct EndpointError<'a> {
     /// The kind of this error
     kind: ErrorKind,
 
@@ -230,7 +218,7 @@ struct EndpointError<'a> {
 #[derive(serde::Serialize, PartialEq, Eq, Debug)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
-enum ErrorKind {
+pub enum ErrorKind {
     User,
     Unknown,
     NotFound,
@@ -250,7 +238,7 @@ erased_serde::serialize_trait_object!(ApiResponse);
 #[derive(serde::Serialize)]
 #[serde(untagged)]
 #[non_exhaustive]
-enum Response<'a> {
+pub(crate) enum Response<'a> {
     Ok(Box<dyn erased_serde::Serialize + Send + Sync + 'static>),
     Error(EndpointError<'a>),
 }

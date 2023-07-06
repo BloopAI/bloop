@@ -48,6 +48,9 @@ mod remotes;
 mod repo;
 mod webserver;
 
+#[cfg(feature = "ee")]
+mod ee;
+
 pub mod analytics;
 pub mod indexes;
 pub mod intelligence;
