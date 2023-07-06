@@ -118,9 +118,9 @@ function App({ deviceContextValue }: Props) {
           ),
         );
       }
+      setLoading(false);
     }
-    setLoading(false);
-  }, [repositories, isLoading, repositories]);
+  }, [repositories, isLoading]);
 
   useEffect(() => {
     saveJsonToStorage(TABS_KEY, tabs);
