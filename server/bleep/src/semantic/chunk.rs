@@ -346,7 +346,7 @@ mod tests {
     use super::*;
     use std::{env, path::PathBuf};
 
-    fn minilm() -> Tokenizer {
+    fn tokenizer() -> Tokenizer {
         let tok_json = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .unwrap()
@@ -361,7 +361,7 @@ mod tests {
 
     #[test]
     pub fn empty() {
-        let tokenizer = minilm();
+        let tokenizer = tokenizer();
         let token_bounds = 50..256;
         let max_lines = 15;
         let no_tokens = super::by_tokens(
@@ -378,7 +378,7 @@ mod tests {
 
     #[test]
     pub fn by_tokens() {
-        let tokenizer = minilm();
+        let tokenizer = tokenizer();
         let token_bounds = 50..256;
         let max_lines = 15;
         let cur_dir = env::current_dir().unwrap();
@@ -433,7 +433,7 @@ mod tests {
 
     #[test]
     pub fn chunks_within_token_limit() {
-        let tokenizer = minilm();
+        let tokenizer = tokenizer();
         let max_lines = 15;
 
         let chunks = super::by_tokens(
@@ -458,7 +458,7 @@ mod tests {
 
     #[test]
     pub fn chunks_over_long_lined_file() {
-        let tokenizer = minilm();
+        let tokenizer = tokenizer();
         let max_lines = 15;
 
         // squish SRC into one big single-lined string

@@ -351,5 +351,5 @@ fn default_answer_api_url() -> String {
 }
 
 fn default_max_chunk_tokens() -> usize {
-    256
+    512
 }
