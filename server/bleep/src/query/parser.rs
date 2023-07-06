@@ -30,8 +30,8 @@ pub enum ParsedQuery<'a> {
     Grep(Vec<Query<'a>>),
 }
 
-impl ParsedQuery<'_> {
-    pub fn as_semantic(&self) -> Option<&SemanticQuery> {
+impl<'a> ParsedQuery<'a> {
+    pub fn into_semantic(self) -> Option<SemanticQuery<'a>> {
         match self {
             Self::Semantic(q) => Some(q),
             _ => None,
@@ -39,7 +39,7 @@ impl ParsedQuery<'_> {
     }
 }
 
-#[derive(Default, Clone, Debug, PartialEq, Eq)]
+#[derive(Default, Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SemanticQuery<'a> {
     pub repos: HashSet<Literal<'a>>,
     pub paths: HashSet<Literal<'a>>,
@@ -69,11 +69,28 @@ impl<'a> SemanticQuery<'a> {
         self.branch.iter().filter_map(|t| t.as_plain())
     }
 
+    // TODO (@calyptobai): This is a quirk of the current conversation logic. We take only the
+    // first branch because the UX operates on a single "current" branch. We can likely update
+    // `SemanticQuery` to remove multiple branches altogether.
+    pub fn first_branch(&self) -> Option<Cow<'_, str>> {
+        self.branch.iter().next().map(|t| t.clone().unwrap())
+    }
+
     pub fn from_str(query: String, repo_ref: String) -> Self {
         Self {
             target: Some(Literal::Plain(Cow::Owned(query))),
             repos: [Literal::Plain(Cow::Owned(repo_ref))].into(),
             ..Default::default()
+        }
+    }
+
+    pub fn into_owned(self) -> SemanticQuery<'static> {
+        SemanticQuery {
+            repos: self.repos.into_iter().map(Literal::into_owned).collect(),
+            paths: self.paths.into_iter().map(Literal::into_owned).collect(),
+            langs: self.langs.into_iter().map(|c| c.into_owned().into()).collect(),
+            branch: self.branch.into_iter().map(Literal::into_owned).collect(),
+            target: self.target.map(Literal::into_owned),
         }
     }
 }
@@ -207,7 +224,7 @@ pub enum ParseError {
     MultiMode,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Literal<'a> {
     Plain(Cow<'a, str>),
     Regex(Cow<'a, str>),
@@ -267,10 +284,17 @@ impl<'a> Literal<'a> {
         }
     }
 
-    pub fn unwrap(&self) -> Cow<'a, str> {
+    pub fn unwrap(self) -> Cow<'a, str> {
         match self {
-            Literal::Plain(v) => v.clone(),
-            Literal::Regex(v) => v.clone(),
+            Literal::Plain(v) => v,
+            Literal::Regex(v) => v,
+        }
+    }
+
+    pub fn into_owned(self) -> Literal<'static> {
+        match self {
+            Literal::Plain(cow) => Literal::Plain(Cow::Owned(cow.into_owned())),
+            Literal::Regex(cow) => Literal::Regex(Cow::Owned(cow.into_owned())),
         }
     }
 }
@@ -1157,8 +1181,8 @@ mod tests {
     fn nl_parse_dedup_similar_filters() {
         let ParsedQuery::Semantic(q) =
             parse_nl("what is background color? lang:tsx repo:bloop repo:bloop").unwrap() else {
-		panic!("down with this sorta thing")
-	    };
+            panic!("down with this sorta thing")
+        };
         assert_eq!(q.repos().count(), 1);
     }
 

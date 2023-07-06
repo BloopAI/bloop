@@ -1,16 +1,25 @@
+use crate::query::parser::SemanticQuery;
+
 /// A continually updated conversation exchange.
 ///
 /// This contains the query from the user, the intermediate steps the model takes, and the final
 /// conclusion from the model alongside the outcome, if any.
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Exchange {
-    pub branch: Option<String>,
-    pub search_steps: Vec<SearchStep>,
+    pub query: SemanticQuery<'static>,
     pub outcome: Option<Outcome>,
-    pub conclusion: Option<String>,
+    search_steps: Vec<SearchStep>,
+    conclusion: Option<String>,
 }
 
 impl Exchange {
+    pub fn new(query: SemanticQuery<'static>) -> Self {
+        Self {
+            query,
+            ..Default::default()
+        }
+    }
+
     /// Advance this exchange.
     ///
     /// This should always be additive. An update should not result in fewer search results or fewer

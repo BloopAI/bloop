@@ -30,7 +30,7 @@ use crate::{
     analytics::{EventData, QueryEvent},
     db::{QueryLog, SqlDb},
     indexes::reader::{ContentDocument, FileDocument},
-    query::parser::{self, Literal, ParsedQuery, SemanticQuery},
+    query::parser::{self, Literal, SemanticQuery},
     repo::RepoRef,
     semantic, Application,
 };
@@ -185,7 +185,10 @@ pub(super) async fn _handle(
 
     let Params { thread_id, q, .. } = params;
     let parsed_query = parser::parse_nl(&q).context("parse error")?;
-    let semantic_query = parsed_query.as_semantic().context("got a 'Grep' query")?;
+    let semantic_query = parsed_query
+        .into_semantic()
+        .context("got a 'Grep' query")?
+        .into_owned();
     let sanitized_query = semantic_query
         .target
         .as_ref()
@@ -195,17 +198,11 @@ pub(super) async fn _handle(
         .clone()
         .into_owned();
 
-    let branch = semantic_query
-        .branch
-        .iter()
-        .next()
-        .map(|b| b.unwrap().to_string());
-
     let stream = async_stream::try_stream! {
         let mut action = Action::Query(sanitized_query);
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
-        conversation.exchanges.push(Exchange { branch, ..Default::default()});
+        conversation.exchanges.push(Exchange::new(semantic_query));
         let mut agent = Agent {
             app,
             conversation,
@@ -214,7 +211,6 @@ pub(super) async fn _handle(
             user,
             thread_id,
             query_id,
-            query: q,
             complete: false,
         };
 
@@ -561,15 +557,20 @@ impl Conversation {
     }
 
     async fn canonicalize_code_chunks(&mut self, app: &Application) {
-        let branch_str = self.last_exchange().branch.clone();
-        let branch = branch_str.as_deref();
         let mut chunks_by_path = HashMap::<_, Vec<_>>::new();
 
         for c in mem::take(&mut self.code_chunks) {
             chunks_by_path.entry(c.path.clone()).or_default().push(c);
         }
 
-        let repo_ref = &self.repo_ref;
+        let branch = self
+            .last_exchange()
+            .query
+            .first_branch();
+
+        let branch_str = branch.as_deref();
+
+        let self_ = &*self;
         self.code_chunks = futures::stream::iter(chunks_by_path)
             .then(|(path, mut chunks)| async move {
                 chunks.sort_by_key(|c| c.start_line);
@@ -577,7 +578,7 @@ impl Conversation {
                 let contents = app
                     .indexes
                     .file
-                    .by_path(repo_ref, &path, branch)
+                    .by_path(&self_.repo_ref, &path, branch_str)
                     .await
                     .unwrap()
                     .unwrap_or_else(|| panic!("path did not exist in the index: {path}"))
@@ -616,8 +617,6 @@ struct Agent {
     user: User,
     thread_id: uuid::Uuid,
     query_id: uuid::Uuid,
-
-    query: String,
 
     /// Indicate whether the request was answered.
     ///
@@ -1387,7 +1386,7 @@ impl Agent {
                 self.conversation.repo_ref.display_name().into(),
             )]
             .into(),
-            ..self.semantic_query_params()
+            ..self.conversation.last_exchange().query.clone()
         };
 
         debug!(?query, %self.thread_id, "executing semantic query");
@@ -1414,7 +1413,7 @@ impl Agent {
                     self.conversation.repo_ref.display_name().into(),
                 )]
                 .into(),
-                ..self.semantic_query_params()
+                ..self.conversation.last_exchange().query.clone()
             })
             .collect::<Vec<_>>();
 
@@ -1433,7 +1432,7 @@ impl Agent {
     }
 
     async fn get_file_content(&self, path: &str) -> Result<Option<ContentDocument>> {
-        let branch = self.conversation.last_exchange().branch.clone();
+        let branch = self.conversation.last_exchange().query.first_branch();
         let repo_ref = &self.conversation.repo_ref;
 
         debug!(%repo_ref, path, ?branch, %self.thread_id, "executing file search");
@@ -1449,7 +1448,7 @@ impl Agent {
         &'a self,
         query: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
-        let branch = self.conversation.last_exchange().branch.clone();
+        let branch = self.conversation.last_exchange().query.first_branch();
         let repo_ref = &self.conversation.repo_ref;
 
         debug!(%repo_ref, query, ?branch, %self.thread_id, "executing fuzzy search");
@@ -1458,15 +1457,6 @@ impl Agent {
             .file
             .fuzzy_path_match(repo_ref, query, branch.as_deref(), 50)
             .await
-    }
-
-    fn semantic_query_params(&self) -> SemanticQuery<'_> {
-        if let Ok(ParsedQuery::Semantic(mut parsed)) = parser::parse_nl(&self.query) {
-            parsed.target = None;
-            parsed
-        } else {
-            SemanticQuery::default()
-        }
     }
 }
 

@@ -44,9 +44,9 @@ impl From<(&RepoRef, &Repository)> for Repo {
         let (head, branches) = 'branch_list: {
             let default = ("HEAD".to_string(), vec![]);
             let Ok(git) = gix::open(&repo.disk_path)
-	    else {
-		break 'branch_list default;
-	    };
+            else {
+                break 'branch_list default;
+            };
 
             let head = git
                 .head()
@@ -56,14 +56,14 @@ impl From<(&RepoRef, &Repository)> for Repo {
                 .unwrap_or_else(|| default.0.clone());
 
             let Ok(refs) = git.references()
-	    else {
-		break 'branch_list default;
-	    };
+            else {
+                break 'branch_list default;
+            };
 
             let Ok(refs) = refs.all()
-	    else {
-		break 'branch_list default;
-	    };
+            else {
+                break 'branch_list default;
+            };
 
             use gix::bstr::ByteSlice;
             let mut branches = refs
