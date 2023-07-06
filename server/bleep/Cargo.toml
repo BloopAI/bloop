@@ -30,22 +30,22 @@ harness = false
 
 # core
 tantivy = { version = "0.19.2", features = ["mmap"] }
-tokio = { version = "1.29.0", features = ["macros", "process", "rt", "rt-multi-thread", "io-std", "io-util", "sync", "fs"] }
+tokio = { version = "1.29.1", features = ["macros", "process", "rt", "rt-multi-thread", "io-std", "io-util", "sync", "fs"] }
 futures = "0.3.28"
 rayon = "1.7.0"
-clap = { version = "4.3.9", features = ["derive"] }
+clap = { version = "4.3.11", features = ["derive"] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "registry"] }
 color-eyre = "0.6.2"
 sqlx = { version = "0.6.3", features = ["sqlite", "migrate", "offline", "runtime-tokio-rustls", "chrono"] }
 
 # for debugging
-console-subscriber = { version = "0.1.9", optional = true }
+console-subscriber = { version = "0.1.10", optional = true }
 histogram = { version = "0.7.3", optional = true }
 
 # error handling
 anyhow = "1.0.71"
-thiserror = "1.0.40"
+thiserror = "1.0.41"
 
 # query parsing
 pest = "2.7.0"
@@ -68,7 +68,7 @@ tree-sitter-php = { git = "https://github.com/tree-sitter/tree-sitter-php" }
 petgraph = { version = "0.6.3", default-features = false, features = ["serde-1"] }
 
 # webserver
-serde_json = "1.0.99"
+serde_json = "1.0.100"
 axum = { version = "0.6.18", features = ["http2", "headers"] }
 axum-extra = { version = "0.7.4", features = ["cookie", "cookie-private"] }
 tower = "0.4.13"
@@ -81,17 +81,17 @@ reqwest-eventsource = "0.4.0"
 secrecy = { version = "0.8.0", features = ["serde"] }
 
 # file processing
-ignore = "=0.4.18"
+ignore = "=0.4.20"
 hyperpolyglot = { git = "https://github.com/bloopai/hyperpolyglot" }
 blake3 = "1.4.0"
 notify-debouncer-mini = { version = "0.3.0", default-features = false }
 
 # misc
-serde = "1.0.164"
+serde = "1.0.166"
 regex = "1.9.1"
 regex-syntax = "0.6.29"
-smallvec = { version = "1.10.0", features = ["serde"]}
-async-trait = "0.1.68"
+smallvec = { version = "1.11.0", features = ["serde"]}
+async-trait = "0.1.71"
 flume = "0.10.14"
 either = "1.8.1"
 compact_str = "0.7.1"
@@ -117,8 +117,8 @@ semver = { version = "1", features = ["serde"] }
 sentry = { version = "0.31.5", default-features = false, features = ["tracing", "contexts", "debug-images", "panic", "rustls", "reqwest"] }
 rudderanalytics = { version = "1.1.2", default-features = false, features = ["rustls-tls"] }
 async-stream = "0.3.5"
-erased-serde = "0.3.25"
-scc = { version= "1.8.2", features = ["serde"] }
+erased-serde = "0.3.27"
+scc = { version= "1.8.3", features = ["serde"] }
 sentry-tracing = "0.31.5"
 git-version = "0.3.5"
 gix = { version="0.47.0", features = ["blocking-http-transport-reqwest-rust-tls", "pack-cache-lru-static"] }
@@ -142,6 +142,6 @@ git-version = "0.3.5"
 
 [build-dependencies]
 phf_codegen = "0.11.2"
-serde = {version = "1.0.164", features = ["derive"]}
+serde = {version = "1.0.166", features = ["derive"]}
 serde_yaml = "0.9.22"
 blake3 = "1.4.0"

@@ -87,7 +87,7 @@
           ORT_STRATEGY = "system";
           ORT_LIB_LOCATION = "${onnxruntime14}/lib";
           ORT_DYLIB_PATH = "${onnxruntime14}/lib/${onnxruntime_lib}";
-          RUSTFLAGS = "-C link-arg=-fuse-ld=lld";
+          RUSTFLAGS = "-C linker=lld -C link-arg=--threads=32";
         };
 
         bleep = (rustPlatform.buildRustPackage rec {
