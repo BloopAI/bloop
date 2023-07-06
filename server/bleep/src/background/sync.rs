@@ -87,7 +87,7 @@ impl Drop for SyncHandle {
 }
 
 impl SyncHandle {
-    pub(super) fn new(
+    pub(crate) fn new(
         app: Application,
         reporef: RepoRef,
         status: super::ProgressStream,

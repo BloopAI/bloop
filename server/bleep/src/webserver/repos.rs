@@ -177,13 +177,15 @@ pub(crate) enum ReposResponse {
 
 impl super::ApiResponse for ReposResponse {}
 
+#[allow(unused_mut)]
 pub(super) fn router() -> Router {
     use axum::routing::*;
+
     let mut indexed = get(indexed).put(set_indexed).delete(delete_by_id);
 
     #[cfg(feature = "ee")]
     {
-        indexed = indexed.patch(crate::ee::webserver::patch_indexed);
+        indexed = indexed.patch(crate::ee::webserver::patch_with_branch);
     }
 
     Router::new()

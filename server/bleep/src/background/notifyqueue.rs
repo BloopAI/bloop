@@ -8,7 +8,7 @@ use super::sync::SyncHandle;
 
 /// Asynchronous queue with await semantics for popping the front
 /// element.
-pub(super) struct NotifyQueue {
+pub(crate) struct NotifyQueue {
     queue: RwLock<VecDeque<Arc<SyncHandle>>>,
     available: Semaphore,
 }
@@ -23,7 +23,7 @@ impl Default for NotifyQueue {
 }
 
 impl NotifyQueue {
-    pub(super) async fn push(&self, item: Arc<SyncHandle>) {
+    pub(crate) async fn push(&self, item: Arc<SyncHandle>) {
         let mut q = self.queue.write().await;
 
         self.available.add_permits(1);
