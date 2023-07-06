@@ -1,6 +1,7 @@
 ;; scopes
 [(brace_list)
- (function_definition)] @local.scope
+ (function_definition)
+ (for)] @local.scope
 
 ;; defs
 
