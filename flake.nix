@@ -51,7 +51,7 @@
             darwin.apple_sdk.frameworks.Foundation
             darwin.apple_sdk.frameworks.CoreFoundation
             darwin.apple_sdk.frameworks.Security
-          ]);
+          ] ++ lib.optionals stdenv.isLinux [ mold ]);
 
         guiDeps = with pkgs;
           [ nodePackages.npm nodejs ] ++ (lib.optionals stdenv.isLinux [
@@ -87,7 +87,10 @@
           ORT_STRATEGY = "system";
           ORT_LIB_LOCATION = "${onnxruntime14}/lib";
           ORT_DYLIB_PATH = "${onnxruntime14}/lib/${onnxruntime_lib}";
-          RUSTFLAGS = "-C linker=lld -C link-arg=--threads=32";
+          RUSTFLAGS = if stdenv.isDarwin then
+            "-C linker=lld -C link-arg=--threads=64"
+          else
+            "-C link-arg=-fuse-ld=mold";
         };
 
         bleep = (rustPlatform.buildRustPackage rec {
@@ -176,7 +179,6 @@
 
         devShells = {
           default = (pkgs.mkShell {
-            stdenv = stdenv;
             buildInputs = buildDeps ++ runtimeDeps ++ guiDeps ++ (with pkgs; [
               git-lfs
               rustfmt
