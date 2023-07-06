@@ -176,6 +176,7 @@
 
         devShells = {
           default = (pkgs.mkShell {
+            stdenv = stdenv;
             buildInputs = buildDeps ++ runtimeDeps ++ guiDeps ++ (with pkgs; [
               git-lfs
               rustfmt
