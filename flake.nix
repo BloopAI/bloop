@@ -22,7 +22,8 @@
         llvm = pkgs.llvmPackages_14;
         clang = llvm.clang;
         libclang = llvm.libclang;
-        stdenv = llvm.stdenv;
+        stdenv = pkgs.overrideCC llvm.stdenv
+          (llvm.stdenv.cc.override { inherit (llvm) bintools; });
 
         rustPlatform = pkgs.makeRustPlatform {
           cargo = pkgs.cargo;
@@ -94,6 +95,7 @@
         };
 
         bleep = (rustPlatform.buildRustPackage rec {
+          inherit stdenv;
           meta = with pkgs.lib; {
             description = "Search code. Fast.";
             homepage = "https://bloop.ai";
@@ -179,6 +181,7 @@
 
         devShells = {
           default = (pkgs.mkShell {
+            inherit stdenv;
             buildInputs = buildDeps ++ runtimeDeps ++ guiDeps ++ (with pkgs; [
               git-lfs
               rustfmt
