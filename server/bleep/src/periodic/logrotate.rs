@@ -20,7 +20,7 @@ pub(crate) async fn log_and_branch_rotate(app: crate::Application) {
         let used_branches = collect_branches_for_repos(queries);
         let to_sync = update_branch_filters(used_branches, &app.repo_pool);
 
-        app.write_index().sync_and_index(to_sync).await;
+        app.write_index().enqueue_sync(to_sync).await;
 
         if let Err(err) = log.prune(cutoff).await {
             error!(?err, "failed to prune old log entries");

@@ -179,11 +179,7 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
         }
 
         debug!("starting sync");
-        if let Err(err) = app
-            .write_index()
-            .wait_for_sync_and_index(reporef.clone())
-            .await
-        {
+        if let Err(err) = app.write_index().block_until_synced(reporef.clone()).await {
             error!(?err, ?reporef, "failed to sync & index repo");
             return None;
         }

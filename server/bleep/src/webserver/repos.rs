@@ -280,7 +280,7 @@ pub(super) async fn sync(
     // TODO: We can refactor `repo_pool` to also hold queued repos, instead of doing a calculation
     // like this which is prone to timing issues.
     let num_repos = app.repo_pool.len();
-    let num_queued = app.write_index().sync_and_index(vec![repo]).await;
+    let num_queued = app.write_index().enqueue_sync(vec![repo]).await;
 
     app.with_analytics(|analytics| {
         analytics.track_synced_repos(num_repos + num_queued, user.login(), app.org_name());
@@ -369,7 +369,7 @@ pub(super) async fn set_indexed(
         .await;
 
     app.write_index()
-        .sync_and_index(repo_list.into_iter().collect())
+        .enqueue_sync(repo_list.into_iter().collect())
         .await;
 
     json(ReposResponse::SyncQueued)
@@ -386,7 +386,7 @@ pub(super) async fn patch_indexed(
     let _parsed = crate::repo::iterator::BranchFilter::from(&patch.branch_filter);
 
     app.write_index()
-        .sync_and_index_branches(repo, patch.branch_filter)
+        .add_branches_for_repo(repo, patch.branch_filter)
         .await;
 
     json(ReposResponse::SyncQueued)

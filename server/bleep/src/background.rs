@@ -212,10 +212,11 @@ pub(crate) enum QueueState {
 }
 
 impl BoundSyncQueue {
-    /// Enqueue repos for syncing which aren't already being synced or in the queue.
+    /// Enqueue repos for syncing with the current configuration.
     ///
+    /// Skips any repositories in the list which are already queued or being synced.
     /// Returns the number of new repositories queued for syncing.
-    pub(crate) async fn sync_and_index(self, repositories: Vec<RepoRef>) -> usize {
+    pub(crate) async fn enqueue_sync(self, repositories: Vec<RepoRef>) -> usize {
         let mut num_queued = 0;
 
         for reporef in repositories {
@@ -232,13 +233,22 @@ impl BoundSyncQueue {
         num_queued
     }
 
-    /// Enqueue repos for syncing which aren't already being synced or
-    /// in the queue.
-    pub(crate) async fn sync_and_index_branches(
-        self,
-        reporef: RepoRef,
-        new_branches: BranchFilter,
-    ) {
+    /// Block until the repository sync & index process is complete.
+    ///
+    /// Returns the new status.
+    pub(crate) async fn block_until_synced(self, reporef: RepoRef) -> anyhow::Result<SyncStatus> {
+        let handle = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone(), None);
+        let finished = handle.notify_done();
+        self.1.queue.push(handle).await;
+        Ok(finished.recv_async().await?)
+    }
+
+    /// Index new branches specified in the `BranchFilter`.
+    ///
+    /// Unlike `sync_and_index`, this allows queueing multiple syncs
+    /// for the same repo multiple times to allow incrementally
+    /// syncing individual branches without restrictions.
+    pub(crate) async fn add_branches_for_repo(self, reporef: RepoRef, new_branches: BranchFilter) {
         info!(%reporef, ?new_branches, "queueing for sync with branches");
         let handle = SyncHandle::new(
             self.0.clone(),
@@ -265,7 +275,7 @@ impl BoundSyncQueue {
                 .update_async(&reporef, |_k, v| v.mark_removed())
                 .await?;
 
-            self.sync_and_index(vec![reporef]).await;
+            self.enqueue_sync(vec![reporef]).await;
         }
 
         Some(())
@@ -281,24 +291,13 @@ impl BoundSyncQueue {
             .await;
     }
 
-    /// Pull or clone an existing, or new repo, respectively.
-    pub(crate) async fn wait_for_sync_and_index(
-        self,
-        reporef: RepoRef,
-    ) -> anyhow::Result<SyncStatus> {
-        let handle = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone(), None);
-        let finished = handle.notify_done();
-        self.1.queue.push(handle).await;
-        Ok(finished.recv_async().await?)
-    }
-
     pub(crate) async fn startup_scan(self) -> anyhow::Result<()> {
         let Self(Application { repo_pool, .. }, _) = &self;
 
         let mut repos = vec![];
         repo_pool.scan_async(|k, _| repos.push(k.clone())).await;
 
-        self.sync_and_index(repos).await;
+        self.enqueue_sync(repos).await;
 
         Ok(())
     }
