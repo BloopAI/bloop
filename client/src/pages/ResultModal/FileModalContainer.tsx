@@ -39,7 +39,7 @@ const FileModalContainer = ({ repoName }: Props) => {
   }, [repoName, path, isFileModalOpen]);
 
   useEffect(() => {
-    if (fileResultData?.data?.length) {
+    if (fileResultData?.data?.length && isFileModalOpen) {
       setOpenResult(mapFileResult(fileResultData.data[0]));
       navigateBrowser({
         search: scrollToLine
@@ -61,7 +61,7 @@ const FileModalContainer = ({ repoName }: Props) => {
         }));
       });
     }
-  }, [fileResultData, selectedBranch]);
+  }, [fileResultData, selectedBranch, isFileModalOpen]);
 
   const handleModeChange = useCallback((m: FullResultModeEnum) => {
     setMode(m);

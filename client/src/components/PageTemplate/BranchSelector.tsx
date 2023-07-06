@@ -157,41 +157,43 @@ const BranchSelector = () => {
         placement="bottom-end"
         interactive
         appendTo="parent"
-        render={() => (
-          <div
-            id="dropdown"
-            className={`${isOpen ? '' : 'scale-0 opacity-0'}
+        render={() =>
+          !isOpen ? null : (
+            <div
+              id="dropdown"
+              className={`${isOpen ? '' : 'scale-0 opacity-0'}
       transition-all duration-300 ease-in-slow max-h-96 overflow-auto
        rounded-md bg-bg-base border border-bg-border shadow-high ${
          sizesMap.medium
        } flex flex-col max-w-full`}
-          >
-            <>
-              <div className="bg-bg-shade text-label-title caption-strong px-3 py-2.5 block">
-                Switch branch
-              </div>
-              <div className="border-b border-bg-border">
-                <TextInput
-                  value={search}
-                  name={'search'}
-                  onChange={(e) => setSearch(e.target.value)}
-                  type="search"
-                  placeholder="Search branches..."
-                  noBorder
-                />
-              </div>
-              {branchesToShow.length < 1 ? (
-                <div className="p-1.5 body-s text-label-base text-center">
-                  No branches found
+            >
+              <>
+                <div className="bg-bg-shade text-label-title caption-strong px-3 py-2.5 block">
+                  Switch branch
                 </div>
-              ) : (
-                <div className="flex flex-col p-1.5 gap-1 overflow-y-auto">
-                  {items}
+                <div className="border-b border-bg-border">
+                  <TextInput
+                    value={search}
+                    name={'search'}
+                    onChange={(e) => setSearch(e.target.value)}
+                    type="search"
+                    placeholder="Search branches..."
+                    noBorder
+                  />
                 </div>
-              )}
-            </>
-          </div>
-        )}
+                {branchesToShow.length < 1 ? (
+                  <div className="p-1.5 body-s text-label-base text-center">
+                    No branches found
+                  </div>
+                ) : (
+                  <div className="flex flex-col p-1.5 gap-1 overflow-y-auto">
+                    {items}
+                  </div>
+                )}
+              </>
+            </div>
+          )
+        }
       >
         <Button
           variant="secondary"
