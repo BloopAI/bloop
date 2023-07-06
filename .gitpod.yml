@@ -25,13 +25,15 @@ tasks:
 
       # this is working around a gitpod bug
       # https://github.com/gitpod-io/gitpod/issues/524
-      cp -r ~/.cargo .
+      mv ~/.cargo .
       tar czpf target.tar.gz target .cargo
+      rm -rf .cargo target
 
     command: |
-      tar xzpf target.tar.gz && rm target.tar.gz
-      mv .cargo ~
-      nix develop -c cargo run -p bleep -- --qdrant-url http://localhost:6334
+      tar -C /workspace -xzpf target.tar.gz && rm target.tar.gz
+      mv /workspace/.cargo ~
+      mv /workspace/target .
+      nix develop -c cargo run -p bleep -- --qdrant-url http://localhost:6334  --answer-api-url http://localhost:6869
     openMode: split-left
 
   - name: Frontend
