@@ -862,6 +862,8 @@ impl Agent {
             &prompts::hypothetical_document_prompt(query),
         )];
 
+        tracing::trace!(?query, "generating hyde docs");
+
         let response = self
             .llm_gateway
             .clone()
@@ -871,10 +873,12 @@ impl Agent {
             .try_collect::<String>()
             .await?;
 
+        tracing::trace!("parsing hyde response");
+
         let documents = prompts::try_parse_hypothetical_documents(&response);
 
         for doc in documents.iter() {
-            info!("{}\n", doc);
+            info!(?doc, "got hyde doc");
         }
 
         Ok(documents)
