@@ -738,41 +738,13 @@ impl Agent {
                     self.conversation.repo_ref.display_name(),
                 );
 
-                let mut results = self
+                let results = self
                     .app
                     .semantic
                     .as_ref()
                     .context("semantic search is not enabled")?
                     .search(&nl_query, 10, 0, true)
                     .await?;
-
-                let hyde_docs = self.hyde(query).await?;
-                if !hyde_docs.is_empty() {
-                    let hyde_queries = hyde_docs
-                        .iter()
-                        .map(|q| {
-                            SemanticQuery::from_str(
-                                q.into(),
-                                self.conversation.repo_ref.display_name(),
-                            )
-                        })
-                        .collect::<Vec<_>>();
-
-                    let hyde_results = self
-                        .app
-                        .semantic
-                        .as_ref()
-                        .context("semantic search is not enabled")?
-                        .batch_search(
-                            hyde_queries.iter().collect::<Vec<&_>>().as_slice(),
-                            10,
-                            0,
-                            true,
-                        )
-                        .await?;
-
-                    results.extend(hyde_results);
-                }
 
                 let chunks = results
                     .into_iter()
@@ -798,7 +770,6 @@ impl Agent {
                 self.track_query(
                     EventData::input_stage("semantic code search")
                         .with_payload("query", query)
-                        .with_payload("hyde_queries", &hyde_docs)
                         .with_payload("chunks", &chunks)
                         .with_payload("raw_prompt", &prompt),
                 );
@@ -881,29 +852,6 @@ impl Agent {
         }
 
         Ok(Some(action))
-    }
-
-    async fn hyde(&self, query: &str) -> Result<Vec<String>> {
-        let prompt = vec![llm_gateway::api::Message::system(
-            &prompts::hypothetical_document_prompt(query),
-        )];
-
-        let response = self
-            .llm_gateway
-            .clone()
-            .model("gpt-3.5-turbo-0613")
-            .chat(&prompt, None)
-            .await?
-            .try_collect::<String>()
-            .await?;
-
-        let documents = prompts::try_parse_hypothetical_documents(&response);
-
-        for doc in documents.iter() {
-            info!("{}\n", doc);
-        }
-
-        Ok(documents)
     }
 
     async fn proc(&mut self, question: &str, path_aliases: &[usize]) -> Result<String> {
