@@ -498,6 +498,8 @@ impl Conversation {
                 let nl_query: SemanticQuery<'_> =
                     SemanticQuery::from_str(query.into(), self.repo_ref.display_name());
 
+                tracing::trace!(?nl_query, "performing semantic search");
+
                 let mut results = ctx
                     .app
                     .semantic
@@ -508,10 +510,14 @@ impl Conversation {
 
                 let hyde_docs = self.hyde(ctx, query).await?;
                 if !hyde_docs.is_empty() {
+                    tracing::trace!(?hyde_docs, "");
+
                     let hyde_queries = hyde_docs
                         .iter()
                         .map(|q| SemanticQuery::from_str(q.into(), self.repo_ref.display_name()))
                         .collect::<Vec<_>>();
+
+                    tracing::trace!(?hyde_queries, "performing batch search with hyde docs");
 
                     let hyde_results = ctx
                         .app
@@ -525,6 +531,8 @@ impl Conversation {
                             true,
                         )
                         .await?;
+
+                    tracing::trace!(?hyde_results, "batch search was successful");
 
                     results.extend(hyde_results);
                 }
@@ -638,6 +646,8 @@ impl Conversation {
             &prompts::hypothetical_document_prompt(query),
         )];
 
+        tracing::trace!(?query, "generating hyde docs");
+
         let ctx = &ctx.clone().model("gpt-3.5-turbo-0613");
         let response = ctx
             .llm_gateway
@@ -646,10 +656,12 @@ impl Conversation {
             .try_collect::<String>()
             .await?;
 
+        tracing::trace!(?response, "parsing hyde response");
+
         let documents = prompts::try_parse_hypothetical_documents(&response);
 
         for doc in documents.iter() {
-            info!("{}\n", doc);
+            info!(?doc, "got hyde doc");
         }
 
         Ok(documents)
