@@ -52,7 +52,7 @@ Here's how to find your way around the repo:
 - `server/bleep`: The Rust backend which contains the core search and navigation logic
 - `client`: The React frontend
 
-We make extensive use of Git LFS for dependencies that are expensive to build.
+We use Git LFS for dependencies that are expensive to build.
 
 To make sure you have everything you need to start building, you'll need to
 install the `git-lfs` package for your favourite operating system, then run the
