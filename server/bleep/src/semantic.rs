@@ -12,12 +12,12 @@ use qdrant_client::{
     qdrant::{
         r#match::MatchValue, vectors::VectorsOptions, vectors_config, with_payload_selector,
         with_vectors_selector, CollectionOperationResponse, CreateCollection, Distance,
-        FieldCondition, Filter, Match, PointId, PointStruct, ScoredPoint, SearchBatchPoints,
-        SearchPoints, Value, VectorParams, Vectors, VectorsConfig, WithPayloadSelector,
-        WithVectorsSelector,
+        FieldCondition, Filter, Match, PointId, PointStruct, ScoredPoint, SearchPoints, Value,
+        VectorParams, Vectors, VectorsConfig, WithPayloadSelector, WithVectorsSelector,
     },
 };
 
+use futures::{stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use thiserror::Error;
 use tracing::{debug, info, trace, warn};
@@ -304,41 +304,53 @@ impl Semantic {
         limit: u64,
         offset: u64,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
+        // FIXME: This method uses `search_points` internally, and not `search_batch_points`. It's
+        // not clear why, but it seems that the `batch` variant of the `qdrant` calls leads to
+        // HTTP2 errors on some deployment configurations. A typical example error:
+        //
+        // ```
+        // hyper::proto::h2::client: client response error: stream error received: stream no longer needed
+        // ```
+        //
+        // Given that qdrant uses `tonic`, this may be a `tonic` issue, possibly similar to:
+        // https://github.com/hyperium/tonic/issues/222
+
         // Queries should contain the same filters, so we get the first one
         let parsed_query = parsed_queries.first().unwrap();
-        let filters = build_conditions(parsed_query);
+        let filters = &build_conditions(parsed_query);
 
-        let search_points = vectors
-            .iter()
-            .map(|vec| SearchPoints {
-                limit,
-                vector: vec.clone(),
-                offset: Some(offset),
-                score_threshold: Some(SCORE_THRESHOLD),
-                with_payload: Some(WithPayloadSelector {
-                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
-                }),
-                filter: Some(Filter {
-                    must: filters.clone(),
+        let responses = stream::iter(vectors.into_iter())
+            .map(|vector| async move {
+                let points = SearchPoints {
+                    limit,
+                    vector,
+                    collection_name: COLLECTION_NAME.to_string(),
+                    offset: Some(offset),
+                    score_threshold: Some(SCORE_THRESHOLD),
+                    with_payload: Some(WithPayloadSelector {
+                        selector_options: Some(with_payload_selector::SelectorOptions::Enable(
+                            true,
+                        )),
+                    }),
+                    filter: Some(Filter {
+                        must: filters.clone(),
+                        ..Default::default()
+                    }),
+                    with_vectors: Some(WithVectorsSelector {
+                        selector_options: Some(with_vectors_selector::SelectorOptions::Enable(
+                            true,
+                        )),
+                    }),
                     ..Default::default()
-                }),
-                with_vectors: Some(WithVectorsSelector {
-                    selector_options: Some(with_vectors_selector::SelectorOptions::Enable(true)),
-                }),
-                ..Default::default()
-            })
-            .collect::<Vec<SearchPoints>>();
+                };
 
-        let response = self
-            .qdrant
-            .search_batch_points(&SearchBatchPoints {
-                collection_name: COLLECTION_NAME.to_string(),
-                search_points,
-                ..Default::default()
+                self.qdrant.search_points(&points).await
             })
+            .buffered(10)
+            .try_collect::<Vec<_>>()
             .await?;
 
-        Ok(response.result.into_iter().flat_map(|r| r.result).collect())
+        Ok(responses.into_iter().flat_map(|r| r.result).collect())
     }
 
     pub async fn search<'a>(
