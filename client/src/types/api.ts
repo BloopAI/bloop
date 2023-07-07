@@ -224,10 +224,9 @@ export type AllConversationsResponse = {
 }[];
 
 export type ConversationType = {
-  finished: boolean;
   search_steps: { content: string; type: string }[];
   conclusion: string;
-  results: FileSystemResult & ArticleResult;
+  outcome: FileSystemResult & ArticleResult;
 };
 
 export interface SuggestionsResponse {

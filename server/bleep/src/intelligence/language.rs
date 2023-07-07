@@ -5,6 +5,7 @@ mod go;
 mod java;
 mod javascript;
 mod python;
+mod r;
 mod ruby;
 mod rust;
 mod typescript;
@@ -28,6 +29,7 @@ pub static ALL_LANGUAGES: &[&TSLanguageConfig] = &[
     &java::JAVA,
     &cpp::CPP,
     &ruby::RUBY,
+    &r::R,
 ];
 
 /// A generic language wrapper type.

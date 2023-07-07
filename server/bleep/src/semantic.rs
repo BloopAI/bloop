@@ -13,7 +13,7 @@ use qdrant_client::{
         point_id::PointIdOptions, r#match::MatchValue, vectors::VectorsOptions, vectors_config,
         with_payload_selector, with_vectors_selector, CollectionOperationResponse,
         CreateCollection, Distance, FieldCondition, Filter, Match, PointId, RetrievedPoint,
-        ScoredPoint, SearchBatchPoints, SearchPoints, Value, VectorParams, Vectors, VectorsConfig,
+        ScoredPoint, SearchPoints, Value, VectorParams, Vectors, VectorsConfig,
         WithPayloadSelector, WithVectorsSelector,
     },
 };
@@ -55,7 +55,6 @@ pub enum SemanticError {
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
     tokenizer: Arc<tokenizers::Tokenizer>,
-    gpt2_tokenizer: Arc<tokenizers::Tokenizer>,
     session: Arc<ort::Session>,
     config: Arc<Configuration>,
 }
@@ -245,9 +244,6 @@ impl Semantic {
             tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("tokenizer.json"))
                 .unwrap()
                 .into(),
-            gpt2_tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("gpt-2").join("tokenizer.json"))
-                .expect("unable to open gpt2-tokenizer, try `git lfs pull` and pass `--model-dir bloop/model` at the CLI")
-                .into(),
             session: SessionBuilder::new(&environment)?
                 .with_optimization_level(GraphOptimizationLevel::Level3)?
                 .with_intra_threads(threads)?
@@ -330,50 +326,6 @@ impl Semantic {
         Ok(response.result)
     }
 
-    pub async fn batch_search_with<'a>(
-        &self,
-        parsed_queries: &[&SemanticQuery<'a>],
-        vectors: Vec<Embedding>,
-        limit: u64,
-        offset: u64,
-    ) -> anyhow::Result<Vec<ScoredPoint>> {
-        // Queries should contain the same filters, so we get the first one
-        let parsed_query = parsed_queries.first().unwrap();
-        let filters = build_conditions(parsed_query);
-
-        let search_points = vectors
-            .iter()
-            .map(|vec| SearchPoints {
-                limit,
-                vector: vec.clone(),
-                offset: Some(offset),
-                score_threshold: Some(SCORE_THRESHOLD),
-                with_payload: Some(WithPayloadSelector {
-                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
-                }),
-                filter: Some(Filter {
-                    must: filters.clone(),
-                    ..Default::default()
-                }),
-                with_vectors: Some(WithVectorsSelector {
-                    selector_options: Some(with_vectors_selector::SelectorOptions::Enable(true)),
-                }),
-                ..Default::default()
-            })
-            .collect::<Vec<SearchPoints>>();
-
-        let response = self
-            .qdrant
-            .search_batch_points(&SearchBatchPoints {
-                collection_name: COLLECTION_NAME.to_string(),
-                search_points,
-                ..Default::default()
-            })
-            .await?;
-
-        Ok(response.result.into_iter().flat_map(|r| r.result).collect())
-    }
-
     pub async fn search<'a>(
         &self,
         parsed_query: &SemanticQuery<'a>,
@@ -403,42 +355,6 @@ impl Semantic {
                     .collect::<Vec<_>>()
             })?;
         Ok(deduplicate_snippets(results, vector, limit))
-    }
-
-    pub async fn batch_search<'a>(
-        &self,
-        parsed_queries: &[&SemanticQuery<'a>],
-        limit: u64,
-        offset: u64,
-        retrieve_more: bool,
-    ) -> anyhow::Result<Vec<Payload>> {
-        if parsed_queries.iter().any(|q| q.target().is_none()) {
-            anyhow::bail!("no search target for query");
-        };
-
-        let vectors = parsed_queries
-            .iter()
-            .map(|q| self.embed(q.target().unwrap().as_ref()))
-            .collect::<anyhow::Result<Vec<_>>>()?;
-
-        let results = self
-            .batch_search_with(
-                parsed_queries,
-                vectors.clone(),
-                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
-                offset,
-            )
-            .await
-            .map(|raw| {
-                raw.into_iter()
-                    .map(Payload::from_qdrant)
-                    .collect::<Vec<_>>()
-            })?;
-
-        // deduplicate with mmr with respect to the mean of query vectors
-        // TODO: implement a more robust multi-vector deduplication strategy
-        let target_vector = mean_pool(vectors);
-        Ok(deduplicate_snippets(results, target_vector, limit))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -531,13 +447,6 @@ impl Semantic {
             .qdrant
             .delete_points(COLLECTION_NAME, &selector, None)
             .await;
-    }
-
-    pub fn gpt2_token_count(&self, input: &str) -> usize {
-        self.gpt2_tokenizer
-            .encode(input, false)
-            .map(|code| code.len())
-            .unwrap_or(0)
     }
 
     pub fn overlap_strategy(&self) -> chunk::OverlapStrategy {
@@ -682,19 +591,6 @@ fn norm(a: &[f32]) -> f32 {
 
 fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     dot(a, b) / (norm(a) * norm(b))
-}
-
-// Calculate the element-wise mean of the embeddings
-fn mean_pool(embeddings: Vec<Vec<f32>>) -> Vec<f32> {
-    let len = embeddings.len() as f32;
-    let mut result = vec![0.0; EMBEDDING_DIM];
-    for embedding in embeddings {
-        for (i, v) in embedding.iter().enumerate() {
-            result[i] += v;
-        }
-    }
-    result.iter_mut().for_each(|v| *v /= len);
-    result
 }
 
 // returns a list of indices to preserve from `snippets`
