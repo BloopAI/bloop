@@ -417,19 +417,23 @@ impl Semantic {
             .map(|q| self.embed(&q.target().unwrap()))
             .collect::<anyhow::Result<Vec<_>>>()?;
 
-        let results = self
+        tracing::trace!(?parsed_queries, "performing qdrant batch search");
+
+        let result = self
             .batch_search_with(
                 parsed_queries,
                 vectors.clone(),
                 if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
                 offset,
             )
-            .await
-            .map(|raw| {
-                raw.into_iter()
-                    .map(Payload::from_qdrant)
-                    .collect::<Vec<_>>()
-            })?;
+            .await;
+
+        tracing::trace!(?result, "qdrant batch search returned");
+
+        let results = result?
+            .into_iter()
+            .map(Payload::from_qdrant)
+            .collect::<Vec<_>>();
 
         // deduplicate with mmr with respect to the mean of query vectors
         // TODO: implement a more robust multi-vector deduplication strategy
