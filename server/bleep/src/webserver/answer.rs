@@ -785,12 +785,12 @@ impl Agent {
         self.update(Update::Step(SearchStep::Code(query.clone())))
             .await?;
 
-        let mut results = self.semantic_search(query.into(), 10, 0, true).await?;
+        let mut results = self.semantic_search(query.into(), 5, 0, true).await?;
 
         let hyde_docs = self.hyde(query).await?;
         if !hyde_docs.is_empty() {
             let hyde_doc = hyde_docs.first().unwrap().into();
-            let hyde_results = self.semantic_search(hyde_doc, 10, 0, true).await?;
+            let hyde_results = self.semantic_search(hyde_doc, 5, 0, true).await?;
             results.extend(hyde_results);
         }
 

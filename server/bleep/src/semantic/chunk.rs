@@ -151,7 +151,7 @@ impl OverlapStrategy {
 
 impl Default for OverlapStrategy {
     fn default() -> Self {
-        Self::Partial(0.25)
+        Self::Partial(0.75)
     }
 }
 
