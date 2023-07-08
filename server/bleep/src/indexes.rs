@@ -22,6 +22,8 @@ use tracing::debug;
 
 use crate::{
     background::{SyncHandle, SyncPipes},
+    cache::FileCache,
+    db::SqlDb,
     query::parser::Query,
     repo::{RepoError, RepoMetadata, RepoRef, Repository},
     semantic::Semantic,
@@ -66,18 +68,14 @@ impl<'a> GlobalWriteHandle<'a> {
         sync_handle: &SyncHandle,
         repo: &Repository,
     ) -> Result<Arc<RepoMetadata>, RepoError> {
-        use rayon::prelude::*;
-
         let metadata = repo.get_repo_metadata().await?;
 
-        tokio::task::block_in_place(|| {
-            self.handles
-                .par_iter()
-                .map(|handle| {
-                    handle.index(&sync_handle.reporef, repo, &metadata, sync_handle.pipes())
-                })
-                .collect::<Result<Vec<_>, _>>()
-        })?;
+        futures::future::join_all(self.handles.iter().map(|handle| {
+            handle.index(&sync_handle.reporef, repo, &metadata, sync_handle.pipes())
+        }))
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
 
         Ok(metadata)
     }
@@ -90,9 +88,10 @@ pub struct Indexes {
 }
 
 impl Indexes {
-    pub fn new(
+    pub async fn new(
         repo_pool: RepositoryPool,
         config: Arc<Configuration>,
+        sql: SqlDb,
         semantic: Option<Semantic>,
     ) -> Result<Self> {
         if config.source.index_version_mismatch() {
@@ -101,11 +100,16 @@ impl Indexes {
             std::fs::remove_dir_all(config.index_path("repo"))?;
             std::fs::remove_dir_all(config.index_path("content"))?;
 
+            let mut refs = vec![];
             // knocking out our current file caches will force re-indexing qdrant
-            repo_pool.for_each(|_, repo| {
-                repo.delete_file_cache(&config.index_dir);
+            repo_pool.for_each(|reporef, repo| {
+                refs.push(reporef.to_owned());
                 repo.last_index_unix_secs = 0;
             });
+
+            for reporef in refs {
+                FileCache::new(&sql, &reporef).delete().await?;
+            }
         }
         config.source.save_index_version()?;
 
@@ -117,7 +121,7 @@ impl Indexes {
                 config.max_threads,
             )?,
             file: Indexer::create(
-                File::new(config.clone(), semantic),
+                File::new(sql, semantic),
                 config.index_path("content").as_ref(),
                 config.buffer_size,
                 config.max_threads,
@@ -139,9 +143,10 @@ impl Indexes {
     }
 }
 
+#[async_trait]
 pub trait Indexable: Send + Sync {
     /// This is where files are scanned and indexed.
-    fn index_repository(
+    async fn index_repository(
         &self,
         reporef: &RepoRef,
         repo: &Repository,
@@ -195,7 +200,7 @@ impl<'a> IndexWriteHandle<'a> {
         self.source.delete_by_repo(&self.writer, repo)
     }
 
-    pub fn index(
+    pub async fn index(
         &self,
         reporef: &RepoRef,
         repo: &Repository,
@@ -204,6 +209,7 @@ impl<'a> IndexWriteHandle<'a> {
     ) -> Result<()> {
         self.source
             .index_repository(reporef, repo, metadata, &self.writer, progress)
+            .await
     }
 
     pub async fn commit(&mut self) -> Result<()> {

@@ -110,10 +110,14 @@ export const splitPathForBreadcrumbs = (
     }));
 };
 
-export const buildRepoQuery = (repo?: string, path?: string) => {
+export const buildRepoQuery = (
+  repo?: string,
+  path?: string,
+  selectedBranch?: string | null,
+) => {
   return `open:true ${repo ? `repo:${repo}` : ''} ${
     path ? `path:${path.includes(' ') ? `"${path}"` : path}` : ''
-  }`;
+  }${selectedBranch ? ` branch:${selectedBranch}` : ''}`;
 };
 
 export const getFileManagerName = (os: string) => {

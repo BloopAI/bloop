@@ -18,6 +18,7 @@ import {
 } from '../../types/general';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { ChatContext } from '../../context/chatContext';
+import { SearchContext } from '../../context/searchContext';
 import { mapLoadingSteps } from '../../mappers/conversation';
 import { findElementInCurrentTab } from '../../utils/domUtils';
 import NLInput from './NLInput';
@@ -39,6 +40,7 @@ const blurInput = () => {
 const Chat = () => {
   const { isRightPanelOpen, setRightPanelOpen, tab } = useContext(UIContext);
   const { apiUrl } = useContext(DeviceContext);
+  const { selectedBranch } = useContext(SearchContext);
   const {
     conversation,
     setConversation,
@@ -82,9 +84,9 @@ const Chat = () => {
       setInputValue('');
       setLoading(true);
       const eventSource = new EventSource(
-        `${apiUrl.replace('https:', '')}/answer?q=${encodeURIComponent(
-          query,
-        )}&repo_ref=${tab.key}${threadId ? `&thread_id=${threadId}` : ''}${
+        `${apiUrl.replace('https:', '')}/answer?q=${encodeURIComponent(query)}${
+          selectedBranch ? ` branch:${selectedBranch}` : ''
+        }&repo_ref=${tab.key}${threadId ? `&thread_id=${threadId}` : ''}${
           navigatedItem?.type === 'repo' && navigatedItem?.path
             ? `&relative_path=${navigatedItem?.path}&is_folder=true`
             : ''
@@ -231,7 +233,14 @@ const Chat = () => {
         eventSource.close();
       };
     },
-    [tab, threadId, navigatedItem?.path, navigatedItem?.type, selectedLines],
+    [
+      tab,
+      threadId,
+      navigatedItem?.path,
+      navigatedItem?.type,
+      selectedLines,
+      selectedBranch,
+    ],
   );
 
   useEffect(() => {

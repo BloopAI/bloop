@@ -10,6 +10,7 @@ type ContextType = {
     repoName: string,
     name: string,
     source: RepoSource,
+    branch?: string | null,
   ) => void;
   handleRemoveTab: (t: string) => void;
   setActiveTab: (t: string) => void;

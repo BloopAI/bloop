@@ -30,8 +30,8 @@ pub enum ParsedQuery<'a> {
     Grep(Vec<Query<'a>>),
 }
 
-impl ParsedQuery<'_> {
-    pub fn as_semantic(&self) -> Option<&SemanticQuery> {
+impl<'a> ParsedQuery<'a> {
+    pub fn into_semantic(self) -> Option<SemanticQuery<'a>> {
         match self {
             Self::Semantic(q) => Some(q),
             _ => None,
@@ -39,7 +39,7 @@ impl ParsedQuery<'_> {
     }
 }
 
-#[derive(Default, Clone, Debug, PartialEq, Eq)]
+#[derive(Default, Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SemanticQuery<'a> {
     pub repos: HashSet<Literal<'a>>,
     pub paths: HashSet<Literal<'a>>,
@@ -49,24 +49,31 @@ pub struct SemanticQuery<'a> {
 }
 
 impl<'a> SemanticQuery<'a> {
-    pub fn repos(&self) -> impl Iterator<Item = &Cow<'_, str>> {
+    pub fn repos(&'a self) -> impl Iterator<Item = Cow<'a, str>> {
         self.repos.iter().filter_map(|t| t.as_plain())
     }
 
-    pub fn paths(&self) -> impl Iterator<Item = &Cow<'_, str>> {
+    pub fn paths(&'a self) -> impl Iterator<Item = Cow<'a, str>> {
         self.paths.iter().filter_map(|t| t.as_plain())
     }
 
-    pub fn langs(&self) -> impl Iterator<Item = &Cow<'_, str>> {
-        self.langs.iter()
+    pub fn langs(&'a self) -> impl Iterator<Item = Cow<'a, str>> {
+        self.langs.iter().cloned()
     }
 
-    pub fn target(&self) -> Option<&Cow<'_, str>> {
+    pub fn target(&self) -> Option<Cow<'a, str>> {
         self.target.as_ref().and_then(|t| t.as_plain())
     }
 
-    pub fn branch(&self) -> impl Iterator<Item = &Cow<'_, str>> {
+    pub fn branch(&'a self) -> impl Iterator<Item = Cow<'a, str>> {
         self.branch.iter().filter_map(|t| t.as_plain())
+    }
+
+    // TODO (@calyptobai): This is a quirk of the current conversation logic. We take only the
+    // first branch because the UX operates on a single "current" branch. We can likely update
+    // `SemanticQuery` to remove multiple branches altogether.
+    pub fn first_branch(&self) -> Option<Cow<'_, str>> {
+        self.branch.iter().next().map(|t| t.clone().unwrap())
     }
 
     pub fn from_str(query: String, repo_ref: String) -> Self {
@@ -74,6 +81,20 @@ impl<'a> SemanticQuery<'a> {
             target: Some(Literal::Plain(Cow::Owned(query))),
             repos: [Literal::Plain(Cow::Owned(repo_ref))].into(),
             ..Default::default()
+        }
+    }
+
+    pub fn into_owned(self) -> SemanticQuery<'static> {
+        SemanticQuery {
+            repos: self.repos.into_iter().map(Literal::into_owned).collect(),
+            paths: self.paths.into_iter().map(Literal::into_owned).collect(),
+            langs: self
+                .langs
+                .into_iter()
+                .map(|c| c.into_owned().into())
+                .collect(),
+            branch: self.branch.into_iter().map(Literal::into_owned).collect(),
+            target: self.target.map(Literal::into_owned),
         }
     }
 }
@@ -207,10 +228,16 @@ pub enum ParseError {
     MultiMode,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Literal<'a> {
     Plain(Cow<'a, str>),
     Regex(Cow<'a, str>),
+}
+
+impl From<&String> for Literal<'static> {
+    fn from(value: &String) -> Self {
+        Literal::Plain(value.to_owned().into())
+    }
 }
 
 impl<'a> Default for Literal<'a> {
@@ -219,7 +246,7 @@ impl<'a> Default for Literal<'a> {
     }
 }
 
-impl Literal<'_> {
+impl<'a> Literal<'a> {
     fn join_as_regex(self, rhs: Self) -> Self {
         let lhs = self.regex_str();
         let rhs = rhs.regex_str();
@@ -236,9 +263,9 @@ impl Literal<'_> {
     ///
     /// If this literal is a regex, it is returned as-is. If it is a plain text literal, it is
     /// escaped first before returning.
-    pub fn regex_str(&self) -> Cow<'_, str> {
+    pub fn regex_str(&self) -> Cow<'a, str> {
         match self {
-            Self::Plain(text) => Cow::Owned(regex::escape(text)),
+            Self::Plain(text) => regex::escape(text).into(),
             Self::Regex(r) => r.clone(),
         }
     }
@@ -247,9 +274,9 @@ impl Literal<'_> {
         Regex::new(&self.regex_str())
     }
 
-    pub fn as_plain(&self) -> Option<&Cow<str>> {
+    pub fn as_plain(&self) -> Option<Cow<'a, str>> {
         match self {
-            Self::Plain(p) => Some(p),
+            Self::Plain(p) => Some(p.clone()),
             Self::Regex(..) => None,
         }
     }
@@ -258,6 +285,20 @@ impl Literal<'_> {
     fn make_regex(&mut self) {
         *self = match std::mem::take(self) {
             Self::Plain(s) | Self::Regex(s) => Self::Regex(s),
+        }
+    }
+
+    pub fn unwrap(self) -> Cow<'a, str> {
+        match self {
+            Literal::Plain(v) => v,
+            Literal::Regex(v) => v,
+        }
+    }
+
+    pub fn into_owned(self) -> Literal<'static> {
+        match self {
+            Literal::Plain(cow) => Literal::Plain(Cow::Owned(cow.into_owned())),
+            Literal::Regex(cow) => Literal::Regex(Cow::Owned(cow.into_owned())),
         }
     }
 }
@@ -613,11 +654,11 @@ mod tests {
         );
 
         assert_eq!(
-            parse("org:bloopai repo:enterprise-search branch:main ParseError").unwrap(),
+            parse("org:bloopai repo:enterprise-search branch:origin/main ParseError").unwrap(),
             vec![Query {
                 repo: Some(Literal::Plain("enterprise-search".into())),
                 org: Some(Literal::Plain("bloopai".into())),
-                branch: Some(Literal::Plain("main".into())),
+                branch: Some(Literal::Plain("origin/main".into())),
                 target: Some(Target::Content(Literal::Plain("ParseError".into()))),
                 ..Query::default()
             }],
@@ -1144,8 +1185,8 @@ mod tests {
     fn nl_parse_dedup_similar_filters() {
         let ParsedQuery::Semantic(q) =
             parse_nl("what is background color? lang:tsx repo:bloop repo:bloop").unwrap() else {
-		panic!("down with this sorta thing")
-	    };
+            panic!("down with this sorta thing")
+        };
         assert_eq!(q.repos().count(), 1);
     }
 

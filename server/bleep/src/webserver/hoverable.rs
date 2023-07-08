@@ -14,6 +14,9 @@ pub(super) struct HoverableRequest {
 
     /// The path to the file of interest, relative to the repo root
     relative_path: String,
+
+    /// Branch name to use for the lookup,
+    branch: Option<String>,
 }
 
 /// The response from the `hoverable` endpoint.
@@ -30,7 +33,11 @@ pub(super) async fn handle(
 ) -> impl IntoResponse {
     let repo_ref = &payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
 
-    let document = match indexes.file.by_path(repo_ref, &payload.relative_path).await {
+    let document = match indexes
+        .file
+        .by_path(repo_ref, &payload.relative_path, payload.branch.as_deref())
+        .await
+    {
         Ok(Some(doc)) => doc,
         Ok(None) => return Err(Error::user("file not found").with_status(StatusCode::NOT_FOUND)),
         Err(e) => return Err(Error::user(e)),

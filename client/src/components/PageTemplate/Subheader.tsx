@@ -3,6 +3,7 @@ import SearchInput from '../SearchInput';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { splitPath } from '../../utils';
 import Breadcrumbs from '../Breadcrumbs';
+import BranchSelector from './BranchSelector';
 
 const Subheader = () => {
   const { navigationHistory, navigateBack } = useContext(AppNavigationContext);
@@ -66,7 +67,7 @@ const Subheader = () => {
 
   return (
     <div className="w-full bg-bg-shade py-2 pl-8 pr-6 flex items-center justify-between border-b border-bg-border shadow-medium relative z-70">
-      <div className="flex flex-1 flex-col gap-3 justify-center overflow-hidden">
+      <div className="flex flex-grow flex-col gap-3 justify-center overflow-hidden">
         <Breadcrumbs
           pathParts={breadcrumbs}
           path={''}
@@ -77,7 +78,9 @@ const Subheader = () => {
       <div className="w-full max-w-[548px] flex-grow-[3]">
         <SearchInput />
       </div>
-      <div className="flex-1 hidden lg:block" />
+      <div className="flex-grow flex items-center justify-end max-w-[25%]">
+        <BranchSelector />
+      </div>
     </div>
   );
 };

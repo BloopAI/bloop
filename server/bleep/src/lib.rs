@@ -39,6 +39,7 @@ use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::EnvFilter;
 
 mod background;
+mod cache;
 mod collector;
 mod config;
 mod db;
@@ -47,9 +48,13 @@ mod remotes;
 mod repo;
 mod webserver;
 
+#[cfg(feature = "ee")]
+mod ee;
+
 pub mod analytics;
 pub mod indexes;
 pub mod intelligence;
+pub mod periodic;
 pub mod query;
 pub mod semantic;
 pub mod snippet;
@@ -93,7 +98,7 @@ pub struct Application {
     cookie_key: axum_extra::extract::cookie::Key,
 
     /// SQL database for persistent storage
-    sql: SqlDb,
+    pub sql: SqlDb,
 
     /// Analytics backend -- may be unintialized
     pub analytics: Option<Arc<analytics::RudderHub>>,
@@ -117,7 +122,7 @@ impl Application {
         let config = Arc::new(config);
         debug!(?config, "effective configuration");
 
-        let sqlite = db::init(&config).await?.into();
+        let sqlite = Arc::new(db::init(&config).await?);
 
         // Initialise Semantic index if `qdrant_url` set in config
         let semantic = match config.qdrant_url {
@@ -153,7 +158,14 @@ impl Application {
         let repo_pool = config.source.initialize_pool()?;
 
         Ok(Self {
-            indexes: Indexes::new(repo_pool.clone(), config.clone(), semantic.clone())?.into(),
+            indexes: Indexes::new(
+                repo_pool.clone(),
+                config.clone(),
+                sqlite.clone(),
+                semantic.clone(),
+            )
+            .await?
+            .into(),
             sync_queue: SyncQueue::start(config.clone()),
             cookie_key: config.source.initialize_cookie_key()?,
             credentials: config.source.initialize_credentials()?.into(),
@@ -232,8 +244,9 @@ impl Application {
             joins.spawn(self.write_index().startup_scan());
         } else {
             if !self.config.disable_background {
-                tokio::spawn(remotes::sync_github_status(self.clone()));
-                tokio::spawn(remotes::check_repo_updates(self.clone()));
+                tokio::spawn(periodic::sync_github_status(self.clone()));
+                tokio::spawn(periodic::check_repo_updates(self.clone()));
+                tokio::spawn(periodic::log_and_branch_rotate(self.clone()));
             }
 
             joins.spawn(webserver::start(self));

@@ -18,7 +18,7 @@ impl Default for Repo {
 
 #[async_trait]
 impl Indexable for Repo {
-    fn index_repository(
+    async fn index_repository(
         &self,
         repo_ref: &RepoRef,
         repo: &Repository,

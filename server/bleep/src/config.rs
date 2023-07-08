@@ -21,15 +21,10 @@ pub struct Configuration {
     #[serde(default)]
     pub source: StateSource,
 
-    #[clap(short, long, default_value_os_t = default_data_dir())]
-    #[serde(default = "default_data_dir")]
-    /// Directory to store indexes
+    #[clap(short, long, default_value_os_t = default_index_dir())]
+    #[serde(default = "default_index_dir")]
+    /// Directory to store all persistent state
     pub index_dir: PathBuf,
-
-    /// Directory to store persistent data
-    #[clap(long, default_value_os_t = default_data_dir())]
-    #[serde(default = "default_data_dir")]
-    pub data_dir: PathBuf,
 
     #[clap(long, default_value_t = false)]
     #[serde(skip)]
@@ -223,9 +218,7 @@ impl Configuration {
 
             source: right_if_default!(b.source, a.source, Default::default()),
 
-            index_dir: right_if_default!(b.index_dir, a.index_dir, default_data_dir()),
-
-            data_dir: b.data_dir,
+            index_dir: right_if_default!(b.index_dir, a.index_dir, default_index_dir()),
 
             index_only: b.index_only | a.index_only,
 
@@ -318,7 +311,7 @@ where
 //
 // Configuration defaults
 //
-fn default_data_dir() -> PathBuf {
+fn default_index_dir() -> PathBuf {
     match directories::ProjectDirs::from("ai", "bloop", "bleep") {
         Some(dirs) => dirs.data_dir().to_owned(),
         None => "bloop_index".into(),

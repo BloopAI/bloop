@@ -1,4 +1,5 @@
 use rand::{seq::SliceRandom, SeedableRng};
+use secrecy::ExposeSecret;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt, mem,
@@ -19,7 +20,6 @@ use axum::{
 };
 use futures::{future::Either, stream, StreamExt, TryStreamExt};
 use reqwest::StatusCode;
-use secrecy::ExposeSecret;
 use serde_json::json;
 use tiktoken_rs::CoreBPE;
 use tokio::sync::mpsc::Sender;
@@ -28,11 +28,11 @@ use tracing::{debug, info, trace, warn};
 use super::middleware::User;
 use crate::{
     analytics::{EventData, QueryEvent},
-    db::SqlDb,
-    query::parser::SemanticQuery,
+    db::{QueryLog, SqlDb},
+    indexes::reader::{ContentDocument, FileDocument},
+    query::parser::{self, Literal, SemanticQuery},
     repo::RepoRef,
-    webserver::answer::llm_gateway::api::FunctionCall,
-    Application,
+    semantic, Application,
 };
 
 pub mod conversations;
@@ -42,6 +42,7 @@ mod partial_parse;
 mod prompts;
 
 use exchange::{Exchange, SearchStep, Update};
+use llm_gateway::api::FunctionCall;
 
 const TIMEOUT_SECS: u64 = 60;
 
@@ -132,6 +133,8 @@ pub(super) async fn _handle(
 ) -> super::Result<
     Sse<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>,
 > {
+    QueryLog::new(&app.sql).insert(&params.q).await?;
+
     let conversation_id = ConversationId {
         user_id: user
             .login()
@@ -180,14 +183,26 @@ pub(super) async fn _handle(
         }
     };
 
-    let Params { q, thread_id, .. } = params;
+    let Params { thread_id, q, .. } = params;
+    let parsed_query = parser::parse_nl(&q).context("parse error")?;
+    let semantic_query = parsed_query
+        .into_semantic()
+        .context("got a 'Grep' query")?
+        .into_owned();
+    let sanitized_query = semantic_query
+        .target
+        .as_ref()
+        .context("query was empty")?
+        .as_plain()
+        .context("user query was not plain text")?
+        .clone()
+        .into_owned();
 
     let stream = async_stream::try_stream! {
-        let mut action = Action::Query(q);
+        let mut action = Action::Query(sanitized_query);
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
-        conversation.exchanges.push(Exchange::default());
-
+        conversation.exchanges.push(Exchange::new(semantic_query));
         let mut agent = Agent {
             app,
             conversation,
@@ -548,7 +563,11 @@ impl Conversation {
             chunks_by_path.entry(c.path.clone()).or_default().push(c);
         }
 
-        let repo_ref = &self.repo_ref;
+        let branch = self.last_exchange().query.first_branch();
+
+        let branch_str = branch.as_deref();
+
+        let self_ = &*self;
         self.code_chunks = futures::stream::iter(chunks_by_path)
             .then(|(path, mut chunks)| async move {
                 chunks.sort_by_key(|c| c.start_line);
@@ -556,7 +575,7 @@ impl Conversation {
                 let contents = app
                     .indexes
                     .file
-                    .by_path(repo_ref, &path)
+                    .by_path(&self_.repo_ref, &path, branch_str)
                     .await
                     .unwrap()
                     .unwrap_or_else(|| panic!("path did not exist in the index: {path}"))
@@ -651,9 +670,7 @@ impl Agent {
             Action::Query(s) => {
                 self.update(Update::Step(SearchStep::Query(s.clone())))
                     .await?;
-
                 self.track_query(EventData::input_stage("query").with_payload("q", s));
-
                 s.clone()
             }
 
@@ -672,10 +689,7 @@ impl Agent {
 
                 // First, perform a lexical search for the path
                 let mut paths = self
-                    .app
-                    .indexes
-                    .file
-                    .fuzzy_path_match(&self.conversation.repo_ref, query, /* limit */ 50)
+                    .fuzzy_path_search(query)
                     .await
                     .map(|c| c.relative_path)
                     .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.
@@ -687,20 +701,11 @@ impl Agent {
                 // If there are no lexical results, perform a semantic search.
                 if paths.is_empty() {
                     // TODO: Semantic search should accept unparsed queries
-                    let nl_query: SemanticQuery<'_> = SemanticQuery::from_str(
-                        query.into(),
-                        self.conversation.repo_ref.display_name(),
-                    );
-
                     let semantic_paths = self
-                        .app
-                        .semantic
-                        .as_ref()
-                        .context("semantic search is not enabled")?
-                        .search(&nl_query, 30, 0, true)
+                        .semantic_search(query.into(), 30, 0, true)
                         .await?
                         .into_iter()
-                        .map(|chunk| chunk.relative_path.into_owned())
+                        .map(|chunk| chunk.relative_path)
                         .collect::<HashSet<_>>()
                         .into_iter()
                         .collect();
@@ -733,18 +738,7 @@ impl Agent {
                 self.update(Update::Step(SearchStep::Code(query.clone())))
                     .await?;
 
-                let nl_query: SemanticQuery<'_> = SemanticQuery::from_str(
-                    query.into(),
-                    self.conversation.repo_ref.display_name(),
-                );
-
-                let results = self
-                    .app
-                    .semantic
-                    .as_ref()
-                    .context("semantic search is not enabled")?
-                    .search(&nl_query, 10, 0, true)
-                    .await?;
+                let results = self.semantic_search(query.into(), 10, 0, true).await?;
 
                 let chunks = results
                     .into_iter()
@@ -752,9 +746,9 @@ impl Agent {
                         let relative_path = chunk.relative_path;
 
                         CodeChunk {
-                            path: relative_path.clone().into_owned(),
+                            path: relative_path.clone(),
                             alias: self.conversation.path_alias(&relative_path) as u32,
-                            snippet: chunk.text.into_owned(),
+                            snippet: chunk.text,
                             start_line: (chunk.start_line as u32).saturating_add(1),
                             end_line: (chunk.end_line as u32).saturating_add(1),
                         }
@@ -780,6 +774,7 @@ impl Agent {
             Action::Proc { query, paths } => self.proc(query, paths).await?,
         };
 
+        debug!(?action, %self.thread_id, "chosen next action");
         match &action {
             Action::Query(query) => {
                 self.conversation
@@ -877,12 +872,8 @@ impl Agent {
                 tracing::debug!(?path, "reading file");
 
                 let lines = self_
-                    .app
-                    .indexes
-                    .file
-                    .by_path(&self_.conversation.repo_ref, &path)
-                    .await
-                    .with_context(|| format!("failed to read path: {path}"))?
+                    .get_file_content(&path)
+                    .await?
                     .with_context(|| format!("path does not exist in the index: {path}"))?
                     .content
                     .lines()
@@ -920,7 +911,7 @@ impl Agent {
                 let contents = lines.join("\n");
                 let prompt = prompts::file_explanation(question, &path, &contents);
 
-                tracing::debug!(?path, "calling chat API on file");
+                debug!(?path, "calling chat API on file");
 
                 let json = self_
                     .llm_gateway
@@ -1100,14 +1091,7 @@ impl Agent {
         let code_chunks = if path_aliases.len() == 1 {
             let alias = path_aliases[0];
             let path = self.conversation.paths[alias].clone();
-
-            let doc = self
-                .app
-                .indexes
-                .file
-                .by_path(&self.conversation.repo_ref, &path)
-                .await
-                .with_context(|| format!("failed to read path: {}", path))?;
+            let doc = self.get_file_content(&path).await?;
 
             match doc {
                 Some(doc) => {
@@ -1353,6 +1337,59 @@ impl Agent {
         }
 
         Ok(())
+    }
+
+    async fn semantic_search(
+        &self,
+        query: Literal<'_>,
+        limit: u64,
+        offset: u64,
+        retrieve_more: bool,
+    ) -> Result<Vec<semantic::Payload>> {
+        let query = SemanticQuery {
+            target: Some(query),
+            repos: [Literal::Plain(
+                self.conversation.repo_ref.display_name().into(),
+            )]
+            .into(),
+            ..self.conversation.last_exchange().query.clone()
+        };
+
+        debug!(?query, %self.thread_id, "executing semantic query");
+        self.app
+            .semantic
+            .as_ref()
+            .unwrap()
+            .search(&query, limit, offset, retrieve_more)
+            .await
+    }
+
+    async fn get_file_content(&self, path: &str) -> Result<Option<ContentDocument>> {
+        let branch = self.conversation.last_exchange().query.first_branch();
+        let repo_ref = &self.conversation.repo_ref;
+
+        debug!(%repo_ref, path, ?branch, %self.thread_id, "executing file search");
+        self.app
+            .indexes
+            .file
+            .by_path(repo_ref, path, branch.as_deref())
+            .await
+            .with_context(|| format!("failed to read path: {}", path))
+    }
+
+    async fn fuzzy_path_search<'a>(
+        &'a self,
+        query: &str,
+    ) -> impl Iterator<Item = FileDocument> + 'a {
+        let branch = self.conversation.last_exchange().query.first_branch();
+        let repo_ref = &self.conversation.repo_ref;
+
+        debug!(%repo_ref, query, ?branch, %self.thread_id, "executing fuzzy search");
+        self.app
+            .indexes
+            .file
+            .fuzzy_path_match(repo_ref, query, branch.as_deref(), 50)
+            .await
     }
 }
 

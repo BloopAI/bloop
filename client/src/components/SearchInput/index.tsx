@@ -65,10 +65,10 @@ function SearchInput() {
     setSearchHistory,
     globalRegex,
     setGlobalRegex,
+    selectedBranch,
   } = useContext(SearchContext);
   const { tab } = useContext(UIContext);
   const [options, setOptions] = useState<SuggestionType[]>([]);
-  const [left, setLeft] = useState<number>(INPUT_POSITION_LEFT);
   const inputRef = useRef<HTMLInputElement>(null);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
   const arrowNavContainerRef = useArrowKeyNavigation({
@@ -157,12 +157,14 @@ function SearchInput() {
             setFilters([]);
             return;
           }
-          getAutocompleteThrottled(
-            state.inputValue.includes(`repo:${tab.name}`)
-              ? state.inputValue
-              : `${state.inputValue} repo:${tab.name}`,
-            setOptions,
-          );
+          let autocompleteQuery = state.inputValue;
+          if (selectedBranch) {
+            autocompleteQuery += ` branch:${selectedBranch}`;
+          }
+          if (!state.inputValue.includes(`repo:${tab.name}`)) {
+            autocompleteQuery += ` repo:${tab.name}`;
+          }
+          getAutocompleteThrottled(autocompleteQuery, setOptions);
           const parsedFilters = parseFilters(state.inputValue);
           if (Object.entries(parsedFilters).some((filters) => filters.length)) {
             const newFilters = filters.map((filterItem) => ({
@@ -201,6 +203,9 @@ function SearchInput() {
       if (!val.trim()) {
         return;
       }
+      if (!val.includes(' branch:') && selectedBranch) {
+        val += ` branch:${selectedBranch}`;
+      }
       navigateSearch(val);
       closeMenu();
       setSearchHistory((prev) => {
@@ -216,7 +221,7 @@ function SearchInput() {
         return newHistory;
       });
     },
-    [tab.name],
+    [tab.name, selectedBranch],
   );
 
   const handleClearHistory = useCallback(() => {
@@ -319,7 +324,7 @@ function SearchInput() {
       <AutocompleteMenu
         getMenuProps={getMenuProps}
         getItemProps={getItemProps}
-        left={left}
+        left={INPUT_POSITION_LEFT}
         isOpen={isOpen && !!options.length}
         options={options}
       />

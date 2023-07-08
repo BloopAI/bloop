@@ -2,11 +2,11 @@
 //! - scope-graph based handler that operates only in the owning file
 //! - search based handler that operates on any file belonging to the repo
 
-use std::{ops::Not, sync::Arc};
+use std::ops::Not;
 
 use super::NodeKind;
 use crate::{
-    indexes::{reader::ContentDocument, Indexes},
+    indexes::reader::ContentDocument,
     repo::RepoRef,
     snippet::{Snipper, Snippet},
     text_range::TextRange,
@@ -49,7 +49,6 @@ pub enum CodeNavigationError {}
 pub struct CodeNavigationContext<'a> {
     pub repo_ref: RepoRef,
     pub token: Token<'a>,
-    pub indexes: Arc<Indexes>,
     pub all_docs: Vec<ContentDocument>,
     pub source_document_idx: usize,
 }

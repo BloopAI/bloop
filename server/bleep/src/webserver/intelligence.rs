@@ -24,6 +24,9 @@ pub(super) struct TokenInfoRequest {
     /// The path to the file of interest, relative to the repo root
     relative_path: String,
 
+    /// Branch name to use for the lookup,
+    branch: Option<String>,
+
     /// The byte range to look for
     start: usize,
     end: usize,
@@ -57,7 +60,7 @@ pub(super) async fn handle(
 
     let source_document = indexes
         .file
-        .by_path(&repo_ref, &payload.relative_path)
+        .by_path(&repo_ref, &payload.relative_path, payload.branch.as_deref())
         .await
         .map_err(Error::user)?
         .ok_or_else(|| Error::user("path not found").with_status(StatusCode::NOT_FOUND))?;
@@ -69,7 +72,11 @@ pub(super) async fn handle(
         };
         indexes
             .file
-            .by_repo(&repo_ref, associated_langs.iter())
+            .by_repo(
+                &repo_ref,
+                associated_langs.iter(),
+                payload.branch.as_deref(),
+            )
             .await
     };
 
@@ -81,19 +88,18 @@ pub(super) async fn handle(
     let ctx = CodeNavigationContext {
         repo_ref: repo_ref.clone(),
         token,
-        indexes: Arc::clone(&indexes),
         all_docs,
         source_document_idx,
     };
 
     let data = ctx.token_info();
-
     if data.is_empty() {
         search_nav(
             Arc::clone(&indexes),
             &repo_ref,
             ctx.active_token_text(),
             ctx.active_token_range(),
+            payload.branch.as_deref(),
             &source_document,
         )
         .await
@@ -109,6 +115,7 @@ async fn search_nav(
     repo_ref: &RepoRef,
     hovered_text: &str,
     payload_range: std::ops::Range<usize>,
+    branch: Option<&str>,
     source_document: &ContentDocument,
 ) -> Result<Vec<FileSymbols>> {
     use crate::{
@@ -143,6 +150,23 @@ async fn search_nav(
                 Box::new(TermQuery::new(repo_filter, IndexRecordOption::Basic))
                     as Box<dyn tantivy::query::Query>,
             ))
+            .chain(
+                branch
+                    .into_iter()
+                    .map(|b| {
+                        trigrams(b)
+                            .map(|token| {
+                                Term::from_field_text(indexer.source.branches, token.as_str())
+                            })
+                            .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
+                            .map(Box::new)
+                            .map(|q| q as Box<dyn tantivy::query::Query>)
+                            .collect::<Vec<_>>()
+                    })
+                    .map(BooleanQuery::intersection)
+                    .map(Box::new)
+                    .map(|b| b as Box<dyn tantivy::query::Query>),
+            )
             .chain(std::iter::once(Box::new(BooleanQuery::union(
                 associated_langs
                     .iter()
@@ -160,6 +184,7 @@ async fn search_nav(
             ))
                 as Box<dyn tantivy::query::Query>))
             .collect::<Vec<Box<dyn tantivy::query::Query>>>();
+
         BooleanQuery::intersection(terms)
     };
     let collector = TopDocs::with_limit(500);

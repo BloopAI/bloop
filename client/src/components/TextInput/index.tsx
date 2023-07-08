@@ -33,6 +33,7 @@ type Props = {
   inputClassName?: string;
   forceClear?: boolean;
   high?: boolean;
+  noBorder?: boolean;
   startIcon?: ReactElement;
   endIcon?: ReactElement;
 };
@@ -91,6 +92,7 @@ const TextInput = forwardRef(function TextInputWithRef(
     startIcon,
     endIcon,
     high,
+    noBorder,
   }: Props & (SingleLineProps | MultilineProps),
   ref: ForwardedRef<HTMLInputElement>,
 ) {
@@ -125,10 +127,12 @@ const TextInput = forwardRef(function TextInputWithRef(
         </div>
       ) : null}
       <div
-        className={`group border ${
+        className={`group ${noBorder ? '' : 'border'} ${
           high ? 'h-12 rounded-xl' : multiline ? 'p-2 rounded' : 'h-10 rounded'
         } flex box-border items-center ${
-          disabled
+          noBorder
+            ? ''
+            : disabled
             ? borderMap[variant].disabled
             : error
             ? borderMap[variant].error

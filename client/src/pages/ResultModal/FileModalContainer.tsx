@@ -7,6 +7,7 @@ import { FullResultModeEnum } from '../../types/general';
 import { mapFileResult, mapRanges } from '../../mappers/results';
 import { getHoverables } from '../../services/api';
 import { buildRepoQuery } from '../../utils';
+import { SearchContext } from '../../context/searchContext';
 import { FileModalContext } from '../../context/fileModalContext';
 import ResultModal from './index';
 
@@ -29,6 +30,7 @@ const FileModalContainer = ({ repoName }: Props) => {
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
   const navigateBrowser = useNavigate();
+  const { selectedBranch } = useContext(SearchContext);
 
   useEffect(() => {
     if (isFileModalOpen) {
@@ -37,7 +39,7 @@ const FileModalContainer = ({ repoName }: Props) => {
   }, [repoName, path, isFileModalOpen]);
 
   useEffect(() => {
-    if (fileResultData?.data?.length) {
+    if (fileResultData?.data?.length && isFileModalOpen) {
       setOpenResult(mapFileResult(fileResultData.data[0]));
       navigateBrowser({
         search: scrollToLine
@@ -51,6 +53,7 @@ const FileModalContainer = ({ repoName }: Props) => {
       getHoverables(
         fileResultData.data[0].data.relative_path,
         fileResultData.data[0].data.repo_ref,
+        selectedBranch ? selectedBranch : undefined,
       ).then((data) => {
         setOpenResult((prevState) => ({
           ...prevState!,
@@ -58,7 +61,7 @@ const FileModalContainer = ({ repoName }: Props) => {
         }));
       });
     }
-  }, [fileResultData]);
+  }, [fileResultData, selectedBranch, isFileModalOpen]);
 
   const handleModeChange = useCallback((m: FullResultModeEnum) => {
     setMode(m);

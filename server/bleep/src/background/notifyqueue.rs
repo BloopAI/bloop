@@ -8,7 +8,7 @@ use super::sync::SyncHandle;
 
 /// Asynchronous queue with await semantics for popping the front
 /// element.
-pub(super) struct NotifyQueue {
+pub(crate) struct NotifyQueue {
     queue: RwLock<VecDeque<Arc<SyncHandle>>>,
     available: Semaphore,
 }
@@ -23,7 +23,7 @@ impl Default for NotifyQueue {
 }
 
 impl NotifyQueue {
-    pub(super) async fn push(&self, item: Arc<SyncHandle>) {
+    pub(crate) async fn push(&self, item: Arc<SyncHandle>) {
         let mut q = self.queue.write().await;
 
         self.available.add_permits(1);
@@ -31,13 +31,18 @@ impl NotifyQueue {
         q.push_back(item);
     }
 
-    pub(super) async fn pop(&self) -> Arc<SyncHandle> {
-        let permit = self.available.acquire().await.expect("fatal");
-        let mut q = self.queue.write().await;
+    pub(super) async fn pop_if(&self, pred: impl Fn(&SyncHandle) -> bool) -> Arc<SyncHandle> {
+        loop {
+            let permit = self.available.acquire().await.expect("fatal");
+            let mut q = self.queue.write().await;
 
-        permit.forget();
+            let first = q.iter().position(|h| (pred)(h));
 
-        q.pop_front().expect("the semaphore should guard this")
+            if let Some(pos) = first {
+                permit.forget();
+                return q.remove(pos).expect("locked");
+            }
+        }
     }
 
     #[allow(unused)]
