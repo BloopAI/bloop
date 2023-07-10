@@ -34,9 +34,9 @@ const FileModalContainer = ({ repoName }: Props) => {
 
   useEffect(() => {
     if (isFileModalOpen) {
-      fileModalSearchQuery(buildRepoQuery(repoName, path));
+      fileModalSearchQuery(buildRepoQuery(repoName, path, selectedBranch));
     }
-  }, [repoName, path, isFileModalOpen]);
+  }, [repoName, path, isFileModalOpen, selectedBranch]);
 
   useEffect(() => {
     if (fileResultData?.data?.length && isFileModalOpen) {
