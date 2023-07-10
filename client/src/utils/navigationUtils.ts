@@ -57,7 +57,7 @@ export const getNavItemFromURL = (location: Location, repoName: string) => {
     searchType: 0,
     repo: repoName,
   };
-  navItem.query = location.hash.slice(1);
+  navItem.query = decodeURIComponent(location.hash.slice(1));
   navItem.path = new URLSearchParams(location.search).get('path') || undefined;
   navItem.pathParams = {};
   const modalPath = new URLSearchParams(location.search).get('modalPath');
