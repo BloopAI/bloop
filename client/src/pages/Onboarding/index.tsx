@@ -133,8 +133,8 @@ const Onboarding = () => {
         <div
           className={`flex justify-center items-start mt-8 w-screen overflow-auto relative h-[calc(100vh-4rem)]`}
         >
-          <div className="fixed top-0 bottom-0 left-0 right-0 mt-8 mb-16 bg-[url('/onboarding-background.png')] bg-cover z-50">
-            <div className="absolute top-0 bottom-0 left-0 right-0 flex justify-center items-center overflow-auto bg-bg-base/75">
+          <div className="fixed top-0 bottom-0 left-0 right-0 mt-8 mb-16 bg-bg-base z-80">
+            <div className="absolute top-0 bottom-0 left-0 right-0 flex justify-center items-center overflow-auto">
               <div className="flex flex-col items-center max-w-md2 w-full">
                 <div className="bg-bg-base border border-bg-border rounded-lg shadow-high p-6 flex flex-col flex-1 gap-8 w-full max-w-md2 relative max-h-[calc(100vh-12rem)]">
                   <SelfServeStep />
