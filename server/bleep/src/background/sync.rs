@@ -87,7 +87,7 @@ impl Drop for SyncHandle {
 }
 
 impl SyncHandle {
-    pub(crate) fn new(
+    pub(crate) async fn new(
         app: Application,
         reporef: RepoRef,
         status: super::ProgressStream,
@@ -95,15 +95,38 @@ impl SyncHandle {
     ) -> Arc<Self> {
         let (exited, exit_signal) = flume::bounded(1);
         let pipes = SyncPipes::new(reporef.clone(), status).into();
-        Self {
-            app,
+        let sh = Self {
+            app: app.clone(),
+            reporef: reporef.clone(),
             pipes,
-            reporef,
             new_branch_filters,
             exited,
             exit_signal,
-        }
-        .into()
+        };
+
+        _ = sh
+            .create_new(|| {
+                let name = reporef.to_string();
+                let disk_path = app
+                    .config
+                    .source
+                    .repo_path_for_name(&name.replace('/', "_"));
+
+                let remote = reporef.as_ref().into();
+
+                Repository {
+                    disk_path,
+                    remote,
+                    sync_status: SyncStatus::Queued,
+                    last_index_unix_secs: 0,
+                    last_commit_unix_secs: 0,
+                    most_common_lang: None,
+                    branch_filter: None,
+                }
+            })
+            .await;
+
+        sh.into()
     }
 
     pub(super) fn notify_done(&self) -> flume::Receiver<SyncStatus> {
@@ -348,8 +371,8 @@ impl SyncHandle {
         current
     }
 
-    pub(crate) async fn sync_lock(&self) -> Option<std::result::Result<(), RemoteError>> {
-        let new = self
+    pub(crate) async fn sync_lock(&self) -> std::result::Result<Repository, RemoteError> {
+        let repo = self
             .app
             .repo_pool
             .update_async(&self.reporef, |_k, repo| {
@@ -357,17 +380,18 @@ impl SyncHandle {
                     Err(RemoteError::SyncInProgress)
                 } else {
                     repo.sync_status = SyncStatus::Syncing;
-                    Ok(repo.sync_status.clone())
+                    Ok(repo.clone())
                 }
             })
             .await;
 
-        if let Some(Ok(new_status)) = new {
+        if let Some(Ok(repo)) = repo {
+            let new_status = repo.sync_status.clone();
             debug!(?self.reporef, ?new_status, "new status");
             self.pipes.status(self, new_status);
-            Some(Ok(()))
+            Ok(repo)
         } else {
-            new.map(|inner| inner.map(|_| ()))
+            repo.expect("repo was already deleted")
         }
     }
 }

@@ -128,14 +128,14 @@ impl Auth {
 }
 
 impl Auth {
-    pub(crate) async fn clone_repo(&self, repo: Repository) -> Result<()> {
-        self.check_repo(&repo).await?;
+    pub(crate) async fn clone_repo(&self, repo: &Repository) -> Result<()> {
+        self.check_repo(repo).await?;
         git_clone(self.git_cred(), &repo.remote.to_string(), &repo.disk_path).await
     }
 
-    pub(crate) async fn pull_repo(&self, repo: Repository) -> Result<()> {
-        self.check_repo(&repo).await?;
-        git_pull(self.git_cred(), &repo).await
+    pub(crate) async fn pull_repo(&self, repo: &Repository) -> Result<()> {
+        self.check_repo(repo).await?;
+        git_pull(self.git_cred(), repo).await
     }
 
     pub async fn check_repo(&self, repo: &Repository) -> Result<()> {
