@@ -72,7 +72,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
             type: ChatMessageType.Answer,
             loadingSteps: mapLoadingSteps(m.search_steps),
             text: m.conclusion,
-            results: m.results,
+            results: m.outcome,
             isFromHistory: true,
           });
         });
