@@ -307,7 +307,9 @@ Respect these rules at all times:
       <StartLine>4</StartLine>
       <EndLine>5</EndLine>
     </QuotedCode>
-  - Note: the line range is inclusive"#
+  - Note: the line range is inclusive
+  - Note: You must generate valid XML. All `<`, `>`, and `&` symbols must be escaped with `&lt;`, `&gt;`, and `&amp;`, respectively.
+  - For example, instead of outputting `<QuotedCode><Code>Foo::<&str>::new();</Code>...</QuotedCode>`, output `<QuotedCode><Code>Foo::&lt;&amp;str&gt;::new();</Code>...</QuotedCode>`"#
     )
 }
 
