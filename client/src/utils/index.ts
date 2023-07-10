@@ -231,7 +231,8 @@ export const propsAreShallowEqual = <P>(
   );
 
 export const deleteAuthCookie = () => {
-  document.cookie = 'auth_cookie=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+  document.cookie =
+    'auth_cookie=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 };
 
 export const previewTheme = (key: string) => {
