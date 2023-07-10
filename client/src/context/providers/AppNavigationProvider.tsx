@@ -15,7 +15,7 @@ export const AppNavigationProvider = ({
   const [forwardNavigation, setForwardNavigation] = useState<NavigationItem[]>(
     [],
   );
-  const { setIsFileModalOpen, isFileModalOpen, openFileModal } =
+  const { closeFileModalOpen, isFileModalOpen, openFileModal } =
     useContext(FileModalContext);
   const { updateTabNavHistory } = useContext(TabsContext);
 
@@ -30,7 +30,7 @@ export const AppNavigationProvider = ({
   useEffect(() => {
     // open file modal if the app is opened through a URL with modal params
     if (
-      tab.navigationHistory.length === 1 &&
+      navigatedItem?.isInitial &&
       navigatedItem?.pathParams?.modalPath &&
       !isFileModalOpen
     ) {
@@ -100,7 +100,7 @@ export const AppNavigationProvider = ({
       if (path === '/') {
         path = undefined;
       }
-      setIsFileModalOpen(false);
+      closeFileModalOpen();
 
       saveState({
         type: 'repo',
@@ -110,7 +110,7 @@ export const AppNavigationProvider = ({
         pathParams,
       });
     },
-    [],
+    [closeFileModalOpen],
   );
 
   const navigateConversationResults = useCallback(

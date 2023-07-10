@@ -16,7 +16,7 @@ type Props = {
 };
 
 const FileModalContainer = ({ repoName }: Props) => {
-  const { path, setIsFileModalOpen, isFileModalOpen } =
+  const { path, closeFileModalOpen, isFileModalOpen } =
     useContext(FileModalContext);
   const { navigatedItem } = useContext(AppNavigationContext);
   const [mode, setMode] = useState<FullResultModeEnum>(
@@ -68,8 +68,8 @@ const FileModalContainer = ({ repoName }: Props) => {
   }, [isFileModalOpen]);
 
   const onResultClosed = useCallback(() => {
-    setIsFileModalOpen(false);
-  }, [mode]);
+    closeFileModalOpen();
+  }, [closeFileModalOpen]);
 
   return (
     <ResultModal

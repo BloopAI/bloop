@@ -230,6 +230,7 @@ export interface NavigationItem {
   path?: string;
   page?: number;
   loaded?: boolean;
+  isInitial?: boolean;
   searchType?: SearchType;
   pathParams?: Record<string, string>;
   threadId?: string;

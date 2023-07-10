@@ -53,6 +53,7 @@ export const getNavItemFromURL = (location: Location, repoName: string) => {
     return undefined;
   }
   const navItem: NavigationItem = {
+    isInitial: true,
     type: type as NavigationItem['type'],
     searchType: 0,
     repo: repoName,
@@ -96,5 +97,12 @@ export const getNavItemFromURL = (location: Location, repoName: string) => {
   }
   return navItem.type === 'repo' && !navItem.path
     ? [navItem]
-    : [{ type: 'repo' as NavigationItem['type'], repo: repoName }, navItem];
+    : [
+        {
+          type: 'repo' as NavigationItem['type'],
+          repo: repoName,
+          isInitial: true,
+        },
+        navItem,
+      ];
 };
