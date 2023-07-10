@@ -188,27 +188,29 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
               exit={{ visibility: 'hidden' }}
               transition={FILTER_TEXT_ANIMATION}
             >
-              {newFilters.map((s, index) => (
-                <FilterSection
-                  key={s.name}
-                  items={s.items}
-                  type={s.type}
-                  onChange={(i, b) => handleFiltersChange(index, i, b)}
-                  name={s.name}
-                  title={s.title}
-                  singleSelect={s.singleSelect}
-                  open={openSections.includes(index.toString())}
-                  onToggle={() => {
-                    const newOpenSection = openSections.includes(
-                      index.toString(),
-                    )
-                      ? openSections.filter((s) => s !== index.toString())
-                      : openSections.concat(index.toString());
-                    setOpenSections(newOpenSection);
-                  }}
-                  onSelectAll={(b) => handleFiltersAllSelected(index, b)}
-                />
-              ))}
+              {newFilters
+                .filter((s) => s.title !== 'Repository')
+                .map((s, index) => (
+                  <FilterSection
+                    key={s.name}
+                    items={s.items}
+                    type={s.type}
+                    onChange={(i, b) => handleFiltersChange(index, i, b)}
+                    name={s.name}
+                    title={s.title}
+                    singleSelect={s.singleSelect}
+                    open={openSections.includes(index.toString())}
+                    onToggle={() => {
+                      const newOpenSection = openSections.includes(
+                        index.toString(),
+                      )
+                        ? openSections.filter((s) => s !== index.toString())
+                        : openSections.concat(index.toString());
+                      setOpenSections(newOpenSection);
+                    }}
+                    onSelectAll={(b) => handleFiltersAllSelected(index, b)}
+                  />
+                ))}
             </motion.div>
           )}
         </AnimatePresence>
