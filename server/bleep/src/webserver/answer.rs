@@ -214,8 +214,7 @@ pub(super) async fn _handle(
             complete: false,
         };
 
-        let mut left_stream = tokio_stream::wrappers::ReceiverStream::new(exchange_rx)
-            .map(Either::Left);
+        let mut exchange_rx = tokio_stream::wrappers::ReceiverStream::new(exchange_rx);
 
         let result = 'outer: loop {
             // The main loop. Here, we create two streams that operate simultaneously; the update
@@ -225,6 +224,7 @@ pub(super) async fn _handle(
 
             use futures::future::FutureExt;
 
+            let left_stream = (&mut exchange_rx).map(Either::Left);
             let right_stream = agent
                 .step(action)
                 .into_stream()
@@ -234,7 +234,7 @@ pub(super) async fn _handle(
 
             let mut next = None;
             for await item in tokio_stream::StreamExt::timeout(
-                stream::select(&mut left_stream, right_stream),
+                stream::select(left_stream, right_stream),
                 timeout,
             ) {
                 match item {
@@ -245,6 +245,15 @@ pub(super) async fn _handle(
                     },
                     Err(_) => break 'outer Err(AgentError::Timeout(timeout)),
                 }
+            }
+
+            // NB: Sending updates after all other `await` points in the final `step` call will
+            // likely not return a pending future due to the internal receiver queue. So, the call
+            // stack usually continues onwards, ultimately resulting in a `Poll::Ready`, backing out
+            // of the above loop without ever processing the final message. Here, we empty the
+            // queue.
+            while let Some(Some(exchange)) = exchange_rx.next().now_or_never() {
+                yield exchange;
             }
 
             match next {
