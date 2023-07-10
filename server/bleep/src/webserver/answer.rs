@@ -526,7 +526,7 @@ impl Conversation {
                     llm_gateway::api::Message::PlainText {
                         role,
                         ref mut content,
-                    } if role == "user" && content != "[HIDDEN]" => {
+                    } if (role == "user" || role == "assistant") && content != "[HIDDEN]" => {
                         *content = "[HIDDEN]".into();
                         true
                     }
