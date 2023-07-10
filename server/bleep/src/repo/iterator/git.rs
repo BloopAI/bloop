@@ -82,6 +82,7 @@ impl GitWalker {
                         r,
                     )
                 })
+                .filter(|(_, name, _)| name.starts_with("origin/"))
                 .filter(|(is_head, name, _)| branches.filter(*is_head, name))
                 .filter_map(|(is_head, branch, r)| -> Option<_> {
                     Some((
@@ -134,7 +135,7 @@ impl GitWalker {
                     }
 
                     // the HEAD branch will not have an origin prefix
-                    branches.insert(format!("origin/{}", branch.trim_start_matches("origin/")));
+                    branches.insert(branch);
                     acc
                 },
             );
