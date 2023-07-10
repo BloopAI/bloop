@@ -1,39 +1,25 @@
-import React, { useContext, useEffect, useMemo } from 'react';
+import React, { PropsWithChildren, useMemo } from 'react';
+import * as Sentry from '@sentry/react';
 import NavBar from '../NavBar';
 import StatusBar from '../StatusBar';
 import Chat from '../Chat';
-import { ChatContext } from '../../context/chatContext';
-import { RenderPage } from '../../pages';
+import ErrorFallback from '../ErrorFallback';
 import Subheader from './Subheader';
 
 type Props = {
-  children: React.ReactNode;
   withSearchBar: boolean;
-  renderPage: RenderPage;
 };
 
-const PageTemplate = ({ children, withSearchBar, renderPage }: Props) => {
-  const { setShowTooltip, setTooltipText } = useContext(ChatContext);
-
+const PageTemplate = ({
+  children,
+  withSearchBar,
+}: PropsWithChildren<Props>) => {
   const mainContainerStyle = useMemo(
-    () => ({ height: `calc(100vh - ${withSearchBar ? '9.5rem' : '6rem'})` }),
+    () => ({
+      height: `calc(100vh - ${withSearchBar ? '9.5rem' : '6rem'})`,
+    }),
     [withSearchBar],
   );
-
-  useEffect(() => {
-    let timerId: number;
-    if (renderPage === 'repo') {
-      timerId = window.setTimeout(() => {
-        setTooltipText('Ask me a question!');
-        setShowTooltip(true);
-      }, 1000);
-    } else {
-      setShowTooltip(false);
-    }
-    return () => {
-      clearTimeout(timerId);
-    };
-  }, [renderPage]);
 
   return (
     <div className="text-label-title">
@@ -51,4 +37,6 @@ const PageTemplate = ({ children, withSearchBar, renderPage }: Props) => {
     </div>
   );
 };
-export default PageTemplate;
+export default Sentry.withErrorBoundary(PageTemplate, {
+  fallback: (props) => <ErrorFallback {...props} />,
+});

@@ -12,7 +12,13 @@ export const Default = () => {
   return (
     <MemoryRouter initialEntries={['']}>
       <SearchContextProvider
-        tab={{ name: '', repoName: '', key: '', source: RepoSource.LOCAL }}
+        tab={{
+          name: '',
+          repoName: '',
+          key: '',
+          source: RepoSource.LOCAL,
+          navigationHistory: [],
+        }}
       >
         <div className="relative">
           <SearchInput />

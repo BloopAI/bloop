@@ -1,25 +1,46 @@
-import { useCallback, useContext, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { buildRepoQuery } from '../../utils';
-import { NavigationItem, SearchType } from '../../types/general';
+import { NavigationItem, SearchType, UITabType } from '../../types/general';
 import { AppNavigationContext } from '../appNavigationContext';
 import { FileModalContext } from '../fileModalContext';
+import { TabsContext } from '../tabsContext';
 
-export const AppNavigationProvider = (prop: {
-  value?: string;
+export const AppNavigationProvider = ({
+  tab,
+  children,
+}: {
+  tab: UITabType;
   children: JSX.Element | JSX.Element[];
 }) => {
-  const [navigation, setNavigation] = useState<NavigationItem[]>([]);
   const [forwardNavigation, setForwardNavigation] = useState<NavigationItem[]>(
     [],
   );
-  const { setIsFileModalOpen } = useContext(FileModalContext);
-  const navigateBrowser = useNavigate();
+  const { closeFileModalOpen, isFileModalOpen, openFileModal } =
+    useContext(FileModalContext);
+  const { updateTabNavHistory } = useContext(TabsContext);
 
   const navigatedItem = useMemo(
-    () => (navigation.length ? navigation[navigation.length - 1] : undefined),
-    [navigation],
+    () =>
+      tab.navigationHistory.length
+        ? tab.navigationHistory[tab.navigationHistory.length - 1]
+        : undefined,
+    [tab.navigationHistory],
   );
+
+  useEffect(() => {
+    // open file modal if the app is opened through a URL with modal params
+    if (
+      navigatedItem?.isInitial &&
+      navigatedItem?.pathParams?.modalPath &&
+      !isFileModalOpen
+    ) {
+      openFileModal(
+        navigatedItem.pathParams.modalPath,
+        navigatedItem.pathParams.modalScrollToLine,
+        navigatedItem.pathParams.modalHighlightColor,
+      );
+    }
+  }, [tab.navigationHistory, navigatedItem, isFileModalOpen]);
 
   const buildQuery = (navigationItem: NavigationItem) => {
     const { query, path, repo, type } = navigationItem;
@@ -41,30 +62,14 @@ export const AppNavigationProvider = (prop: {
     return buildQuery(navigatedItem);
   }, [navigatedItem]);
 
-  const saveState = useCallback(
-    (navigationItem: NavigationItem) => {
-      setNavigation((prevState) =>
-        JSON.stringify(navigationItem) !==
-        JSON.stringify(prevState.slice(-1)[0])
-          ? [...prevState, navigationItem]
-          : prevState,
-      ); // do not duplicate navigation item if called multiple times
-      setForwardNavigation([]);
-      if (navigationItem.type === 'home') {
-        navigateBrowser('/');
-        return;
-      }
-      navigateBrowser(
-        '/search' +
-          (navigationItem.pathParams
-            ? '?' + new URLSearchParams(navigationItem.pathParams).toString()
-            : '') +
-          '#' +
-          buildQuery(navigationItem),
-      );
-    },
-    [navigateBrowser],
-  );
+  const saveState = useCallback((navigationItem: NavigationItem) => {
+    updateTabNavHistory(tab.key, (prevState) =>
+      JSON.stringify(navigationItem) !== JSON.stringify(prevState.slice(-1)[0])
+        ? [...prevState, navigationItem]
+        : prevState,
+    ); // do not duplicate navigation item if called multiple times
+    setForwardNavigation([]);
+  }, []);
 
   const navigate = useCallback(
     (
@@ -95,7 +100,7 @@ export const AppNavigationProvider = (prop: {
       if (path === '/') {
         path = undefined;
       }
-      setIsFileModalOpen(false);
+      closeFileModalOpen();
 
       saveState({
         type: 'repo',
@@ -105,7 +110,7 @@ export const AppNavigationProvider = (prop: {
         pathParams,
       });
     },
-    [],
+    [closeFileModalOpen],
   );
 
   const navigateConversationResults = useCallback(
@@ -159,14 +164,14 @@ export const AppNavigationProvider = (prop: {
     if (!delta) {
       return;
     }
-    setNavigation((prevState) => {
+    updateTabNavHistory(tab.key, (prevState) => {
       setForwardNavigation((prev) => [...prev, prevState.slice(delta)[0]]);
       return prevState.slice(0, delta);
     });
   }, []);
 
   const navigateForward = useCallback(() => {
-    setNavigation((prevState) => {
+    updateTabNavHistory(tab.key, (prevState) => {
       setForwardNavigation((prev) => prev.slice(0, -1));
       return [...prevState, forwardNavigation.slice(-1)[0]];
     });
@@ -179,7 +184,7 @@ export const AppNavigationProvider = (prop: {
   return (
     <AppNavigationContext.Provider
       value={{
-        navigationHistory: navigation,
+        navigationHistory: tab.navigationHistory,
         forwardNavigation,
         navigate,
         navigateBack,
@@ -194,7 +199,7 @@ export const AppNavigationProvider = (prop: {
         query: query || '',
       }}
     >
-      {prop.children}
+      {children}
     </AppNavigationContext.Provider>
   );
 };

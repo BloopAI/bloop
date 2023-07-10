@@ -3,18 +3,26 @@ import {
   DetailedHTMLProps,
   ReactElement,
   useContext,
+  useEffect,
   useMemo,
 } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { CodeProps } from 'react-markdown/lib/ast-to-react';
 import { ReactMarkdownProps } from 'react-markdown/lib/complex-types';
 import { conversationsCache } from '../../services/cache';
-import { ChatMessageServer } from '../../types/general';
+import {
+  ChatMessage,
+  ChatMessageAuthor,
+  ChatMessageServer,
+  ChatMessageType,
+} from '../../types/general';
 import { ChatContext } from '../../context/chatContext';
 import { FileModalContext } from '../../context/fileModalContext';
 import FileChip from '../../components/Chat/ConversationMessage/FileChip';
 import NewCode from '../ConversationResult/NewCode';
 import { UIContext } from '../../context/uiContext';
+import { getConversation } from '../../services/api';
+import { mapLoadingSteps } from '../../mappers/conversation';
 import CodeWithBreadcrumbs from './CodeWithBreadcrumbs';
 
 type Props = {
@@ -23,7 +31,8 @@ type Props = {
 };
 
 const ArticleResponse = ({ recordId, threadId }: Props) => {
-  const { conversation } = useContext(ChatContext);
+  const { conversation, setThreadId, setConversation } =
+    useContext(ChatContext);
   const { openFileModal } = useContext(FileModalContext);
   const { tab } = useContext(UIContext);
   const data = useMemo(
@@ -35,6 +44,36 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
       threadId,
     ],
   );
+
+  useEffect(() => {
+    if (!conversationsCache[threadId]?.[recordId] && !conversation[recordId]) {
+      getConversation(threadId).then((resp) => {
+        const conv: ChatMessage[] = [];
+        resp.forEach((m) => {
+          const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
+          if (userQuery) {
+            conv.push({
+              author: ChatMessageAuthor.User,
+              text: userQuery.content,
+              isFromHistory: true,
+            });
+          }
+          conv.push({
+            author: ChatMessageAuthor.Server,
+            isLoading: false,
+            type: ChatMessageType.Answer,
+            loadingSteps: mapLoadingSteps(m.search_steps),
+            text: m.conclusion,
+            results: m.outcome,
+            isFromHistory: true,
+          });
+        });
+        conversationsCache[threadId] = conv;
+        setThreadId(threadId);
+        setConversation(conv);
+      });
+    }
+  }, []);
 
   const components = useMemo(() => {
     return {

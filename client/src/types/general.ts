@@ -97,6 +97,7 @@ export type UITabType = {
   repoName: string;
   source: RepoSource;
   branch?: string | null;
+  navigationHistory: NavigationItem[];
 };
 
 export type TabHistoryType = {
@@ -229,6 +230,7 @@ export interface NavigationItem {
   path?: string;
   page?: number;
   loaded?: boolean;
+  isInitial?: boolean;
   searchType?: SearchType;
   pathParams?: Record<string, string>;
   threadId?: string;

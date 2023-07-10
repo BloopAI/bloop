@@ -83,14 +83,18 @@ const CodeFull = ({
   >([]);
   const scrollLineNumber = useMemo(
     () =>
-      searchParams
-        .get('scroll_line_index')
+      (
+        searchParams.get('modalScrollToLine') ||
+        searchParams.get('scrollToLine')
+      )
         ?.split('_')
         .map((i) => Number(i)),
     [searchParams],
   );
   const highlightColor = useMemo(
-    () => searchParams.get('highlight_color'),
+    () =>
+      searchParams.get('highlightColor') ||
+      searchParams.get('modalHighlightColor'),
     [searchParams],
   );
   const [scrollToIndex, setScrollToIndex] = useState(
@@ -224,7 +228,7 @@ const CodeFull = ({
         setScrollToIndex([lineNum, lineNum]);
       } else {
         navigateRepoPath(repoName, filePath, {
-          scroll_line_index: `${lineNum}_${lineNum}`,
+          scrollToLine: `${lineNum}_${lineNum}`,
         });
       }
     },

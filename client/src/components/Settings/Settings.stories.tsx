@@ -12,7 +12,13 @@ export const Default = () => {
   return (
     <div className="">
       <UIContextProvider
-        tab={{ name: '', key: '', repoName: '', source: RepoSource.LOCAL }}
+        tab={{
+          name: '',
+          key: '',
+          repoName: '',
+          source: RepoSource.LOCAL,
+          navigationHistory: [],
+        }}
       >
         <RepositoriesContext.Provider
           value={{

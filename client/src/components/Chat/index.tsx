@@ -122,6 +122,7 @@ const Chat = () => {
           return [...newConversation, lastMessage];
         });
       };
+      let thread_id = '';
       eventSource.onmessage = (ev) => {
         console.log(ev.data);
         if (
@@ -151,6 +152,7 @@ const Chat = () => {
         i++;
         if (i === 0) {
           const data = JSON.parse(ev.data);
+          thread_id = data.thread_id;
           setThreadId(data.thread_id);
           setQueryId(data.query_id);
           return;
@@ -182,9 +184,9 @@ const Chat = () => {
               setConversation((prev) => {
                 if (newMessage.outcome?.Article?.length) {
                   setChatOpen(false);
-                  navigateArticleResponse(prev.length - 1, threadId);
+                  navigateArticleResponse(prev.length - 1, thread_id);
                 } else {
-                  navigateConversationResults(prev.length - 1, threadId);
+                  navigateConversationResults(prev.length - 1, thread_id);
                 }
                 return prev;
               });

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import DialogText from '../DialogText';
 import Button from '../../../components/Button';
 import { GitHubLogo } from '../../../icons';
@@ -6,9 +7,16 @@ import { githubWebLogin } from '../../../services/api';
 
 const SelfServeStep = () => {
   const [loginUrl, setLoginUrl] = useState('');
+  const location = useLocation();
 
   useEffect(() => {
-    githubWebLogin().then((resp) => {
+    githubWebLogin(
+      encodeURIComponent(
+        encodeURIComponent(
+          `${location.pathname}${location.search}${location.hash}`,
+        ),
+      ),
+    ).then((resp) => {
       setLoginUrl(resp.oauth_url);
     });
   }, []);

@@ -19,7 +19,7 @@ const Tab = ({ tabKey, name, source }: Props) => {
         tabKey === 'initial'
           ? 'px-3 border-l h-[calc(100%-7px)]'
           : 'pl-4 pr-3 h-full'
-      } border-bg-border  flex items-center justify-center gap-2 ${
+      } border-bg-border group flex items-center justify-center gap-2 ${
         activeTab === tabKey
           ? 'bg-bg-shade text-label-title'
           : 'bg-bg-base text-label-base'
@@ -41,10 +41,10 @@ const Tab = ({ tabKey, name, source }: Props) => {
             e.stopPropagation();
             handleRemoveTab(tabKey);
           }}
-          className={`w-5 h-5 flex items-center justify-center text-label-base hover:text-label-title ${
-            activeTab !== tabKey ? 'opacity-0' : ''
+          className={`w-5 h-5 flex items-center justify-center text-label-base hover:text-label-title 
+          ${
+            activeTab !== tabKey ? 'opacity-0 group-hover:opacity-100' : ''
           } relative top-px`}
-          disabled={activeTab !== tabKey}
         >
           <CloseSign sizeClassName="w-3.5 h-3.5" />
         </button>

@@ -9,16 +9,15 @@ import {
 } from '../types/api';
 import PageTemplate from '../components/PageTemplate';
 import ErrorFallback from '../components/ErrorFallback';
-import useAppNavigation from '../hooks/useAppNavigation';
 import { buildRepoQuery } from '../utils';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import { UITabType } from '../types/general';
+import { AppNavigationContext } from '../context/appNavigationContext';
 import RepositoryPage from './Repository';
 import ResultsPage from './Results';
 import ViewResult from './ResultFull';
 import NoResults from './Results/NoResults';
 import HomePage from './Home';
-import Onboarding from './Onboarding';
 import ConversationResult from './ConversationResult';
 import ArticleResponse from './ArticleResponse';
 
@@ -48,7 +47,7 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
 
   const { navigatedItem, query, navigateBack, navigateRepoPath } =
-    useAppNavigation();
+    useContext(AppNavigationContext);
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (
@@ -205,15 +204,9 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
   ]);
 
   return (
-    <>
-      <Onboarding />
-      <PageTemplate
-        withSearchBar={renderPage !== 'home'}
-        renderPage={renderPage}
-      >
-        {renderedPage}
-      </PageTemplate>
-    </>
+    <PageTemplate withSearchBar={renderPage !== 'home'}>
+      {renderedPage}
+    </PageTemplate>
   );
 };
 

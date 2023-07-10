@@ -1,5 +1,4 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FullResult } from '../../types/results';
 import { useSearch } from '../../hooks/useSearch';
 import { FileSearchResponse } from '../../types/api';
@@ -9,6 +8,7 @@ import { getHoverables } from '../../services/api';
 import { buildRepoQuery } from '../../utils';
 import { SearchContext } from '../../context/searchContext';
 import { FileModalContext } from '../../context/fileModalContext';
+import { AppNavigationContext } from '../../context/appNavigationContext';
 import ResultModal from './index';
 
 type Props = {
@@ -16,20 +16,15 @@ type Props = {
 };
 
 const FileModalContainer = ({ repoName }: Props) => {
-  const {
-    path,
-    setIsFileModalOpen,
-    isFileModalOpen,
-    scrollToLine,
-    highlightColor,
-  } = useContext(FileModalContext);
+  const { path, closeFileModalOpen, isFileModalOpen } =
+    useContext(FileModalContext);
+  const { navigatedItem } = useContext(AppNavigationContext);
   const [mode, setMode] = useState<FullResultModeEnum>(
     FullResultModeEnum.MODAL,
   );
   const [openResult, setOpenResult] = useState<FullResult | null>(null);
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
-  const navigateBrowser = useNavigate();
   const { selectedBranch } = useContext(SearchContext);
 
   useEffect(() => {
@@ -39,17 +34,16 @@ const FileModalContainer = ({ repoName }: Props) => {
   }, [repoName, path, isFileModalOpen, selectedBranch]);
 
   useEffect(() => {
+    setMode(
+      navigatedItem?.type === 'search'
+        ? FullResultModeEnum.SIDEBAR
+        : FullResultModeEnum.MODAL,
+    );
+  }, [navigatedItem?.type]);
+
+  useEffect(() => {
     if (fileResultData?.data?.length && isFileModalOpen) {
       setOpenResult(mapFileResult(fileResultData.data[0]));
-      navigateBrowser({
-        search: scrollToLine
-          ? '?' +
-            new URLSearchParams({
-              scroll_line_index: scrollToLine.toString(),
-              ...(highlightColor ? { highlight_color: highlightColor } : {}),
-            }).toString()
-          : '',
-      });
       getHoverables(
         fileResultData.data[0].data.relative_path,
         fileResultData.data[0].data.repo_ref,
@@ -74,8 +68,8 @@ const FileModalContainer = ({ repoName }: Props) => {
   }, [isFileModalOpen]);
 
   const onResultClosed = useCallback(() => {
-    setIsFileModalOpen(false);
-  }, [mode]);
+    closeFileModalOpen();
+  }, [closeFileModalOpen]);
 
   return (
     <ResultModal

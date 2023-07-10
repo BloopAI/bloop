@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { BrowserRouter } from 'react-router-dom';
 import packageJson from '../package.json';
 import { getConfig } from './services/api';
 import App from './App';
@@ -37,7 +38,11 @@ const CloudApp = () => {
     [envConfig],
   );
 
-  return <App deviceContextValue={deviceContextValue} />;
+  return (
+    <BrowserRouter>
+      <App deviceContextValue={deviceContextValue} />
+    </BrowserRouter>
+  );
 };
 
 export default CloudApp;

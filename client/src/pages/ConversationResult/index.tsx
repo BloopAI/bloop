@@ -3,7 +3,10 @@ import throttle from 'lodash.throttle';
 import PageHeader from '../../components/ResultsPageHeader';
 import { ChatContext } from '../../context/chatContext';
 import {
+  ChatMessage,
+  ChatMessageAuthor,
   ChatMessageServer,
+  ChatMessageType,
   FileSystemResult,
   MessageResultCite,
   MessageResultDirectory,
@@ -12,6 +15,8 @@ import { UIContext } from '../../context/uiContext';
 import { ChevronDown } from '../../icons';
 import { conversationsCache } from '../../services/cache';
 import { repositionAnnotationsOnScroll } from '../../utils/scrollUtils';
+import { getConversation } from '../../services/api';
+import { mapLoadingSteps } from '../../mappers/conversation';
 import NewCode from './NewCode';
 import DiffCode from './DiffCode';
 import CodeAnnotation, { Comment } from './CodeAnotation';
@@ -23,7 +28,8 @@ type Props = {
 };
 
 const ConversationResult = ({ recordId, threadId }: Props) => {
-  const { conversation } = useContext(ChatContext);
+  const { conversation, setConversation, setThreadId } =
+    useContext(ChatContext);
   const { tab } = useContext(UIContext);
   const [isScrolled, setScrolled] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -46,6 +52,41 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
       threadId,
     ],
   );
+
+  useEffect(() => {
+    if (!conversationsCache[threadId]?.[recordId] && !conversation[recordId]) {
+      getConversation(threadId).then((resp) => {
+        const conv: ChatMessage[] = [];
+        resp.forEach((m) => {
+          const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
+          if (userQuery) {
+            conv.push({
+              author: ChatMessageAuthor.User,
+              text: userQuery.content,
+              isFromHistory: true,
+            });
+          }
+          conv.push({
+            author: ChatMessageAuthor.Server,
+            isLoading: false,
+            type: ChatMessageType.Answer,
+            loadingSteps: mapLoadingSteps(m.search_steps),
+            text: m.conclusion,
+            results: m.outcome,
+            isFromHistory: true,
+          });
+        });
+        conversationsCache[threadId] = conv;
+        setThreadId(threadId);
+        setConversation(conv);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    setScrolled(false);
+  }, [recordId]);
+
   const citations = useMemo(() => {
     const files: Record<string, Comment[]> = {};
     data

@@ -1,4 +1,10 @@
-import React, { PropsWithChildren, useEffect, useMemo, useState } from 'react';
+import React, {
+  PropsWithChildren,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   FilterType,
   SearchHistoryItem,
@@ -11,6 +17,7 @@ import {
   saveJsonToStorage,
   TABS_HISTORY_KEY,
 } from '../../services/storage';
+import { TabsContext } from '../tabsContext';
 
 type Props = {
   tab: UITabType;
@@ -31,6 +38,11 @@ export const SearchContextProvider = ({
   const [selectedBranch, setSelectedBranch] = useState<string | null>(
     tab.branch || null,
   );
+  const { updateTabBranch } = useContext(TabsContext);
+
+  useEffect(() => {
+    updateTabBranch(tab.key, selectedBranch);
+  }, [selectedBranch, tab.key]);
 
   useEffect(() => {
     const prevHistory = (

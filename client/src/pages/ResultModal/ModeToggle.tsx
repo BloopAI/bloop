@@ -22,14 +22,14 @@ const ModeToggle = ({
   const [searchParams] = useSearchParams();
   const { navigateFullResult } = useAppNavigation();
   const [isPending, startTransition] = useTransition();
-  const { setIsFileModalOpen } = useContext(FileModalContext);
+  const { closeFileModalOpen } = useContext(FileModalContext);
 
   const handleFull = useCallback(() => {
-    setIsFileModalOpen(false);
+    closeFileModalOpen();
     navigateFullResult(repoName, relativePath, {
-      scroll_line_index: searchParams.get('scroll_line_index') || '',
+      scrollToLine: searchParams.get('modalScrollToLine') || '',
     });
-  }, [searchParams, repoName, relativePath]);
+  }, [searchParams, repoName, relativePath, closeFileModalOpen]);
 
   const handleModal = useCallback(() => {
     startTransition(() => {
