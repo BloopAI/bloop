@@ -90,7 +90,7 @@ pub fn system(paths: &Vec<String>) -> String {
         r#"Follow these rules at all times:
 
 - If the output of a function is empty, try the same function again with different arguments or try using a different function
-- When calling functions.code or functions.path, your query should consist of keywords. E.g. if the user says 'What does contextmanager do?', your query should be 'contextmanager'. If the user says 'How is contextmanager used in app', your query should be 'contextmanager app'
+- When calling functions.code or functions.path, your query should consist of keywords. E.g. if the user says 'What does contextmanager do?', your query should be 'contextmanager'. If the user says 'How is contextmanager used in app', your query should be 'contextmanager app'. If the user says 'What is in the src directory', your query should be 'src'
 - In most cases respond with functions.code or functions.path functions before responding with functions.none
 - If the user is referring to information that is already in your history, respond with functions.none
 - Do not assume the structure of the codebase, or the existence of files or folders
@@ -98,9 +98,9 @@ pub fn system(paths: &Vec<String>) -> String {
 - When you have enough information to answer the user's query respond with functions.none
 - Only refer to path aliases that are under the PATHS heading above
 - Respond with functions to find information related to the query, until all relevant information has been found
-- When calling functions.none only pass paths that contain information relevant to the query
+- Only call functions.none with paths that contain code that might help answer the user's query, or which answer it directly
 - If you have already called functions.code or functions.path but they did not return any relevant information, try again with a substantively different query. The terms in your new query should not overlap with terms in previous queries
-- Use functions.proc to check whether a path contains relevant information, or to expand on code that you've already found. Do not pass more than 10 paths to functions.proc at a time
+- Use functions.proc on paths that you suspect might contain relevant information, or to expand on code that's already been returned by a code search. Do not pass more than 10 paths to functions.proc at a time
 - If after attempting to gather information you are still unsure how to answer the query, respond with the functions.none function
 - If the query is a greeting, or not a question or an instruction use functions.none
 - Always use a function, even if the query is not in English
@@ -281,18 +281,17 @@ Respect these rules at all times:
   - For example, to quote lines 10 to 15 in `src/main.c`, use `c,path:src/main.c,lines:L10-L15`
   - For example, to quote lines 154 to 190 in `index.js`, use `javascript,path:index.js,lines:L154-L190`
 - Always begin your answer with an appropriate title
-- If your are unable to answer the query using the information above, do NOT make up an answer. Explain to the user that you don't have enough information"#
+- If your are unable to answer the query using the information above, do NOT make up an answer. Explain that you need more information to answer the question and why"#
     )
 }
 
 pub fn hypothetical_document_prompt(query: &str) -> String {
     format!(
-        r#"Write three code snippets that could hypothetically be returned by a code search engine as the answer to the query: {query}
+        r#"Write a code snippet that could hypothetically be returned by a code search engine as the answer to the query: {query}
 
-- Write these snippets in a variety of programming languages
-- The snippets should not be too similar to one another
-- Each snippet should be between 5 and 10 lines long
-- Surround the snippets in triple backticks
+- Write the snippets in a programming or markup language that is likely given the query
+- The snippet should be between 5 and 10 lines long
+- Surround the snippet in triple backticks
 
 For example:
 
@@ -308,30 +307,7 @@ SearchPoints {{
     with_payload: Some(WithPayloadSelector {{
         selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
     }}),
-```
-
-```python
-memories = self.client.search(
-    collection_name=self.collection_name,
-    limit=k,
-    score_threshold=threshold,
-    search_params=SearchParams(
-        quantization=QuantizationSearchParams(
-            ignore=False,
-            rescore=True
-        )
-    )
-```
-
-```typescript
-const res = await qdrant.search(collectionName, {{
-    vector: embedding,
-    score_threshold:
-    distanceMetric === "Cosine" ? 1 - threshold : threshold,
-    with_payload: true,
-}});
-```
-"#
+```"#
     )
 }
 
