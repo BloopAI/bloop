@@ -10,6 +10,7 @@ type ContextType = {
     repoName: string,
     name: string,
     source: RepoSource,
+    branch?: string | null,
     history?: NavigationItem[],
   ) => void;
   handleRemoveTab: (t: string) => void;
@@ -18,6 +19,7 @@ type ContextType = {
     t: string,
     history: (prev: NavigationItem[]) => NavigationItem[],
   ) => void;
+  updateTabBranch: (t: string, branch: string | null) => void;
 };
 
 export const TabsContext = createContext<ContextType>({
@@ -35,4 +37,5 @@ export const TabsContext = createContext<ContextType>({
   handleRemoveTab: () => {},
   setActiveTab: () => {},
   updateTabNavHistory: () => {},
+  updateTabBranch: () => {},
 });

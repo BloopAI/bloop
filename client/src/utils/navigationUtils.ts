@@ -40,7 +40,7 @@ export const buildURLPart = (navItem: NavigationItem) => {
 };
 
 export const getNavItemFromURL = (location: Location, repoName: string) => {
-  const type = location.pathname.split('/')[2];
+  const type = location.pathname.split('/')[3];
   const possibleTypes = [
     'search',
     'repo',

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { search as searchApiCall } from '../services/api';
+import { SearchContext } from '../context/searchContext';
 import useAnalytics from './useAnalytics';
 
 interface Status<T> {
@@ -24,21 +25,24 @@ export const useSearch = <T,>(
 
   const { trackSearch } = useAnalytics();
 
-  const searchQuery = (query: string, page = 0, globalRegex?: boolean) => {
-    setStatus({ loading: true });
+  const searchQuery = useCallback(
+    (query: string, page = 0, globalRegex?: boolean) => {
+      setStatus({ loading: true });
 
-    const startTime = Date.now();
+      const startTime = Date.now();
 
-    searchApiCall(query, page, undefined, globalRegex)
-      .then((res: any) => {
-        const queryTime = Date.now() - startTime;
-        trackSearch(queryTime, query);
-        setStatus({ loading: false, data: res });
-      })
-      .catch((error: Error) => {
-        setStatus({ loading: false, error });
-      });
-  };
+      searchApiCall(query, page, undefined, globalRegex)
+        .then((res: any) => {
+          const queryTime = Date.now() - startTime;
+          trackSearch(queryTime, query);
+          setStatus({ loading: false, data: res });
+        })
+        .catch((error: Error) => {
+          setStatus({ loading: false, error });
+        });
+    },
+    [],
+  );
 
   useEffect(() => {
     if (query) {

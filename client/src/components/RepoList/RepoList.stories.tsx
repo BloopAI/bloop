@@ -21,6 +21,8 @@ const mockRepos = [
     folderName: 'anastasiya1155',
     shortName: 'random-number-client',
     most_common_lang: 'TSX',
+    branches: [],
+    branch_filter: { select: [] },
   },
   {
     provider: RepoProvider.GitHub,
@@ -34,6 +36,8 @@ const mockRepos = [
     folderName: 'anastasiya1155',
     shortName: 'react-electron-todo-list',
     most_common_lang: 'TSX',
+    branches: [],
+    branch_filter: { select: [] },
   },
   {
     provider: RepoProvider.GitHub,
@@ -49,6 +53,8 @@ const mockRepos = [
     folderName: 'anastasiya1155',
     shortName: 'react-nodegui-todo-list',
     most_common_lang: 'TSX',
+    branches: [],
+    branch_filter: { select: [] },
   },
   {
     provider: RepoProvider.GitHub,
@@ -62,6 +68,8 @@ const mockRepos = [
     folderName: 'anastasiya1155',
     shortName: 'rocket-todo-app',
     most_common_lang: 'TSX',
+    branches: [],
+    branch_filter: { select: [] },
   },
   {
     provider: RepoProvider.GitHub,
@@ -77,6 +85,8 @@ const mockRepos = [
     folderName: 'anastasiya1155',
     shortName: 'search-job-helper-be',
     most_common_lang: 'TSX',
+    branches: [],
+    branch_filter: { select: [] },
   },
 ];
 const tabs = [{ title: 'Sync all repos' }, { title: 'Sync selected repos' }];

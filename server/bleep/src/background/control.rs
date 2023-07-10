@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::repo::{RepoRef, SyncStatus};
 
-use super::{Progress, ProgressEvent};
+use super::{Progress, ProgressEvent, SyncHandle};
 
 enum ControlEvent {
     /// Cancel whatever's happening, and return
@@ -34,10 +34,13 @@ impl SyncPipes {
         });
     }
 
-    pub(crate) fn status(&self, new: SyncStatus) {
+    pub(crate) fn status(&self, handle: &SyncHandle, new: SyncStatus) {
         _ = self.progress.send(Progress {
             reporef: self.reporef.clone(),
-            event: ProgressEvent::StatusChange(new),
+            event: ProgressEvent::StatusChange {
+                branch_filter: handle.new_branch_filters.clone(),
+                status: new,
+            },
         });
     }
 

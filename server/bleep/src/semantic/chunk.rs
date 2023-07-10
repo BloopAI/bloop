@@ -397,12 +397,7 @@ mod tests {
 
                 let is_file = ft.is_file() || ft.is_symlink();
 
-                !is_file
-                    || de
-                        .path()
-                        .extension()
-                        .and_then(|e| Some(e == "rs"))
-                        .unwrap_or_default()
+                !is_file || de.path().extension().map(|e| e == "rs").unwrap_or_default()
             })
             .build();
         let mut num_chunks = 0;

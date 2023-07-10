@@ -26,15 +26,18 @@ ENV CXX /usr/bin/clang++
 COPY server server
 COPY apps/desktop/src-tauri apps/desktop/src-tauri
 COPY Cargo.lock Cargo.toml .
-RUN --mount=target=/root/.cache/sccache,type=cache --mount=target=/build/target,type=cache  \
-    cargo --locked build -p bleep --release && \
+RUN --mount=target=/root/.cache/sccache,type=cache --mount=target=/build/target,type=cache \
+    cargo --locked build -p bleep --release --features=ee && \
     cp /build/target/release/bleep / && \
-    sccache --show-stats
+    sccache --show-stats && \
+    mkdir /dylib && \
+    cp /build/target/release/libonnxruntime.so /dylib/
 
 FROM debian:bookworm-slim
 VOLUME ["/repos", "/data"]
 RUN apt-get update && apt-get -y install openssl ca-certificates libprotobuf-lite32 && apt-get clean
 COPY model /model
 COPY --from=builder /bleep /
+COPY --from=builder /dylib /dylib
 COPY --from=frontend /build/client/dist /frontend
-ENTRYPOINT ["/bleep", "--host=0.0.0.0", "--source-dir=/repos", "--index-dir=/data", "--model-dir=/model"]
+ENTRYPOINT ["/bleep", "--host=0.0.0.0", "--source-dir=/repos", "--index-dir=/data", "--model-dir=/model", "--dylib-dir=/dylib"]

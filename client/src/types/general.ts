@@ -69,6 +69,8 @@ export type RepoType = {
   last_index: string;
   sync_status: SyncStatus;
   most_common_lang: string;
+  branches: { name: string; last_commit_unix_secs: number }[];
+  branch_filter: { select: string[] } | null;
 };
 
 export type RepoUi = RepoType & {
@@ -94,6 +96,7 @@ export type UITabType = {
   name: string;
   repoName: string;
   source: RepoSource;
+  branch?: string | null;
   navigationHistory: NavigationItem[];
 };
 

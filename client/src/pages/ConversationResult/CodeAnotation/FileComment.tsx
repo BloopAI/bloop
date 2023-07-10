@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
 import { colors } from './index';
 
@@ -32,12 +33,12 @@ const FileComment = ({ i, comment, isCollapsed, isBoxed, onClick }: Props) => {
     >
       {!isCollapsed && (
         <div
-          className="border-l-2 pl-3 break-words"
+          className="border-l-2 pl-3 break-words markdown"
           style={{
             borderColor: `rgb(${colors[i % colors.length].join(', ')})`,
           }}
         >
-          {comment}
+          <ReactMarkdown>{comment}</ReactMarkdown>
         </div>
       )}
     </div>

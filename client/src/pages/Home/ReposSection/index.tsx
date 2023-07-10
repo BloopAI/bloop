@@ -45,9 +45,9 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
             const newRepos = [...prev];
             newRepos[index] = {
               ...newRepos[index],
-              sync_status: data.ev?.status_change,
+              sync_status: data.ev?.status_change?.status,
               last_index:
-                data.ev?.status_change === SyncStatus.Done
+                data.ev?.status_change?.status === SyncStatus.Done
                   ? new Date().toISOString()
                   : '',
             };
@@ -80,7 +80,7 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
             name={r.name}
             repoRef={ref}
             sync_status={r.sync_status}
-            last_update={r.last_index}
+            last_index={r.last_index}
             lang={r.most_common_lang}
             key={ref + i}
             provider={r.provider}
@@ -92,6 +92,7 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
             onDelete={() => {
               setReposToShow((prev) => prev.filter((r) => r.ref !== ref));
             }}
+            indexedBranches={r.branch_filter?.select}
           />
         ))}
       </div>

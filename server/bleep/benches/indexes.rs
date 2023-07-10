@@ -55,7 +55,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
 
         let file = File::new(
-            app.config.clone(),
+            app.sql.clone(),
             Some(
                 Semantic::initialize(&model_dir, "http://127.0.0.1:6334", Arc::clone(&app.config))
                     .await
@@ -73,7 +73,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         b.iter_batched(
             || {
                 doc! {
-                    file.entry_disk_path => "js-sample-big-symbols.js",
                     file.repo_ref => "local//bloop",
                     file.repo_name => "bloop",
                     file.relative_path => "js-sample-big-symbols.js",

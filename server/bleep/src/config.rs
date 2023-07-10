@@ -21,15 +21,10 @@ pub struct Configuration {
     #[serde(default)]
     pub source: StateSource,
 
-    #[clap(short, long, default_value_os_t = default_data_dir())]
-    #[serde(default = "default_data_dir")]
-    /// Directory to store indexes
+    #[clap(short, long, default_value_os_t = default_index_dir())]
+    #[serde(default = "default_index_dir")]
+    /// Directory to store all persistent state
     pub index_dir: PathBuf,
-
-    /// Directory to store persistent data
-    #[clap(long, default_value_os_t = default_data_dir())]
-    #[serde(default = "default_data_dir")]
-    pub data_dir: PathBuf,
 
     #[clap(long, default_value_t = false)]
     #[serde(skip)]
@@ -98,6 +93,10 @@ pub struct Configuration {
     #[clap(long)]
     /// Sentry Data Source Name for frontend
     pub sentry_dsn_fe: Option<String>,
+
+    #[clap(long)]
+    /// Path to dynamic libraries used in the app.
+    pub dylib_dir: Option<PathBuf>,
 
     //
     // Semantic values
@@ -195,13 +194,13 @@ impl Configuration {
     pub fn cli_overriding_config_file() -> Result<Self> {
         let cli = Self::from_cli()?;
         let Ok(file) = cli
-	    .config_file
-	    .as_ref()
-	    .context("no config file specified")
-	    .and_then(Self::read) else
-	{
-	    return Ok(cli);
-	};
+            .config_file
+            .as_ref()
+            .context("no config file specified")
+            .and_then(Self::read) else
+        {
+            return Ok(cli);
+        };
 
         Ok(Self::merge(file, cli))
     }
@@ -219,9 +218,7 @@ impl Configuration {
 
             source: right_if_default!(b.source, a.source, Default::default()),
 
-            index_dir: right_if_default!(b.index_dir, a.index_dir, default_data_dir()),
-
-            data_dir: b.data_dir,
+            index_dir: right_if_default!(b.index_dir, a.index_dir, default_index_dir()),
 
             index_only: b.index_only | a.index_only,
 
@@ -285,6 +282,8 @@ impl Configuration {
             sentry_dsn: b.sentry_dsn.or(a.sentry_dsn),
 
             sentry_dsn_fe: b.sentry_dsn_fe.or(a.sentry_dsn_fe),
+
+            dylib_dir: b.dylib_dir.or(a.dylib_dir),
         }
     }
 }
@@ -312,7 +311,7 @@ where
 //
 // Configuration defaults
 //
-fn default_data_dir() -> PathBuf {
+fn default_index_dir() -> PathBuf {
     match directories::ProjectDirs::from("ai", "bloop", "bleep") {
         Some(dirs) => dirs.data_dir().to_owned(),
         None => "bloop_index".into(),

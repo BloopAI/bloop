@@ -148,6 +148,7 @@ pub struct FileResultData {
     relative_path: HighlightedString,
     repo_ref: String,
     lang: Option<String>,
+    branches: String,
 }
 
 #[derive(Serialize, Debug)]
@@ -470,6 +471,7 @@ impl ExecuteQuery for FileReader {
                     repo_name: f.repo_name,
                     repo_ref: f.repo_ref,
                     lang: f.lang,
+                    branches: f.branches,
                 })
             })
             .collect::<Vec<QueryResult>>();
@@ -583,9 +585,9 @@ impl ExecuteQuery for OpenReader {
         _q: &ApiQuery,
     ) -> Result<QueryResponse> {
         #[derive(Debug)]
-        struct Directive<'a> {
-            relative_path: &'a str,
-            repo_name: &'a str,
+        struct Directive {
+            relative_path: String,
+            repo_name: String,
         }
 
         let open_directives = queries
@@ -594,11 +596,11 @@ impl ExecuteQuery for OpenReader {
             .filter_map(|q| {
                 Some(Directive {
                     relative_path: match q.path.as_ref() {
-                        None => "",
-                        Some(parser::Literal::Plain(p)) => p,
+                        None => "".into(),
+                        Some(parser::Literal::Plain(p)) => p.to_string(),
                         Some(parser::Literal::Regex(..)) => return None,
                     },
-                    repo_name: q.repo.as_ref()?.as_plain()?,
+                    repo_name: q.repo.as_ref()?.as_plain()?.into(),
                 })
             })
             .collect::<SmallVec<[_; 2]>>();
@@ -649,7 +651,7 @@ impl ExecuteQuery for OpenReader {
         let directories = open_directives
             .iter()
             .filter(|d| d.relative_path.is_empty() || d.relative_path.ends_with(MAIN_SEPARATOR))
-            .map(|d| (d.repo_name, d.relative_path))
+            .map(|d| (&d.repo_name, &d.relative_path))
             .collect::<HashSet<_>>();
 
         // Iterate over each combination of (document, directive).
@@ -675,7 +677,7 @@ impl ExecuteQuery for OpenReader {
                     continue;
                 }
 
-                let relative_path = base_name(directive.relative_path);
+                let relative_path = base_name(&directive.relative_path);
 
                 if let Some(entry) = doc
                     .relative_path
@@ -683,7 +685,7 @@ impl ExecuteQuery for OpenReader {
                     .and_then(|s| s.split_inclusive(MAIN_SEPARATOR).next())
                 {
                     dir_entries
-                        .entry((directive.repo_name, relative_path))
+                        .entry((&directive.repo_name, relative_path))
                         .or_insert_with(|| (doc.repo_ref.to_owned(), HashSet::default()))
                         .1
                         .insert(DirEntry {

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, ops::Not, path::Path, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, env, ops::Not, path::Path, sync::Arc};
 
 use crate::{query::parser::SemanticQuery, Configuration};
 
@@ -10,10 +10,11 @@ use ort::{
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
-        r#match::MatchValue, vectors::VectorsOptions, vectors_config, with_payload_selector,
-        with_vectors_selector, CollectionOperationResponse, CreateCollection, Distance,
-        FieldCondition, Filter, Match, PointId, PointStruct, ScoredPoint, SearchPoints, Value,
-        VectorParams, Vectors, VectorsConfig, WithPayloadSelector, WithVectorsSelector,
+        point_id::PointIdOptions, r#match::MatchValue, vectors::VectorsOptions, vectors_config,
+        with_payload_selector, with_vectors_selector, CollectionOperationResponse,
+        CreateCollection, Distance, FieldCondition, Filter, Match, PointId, RetrievedPoint,
+        ScoredPoint, SearchPoints, Value, VectorParams, Vectors, VectorsConfig,
+        WithPayloadSelector, WithVectorsSelector,
     },
 };
 
@@ -27,7 +28,9 @@ mod schema;
 
 pub use schema::{Embedding, Payload};
 
-const COLLECTION_NAME: &str = "documents";
+pub(crate) const COLLECTION_NAME: &str = "documents";
+pub(crate) const SCORE_THRESHOLD: f32 = 0.3;
+pub(crate) const EMBEDDING_DIM: usize = 384;
 
 #[derive(Error, Debug)]
 pub enum SemanticError {
@@ -52,7 +55,6 @@ pub enum SemanticError {
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
     tokenizer: Arc<tokenizers::Tokenizer>,
-    gpt2_tokenizer: Arc<tokenizers::Tokenizer>,
     session: Arc<ort::Session>,
     config: Arc<Configuration>,
 }
@@ -65,59 +67,92 @@ macro_rules! val_parse_str(($hash:ident, $val:expr) => {
         .unwrap()
 });
 
-impl<'a> Payload<'a> {
-    pub fn from_qdrant(orig: ScoredPoint) -> Payload<'static> {
+impl Payload {
+    pub fn from_qdrant(orig: ScoredPoint) -> Payload {
         let ScoredPoint {
+            id,
             payload,
             score,
             vectors,
             ..
         } = orig;
 
-        let mut converted = payload
-            .into_iter()
-            .map(|(key, value)| (key, kind_to_value(value.kind)))
-            .collect::<HashMap<String, serde_json::Value>>();
-
-        let embedding = if let Some(Vectors {
-            vectors_options: Some(VectorsOptions::Vector(v)),
-        }) = vectors
-        {
-            v.data
-        } else {
-            panic!("got non-vector value");
-        };
-
-        Payload {
-            lang: val_str!(converted, "lang"),
-            repo_name: val_str!(converted, "repo_name"),
-            repo_ref: val_str!(converted, "repo_ref"),
-            relative_path: val_str!(converted, "relative_path"),
-            text: val_str!(converted, "snippet"),
-            branches: val_str!(converted, "branches"),
-            start_line: val_parse_str!(converted, "start_line"),
-            end_line: val_parse_str!(converted, "end_line"),
-            start_byte: val_parse_str!(converted, "start_byte"),
-            end_byte: val_parse_str!(converted, "end_byte"),
-
-            score: Some(score),
-            embedding: Some(embedding),
-        }
+        parse_payload(id, vectors, payload, score)
     }
 
-    fn into_qdrant(self) -> HashMap<String, Value> {
+    pub fn from_scroll(orig: RetrievedPoint) -> Payload {
+        let RetrievedPoint {
+            id,
+            payload,
+            vectors,
+            ..
+        } = orig;
+
+        parse_payload(id, vectors, payload, 0.0)
+    }
+
+    pub(crate) fn into_qdrant(self) -> HashMap<String, Value> {
         HashMap::from([
             ("lang".into(), self.lang.to_ascii_lowercase().into()),
-            ("repo_name".into(), self.repo_name.as_ref().into()),
-            ("repo_ref".into(), self.repo_ref.as_ref().into()),
-            ("relative_path".into(), self.relative_path.as_ref().into()),
-            ("snippet".into(), self.text.as_ref().into()),
+            ("repo_name".into(), self.repo_name.into()),
+            ("repo_ref".into(), self.repo_ref.into()),
+            ("relative_path".into(), self.relative_path.into()),
+            ("content_hash".into(), self.content_hash.into()),
+            ("snippet".into(), self.text.into()),
             ("start_line".into(), self.start_line.to_string().into()),
             ("end_line".into(), self.end_line.to_string().into()),
             ("start_byte".into(), self.start_byte.to_string().into()),
             ("end_byte".into(), self.end_byte.to_string().into()),
             ("branches".into(), self.branches.into()),
         ])
+    }
+}
+
+fn parse_payload(
+    id: Option<PointId>,
+    vectors: Option<Vectors>,
+    payload: HashMap<String, Value>,
+    score: f32,
+) -> Payload {
+    let Some(PointId { point_id_options: Some(PointIdOptions::Uuid(id)) }) = id
+    else {
+	// unless the db was corrupted/written by someone else,
+	// this shouldn't happen
+	unreachable!("corrupted db");
+    };
+
+    let embedding = match vectors {
+        None => None,
+        Some(Vectors {
+            vectors_options: Some(VectorsOptions::Vector(v)),
+        }) => Some(v.data),
+        _ => {
+            // this also should probably never happen
+            unreachable!("got non-vector value");
+        }
+    };
+
+    let mut converted = payload
+        .into_iter()
+        .map(|(key, value)| (key, kind_to_value(value.kind)))
+        .collect::<HashMap<String, serde_json::Value>>();
+
+    Payload {
+        lang: val_str!(converted, "lang"),
+        repo_name: val_str!(converted, "repo_name"),
+        repo_ref: val_str!(converted, "repo_ref"),
+        relative_path: val_str!(converted, "relative_path"),
+        content_hash: val_str!(converted, "content_hash"),
+        text: val_str!(converted, "snippet"),
+        branches: val_str!(converted, "branches"),
+        start_line: val_parse_str!(converted, "start_line"),
+        end_line: val_parse_str!(converted, "end_line"),
+        start_byte: val_parse_str!(converted, "start_byte"),
+        end_byte: val_parse_str!(converted, "end_byte"),
+
+        id: Some(id),
+        score: Some(score),
+        embedding,
     }
 }
 
@@ -147,7 +182,7 @@ fn collection_config() -> CreateCollection {
         collection_name: COLLECTION_NAME.to_string(),
         vectors_config: Some(VectorsConfig {
             config: Some(vectors_config::Config::Params(VectorParams {
-                size: 384,
+                size: EMBEDDING_DIM as u64,
                 distance: Distance::Cosine.into(),
                 ..Default::default()
             })),
@@ -185,11 +220,16 @@ impl Semantic {
             Err(_) => return Err(SemanticError::QdrantInitializationError),
         }
 
+        if let Some(dylib_dir) = config.dylib_dir.as_ref() {
+            init_ort_dylib(dylib_dir);
+        }
+
         let environment = Arc::new(
             Environment::builder()
                 .with_name("Encode")
                 .with_log_level(LoggingLevel::Warning)
                 .with_execution_providers([ExecutionProvider::cpu()])
+                .with_telemetry(false)
                 .build()?,
         );
 
@@ -203,9 +243,6 @@ impl Semantic {
             qdrant: qdrant.into(),
             tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("tokenizer.json"))
                 .unwrap()
-                .into(),
-            gpt2_tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("gpt-2").join("tokenizer.json"))
-                .expect("unable to open gpt2-tokenizer, try `git lfs pull` and pass `--model-dir bloop/model` at the CLI")
                 .into(),
             session: SessionBuilder::new(&environment)?
                 .with_optimization_level(GraphOptimizationLevel::Level3)?
@@ -264,82 +301,6 @@ impl Semantic {
         limit: u64,
         offset: u64,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
-        let repo_filter = {
-            let conditions = parsed_query
-                .repos()
-                .map(|r| {
-                    if r.contains('/') && !r.starts_with("github.com/") {
-                        format!("github.com/{r}")
-                    } else {
-                        r.to_string()
-                    }
-                })
-                .map(|r| make_kv_keyword_filter("repo_name", r.as_str()).into())
-                .collect::<Vec<_>>();
-            // one of the above repos should match
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let path_filter = {
-            let conditions = parsed_query
-                .paths()
-                .map(|r| make_kv_text_filter("relative_path", r).into())
-                .collect::<Vec<_>>();
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let lang_filter = {
-            let conditions = parsed_query
-                .langs()
-                .map(|l| make_kv_keyword_filter("lang", l).into())
-                .collect::<Vec<_>>();
-            // one of the above langs should match
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let branch_filter = {
-            let conditions = parsed_query
-                .branch()
-                .map(|l| make_kv_keyword_filter("branches", l).into())
-                .collect::<Vec<_>>();
-
-            if conditions.is_empty() {
-                None
-            } else {
-                Some(Filter {
-                    should: conditions,
-                    ..Default::default()
-                })
-            }
-        };
-
-        let filters = [repo_filter, path_filter, lang_filter, branch_filter]
-            .into_iter()
-            .flatten()
-            .map(Into::into)
-            .collect();
-
         let response = self
             .qdrant
             .search_points(&SearchPoints {
@@ -347,11 +308,12 @@ impl Semantic {
                 vector,
                 collection_name: COLLECTION_NAME.to_string(),
                 offset: Some(offset),
+                score_threshold: Some(SCORE_THRESHOLD),
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
                 filter: Some(Filter {
-                    must: filters,
+                    must: build_conditions(parsed_query),
                     ..Default::default()
                 }),
                 with_vectors: Some(WithVectorsSelector {
@@ -374,7 +336,7 @@ impl Semantic {
         let Some(query) = parsed_query.target() else {
             anyhow::bail!("no search target for query");
         };
-        let vector = self.embed(query)?;
+        let vector = self.embed(&query)?;
 
         // TODO: Remove the need for `retrieve_more`. It's here because:
         // In /q `limit` is the maximum number of results returned (the actual number will often be lower due to deduplication)
@@ -395,19 +357,23 @@ impl Semantic {
         Ok(deduplicate_snippets(results, vector, limit))
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(skip(self, repo_ref, relative_path, buffer))]
     pub async fn insert_points_for_buffer(
         &self,
         repo_name: &str,
         repo_ref: &str,
+        tantivy_cache_key: &str,
         relative_path: &str,
         buffer: &str,
         lang_str: &str,
         branches: &[String],
+        is_cold_run: bool,
     ) {
-        // Delete all points corresponding to the same path
-        self.delete_points_by_path(repo_ref, std::iter::once(relative_path))
-            .await;
+        let chunk_cache =
+            crate::cache::ChunkCache::for_file(&self.qdrant, tantivy_cache_key, is_cold_run)
+                .await
+                .expect("qdrant error");
 
         let chunks = chunk::by_tokens(
             repo_name,
@@ -420,84 +386,67 @@ impl Semantic {
         );
         debug!(chunk_count = chunks.len(), "found chunks");
 
-        // Prepend all chunks with `repo_name   relative_path`
-        let chunk_prefix = format!("{repo_name}\t{relative_path}\n");
+        let embedder = |c: &str| {
+            info!("generating embedding");
+            self.embed(c)
+        };
+        chunks.par_iter().for_each(|chunk| {
+            let data = format!("{repo_name}\t{relative_path}\n{}", chunk.data,);
+            let payload = Payload {
+                repo_name: repo_name.to_owned(),
+                repo_ref: repo_ref.to_owned(),
+                relative_path: relative_path.to_owned(),
+                content_hash: tantivy_cache_key.to_owned(),
+                text: chunk.data.to_owned(),
+                lang: lang_str.to_ascii_lowercase(),
+                branches: branches.to_owned(),
+                start_line: chunk.range.start.line as u64,
+                end_line: chunk.range.end.line as u64,
+                start_byte: chunk.range.start.byte as u64,
+                end_byte: chunk.range.end.byte as u64,
+                ..Default::default()
+            };
 
-        let datapoints = chunks
-            .par_iter()
-            .filter_map(
-                |chunk| match self.embed(&(chunk_prefix.clone() + chunk.data)) {
-                    Ok(ok) => Some(PointStruct {
-                        id: Some(PointId::from(uuid::Uuid::new_v4().to_string())),
-                        vectors: Some(ok.into()),
-                        payload: Payload {
-                            lang: lang_str.to_ascii_lowercase().into(),
-                            repo_name: repo_name.into(),
-                            repo_ref: repo_ref.into(),
-                            relative_path: relative_path.into(),
-                            branches: branches.to_owned(),
-                            text: chunk.data.into(),
-                            start_line: chunk.range.start.line as u64,
-                            end_line: chunk.range.end.line as u64,
-                            start_byte: chunk.range.start.byte as u64,
-                            end_byte: chunk.range.end.byte as u64,
-                            ..Default::default()
-                        }
-                        .into_qdrant(),
-                    }),
-                    Err(err) => {
-                        warn!(?err, %chunk_prefix, "embedding failed");
-                        None
-                    }
-                },
-            )
-            .collect::<Vec<_>>();
-
-        if !datapoints.is_empty() {
-            let num_datapoints = datapoints.len();
-            debug!(point_count = num_datapoints, "updating docs");
-            let upserted = self
-                .qdrant
-                .upsert_points(COLLECTION_NAME, datapoints, None)
-                .await;
-            if upserted.is_ok() {
-                info!(
-                    ?chunk_prefix,
-                    "Successfully upserted {:?} vectors", num_datapoints
-                );
-            } else {
-                warn!(
-                    ?chunk_prefix,
-                    "Failed to upsert {:?} vectors", num_datapoints
-                );
+            let cached = chunk_cache.update_or_embed(&data, embedder, payload);
+            if let Err(err) = cached {
+                warn!(?err, %repo_name, %relative_path, "embedding failed");
             }
-        } else {
-            warn!(?chunk_prefix, "No vectors to insert");
+        });
+
+        match chunk_cache.commit().await {
+            Ok((new, updated, deleted)) => {
+                info!(
+                    repo_name,
+                    relative_path, new, updated, deleted, "Successful commit"
+                )
+            }
+            Err(err) => {
+                warn!(repo_name, relative_path, ?err, "Failed to upsert vectors")
+            }
         }
     }
 
-    pub async fn delete_points_by_path(&self, repo_ref: &str, paths: impl Iterator<Item = &str>) {
+    pub async fn delete_points_for_hash(
+        &self,
+        repo_ref: &str,
+        paths: impl Iterator<Item = String>,
+    ) {
         let repo_filter = make_kv_keyword_filter("repo_ref", repo_ref).into();
         let file_filter = paths
-            .map(|p| make_kv_keyword_filter("relative_path", p).into())
+            .map(|p| make_kv_keyword_filter("content_hash", &p).into())
             .collect::<Vec<_>>();
+
         let selector = Filter {
             must: vec![repo_filter],
             should: file_filter,
             ..Default::default()
         }
         .into();
+
         let _ = self
             .qdrant
             .delete_points(COLLECTION_NAME, &selector, None)
             .await;
-    }
-
-    pub fn gpt2_token_count(&self, input: &str) -> usize {
-        self.gpt2_tokenizer
-            .encode(input, false)
-            .map(|code| code.len())
-            .unwrap_or(0)
     }
 
     pub fn overlap_strategy(&self) -> chunk::OverlapStrategy {
@@ -505,8 +454,29 @@ impl Semantic {
     }
 }
 
+/// Initialize the `ORT_DYLIB_PATH` variable, consumed by the `ort` crate.
+///
+/// This doesn't do anything on Windows, as tauri on Windows will automatically bundle any `.dll`
+/// files found in the `target/$profile` folder. The `ort` crate by default will also copy the
+/// built dynamic library over to the `target/$profile` folder, when using the download strategy.
+fn init_ort_dylib(dylib_dir: impl AsRef<Path>) {
+    #[cfg(not(windows))]
+    {
+        #[cfg(target_os = "linux")]
+        let lib_name = "libonnxruntime.so";
+        #[cfg(target_os = "macos")]
+        let lib_name = "libonnxruntime.dylib";
+
+        let ort_dylib_path = dylib_dir.as_ref().join(lib_name);
+
+        if env::var("ORT_DYLIB_PATH").is_err() {
+            env::set_var("ORT_DYLIB_PATH", ort_dylib_path);
+        }
+    }
+}
+
 // Exact match filter
-fn make_kv_keyword_filter(key: &str, value: &str) -> FieldCondition {
+pub(crate) fn make_kv_keyword_filter(key: &str, value: &str) -> FieldCondition {
     let key = key.to_owned();
     let value = value.to_owned();
     FieldCondition {
@@ -529,6 +499,86 @@ fn make_kv_text_filter(key: &str, value: &str) -> FieldCondition {
         }),
         ..Default::default()
     }
+}
+
+fn build_conditions(query: &SemanticQuery<'_>) -> Vec<qdrant_client::qdrant::Condition> {
+    let repo_filter = {
+        let conditions = query
+            .repos()
+            .map(|r| {
+                if r.contains('/') && !r.starts_with("github.com/") {
+                    format!("github.com/{r}")
+                } else {
+                    r.to_string()
+                }
+            })
+            .map(|r| make_kv_keyword_filter("repo_name", r.as_ref()).into())
+            .collect::<Vec<_>>();
+        // one of the above repos should match
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(Filter {
+                should: conditions,
+                ..Default::default()
+            })
+        }
+    };
+
+    let path_filter = {
+        let conditions = query
+            .paths()
+            .map(|r| make_kv_text_filter("relative_path", r.as_ref()).into())
+            .collect::<Vec<_>>();
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(Filter {
+                should: conditions,
+                ..Default::default()
+            })
+        }
+    };
+
+    let lang_filter = {
+        let conditions = query
+            .langs()
+            .map(|l| make_kv_keyword_filter("lang", l.as_ref()).into())
+            .collect::<Vec<_>>();
+        // one of the above langs should match
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(Filter {
+                should: conditions,
+                ..Default::default()
+            })
+        }
+    };
+
+    let branch_filter = {
+        let conditions = query
+            .branch()
+            .map(|l| make_kv_keyword_filter("branches", l.as_ref()).into())
+            .collect::<Vec<_>>();
+
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(Filter {
+                should: conditions,
+                ..Default::default()
+            })
+        }
+    };
+
+    let filters: Vec<_> = [repo_filter, path_filter, lang_filter, branch_filter]
+        .into_iter()
+        .flatten()
+        .map(Into::into)
+        .collect();
+
+    filters
 }
 
 fn dot(a: &[f32], b: &[f32]) -> f32 {

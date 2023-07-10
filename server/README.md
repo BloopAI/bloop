@@ -8,7 +8,6 @@ A cargo workspace which contains `bleep`, the Rust package which powers bloop's 
 
 Dependencies:
  - [`rust`](https://rustup.rs/)
- - `openssl`
  - `onnxruntime`
 
 ### Build
@@ -56,12 +55,3 @@ Run this to see the full list of arguments that `bleep` accepts:
 ```
 cargo run -p bleep -- --help
 ```
-
-## OpenAPI
-
-You can view OpenAPI documentation (and railroad diagrams for the query language) [here](https://bloop-api-docs.vercel.app/). 
-
-`bleep` uses [utoipa](https://github.com/juhaku/utoipa) to automatically generate an OpenAPI spec. To can manually access the OpenAPI spec with this endpoint:
-```
-$ curl "localhost:7878/api/api-doc/openapi.yaml"
-```  

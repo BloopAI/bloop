@@ -75,10 +75,11 @@ export const nlSearch = (
 export const getHoverables = async (
   path: string,
   repoId: string,
+  branch?: string,
 ): Promise<HoverablesResponse> => {
   try {
     const { data } = await http.get('/hoverable', {
-      params: { relative_path: path, repo_ref: repoId },
+      params: { relative_path: path, repo_ref: repoId, branch },
     });
     return data;
   } catch (e) {
@@ -91,6 +92,7 @@ export const getTokenInfo = async (
   repoRef: string,
   start: number,
   end: number,
+  branch?: string,
 ): Promise<TokenInfoResponse> => {
   return http
     .get('/token-info', {
@@ -99,9 +101,18 @@ export const getTokenInfo = async (
         repo_ref: repoRef,
         start,
         end,
+        branch,
       },
     })
     .then((r) => r.data);
+};
+
+export const indexRepoBranch = async (repoRef: string, branch: string) => {
+  return http.patch(
+    '/repos/indexed',
+    { branch_filter: { select: [branch] } },
+    { params: { repo: repoRef } },
+  );
 };
 
 export const getAutocomplete = async (
@@ -225,3 +236,5 @@ export const upvoteAnswer = (
       feedback,
     })
     .then((r) => r.data);
+
+export const getIndexQueue = () => http('/repos/queue').then((r) => r.data);

@@ -42,10 +42,10 @@ npm run start-app
 
 ## Wiping an index
 
-Deleting the bloop cache directory and re-indexing can fix a corrupted index. You can find the bloop cache here:
+Deleting and re-indexing the bloop index can fix corruption issues. bloop's index is stored:
 
-| OS      | Cache Path |
+| OS      | Index Path |
 | ----------- | ----------- |
-| MacOS      | `~/Library/Caches/ai.bloop.bloop`       |
-| Windows   | `%LOCALAPPDATA%\ai.bloop.bloop`        |
-| Linux   | `~/.cache/ai.bloop.bloop`        |
+| MacOS      | `~/Library/Application\ Support/ai.bloop.bloop`       |
+| Windows   | `%APPDATA%/bloop`        |
+| Linux   | `~/.local/share/bloop`        |

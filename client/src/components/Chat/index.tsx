@@ -18,6 +18,7 @@ import {
 } from '../../types/general';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { ChatContext } from '../../context/chatContext';
+import { SearchContext } from '../../context/searchContext';
 import { mapLoadingSteps } from '../../mappers/conversation';
 import { findElementInCurrentTab } from '../../utils/domUtils';
 import NLInput from './NLInput';
@@ -39,6 +40,7 @@ const blurInput = () => {
 const Chat = () => {
   const { isRightPanelOpen, setRightPanelOpen, tab } = useContext(UIContext);
   const { apiUrl } = useContext(DeviceContext);
+  const { selectedBranch } = useContext(SearchContext);
   const {
     conversation,
     setConversation,
@@ -82,9 +84,9 @@ const Chat = () => {
       setInputValue('');
       setLoading(true);
       const eventSource = new EventSource(
-        `${apiUrl.replace('https:', '')}/answer?q=${query}&repo_ref=${tab.key}${
-          threadId ? `&thread_id=${threadId}` : ''
-        }${
+        `${apiUrl.replace('https:', '')}/answer?q=${encodeURIComponent(query)}${
+          selectedBranch ? ` branch:${selectedBranch}` : ''
+        }&repo_ref=${tab.key}${threadId ? `&thread_id=${threadId}` : ''}${
           navigatedItem?.type === 'repo' && navigatedItem?.path
             ? `&relative_path=${navigatedItem?.path}&is_folder=true`
             : ''
@@ -174,13 +176,13 @@ const Chat = () => {
           if (data.Ok) {
             const newMessage = data.Ok;
             if (
-              ((newMessage.results?.Filesystem?.length &&
+              ((newMessage.outcome?.Filesystem?.length &&
                 !newMessage.conclusion) ||
-                newMessage.results?.Article?.length) &&
+                newMessage.outcome?.Article?.length) &&
               !firstResultCame
             ) {
               setConversation((prev) => {
-                if (newMessage.mode === 'article') {
+                if (newMessage.outcome?.Article?.length) {
                   setChatOpen(false);
                   navigateArticleResponse(prev.length - 1, thread_id);
                 } else {
@@ -199,11 +201,11 @@ const Chat = () => {
               const lastMessage = prev?.slice(-1)[0];
               const messageToAdd = {
                 author: ChatMessageAuthor.Server,
-                isLoading: !newMessage.finished,
+                isLoading: true,
                 type: ChatMessageType.Answer,
                 loadingSteps: mapLoadingSteps(newMessage.search_steps),
                 text: newMessage.conclusion,
-                results: newMessage.results,
+                results: newMessage.outcome,
               };
               const lastMessages: ChatMessage[] =
                 lastMessage?.author === ChatMessageAuthor.Server
@@ -233,7 +235,14 @@ const Chat = () => {
         eventSource.close();
       };
     },
-    [tab, threadId, navigatedItem?.path, navigatedItem?.type, selectedLines],
+    [
+      tab,
+      threadId,
+      navigatedItem?.path,
+      navigatedItem?.type,
+      selectedLines,
+      selectedBranch,
+    ],
   );
 
   useEffect(() => {
@@ -349,7 +358,7 @@ const Chat = () => {
             </div>
           </div>
         </div>
-        <div className="p-4">
+        <div className="p-4 overflow-auto">
           {!!conversation.length && isChatOpen && (
             <Conversation
               conversation={conversation}

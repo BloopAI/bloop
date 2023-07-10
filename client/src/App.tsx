@@ -58,9 +58,9 @@ function App({ deviceContextValue }: Props) {
       }
       const lastNav = tab.navigationHistory[tab.navigationHistory.length - 1];
       navigate(
-        `/${encodeURIComponent(activeTab)}/${
-          lastNav ? buildURLPart(lastNav) : ''
-        }`,
+        `/${encodeURIComponent(activeTab)}/${encodeURIComponent(
+          tab.branch || 'all',
+        )}/${lastNav ? buildURLPart(lastNav) : ''}`,
       );
     }
   }, [activeTab, tabs]);
@@ -71,6 +71,7 @@ function App({ deviceContextValue }: Props) {
       repoName: string,
       name: string,
       source: RepoSource,
+      branch?: string | null,
       navHistory?: NavigationItem[],
     ) => {
       const newTab = {
@@ -78,6 +79,7 @@ function App({ deviceContextValue }: Props) {
         name,
         repoName,
         source,
+        branch,
         navigationHistory: navHistory || [],
       };
       setTabs((prev) => {
@@ -105,6 +107,7 @@ function App({ deviceContextValue }: Props) {
           decodeURIComponent(location.pathname.slice(1).split('/')[0]),
       );
       if (repo) {
+        const urlBranch = decodeURIComponent(location.pathname.split('/')[2]);
         handleAddTab(
           repo.ref,
           repo.provider === RepoProvider.GitHub ? repo.ref : repo.name,
@@ -112,6 +115,7 @@ function App({ deviceContextValue }: Props) {
           repo.provider === RepoProvider.GitHub
             ? RepoSource.GH
             : RepoSource.LOCAL,
+          urlBranch === 'all' ? null : urlBranch,
           getNavItemFromURL(
             location,
             repo.provider === RepoProvider.GitHub ? repo.ref : repo.name,
@@ -171,6 +175,25 @@ function App({ deviceContextValue }: Props) {
     [],
   );
 
+  const updateTabBranch = useCallback(
+    (tabKey: string, branch: null | string) => {
+      setTabs((prev) => {
+        const tabIndex = prev.findIndex((t) => t.key === tabKey);
+        if (tabIndex < 0) {
+          return prev;
+        }
+        const newTab = {
+          ...prev[tabIndex],
+          branch,
+        };
+        const newTabs = [...prev];
+        newTabs[tabIndex] = newTab;
+        return newTabs;
+      });
+    },
+    [],
+  );
+
   const contextValue = useMemo(
     () => ({
       tabs,
@@ -179,8 +202,16 @@ function App({ deviceContextValue }: Props) {
       handleRemoveTab,
       setActiveTab,
       updateTabNavHistory,
+      updateTabBranch,
     }),
-    [tabs, activeTab, handleAddTab, handleRemoveTab, updateTabNavHistory],
+    [
+      tabs,
+      activeTab,
+      handleAddTab,
+      handleRemoveTab,
+      updateTabNavHistory,
+      updateTabBranch,
+    ],
   );
 
   const fetchRepos = useCallback(() => {
