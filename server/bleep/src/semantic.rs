@@ -18,6 +18,7 @@ use qdrant_client::{
     },
 };
 
+use futures::{stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use thiserror::Error;
 use tracing::{debug, info, trace, warn};
@@ -326,6 +327,62 @@ impl Semantic {
         Ok(response.result)
     }
 
+    pub async fn batch_search_with<'a>(
+        &self,
+        parsed_queries: &[&SemanticQuery<'a>],
+        vectors: Vec<Embedding>,
+        limit: u64,
+        offset: u64,
+    ) -> anyhow::Result<Vec<ScoredPoint>> {
+        // FIXME: This method uses `search_points` internally, and not `search_batch_points`. It's
+        // not clear why, but it seems that the `batch` variant of the `qdrant` calls leads to
+        // HTTP2 errors on some deployment configurations. A typical example error:
+        //
+        // ```
+        // hyper::proto::h2::client: client response error: stream error received: stream no longer needed
+        // ```
+        //
+        // Given that qdrant uses `tonic`, this may be a `tonic` issue, possibly similar to:
+        // https://github.com/hyperium/tonic/issues/222
+
+        // Queries should contain the same filters, so we get the first one
+        let parsed_query = parsed_queries.first().unwrap();
+        let filters = &build_conditions(parsed_query);
+
+        let responses = stream::iter(vectors.into_iter())
+            .map(|vector| async move {
+                let points = SearchPoints {
+                    limit,
+                    vector,
+                    collection_name: COLLECTION_NAME.to_string(),
+                    offset: Some(offset),
+                    score_threshold: Some(SCORE_THRESHOLD),
+                    with_payload: Some(WithPayloadSelector {
+                        selector_options: Some(with_payload_selector::SelectorOptions::Enable(
+                            true,
+                        )),
+                    }),
+                    filter: Some(Filter {
+                        must: filters.clone(),
+                        ..Default::default()
+                    }),
+                    with_vectors: Some(WithVectorsSelector {
+                        selector_options: Some(with_vectors_selector::SelectorOptions::Enable(
+                            true,
+                        )),
+                    }),
+                    ..Default::default()
+                };
+
+                self.qdrant.search_points(&points).await
+            })
+            .buffered(10)
+            .try_collect::<Vec<_>>()
+            .await?;
+
+        Ok(responses.into_iter().flat_map(|r| r.result).collect())
+    }
+
     pub async fn search<'a>(
         &self,
         parsed_query: &SemanticQuery<'a>,
@@ -355,6 +412,46 @@ impl Semantic {
                     .collect::<Vec<_>>()
             })?;
         Ok(deduplicate_snippets(results, vector, limit))
+    }
+
+    pub async fn batch_search<'a>(
+        &self,
+        parsed_queries: &[&SemanticQuery<'a>],
+        limit: u64,
+        offset: u64,
+        retrieve_more: bool,
+    ) -> anyhow::Result<Vec<Payload>> {
+        if parsed_queries.iter().any(|q| q.target().is_none()) {
+            anyhow::bail!("no search target for query");
+        };
+
+        let vectors = parsed_queries
+            .iter()
+            .map(|q| self.embed(&q.target().unwrap()))
+            .collect::<anyhow::Result<Vec<_>>>()?;
+
+        tracing::trace!(?parsed_queries, "performing qdrant batch search");
+
+        let result = self
+            .batch_search_with(
+                parsed_queries,
+                vectors.clone(),
+                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+                offset,
+            )
+            .await;
+
+        tracing::trace!(?result, "qdrant batch search returned");
+
+        let results = result?
+            .into_iter()
+            .map(Payload::from_qdrant)
+            .collect::<Vec<_>>();
+
+        // deduplicate with mmr with respect to the mean of query vectors
+        // TODO: implement a more robust multi-vector deduplication strategy
+        let target_vector = mean_pool(vectors);
+        Ok(deduplicate_snippets(results, target_vector, limit))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -591,6 +688,19 @@ fn norm(a: &[f32]) -> f32 {
 
 fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     dot(a, b) / (norm(a) * norm(b))
+}
+
+// Calculate the element-wise mean of the embeddings
+fn mean_pool(embeddings: Vec<Vec<f32>>) -> Vec<f32> {
+    let len = embeddings.len() as f32;
+    let mut result = vec![0.0; EMBEDDING_DIM];
+    for embedding in embeddings {
+        for (i, v) in embedding.iter().enumerate() {
+            result[i] += v;
+        }
+    }
+    result.iter_mut().for_each(|v| *v /= len);
+    result
 }
 
 // returns a list of indices to preserve from `snippets`

@@ -738,7 +738,14 @@ impl Agent {
                 self.update(Update::Step(SearchStep::Code(query.clone())))
                     .await?;
 
-                let results = self.semantic_search(query.into(), 10, 0, true).await?;
+                let mut results = self.semantic_search(query.into(), 10, 0, true).await?;
+
+                let hyde_docs = self.hyde(query).await?;
+                if !hyde_docs.is_empty() {
+                    let hyde_docs = hyde_docs.iter().map(|d| d.into()).collect();
+                    let hyde_results = self.batch_semantic_search(hyde_docs, 10, 0, true).await?;
+                    results.extend(hyde_results);
+                }
 
                 let chunks = results
                     .into_iter()
@@ -764,6 +771,7 @@ impl Agent {
                 self.track_query(
                     EventData::input_stage("semantic code search")
                         .with_payload("query", query)
+                        .with_payload("hyde_queries", &hyde_docs)
                         .with_payload("chunks", &chunks)
                         .with_payload("raw_prompt", &prompt),
                 );
@@ -847,6 +855,33 @@ impl Agent {
         }
 
         Ok(Some(action))
+    }
+
+    async fn hyde(&self, query: &str) -> Result<Vec<String>> {
+        let prompt = vec![llm_gateway::api::Message::system(
+            &prompts::hypothetical_document_prompt(query),
+        )];
+
+        tracing::trace!(?query, "generating hyde docs");
+
+        let response = self
+            .llm_gateway
+            .clone()
+            .model("gpt-3.5-turbo-0613")
+            .chat(&prompt, None)
+            .await?
+            .try_collect::<String>()
+            .await?;
+
+        tracing::trace!("parsing hyde response");
+
+        let documents = prompts::try_parse_hypothetical_documents(&response);
+
+        for doc in documents.iter() {
+            info!(?doc, "got hyde doc");
+        }
+
+        Ok(documents)
     }
 
     async fn proc(&mut self, question: &str, path_aliases: &[usize]) -> Result<String> {
@@ -1361,6 +1396,36 @@ impl Agent {
             .as_ref()
             .unwrap()
             .search(&query, limit, offset, retrieve_more)
+            .await
+    }
+
+    async fn batch_semantic_search(
+        &self,
+        queries: Vec<Literal<'_>>,
+        limit: u64,
+        offset: u64,
+        retrieve_more: bool,
+    ) -> Result<Vec<semantic::Payload>> {
+        let queries = queries
+            .iter()
+            .map(|q| SemanticQuery {
+                target: Some(q.clone()),
+                repos: [Literal::Plain(
+                    self.conversation.repo_ref.display_name().into(),
+                )]
+                .into(),
+                ..self.conversation.last_exchange().query.clone()
+            })
+            .collect::<Vec<_>>();
+
+        let queries = queries.iter().collect::<Vec<_>>();
+
+        debug!(?queries, %self.thread_id, "executing semantic query");
+        self.app
+            .semantic
+            .as_ref()
+            .unwrap()
+            .batch_search(queries.as_slice(), limit, offset, retrieve_more)
             .await
     }
 
