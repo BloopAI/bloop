@@ -680,6 +680,15 @@ impl Agent {
                     AnswerMode::Article => self.answer_article(paths).await?,
                 }
 
+                // NB: We have to yield right before returning here. This is the final return from
+                // `step` as it returns `None`. Sending updates after all `await` points in the
+                // final `step` call will likely not return a pending future due to the internal
+                // receiver queue. So, this call stack usually continues onwards, ultimately
+                // resulting in a `Poll::Ready`, backing out of the driving loop. Yielding gives a
+                // chance for any remaining updates to be processed before we process the final
+                // result of this `step` call.
+                tokio::task::yield_now().await;
+
                 return Ok(None);
             }
 
