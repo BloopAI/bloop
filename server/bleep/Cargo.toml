@@ -88,7 +88,7 @@ notify-debouncer-mini = { version = "0.3.0", default-features = false }
 
 # misc
 serde = "1.0.164"
-regex = "1.8.4"
+regex = "1.9.1"
 regex-syntax = "0.6.29"
 smallvec = { version = "1.10.0", features = ["serde"]}
 async-trait = "0.1.68"
@@ -127,6 +127,7 @@ serde-xml-rs = "0.6.0"
 # We use the git version here, so that we can pull in recent changes that make footnotes work. The
 # latest crates.io version at the time of writing does not include necessary patches.
 comrak = { default-features = false, git = "https://github.com/kivikakk/comrak" }
+lazy-regex = "3.0.0"
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.4"

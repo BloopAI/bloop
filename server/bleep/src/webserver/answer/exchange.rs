@@ -1,4 +1,6 @@
 use crate::query::parser::SemanticQuery;
+use std::borrow::Cow;
+
 use anyhow::{Context, Result};
 use tracing::trace;
 
@@ -31,11 +33,11 @@ impl Exchange {
             Update::Filesystem(file_results) => {
                 self.set_file_results(file_results);
             }
-            Update::Article(text) => {
+            Update::Article(full_text) => {
                 let outcome = self
                     .outcome
                     .get_or_insert_with(|| Outcome::Article(String::new()));
-                *outcome.as_article_mut().unwrap() = text;
+                *outcome.as_article_mut().unwrap() = sanitize_article(&full_text);
             }
             Update::Conclude(conclusion) => {
                 self.conclusion = Some(conclusion);
@@ -78,7 +80,15 @@ impl Exchange {
         Ok(Some(match self.outcome.as_ref() {
             None => return Ok(None),
             Some(Outcome::Article(article)) => {
-                let article = trim_code(article);
+                let article = xml_for_each(article, |code| {
+                    match try_trim_code_xml(code) {
+                        Ok(trimmed) => Some(trimmed),
+                        Err(e) => {
+                            trace!("failed to trim XML: {e}");
+                            None
+                        },
+                    }
+                });
                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
                 super::limit_tokens(&article, bpe, 500).to_owned()
             }
@@ -428,76 +438,125 @@ impl ConcludeResult {
     }
 }
 
-fn trim_code(s: &str) -> String {
-    #[derive(serde::Deserialize, Debug)]
-    enum CodeChunk {
-        QuotedCode {
-            #[serde(rename = "Code")]
-            _code: String,
-            #[serde(rename = "Language")]
-            language: String,
-            #[serde(rename = "Path")]
-            path: String,
-            #[serde(rename = "StartLine")]
-            start_line: u32,
-            #[serde(rename = "EndLine")]
-            end_line: u32,
-        },
-        GeneratedCode {
-            #[serde(rename = "Code")]
-            _code: String,
-            #[serde(rename = "Language")]
-            language: String,
-        },
+fn sanitize_article(article: &str) -> String {
+    xml_for_each(article, |code| Some(fixup_xml_code(code).into_owned()))
+}
+
+fn fixup_xml_code(xml: &str) -> Cow<str> {
+    use lazy_regex::regex;
+
+    if !xml.trim().starts_with("<") {
+        return Cow::Borrowed(xml);
     }
 
-    fn try_trim_xml(text: &str) -> Result<String> {
-        dbg!(text);
-        let code_chunk =
-            serde_xml_rs::from_str(text).context("couldn't parse as XML code block")?;
+    dbg!(xml);
 
-        dbg!(&code_chunk);
+    if let Some(match_) = dbg!(regex!("<(Generated|Quoted)Code>(\\s)*<Code>(.*)</Code>"sm)
+        .captures(xml))
+        .and_then(|cap| cap.get(3))
+    {
+        let mut buf = String::new();
+        buf += &xml[..match_.start()];
 
-        Ok(match code_chunk {
-            CodeChunk::QuotedCode {
-                _code,
-                language,
-                path,
-                start_line,
-                end_line,
-            } => {
-                format!(
-                    "<QuotedCode>\n\
-                    <Code>[REDACTED]</Code>\n\
-                    <Language>{language}</Language>\n\
-                    <Path>{path}</Path>\n\
-                    <StartLine>{start_line}</StartLine>\n\
-                    <EndLine>{end_line}</EndLine>\n\
-                    </QuotedCode>"
-                )
-            }
+        {
+            let s = &xml[match_.range()];
 
-            CodeChunk::GeneratedCode { _code, language } => {
-                format!(
-                    "<GeneratedCode>\n\
-                    <Code>[REDACTED]</Code>\n\
-                    <Language>{language}</Language>\n\
-                    </GeneratedCode>"
-                )
-            }
-        })
+            // The `regex` crate does not support negative lookahead, so we cannot write a regex
+            // like `&(?!amp;)`. So, we just perform naive substitutions to first obtain an
+            // unescaped copy of the string, and then re-escape it in order to fix up the result.
+            // 
+            // This matters if the input string is something like `&amp;foo < &bar&lt;i32&gt;()`:
+            //
+            // - First, we convert that to `&foo < &bar<i32>()`
+            // - Second, we convert it to `&amp;foo < &amp;bar&lt;i32&gt;`, our desired result.
+
+            let s = regex!("&lt;"m).replace_all(s, "<");
+            let s = regex!("&gt;"m).replace_all(&s, ">");
+            let s = regex!("&amp;"m).replace_all(&s, "&");
+
+            let s = regex!("&"m).replace_all(&s, "&amp;");
+            let s = regex!("<"m).replace_all(&s, "&lt;");
+            let s = regex!(">"m).replace_all(&s, "&gt;");
+
+            buf += &s;
+        }
+
+        buf += &xml[match_.end()..];
+
+        Cow::Owned(buf)
+    } else {
+        Cow::Borrowed(xml)
     }
+}
 
+#[derive(serde::Deserialize, Debug)]
+enum CodeChunk {
+    QuotedCode {
+        #[serde(rename = "Code")]
+        _code: String,
+        #[serde(rename = "Language")]
+        language: String,
+        #[serde(rename = "Path")]
+        path: String,
+        #[serde(rename = "StartLine")]
+        start_line: u32,
+        #[serde(rename = "EndLine")]
+        end_line: u32,
+    },
+    GeneratedCode {
+        #[serde(rename = "Code")]
+        _code: String,
+        #[serde(rename = "Language")]
+        language: String,
+    },
+}
+
+fn try_trim_code_xml(xml: &str) -> Result<String> {
+    let xml = fixup_xml_code(xml);
+
+    let code_chunk =
+        serde_xml_rs::from_str(&xml).context("couldn't parse as XML code block")?;
+
+    Ok(match code_chunk {
+        CodeChunk::QuotedCode {
+            _code,
+            language,
+            path,
+            start_line,
+            end_line,
+        } => {
+            format!(
+                "<QuotedCode>\n\
+                <Code>[REDACTED]</Code>\n\
+                <Language>{language}</Language>\n\
+                <Path>{path}</Path>\n\
+                <StartLine>{start_line}</StartLine>\n\
+                <EndLine>{end_line}</EndLine>\n\
+                </QuotedCode>"
+            )
+        }
+
+        CodeChunk::GeneratedCode { _code, language } => {
+            format!(
+                "<GeneratedCode>\n\
+                <Code>[REDACTED]</Code>\n\
+                <Language>{language}</Language>\n\
+                </GeneratedCode>"
+            )
+        }
+    })
+}
+
+fn xml_for_each(article: &str, f: impl Fn(&str) -> Option<String>) -> String {
     let arena = comrak::Arena::new();
     let options = comrak::ComrakOptions::default();
-    let root = comrak::parse_document(&arena, s, &options);
+    let root = comrak::parse_document(&arena, article, &options);
 
     for child in root.children() {
         let mut node = child.data.borrow_mut();
         if let comrak::nodes::NodeValue::HtmlBlock(html_block) = &mut node.value {
-            match try_trim_xml(&html_block.literal) {
-                Ok(trimmed) => html_block.literal = trimmed,
-                Err(e) => trace!("failed to trim XML: {e}"),
+            if let Some(change) = f(&html_block.literal) {
+                html_block.literal = change;
             }
         }
     }
@@ -562,6 +621,125 @@ test
 test
 ";
 
-        assert_eq!(expected, trim_code(input));
+        let out = xml_for_each(input, |code| try_trim_code_xml(code).ok());
+
+        assert_eq!(expected, out);
+    }
+
+    #[test]
+    fn test_fixup_quoted_code() {
+        let input = "<QuotedCode>
+<Code>
+fn foo<T>(t: T) -> bool {
+    &amp;foo < &bar&lt;i32&gt;(t)
+}
+</Code>
+<Language>Rust</Language>
+<Path>src/main.rs</Path>
+<StartLine>10</StartLine>
+<EndLine>12</EndLine>
+</QuotedCode>";
+
+        let expected = "<QuotedCode>
+<Code>
+fn foo&lt;T&gt;(t: T) -&gt; bool {
+    &amp;foo &lt; &amp;bar&lt;i32&gt;(t)
+}
+</Code>
+<Language>Rust</Language>
+<Path>src/main.rs</Path>
+<StartLine>10</StartLine>
+<EndLine>12</EndLine>
+</QuotedCode>";
+
+        assert_eq!(expected, &fixup_xml_code(input));
+    }
+
+    #[test]
+    fn test_fixup_generated_code() {
+        let input = "<GeneratedCode>
+<Code>
+fn foo<T>(t: T) -> bool {
+    &amp;foo < &bar&lt;i32&gt;(t)
+}
+</Code>
+<Language>Rust</Language>
+</GeneratedCode>";
+
+        let expected = "<GeneratedCode>
+<Code>
+fn foo&lt;T&gt;(t: T) -&gt; bool {
+    &amp;foo &lt; &amp;bar&lt;i32&gt;(t)
+}
+</Code>
+<Language>Rust</Language>
+</GeneratedCode>";
+
+        assert_eq!(expected, &fixup_xml_code(input));
+    }
+
+    #[test]
+    fn test_sanitize_article() {
+        let input = "First, we test some *generated code* below:
+
+<GeneratedCode>
+<Code>
+fn foo<T>(t: T) -> bool {
+    &amp;foo < &bar&lt;i32&gt;(t)
+}
+</Code>
+<Language>Rust</Language>
+</GeneratedCode>
+
+Then, we test some quoted code:
+
+<QuotedCode>
+<Code>
+fn foo<T>(t: T) -> bool {
+    &amp;foo < &bar&lt;i32&gt;(t)
+}
+</Code>
+<Language>Rust</Language>
+<Path>src/main.rs</Path>
+<StartLine>10</StartLine>
+<EndLine>12</EndLine>
+</QuotedCode>
+
+# Foo
+
+These should result in sanitized XML output, while maintaining the rest of the markdown article.
+";
+
+        let expected = "First, we test some *generated code* below:
+
+<GeneratedCode>
+<Code>
+fn foo&lt;T&gt;(t: T) -&gt; bool {
+    &amp;foo &lt; &amp;bar&lt;i32&gt;(t)
+}
+</Code>
+<Language>Rust</Language>
+</GeneratedCode>
+
+Then, we test some quoted code:
+
+<QuotedCode>
+<Code>
+fn foo&lt;T&gt;(t: T) -&gt; bool {
+    &amp;foo &lt; &amp;bar&lt;i32&gt;(t)
+}
+</Code>
+<Language>Rust</Language>
+<Path>src/main.rs</Path>
+<StartLine>10</StartLine>
+<EndLine>12</EndLine>
+</QuotedCode>
+
+# Foo
+
+These should result in sanitized XML output, while maintaining the rest of the markdown article.
+";
+
+        assert_eq!(expected, sanitize_article(&input));
     }
 }
