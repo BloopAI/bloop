@@ -1232,13 +1232,6 @@ impl Agent {
 
         let mut prompt = format!(
             r#"
-            Below are a list of code chunks, followed by the original locations of identifiers from the code-chunks.
-            Your job is to perform the following tasks:
-            1. Find out which identifiers are relevant to the query "{original_question}"
-            2. Reply with the index of each identifier, that might be relevant to answering the query
-            3. DO NOT cite indices that are not listed below
-            4. DO NOT answer the question, reply with one index per line
-            5. Reply with an empty output if none of the indices seem relevant
             "#
         );
 
@@ -1271,7 +1264,10 @@ impl Agent {
 
         writeln!(
             &mut prompt,
-            "Indexes relevant to answering the query \"{original_question}\" are:"
+            r#"
+#####
+Above are chunks of code, we've also parsed an ennumerated list of the imports in each file. Answer the query "{original_question}"
+            "#
         );
 
         println!("{prompt}");
@@ -1282,29 +1278,44 @@ impl Agent {
             .await?
             .try_collect::<String>()
             .await?;
-
         println!("llm reply: {reply}");
 
-        // collect llm selected indices and dedup
-        let mut deduped_import_list: HashMap<String, HashSet<String>> = HashMap::new();
-        for i in reply.lines().map(|l| l.trim().parse::<usize>()) {
-            match i {
-                Ok(i) => {
-                    if let Some((path, import_list)) = idxs.get(i).cloned() {
-                        deduped_import_list
-                            .entry(path)
-                            .or_insert_with(HashSet::new)
-                            .extend(import_list.into_iter());
-                    } else {
-                        tracing::error!("invalid llm reply: `{reply}`");
-                    }
-                }
-                Err(_) => {
-                    tracing::error!("invalid llm reply: `{reply}`");
-                    break;
-                }
-            }
-        }
+        let final_reply = self
+            .llm_gateway
+            .chat(
+                &[
+                    llm_gateway::api::Message::system(&prompt),
+                    llm_gateway::api::Message::assistant(&reply),
+                    llm_gateway::api::Message::user(&format!("Based on this answer, select enumerated dependencies that are essential to answer the question. Ignore any dependencies that are 'nice-to-have' but not essential.")),
+                ],
+                None,
+            )
+            .await?
+            .try_collect::<String>()
+            .await?;
+
+        println!("llm reply: {final_reply}");
+
+        // // collect llm selected indices and dedup
+        // let mut deduped_import_list: HashMap<String, HashSet<String>> = HashMap::new();
+        // for i in reply.lines().map(|l| l.trim().parse::<usize>()) {
+        //     match i {
+        //         Ok(i) => {
+        //             if let Some((path, import_list)) = idxs.get(i).cloned() {
+        //                 deduped_import_list
+        //                     .entry(path)
+        //                     .or_insert_with(HashSet::new)
+        //                     .extend(import_list.into_iter());
+        //             } else {
+        //                 tracing::error!("invalid llm reply: `{reply}`");
+        //             }
+        //         }
+        //         Err(_) => {
+        //             tracing::error!("invalid llm reply: `{reply}`");
+        //             break;
+        //         }
+        //     }
+        // }
 
         let out = processed
             .into_iter()
@@ -1314,7 +1325,7 @@ impl Agent {
                         .iter()
                         .map(|c| c.enumerate_lines())
                         .collect::<Vec<_>>(),
-                    "imports": deduped_import_list.get(&path),
+                    // "imports": deduped_import_list.get(&path),
                     "path_alias": self.conversation.path_alias(&path),
                 })
             })
