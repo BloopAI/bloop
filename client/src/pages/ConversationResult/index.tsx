@@ -1,11 +1,4 @@
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import throttle from 'lodash.throttle';
 import PageHeader from '../../components/ResultsPageHeader';
 import { ChatContext } from '../../context/chatContext';
@@ -35,37 +28,30 @@ type Props = {
 };
 
 const ConversationResult = ({ recordId, threadId }: Props) => {
-  const { conversation } = useContext(ChatContext);
+  const { conversation, setConversation, setThreadId } =
+    useContext(ChatContext);
   const { tab } = useContext(UIContext);
   const [isScrolled, setScrolled] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [data, setData] = useState(
-    (
-      (
-        (conversationsCache[threadId]?.[recordId] ||
-          conversation[recordId]) as ChatMessageServer
-      )?.results as FileSystemResult
-    )?.Filesystem || [],
-  );
 
-  const getData = useCallback(() => {
-    setData(
+  useEffect(() => {
+    setScrolled(false);
+  }, [recordId]);
+
+  const data = useMemo(
+    () =>
       (
         (
           (conversationsCache[threadId]?.[recordId] ||
             conversation[recordId]) as ChatMessageServer
         )?.results as FileSystemResult
       )?.Filesystem || [],
-    );
-  }, [
-    (conversation[recordId] as ChatMessageServer)?.results,
-    recordId,
-    threadId,
-  ]);
-
-  useEffect(() => {
-    getData();
-  }, [getData]);
+    [
+      (conversation[recordId] as ChatMessageServer)?.results,
+      recordId,
+      threadId,
+    ],
+  );
 
   useEffect(() => {
     if (!conversationsCache[threadId]?.[recordId] && !conversation[recordId]) {
@@ -91,7 +77,8 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
           });
         });
         conversationsCache[threadId] = conv;
-        getData();
+        setThreadId(threadId);
+        setConversation(conv);
       });
     }
   }, []);

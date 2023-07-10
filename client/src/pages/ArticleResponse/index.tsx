@@ -2,11 +2,9 @@ import {
   AnchorHTMLAttributes,
   DetailedHTMLProps,
   ReactElement,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
-  useState,
 } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { CodeProps } from 'react-markdown/lib/ast-to-react';
@@ -33,25 +31,19 @@ type Props = {
 };
 
 const ArticleResponse = ({ recordId, threadId }: Props) => {
-  const { conversation } = useContext(ChatContext);
+  const { conversation, setThreadId, setConversation } =
+    useContext(ChatContext);
   const { openFileModal } = useContext(FileModalContext);
   const { tab } = useContext(UIContext);
-  const [data, setData] = useState(
-    conversationsCache[threadId]?.[recordId] || conversation[recordId],
+  const data = useMemo(
+    () => conversationsCache[threadId]?.[recordId] || conversation[recordId],
+    [
+      (conversation[recordId] as ChatMessageServer)?.results,
+      (conversation[recordId] as ChatMessageServer)?.isLoading,
+      recordId,
+      threadId,
+    ],
   );
-
-  const getData = useCallback(() => {
-    setData(conversationsCache[threadId]?.[recordId] || conversation[recordId]);
-  }, [
-    (conversation[recordId] as ChatMessageServer)?.results,
-    (conversation[recordId] as ChatMessageServer)?.isLoading,
-    recordId,
-    threadId,
-  ]);
-
-  useEffect(() => {
-    getData();
-  }, [getData]);
 
   useEffect(() => {
     if (!conversationsCache[threadId]?.[recordId] && !conversation[recordId]) {
@@ -77,7 +69,8 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
           });
         });
         conversationsCache[threadId] = conv;
-        getData();
+        setThreadId(threadId);
+        setConversation(conv);
       });
     }
   }, []);
