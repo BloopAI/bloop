@@ -93,6 +93,7 @@ pub fn system(paths: &Vec<String>) -> String {
 - In most cases respond with functions.code or functions.path functions before responding with functions.none
 - Do not assume the structure of the codebase, or the existence of files or folders
 - Do NOT respond with a function that you've used before with the same arguments
+- functions.proc returns a list of "imports" for every file, you may call proc once more upon these "imports" if necessary
 - When you have enough information to answer the user's query respond with functions.none
 - If after making a path search the query can be answered by the existence of the paths, and there are more than 5 paths, use the functions.none function
 - Only refer to path aliases that are under the PATHS heading above

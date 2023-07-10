@@ -49,7 +49,7 @@ pub enum CodeNavigationError {}
 pub struct CodeNavigationContext<'a> {
     pub repo_ref: RepoRef,
     pub token: Token<'a>,
-    pub all_docs: Vec<ContentDocument>,
+    pub all_docs: &'a [ContentDocument],
     pub source_document_idx: usize,
 }
 
@@ -116,7 +116,7 @@ impl<'a> CodeNavigationContext<'a> {
             .unwrap_or_default()
     }
 
-    fn is_reference(&self) -> bool {
+    pub fn is_reference(&self) -> bool {
         self.source_document()
             .symbol_locations
             .scope_graph()
@@ -127,7 +127,7 @@ impl<'a> CodeNavigationContext<'a> {
             .unwrap_or_default()
     }
 
-    fn is_import(&self) -> bool {
+    pub fn is_import(&self) -> bool {
         self.source_document()
             .symbol_locations
             .scope_graph()
@@ -167,7 +167,7 @@ impl<'a> CodeNavigationContext<'a> {
             .unwrap()
     }
 
-    fn local_definitions(&self) -> Option<FileSymbols> {
+    pub fn local_definitions(&self) -> Option<FileSymbols> {
         let scope_graph = self.source_document().symbol_locations.scope_graph()?;
         let node_idx = scope_graph.node_by_range(self.token.start_byte, self.token.end_byte)?;
         let mut data = scope_graph
@@ -187,7 +187,7 @@ impl<'a> CodeNavigationContext<'a> {
         })
     }
 
-    fn repo_wide_definitions(&self) -> Vec<FileSymbols> {
+    pub fn repo_wide_definitions(&self) -> Vec<FileSymbols> {
         self.non_source_documents()
             .filter_map(|doc| {
                 let scope_graph = doc.symbol_locations.scope_graph()?;

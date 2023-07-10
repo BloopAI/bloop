@@ -2,7 +2,8 @@ use rand::{seq::SliceRandom, SeedableRng};
 use secrecy::ExposeSecret;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
-    fmt, mem,
+    fmt::{self, Write},
+    mem,
     panic::AssertUnwindSafe,
     pin::pin,
     str::FromStr,
@@ -30,9 +31,15 @@ use crate::{
     analytics::{EventData, QueryEvent},
     db::{QueryLog, SqlDb},
     indexes::reader::{ContentDocument, FileDocument},
+    intelligence::{
+        code_navigation::{CodeNavigationContext, FileSymbols, OccurrenceKind, Token},
+        Language, NodeKind, TSLanguage,
+    },
     query::parser::{self, Literal, SemanticQuery},
     repo::RepoRef,
-    semantic, Application,
+    semantic,
+    text_range::TextRange,
+    Application,
 };
 
 pub mod conversations;
@@ -867,7 +874,7 @@ impl Agent {
 
         // Immutable reborrow of `self`, to copy freely to async closures.
         let self_ = &*self;
-        let chunks = stream::iter(paths)
+        let chunks = stream::iter(paths.clone())
             .map(|path| async move {
                 tracing::debug!(?path, "reading file");
 
@@ -1016,12 +1023,202 @@ impl Agent {
             .collect::<Vec<_>>()
             .await;
 
+        let original_question = self
+            .conversation
+            .last_exchange()
+            .query()
+            .expect("proc: agent-code-nav: no query")
+            .to_owned();
+        let mut defining_files_by_path: HashMap<String, Vec<(String, HashSet<String>)>> =
+            HashMap::new();
+        'ident_discovery: {
+            info!("starting identifier discovery");
+            let mut prompt = String::new();
+            let mut idx = 0;
+            let mut idents = Vec::new(); // (path, token_text, token_range)
+            for (relevant_chunks, path) in &processed {
+                let repo_ref = self.conversation.repo_ref.clone(); // this is expected to be set
+                let document = self
+                    .app
+                    .indexes
+                    .file
+                    .by_path(&repo_ref, &path, None)
+                    .await
+                    .unwrap()
+                    .expect("failed to get hoverables");
+
+                let hoverables = document.hoverable_ranges();
+                // let hoverables = document.symbol_locations.scope_graph().map(|sg| {
+                //     sg.graph
+                //         .node_indices()
+                //         .filter(|idx| {
+                //             matches!(
+                //                 sg.get_node(*idx).unwrap(),
+                //                 NodeKind::Def(_) | NodeKind::Ref(_)
+                //             )
+                //         })
+                //         .filter(|idx| {
+                //             !matches!(
+                //                 sg.symbol_name_of(*idx),
+                //                 Some("var")
+                //                     | Some("variable")
+                //                     | Some("parameter")
+                //                     | Some("local")
+                //                     | Some("property")
+                //                     | Some("field")
+                //             )
+                //         })
+                //         .map(|idx| sg.get_node(idx).unwrap().range())
+                //         .collect::<Vec<_>>()
+                // });
+
+                if let Some(hr) = hoverables {
+                    for rc in relevant_chunks {
+                        let identifiers = hr
+                            .iter()
+                            .filter(|r| {
+                                r.start.line + 1 >= rc.range.start && r.end.line + 1 <= rc.range.end
+                            })
+                            .map(|r| {
+                                (
+                                    &document.content.as_str()[r.start.byte..r.end.byte],
+                                    r.clone(),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+
+                        if !identifiers.is_empty() {
+                            for i in identifiers.iter() {
+                                // push only unique idents
+                                if !idents.iter().any(|(_, text, _)| text == i.0) {
+                                    idents.push((path.clone(), i.0.to_owned(), i.1.clone()));
+                                    idx += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            let idents_by_path: HashMap<String, Vec<(String, TextRange)>> = idents
+                .into_iter()
+                .fold(HashMap::new(), |mut map, (path, text, range)| {
+                    map.entry(path.to_owned())
+                        .or_insert_with(Vec::new)
+                        .push((text.to_owned(), range.clone()));
+                    map
+                });
+
+            // let mut selected_idents = Vec::new();
+            // for (kind, idx) in dbg!(selected_indices)
+            //     .trim()
+            //     .lines()
+            //     .map(|l| match l.split_at(1) {
+            //         ("r", n) => (OccurrenceKind::Reference, n.parse::<usize>().unwrap()),
+            //         ("d", n) => (OccurrenceKind::Definition, n.parse::<usize>().unwrap()),
+            //         _ => panic!(),
+            //     })
+            // {
+            //     if let Some((path, text, range)) = idents.get(idx) {
+            //         selected_idents.push((path, text, range, kind));
+            //     }
+            // }
+
+            // let ctx = &ctx.clone().model("gpt-3.5-turbo-16k");
+            // let selected_indices = ctx
+            //     .llm_gateway
+            //     .chat(&[llm_gateway::api::Message::system(&prompt)], None)
+            //     .await?
+            //     .try_collect::<String>()
+            //     .await?;
+
+            // let mut code_nav_chunks = Vec::new();
+            let all_docs = {
+                let repo_ref = self.conversation.repo_ref.clone();
+                let Some((relative_path, _)) = idents_by_path.iter().next()
+                    else {
+                        break 'ident_discovery;
+                    };
+                let source_document = self
+                    .app
+                    .indexes
+                    .file
+                    .by_path(&repo_ref, &relative_path, None)
+                    .await
+                    .unwrap()
+                    .unwrap();
+                let lang = source_document.lang.as_deref();
+                let associated_langs = match lang.map(TSLanguage::from_id) {
+                    Some(Language::Supported(config)) => config.language_ids,
+                    _ => &[],
+                };
+                self.app
+                    .indexes
+                    .file
+                    .by_repo(&repo_ref, associated_langs.iter(), None)
+                    .await
+            };
+            for (relative_path, idents) in idents_by_path.iter() {
+                println!(
+                    "{relative_path}: {:?}",
+                    idents.iter().map(|i| i.0.as_str()).collect::<Vec<_>>()
+                );
+                let repo_ref = self.conversation.repo_ref.clone();
+                let Some(source_document_idx) = all_docs
+                    .iter()
+                    .position(|doc| &doc.relative_path == relative_path)
+                    else {
+                        tracing::error!("{} not present in all docs {:#?}", relative_path, all_docs.iter().map(|d| &d.relative_path).collect::<Vec<_>>());
+                        continue;
+                    };
+
+                for (text, range) in idents.iter() {
+                    println!("processing {relative_path} :: {text}");
+                    let token = Token {
+                        relative_path: relative_path.as_str(),
+                        start_byte: range.start.byte,
+                        end_byte: range.end.byte,
+                    };
+                    let nav_ctx = CodeNavigationContext {
+                        repo_ref: repo_ref.clone(),
+                        token,
+                        all_docs: all_docs.as_slice(),
+                        source_document_idx,
+                    };
+
+                    let mut v = defining_files_by_path
+                        .entry(relative_path.clone())
+                        .or_insert_with(Vec::new);
+                    if let Some(discovered_paths) = (nav_ctx.is_reference()
+                        || nav_ctx.is_import() && nav_ctx.local_definitions().is_none())
+                    .then(|| {
+                        nav_ctx
+                            .repo_wide_definitions()
+                            .into_iter()
+                            .map(|fs| fs.file)
+                            .collect::<Vec<_>>()
+                    }) {
+                        if !discovered_paths.is_empty() {
+                            v.push((
+                                text.clone(),
+                                HashSet::from_iter(
+                                    discovered_paths.into_iter().filter(|p| !paths.contains(p)),
+                                ),
+                            ));
+                        }
+                    }
+                }
+            }
+        };
+
+        println!("{:?}", &defining_files_by_path);
+
         for (relevant_chunks, path) in &processed {
             let alias = self.conversation.path_alias(path) as u32;
 
             for c in relevant_chunks {
                 let chunk = CodeChunk {
-                    path: path.to_owned(),
+                    path: path.clone(),
                     alias,
                     snippet: c.code.clone(),
                     start_line: c.range.start as u32,
@@ -1029,6 +1226,82 @@ impl Agent {
                 };
                 if !chunk.is_empty() {
                     self.conversation.code_chunks.push(chunk);
+                }
+            }
+        }
+
+        let mut prompt = format!(
+            r#"
+            Below are a list of code chunks, followed by the original locations of identifiers from the code-chunks.
+            Your job is to perform the following tasks:
+            1. Find out which identifiers are relevant to the query "{original_question}"
+            2. Reply with the index of each identifier, that might be relevant to answering the query
+            3. DO NOT cite indices that are not listed below
+            4. DO NOT answer the question, reply with one index per line
+            5. Reply with an empty output if none of the indices seem relevant
+            "#
+        );
+
+        // defining file, original file
+        let mut idxs: Vec<(String, Vec<String>)> = Vec::new();
+        let mut running_idx = 0;
+        for (relevant_chunks, path) in &processed {
+            if let Some(imported_files) = defining_files_by_path.get(path) {
+                if !imported_files.is_empty() {
+                    writeln!(&mut prompt, "===== code-chunks from {path} =====");
+                    for c in relevant_chunks {
+                        writeln!(&mut prompt, "{}", c.code);
+                    }
+                    for (ident, def_files) in imported_files {
+                        writeln!(
+                            &mut prompt,
+                            "{running_idx}. `{ident}` defined in {}",
+                            def_files
+                                .iter()
+                                .map(|s| s.as_str())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        );
+                        idxs.push((path.clone(), def_files.iter().cloned().collect::<Vec<_>>()));
+                        running_idx += 1;
+                    }
+                }
+            }
+        }
+
+        writeln!(
+            &mut prompt,
+            "Indexes relevant to answering the query \"{original_question}\" are:"
+        );
+
+        println!("{prompt}");
+
+        let reply = self
+            .llm_gateway
+            .chat(&[llm_gateway::api::Message::system(&prompt)], None)
+            .await?
+            .try_collect::<String>()
+            .await?;
+
+        println!("llm reply: {reply}");
+
+        // collect llm selected indices and dedup
+        let mut deduped_import_list: HashMap<String, HashSet<String>> = HashMap::new();
+        for i in reply.lines().map(|l| l.trim().parse::<usize>()) {
+            match i {
+                Ok(i) => {
+                    if let Some((path, import_list)) = idxs.get(i).cloned() {
+                        deduped_import_list
+                            .entry(path)
+                            .or_insert_with(HashSet::new)
+                            .extend(import_list.into_iter());
+                    } else {
+                        tracing::error!("invalid llm reply: `{reply}`");
+                    }
+                }
+                Err(_) => {
+                    tracing::error!("invalid llm reply: `{reply}`");
+                    break;
                 }
             }
         }
@@ -1041,6 +1314,7 @@ impl Agent {
                         .iter()
                         .map(|c| c.enumerate_lines())
                         .collect::<Vec<_>>(),
+                    "imports": deduped_import_list.get(&path),
                     "path_alias": self.conversation.path_alias(&path),
                 })
             })

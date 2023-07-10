@@ -88,7 +88,7 @@ pub(super) async fn handle(
     let ctx = CodeNavigationContext {
         repo_ref: repo_ref.clone(),
         token,
-        all_docs,
+        all_docs: &all_docs,
         source_document_idx,
     };
 
