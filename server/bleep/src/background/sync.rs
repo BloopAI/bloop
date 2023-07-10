@@ -18,7 +18,7 @@ pub(crate) struct SyncHandle {
     pub(crate) reporef: RepoRef,
     pub(crate) new_branch_filters: Option<crate::repo::BranchFilter>,
     pub(crate) app: Application,
-    pub(super) pipes: Arc<SyncPipes>,
+    pub(super) pipes: SyncPipes,
     exited: flume::Sender<SyncStatus>,
     exit_signal: flume::Receiver<SyncStatus>,
 }
@@ -94,7 +94,7 @@ impl SyncHandle {
         new_branch_filters: Option<crate::repo::BranchFilter>,
     ) -> Arc<Self> {
         let (exited, exit_signal) = flume::bounded(1);
-        let pipes = SyncPipes::new(reporef.clone(), status).into();
+        let pipes = SyncPipes::new(reporef.clone(), status);
         let sh = Self {
             app: app.clone(),
             reporef: reporef.clone(),

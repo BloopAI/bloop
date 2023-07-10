@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
 
 use crate::repo::{RepoRef, SyncStatus};
 
@@ -15,7 +15,7 @@ enum ControlEvent {
 pub struct SyncPipes {
     reporef: RepoRef,
     progress: super::ProgressStream,
-    event: Arc<RwLock<Option<ControlEvent>>>,
+    event: RwLock<Option<ControlEvent>>,
 }
 
 impl SyncPipes {
