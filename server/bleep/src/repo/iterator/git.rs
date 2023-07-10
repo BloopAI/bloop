@@ -58,7 +58,7 @@ impl GitWalker {
         let head_name = head
             .clone()
             .try_into_referent()
-            .map(|r| r.name().to_owned());
+            .map(|r| format!("origin/{}", human_readable_branch_name(&r)));
 
         let refs = local_git.references()?;
         let trees = if head_name.is_none() && matches!(branches, BranchFilter::Head) {
@@ -73,12 +73,13 @@ impl GitWalker {
             refs.all()?
                 .filter_map(Result::ok)
                 .map(|r| {
+                    let name = human_readable_branch_name(&r);
                     (
                         head_name
                             .as_ref()
-                            .map(|head| head.as_ref() == r.name())
+                            .map(|head| head == &name)
                             .unwrap_or_default(),
-                        human_readable_branch_name(&r),
+                        name,
                         r,
                     )
                 })
