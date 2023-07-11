@@ -9,6 +9,7 @@ type Props = {
   children: React.ReactNode;
   onHover: () => void;
   repoName: string;
+  relativePath: string;
   onRefDefClick: (lineNum: number, filePath: string) => void;
 };
 
@@ -31,6 +32,7 @@ const TooltipCode = ({
   onHover,
   repoName,
   onRefDefClick,
+  relativePath,
 }: Props) => {
   return (
     <Tippy
@@ -48,6 +50,7 @@ const TooltipCode = ({
           placement={attrs['data-placement']}
           data={data}
           repoName={repoName}
+          relativePath={relativePath}
         />
       )}
     >
