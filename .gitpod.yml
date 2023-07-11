@@ -14,6 +14,7 @@ additionalRepositories:
 tasks:
   - name: Backend
     init: |
+      nix run nixpkgs#cachix use bloopai
 
       # Setup Git LFS
       git lfs pull model
