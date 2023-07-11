@@ -35,6 +35,7 @@ type Props = {
   onMouseSelectEnd: (lineNum: number, charNum: number) => void;
   tokenInfo: TokenInfoWrapped;
   handleRefsDefsClick: (lineNum: number, filePath: string) => void;
+  relativePath: string;
 };
 
 const CodeContainerVirtualized = ({
@@ -57,6 +58,7 @@ const CodeContainerVirtualized = ({
   repoName,
   language,
   highlightColor,
+  relativePath,
 }: Props) => {
   const ref = useRef<FixedSizeList>(null);
   const listProps = useMemo(
@@ -176,6 +178,7 @@ const CodeContainerVirtualized = ({
                   repoName={repoName}
                   onRefDefClick={handleRefsDefsClick}
                   language={language}
+                  relativePath={relativePath}
                 />
               </div>
             )}

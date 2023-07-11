@@ -41,6 +41,7 @@ type Props = {
   onMouseSelectEnd?: (lineNum: number, charNum: number) => void;
   highlightColor?: string | null;
   leftHighlight?: boolean;
+  removePaddings?: boolean;
 };
 
 const CodeLine = ({
@@ -64,6 +65,7 @@ const CodeLine = ({
   isRemovedLine,
   lineNumberToShow = lineNumber + 1,
   leftHighlight,
+  removePaddings,
 }: Props) => {
   const codeRef = useRef<HTMLTableCellElement>(null);
 
@@ -248,9 +250,9 @@ const CodeLine = ({
         </div>
       ) : (
         <div
-          className={`${showLineNumbers ? 'px-1' : ''} text-center ${
-            lineHidden ? 'p-0' : ''
-          } ${
+          className={`${
+            showLineNumbers && !removePaddings ? 'px-1' : ''
+          } text-center ${lineHidden ? 'p-0' : ''} ${
             isRemovedLine
               ? 'bg-bg-danger/30'
               : isNewLine

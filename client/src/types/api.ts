@@ -184,36 +184,38 @@ export interface TokenInfoItem {
   data: TokenInfoDataItem[];
 }
 
+export type RefDefDataItem = {
+  kind: TokenInfoType;
+  range: {
+    start: {
+      byte: number;
+      line: number;
+      column: number;
+    };
+    end: {
+      byte: number;
+      line: number;
+      column: number;
+    };
+  };
+  snippet: {
+    data: string;
+    highlights: {
+      start: number;
+      end: number;
+    }[];
+    symbols: never[];
+    line_range: {
+      start: number;
+      end: number;
+    };
+  };
+};
+
 export interface TokenInfoResponse {
   data: {
     file: string;
-    data: {
-      kind: TokenInfoType;
-      range: {
-        start: {
-          byte: number;
-          line: number;
-          column: number;
-        };
-        end: {
-          byte: number;
-          line: number;
-          column: number;
-        };
-      };
-      snippet: {
-        data: string;
-        highlights: {
-          start: number;
-          end: number;
-        }[];
-        symbols: never[];
-        line_range: {
-          start: number;
-          end: number;
-        };
-      };
-    }[];
+    data: RefDefDataItem[];
   }[];
 }
 

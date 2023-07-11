@@ -5,9 +5,9 @@ import {
   FileItem,
   FileResItem,
   RangeLine,
+  RefDefDataItem,
   RepoItem,
   SuggestionsResponse,
-  TokenInfoItem,
   TokenInfoResponse,
 } from '../types/api';
 import {
@@ -17,8 +17,6 @@ import {
   RepoResult,
   ResultItemType,
   ResultType,
-  TokenInfo,
-  TokenInfoFile,
 } from '../types/results';
 import { FileTreeFileType } from '../types';
 import { sortFiles } from '../utils/file';
@@ -160,26 +158,52 @@ export const mapFileResult = (fileItem: FileItem) => {
 };
 
 export const mapTokenInfo = (tokenInfo: TokenInfoResponse['data']) => {
-  const map: Record<string, any> = {};
+  const map: {
+    references: Record<string, any>;
+    definitions: Record<string, any>;
+  } = {
+    references: [],
+    definitions: [],
+  };
+  const mapItem = (td: RefDefDataItem) => {
+    const trimmed = td.snippet.data.trimStart();
+    const lengthDiff = td.snippet.data.length - trimmed.length;
+    return {
+      ...td,
+      snippet: {
+        ...td.snippet,
+        data: trimmed,
+        highlights: td.snippet.highlights.map((h) => {
+          return { start: h.start - lengthDiff, end: h.end - lengthDiff };
+        }),
+      },
+    };
+  };
   tokenInfo.forEach((t) => {
-    map[t.file] = [
-      ...(map[t.file] || []),
-      ...t.data.map((td) => {
-        const trimmed = td.snippet.data.trimStart();
-        const lengthDiff = td.snippet.data.length - trimmed.length;
-        return {
-          ...td,
-          snippet: {
-            ...td.snippet,
-            data: trimmed,
-            highlights: td.snippet.highlights.map((h) => {
-              return { start: h.start - lengthDiff, end: h.end - lengthDiff };
-            }),
-          },
-        };
-      }),
-    ];
+    const references = t.data.filter((d) => d.kind === 'reference');
+    if (references.length) {
+      map.references[t.file] = [
+        ...(map.references[t.file] || []),
+        ...references.map(mapItem),
+      ];
+    }
+    const definitions = t.data.filter((d) => d.kind === 'definition');
+    if (definitions.length) {
+      map.definitions[t.file] = [
+        ...(map.definitions[t.file] || []),
+        ...definitions.map(mapItem),
+      ];
+    }
   });
 
-  return Object.entries(map).map(([file, data]) => ({ file, data }));
+  const arrayFromObject = (obj: Record<string, any>) =>
+    Object.entries(obj).map(([file, data]) => ({
+      file,
+      data,
+    }));
+
+  return {
+    references: arrayFromObject(map.references),
+    definitions: arrayFromObject(map.definitions),
+  };
 };
