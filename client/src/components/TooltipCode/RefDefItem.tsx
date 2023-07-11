@@ -25,7 +25,7 @@ const RefDefItem = ({
   kind,
   relativePath,
 }: Props) => {
-  const [isOpen, setOpen] = useState(false);
+  const [isOpen, setOpen] = useState(true);
   return (
     <div className="[&:not(:last-child)]:border-b border-bg-border" key={file}>
       <button
