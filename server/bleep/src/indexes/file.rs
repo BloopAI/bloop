@@ -21,10 +21,7 @@ use tracing::{info, trace, warn};
 pub use super::schema::File;
 
 #[cfg(feature = "debug")]
-use {
-    histogram::Histogram,
-    std::{sync::RwLock, time::Instant},
-};
+use std::time::Instant;
 
 use super::{
     reader::{ContentDocument, ContentReader, FileDocument, FileReader},
@@ -465,8 +462,6 @@ impl File {
             }
             RepoDirEntry::File(file) => {
                 trace!("writing file document");
-                #[cfg(feature = "debug")]
-                let buf_size = file.buffer.len();
                 let doc = file
                     .build_document(
                         self,
@@ -508,12 +503,7 @@ impl File {
                     .low()
             {
                 // default console formatter is different when we're debugging. need to print more info here.
-                warn!(
-                    ?relative_path,
-                    ?elapsed,
-                    buf_size,
-                    "file took too long to process"
-                )
+                warn!(?relative_path, ?elapsed, "file took too long to process")
             }
         }
 
