@@ -124,8 +124,8 @@ const Subheader = () => {
           i?.type !== 'search' &&
           index !== array.length - 1
         ) {
-          // is part of path to file and not ref/def
-          if (pathToFileInList && !i?.type) {
+          // is part of path to file and not ref/def and not before ref/def
+          if (pathToFileInList && !i?.type && !array[index - 1]?.type) {
             return false; // remove clusters of navigation items
           }
           pathToFileInList = true;
