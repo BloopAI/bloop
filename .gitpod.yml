@@ -49,5 +49,7 @@ tasks:
 
   - name: answer-api
     command: |
+      cd /workspace/answer-api
+      git checkout nix-cachix
       nix run /workspace/answer-api#
     openMode: tab-after
