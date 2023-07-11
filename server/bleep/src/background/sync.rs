@@ -18,7 +18,7 @@ pub(crate) struct SyncHandle {
     pub(crate) reporef: RepoRef,
     pub(crate) new_branch_filters: Option<crate::repo::BranchFilter>,
     pub(crate) app: Application,
-    pub(super) pipes: Arc<SyncPipes>,
+    pub(super) pipes: SyncPipes,
     exited: flume::Sender<SyncStatus>,
     exit_signal: flume::Receiver<SyncStatus>,
 }
@@ -87,23 +87,49 @@ impl Drop for SyncHandle {
 }
 
 impl SyncHandle {
-    pub(crate) fn new(
+    pub(crate) async fn new(
         app: Application,
         reporef: RepoRef,
         status: super::ProgressStream,
         new_branch_filters: Option<crate::repo::BranchFilter>,
     ) -> Arc<Self> {
         let (exited, exit_signal) = flume::bounded(1);
-        let pipes = SyncPipes::new(reporef.clone(), status).into();
-        Self {
-            app,
+        let pipes = SyncPipes::new(reporef.clone(), status);
+        let current = app
+            .repo_pool
+            .entry_async(reporef.clone())
+            .await
+            .or_insert_with(|| {
+                let name = reporef.to_string();
+                let disk_path = app
+                    .config
+                    .source
+                    .repo_path_for_name(&name.replace('/', "_"));
+
+                let remote = reporef.as_ref().into();
+
+                Repository {
+                    disk_path,
+                    remote,
+                    sync_status: SyncStatus::Queued,
+                    last_index_unix_secs: 0,
+                    last_commit_unix_secs: 0,
+                    most_common_lang: None,
+                    branch_filter: None,
+                }
+            });
+
+        let sh = Self {
+            app: app.clone(),
+            reporef: reporef.clone(),
             pipes,
-            reporef,
             new_branch_filters,
             exited,
             exit_signal,
-        }
-        .into()
+        };
+
+        sh.pipes.status(&sh, current.get().sync_status.clone());
+        sh.into()
     }
 
     pub(super) fn notify_done(&self) -> flume::Receiver<SyncStatus> {
@@ -333,23 +359,8 @@ impl SyncHandle {
         Some(new_status)
     }
 
-    /// Will return the current Repository, inserting a new one if none
-    pub(crate) async fn create_new(&self, repo: impl FnOnce() -> Repository) -> Repository {
-        let current = self
-            .app
-            .repo_pool
-            .entry_async(self.reporef.clone())
-            .await
-            .or_insert_with(repo)
-            .get()
-            .clone();
-
-        self.pipes.status(self, current.sync_status.clone());
-        current
-    }
-
-    pub(crate) async fn sync_lock(&self) -> Option<std::result::Result<(), RemoteError>> {
-        let new = self
+    pub(crate) async fn sync_lock(&self) -> std::result::Result<Repository, RemoteError> {
+        let repo = self
             .app
             .repo_pool
             .update_async(&self.reporef, |_k, repo| {
@@ -357,17 +368,18 @@ impl SyncHandle {
                     Err(RemoteError::SyncInProgress)
                 } else {
                     repo.sync_status = SyncStatus::Syncing;
-                    Ok(repo.sync_status.clone())
+                    Ok(repo.clone())
                 }
             })
             .await;
 
-        if let Some(Ok(new_status)) = new {
+        if let Some(Ok(repo)) = repo {
+            let new_status = repo.sync_status.clone();
             debug!(?self.reporef, ?new_status, "new status");
             self.pipes.status(self, new_status);
-            Some(Ok(()))
+            Ok(repo)
         } else {
-            new.map(|inner| inner.map(|_| ()))
+            repo.expect("repo was already deleted")
         }
     }
 }

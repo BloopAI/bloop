@@ -18,7 +18,8 @@ impl BoundSyncQueue {
             reporef,
             self.1.progress.clone(),
             Some(new_branches),
-        );
+        )
+        .await;
         self.1.queue.push(handle).await;
     }
 }

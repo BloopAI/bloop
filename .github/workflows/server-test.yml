@@ -30,7 +30,7 @@ jobs:
         run: nix develop -c bash -c 'cargo --locked fmt -p bleep -- --check'
 
       - name: Clippy
-        run: nix develop -c bash -c 'cargo --locked clippy -p bleep'
+        run: nix develop -c bash -c 'cargo --locked clippy -p bleep --features=ee'
 
       - name: Tests
         run: nix develop -c bash -c 'cargo --locked test -p bleep --release'

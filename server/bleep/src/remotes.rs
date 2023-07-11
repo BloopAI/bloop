@@ -11,7 +11,7 @@ use anyhow::Context;
 use gix::sec::identity::Account;
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
-use tracing::{error, warn};
+use tracing::{debug, error, warn};
 
 use crate::{
     background::SyncHandle,
@@ -298,6 +298,7 @@ pub(crate) enum BackendCredential {
 }
 
 impl BackendCredential {
+    #[tracing::instrument(fields(repo=%sync_handle.reporef), skip_all)]
     pub(crate) async fn sync(self, sync_handle: &SyncHandle) -> Result<()> {
         let SyncHandle { app, .. } = sync_handle;
 
@@ -305,33 +306,39 @@ impl BackendCredential {
         let existing = sync_handle.sync_lock().await;
 
         let Github(gh) = self;
-        let synced = match existing {
-            Some(Err(err)) => return Err(err),
-            Some(Ok(_)) => {
-                let repo = sync_handle
-                    .repo()
-                    .expect("repo exists & locked, this shouldn't happen");
-                gh.auth.pull_repo(repo).await
+        let mut synced = match existing {
+            Err(err) => return Err(err),
+            Ok(repo) if repo.last_index_unix_secs == 0 && repo.disk_path.exists() => {
+                // it is possible syncing was killed, but the repo is
+                // intact. pull if the dir exists, then quietly revert
+                // to cloning if that fails
+                if let Ok(success) = gh.auth.pull_repo(&repo).await {
+                    Ok(success)
+                } else {
+                    gh.auth.clone_repo(&repo).await
+                }
             }
-            None => {
-                let repo = create_repository(app, sync_handle).await;
-                gh.auth.clone_repo(repo).await
-            }
+            Ok(repo) if repo.last_index_unix_secs == 0 => gh.auth.clone_repo(&repo).await,
+            Ok(repo) => gh.auth.pull_repo(&repo).await,
         };
 
         let new_status = match synced {
             Ok(_) => SyncStatus::Queued,
-            Err(ref err) => {
+            Err(err) => {
+                warn!(?err, "sync failed; removing dir before retry");
+
                 let repo = sync_handle
                     .repo()
                     .expect("repo exists & locked, this shouldn't happen");
 
                 // try cloning again
-                _ = tokio::fs::remove_dir_all(&repo.disk_path).await;
+                let removed = tokio::fs::remove_dir_all(&repo.disk_path).await;
+                debug!(?removed, "removing recursively");
 
-                match gh.auth.clone_repo(repo).await {
+                synced = gh.auth.clone_repo(&repo).await;
+                match synced {
                     Ok(_) => SyncStatus::Queued,
-                    Err(_) => SyncStatus::Error {
+                    Err(ref err) => SyncStatus::Error {
                         message: err.to_string(),
                     },
                 }
@@ -345,26 +352,4 @@ impl BackendCredential {
         app.config.source.save_pool(app.repo_pool.clone())?;
         synced
     }
-}
-
-async fn create_repository<'a>(app: &'a Application, sync_handle: &SyncHandle) -> Repository {
-    let name = sync_handle.reporef.to_string();
-    let disk_path = app
-        .config
-        .source
-        .repo_path_for_name(&name.replace('/', "_"));
-
-    let remote = sync_handle.reporef.as_ref().into();
-
-    sync_handle
-        .create_new(|| Repository {
-            disk_path,
-            remote,
-            sync_status: SyncStatus::Syncing,
-            last_index_unix_secs: 0,
-            last_commit_unix_secs: 0,
-            most_common_lang: None,
-            branch_filter: None,
-        })
-        .await
 }

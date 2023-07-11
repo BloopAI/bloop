@@ -55,10 +55,19 @@ impl GitWalker {
 
         let local_git = git.to_thread_local();
         let mut head = local_git.head()?;
+
+        // HEAD name needs to be pinned to the remote pointer
+        //
+        // Otherwise the local branch will never advance to the
+        // remote's branch ref
+        //
+        // The easiest here is to check by name, and assume the
+        // default remote is `origin`, since we don't configure it
+        // otherwise.
         let head_name = head
             .clone()
             .try_into_referent()
-            .map(|r| r.name().to_owned());
+            .map(|r| format!("origin/{}", human_readable_branch_name(&r)));
 
         let refs = local_git.references()?;
         let trees = if head_name.is_none() && matches!(branches, BranchFilter::Head) {
@@ -72,16 +81,25 @@ impl GitWalker {
         } else {
             refs.all()?
                 .filter_map(Result::ok)
+                // Check if it's HEAD
+                // Normalize the name of the branch for further steps
+                //
                 .map(|r| {
+                    let name = human_readable_branch_name(&r);
                     (
                         head_name
                             .as_ref()
-                            .map(|head| head.as_ref() == r.name())
+                            .map(|head| head == &name)
                             .unwrap_or_default(),
-                        human_readable_branch_name(&r),
+                        name,
                         r,
                     )
                 })
+                // Only consider remote branches
+                //
+                .filter(|(_, name, _)| name.starts_with("origin/"))
+                // Apply branch filters, along whether it's HEAD
+                //
                 .filter(|(is_head, name, _)| branches.filter(*is_head, name))
                 .filter_map(|(is_head, branch, r)| -> Option<_> {
                     Some((
@@ -134,7 +152,7 @@ impl GitWalker {
                     }
 
                     // the HEAD branch will not have an origin prefix
-                    branches.insert(format!("origin/{}", branch.trim_start_matches("origin/")));
+                    branches.insert(branch);
                     acc
                 },
             );

@@ -138,6 +138,10 @@ async fn update_credentials(app: &Application) {
 }
 
 pub(crate) async fn check_repo_updates(app: Application) {
+    while app.credentials.github().is_none() {
+        sleep(Duration::from_millis(100)).await
+    }
+
     let handles: Arc<scc::HashMap<RepoRef, JoinHandle<_>>> = Arc::default();
     loop {
         app.repo_pool

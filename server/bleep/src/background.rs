@@ -224,7 +224,8 @@ impl BoundSyncQueue {
             }
 
             info!(%reporef, "queueing for sync");
-            let handle = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone(), None);
+            let handle =
+                SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone(), None).await;
             self.1.queue.push(handle).await;
             num_queued += 1;
         }
@@ -236,7 +237,7 @@ impl BoundSyncQueue {
     ///
     /// Returns the new status.
     pub(crate) async fn block_until_synced(self, reporef: RepoRef) -> anyhow::Result<SyncStatus> {
-        let handle = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone(), None);
+        let handle = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone(), None).await;
         let finished = handle.notify_done();
         self.1.queue.push(handle).await;
         Ok(finished.recv_async().await?)
