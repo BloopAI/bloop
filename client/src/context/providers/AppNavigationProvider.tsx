@@ -149,7 +149,7 @@ export const AppNavigationProvider = ({
 
   const navigateFullResult = useCallback(
     (repo: string, path: string, pathParams?: Record<string, string>) => {
-      setIsFileModalOpen(false);
+      closeFileModalOpen();
       saveState({
         type: 'full-result',
         repo,

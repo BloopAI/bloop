@@ -35,12 +35,13 @@ const Subheader = () => {
     let resultsInList: boolean;
     let pathToFileInList: boolean;
     let list: PathParts[] = historyPart
-      .map((item, i) => {
+      .map((item, i): (PathParts & { type: string }) | undefined => {
         const onClick = () => navigateBack(-(historyPart.length - 1 - i));
         if (item.type === 'repo' && !item.path) {
           return {
             label: item.repo!,
             onClick,
+            type: 'repo',
           };
         }
         if (
@@ -82,7 +83,7 @@ const Subheader = () => {
                 <FolderFilled sizeClassName="w-4 h-4" raw />
               ),
             onClick,
-            type: item.pathParams?.type,
+            type: item.type,
           };
         }
         if (
@@ -99,15 +100,17 @@ const Subheader = () => {
             type: 'results',
           };
         }
-        return {
-          label: item.query || 'Regex search',
-          icon: <RegexIcon sizeClassName="w-3 h-3" raw />,
-          onClick,
-          type: 'search',
-        };
+        if (historyPart[i - 1]?.query !== item.query) {
+          return {
+            label: item.query || 'Regex search',
+            icon: <RegexIcon sizeClassName="w-3 h-3" raw />,
+            onClick,
+            type: 'search',
+          };
+        }
       })
       .reverse()
-      .filter((i, index, array) => {
+      .filter((i, index, array): i is PathParts & { type: string } => {
         if (i?.type === 'results') {
           if (resultsInList) {
             return false; // remove clusters of Results
