@@ -28,11 +28,13 @@ export const buildURLPart = (navItem: NavigationItem) => {
       return `conversation-result?${new URLSearchParams({
         threadId: navItem.threadId?.toString() || '',
         recordId: navItem.recordId?.toString() || '',
+        ...navItem.pathParams,
       }).toString()}`;
     case 'article-response':
       return `article-response?${new URLSearchParams({
         threadId: navItem.threadId?.toString() || '',
         recordId: navItem.recordId?.toString() || '',
+        ...navItem.pathParams,
       }).toString()}`;
     default:
       return '';
