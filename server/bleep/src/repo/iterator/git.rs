@@ -55,6 +55,15 @@ impl GitWalker {
 
         let local_git = git.to_thread_local();
         let mut head = local_git.head()?;
+
+        // HEAD name needs to be pinned to the remote pointer
+        //
+        // Otherwise the local branch will never advance to the
+        // remote's branch ref
+        //
+        // The easiest here is to check by name, and assume the
+        // default remote is `origin`, since we don't configure it
+        // otherwise.
         let head_name = head
             .clone()
             .try_into_referent()
@@ -72,6 +81,9 @@ impl GitWalker {
         } else {
             refs.all()?
                 .filter_map(Result::ok)
+                // Check if it's HEAD
+                // Normalize the name of the branch for further steps
+                //
                 .map(|r| {
                     let name = human_readable_branch_name(&r);
                     (
@@ -83,7 +95,11 @@ impl GitWalker {
                         r,
                     )
                 })
+                // Only consider remote branches
+                //
                 .filter(|(_, name, _)| name.starts_with("origin/"))
+                // Apply branch filters, along whether it's HEAD
+                //
                 .filter(|(is_head, name, _)| branches.filter(*is_head, name))
                 .filter_map(|(is_head, branch, r)| -> Option<_> {
                     Some((

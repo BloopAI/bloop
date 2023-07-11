@@ -95,17 +95,11 @@ impl SyncHandle {
     ) -> Arc<Self> {
         let (exited, exit_signal) = flume::bounded(1);
         let pipes = SyncPipes::new(reporef.clone(), status);
-        let sh = Self {
-            app: app.clone(),
-            reporef: reporef.clone(),
-            pipes,
-            new_branch_filters,
-            exited,
-            exit_signal,
-        };
-
-        _ = sh
-            .create_new(|| {
+        let current = app
+            .repo_pool
+            .entry_async(reporef.clone())
+            .await
+            .or_insert_with(|| {
                 let name = reporef.to_string();
                 let disk_path = app
                     .config
@@ -123,9 +117,18 @@ impl SyncHandle {
                     most_common_lang: None,
                     branch_filter: None,
                 }
-            })
-            .await;
+            });
 
+        let sh = Self {
+            app: app.clone(),
+            reporef: reporef.clone(),
+            pipes,
+            new_branch_filters,
+            exited,
+            exit_signal,
+        };
+
+        sh.pipes.status(&sh, current.get().sync_status.clone());
         sh.into()
     }
 
@@ -354,21 +357,6 @@ impl SyncHandle {
         debug!(?self.reporef, ?new_status, "new status");
         self.pipes.status(self, new_status.clone());
         Some(new_status)
-    }
-
-    /// Will return the current Repository, inserting a new one if none
-    pub(crate) async fn create_new(&self, repo: impl FnOnce() -> Repository) -> Repository {
-        let current = self
-            .app
-            .repo_pool
-            .entry_async(self.reporef.clone())
-            .await
-            .or_insert_with(repo)
-            .get()
-            .clone();
-
-        self.pipes.status(self, current.sync_status.clone());
-        current
     }
 
     pub(crate) async fn sync_lock(&self) -> std::result::Result<Repository, RemoteError> {
