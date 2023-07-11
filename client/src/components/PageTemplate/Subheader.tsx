@@ -83,7 +83,7 @@ const Subheader = () => {
                 <FolderFilled sizeClassName="w-4 h-4" raw />
               ),
             onClick,
-            type: item.type,
+            type: item.pathParams?.type || '',
           };
         }
         if (
@@ -124,6 +124,7 @@ const Subheader = () => {
           i?.type !== 'search' &&
           index !== array.length - 1
         ) {
+          // is part of path to file and not ref/def
           if (pathToFileInList && !i?.type) {
             return false; // remove clusters of navigation items
           }
