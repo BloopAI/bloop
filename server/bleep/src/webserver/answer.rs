@@ -535,7 +535,7 @@ impl Conversation {
                     llm_gateway::api::Message::PlainText {
                         role,
                         ref mut content,
-                    } if role == "user" && content != "[HIDDEN]" => {
+                    } if (role == "user" || role == "assistant") && content != "[HIDDEN]" => {
                         *content = "[HIDDEN]".into();
                         true
                     }
@@ -751,8 +751,8 @@ impl Agent {
 
                 let hyde_docs = self.hyde(query).await?;
                 if !hyde_docs.is_empty() {
-                    let hyde_docs = hyde_docs.iter().map(|d| d.into()).collect();
-                    let hyde_results = self.batch_semantic_search(hyde_docs, 10, 0, true).await?;
+                    let hyde_doc = hyde_docs.first().unwrap().into();
+                    let hyde_results = self.semantic_search(hyde_doc, 10, 0, true).await?;
                     results.extend(hyde_results);
                 }
 
@@ -1408,6 +1408,7 @@ impl Agent {
             .await
     }
 
+    #[allow(dead_code)]
     async fn batch_semantic_search(
         &self,
         queries: Vec<Literal<'_>>,
@@ -1650,7 +1651,7 @@ mod tests {
             vec![
                 llm_gateway::api::Message::system("foo"),
                 llm_gateway::api::Message::user("[HIDDEN]"),
-                llm_gateway::api::Message::assistant("baz"),
+                llm_gateway::api::Message::assistant("[HIDDEN]"),
                 llm_gateway::api::Message::user("[HIDDEN]"),
                 llm_gateway::api::Message::assistant("quux"),
                 llm_gateway::api::Message::user("fred"),

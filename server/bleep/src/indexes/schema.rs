@@ -8,7 +8,7 @@ use crate::{db::SqlDb, semantic::Semantic};
 #[cfg(feature = "debug")]
 use {
     histogram::Histogram,
-    std::{sync::RwLock, time::Instant},
+    std::sync::{Arc, RwLock},
 };
 
 /// A schema for indexing all files and directories, linked to a
@@ -20,7 +20,7 @@ pub struct File {
     pub(super) sql: SqlDb,
 
     #[cfg(feature = "debug")]
-    histogram: Arc<RwLock<Histogram>>,
+    pub histogram: Arc<RwLock<Histogram>>,
 
     /// Unique ID for the file in a repo
     pub unique_hash: Field,
