@@ -59,7 +59,7 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
   }, [repository.files, selectedBranch]);
 
   useEffect(() => {
-    if (!readmeData) {
+    if (!readmeData?.data?.[0]?.data?.contents) {
       return;
     }
     setReadme({

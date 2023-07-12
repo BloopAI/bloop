@@ -121,6 +121,16 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
           typeof children[0] === 'string' ? children[0].replace(/\n$/, '') : '';
         const lines =
           matchLines?.[1].split('-').map((l) => Number(l.slice(1))) || [];
+        const colorPreview =
+          children[0] &&
+          children.length === 1 &&
+          typeof children[0] === 'string' &&
+          /(^#[0-9A-F]{6}$)|(^#[0-9A-F]{3}$)/i.test(children[0]) ? (
+            <span
+              className="w-3 h-3 inline-block"
+              style={{ backgroundColor: children[0] }}
+            />
+          ) : null;
         return !inline && matchLang?.[1] && typeof children[0] === 'string' ? (
           matchPath?.[1] ? (
             <CodeWithBreadcrumbs
@@ -134,6 +144,13 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
           ) : (
             <NewCode code={code} language={matchLang[1]} />
           )
+        ) : colorPreview ? (
+          <span className="inline-flex gap-1.5 items-center">
+            {colorPreview}
+            <code {...props} className={className}>
+              {children}
+            </code>
+          </span>
         ) : (
           <code {...props} className={className}>
             {children}
