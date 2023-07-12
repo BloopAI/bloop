@@ -14,7 +14,6 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, error, warn};
 
 use crate::{
-    background::SyncHandle,
     remotes,
     repo::{Backend, RepoError, RepoRef, Repository, SyncStatus},
     Application,
@@ -298,28 +297,24 @@ pub(crate) enum BackendCredential {
 }
 
 impl BackendCredential {
-    #[tracing::instrument(fields(repo=%sync_handle.reporef), skip_all)]
-    pub(crate) async fn sync(self, sync_handle: &SyncHandle) -> Result<()> {
-        let SyncHandle { app, .. } = sync_handle;
-
+    pub(crate) async fn sync(self, existing: Result<Repository>) -> Result<SyncStatus> {
         use BackendCredential::*;
-        let existing = sync_handle.sync_lock().await;
 
         let Github(gh) = self;
         let mut synced = match existing {
             Err(err) => return Err(err),
-            Ok(repo) if repo.last_index_unix_secs == 0 && repo.disk_path.exists() => {
+            Ok(ref repo) if repo.last_index_unix_secs == 0 && repo.disk_path.exists() => {
                 // it is possible syncing was killed, but the repo is
                 // intact. pull if the dir exists, then quietly revert
                 // to cloning if that fails
-                if let Ok(success) = gh.auth.pull_repo(&repo).await {
+                if let Ok(success) = gh.auth.pull_repo(repo).await {
                     Ok(success)
                 } else {
-                    gh.auth.clone_repo(&repo).await
+                    gh.auth.clone_repo(repo).await
                 }
             }
-            Ok(repo) if repo.last_index_unix_secs == 0 => gh.auth.clone_repo(&repo).await,
-            Ok(repo) => gh.auth.pull_repo(&repo).await,
+            Ok(ref repo) if repo.last_index_unix_secs == 0 => gh.auth.clone_repo(repo).await,
+            Ok(ref repo) => gh.auth.pull_repo(repo).await,
         };
 
         let new_status = match synced {
@@ -327,9 +322,7 @@ impl BackendCredential {
             Err(err) => {
                 warn!(?err, "sync failed; removing dir before retry");
 
-                let repo = sync_handle
-                    .repo()
-                    .expect("repo exists & locked, this shouldn't happen");
+                let repo = existing.expect("repo exists & locked, this shouldn't happen");
 
                 // try cloning again
                 let removed = tokio::fs::remove_dir_all(&repo.disk_path).await;
@@ -345,11 +338,6 @@ impl BackendCredential {
             }
         };
 
-        sync_handle
-            .set_status(|_| new_status)
-            .expect("unlocking repo failed, this shouldn't happen");
-
-        app.config.source.save_pool(app.repo_pool.clone())?;
-        synced
+        synced.map(|_| new_status)
     }
 }

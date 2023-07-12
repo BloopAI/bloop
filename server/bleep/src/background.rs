@@ -156,9 +156,14 @@ impl SyncQueue {
                                 info!(?next.reporef, "indexing");
 
                                 let result = next.run(permit).await;
+                                _ = next.app.config.source.save_pool(next.app.repo_pool.clone());
                                 _ = active.remove(&next.reporef);
 
                                 debug!(?result, "sync finished");
+
+                                if next.exited.send(result).is_err() {
+                                    debug!("notification failed, repo probably deleted");
+                                }
                             });
                         }
                         Err((_, next)) => {

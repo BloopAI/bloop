@@ -19,7 +19,7 @@ pub(crate) struct SyncHandle {
     pub(crate) new_branch_filters: Option<crate::repo::BranchFilter>,
     pub(crate) app: Application,
     pub(super) pipes: SyncPipes,
-    exited: flume::Sender<SyncStatus>,
+    pub(super) exited: flume::Sender<SyncStatus>,
     exit_signal: flume::Receiver<SyncStatus>,
 }
 
@@ -52,37 +52,14 @@ pub(super) enum SyncError {
 
     #[error("cancelled by user")]
     Cancelled,
+
+    #[error("removed during sync")]
+    InconsistentState,
 }
 
 impl PartialEq for SyncHandle {
     fn eq(&self, other: &Self) -> bool {
         self.reporef == other.reporef
-    }
-}
-
-impl Drop for SyncHandle {
-    fn drop(&mut self) {
-        let status = self.set_status(|v| {
-            use SyncStatus::*;
-            match &v.sync_status {
-                Indexing | Syncing => Error {
-                    message: "unknown".into(),
-                },
-                Cancelling => Cancelled,
-                other => other.clone(),
-            }
-        });
-
-        _ = self.app.config.source.save_pool(self.app.repo_pool.clone());
-
-        debug!(?status, %self.reporef, "normalized status after sync");
-        if self
-            .exited
-            .send(status.unwrap_or(SyncStatus::Removed))
-            .is_err()
-        {
-            debug!("notification failed, repo probably deleted");
-        }
     }
 }
 
@@ -117,19 +94,22 @@ impl SyncHandle {
                     most_common_lang: None,
                     branch_filter: None,
                 }
-            });
+            })
+            .get()
+            .sync_status
+            .clone();
 
-        let sh = Self {
+        pipes.status(current);
+
+        Self {
             app: app.clone(),
             reporef: reporef.clone(),
             pipes,
             new_branch_filters,
             exited,
             exit_signal,
-        };
-
-        sh.pipes.status(current.get().sync_status.clone());
-        sh.into()
+        }
+        .into()
     }
 
     pub(super) fn notify_done(&self) -> flume::Receiver<SyncStatus> {
@@ -137,7 +117,7 @@ impl SyncHandle {
     }
 
     /// The permit that's taken here is exclusively for parallelism control.
-    pub(super) async fn run(&self, _permit: OwnedSemaphorePermit) -> Result<SyncStatus> {
+    pub(super) async fn run(&self, _permit: OwnedSemaphorePermit) -> SyncStatus {
         debug!(?self.reporef, "syncing repo");
         let Application { ref repo_pool, .. } = self.app;
 
@@ -149,29 +129,42 @@ impl SyncHandle {
             .unwrap_or(false);
 
         if !removed {
-            if let Err(err) = self.sync().await {
-                error!(?err, ?self.reporef, "failed to sync repository");
-                return Err(err);
+            match self.sync().await {
+                Ok(status) => {
+                    self.set_status(|_| status).unwrap();
+                    _ = self.app.config.source.save_pool(self.app.repo_pool.clone());
+                }
+                Err(err) => {
+                    error!(?err, ?self.reporef, "failed to sync repository");
+                    return self
+                        .set_status(|_| SyncStatus::Error {
+                            message: err.to_string(),
+                        })
+                        .unwrap();
+                }
             }
         }
 
         if self.pipes.is_cancelled() && !self.pipes.is_removed() {
-            self.set_status(|_| SyncStatus::Cancelled);
-            debug!(?self.reporef, "cancelled while cloning");
-            return Err(SyncError::Cancelled);
+            return self.set_status(|_| SyncStatus::Cancelled).unwrap();
         }
 
-        let indexed = self.index().await;
+        let repo = repo_pool
+            .read_async(&self.reporef, |_k, v| v.clone())
+            .await
+            .unwrap();
+
+        let indexed = self.index(repo).await;
         let status = match indexed {
             Ok(Either::Left(status)) => Some(status),
             Ok(Either::Right(state)) => {
                 info!("commit complete; indexing done");
-                self.app.repo_pool.update(&self.reporef, |_k, repo| {
-                    repo.sync_done_with(self.new_branch_filters.as_ref(), state)
-                });
 
                 // technically `sync_done_with` does this, but we want to send notifications
-                self.set_status(|_| SyncStatus::Done)
+                self.set_status(|repo| {
+                    repo.sync_done_with(self.new_branch_filters.as_ref(), state);
+                    SyncStatus::Done
+                })
             }
             Err(SyncError::Cancelled) => self.set_status(|_| SyncStatus::Cancelled),
             Err(err) => {
@@ -182,29 +175,17 @@ impl SyncHandle {
             }
         };
 
-        Ok(status.expect("failed to update repo status"))
+        status.expect("failed to update repo status")
     }
 
-    async fn index(&self) -> Result<Either<SyncStatus, Arc<RepoMetadata>>> {
+    async fn index(&self, mut repo: Repository) -> Result<Either<SyncStatus, Arc<RepoMetadata>>> {
         use SyncStatus::*;
-        let Application {
-            ref indexes,
-            ref repo_pool,
-            ..
-        } = self.app;
+        let Application { ref indexes, .. } = self.app;
 
         let writers = indexes.writers().await.map_err(SyncError::Tantivy)?;
-        let repo = {
-            let mut orig = repo_pool
-                .read_async(&self.reporef, |_k, v| v.clone())
-                .await
-                .unwrap();
-
-            if let Some(ref bf) = self.new_branch_filters {
-                orig.branch_filter = bf.patch(orig.branch_filter.as_ref());
-            }
-            orig
-        };
+        if let Some(ref bf) = self.new_branch_filters {
+            repo.branch_filter = bf.patch(repo.branch_filter.as_ref());
+        }
 
         let indexed = match repo.sync_status {
             current @ (Uninitialized | Syncing | Indexing) => return Ok(Either::Left(current)),
@@ -262,7 +243,7 @@ impl SyncHandle {
         deleted.map(|_| Either::Left(SyncStatus::Removed))
     }
 
-    async fn sync(&self) -> Result<()> {
+    async fn sync(&self) -> Result<SyncStatus> {
         let repo = self.reporef.clone();
         let backend = repo.backend();
         let creds = match self.app.credentials.for_repo(&repo) {
@@ -283,18 +264,20 @@ impl SyncHandle {
                     .or_insert_with(|| Repository::local_from(&repo));
 
                 // we _never_ touch the git repositories of local repos
-                return Ok(());
+                return Ok(SyncStatus::Queued);
             }
         };
 
-        let synced = creds.sync(self).await;
+        let locked = self.sync_lock().await;
+        let synced = creds.sync(locked).await;
         if let Err(RemoteError::RemoteNotFound) = synced {
-            self.set_status(|_| SyncStatus::RemoteRemoved).unwrap();
-            error!(?repo, "remote repository removed; disabling local syncing");
-
             // we want indexing to pick this up later and handle the new state
             // all local cleanups are done, so everything should be consistent
-            return Ok(());
+
+            error!(?repo, "remote repository removed; disabling local syncing");
+            return self
+                .set_status(|_| SyncStatus::RemoteRemoved)
+                .ok_or(SyncError::InconsistentState);
         }
 
         synced.map_err(SyncError::Sync)
@@ -339,15 +322,9 @@ impl SyncHandle {
         &self.pipes
     }
 
-    pub(crate) fn repo(&self) -> Option<Repository> {
-        self.app
-            .repo_pool
-            .read(&self.reporef, |_k, repo| repo.clone())
-    }
-
-    pub(crate) fn set_status(
+    pub(super) fn set_status(
         &self,
-        updater: impl FnOnce(&Repository) -> SyncStatus,
+        updater: impl FnOnce(&mut Repository) -> SyncStatus,
     ) -> Option<SyncStatus> {
         let new_status = self.app.repo_pool.update(&self.reporef, move |_k, repo| {
             repo.sync_status = (updater)(repo);

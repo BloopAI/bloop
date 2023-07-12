@@ -38,8 +38,8 @@ pub(crate) struct Repo {
     pub(super) branches: Vec<Branch>,
 }
 
-impl From<(&RepoRef, &Repository)> for Repo {
-    fn from((key, repo): (&RepoRef, &Repository)) -> Self {
+impl From<(RepoRef, Repository)> for Repo {
+    fn from((key, repo): (RepoRef, Repository)) -> Self {
         use crate::repo::BranchFilter::*;
         let (head, branches) = 'branch_list: {
             let default = ("HEAD".to_string(), vec![]);
@@ -109,7 +109,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
         Repo {
             provider: key.backend(),
             name: key.display_name(),
-            repo_ref: key.clone(),
+            repo_ref: key,
             sync_status: repo.sync_status.clone(),
             local_duplicates: vec![],
             last_update: NaiveDateTime::from_timestamp_opt(repo.last_commit_unix_secs as i64, 0)
@@ -125,7 +125,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
                         .unwrap(),
                 ),
             },
-            most_common_lang: repo.most_common_lang.clone(),
+            most_common_lang: repo.most_common_lang,
             branch_filter,
             branches,
         }
@@ -245,10 +245,12 @@ pub(super) async fn indexed(
     let mut repos = vec![];
     app.0
         .repo_pool
-        .scan_async(|k, v| repos.push(Repo::from((k, v))))
+        .scan_async(|k, v| repos.push((k.clone(), v.clone())))
         .await;
 
-    Ok(json(ReposResponse::List(repos)))
+    Ok(json(ReposResponse::List(
+        repos.into_iter().map(Repo::from).collect(),
+    )))
 }
 
 /// Get details of an indexed repository based on their id
@@ -258,10 +260,10 @@ pub(super) async fn get_by_id(
 ) -> Result<Json<super::Response<'static>>> {
     match app
         .repo_pool
-        .read_async(&repo, |k, v| ReposResponse::Item(Repo::from((k, v))))
+        .read_async(&repo, |k, v| (k.clone(), v.clone()))
         .await
     {
-        Some(result) => Ok(json(result)),
+        Some(result) => Ok(json(ReposResponse::Item(Repo::from(result)))),
         None => Err(Error::new(ErrorKind::NotFound, "Can't find repository")),
     }
 }
@@ -416,7 +418,7 @@ pub(super) async fn scan_local(
                     let mut repo = Repository::local_from(&reporef);
                     repo.sync_status = SyncStatus::Uninitialized;
 
-                    (&reporef, &repo).into()
+                    (reporef, repo).into()
                 })
                 .collect(),
         )))
@@ -426,19 +428,16 @@ pub(super) async fn scan_local(
 }
 
 async fn list_unique_repos(repo_pool: RepositoryPool, other: HashSet<Repo>) -> Vec<Repo> {
-    let mut repos = HashSet::new();
+    let mut repos = Vec::new();
     repo_pool
         .scan_async(|k, v| {
-            // this will hash to the same thing as another object due
-            // to `Hash` proxying to `repo_ref`, so stay on the safe
-            // side and check like good citizens
-            let repo = Repo::from((k, v));
-            repos.insert(repo);
+            repos.push((k.clone(), v.clone()));
         })
         .await;
 
-    repos.extend(other);
-    repos.into_iter().collect()
+    let mut out: HashSet<_> = repos.into_iter().map(Repo::from).collect();
+    out.extend(other);
+    out.into_iter().collect()
 }
 
 #[cfg(test)]
