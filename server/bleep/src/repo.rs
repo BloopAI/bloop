@@ -38,7 +38,7 @@ impl RepoRef {
         match backend {
             Github => Ok(RepoRef {
                 backend,
-                name: name.as_ref().to_owned(),
+                name: name.as_ref().to_lowercase(),
             }),
             Local => {
                 let path = Path::new(name.as_ref());
