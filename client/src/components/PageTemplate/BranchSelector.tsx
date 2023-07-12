@@ -103,7 +103,7 @@ const BranchSelector = () => {
         }
         if (data.ev?.index_percent) {
           setIndexing((prev) => ({
-            branch: data.b.select[0],
+            branch: data.b?.select[0],
             percentage: data.ev?.index_percent || 1,
           }));
         }
