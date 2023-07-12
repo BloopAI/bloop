@@ -13,7 +13,6 @@ bloop:
   githubClientSecret: ""
   instanceDomain: ""
   answerApiUrl: ""
-  qdrantUrl: ""
   analyticsKey: ""
   analyticsKeyFE: ""
   analyticsDataPlane: ""
