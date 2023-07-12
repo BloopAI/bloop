@@ -94,7 +94,7 @@ impl SyncHandle {
         new_branch_filters: Option<crate::repo::BranchFilter>,
     ) -> Arc<Self> {
         let (exited, exit_signal) = flume::bounded(1);
-        let pipes = SyncPipes::new(reporef.clone(), status);
+        let pipes = SyncPipes::new(reporef.clone(), new_branch_filters.clone(), status);
         let current = app
             .repo_pool
             .entry_async(reporef.clone())
@@ -128,7 +128,7 @@ impl SyncHandle {
             exit_signal,
         };
 
-        sh.pipes.status(&sh, current.get().sync_status.clone());
+        sh.pipes.status(current.get().sync_status.clone());
         sh.into()
     }
 
@@ -355,7 +355,7 @@ impl SyncHandle {
         })?;
 
         debug!(?self.reporef, ?new_status, "new status");
-        self.pipes.status(self, new_status.clone());
+        self.pipes.status(new_status.clone());
         Some(new_status)
     }
 
@@ -376,7 +376,7 @@ impl SyncHandle {
         if let Some(Ok(repo)) = repo {
             let new_status = repo.sync_status.clone();
             debug!(?self.reporef, ?new_status, "new status");
-            self.pipes.status(self, new_status);
+            self.pipes.status(new_status);
             Ok(repo)
         } else {
             repo.expect("repo was already deleted")
