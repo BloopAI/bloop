@@ -1337,7 +1337,7 @@ h5, .h5 {
   color: rgb(var(--label-link));
 }
 
-.article-response a {
+.article-response a, .summary-card a {
   background-color: rgb(var(--bg-shade));
   border: 1px solid rgb(var(--bg-border));
   border-radius: 4px;
@@ -1349,7 +1349,7 @@ h5, .h5 {
   display: unset;
 }
 
-.article-response code {
+.article-response code, .summary-card code {
   color: #14B8A6;
   font-family: Menlo, sans-serif;
   font-size: 0.95em;

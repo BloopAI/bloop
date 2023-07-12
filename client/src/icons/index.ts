@@ -111,3 +111,4 @@ export { default as Def } from './Def';
 export { default as Ref } from './Ref';
 export { default as CodeIcon } from './Code';
 export { default as WrenchAndScrewdriver } from './WrenchAndScrewdriver';
+export { default as Paper } from './Paper';

@@ -5,6 +5,7 @@ import {
   Checkmark,
   List,
   MagnifyTool,
+  Paper,
   PointClick,
   QuillIcon,
   Sparkles,
@@ -21,6 +22,7 @@ import { ChatContext } from '../../../context/chatContext';
 import Button from '../../Button';
 import { AppNavigationContext } from '../../../context/appNavigationContext';
 import { FileModalContext } from '../../../context/fileModalContext';
+import MarkdownWithCode from '../../MarkdownWithCode';
 import MessageFeedback from './MessageFeedback';
 import FileChip from './FileChip';
 
@@ -118,17 +120,12 @@ const ConversationMessage = ({
               <List />
             </Button>
           </div>
-          {!isLoading &&
-          (!!results?.Filesystem?.length || !!results?.Article) ? (
+          {!isLoading && !!results?.Filesystem?.length ? (
             <div className="flex items-center justify-end justify-self-end">
               <button
                 className="text-bg-main body-s mr-2"
                 onClick={() => {
-                  if (results?.Article) {
-                    navigateArticleResponse(i, threadId);
-                  } else {
-                    navigateConversationResults(i, threadId);
-                  }
+                  navigateConversationResults(i, threadId);
                 }}
               >
                 <Trans>View</Trans>
@@ -140,7 +137,7 @@ const ConversationMessage = ({
       {message ? (
         <>
           <div
-            className={`relative group-custom bg-chat-bg-shade mt-3 flex items-start p-4 gap-3 border border-chat-bg-divider rounded-lg`}
+            className={`relative bg-chat-bg-shade mt-3 flex items-start p-4 gap-3 border border-chat-bg-divider rounded-lg`}
           >
             <div className="relative">
               <div className="w-6 h-6 rounded-full bg-chat-bg-border overflow-hidden flex items-center justify-center select-none">
@@ -173,6 +170,60 @@ const ConversationMessage = ({
               </pre>
             )}
           </div>
+          {!isLoading && !!results?.Article ? (
+            <div className="mt-3 select-none cursor-default group-summary">
+              {results.Article.split('\n\n')
+                .slice(0, 3)
+                .reverse()
+                .map((p, index, array) =>
+                  index === 2 || array.length === 1 ? (
+                    <div
+                      key={index}
+                      className="p-4 flex items-start gap-3 rounded-md border border-chat-bg-border bg-chat-bg-base shadow-low h-30 overflow-hidden relative z-30"
+                    >
+                      <div className="py-1.5 px-2 rounded bg-chat-bg-border overflow-hidden select-none flex-shrink-0">
+                        <div className="w-3 h-4">
+                          <Paper raw />
+                        </div>
+                      </div>
+                      <p className="body-s text-label-title overflow-hidden max-h-full pointer-events-none summary-card">
+                        <MarkdownWithCode
+                          openFileModal={() => {}}
+                          repoName={''}
+                          markdown={p}
+                        />
+                      </p>
+                      <button
+                        className="absolute top-0 bottom-0 left-0 right-0 opacity-0 bg-chat-bg-base/75 hover:opacity-100 hover:backdrop-blur-sm"
+                        onClick={() => {
+                          navigateArticleResponse(i, threadId);
+                        }}
+                      >
+                        <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 body-s-strong text-label-link">
+                          Open results
+                        </span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      key={index}
+                      className={`px-2 py-1.5 rounded-md border pointer-events-none border-chat-bg-border 
+                      bg-chat-bg-base h-30 overflow-hidden caption relative ${
+                        index === 0 || array.length === 2
+                          ? 'z-0 mx-6 -mb-28 group-summary-hover:-mb-[6.5rem]'
+                          : 'z-10 mx-3 -mb-28 group-summary-hover:-mb-24'
+                      } transition-all duration-200 summary-card`}
+                    >
+                      <MarkdownWithCode
+                        openFileModal={() => {}}
+                        repoName={''}
+                        markdown={p}
+                      />
+                    </div>
+                  ),
+                )}
+            </div>
+          ) : null}
           <MessageFeedback
             showInlineFeedback={showInlineFeedback}
             isHistory={isHistory}
