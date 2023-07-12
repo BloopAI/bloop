@@ -25,7 +25,7 @@ pub enum Backend {
 }
 
 // Repository identifier
-#[derive(Hash, Eq, PartialEq, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct RepoRef {
     pub backend: Backend,
     pub name: String,
@@ -120,6 +120,22 @@ impl RepoRef {
         }
     }
 }
+
+impl std::hash::Hash for RepoRef {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.to_string().to_lowercase().hash(state)
+    }
+}
+
+impl PartialEq for RepoRef {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_string()
+            .to_lowercase()
+            .eq(&other.to_string().to_lowercase())
+    }
+}
+
+impl Eq for RepoRef {}
 
 impl AsRef<RepoRef> for RepoRef {
     fn as_ref(&self) -> &RepoRef {
