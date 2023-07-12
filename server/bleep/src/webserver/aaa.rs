@@ -353,7 +353,7 @@ async fn user_auth(
         let org_name = {
             let cred = app.credentials.github().unwrap();
             match cred.auth {
-                remotes::github::Auth::App { org, .. } => org.clone(),
+                remotes::github::Auth::App { org, .. } => org.to_lowercase(),
                 _ => panic!("backend has invalid github credentials"),
             }
         };
