@@ -62,12 +62,15 @@ const BranchSelector = () => {
     );
     eventSource.onmessage = (ev) => {
       try {
+        console.log(ev.data);
         const data = JSON.parse(ev.data);
         if (data.ref !== tab.key) {
           return;
         }
         if (data.ev?.status_change) {
-          if (data.ev.status_change.branch_filter) {
+          if (
+            data.ev.status_change.branch_filter.select[0].status === 'indexing'
+          ) {
             setIndexing({
               branch: data.ev.status_change.branch_filter.select[0],
               percentage: 1,
