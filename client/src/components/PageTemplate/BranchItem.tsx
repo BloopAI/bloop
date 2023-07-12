@@ -79,7 +79,7 @@ const BranchItem = ({
           )}
         </button>
       )}
-      {isWaitingSync && !isIndexed && isIndexing && (
+      {!isIndexed && isIndexing && (
         <div className="absolute bottom-1.5 left-0 w-full px-2">
           <ProgressBar progress={percentage} />
         </div>
