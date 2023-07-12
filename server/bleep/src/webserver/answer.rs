@@ -1184,15 +1184,25 @@ impl Agent {
             }
         }
 
-        let mut prompt = format!(
-            r#"
-            "#
-        );
+        let mut prompt = String::default();
 
         // defining file, original file
         let mut idxs: Vec<(String, String)> = Vec::new();
         let mut running_idx = 0;
         for (relevant_chunks, path) in &processed {
+            let n = 50;
+            let head = self
+                .app
+                .indexes
+                .file
+                .head(&self.conversation.repo_ref, path, None, n)
+                .await;
+            if let Ok(Some(h)) = head {
+                writeln!(&mut prompt, "===== first {n} lines of {path} =====");
+                writeln!(&mut prompt, "{h}");
+            } else {
+                tracing::error!("code-nav: invalid path: `{path}`");
+            }
             if let Some(imported_files) = defining_files_by_path.get(path) {
                 if !imported_files.is_empty() {
                     writeln!(&mut prompt, "===== code-chunks from {path} =====");

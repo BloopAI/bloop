@@ -296,6 +296,28 @@ impl Indexer<File> {
         self.top_hit(query, searcher).await
     }
 
+    // fetches the first N lines of the file
+    pub async fn head(
+        &self,
+        repo_ref: &RepoRef,
+        relative_path: &str,
+        branch: Option<&str>,
+        n: usize,
+    ) -> Result<Option<String>> {
+        self.by_path(repo_ref, relative_path, branch)
+            .await
+            .map(|r| {
+                r.map(|doc| {
+                    doc.content
+                        .lines()
+                        .take(n)
+                        .map(ToOwned::to_owned)
+                        .collect::<Vec<String>>()
+                        .join("\n")
+                })
+            })
+    }
+
     async fn top_hit(
         &self,
         query: Box<dyn Query>,
