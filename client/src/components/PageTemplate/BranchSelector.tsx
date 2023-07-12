@@ -69,7 +69,8 @@ const BranchSelector = () => {
         }
         if (data.ev?.status_change) {
           if (
-            data.ev.status_change.branch_filter.select[0].status === 'indexing'
+            data.ev.status_change.branch_filter &&
+            data.ev.status_change.status === 'indexing'
           ) {
             setIndexing({
               branch: data.ev.status_change.branch_filter.select[0],
