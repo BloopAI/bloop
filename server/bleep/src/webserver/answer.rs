@@ -1048,29 +1048,6 @@ impl Agent {
                     .expect("failed to get hoverables");
 
                 let hoverables = document.hoverable_ranges();
-                // let hoverables = document.symbol_locations.scope_graph().map(|sg| {
-                //     sg.graph
-                //         .node_indices()
-                //         .filter(|idx| {
-                //             matches!(
-                //                 sg.get_node(*idx).unwrap(),
-                //                 NodeKind::Def(_) | NodeKind::Ref(_)
-                //             )
-                //         })
-                //         .filter(|idx| {
-                //             !matches!(
-                //                 sg.symbol_name_of(*idx),
-                //                 Some("var")
-                //                     | Some("variable")
-                //                     | Some("parameter")
-                //                     | Some("local")
-                //                     | Some("property")
-                //                     | Some("field")
-                //             )
-                //         })
-                //         .map(|idx| sg.get_node(idx).unwrap().range())
-                //         .collect::<Vec<_>>()
-                // });
 
                 if let Some(hr) = hoverables {
                     for rc in relevant_chunks {
@@ -1108,29 +1085,6 @@ impl Agent {
                         .push((text.to_owned(), range.clone()));
                     map
                 });
-
-            // let mut selected_idents = Vec::new();
-            // for (kind, idx) in dbg!(selected_indices)
-            //     .trim()
-            //     .lines()
-            //     .map(|l| match l.split_at(1) {
-            //         ("r", n) => (OccurrenceKind::Reference, n.parse::<usize>().unwrap()),
-            //         ("d", n) => (OccurrenceKind::Definition, n.parse::<usize>().unwrap()),
-            //         _ => panic!(),
-            //     })
-            // {
-            //     if let Some((path, text, range)) = idents.get(idx) {
-            //         selected_idents.push((path, text, range, kind));
-            //     }
-            // }
-
-            // let ctx = &ctx.clone().model("gpt-3.5-turbo-16k");
-            // let selected_indices = ctx
-            //     .llm_gateway
-            //     .chat(&[llm_gateway::api::Message::system(&prompt)], None)
-            //     .await?
-            //     .try_collect::<String>()
-            //     .await?;
 
             // let mut code_nav_chunks = Vec::new();
             let all_docs = {
@@ -1236,7 +1190,7 @@ impl Agent {
         );
 
         // defining file, original file
-        let mut idxs: Vec<(String, Vec<String>)> = Vec::new();
+        let mut idxs: Vec<(String, String)> = Vec::new();
         let mut running_idx = 0;
         for (relevant_chunks, path) in &processed {
             if let Some(imported_files) = defining_files_by_path.get(path) {
@@ -1245,18 +1199,30 @@ impl Agent {
                     for c in relevant_chunks {
                         writeln!(&mut prompt, "{}", c.code);
                     }
+
+                    // imported_files is a mapping from ident -> paths
+                    // invert that to path -> idents
+                    // this enables dedup by path
+                    let mut deduped = HashMap::new();
                     for (ident, def_files) in imported_files {
-                        writeln!(
-                            &mut prompt,
-                            "{running_idx}. `{ident}` defined in {}",
-                            def_files
-                                .iter()
-                                .map(|s| s.as_str())
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        );
-                        idxs.push((path.clone(), def_files.iter().cloned().collect::<Vec<_>>()));
-                        running_idx += 1;
+                        for f in def_files {
+                            deduped.entry(f).or_insert_with(Vec::new).push(ident);
+                        }
+                    }
+                    for (def_file, idents) in deduped {
+                        if !idents.is_empty() {
+                            writeln!(
+                                &mut prompt,
+                                "{running_idx}. `{def_file}` contains definitions for {}",
+                                idents
+                                    .iter()
+                                    .map(|s| s.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            );
+                            idxs.push((path.clone(), def_file.clone()));
+                            running_idx += 1;
+                        }
                     }
                 }
             }
@@ -1286,7 +1252,7 @@ Above are chunks of code, we've also parsed an ennumerated list of the imports i
                 &[
                     llm_gateway::api::Message::system(&prompt),
                     llm_gateway::api::Message::assistant(&reply),
-                    llm_gateway::api::Message::user(&format!("Based on this answer, select enumerated dependencies that are essential to answer the question. Ignore any dependencies that are 'nice-to-have' but not essential.")),
+                    llm_gateway::api::Message::user(&format!("Based on this answer, select files that are essential to answer the question. Ignore any dependencies that are 'nice-to-have' but not essential. Your response must be one file path per line.")),
                 ],
                 None,
             )
@@ -1296,26 +1262,20 @@ Above are chunks of code, we've also parsed an ennumerated list of the imports i
 
         println!("llm reply: {final_reply}");
 
-        // // collect llm selected indices and dedup
-        // let mut deduped_import_list: HashMap<String, HashSet<String>> = HashMap::new();
-        // for i in reply.lines().map(|l| l.trim().parse::<usize>()) {
-        //     match i {
-        //         Ok(i) => {
-        //             if let Some((path, import_list)) = idxs.get(i).cloned() {
-        //                 deduped_import_list
-        //                     .entry(path)
-        //                     .or_insert_with(HashSet::new)
-        //                     .extend(import_list.into_iter());
-        //             } else {
-        //                 tracing::error!("invalid llm reply: `{reply}`");
-        //             }
-        //         }
-        //         Err(_) => {
-        //             tracing::error!("invalid llm reply: `{reply}`");
-        //             break;
-        //         }
-        //     }
-        // }
+        let mut final_reply_paths = final_reply
+            .lines()
+            .map(ToOwned::to_owned)
+            .collect::<HashSet<String>>();
+        // remove already visited paths
+        for path in paths {
+            final_reply_paths.remove(&path);
+        }
+
+        for path in &final_reply_paths {
+            self.conversation.path_alias(&path);
+        }
+
+        println!("import list selected by llm: {final_reply_paths:?}");
 
         let out = processed
             .into_iter()
@@ -1331,7 +1291,10 @@ Above are chunks of code, we've also parsed an ennumerated list of the imports i
             })
             .collect::<Vec<_>>();
 
-        let prompt = serde_json::to_string(&out)?;
+        let prompt = serde_json::to_string(&serde_json::json!({
+            "imports": final_reply_paths.iter().map(|p| self.conversation.path_alias(p)).collect::<Vec<_>>(),
+            "processed": out,
+        }))?;
 
         self.track_query(
             EventData::input_stage("process file")

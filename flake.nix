@@ -32,10 +32,10 @@
         runtimeDeps = with pkgs;
           ([ openssl.out rocksdb git zlib nsync onnxruntime14 ]
             ++ lib.optionals stdenv.isDarwin [
-              darwin.apple_sdk.frameworks.Foundation
-              darwin.apple_sdk.frameworks.CoreFoundation
-              darwin.apple_sdk.frameworks.Security
-            ]);
+            darwin.apple_sdk.frameworks.Foundation
+            darwin.apple_sdk.frameworks.CoreFoundation
+            darwin.apple_sdk.frameworks.Security
+          ]);
 
         buildDeps = with pkgs;
           ([
@@ -71,10 +71,11 @@
             darwin.apple_sdk.frameworks.AppKit
           ]);
 
-        onnxruntime_lib = if stdenv.isDarwin then
-          "libonnxruntime.dylib"
-        else
-          "libonnxruntime.so";
+        onnxruntime_lib =
+          if stdenv.isDarwin then
+            "libonnxruntime.dylib"
+          else
+            "libonnxruntime.so";
 
         envVars = {
           LIBCLANG_PATH = "${libclang.lib}/lib";
@@ -86,7 +87,7 @@
           ORT_STRATEGY = "system";
           ORT_LIB_LOCATION = "${onnxruntime14}/lib";
           ORT_DYLIB_PATH = "${onnxruntime14}/lib/${onnxruntime_lib}";
-          RUSTFLAGS = "-C link-arg=-fuse-ld=lld";
+          RUSTFLAGS = "-C linker=${pkgs.clang}/bin/clang -C link-arg=-fuse-ld=${pkgs.mold}/bin/mold";
         };
 
         bleep = (rustPlatform.buildRustPackage rec {
@@ -155,7 +156,8 @@
           '';
         });
 
-      in {
+      in
+      {
         packages = {
           default = bleep;
 
