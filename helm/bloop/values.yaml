@@ -95,7 +95,7 @@ qdrant:
   image:
     repository: qdrant/qdrant
     pullPolicy: IfNotPresent
-    tag: v1.1.1
+    tag: v1.3.1
 
   imagePullSecrets: []
   nameOverride: ""
