@@ -132,8 +132,7 @@
         }).overrideAttrs (old: envVars);
 
         onnxruntime14 = import ./nix/onnxruntime.nix {
-          inherit pkgs;
-          inherit stdenv;
+          inherit pkgs stdenv;
         };
 
         frontend = (pkgs.buildNpmPackage rec {

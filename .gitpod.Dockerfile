@@ -8,9 +8,6 @@ COPY --chown=gitpod:gitpod . "${onetime_cache_dir}"
 # Cache nix compilation for saving time
 WORKDIR "${onetime_cache_dir}"
 SHELL [ "/bin/bash", "-c" ]
-RUN git lfs install --skip-smudge \
-    && git lfs pull \
-    && git lfs install --force \
-    && source "$HOME/.nix-profile/etc/profile.d/nix.sh" \
+RUN source "$HOME/.nix-profile/etc/profile.d/nix.sh" \
     && nix run nixpkgs#cachix use bloopai \
     && nix develop
