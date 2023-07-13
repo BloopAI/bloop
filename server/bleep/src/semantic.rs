@@ -21,7 +21,7 @@ use qdrant_client::{
 use futures::{stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use thiserror::Error;
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, error, info, trace, warn};
 
 pub mod chunk;
 pub mod execute;
@@ -467,10 +467,27 @@ impl Semantic {
         branches: &[String],
         is_cold_run: bool,
     ) {
-        let chunk_cache =
-            crate::cache::ChunkCache::for_file(&self.qdrant, tantivy_cache_key, is_cold_run)
-                .await
-                .expect("qdrant error");
+        let chunk_cache = 'cache: {
+            for _ in 0..10 {
+                let cache = crate::cache::ChunkCache::for_file(
+                    &self.qdrant,
+                    tantivy_cache_key,
+                    is_cold_run,
+                )
+                .await;
+
+                match cache {
+                    Ok(cache) => break 'cache Some(cache),
+                    Err(err) => {
+                        error!(?err, "failed to initialize cache");
+                        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                    }
+                }
+            }
+
+            None
+        }
+        .expect("qdrant error");
 
         let chunks = chunk::by_tokens(
             repo_name,
