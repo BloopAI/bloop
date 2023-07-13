@@ -48,12 +48,8 @@ jobs:
           profile: minimal	
           target: ${{ matrix.target }}	
 
-      - uses: cachix/install-nix-action@v22	
-        with:	
-          github_access_token: "${{ secrets.GITHUB_TOKEN }}"	
-
-      - name: Install dependencies	
-        run: "nix profile install nixpkgs#protobuf"	
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v2
 
       - name: Build qdrant	
         env:	
