@@ -22,8 +22,7 @@
         llvm = pkgs.llvmPackages_14;
         clang = llvm.clang;
         libclang = llvm.libclang;
-        stdenv = pkgs.overrideCC llvm.stdenv
-          (llvm.stdenv.cc.override { inherit (llvm) bintools; });
+        stdenv = llvm.stdenv;
 
         rustPlatform = pkgs.makeRustPlatform {
           cargo = pkgs.cargo;
@@ -134,7 +133,7 @@
 
         onnxruntime14 = import ./nix/onnxruntime.nix {
           inherit pkgs;
-          inherit (llvm) stdenv;
+          inherit stdenv;
         };
 
         frontend = (pkgs.buildNpmPackage rec {
