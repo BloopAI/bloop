@@ -36,7 +36,7 @@ jobs:
             cross: true
             
           - target: x86_64-pc-windows-msvc
-            os: windwows-latest
+            os: windows-latest
             cross: false
 
     runs-on: ${{ matrix.os }}	
