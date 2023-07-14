@@ -1,5 +1,5 @@
-pub fn functions() -> serde_json::Value {
-    serde_json::json!(
+pub fn functions(add_proc: bool) -> serde_json::Value {
+    let mut funcs = serde_json::json!(
         [
             {
                 "name": "code",
@@ -29,6 +29,34 @@ pub fn functions() -> serde_json::Value {
                     "required": ["query"]
                 }
             },
+            {
+                "name": "none",
+                "description": "You have enough information to answer the user's query. This is the final step, and signals that you have enough information to respond to the user's query. Use this if the user has instructed you to modify some code.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "mode": {
+                            "type": "string",
+                            "enum": ["article", "filesystem"],
+                            "description": "The type of answer to provide. If the user's query is best answered with the location of one or multiple files and folders with no explanation choose filesystem. If the user's query is best answered with any explanation, or they're instructing you to write new code choose article. If the user's query is neither, choose filesystem."
+                        },
+                        "paths": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer",
+                                "description": "The indices of the paths to answer with respect to. Can be empty if the answer is not related to a specific path."
+                            }
+                        }
+                    },
+                    "required": ["mode", "paths"]
+                }
+            },
+        ]
+    );
+
+    if add_proc {
+        funcs.as_array_mut().unwrap().push(
+            serde_json::json!(
             {
                 "name": "proc",
                 "description": "Read one or more files and extract the line ranges which are relevant to the search terms. Do not proc more than 10 files at a time.",
@@ -49,88 +77,11 @@ pub fn functions() -> serde_json::Value {
                     },
                     "required": ["query", "paths"]
                 }
-            },
-            {
-                "name": "none",
-                "description": "You have enough information to answer the user's query. This is the final step, and signals that you have enough information to respond to the user's query. Use this if the user has instructed you to modify some code.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "mode": {
-                            "type": "string",
-                            "enum": ["article", "filesystem"],
-                            "description": "The type of answer to provide. If the user's query is best answered with the location of one or multiple files and folders with no explanation choose filesystem. If the user's query is best answered with any explanation, or they're instructing you to write new code choose article. If the user's query is neither, choose filesystem."
-                        },
-                        "paths": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer",
-                                "description": "The indices of the paths to answer with respect to. Can be empty if the answer is not related to a specific path."
-                            }
-                        }
-                    },
-                    "required": ["mode", "paths"]
-                }
-            },
-        ]
-    )
-}
-
-pub fn restricted_functions() -> serde_json::Value {
-    serde_json::json!(
-        [
-            {
-                "name": "code",
-                "description":  "Search the contents of files in a codebase semantically. Results will not necessarily match search terms exactly, but should be related.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "The query with which to search. This should consist of keywords that might match something in the codebase, e.g. 'react functional components', 'contextmanager', 'bearer token'"
-                        }
-                    },
-                    "required": ["query"]
-                }
-            },
-            {
-                "name": "path",
-                "description": "Search the pathnames in a codebase. Results may not be exact matches, but will be similar by some edit-distance. Use when you want to find a specific file or directory.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "The query with which to search. This should consist of keywords that might match a path, e.g. 'server/src'."
-                        }
-                    },
-                    "required": ["query"]
-                }
-            },
-            {
-                "name": "none",
-                "description": "You have enough information to answer the user's query. This is the final step, and signals that you have enough information to respond to the user's query. Use this if the user has instructed you to modify some code.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "mode": {
-                            "type": "string",
-                            "enum": ["article", "filesystem"],
-                            "description": "The type of answer to provide. If the user's query is best answered with the location of one or multiple files and folders with no explanation choose filesystem. If the user's query is best answered with any explanation, or they're instructing you to write new code choose article. If the user's query is neither, choose filesystem."
-                        },
-                        "paths": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer",
-                                "description": "The indices of the paths to answer with respect to. Can be empty if the answer is not related to a specific path."
-                            }
-                        }
-                    },
-                    "required": ["mode", "paths"]
-                }
-            },
-        ]
-    )
+            }
+            )
+        );
+    }
+    funcs
 }
 
 pub fn system(paths: &Vec<String>) -> String {
