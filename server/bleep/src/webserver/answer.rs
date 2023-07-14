@@ -45,6 +45,8 @@ use exchange::{Exchange, SearchStep, Update};
 use llm_gateway::api::FunctionCall;
 
 const TIMEOUT_SECS: u64 = 60;
+const ACTION_MAX_HISTORY_SIZE: usize = 20;
+const ANSWER_MAX_HISTORY_SIZE: usize = 6;
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Vote {
@@ -389,23 +391,31 @@ impl Conversation {
         }
     }
 
+    // Take the last `ANSWER_MAX_CONTEXT_SIZE` 'user' and 'assistant' messages from the history
     fn query_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
-        self.exchanges.iter().flat_map(|e| {
-            let query = e.query().map(|q| llm_gateway::api::Message::PlainText {
-                role: "user".to_owned(),
-                content: q.to_owned(),
-            });
+        let history = self
+            .exchanges
+            .iter()
+            .flat_map(|e| {
+                let query = e.query().map(|q| llm_gateway::api::Message::PlainText {
+                    role: "user".to_owned(),
+                    content: q.to_owned(),
+                });
 
-            let conclusion = e.answer().map(|c| llm_gateway::api::Message::PlainText {
-                role: "assistant".to_owned(),
-                content: c.to_owned(),
-            });
+                let conclusion = e.answer().map(|c| llm_gateway::api::Message::PlainText {
+                    role: "assistant".to_owned(),
+                    content: c.to_owned(),
+                });
 
-            query
-                .into_iter()
-                .chain(conclusion.into_iter())
-                .collect::<Vec<_>>()
-        })
+                query
+                    .into_iter()
+                    .chain(conclusion.into_iter())
+                    .collect::<Vec<_>>()
+            })
+            .rev()
+            .take(ANSWER_MAX_HISTORY_SIZE)
+            .collect::<Vec<_>>();
+        history.into_iter().rev()
     }
 
     async fn store(&self, db: &SqlDb, id: ConversationId) -> Result<()> {
@@ -493,11 +503,20 @@ impl Conversation {
     fn trimmed_history(&self) -> Result<Vec<llm_gateway::api::Message>> {
         const HEADROOM: usize = 2048;
 
-        // Switch from a `VecDeque` to a `Vec` here.
-        let mut llm_history = self.llm_history.iter().cloned().collect::<Vec<_>>();
+        // Only consider the last `ACTION_MAX_HISTORY_SIZE` messages and the system prompt
+        let mut history = vec![self.llm_history.front().unwrap().clone()];
+        history.extend(
+            self.llm_history
+                .iter()
+                .skip(
+                    self.llm_history
+                        .len()
+                        .saturating_sub(ACTION_MAX_HISTORY_SIZE),
+                )
+                .cloned(),
+        );
 
-        let mut tiktoken_msgs = self
-            .llm_history
+        let mut tiktoken_msgs = history
             .iter()
             .map(|m| match m {
                 llm_gateway::api::Message::PlainText { role, content } => {
@@ -529,7 +548,7 @@ impl Conversation {
             .collect::<Vec<_>>();
 
         while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < HEADROOM {
-            let idx = llm_history
+            let idx = history
                 .iter_mut()
                 .position(|m| match m {
                     llm_gateway::api::Message::PlainText {
@@ -554,7 +573,7 @@ impl Conversation {
             tiktoken_msgs[idx].content = "[HIDDEN]".into();
         }
 
-        Ok(llm_history)
+        Ok(history)
     }
 
     fn last_exchange(&self) -> &Exchange {
@@ -1226,12 +1245,12 @@ impl Agent {
 
     async fn answer_article(&mut self, aliases: &[usize]) -> Result<()> {
         let context = self.answer_context(aliases).await?;
-        let query_history = self.conversation.query_history().collect::<Vec<_>>();
+        let history = self.conversation.query_history().collect::<Vec<_>>();
 
         let system_message = prompts::answer_article_prompt(&context);
         let messages = Some(llm_gateway::api::Message::system(&system_message))
             .into_iter()
-            .chain(query_history.iter().cloned())
+            .chain(history.iter().cloned())
             .collect::<Vec<_>>();
 
         let mut stream = pin!(self.llm_gateway.chat(&messages, None).await?);
@@ -1259,7 +1278,7 @@ impl Agent {
         self.track_query(
             EventData::output_stage("answer_article")
                 .with_payload("query", self.conversation.last_exchange().query())
-                .with_payload("query_history", &query_history)
+                .with_payload("query_history", &history)
                 .with_payload("response", &response)
                 .with_payload("raw_prompt", &system_message),
         );
@@ -1269,7 +1288,6 @@ impl Agent {
 
     async fn answer_filesystem(&mut self, aliases: &[usize]) -> Result<()> {
         let context = self.answer_context(aliases).await?;
-
         let mut query_history = self.conversation.query_history().collect::<Vec<_>>();
 
         {
