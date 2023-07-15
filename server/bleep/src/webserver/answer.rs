@@ -46,7 +46,7 @@ use llm_gateway::api::FunctionCall;
 
 const TIMEOUT_SECS: u64 = 60;
 const ACTION_MAX_HISTORY_SIZE: usize = 20;
-const ANSWER_MAX_HISTORY_SIZE: usize = 6;
+const ANSWER_MAX_HISTORY_SIZE: usize = 5;
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Vote {
@@ -186,12 +186,12 @@ pub(super) async fn _handle(
     };
 
     let Params { thread_id, q, .. } = params;
-    let parsed_query = parser::parse_nl(&q).context("parse error")?;
-    let semantic_query = parsed_query
+    let query = parser::parse_nl(&q)
+        .context("parse error")?
         .into_semantic()
         .context("got a 'Grep' query")?
         .into_owned();
-    let sanitized_query = semantic_query
+    let query_target = query
         .target
         .as_ref()
         .context("query was empty")?
@@ -201,10 +201,10 @@ pub(super) async fn _handle(
         .into_owned();
 
     let stream = async_stream::try_stream! {
-        let mut action = Action::Query(sanitized_query);
+        let mut action = Action::Query(query_target);
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
-        conversation.exchanges.push(Exchange::new(semantic_query));
+        conversation.exchanges.push(Exchange::new(query));
         let mut agent = Agent {
             app,
             conversation,
@@ -331,7 +331,7 @@ impl fmt::Display for ConversationId {
 
 #[derive(Clone, Debug)]
 pub(super) struct Conversation {
-    llm_history: VecDeque<llm_gateway::api::Message>,
+    history: VecDeque<llm_gateway::api::Message>,
     exchanges: Vec<Exchange>,
     paths: Vec<String>,
     code_chunks: Vec<CodeChunk>,
@@ -368,12 +368,10 @@ impl Conversation {
     fn new(repo_ref: RepoRef) -> Self {
         // We start of with a conversation describing the operations that the LLM can perform, and
         // an initial (hidden) prompt that we pose to the user.
+        let system_prompt = llm_gateway::api::Message::system(&prompts::system(&Vec::new()));
 
         Self {
-            llm_history: vec![llm_gateway::api::Message::system(&prompts::system(
-                &Vec::new(),
-            ))]
-            .into(),
+            history: vec![system_prompt].into(),
             exchanges: Vec::new(),
             paths: Vec::new(),
             code_chunks: Vec::new(),
@@ -391,11 +389,13 @@ impl Conversation {
         }
     }
 
-    // Take the last `ANSWER_MAX_CONTEXT_SIZE` 'user' and 'assistant' messages from the history
-    fn query_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
-        let history = self
-            .exchanges
+    fn utterance_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
+        // Take the last `ANSWER_MAX_CONTEXT_SIZE` 'user' and 'assistant' messages
+        self.exchanges
             .iter()
+            .rev()
+            .take(ANSWER_MAX_HISTORY_SIZE)
+            .rev()
             .flat_map(|e| {
                 let query = e.query().map(|q| llm_gateway::api::Message::PlainText {
                     role: "user".to_owned(),
@@ -412,10 +412,6 @@ impl Conversation {
                     .chain(conclusion.into_iter())
                     .collect::<Vec<_>>()
             })
-            .rev()
-            .take(ANSWER_MAX_HISTORY_SIZE)
-            .collect::<Vec<_>>();
-        history.into_iter().rev()
     }
 
     async fn store(&self, db: &SqlDb, id: ConversationId) -> Result<()> {
@@ -442,7 +438,7 @@ impl Conversation {
             .context("couldn't find conversation title")?;
 
         let exchanges = serde_json::to_string(&self.exchanges)?;
-        let llm_history = serde_json::to_string(&self.llm_history)?;
+        let llm_history = serde_json::to_string(&self.history)?;
         let path_aliases = serde_json::to_string(&self.paths)?;
         let code_chunks = serde_json::to_string(&self.code_chunks)?;
         sqlx::query! {
@@ -493,7 +489,7 @@ impl Conversation {
 
         Ok(Some(Self {
             repo_ref,
-            llm_history,
+            history: llm_history,
             exchanges,
             paths: path_aliases,
             code_chunks,
@@ -504,15 +500,11 @@ impl Conversation {
         const HEADROOM: usize = 2048;
 
         // Only consider the last `ACTION_MAX_HISTORY_SIZE` messages and the system prompt
-        let mut history = vec![self.llm_history.front().unwrap().clone()];
+        let mut history = vec![self.history.front().unwrap().clone()];
         history.extend(
-            self.llm_history
+            self.history
                 .iter()
-                .skip(
-                    self.llm_history
-                        .len()
-                        .saturating_sub(ACTION_MAX_HISTORY_SIZE),
-                )
+                .skip(self.history.len().saturating_sub(ACTION_MAX_HISTORY_SIZE))
                 .cloned(),
         );
 
@@ -586,13 +578,11 @@ impl Conversation {
 
     async fn canonicalize_code_chunks(&mut self, app: &Application) {
         let mut chunks_by_path = HashMap::<_, Vec<_>>::new();
-
         for c in mem::take(&mut self.code_chunks) {
             chunks_by_path.entry(c.path.clone()).or_default().push(c);
         }
 
         let branch = self.last_exchange().query.first_branch();
-
         let branch_str = branch.as_deref();
 
         let self_ = &*self;
@@ -694,7 +684,7 @@ impl Agent {
     }
 
     async fn step(&mut self, action: Action) -> Result<Option<Action>> {
-        let action_result = match &action {
+        let result = match &action {
             Action::Query(s) => {
                 self.update(Update::Step(SearchStep::Query(s.clone())))
                     .await?;
@@ -711,110 +701,16 @@ impl Agent {
                 return Ok(None);
             }
 
-            Action::Path { query } => {
-                self.update(Update::Step(SearchStep::Path(query.clone())))
-                    .await?;
-
-                // First, perform a lexical search for the path
-                let mut paths = self
-                    .fuzzy_path_search(query)
-                    .await
-                    .map(|c| c.relative_path)
-                    .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.
-                    .into_iter()
-                    .collect::<Vec<_>>();
-
-                let is_semantic = paths.is_empty();
-
-                // If there are no lexical results, perform a semantic search.
-                if paths.is_empty() {
-                    // TODO: Semantic search should accept unparsed queries
-                    let semantic_paths = self
-                        .semantic_search(query.into(), 30, 0, true)
-                        .await?
-                        .into_iter()
-                        .map(|chunk| chunk.relative_path)
-                        .collect::<HashSet<_>>()
-                        .into_iter()
-                        .collect();
-
-                    paths = semantic_paths;
-                }
-
-                let formatted_paths = paths
-                    .iter()
-                    .map(|p| SeenPath {
-                        path: p.to_string(),
-                        alias: self.conversation.path_alias(p) as u32,
-                    })
-                    .collect::<Vec<_>>();
-
-                let prompt = serde_json::to_string(&formatted_paths).unwrap();
-
-                self.track_query(
-                    EventData::input_stage("path search")
-                        .with_payload("query", query)
-                        .with_payload("is_semantic", is_semantic)
-                        .with_payload("results", &paths)
-                        .with_payload("raw_prompt", &prompt),
-                );
-
-                prompt
-            }
-
-            Action::Code { query } => {
-                self.update(Update::Step(SearchStep::Code(query.clone())))
-                    .await?;
-
-                let mut results = self.semantic_search(query.into(), 10, 0, true).await?;
-
-                let hyde_docs = self.hyde(query).await?;
-                if !hyde_docs.is_empty() {
-                    let hyde_doc = hyde_docs.first().unwrap().into();
-                    let hyde_results = self.semantic_search(hyde_doc, 10, 0, true).await?;
-                    results.extend(hyde_results);
-                }
-
-                let chunks = results
-                    .into_iter()
-                    .map(|chunk| {
-                        let relative_path = chunk.relative_path;
-
-                        CodeChunk {
-                            path: relative_path.clone(),
-                            alias: self.conversation.path_alias(&relative_path) as u32,
-                            snippet: chunk.text,
-                            start_line: (chunk.start_line as u32).saturating_add(1),
-                            end_line: (chunk.end_line as u32).saturating_add(1),
-                        }
-                    })
-                    .collect::<Vec<_>>();
-
-                for chunk in chunks.iter().filter(|c| !c.is_empty()) {
-                    self.conversation.code_chunks.push(chunk.clone());
-                }
-
-                let prompt = serde_json::to_string(&chunks).unwrap();
-
-                self.track_query(
-                    EventData::input_stage("semantic code search")
-                        .with_payload("query", query)
-                        .with_payload("hyde_queries", &hyde_docs)
-                        .with_payload("chunks", &chunks)
-                        .with_payload("raw_prompt", &prompt),
-                );
-
-                prompt
-            }
-
-            Action::Proc { query, paths } => self.proc(query, paths).await?,
+            Action::Path { query } => self.path_search(query).await?,
+            Action::Code { query } => self.code_search(query).await?,
+            Action::Proc { query, paths } => self.process_files(query, paths).await?,
         };
 
         debug!(?action, %self.thread_id, "chosen next action");
         match &action {
             Action::Query(query) => {
                 self.conversation
-                    .llm_history
+                    .history
                     .push_back(llm_gateway::api::Message::user(&format!(
                         "{query}\nCall a function. Do not answer."
                     )))
@@ -827,21 +723,19 @@ impl Agent {
                     Action::Proc { .. } => "proc",
                     Action::Query(_) => unreachable!(),
                 };
-                self.conversation.llm_history.push_back(
-                    llm_gateway::api::Message::function_return(
+                self.conversation
+                    .history
+                    .push_back(llm_gateway::api::Message::function_return(
                         function_name,
-                        &format!("{action_result}\nCall a function. Do not answer."),
-                    ),
-                );
+                        &format!("{result}\nCall a function. Do not answer."),
+                    ));
             }
         };
 
         let updated_system_prompt =
             llm_gateway::api::Message::system(&prompts::system(&self.conversation.paths));
-        _ = self.conversation.llm_history.pop_front();
-        self.conversation
-            .llm_history
-            .push_front(updated_system_prompt);
+        _ = self.conversation.history.pop_front();
+        self.conversation.history.push_front(updated_system_prompt);
 
         let functions =
             serde_json::from_value::<Vec<llm_gateway::api::Function>>(prompts::functions())
@@ -867,9 +761,9 @@ impl Agent {
 
         self.track_query(
             EventData::output_stage("llm_reply")
-                .with_payload("full_history", &self.conversation.llm_history)
+                .with_payload("full_history", &self.conversation.history)
                 .with_payload("trimmed_history", &trimmed_history)
-                .with_payload("last_message", self.conversation.llm_history.back())
+                .with_payload("last_message", self.conversation.history.back())
                 .with_payload("functions", &functions)
                 .with_payload("raw_response", &raw_response),
         );
@@ -877,7 +771,7 @@ impl Agent {
         let action = Action::deserialize_gpt(&raw_response)?;
         if !matches!(action, Action::Query(..)) {
             self.conversation
-                .llm_history
+                .history
                 .push_back(llm_gateway::api::Message::function_call(&raw_response));
             trace!("handling raw action: {raw_response:?}");
         }
@@ -885,34 +779,106 @@ impl Agent {
         Ok(Some(action))
     }
 
-    async fn hyde(&self, query: &str) -> Result<Vec<String>> {
-        let prompt = vec![llm_gateway::api::Message::system(
-            &prompts::hypothetical_document_prompt(query),
-        )];
-
-        tracing::trace!(?query, "generating hyde docs");
-
-        let response = self
-            .llm_gateway
-            .clone()
-            .model("gpt-3.5-turbo-0613")
-            .chat(&prompt, None)
-            .await?
-            .try_collect::<String>()
+    async fn code_search(&mut self, query: &String) -> Result<String> {
+        self.update(Update::Step(SearchStep::Code(query.clone())))
             .await?;
 
-        tracing::trace!("parsing hyde response");
+        let mut results = self.semantic_search(query.into(), 10, 0, true).await?;
 
-        let documents = prompts::try_parse_hypothetical_documents(&response);
-
-        for doc in documents.iter() {
-            info!(?doc, "got hyde doc");
+        let hyde_docs = self.hyde(query).await?;
+        if !hyde_docs.is_empty() {
+            let hyde_doc = hyde_docs.first().unwrap().into();
+            let hyde_results = self.semantic_search(hyde_doc, 10, 0, true).await?;
+            results.extend(hyde_results);
         }
 
-        Ok(documents)
+        let chunks = results
+            .into_iter()
+            .map(|chunk| {
+                let relative_path = chunk.relative_path;
+
+                CodeChunk {
+                    path: relative_path.clone(),
+                    alias: self.conversation.path_alias(&relative_path) as u32,
+                    snippet: chunk.text,
+                    start_line: (chunk.start_line as u32).saturating_add(1),
+                    end_line: (chunk.end_line as u32).saturating_add(1),
+                }
+            })
+            .collect::<Vec<_>>();
+
+        for chunk in chunks.iter().filter(|c| !c.is_empty()) {
+            self.conversation.code_chunks.push(chunk.clone());
+        }
+
+        let prompt = serde_json::to_string(&chunks).unwrap();
+
+        self.track_query(
+            EventData::input_stage("semantic code search")
+                .with_payload("query", query)
+                .with_payload("hyde_queries", &hyde_docs)
+                .with_payload("chunks", &chunks)
+                .with_payload("raw_prompt", &prompt),
+        );
+
+        Ok(prompt)
     }
 
-    async fn proc(&mut self, question: &str, path_aliases: &[usize]) -> Result<String> {
+    async fn path_search(&mut self, query: &String) -> Result<String> {
+        self.update(Update::Step(SearchStep::Path(query.clone())))
+            .await?;
+
+        // First, perform a lexical search for the path
+        let mut paths = self
+            .fuzzy_path_search(query)
+            .await
+            .map(|c| c.relative_path)
+            .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.
+            .into_iter()
+            .collect::<Vec<_>>();
+
+        let is_semantic = paths.is_empty();
+
+        // If there are no lexical results, perform a semantic search.
+        if paths.is_empty() {
+            let semantic_paths = self
+                .semantic_search(query.into(), 30, 0, true)
+                .await?
+                .into_iter()
+                .map(|chunk| chunk.relative_path)
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect();
+
+            paths = semantic_paths;
+        }
+
+        let formatted_paths = paths
+            .iter()
+            .map(|p| SeenPath {
+                path: p.to_string(),
+                alias: self.conversation.path_alias(p) as u32,
+            })
+            .collect::<Vec<_>>();
+
+        let prompt = serde_json::to_string(&formatted_paths).unwrap();
+
+        self.track_query(
+            EventData::input_stage("path search")
+                .with_payload("query", query)
+                .with_payload("is_semantic", is_semantic)
+                .with_payload("results", &paths)
+                .with_payload("raw_prompt", &prompt),
+        );
+
+        Ok(prompt)
+    }
+
+    async fn process_files(&mut self, question: &str, path_aliases: &[usize]) -> Result<String> {
+        const MAX_CHUNK_LINE_LENGTH: usize = 20;
+        const CHUNK_MERGE_DISTANCE: usize = 10;
+        const MAX_TOKENS: usize = 15400;
+
         let paths = path_aliases
             .iter()
             .copied()
@@ -943,8 +909,6 @@ impl Agent {
                     .enumerate()
                     .map(|(i, line)| format!("{} {line}", i + 1))
                     .collect::<Vec<_>>();
-
-                const MAX_TOKENS: usize = 15400;
 
                 let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
 
@@ -1029,7 +993,7 @@ impl Agent {
                     .into_iter()
                     .filter(|r| r.start > 0 && r.end > 0)
                     .map(|mut r| {
-                        r.end = r.end.min(r.start + 20); // Cap relevant chunk size by line number
+                        r.end = r.end.min(r.start + MAX_CHUNK_LINE_LENGTH); // Cap relevant chunk size by line number
                         r
                     })
                     .collect();
@@ -1041,7 +1005,7 @@ impl Agent {
                     .into_iter()
                     .fold(Vec::<Range>::new(), |mut exps, next| {
                         if let Some(prev) = exps.last_mut() {
-                            if prev.end + 10 >= next.start {
+                            if prev.end + CHUNK_MERGE_DISTANCE >= next.start {
                                 prev.end = next.end;
                                 return exps;
                             }
@@ -1119,6 +1083,33 @@ impl Agent {
         );
 
         Ok(prompt)
+    }
+
+    async fn hyde(&self, query: &str) -> Result<Vec<String>> {
+        let prompt = vec![llm_gateway::api::Message::system(
+            &prompts::hypothetical_document_prompt(query),
+        )];
+
+        tracing::trace!(?query, "generating hyde docs");
+
+        let response = self
+            .llm_gateway
+            .clone()
+            .model("gpt-3.5-turbo-0613")
+            .chat(&prompt, None)
+            .await?
+            .try_collect::<String>()
+            .await?;
+
+        tracing::trace!("parsing hyde response");
+
+        let documents = prompts::try_parse_hypothetical_documents(&response);
+
+        for doc in documents.iter() {
+            info!(?doc, "got hyde doc");
+        }
+
+        Ok(documents)
     }
 
     async fn answer_context(&mut self, aliases: &[usize]) -> Result<String> {
@@ -1245,7 +1236,7 @@ impl Agent {
 
     async fn answer_article(&mut self, aliases: &[usize]) -> Result<()> {
         let context = self.answer_context(aliases).await?;
-        let history = self.conversation.query_history().collect::<Vec<_>>();
+        let history = self.conversation.utterance_history().collect::<Vec<_>>();
 
         let system_message = prompts::answer_article_prompt(&context);
         let messages = Some(llm_gateway::api::Message::system(&system_message))
@@ -1288,7 +1279,7 @@ impl Agent {
 
     async fn answer_filesystem(&mut self, aliases: &[usize]) -> Result<()> {
         let context = self.answer_context(aliases).await?;
-        let mut query_history = self.conversation.query_history().collect::<Vec<_>>();
+        let mut query_history = self.conversation.utterance_history().collect::<Vec<_>>();
 
         {
             let (role, content) = query_history
@@ -1392,7 +1383,7 @@ impl Agent {
         if let Some(summary) = &summarized_answer {
             info!("attaching summary of previous exchange: {summary}");
             self.conversation
-                .llm_history
+                .history
                 .push_back(llm_gateway::api::Message::assistant(summary));
         } else {
             info!("no previous exchanges, skipping summary");
@@ -1646,7 +1637,7 @@ mod tests {
         let long_string = "long string ".repeat(2000);
 
         let conversation = Conversation {
-            llm_history: vec![
+            history: vec![
                 llm_gateway::api::Message::system("foo"),
                 llm_gateway::api::Message::user("bar"),
                 llm_gateway::api::Message::assistant("baz"),
