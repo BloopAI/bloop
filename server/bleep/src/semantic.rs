@@ -19,6 +19,7 @@ use qdrant_client::{
 };
 
 use futures::{stream, StreamExt, TryStreamExt};
+use rand::{prelude::Distribution, thread_rng};
 use rayon::prelude::*;
 use thiserror::Error;
 use tracing::{debug, error, info, trace, warn};
@@ -468,7 +469,8 @@ impl Semantic {
         is_cold_run: bool,
     ) {
         let chunk_cache = 'cache: {
-            for _ in 0..10 {
+            let rand = rand::distributions::Uniform::new(500, 1500);
+            for (_, backoff) in (0..15).zip(rand.sample_iter(&mut thread_rng())) {
                 let cache = crate::cache::ChunkCache::for_file(
                     &self.qdrant,
                     tantivy_cache_key,
@@ -480,7 +482,7 @@ impl Semantic {
                     Ok(cache) => break 'cache Some(cache),
                     Err(err) => {
                         error!(?err, "failed to initialize cache");
-                        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                        tokio::time::sleep(tokio::time::Duration::from_millis(backoff)).await;
                     }
                 }
             }
