@@ -438,7 +438,7 @@ impl Conversation {
             .context("couldn't find conversation title")?;
 
         let exchanges = serde_json::to_string(&self.exchanges)?;
-        let llm_history = serde_json::to_string(&self.history)?;
+        let history = serde_json::to_string(&self.history)?;
         let path_aliases = serde_json::to_string(&self.paths)?;
         let code_chunks = serde_json::to_string(&self.code_chunks)?;
         sqlx::query! {
@@ -452,7 +452,7 @@ impl Conversation {
             repo_ref,
             title,
             exchanges,
-            llm_history,
+            history,
             path_aliases,
             code_chunks,
         }
@@ -483,13 +483,13 @@ impl Conversation {
 
         let repo_ref = RepoRef::from_str(&row.repo_ref).context("failed to parse repo ref")?;
         let path_aliases = serde_json::from_str(&row.path_aliases)?;
-        let llm_history = serde_json::from_str(&row.llm_history)?;
+        let history = serde_json::from_str(&row.llm_history)?;
         let exchanges = serde_json::from_str(&row.exchanges)?;
         let code_chunks = serde_json::from_str(&row.code_chunks)?;
 
         Ok(Some(Self {
             repo_ref,
-            history: llm_history,
+            history,
             exchanges,
             paths: path_aliases,
             code_chunks,
