@@ -51,17 +51,8 @@
     (name) @local.definition.constant))
 
 (simple_parameter
-  (variable_name
+  name: (variable_name
     (name) @local.definition.parameter))
-
-(simple_parameter
-  default_value: 
-   (name) @local.reference)
-
-(simple_parameter
-  default_value: 
-   (variable_name
-     (name) @local.reference))
 
 (variadic_parameter
   (variable_name
@@ -275,6 +266,15 @@
 
 (namespace_use_declaration
   (namespace_name) @local.reference)
+
+(simple_parameter
+  default_value: 
+   (name) @local.reference)
+
+(simple_parameter
+  default_value: 
+   (variable_name
+     (name) @local.reference))
 
 ;; types
 (named_type 
