@@ -4,6 +4,8 @@ import packageJson from '../package.json';
 import { getConfig } from './services/api';
 import App from './App';
 import { LocaleContext } from './context/localeContext';
+import i18n from './i18n';
+import { LANGUAGE_KEY, savePlainToStorage } from './services/storage';
 
 const CloudApp = () => {
   const [envConfig, setEnvConfig] = useState({});
@@ -41,7 +43,8 @@ const CloudApp = () => {
   );
 
   useEffect(() => {
-    // dynamicActivate(locale);
+    i18n.changeLanguage(locale);
+    savePlainToStorage(LANGUAGE_KEY, locale);
   }, [locale]);
 
   const localeContextValue = useMemo(
