@@ -53,9 +53,10 @@ const CodeContainer = ({
   ...otherProps
 }: Props) => {
   const [tokenInfo, setTokenInfo] = useState<TokenInfoWrapped>({
-    data: [],
+    data: { references: [], definitions: [] },
     hoverableRange: null,
     tokenRange: null,
+    isLoading: false,
     lineNumber: -1,
   });
   const { selectedBranch } = useContext(SearchContext);
@@ -63,20 +64,38 @@ const CodeContainer = ({
   const getHoverableContent = useCallback(
     (hoverableRange: Range, tokenRange: Range, lineNumber?: number) => {
       if (hoverableRange && relativePath) {
+        setTokenInfo({
+          data: { references: [], definitions: [] },
+          hoverableRange,
+          tokenRange,
+          lineNumber,
+          isLoading: true,
+        });
         getTokenInfo(
           relativePath,
           repoPath,
           hoverableRange.start,
           hoverableRange.end,
           selectedBranch ? selectedBranch : undefined,
-        ).then((data) => {
-          setTokenInfo({
-            data: mapTokenInfo(data.data),
-            hoverableRange,
-            tokenRange,
-            lineNumber,
+        )
+          .then((data) => {
+            setTokenInfo({
+              data: mapTokenInfo(data.data),
+              hoverableRange,
+              tokenRange,
+              lineNumber,
+              isLoading: false,
+            });
+          })
+          .catch(() => {
+            setTokenInfo({
+              data: { references: [], definitions: [] },
+              hoverableRange,
+              tokenRange,
+              lineNumber,
+              isLoading: false,
+            });
           });
-        });
       }
     },
     [relativePath, selectedBranch],
@@ -85,9 +104,10 @@ const CodeContainer = ({
   const handleRefsDefsClick = useCallback(
     (lineNum: number, filePath: string) => {
       setTokenInfo({
-        data: [],
+        data: { references: [], definitions: [] },
         hoverableRange: null,
         tokenRange: null,
+        isLoading: false,
         lineNumber: -1,
       });
       onRefDefClick(lineNum, filePath);
@@ -130,6 +150,7 @@ const CodeContainer = ({
       handleRefsDefsClick={handleRefsDefsClick}
       repoName={repoName}
       language={language}
+      relativePath={relativePath}
       {...otherProps}
     />
   ) : (
@@ -143,6 +164,7 @@ const CodeContainer = ({
       handleRefsDefsClick={handleRefsDefsClick}
       repoName={repoName}
       language={language}
+      relativePath={relativePath}
       {...otherProps}
     />
   );

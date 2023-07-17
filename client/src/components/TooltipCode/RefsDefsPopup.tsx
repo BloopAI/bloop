@@ -1,15 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { TippyProps } from '@tippyjs/react';
-import BreadcrumbsPath from '../BreadcrumbsPath';
-import Code from '../CodeBlock/Code';
 import { TokenInfoType, TokenInfoWrapped } from '../../types/results';
+import { Def, Ref } from '../../icons';
+import LiteLoaderContainer from '../Loaders/LiteLoader';
 import Badge from './Badge';
+import RefDefItem from './RefDefItem';
 import { TypeMap } from './index';
-
-const colorMap = {
-  [TypeMap.REF]: 'text-bg-danger',
-  [TypeMap.DEF]: 'text-bg-success',
-};
 
 const positionMap = {
   left: { tail: 'left-1', fixBorder: 'left-[8.38px]' },
@@ -53,6 +49,7 @@ type Props = {
   repoName: string;
   onRefDefClick: (lineNum: number, filePath: string) => void;
   language: string;
+  relativePath: string;
 };
 
 const RefsDefsPopup = ({
@@ -61,6 +58,7 @@ const RefsDefsPopup = ({
   repoName,
   onRefDefClick,
   language,
+  relativePath,
 }: Props) => {
   const [filters, setFilters] = useState<TokenInfoType[]>([
     TypeMap.REF,
@@ -69,29 +67,20 @@ const RefsDefsPopup = ({
 
   const toggleFilter = useCallback((type: TokenInfoType) => {
     setFilters((prev) => {
-      if (prev.includes(type)) {
-        return prev.filter((t) => t !== type);
-      } else {
+      if (type === TypeMap.REF && prev.includes(type)) {
+        return prev.length === 1 ? [type] : [TypeMap.DEF];
+      } else if (!prev.includes(type)) {
         return [...prev, type];
+      } else if (type === TypeMap.DEF && prev.includes(type)) {
+        return prev.length === 1 ? [type] : [TypeMap.REF];
       }
+      return [...prev, type];
     });
   }, []);
 
   const tailPosition = useMemo(() => getTailPosition(placement), [placement]);
 
-  const references = useMemo(() => {
-    return data.data.filter(
-      (d) => d.data.filter((t) => t.kind === TypeMap.REF).length,
-    );
-  }, [data.data]);
-
-  const definitions = useMemo(() => {
-    return data.data.filter(
-      (d) => d.data.filter((t) => t.kind === TypeMap.DEF).length,
-    );
-  }, [data.data]);
-
-  return !data.data?.length ? null : (
+  return (
     <div className="relative py-[10px] w-fit z-10">
       <span
         className={`absolute ${
@@ -115,62 +104,85 @@ const RefsDefsPopup = ({
               type={TypeMap.DEF}
               onClick={toggleFilter}
               active={filters.includes(TypeMap.DEF)}
-              disabled={!definitions?.length}
+              disabled={!data.data.definitions?.length}
               tooltipText="The line of code where identifier is defined"
             />
             <Badge
               type={TypeMap.REF}
               onClick={toggleFilter}
               active={filters.includes(TypeMap.REF)}
-              disabled={!references?.length}
+              disabled={!data.data.references?.length}
               tooltipText="The line of code where the identifier is referenced"
             />
           </div>
         </div>
-        <div className="bg-bg-base rounded-b text-xs overflow-auto max-h-80">
-          {data.data
-            .filter(
-              (d) => d.data.filter((dd) => filters.includes(dd.kind)).length,
-            )
-            .map((d, i) => (
-              <div className="border-b border-bg-border" key={d.file + i}>
-                <div className="px-3 pt-2">
-                  <BreadcrumbsPath
-                    path={d.file}
-                    repo={repoName}
-                    activeStyle="secondary"
-                  />
-                </div>
-                {d.data
-                  .filter((dd) => filters.includes(dd.kind))
-                  .map((line, i) => (
-                    <div
-                      key={i}
-                      className="py-2 px-3 code-s flex gap-1 cursor-pointer overflow-auto"
-                      onClick={() =>
-                        onRefDefClick(line.snippet.line_range.start, d.file)
-                      }
-                    >
-                      <div
-                        className={`uppercase caption w-8 flex-shrink-0 flex-grow-0 ${
-                          colorMap[line.kind]
-                        }`}
-                      >
-                        {line.kind.slice(0, 3)}
-                      </div>
-                      <Code
-                        code={line.snippet.data}
-                        lineStart={line.snippet.line_range.start}
-                        highlights={line.snippet.highlights}
+        {!data.data?.references?.length && !data.data?.definitions?.length ? (
+          <div className="bg-bg-sub rounded-b p-8 flex flex-col items-center gap-3 text-center text-label-base select-none">
+            {data.isLoading ? (
+              <>
+                <LiteLoaderContainer />
+                <p className="body-s">Searching...</p>
+              </>
+            ) : (
+              <>
+                <p className="body-s text-label-title">
+                  No references or definitions found
+                </p>
+                <p className="caption text-label-muted">
+                  We weren&apos;t able to identify any references at the moment
+                </p>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="bg-bg-sub rounded-b text-xs overflow-auto max-h-80">
+            {filters.includes(TypeMap.DEF) &&
+              !!data.data.definitions.length && (
+                <div>
+                  <div className="bg-bg-base flex gap-1 items-center py-2 px-3 text-bg-success select-none">
+                    <Def raw sizeClassName="w-3.5 h-3.5" />
+                    <p className="caption text-label-base">Definitions</p>
+                  </div>
+                  {data.data.definitions.map((item, i) => {
+                    return (
+                      <RefDefItem
+                        onRefDefClick={onRefDefClick}
+                        data={item.data}
+                        file={item.file}
+                        repoName={repoName}
                         language={language}
-                        removePaddings
-                        lineHoverEffect
+                        key={item.file + i}
+                        relativePath={relativePath}
+                        kind={TypeMap.DEF}
                       />
-                    </div>
-                  ))}
+                    );
+                  })}
+                </div>
+              )}
+            {filters.includes(TypeMap.REF) && !!data.data.references.length && (
+              <div>
+                <div className="bg-bg-base flex gap-1 items-center py-2 px-3 text-bg-danger select-none">
+                  <Ref raw sizeClassName="w-3.5 h-3.5" />
+                  <p className="caption text-label-base">References</p>
+                </div>
+                {data.data.references.map((item, i) => {
+                  return (
+                    <RefDefItem
+                      onRefDefClick={onRefDefClick}
+                      data={item.data}
+                      file={item.file}
+                      relativePath={relativePath}
+                      repoName={repoName}
+                      language={language}
+                      key={item.file + i}
+                      kind={TypeMap.REF}
+                    />
+                  );
+                })}
               </div>
-            ))}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

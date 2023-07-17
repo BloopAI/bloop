@@ -57,6 +57,7 @@ const CodeContainer = ({
           }
           hoverEffect={lineHoverEffect}
           highlightColor={highlightColor}
+          removePaddings={removePaddings}
           leftHighlight={
             highlightLines &&
             lineStart + lineNumber >= highlightLines[0] &&
@@ -93,6 +94,7 @@ const CodeContainer = ({
       onlySymbolLines,
       highlightColor,
       highlightLines,
+      removePaddings,
     ],
   );
 

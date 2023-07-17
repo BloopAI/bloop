@@ -27,6 +27,7 @@ type Props = {
   getHoverableContent: (hoverableRange: Range, tokenRange: Range) => void;
   tokenInfo: TokenInfoWrapped;
   handleRefsDefsClick: (lineNum: number, filePath: string) => void;
+  relativePath: string;
 };
 
 const CodeContainerFull = ({
@@ -47,6 +48,7 @@ const CodeContainerFull = ({
   tokenInfo,
   repoName,
   handleRefsDefsClick,
+  relativePath,
 }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -149,6 +151,7 @@ const CodeContainerFull = ({
             repoName={repoName}
             onRefDefClick={handleRefsDefsClick}
             language={language}
+            relativePath={relativePath}
           />
         </div>
       )}

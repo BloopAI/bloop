@@ -1,5 +1,5 @@
 import { Token } from './prism';
-import { TokenInfoResponse } from './api';
+import { RefDefDataItem, TokenInfoResponse } from './api';
 import { FileTreeFileType, RepositoryFile } from './index';
 
 export type BaseSymbolType =
@@ -167,7 +167,11 @@ export type TokenInfoWrapped = {
   hoverableRange: Range | null;
   tokenRange: Range | null;
   lineNumber?: number;
-  data: TokenInfoResponse['data'];
+  isLoading: boolean;
+  data: {
+    references: { file: string; data: RefDefDataItem[] }[];
+    definitions: { file: string; data: RefDefDataItem[] }[];
+  };
 };
 
 export type ResultClick = (

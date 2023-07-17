@@ -106,3 +106,7 @@ export { default as Clock } from './Clock';
 export { default as SortAlphabetical } from './SortAlphabetical';
 export { default as ArrowOut } from './ArrowOut';
 export { default as Sparkles } from './Sparkles';
+export { default as ArrowJumpLeft } from './ArrowJumpLeft';
+export { default as Def } from './Def';
+export { default as Ref } from './Ref';
+export { default as CodeIcon } from './Code';

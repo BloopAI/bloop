@@ -1,5 +1,7 @@
 import Tooltip from '../Tooltip';
 import { TokenInfoType } from '../../types/results';
+import { Def, Ref } from '../../icons';
+import { TypeMap } from './index';
 
 type Props = {
   type: TokenInfoType;
@@ -10,10 +12,10 @@ type Props = {
 };
 
 const colorMap = {
-  reference: 'bg-bg-danger',
-  definition: 'bg-bg-success',
-  mod: 'bg-violet',
-  ret: 'bg-sky',
+  reference: 'text-bg-danger',
+  definition: 'text-bg-success',
+  mod: 'text-violet',
+  ret: 'text-sky',
 };
 
 const TooltipCodeBadge = ({
@@ -26,24 +28,32 @@ const TooltipCodeBadge = ({
   return (
     <Tooltip text={tooltipText} placement={'top'}>
       <div
-        className={`flex items-center justify-center gap-1 px-2 py-1 rounded-4 ${
+        className={`flex items-center justify-center gap-1 px-2 py-1 rounded-4 border border-bg-border-hover ${
           disabled || !active
             ? 'bg-transparent border border-bg-border'
             : 'bg-bg-base-hover'
-        } ${disabled ? 'cursor-default' : 'cursor-pointer'} select-none`}
+        } ${disabled ? 'cursor-default' : 'cursor-pointer'} select-none group`}
         onClick={() => onClick(type)}
       >
         <div
-          className={`w-1.5 h-1.5 rounded-full ${
-            disabled || !active ? 'bg-label-muted' : colorMap[type]
-          }`}
-        />
-        <span
-          className={`uppercase caption ${
-            disabled || !active ? 'text-label-muted' : 'text-label-title'
+          className={`w-3.5 h-3.5 ${
+            disabled || !active ? 'text-label-muted' : colorMap[type]
           }`}
         >
-          {type.slice(0, 3)}
+          {type === TypeMap.DEF ? (
+            <Def raw sizeClassName="w-3.5 h-3.5" />
+          ) : (
+            <Ref raw sizeClassName="w-3.5 h-3.5" />
+          )}
+        </div>
+        <span
+          className={`capitalize caption-strong ${
+            disabled || !active
+              ? 'text-label-muted'
+              : 'text-label-base group-hover:text-label-control'
+          }`}
+        >
+          {type}
         </span>
       </div>
     </Tooltip>
