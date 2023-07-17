@@ -36,7 +36,7 @@ jobs:
             cross: true
             
           - target: x86_64-pc-windows-msvc
-            os: windwows-latest
+            os: windows-latest
             cross: false
 
     runs-on: ${{ matrix.os }}	
@@ -48,18 +48,16 @@ jobs:
           profile: minimal	
           target: ${{ matrix.target }}	
 
-      - uses: cachix/install-nix-action@v22	
-        with:	
-          github_access_token: "${{ secrets.GITHUB_TOKEN }}"	
-
-      - name: Install dependencies	
-        run: "nix profile install nixpkgs#protobuf"	
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build qdrant	
         env:	
-          VERSION: 1.3.1	
+          VERSION: 1.3.2
         run: |	
-          cargo install --target ${{ matrix.target }} --git https://github.com/qdrant/qdrant --tag v$VERSION --locked --root . qdrant	
+          cargo install --target ${{ matrix.target }} --git https://github.com/qdrant/qdrant --tag v${{ env.VERSION }} --locked --root . qdrant	
       - name: Upload binaries	
         uses: actions/upload-artifact@v3	
         with:	
