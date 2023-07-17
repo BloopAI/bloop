@@ -5,11 +5,17 @@ import { getConfig } from './services/api';
 import App from './App';
 import { LocaleContext } from './context/localeContext';
 import i18n from './i18n';
-import { LANGUAGE_KEY, savePlainToStorage } from './services/storage';
+import {
+  getPlainFromStorage,
+  LANGUAGE_KEY,
+  savePlainToStorage,
+} from './services/storage';
 
 const CloudApp = () => {
   const [envConfig, setEnvConfig] = useState({});
-  const [locale, setLocale] = useState('en');
+  const [locale, setLocale] = useState(
+    getPlainFromStorage(LANGUAGE_KEY) || 'en',
+  );
 
   useEffect(() => {
     setTimeout(() => getConfig().then(setEnvConfig), 1000); // server returns wrong tracking_id within first second
