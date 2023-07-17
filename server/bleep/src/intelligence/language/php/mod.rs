@@ -10,30 +10,26 @@ pub static PHP: TSLanguageConfig = TSLanguageConfig {
         (name) @hoverable
         "#,
     ),
-    namespaces: &[
-        &[
-            // variables
-            "constant",
-            "function",
-            "method",
-            "parameter",
-            "variable",
-            // types
-            "class",
-            "enum",
-            "trait",
-            "interface",
-            // fields
-            "field",
-            "enumerator",
-            // misc
-            "label",
-        ],
-        &[
-            // namespacing
-            "namespace",
-        ],
-    ],
+    namespaces: &[&[
+        // variables
+        "constant",
+        "function",
+        "method",
+        "parameter",
+        "variable",
+        // types
+        "class",
+        "enum",
+        "trait",
+        "interface",
+        // fields
+        "field",
+        "enumerator",
+        // misc
+        "label",
+        // namespacing
+        "namespace",
+    ]],
 };
 
 #[cfg(test)]
