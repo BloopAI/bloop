@@ -1,3 +1,4 @@
+import { Trans } from 'react-i18next';
 import { ChevronDownFilled, ChevronUpFilled } from '../../icons';
 
 type Props = {
@@ -21,7 +22,7 @@ const FilterTitle = ({
       items-center transition-all duration-300 ease-in-bounce outline-0 outline-none`}
     >
       <span className="flex items-center gap-2 subhead-s text-label-title">
-        {label}
+        <Trans>{label}</Trans>
         {numberSelected ? (
           <span className="w-5 h-5 bg-bg-main rounded-4 flex items-center justify-center caption text-label-title">
             {numberSelected}

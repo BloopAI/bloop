@@ -1,4 +1,5 @@
 import React, { ChangeEvent, useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MenuItemType, RepoUi } from '../../types/general';
 import TextInput from '../TextInput';
 import { DropdownWithIcon } from '../Dropdown';
@@ -22,6 +23,7 @@ const SearchableRepoList = ({
   onSync,
   onFolderChange,
 }: Props) => {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'last_updated'>('name');
 
@@ -43,7 +45,7 @@ const SearchableRepoList = ({
           value={filter}
           name="filter"
           onChange={handleChange}
-          placeholder="Search repository..."
+          placeholder={t('Search repository...')}
           variant="filled"
         />
         {source !== 'local' && (
@@ -52,13 +54,13 @@ const SearchableRepoList = ({
             items={[
               {
                 type: MenuItemType.DEFAULT,
-                text: 'Alphabetically',
+                text: t('Alphabetically'),
                 icon: <SortAlphabetical />,
                 onClick: () => setSortBy('name'),
               },
               {
                 type: MenuItemType.DEFAULT,
-                text: 'Last updated',
+                text: t('Last updated'),
                 icon: <Clock />,
                 onClick: () => setSortBy('last_updated'),
               },

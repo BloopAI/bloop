@@ -1,4 +1,5 @@
 import { useContext } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import SettingsText from '../SettingsText';
 import SettingsRow from '../SettingsRow';
 import { UIContext } from '../../../context/uiContext';
@@ -32,30 +33,33 @@ export const themesMap = {
 };
 
 const Preferences = () => {
+  const { t } = useTranslation();
   const { theme, setTheme } = useContext(UIContext);
 
   return (
     <div className="w-full relative">
       <div className="mb-6">
-        <h5>Preferences</h5>
+        <h5>
+          <Trans>Preferences</Trans>
+        </h5>
       </div>
       <div>
         <SettingsRow>
           <SettingsText
-            title="Theme"
-            subtitle="Select your interface color scheme"
+            title={t('Theme')}
+            subtitle={t('Select your interface color scheme')}
           />
           <Dropdown
             items={Object.entries(themesMap).map(([key, name]) => ({
               type: MenuItemType.DEFAULT,
-              text: name,
+              text: t(name),
               onClick: () => setTheme(key as Theme),
               onMouseOver: () => previewTheme(key),
             }))}
             onClose={() => previewTheme(theme)}
             selected={{
               type: MenuItemType.DEFAULT,
-              text: themesMap[theme],
+              text: t(themesMap[theme]),
             }}
           />
         </SettingsRow>

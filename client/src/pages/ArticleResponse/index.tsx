@@ -9,6 +9,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { CodeProps } from 'react-markdown/lib/ast-to-react';
 import { ReactMarkdownProps } from 'react-markdown/lib/complex-types';
+import { useTranslation } from 'react-i18next';
 import { conversationsCache } from '../../services/cache';
 import {
   ChatMessage,
@@ -31,6 +32,7 @@ type Props = {
 };
 
 const ArticleResponse = ({ recordId, threadId }: Props) => {
+  const { t } = useTranslation();
   const { conversation, setThreadId, setConversation } =
     useContext(ChatContext);
   const { openFileModal } = useContext(FileModalContext);
@@ -62,7 +64,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
             author: ChatMessageAuthor.Server,
             isLoading: false,
             type: ChatMessageType.Answer,
-            loadingSteps: mapLoadingSteps(m.search_steps),
+            loadingSteps: mapLoadingSteps(m.search_steps, t),
             text: m.conclusion,
             results: m.outcome,
             isFromHistory: true,

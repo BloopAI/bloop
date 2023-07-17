@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import TextField from '../TextField';
 import { CheckIcon } from '../../icons';
 import { indexRepoBranch } from '../../services/api';
@@ -25,6 +26,7 @@ const BranchItem = ({
   isIndexing,
   percentage,
 }: Props) => {
+  const { t } = useTranslation();
   const [syncClicked, setSyncClicked] = useState(false);
   return (
     <button
@@ -47,7 +49,7 @@ const BranchItem = ({
       />
       {selectedBranch !== name && (
         <button
-          className={`caption-strong ${
+          className={`caption-strong flex-shrink-0 ${
             syncClicked && !isIndexed
               ? 'text-label-base'
               : 'text-bg-main hover:text-bg-main-hover'
@@ -68,11 +70,11 @@ const BranchItem = ({
               <CheckIcon />
             </span>
           ) : isIndexing ? (
-            'Indexing...'
+            t('Indexing...')
           ) : syncClicked ? (
-            'Queued...'
+            t('Queued...')
           ) : (
-            'Sync'
+            t('Sync')
           )}
         </button>
       )}

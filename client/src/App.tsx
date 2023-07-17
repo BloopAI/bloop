@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { register } from 'timeago.js';
+import ja from 'timeago.js/lib/lang/ja';
 import { DeviceContextType } from './context/deviceContext';
 import './index.css';
 import 'highlight.js/styles/vs2015.css';
@@ -23,6 +25,8 @@ import { RepoSource } from './types';
 import { RepositoriesContext } from './context/repositoriesContext';
 import { AnalyticsContextProvider } from './context/providers/AnalyticsContextProvider';
 import { buildURLPart, getNavItemFromURL } from './utils/navigationUtils';
+
+register('ja', ja);
 
 type Props = {
   deviceContextValue: DeviceContextType;

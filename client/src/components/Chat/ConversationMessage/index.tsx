@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   Checkmark,
   List,
@@ -53,6 +54,7 @@ const ConversationMessage = ({
   results,
   i,
 }: Props) => {
+  const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
   const { envConfig } = useContext(DeviceContext);
   const { setChatOpen } = useContext(ChatContext);
@@ -81,7 +83,7 @@ const ConversationMessage = ({
               key={i}
             >
               {s.type === 'PROC' ? <PointClick /> : <MagnifyTool />}
-              <span>{s.type === 'PROC' ? 'Reading ' : s.displayText}</span>
+              <span>{s.type === 'PROC' ? t('Reading ') : s.displayText}</span>
               {s.type === 'PROC' ? (
                 <FileChip
                   onClick={() => openFileModal(s.content)}
@@ -104,12 +106,12 @@ const ConversationMessage = ({
             </div>
           )}
           <div className="caption text-label-base flex-1 flex gap-2 items-center">
-            <p>{isLoading ? 'Generating response...' : 'Answer Ready'}</p>
+            <p>{isLoading ? t('Generating response...') : t('Answer Ready')}</p>
             <Button
               size="tiny"
               variant={isLoadingStepsShown ? 'tertiary-active' : 'tertiary'}
               onlyIcon
-              title={`${isLoadingStepsShown ? 'Hide' : 'Show'} search steps`}
+              title={t(`${isLoadingStepsShown ? 'Hide' : 'Show'} search steps`)}
               onClick={() => setLoadingStepsShown((prev) => !prev)}
             >
               <List />
@@ -128,7 +130,7 @@ const ConversationMessage = ({
                   }
                 }}
               >
-                View
+                <Trans>View</Trans>
               </button>
             </div>
           ) : null}
@@ -142,7 +144,10 @@ const ConversationMessage = ({
             <div className="relative">
               <div className="w-6 h-6 rounded-full bg-chat-bg-border overflow-hidden flex items-center justify-center select-none">
                 {author === ChatMessageAuthor.User ? (
-                  <img src={envConfig.github_user?.avatar_url} alt="avatar" />
+                  <img
+                    src={envConfig.github_user?.avatar_url}
+                    alt={t('avatar')}
+                  />
                 ) : (
                   <div className="w-3 h-3">
                     <Sparkles raw />

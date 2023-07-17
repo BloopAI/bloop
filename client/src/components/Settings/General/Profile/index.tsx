@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../Button';
 import TextInput from '../../../TextInput';
 import SettingsRow from '../../SettingsRow';
@@ -26,6 +27,7 @@ type Form = {
 };
 
 const ProfileSettings = () => {
+  const { t } = useTranslation();
   const { envConfig } = useContext(DeviceContext);
   const savedForm: Form | null = useMemo(
     () => getJsonFromStorage(USER_DATA_FORM),
@@ -67,46 +69,46 @@ const ProfileSettings = () => {
     <form className="block">
       <SettingsRow>
         <SettingsText
-          title="First and last name"
-          subtitle="Manage how you will be called in bloop"
+          title={t('First and last name')}
+          subtitle={t('Manage how you will be called in bloop')}
         />
         <div className="flex flex-1 flex-col gap-4">
           <TextInput
             value={form.firstName}
             onChange={onChange}
             name="firstName"
-            label="First name"
+            label={t('First name')}
             variant="filled"
-            placeholder="Your name"
+            placeholder={t('Your name')}
           />
           <TextInput
             value={form.lastName}
             onChange={onChange}
             name="lastName"
-            label="Last name"
+            label={t('Last name')}
             variant="filled"
-            placeholder="Your last name"
+            placeholder={t('Your last name')}
           />
         </div>
       </SettingsRow>
       <SettingsRow>
         <SettingsText
-          title="Email"
-          subtitle="Used to sign in, syncing and product updates"
+          title={t('Email')}
+          subtitle={t('Used to sign in, syncing and product updates')}
         />
         <div className="flex-1 flex flex-col items-end">
           <TextInput
             value={form.email}
             onChange={onChange}
             name="email"
-            label="Email"
+            label={t('Email')}
             variant="filled"
-            placeholder="Your email address"
+            placeholder={t('Your email address')}
             validate={() => {
               if (!EMAIL_REGEX.test(form.email)) {
                 setForm((prev) => ({
                   ...prev,
-                  emailError: 'Email is not valid',
+                  emailError: t('Email is not valid'),
                 }));
               }
             }}
@@ -125,7 +127,7 @@ const ProfileSettings = () => {
         }
         onClick={handleSubmit}
       >
-        Save changes
+        <Trans>Save changes</Trans>
       </Button>
     </form>
   );

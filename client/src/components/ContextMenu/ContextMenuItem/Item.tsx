@@ -1,4 +1,5 @@
 import React, { MouseEvent, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import TextField from '../../TextField';
 import { CheckIcon, TrashCan } from '../../../icons';
 import Button from '../../Button';
@@ -26,6 +27,7 @@ const Item = ({
   tooltip,
   onMouseOver,
 }: ItemProps) => {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
@@ -61,7 +63,7 @@ const Item = ({
       onFocus={onMouseOver}
     >
       {showConfirmation ? (
-        <TextField value="Confirm" icon={<CheckIcon />} />
+        <TextField value={t('Confirm')} icon={<CheckIcon />} />
       ) : (
         <span
           className={
@@ -79,7 +81,7 @@ const Item = ({
                 e.stopPropagation();
                 onDelete?.();
               }}
-              title="Delete"
+              title={t('Delete')}
             >
               <TrashCan />
             </Button>

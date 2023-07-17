@@ -29,3 +29,4 @@ export const TABS_KEY = 'tabs';
 export const LAST_ACTIVE_TAB_KEY = 'last_active_tab';
 export const TABS_HISTORY_KEY = 'tabs_history';
 export const PROMPT_GUIDE_DONE = 'prompt_guide_done';
+export const LANGUAGE_KEY = 'language';

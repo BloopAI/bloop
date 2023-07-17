@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useCallback, useContext, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Unlike } from '../../../icons';
 import Button from '../../Button';
 import { upvoteAnswer } from '../../../services/api';
@@ -26,6 +27,7 @@ const MessageFeedback = ({
   repoRef,
   error,
 }: Props) => {
+  const { t } = useTranslation();
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -72,7 +74,7 @@ const MessageFeedback = ({
           >
             {!isUpvote && !isDownvote && (
               <p className="body-s text-label-title">
-                How would you rate this response?
+                <Trans>How would you rate this response?</Trans>
               </p>
             )}
             <div className="flex gap-1 items-center">
@@ -86,7 +88,7 @@ const MessageFeedback = ({
               transition-all duration-75 ease-in-out`}
               >
                 <UpvoteBtn isUpvote={isUpvote} />
-                Good
+                <Trans>Good</Trans>
               </button>
               <button
                 onClick={() => handleUpvote(false)}
@@ -100,7 +102,7 @@ const MessageFeedback = ({
               transition-all duration-75 ease-in-out`}
               >
                 <DownvoteBtn isDownvote={isDownvote} />
-                Bad
+                <Trans>Bad</Trans>
               </button>
             </div>
           </div>
@@ -120,10 +122,14 @@ const MessageFeedback = ({
                   <div className="w-3.5 h-3.5">
                     <Unlike raw />
                   </div>
-                  <span>Bad response</span>
+                  <span>
+                    <Trans>Bad response</Trans>
+                  </span>
                 </div>
                 <textarea
-                  placeholder="What was the issue with this response? How could it be improved?"
+                  placeholder={t(
+                    'What was the issue with this response? How could it be improved?',
+                  )}
                   rows={3}
                   value={comment}
                   autoFocus={true}
@@ -141,10 +147,10 @@ const MessageFeedback = ({
                     setShowCommentInput(false);
                   }}
                 >
-                  Cancel
+                  <Trans>Cancel</Trans>
                 </Button>
                 <Button size="small" onClick={handleSubmit}>
-                  Submit
+                  <Trans>Submit</Trans>
                 </Button>
               </div>
             </div>

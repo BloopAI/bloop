@@ -1,4 +1,5 @@
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { CheckIcon, HardDrive, RepositoryFilled } from '../../icons';
 import Button from '../Button';
 import SkeletonItem from '../SkeletonItem';
@@ -32,6 +33,7 @@ const RepoList = ({
   onFolderChange,
   sortBy,
 }: Props) => {
+  const { t } = useTranslation();
   const [filteredRepos, setFilteredRepos] = useState(sortRepos(repos, sortBy));
 
   useEffect(() => {
@@ -60,9 +62,13 @@ const RepoList = ({
         {!isLoading ? (
           !filteredRepos.length ? (
             <div className="flex flex-col gap-2 py-6 text-center">
-              <p className="body-s text-label-title">No results...</p>
+              <p className="body-s text-label-title">
+                <Trans>No results...</Trans>
+              </p>
               <p className="text-label-base caption">
-                Nothing matched your search. Try a different combination!
+                <Trans>
+                  Nothing matched your search. Try a different combination!
+                </Trans>
               </p>
             </div>
           ) : (
@@ -83,7 +89,7 @@ const RepoList = ({
                         className="caption text-bg-main"
                         onClick={onFolderChange}
                       >
-                        Change folder
+                        <Trans>Change folder</Trans>
                       </button>
                     )}
                   </span>
@@ -107,7 +113,9 @@ const RepoList = ({
                       </span>
                     </div>
                     {repo.alreadySynced ? (
-                      <p className="caption">Already synced</p>
+                      <p className="caption">
+                        <Trans>Already synced</Trans>
+                      </p>
                     ) : (
                       <Button
                         variant="primary"
@@ -117,7 +125,7 @@ const RepoList = ({
                           handleSync(repo.ref);
                         }}
                       >
-                        Sync
+                        <Trans>Sync</Trans>
                       </Button>
                     )}
                   </div>

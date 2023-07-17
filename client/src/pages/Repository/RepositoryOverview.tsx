@@ -1,5 +1,6 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { Remarkable } from 'remarkable';
+import { Trans } from 'react-i18next';
 import Accordion from '../../components/Accordion';
 import FileIcon from '../../components/FileIcon';
 import { FileTreeFileType, Repository } from '../../types';
@@ -79,7 +80,9 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h4>Files in {repository.name}</h4>
+        <h4>
+          <Trans>Files in</Trans> {repository.name}
+        </h4>
       </div>
       <div className="">
         <RepositoryFiles

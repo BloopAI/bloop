@@ -1,5 +1,7 @@
 import React, { useContext } from 'react';
-import { Bug, Cog, DoorRight, Magazine, Person } from '../../icons';
+import i18next from 'i18next';
+import { useTranslation } from 'react-i18next';
+import { Bug, Cog, DoorRight, Globe, Magazine, Person } from '../../icons';
 import { MenuListItemType } from '../ContextMenu';
 import { deleteAuthCookie } from '../../utils';
 import DropdownWithIcon from '../Dropdown/WithIcon';
@@ -8,6 +10,7 @@ import { DeviceContext } from '../../context/deviceContext';
 import { TabsContext } from '../../context/tabsContext';
 import { gitHubLogout } from '../../services/api';
 import { RepoSource } from '../../types';
+import { LocaleContext } from '../../context/localeContext';
 import Tab from './Tab';
 
 type Props = {
@@ -15,6 +18,7 @@ type Props = {
 };
 
 const NavBar = ({ isSkeleton }: Props) => {
+  const { t } = useTranslation();
   const {
     setBugReportModalOpen,
     setShouldShowWelcome,
@@ -22,6 +26,7 @@ const NavBar = ({ isSkeleton }: Props) => {
     setSettingsOpen,
   } = useContext(UIContext);
   const { openLink, isSelfServe, os, envConfig } = useContext(DeviceContext);
+  const { setLocale, locale } = useContext(LocaleContext);
   const { tabs, setActiveTab, activeTab, handleRemoveTab } =
     useContext(TabsContext);
 
@@ -49,30 +54,59 @@ const NavBar = ({ isSkeleton }: Props) => {
               <Tab tabKey={t.key} name={t.name} key={t.key} source={t.source} />
             ))}
       </div>
+      <DropdownWithIcon
+        items={[
+          {
+            text: 'EN',
+            type: MenuListItemType.DEFAULT,
+            onClick: () => {
+              setLocale('en');
+            },
+          },
+          {
+            text: '日本',
+            type: MenuListItemType.DEFAULT,
+            onClick: () => {
+              setLocale('ja');
+            },
+          },
+        ]}
+        icon={
+          <div className="flex items-center gap-1">
+            <Globe />
+            {locale === 'ja' ? '日本' : 'EN'}
+          </div>
+        }
+        dropdownBtnClassName=""
+        btnSize="tiny"
+        btnVariant="tertiary"
+        size="small"
+        appendTo={document.body}
+      />
       {!isSkeleton && (
         <div>
           <DropdownWithIcon
             items={[
               {
-                text: 'Settings',
+                text: t('Settings'),
                 icon: <Cog />,
                 type: MenuListItemType.DEFAULT,
                 onClick: () => setSettingsOpen(true),
               },
               {
-                text: 'Documentation',
+                text: t('Documentation'),
                 icon: <Magazine />,
                 type: MenuListItemType.DEFAULT,
                 onClick: () => openLink('https://bloop.ai/docs'),
               },
               {
-                text: 'Report a bug',
+                text: t('Report a bug'),
                 icon: <Bug />,
                 type: MenuListItemType.DEFAULT,
                 onClick: () => setBugReportModalOpen(true),
               },
               {
-                text: 'Sign out',
+                text: t('Sign out'),
                 icon: <DoorRight />,
                 type: MenuListItemType.DEFAULT,
                 onClick: () => {

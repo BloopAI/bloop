@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import DialogText from '../DialogText';
 import Button from '../../../components/Button';
 import { ArrowRight } from '../../../icons';
@@ -24,6 +25,7 @@ export const STEP_KEY = 'STEP_GITHUB_REPOS';
 let intervalId: number;
 
 const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
+  const { t } = useTranslation();
   const [repos, setRepos] = useState<RepoUi[]>([]);
   const [nextButtonDisabled, setNextButtonDisabled] = useState(false);
   const [isLoading, setLoading] = useState(true);
@@ -97,8 +99,8 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
   return (
     <>
       <DialogText
-        title="Private repository"
-        description="Select any private repository you would like to sync"
+        title={t('Private repository')}
+        description={t('Select any private repository you would like to sync')}
       />
       <div className="flex flex-col overflow-auto">
         <SearchableRepoList
@@ -109,7 +111,7 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
         />
         {!disableSkip ? (
           <Button variant="secondary" onClick={handleSkip}>
-            Skip this step
+            <Trans>Skip this step</Trans>
             <ArrowRight />
           </Button>
         ) : null}

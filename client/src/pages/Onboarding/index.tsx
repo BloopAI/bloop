@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import NavBar from '../../components/NavBar';
@@ -34,6 +35,7 @@ export type Form = {
 };
 
 const Onboarding = () => {
+  const { t } = useTranslation();
   const [form, setForm] = useState<Form>({
     firstName: '',
     lastName: '',
@@ -178,7 +180,7 @@ const Onboarding = () => {
         before:bg-repeat before:mix-blend-soft-light before:opacity-[0.14]`}
           >
             <div className="w-[585px]">
-              <img className="onboarding-chats-img" alt="chats in bloop" />
+              <img className="onboarding-chats-img" alt={t('chats in bloop')} />
             </div>
           </div>
         </div>

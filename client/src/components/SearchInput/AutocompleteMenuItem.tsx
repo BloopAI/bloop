@@ -1,4 +1,5 @@
 import React from 'react';
+import { Trans } from 'react-i18next';
 import CodeBlockSearch from '../CodeBlock/Search';
 import { ResultItemType, SuggestionType } from '../../types/results';
 
@@ -45,14 +46,14 @@ const AutocompleteMenuItem = ({ getItemProps, item, index }: Props) => {
         <>
           <span className="caption flex-1">{item.relativePath}</span>
           <span className="p-1 bg-bg-base rounded-sm caption text-label-muted group-hover:bg-bg-base-hover group-hover:text-label-title group-focus:bg-bg-base-hover group-focus:text-label-title transition duration-150 ease-in-slow">
-            File
+            <Trans>File</Trans>
           </span>
         </>
       ) : item.type === ResultItemType.REPO ? (
         <>
           <span className="caption flex-1">{item.repository}</span>
           <span className="p-1 bg-bg-base rounded-sm caption text-label-muted group-hover:bg-bg-base-hover group-hover:text-label-title group-focus:bg-bg-base-hover group-focus:text-label-title transition duration-150 ease-in-slow">
-            Repository
+            <Trans>Repository</Trans>
           </span>
         </>
       ) : null}

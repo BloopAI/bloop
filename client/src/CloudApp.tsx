@@ -3,9 +3,11 @@ import { BrowserRouter } from 'react-router-dom';
 import packageJson from '../package.json';
 import { getConfig } from './services/api';
 import App from './App';
+import { LocaleContext } from './context/localeContext';
 
 const CloudApp = () => {
   const [envConfig, setEnvConfig] = useState({});
+  const [locale, setLocale] = useState('en');
 
   useEffect(() => {
     setTimeout(() => getConfig().then(setEnvConfig), 1000); // server returns wrong tracking_id within first second
@@ -38,10 +40,24 @@ const CloudApp = () => {
     [envConfig],
   );
 
+  useEffect(() => {
+    // dynamicActivate(locale);
+  }, [locale]);
+
+  const localeContextValue = useMemo(
+    () => ({
+      locale,
+      setLocale,
+    }),
+    [locale],
+  );
+
   return (
-    <BrowserRouter>
-      <App deviceContextValue={deviceContextValue} />
-    </BrowserRouter>
+    <LocaleContext.Provider value={localeContextValue}>
+      <BrowserRouter>
+        <App deviceContextValue={deviceContextValue} />
+      </BrowserRouter>
+    </LocaleContext.Provider>
   );
 };
 

@@ -1,4 +1,5 @@
 import React, { useContext } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Collapsed, Expanded } from '../../icons';
 import { MenuListItemType } from '../ContextMenu';
 import Tabs from '../../components/Tabs';
@@ -32,6 +33,7 @@ const PageHeader = ({
   showCollapseControls,
   loading,
 }: Props) => {
+  const { t } = useTranslation();
   const { symbolsCollapsed, setSymbolsCollapsed } = useContext(UIContext);
   return (
     <div className="w-full flex justify-between items-center mb-5 select-none">
@@ -42,7 +44,7 @@ const PageHeader = ({
           </div>
         ) : (
           <h4 className="text-label-title">
-            {resultsNumber ? 'Results' : 'No results'}
+            <Trans>{resultsNumber ? 'Results' : 'No results'}</Trans>
           </h4>
         )}
         {loading ? (
@@ -51,9 +53,7 @@ const PageHeader = ({
           </div>
         ) : (
           <p className="body-s text-label-muted">
-            {resultsNumber
-              ? `Showing ${resultsNumber} result${resultsNumber > 1 ? 's' : ''}`
-              : 'Nothing matched your search. Try a different combination!'}
+            {t('Showing # result', { count: resultsNumber })}
           </p>
         )}
       </div>

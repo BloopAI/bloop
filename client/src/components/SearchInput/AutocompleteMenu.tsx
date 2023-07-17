@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
 import { ResultItemType, SuggestionType } from '../../types/results';
 import AutocompleteMenuItem from './AutocompleteMenuItem';
 
@@ -60,7 +61,7 @@ const AutocompleteMenu = ({
           <>
             {queryOptions.length ? (
               <span className="text-label-base caption p-2">
-                Query suggestions
+                <Trans>Query suggestions</Trans>
               </span>
             ) : null}
             {queryOptions.map((item, index) => (
@@ -73,7 +74,7 @@ const AutocompleteMenu = ({
             ))}
             {resultOptions.length ? (
               <span className="text-label-base caption p-2">
-                Result suggestions
+                <Trans>Result suggestions</Trans>
               </span>
             ) : null}
             {resultOptions
@@ -91,7 +92,9 @@ const AutocompleteMenu = ({
                 onClick={() => setAllResultsShown((prev) => !prev)}
                 className="text-label-base cursor-pointer w-full h-9 flex justify-between items-center px-1.5 py-2.5 hover:bg-bg-base-hover gap-1 border-transparent border-l-2 hover:border-bg-main caption arrow-navigate focus:bg-bg-base-hover focus:border-bg-main focus:outline-none outline-none outline-0 transition duration-150 ease-in-slow"
               >
-                {allResultsShown ? 'Show fewer results' : 'View all results'}
+                <Trans>
+                  {allResultsShown ? 'Show fewer results' : 'View all results'}
+                </Trans>
               </button>
             ) : null}
           </>

@@ -1,5 +1,6 @@
 import Tippy from '@tippyjs/react';
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import TextField from '../TextField';
 import { Branch, ChevronDownFilled, ChevronUpFilled } from '../../icons';
 import Button from '../Button';
@@ -17,6 +18,7 @@ import BranchItem from './BranchItem';
 let eventSource: EventSource;
 
 const BranchSelector = () => {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [isOpen, setOpen] = useState(false);
   const [isPopupOpen, setPopupOpen] = useState(false);
@@ -169,7 +171,7 @@ const BranchSelector = () => {
             >
               <>
                 <div className="bg-bg-shade text-label-title caption-strong px-3 py-2.5 block">
-                  Switch branch
+                  <Trans>Switch branch</Trans>
                 </div>
                 <div className="border-b border-bg-border">
                   <TextInput
@@ -177,7 +179,7 @@ const BranchSelector = () => {
                     name={'search'}
                     onChange={(e) => setSearch(e.target.value)}
                     type="search"
-                    placeholder="Search branches..."
+                    placeholder={t('Search branches...')}
                     noBorder
                   />
                 </div>
@@ -209,7 +211,7 @@ const BranchSelector = () => {
           className="ellipsis"
         >
           <TextField
-            value={selectedBranch?.replace('origin/', '') || 'All branches'}
+            value={selectedBranch?.replace('origin/', '') || t('All branches')}
             icon={<Branch />}
             className="ellipsis"
           />

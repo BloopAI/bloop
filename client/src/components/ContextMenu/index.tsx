@@ -42,7 +42,7 @@ type Props = {
   title?: string;
   handleClose: () => void;
   key?: string;
-  appendTo?: Element | 'parent';
+  appendTo?: TippyProps['appendTo'];
   size?: 'small' | 'medium' | 'large';
   dropdownPlacement?: TippyProps['placement'];
 };

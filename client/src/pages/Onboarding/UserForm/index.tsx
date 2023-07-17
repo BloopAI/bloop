@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useContext,
 } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { BloopLogo, ChevronRight, GitHubLogo } from '../../../icons';
 import TextInput from '../../../components/TextInput';
 import { EMAIL_REGEX } from '../../../consts/validations';
@@ -26,6 +27,7 @@ type Props = {
 };
 
 const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
+  const { t } = useTranslation();
   const { isGithubConnected, setGithubConnected } = useContext(UIContext);
   const { envConfig, openLink } = useContext(DeviceContext);
   const { theme, setTheme } = useContext(UIContext);
@@ -41,16 +43,18 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
         <div className="w-11 h-11 absolute left-1/2 -top-16 transform -translate-x-1/2">
           <BloopLogo />
         </div>
-        <h4 className="text-label-title">Setup bloop</h4>
+        <h4 className="text-label-title">
+          <Trans>Setup bloop</Trans>
+        </h4>
         <p className="text-label-muted body-s">
-          Please log into your GitHub account to complete setup
+          <Trans>Please log into your GitHub account to complete setup</Trans>
         </p>
       </div>
       <form className="flex flex-col gap-4 w-full">
         <TextInput
           value={form.firstName}
           name="firstName"
-          placeholder="First name"
+          placeholder={t('First name')}
           variant="filled"
           onChange={(e) =>
             setForm((prev) => ({ ...prev, firstName: e.target.value }))
@@ -60,7 +64,7 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
         <TextInput
           value={form.lastName}
           name="lastName"
-          placeholder="Last name"
+          placeholder={t('Last name')}
           variant="filled"
           onChange={(e) =>
             setForm((prev) => ({ ...prev, lastName: e.target.value }))
@@ -80,30 +84,32 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
             if (form.email && !EMAIL_REGEX.test(form.email)) {
               setForm((prev) => ({
                 ...prev,
-                emailError: 'Email is not valid',
+                emailError: t('Email is not valid'),
               }));
             }
           }}
           error={form.emailError}
           name="email"
-          placeholder="Email address"
+          placeholder={t('Email address')}
         />
         <div className="flex flex-col w-full">
           <Dropdown
             btnHint={
-              <span className="text-label-title">Select color theme:</span>
+              <span className="text-label-title">
+                <Trans>Select color theme:</Trans>
+              </span>
             }
             btnClassName="w-full border-transparent"
             items={Object.entries(themesMap).map(([key, name]) => ({
               type: MenuItemType.DEFAULT,
-              text: name,
+              text: t(name),
               onClick: () => setTheme(key as Theme),
               onMouseOver: () => previewTheme(key),
             }))}
             onClose={() => previewTheme(theme)}
             selected={{
               type: MenuItemType.DEFAULT,
-              text: themesMap[theme],
+              text: t(themesMap[theme]),
             }}
           />
         </div>
@@ -121,7 +127,7 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
               isGithubConnected ? handleLogout() : setGitHubScreen(true)
             }
           >
-            {isGithubConnected ? 'Disconnect' : 'Connect account'}{' '}
+            {isGithubConnected ? t('Disconnect') : t('Connect account')}{' '}
             {!isGithubConnected && <ChevronRight />}
           </button>
         </div>
@@ -134,25 +140,25 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
           }
           onClick={onContinue}
         >
-          Continue
+          <Trans>Continue</Trans>
         </Button>
       </form>
       {isGithubConnected && (
         <p className="caption text-label-base text-center">
-          By continuing you accept our
+          <Trans>By continuing you accept our</Trans>
           <br />
           <button
             onClick={() => openLink('https://bloop.ai/terms')}
             className="text-label-link"
           >
-            Terms & conditions
+            <Trans>Terms & conditions</Trans>
           </button>{' '}
-          and{' '}
+          <Trans>and </Trans>
           <button
             onClick={() => openLink('https://bloop.ai/privacy')}
             className="text-label-link"
           >
-            Privacy policy
+            <Trans>Privacy policy</Trans>
           </button>
         </p>
       )}
