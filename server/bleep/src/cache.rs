@@ -286,7 +286,7 @@ impl<'a> ChunkCache<'a> {
             // need another async block to get around scoping issues
             // with referential `&id`
             self.qdrant
-                .set_payload(semantic::COLLECTION_NAME, &id, p, None)
+                .set_payload_blocking(semantic::COLLECTION_NAME, &id, p, None)
                 .await
         }))
         .await
@@ -313,7 +313,7 @@ impl<'a> ChunkCache<'a> {
         let new_size = new.len();
         if !new.is_empty() {
             self.qdrant
-                .upsert_points(semantic::COLLECTION_NAME, new, None)
+                .upsert_points_blocking(semantic::COLLECTION_NAME, new, None)
                 .await?;
         }
 
