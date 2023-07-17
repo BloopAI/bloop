@@ -31,6 +31,7 @@ type Props = {
   setConversation: (b: ChatMessage[]) => void;
   setThreadId: (b: string) => void;
   repoRef: string;
+  repoName: string;
   handleNewConversation: () => void;
 };
 
@@ -41,6 +42,7 @@ const AllConversations = ({
   setThreadId,
   setConversation,
   repoRef,
+  repoName,
   handleNewConversation,
 }: Props) => {
   const { t } = useTranslation();
@@ -152,6 +154,7 @@ const AllConversations = ({
             repoRef={repoRef}
             isLoading={false}
             isHistory
+            repoName={repoName}
           />
         </div>
       )}

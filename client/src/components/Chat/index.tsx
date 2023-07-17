@@ -388,6 +388,7 @@ const Chat = () => {
               queryId={queryId}
               repoRef={tab.key}
               isLoading={isLoading}
+              repoName={tab.repoName}
             />
           )}
           <form onSubmit={onSubmit} className="flex flex-col w-95">
@@ -440,6 +441,7 @@ const Chat = () => {
         setConversation={setConversation}
         setThreadId={setThreadId}
         repoRef={tab.key}
+        repoName={tab.repoName}
         handleNewConversation={handleNewConversation}
       />
       <DeprecatedClientModal

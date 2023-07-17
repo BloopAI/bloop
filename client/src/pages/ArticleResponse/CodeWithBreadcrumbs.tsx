@@ -14,6 +14,7 @@ type Props = {
   startLine: number;
   language: string;
   code: string;
+  isSummary?: boolean;
 };
 
 const CodeWithBreadcrumbs = ({
@@ -23,6 +24,7 @@ const CodeWithBreadcrumbs = ({
   startLine,
   language,
   code,
+  isSummary,
 }: Props) => {
   const [codeCopied, setCodeCopied] = useState(false);
 
@@ -45,13 +47,21 @@ const CodeWithBreadcrumbs = ({
 
   return (
     <div
-      className="text-sm border border-bg-border rounded-md flex-1 overflow-x-auto cursor-pointer my-4"
+      className={`text-sm border border-bg-border rounded-md flex-1 overflow-x-auto cursor-pointer ${
+        isSummary ? '' : 'my-4'
+      }`}
       onClick={handleResultClick}
     >
       <div
-        className={`flex items-center justify-between gap-2 w-full bg-bg-shade h-13 px-3 cursor-pointer overflow-hidden`}
+        className={`flex items-center justify-between gap-2 w-full ${
+          isSummary ? 'bg-chat-bg-sub' : 'bg-bg-shade'
+        } h-13 px-3 cursor-pointer overflow-hidden`}
       >
-        <div className="flex items-center gap-2 w-full cursor-pointer">
+        <div
+          className={`flex items-center gap-2 w-full cursor-pointer ${
+            isSummary ? '-mt-5' : ''
+          }`}
+        >
           <FileIcon filename={filePath} />
           <BreadcrumbsPath
             path={filePath}

@@ -19,9 +19,15 @@ type Props = {
   ) => void;
   repoName: string;
   markdown: string;
+  isSummary?: boolean;
 };
 
-const MarkdownWithCode = ({ openFileModal, repoName, markdown }: Props) => {
+const MarkdownWithCode = ({
+  openFileModal,
+  repoName,
+  markdown,
+  isSummary,
+}: Props) => {
   const components = useMemo(() => {
     return {
       a(
@@ -87,9 +93,14 @@ const MarkdownWithCode = ({ openFileModal, repoName, markdown }: Props) => {
               onResultClick={openFileModal}
               startLine={lines[0] - 1}
               repoName={repoName}
+              isSummary={isSummary}
             />
           ) : (
-            <NewCode code={code} language={matchLang[1]} />
+            <NewCode
+              code={code}
+              language={matchLang[1]}
+              isSummary={isSummary}
+            />
           )
         ) : colorPreview ? (
           <span className="inline-flex gap-1.5 items-center">
@@ -105,7 +116,7 @@ const MarkdownWithCode = ({ openFileModal, repoName, markdown }: Props) => {
         );
       },
     };
-  }, [repoName, openFileModal]);
+  }, [repoName, openFileModal, isSummary]);
 
   return <ReactMarkdown components={components}>{markdown}</ReactMarkdown>;
 };

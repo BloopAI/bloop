@@ -7,6 +7,7 @@ type Props = {
   threadId: string;
   queryId: string;
   repoRef: string;
+  repoName: string;
   isLoading?: boolean;
   isHistory?: boolean;
 };
@@ -18,6 +19,7 @@ const Conversation = ({
   repoRef,
   isLoading,
   isHistory,
+  repoName,
 }: Props) => {
   const messagesRef = useRef<HTMLDivElement>(null);
 
@@ -68,6 +70,7 @@ const Conversation = ({
           queryId={queryId}
           repoRef={repoRef}
           scrollToBottom={scrollToBottom}
+          repoName={repoName}
         />
       ))}
     </div>
