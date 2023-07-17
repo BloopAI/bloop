@@ -20,6 +20,7 @@ bloop:
   sentryDsnFE: ""
   #
   logLevel: info
+  maxThreads: 3
 
 image:
   repository: ""
@@ -185,11 +186,19 @@ qdrant:
 
   #modification example for configuration to overwrite defaults
   config:
+    telemetry_disabled: true
     cluster:
       enabled: true
       p2p:
         port: 6335
-      consensus:
+      concensus:
         tick_period_ms: 100
     storage:
       snapshots_path: /qdrant/storage/snapshots
+      on_disk_payload: false
+      wal:
+        wal_capacity_mb: 128
+        wal_segments_ahead: 4
+      optimizers:
+        max_optimization_threads: 2
+        flush_interval_sec: 2
