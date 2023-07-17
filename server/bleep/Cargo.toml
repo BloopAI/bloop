@@ -128,6 +128,7 @@ serde-xml-rs = "0.6.0"
 # latest crates.io version at the time of writing does not include necessary patches.
 comrak = { default-features = false, git = "https://github.com/kivikakk/comrak" }
 lazy-regex = "3.0.0"
+base64 = "0.21.2"
 
 [target.'cfg(windows)'.dependencies]
 dunce = "1.0.4"

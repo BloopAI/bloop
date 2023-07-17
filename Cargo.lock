@@ -474,6 +474,7 @@ dependencies = [
  "async-trait",
  "axum",
  "axum-extra",
+ "base64 0.21.2",
  "bincode",
  "blake3",
  "chrono",

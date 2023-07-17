@@ -2,6 +2,7 @@ use crate::query::parser::SemanticQuery;
 use std::borrow::Cow;
 
 use anyhow::{Context, Result};
+use base64::Engine;
 use tracing::trace;
 
 /// A continually updated conversation exchange.
@@ -37,7 +38,7 @@ impl Exchange {
                 let outcome = self
                     .outcome
                     .get_or_insert_with(|| Outcome::Article(String::new()));
-                *outcome.as_article_mut().unwrap() = sanitize_article(&full_text);
+                *outcome.as_article_mut().unwrap() = encode_article(&sanitize_article(&full_text));
             }
             Update::Conclude(conclusion) => {
                 self.conclusion = Some(conclusion);
@@ -438,6 +439,10 @@ impl ConcludeResult {
     }
 }
 
+fn encode_article(article: &str) -> String {
+    xml_for_each(article, |code| Some(encode_xml_code(code)))
+}
+
 fn sanitize_article(article: &str) -> String {
     xml_for_each(article, |code| Some(fixup_xml_code(code).into_owned()))
 }
@@ -451,20 +456,24 @@ fn fixup_xml_code(xml: &str) -> Cow<str> {
 
     dbg!(xml);
 
-    if let Some(match_) = dbg!(regex!("<(Generated|Quoted)Code>(\\s)*<Code>(.*)</Code>"sm)
+    if let Some(match_) = dbg!(regex!("<(Generated|Quoted)Code>\\s*<Code>(.*)"sm)
         .captures(xml))
-        .and_then(|cap| cap.get(3))
+        .and_then(|cap| cap.get(2))
     {
         let mut buf = String::new();
+
         buf += &xml[..match_.start()];
 
         {
             let s = &xml[match_.range()];
 
+            let code_len = regex!("</Code>").find(s).map(|m| m.start()).unwrap_or(s.len());
+            let (s, tail) = s.split_at(code_len);
+
             // The `regex` crate does not support negative lookahead, so we cannot write a regex
             // like `&(?!amp;)`. So, we just perform naive substitutions to first obtain an
             // unescaped copy of the string, and then re-escape it in order to fix up the result.
-            // 
+            //
             // This matters if the input string is something like `&amp;foo < &bar&lt;i32&gt;()`:
             //
             // - First, we convert that to `&foo < &bar<i32>()`
@@ -479,9 +488,8 @@ fn fixup_xml_code(xml: &str) -> Cow<str> {
             let s = regex!(">"m).replace_all(&s, "&gt;");
 
             buf += &s;
+            buf += tail;
         }
-
-        buf += &xml[match_.end()..];
 
         Cow::Owned(buf)
     } else {
@@ -489,11 +497,38 @@ fn fixup_xml_code(xml: &str) -> Cow<str> {
     }
 }
 
+fn encode_xml_code(xml: &str) -> String {
+    let Ok(code_chunk) = serde_xml_rs::from_str::<CodeChunk>(&xml) else {
+        return xml.to_owned();
+    };
+
+    let encoded_chunk: EncodedCodeChunk = code_chunk.into();
+
+    serde_xml_rs::to_string(&encoded_chunk).unwrap()
+        // Trim the extra element and XML info that `serde-xml-rs` serializes.
+        //
+        // `serde-xml-rs` will serialize an enum with the following format:
+        //
+        // ```
+        // <?xml version="1.0" encoding="UTF-8"?>
+        // <EnumName>
+        //     <Variant>
+        //          ...
+        //     </Variant>
+        // </EnumName>
+        // ```
+        //
+        // We only really care about the serialized variant here, so we discard the extra head and
+        // tail.
+        .replace(r#"<?xml version="1.0" encoding="UTF-8"?><EncodedCodeChunk>"#, "")
+        .replace(r#"</EncodedCodeChunk>"#, "")
+}
+
 #[derive(serde::Deserialize, Debug)]
 enum CodeChunk {
     QuotedCode {
         #[serde(rename = "Code")]
-        _code: String,
+        code: String,
         #[serde(rename = "Language")]
         language: String,
         #[serde(rename = "Path")]
@@ -505,10 +540,56 @@ enum CodeChunk {
     },
     GeneratedCode {
         #[serde(rename = "Code")]
-        _code: String,
+        code: String,
         #[serde(rename = "Language")]
         language: String,
     },
+}
+
+/// This is like `CodeChunk`, but it encodes all code blocks as base64, to avoid parsing issues on
+/// the front-end.
+///
+/// The front-end parser is not based upon cmark-gfm, so it doesn't handle whitespace properly
+/// like `comrak` does. Base64 encoded code can be decoded separately, and does not include
+/// whitespace that breaks simpler markdown parsers.
+#[derive(serde::Serialize, Debug)]
+enum EncodedCodeChunk {
+    QuotedCode {
+        #[serde(rename = "Base64Code")]
+        base64_code: String,
+        #[serde(rename = "Language")]
+        language: String,
+        #[serde(rename = "Path")]
+        path: String,
+        #[serde(rename = "StartLine")]
+        start_line: u32,
+        #[serde(rename = "EndLine")]
+        end_line: u32,
+    },
+    GeneratedCode {
+        #[serde(rename = "Base64Code")]
+        base64_code: String,
+        #[serde(rename = "Language")]
+        language: String,
+    },
+}
+
+impl From<CodeChunk> for EncodedCodeChunk {
+    fn from(chunk: CodeChunk) -> Self {
+        let base64_engine = base64::engine::GeneralPurpose::new(&base64::alphabet::STANDARD, Default::default());
+
+        match chunk {
+            CodeChunk::QuotedCode { code, language, path, start_line, end_line } => {
+                let base64_code = base64_engine.encode(&code);
+                EncodedCodeChunk::QuotedCode { base64_code, language, path, start_line, end_line }
+            }
+
+            CodeChunk::GeneratedCode { code, language } => {
+                let base64_code = base64_engine.encode(&code);
+                EncodedCodeChunk::GeneratedCode { base64_code, language }
+            }
+        }
+    }
 }
 
 fn try_trim_code_xml(xml: &str) -> Result<String> {
@@ -519,7 +600,7 @@ fn try_trim_code_xml(xml: &str) -> Result<String> {
 
     Ok(match code_chunk {
         CodeChunk::QuotedCode {
-            _code,
+            code: _,
             language,
             path,
             start_line,
@@ -536,7 +617,7 @@ fn try_trim_code_xml(xml: &str) -> Result<String> {
             )
         }
 
-        CodeChunk::GeneratedCode { _code, language } => {
+        CodeChunk::GeneratedCode { code: _, language } => {
             format!(
                 "<GeneratedCode>\n\
                 <Code>[REDACTED]</Code>\n\
@@ -741,5 +822,74 @@ These should result in sanitized XML output, while maintaining the rest of the m
 ";
 
         assert_eq!(expected, sanitize_article(&input));
+    }
+
+    #[test]
+    fn test_sanitize_article_partial_generation() {
+        let input = "First, we test some **partially** *generated code* below:
+
+<GeneratedCode>
+<Code>
+fn foo<T>(t: T) -> bool {
+    &amp;foo <
+";
+
+        let expected = "First, we test some **partially** *generated code* below:
+
+<GeneratedCode>
+<Code>
+fn foo&lt;T&gt;(t: T) -&gt; bool {
+    &amp;foo &lt;
+";
+
+        assert_eq!(expected, sanitize_article(&input));
+    }
+
+    #[test]
+    fn test_encode_article() {
+        let input = "First, we test some *generated code* below:
+
+<GeneratedCode>
+<Code>
+fn foo&lt;T&gt;(t: T) -&gt; bool {
+    &amp;foo &lt; &amp;bar&lt;i32&gt;(t)
+}
+</Code>
+<Language>Rust</Language>
+</GeneratedCode>
+
+Then, we test some quoted code:
+
+<QuotedCode>
+<Code>
+fn foo&lt;T&gt;(t: T) -&gt; bool {
+    &amp;foo &lt; &amp;bar&lt;i32&gt;(t)
+}
+</Code>
+<Language>Rust</Language>
+<Path>src/main.rs</Path>
+<StartLine>10</StartLine>
+<EndLine>12</EndLine>
+</QuotedCode>
+
+# Foo
+
+These should result in base64-encoded XML output, while maintaining the rest of the markdown article.
+";
+
+        let expected = "First, we test some *generated code* below:
+
+<GeneratedCode><Base64Code>Zm4gZm9vPFQ+KHQ6IFQpIC0+IGJvb2wgewogICAgJmZvbyA8ICZiYXI8aTMyPih0KQp9</Base64Code><Language>Rust</Language></GeneratedCode>
+
+Then, we test some quoted code:
+
+<QuotedCode><Base64Code>Zm4gZm9vPFQ+KHQ6IFQpIC0+IGJvb2wgewogICAgJmZvbyA8ICZiYXI8aTMyPih0KQp9</Base64Code><Language>Rust</Language><Path>src/main.rs</Path><StartLine>10</StartLine><EndLine>12</EndLine></QuotedCode>
+
+# Foo
+
+These should result in base64-encoded XML output, while maintaining the rest of the markdown article.
+";
+        
+        assert_eq!(expected, encode_article(&input));
     }
 }
