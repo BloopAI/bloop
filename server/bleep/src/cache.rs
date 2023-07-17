@@ -169,7 +169,7 @@ impl<'a> ChunkCache<'a> {
         let response = qdrant
             .scroll(&ScrollPoints {
                 collection_name: semantic::COLLECTION_NAME.to_string(),
-                limit: Some(1_000),
+                limit: Some(1_000_000),
                 filter: Some(Filter {
                     must: [make_kv_keyword_filter("content_hash", tantivy_cache_key)]
                         .into_iter()
