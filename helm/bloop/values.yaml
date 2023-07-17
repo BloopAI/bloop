@@ -186,7 +186,6 @@ qdrant:
 
   #modification example for configuration to overwrite defaults
   config:
-    log_level: debug
     cluster:
       enabled: true
       p2p:
