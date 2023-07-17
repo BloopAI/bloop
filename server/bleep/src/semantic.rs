@@ -478,7 +478,7 @@ impl Semantic {
             // threads should ping qdrant offset, and not dump new
             // queries on it simultaneously.
             let rand = rand::distributions::Uniform::new(500, 1500);
-            for (_, backoff) in (0..15).zip(rand.sample_iter(&mut thread_rng())) {
+            for (_, backoff) in (0..30).zip(rand.sample_iter(&mut thread_rng())) {
                 let cache = crate::cache::ChunkCache::for_file(
                     &self.qdrant,
                     tantivy_cache_key,
