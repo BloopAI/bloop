@@ -191,7 +191,7 @@ qdrant:
       enabled: true
       p2p:
         port: 6335
-      concensus:
+      consensus:
         tick_period_ms: 100
     storage:
       snapshots_path: /qdrant/storage/snapshots
