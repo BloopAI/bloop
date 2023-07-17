@@ -504,6 +504,7 @@ impl Conversation {
         history.extend(
             self.history
                 .iter()
+                .skip(1) // Skip the system prompt
                 .skip(self.history.len().saturating_sub(ACTION_MAX_HISTORY_SIZE))
                 .cloned(),
         );
