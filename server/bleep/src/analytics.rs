@@ -176,7 +176,9 @@ impl RudderHub {
         self.send(Message::Track(Track {
             user_id: Some(self.tracking_id(username)),
             event: "track_synced_repos".into(),
-            properties: Some(serde_json::json!({ "count": count, "org_name": org_name })),
+            properties: Some(
+                serde_json::json!({ "count": count, "org_name": org_name.map(|o| o.to_lowercase()) }),
+            ),
             ..Default::default()
         }));
     }
