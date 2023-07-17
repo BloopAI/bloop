@@ -824,9 +824,10 @@ impl Agent {
             .llm_history
             .push_front(updated_system_prompt);
 
-        let functions =
-            serde_json::from_value::<Vec<llm_gateway::api::Function>>(prompts::functions())
-                .unwrap();
+        let functions = serde_json::from_value::<Vec<llm_gateway::api::Function>>(
+            prompts::functions(!self.conversation.paths.is_empty()), // Only add proc if there are paths in context
+        )
+        .unwrap();
 
         let trimmed_history = self.conversation.trimmed_history()?;
 

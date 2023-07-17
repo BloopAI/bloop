@@ -1,5 +1,5 @@
-pub fn functions() -> serde_json::Value {
-    serde_json::json!(
+pub fn functions(add_proc: bool) -> serde_json::Value {
+    let mut funcs = serde_json::json!(
         [
             {
                 "name": "code",
@@ -30,27 +30,6 @@ pub fn functions() -> serde_json::Value {
                 }
             },
             {
-                "name": "proc",
-                "description": "Read one or more files and extract the line ranges which are relevant to the search terms. Do not proc more than 10 files at a time.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "The query with which to search the files."
-                        },
-                        "paths": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer",
-                                "description": "The indices of the paths to search. paths.len() <= 10"
-                            }
-                        }
-                    },
-                    "required": ["query", "paths"]
-                }
-            },
-            {
                 "name": "none",
                 "description": "You have enough information to answer the user's query. This is the final step, and signals that you have enough information to respond to the user's query. Use this if the user has instructed you to modify some code.",
                 "parameters": {
@@ -73,7 +52,36 @@ pub fn functions() -> serde_json::Value {
                 }
             },
         ]
-    )
+    );
+
+    if add_proc {
+        funcs.as_array_mut().unwrap().push(
+            serde_json::json!(
+            {
+                "name": "proc",
+                "description": "Read one or more files and extract the line ranges which are relevant to the search terms. Do not proc more than 10 files at a time.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The query with which to search the files."
+                        },
+                        "paths": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer",
+                                "description": "The indices of the paths to search. paths.len() <= 10"
+                            }
+                        }
+                    },
+                    "required": ["query", "paths"]
+                }
+            }
+            )
+        );
+    }
+    funcs
 }
 
 pub fn system(paths: &Vec<String>) -> String {
