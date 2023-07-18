@@ -133,7 +133,7 @@ const NLInput = ({
       />
       {isStoppable || selectedLines ? (
         <div className="relative top-[18px]">
-          <Tooltip text={'Stop generating'} placement={'top-end'}>
+          <Tooltip text={t('Stop generating')} placement={'top-end'}>
             <ClearButton
               onClick={() =>
                 isStoppable ? onStop?.() : setSelectedLines?.(null)

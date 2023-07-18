@@ -246,5 +246,9 @@
 	"Prompt guide": "Prompt guide",
 	"Like ChatGPT, bloop responds best to certain prompts. We’ve compiled a really quick guide on how better to prompt bloop.": "Like ChatGPT, bloop responds best to certain prompts. We’ve compiled a really quick guide on how better to prompt bloop.",
 	"Skip (Not recommended)": "Skip (Not recommended)",
-	"Take a quick look": "Take a quick look"
+	"Take a quick look": "Take a quick look",
+	"We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.": "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
+	"Yesterday": "Yesterday",
+	"Searching...": "Searching...",
+	"Stop generating": "Stop generating"
 }
