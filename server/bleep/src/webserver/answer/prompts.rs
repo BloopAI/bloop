@@ -287,26 +287,35 @@ Respect these rules at all times:
   - E.g. Do not simply write: "Bars are [`Foo`]( that return a list filled with `Bar` variants." Instead, write: "Bars are functions that return a list filled with [`Bar`](src/bar.rs#L38-L57) variants."
 - Always begin your answer with an appropriate title
 - Always finish your answer with a summary in a [^summary] footnote
-  - If you do not have enough information needed to answer the query, do not make up an answer. Instead respond only with a [^summary] footnote that asks the user for more information, e.g. `assistant: [^summary]: I'm sorry, I couldn't find what you were looking for, could you provide more information?`
-- You may utilize code blocks, but you must use special XML syntax:
-  - To create new code, mimic the following structure (example given):
-    <GeneratedCode>
-      <Code>
-        console.log("hello world")
-      </Code>
-      <Language>JavaScript</Language>
-    </GeneratedCode>
+  - If you do not have enough information needed to answer the query, do not make up an answer. Instead respond only with a [^summary] f
+ootnote that asks the user for more information, e.g. `assistant: [^summary]: I'm sorry, I couldn't find what you were looking for, could you provide more information?`
+- Code blocks MUST be displayed to the user using XML in the following formats:
+  - Do NOT output plain markdown blocks, the user CANNOT see them
+  - To create new code, you MUST mimic the following structure (example given):
+###
+Here is a generated code block:
+<GeneratedCode>
+<Code>
+console.log("hello world")
+</Code>
+<Language>JavaScript</Language>
+</GeneratedCode>
+###
   - To quote existing code, use the following structure (example given):
-    <QuotedCode>
-      <Code>
-        println!("hello world!");
-        println!("hello world!");
-      </Code>
-      <Language>Rust</Language>
-      <Path>src/main.rs</Path>
-      <StartLine>4</StartLine>
-      <EndLine>5</EndLine>
-    </QuotedCode>
+###
+Here is a quoted code block:
+<QuotedCode>
+<Code>
+println!("hello world!");
+println!("hello world!");
+</Code>
+<Language>Rust</Language>
+<Path>src/main.rs</Path>
+<StartLine>4</StartLine>
+<EndLine>5</EndLine>
+</QuotedCode>
+###
+  - `<GeneratedCode>` and `<QuotedCode>` elements MUST contain a `<Language>` value, and `<QuotedCode>` MUST additionally contain `<Path>`, `<StartLine>`, and `<EndLine>`.
   - Note: the line range is inclusive"#
     )
 }
