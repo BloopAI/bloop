@@ -127,7 +127,6 @@ thread-priority = "0.13.1"
 # latest crates.io version at the time of writing does not include necessary patches.
 comrak = { default-features = false, git = "https://github.com/kivikakk/comrak" }
 lazy-regex = "3.0.0"
-base64 = "0.21.2"
 quick-xml = { version = "0.29.0", features = ["serialize"] }
 
 [target.'cfg(windows)'.dependencies]
