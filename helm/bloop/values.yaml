@@ -188,7 +188,7 @@ qdrant:
   config:
     telemetry_disabled: true
     cluster:
-      enabled: true
+      enabled: false
       p2p:
         port: 6335
       consensus:
