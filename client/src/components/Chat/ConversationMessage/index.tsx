@@ -8,6 +8,7 @@ import {
   PointClick,
   QuillIcon,
   Sparkles,
+  WrenchAndScrewdriver,
 } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
 import {
@@ -136,7 +137,7 @@ const ConversationMessage = ({
           ) : null}
         </div>
       )}
-      {message || (author === ChatMessageAuthor.Server && error) ? (
+      {message ? (
         <>
           <div
             className={`relative group-custom bg-chat-bg-shade mt-3 flex items-start p-4 gap-3 border border-chat-bg-divider rounded-lg`}
@@ -162,13 +163,15 @@ const ConversationMessage = ({
                 </div>
               )}
             </div>
-            <pre className="body-s text-label-title whitespace-pre-wrap break-word markdown">
-              {author === ChatMessageAuthor.Server ? (
-                <ReactMarkdown>{message || error || ''}</ReactMarkdown>
-              ) : (
-                message
-              )}
-            </pre>
+            {message && (
+              <pre className="body-s text-label-title whitespace-pre-wrap break-word markdown">
+                {author === ChatMessageAuthor.Server ? (
+                  <ReactMarkdown>{message}</ReactMarkdown>
+                ) : (
+                  message
+                )}
+              </pre>
+            )}
           </div>
           <MessageFeedback
             showInlineFeedback={showInlineFeedback}
@@ -180,6 +183,16 @@ const ConversationMessage = ({
             scrollToBottom={scrollToBottom}
           />
         </>
+      ) : error ? (
+        <div className="flex items-start gap-3 text-bg-danger p-4 mt-3 rounded-lg bg-[linear-gradient(90deg,rgba(251,113,133,0.08)_0%,rgba(231,139,152,0.08)_33.18%,rgba(191,191,191,0.08)_100%)]">
+          <WrenchAndScrewdriver />
+          <div className="flex flex-col gap-1">
+            <p className="body-s text-label-title">
+              <Trans>Something went wrong</Trans>
+            </p>
+            <p className="body-s text-label-base">{error}</p>
+          </div>
+        </div>
       ) : null}
     </div>
   );

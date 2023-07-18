@@ -118,9 +118,13 @@ const Chat = () => {
             author: ChatMessageAuthor.Server,
             isLoading: false,
             type: ChatMessageType.Answer,
-            error: t('Something went wrong'),
+            error: t(
+              "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
+            ),
             loadingSteps: [],
           };
+          setInputValue(prev[prev.length - 2]?.text || submittedQuery);
+          setSubmittedQuery('');
           return [...newConversation, lastMessage];
         });
       };
@@ -142,9 +146,13 @@ const Chat = () => {
                 author: ChatMessageAuthor.Server,
                 isLoading: false,
                 type: ChatMessageType.Answer,
-                error: t('Something went wrong'),
+                error: t(
+                  "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
+                ),
                 loadingSteps: [],
               };
+              setInputValue(prev[prev.length - 1]?.text || submittedQuery);
+              setSubmittedQuery('');
               return [...newConversation, lastMessage];
             });
           }
@@ -217,7 +225,7 @@ const Chat = () => {
             });
           } else if (data.Err) {
             setConversation((prev) => {
-              const newConversation = prev.slice(0, -1);
+              const newConversation = prev.slice(0, -2);
               const lastMessage = {
                 ...prev.slice(-1)[0],
                 isLoading: false,
@@ -226,8 +234,12 @@ const Chat = () => {
                     ? t(
                         'Failed to get a response from OpenAI. Try again in a few moments.',
                       )
-                    : t('Something went wrong'),
+                    : t(
+                        "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
+                      ),
               };
+              setInputValue(prev[prev.length - 2]?.text || submittedQuery);
+              setSubmittedQuery('');
               return [...newConversation, lastMessage];
             });
           }
@@ -246,6 +258,7 @@ const Chat = () => {
       navigatedItem?.type,
       selectedLines,
       selectedBranch,
+      t,
     ],
   );
 
