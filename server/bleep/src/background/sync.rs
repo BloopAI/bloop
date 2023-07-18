@@ -100,22 +100,25 @@ impl SyncHandle {
             .entry_async(reporef.clone())
             .await
             .or_insert_with(|| {
-                let name = reporef.to_string();
-                let disk_path = app
-                    .config
-                    .source
-                    .repo_path_for_name(&name.replace('/', "_"));
+                if reporef.is_local() {
+                    Repository::local_from(&reporef)
+                } else {
+                    let name = reporef.to_string();
+                    let remote = reporef.as_ref().into();
+                    let disk_path = app
+                        .config
+                        .source
+                        .repo_path_for_name(&name.replace('/', "_"));
 
-                let remote = reporef.as_ref().into();
-
-                Repository {
-                    disk_path,
-                    remote,
-                    sync_status: SyncStatus::Queued,
-                    last_index_unix_secs: 0,
-                    last_commit_unix_secs: 0,
-                    most_common_lang: None,
-                    branch_filter: None,
+                    Repository {
+                        disk_path,
+                        remote,
+                        sync_status: SyncStatus::Queued,
+                        last_index_unix_secs: 0,
+                        last_commit_unix_secs: 0,
+                        most_common_lang: None,
+                        branch_filter: None,
+                    }
                 }
             });
 
@@ -275,12 +278,6 @@ impl SyncHandle {
                 if !self.app.allow_path(&path) {
                     return Err(SyncError::PathNotAllowed(path));
                 }
-
-                self.app
-                    .repo_pool
-                    .entry_async(repo.to_owned())
-                    .await
-                    .or_insert_with(|| Repository::local_from(&repo));
 
                 // we _never_ touch the git repositories of local repos
                 return Ok(());
