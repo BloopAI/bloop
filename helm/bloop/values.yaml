@@ -200,5 +200,5 @@ qdrant:
         wal_capacity_mb: 128
         wal_segments_ahead: 4
       optimizers:
-        max_optimization_threads: 2
+        max_optimization_threads: 1
         flush_interval_sec: 2
