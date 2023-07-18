@@ -123,6 +123,8 @@ const Chat = () => {
             ),
             loadingSteps: [],
           };
+          setInputValue(prev[prev.length - 2]?.text || submittedQuery);
+          setSubmittedQuery('');
           return [...newConversation, lastMessage];
         });
       };
@@ -149,6 +151,8 @@ const Chat = () => {
                 ),
                 loadingSteps: [],
               };
+              setInputValue(prev[prev.length - 1]?.text || submittedQuery);
+              setSubmittedQuery('');
               return [...newConversation, lastMessage];
             });
           }
