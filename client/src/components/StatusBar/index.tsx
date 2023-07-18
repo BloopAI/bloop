@@ -1,10 +1,14 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import Button from '../Button';
-import { DiscordLogo, Magazine, Papers, PowerPlug } from '../../icons';
+import { DiscordLogo, Globe, Magazine, Papers, PowerPlug } from '../../icons';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { getDiscordLink } from '../../services/api';
+import { MenuListItemType } from '../ContextMenu';
+import DropdownWithIcon from '../Dropdown/WithIcon';
+import { LocaleContext } from '../../context/localeContext';
+import LanguageSelector from '../LanguageSelector';
 import StatusItem from './StatusItem';
 
 const StatusBar = () => {
@@ -44,6 +48,7 @@ const StatusBar = () => {
     text-xs border-t border-bg-border fixed bottom-0 left-0 right-0 z-30 cursor-default`}
     >
       <span className="flex text-label-muted gap-4">
+        <LanguageSelector />
         <StatusItem
           icon={<PowerPlug />}
           textMain={t(`Status`)}

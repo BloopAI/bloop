@@ -9,6 +9,9 @@ import {
 import { useGitHubAuth } from '../../../hooks/useGitHubAuth';
 import Button from '../../../components/Button';
 import TextField from '../../../components/TextField';
+import { MenuListItemType } from '../../../components/ContextMenu';
+import DropdownWithIcon from '../../../components/Dropdown/WithIcon';
+import LanguageSelector from '../../../components/LanguageSelector';
 import StepsLine from './StepsLine';
 
 const GitHubConnect = ({ goBack }: { goBack: () => void }) => {
@@ -26,13 +29,12 @@ const GitHubConnect = ({ goBack }: { goBack: () => void }) => {
   return (
     <>
       <div className="flex flex-col items-center gap-4 relative">
-        <Button
-          variant="tertiary"
-          onClick={goBack}
-          className="absolute -top-24 left-0"
-        >
-          <ArrowLeft /> <Trans>Back</Trans>
-        </Button>
+        <div className="absolute -top-24 left-0 right-0 flex justify-between items-center">
+          <Button variant="tertiary" onClick={goBack}>
+            <ArrowLeft /> <Trans>Back</Trans>
+          </Button>
+          <LanguageSelector />
+        </div>
         <div className="w-11 h-11">
           <GitHubLogoBig />
         </div>

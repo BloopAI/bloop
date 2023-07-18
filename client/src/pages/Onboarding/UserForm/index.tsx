@@ -18,6 +18,7 @@ import { MenuItemType } from '../../../types/general';
 import { Theme } from '../../../types';
 import { themesMap } from '../../../components/Settings/Preferences';
 import { previewTheme } from '../../../utils';
+import LanguageSelector from '../../../components/LanguageSelector';
 
 type Props = {
   form: Form;
@@ -39,16 +40,21 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
 
   return (
     <>
-      <div className="flex flex-col gap-3 text-center relative">
-        <div className="w-11 h-11 absolute left-1/2 -top-16 transform -translate-x-1/2">
-          <BloopLogo />
+      <div className="w-full flex flex-col gap-3 text-center relative">
+        <div className="absolute -top-32 left-0 right-0 flex justify-end">
+          <LanguageSelector />
         </div>
-        <h4 className="text-label-title">
-          <Trans>Setup bloop</Trans>
-        </h4>
-        <p className="text-label-muted body-s">
-          <Trans>Please log into your GitHub account to complete setup</Trans>
-        </p>
+        <div className="flex flex-col gap-3 text-center relative">
+          <div className="w-11 h-11 absolute left-1/2 -top-16 transform -translate-x-1/2">
+            <BloopLogo />
+          </div>
+          <h4 className="text-label-title">
+            <Trans>Setup bloop</Trans>
+          </h4>
+          <p className="text-label-muted body-s">
+            <Trans>Please log into your GitHub account to complete setup</Trans>
+          </p>
+        </div>
       </div>
       <form className="flex flex-col gap-4 w-full">
         <TextInput
