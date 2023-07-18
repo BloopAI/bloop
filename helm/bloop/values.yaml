@@ -196,3 +196,4 @@ qdrant:
     storage:
       async_scorer: true
       snapshots_path: /qdrant/storage/snapshots
+      storage_path: /qdrant/storage/storage
