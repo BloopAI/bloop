@@ -188,24 +188,11 @@ qdrant:
   config:
     telemetry_disabled: true
     cluster:
-      enabled: false
+      enabled: true
       p2p:
         port: 6335
       consensus:
         tick_period_ms: 100
     storage:
+      async_scorer: true
       snapshots_path: /qdrant/storage/snapshots
-      on_disk_payload: true
-      wal:
-        wal_capacity_mb: 64
-        wal_segments_ahead: 8
-      hnsw_index:
-        max_indexing_threads: 4
-
-      optimizers:
-        max_optimization_threads: 4
-        max_segment_size_kb: 16384
-        memmap_threshold_kb: 4096
-        indexing_threshold_kb: 8192
-        vacuum_min_vector_number: 100
-        flush_interval_sec: 1
