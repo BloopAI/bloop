@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
 import { List } from '../../icons';
 import { UIContext } from '../../context/uiContext';
@@ -38,6 +39,7 @@ const blurInput = () => {
 };
 
 const Chat = () => {
+  const { t } = useTranslation();
   const { isRightPanelOpen, setRightPanelOpen, tab } = useContext(UIContext);
   const { apiUrl } = useContext(DeviceContext);
   const { selectedBranch } = useContext(SearchContext);
@@ -116,7 +118,7 @@ const Chat = () => {
             author: ChatMessageAuthor.Server,
             isLoading: false,
             type: ChatMessageType.Answer,
-            error: 'Something went wrong',
+            error: t('Something went wrong'),
             loadingSteps: [],
           };
           return [...newConversation, lastMessage];
@@ -140,7 +142,7 @@ const Chat = () => {
                 author: ChatMessageAuthor.Server,
                 isLoading: false,
                 type: ChatMessageType.Answer,
-                error: 'Something went wrong',
+                error: t('Something went wrong'),
                 loadingSteps: [],
               };
               return [...newConversation, lastMessage];
@@ -203,7 +205,7 @@ const Chat = () => {
                 author: ChatMessageAuthor.Server,
                 isLoading: true,
                 type: ChatMessageType.Answer,
-                loadingSteps: mapLoadingSteps(newMessage.search_steps),
+                loadingSteps: mapLoadingSteps(newMessage.search_steps, t),
                 text: newMessage.conclusion,
                 results: newMessage.outcome,
               };
@@ -221,8 +223,10 @@ const Chat = () => {
                 isLoading: false,
                 error:
                   data.Err === 'request failed 5 times'
-                    ? 'Failed to get a response from OpenAI. Try again in a few moments.'
-                    : 'Something went wrong',
+                    ? t(
+                        'Failed to get a response from OpenAI. Try again in a few moments.',
+                      )
+                    : t('Something went wrong'),
               };
               return [...newConversation, lastMessage];
             });
@@ -254,9 +258,14 @@ const Chat = () => {
       const [prefix, ending] = submittedQuery.split(':');
       const [lineStart, lineEnd] = ending.split('-');
       const filePath = prefix.slice(9);
-      userQuery = `Explain lines ${Number(lineStart) + 1} - ${
-        Number(lineEnd) + 1
-      } in ${filePath}`;
+      userQuery = t(
+        `Explain lines {{lineStart}} - {{lineEnd}} in {{filePath}}`,
+        {
+          lineStart: Number(lineStart) + 1,
+          lineEnd: Number(lineEnd) + 1,
+          filePath,
+        },
+      );
     }
     setConversation((prev) => [
       ...prev,
@@ -339,11 +348,11 @@ const Chat = () => {
                   setRightPanelOpen(true);
                 }}
               >
-                <List /> All conversations
+                <List /> <Trans>All conversations</Trans>
               </ChipButton>
               <div className="flex items-center gap-1">
                 <ChipButton onClick={handleNewConversation}>
-                  Create new
+                  <Trans>Create new</Trans>
                 </ChipButton>
                 <ChipButton
                   variant="filled"
@@ -352,7 +361,7 @@ const Chat = () => {
                     setChatOpen((prev) => !prev);
                   }}
                 >
-                  {isChatOpen ? 'Hide' : 'Show'}
+                  <Trans>{isChatOpen ? 'Hide' : 'Show'}</Trans>
                 </ChipButton>
               </div>
             </div>
@@ -391,7 +400,7 @@ const Chat = () => {
                       )?.results?.Article?.length
                         ? [
                             {
-                              displayText: 'Responding...',
+                              displayText: t('Responding...'),
                               content: '',
                               type: '',
                             },

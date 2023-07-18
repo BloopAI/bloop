@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Trans } from 'react-i18next';
 import { ChevronDownFilled, ChevronUpFilled } from '../../icons';
 import { ACCORDION_CHILDREN_ANIMATION } from '../../consts/animations';
 import Button from '../Button';
@@ -79,7 +80,7 @@ const Accordion = ({
                 setExpanded((prev) => !prev);
               }}
             >
-              Show {expanded ? 'less' : 'more'}
+              <Trans>Show {expanded ? 'less' : 'more'}</Trans>
             </Button>
           </div>
         </div>

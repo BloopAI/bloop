@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { CloseSign, PenUnderline } from '../../icons';
 import Button from '../Button';
 
@@ -23,6 +24,7 @@ const CommentItemExpanded = ({
   onRemove,
   onEdit,
 }: Props) => {
+  const { t } = useTranslation();
   return (
     <span
       className={`bg-bg-base flex flex-col gap-3 border-bg-border border rounded-md mt-4 divide-y divide-bg-border transition-all duration-300 ease-in-bounce ${
@@ -41,7 +43,7 @@ const CommentItemExpanded = ({
               variant="tertiary"
               onlyIcon
               onClick={onClose}
-              title="Close"
+              title={t('Close')}
             >
               <CloseSign />
             </Button>

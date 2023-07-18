@@ -1,5 +1,6 @@
 import { format as timeAgo } from 'timeago.js';
 import { MouseEvent, useCallback, useContext, useMemo } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   GitHubLogo,
   MoreVertical,
@@ -16,6 +17,7 @@ import { TabsContext } from '../../context/tabsContext';
 import Dropdown from '../Dropdown/WithIcon';
 import { deleteRepo, cancelSync, syncRepo } from '../../services/api';
 import { RepoSource } from '../../types';
+import { LocaleContext } from '../../context/localeContext';
 
 type Props = {
   name: string;
@@ -54,7 +56,9 @@ const RepoCard = ({
   onDelete,
   indexedBranches,
 }: Props) => {
+  const { t } = useTranslation();
   const { isGithubConnected } = useContext(UIContext);
+  const { locale } = useContext(LocaleContext);
   const { handleAddTab, tabs, handleRemoveTab } = useContext(TabsContext);
   const isGh = useMemo(() => provider === 'github', [provider]);
   const repoName = useMemo(() => {
@@ -106,7 +110,7 @@ const RepoCard = ({
     const items = [
       {
         type: MenuItemType.DANGER,
-        text: 'Remove',
+        text: t('Remove'),
         icon: <TrashCan />,
         onClick: onRepoRemove,
       },
@@ -119,7 +123,7 @@ const RepoCard = ({
     ) {
       items.push({
         type: MenuItemType.DEFAULT,
-        text: 'Resync',
+        text: t('Re-sync'),
         icon: <Eye />,
         onClick: onSync,
       });
@@ -131,7 +135,7 @@ const RepoCard = ({
     ) {
       items.push({
         type: MenuItemType.DANGER,
-        text: 'Cancel',
+        text: t('Cancel'),
         icon: <CloseSign />,
         onClick: onCancelSync,
       });
@@ -171,10 +175,12 @@ const RepoCard = ({
       syncStatus &&
       syncStatus.percentage < 100 ? (
         <div className="flex flex-col gap-2">
-          <p className="body-s text-label-title">Indexing...</p>
+          <p className="body-s text-label-title">
+            <Trans>Indexing...</Trans>
+          </p>
           <BarLoader percentage={syncStatus.percentage} />
           <p className="caption text-label-muted">
-            {syncStatus.percentage}% complete
+            {syncStatus.percentage}% <Trans>complete</Trans>
           </p>
         </div>
       ) : (
@@ -192,9 +198,12 @@ const RepoCard = ({
             } rounded-full`}
           />
           <p className="select-none">
-            {STATUS_MAP[typeof sync_status === 'string' ? sync_status : 'error']
-              ?.text || sync_status}
-            {sync_status === 'done' && timeAgo(last_index)}
+            {t(
+              STATUS_MAP[
+                typeof sync_status === 'string' ? sync_status : 'error'
+              ]?.text || sync_status,
+            )}
+            {sync_status === 'done' && timeAgo(last_index, locale)}
           </p>
         </div>
       )}

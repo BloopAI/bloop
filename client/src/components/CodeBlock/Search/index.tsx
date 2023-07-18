@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import FileIcon from '../../FileIcon';
 import Code from '../Code';
 import { ResultClick, Snippet } from '../../../types/results';
@@ -43,6 +44,7 @@ const CodeBlockSearch = ({
   hideDropdown,
   hideMatchCounter,
 }: Props) => {
+  const { t } = useTranslation();
   const [isExpanded, setExpanded] = useState(false);
   const { os, openFolderInExplorer } = useContext(DeviceContext);
 
@@ -88,7 +90,7 @@ const CodeBlockSearch = ({
         <div className="flex gap-2 items-center flex-shrink-0">
           {!hideMatchCounter ? (
             <span className="body-s text-label-title">
-              {totalMatches} match{totalMatches > 1 ? 'es' : ''}
+              <Trans count={totalMatches}># match</Trans>
             </span>
           ) : (
             ''
@@ -99,7 +101,9 @@ const CodeBlockSearch = ({
                 items={[
                   {
                     type: MenuItemType.DEFAULT,
-                    text: `View in ${getFileManagerName(os.type)}`,
+                    text: t(`View in {{finder}}`, {
+                      finder: getFileManagerName(os.type),
+                    }),
                     onClick: () => {
                       openFolderInExplorer(
                         repoPath +
@@ -193,10 +197,8 @@ const CodeBlockSearch = ({
               }}
             >
               {isExpanded
-                ? 'Show less'
-                : `Show ${hiddenMatches} more match${
-                    hiddenMatches > 1 ? 'es' : ''
-                  }`}
+                ? t('Show less')
+                : t(`Show # more match`, { count: hiddenMatches })}
             </Button>
           </div>
         )}

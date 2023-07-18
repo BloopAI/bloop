@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { TippyProps } from '@tippyjs/react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDownFilled, ChevronUpFilled } from '../../../icons';
 import ContextMenu, { ContextMenuItem } from '../../ContextMenu';
 import Button from '../../Button';
@@ -17,6 +18,7 @@ type Props = {
   lastItemFixed?: boolean;
   size?: 'small' | 'medium' | 'large';
   dropdownPlacement?: TippyProps['placement'];
+  appendTo?: TippyProps['appendTo'];
 };
 
 const Dropdown = ({
@@ -31,22 +33,27 @@ const Dropdown = ({
   lastItemFixed,
   size = 'medium',
   dropdownPlacement = 'bottom-start',
+  appendTo = 'parent',
 }: Props) => {
+  const { t } = useTranslation();
   const [visible, setVisibility] = useState(false);
   const ref = useRef(null);
-  useOnClickOutside(ref, () => setVisibility(false));
+  useOnClickOutside(ref, () =>
+    appendTo === 'parent' ? setVisibility(false) : {},
+  );
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative z-[120]" ref={ref}>
       <ContextMenu
         items={items}
         visible={visible}
         title={hint}
         handleClose={() => setVisibility(false)}
-        closeOnClickOutside={false}
+        closeOnClickOutside={appendTo === 'parent'}
         lastItemFixed={lastItemFixed}
         size={size}
         dropdownPlacement={dropdownPlacement}
+        appendTo={appendTo}
       >
         <Button
           variant={btnVariant}
@@ -61,7 +68,7 @@ const Dropdown = ({
             setVisibility(!visible);
           }}
           onlyIcon={btnOnlyIcon}
-          title="Open dropdown"
+          title={t('Open dropdown')}
         >
           {icon}
           {noChevron ? null : visible ? (

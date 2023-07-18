@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import Button from '../Button';
 import { ArrowLeft, ArrowRight } from '../../icons';
 import PaginationButton from './PaginationButton';
@@ -12,6 +13,7 @@ type Props = {
 const PAGES_TO_SHOW = 6;
 
 const Pagination = ({ page, setPage, totalPages }: Props) => {
+  const { t } = useTranslation();
   const pagesRange = useMemo(
     () =>
       new Array(totalPages)
@@ -32,7 +34,9 @@ const Pagination = ({ page, setPage, totalPages }: Props) => {
   return (
     <div className="flex items-center justify-between">
       <p className="body-s text-label-base">
-        Showing page {page + 1} of {totalPages}
+        <Trans values={{ totalPages, page: page + 1 }}>
+          Showing page {{ page: page + 1 }} of {{ totalPages }}
+        </Trans>
       </p>
       <div className="flex items-center gap-3">
         <Button
@@ -41,7 +45,7 @@ const Pagination = ({ page, setPage, totalPages }: Props) => {
           onlyIcon
           onClick={() => setPage(page - 1)}
           disabled={page === 0}
-          title="Previous page"
+          title={t('Previous page')}
         >
           <ArrowLeft />
         </Button>
@@ -59,7 +63,7 @@ const Pagination = ({ page, setPage, totalPages }: Props) => {
           onlyIcon
           onClick={() => setPage(page + 1)}
           disabled={page === totalPages - 1}
-          title="Next page"
+          title={t('Next page')}
         >
           <ArrowRight />
         </Button>

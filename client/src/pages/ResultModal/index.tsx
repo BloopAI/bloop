@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CloseSign } from '../../icons';
 import Button from '../../components/Button';
 import CodeFull from '../../components/CodeBlock/CodeFull';
@@ -30,6 +31,7 @@ const tabs = [
 */
 
 const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(0);
   const [isShareOpen, setShareOpen] = useState(false);
 
@@ -148,7 +150,7 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
               onlyIcon
               variant="tertiary"
               onClick={onResultClosed}
-              title="Close"
+              title={t('Close')}
             >
               <CloseSign />
             </Button>

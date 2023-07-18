@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FeatherSelected, QuillIcon, SendIcon, Sparkles } from '../../icons';
 import ClearButton from '../ClearButton';
 import Tooltip from '../Tooltip';
@@ -47,6 +48,7 @@ const NLInput = ({
   showTooltip,
   tooltipText,
 }: Props) => {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setComposition] = useState(false);
   const { setPromptGuideOpen } = useContext(UIContext);
@@ -115,7 +117,7 @@ const NLInput = ({
       <textarea
         className={`w-full py-4 bg-transparent rounded-lg outline-none focus:outline-0 resize-none
         placeholder:text-current placeholder:truncate placeholder:max-w-[19.5rem] flex-grow-0`}
-        placeholder={shouldShowLoader ? '' : defaultPlaceholder}
+        placeholder={shouldShowLoader ? '' : t(defaultPlaceholder)}
         id={id}
         value={value}
         onChange={onChange}
@@ -141,7 +143,7 @@ const NLInput = ({
         </div>
       ) : value ? (
         <button type="submit" className="self-end py-3 text-bg-main">
-          <Tooltip text={'Submit'} placement={'top-end'}>
+          <Tooltip text={t('Submit')} placement={'top-end'}>
             <SendIcon />
           </Tooltip>
         </button>

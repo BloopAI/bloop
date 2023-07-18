@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import DialogText from '../DialogText';
 import Button from '../../../components/Button';
 import { ArrowRight } from '../../../icons';
@@ -21,6 +22,7 @@ type Props = {
 };
 
 const LocalReposStep = ({ handleNext, handleBack }: Props) => {
+  const { t } = useTranslation();
   const [repos, setRepos] = useState<RepoUi[]>([]);
   const [chosenFolder, setChosenFolder] = useState<string | null>(null);
   const [isLoading, setLoading] = useState(true);
@@ -84,10 +86,12 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
   return (
     <>
       <DialogText
-        title="Sync local repositories"
+        title={t('Sync local repositories')}
         description={
           chosenFolder
-            ? 'Select the folders you want to add to bloop. You can always sync, unsync or remove unwanted repositories later.'
+            ? t(
+                'Select the folders you want to add to bloop. You can always sync, unsync or remove unwanted repositories later.',
+              )
             : ''
         }
       />
@@ -106,7 +110,7 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
           />
           {handleBack ? (
             <Button variant="secondary" onClick={handleSkip}>
-              Skip this step
+              <Trans>Skip this step</Trans>
               <ArrowRight />
             </Button>
           ) : null}
@@ -114,17 +118,19 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
       ) : (
         <div className="flex flex-col overflow-auto gap-8">
           <div className="py-5 px-3 flex flex-col gap-2 rounded-md bg-bg-sub items-center text-center">
-            <p className="body-s-strong text-label-title">Scan a folder</p>
+            <p className="body-s-strong text-label-title">
+              <Trans>Scan a folder</Trans>
+            </p>
             <p className="body-s text-label-muted">
-              Scan a folder to sync it’s repositories.
+              <Trans>Scan a folder to sync it’s repositories.</Trans>
             </p>
             <Button variant="secondary" onClick={handleChooseFolder}>
-              Select folder
+              <Trans>Select folder</Trans>
             </Button>
           </div>
           {handleBack ? (
             <Button variant="secondary" onClick={handleSkip}>
-              Skip this step
+              <Trans>Skip this step</Trans>
               <ArrowRight />
             </Button>
           ) : null}

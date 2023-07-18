@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
+// eslint-disable-next-line import/no-duplicates
 import { format } from 'date-fns';
+// eslint-disable-next-line import/no-duplicates
+import { ja } from 'date-fns/locale';
+import { Trans, useTranslation } from 'react-i18next';
 import ChipButton from '../ChipButton';
 import { ArrowLeft, CloseSign } from '../../../icons';
 import NLInput from '../NLInput';
@@ -39,6 +43,7 @@ const AllConversations = ({
   repoRef,
   handleNewConversation,
 }: Props) => {
+  const { t } = useTranslation();
   const [openItem, setOpenItem] = useState<ChatMessage[] | null>(null);
   const [conversations, setConversations] = useState<AllConversationsResponse>(
     [],
@@ -77,7 +82,7 @@ const AllConversations = ({
           author: ChatMessageAuthor.Server,
           isLoading: false,
           type: ChatMessageType.Answer,
-          loadingSteps: mapLoadingSteps(m.search_steps),
+          loadingSteps: mapLoadingSteps(m.search_steps, t),
           text: m.conclusion,
           results: m.outcome,
           isFromHistory: true,
@@ -101,7 +106,7 @@ const AllConversations = ({
             <ArrowLeft sizeClassName="w-4 h-4" />
           </ChipButton>
         )}
-        <p className="flex-1 body-m">{openItem ? title : 'Conversations'}</p>
+        <p className="flex-1 body-m">{openItem ? title : t('Conversations')}</p>
         {!openItem && (
           <ChipButton
             onClick={() => {
@@ -110,7 +115,7 @@ const AllConversations = ({
               handleNewConversation();
             }}
           >
-            Create new
+            <Trans>Create new</Trans>
           </ChipButton>
         )}
         <ChipButton
@@ -130,6 +135,7 @@ const AllConversations = ({
               subtitle={format(
                 new Date(c.created_at * 1000),
                 'EEEE, MMMM d, h:m a',
+                { locale: ja },
               )}
               onClick={() => onClick(c.thread_id)}
               onDelete={() => onDelete(c.thread_id)}

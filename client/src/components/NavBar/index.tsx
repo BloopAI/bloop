@@ -1,4 +1,5 @@
 import React, { useContext } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Bug, Cog, DoorRight, Magazine, Person } from '../../icons';
 import { MenuListItemType } from '../ContextMenu';
 import { deleteAuthCookie } from '../../utils';
@@ -15,6 +16,7 @@ type Props = {
 };
 
 const NavBar = ({ isSkeleton }: Props) => {
+  const { t } = useTranslation();
   const {
     setBugReportModalOpen,
     setShouldShowWelcome,
@@ -54,25 +56,25 @@ const NavBar = ({ isSkeleton }: Props) => {
           <DropdownWithIcon
             items={[
               {
-                text: 'Settings',
+                text: t('Settings'),
                 icon: <Cog />,
                 type: MenuListItemType.DEFAULT,
                 onClick: () => setSettingsOpen(true),
               },
               {
-                text: 'Documentation',
+                text: t('Documentation'),
                 icon: <Magazine />,
                 type: MenuListItemType.DEFAULT,
                 onClick: () => openLink('https://bloop.ai/docs'),
               },
               {
-                text: 'Report a bug',
+                text: t('Report a bug'),
                 icon: <Bug />,
                 type: MenuListItemType.DEFAULT,
                 onClick: () => setBugReportModalOpen(true),
               },
               {
-                text: 'Sign out',
+                text: t('Sign out'),
                 icon: <DoorRight />,
                 type: MenuListItemType.DEFAULT,
                 onClick: () => {

@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
 import Button from '../../components/Button';
 import Filters from '../../components/Filters';
 import PageHeader from '../../components/ResultsPageHeader';
@@ -67,14 +68,18 @@ const NoResults = ({
         {isRepo || isFolder ? (
           <div className="flex flex-col gap-4 select-none">
             <h4 className="text-label-title">
-              {isRepo
-                ? 'Sorry, this repository is not ready for search'
-                : 'The folder is empty'}
+              <Trans>
+                {isRepo
+                  ? 'Sorry, this repository is not ready for search'
+                  : 'The folder is empty'}
+              </Trans>
             </h4>
             <p className="body-s text-label-muted">
-              {isRepo
-                ? 'Wait for the repository to finish syncing and try again'
-                : "We haven't found any files to index in this folder"}
+              <Trans>
+                {isRepo
+                  ? 'Wait for the repository to finish syncing and try again'
+                  : "We haven't found any files to index in this folder"}
+              </Trans>
             </p>
           </div>
         ) : (
@@ -86,7 +91,9 @@ const NoResults = ({
         )}
         {!isRepo && !isFolder && (
           <div className="mt-13 select-none">
-            <p className="body-s text-label-muted">Suggested combinations</p>
+            <p className="body-s text-label-muted">
+              <Trans>Suggested combinations</Trans>
+            </p>
             <div className="flex gap-3 flex-wrap mt-6 w-1/2">{items}</div>
           </div>
         )}

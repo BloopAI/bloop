@@ -1,6 +1,7 @@
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import isEqual from 'lodash.isequal';
+import { Trans, useTranslation } from 'react-i18next';
 import Button from '../Button';
 import {
   ChevronFoldIn,
@@ -25,6 +26,7 @@ type Props = {
 };
 
 const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
+  const { t } = useTranslation();
   const { filters, setFilters, inputValue, setInputValue, setSearchHistory } =
     useContext(SearchContext);
   const [openSections, setOpenSections] = useState<string[]>([]);
@@ -145,7 +147,9 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
               isOpen ? 'px-8' : 'px-6'
             }`}
           >
-            <span className={isOpen ? '' : 'hidden'}>Filters</span>
+            <span className={isOpen ? '' : 'hidden'}>
+              <Trans>Filters</Trans>
+            </span>
             <div className="flex items-center gap-2 caption-strong">
               {isOpen && (
                 <Button
@@ -155,7 +159,9 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
                   onClick={() => {
                     setOpenSections(allOpen ? [] : Object.keys(newFilters));
                   }}
-                  title={allOpen ? 'Fold everything' : 'Expand everything'}
+                  title={
+                    allOpen ? t('Fold everything') : t('Expand everything')
+                  }
                 >
                   {allOpen ? <ChevronFoldIn /> : <ChevronFoldOut />}
                 </Button>
@@ -166,14 +172,14 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
                 onClick={onReset}
                 className={isOpen ? '' : 'hidden'}
               >
-                Reset filters
+                <Trans>Reset filters</Trans>
               </Button>
               <Button
                 variant="tertiary"
                 size="small"
                 onlyIcon
                 onClick={toggleOpen}
-                title={isOpen ? 'Hide filters' : 'Show filters'}
+                title={isOpen ? t('Hide filters') : t('Show filters')}
               >
                 {isOpen ? <DoubleChevronLeft /> : <DoubleChevronRight />}
               </Button>
@@ -224,7 +230,7 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
             animate={{ height: 46 }}
           >
             <Button onClick={handleSubmit} size="large">
-              Apply filters
+              <Trans>Apply filters</Trans>
             </Button>
           </motion.div>
         )}

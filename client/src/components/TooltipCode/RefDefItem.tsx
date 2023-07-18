@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Trans } from 'react-i18next';
 import BreadcrumbsPath from '../BreadcrumbsPath';
 import Code from '../CodeBlock/Code';
 import { ChevronRightFilled, Def, Ref } from '../../icons';
@@ -43,7 +44,9 @@ const RefDefItem = ({
         </div>
         <div className="flex-1 overflow-hidden">
           {file === relativePath ? (
-            <p className="select-none text-left body-s">In this file</p>
+            <p className="select-none text-left body-s">
+              <Trans>In this file</Trans>
+            </p>
           ) : (
             <BreadcrumbsPath
               path={file}

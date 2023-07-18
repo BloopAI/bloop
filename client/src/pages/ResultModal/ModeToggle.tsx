@@ -1,5 +1,6 @@
 import React, { useCallback, useContext, useTransition } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import SelectToggleButton from '../../components/SelectToggleButton';
 import { ChevronDoubleIntersected, Modal, Sidebar } from '../../icons';
 import { FullResultModeEnum } from '../../types/general';
@@ -19,6 +20,7 @@ const ModeToggle = ({
   mode,
   setModeAndTransition,
 }: Props) => {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const { navigateFullResult } = useAppNavigation();
   const [isPending, startTransition] = useTransition();
@@ -49,7 +51,7 @@ const ModeToggle = ({
         onlyIcon
         onClick={handleFull}
         selected={false}
-        title="Open in full view"
+        title={t('Open in full view')}
       >
         <ChevronDoubleIntersected />
       </SelectToggleButton>
@@ -57,7 +59,7 @@ const ModeToggle = ({
         onlyIcon
         onClick={handleModal}
         selected={mode === FullResultModeEnum.MODAL}
-        title="Open in modal"
+        title={t('Open in modal')}
       >
         <Modal />
       </SelectToggleButton>
@@ -65,7 +67,7 @@ const ModeToggle = ({
         onlyIcon
         onClick={handleSidebar}
         selected={mode === FullResultModeEnum.SIDEBAR}
-        title="Open in sidebar"
+        title={t('Open in sidebar')}
       >
         <Sidebar />
       </SelectToggleButton>

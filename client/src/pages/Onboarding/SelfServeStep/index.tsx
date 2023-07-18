@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useTranslation, Trans } from 'react-i18next';
 import DialogText from '../DialogText';
 import Button from '../../../components/Button';
 import { GitHubLogo } from '../../../icons';
 import { githubWebLogin } from '../../../services/api';
 
 const SelfServeStep = () => {
+  const { t } = useTranslation();
   const [loginUrl, setLoginUrl] = useState('');
   const location = useLocation();
 
@@ -24,12 +26,12 @@ const SelfServeStep = () => {
   return (
     <>
       <DialogText
-        title="Sign In"
-        description="Use GitHub to sign in to your account"
+        title={t`Sign In`}
+        description={t`Use GitHub to sign in to your account`}
       />
       <a href={loginUrl} className="w-full flex flex-col">
         <Button variant="primary" disabled={!loginUrl}>
-          <GitHubLogo /> Sign in with GitHub
+          <GitHubLogo /> <Trans>Sign in with GitHub</Trans>
         </Button>
       </a>
     </>

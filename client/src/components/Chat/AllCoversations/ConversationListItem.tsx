@@ -1,4 +1,5 @@
 import React from 'react';
+import { Trans } from 'react-i18next';
 import { QuillIcon } from '../../../icons';
 import Button from '../../Button';
 
@@ -42,7 +43,7 @@ const ConversationListItem = ({
               onDelete();
             }}
           >
-            Delete
+            <Trans>Delete</Trans>
           </Button>
         </div>
       </span>
