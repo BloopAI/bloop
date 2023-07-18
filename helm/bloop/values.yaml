@@ -20,7 +20,7 @@ bloop:
   sentryDsnFE: ""
   #
   logLevel: info
-  maxThreads: 3
+  maxThreads: 2
 
 image:
   repository: ""
