@@ -195,7 +195,7 @@ qdrant:
         tick_period_ms: 100
     storage:
       snapshots_path: /qdrant/storage/snapshots
-      on_disk_payload: false
+      on_disk_payload: true
       wal:
         wal_capacity_mb: 128
         wal_segments_ahead: 4
