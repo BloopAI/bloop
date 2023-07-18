@@ -11,7 +11,13 @@ type Props = {
   file: string;
   repoName: string;
   data: RefDefDataItem[];
-  onRefDefClick: (line: number, path: string) => void;
+  onRefDefClick: (
+    lineNum: number,
+    filePath: string,
+    type: TokenInfoType,
+    tokenName: string,
+    tokenRange: string,
+  ) => void;
   language: string;
   kind: TokenInfoType;
   relativePath: string;
@@ -68,7 +74,18 @@ const RefDefItem = ({
           <div
             key={i}
             className="py-1.5 px-[30px] code-s flex gap-1 items-center cursor-pointer overflow-auto"
-            onClick={() => onRefDefClick(line.snippet.line_range.start, file)}
+            onClick={() =>
+              onRefDefClick(
+                line.snippet.line_range.start,
+                file,
+                line.kind,
+                line.snippet.data.slice(
+                  line.snippet.highlights?.[0]?.start,
+                  line.snippet.highlights?.[0]?.end,
+                ),
+                `${line.range.start?.byte}_${line.range.end?.byte}`,
+              )
+            }
           >
             <div className={`text-label-muted w-3.5 h-3.5`}>
               {kind === TypeMap.DEF ? (

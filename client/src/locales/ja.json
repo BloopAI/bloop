@@ -246,5 +246,13 @@
 	"Skip (Not recommended)": "スキップ（お勧めしません）",
 	"Take a quick look": "すぐに見てください",
 	"Prompt guide": "プロンプトガイド",
-	"Like ChatGPT, bloop responds best to certain prompts. We’ve compiled a really quick guide on how better to prompt bloop.": "ChatGptと同様に、Bloopは特定のプロンプトに最もよく応答します。 Bloopをプロンプトする方が良い方法に関する非常に簡単なガイドをまとめました。"
+	"Like ChatGPT, bloop responds best to certain prompts. We’ve compiled a really quick guide on how better to prompt bloop.": "ChatGptと同様に、Bloopは特定のプロンプトに最もよく応答します。 Bloopをプロンプトする方が良い方法に関する非常に簡単なガイドをまとめました。",
+	"Repo home": "リポジトリホーム",
+	"History": "歴史",
+	"Go back": "戻る",
+	"Go forward": "前進する",
+	"Yesterday": "昨日",
+	"Regex search...": "正規表現検索...",
+	"Searching...": "検索...",
+	"We haven't found any files to index in this folder": "このフォルダーにインデックスを作成するファイルが見つかりませんでした"
 }

@@ -2,30 +2,15 @@ import React, {
   ChangeEvent,
   useCallback,
   useContext,
-  useMemo,
   useRef,
   useState,
 } from 'react';
 import { useCombobox } from 'downshift';
 import throttle from 'lodash.throttle';
-// eslint-disable-next-line import/no-duplicates
-import { format, isToday, isYesterday } from 'date-fns';
-// eslint-disable-next-line import/no-duplicates
-import { ja as jaLocale } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
-import {
-  ArrowRevert,
-  Clipboard,
-  NaturalLanguage,
-  RegexIcon,
-  TrashCan,
-} from '../../icons';
-import { DropdownWithIcon } from '../Dropdown';
 import { useArrowKeyNavigation } from '../../hooks/useArrowNavigationHook';
 import { SearchContext } from '../../context/searchContext';
-import Button from '../Button';
-import { copyToClipboard, parseFilters } from '../../utils';
-import { ContextMenuItem, MenuListItemType } from '../ContextMenu';
+import { parseFilters } from '../../utils';
 import { saveJsonToStorage, SEARCH_HISTORY_KEY } from '../../services/storage';
 import { getAutocomplete } from '../../services/api';
 import {
@@ -35,14 +20,9 @@ import {
 } from '../../types/results';
 import { mapResults } from '../../mappers/results';
 import useAppNavigation from '../../hooks/useAppNavigation';
-import {
-  ExtendedMenuItemType,
-  SearchHistoryItem,
-  SearchType,
-} from '../../types/general';
+import { SearchType } from '../../types/general';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { UIContext } from '../../context/uiContext';
-import { LocaleContext } from '../../context/localeContext';
 import AutocompleteMenu from './AutocompleteMenu';
 import SearchTextInput from './SearchTextInput';
 
@@ -65,7 +45,6 @@ function SearchInput() {
   const {
     inputValue,
     setInputValue,
-    searchHistory,
     setFilters,
     filters,
     setSearchHistory,
@@ -74,7 +53,6 @@ function SearchInput() {
     selectedBranch,
   } = useContext(SearchContext);
   const { tab } = useContext(UIContext);
-  const { locale } = useContext(LocaleContext);
   const [options, setOptions] = useState<SuggestionType[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
@@ -231,91 +209,15 @@ function SearchInput() {
     [tab.name, selectedBranch],
   );
 
-  const handleClearHistory = useCallback(() => {
-    setSearchHistory([]);
-    saveJsonToStorage(SEARCH_HISTORY_KEY, []);
-  }, []);
-
-  const historyItems = useMemo(() => {
-    const historyByDay: Record<string, SearchHistoryItem[]> = {};
-    searchHistory.forEach((search) => {
-      const day =
-        typeof search === 'string' || !search.timestamp
-          ? t('Previous')
-          : isToday(new Date(search.timestamp))
-          ? t('Today')
-          : isYesterday(new Date(search.timestamp))
-          ? t('Yesterday')
-          : format(new Date(search.timestamp), 'EEEE, MMM d', {
-              locale: jaLocale,
-            });
-      if (historyByDay[day]) {
-        historyByDay[day].push(search);
-      } else {
-        historyByDay[day] = [search];
-      }
-    });
-    const items: ContextMenuItem[] = [];
-    Object.entries(historyByDay).forEach(([day, searches]) => {
-      items.push({ type: ExtendedMenuItemType.DIVIDER_WITH_TEXT, text: day });
-      searches.forEach((s) => {
-        const isOlderItem = typeof s === 'string';
-        items.push({
-          text: isOlderItem ? (
-            s
-          ) : (
-            <div className="flex justify-between items-center w-full">
-              <span>{s.query}</span>
-              <span>
-                {s.timestamp
-                  ? format(new Date(s.timestamp), 'HH:mm', {
-                      locale: jaLocale,
-                    })
-                  : ''}
-              </span>
-            </div>
-          ),
-          type: MenuListItemType.DEFAULT,
-          icon: isOlderItem ? undefined : s.searchType === SearchType.NL ? (
-            <NaturalLanguage />
-          ) : (
-            <RegexIcon />
-          ),
-          onClick: () => {
-            setInputValue(isOlderItem ? s : s.query);
-            onSubmit(isOlderItem ? s : s.query);
-          },
-        });
-      });
-    });
-    return [
-      ...items,
-      {
-        text: t('Clear search history'),
-        type: MenuListItemType.DANGER,
-        icon: <TrashCan />,
-        onClick: handleClearHistory,
-      },
-    ];
-  }, [searchHistory, onSubmit, handleClearHistory, locale]);
-
   return (
     <div
       className="relative flex gap-2 flex-1 justify-center"
       ref={arrowNavContainerRef}
     >
-      <Button
-        variant="tertiary"
-        onlyIcon
-        title={t('Copy search query to clipboard')}
-        onClick={() => copyToClipboard(inputValue)}
-      >
-        <Clipboard />
-      </Button>
       <div className="flex-1 max-w-3xl">
         <SearchTextInput
           type="search"
-          placeholder={t('Search for code using regex')}
+          placeholder={t('Regex search...')}
           regex
           {...getInputProps(
             {
@@ -340,13 +242,6 @@ function SearchInput() {
         left={INPUT_POSITION_LEFT}
         isOpen={isOpen && !!options.length}
         options={options}
-      />
-
-      <DropdownWithIcon
-        items={historyItems}
-        icon={<ArrowRevert />}
-        lastItemFixed
-        size="large"
       />
     </div>
   );

@@ -4,11 +4,12 @@ type ContextType = {
   path: string;
   isFileModalOpen: boolean;
   scrollToLine: string | undefined;
-  closeFileModalOpen: () => void;
+  closeFileModalOpen: (noNavUpdate?: boolean) => void;
   openFileModal: (
     path: string,
     scrollToLine?: string,
     highlightColor?: string,
+    noNavUpdate?: boolean,
   ) => void;
   highlightColor?: string;
 };

@@ -18,7 +18,6 @@ type Props = {
   helperText?: string;
   id?: string;
   name: string;
-  disabled?: boolean;
   regex?: boolean;
   type?: HTMLInputTypeAttribute;
   onSubmit?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -37,7 +36,6 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
     helperText,
     id,
     name,
-    disabled,
     type,
     onSubmit,
     validate,
@@ -73,19 +71,11 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
   };
 
   return (
-    <div
-      className={`flex flex-col gap-1 w-full ${
-        disabled ? 'text-label-muted' : 'text-label-title'
-      } body-s`}
-    >
+    <div className={`flex flex-col gap-1 w-full text-label-title body-s`}>
       <div
-        className={`group border h-10 rounded flex box-border items-center ${
-          disabled
-            ? 'border-transparent'
-            : 'border-bg-border hover:border-bg-border-hover focus-within:border-bg-border-hover'
-        } ${
-          disabled ? 'bg-transparent ' : ''
-        } transition-all duration-300 ease-in-bounce relative`}
+        className={`group border h-10 rounded flex box-border items-center bg-bg-base hover:bg-bg-base-hover
+         border-bg-border hover:border-bg-border-hover focus-within:border-bg-border-hover 
+         transition-all duration-300 ease-in-bounce relative`}
       >
         <input
           value={value}
@@ -94,7 +84,6 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
           id={id}
           name={name}
           type={type}
-          disabled={disabled}
           ref={inputRef}
           onBlur={validate}
           autoComplete="off"
