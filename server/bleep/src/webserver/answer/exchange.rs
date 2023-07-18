@@ -3,6 +3,8 @@ use std::borrow::Cow;
 
 use anyhow::{Context, Result};
 use base64::Engine;
+use lazy_regex::regex;
+use regex::Regex;
 use tracing::trace;
 
 /// A continually updated conversation exchange.
@@ -446,8 +448,6 @@ fn sanitize_article(article: &str) -> String {
 }
 
 fn fixup_xml_code(xml: &str) -> Cow<str> {
-    use lazy_regex::regex;
-
     if !xml.trim().starts_with("<") {
         return Cow::Borrowed(xml);
     }
@@ -685,23 +685,66 @@ fn try_trim_code_xml(xml: &str) -> Result<String> {
     })
 }
 
+/// Modify every XML section of a markdown document.
+///
+/// The provided closure returns an option, which returns `Some(..)` with a replacement for the
+/// input string, or `None` if the input string does not need to be replaced.
+///
+/// This function operates heuristically, in order to allow malformed XML and XML that contains
+/// multiple serial newlines. This means we accept invalid markdown, and are more forgiving with
+/// the input, at the expense of creating parsing edge cases that can cause trouble due to input
+/// ambiguity.
+///
+/// One such case is this:
+///
+/// ```
+/// This is a sample markdown document. **Hello** world.
+///
+/// <Code>
+///     println!("code ends with </Code>");
+/// </Code>
+/// ```
+///
+/// The above markdown document contains an XML block enclosed in `<Code>...</Code>`, but it is
+/// not valid as the code snippet contains unescape characters. Of note, the `println!` call
+/// contains literal `<` and `>` characters, which in valid XML *must* be escaped as `&lt;` and
+/// `&gt;`, respectively. Because of this, the xml block will be incorrectly parsed to terminate
+/// halfway through the string literal provided in the code sample.
+///
+/// In general, there is no great way around this. We tolerate *most* ambiguity, but this edge case
+/// remains as a consequence of ambiguous input.
+///
+/// For further context, we must accept ambiguous unescaped (invalid) input, as the LLM may
+/// generate such documents.
 fn xml_for_each(article: &str, f: impl Fn(&str) -> Option<String>) -> String {
-    let arena = comrak::Arena::new();
-    let options = comrak::ComrakOptions::default();
-    let root = comrak::parse_document(&arena, article, &options);
+    let mut out = String::new();
+    let mut rest = article;
 
-    for child in root.children() {
-        let mut node = child.data.borrow_mut();
-        if let comrak::nodes::NodeValue::HtmlBlock(html_block) = &mut node.value {
-            if let Some(change) = f(&html_block.literal) {
-                html_block.literal = change;
-            }
+    while let Some(captures) = regex!(r"\n\n\s*(<(\w+)>)").captures(rest) {
+        let tag = captures.get(1).unwrap();
+        let name = &rest[captures.get(2).unwrap().range()];
+
+        out += &rest[..tag.start()];
+
+        let xml = if let Some(m) = Regex::new(&format!(r"</{name}>")).unwrap().find(rest) {
+            let xml = &rest[tag.start()..m.end()];
+            rest = &rest[m.end()..];
+            xml
+        } else {
+            let xml = &rest[tag.start()..];
+            rest = "";
+            xml
+        };
+
+        if let Some(update) = f(xml) {
+            out += &update;
+        } else {
+            out += xml;
         }
     }
 
-    let mut out = Vec::<u8>::new();
-    comrak::format_commonmark(root, &options, &mut out).unwrap();
-    String::from_utf8_lossy(&out).into_owned()
+    out += rest;
+    out
 }
 
 #[cfg(test)]
@@ -756,8 +799,7 @@ test";
 
 test
 test
-test
-";
+test";
 
         let out = xml_for_each(input, |code| try_trim_code_xml(code).ok());
 
@@ -897,8 +939,7 @@ fn foo<T>(t: T) -> bool {
 <Code>
 fn foo&lt;T&gt;(t: T) -&gt; bool {
     &amp;foo &lt;
-</Code></GeneratedCode>
-";
+</Code></GeneratedCode>";
 
         assert_eq!(expected, sanitize_article(&input));
     }
@@ -967,8 +1008,7 @@ let compiled_query = compiler.compile(queries, tantivy_index);
 
         let expected = "The `Compiler` struct in [`server/bleep/src/query/compiler.rs`](server/bleep/src/query/compiler.rs) is used to compile a list of queries into a single Tantivy query that matches any of them. Here is an example of its usage:
 
-<QuotedCode><Base64Code>bGV0IG11dCBjb21waWxlciA9IENvbXBpbGVyOjpuZXcoKTsKY29tcGlsZXIubGl0ZXJhbChzY2hlbWEubmFtZSwgfHF8IHEucmVwby5jbG9uZSgpKTsKbGV0IGNvbXBpbGVkX3F1ZXJ5ID0gY29tcGlsZXIuY29tcGlsZShxdWVyaWVzLCB0YW50aXZ5X2luZGV4KTs=</Base64Code><Language>Rust</Language><Path>server/bleep/s</Path></QuotedCode>
-";
+<QuotedCode><Base64Code>bGV0IG11dCBjb21waWxlciA9IENvbXBpbGVyOjpuZXcoKTsKY29tcGlsZXIubGl0ZXJhbChzY2hlbWEubmFtZSwgfHF8IHEucmVwby5jbG9uZSgpKTsKbGV0IGNvbXBpbGVkX3F1ZXJ5ID0gY29tcGlsZXIuY29tcGlsZShxdWVyaWVzLCB0YW50aXZ5X2luZGV4KTs=</Base64Code><Language>Rust</Language><Path>server/bleep/s</Path></QuotedCode>";
 
         assert_eq!(expected, encode_article(&sanitize_article(&input)));
     }
@@ -997,5 +1037,34 @@ The `Compiler` struct in [`server/bleep/src/query/compiler.rs`](server/bleep/src
 ";
 
         assert_eq!(expected, encode_article(&sanitize_article(&input)));
+    }
+
+    #[test]
+    fn test_sanitize_multi_blocks() {
+        let input = "## Example of Using the Query Compiler
+
+The `Compiler` struct in [`server/bleep/src/query/compiler.rs`](server/bleep/src/query/compiler.rs) is used to compile a list of queries into a single Tantivy query that matches any of them. Here is an example of its usage:
+
+<QuotedCode>
+<Code>
+let mut compiler = Compiler::new();
+
+compiler.literal(schema.name, |q| q.repo.clone());
+let compiled_query =
+";
+
+        let expected = "## Example of Using the Query Compiler
+
+The `Compiler` struct in [`server/bleep/src/query/compiler.rs`](server/bleep/src/query/compiler.rs) is used to compile a list of queries into a single Tantivy query that matches any of them. Here is an example of its usage:
+
+<QuotedCode>
+<Code>
+let mut compiler = Compiler::new();
+
+compiler.literal(schema.name, |q| q.repo.clone());
+let compiled_query =
+</Code></QuotedCode>";
+
+        assert_eq!(expected, sanitize_article(&input));
     }
 }
