@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, env, ops::Not, path::Path, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
 
 use crate::{query::parser::SemanticQuery, Configuration};
 
@@ -12,8 +12,8 @@ use qdrant_client::{
     qdrant::{
         point_id::PointIdOptions, r#match::MatchValue, vectors::VectorsOptions, vectors_config,
         with_payload_selector, with_vectors_selector, CollectionOperationResponse,
-        CreateCollection, Distance, FieldCondition, Filter, Match, PointId, RetrievedPoint,
-        ScoredPoint, SearchPoints, Value, VectorParams, Vectors, VectorsConfig,
+        CreateCollection, Distance, FieldCondition, FieldType, Filter, Match, PointId,
+        RetrievedPoint, ScoredPoint, SearchPoints, Value, VectorParams, Vectors, VectorsConfig,
         WithPayloadSelector, WithVectorsSelector,
     },
 };
@@ -202,25 +202,43 @@ impl Semantic {
         let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url))).unwrap();
 
         match qdrant.has_collection(COLLECTION_NAME).await {
-            Ok(has_collection) => {
-                if has_collection.not() {
-                    let CollectionOperationResponse { result, time } = qdrant
-                        .create_collection(&collection_config())
-                        .await
-                        .unwrap();
+            Ok(false) => {
+                let CollectionOperationResponse { result, time } = qdrant
+                    .create_collection(&collection_config())
+                    .await
+                    .unwrap();
 
-                    debug!(
-                        time,
-                        created = result,
-                        name = COLLECTION_NAME,
-                        "created qdrant collection"
-                    );
+                debug!(
+                    time,
+                    created = result,
+                    name = COLLECTION_NAME,
+                    "created qdrant collection"
+                );
 
-                    assert!(result);
-                }
+                assert!(result);
             }
+            Ok(true) => {}
             Err(_) => return Err(SemanticError::QdrantInitializationError),
         }
+
+        qdrant
+            .create_field_index(COLLECTION_NAME, "repo_ref", FieldType::Text, None, None)
+            .await?;
+        qdrant
+            .create_field_index(COLLECTION_NAME, "content_hash", FieldType::Text, None, None)
+            .await?;
+        qdrant
+            .create_field_index(COLLECTION_NAME, "branches", FieldType::Text, None, None)
+            .await?;
+        qdrant
+            .create_field_index(
+                COLLECTION_NAME,
+                "relative_path",
+                FieldType::Text,
+                None,
+                None,
+            )
+            .await?;
 
         if let Some(dylib_dir) = config.dylib_dir.as_ref() {
             init_ort_dylib(dylib_dir);
