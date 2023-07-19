@@ -289,7 +289,8 @@ Respect these rules at all times:
   - For example, to quote lines 10 to 15 in `src/main.c`, use `c,path:src/main.c,lines:L10-L15`
   - For example, to quote lines 154 to 190 in `index.js`, use `javascript,path:index.js,lines:L154-L190`
 - Always begin your answer with an appropriate title
-- If your are unable to answer the query using the information above, do NOT make up an answer. Explain that you need more information to answer the question and why"#
+- Always finish your answer with a summary in a [^summary] footnote
+  - If you do not have enough information needed to answer the query, do not make up an answer. Instead respond only with a [^summary] footnote that asks the user for more information, e.g. `assistant: [^summary]: I'm sorry, I couldn't find what you were looking for, could you provide more information?`"#
     )
 }
 
