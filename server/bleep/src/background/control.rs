@@ -2,7 +2,7 @@ use std::sync::RwLock;
 
 use crate::repo::{RepoRef, SyncStatus};
 
-use super::{Progress, ProgressEvent, SyncHandle};
+use super::{Progress, ProgressEvent};
 
 enum ControlEvent {
     /// Cancel whatever's happening, and return
@@ -16,13 +16,19 @@ pub struct SyncPipes {
     reporef: RepoRef,
     progress: super::ProgressStream,
     event: RwLock<Option<ControlEvent>>,
+    new_branch_filters: Option<crate::repo::BranchFilter>,
 }
 
 impl SyncPipes {
-    pub(super) fn new(reporef: RepoRef, progress: super::ProgressStream) -> Self {
+    pub(super) fn new(
+        reporef: RepoRef,
+        new_branch_filters: Option<crate::repo::BranchFilter>,
+        progress: super::ProgressStream,
+    ) -> Self {
         Self {
             reporef,
             progress,
+            new_branch_filters,
             event: Default::default(),
         }
     }
@@ -30,17 +36,16 @@ impl SyncPipes {
     pub(crate) fn index_percent(&self, current: u8) {
         _ = self.progress.send(Progress {
             reporef: self.reporef.clone(),
+            branch_filter: self.new_branch_filters.clone(),
             event: ProgressEvent::IndexPercent(current),
         });
     }
 
-    pub(crate) fn status(&self, handle: &SyncHandle, new: SyncStatus) {
+    pub(crate) fn status(&self, new: SyncStatus) {
         _ = self.progress.send(Progress {
             reporef: self.reporef.clone(),
-            event: ProgressEvent::StatusChange {
-                branch_filter: handle.new_branch_filters.clone(),
-                status: new,
-            },
+            branch_filter: self.new_branch_filters.clone(),
+            event: ProgressEvent::StatusChange(new),
         });
     }
 

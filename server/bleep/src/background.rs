@@ -24,6 +24,8 @@ type ProgressStream = tokio::sync::broadcast::Sender<Progress>;
 pub struct Progress {
     #[serde(rename = "ref")]
     reporef: RepoRef,
+    #[serde(rename = "b")]
+    branch_filter: Option<BranchFilter>,
     #[serde(rename = "ev")]
     event: ProgressEvent,
 }
@@ -32,10 +34,7 @@ pub struct Progress {
 #[serde(rename_all = "snake_case")]
 pub enum ProgressEvent {
     IndexPercent(u8),
-    StatusChange {
-        branch_filter: Option<BranchFilter>,
-        status: SyncStatus,
-    },
+    StatusChange(SyncStatus),
 }
 
 type Task = Pin<Box<dyn Future<Output = ()> + Send + Sync>>;

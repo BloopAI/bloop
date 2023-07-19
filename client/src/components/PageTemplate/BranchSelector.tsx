@@ -22,9 +22,8 @@ const BranchSelector = () => {
   const [search, setSearch] = useState('');
   const [isOpen, setOpen] = useState(false);
   const [isPopupOpen, setPopupOpen] = useState(false);
-  const [isIndexing, setIndexing] = useState(false);
-  const [indexingBranch, setIndexingBranch] = useState('');
-  const [percentage, setPercentage] = useState(0);
+  const [indexing, setIndexing] = useState({ branch: '', percentage: 0 });
+  const [branchesToSync, setBranchesToSync] = useState<string[]>([]);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   useOnClickOutside(contextMenuRef, () => setOpen(false));
 
@@ -59,7 +58,6 @@ const BranchSelector = () => {
   }, [indexedBranches, selectedBranch]);
 
   useEffect(() => {
-    setIndexing(currentRepo?.sync_status !== SyncStatus.Done);
     eventSource?.close();
     eventSource = new EventSource(
       `${apiUrl.replace('https:', '')}/repos/status`,
@@ -71,9 +69,11 @@ const BranchSelector = () => {
           return;
         }
         if (data.ev?.status_change) {
-          if (data.ev.status_change.branch_filter) {
-            setIndexingBranch(data.ev.status_change.branch_filter.select[0]);
-            setPercentage(1);
+          if (data.b && data.ev.status_change.status === 'indexing') {
+            setIndexing({
+              branch: data.b.select[0],
+              percentage: 1,
+            });
           }
           setRepositories((prev: RepoType[] | undefined) => {
             if (!prev) {
@@ -90,12 +90,11 @@ const BranchSelector = () => {
                   : '',
               branch_filter: {
                 select:
-                  data.ev.status_change.branch_filter &&
-                  data.ev.status_change.status === SyncStatus.Done
+                  data.b && data.ev.status_change.status === SyncStatus.Done
                     ? Array.from(
                         new Set([
                           ...(newRepos[index].branch_filter?.select || []),
-                          data.ev.status_change.branch_filter.select[0],
+                          data.b.select[0],
                         ]),
                       )
                     : newRepos[index].branch_filter?.select || [],
@@ -105,7 +104,10 @@ const BranchSelector = () => {
           });
         }
         if (data.ev?.index_percent) {
-          setPercentage(data.ev?.index_percent || 1);
+          setIndexing((prev) => ({
+            branch: data.b?.select[0],
+            percentage: data.ev?.index_percent || 1,
+          }));
         }
       } catch {}
     };
@@ -115,13 +117,7 @@ const BranchSelector = () => {
     return () => {
       eventSource?.close();
     };
-  }, [currentRepo?.sync_status, tab.key]);
-
-  useEffect(() => {
-    if (!isIndexing) {
-      setPercentage(0);
-    }
-  }, [isIndexing]);
+  }, [tab.key]);
 
   const items = useMemo(() => {
     return branchesToShow
@@ -135,17 +131,13 @@ const BranchSelector = () => {
           setOpen={setOpen}
           repoRef={tab.key}
           isIndexed={indexedBranches.includes(itemName)}
-          isIndexing={indexingBranch === itemName}
-          percentage={percentage}
+          isIndexing={indexing.branch === itemName}
+          percentage={indexing.percentage}
+          isWaitingSync={branchesToSync.includes(itemName)}
+          onSyncClicked={(b) => setBranchesToSync((prev) => [...prev, b])}
         />
       ));
-  }, [
-    branchesToShow,
-    indexedBranches,
-    selectedBranch,
-    indexingBranch,
-    percentage,
-  ]);
+  }, [branchesToShow, indexedBranches, selectedBranch, indexing]);
 
   return allBranches.length > 1 ? (
     <div ref={contextMenuRef} className="max-w-full">

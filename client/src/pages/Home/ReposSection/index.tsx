@@ -46,9 +46,9 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
             const newRepos = [...prev];
             newRepos[index] = {
               ...newRepos[index],
-              sync_status: data.ev?.status_change?.status,
+              sync_status: data.ev?.status_change,
               last_index:
-                data.ev?.status_change?.status === SyncStatus.Done
+                data.ev?.status_change === SyncStatus.Done
                   ? new Date().toISOString()
                   : '',
             };

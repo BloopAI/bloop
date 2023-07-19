@@ -13,7 +13,9 @@ type Props = {
   repoRef: string;
   isIndexed: boolean;
   isIndexing: boolean;
+  isWaitingSync: boolean;
   percentage: number;
+  onSyncClicked: (b: string) => void;
 };
 
 const BranchItem = ({
@@ -25,15 +27,16 @@ const BranchItem = ({
   isIndexed,
   isIndexing,
   percentage,
+  onSyncClicked,
+  isWaitingSync,
 }: Props) => {
   const { t } = useTranslation();
-  const [syncClicked, setSyncClicked] = useState(false);
   return (
     <button
       className={`p-2.5 group w-full text-left hover:bg-bg-base-hover active:bg-transparent 
       text-label-base hover:text-label-title focus:text-label-title active:text-label-title cursor-pointer 
       flex items-center justify-between rounded body-s duration-100 relative`}
-      disabled={syncClicked && !isIndexed}
+      disabled={isWaitingSync && !isIndexed}
       onClick={() => {
         if (isIndexed) {
           setSelectedBranch(name);
@@ -50,7 +53,7 @@ const BranchItem = ({
       {selectedBranch !== name && (
         <button
           className={`caption-strong flex-shrink-0 ${
-            syncClicked && !isIndexed
+            isWaitingSync && !isIndexed
               ? 'text-label-base'
               : 'text-bg-main hover:text-bg-main-hover'
           } py-1 px-1.5 ${
@@ -61,7 +64,7 @@ const BranchItem = ({
           onClick={() => {
             if (!isIndexed) {
               indexRepoBranch(repoRef, name);
-              setSyncClicked(true);
+              onSyncClicked(name);
             }
           }}
         >
@@ -71,14 +74,14 @@ const BranchItem = ({
             </span>
           ) : isIndexing ? (
             t('Indexing...')
-          ) : syncClicked ? (
+          ) : isWaitingSync ? (
             t('Queued...')
           ) : (
             t('Sync')
           )}
         </button>
       )}
-      {syncClicked && !isIndexed && isIndexing && (
+      {!isIndexed && isIndexing && (
         <div className="absolute bottom-1.5 left-0 w-full px-2">
           <ProgressBar progress={percentage} />
         </div>
