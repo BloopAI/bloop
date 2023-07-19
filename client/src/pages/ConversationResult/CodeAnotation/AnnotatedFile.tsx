@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
 import FileIcon from '../../../components/FileIcon';
 import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
 import { FileTreeFileType } from '../../../types';
@@ -221,7 +222,7 @@ const AnnotatedFile = ({
                       }
                     }}
                   >
-                    Show {isFullExpanded ? 'less' : 'more'}
+                    <Trans>Show {isFullExpanded ? 'less' : 'more'}</Trans>
                   </Button>
                 </div>
               </>

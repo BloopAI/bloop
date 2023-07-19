@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   Checkmark,
   List,
@@ -7,6 +8,7 @@ import {
   PointClick,
   QuillIcon,
   Sparkles,
+  WrenchAndScrewdriver,
 } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
 import {
@@ -53,6 +55,7 @@ const ConversationMessage = ({
   results,
   i,
 }: Props) => {
+  const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
   const { envConfig } = useContext(DeviceContext);
   const { setChatOpen } = useContext(ChatContext);
@@ -81,7 +84,7 @@ const ConversationMessage = ({
               key={i}
             >
               {s.type === 'PROC' ? <PointClick /> : <MagnifyTool />}
-              <span>{s.type === 'PROC' ? 'Reading ' : s.displayText}</span>
+              <span>{s.type === 'PROC' ? t('Reading ') : s.displayText}</span>
               {s.type === 'PROC' ? (
                 <FileChip
                   onClick={() => openFileModal(s.content)}
@@ -104,12 +107,12 @@ const ConversationMessage = ({
             </div>
           )}
           <div className="caption text-label-base flex-1 flex gap-2 items-center">
-            <p>{isLoading ? 'Generating response...' : 'Answer Ready'}</p>
+            <p>{isLoading ? t('Generating response...') : t('Answer Ready')}</p>
             <Button
               size="tiny"
               variant={isLoadingStepsShown ? 'tertiary-active' : 'tertiary'}
               onlyIcon
-              title={`${isLoadingStepsShown ? 'Hide' : 'Show'} search steps`}
+              title={t(`${isLoadingStepsShown ? 'Hide' : 'Show'} search steps`)}
               onClick={() => setLoadingStepsShown((prev) => !prev)}
             >
               <List />
@@ -128,13 +131,13 @@ const ConversationMessage = ({
                   }
                 }}
               >
-                View
+                <Trans>View</Trans>
               </button>
             </div>
           ) : null}
         </div>
       )}
-      {message || (author === ChatMessageAuthor.Server && error) ? (
+      {message ? (
         <>
           <div
             className={`relative group-custom bg-chat-bg-shade mt-3 flex items-start p-4 gap-3 border border-chat-bg-divider rounded-lg`}
@@ -142,7 +145,10 @@ const ConversationMessage = ({
             <div className="relative">
               <div className="w-6 h-6 rounded-full bg-chat-bg-border overflow-hidden flex items-center justify-center select-none">
                 {author === ChatMessageAuthor.User ? (
-                  <img src={envConfig.github_user?.avatar_url} alt="avatar" />
+                  <img
+                    src={envConfig.github_user?.avatar_url}
+                    alt={t('avatar')}
+                  />
                 ) : (
                   <div className="w-3 h-3">
                     <Sparkles raw />
@@ -157,13 +163,15 @@ const ConversationMessage = ({
                 </div>
               )}
             </div>
-            <pre className="body-s text-label-title whitespace-pre-wrap break-word markdown">
-              {author === ChatMessageAuthor.Server ? (
-                <ReactMarkdown>{message || error || ''}</ReactMarkdown>
-              ) : (
-                message
-              )}
-            </pre>
+            {message && (
+              <pre className="body-s text-label-title whitespace-pre-wrap break-word markdown">
+                {author === ChatMessageAuthor.Server ? (
+                  <ReactMarkdown>{message}</ReactMarkdown>
+                ) : (
+                  message
+                )}
+              </pre>
+            )}
           </div>
           <MessageFeedback
             showInlineFeedback={showInlineFeedback}
@@ -175,6 +183,16 @@ const ConversationMessage = ({
             scrollToBottom={scrollToBottom}
           />
         </>
+      ) : error ? (
+        <div className="flex items-start gap-3 text-bg-danger p-4 mt-3 rounded-lg bg-[linear-gradient(90deg,rgba(251,113,133,0.08)_0%,rgba(231,139,152,0.08)_33.18%,rgba(191,191,191,0.08)_100%)]">
+          <WrenchAndScrewdriver />
+          <div className="flex flex-col gap-1">
+            <p className="body-s text-label-title">
+              <Trans>Something went wrong</Trans>
+            </p>
+            <p className="body-s text-label-base">{error}</p>
+          </div>
+        </div>
       ) : null}
     </div>
   );

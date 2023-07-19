@@ -1,3 +1,4 @@
+import { Trans } from 'react-i18next';
 import Tooltip from '../Tooltip';
 import { TokenInfoType } from '../../types/results';
 import { Def, Ref } from '../../icons';
@@ -53,7 +54,7 @@ const TooltipCodeBadge = ({
               : 'text-label-base group-hover:text-label-control'
           }`}
         >
-          {type}
+          <Trans>{type}</Trans>
         </span>
       </div>
     </Tooltip>

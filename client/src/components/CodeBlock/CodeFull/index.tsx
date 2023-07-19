@@ -10,6 +10,7 @@ import React, {
 import debounce from 'lodash.debounce';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Trans } from 'react-i18next';
 import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
 import { Range } from '../../../types/results';
@@ -422,7 +423,7 @@ const CodeFull = ({
                   exit={{ opacity: 0, transform: 'translateY(1rem)' }}
                 >
                   <div className="bg-bg-base border border-bg-border rounded-md shadow-high flex overflow-hidden select-none">
-                    {codeToCopy.split('\n').length > 20 ? (
+                    {codeToCopy.split('\n').length > 1000 ? (
                       <button
                         className="h-8 flex items-center justify-center gap-1 px-2 caption text-label-muted"
                         disabled
@@ -430,14 +431,13 @@ const CodeFull = ({
                         <div className="w-4 h-4">
                           <Info raw />
                         </div>
-                        Select less code
+                        <Trans>Select less code</Trans>
                       </button>
                     ) : (
                       <>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            console.log('here');
                             setChatOpen(true);
                             setPopupPosition(null);
                             setRightPanelOpen(false);
@@ -461,7 +461,7 @@ const CodeFull = ({
                           <div className="w-4 h-4">
                             <Feather raw />
                           </div>
-                          Ask bloop
+                          <Trans>Ask bloop</Trans>
                         </button>
                         <button
                           onClick={(e) => {
@@ -487,7 +487,7 @@ const CodeFull = ({
                           <div className="w-4 h-4">
                             <Sparkle raw />
                           </div>
-                          Explain
+                          <Trans>Explain</Trans>
                         </button>
                       </>
                     )}

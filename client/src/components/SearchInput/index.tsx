@@ -8,7 +8,11 @@ import React, {
 } from 'react';
 import { useCombobox } from 'downshift';
 import throttle from 'lodash.throttle';
+// eslint-disable-next-line import/no-duplicates
 import { format, isToday, isYesterday } from 'date-fns';
+// eslint-disable-next-line import/no-duplicates
+import { ja as jaLocale } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowRevert,
   Clipboard,
@@ -38,6 +42,7 @@ import {
 } from '../../types/general';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { UIContext } from '../../context/uiContext';
+import { LocaleContext } from '../../context/localeContext';
 import AutocompleteMenu from './AutocompleteMenu';
 import SearchTextInput from './SearchTextInput';
 
@@ -56,6 +61,7 @@ const getAutocompleteThrottled = throttle(
 );
 
 function SearchInput() {
+  const { t } = useTranslation();
   const {
     inputValue,
     setInputValue,
@@ -68,6 +74,7 @@ function SearchInput() {
     selectedBranch,
   } = useContext(SearchContext);
   const { tab } = useContext(UIContext);
+  const { locale } = useContext(LocaleContext);
   const [options, setOptions] = useState<SuggestionType[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
@@ -234,12 +241,14 @@ function SearchInput() {
     searchHistory.forEach((search) => {
       const day =
         typeof search === 'string' || !search.timestamp
-          ? 'Previous'
+          ? t('Previous')
           : isToday(new Date(search.timestamp))
-          ? 'Today'
+          ? t('Today')
           : isYesterday(new Date(search.timestamp))
-          ? 'Yesterday'
-          : format(new Date(search.timestamp), 'EEEE, MMM d');
+          ? t('Yesterday')
+          : format(new Date(search.timestamp), 'EEEE, MMM d', {
+              locale: jaLocale,
+            });
       if (historyByDay[day]) {
         historyByDay[day].push(search);
       } else {
@@ -258,7 +267,11 @@ function SearchInput() {
             <div className="flex justify-between items-center w-full">
               <span>{s.query}</span>
               <span>
-                {s.timestamp ? format(new Date(s.timestamp), 'HH:mm') : ''}
+                {s.timestamp
+                  ? format(new Date(s.timestamp), 'HH:mm', {
+                      locale: jaLocale,
+                    })
+                  : ''}
               </span>
             </div>
           ),
@@ -278,13 +291,13 @@ function SearchInput() {
     return [
       ...items,
       {
-        text: 'Clear search history',
+        text: t('Clear search history'),
         type: MenuListItemType.DANGER,
         icon: <TrashCan />,
         onClick: handleClearHistory,
       },
     ];
-  }, [searchHistory, onSubmit, handleClearHistory]);
+  }, [searchHistory, onSubmit, handleClearHistory, locale]);
 
   return (
     <div
@@ -294,7 +307,7 @@ function SearchInput() {
       <Button
         variant="tertiary"
         onlyIcon
-        title="Copy search query to clipboard"
+        title={t('Copy search query to clipboard')}
         onClick={() => copyToClipboard(inputValue)}
       >
         <Clipboard />
@@ -302,7 +315,7 @@ function SearchInput() {
       <div className="flex-1 max-w-3xl">
         <SearchTextInput
           type="search"
-          placeholder="Search for code using regex"
+          placeholder={t('Search for code using regex')}
           regex
           {...getInputProps(
             {

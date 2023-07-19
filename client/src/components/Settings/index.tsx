@@ -1,4 +1,5 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import ListNavigation from '../IdeNavigation/ListNavigation';
 import { Person, TuneControls } from '../../icons';
 import { UIContext } from '../../context/uiContext';
@@ -21,13 +22,8 @@ export enum SettingSections {
   // REPOSITORIES,
 }
 
-const listNavigationItems = [
-  { title: 'General', icon: <Person /> },
-  { title: 'Preferences', icon: <TuneControls /> },
-  // { title: 'Repositories', icon: <Repository /> },
-];
-
 const Settings = () => {
+  const { t } = useTranslation();
   const {
     setSettingsSection,
     settingsSection,
@@ -39,6 +35,15 @@ const Settings = () => {
     const action = isSettingsOpen ? 'add' : 'remove';
     document.body.classList[action]('overflow-hidden');
   }, [isSettingsOpen]);
+
+  const listNavigationItems = useMemo(
+    () => [
+      { title: t('General'), icon: <Person /> },
+      { title: t('Preferences'), icon: <TuneControls /> },
+      // { title: 'Repositories', icon: <Repository /> },
+    ],
+    [t],
+  );
 
   return (
     <div

@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
 import { SearchContext } from '../../context/searchContext';
 import { FileTreeFileType, Repository, RepoSource } from '../../types';
 import Skeleton from '../../components/Skeleton';
@@ -119,9 +120,11 @@ const RepositoryPage = ({ repositoryData }: Props) => {
                     }`}
                   />
                   <span className="ellipsis text-label-muted text-xs select-none">
-                    {statusTextColor?.text === 'Last updated '
-                      ? 'Synced'
-                      : statusTextColor?.text || repoStatus}
+                    <Trans>
+                      {statusTextColor?.text === 'Last updated '
+                        ? 'Synced'
+                        : statusTextColor?.text || repoStatus}
+                    </Trans>
                   </span>
                 </span>
               </span>

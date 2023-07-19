@@ -1,4 +1,5 @@
 import React, { useCallback, useContext } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import ModalOrSidebar from '../ModalOrSidebar';
 import Button from '../Button';
 import { CloseSign } from '../../icons';
@@ -8,6 +9,7 @@ import { PROMPT_GUIDE_DONE, savePlainToStorage } from '../../services/storage';
 import PromptSvg from './PromptSvg';
 
 const PromptGuidePopup = () => {
+  const { t } = useTranslation();
   const { openLink } = useContext(DeviceContext);
   const { isPromptGuideOpen, setPromptGuideOpen } = useContext(UIContext);
 
@@ -38,15 +40,19 @@ const PromptGuidePopup = () => {
         </div>
         <div className="flex flex-col items-center gap-8 py-8 px-6">
           <div className="flex flex-col gap-3">
-            <h4 className="h4 text-label-title">Prompt guide</h4>
+            <h4 className="h4 text-label-title">
+              <Trans>Prompt guide</Trans>
+            </h4>
             <p className="body-s text-label-base">
-              Like ChatGPT, bloop responds best to certain prompts. We’ve
-              compiled a really quick guide on how better to prompt bloop.
+              <Trans>
+                Like ChatGPT, bloop responds best to certain prompts. We’ve
+                compiled a really quick guide on how better to prompt bloop.
+              </Trans>
             </p>
           </div>
           <div className="flex justify-between gap-3 w-full">
             <Button variant="tertiary" onClick={handlePromptGuideClose}>
-              Skip (Not recommended)
+              <Trans>Skip (Not recommended)</Trans>
             </Button>
             <Button
               onClick={() => {
@@ -54,14 +60,14 @@ const PromptGuidePopup = () => {
                 handlePromptGuideClose();
               }}
             >
-              Take a quick look
+              <Trans>Take a quick look</Trans>
             </Button>
           </div>
         </div>
         <div className="absolute top-2 right-2">
           <Button
             onlyIcon
-            title="Close"
+            title={t('Close')}
             variant="tertiary"
             size="small"
             onClick={handlePromptGuideClose}

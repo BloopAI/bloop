@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import throttle from 'lodash.throttle';
+import { useTranslation } from 'react-i18next';
 import PageHeader from '../../components/ResultsPageHeader';
 import { ChatContext } from '../../context/chatContext';
 import {
@@ -28,6 +29,7 @@ type Props = {
 };
 
 const ConversationResult = ({ recordId, threadId }: Props) => {
+  const { t } = useTranslation();
   const { conversation, setConversation, setThreadId } =
     useContext(ChatContext);
   const { tab } = useContext(UIContext);
@@ -70,7 +72,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
             author: ChatMessageAuthor.Server,
             isLoading: false,
             type: ChatMessageType.Answer,
-            loadingSteps: mapLoadingSteps(m.search_steps),
+            loadingSteps: mapLoadingSteps(m.search_steps, t),
             text: m.conclusion,
             results: m.outcome,
             isFromHistory: true,

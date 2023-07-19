@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { TippyProps } from '@tippyjs/react';
+import { Trans, useTranslation } from 'react-i18next';
 import { TokenInfoType, TokenInfoWrapped } from '../../types/results';
 import { Def, Ref } from '../../icons';
 import LiteLoaderContainer from '../Loaders/LiteLoader';
@@ -60,6 +61,7 @@ const RefsDefsPopup = ({
   language,
   relativePath,
 }: Props) => {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<TokenInfoType[]>([
     TypeMap.REF,
     TypeMap.DEF,
@@ -105,14 +107,16 @@ const RefsDefsPopup = ({
               onClick={toggleFilter}
               active={filters.includes(TypeMap.DEF)}
               disabled={!data.data.definitions?.length}
-              tooltipText="The line of code where identifier is defined"
+              tooltipText={t('The line of code where identifier is defined')}
             />
             <Badge
               type={TypeMap.REF}
               onClick={toggleFilter}
               active={filters.includes(TypeMap.REF)}
               disabled={!data.data.references?.length}
-              tooltipText="The line of code where the identifier is referenced"
+              tooltipText={t(
+                'The line of code where the identifier is referenced',
+              )}
             />
           </div>
         </div>
@@ -121,15 +125,20 @@ const RefsDefsPopup = ({
             {data.isLoading ? (
               <>
                 <LiteLoaderContainer />
-                <p className="body-s">Searching...</p>
+                <p className="body-s">
+                  <Trans>Searching...</Trans>
+                </p>
               </>
             ) : (
               <>
                 <p className="body-s text-label-title">
-                  No references or definitions found
+                  <Trans>No references or definitions found</Trans>
                 </p>
                 <p className="caption text-label-muted">
-                  We weren&apos;t able to identify any references at the moment
+                  <Trans>
+                    We weren&apos;t able to identify any references at the
+                    moment
+                  </Trans>
                 </p>
               </>
             )}
@@ -141,7 +150,9 @@ const RefsDefsPopup = ({
                 <div>
                   <div className="bg-bg-base flex gap-1 items-center py-2 px-3 text-bg-success select-none">
                     <Def raw sizeClassName="w-3.5 h-3.5" />
-                    <p className="caption text-label-base">Definitions</p>
+                    <p className="caption text-label-base">
+                      <Trans>Definitions</Trans>
+                    </p>
                   </div>
                   {data.data.definitions.map((item, i) => {
                     return (
@@ -163,7 +174,9 @@ const RefsDefsPopup = ({
               <div>
                 <div className="bg-bg-base flex gap-1 items-center py-2 px-3 text-bg-danger select-none">
                   <Ref raw sizeClassName="w-3.5 h-3.5" />
-                  <p className="caption text-label-base">References</p>
+                  <p className="caption text-label-base">
+                    <Trans>References</Trans>
+                  </p>
                 </div>
                 {data.data.references.map((item, i) => {
                   return (

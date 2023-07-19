@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Trans, useTranslation } from 'react-i18next';
 import TextInput from '../TextInput';
 import Checkbox from '../Checkbox';
 import { FILTER_SECTION_ANIMATION } from '../../consts/animations';
@@ -43,6 +44,7 @@ const FiltersSection = ({
   onSelectAll,
   singleSelect,
 }: Props) => {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState('');
   const [filteredItems, setFilteredItems] = useState(items);
 
@@ -89,7 +91,7 @@ const FiltersSection = ({
                 onChange={handleFilter}
                 name={name + '-filter'}
                 variant="outlined"
-                placeholder={`Filter ${name}...`}
+                placeholder={t(`Filter ${name}...`)}
               />
               {filteredItems.length ? (
                 <>
@@ -103,7 +105,9 @@ const FiltersSection = ({
                             allSelected ? 'body-s' : 'caption'
                           } whitespace-nowrap overflow-hidden`}
                         >
-                          {allSelected ? 'Deselect all' : 'Select all'}
+                          <Trans>
+                            {allSelected ? 'Deselect all' : 'Select all'}
+                          </Trans>
                         </span>
                       }
                       onChange={onSelectAll}
@@ -125,9 +129,13 @@ const FiltersSection = ({
                 </>
               ) : (
                 <div className="text-center">
-                  <p className="body-s text-label-title pb-2">No results...</p>
+                  <p className="body-s text-label-title pb-2">
+                    <Trans>No results...</Trans>
+                  </p>
                   <p className="caption text-label-muted">
-                    Nothing matched your search. Try a different combination!
+                    <Trans>
+                      Nothing matched your search. Try a different combination!
+                    </Trans>
                   </p>
                 </div>
               )}

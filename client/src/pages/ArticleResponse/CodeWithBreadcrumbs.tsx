@@ -1,8 +1,11 @@
-import React, { useCallback, MouseEvent } from 'react';
+import React, { useCallback, MouseEvent, useState } from 'react';
 import FileIcon from '../../components/FileIcon';
 import BreadcrumbsPath from '../../components/BreadcrumbsPath';
 import { FileTreeFileType } from '../../types';
 import Code from '../../components/CodeBlock/Code';
+import Button from '../../components/Button';
+import { copyToClipboard } from '../../utils';
+import { CheckIcon, Clipboard } from '../../icons';
 
 type Props = {
   filePath: string;
@@ -21,6 +24,8 @@ const CodeWithBreadcrumbs = ({
   language,
   code,
 }: Props) => {
+  const [codeCopied, setCodeCopied] = useState(false);
+
   const handleResultClick = useCallback(
     (e: MouseEvent) => {
       if (!document.getSelection()?.toString()) {
@@ -57,8 +62,28 @@ const CodeWithBreadcrumbs = ({
           />
         </div>
       </div>
-      <div className={`relative overflow-x-auto py-4`}>
-        <Code code={code} language={language} lineStart={startLine} />
+      <div className="relative">
+        <div className={`relative overflow-x-auto py-4`}>
+          <Code code={code} language={language} lineStart={startLine} />
+        </div>
+        <div
+          className={`absolute ${
+            code.split('\n').length > 1 ? 'top-4 right-4' : 'top-2.5 right-2.5'
+          }`}
+        >
+          <Button
+            variant="tertiary"
+            size="small"
+            onClick={() => {
+              copyToClipboard(code);
+              setCodeCopied(true);
+              setTimeout(() => setCodeCopied(false), 2000);
+            }}
+          >
+            {codeCopied ? <CheckIcon /> : <Clipboard />}
+            {codeCopied ? 'Copied' : 'Copy'}
+          </Button>
+        </div>
       </div>
     </div>
   );

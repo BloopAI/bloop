@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
 import { sortFiles } from '../../../utils/file';
 import { search } from '../../../services/api';
 import { FileTreeFileType, RepositoryFile } from '../../../types';
@@ -92,7 +93,7 @@ const Directory = ({
       <Accordion
         title={
           path === '' ? (
-            'Files'
+            <Trans>Files</Trans>
           ) : (
             <div className="flex-1 overflow-hidden">
               <Breadcrumbs pathParts={pathParts} path={path} />
@@ -145,7 +146,7 @@ const Directory = ({
                     }
                   }}
                 >
-                  Show {isFullExpanded ? 'less' : 'more'}
+                  <Trans>Show {isFullExpanded ? 'less' : 'more'}</Trans>
                 </Button>
               </div>
             )}
