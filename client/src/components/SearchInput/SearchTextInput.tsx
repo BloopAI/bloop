@@ -90,7 +90,7 @@ const SearchTextInput = forwardRef(function TextInputWithRef(
           spellCheck="false"
           className={`bg-transparent border-none focus:outline-none w-full group-focus-within:placeholder:text-label-title disabled:placeholder:text-label-muted ${
             type === 'email' ? 'px-1' : 'pl-2.5'
-          } transition-all duration-300 ease-in-bounce outline-none outline-0 pr-9`}
+          } transition-all duration-300 ease-in-bounce outline-none outline-0`}
           onKeyDown={handleEnter}
           onCompositionStart={startComposition}
           onCompositionEnd={endComposition}
