@@ -22,7 +22,7 @@ use futures::{stream, StreamExt, TryStreamExt};
 use rand::{prelude::Distribution, thread_rng};
 use rayon::prelude::*;
 use thiserror::Error;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 pub mod chunk;
 pub mod execute;
@@ -489,7 +489,7 @@ impl Semantic {
                 match cache {
                     Ok(cache) => break 'cache Some(cache),
                     Err(err) => {
-                        error!(?err, "failed to initialize cache");
+                        warn!(?err, "failed to initialize cache");
                         tokio::time::sleep(tokio::time::Duration::from_millis(backoff)).await;
                     }
                 }
