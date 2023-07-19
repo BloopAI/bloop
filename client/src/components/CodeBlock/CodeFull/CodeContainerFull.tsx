@@ -117,7 +117,7 @@ const CodeContainerFull = ({
   }, [scrollToIndex, tokens.length]);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative pb-44">
       {tokens.map((line, index) => (
         <CodeLine
           key={pathHash + '-' + index.toString()}

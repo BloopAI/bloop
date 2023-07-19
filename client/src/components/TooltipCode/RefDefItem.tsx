@@ -35,7 +35,7 @@ const RefDefItem = ({
   const [isOpen, setOpen] = useState(true);
   return (
     <div className="[&:not(:last-child)]:border-b border-bg-border" key={file}>
-      <button
+      <div
         className={`px-3 py-1.5 flex items-center gap-1 cursor-pointer w-full ${
           isOpen ? 'text-label-title' : 'text-label-muted'
         }`}
@@ -62,7 +62,7 @@ const RefDefItem = ({
           )}
         </div>
         <p className="select-none caption-strong">{data.length}</p>
-      </button>
+      </div>
       <div
         style={{
           maxHeight: isOpen ? 32 * data.length : 0,
