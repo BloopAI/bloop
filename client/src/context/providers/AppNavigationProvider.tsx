@@ -188,7 +188,7 @@ export const AppNavigationProvider = ({
             index = -1;
           }
         }
-        setForwardNavigation((prev) => [...prev, ...prevState.slice(index)]);
+        setForwardNavigation((prev) => [...prevState.slice(index), ...prev]);
         return prevState.slice(0, index);
       });
     },
@@ -213,13 +213,13 @@ export const AppNavigationProvider = ({
               item.threadId !== currentItem.threadId,
           );
           if (lastIndex > 0) {
-            index = lastIndex * -1;
+            index = lastIndex;
           } else {
-            index = -1;
+            index = 1;
           }
         }
-        setForwardNavigation((prev) => prev.slice(0, index));
-        return [...prevState, ...forwardNavigation.slice(index)];
+        setForwardNavigation((prev) => prev.slice(index));
+        return [...prevState, ...forwardNavigation.slice(0, index)];
       });
     },
     [forwardNavigation, closeFileModalOpen],
