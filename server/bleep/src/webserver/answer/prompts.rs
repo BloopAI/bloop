@@ -293,7 +293,7 @@ ootnote that asks the user for more information, e.g. `assistant: [^summary]: I'
   - Do NOT output plain markdown blocks, the user CANNOT see them
   - To create new code, you MUST mimic the following structure (example given):
 ###
-Here is a generated code block:
+The following demonstrates logging in JavaScript:
 <GeneratedCode>
 <Code>
 console.log("hello world")
@@ -303,7 +303,7 @@ console.log("hello world")
 ###
   - To quote existing code, use the following structure (example given):
 ###
-Here is a quoted code block:
+This is referred to in the Rust code:
 <QuotedCode>
 <Code>
 println!("hello world!");
