@@ -246,6 +246,8 @@
 	"Skip (Not recommended)": "スキップ（お勧めしません）",
 	"Take a quick look": "すぐに見てください",
 	"Prompt guide": "プロンプトガイド",
+	"We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.": "私たちはあなたの質問に答えることができませんでした。 しばらくの間、もう一度尋ねたり、質問を言い換えたりすることができます。",
+	"Stop generating": "生成を停止します",
 	"Like ChatGPT, bloop responds best to certain prompts. We’ve compiled a really quick guide on how better to prompt bloop.": "ChatGptと同様に、Bloopは特定のプロンプトに最もよく応答します。 Bloopをプロンプトする方が良い方法に関する非常に簡単なガイドをまとめました。",
 	"Repo home": "リポジトリホーム",
 	"History": "歴史",
