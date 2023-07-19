@@ -316,7 +316,9 @@ println!("hello world!");
 </QuotedCode>
 ###
   - `<GeneratedCode>` and `<QuotedCode>` elements MUST contain a `<Language>` value, and `<QuotedCode>` MUST additionally contain `<Path>`, `<StartLine>`, and `<EndLine>`.
-  - Note: the line range is inclusive"#
+  - Note: the line range is inclusive
+- When writing example code blocks, use `<GeneratedCode>`, and when quoting existing code, use `<QuotedCode>`.
+- You MUST use XML code blocks instead of markdown."#
     )
 }
 
