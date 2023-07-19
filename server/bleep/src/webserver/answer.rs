@@ -304,9 +304,9 @@ pub(super) async fn _handle(
     let answer_stream = AssertUnwindSafe(stream)
         .catch_unwind()
         .map(|res| res.unwrap_or_else(|_| Err(anyhow!("stream panicked"))))
-        .map(|upd: Result<Exchange>| {
+        .map(|ex: Result<Exchange>| {
             sse::Event::default()
-                .json_data(upd.map_err(|e| e.to_string()))
+                .json_data(ex.map(Exchange::encode).map_err(|e| e.to_string()))
                 .map_err(anyhow::Error::new)
         });
 

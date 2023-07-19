@@ -39,7 +39,7 @@ impl Exchange {
                 let outcome = self
                     .outcome
                     .get_or_insert_with(|| Outcome::Article(String::new()));
-                *outcome.as_article_mut().unwrap() = encode_article(&sanitize_article(&full_text));
+                *outcome.as_article_mut().unwrap() = sanitize_article(&full_text);
             }
             Update::Conclude(conclusion) => {
                 self.conclusion = Some(conclusion);
@@ -71,6 +71,20 @@ impl Exchange {
             Some(Outcome::Filesystem(..)) => self.conclusion.as_deref(),
             None => None,
         }
+    }
+
+    /// Encode this answer for display on the front-end.
+    ///
+    /// This converts all XML blocks to markdown code snippets. We want to only do this on-the-fly,
+    /// because it is important to keep XML in the exchange list for LLM contexts. Otherwise, if
+    /// the model "sees" previous answers in markdown format, it is more likely to generate
+    /// markdown a second time and ignore the XML format.
+    pub fn encode(mut self) -> Self {
+        if let Some(article) = self.outcome.as_mut().and_then(Outcome::as_article_mut) {
+            *article = encode_article(&article);
+        }
+
+        self
     }
 
     /// Like `answer`, but returns a summary for `filesystem` answers, or a trimmed `article`.
@@ -559,15 +573,30 @@ enum CodeChunk {
 impl CodeChunk {
     fn to_markdown(&self) -> String {
         let (ty, code, lang, path, start, end) = match self {
-            CodeChunk::QuotedCode { code, language, path, start_line, end_line } => {
-                ("Quoted", code, language, path.as_str(), *start_line, *end_line)
-            }
+            CodeChunk::QuotedCode {
+                code,
+                language,
+                path,
+                start_line,
+                end_line,
+            } => (
+                "Quoted",
+                code,
+                language,
+                path.as_str(),
+                *start_line,
+                *end_line,
+            ),
             CodeChunk::GeneratedCode { code, language } => {
                 ("Generated", code, language, "", None, None)
             }
         };
 
-        format!("```type:{ty},lang:{lang},path:{path},lines:{}-{}\n{code}\n```", start.unwrap_or(0), end.unwrap_or(0))
+        format!(
+            "```type:{ty},lang:{lang},path:{path},lines:{}-{}\n{code}\n```",
+            start.unwrap_or(0),
+            end.unwrap_or(0)
+        )
     }
 }
 
