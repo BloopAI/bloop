@@ -44,12 +44,18 @@ const Subheader = () => {
   }, [navigationHistory]);
 
   const breadcrumbs = useMemo(() => {
-    let historyPart = navigationHistory.slice(1);
+    let historyPart = [
+      ...navigationHistory.slice(1).map((i) => ({ ...i, isBack: true })),
+      ...forwardNavigation.map((i) => ({ ...i, isBack: false })),
+    ];
     let resultsInList: boolean;
     let pathToFileInList: boolean;
     let list: ContextMenuItem[] = historyPart
       .map((item, i): (ContextMenuItem & { navType: string }) | undefined => {
-        const onClick = () => navigateBack(-(historyPart.length - 1 - i));
+        const onClick = () =>
+          item.isBack
+            ? navigateBack(-(navigationHistory.length - 2 - i))
+            : navigateForward(i - (navigationHistory.length - 2));
         if (
           (item.type === 'repo' || item.type === 'full-result') &&
           item.path
@@ -100,10 +106,7 @@ const Subheader = () => {
           return {
             text: 'Results',
             type: MenuItemType.DEFAULT,
-            icon:
-              i !== historyPart.length - 1 ? (
-                <CodeIcon sizeClassName="w-4 h-4" raw />
-              ) : undefined,
+            icon: <CodeIcon sizeClassName="w-4 h-4" raw />,
             onClick,
             navType: 'results',
           };
@@ -139,9 +142,10 @@ const Subheader = () => {
         }
         return !!i;
       })
-      .reverse();
+      .reverse()
+      .slice(-10);
     return list;
-  }, [navigationHistory]);
+  }, [navigationHistory, forwardNavigation, navigateBack, navigateForward]);
 
   return (
     <div className="w-full bg-bg-shade py-2 px-6 flex items-center justify-between border-b border-bg-border shadow-medium relative z-70">

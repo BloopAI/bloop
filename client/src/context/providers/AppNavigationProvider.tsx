@@ -196,7 +196,7 @@ export const AppNavigationProvider = ({
   );
 
   const navigateForward = useCallback(
-    (delta: number | 'auto' = -1) => {
+    (delta: number | 'auto' = 1) => {
       if (!delta) {
         return;
       }
