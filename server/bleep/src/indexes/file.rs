@@ -43,6 +43,7 @@ struct Workload<'a> {
     repo_metadata: &'a RepoMetadata,
     cache: &'a FileCacheSnapshot,
     dir_entry: RepoDirEntry,
+    cold_run: bool,
 }
 
 #[async_trait]
@@ -60,6 +61,7 @@ impl Indexable for File {
         let repo_name = reporef.indexed_name();
         let processed = &AtomicU64::new(0);
 
+        let cold_run = cache_snapshot.is_empty();
         let file_worker = |count: usize| {
             let cache_snapshot = cache_snapshot.clone();
             move |dir_entry: RepoDirEntry| {
@@ -74,6 +76,7 @@ impl Indexable for File {
                     cache: &cache_snapshot,
                     repo_metadata,
                     dir_entry,
+                    cold_run,
                 };
 
                 trace!(entry_disk_path, "queueing entry");
@@ -405,6 +408,7 @@ impl File {
             repo_metadata,
             cache,
             dir_entry,
+            cold_run,
         } = workload;
 
         #[cfg(feature = "debug")]
@@ -474,7 +478,7 @@ impl File {
                         repo_ref.as_str(),
                         last_commit,
                         repo_metadata,
-                        cache.len() == 0,
+                        cold_run,
                     )
                     .ok_or(anyhow::anyhow!("failed to build document"))?;
                 writer.add_document(doc)?;

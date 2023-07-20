@@ -271,22 +271,13 @@ impl<'a> ChunkCache<'a> {
     }
 
     pub async fn commit(self) -> anyhow::Result<(usize, usize, usize)> {
-        let mut keys = vec![];
-        self.cache
-            .scan_async(|k, v| {
-                if v.fresh {
-                    keys.push(k.clone())
-                }
-            })
-            .await;
-
         let update: Vec<_> = std::mem::take(self.update.write().unwrap().as_mut());
         let update_size = update.len();
         futures::future::join_all(update.into_iter().map(|(id, p)| async move {
             // need another async block to get around scoping issues
             // with referential `&id`
             self.qdrant
-                .set_payload(semantic::COLLECTION_NAME, &id, p, None)
+                .set_payload_blocking(semantic::COLLECTION_NAME, &id, p, None)
                 .await
         }))
         .await
@@ -313,7 +304,7 @@ impl<'a> ChunkCache<'a> {
         let new_size = new.len();
         if !new.is_empty() {
             self.qdrant
-                .upsert_points(semantic::COLLECTION_NAME, new, None)
+                .upsert_points_blocking(semantic::COLLECTION_NAME, new, None)
                 .await?;
         }
 

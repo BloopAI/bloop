@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, env, ops::Not, path::Path, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
 
 use crate::{query::parser::SemanticQuery, Configuration};
 
@@ -12,13 +12,14 @@ use qdrant_client::{
     qdrant::{
         point_id::PointIdOptions, r#match::MatchValue, vectors::VectorsOptions, vectors_config,
         with_payload_selector, with_vectors_selector, CollectionOperationResponse,
-        CreateCollection, Distance, FieldCondition, Filter, Match, PointId, RetrievedPoint,
-        ScoredPoint, SearchPoints, Value, VectorParams, Vectors, VectorsConfig,
+        CreateCollection, Distance, FieldCondition, FieldType, Filter, Match, PointId,
+        RetrievedPoint, ScoredPoint, SearchPoints, Value, VectorParams, Vectors, VectorsConfig,
         WithPayloadSelector, WithVectorsSelector,
     },
 };
 
 use futures::{stream, StreamExt, TryStreamExt};
+use rand::{prelude::Distribution, thread_rng};
 use rayon::prelude::*;
 use thiserror::Error;
 use tracing::{debug, info, trace, warn};
@@ -201,25 +202,43 @@ impl Semantic {
         let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url))).unwrap();
 
         match qdrant.has_collection(COLLECTION_NAME).await {
-            Ok(has_collection) => {
-                if has_collection.not() {
-                    let CollectionOperationResponse { result, time } = qdrant
-                        .create_collection(&collection_config())
-                        .await
-                        .unwrap();
+            Ok(false) => {
+                let CollectionOperationResponse { result, time } = qdrant
+                    .create_collection(&collection_config())
+                    .await
+                    .unwrap();
 
-                    debug!(
-                        time,
-                        created = result,
-                        name = COLLECTION_NAME,
-                        "created qdrant collection"
-                    );
+                debug!(
+                    time,
+                    created = result,
+                    name = COLLECTION_NAME,
+                    "created qdrant collection"
+                );
 
-                    assert!(result);
-                }
+                assert!(result);
             }
+            Ok(true) => {}
             Err(_) => return Err(SemanticError::QdrantInitializationError),
         }
+
+        qdrant
+            .create_field_index(COLLECTION_NAME, "repo_ref", FieldType::Text, None, None)
+            .await?;
+        qdrant
+            .create_field_index(COLLECTION_NAME, "content_hash", FieldType::Text, None, None)
+            .await?;
+        qdrant
+            .create_field_index(COLLECTION_NAME, "branches", FieldType::Text, None, None)
+            .await?;
+        qdrant
+            .create_field_index(
+                COLLECTION_NAME,
+                "relative_path",
+                FieldType::Text,
+                None,
+                None,
+            )
+            .await?;
 
         if let Some(dylib_dir) = config.dylib_dir.as_ref() {
             init_ort_dylib(dylib_dir);
@@ -467,10 +486,36 @@ impl Semantic {
         branches: &[String],
         is_cold_run: bool,
     ) {
-        let chunk_cache =
-            crate::cache::ChunkCache::for_file(&self.qdrant, tantivy_cache_key, is_cold_run)
-                .await
-                .expect("qdrant error");
+        let chunk_cache = 'cache: {
+            // Wait for some time here.
+            //
+            // In practice it looks like IF there's a backlog in
+            // qdrant, it will take a few seconds to resolve.
+            //
+            // To avoid exacerbating any issues, the individual worker
+            // threads should ping qdrant offset, and not dump new
+            // queries on it simultaneously.
+            let rand = rand::distributions::Uniform::new(1000, 2000);
+            for (_, backoff) in (0..30).zip(rand.sample_iter(&mut thread_rng())) {
+                let cache = crate::cache::ChunkCache::for_file(
+                    &self.qdrant,
+                    tantivy_cache_key,
+                    is_cold_run,
+                )
+                .await;
+
+                match cache {
+                    Ok(cache) => break 'cache Some(cache),
+                    Err(err) => {
+                        warn!(?err, "failed to initialize cache");
+                        tokio::time::sleep(tokio::time::Duration::from_millis(backoff)).await;
+                    }
+                }
+            }
+
+            None
+        }
+        .expect("qdrant error");
 
         let chunks = chunk::by_tokens(
             repo_name,
