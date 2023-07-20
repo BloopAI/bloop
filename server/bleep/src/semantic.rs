@@ -19,7 +19,6 @@ use qdrant_client::{
 };
 
 use futures::{stream, StreamExt, TryStreamExt};
-use rand::{prelude::Distribution, thread_rng};
 use rayon::prelude::*;
 use thiserror::Error;
 use tracing::{debug, info, trace, warn};
@@ -474,49 +473,17 @@ impl Semantic {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(self, repo_ref, relative_path, buffer))]
+    #[tracing::instrument(skip(self, repo_name, buffer, chunk_cache))]
     pub async fn insert_points_for_buffer(
         &self,
         repo_name: &str,
         repo_ref: &str,
-        tantivy_cache_key: &str,
         relative_path: &str,
         buffer: &str,
         lang_str: &str,
         branches: &[String],
-        is_cold_run: bool,
+        chunk_cache: crate::cache::ChunkCache<'_>,
     ) {
-        let chunk_cache = 'cache: {
-            // Wait for some time here.
-            //
-            // In practice it looks like IF there's a backlog in
-            // qdrant, it will take a few seconds to resolve.
-            //
-            // To avoid exacerbating any issues, the individual worker
-            // threads should ping qdrant offset, and not dump new
-            // queries on it simultaneously.
-            let rand = rand::distributions::Uniform::new(1000, 2000);
-            for (_, backoff) in (0..30).zip(rand.sample_iter(&mut thread_rng())) {
-                let cache = crate::cache::ChunkCache::for_file(
-                    &self.qdrant,
-                    tantivy_cache_key,
-                    is_cold_run,
-                )
-                .await;
-
-                match cache {
-                    Ok(cache) => break 'cache Some(cache),
-                    Err(err) => {
-                        warn!(?err, "failed to initialize cache");
-                        tokio::time::sleep(tokio::time::Duration::from_millis(backoff)).await;
-                    }
-                }
-            }
-
-            None
-        }
-        .expect("qdrant error");
-
         let chunks = chunk::by_tokens(
             repo_name,
             relative_path,
@@ -529,7 +496,7 @@ impl Semantic {
         debug!(chunk_count = chunks.len(), "found chunks");
 
         let embedder = |c: &str| {
-            info!("generating embedding");
+            debug!("generating embedding");
             self.embed(c)
         };
         chunks.par_iter().for_each(|chunk| {
@@ -538,7 +505,7 @@ impl Semantic {
                 repo_name: repo_name.to_owned(),
                 repo_ref: repo_ref.to_owned(),
                 relative_path: relative_path.to_owned(),
-                content_hash: tantivy_cache_key.to_owned(),
+                content_hash: chunk_cache.file_hash(),
                 text: chunk.data.to_owned(),
                 lang: lang_str.to_ascii_lowercase(),
                 branches: branches.to_owned(),
@@ -555,7 +522,7 @@ impl Semantic {
             }
         });
 
-        match chunk_cache.commit().await {
+        match chunk_cache.commit(&self.qdrant).await {
             Ok((new, updated, deleted)) => {
                 info!(
                     repo_name,
