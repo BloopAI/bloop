@@ -6,6 +6,7 @@ use crate::query::parser::SemanticQuery;
 /// conclusion from the model alongside the outcome, if any.
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Exchange {
+    pub id: uuid::Uuid,
     pub query: SemanticQuery<'static>,
     pub outcome: Option<Outcome>,
     search_steps: Vec<SearchStep>,
@@ -13,8 +14,9 @@ pub struct Exchange {
 }
 
 impl Exchange {
-    pub fn new(query: SemanticQuery<'static>) -> Self {
+    pub fn new(id: uuid::Uuid, query: SemanticQuery<'static>) -> Self {
         Self {
+            id,
             query,
             ..Default::default()
         }

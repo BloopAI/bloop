@@ -85,6 +85,7 @@ pub struct Params {
     pub repo_ref: RepoRef,
     #[serde(default = "default_thread_id")]
     pub thread_id: uuid::Uuid,
+    pub parent_query_id: Option<uuid::Uuid>,
 }
 
 fn default_thread_id() -> uuid::Uuid {
@@ -185,7 +186,23 @@ pub(super) async fn _handle(
         }
     };
 
-    let Params { thread_id, q, .. } = params;
+    let Params {
+        thread_id,
+        parent_query_id,
+        q,
+        ..
+    } = params;
+
+    if let Some(parent_query_id) = parent_query_id {
+        let parent_exchange_index = conversation
+            .exchanges
+            .iter()
+            .position(|e| e.id == parent_query_id)
+            .ok_or_else(|| super::Error::user("parent exchange id not found in exchanges"))?;
+
+        conversation.exchanges.truncate(parent_exchange_index + 1);
+    }
+
     let query = parser::parse_nl(&q)
         .context("parse error")?
         .into_semantic()
@@ -200,11 +217,12 @@ pub(super) async fn _handle(
         .clone()
         .into_owned();
 
+    conversation.exchanges.push(Exchange::new(query_id, query));
+
     let stream = async_stream::try_stream! {
         let mut action = Action::Query(query_target);
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
-        conversation.exchanges.push(Exchange::new(query));
         let mut agent = Agent {
             app,
             conversation,
@@ -294,7 +312,7 @@ pub(super) async fn _handle(
         Ok(sse::Event::default()
             .json_data(json!({
                 "thread_id": params.thread_id.to_string(),
-                "query_id": query_id,
+                "query_id": query_id
             }))
             // This should never happen, so we force an unwrap.
             .expect("failed to serialize initialization object"))
