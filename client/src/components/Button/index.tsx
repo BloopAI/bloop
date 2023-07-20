@@ -44,7 +44,7 @@ const variantStylesMap = {
   'tertiary-outlined':
     'text-label-muted bg-transparent border border-bg-border hover:bg-bg-base-hover focus:bg-bg-base-hover active:bg-transparent hover:text-label-title focus:text-label-title active:text-label-title disabled:bg-bg-base disabled:text-label-muted disabled:border-transparent disabled:hover:border-transparent',
   'tertiary-disabled':
-    'text-label-muted bg-transparent hover:text-label-title focus:text-label-title hover:bg-bg-base-hover focus:bg-bg-base-hover active:text-label-title active:bg-transparent disabled:opacity-50 disabled:text-label-muted disabled:hover:text-label-muted',
+    'text-label-muted bg-transparent hover:text-label-title focus:text-label-title hover:bg-bg-base-hover focus:bg-bg-base-hover active:text-label-title active:bg-transparent disabled:opacity-50 disabled:text-label-muted disabled:hover:text-label-muted disabled:hover:bg-transparent',
 };
 
 const sizeMap = {
