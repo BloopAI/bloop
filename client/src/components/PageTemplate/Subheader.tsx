@@ -44,27 +44,12 @@ const Subheader = () => {
   }, [navigationHistory]);
 
   const breadcrumbs = useMemo(() => {
-    const reversedHistory = [...navigationHistory].reverse();
-    const lastHomeIndex = reversedHistory.findIndex(
-      (n) => n.type === 'repo' && !n.path,
-    );
     let historyPart = navigationHistory.slice(1);
-    if (lastHomeIndex >= 0) {
-      historyPart = reversedHistory.slice(0, lastHomeIndex).reverse();
-    }
     let resultsInList: boolean;
     let pathToFileInList: boolean;
     let list: ContextMenuItem[] = historyPart
       .map((item, i): (ContextMenuItem & { navType: string }) | undefined => {
         const onClick = () => navigateBack(-(historyPart.length - 1 - i));
-        if (item.type === 'repo' && !item.path) {
-          return {
-            text: item.repo!,
-            type: MenuItemType.DEFAULT,
-            onClick,
-            navType: 'repo',
-          };
-        }
         if (
           (item.type === 'repo' || item.type === 'full-result') &&
           item.path
@@ -168,8 +153,8 @@ const Subheader = () => {
             onlyIcon
             title={t('Go back')}
             onClick={() => navigateBack('auto')}
-            disabled={!navigationHistory.length}
-            variant="tertiary"
+            disabled={navigationHistory.length < 2}
+            variant="tertiary-disabled"
             size="tiny"
           >
             <ArrowLeft />
@@ -179,7 +164,7 @@ const Subheader = () => {
             title={t('Go forward')}
             onClick={() => navigateForward('auto')}
             disabled={!forwardNavigation.length}
-            variant="tertiary"
+            variant="tertiary-disabled"
             size="tiny"
           >
             <ArrowRight />
@@ -188,7 +173,7 @@ const Subheader = () => {
             items={breadcrumbs}
             icon={<Clock />}
             btnOnlyIcon
-            btnVariant="tertiary"
+            btnVariant="tertiary-disabled"
             btnSize="tiny"
             noChevron
             disabled={!breadcrumbs.length}

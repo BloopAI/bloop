@@ -13,7 +13,7 @@ type Props = {
   dropdownBtnClassName?: string;
   btnTitle?: string;
   noChevron?: boolean;
-  btnVariant?: 'primary' | 'secondary' | 'tertiary';
+  btnVariant?: 'primary' | 'secondary' | 'tertiary' | 'tertiary-disabled';
   btnSize?: 'small' | 'medium' | 'large' | 'tiny';
   btnOnlyIcon?: boolean;
   lastItemFixed?: boolean;
