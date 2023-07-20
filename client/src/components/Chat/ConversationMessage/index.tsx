@@ -123,6 +123,25 @@ const ConversationMessage = ({
       )}
       {message ? (
         <>
+          {!isLoading &&
+          (!!results?.Article || !!results?.Filesystem?.length) ? (
+            <div className="mt-3 select-none cursor-default group-summary">
+              {!!results?.Article ? (
+                <SummaryCardsArticle
+                  article={results.Article}
+                  threadId={threadId}
+                  i={i}
+                />
+              ) : !!results?.Filesystem?.length ? (
+                <SummaryCardsFilesystem
+                  repoName={repoName}
+                  results={results.Filesystem}
+                  i={i}
+                  threadId={threadId}
+                />
+              ) : null}
+            </div>
+          ) : null}
           <div
             className={`relative bg-chat-bg-shade mt-3 flex items-start p-4 gap-3 border border-chat-bg-divider rounded-lg`}
           >
@@ -157,25 +176,6 @@ const ConversationMessage = ({
               </pre>
             )}
           </div>
-          {!isLoading &&
-          (!!results?.Article || !!results?.Filesystem?.length) ? (
-            <div className="mt-3 select-none cursor-default group-summary">
-              {!!results?.Article ? (
-                <SummaryCardsArticle
-                  article={results.Article}
-                  threadId={threadId}
-                  i={i}
-                />
-              ) : !!results?.Filesystem?.length ? (
-                <SummaryCardsFilesystem
-                  repoName={repoName}
-                  results={results.Filesystem}
-                  i={i}
-                  threadId={threadId}
-                />
-              ) : null}
-            </div>
-          ) : null}
           <MessageFeedback
             showInlineFeedback={showInlineFeedback}
             isHistory={isHistory}

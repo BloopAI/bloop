@@ -16,11 +16,15 @@ const SummaryCardsArticle = ({ article, i, threadId }: Props) => {
     <>
       {article
         .split('\n\n')
-        .slice(
-          ...(article.startsWith('## ') || article.startsWith('# ')
-            ? [1, 4]
-            : [0, 3]),
+        .filter(
+          (i) =>
+            !(
+              i.startsWith('### ') ||
+              i.startsWith('## ') ||
+              i.startsWith('# ')
+            ),
         )
+        .slice(0, 3)
         .reverse()
         .map((p, index, array) =>
           index === array.length - 1 ? (
