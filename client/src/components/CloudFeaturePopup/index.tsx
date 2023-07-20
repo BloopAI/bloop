@@ -52,7 +52,7 @@ const CloudFeaturePopup = ({ isOpen, onClose }: Props) => {
           </div>
           <Button
             onClick={() => {
-              openLink('https://bloop.ai/start');
+              openLink('https://bloop.ai/upgrade');
               onClose();
             }}
           >
