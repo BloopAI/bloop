@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use anyhow::{Context, Result};
 use lazy_regex::regex;
 use regex::Regex;
+use serde::Deserialize;
 use tracing::trace;
 
 /// A continually updated conversation exchange.
@@ -81,7 +82,7 @@ impl Exchange {
     /// markdown a second time and ignore the XML format.
     pub fn encode(mut self) -> Self {
         if let Some(article) = self.outcome.as_mut().and_then(Outcome::as_article_mut) {
-            *article = encode_article(&article);
+            *article = encode_article(article);
         }
 
         self
@@ -461,7 +462,7 @@ fn sanitize_article(article: &str) -> String {
 }
 
 fn fixup_xml_code(xml: &str) -> Cow<str> {
-    if !xml.trim().starts_with("<") {
+    if !xml.trim().starts_with('<') {
         return Cow::Borrowed(xml);
     }
 
@@ -542,7 +543,7 @@ fn fixup_xml_code(xml: &str) -> Cow<str> {
 
 fn encode_xml_code(xml: &str) -> Result<String> {
     let code_chunk =
-        quick_xml::de::from_str::<CodeChunk>(&xml).context("failed to deserialize code chunk")?;
+        quick_xml::de::from_str::<CodeChunk>(xml).context("failed to deserialize code chunk")?;
 
     Ok(code_chunk.to_markdown())
 }
@@ -557,9 +558,9 @@ enum CodeChunk {
         language: String,
         #[serde(default, rename = "Path")]
         path: String,
-        #[serde(rename = "StartLine")]
+        #[serde(default, rename = "StartLine", deserialize_with = "deserialize_lineno")]
         start_line: Option<u32>,
-        #[serde(rename = "EndLine")]
+        #[serde(default, rename = "EndLine", deserialize_with = "deserialize_lineno")]
         end_line: Option<u32>,
     },
     GeneratedCode {
@@ -568,6 +569,19 @@ enum CodeChunk {
         #[serde(default, rename = "Language")]
         language: String,
     },
+}
+
+fn deserialize_lineno<'a, D: serde::Deserializer<'a>>(de: D) -> Result<Option<u32>, D::Error> {
+    let opt = Option::deserialize(de)?;
+    let opt = opt.and_then(|s: String| {
+        if s.is_empty() {
+            Some(0)
+        } else {
+            s.parse().ok()
+        }
+    });
+
+    Ok(opt)
 }
 
 impl CodeChunk {
@@ -1039,5 +1053,33 @@ let compiled_query =
 </Code></QuotedCode>";
 
         assert_eq!(expected, sanitize_article(&input));
+    }
+
+    #[test]
+    fn test_encode_partial_xml_empty_line_number() {
+        let input = "## Example of Using the Query Compiler
+
+The `Compiler` struct in [`server/bleep/src/query/compiler.rs`](server/bleep/src/query/compiler.rs) is used to compile a list of queries into a single Tantivy query that matches any of them. Here is an example of its usage:
+
+<QuotedCode>
+<Code>
+let mut compiler = Compiler::new();
+compiler.literal(schema.name, |q| q.repo.clone());
+let compiled_query = compiler.compile(queries, tantivy_index);
+</Code>
+<Language>Rust</Language>
+<StartLine>";
+
+        let expected = "## Example of Using the Query Compiler
+
+The `Compiler` struct in [`server/bleep/src/query/compiler.rs`](server/bleep/src/query/compiler.rs) is used to compile a list of queries into a single Tantivy query that matches any of them. Here is an example of its usage:
+
+```type:Quoted,lang:Rust,path:,lines:0-0
+let mut compiler = Compiler::new();
+compiler.literal(schema.name, |q| q.repo.clone());
+let compiled_query = compiler.compile(queries, tantivy_index);
+```";
+
+        assert_eq!(expected, encode_article(&sanitize_article(&input)));
     }
 }
