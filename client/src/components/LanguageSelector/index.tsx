@@ -10,7 +10,7 @@ const LanguageSelector = () => {
       items={[
         {
           text: 'English',
-          icon: <span>🇺🇸</span>,
+          icon: <span>🇬🇧</span>,
           type: MenuListItemType.DEFAULT,
           onClick: () => {
             setLocale('en');
@@ -27,7 +27,7 @@ const LanguageSelector = () => {
       ]}
       icon={
         <div className="flex items-center gap-2">
-          <span> {locale === 'ja' ? '🇯🇵' : '🇺🇸'}</span>
+          <span> {locale === 'ja' ? '🇯🇵' : '🇬🇧'}</span>
           <span>{locale === 'ja' ? '日本' : 'English'}</span>
         </div>
       }

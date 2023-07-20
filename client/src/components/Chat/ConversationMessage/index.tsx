@@ -19,10 +19,11 @@ import {
 } from '../../../types/general';
 import { ChatContext } from '../../../context/chatContext';
 import Button from '../../Button';
-import { AppNavigationContext } from '../../../context/appNavigationContext';
 import { FileModalContext } from '../../../context/fileModalContext';
 import MessageFeedback from './MessageFeedback';
 import FileChip from './FileChip';
+import SummaryCardsArticle from './SummaryCards/SummaryCardsArticle';
+import SummaryCardsFilesystem from './SummaryCards/SummaryCardsFilesystem';
 
 type Props = {
   author: ChatMessageAuthor;
@@ -31,6 +32,7 @@ type Props = {
   threadId: string;
   queryId: string;
   repoRef: string;
+  repoName: string;
   isHistory?: boolean;
   showInlineFeedback: boolean;
   scrollToBottom?: () => void;
@@ -54,13 +56,12 @@ const ConversationMessage = ({
   loadingSteps,
   results,
   i,
+  repoName,
 }: Props) => {
   const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
   const { envConfig } = useContext(DeviceContext);
   const { setChatOpen } = useContext(ChatContext);
-  const { navigateConversationResults, navigateArticleResponse } =
-    useContext(AppNavigationContext);
   const { openFileModal } = useContext(FileModalContext);
 
   useEffect(() => {
@@ -118,29 +119,31 @@ const ConversationMessage = ({
               <List />
             </Button>
           </div>
-          {!isLoading &&
-          (!!results?.Filesystem?.length || !!results?.Article) ? (
-            <div className="flex items-center justify-end justify-self-end">
-              <button
-                className="text-bg-main body-s mr-2"
-                onClick={() => {
-                  if (results?.Article) {
-                    navigateArticleResponse(i, threadId);
-                  } else {
-                    navigateConversationResults(i, threadId);
-                  }
-                }}
-              >
-                <Trans>View</Trans>
-              </button>
-            </div>
-          ) : null}
         </div>
       )}
       {message ? (
         <>
+          {!isLoading &&
+          (!!results?.Article || !!results?.Filesystem?.length) ? (
+            <div className="mt-3 select-none cursor-default group-summary">
+              {!!results?.Article ? (
+                <SummaryCardsArticle
+                  article={results.Article}
+                  threadId={threadId}
+                  i={i}
+                />
+              ) : !!results?.Filesystem?.length ? (
+                <SummaryCardsFilesystem
+                  repoName={repoName}
+                  results={results.Filesystem}
+                  i={i}
+                  threadId={threadId}
+                />
+              ) : null}
+            </div>
+          ) : null}
           <div
-            className={`relative group-custom bg-chat-bg-shade mt-3 flex items-start p-4 gap-3 border border-chat-bg-divider rounded-lg`}
+            className={`relative bg-chat-bg-shade mt-3 flex items-start p-4 gap-3 border border-chat-bg-divider rounded-lg`}
           >
             <div className="relative">
               <div className="w-6 h-6 rounded-full bg-chat-bg-border overflow-hidden flex items-center justify-center select-none">

@@ -193,10 +193,10 @@ module.exports = {
       default: ['Inter', 'sans-serif'],
       code: ['Menlo', 'sans-serif'],
     },
-    namedGroups: ["tooltip","foo", "bar"],
+    namedGroups: ["tooltip","summary"],
   },
   plugins: [
     require('@tailwindcss/line-clamp'),
-    require('tailwindcss-labeled-groups')(['custom'])
+    require('tailwindcss-labeled-groups')(['custom', 'summary'])
   ],
 };

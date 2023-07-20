@@ -7,12 +7,17 @@ import { copyToClipboard } from '../../utils';
 type Props = {
   code: string;
   language: string;
+  isSummary?: boolean;
 };
 
-const NewCode = ({ code, language }: Props) => {
+const NewCode = ({ code, language, isSummary }: Props) => {
   const [codeCopied, setCodeCopied] = useState(false);
   return (
-    <div className="text-sm p-4 pr-20 border border-bg-border rounded-md relative bg-bg-shade my-4">
+    <div
+      className={`${
+        !isSummary ? 'my-4 p-4 bg-bg-shade' : 'bg-chat-bg-sub'
+      } text-sm pr-20 border border-bg-border rounded-md relative`}
+    >
       <div className="overflow-auto">
         <Code showLines={false} code={code} language={language} canWrap />
       </div>
