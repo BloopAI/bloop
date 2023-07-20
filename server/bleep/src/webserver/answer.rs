@@ -1,3 +1,4 @@
+use rand::{rngs::OsRng, seq::SliceRandom};
 use secrecy::ExposeSecret;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
@@ -1260,8 +1261,18 @@ impl Agent {
         }
 
         let summary = split_article_summary(&response)
-            .context("article did not have a summary")?
-            .1;
+            .map(|(_article, summary)| summary)
+            .unwrap_or_else(|| {
+                [
+                    "I hope that was useful, can I help with anything else?",
+                    "Is there anything else I can help you with?",
+                    "Can I help you with anything else?",
+                ]
+                .choose(&mut OsRng)
+                .copied()
+                .unwrap()
+                .to_owned()
+            });
 
         self.update(Update::Conclude(summary)).await?;
 
