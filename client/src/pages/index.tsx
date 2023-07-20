@@ -77,6 +77,8 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
     setInputValue(
       query
         .replace(/repo:.*?\s/, '')
+        .replace(/branch:.*?\s/, '')
+        .replace(/branch:.*$/, '')
         .replace('open:true', '')
         .trim(),
     );
