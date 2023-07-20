@@ -454,7 +454,7 @@ impl ConcludeResult {
 }
 
 fn encode_article(article: &str) -> String {
-    xml_for_each(article, |code| encode_xml_code(code).ok())
+    xml_for_each(article, |code| xml_to_markdown(code).ok())
 }
 
 fn sanitize_article(article: &str) -> String {
@@ -541,7 +541,7 @@ fn fixup_xml_code(xml: &str) -> Cow<str> {
     }
 }
 
-fn encode_xml_code(xml: &str) -> Result<String> {
+fn xml_to_markdown(xml: &str) -> Result<String> {
     let code_chunk =
         quick_xml::de::from_str::<CodeChunk>(xml).context("failed to deserialize code chunk")?;
 
