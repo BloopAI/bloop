@@ -4,10 +4,10 @@
     future_incompatible,
     nonstandard_style,
     rust_2018_idioms,
-    unused_crate_dependencies,
     unused_lifetimes,
     unused_qualifications
 )]
+#![warn(unused_crate_dependencies)]
 #![allow(elided_lifetimes_in_paths)]
 
 #[cfg(any(bench, test))]

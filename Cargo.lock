@@ -496,6 +496,7 @@ dependencies = [
  "hyperpolyglot",
  "ignore",
  "jsonwebtoken",
+ "lazy-regex",
  "ndarray",
  "notify-debouncer-mini",
  "octocrab",
@@ -508,6 +509,7 @@ dependencies = [
  "phf_codegen 0.11.2",
  "pretty_assertions",
  "qdrant-client",
+ "quick-xml 0.29.0",
  "rand 0.8.5",
  "rayon",
  "regex",
@@ -620,7 +622,7 @@ checksum = "a246e68bb43f6cd9db24bea052a53e40405417c5fb372e3d1a8a7f770a564ef5"
 dependencies = [
  "memchr",
  "once_cell",
- "regex-automata",
+ "regex-automata 0.1.10",
  "serde",
 ]
 
@@ -1705,7 +1707,8 @@ dependencies = [
 [[package]]
 name = "esaxx-rs"
 version = "0.1.8"
-source = "git+https://github.com/bloopai/esaxx-rs#76222cfd485e7c5dbccefb7f836b0fa5497dc03b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f748b253ceca9fed5f42f8b5ceb3851e93102199bc25b64b65369f76e5c0a35"
 dependencies = [
  "cc",
 ]
@@ -3822,6 +3825,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "lazy-regex"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a10cfecab9e7e81981b6547d87bd96c38fd90b2d4cfdc79638d91bebfd2568f5"
+dependencies = [
+ "lazy-regex-proc_macros",
+ "once_cell",
+ "regex",
+]
+
+[[package]]
+name = "lazy-regex-proc_macros"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f746dfdd89dad7e689ed6542d65eb11f5af3e52d92708db74700b4449e2d558"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "regex",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4000,7 +4026,7 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
 dependencies = [
- "regex-automata",
+ "regex-automata 0.1.10",
 ]
 
 [[package]]
@@ -5008,7 +5034,7 @@ dependencies = [
  "base64 0.21.2",
  "indexmap 1.9.3",
  "line-wrap",
- "quick-xml",
+ "quick-xml 0.28.2",
  "serde",
  "time 0.3.22",
 ]
@@ -5237,6 +5263,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81b9228215d82c7b61490fec1de287136b5de6f5700f6e58ea9ad61a7964ca51"
+dependencies = [
+ "memchr",
+ "serde",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5439,13 +5475,14 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.8.4"
+version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0ab3ca65655bb1e41f2a8c8cd662eb4fb035e67c3f78da1d61dffe89d07300f"
+checksum = "b2eae68fc220f7cf2532e4494aded17545fce192d59cd996e0fe7887f4ceb575"
 dependencies = [
  "aho-corasick 1.0.2",
  "memchr",
- "regex-syntax 0.7.2",
+ "regex-automata 0.3.2",
+ "regex-syntax 0.7.3",
 ]
 
 [[package]]
@@ -5458,6 +5495,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "regex-automata"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83d3daa6976cffb758ec878f108ba0e062a45b2d6ca3a2cca965338855476caf"
+dependencies = [
+ "aho-corasick 1.0.2",
+ "memchr",
+ "regex-syntax 0.7.3",
+]
+
+[[package]]
 name = "regex-syntax"
 version = "0.6.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5465,9 +5513,9 @@ checksum = "f162c6dd7b008981e4d40210aca20b4bd0f9b60ca9271061b07f78537722f2e1"
 
 [[package]]
 name = "regex-syntax"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "436b050e76ed2903236f032a59761c1eb99e1b0aead2c257922771dab1fc8c78"
+checksum = "2ab07dc67230e4a4718e70fd5c20055a4334b121f1f9db8fe63ef39ce9b8c846"
 
 [[package]]
 name = "relative-path"

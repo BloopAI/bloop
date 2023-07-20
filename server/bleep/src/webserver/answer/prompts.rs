@@ -222,7 +222,7 @@ For example:
         .collect::<String>();
 
     format!(
-        r#"{context}Your job is to answer a query about a codebase using the information above. 
+        r#"{context}Your job is to answer a query about a codebase using the information above.
 Your answer should be an array of arrays, where each element in the array is an instance of one of the following objects:
 
 {output_rules_str}
@@ -285,12 +285,40 @@ Respect these rules at all times:
   - E.g. Do not simply write: "It has one main field: `foo`." Instead, write: "It has one main field: [`foo`](src/foo.rs#L193)."
 - Link all symbols, even when there are multiple in one sentence
   - E.g. Do not simply write: "Bars are [`Foo`]( that return a list filled with `Bar` variants." Instead, write: "Bars are functions that return a list filled with [`Bar`](src/bar.rs#L38-L57) variants."
-- When quoting code in a code block, use the following info string format: language,path:PATH,lines:LX-LY
-  - For example, to quote lines 10 to 15 in `src/main.c`, use `c,path:src/main.c,lines:L10-L15`
-  - For example, to quote lines 154 to 190 in `index.js`, use `javascript,path:index.js,lines:L154-L190`
 - Always begin your answer with an appropriate title
 - Always finish your answer with a summary in a [^summary] footnote
-  - If you do not have enough information needed to answer the query, do not make up an answer. Instead respond only with a [^summary] footnote that asks the user for more information, e.g. `assistant: [^summary]: I'm sorry, I couldn't find what you were looking for, could you provide more information?`"#
+  - If you do not have enough information needed to answer the query, do not make up an answer. Instead respond only with a [^summary] f
+ootnote that asks the user for more information, e.g. `assistant: [^summary]: I'm sorry, I couldn't find what you were looking for, could you provide more information?`
+- Code blocks MUST be displayed to the user using XML in the following formats:
+  - Do NOT output plain markdown blocks, the user CANNOT see them
+  - To create new code, you MUST mimic the following structure (example given):
+###
+The following demonstrates logging in JavaScript:
+<GeneratedCode>
+<Code>
+console.log("hello world")
+</Code>
+<Language>JavaScript</Language>
+</GeneratedCode>
+###
+  - To quote existing code, use the following structure (example given):
+###
+This is referred to in the Rust code:
+<QuotedCode>
+<Code>
+println!("hello world!");
+println!("hello world!");
+</Code>
+<Language>Rust</Language>
+<Path>src/main.rs</Path>
+<StartLine>4</StartLine>
+<EndLine>5</EndLine>
+</QuotedCode>
+###
+  - `<GeneratedCode>` and `<QuotedCode>` elements MUST contain a `<Language>` value, and `<QuotedCode>` MUST additionally contain `<Path>`, `<StartLine>`, and `<EndLine>`.
+  - Note: the line range is inclusive
+- When writing example code blocks, use `<GeneratedCode>`, and when quoting existing code, use `<QuotedCode>`.
+- You MUST use XML code blocks instead of markdown."#
     )
 }
 

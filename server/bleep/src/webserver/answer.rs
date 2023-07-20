@@ -304,9 +304,9 @@ pub(super) async fn _handle(
     let answer_stream = AssertUnwindSafe(stream)
         .catch_unwind()
         .map(|res| res.unwrap_or_else(|_| Err(anyhow!("stream panicked"))))
-        .map(|upd: Result<Exchange>| {
+        .map(|ex: Result<Exchange>| {
             sse::Event::default()
-                .json_data(upd.map_err(|e| e.to_string()))
+                .json_data(ex.map(Exchange::encode).map_err(|e| e.to_string()))
                 .map_err(anyhow::Error::new)
         });
 
@@ -1376,19 +1376,7 @@ impl Agent {
 
     /// Attach a summary of the most recent exchange to the LLM history.
     fn finalize(&mut self) -> Result<()> {
-        let exchange = self.conversation.last_exchange();
-
-        let summarized_answer = if let Some(body) = exchange.answer_summarized() {
-            match exchange.outcome.as_ref() {
-                Some(exchange::Outcome::Article(..)) => Some({
-                    let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
-                    limit_tokens(&body, bpe, 200).to_owned()
-                }),
-                _ => Some(body),
-            }
-        } else {
-            None
-        };
+        let summarized_answer = self.conversation.last_exchange().answer_summarized()?;
 
         if let Some(summary) = &summarized_answer {
             info!("attaching summary of previous exchange: {summary}");

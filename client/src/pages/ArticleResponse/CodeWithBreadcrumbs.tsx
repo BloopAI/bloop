@@ -11,7 +11,7 @@ type Props = {
   filePath: string;
   repoName: string;
   onResultClick: (path: string, lines?: string) => void;
-  startLine: number;
+  startLine: number | null;
   language: string;
   code: string;
   isSummary?: boolean;
@@ -74,7 +74,12 @@ const CodeWithBreadcrumbs = ({
       </div>
       <div className="relative">
         <div className={`relative overflow-x-auto py-4`}>
-          <Code code={code} language={language} lineStart={startLine} />
+          <Code
+            code={code}
+            language={language}
+            showLines={startLine !== null}
+            lineStart={startLine || 0}
+          />
         </div>
         <div
           className={`absolute ${

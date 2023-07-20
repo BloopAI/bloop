@@ -11,7 +11,7 @@ use crate::{
     Application,
 };
 
-use super::{Conversation, ConversationId};
+use super::{exchange::Exchange, Conversation, ConversationId};
 
 #[derive(serde::Serialize)]
 pub struct ConversationPreview {
@@ -106,5 +106,11 @@ pub(in crate::webserver) async fn thread(
         .await?
         .ok_or_else(|| Error::new(ErrorKind::NotFound, "thread was not found"))?;
 
-    Ok(Json(conversation.exchanges))
+    let exchanges = conversation
+        .exchanges
+        .into_iter()
+        .map(Exchange::encode)
+        .collect::<Vec<_>>();
+
+    Ok(Json(exchanges))
 }

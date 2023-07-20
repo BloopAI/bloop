@@ -67,13 +67,13 @@ const MarkdownWithCode = ({
         );
       },
       code({ node, inline, className, children, ...props }: CodeProps) {
-        const matchLang = /language-(\w+)/.exec(className || '');
+        const matchLang = /lang:(\w+)/.exec(className || '');
+        const matchType = /language-type:(\w+)/.exec(className || '');
         const matchPath = /path:(.+),/.exec(className || '');
         const matchLines = /lines:(.+)/.exec(className || '');
         const code =
           typeof children[0] === 'string' ? children[0].replace(/\n$/, '') : '';
-        const lines =
-          matchLines?.[1].split('-').map((l) => Number(l.slice(1))) || [];
+        const lines = matchLines?.[1].split('-').map((l) => Number(l)) || [];
         const colorPreview =
           children[0] &&
           children.length === 1 &&
@@ -84,23 +84,18 @@ const MarkdownWithCode = ({
               style={{ backgroundColor: children[0] }}
             />
           ) : null;
-        return !inline && matchLang?.[1] && typeof children[0] === 'string' ? (
-          matchPath?.[1] ? (
+        return !inline && matchType?.[1] && typeof children[0] === 'string' ? (
+          matchType?.[1] === 'Quoted' ? (
             <CodeWithBreadcrumbs
               code={code}
-              language={matchLang[1]}
-              filePath={matchPath[1]}
+              language={matchLang?.[1] || ''}
+              filePath={matchPath?.[1] || ''}
               onResultClick={openFileModal}
-              startLine={lines[0] - 1}
+              startLine={lines[0] ? lines[0] - 1 : null}
               repoName={repoName}
-              isSummary={isSummary}
             />
           ) : (
-            <NewCode
-              code={code}
-              language={matchLang[1]}
-              isSummary={isSummary}
-            />
+            <NewCode code={code} language={matchLang?.[1] || ''} />
           )
         ) : colorPreview ? (
           <span className="inline-flex gap-1.5 items-center">
