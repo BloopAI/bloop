@@ -1,5 +1,14 @@
-import { useContext, useEffect, useMemo } from 'react';
+import {
+  AnchorHTMLAttributes,
+  DetailedHTMLProps,
+  ReactElement,
+  useContext,
+  useEffect,
+  useMemo,
+} from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactMarkdownProps } from 'react-markdown/lib/complex-types';
+import { CodeProps } from 'react-markdown/lib/ast-to-react';
 import { conversationsCache } from '../../services/cache';
 import {
   ChatMessage,
@@ -13,6 +22,9 @@ import { UIContext } from '../../context/uiContext';
 import { getConversation } from '../../services/api';
 import { mapLoadingSteps } from '../../mappers/conversation';
 import MarkdownWithCode from '../../components/MarkdownWithCode';
+import FileChip from '../../components/Chat/ConversationMessage/FileChip';
+import NewCode from '../ConversationResult/NewCode';
+import CodeWithBreadcrumbs from './CodeWithBreadcrumbs';
 
 type Props = {
   recordId: number;
