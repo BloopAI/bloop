@@ -1,7 +1,10 @@
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf, MAIN_SEPARATOR},
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 
 use anyhow::{bail, Result};
@@ -42,9 +45,9 @@ struct Workload<'a> {
     repo_ref: String,
     repo_name: &'a str,
     repo_metadata: &'a RepoMetadata,
-    cache: &'a FileCacheSnapshot,
+    file_cache: &'a FileCache<'a>,
+    cache_snapshot: &'a FileCacheSnapshot,
     dir_entry: RepoDirEntry,
-    cold_run: bool,
 }
 
 #[async_trait]
@@ -57,14 +60,14 @@ impl Indexable for File {
         writer: &IndexWriter,
         pipes: &SyncPipes,
     ) -> Result<()> {
-        let file_cache = FileCache::new(&self.sql, reporef);
-        let cache_snapshot = file_cache.retrieve().await?;
+        let file_cache = Arc::new(FileCache::new(&self.sql, reporef));
+        let cache_snapshot = file_cache.retrieve().await;
         let repo_name = reporef.indexed_name();
         let processed = &AtomicU64::new(0);
 
-        let cold_run = cache_snapshot.is_empty();
         let file_worker = |count: usize| {
             let cache_snapshot = cache_snapshot.clone();
+            let file_cache = file_cache.clone();
             move |dir_entry: RepoDirEntry| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
                 pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
@@ -74,10 +77,10 @@ impl Indexable for File {
                     repo_disk_path: &repo.disk_path,
                     repo_ref: reporef.to_string(),
                     repo_name: &repo_name,
-                    cache: &cache_snapshot,
+                    file_cache: &file_cache,
+                    cache_snapshot: &cache_snapshot,
                     repo_metadata,
                     dir_entry,
-                    cold_run,
                 };
 
                 trace!(entry_disk_path, "queueing entry");
@@ -407,9 +410,9 @@ impl File {
             repo_disk_path,
             repo_name,
             repo_metadata,
-            cache,
+            file_cache,
+            cache_snapshot,
             dir_entry,
-            cold_run,
         } = workload;
 
         #[cfg(feature = "debug")]
@@ -447,7 +450,7 @@ impl File {
         let last_commit = repo_metadata.last_commit_unix_secs;
 
         match dir_entry {
-            _ if is_cache_fresh(cache, &tantivy_hash, &entry_pathbuf) => {
+            _ if is_cache_fresh(cache_snapshot, &tantivy_hash, &entry_pathbuf) => {
                 info!("fresh; skipping");
                 return Ok(());
             }
@@ -479,7 +482,7 @@ impl File {
                         repo_ref.as_str(),
                         last_commit,
                         repo_metadata,
-                        cold_run,
+                        file_cache,
                     )
                     .ok_or(anyhow::anyhow!("failed to build document"))?;
                 writer.add_document(doc)?;
@@ -570,7 +573,7 @@ impl RepoFile {
         repo_ref: &str,
         last_commit: u64,
         repo_metadata: &RepoMetadata,
-        is_cold_run: bool,
+        file_cache: &FileCache,
     ) -> Option<tantivy::schema::Document> {
         let relative_path_str = relative_path.to_string_lossy().to_string();
         let branches = self.branches.join("\n");
@@ -629,16 +632,19 @@ impl RepoFile {
 
         if let Some(semantic) = &schema.semantic {
             tokio::task::block_in_place(|| {
-                Handle::current().block_on(semantic.insert_points_for_buffer(
-                    repo_name,
-                    repo_ref,
-                    &semantic_cache_key,
-                    &relative_path_str,
-                    &self.buffer,
-                    lang_str,
-                    &self.branches,
-                    is_cold_run,
-                ))
+                Handle::current().block_on(async {
+                    semantic
+                        .insert_points_for_buffer(
+                            repo_name,
+                            repo_ref,
+                            &relative_path_str,
+                            &self.buffer,
+                            lang_str,
+                            &self.branches,
+                            file_cache.chunks_for_file(&semantic_cache_key).await,
+                        )
+                        .await
+                })
             });
         }
 

@@ -1,22 +1,16 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 use qdrant_client::{
     prelude::QdrantClient,
-    qdrant::{
-        point_id::PointIdOptions, points_selector::PointsSelectorOneOf, with_payload_selector,
-        with_vectors_selector, Filter, PayloadIncludeSelector, PointId, PointStruct, PointsIdsList,
-        PointsSelector, ScrollPoints, Value, WithPayloadSelector, WithVectorsSelector,
-    },
+    qdrant::{PointId, PointStruct},
 };
 use sqlx::Sqlite;
+use tracing::{debug, trace};
 use uuid::Uuid;
 
 use crate::{
     repo::RepoRef,
-    semantic::{self, make_kv_keyword_filter, Embedding, Payload},
+    semantic::{self, Embedding, Payload},
 };
 
 use super::db::SqlDb;
@@ -70,7 +64,7 @@ impl<'a> FileCache<'a> {
         Self { db, reporef }
     }
 
-    pub(crate) async fn retrieve(&self) -> anyhow::Result<FileCacheSnapshot> {
+    pub(crate) async fn retrieve(&self) -> FileCacheSnapshot {
         let repo_str = self.reporef.to_string();
         let rows = sqlx::query! {
             "SELECT cache_hash FROM file_cache \
@@ -78,14 +72,14 @@ impl<'a> FileCache<'a> {
             repo_str,
         }
         .fetch_all(self.db.as_ref())
-        .await?;
+        .await;
 
         let output = scc::HashMap::default();
-        for row in rows {
+        for row in rows.into_iter().flatten() {
             _ = output.insert(row.cache_hash, FreshValue::stale(()));
         }
 
-        Ok(output.into())
+        output.into()
     }
 
     pub(crate) async fn persist(&self, cache: FileCacheSnapshot) -> anyhow::Result<()> {
@@ -140,78 +134,44 @@ impl<'a> FileCache<'a> {
 
         Ok(())
     }
+
+    pub async fn chunks_for_file(&self, key: &'a str) -> ChunkCache<'a> {
+        ChunkCache::for_file(self.db, key).await
+    }
 }
 
 pub struct ChunkCache<'a> {
-    qdrant: &'a QdrantClient,
-    cache: scc::HashMap<String, FreshValue<HashMap<String, Value>>>,
-    update: RwLock<Vec<(PointsSelector, qdrant_client::client::Payload)>>,
+    sql: &'a SqlDb,
+    file_cache_key: &'a str,
+    cache: scc::HashMap<String, FreshValue<String>>,
+    update: scc::HashMap<(Vec<String>, String), Vec<String>>,
     new: RwLock<Vec<PointStruct>>,
-    tantivy_cache_key: &'a str,
+    new_sql: RwLock<Vec<(String, String)>>,
 }
 
 impl<'a> ChunkCache<'a> {
-    pub async fn for_file(
-        qdrant: &'a QdrantClient,
-        tantivy_cache_key: &'a str,
-        is_cold_run: bool,
-    ) -> anyhow::Result<ChunkCache<'a>> {
-        if is_cold_run {
-            return Ok(Self {
-                tantivy_cache_key,
-                qdrant,
-                cache: Default::default(),
-                update: Default::default(),
-                new: Default::default(),
-            });
+    async fn for_file(sql: &'a SqlDb, file_cache_key: &'a str) -> ChunkCache<'a> {
+        let rows = sqlx::query! {
+            "SELECT chunk_hash, branches FROM chunk_cache \
+             WHERE file_hash = ?",
+            file_cache_key,
+        }
+        .fetch_all(sql.as_ref())
+        .await;
+
+        let cache = scc::HashMap::<String, FreshValue<_>>::default();
+        for row in rows.into_iter().flatten() {
+            _ = cache.insert(row.chunk_hash, FreshValue::stale(row.branches));
         }
 
-        let response = qdrant
-            .scroll(&ScrollPoints {
-                collection_name: semantic::COLLECTION_NAME.to_string(),
-                limit: Some(1_000_000),
-                filter: Some(Filter {
-                    must: [make_kv_keyword_filter("content_hash", tantivy_cache_key)]
-                        .into_iter()
-                        .map(Into::into)
-                        .collect(),
-                    ..Default::default()
-                }),
-                with_payload: Some(WithPayloadSelector {
-                    selector_options: Some(with_payload_selector::SelectorOptions::Include(
-                        PayloadIncludeSelector {
-                            fields: vec!["branches".to_string()],
-                        },
-                    )),
-                }),
-                with_vectors: Some(WithVectorsSelector {
-                    selector_options: Some(with_vectors_selector::SelectorOptions::Enable(false)),
-                }),
-                ..Default::default()
-            })
-            .await?
-            .result
-            .into_iter();
-
-        let cache = scc::HashMap::default();
-        for point in response {
-            let Some(PointId { point_id_options: Some(PointIdOptions::Uuid(id)) }) = point.id
-	    else {
-		// unless the db was corrupted/written by someone else,
-		// this shouldn't happen
-		unreachable!("corrupted db");
-	    };
-
-            _ = cache.insert(id, FreshValue::stale(point.payload));
-        }
-
-        Ok(Self {
-            tantivy_cache_key,
-            qdrant,
+        Self {
+            sql,
+            file_cache_key,
             cache,
             update: Default::default(),
             new: Default::default(),
-        })
+            new_sql: Default::default(),
+        }
     }
 
     pub fn update_or_embed(
@@ -221,39 +181,155 @@ impl<'a> ChunkCache<'a> {
         payload: Payload,
     ) -> anyhow::Result<()> {
         let id = self.cache_key(data);
-        let update_payload = payload.into_qdrant();
+        let branches = blake3::hash(payload.branches.join("\n").as_ref()).to_string();
 
         match self.cache.entry(id) {
             scc::hash_map::Entry::Occupied(mut existing) => {
-                if !existing
-                    .get()
-                    .value
-                    .iter()
-                    .all(|(k, v)| update_payload.get(k) == Some(v))
-                {
-                    self.update.write().unwrap().push((
-                        PointsSelector {
-                            points_selector_one_of: Some(PointsSelectorOneOf::Points(
-                                PointsIdsList {
-                                    ids: vec![PointId::from(existing.key().to_owned())],
-                                },
-                            )),
-                        },
-                        qdrant_client::client::Payload::new_from_hashmap(update_payload),
-                    ));
+                let key = existing.key();
+                trace!(?key, "found; not upserting new");
+                if existing.get().value != branches {
+                    self.update
+                        .entry((payload.branches, branches.clone()))
+                        .or_insert_with(Vec::new)
+                        .get_mut()
+                        .push(existing.key().to_owned());
                 }
-                existing.get_mut().fresh = true;
+                *existing.get_mut() = branches.into();
             }
             scc::hash_map::Entry::Vacant(vacant) => {
+                let key = vacant.key();
+                trace!(?key, "inserting new");
+                self.new_sql
+                    .write()
+                    .unwrap()
+                    .push((vacant.key().to_owned(), branches.clone()));
+
                 self.new.write().unwrap().push(PointStruct {
                     id: Some(PointId::from(vacant.key().clone())),
                     vectors: Some(embedder(data)?.into()),
-                    payload: update_payload,
+                    payload: payload.into_qdrant(),
                 });
+
+                vacant.insert_entry(branches.into());
             }
         }
 
         Ok(())
+    }
+
+    pub async fn commit(self, qdrant: &QdrantClient) -> anyhow::Result<(usize, usize, usize)> {
+        let mut update_size = 0;
+        let mut updates = vec![];
+        let mut tx = self.sql.begin().await?;
+
+        //
+        // Update points
+        //
+        let mut next = self.update.first_occupied_entry();
+        while let Some(entry) = next {
+            let (branches_list, branches) = entry.key();
+            let points = entry.get();
+            update_size += points.len();
+
+            for p in entry.get() {
+                sqlx::query! {
+                    "UPDATE chunk_cache SET branches = ? \
+                     WHERE chunk_hash = ?",
+                     branches,
+                     p
+                }
+                .execute(&mut *tx)
+                .await?;
+            }
+
+            let id = points
+                .iter()
+                .cloned()
+                .map(PointId::from)
+                .collect::<Vec<_>>()
+                .into();
+            let payload = qdrant_client::client::Payload::new_from_hashmap(
+                [("branches".to_string(), branches_list.to_owned().into())].into(),
+            );
+
+            updates.push(async move {
+                qdrant
+                    .set_payload_blocking(semantic::COLLECTION_NAME, &id, payload, None)
+                    .await
+            });
+            next = entry.next();
+        }
+        futures::future::join_all(updates.into_iter())
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()?;
+
+        //
+        // Delete points
+        //
+        let mut to_delete = vec![];
+        self.cache
+            .scan_async(|id, p| {
+                if !p.fresh {
+                    to_delete.push(id.to_owned());
+                }
+            })
+            .await;
+
+        let delete_size = to_delete.len();
+        for p in to_delete.iter() {
+            sqlx::query! {
+                "DELETE FROM chunk_cache \
+                 WHERE chunk_hash = ? AND file_hash = ?",
+                p,
+                self.file_cache_key
+            }
+            .execute(&mut *tx)
+            .await?;
+        }
+        if !to_delete.is_empty() {
+            qdrant
+                .delete_points(
+                    semantic::COLLECTION_NAME,
+                    &to_delete
+                        .into_iter()
+                        .map(PointId::from)
+                        .collect::<Vec<_>>()
+                        .into(),
+                    None,
+                )
+                .await?;
+        }
+
+        //
+        // Upsert points
+        //
+        let new: Vec<_> = std::mem::take(self.new.write().unwrap().as_mut());
+        let new_size = new.len();
+        for (p, branches) in std::mem::take(&mut *self.new_sql.write().unwrap()) {
+            sqlx::query! {
+                "INSERT INTO chunk_cache (chunk_hash, file_hash, branches) \
+                 VALUES (?, ?, ?)",
+                 p, self.file_cache_key, branches
+            }
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        if !new.is_empty() {
+            qdrant
+                .upsert_points_blocking(semantic::COLLECTION_NAME, new, None)
+                .await?;
+        }
+
+        tx.commit().await?;
+
+        Ok((new_size, update_size, delete_size))
+    }
+
+    /// Return the cache key for the file that contains these chunks
+    pub fn file_hash(&self) -> String {
+        self.file_cache_key.to_string()
     }
 
     /// Generate a content hash from the embedding data, and pin it to
@@ -262,52 +338,11 @@ impl<'a> ChunkCache<'a> {
         let id = {
             let mut bytes = [0; 16];
             let mut hasher = blake3::Hasher::new();
-            hasher.update(self.tantivy_cache_key.as_bytes());
+            hasher.update(self.file_cache_key.as_bytes());
             hasher.update(data.as_ref());
             bytes.copy_from_slice(&hasher.finalize().as_bytes()[16..32]);
             Uuid::from_bytes(bytes).to_string()
         };
         id
-    }
-
-    pub async fn commit(self) -> anyhow::Result<(usize, usize, usize)> {
-        let update: Vec<_> = std::mem::take(self.update.write().unwrap().as_mut());
-        let update_size = update.len();
-        futures::future::join_all(update.into_iter().map(|(id, p)| async move {
-            // need another async block to get around scoping issues
-            // with referential `&id`
-            self.qdrant
-                .set_payload_blocking(semantic::COLLECTION_NAME, &id, p, None)
-                .await
-        }))
-        .await
-        .into_iter()
-        .collect::<Result<Vec<_>, _>>()?;
-
-        let mut to_delete = vec![];
-        self.cache
-            .scan_async(|id, p| {
-                if !p.fresh {
-                    to_delete.push(PointId::from(id.to_owned()))
-                }
-            })
-            .await;
-
-        let delete_size = to_delete.len();
-        if !to_delete.is_empty() {
-            self.qdrant
-                .delete_points(semantic::COLLECTION_NAME, &to_delete.into(), None)
-                .await?;
-        }
-
-        let new: Vec<_> = std::mem::take(self.new.write().unwrap().as_mut());
-        let new_size = new.len();
-        if !new.is_empty() {
-            self.qdrant
-                .upsert_points_blocking(semantic::COLLECTION_NAME, new, None)
-                .await?;
-        }
-
-        Ok((new_size, update_size, delete_size))
     }
 }
