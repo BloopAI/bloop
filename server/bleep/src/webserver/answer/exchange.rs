@@ -22,8 +22,7 @@ impl Exchange {
 
     /// Advance this exchange.
     ///
-    /// This should always be additive. An update should not result in fewer search results or fewer
-    /// search steps.
+    /// An update should not result in fewer search results or fewer search steps.
     pub fn apply_update(&mut self, update: Update) {
         match update {
             Update::Step(search_step) => self.search_steps.push(search_step),
@@ -34,7 +33,7 @@ impl Exchange {
                 let outcome = self
                     .outcome
                     .get_or_insert_with(|| Outcome::Article(String::new()));
-                *outcome.as_article_mut().unwrap() += &text;
+                *outcome.as_article_mut().unwrap() = text;
             }
             Update::Conclude(conclusion) => {
                 self.conclusion = Some(conclusion);

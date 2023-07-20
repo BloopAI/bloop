@@ -1,4 +1,4 @@
-use rand::{seq::SliceRandom, SeedableRng};
+use rand::{rngs::OsRng, seq::SliceRandom};
 use secrecy::ExposeSecret;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
@@ -1251,22 +1251,30 @@ impl Agent {
         while let Some(fragment) = stream.next().await {
             let fragment = fragment?;
             response += &fragment;
-            self.update(Update::Article(fragment)).await?;
+
+            if let Some((article, summary)) = split_article_summary(&response) {
+                self.update(Update::Article(article)).await?;
+                self.update(Update::Conclude(summary)).await?;
+            } else {
+                self.update(Update::Article(response.clone())).await?;
+            }
         }
 
-        let article_conclusion_messages = vec![
-            "I hope that was useful, can I help with anything else?",
-            "Is there anything else I can help you with?",
-            "Can I help you with anything else?",
-        ];
-
-        self.update(Update::Conclude(
-            article_conclusion_messages
-                .choose(&mut rand::rngs::StdRng::from_entropy())
+        let summary = split_article_summary(&response)
+            .map(|(_article, summary)| summary)
+            .unwrap_or_else(|| {
+                [
+                    "I hope that was useful, can I help with anything else?",
+                    "Is there anything else I can help you with?",
+                    "Can I help you with anything else?",
+                ]
+                .choose(&mut OsRng)
+                .copied()
                 .unwrap()
-                .to_string(),
-        ))
-        .await?;
+                .to_owned()
+            });
+
+        self.update(Update::Conclude(summary)).await?;
 
         self.track_query(
             EventData::output_stage("answer_article")
@@ -1564,6 +1572,55 @@ fn merge_nearby(a: &mut CodeChunk, b: CodeChunk, contents: &str) -> Option<CodeC
     a.snippet += "\n";
     a.snippet += &b.snippet;
     a.end_line = b.end_line;
+
+    None
+}
+
+fn split_article_summary(response: &str) -> Option<(String, String)> {
+    // The `comrak` crate has a very unusual API which makes this logic difficult to follow. It
+    // favours arena allocation instead of a tree-based AST, and requires `Write`rs to regenerate
+    // markdown output.
+    //
+    // There are quirks to the parsing logic, comments have been added for clarity.
+
+    let arena = comrak::Arena::new();
+    let mut options = comrak::ComrakOptions::default();
+    options.extension.footnotes = true;
+
+    // We don't have an easy built-in way to generate a string with `comrak`, so we encapsulate
+    // that logic here.
+    let comrak_to_string = |node| {
+        let mut out = Vec::<u8>::new();
+        comrak::format_commonmark(node, &options, &mut out).unwrap();
+        String::from_utf8_lossy(&out).trim().to_owned()
+    };
+
+    // `comrak` will not recognize footnote definitions unless they have been referenced at least
+    // once. To ensure our potential summary appears in the parse tree, we prepend the entire
+    // response with a sentinel reference to the footnote. After parsing, we look for that
+    // footnote and immediately remove (detach) it from the root node. This ensures that our
+    // artifical reference does not appear in the output.
+
+    let document = format!("[^summary]\n\n{response}");
+    let root = comrak::parse_document(&arena, &document, &options);
+    let mut children = root.children();
+    // Detach the sentinel footnote reference.
+    children.next().unwrap().detach();
+
+    for child in children {
+        match &child.data.borrow().value {
+            comrak::nodes::NodeValue::FootnoteDefinition(def) if def.name == "summary" => (),
+            _ => continue,
+        };
+
+        let first_child = child.children().next()?;
+        if let comrak::nodes::NodeValue::Paragraph = &first_child.data.borrow().value {
+            // We detach the summary from the main text, so that it does not end up in the final
+            // article output.
+            child.detach();
+            return Some((comrak_to_string(root), comrak_to_string(first_child)));
+        }
+    }
 
     None
 }
@@ -2178,5 +2235,35 @@ mod tests {
                 .join("\n")
             );
         }
+    }
+
+    #[test]
+    fn test_split_article_summary() {
+        let (body, summary) = split_article_summary(
+            r#"Hello world
+
+[^summary]: This is an example summary, with **bold text**."#,
+        )
+        .unwrap();
+
+        assert_eq!(body, "Hello world");
+        assert_eq!(summary, "This is an example summary, with **bold text**.");
+
+        let (body, summary) = split_article_summary(
+            r#"Hello world.
+
+Goodbye world.
+
+Hello again, world.
+
+[^summary]: This is an example summary, with **bold text**."#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            body,
+            "Hello world.\n\nGoodbye world.\n\nHello again, world."
+        );
+        assert_eq!(summary, "This is an example summary, with **bold text**.");
     }
 }
