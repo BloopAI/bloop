@@ -13,7 +13,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Trans } from 'react-i18next';
 import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
-import { Range } from '../../../types/results';
+import { Range, TokenInfoType } from '../../../types/results';
 import {
   calculatePopupPositionInsideContainer,
   copyToClipboard,
@@ -115,7 +115,7 @@ const CodeFull = ({
     setThreadId,
   } = useContext(ChatContext);
   const { setRightPanelOpen } = useContext(UIContext);
-  const { navigateRepoPath } = useAppNavigation();
+  const { navigateFullResult } = useAppNavigation();
 
   const [isSearchActive, setSearchActive] = useState(false);
   const [searchResults, setSearchResults] = useState<number[]>([]);
@@ -224,12 +224,21 @@ const CodeFull = ({
   const tokens = useMemo(() => tokenizeCode(code, lang), [code, lang]);
 
   const onRefDefClick = useCallback(
-    (lineNum: number, filePath: string) => {
+    (
+      lineNum: number,
+      filePath: string,
+      type: TokenInfoType,
+      tokenName: string,
+      tokenRange: string,
+    ) => {
       if (filePath === relativePath) {
         setScrollToIndex([lineNum, lineNum]);
       } else {
-        navigateRepoPath(repoName, filePath, {
+        navigateFullResult(repoName, filePath, {
           scrollToLine: `${lineNum}_${lineNum}`,
+          type,
+          tokenName,
+          tokenRange,
         });
       }
     },

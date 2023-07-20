@@ -176,6 +176,7 @@ export const mapTokenInfo = (tokenInfo: TokenInfoResponse['data']) => {
         highlights: td.snippet.highlights.map((h) => {
           return { start: h.start - lengthDiff, end: h.end - lengthDiff };
         }),
+        tokenRange: td.snippet.highlights[0],
       },
     };
   };

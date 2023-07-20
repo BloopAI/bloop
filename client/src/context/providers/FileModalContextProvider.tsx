@@ -65,24 +65,31 @@ export const FileModalContextProvider = ({
   const { updateTabNavHistory } = useContext(TabsContext);
 
   const openFileModal = useCallback(
-    (p: string, line?: string, color?: string) => {
+    (p: string, line?: string, color?: string, noNavUpdate?: boolean) => {
       setPath(p);
       setScrollToLine(line);
       setHighlightColor(color);
       setFileModalOpen(true);
-      updateTabNavHistory(tab.key, (prev) =>
-        getTabNavHistory(prev, true, line, color, p),
-      );
+      if (!noNavUpdate) {
+        updateTabNavHistory(tab.key, (prev) =>
+          getTabNavHistory(prev, true, line, color, p),
+        );
+      }
     },
     [],
   );
 
-  const closeFileModalOpen = useCallback(() => {
-    setFileModalOpen(false);
-    updateTabNavHistory(tab.key, (prev) =>
-      getTabNavHistory(prev, false, scrollToLine, highlightColor, path),
-    );
-  }, [path, highlightColor, scrollToLine]);
+  const closeFileModalOpen = useCallback(
+    (noNavUpdate?: boolean) => {
+      setFileModalOpen(false);
+      if (!noNavUpdate) {
+        updateTabNavHistory(tab.key, (prev) =>
+          getTabNavHistory(prev, false, scrollToLine, highlightColor, path),
+        );
+      }
+    },
+    [path, highlightColor, scrollToLine],
+  );
 
   const contextValue = useMemo(
     () => ({

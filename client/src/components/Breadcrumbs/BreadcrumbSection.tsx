@@ -1,15 +1,23 @@
 import { MouseEvent, ReactElement } from 'react';
 import { Range } from '../../types/results';
 
+type HighlightedString = {
+  label: string;
+  highlight?: Range;
+};
+
+type ItemElement = {
+  label: ReactElement<any, any>;
+  highlight?: never;
+};
+
 type Props = {
   icon?: ReactElement<any, any>;
-  label: string;
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   isLast?: boolean;
   limitSectionWidth?: boolean;
-  highlight?: Range;
   type: 'link' | 'button';
-};
+} & (HighlightedString | ItemElement);
 
 const typeMap = {
   link: {

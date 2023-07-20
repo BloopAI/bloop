@@ -38,6 +38,7 @@ export const AppNavigationProvider = ({
         navigatedItem.pathParams.modalPath,
         navigatedItem.pathParams.modalScrollToLine,
         navigatedItem.pathParams.modalHighlightColor,
+        true,
       );
     }
   }, [tab.navigationHistory, navigatedItem, isFileModalOpen]);
@@ -100,7 +101,7 @@ export const AppNavigationProvider = ({
       if (path === '/') {
         path = undefined;
       }
-      closeFileModalOpen();
+      closeFileModalOpen(true);
 
       saveState({
         type: 'repo',
@@ -149,6 +150,7 @@ export const AppNavigationProvider = ({
 
   const navigateFullResult = useCallback(
     (repo: string, path: string, pathParams?: Record<string, string>) => {
+      closeFileModalOpen(true);
       saveState({
         type: 'full-result',
         repo,
@@ -160,22 +162,68 @@ export const AppNavigationProvider = ({
     [],
   );
 
-  const navigateBack = useCallback((delta: number = -1) => {
-    if (!delta) {
-      return;
-    }
-    updateTabNavHistory(tab.key, (prevState) => {
-      setForwardNavigation((prev) => [...prev, prevState.slice(delta)[0]]);
-      return prevState.slice(0, delta);
-    });
-  }, []);
+  const navigateBack = useCallback(
+    (delta: number | 'auto' = -1) => {
+      if (!delta) {
+        return;
+      }
+      closeFileModalOpen(true);
+      updateTabNavHistory(tab.key, (prevState) => {
+        if (!prevState.length) {
+          return prevState;
+        }
+        let index = delta as number;
+        if (delta === 'auto') {
+          const currentItem = prevState[prevState.length - 1];
+          const lastIndex = prevState.findLastIndex(
+            (item) =>
+              item.type !== currentItem.type ||
+              item.path !== currentItem.path ||
+              item.recordId !== currentItem.recordId ||
+              item.threadId !== currentItem.threadId,
+          );
+          if (lastIndex > -1) {
+            index = -(prevState.length - 1 - lastIndex);
+          } else {
+            index = -1;
+          }
+        }
+        setForwardNavigation((prev) => [...prevState.slice(index), ...prev]);
+        return prevState.slice(0, index);
+      });
+    },
+    [closeFileModalOpen],
+  );
 
-  const navigateForward = useCallback(() => {
-    updateTabNavHistory(tab.key, (prevState) => {
-      setForwardNavigation((prev) => prev.slice(0, -1));
-      return [...prevState, forwardNavigation.slice(-1)[0]];
-    });
-  }, [forwardNavigation]);
+  const navigateForward = useCallback(
+    (delta: number | 'auto' = 1) => {
+      if (!delta) {
+        return;
+      }
+      closeFileModalOpen(true);
+      updateTabNavHistory(tab.key, (prevState) => {
+        let index = delta as number;
+        if (delta === 'auto') {
+          const currentItem = prevState[prevState.length - 1];
+          const lastIndex = forwardNavigation.findIndex(
+            (item) =>
+              item.type !== currentItem.type ||
+              item.path !== currentItem.path ||
+              item.recordId !== currentItem.recordId ||
+              item.threadId !== currentItem.threadId,
+          );
+          if (lastIndex > 0) {
+            index = lastIndex;
+          } else {
+            index = 1;
+          }
+        }
+        setForwardNavigation((prev) => prev.slice(index));
+        return [...prevState, ...forwardNavigation.slice(0, index)];
+      });
+    },
+    [forwardNavigation, closeFileModalOpen],
+  );
 
   const navigateHome = useCallback(() => {
     saveState({ type: 'home' });

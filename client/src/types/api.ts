@@ -200,15 +200,10 @@ export type RefDefDataItem = {
   };
   snippet: {
     data: string;
-    highlights: {
-      start: number;
-      end: number;
-    }[];
+    highlights: Range[];
+    tokenRange?: Range;
     symbols: never[];
-    line_range: {
-      start: number;
-      end: number;
-    };
+    line_range: Range;
   };
 };
 

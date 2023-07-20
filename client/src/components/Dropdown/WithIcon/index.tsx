@@ -11,11 +11,13 @@ type Props = {
   hint?: string;
   icon: React.ReactElement;
   dropdownBtnClassName?: string;
+  btnTitle?: string;
   noChevron?: boolean;
-  btnVariant?: 'primary' | 'secondary' | 'tertiary';
+  btnVariant?: 'primary' | 'secondary' | 'tertiary' | 'tertiary-disabled';
   btnSize?: 'small' | 'medium' | 'large' | 'tiny';
   btnOnlyIcon?: boolean;
   lastItemFixed?: boolean;
+  disabled?: boolean;
   size?: 'small' | 'medium' | 'large';
   dropdownPlacement?: TippyProps['placement'];
   appendTo?: TippyProps['appendTo'];
@@ -34,6 +36,8 @@ const Dropdown = ({
   size = 'medium',
   dropdownPlacement = 'bottom-start',
   appendTo = 'parent',
+  btnTitle,
+  disabled,
 }: Props) => {
   const { t } = useTranslation();
   const [visible, setVisibility] = useState(false);
@@ -67,8 +71,9 @@ const Dropdown = ({
             e.stopPropagation();
             setVisibility(!visible);
           }}
+          disabled={disabled}
           onlyIcon={btnOnlyIcon}
-          title={t('Open dropdown')}
+          title={btnTitle || t('Open dropdown')}
         >
           {icon}
           {noChevron ? null : visible ? (

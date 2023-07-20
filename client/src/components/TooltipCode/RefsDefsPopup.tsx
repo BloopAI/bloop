@@ -48,7 +48,13 @@ type Props = {
   placement: TippyProps['placement'];
   data: TokenInfoWrapped;
   repoName: string;
-  onRefDefClick: (lineNum: number, filePath: string) => void;
+  onRefDefClick: (
+    lineNum: number,
+    filePath: string,
+    type: TokenInfoType,
+    tokenName: string,
+    tokenRange: string,
+  ) => void;
   language: string;
   relativePath: string;
 };

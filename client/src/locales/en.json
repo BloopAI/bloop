@@ -246,9 +246,16 @@
 	"Prompt guide": "Prompt guide",
 	"Like ChatGPT, bloop responds best to certain prompts. We’ve compiled a really quick guide on how better to prompt bloop.": "Like ChatGPT, bloop responds best to certain prompts. We’ve compiled a really quick guide on how better to prompt bloop.",
 	"Skip (Not recommended)": "Skip (Not recommended)",
-	"Take a quick look": "Take a quick look",
 	"We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.": "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
+	"Stop generating": "Stop generating",
+	"Take a quick look": "Take a quick look",
+	"Go back": "Go back",
+	"Repo home": "Repo home",
+	"Go forward": "Go forward",
+	"History": "History",
 	"Yesterday": "Yesterday",
+	"Regex search...": "Regex search...",
 	"Searching...": "Searching...",
-	"Stop generating": "Stop generating"
+	"The folder is empty": "The folder is empty",
+	"We haven't found any files to index in this folder": "We haven't found any files to index in this folder"
 }

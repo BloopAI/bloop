@@ -3,7 +3,7 @@ import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import CodeLine from '../Code/CodeLine';
 import { Token as TokenType } from '../../../types/prism';
 import { propsAreShallowEqual } from '../../../utils';
-import { Range, TokenInfoWrapped } from '../../../types/results';
+import { Range, TokenInfoType, TokenInfoWrapped } from '../../../types/results';
 import { getOffsetForIndexAndAlignment } from '../../../utils/scrollUtils';
 import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
@@ -34,7 +34,13 @@ type Props = {
   ) => void;
   onMouseSelectEnd: (lineNum: number, charNum: number) => void;
   tokenInfo: TokenInfoWrapped;
-  handleRefsDefsClick: (lineNum: number, filePath: string) => void;
+  handleRefsDefsClick: (
+    lineNum: number,
+    filePath: string,
+    type: TokenInfoType,
+    tokenName: string,
+    tokenRange: string,
+  ) => void;
   relativePath: string;
 };
 
@@ -66,7 +72,8 @@ const CodeContainerVirtualized = ({
       width,
       height,
       itemSize: 20,
-      itemCount: tokens.length,
+      itemCount: tokens.length + 9, // to add padding at the bottom
+      overscanCount: 5,
     }),
     [width, height, tokens.length],
   );
@@ -130,60 +137,64 @@ const CodeContainerVirtualized = ({
 
   return (
     <FixedSizeList ref={ref} {...listProps}>
-      {({ index, style }) => (
-        <CodeLine
-          key={pathHash + '-' + index.toString()}
-          lineNumber={index}
-          lineFoldable={!!foldableRanges[index]}
-          handleFold={toggleBlock}
-          showLineNumbers={true}
-          lineHidden={!!foldedLines[index]}
-          blameLine={blameLines[index]}
-          blame={!!metadata.blame?.length}
-          hoverEffect
-          onMouseSelectStart={onMouseSelectStart}
-          onMouseSelectEnd={onMouseSelectEnd}
-          shouldHighlight={
-            !!scrollToIndex &&
-            index >= scrollToIndex[0] &&
-            index <= scrollToIndex[1]
-          }
-          highlightColor={highlightColor}
-          searchTerm={searchTerm}
-          stylesGenerated={style}
-        >
-          {tokens[index].map((token, i) => (
-            <Token
-              key={`cell-${index}-${i}`}
-              lineHoverRanges={metadata.hoverableRanges[index]}
-              token={token}
-              getHoverableContent={(hr, tr) =>
-                getHoverableContent(hr, tr, index)
-              }
-            />
-          ))}
-          {!!popupPosition &&
-            isPopupVisible &&
-            index === tokenInfo.lineNumber && (
-              <div
-                className="absolute max-w-sm"
-                style={popupPosition}
-                ref={popupRef}
-              >
-                <RefsDefsPopup
-                  placement={
-                    popupPosition.right ? 'bottom-end' : 'bottom-start'
-                  }
-                  data={tokenInfo}
-                  repoName={repoName}
-                  onRefDefClick={handleRefsDefsClick}
-                  language={language}
-                  relativePath={relativePath}
-                />
-              </div>
-            )}
-        </CodeLine>
-      )}
+      {({ index, style }) =>
+        index < tokens.length ? (
+          <CodeLine
+            key={pathHash + '-' + index.toString()}
+            lineNumber={index}
+            lineFoldable={!!foldableRanges[index]}
+            handleFold={toggleBlock}
+            showLineNumbers={true}
+            lineHidden={!!foldedLines[index]}
+            blameLine={blameLines[index]}
+            blame={!!metadata.blame?.length}
+            hoverEffect
+            onMouseSelectStart={onMouseSelectStart}
+            onMouseSelectEnd={onMouseSelectEnd}
+            shouldHighlight={
+              !!scrollToIndex &&
+              index >= scrollToIndex[0] &&
+              index <= scrollToIndex[1]
+            }
+            highlightColor={highlightColor}
+            searchTerm={searchTerm}
+            stylesGenerated={style}
+          >
+            {tokens[index].map((token, i) => (
+              <Token
+                key={`cell-${index}-${i}`}
+                lineHoverRanges={metadata.hoverableRanges[index]}
+                token={token}
+                getHoverableContent={(hr, tr) =>
+                  getHoverableContent(hr, tr, index)
+                }
+              />
+            ))}
+            {!!popupPosition &&
+              isPopupVisible &&
+              index === tokenInfo.lineNumber && (
+                <div
+                  className="absolute max-w-sm"
+                  style={popupPosition}
+                  ref={popupRef}
+                >
+                  <RefsDefsPopup
+                    placement={
+                      popupPosition.right ? 'bottom-end' : 'bottom-start'
+                    }
+                    data={tokenInfo}
+                    repoName={repoName}
+                    onRefDefClick={handleRefsDefsClick}
+                    language={language}
+                    relativePath={relativePath}
+                  />
+                </div>
+              )}
+          </CodeLine>
+        ) : (
+          <div className="w-fll h-5" />
+        )
+      }
     </FixedSizeList>
   );
 };

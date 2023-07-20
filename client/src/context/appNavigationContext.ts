@@ -12,8 +12,8 @@ type ContextType = {
     path?: string,
     page?: number,
   ) => void;
-  navigateBack: (delta?: number) => void;
-  navigateForward: () => void;
+  navigateBack: (delta?: number | 'auto') => void;
+  navigateForward: (delta?: number | 'auto') => void;
   navigateHome: () => void;
   navigateRepoPath: (
     repo: string,

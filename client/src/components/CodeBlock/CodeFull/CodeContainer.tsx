@@ -4,16 +4,18 @@ import React, {
   SetStateAction,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
 import { SearchContext } from '../../../context/searchContext';
 import { Token as TokenType } from '../../../types/prism';
 import { hashCode, propsAreShallowEqual } from '../../../utils';
-import { Range, TokenInfoWrapped } from '../../../types/results';
+import { Range, TokenInfoType, TokenInfoWrapped } from '../../../types/results';
 import { getTokenInfo } from '../../../services/api';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
 import { mapTokenInfo } from '../../../mappers/results';
+import { AppNavigationContext } from '../../../context/appNavigationContext';
 import CodeContainerVirtualized from './CodeContainerVirtualized';
 import CodeContainerFull from './CodeContainerFull';
 import { Metadata, BlameLine } from './index';
@@ -37,7 +39,13 @@ type Props = {
   scrollToIndex?: number[];
   searchTerm: string;
   highlightColor?: string | null;
-  onRefDefClick: (lineNum: number, filePath: string) => void;
+  onRefDefClick: (
+    lineNum: number,
+    filePath: string,
+    type: TokenInfoType,
+    tokenName: string,
+    tokenRange: string,
+  ) => void;
   width: number;
   height: number;
 };
@@ -60,6 +68,7 @@ const CodeContainer = ({
     lineNumber: -1,
   });
   const { selectedBranch } = useContext(SearchContext);
+  const { navigatedItem } = useContext(AppNavigationContext);
 
   const getHoverableContent = useCallback(
     (hoverableRange: Range, tokenRange: Range, lineNumber?: number) => {
@@ -101,8 +110,23 @@ const CodeContainer = ({
     [relativePath, selectedBranch],
   );
 
+  useEffect(() => {
+    if (navigatedItem?.pathParams?.tokenRange) {
+      const [start, end] = navigatedItem?.pathParams?.tokenRange
+        .split('_')
+        .map((l) => Number(l));
+      getHoverableContent({ start, end }, { start, end });
+    }
+  }, [navigatedItem?.pathParams?.tokenRange, getHoverableContent]);
+
   const handleRefsDefsClick = useCallback(
-    (lineNum: number, filePath: string) => {
+    (
+      lineNum: number,
+      filePath: string,
+      type: TokenInfoType,
+      tokenName: string,
+      tokenRange: string,
+    ) => {
       setTokenInfo({
         data: { references: [], definitions: [] },
         hoverableRange: null,
@@ -110,7 +134,7 @@ const CodeContainer = ({
         isLoading: false,
         lineNumber: -1,
       });
-      onRefDefClick(lineNum, filePath);
+      onRefDefClick(lineNum, filePath, type, tokenName, tokenRange);
     },
     [onRefDefClick],
   );
