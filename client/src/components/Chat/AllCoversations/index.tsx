@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 // eslint-disable-next-line import/no-duplicates
 import { format } from 'date-fns';
 // eslint-disable-next-line import/no-duplicates
@@ -22,6 +22,7 @@ import {
 import { conversationsCache } from '../../../services/cache';
 import { mapLoadingSteps } from '../../../mappers/conversation';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
+import { LocaleContext } from '../../../context/localeContext';
 import ConversationListItem from './ConversationListItem';
 
 type Props = {
@@ -52,6 +53,7 @@ const AllConversations = ({
   );
   const [openThreadId, setOpenThreadId] = useState('');
   const [title, setTitle] = useState('');
+  const { locale } = useContext(LocaleContext);
 
   const fetchConversations = useCallback(() => {
     getAllConversations(repoRef).then(setConversations);
@@ -137,7 +139,7 @@ const AllConversations = ({
               subtitle={format(
                 new Date(c.created_at * 1000),
                 'EEEE, MMMM d, h:m a',
-                { locale: ja },
+                locale === 'ja' ? { locale: ja } : undefined,
               )}
               onClick={() => onClick(c.thread_id)}
               onDelete={() => onDelete(c.thread_id)}
