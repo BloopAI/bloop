@@ -14,6 +14,12 @@ use crate::{
 pub(crate) async fn log_and_branch_rotate(app: crate::Application) {
     let log = crate::db::QueryLog::new(&app.sql);
     loop {
+        let jitter = thread_rng().sample(distributions::Uniform::new(100, 300));
+        tokio::time::sleep(
+            tokio::time::Duration::from_secs(3600) + tokio::time::Duration::from_secs(jitter),
+        )
+        .await;
+
         let cutoff = Utc::now() - Duration::days(1);
         let queries = log.since(cutoff).await.unwrap();
 
@@ -25,12 +31,6 @@ pub(crate) async fn log_and_branch_rotate(app: crate::Application) {
         if let Err(err) = log.prune(cutoff).await {
             error!(?err, "failed to prune old log entries");
         };
-
-        let jitter = thread_rng().sample(distributions::Uniform::new(100, 300));
-        tokio::time::sleep(
-            tokio::time::Duration::from_secs(3600) + tokio::time::Duration::from_secs(jitter),
-        )
-        .await;
     }
 }
 
