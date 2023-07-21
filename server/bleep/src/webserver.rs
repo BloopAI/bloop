@@ -41,7 +41,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
     let bind = SocketAddr::new(app.config.host.parse()?, app.config.port);
 
     let mut api = Router::new()
-        .route("/config", get(config::handle))
+        .route("/config", get(config::get).put(config::put))
         // querying
         .route("/q", get(query::handle))
         // autocomplete
