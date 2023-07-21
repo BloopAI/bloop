@@ -36,7 +36,7 @@ tasks:
       rm -rf .cargo target
 
     command: |
-      tar -C /workspace -xzpf target.tar.gz && rm target.tar.gz
+      tar -C /workspace -xzpf target.tar.gz
       mv /workspace/.cargo ~
       mv /workspace/target .
 
