@@ -157,7 +157,10 @@ export const mapFileResult = (fileItem: FileItem) => {
   };
 };
 
-export const mapTokenInfo = (tokenInfo: TokenInfoResponse['data']) => {
+export const mapTokenInfo = (
+  tokenInfo: TokenInfoResponse['data'],
+  path: string,
+) => {
   const map: {
     references: Record<string, any>;
     definitions: Record<string, any>;
@@ -198,10 +201,12 @@ export const mapTokenInfo = (tokenInfo: TokenInfoResponse['data']) => {
   });
 
   const arrayFromObject = (obj: Record<string, any>) =>
-    Object.entries(obj).map(([file, data]) => ({
-      file,
-      data,
-    }));
+    Object.entries(obj)
+      .map(([file, data]) => ({
+        file,
+        data,
+      }))
+      .sort((a, b) => (a.file === path ? -1 : b.file === path ? 1 : 0));
 
   return {
     references: arrayFromObject(map.references),
