@@ -1,9 +1,9 @@
 {
 	"Welcome to React": "Welcome to React",
 	"Documentation": "Documentation",
-	"Showing # result_zero": "Showing # result_zero",
-	"Showing # result_one": "Showing # result_one",
-	"Showing # result_other": "Showing # result_other",
+	"Showing # result_zero": "There were no matches for your search. Try different combinations!",
+	"Showing # result_one": "Showing {{count}} result",
+	"Showing # result_other": "Showing {{count}} results",
 	"bloop crashed unexpectedly": "bloop crashed unexpectedly",
 	"By submitting this crash report you agree to send it to bloop for investigation.": "By submitting this crash report you agree to send it to bloop for investigation.",
 	"Close": "Close",

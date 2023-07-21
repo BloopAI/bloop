@@ -7,6 +7,7 @@ export const mapLoadingSteps = (
     displayText:
       s.type === 'PROC'
         ? t(`Reading`) +
+          ' ' +
           `${s.content.length > 20 ? '...' : ''}${s.content.slice(-20)}`
         : s.content,
   }));
