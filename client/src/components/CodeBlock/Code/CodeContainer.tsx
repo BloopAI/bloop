@@ -104,9 +104,7 @@ const CodeContainer = ({
         className={`prism-code language-${lang} text-label-base my-0 ${
           removePaddings ? '' : 'px-2'
         } ${onlySymbolLines ? 'overflow-hidden' : ''} ${
-          canWrap && codeLines.length < 2
-            ? '!whitespace-pre-wrap'
-            : 'overflow-auto'
+          canWrap && codeLines.length < 2 ? '!whitespace-pre-wrap' : ''
         }`}
       >
         <div>{codeLines}</div>
