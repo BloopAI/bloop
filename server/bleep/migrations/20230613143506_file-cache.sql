@@ -7,5 +7,6 @@ CREATE TABLE file_cache (
 CREATE TABLE chunk_cache (
     chunk_hash TEXT NOT NULL,
     file_hash TEXT NOT NULL,
-    branches TEXT NOT NULL
+    branches TEXT NOT NULL,
+    repo_ref TEXT NOT NULL
 );

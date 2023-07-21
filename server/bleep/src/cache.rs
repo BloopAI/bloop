@@ -84,7 +84,7 @@ impl<'a> FileCache<'a> {
 
     pub(crate) async fn persist(&self, cache: FileCacheSnapshot) -> anyhow::Result<()> {
         let mut tx = self.db.begin().await?;
-        self.delete_tx(&mut tx, self.reporef).await?;
+        self.delete_tx(&mut tx).await?;
 
         let keys = {
             let mut keys = vec![];
@@ -112,18 +112,15 @@ impl<'a> FileCache<'a> {
 
     pub(crate) async fn delete(&self) -> anyhow::Result<()> {
         let mut tx = self.db.begin().await?;
-        self.delete_tx(&mut tx, self.reporef).await?;
+        self.delete_tx(&mut tx).await?;
+        self.delete_chunks(&mut tx).await?;
         tx.commit().await?;
 
         Ok(())
     }
 
-    async fn delete_tx(
-        &self,
-        tx: &mut sqlx::Transaction<'_, Sqlite>,
-        reporef: &RepoRef,
-    ) -> anyhow::Result<()> {
-        let repo_str = reporef.to_string();
+    async fn delete_tx(&self, tx: &mut sqlx::Transaction<'_, Sqlite>) -> anyhow::Result<()> {
+        let repo_str = self.reporef.to_string();
         sqlx::query! {
             "DELETE FROM file_cache \
                  WHERE repo_ref = ?",
@@ -135,13 +132,27 @@ impl<'a> FileCache<'a> {
         Ok(())
     }
 
+    async fn delete_chunks(&self, tx: &mut sqlx::Transaction<'_, Sqlite>) -> anyhow::Result<()> {
+        let repo_str = self.reporef.to_string();
+        sqlx::query! {
+            "DELETE FROM chunk_cache \
+                 WHERE repo_ref = ?",
+            repo_str
+        }
+        .execute(&mut *tx)
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn chunks_for_file(&self, key: &'a str) -> ChunkCache<'a> {
-        ChunkCache::for_file(self.db, key).await
+        ChunkCache::for_file(self.db, self.reporef, key).await
     }
 }
 
 pub struct ChunkCache<'a> {
     sql: &'a SqlDb,
+    reporef: &'a RepoRef,
     file_cache_key: &'a str,
     cache: scc::HashMap<String, FreshValue<String>>,
     update: scc::HashMap<(Vec<String>, String), Vec<String>>,
@@ -150,7 +161,11 @@ pub struct ChunkCache<'a> {
 }
 
 impl<'a> ChunkCache<'a> {
-    async fn for_file(sql: &'a SqlDb, file_cache_key: &'a str) -> ChunkCache<'a> {
+    async fn for_file(
+        sql: &'a SqlDb,
+        reporef: &'a RepoRef,
+        file_cache_key: &'a str,
+    ) -> ChunkCache<'a> {
         let rows = sqlx::query! {
             "SELECT chunk_hash, branches FROM chunk_cache \
              WHERE file_hash = ?",
@@ -166,6 +181,7 @@ impl<'a> ChunkCache<'a> {
 
         Self {
             sql,
+            reporef,
             file_cache_key,
             cache,
             update: Default::default(),
@@ -307,11 +323,12 @@ impl<'a> ChunkCache<'a> {
         let new: Vec<_> = std::mem::take(self.new.write().unwrap().as_mut());
         let new_size = new.len();
         let new_sql = std::mem::take(&mut *self.new_sql.write().unwrap());
+        let repo_str = self.reporef.to_string();
         for (p, branches) in new_sql {
             sqlx::query! {
-                "INSERT INTO chunk_cache (chunk_hash, file_hash, branches) \
-                 VALUES (?, ?, ?)",
-                 p, self.file_cache_key, branches
+                "INSERT INTO chunk_cache (chunk_hash, file_hash, branches, repo_ref) \
+                 VALUES (?, ?, ?, ?)",
+                 p, self.file_cache_key, branches, repo_str
             }
             .execute(&mut *tx)
             .await?;

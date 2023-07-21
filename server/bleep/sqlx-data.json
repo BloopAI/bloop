@@ -82,16 +82,6 @@
     },
     "query": "DELETE FROM chunk_cache WHERE chunk_hash = ? AND file_hash = ?"
   },
-  "5b0b28e943795c0d2485bcda52aa08ba3103c4b8300dd59d4828162de3d83b4e": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 3
-      }
-    },
-    "query": "INSERT INTO chunk_cache (chunk_hash, file_hash, branches) VALUES (?, ?, ?)"
-  },
   "6d8b70a52e6a1f0b18a7981604386ca4ef264d57d2c22958f2e31cb5eaad9b02": {
     "describe": {
       "columns": [
@@ -172,6 +162,16 @@
     },
     "query": "SELECT raw_query FROM query_log WHERE created_at > ?"
   },
+  "b3ebaeec21c90aa9ebc59a808e03c661839d0a0eaa86ad2bf4251e895f8e0a03": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 4
+      }
+    },
+    "query": "INSERT INTO chunk_cache (chunk_hash, file_hash, branches, repo_ref) VALUES (?, ?, ?, ?)"
+  },
   "bc60b0f34fd20feba2da3f16458770424534eacaba75e6f45b8218f32767671b": {
     "describe": {
       "columns": [
@@ -251,5 +251,15 @@
       }
     },
     "query": "INSERT INTO file_cache (repo_ref, cache_hash) VALUES (?, ?)"
+  },
+  "ed6379e37c16064198f48dbfb91899d74eb346533e3c9ab3814ba67b68d71f51": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "DELETE FROM chunk_cache WHERE repo_ref = ?"
   }
 }
