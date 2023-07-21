@@ -225,6 +225,8 @@ pub(super) async fn handle(
     // };
 
     let mut def_paths = Vec::new();
+    let mut ref_paths = Vec::new();
+    // go from ref -> def
     let _ = dbg!(
         stitching::ForwardPartialPathStitcher::find_all_complete_partial_paths(
             &combined_graph,
@@ -233,10 +235,33 @@ pub(super) async fn handle(
             vec![handle],
             &stack_graphs::NoCancellation,
             |_, _, p| {
-                def_paths.push(p.clone());
+                if p.start_node == handle && p.ends_at_definition(&combined_graph) {
+                    def_paths.push(p.clone());
+                }
             },
         )
     );
+
+    // go from def to all refs
+    let _ = dbg!(
+        stitching::ForwardPartialPathStitcher::find_all_complete_partial_paths(
+            &combined_graph,
+            &mut partials,
+            &mut combined_db,
+            combined_graph
+                .iter_nodes()
+                .filter(|handle| combined_graph[*handle].is_reference()), // not the smartest thing to do
+            &stack_graphs::NoCancellation,
+            |_, _, p| {
+                // if we are at a def, then this path must end at our def
+                // if we are at a ref, then this path must end at any def we have already seen
+                if p.end_node == handle || def_paths.iter().any(|dp| dp.end_node == p.end_node) {
+                    ref_paths.push(p.clone());
+                }
+            },
+        )
+    );
+
     info!(
         "path stitching at {}ms",
         start_of_handle.elapsed().as_millis()
@@ -279,21 +304,34 @@ pub(super) async fn handle(
     let mut file_symbols: HashMap<String, Vec<Occurrence>> = HashMap::new();
 
     dbg!(def_paths.len());
+    dbg!(ref_paths.len());
     for p in def_paths {
         println!("{}", p.display(&combined_graph, &mut partials));
-        if p.start_node == handle && p.ends_at_definition(&combined_graph) {
-            let end_node = p.end_node;
-            if let Some((path, snippet, range)) = process(end_node, &combined_graph) {
-                let o = Occurrence {
-                    kind: OccurrenceKind::Definition,
-                    range,
-                    snippet,
-                };
-                file_symbols
-                    .entry(path.to_owned())
-                    .or_insert_with(Vec::new)
-                    .push(o);
-            }
+        if let Some((path, snippet, range)) = process(p.end_node, &combined_graph) {
+            let o = Occurrence {
+                kind: OccurrenceKind::Definition,
+                range,
+                snippet,
+            };
+            file_symbols
+                .entry(path.to_owned())
+                .or_insert_with(Vec::new)
+                .push(o);
+        }
+    }
+    for p in ref_paths {
+        println!("{}", p.display(&combined_graph, &mut partials));
+        let start_node = p.start_node;
+        if let Some((path, snippet, range)) = process(start_node, &combined_graph) {
+            let o = Occurrence {
+                kind: OccurrenceKind::Reference,
+                range,
+                snippet,
+            };
+            file_symbols
+                .entry(path.to_owned())
+                .or_insert_with(Vec::new)
+                .push(o);
         }
     }
     info!(
