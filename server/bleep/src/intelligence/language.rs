@@ -15,6 +15,10 @@ mod typescript;
 mod test_utils;
 
 use once_cell::sync::OnceCell;
+use tree_sitter_stack_graphs::{
+    loader::{FileAnalyzers, LanguageConfiguration as StackGraphConfig, LoadError},
+    NoCancellation,
+};
 
 use super::NameSpaces;
 
@@ -61,6 +65,9 @@ pub struct TSLanguageConfig {
     /// Compiled tree-sitter scope query for this language.
     pub scope_query: MemoizedQuery,
 
+    /// Compiled tree-sitter stack-graphs for this language.
+    pub stack_graph_config: Option<MemoizedStackGraphConfig>,
+
     /// Compiled tree-sitter hoverables query
     pub hoverable_query: MemoizedQuery,
 
@@ -94,6 +101,58 @@ impl MemoizedQuery {
             .get_or_try_init(|| tree_sitter::Query::new(grammar(), self.scope_query))
     }
 }
+
+pub struct MemoizedStackGraphConfig {
+    slot: OnceCell<StackGraphConfig>,
+    ruleset: &'static str,
+}
+
+impl std::fmt::Debug for MemoizedStackGraphConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MemoizedStackGraphConfig").finish()
+    }
+}
+
+impl MemoizedStackGraphConfig {
+    pub const fn new(ruleset: &'static str) -> Self {
+        Self {
+            slot: OnceCell::new(),
+            ruleset,
+        }
+    }
+
+    // Get the underlying config
+    pub fn stack_graph_config(
+        &self,
+        grammar: fn() -> tree_sitter::Language,
+        file_extensions: &[&str],
+    ) -> Result<&StackGraphConfig, LoadError> {
+        self.slot.get_or_try_init(|| {
+            StackGraphConfig::from_sources(
+                grammar(),
+                Some(String::from("source")),
+                None,
+                file_extensions
+                    .iter()
+                    .map(|t| t.to_string())
+                    .collect::<Vec<_>>(),
+                std::path::PathBuf::from("<empty>"), // this path is for diagnostics only, we don't need this
+                self.ruleset,
+                None,
+                None,
+                FileAnalyzers::new(),
+                &NoCancellation,
+            )
+        })
+    }
+}
+
+// StackGraphConfig::sgl is of type StackGraphLanguage [0] which contains some raw pointers
+// deep down (maybe has to do with tree-sitter FFI), which makes it !Sync and !Send, workaround
+// it for now with this, which seems to be safe-ish.
+//
+// [0]: https://docs.rs/tree-sitter-stack-graphs/latest/tree_sitter_stack_graphs/struct.StackGraphLanguage.html
+unsafe impl Sync for MemoizedStackGraphConfig {}
 
 pub type TSLanguage = Language<TSLanguageConfig>;
 

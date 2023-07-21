@@ -22,6 +22,7 @@ pub static GO: TSLanguageConfig = TSLanguageConfig {
         &["member"],
         &["label"],
     ],
+    stack_graph_config: None,
 };
 
 #[cfg(test)]

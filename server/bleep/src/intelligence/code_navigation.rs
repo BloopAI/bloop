@@ -307,7 +307,7 @@ pub struct Token<'a> {
     pub end_byte: usize,
 }
 
-fn to_occurrence(doc: &ContentDocument, range: TextRange) -> Snippet {
+pub fn to_occurrence(doc: &ContentDocument, range: TextRange) -> Snippet {
     let src = &doc.content;
     let line_end_indices = &doc.line_end_indices;
     let highlight = range.start.byte..range.end.byte;

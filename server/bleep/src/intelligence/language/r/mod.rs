@@ -14,6 +14,7 @@ pub static R: TSLanguageConfig = TSLanguageConfig {
         // variables
         "variable",
     ]],
+    stack_graph_config: None,
 };
 
 #[cfg(test)]

@@ -6,7 +6,9 @@ use std::{
 
 use anyhow::{bail, Result};
 use async_trait::async_trait;
+use rayon::prelude::*;
 use scc::hash_map::Entry;
+use stack_graphs::{graph, partial, serde, stitching};
 use tantivy::{
     collector::TopDocs,
     doc,
@@ -16,7 +18,7 @@ use tantivy::{
 };
 use tokenizers as _;
 use tokio::runtime::Handle;
-use tracing::{info, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 pub use super::schema::File;
 
@@ -384,7 +386,7 @@ impl Indexer<File> {
         searcher
             .search(&query, &collector)
             .expect("failed to search index")
-            .into_iter()
+            .into_par_iter()
             .map(|(_, doc_addr)| {
                 let retrieved_doc = searcher
                     .doc(doc_addr)
@@ -545,7 +547,7 @@ impl RepoDir {
                 schema.line_end_indices => Vec::<u8>::default(),
                 schema.lang => Vec::<u8>::default(),
                 schema.avg_line_length => f64::default(),
-                schema.symbol_locations => bincode::serialize(&SymbolLocations::default()).unwrap(),
+                schema.symbol_locations => serde_json::to_string(&SymbolLocations::default()).expect("unable to serialize directory"),
                 schema.symbols => String::default(),
         )
     }
@@ -578,17 +580,55 @@ impl RepoFile {
             });
 
         let symbol_locations = {
-            // build a syntax aware representation of the file
-            let scope_graph = TreeSitterFile::try_build(self.buffer.as_bytes(), lang_str)
-                .and_then(TreeSitterFile::scope_graph);
+            match crate::intelligence::try_build_stack_graph(
+                self.buffer.as_str(),
+                lang_str,
+                &self.path,
+            ) {
+                Ok(graph) => {
+                    println!("\n\n========built stack graph========\n\n");
+                    debug!("graph node count: {}", graph.iter_nodes().count());
 
-            match scope_graph {
-                // we have a graph, use that
-                Ok(graph) => SymbolLocations::TreeSitter(graph),
-                // no graph, it's empty
-                Err(err) => {
-                    warn!(?err, %lang_str, "failed to build scope graph");
-                    SymbolLocations::Empty
+                    // convert graph::StackGraph into serde::StackGraph for storage
+                    let file = graph.iter_files().next().unwrap(); // we have 1 graph <-> 1 file at index time
+                    let mut partials = partial::PartialPaths::new();
+                    let mut database = stitching::Database::new();
+
+                    database.find_local_nodes();
+
+                    stitching::ForwardPartialPathStitcher::find_minimal_partial_path_set_in_file(
+                        &graph,
+                        &mut partials,
+                        file,
+                        &stack_graphs::NoCancellation,
+                        |graph, partials, path| {
+                            database.add_partial_path(graph, partials, path.clone());
+                        },
+                    )
+                    .expect("should not be cancelled");
+
+                    println!("\n\n========built database========\n\n");
+
+                    SymbolLocations::StackGraph(
+                        graph.to_serializable(),
+                        database.to_serializable(&graph, &mut partials),
+                    )
+                }
+                Err(e) => {
+                    tracing::error!("failed to build stack-graph: {e:?}");
+                    // build a syntax aware representation of the file
+                    let scope_graph = TreeSitterFile::try_build(self.buffer.as_bytes(), lang_str)
+                        .and_then(TreeSitterFile::scope_graph);
+
+                    match scope_graph {
+                        // we have a graph, use that
+                        Ok(graph) => SymbolLocations::TreeSitter(graph),
+                        // no graph, no symbols
+                        Err(err) => {
+                            debug!(?err, %lang_str, "failed to build scope graph");
+                            SymbolLocations::Empty
+                        }
+                    }
                 }
             }
         };
@@ -651,7 +691,7 @@ impl RepoFile {
             schema.lang => lang_str.to_ascii_lowercase().as_bytes(),
             schema.avg_line_length => lines_avg,
             schema.last_commit_unix_seconds => last_commit,
-            schema.symbol_locations => bincode::serialize(&symbol_locations).unwrap(),
+            schema.symbol_locations => serde_json::to_string(&symbol_locations).expect("unable to serialize datatype"),
             schema.symbols => symbols,
             schema.branches => branches,
             schema.is_directory => false,

@@ -30,6 +30,7 @@ pub static PHP: TSLanguageConfig = TSLanguageConfig {
         // namespacing
         "namespace",
     ]],
+    stack_graph_config: None,
 };
 
 #[cfg(test)]

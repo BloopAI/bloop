@@ -1,19 +1,23 @@
-use std::{ops::Not, sync::Arc};
+use std::{collections::HashMap, ops::Not, sync::Arc};
 
 use super::prelude::*;
 use crate::{
     indexes::{reader::ContentDocument, Indexes},
     intelligence::{
-        code_navigation::{CodeNavigationContext, FileSymbols, Occurrence, OccurrenceKind, Token},
+        code_navigation::{
+            self, CodeNavigationContext, FileSymbols, Occurrence, OccurrenceKind, Token,
+        },
         Language, NodeKind, TSLanguage,
     },
     repo::RepoRef,
     snippet::Snipper,
-    text_range::TextRange,
+    text_range::{self, TextRange},
 };
 
+use ::serde::{Deserialize, Serialize};
 use axum::{extract::Query, response::IntoResponse, Extension};
-use serde::{Deserialize, Serialize};
+use stack_graphs::{arena, graph, partial, serde, stitching};
+use tracing::info;
 
 /// The request made to the `local-intel` endpoint.
 #[derive(Debug, Deserialize)]
@@ -46,10 +50,100 @@ impl TokenInfoResponse {
 
 impl super::ApiResponse for TokenInfoResponse {}
 
+fn within_span(point: crate::text_range::Point, span: &lsp_positions::Span) -> bool {
+    (span.start.line == point.line && span.start.column.grapheme_offset <= point.column)
+        && (span.end.line == point.line && span.end.column.grapheme_offset >= point.column)
+}
+
+pub fn find_node_handle(
+    source_document: &ContentDocument,
+    payload_range: std::ops::Range<usize>,
+    combined_graph: &graph::StackGraph,
+) -> Option<arena::Handle<graph::Node>> {
+    let payload_range =
+        TextRange::from_byte_range(payload_range, &source_document.line_end_indices);
+    let ts_range = tree_sitter::Range::from(payload_range);
+    dbg!(&payload_range);
+    dbg!(&source_document.relative_path);
+    let (deser_graph, _db) = source_document.symbol_locations.stack_graph()?;
+
+    // dbg pieces
+    //
+    // combined_graph
+    //     .iter_nodes()
+    //     .filter(|handle| {
+    //         combined_graph[*handle]
+    //             .file()
+    //             .map(|f_handle| combined_graph[f_handle].name())
+    //             .map(|file| file.ends_with(source_document.relative_path.as_str()))
+    //             .unwrap_or_default()
+    //     })
+    //     .filter(|handle| {
+    //         combined_graph[*handle].is_reference() || combined_graph[*handle].is_definition()
+    //     })
+    //     .for_each(|handle| {
+    //         print!("handle: {}", combined_graph[handle].display(combined_graph));
+    //         if let Some(source_info) = combined_graph.source_info(handle) {
+    //             print!(
+    //                 " with span L{},C{} - L{},C{}",
+    //                 source_info.span.start.line,
+    //                 source_info.span.start.column.grapheme_offset,
+    //                 source_info.span.end.line,
+    //                 source_info.span.end.column.grapheme_offset
+    //             );
+    //         }
+    //         println!()
+    //     });
+
+    combined_graph.iter_nodes().find(|handle| {
+        let is_reference = combined_graph[*handle].is_reference();
+        let is_definition = combined_graph[*handle].is_definition();
+        let is_scope = combined_graph[*handle].scope().is_some();
+        let is_root = combined_graph[*handle].is_root();
+        let is_jump_to = combined_graph[*handle].is_jump_to();
+
+        let present_in_target_file = combined_graph[*handle]
+            .file()
+            .map(|f_handle| combined_graph[f_handle].name())
+            .map(|file| file.ends_with(source_document.relative_path.as_str()))
+            .unwrap_or_default();
+
+        let contains_payload = match combined_graph.source_info(*handle) {
+            Some(source_info) => within_span(payload_range.start, &source_info.span),
+            None => false,
+        };
+
+        let found = (is_reference || is_definition)
+            && contains_payload
+            && present_in_target_file
+            && !is_root
+            && !is_jump_to
+            && !is_scope;
+
+        if found {
+            dbg!(
+                &is_reference,
+                &is_definition,
+                &contains_payload,
+                &is_root,
+                &is_jump_to,
+                &is_scope
+            );
+
+            info!(
+                "found handle {}",
+                combined_graph[*handle].display(&combined_graph),
+            );
+        }
+        found
+    })
+}
+
 pub(super) async fn handle(
     Query(payload): Query<TokenInfoRequest>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<impl IntoResponse> {
+    let start_of_handle = std::time::Instant::now();
     let repo_ref = payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
 
     let token = Token {
@@ -79,35 +173,173 @@ pub(super) async fn handle(
             )
             .await
     };
+    info!(
+        "found all docs at {}ms",
+        start_of_handle.elapsed().as_millis()
+    );
 
     let source_document_idx = all_docs
         .iter()
         .position(|doc| doc.relative_path == payload.relative_path)
         .ok_or(Error::internal("invalid language"))?;
 
-    let ctx = CodeNavigationContext {
-        repo_ref: repo_ref.clone(),
-        token,
-        all_docs,
-        source_document_idx,
+    let (mut combined_graph, mut combined_db, mut partials) = all_docs.iter().fold(
+        (
+            graph::StackGraph::new(),
+            stitching::Database::new(),
+            partial::PartialPaths::new(),
+        ),
+        |(mut combined_graph, mut combined_db, mut partials), doc| {
+            let sg = doc.symbol_locations.stack_graph();
+            if let Some((g, d)) = sg {
+                let _ = g.load_into(&mut combined_graph);
+                let _ = d.load_into(&mut combined_graph, &mut partials, &mut combined_db);
+            }
+            (combined_graph, combined_db, partials)
+        },
+    );
+    info!(
+        "load and combine graph at {}ms",
+        start_of_handle.elapsed().as_millis()
+    );
+
+    let handle = find_node_handle(
+        &all_docs[source_document_idx],
+        payload.start..payload.end,
+        &combined_graph,
+    )
+    .expect("payload range is not a valid code-nav range");
+    info!("find handle at {}ms", start_of_handle.elapsed().as_millis());
+
+    // TODO: use initial paths to seed ForwardPartialPathStitcher:
+    // - lot faster probably
+    // - opens up possibilities of cancellation/streaming/controlled searches
+    //
+    // e.g.: perform path extension N times and stop, resume the calculation
+    // on the click of a `show more` button
+    //
+    // let initial_paths = {
+    //     let mut p = partial::PartialPath::from_node(&combined_graph, &mut partials, handle);
+    //     p.eliminate_precondition_stack_variables(&mut partials);
+    //     p
+    // };
+
+    let mut def_paths = Vec::new();
+    let _ = dbg!(
+        stitching::ForwardPartialPathStitcher::find_all_complete_partial_paths(
+            &combined_graph,
+            &mut partials,
+            &mut combined_db,
+            vec![handle],
+            &stack_graphs::NoCancellation,
+            |_, _, p| {
+                def_paths.push(p.clone());
+            },
+        )
+    );
+    info!(
+        "path stitching at {}ms",
+        start_of_handle.elapsed().as_millis()
+    );
+
+    // repetitive code bunched under an uninspiring name
+    // TODO: refactor
+    let process = |handle: arena::Handle<graph::Node>, combined_graph: &graph::StackGraph| {
+        let file_handle = combined_graph[handle].file()?;
+        let file = combined_graph[file_handle].name();
+        let doc = all_docs
+            .iter()
+            .find(|d| file.ends_with(d.relative_path.as_str()))?;
+
+        let range = combined_graph.source_info(handle).map(|source_info| {
+            let start = {
+                let pt = source_info.span.start.as_point();
+
+                text_range::Point::from_line_column(
+                    pt.row.saturating_sub(1),
+                    pt.column,
+                    &doc.line_end_indices,
+                )
+            };
+            let end = {
+                let pt = source_info.span.end.as_point();
+                text_range::Point::from_line_column(
+                    pt.row.saturating_sub(1),
+                    pt.column,
+                    &doc.line_end_indices,
+                )
+            };
+            TextRange::new(start, end)
+        })?;
+        info!("range of definiton: {:?}", range);
+        let occurrence = code_navigation::to_occurrence(doc, range);
+        Some((doc.relative_path.as_str(), occurrence, range))
     };
 
-    let data = ctx.token_info();
-    if data.is_empty() {
-        search_nav(
-            Arc::clone(&indexes),
-            &repo_ref,
-            ctx.active_token_text(),
-            ctx.active_token_range(),
-            payload.branch.as_deref(),
-            &source_document,
-        )
-        .await
-        .map(TokenInfoResponse::new)
-        .map(json)
-    } else {
-        Ok(json(TokenInfoResponse { data }))
+    let mut file_symbols: HashMap<String, Vec<Occurrence>> = HashMap::new();
+
+    dbg!(def_paths.len());
+    for p in def_paths {
+        println!("{}", p.display(&combined_graph, &mut partials));
+        if p.start_node == handle && p.ends_at_definition(&combined_graph) {
+            let end_node = p.end_node;
+            if let Some((path, snippet, range)) = process(end_node, &combined_graph) {
+                let o = Occurrence {
+                    kind: OccurrenceKind::Definition,
+                    range,
+                    snippet,
+                };
+                file_symbols
+                    .entry(path.to_owned())
+                    .or_insert_with(Vec::new)
+                    .push(o);
+            }
+        }
     }
+    info!(
+        "filtering partial paths at {}ms",
+        start_of_handle.elapsed().as_millis()
+    );
+
+    let data = file_symbols
+        .into_iter()
+        .map(|(file, data)| FileSymbols { file, data })
+        .collect::<Vec<_>>();
+
+    info!(
+        "building response at {}ms",
+        start_of_handle.elapsed().as_millis()
+    );
+    info!(
+        "intelligence::handle {}ms",
+        start_of_handle.elapsed().as_millis()
+    );
+
+    return Ok(json(TokenInfoResponse::new(data)));
+
+    // let ctx = CodeNavigationContext {
+    //     repo_ref: repo_ref.clone(),
+    //     token,
+    //     all_docs,
+    //     source_document_idx,
+    // };
+
+    // let data = ctx.token_info();
+    // if data.is_empty() {
+    //     search_nav(
+    //         Arc::clone(&indexes),
+    //         &repo_ref,
+    //         ctx.active_token_text(),
+    //         ctx.active_token_range(),
+    //         payload.branch.as_deref(),
+    //         &source_document,
+    //     )
+    //     .await
+    //     .map(TokenInfoResponse::new)
+    //     .map(json)
+    // } else {
+    //     Ok(json(TokenInfoResponse { data }))
+    // }
 }
 
 async fn search_nav(

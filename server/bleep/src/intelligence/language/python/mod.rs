@@ -11,6 +11,7 @@ pub static PYTHON: TSLanguageConfig = TSLanguageConfig {
         "#,
     ),
     namespaces: &[&["class", "function", "parameter", "variable"]],
+    stack_graph_config: None,
 };
 
 #[cfg(test)]

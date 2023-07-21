@@ -19,6 +19,7 @@ pub static RUBY: TSLanguageConfig = TSLanguageConfig {
         // everything is an object
         &["variable", "constant", "class", "method", "module"],
     ],
+    stack_graph_config: None,
 };
 
 #[cfg(test)]

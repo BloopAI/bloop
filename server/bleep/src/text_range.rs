@@ -46,6 +46,16 @@ impl Point {
 
         Self::new(byte, line, column)
     }
+
+    pub fn from_line_column(line: usize, column: usize, line_end_indices: &[u32]) -> Self {
+        // the end of the line before 0 is 0
+        let byte = if line == 0 {
+            0 + column
+        } else {
+            line_end_indices[line] as usize + column + 1
+        };
+        Self::new(byte, line, column)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -109,6 +119,23 @@ impl From<tree_sitter::Range> for TextRange {
                 byte: r.end_byte,
                 line: r.end_point.row,
                 column: r.end_point.column,
+            },
+        }
+    }
+}
+
+impl From<TextRange> for tree_sitter::Range {
+    fn from(value: TextRange) -> Self {
+        tree_sitter::Range {
+            start_byte: value.start.byte,
+            start_point: tree_sitter::Point {
+                row: value.start.line,
+                column: value.start.column,
+            },
+            end_byte: value.end.byte,
+            end_point: tree_sitter::Point {
+                row: value.end.line,
+                column: value.end.column,
             },
         }
     }

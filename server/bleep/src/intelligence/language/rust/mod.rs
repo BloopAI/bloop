@@ -33,6 +33,7 @@ pub static RUST: TSLanguageConfig = TSLanguageConfig {
         "label",
         "lifetime",
     ]],
+    stack_graph_config: None,
 };
 
 #[cfg(test)]

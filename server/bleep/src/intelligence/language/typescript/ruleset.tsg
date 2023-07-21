@@ -1,0 +1,6130 @@
+; -*- coding: utf-8 -*-
+; ------------------------------------------------------------------------------------------------
+; Copyright © 2022, stack-graphs authors.
+; Licensed under either of Apache License, Version 2.0, or MIT license, at your option.
+; Please see the LICENSE-APACHE or LICENSE-MIT files in this distribution for license details.
+; ------------------------------------------------------------------------------------------------
+
+; ########################################################################################
+;
+; ######## ##    ## ########  ########  ######   ######  ########  #### ########  ########
+;    ##     ##  ##  ##     ## ##       ##    ## ##    ## ##     ##  ##  ##     ##    ##
+;    ##      ####   ##     ## ##       ##       ##       ##     ##  ##  ##     ##    ##
+;    ##       ##    ########  ######    ######  ##       ########   ##  ########     ##
+;    ##       ##    ##        ##             ## ##       ##   ##    ##  ##           ##
+;    ##       ##    ##        ##       ##    ## ##    ## ##    ##   ##  ##           ##
+;    ##       ##    ##        ########  ######   ######  ##     ## #### ##           ##
+;
+; ########################################################################################
+
+; Global Variables
+; ^^^^^^^^^^^^^^^^
+
+global FILE_PATH           ; project relative path of this file
+global PROJECT_NAME = ""   ; project name, used to isolate different projects in the same stack graph
+
+global JUMP_TO_SCOPE_NODE
+global ROOT_NODE
+
+; Attribute Shorthands
+; ^^^^^^^^^^^^^^^^^^^^
+
+attribute node_definition = node        => type = "pop_symbol", node_symbol = node, is_definition
+attribute node_reference = node         => type = "push_symbol", node_symbol = node, is_reference
+attribute pop_node = node               => type = "pop_symbol", node_symbol = node
+attribute pop_scoped_node = node        => type = "pop_scoped_symbol", node_symbol = node
+attribute pop_scoped_symbol = symbol    => type = "pop_scoped_symbol", symbol = symbol
+attribute pop_symbol = symbol           => type = "pop_symbol", symbol = symbol
+attribute push_node = node              => type = "push_symbol", node_symbol = node
+attribute push_scoped_node = node       => type = "push_scoped_symbol", node_symbol = node
+attribute push_scoped_symbol = symbol   => type = "push_scoped_symbol", symbol = symbol
+attribute push_symbol = symbol          => type = "push_symbol", symbol = symbol
+attribute scoped_node_definition = node => type = "pop_scoped_symbol", node_symbol = node, is_definition
+attribute scoped_node_reference = node  => type = "push_scoped_symbol", node_symbol = node, is_reference
+attribute symbol_definition = symbol    => type = "pop_symbol", symbol = symbol, is_definition
+attribute symbol_reference = symbol     => type = "push_symbol", symbol = symbol, is_reference
+
+attribute node_symbol = node            => symbol = (source-text node), source_node = node
+
+; Node Name & Symbol Conventions
+; ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+;
+; @node.{expr,type,mod}_def = STRING
+;     A definition node, pop node with a name value.
+;
+; @node.{expr,type,mod}_ref = STRING
+;     A reference node, a push node with a name value.
+;
+; @node.{expr,type,mod}_{def,ref}.ns = "%T" | "%E" | "%M"
+;     Internal symbol indicating the namespace of an identifier.
+;
+; @node.{expr,type,ns}_{def,ref}.typeof = ":"
+;     Internal symbol indicating the type of an identifier.
+;
+; @node.callable = "->"
+;     Internal symbol indicating a callable.
+;
+; @node.member = "."
+;     Internal symbol indicating a named member (e.g., a field or method).
+;
+; @node.ctor = "<new>"
+;     Internal symbol indicating a constructor.
+;
+; @node.type_{abs,app} = "<>"
+;     Internal scoped symbol indicating type parameters & arguments.
+;
+; @node.indexable = "[]"
+;     Internal symbol indicating an indexable (i.e., array access).
+;
+; @node.{type,expr}_export = "%T" | "%E"
+;     Internal node for namespace guards for default and = exports.
+
+; comments can appear almost everywhere, so we simply make sure all
+; possible nodes are defined on comments
+(comment)@comment {
+  node @comment.alias_type
+  node @comment.aliased_type
+  node @comment.applied_type
+  node @comment.arg
+  node @comment.args
+  node @comment.async_type
+  node @comment.await_type
+  node @comment.callable
+  node @comment.coargs
+  node @comment.cocallable
+  node @comment.coparam
+  node @comment.coparams
+  node @comment.cotype
+  node @comment.default_export
+  node @comment.defs
+  node @comment.exports
+  node @comment.expr_def
+  node @comment.expr_def__ns
+  node @comment.expr_ref
+  node @comment.expr_ref__ns
+  node @comment.global_defs
+  node @comment.lexical_defs
+  node @comment.lexical_scope
+  node @comment.member
+  node @comment.mod_def
+  node @comment.mod_def__ns
+  node @comment.mod_ref
+  node @comment.param
+  node @comment.params
+  node @comment.return_type
+  node @comment.static_members
+  node @comment.static_type
+  node @comment.type
+  node @comment.type_def
+  node @comment.type_def__ns
+  node @comment.type_members
+  node @comment.type_ref
+  node @comment.type_ref__ns
+  node @comment.var_defs
+}
+
+; #     #
+; ##   ##  ####  #####  #    # #      ######  ####
+; # # # # #    # #    # #    # #      #      #
+; #  #  # #    # #    # #    # #      #####   ####
+; #     # #    # #    # #    # #      #           #
+; #     # #    # #    # #    # #      #      #    #
+; #     #  ####  #####   ####  ###### ######  ####
+;
+; #################################################
+
+; Projects are defined using a "%Proj" PROJECT_NAME definition in the root scope. Each module defines
+; its own project scope, which is joined with all other project scopes by both exposing a project
+; definition and importing a project reference. The module itself is defined with a "%M" NAME* definition,
+; based in its FILE_PATH.
+;
+; For example, a module `src/core/MyModule.ts` in a project `MyProject` is defined as follows:
+;
+;     ROOT_NODE -> ↑"%Proj" -> ↑"MyProject" -> proj_scope
+;     proj_scope -> ↑"%M" -> ↑"src" -> ↑"core" -> ↑"MyModule" -> @prog.defs
+;
+; For any module in the project `MyProject` ensures the composition with other modules in the same project:
+;
+;     proj_scope -> ↓"MyProject" -> -> ↓"%Proj" -> ROOT_NODE
+;     @prog.lexical_scope -> proj_scope
+;
+; Module imports are either relative or non-relative. Relative imports are relative either to the current file,
+; or to the `rootDirs` in `tsconfig.json`. Relative imports use a NAME* "%RelM" reference (which may include `..`
+; components!). Each module defines a "%RelM" definition, which is linked to a NAME* references based on its own
+; path, as well as ".." definitions that can skip components. (References are normalized to ensure `..` components
+; only appear at the beginning of the path.)
+;
+; For example, an import of `../OtherModule`:
+;
+;     importing_scope -> ↓"OtherModule" -> ↓"%RelM" -> @node.lexical_scope
+;
+; And, the module `src/core/MyModule.ts` would have the following definition to convert it to a proper module reference:
+;
+;     @prog.lexical_scope -> ↑"%RelM" -> ↓"core" -> ↓"src" -> ↓"%M" -> proj_scope
+;                               \            \        /          /
+;                                 --- ↑".." --\----->           /
+;                                               --- ↑".." ---->
+;
+; The root dirs defined in `tsconfig.json` introduce definitions to convert relative imports to proper module paths.
+;
+; For example, `rootDirs: ["./src/util"]` would give:
+;
+;     proj_scope -> ↑"%RelM" -> ↓"util" -> ↓"src" -> ↓"%M" -> proj_scope
+;
+; Non-relative imports appear as "%NonRelM" NAME* definitions in either a project scope, or the global scope.
+;
+; Non-relative definitions in a project scope are the result of path mappings in `tsconfig.json`.
+;
+; For example, given `paths: { "util": ["./my_util"] }` with base URL `./src`, we get:
+;
+;     proj_scope -> ↑"%NonRelM" -> ↑"%util" -> ↓"my_util" -> ↓"src" -> ↓"%M"
+;
+; The global definition rewrites the package name to a projects root dir, via a "%PkgM" node.
+; The "%PkgM" node maps to source files in the root directory. A "%NonRelM" NAME* definition in
+; the global scope maps non-relative module paths starting with the package name to the "%PkgM" node.
+;
+; For example, a package `@my/pkg` defined in project `MyProject` with source directory `src` would appear as:
+;
+;     ROOT_NODE -> ↑"%NonRelM" -> ↑"@my" -> ↑"pkg" -> ↓"%PkgM" -> proj_scope
+;     proj_scope -> ↑"%PkgM" -> ↓"src" -> ↓"%M"
+;
+; The various references and definitions for `tsconfig.json` are not created by this TSG file, but
+; by the `TsConfigAnalyzer` defined in `rust/tsconfig.rs`. The global package definition is created
+; by the `NpmPackageAnalyzer` in `rust/npm_package.rs`.
+
+
+
+; ######
+; #     # #####   ####   ####  #####    ##   #    #  ####
+; #     # #    # #    # #    # #    #  #  #  ##  ## #
+; ######  #    # #    # #      #    # #    # # ## #  ####
+; #       #####  #    # #  ### #####  ###### #    #      #
+; #       #   #  #    # #    # #   #  #    # #    # #    #
+; #       #    #  ####   ####  #    # #    # #    #  ####
+;
+; ########################################################
+
+;; Attributes defined on programs
+;
+; out .lexical_scope
+;     Lexical scope.
+;
+; in .defs
+;     Lexical and variable definitions.
+;
+; in .exports
+;     Exported definitions.
+;
+; out .mod_def
+;     Module definition
+
+;; Nodes
+(program)@prog {
+  node @prog.defs
+  node @prog.exports
+  node @prog.globals
+  node @prog.lexical_scope
+}
+
+(program)@prog {
+  ; expose definitions
+  edge @prog.lexical_scope -> @prog.defs
+
+  ; import builtins
+  node builtins_ref__ns
+  attr (builtins_ref__ns) push_symbol = "%Proj"
+  edge builtins_ref__ns -> ROOT_NODE
+  ;
+  node builtins_ref
+  attr (builtins_ref) push_symbol = "<builtins>"
+  edge builtins_ref -> builtins_ref__ns
+  ;
+  edge @prog.lexical_scope -> builtins_ref
+}
+
+;; Project and module definitions
+(program [(import_statement) (export_statement)]* @imexs)@prog {
+  var proj_scope = ROOT_NODE
+  if (not (eq PROJECT_NAME "")) {
+    ; project definition
+    node proj_def__ns
+    attr (proj_def__ns) pop_symbol = "%Proj"
+    edge proj_scope -> proj_def__ns
+    ;
+    node proj_def
+    attr (proj_def) pop_symbol = PROJECT_NAME
+    edge proj_def__ns -> proj_def
+    ;
+    set proj_scope = proj_def
+  }
+
+  ; expose globals
+  edge proj_scope -> @prog.globals
+
+  var mod_scope = proj_scope
+  if (not (is-empty @imexs)) {
+    ; module definition
+    let mod_name = (path-filestem FILE_PATH)
+    let mod_path = (path-normalize (path-join (path-dir FILE_PATH) mod_name))
+    ;
+    node mod_def__ns
+    attr (mod_def__ns) pop_symbol = "%M"
+    edge mod_scope -> mod_def__ns
+    set mod_scope = mod_def__ns
+    ;
+    scan mod_path {
+      "index$" {
+        ; skip last component for index files
+      }
+      "([^/]+)/?" {
+        node mod_def
+        attr (mod_def) pop_symbol = $1
+        edge mod_scope -> mod_def
+        set mod_scope = mod_def
+      }
+    }
+    ; make the last one a definition
+    attr (mod_scope) is_definition, source_node = @prog, empty_source_span
+    ; expose exports via module definition
+    edge mod_scope -> @prog.exports
+  } else {
+    ; expose definitions via project scope
+    edge mod_scope -> @prog.defs
+  }
+}
+
+;; Project and module reference
+(program [(import_statement) (export_statement)]* @imexs)@prog {
+  var proj_scope = ROOT_NODE
+  if (not (eq PROJECT_NAME "")) {
+    ; project reference
+    node proj_ref__ns
+    attr (proj_ref__ns) push_symbol = "%Proj"
+    edge proj_ref__ns -> proj_scope
+    ;
+    node proj_ref
+    attr (proj_ref) push_symbol = PROJECT_NAME
+    edge proj_ref -> proj_ref__ns
+    ;
+    set proj_scope = proj_ref
+  }
+
+  ; compose all project files by adding edge to the project reference
+  edge @prog.lexical_scope -> proj_scope
+
+  var mod_scope = proj_scope
+  if (not (is-empty @imexs)) {
+    ; module reference
+    node mod_ref__ns
+    attr (mod_ref__ns) push_symbol = "%M"
+    edge mod_ref__ns -> mod_scope
+    set mod_scope = mod_ref__ns
+    ;
+    let mod_dir = (path-normalize (path-dir FILE_PATH))
+    scan mod_dir {
+      "([^/]+)/?" {
+        node mod_ref
+        attr (mod_ref) push_symbol = $1
+        edge mod_ref -> mod_scope
+
+        node mod_node
+        edge mod_node -> mod_ref
+
+        node parent_def
+        attr (parent_def) pop_symbol = ".."
+        edge parent_def -> mod_scope
+        edge mod_node -> parent_def
+        attr (mod_node -> parent_def) precedence = 1 ; consume dots eagerly
+
+        set mod_scope = mod_node
+      }
+    }
+
+    ; relative import definition
+    node rel_def
+    attr (rel_def) pop_symbol = "%RelM"
+    edge rel_def -> mod_scope
+
+    ; expose reference in lexical scope
+    edge @prog.lexical_scope -> rel_def
+  }
+}
+
+(program
+  (_)@stmt
+)@prog {
+  ; propagate lexical scope
+  edge @stmt.lexical_scope -> @prog.lexical_scope
+
+  ; expose lexical and variable declarations
+  edge @prog.defs -> @stmt.lexical_defs
+  edge @prog.defs -> @stmt.var_defs
+
+  ; exports are visible via module definition
+  edge @prog.exports -> @stmt.exports
+
+  ; globals are visible in the project scope
+  edge @prog.globals -> @stmt.global_defs
+}
+
+
+;; hashbang
+
+(hash_bang_line) {
+}
+
+
+;; Comments
+
+(comment) {
+}
+
+
+
+;  #####
+; #     # #####   ##   ##### ###### #    # ###### #    # #####  ####
+; #         #    #  #    #   #      ##  ## #      ##   #   #   #
+;  #####    #   #    #   #   #####  # ## # #####  # #  #   #    ####
+;       #   #   ######   #   #      #    # #      #  # #   #        #
+; #     #   #   #    #   #   #      #    # #      #   ##   #   #    #
+;  #####    #   #    #   #   ###### #    # ###### #    #   #    ####
+;
+; ###################################################################
+
+;; Attributes defined on statements
+;
+; in .lexical_scope
+;     Lexical scope.
+;
+; out .lexical_defs
+;     Lexical definitions, that are block scoped
+;
+; out .var_defs
+;     Variable definitions, that are function scoped
+;
+; out .exports
+;     Exported definitions.
+;
+; out .default_export
+;    Nameless (but namespaced) exports for use in default and = exports.
+;
+; out .return_type
+;    Type of contained return statement.
+
+[
+    (abstract_class_declaration)
+    (ambient_declaration)
+    (break_statement)
+    (catch_clause)
+    (class_declaration)
+    (continue_statement)
+    (debugger_statement)
+    (do_statement)
+    (else_clause)
+    (empty_statement)
+    (enum_declaration)
+    (export_statement)
+    (expression_statement)
+    (finally_clause)
+    (for_in_statement)
+    (for_statement)
+    (function_declaration)
+    (function_signature)
+    (generator_function_declaration)
+    (hash_bang_line)
+    (if_statement)
+    (import_alias)
+    (import_statement)
+    (interface_declaration)
+    (internal_module)
+    (labeled_statement)
+    (lexical_declaration)
+    (module)
+    (return_statement)
+    (statement_block)
+    (switch_body)
+    (switch_case)
+    (switch_default)
+    (switch_statement)
+    (throw_statement)
+    (try_statement)
+    (type_alias_declaration)
+    (variable_declaration)
+    (while_statement)
+    (with_statement)
+]@stmt {
+  node @stmt.default_export
+  node @stmt.exports
+  node @stmt.global_defs
+  node @stmt.lexical_defs
+  node @stmt.lexical_scope
+  node @stmt.return_type
+  node @stmt.var_defs
+}
+
+
+;; Imports & Exports (The Many Faced God)
+;
+; TypeScript has many import / export forms. Below is a condensed presentation that can be used as a reference
+; for the sections below where the actual rules are defined. One has to be careful with the queries to ensure
+; that cases do not overlap, even if their syntactic forms (partially) do. This must be done by adding negative
+; matches to some queries. This overview should make it easier to spot where negative are required.
+;
+;;;; Exports
+;
+; export_statement :=
+;    (export_statement "*"                                source:(_)@from) ; export * from MODULE              ; re-export everything from MODULE
+;  | (export_statement (namespace_export (identifier)@ns) source:(_)@from) ; export * as NAMESPACE from MODULE ; re-export MODULE as NAMESPACE
+;  | (export_statement  "default" value:(_)@value)                         ; export default EXPRESSION         ; export EXPRESSION as default
+;  | (export_statement  "default" declaration:(_)@decl)                    ; export default DECLARATION        ; export DECLARATION as default
+;  | (export_statement ^"default" declaration:(_)@decl)                    ; export DECL                       ; export DECLARATION
+;  | (export_statement "type"? (export_clause)@clause  source:(_)@from)    ; export (type) CLAUSE from MODULE  ; re-export (type) identifiers from MODULE
+;  | (export_statement "type"? (export_clause)@clause !source         )    ; export (type) CLAUSE              ; export (type) identifiers
+;  | (export_statement "=" . (expression)@value)                           ; export = EXPRESSION               ; export EXPRESSION as exports object
+;  | (export_statement "as" "namespace" . (_)@ns)                          ; export as namespace NAMESPACE     ; export this module as global NAMESPACE
+;
+; export_clause :=
+;    (export_clause (export_specifier)*)                                   ; { EXPORT_SPECIFIER* }
+;
+; export_specifier :=
+;    (export_specifier name:(_)  alias:(_))                                ; NAME
+;  | (export_specifier name:(_) !alias    )                                ; NAME as ALIAS
+;
+;;;; Imports
+;
+; import_statement :=
+;    ; note that the first case overlaps with the two after it, but the behaviour is orthogonal
+;    (import_statement "type"?  (import_clause (identifier)@name                                   ) source:(_)@from)  ; import (type) NAME from MODULE           ; import default (type) from MODULE as NAME
+;  | (import_statement "type"?  (import_clause                   (namespace_import (identifier)@ns)) source:(_)@from)  ; import (type) * as NAMESPACE from MODULE ; import all (type) identifiers from MODULE in NAMESPACE
+;  | (import_statement "type"?  (import_clause                   (named_imports)@named_imports     ) source:(_)@from)  ; import (type) NAMED_IMPORTS from MODULE  ; import named (type) identifiers from MODULE
+;  | (import_statement "type"? ^(import_clause)                                                      source:(_)@from)  ; import (type) MODULE                     ; do not import any identifiers from MODULE
+;  | (import_statement "type"?  (import_require_clause (identifier)@name                             source:(_)@from)) ; import (type) NAME = require(MODULE)     ; import exports object (type) as NAME from MODULE
+;
+; named_imports :=
+;    (named_imports (import_specifier)*)                                                              ; { IMPORT_SPECIFIER* }
+;
+; import_specifier :=
+;    (import_specifier name:(_)  alias:(_))                                                           ; NAME
+;    (import_specifier name:(_) !alias    )                                                           ; NAME as ALIAS
+;
+; Note that the grammar productions for imports and exports are factored slightly
+; different. The statements above are inlined such that corresponding import and
+; export statements all live in the top-level list. Be mindful that (export_clause)
+; corresponds to (import_clause (named_imports)) and not to (import_cluase)!
+;
+; The presence of a "type" modifier does not fundamentally change the way a certain
+; export/import variant works, only which identifiers are included in the import/export.
+; Therefore, we do not handle that as different export/export variants, but deal with that
+; in the rules for the various clauses, which already determine the identifiers involved.
+
+;; Module References
+
+[
+  (export_statement                        source:(_)@from )
+  (import_statement                        source:(_)@from )
+  (import_statement (import_require_clause source:(_)@from))
+]@import_stmt {
+  let mod_path = (replace (source-text @from) "[\"\']" "")
+
+  ; relative or non-relative import specific
+  node mod_ref__ns
+  edge mod_ref__ns -> @import_stmt.lexical_scope
+  scan mod_path {
+    "^\\..*$" { ; relative imports
+      attr (mod_ref__ns) push_symbol = "%RelM"
+    }
+    "^.+$" { ; non-relative imports
+      attr (mod_ref__ns) push_symbol = "%NonRelM"
+    }
+  }
+
+  ; module reference
+  var mod_scope = mod_ref__ns
+  scan (path-normalize mod_path) {
+    "([^/]+)/?" {
+      node mod_ref
+      attr (mod_ref) push_symbol = $1
+      edge mod_ref -> mod_scope
+      ;
+      set mod_scope = mod_ref
+    }
+  }
+  ; make the last one a reference
+  attr (mod_scope) is_reference, source_node = @from
+  ; expose mod_ref
+  let @from.mod_ref = mod_scope
+}
+
+;; Named Clauses
+
+[
+  (export_statement "type"? (export_clause               )@clause)
+  (import_statement "type"? (import_clause (named_imports)@clause))
+] {
+  node @clause.defs
+  node @clause.exports
+  node @clause.lexical_defs
+  node @clause.lexical_scope
+}
+
+;;;; Types
+
+[
+  (export_statement "type"? (export_clause                (export_specifier name:(_)@name))@clause)
+  (import_statement "type"? (import_clause (named_imports (import_specifier name:(_)@name))@clause))
+] {
+  node @name.type_def
+  node @name.type_def__ns
+  node @name.type_ref
+  node @name.type_ref__ns
+
+  ; type reference
+  attr (@name.type_ref) node_reference = @name
+  edge @name.type_ref -> @name.type_ref__ns
+  ;
+  attr (@name.type_ref__ns) push_symbol = "%T"
+  edge @name.type_ref__ns -> @clause.lexical_scope
+}
+
+[
+  (export_statement "type"? (export_clause                (export_specifier name:(_)@name !alias))@clause)
+  (import_statement "type"? (import_clause (named_imports (import_specifier name:(_)@name !alias))@clause))
+] {
+  ; type definition
+  edge @clause.defs -> @name.type_def__ns ; FIXME defs, lexical_defs?
+  ;
+  attr (@name.type_def__ns) pop_symbol = "%T"
+  edge @name.type_def__ns -> @name.type_def
+  ;
+  attr (@name.type_def) node_definition = @name
+  edge @name.type_def -> @name.type_ref
+}
+
+[
+  (export_statement "type"? (export_clause                (export_specifier name:(_)@name alias:(_)@alias))@clause)
+  (import_statement "type"? (import_clause (named_imports (import_specifier name:(_)@name alias:(_)@alias))@clause))
+] {
+  node @alias.type_def
+  node @alias.type_def__ns
+  node @alias.type_ref
+
+  ; type definition
+  edge @clause.defs -> @alias.type_def__ns
+  ;
+  attr (@alias.type_def__ns) pop_symbol = "%T"
+  edge @alias.type_def__ns -> @alias.type_def
+  ;
+  attr (@alias.type_def) node_definition = @alias
+  edge @alias.type_def -> @name.type_ref
+}
+
+
+;;;; Expressions
+
+[
+  (export_statement "type"?@is_type (export_clause                (export_specifier name:(_)@name))@clause)
+  (import_statement "type"?@is_type (import_clause (named_imports (import_specifier name:(_)@name))@clause))
+] {
+if none @is_type {
+  node @name.expr_def
+  node @name.expr_def__ns
+  node @name.expr_ref
+  node @name.expr_ref__ns
+
+  ; expr reference
+  attr (@name.expr_ref) node_reference = @name
+  edge @name.expr_ref -> @name.expr_ref__ns
+  ;
+  attr (@name.expr_ref__ns) push_symbol = "%E"
+  edge @name.expr_ref__ns -> @clause.lexical_scope
+}
+}
+
+[
+  (export_statement "type"?@is_type (export_clause                (export_specifier name:(_)@name !alias))@clause)
+  (import_statement "type"?@is_type (import_clause (named_imports (import_specifier name:(_)@name !alias))@clause))
+] {
+if none @is_type {
+  ; expr definition
+  edge @clause.defs -> @name.expr_def__ns ; FIXME defs, lexical_defs?
+  ;
+  attr (@name.expr_def__ns) pop_symbol = "%E"
+  edge @name.expr_def__ns -> @name.expr_def
+  ;
+  attr (@name.expr_def) node_definition = @name
+  edge @name.expr_def -> @name.expr_ref
+}
+}
+
+[
+  (export_statement "type"?@is_type (export_clause                (export_specifier name:(_)@name alias:(_)@alias))@clause)
+  (import_statement "type"?@is_type (import_clause (named_imports (import_specifier name:(_)@name alias:(_)@alias))@clause))
+] {
+if none @is_type {
+  node @alias.expr_def
+  node @alias.expr_def__ns
+  node @alias.expr_ref
+
+  ; expr definition
+  edge @clause.defs -> @alias.expr_def__ns
+  ;
+  attr (@alias.expr_def__ns) pop_symbol = "%E"
+  edge @alias.expr_def__ns -> @alias.expr_def
+  ;
+  attr (@alias.expr_def) node_definition = @alias
+  edge @alias.expr_def -> @name.expr_ref
+}
+}
+
+;; Exports
+
+; export * from from MODULE
+;
+; (export_statement
+;   "*" source:(string)@name
+; )@export_stmt
+
+(export_statement
+  "*" source:(_)@name
+)@export_stmt {
+  ; export everything from source module
+  edge @export_stmt.exports -> @name.mod_ref
+}
+
+; export CLAUSE from MODULE
+; export type CLAUSE from MODULE
+;
+; (export_statement
+;   "type"? (export_clause)@clause source:(_)@name
+; )@export_stmt
+
+(export_statement
+  "type"? (export_clause)@clause source:(_)@name
+)@export_stmt {
+  ; propagate lexical scope
+  edge @clause.lexical_scope -> @name.mod_ref
+
+  ; propagate exports
+  edge @export_stmt.exports -> @clause.defs
+}
+
+; export CLAUSE
+; export type CLAUSE
+;
+; (export_statement
+;   "type"?
+;   (export_clause)@clause
+; )@export_stmt
+
+(export_statement
+  "type"?
+  (export_clause)@clause
+  !source
+)@export_stmt {
+  ; propagate lexical scope
+  edge @clause.lexical_scope -> @export_stmt.lexical_scope
+
+  ; propagate exports
+  edge @export_stmt.exports -> @clause.defs
+}
+
+; export DECL
+;
+; (export_statement
+;   ^"default"
+;   declaration:(_)@decl
+; )@export_stmt
+
+(export_statement
+  "default"?@is_default
+  declaration:(_)@decl
+)@export_stmt {
+if none @is_default {
+  ; propagate lexical scope
+  edge @decl.lexical_scope -> @export_stmt.lexical_scope
+
+  ; expose lexical definitions
+  edge @export_stmt.lexical_defs -> @decl.lexical_defs
+
+  ; expose variable definitions
+  edge @export_stmt.var_defs -> @decl.var_defs
+
+  ; export the definitions
+  edge @export_stmt.exports -> @decl.lexical_defs
+  edge @export_stmt.exports -> @decl.var_defs
+}
+}
+
+; export default DECL
+;
+; (export_statement
+;   "default"
+;   declaration:(_)@decl
+; )@export_stmt
+
+; export default EXPR
+;
+; (export_statement
+;   "default"
+;   value:(_)@expr
+; )@export_stmt
+
+; export = NAME
+;
+; (export_statement
+;   "="
+;   (expression)@expr
+; )@export_stmt
+
+; NOTE Default exports are modeled as variables named "default", because the grammar
+;      treats "default" as a regular identifier instead of a keyword. This approach
+;      ensures renaming imports such as `import { default as X } from ...` work correctly.
+;
+;      Default exports are generally expressions. However, if the export is specified as
+;      an identifier, the type with that name is also exported.
+
+(export_statement
+  ["default" "="]
+)@export_stmt {
+  node @export_stmt.default_def
+  node @export_stmt.default_expr_def
+  node @export_stmt.default_expr_def__ns_pop
+  node @export_stmt.default_expr_def__ns_push
+  node @export_stmt.default_type_def
+  node @export_stmt.default_type_def__ns_pop
+  node @export_stmt.default_type_def__ns_push
+
+  ; export as default expr
+  edge @export_stmt.exports -> @export_stmt.default_expr_def__ns_pop
+  ;
+  attr (@export_stmt.default_expr_def__ns_pop) pop_symbol = "%E"
+  edge @export_stmt.default_expr_def__ns_pop -> @export_stmt.default_expr_def
+  ;
+  ;; @export_stmt.default_expr_def pop_symbol set below for "default" and "="
+  edge @export_stmt.default_expr_def -> @export_stmt.default_expr_def__ns_push
+  ;
+  attr (@export_stmt.default_expr_def__ns_push) push_symbol = "%E"
+  edge @export_stmt.default_expr_def__ns_push -> @export_stmt.default_def
+
+  ; export as default type
+  edge @export_stmt.exports -> @export_stmt.default_type_def__ns_pop
+  ;
+  attr (@export_stmt.default_type_def__ns_pop) pop_symbol = "%T"
+  edge @export_stmt.default_type_def__ns_pop -> @export_stmt.default_type_def
+  ;
+  ;; @export_stmt.default_expr_def pop_symbol set below for "default" and "="
+  edge @export_stmt.default_type_def -> @export_stmt.default_type_def__ns_push
+  ;
+  attr (@export_stmt.default_type_def__ns_push) push_symbol = "%T"
+  edge @export_stmt.default_type_def__ns_push -> @export_stmt.default_def
+}
+
+(export_statement
+  "default"
+)@export_stmt {
+  attr (@export_stmt.default_expr_def) symbol_definition = "default", source_node = @export_stmt
+  attr (@export_stmt.default_type_def) symbol_definition = "default", source_node = @export_stmt
+}
+
+(export_statement
+  "="
+)@export_stmt {
+  attr (@export_stmt.default_expr_def) symbol_definition = "<exports>", source_node = @export_stmt
+  attr (@export_stmt.default_type_def) symbol_definition = "<exports>", source_node = @export_stmt
+}
+
+(export_statement
+  "default"
+  declaration:(_)@decl
+)@export_stmt {
+  ; propagate lexical scope
+  edge @decl.lexical_scope -> @export_stmt.lexical_scope
+
+  ; expose lexical definitions
+  edge @export_stmt.lexical_defs -> @decl.lexical_defs
+
+  ; expose variable definitions
+  edge @export_stmt.var_defs -> @decl.var_defs
+
+  ; export as default
+  edge @export_stmt.default_def -> @decl.default_export
+}
+
+[
+  (export_statement "default" value:(_)@expr)@export_stmt
+  (export_statement "=" . (_)@expr)@export_stmt
+] {
+  node @export_stmt.default_expr__ns
+  node @export_stmt.default_expr__typeof
+
+  ; propagate lexical scope
+  edge @expr.lexical_scope -> @export_stmt.lexical_scope
+
+  ; expose lexical definitions
+  edge @export_stmt.lexical_defs -> @expr.lexical_defs
+
+  ; expose variable definitions
+  edge @export_stmt.var_defs -> @expr.var_defs
+
+  ; export expression as default
+  edge @export_stmt.default_def -> @export_stmt.default_expr__ns
+  ;
+  attr (@export_stmt.default_expr__ns) pop_symbol = "%E"
+  edge @export_stmt.default_expr__ns -> @export_stmt.default_expr__typeof
+  ;
+  attr (@export_stmt.default_expr__typeof) pop_symbol = ":"
+  edge @export_stmt.default_expr__typeof -> @expr.type
+}
+
+; NOTE an identifier in a default export can also be a type reference
+[
+  (export_statement "default" value:(identifier)@name)@export_stmt
+  (export_statement "=" . (identifier)@name)@export_stmt
+] {
+  node @export_stmt.default_type__ns
+  node @name.type_ref
+  node @name.type_ref__ns
+
+  ; export type as default
+  edge @export_stmt.default_def -> @export_stmt.default_type__ns
+  ;
+  attr (@export_stmt.default_type__ns) pop_symbol = "%T"
+  edge @export_stmt.default_type__ns -> @name.type_ref
+  ;
+  attr (@name.type_ref) node_reference = @name
+  edge @name.type_ref -> @name.type_ref__ns
+  ;
+  attr (@name.type_ref__ns) push_symbol = "%T"
+  edge @name.type_ref__ns -> @export_stmt.lexical_scope
+}
+
+; export * as namespace NAME
+
+; (export_statement
+;   (namespace_export (identifier)@ns)
+;   source:(_)@from
+; )
+
+(export_statement
+  (namespace_export (identifier))
+  source:(_)@name
+)@export_stmt {
+  ; namespace definitions are specified together with (module) and (internal_module)
+
+  ; export definitions
+  edge @export_stmt.exports -> @name.expr_def__ns
+  edge @export_stmt.exports -> @name.type_def__ns
+
+  ; connect definitions to exports
+  edge @export_stmt.expr_member__ns -> @name.mod_ref
+  edge @export_stmt.type_member__ns -> @name.mod_ref
+}
+
+; export as namespace NAME
+;
+; (export_statement
+;   "as"
+;   "namespace"
+;   (identifier)@name
+; )@export_stmt
+
+(program (export_statement
+  "as" "namespace" . (_)@name
+)@export_stmt)@prog {
+  ; namespace definitions are specified together with (module) and (internal_module)
+
+  ; make definitions global
+  edge @prog.globals -> @name.expr_def__ns
+  edge @prog.globals -> @name.type_def__ns
+
+  ; connect definitions to exports
+  edge @export_stmt.expr_member__ns -> @prog.exports
+  edge @export_stmt.type_member__ns -> @prog.exports
+}
+
+;; Imports
+
+; import MODULE
+;
+; (import_statement
+;   ^(import_clause)
+;   source:(_)@from
+; )@import_stmt
+
+(import_statement
+  "type"?
+  (import_clause)?@has_clause
+  source:(_)
+) {
+if none @has_clause {
+  ; do nothing, imported for side-effect only
+}
+}
+
+; import (type) NAMED_IMPORTS from MODULE
+
+(import_statement
+  "type"?
+  (import_clause (named_imports)@clause)
+  source:(_)@from
+)@import_stmt {
+  ; use module for lexical scope of import clause
+  edge @clause.lexical_scope -> @from.mod_ref
+
+  ; expose imported definitions
+  edge @import_stmt.lexical_defs -> @clause.defs
+}
+
+; import (type) NAME from MODULE
+; import (type) NAME = require(MODULE)
+
+[
+  (import_statement "type"? (import_clause         (identifier)) source:(_)@from)@import_stmt
+  (import_statement "type"? (import_require_clause (identifier)  source:(_)@from))@import_stmt
+] {
+  node @import_stmt.default_ref
+
+  ; connect default refererence to module
+  edge @import_stmt.default_ref -> @from.mod_ref
+}
+
+;;;; Types
+
+[
+  (import_statement "type"? (import_clause         (identifier)@name))@import_stmt
+  (import_statement "type"? (import_require_clause (identifier)@name))@import_stmt
+] {
+  node @import_stmt.type_def
+  node @import_stmt.type_def__ns
+  node @import_stmt.default_type_ref
+  node @import_stmt.default_type_ref__ns
+
+  ; type definition
+  edge @import_stmt.lexical_defs -> @import_stmt.type_def__ns
+  ;
+  attr (@import_stmt.type_def__ns) pop_symbol = "%T"
+  edge @import_stmt.type_def__ns -> @import_stmt.type_def
+  ;
+  attr (@import_stmt.type_def) node_definition = @name
+  edge @import_stmt.type_def -> @import_stmt.default_type_ref
+  ;
+  ;; @import_stmt.default_type_ref pop_symbol set below for "default" and "="
+  edge @import_stmt.default_type_ref -> @import_stmt.default_type_ref__ns
+  ;
+  attr (@import_stmt.default_type_ref__ns) push_symbol = "%T"
+  edge @import_stmt.default_type_ref__ns -> @import_stmt.default_ref
+}
+
+(import_statement "type"? (import_clause (identifier)))@import_stmt {
+  attr (@import_stmt.default_type_ref) symbol_reference = "default", source_node = @import_stmt
+}
+
+(import_statement "type"? (import_require_clause (identifier)))@import_stmt {
+  attr (@import_stmt.default_type_ref) symbol_reference = "<exports>", source_node = @import_stmt
+}
+
+;;;; Expressions
+
+[
+  (import_statement "type"?@is_type (import_clause         (identifier)@name))@import_stmt
+  (import_statement "type"?@is_type (import_require_clause (identifier)@name))@import_stmt
+] {
+if none @is_type {
+  node @import_stmt.expr_def
+  node @import_stmt.expr_def__ns
+  node @import_stmt.default_expr_ref
+  node @import_stmt.default_expr_ref__ns
+
+  ; expr definition
+  edge @import_stmt.lexical_defs -> @import_stmt.expr_def__ns
+  ;
+  attr (@import_stmt.expr_def__ns) pop_symbol = "%E"
+  edge @import_stmt.expr_def__ns -> @import_stmt.expr_def
+  ;
+  attr (@import_stmt.expr_def) node_definition = @name
+  edge @import_stmt.expr_def -> @import_stmt.default_expr_ref
+  ;
+  ;; @import_stmt.default_expr_ref pop_symbol set below for "default" and "="
+  edge @import_stmt.default_expr_ref -> @import_stmt.default_expr_ref__ns
+  ;
+  attr (@import_stmt.default_expr_ref__ns) push_symbol = "%E"
+  edge @import_stmt.default_expr_ref__ns -> @import_stmt.default_ref
+}
+}
+
+(import_statement "type"?@is_type (import_clause (identifier)))@import_stmt {
+if none @is_type {
+  attr (@import_stmt.default_expr_ref) symbol_reference = "default", source_node = @import_stmt
+}
+}
+
+(import_statement "type"?@is_type (import_require_clause (identifier)))@import_stmt {
+if none @is_type {
+  attr (@import_stmt.default_expr_ref) symbol_reference = "<exports>", source_node = @import_stmt
+}
+}
+
+; import (type) * as NAMESPACE from MODULE
+
+(import_statement
+  "type"?
+  (import_clause (namespace_import (identifier)))
+  source:(_)@from
+)@import_stmt {
+  ; namespace definitions are specified together with (module) and (internal_module)
+
+  ; connect definitions to import
+  edge @import_stmt.expr_member__ns -> @from.mod_ref
+  edge @import_stmt.type_member__ns -> @from.mod_ref
+}
+
+;; Import Alias
+
+; import ID = ID | NESTED_ID
+
+; (import_alias
+;   (identifier)
+;   [(identifier) (nested_identifier)]
+; ) {}
+
+
+
+;; Debugger
+
+; debugger;
+; debugger
+
+(debugger_statement) {
+}
+
+
+
+;; Expression
+
+; 1;
+
+(expression_statement (_)@expr)@expr_stmt {
+  ; propagate lexical scope
+  edge @expr.lexical_scope -> @expr_stmt.lexical_scope
+}
+
+
+
+;; Declaration
+
+;; Variable Declarations
+
+; var foo;
+; var x = 1;
+; var x, y = {}, z;
+; let baz = bar;
+; const quux = baz;
+
+(variable_declaration (variable_declarator)@declor)@decl {
+  ; propagate lexical scope
+  edge @declor.lexical_scope -> @decl.lexical_scope
+
+  ; local definitions
+  edge @decl.var_defs -> @declor.defs
+
+  ; default export
+  edge @decl.default_export -> @declor.default_export
+}
+
+(lexical_declaration  (variable_declarator)@declor)@decl {
+  ; propagate lexical scope
+  edge @declor.lexical_scope -> @decl.lexical_scope
+
+  ; local definitions
+  edge @decl.lexical_defs -> @declor.defs
+
+  ; default export
+  edge @decl.default_export -> @declor.default_export
+}
+
+
+;; Variable Declarator
+
+(variable_declarator)@decl {
+  node @decl.default_export
+  node @decl.defs
+  node @decl.lexical_scope
+}
+
+(variable_declarator
+  name:(_)@pat
+)@decl {
+  node @decl.expr_export
+  node @decl.type_export
+
+  ; propagate lexical scope
+  edge @pat.lexical_scope -> @decl.lexical_scope
+
+  ; local definitions from pattern
+  edge @decl.defs -> @pat.defs
+
+  ; default export
+  edge @decl.default_export -> @decl.expr_export
+  ;
+  attr (@decl.expr_export) pop_symbol = "%E"
+}
+
+(variable_declarator
+  name:(_)@pat
+  type:(_)@type
+)@decl {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @decl.lexical_scope
+
+  ; match pattern cotype to type annotation
+  edge @pat.cotype -> @type.type
+
+  ; default export
+  edge @decl.expr_export -> @type.type
+}
+
+(variable_declarator
+  name:(_)@pat
+  !type
+  value:(_)@value
+)@decl {
+  ; match pattern cotype to value type
+  edge @pat.cotype -> @value.type
+
+  ; default export
+  edge @decl.expr_export -> @value.type
+}
+
+(variable_declarator
+  value:(_)@value
+)@decl {
+  ; propagate lexical scope
+  edge @value.lexical_scope -> @decl.lexical_scope
+}
+
+(variable_declarator
+  type:(_)@type
+  value:(_)@value
+) {
+  ; match value cotype to type annotation
+  edge @value.cotype -> @type.type
+}
+
+
+
+;; Function Declarations
+
+; function foo(x) {
+;   return x;
+; }
+
+; (function_declaration
+;   name:(_)@name
+;   type_parameters:(_)@type_params ; opt
+;   parameters:(_)@call_sig
+;   body:(_)@body
+;   return_type:(_)@return_type ; opt
+; )@fun_decl
+
+; (generator_function_declaration
+;   name:(_)@name
+;   type_parameters:(_)@type_params ; opt
+;   parameters:(_)@call_sig
+;   body:(_)@body
+; )@fun_decl
+
+; (function_signature
+;   name:(_)@name
+;   type_parameters:(_)@type_params ; opt
+;   parameters:(_)@params
+;   return_type:(_)@return_type ; opt
+; )@fun_decl
+
+[
+  (function_declaration           name:(_)@name)
+  (generator_function_declaration name:(_)@name)
+  (function_signature             name:(_)@name)
+]@fun_decl {
+  node @fun_decl.callable
+  node @fun_decl.callable__params
+  node @fun_decl.callable__return
+  node @fun_decl.expr_export
+  node @name.expr_def
+  node @name.expr_def__ns
+  node @name.expr_def__typeof
+
+  ; function definition
+  edge @fun_decl.var_defs -> @name.expr_def__ns
+  ;
+  attr (@name.expr_def__ns) pop_symbol = "%E"
+  edge @name.expr_def__ns -> @name.expr_def
+  ;
+  attr (@name.expr_def) node_definition = @name
+
+  ; function type
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @fun_decl.callable
+  ;
+  attr (@fun_decl.callable) pop_symbol = "->"
+  edge @fun_decl.callable -> @fun_decl.generic_type
+  ;
+  edge @fun_decl.generic_inner_type -> @fun_decl.callable__params
+  edge @fun_decl.generic_inner_type -> @fun_decl.callable__return
+  ;
+  attr (@fun_decl.callable__return) pop_symbol = "<return>"
+
+  ; default export
+  edge @fun_decl.default_export -> @fun_decl.expr_export
+  ;
+  attr (@fun_decl.expr_export) pop_symbol = "%E"
+  edge @fun_decl.expr_export -> @fun_decl.callable
+}
+
+; type parameters are handled in generics rules
+
+[
+  (function_declaration           parameters:(_)@params)
+  (generator_function_declaration parameters:(_)@params)
+  (function_signature             parameters:(_)@params)
+]@fun_decl {
+  ; propagate lexical scope
+  edge @params.lexical_scope -> @fun_decl.generic_inner_lexical_scope
+
+  ; expose parameter definitions
+  edge @fun_decl.generic_inner_lexical_scope -> @params.defs
+  attr (@fun_decl.generic_inner_lexical_scope -> @params.defs) precedence = 1
+
+  ; expose parameters to type
+  edge @fun_decl.callable__params -> @params.params
+}
+
+[
+  (function_declaration           return_type:(_)@return_type)
+  (generator_function_declaration return_type:(_)@return_type)
+  (function_signature             return_type:(_)@return_type)
+]@fun_decl {
+  ; propagate lexical scope
+  edge @return_type.lexical_scope -> @fun_decl.generic_inner_lexical_scope
+
+  ; function type returns return type
+  edge @fun_decl.callable__return -> @return_type.type
+}
+
+[
+  (function_declaration           "async"?@is_async !return_type body:(_)@body)
+  (generator_function_declaration "async"?@is_async !return_type body:(_)@body)
+]@fun_decl {
+if none @is_async {
+  ; function returns body return type
+  edge @fun_decl.callable__return -> @body.return_type
+}
+}
+
+[
+  (function_declaration           body:(_)@body)
+  (generator_function_declaration body:(_)@body)
+]@fun_decl {
+  ; propagate lexical scope
+  edge @body.lexical_scope -> @fun_decl.generic_inner_lexical_scope
+
+  ; function scopes lexical and variable definitions
+  edge @fun_decl.generic_inner_lexical_scope -> @body.lexical_defs
+  attr (@fun_decl.generic_inner_lexical_scope -> @body.lexical_defs) precedence = 1
+  edge @fun_decl.generic_inner_lexical_scope -> @body.var_defs
+  attr (@fun_decl.generic_inner_lexical_scope -> @body.var_defs) precedence = 1
+}
+
+[
+  (function_declaration           "async" !return_type body:(_)@body)
+  (generator_function_declaration "async" !return_type body:(_)@body)
+]@fun_decl {
+  ; function returns body return type
+  edge @fun_decl.callable__return -> @fun_decl.async_type
+  ;
+  edge @fun_decl.await_type -> @body.return_type
+}
+
+
+
+;; (Abstract) Class & Interface Declaration
+
+; class Foo { }
+; class Bar extends Foo {
+;   baz() {}
+; }
+
+; (abstract_class_declaration
+;   decorator:(_) ; rep
+;   name:(_) ; opt
+;   type_parameters:(_) ; opt
+;   (class_heritage) ; opt
+;   body:(_)
+; ) {}
+
+; (class_declaration
+;   decorator:(_) ; rep
+;   name:(_) ; opt
+;   type_parameters:(_) ; opt
+;   (class_heritage) ; opt
+;   body:(_)
+; ) {}
+
+; (interface_declaration
+;   name:(_)@name
+;   type_parameters:(_) ; opt
+;   (extends_clause) ; opt
+;   body:(_)@body
+; )@decl
+
+; decorators
+[
+  (abstract_class_declaration decorator:(_)@dec)
+  (class_declaration          decorator:(_)@dec)
+]@class_decl {
+  ; connect lexical scope
+  edge @dec.lexical_scope -> @class_decl.lexical_scope
+}
+
+; definitions
+[
+  (abstract_class_declaration name:(_)@name)
+  (class_declaration          name:(_)@name)
+  (interface_declaration      name:(_)@name)
+]@class_decl {
+  node @class_decl.type_export
+  node @name.type_def
+  node @name.type_def__ns
+
+  ; type definition
+  edge @class_decl.lexical_defs -> @name.type_def__ns
+  ;
+  attr (@name.type_def__ns) pop_symbol = "%T"
+  edge @name.type_def__ns -> @name.type_def
+  ;
+  attr (@name.type_def) node_definition = @name
+  edge @name.type_def -> @class_decl.generic_type
+
+  ; default type export
+  edge @class_decl.default_export -> @class_decl.type_export
+  ;
+  attr (@class_decl.type_export) pop_symbol = "%T"
+  edge @class_decl.type_export -> @class_decl.generic_type
+}
+[
+  (abstract_class_declaration name:(_))
+  (class_declaration          name:(_))
+; NOTE not for interface_declaration as body is already a type with an endpoint of needed
+]@class_decl {
+  ; mark type scope as endpoint
+  attr (@class_decl.generic_inner_type) is_endpoint
+}
+[
+  (abstract_class_declaration name:(_)@name)
+  (class_declaration          name:(_)@name)
+]@class_decl {
+  node @class_decl.expr_export
+
+  ; class expr definition
+  edge @class_decl.lexical_defs -> @name.expr_def__ns
+  ;
+  attr (@name.expr_def__ns) pop_symbol = "%E"
+  edge @name.expr_def__ns -> @name.expr_def
+  ;
+  attr (@name.expr_def) node_definition = @name
+
+  ; type of expression is .static_type
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @class_decl.static_type
+
+  ; default expression export
+  edge @class_decl.default_export -> @class_decl.expr_export
+  ;
+  attr (@class_decl.expr_export) pop_symbol = "%E"
+  edge @class_decl.expr_export -> @class_decl.static_type
+
+  ; mark type scope as endpoint
+  attr (@class_decl.static_type) is_endpoint
+}
+
+; type parameters are handled in generics rules below
+
+; inheritance
+[
+  (abstract_class_declaration (class_heritage)@heritage)
+  (class_declaration          (class_heritage)@heritage)
+]@class_decl {
+  ; propagate lexical scope
+  edge @heritage.lexical_scope -> @class_decl.generic_inner_lexical_scope
+
+  ; class type inherits from heritage type
+  edge @class_decl.generic_inner_type -> @heritage.type_members
+  attr (@class_decl.generic_inner_type -> @heritage.type_members) precedence = 1
+
+  ; class object inherits from super class object
+  edge @class_decl.static_type -> @heritage.static_members
+  attr (@class_decl.static_type -> @heritage.static_members) precedence = 1
+
+  ; expose super definition
+  edge @class_decl.generic_inner_lexical_scope -> @heritage.lexical_defs
+}
+[
+  (interface_declaration (extends_type_clause)@extends)
+]@class_decl {
+  ; propagate lexical scope
+  edge @extends.lexical_scope -> @class_decl.generic_inner_lexical_scope
+
+  ; interface type inherits from extends type
+  edge @class_decl.generic_inner_type -> @extends.type_members
+}
+
+; this
+[
+  (abstract_class_declaration)
+  (class_declaration         )
+  (interface_declaration     )
+]@class_decl {
+  node @class_decl.this__expr_def
+  node @class_decl.this__expr_def__ns
+  node @class_decl.this__expr_def__typeof
+  node @class_decl.this__type_def
+  node @class_decl.this__type_def__ns
+  node @class_decl.static_type
+
+  ; this expr definition
+  edge @class_decl.generic_inner_lexical_scope -> @class_decl.this__expr_def__ns
+  ;
+  attr (@class_decl.this__expr_def__ns) pop_symbol = "%E"
+  edge @class_decl.this__expr_def__ns -> @class_decl.this__expr_def
+  ;
+  attr (@class_decl.this__expr_def) pop_symbol = "this", source_node = @class_decl, empty_source_span
+  edge @class_decl.this__expr_def -> @class_decl.this__expr_def__typeof
+  ;
+  attr (@class_decl.this__expr_def__typeof) pop_symbol = ":"
+  edge @class_decl.this__expr_def__typeof -> @class_decl.generic_inner_type
+
+  ; this type definition
+  ; FIXME this is more dynamic in reality
+  edge @class_decl.generic_inner_lexical_scope -> @class_decl.this__type_def__ns
+  ;
+  attr (@class_decl.this__type_def__ns) pop_symbol = "%T"
+  edge @class_decl.this__type_def__ns -> @class_decl.this__type_def
+  ;
+  attr (@class_decl.this__type_def) pop_symbol = "this"
+  edge @class_decl.this__type_def -> @class_decl.generic_inner_type
+}
+
+; default constructor
+; FIXME only if no other constructor is defined
+[
+  (abstract_class_declaration)
+  (class_declaration         )
+]@class_decl {
+  node @class_decl.ctor_def
+
+  ; default nullary constructor
+  edge @class_decl.static_type -> @class_decl.ctor_def
+  ;
+  attr (@class_decl.ctor_def) pop_symbol = "<new>"
+  ; FIXME constructor inherits type parameters of surrounding class
+  edge @class_decl.ctor_def -> @class_decl.generic_type
+}
+
+; body
+[
+  (abstract_class_declaration body:(_)@body)
+  (class_declaration          body:(_)@body)
+]@class_decl {
+  ; propagate lexical scope
+  ; FIXME the static members have access to type variables like this
+  edge @body.lexical_scope -> @class_decl.generic_inner_lexical_scope
+
+  ; class type consists of body members
+  edge @class_decl.generic_inner_type -> @body.type_members
+  attr (@class_decl.generic_inner_type -> @body.type_members) precedence = 2
+
+  ; class object consists of static members
+  edge @class_decl.static_type -> @body.static_members
+  attr (@class_decl.static_type -> @body.static_members) precedence = 2
+}
+[
+  (interface_declaration      body:(_)@body)
+]@class_decl {
+  ; propagate lexical scope
+  edge @body.lexical_scope -> @class_decl.generic_inner_lexical_scope
+
+  ; interface type equals body type
+  edge @class_decl.generic_inner_type -> @body.type
+}
+
+
+
+;; Class Body
+
+; (class_body
+;   [(decorator)
+;    (method_definition)
+;    (abstract_method_signature)
+;    (index_signature)
+;    (method_signature)
+;    (public_field_definition)]
+; )
+
+(class_body)@class_body {
+  node @class_body.lexical_scope
+  node @class_body.type_members
+  node @class_body.static_members
+}
+
+(class_body
+  (_)@mem
+)@class_body {
+  ; propagate lexical scope
+  edge @mem.lexical_scope -> @class_body.lexical_scope
+
+  ; body members are member definitions
+  edge @class_body.type_members -> @mem.type_members
+
+  ; body static members are static member definitions
+  edge @class_body.static_members -> @mem.static_members
+}
+
+
+
+;; Statement Block
+
+(statement_block
+  (_)@stmt
+)@block {
+  ; propagate lexical scope
+  edge @stmt.lexical_scope -> @block.lexical_scope
+
+  ; lexical definitions are scoped by the block
+  edge @block.lexical_scope -> @stmt.lexical_defs
+  attr (@block.lexical_scope -> @stmt.lexical_defs) precedence = 1
+
+  ; variable definitions escape the block
+  edge @block.var_defs -> @stmt.var_defs
+
+  ; exports escape the block (for use in namespaces and ambient modules)
+  edge @block.exports -> @stmt.exports
+
+  ; expose return type
+  edge @block.return_type -> @stmt.return_type
+}
+
+
+
+;; If
+
+; if (x)
+;   log(y);
+
+; if (a.b) {
+;   log(c);
+;   d;
+; }
+
+; if (x)
+;   y;
+; else if (a)
+;   b;
+
+; if (a) {
+;   c;
+; } else {
+;   e;
+; }
+
+(if_statement
+  condition:(_)@condition
+)@if_stmt {
+  ; propagate lexical scope
+  edge @condition.lexical_scope -> @if_stmt.lexical_scope
+
+  ; lexical definitions
+  edge @if_stmt.lexical_defs -> @condition.lexical_defs
+
+  ; variable definitions
+  edge @if_stmt.var_defs -> @condition.var_defs
+
+  ; expose return type
+  edge @if_stmt.return_type -> @condition.return_type
+}
+(if_statement
+  consequence:(_)@consequence
+)@if_stmt {
+  ; propagate lexical scope
+  edge @consequence.lexical_scope -> @if_stmt.lexical_scope
+
+  ; lexical definitions
+  edge @if_stmt.lexical_defs -> @consequence.lexical_defs
+
+  ; variable definitions
+  edge @if_stmt.var_defs -> @consequence.var_defs
+
+  ; expose return type
+  edge @if_stmt.return_type -> @consequence.return_type
+}
+(if_statement
+  alternative:(_)@alternative
+)@if_stmt {
+  ; propagate lexical scope
+  edge @alternative.lexical_scope -> @if_stmt.lexical_scope
+
+  ; lexical definitions
+  edge @if_stmt.lexical_defs -> @alternative.lexical_defs
+
+  ; variable definitions
+  edge @if_stmt.var_defs -> @alternative.var_defs
+
+  ; expose return type
+  edge @if_stmt.return_type -> @alternative.return_type
+}
+
+(else_clause (_)@inner)@else_clause {
+  ; propagate lexical scope
+  edge @inner.lexical_scope -> @else_clause.lexical_scope
+
+  ; lexical definitions
+  edge @else_clause.lexical_defs -> @inner.lexical_defs
+
+  ; variable definitions
+  edge @else_clause.var_defs -> @inner.var_defs
+
+  ; expose return type
+  edge @else_clause.return_type -> @inner.return_type
+}
+
+
+
+;; Switch
+
+; switch (x) {
+;   case 1:
+;   case 2:
+;     something();
+;     break;
+;   case "three":
+;     somethingElse();
+;     break;
+;   default:
+;     return 4;
+; }
+
+(switch_statement
+  value:(_)
+  body:(_)@body
+)@switch_stmt {
+  ; propagate lexical scope
+  edge @body.lexical_scope -> @switch_stmt.lexical_scope
+
+  ; variable definitions
+  edge @switch_stmt.var_defs -> @body.var_defs
+
+  ; expose return type
+  edge @switch_stmt.return_type -> @body.return_type
+}
+
+(switch_body
+  (_)@choice
+)@switch_body {
+  ; propagate lexical scope
+  edge @choice.lexical_scope -> @switch_body.lexical_scope
+
+  ; lexical definitions are scoped in the body
+  edge @switch_body.lexical_scope -> @choice.lexical_defs
+  attr (@switch_body.lexical_scope -> @choice.lexical_defs) precedence = 1
+
+  ; variable definitions escape
+  edge @switch_body.var_defs -> @choice.var_defs
+
+  ; expose return type
+  edge @switch_body.return_type -> @choice.return_type
+}
+
+(switch_case
+  value:(_)
+  body: (_)@stmt
+)@switch_case {
+  ; propagate lexical scope
+  edge @stmt.lexical_scope -> @switch_case.lexical_scope
+
+  ; lexical definitions
+  edge @switch_case.lexical_defs -> @stmt.lexical_defs
+
+  ; variable definitions
+  edge @switch_case.var_defs -> @stmt.var_defs
+
+  ; expose return type
+  edge @switch_case.return_type -> @stmt.return_type
+}
+
+(switch_default
+  body: (_)@stmt
+)@switch_default {
+  ; propagate lexical scope
+  edge @stmt.lexical_scope -> @switch_default.lexical_scope
+
+  ; lexical definitions
+  edge @switch_default.lexical_defs -> @stmt.lexical_defs
+
+  ; variable definitions
+  edge @switch_default.var_defs -> @stmt.var_defs
+
+  ; expose return type
+  edge @switch_default.return_type -> @stmt.return_type
+}
+
+
+
+;; For
+
+; for (var a, b; c; d)
+;   e;
+
+; for (i = 0, init(); i < 10; i++)
+;   log(y);
+
+; for (;;) {
+;   z;
+;   continue;
+; }
+
+; (for_statement
+;   initializer:(_)@initializer
+;   condition:(_)@condition
+;   increment:(_)@increment ; opt
+;   body:(_)@body
+; )@for_stmt
+
+(for_statement
+  initializer:(_)@initializer
+  condition:(_)@condition
+  body:(_)@body
+)@for_stmt {
+  ; propagate lexical scope
+  edge @initializer.lexical_scope -> @for_stmt.lexical_scope
+  edge @condition.lexical_scope -> @for_stmt.lexical_scope
+  edge @body.lexical_scope -> @for_stmt.lexical_scope
+
+  ; initializer lexical definition is scoped in loop
+  edge @for_stmt.lexical_scope -> @initializer.lexical_defs
+  attr (@for_stmt.lexical_scope -> @initializer.lexical_defs) precedence = 1
+
+  ; initializer variable definition escapes the loop
+  edge @for_stmt.var_defs -> @initializer.var_defs
+
+  ; body lexical definitions are scoped in loop
+  edge @for_stmt.lexical_scope -> @body.lexical_defs
+  attr (@for_stmt.lexical_scope -> @body.lexical_defs) precedence = 1
+
+  ; body variable definitions escape the loop
+  edge @for_stmt.var_defs -> @body.var_defs
+
+  ; expose return type
+  edge @for_stmt.return_type -> @body.return_type
+}
+
+(for_statement
+  increment:(_)@increment
+)@for_stmt {
+  ; propagate lexical scope
+  edge @increment.lexical_scope -> @for_stmt.lexical_scope
+}
+
+
+
+;; For In / For Of
+
+; for (item in items)
+;   item();
+; for (var item in items || {})
+;   item();
+; for (const {thing} in things)
+;   thing();
+; for (x in a, b, c)
+;   foo();
+; for (x[i] in a) {}
+; for (x.y in a) {}
+; for ([a, b] in c) {}
+; for ((a) in b) {}
+
+; for (a of b) {}
+
+(for_in_statement
+  left:(_)@left
+  right:(_)@right
+  body:(_)@body
+)@for_in_stmt {
+  ; propagate lexical scope
+  edge @left.lexical_scope -> @for_in_stmt.lexical_scope
+  edge @right.lexical_scope -> @for_in_stmt.lexical_scope
+  edge @body.lexical_scope -> @for_in_stmt.lexical_scope
+
+  ; expose return type
+  edge @for_in_stmt.return_type -> @body.return_type
+}
+
+(for_in_statement
+  "var"
+  left:(_)@pat
+)@for_in_stmt {
+  ; variable definition escapes
+  edge @for_in_stmt.var_defs -> @pat.defs
+}
+
+(for_in_statement
+  ["let" "const"]
+  left:(_)@pat
+)@for_in_stmt {
+  ; lexical declaration are locally scoped
+  edge @for_in_stmt.lexical_scope -> @pat.defs
+}
+
+(for_in_statement
+  left:(_)@pat
+  "of"
+  right:(_)@expr
+)@for_in_stmt {
+  node @for_in_stmt.indexable
+
+  ; connect pattern cotype to index of expression
+  edge @pat.cotype -> @for_in_stmt.indexable
+  ;
+  attr (@for_in_stmt.indexable) push_symbol = "[]"
+  edge @for_in_stmt.indexable -> @expr.type
+}
+
+
+
+;; While
+
+; while (a)
+;   b();
+
+; while (a) {
+
+; }
+
+(while_statement
+  condition:(_)@condition
+  body:(_)@body
+)@while_stmt {
+  ; propagate lexical scope
+  edge @condition.lexical_scope -> @while_stmt.lexical_scope
+  edge @body.lexical_scope -> @while_stmt.lexical_scope
+
+  ; lexical definitions escape
+  edge @while_stmt.lexical_defs -> @body.lexical_defs
+
+  ; variable definitions escape
+  edge @while_stmt.var_defs -> @body.var_defs
+
+  ; expose return type
+  edge @while_stmt.return_type -> @body.return_type
+}
+
+
+
+;; Do
+
+; do {
+;   a;
+; } while (b)
+
+; do a; while (b)
+
+; do {} while (b)
+
+(do_statement
+  body:(_)@body
+  condition:(_)@condition
+)@do_stmt {
+  ; propagate lexical scope
+  edge @condition.lexical_scope -> @do_stmt.lexical_scope
+  edge @body.lexical_scope -> @do_stmt.lexical_scope
+
+  ; lexical definitions escape
+  edge @do_stmt.lexical_defs -> @body.lexical_defs
+
+  ; variable definitions escape
+  edge @do_stmt.var_defs -> @body.var_defs
+
+  ; expose return type
+  edge @do_stmt.return_type -> @body.return_type
+}
+
+
+
+;; Try
+
+; try { a; } catch (b) { c; }
+; try { d; } finally { e; }
+; try { f; } catch { g; } finally { h; }
+; try { throw [a, b] } catch ([c, d]) { }
+
+(try_statement
+  body:(_)@body
+)@try_stmt {
+  ; propagate lexical scope
+  edge @body.lexical_scope -> @try_stmt.lexical_scope
+
+  ; lexical definitions escape
+  edge @try_stmt.lexical_defs -> @body.lexical_defs
+
+  ; variable definitions escape
+  edge @try_stmt.var_defs -> @body.var_defs
+
+  ; expose return type
+  edge @try_stmt.return_type -> @body.return_type
+}
+
+(try_statement
+  handler:(_)@handler
+)@try_stmt {
+  ; propagate lexical scope
+  edge @handler.lexical_scope -> @try_stmt.lexical_scope
+
+  ; lexical definitions escape
+  edge @try_stmt.lexical_defs -> @handler.lexical_defs
+
+  ; variable definitions escape
+  edge @try_stmt.var_defs -> @handler.var_defs
+
+  ; expose return type
+  edge @try_stmt.return_type -> @handler.return_type
+}
+
+(try_statement
+  finalizer:(_)@finalizer
+)@try_stmt {
+  ; propagate lexical scope
+  edge @finalizer.lexical_scope -> @try_stmt.lexical_scope
+
+  ; lexical definitions escape
+  edge @try_stmt.lexical_defs -> @finalizer.lexical_defs
+
+  ; variable definitions escape
+  edge @try_stmt.var_defs -> @finalizer.var_defs
+
+  ; expose return type
+  edge @try_stmt.return_type -> @finalizer.return_type
+}
+
+; (catch_clause
+;   parameter:(_)@param ; opt
+;   type:(_)@type       ; opt, and only if parameter is present
+;   body:(_)@body
+; )@catch_clause
+
+(catch_clause type:(_)@type)@catch_clause {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @catch_clause.lexical_scope
+}
+
+(catch_clause body:(_)@body)@catch_clause {
+  ; propagate lexical scope
+  edge @body.lexical_scope -> @catch_clause.lexical_scope
+
+  ; lexical definitions escape
+  edge @catch_clause.lexical_defs -> @body.lexical_defs
+
+  ; variable definitions escape
+  edge @catch_clause.var_defs -> @body.var_defs
+
+  ; expose return type
+  edge @catch_clause.return_type -> @body.return_type
+}
+
+(finally_clause body:(_)@body)@finally_clause {
+  ; propagate lexical scope
+  edge @body.lexical_scope -> @finally_clause.lexical_scope
+
+  ; lexical definitions escape
+  edge @finally_clause.lexical_defs -> @body.lexical_defs
+
+  ; variable definitions escape
+  edge @finally_clause.var_defs -> @body.var_defs
+
+  ; expose return type
+  edge @finally_clause.return_type -> @body.return_type
+}
+
+
+
+;; With
+
+; with (x) { i; }
+; with (x) { }
+
+(with_statement
+  object:(_)@object
+  body:(_)@body
+)@with_stmt {
+  node @with_stmt.member
+  node @with_stmt.expr_ref__ns
+
+  ; propagate lexical scope
+  edge @object.lexical_scope -> @with_stmt.lexical_scope
+  edge @body.lexical_scope -> @with_stmt.lexical_scope
+
+  ; lexical definitions escape
+  edge @with_stmt.lexical_defs -> @body.lexical_defs
+
+  ; variable definitions escape
+  edge @with_stmt.var_defs -> @body.var_defs
+
+  ; expose return type
+  edge @with_stmt.return_type -> @body.return_type
+
+  ; expression references as member references in object
+  edge @body.lexical_scope -> @with_stmt.expr_ref__ns
+  ;
+  attr (@with_stmt.expr_ref__ns) pop_symbol = "%E"
+  edge @with_stmt.expr_ref__ns -> @with_stmt.member
+  ;
+  attr (@with_stmt.member) push_symbol = "."
+  edge @with_stmt.member -> @object.type
+}
+
+
+
+;; Break
+
+; break;
+
+(break_statement) {
+}
+
+
+
+;; Continue
+
+; continue;
+
+(continue_statement) {
+}
+
+
+
+;; Return
+
+; return;
+
+(return_statement
+  (_)@returned_expr
+)@return_stmt {
+  ; propagate lexical scope
+  edge @returned_expr.lexical_scope -> @return_stmt.lexical_scope
+
+  ; expose return type
+  edge @return_stmt.return_type -> @returned_expr.type
+}
+
+
+
+;; Throw
+
+; throw new Error("error");
+; throw x = 1, x;
+
+(throw_statement (_)@thrown_expr)@throw_stmt {
+  ; propagate lexical scope
+  edge @thrown_expr.lexical_scope -> @throw_stmt.lexical_scope
+}
+
+
+
+;; Empty
+
+; if (true) { ; };;;
+; if (true) {} else {}
+
+(empty_statement) {
+}
+
+
+
+;; Labeled
+
+; label:
+; while (true) { }
+
+(statement_identifier)@stmt_identifier {
+  ; FIXME remove when we bump tree-sitter-typescript version
+  node @stmt_identifier.global_defs
+  node @stmt_identifier.lexical_defs
+  node @stmt_identifier.lexical_scope
+  node @stmt_identifier.return_type
+  node @stmt_identifier.var_defs
+}
+
+; FIXME match body: when we bump tree-sitter-typescript version
+(labeled_statement (_)@inner)@labeled_stmt {
+  ; propagate lexical scope
+  edge @inner.lexical_scope -> @labeled_stmt.lexical_scope
+
+  ; lexical definitions escape
+  edge @labeled_stmt.lexical_defs -> @inner.lexical_defs
+
+  ; variable definitions escape
+  edge @labeled_stmt.var_defs -> @inner.var_defs
+
+  ; expose return type
+  edge @labeled_stmt.return_type -> @inner.return_type
+}
+
+
+
+;; Ambient Declaration
+
+(ambient_declaration
+  (declaration)@decl
+)@amb_decl {
+  ; propagate lexical scope
+  edge @decl.lexical_scope -> @amb_decl.lexical_scope
+
+  ; expose lexical definitions
+  edge @amb_decl.global_defs -> @decl.lexical_defs
+
+  ; expose variable definitions
+  edge @amb_decl.global_defs -> @decl.var_defs
+}
+
+(ambient_declaration
+  "global"
+  (statement_block)@stmt_blk
+)@amb_decl {
+  ; propagate lexical scope
+  edge @stmt_blk.lexical_scope -> @amb_decl.lexical_scope
+
+  ; expose lexical definitions
+  edge @amb_decl.global_defs -> @stmt_blk.lexical_defs
+
+  ; expose variable definitions
+  edge @amb_decl.global_defs -> @stmt_blk.var_defs
+}
+
+; FIXME what is this? tsc doesn't recognize this syntax
+(ambient_declaration
+  "module"
+  (property_identifier)
+  (_)@type
+)@amb_decl {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @amb_decl.lexical_scope
+}
+
+
+
+;; (Internal) Module
+
+; (module
+;   name:[(string) (identifier) (nested_identifier)]
+;   body:(_) ; opt
+; ) {}
+
+; (internal_module
+;   name:[(string) (identifier) (nested_identifier)]
+;   body:(_) ; opt
+; ) {}
+
+; NOTE namespaces are modeled as a type and an expression definition, exposing
+;      type and expression members
+
+[
+  ; X
+  (module                                       name:(identifier)@name  @mod)
+  (internal_module                              name:(identifier)@name  @mod)
+  (export_statement "as" "namespace" .               (identifier)@name) @mod
+  (export_statement (namespace_export                (identifier)@name))@mod
+  (import_statement (import_clause (namespace_import (identifier)@name)))@mod
+  (ambient_declaration (module                      name:(string)@name      @mod))
+  ; X._
+  (module                                name:(nested_identifier . (identifier)@name @mod))
+  (internal_module                       name:(nested_identifier . (identifier)@name @mod))
+  ; X._._
+  (module                                name:(nested_identifier . (nested_identifier . (identifier)@name @mod)))
+  (internal_module                       name:(nested_identifier . (nested_identifier . (identifier)@name @mod)))
+  ; X._._._
+  (module                                name:(nested_identifier . (nested_identifier . (nested_identifier . (identifier)@name @mod))))
+  (internal_module                       name:(nested_identifier . (nested_identifier . (nested_identifier . (identifier)@name @mod))))
+  ; X._._._._
+  (module                                name:(nested_identifier . (nested_identifier . (nested_identifier . (nested_identifier . (identifier)@name @mod)))))
+  (internal_module                       name:(nested_identifier . (nested_identifier . (nested_identifier . (nested_identifier . (identifier)@name @mod)))))
+]@mod_decl {
+  node @name.expr_def
+  node @name.expr_def__ns
+  node @name.expr_def__typeof
+  node @mod.expr_member
+  node @mod.expr_member__ns
+  node @name.type_def
+  node @name.type_def__ns
+  node @mod.type_member
+  node @mod.type_member__ns
+
+  ; expose expression definition
+  edge @mod_decl.lexical_defs -> @name.expr_def__ns
+
+  ; expression definition
+  attr (@name.expr_def__ns) pop_symbol = "%E"
+  edge @name.expr_def__ns -> @name.expr_def
+  ;
+  attr (@name.expr_def) node_definition = @name
+
+  ; namespaces mimic objects with members to access exported expressions
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @mod.expr_member
+  ;
+  attr (@mod.expr_member) pop_symbol = "."
+  edge @mod.expr_member -> @mod.expr_member__ns
+  ;
+  attr (@mod.expr_member__ns) push_symbol = "%E"
+
+  ; expose type definition
+  edge @mod_decl.lexical_defs -> @name.type_def__ns
+
+  ; type definition
+  attr (@name.type_def__ns) pop_symbol = "%T"
+  edge @name.type_def__ns -> @name.type_def
+  ;
+  attr (@name.type_def) node_definition = @name
+
+  ; namespaces mimic types with member types to access exported expressions
+  edge @name.type_def -> @mod.type_member
+  ;
+  attr (@mod.type_member) pop_symbol = "."
+  edge @mod.type_member -> @mod.type_member__ns
+  ;
+  attr (@mod.type_member__ns) push_symbol = "%T"
+}
+
+[
+  ; _.X
+  (module                                name:(nested_identifier . (_)@basemod . (identifier)@name)@mod)
+  (internal_module                       name:(nested_identifier . (_)@basemod . (identifier)@name)@mod)
+  ; _._.X
+  (module                                name:(nested_identifier . (nested_identifier . (_)@basemod . (identifier)@name)@mod))
+  (internal_module                       name:(nested_identifier . (nested_identifier . (_)@basemod . (identifier)@name)@mod))
+  ; _._._.X
+  (module                                name:(nested_identifier . (nested_identifier . (nested_identifier . (_)@basemod . (identifier)@name)@mod)))
+  (internal_module                       name:(nested_identifier . (nested_identifier . (nested_identifier . (_)@basemod . (identifier)@name)@mod)))
+  ; _._._._.X
+  (module                                name:(nested_identifier . (nested_identifier . (nested_identifier . (nested_identifier . (_)@basemod . (identifier)@name)@mod))))
+  (internal_module                       name:(nested_identifier . (nested_identifier . (nested_identifier . (nested_identifier . (_)@basemod . (identifier)@name)@mod))))
+] {
+  node @name.expr_def
+  node @name.expr_def__ns
+  node @name.expr_def__typeof
+  node @mod.expr_member
+  node @mod.expr_member__ns
+  node @name.type_def
+  node @name.type_def__ns
+  node @mod.type_member
+  node @mod.type_member__ns
+
+  ; expose expression definition
+  edge @basemod.expr_member__ns -> @name.expr_def__ns
+
+  ; expression definition
+  attr (@name.expr_def__ns) pop_symbol = "%E"
+  edge @name.expr_def__ns -> @name.expr_def
+  ;
+  attr (@name.expr_def) node_definition = @name
+
+  ; namespaces mimic objects with members to access exported expressions
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @mod.expr_member
+  ;
+  attr (@mod.expr_member) pop_symbol = "."
+  edge @mod.expr_member -> @mod.expr_member__ns
+  ;
+  attr (@mod.expr_member__ns) push_symbol = "%E"
+
+  ; expose type definition
+  edge @basemod.type_member__ns -> @name.type_def__ns
+
+  ; type definition
+  attr (@name.type_def__ns) pop_symbol = "%T"
+  edge @name.type_def__ns -> @name.type_def
+  ;
+  attr (@name.type_def) node_definition = @name
+
+  ; namespaces mimic types with member types to access exported expressions
+  edge @name.type_def -> @mod.type_member
+  ;
+  attr (@mod.type_member) pop_symbol = "."
+  edge @mod.type_member -> @mod.type_member__ns
+  ;
+  attr (@mod.type_member__ns) push_symbol = "%T"
+}
+
+[
+  (module                                name:(_)@mod body:(_)@body)
+  (internal_module                       name:(_)@mod body:(_)@body)
+]@mod_decl {
+  ; propagate lexical scope
+  edge @body.lexical_scope -> @mod_decl.lexical_scope
+
+  ; connect object to exports
+  edge @mod.expr_member__ns -> @body.exports
+
+  ; connect type to exports
+  edge @mod.type_member__ns -> @body.exports
+}
+
+; NOTE internal_module is also an expression in the grammar, not only a statement.
+;      Not entirely sure why... tsc doesn't seem to accept namespaces in arbitrary
+;      expression positions. Therefore we forward relevant nodes here.
+
+(expression_statement (internal_module)@mod_decl)@stmt {
+  ; connect lexical definitions
+  edge @stmt.lexical_defs -> @mod_decl.lexical_defs
+}
+
+
+
+;; Ambient Module
+
+(ambient_declaration
+  (module name:(string)@name body:(_)@body)
+)@amb_decl {
+  ; propagate lexical scope
+  edge @body.lexical_scope -> @amb_decl.lexical_scope
+
+  ; module definition
+  let mod_path = (replace (source-text @name) "[\"\']" "")
+  ;
+  node mod_def__ns
+  attr (mod_def__ns) pop_symbol = "%NonRelM"
+  edge @amb_decl.lexical_defs -> mod_def__ns
+  ;
+  var mod_scope = mod_def__ns
+  scan mod_path {
+    "([^/]+)/?" {
+      node mod_def
+      attr (mod_def) pop_symbol = $1
+      edge mod_scope -> mod_def
+      ;
+      set mod_scope = mod_def
+    }
+  }
+  ; make the last one a definition
+  attr (mod_scope) is_definition, source_node = @name
+  ; expose exports via module definition
+  edge mod_scope -> @body.exports
+}
+
+
+
+;; Enum Declaration
+
+; (enum_declaration
+;   name:(_)
+;   body:(_)
+; ) {}
+
+(enum_declaration
+  name:(_)@name
+  body:(_)@body
+)@enum_decl {
+  node @enum_decl.static_type
+  node @enum_decl.expr_export
+  node @enum_decl.expr_export__ns
+  node @enum_decl.type
+  node @name.expr_def
+  node @name.expr_def__ns
+  node @name.expr_def__typeof
+  node @name.type_def
+  node @name.type_def__ns
+
+  ; propagate lexical scope
+  edge @body.lexical_scope -> @enum_decl.lexical_scope
+
+  ; enum expression declaration
+  edge @enum_decl.lexical_defs -> @name.expr_def__ns
+  ;
+  attr (@name.expr_def__ns) pop_symbol = "%E"
+  edge @name.expr_def__ns -> @name.expr_def
+  ;
+  attr (@name.expr_def) node_definition = @name
+
+  ; type of enum expression is members
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @enum_decl.static_type
+  ;
+  edge @enum_decl.static_type -> @body.static_members
+
+  ; default expression export
+  edge @enum_decl.default_export -> @enum_decl.expr_export
+  ;
+  attr (@enum_decl.expr_export) pop_symbol = "%E"
+  edge @enum_decl.expr_export -> @body.static_members
+
+  ; enum type declaration
+  edge @enum_decl.lexical_defs -> @name.type_def__ns
+  ;
+  attr (@name.type_def__ns) pop_symbol = "%T"
+  edge @name.type_def__ns -> @name.type_def
+  ;
+  attr (@name.type_def) node_definition = @name
+  edge @name.type_def -> @enum_decl.type
+  ;
+  edge @enum_decl.type -> @body.type_members
+
+  ; NOTE enum_declaration cannot appear directly in `export default'
+  ;      statements, so we do not set .default_export
+
+  ; this is the enum type
+  edge @body.this -> @enum_decl.type
+
+  ; mark type scope as endpoint
+  attr (@enum_decl.type) is_endpoint
+  attr (@enum_decl.static_type) is_endpoint
+}
+
+; (enum_body
+;   (_) ; _property_name | enum_assignment ; opt, sepBy1
+; ) {}
+
+(enum_body)@body {
+  node @body.lexical_scope
+  node @body.static_members
+  node @body.this
+  node @body.type_members
+}
+
+(enum_body
+  [
+    name:(_)@name
+    (enum_assignment name:(_)@name)
+  ]@constant
+)@body {
+  node @constant.member
+  node @name.expr_def
+  node @name.expr_def__typeof
+
+  ; property definition
+  edge @body.static_members -> @constant.member
+  ;
+  attr (@constant.member) pop_symbol = "."
+  edge @constant.member -> @name.expr_def
+  ;
+  attr (@name.expr_def) symbol_definition = (replace (source-text @name) "[\"\']" ""), source_node = @name
+
+  ; type of the constant
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @body.this
+}
+
+; (enum_assignment
+;   (_)@property_name
+;   value:(_)
+; ) {}
+
+(enum_body
+  (enum_assignment value:(_)@value)
+)@body {
+  ; propagate lexical scope
+  edge @value.lexical_scope -> @body.lexical_scope
+}
+
+
+
+;; Type Alias Declaration
+
+; (type_alias_declaration
+;   name:(_)@name
+;   type_parameters:(_)@type_params ; opt
+;   value:(_)@value
+; )@decl
+
+(type_alias_declaration
+  name:(_)@name
+  value:(_)@value
+)@decl {
+  node @name.type_def
+  node @name.type_def__ns
+
+  ; propagate lexical scope
+  edge @value.lexical_scope -> @decl.generic_inner_lexical_scope
+
+  ; type definition
+  edge @decl.lexical_defs -> @name.type_def__ns
+  ;
+  attr (@name.type_def__ns) pop_symbol = "%T"
+  edge @name.type_def__ns -> @name.type_def
+  ;
+  attr (@name.type_def) node_definition = @name
+  edge @name.type_def -> @decl.generic_type
+  ;
+  ; type parameters are handled by generics rules below
+  ;
+  edge @decl.generic_inner_type -> @decl.alias_type
+  ;
+  ; alias guards are handled by alias rules below
+  ;
+  edge @decl.aliased_type -> @value.type
+
+  ; NOTE type_alias_declaration cannot appear directly in `export default'
+  ;      statements, so we do not set .default_export
+}
+
+
+
+; #######
+; #       #    # #####  #####  ######  ####   ####  #  ####  #    #  ####
+; #        #  #  #    # #    # #      #      #      # #    # ##   # #
+; #####     ##   #    # #    # #####   ####   ####  # #    # # #  #  ####
+; #         ##   #####  #####  #           #      # # #    # #  # #      #
+; #        #  #  #      #   #  #      #    # #    # # #    # #   ## #    #
+; ####### #    # #      #    # ######  ####   ####  #  ####  #    #  ####
+;
+; ########################################################################
+
+;; Attributes defined on expressions
+;
+; in .lexical_scope
+;     Scope to resolve type names.
+;
+; out .type
+;     Scope representing the type of the expression.
+
+[
+  (array)
+  (arrow_function)
+  (as_expression)
+  (assignment_expression)
+  (augmented_assignment_expression)
+  (await_expression)
+  (binary_expression)
+  (call_expression)
+  (class)
+  (false)
+  (function)
+  (generator_function)
+  (import)
+  (member_expression)
+  (meta_property)
+  (new_expression)
+  (non_null_expression)
+  (null)
+  (number)
+  (object)
+  (parenthesized_expression)
+  (regex)
+  (sequence_expression)
+  (spread_element)
+  (string)
+  (subscript_expression)
+  (super)
+  (template_string)
+  (ternary_expression)
+  (this)
+  (true)
+  (type_assertion)
+  (unary_expression)
+  (undefined)
+  (update_expression)
+  (yield_expression)
+]@expr {
+  node @expr.cotype
+  node @expr.lexical_defs
+  node @expr.lexical_scope
+  node @expr.return_type
+  node @expr.type
+  node @expr.var_defs
+}
+
+[
+  (abstract_class_declaration name:(_)@name)
+  (class_declaration          name:(_)@name)
+  (property_signature         name:(_)@name)
+  (public_field_definition    name:(_)@name)
+  (method_signature           name:(_)@name)
+  (abstract_method_signature  name:(_)@name)
+  (method_definition          name:(_)@name)
+] {
+  node @name.expr_def
+  node @name.expr_def__ns
+  node @name.expr_def__typeof
+}
+
+;; Parenthesized
+
+; (parenthesized_expression
+;   (expression)@expr
+;   (type_annotation)@type ; opt
+; )@parens_expr
+; (parenthesized_expression
+;   (sequence_expression)@seq_expr
+; )@parens_expr
+
+(parenthesized_expression
+  [(expression) (sequence_expression)]@expr
+)@parens_expr {
+  ; propagate lexical scope
+  edge @expr.lexical_scope -> @parens_expr.lexical_scope
+}
+
+(parenthesized_expression
+  [(expression) (sequence_expression)]@expr
+  !type
+)@parens_expr {
+  ; type is type of the inner expression
+  edge @parens_expr.type -> @expr.type
+}
+
+(parenthesized_expression
+  type:(_)@type ; opt
+)@parens_expr {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @parens_expr.lexical_scope
+
+  ; type is type of the annotation
+  edge @parens_expr.type -> @type.type
+}
+
+
+
+;; Strings
+
+; "A double quoted string.";
+; 'A single quoted string.';
+
+(string) {
+}
+
+
+;; Template Strings
+
+; `A template string ${ "with another string" } inside of it.`;
+
+; (template_string)@template_string
+; (template_string (template_substitution (_)@inner_expr))@template_string
+
+(template_string
+  (template_substitution (_)@inner_expr)
+)@template_string {
+  ; propagate lexical scope
+  edge @inner_expr.lexical_scope -> @template_string.lexical_scope
+}
+
+
+
+;; Numbers
+
+; 12345;
+
+(number) {
+}
+
+
+;; Variables / Identifiers
+
+; x;
+
+[
+  (primary_expression/identifier)@name
+  ; FIXME expansion of _lhs_expression/identifier and _augmented_assignment_lhs
+  (for_in_statement ["var" "let" "const"]?@is_def left:(identifier)@name)
+  (assignment_expression left:(identifier)@name)
+  (augmented_assignment_expression left:(identifier)@name)
+  (asserts (identifier)@name)
+  (type_predicate name:(identifier)@name)
+  ; FIXME type_query has its own restricted expression production
+  ;       we need to do this for every (identifier) inside a type query
+  ;       this cannot be expressed, so we manually unroll three levels here
+  (type_query (identifier)@name)
+  (type_query (member_expression object:(identifier)@name))
+  (type_query (member_expression object:(member_expression object:(identifier)@name)))
+  (type_query (member_expression object:(member_expression object:(member_expression object:(identifier)@name))))
+  (type_query (subscript_expression object:(identifier)@name))
+  (type_query (subscript_expression object:(member_expression object:(identifier)@name)))
+  (type_query (subscript_expression object:(member_expression object:(member_expression object:(identifier)@name))))
+  (type_query (call_expression function:(identifier)@name))
+  (type_query (call_expression function:(member_expression object:(identifier)@name)))
+  (type_query (call_expression function:(member_expression object:(member_expression object:(identifier)@name))))
+  (type_query (call_expression function:(member_expression object:(member_expression object:(member_expression object:(identifier)@name)))))
+  (type_query (call_expression function:(subscript_expression object:(identifier)@name)))
+  (type_query (call_expression function:(subscript_expression object:(member_expression object:(identifier)@name))))
+  (type_query (call_expression function:(subscript_expression object:(member_expression object:(member_expression object:(identifier)@name)))))
+  ; FIXME decorator has its own restricted expression production
+  ;       we need to do this for every (identifier) inside a decorator
+  ;       this cannot be expressed, so we manually unroll three levels here
+  (decorator (identifier)@name)
+  (decorator (member_expression object:(identifier)@name))
+  (decorator (member_expression object:(member_expression object:(identifier)@name)))
+  (decorator (member_expression object:(member_expression object:(member_expression object:(identifier)@name))))
+  (decorator (call_expression function:(identifier)@name))
+  (decorator (call_expression function:(member_expression object:(identifier)@name)))
+  (decorator (call_expression function:(member_expression object:(member_expression object:(identifier)@name))))
+  (decorator (call_expression function:(member_expression object:(member_expression object:(member_expression object:(identifier)@name)))))
+] {
+if none @is_def {
+  node @name.cotype
+  node @name.lexical_defs
+  node @name.lexical_scope
+  node @name.type
+  node @name.var_defs
+}
+}
+
+[
+  (primary_expression/identifier)@name
+  (decorator (identifier)@name)
+  ; FIXME expansion of _lhs_expression/identifier and _augmented_assignment_lhs
+  ;       we need to do this for every (identifier) inside a type query
+  ;       this cannot be expressed, so we manually unroll three levels here
+  (for_in_statement ["var" "let" "const"]?@is_def left:(identifier)@name)
+  (assignment_expression left:(identifier)@name)
+  (augmented_assignment_expression left:(identifier)@name)
+  (asserts (identifier)@name)
+  (type_predicate name:(identifier)@name)
+  ; FIXME type_query has its own restricted expression production
+  (type_query (identifier)@name)
+  (type_query (member_expression object:(identifier)@name))
+  (type_query (member_expression object:(member_expression object:(identifier)@name)))
+  (type_query (member_expression object:(member_expression object:(member_expression object:(identifier)@name))))
+  (type_query (subscript_expression object:(identifier)@name))
+  (type_query (subscript_expression object:(member_expression object:(identifier)@name)))
+  (type_query (subscript_expression object:(member_expression object:(member_expression object:(identifier)@name))))
+  (type_query (call_expression function:(identifier)@name))
+  (type_query (call_expression function:(member_expression object:(identifier)@name)))
+  (type_query (call_expression function:(member_expression object:(member_expression object:(identifier)@name))))
+  (type_query (call_expression function:(member_expression object:(member_expression object:(member_expression object:(identifier)@name)))))
+  (type_query (call_expression function:(subscript_expression object:(identifier)@name)))
+  (type_query (call_expression function:(subscript_expression object:(member_expression object:(identifier)@name))))
+  (type_query (call_expression function:(subscript_expression object:(member_expression object:(member_expression object:(identifier)@name)))))
+  ; FIXME decorator has its own restricted expression production
+  ;       we need to do this for every (identifier) inside a decorator
+  ;       this cannot be expressed, so we manually unroll three levels here
+  (decorator                           (identifier)@name)
+  (decorator (member_expression object:(identifier)@name))
+  (decorator (member_expression object:(member_expression object:(identifier)@name)))
+  (decorator (member_expression object:(member_expression object:(member_expression object:(identifier)@name))))
+  (decorator (call_expression function:(identifier)@name))
+  (decorator (call_expression function:(member_expression object:(identifier)@name)))
+  (decorator (call_expression function:(member_expression object:(member_expression object:(identifier)@name))))
+  (decorator (call_expression function:(member_expression object:(member_expression object:(member_expression object:(identifier)@name)))))
+] {
+if none @is_def {
+  node @name.expr_ref
+  node @name.expr_ref__ns
+  node @name.expr_ref__typeof
+
+  ; expression reference
+  attr (@name.expr_ref) node_reference = @name
+  edge @name.expr_ref -> @name.expr_ref__ns
+  ;
+  attr (@name.expr_ref__ns) push_symbol = "%E"
+  edge @name.expr_ref__ns -> @name.lexical_scope
+
+  ; type is type of the reference
+  edge @name.type -> @name.expr_ref__typeof
+  ;
+  attr (@name.expr_ref__typeof) push_symbol = ":"
+  edge @name.expr_ref__typeof -> @name.expr_ref
+}
+}
+
+
+
+;; Meta property
+
+; new.target
+
+(meta_property) {
+}
+
+
+
+;; Booleans and other special values
+
+;; true;
+
+(true) {
+}
+
+;; false;
+
+(false) {
+}
+
+
+
+;; this;
+
+(this)@this {
+  node @this.expr_ref
+  node @this.expr_ref__ns
+  node @this.expr_ref__typeof
+
+  ; expression reference
+  attr (@this.expr_ref) node_reference = @this
+  edge @this.expr_ref -> @this.expr_ref__ns
+  ;
+  attr (@this.expr_ref__ns) push_symbol = "%E"
+  edge @this.expr_ref__ns -> @this.lexical_scope
+
+  ; type is type of the reference
+  edge @this.type -> @this.expr_ref__typeof
+  ;
+  attr (@this.expr_ref__typeof) push_symbol = ":"
+  edge @this.expr_ref__typeof -> @this.expr_ref
+}
+
+
+
+;; super
+
+(super)@super {
+  node @super.expr_ref
+  node @super.expr_ref__ns
+  node @super.expr_ref__typeof
+
+  ; expression reference
+  attr (@super.expr_ref) node_reference = @super
+  edge @super.expr_ref -> @super.expr_ref__ns
+  ;
+  attr (@super.expr_ref__ns) push_symbol = "%E"
+  edge @super.expr_ref__ns -> @super.lexical_scope
+
+  ; type is type of the reference
+  edge @super.type -> @super.expr_ref__typeof
+  ;
+  attr (@super.expr_ref__typeof) push_symbol = ":"
+  edge @super.expr_ref__typeof -> @super.expr_ref
+}
+
+
+
+; null;
+(null) {
+}
+
+
+
+; undefined;
+(undefined) {
+}
+
+
+
+;; Regular Expressions
+
+; /foo/;
+; /bar/g;
+
+; i dont think the specifics of the patterns or flags matter
+; (regex (regex_pattern))
+; (regex (regex_pattern) (regex_flags))
+
+(regex) {
+}
+
+
+
+;; Spread Element
+
+(spread_element (_)@expr)@spread_elem {
+  ; propagate lexical scope
+  edge @expr.lexical_scope -> @spread_elem.lexical_scope
+}
+
+
+
+;; Objects
+
+; {
+;   foo: "bar",
+;   "baz": 1,
+;   quux(x) { x; }
+; };
+;
+; { foo, bar };
+
+; (object
+;   (pair (property_identifier) (string))
+;   (pair (string) (number))
+;   (method_definition
+;     (property_identifier)
+;     (formal_parameters)
+;     (statement_block)))
+;
+; (object
+;   (shorthand_property_identifier)
+;   (shorthand_property_identifier))
+
+; (object (pair (_) (_)@rhs))@object
+; (object (spread_element)@element)@object
+
+(object)@object_expr {
+  attr (@object_expr.type) is_endpoint
+}
+
+(object (_)@entry)@object_expr {
+  ; propagate lexical scope
+  edge @entry.lexical_scope -> @object_expr.lexical_scope
+
+  ; type of object are its members
+  edge @object_expr.type -> @entry.type_members
+}
+
+(object (shorthand_property_identifier)@name) {
+  node @name.lexical_scope
+  node @name.member
+  node @name.type_members
+  node @name.expr_def
+  node @name.expr_def__typeof
+  node @name.expr_ref
+  node @name.expr_ref__ns
+  node @name.expr_ref__typeof
+
+  ; property definition
+  edge @name.type_members -> @name.member
+  ;
+  attr (@name.member) pop_symbol = "."
+  edge @name.member -> @name.expr_def
+  ;
+  attr (@name.expr_def) symbol_definition = (replace (source-text @name) "[\"\']" ""), source_node = @name
+
+  ; type of the property is type of the reference
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @name.expr_ref__typeof
+
+  ; expression reference
+  attr (@name.expr_ref) node_reference = @name
+  edge @name.expr_ref -> @name.expr_ref__ns
+  ;
+  attr (@name.expr_ref__ns) push_symbol = "%E"
+  edge @name.expr_ref__ns -> @name.lexical_scope
+
+  ; type of the reference is type of the declaration
+  attr (@name.expr_ref__typeof) push_symbol = ":"
+  edge @name.expr_ref__typeof -> @name.expr_ref
+}
+
+(pair
+  key:(_)@name
+  value:(_)@expr
+)@pair {
+  node @pair.lexical_scope
+  node @pair.member
+  node @pair.type_members
+  node @name.expr_def
+  node @name.expr_def__ns
+  node @name.expr_def__typeof
+
+  ; propagate lexical scope
+  edge @expr.lexical_scope -> @pair.lexical_scope
+
+  ; property definition
+  edge @pair.type_members -> @pair.member
+  ;
+  attr (@pair.member) pop_symbol = "."
+  edge @pair.member -> @name.expr_def
+  ;
+  attr (@name.expr_def) symbol_definition = (replace (source-text @name) "[\"\']" ""), source_node = @name
+
+  ; type of the property is type of the expression
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @expr.type
+}
+
+(spread_element)@spread_elem {
+  node @spread_elem.member
+  node @spread_elem.type_members
+}
+
+
+;; Arrays
+
+; [1,2,3];
+
+; (array (number) (number) (number))
+; (array (_expression)@element)@array
+
+(array)@array_expr {
+  node @array_expr.indexable
+
+  ; array is indexable
+  edge @array_expr.type -> @array_expr.indexable
+  ;
+  attr (@array_expr.indexable) pop_symbol = "[]"
+}
+
+(array (_)@element)@array_expr {
+  ; propagate lexical scope
+  edge @element.lexical_scope -> @array_expr.lexical_scope
+
+  ; type is the union of element types
+  edge @array_expr.indexable -> @element.type
+}
+
+
+
+;; Formal Parameters
+
+(formal_parameters)@formal_params {
+  node @formal_params.coparams
+  node @formal_params.defs
+  node @formal_params.lexical_scope
+  node @formal_params.params
+}
+
+(formal_parameters
+  (_)@param
+)@formal_params
+{
+  ; propagate lexical scope
+  edge @param.lexical_scope -> @formal_params.lexical_scope
+
+  ; collect param definitions
+  edge @formal_params.defs -> @param.defs
+
+  ; collect parameters for type
+  edge @formal_params.params -> @param.param
+
+  ; coparams for parameter type inference
+  edge @param.coparam -> @formal_params.coparams
+}
+
+
+
+;; Required & Optional Parameter
+
+; (required_parameter
+;   [(pattern) (this)]
+;   (type_annotation) ; opt
+;   value:(_) ; opt
+; )
+;
+; (optional_parameter
+;   [(pattern) (this)]
+;   (type_annotation) ; opt
+;   value:(_) ; opt
+; )
+
+[
+  (required_parameter)
+  (optional_parameter)
+]@param {
+  node @param.coparam
+  node @param.defs
+  node @param.lexical_scope
+  node @param.param
+}
+
+[
+  (required_parameter pattern:(_)@pattern)
+  (optional_parameter pattern:(_)@pattern)
+]@param {
+  ; propagate lexical scope
+  edge @pattern.lexical_scope -> @param.lexical_scope
+
+  ; expose parameter for type
+  attr (@param.param) pop_symbol = (named-child-index @param)
+
+  ; co-parameter for type inference
+  attr (@param.coparam) push_symbol = (named-child-index @param)
+
+  ; expose definitions
+  edge @param.defs -> @pattern.defs
+}
+
+[
+  (required_parameter pattern:(_)@pattern type:(_)@type)
+  (optional_parameter pattern:(_)@pattern type:(_)@type)
+]@param {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @param.lexical_scope
+
+  ; connect parameter to type annotation
+  edge @param.param -> @type.type
+
+  ; connect pattern to type annotation
+  edge @pattern.cotype -> @type.type
+}
+
+[
+  (required_parameter pattern:(_)@pattern !type)
+  (optional_parameter pattern:(_)@pattern !type)
+]@param {
+  ; connect parameter to coparameter
+  edge @param.param -> @param.coparam
+
+  ; connect pattern to coparameter
+  edge @pattern.cotype -> @param.coparam
+}
+
+[
+  (required_parameter value:(_)@value)
+  (optional_parameter value:(_)@value)
+]@param {
+  ; propagate lexical scope
+  edge @value.lexical_scope -> @param.lexical_scope
+}
+
+
+
+;; Arrow / Generator / Function Literals
+
+; function (x) {};
+
+; (function
+;   (formal_parameters (identifier))
+;   (statement_block))
+
+; this captures the parameters
+; (function
+;   parameters: (_)@params)
+
+; this captures the body
+; (function
+;   body:(_)@body)@function
+
+; functions with names
+; (function
+;   name:(_)@name
+;   parameters:(_)@call_sig)@fun {
+; }
+
+; x => x;
+; (x) => x;
+; () => {};
+
+; (arrow_function
+;   [ parameter:(identifier)@param parameters:(_)@params ]
+;   body:[(expression) (statement_block)]@body
+; )
+
+; function *() {};
+
+; (generator_function
+;   (formal_parameters)
+;   (statement_block))
+
+; this captures the parameters
+; (generator_function
+;   parameters:(_)@params)
+
+; this captures the body
+; (generator_function
+;   body:(_)@body)@function
+
+; generator functions with names
+; (generator_function
+;   name:(_)@name
+;   parameters:(_)@call_sig)@fun {
+; }
+
+[
+  (function)
+  (arrow_function)
+  (generator_function)
+]@fun {
+  node @fun.callable
+  node @fun.callable__params
+  node @fun.callable__return
+  node @fun.cocallable
+  node @fun.cocallable__params
+
+  ; type is callable
+  edge @fun.type -> @fun.callable
+  ;
+  attr (@fun.callable) pop_symbol = "->"
+  edge @fun.callable -> @fun.callable__params
+  edge @fun.callable -> @fun.callable__return
+  ;
+  attr (@fun.callable__return) pop_symbol = "<return>"
+
+  ; cotype should also be callable
+  edge @fun.cocallable__params -> @fun.cocallable
+  ;
+  attr (@fun.cocallable) push_symbol = "->"
+  edge @fun.cocallable -> @fun.cotype
+}
+
+[
+  (function           parameters:(_)@call_sig)
+  (arrow_function     parameters:(_)@call_sig)
+  (generator_function parameters:(_)@call_sig)
+]@fun {
+  ; propagate lexical scope
+  edge @call_sig.lexical_scope -> @fun.lexical_scope
+
+  ; parameters are visible in body
+  edge @fun.lexical_scope -> @call_sig.defs
+  attr (@fun.lexical_scope -> @call_sig.defs) precedence = 1
+
+  ; connect parameters
+  edge @fun.callable__params -> @call_sig.params
+
+  ; parameter types inferred via cotype
+  edge @call_sig.coparams -> @fun.cocallable__params
+}
+
+(arrow_function parameter:(_)@name)@fun {
+  node @name.expr_def
+  node @name.expr_def__ns
+  node @name.expr_def__typeof
+  node @name.param
+  node @name.coparam
+
+  ; expression definition
+  attr (@name.expr_def__ns) pop_symbol = "%E"
+  edge @name.expr_def__ns -> @name.expr_def
+  ;
+  attr (@name.expr_def) node_definition = @name
+
+  ; parameter definition is visible in body
+  edge @fun.lexical_scope -> @name.expr_def__ns
+
+  ; parameter type is inferred via coparam
+  edge @fun.callable__params -> @name.param
+  ;
+  attr (@name.param) pop_symbol = 0
+  edge @name.param -> @name.coparam
+
+  ; parameter type inferred via cotype
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @name.coparam
+  ;
+  attr (@name.coparam) push_symbol = 0
+  edge @name.coparam -> @fun.cocallable__params
+}
+
+[
+  (function           body:(_)@body)
+  (arrow_function     body:(_)@body)
+  (generator_function body:(_)@body)
+]@fun {
+  ; propagate lexical scope
+  edge @body.lexical_scope -> @fun.lexical_scope
+}
+
+;;;; specified return type
+
+[
+  (function return_type:(_)@return_type)
+  (arrow_function return_type:(_)@return_type)
+]@fun {
+  ; propagate lexical scope
+  edge @return_type.lexical_scope -> @fun.lexical_scope
+
+  ; callable type is return type
+  edge @fun.callable__return -> @return_type.type
+}
+
+;;;; inferred return type
+
+[
+  (function       "async"?@is_async !return_type body:(_)@body)
+  (arrow_function "async"?@is_async !return_type body:(statement_block)@body)
+]@fun {
+if none @is_async {
+  ; callable is type of return statement
+  edge @fun.callable__return -> @body.return_type
+}
+}
+
+(arrow_function "async"?@is_async body:(expression)@expr)@fun {
+if none @is_async {
+  ; callable return type is type of body
+  edge @fun.callable__return -> @expr.type
+}
+}
+
+;;;; inferred async return type
+
+[
+  (function       "async" !return_type body:(_)@body)
+  (arrow_function "async"              body:(statement_block)@body)
+]@fun_decl {
+  ; function returns body return type
+  edge @fun_decl.callable__return -> @fun_decl.async_type
+  ;
+  edge @fun_decl.await_type -> @body.return_type
+}
+
+(arrow_function "async" body:(expression)@expr)@fun_decl {
+  ; function returns body return type
+  edge @fun_decl.callable__return -> @fun_decl.async_type
+  ;
+  edge @fun_decl.await_type -> @expr.type
+}
+
+
+
+;; Function Calls
+
+; foo(1,2,3);
+
+; (call_expression
+;   (identifier)
+;   (arguments
+;     (number)
+;     (number)
+;     (number)))
+
+; (call_expression
+;   function:(_)
+;   type_arguments:(_) ; opt
+;   arguments:(_)
+; )
+
+; this gets the function
+; (call_expression
+;   function: (_)@function)@call
+
+; this gets the expression arguments
+; (call_expression
+;   arguments: (_expression)@argument)@call
+
+; this gets the spread arguments
+; (call_expression
+;   arguments: (spread_element)@spread)@call
+
+(call_expression
+  function:(_)@fun
+)@call_expr {
+  node @call_expr.callable
+  node @call_expr.callable__params
+  node @call_expr.callable__return
+
+  ; propagate lexical scope
+  edge @fun.lexical_scope -> @call_expr.lexical_scope
+
+  ; type of call is type applied callable
+  edge @call_expr.type ->  @call_expr.callable__return
+  ;
+  attr (@call_expr.callable__return) push_symbol = "<return>"
+  edge @call_expr.callable__return -> @call_expr.applied_type
+  ;
+  edge @call_expr.generic_type -> @call_expr.callable
+  ;
+  attr (@call_expr.callable) push_symbol = "->"
+  edge @call_expr.callable -> @fun.type
+}
+
+; type application is handled by the generics rules below
+
+(call_expression
+  function:(_) arguments: (_)@args
+)@call_expr {
+  ; propagate lexical scope
+  edge @args.lexical_scope -> @call_expr.lexical_scope
+}
+
+(call_expression
+  function:(_) arguments: (arguments)@args
+)@call_expr {
+  ; connect cotype to function params
+  edge @args.coargs -> @call_expr.callable__params ;; FIXME
+  ;
+  edge @call_expr.callable__params -> @call_expr.applied_type
+}
+
+
+
+;; Arguments
+
+(arguments)@args {
+  node @args.lexical_scope
+  node @args.coargs
+}
+
+(arguments (_)@arg)@args {
+  node @arg.coarg
+
+  ; propagate lexical scope
+  edge @arg.lexical_scope -> @args.lexical_scope
+
+  ; connect cotype
+  edge @arg.cotype -> @arg.coarg
+  ;
+  attr (@arg.coarg) push_symbol = (named-child-index @arg)
+  edge @arg.coarg -> @args.coargs
+}
+
+
+
+;; Property Access
+
+; foo.bar;
+; foo["bar"];
+
+; (member_expression (identifier) (property_identifier))
+; (subscript_expression (identifier) (string))
+
+(member_expression
+  object: (_)@object
+  property: (_)@prop
+)@member_expr {
+  node @member_expr.member
+  node @prop.expr_ref
+  node @prop.expr_ref__typeof
+
+  ; propagate lexical scope
+  edge @object.lexical_scope -> @member_expr.lexical_scope
+
+  ; reference to property
+  attr (@prop.expr_ref) node_reference = @prop
+  edge @prop.expr_ref -> @member_expr.member
+  ;
+  attr (@member_expr.member) push_symbol = "."
+  edge @member_expr.member -> @object.type
+
+  ; type is type of property
+  edge @member_expr.type -> @prop.expr_ref__typeof
+  ;
+  attr (@prop.expr_ref__typeof) push_symbol = ":"
+  edge @prop.expr_ref__typeof -> @prop.expr_ref
+}
+
+
+(subscript_expression
+  object: (_)@object
+  index: (_)@index
+)@subscript_expr {
+  ; propagate lexical scope
+  edge @object.lexical_scope -> @subscript_expr.lexical_scope
+  edge @index.lexical_scope -> @subscript_expr.lexical_scope
+}
+
+(subscript_expression
+  object: (_)@object
+  index: (string)@index
+)@subscript_expr {
+  node @index.expr_ref
+  node @index.expr_ref__typeof
+  node @subscript_expr.member
+
+  ; reference to index
+  attr (@index.expr_ref) symbol_reference = (replace (source-text @index) "[\"\']" ""), source_node = @index
+  edge @index.expr_ref -> @subscript_expr.member
+  ;
+  attr (@subscript_expr.member) push_symbol = "."
+  edge @subscript_expr.member -> @object.type
+
+  ; type is type of index
+  edge @subscript_expr.type -> @index.expr_ref__typeof
+  ;
+  attr (@index.expr_ref__typeof) push_symbol = ":"
+  edge @index.expr_ref__typeof -> @index.expr_ref
+}
+
+(subscript_expression
+  object: (_)@object
+  index: (_) ; FIXME typeof index == number
+)@subscript_expr {
+  node @subscript_expr.indexable
+
+  ; type is type of index
+  edge @subscript_expr.type -> @subscript_expr.indexable
+
+  attr (@subscript_expr.indexable) push_symbol = "[]"
+  edge @subscript_expr.indexable -> @object.type
+}
+
+(subscript_expression
+  object: (_)
+  index: (number)@index
+)@subscript_expr {
+  node @subscript_expr.comp_index
+
+  ; type is specific index component, in case this is a tuple
+  edge @subscript_expr.type -> @subscript_expr.comp_index
+  ;
+  attr (@subscript_expr.comp_index) push_node = @index
+  edge @subscript_expr.comp_index -> @subscript_expr.indexable
+}
+
+
+
+;; Constructor Calls
+
+; new Foo;
+; new Bar(1,2);
+
+; (new_expression (identifier))
+; (new_expression
+;   (identifier)
+;   (arguments (number) (number)))
+
+; (new_expression
+;   constructor:(_)
+;   type_arguments:(_) ; opt
+;   arguments:(_)      ; opt
+; )
+
+(new_expression constructor:(_)@ctor)@new_expr {
+  node @new_expr.ctor_ref
+
+  ; propagate lexical scope
+  edge @ctor.lexical_scope -> @new_expr.lexical_scope
+
+  ; type of new is the return type of the constructor
+  edge @new_expr.type -> @new_expr.applied_type
+  ;
+  ; type application between reference and constructor type
+  ;
+  edge @new_expr.generic_type -> @new_expr.ctor_ref
+  ;
+  attr (@new_expr.ctor_ref) push_symbol = "<new>"
+  edge @new_expr.ctor_ref -> @ctor.type
+}
+
+; type application is handled by the generics rules below
+
+(new_expression
+  arguments:(_)@args
+)@new_expr {
+  ; propagate lexical scope
+  edge @args.lexical_scope -> @new_expr.lexical_scope
+}
+
+
+
+;; Awaits
+
+; await foo();
+
+; (await_expression
+;   (call_expression (identifier) (arguments)))
+
+(await_expression
+  (_)@awaited_expr
+)@await_expr {
+  ; propagate lexical scope
+  edge @awaited_expr.lexical_scope -> @await_expr.lexical_scope
+
+  ; type is the result type of the await
+  edge @await_expr.type -> @await_expr.await_type
+
+  ; await the type of the expression
+  edge @await_expr.async_type -> @awaited_expr.type
+}
+
+
+
+;; Math Operators
+
+; x++;
+; x--;
+; x + y;
+; x - y;
+; x * y;
+; x / y;
+; x % y;
+; x ** y;
+; +x;
+; -x;
+
+; lots of duplication here
+; (update_expression (identifier))
+; (update_expression (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (unary_expression (identifier))
+; (unary_expression (identifier))
+
+(update_expression argument: (_)@argument)@update_expr {
+  ; propagate lexical scope
+  edge @argument.lexical_scope -> @update_expr.lexical_scope
+}
+
+(binary_expression left: (_)@left right: (_)@right)@binary_expr {
+  ; propagate lexical scope
+  edge @left.lexical_scope -> @binary_expr.lexical_scope
+  edge @right.lexical_scope -> @binary_expr.lexical_scope
+}
+
+(unary_expression argument: (_)@argument)@unary_expr {
+  ; propagate lexical scope
+  edge @argument.lexical_scope -> @unary_expr.lexical_scope
+}
+
+
+
+;; Boolean Operators
+
+; x && y;
+; x || y;
+; !x;
+
+; redundant
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (unary_expression (identifier))
+
+
+;; Null Coalescing Operator
+
+; x ?? y;
+
+; redundant
+; (binary_expression (identifier) (identifier))
+
+
+;; Bitwise Operators
+
+; x >> y;
+; x >>> y;
+; x << y;
+; x & y;
+; x | y;
+; x ^ y;
+; ~x;
+
+; redundant
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (unary_expression (identifier))
+
+
+
+;; Comparator Operators
+
+; x < y;
+; x <= y;
+; x > y;
+; x >= y;
+; x == y;
+; x === y;
+; x != y;
+; x !== y;
+
+; redundant
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+; (binary_expression (identifier) (identifier))
+
+
+
+;; Assignment Expressions;
+
+; x = 0;
+; x.y = 0;
+; x["y"] = 0;
+
+; (assignment_expression (identifier) (number))
+; (assignment_expression
+;   (member_expression (identifier) (property_identifier))
+;   (number))
+; (assignment_expression
+;   (subscript_expression (identifier) (string))
+;   (number))
+
+(assignment_expression
+  left: (_)@left
+  right: (_)@right
+)@assignment_expr {
+  ; propagate lexical scope
+  edge @left.lexical_scope -> @assignment_expr.lexical_scope
+  edge @right.lexical_scope -> @assignment_expr.lexical_scope
+
+  ; type is type of lhs
+  edge @assignment_expr.type -> @left.type
+}
+
+; _destructuring_pattern is used as an expression in assignment_expression
+(assignment_expression
+  left: [(object_pattern) (array_pattern)] @destruct_pat
+  right: (_)@left
+) {
+  node @destruct_pat.type
+
+  ; type is pattern cotype
+  edge @destruct_pat.type -> @destruct_pat.cotype
+
+  ; connect cotype to type
+  edge @destruct_pat.cotype -> @left.cotype
+}
+
+
+;; Augmented Assignment Expressions
+
+; x += y;
+; x.y -= z;
+
+; (augmented_assignment_expression
+;   (identifier)
+;   (identifier))
+; (augmented_assignment_expression
+;   (member_expression (identifier) (identifier))
+;   (identifier))
+
+(augmented_assignment_expression
+  left: (_)@left
+  right: (_)@right
+)@augmented_assignment_expr {
+  ; propagate lexical scope
+  edge @left.lexical_scope -> @augmented_assignment_expr.lexical_scope
+  edge @right.lexical_scope -> @augmented_assignment_expr.lexical_scope
+
+  ; type is type of lhs
+  edge @augmented_assignment_expr.type -> @left.type
+}
+
+
+
+;; Comma Operator
+
+; 1, 2;
+
+; (sequence_expression (number) (number))
+
+(sequence_expression
+  left: (_)@left
+  right: (_)@right
+)@sequence_expr {
+  ; propagate lexical scope
+  edge @left.lexical_scope -> @sequence_expr.lexical_scope
+  edge @right.lexical_scope -> @sequence_expr.lexical_scope
+
+  ; FIXME @sequence_expr.type is type of last, but cannot express because of nesting
+}
+
+
+;; Ternary Expression
+
+; x ? y : z;
+
+; (ternary_expression
+;   (identifier)
+;   (identifier)
+;   (identifier))
+
+(ternary_expression
+  condition: (_)@condition
+  consequence: (_)@consequence
+  alternative: (_)@alternative
+)@ternary_expr {
+  ; propagate lexical scope
+  edge @condition.lexical_scope -> @ternary_expr.lexical_scope
+  edge @consequence.lexical_scope -> @ternary_expr.lexical_scope
+  edge @alternative.lexical_scope -> @ternary_expr.lexical_scope
+
+  ; type is union of branch types
+  edge @ternary_expr.type -> @consequence.type
+  edge @ternary_expr.type -> @alternative.type
+}
+
+
+
+;; Type Operators
+
+; typeof x;
+; x instanceof String;
+
+; redundant
+; (unary_expression (identifier))
+; (binary_expression (identifier) (identifier))
+
+
+
+;; Delete Expression
+
+; delete foo.bar;
+
+; redundant
+; (unary_expression
+;   (member_expression (identifier) (property_identifier)))
+
+
+
+;; Void Operator
+
+; void foo;
+
+; redundant
+; (unary_expression (identifier))
+
+
+
+;; Yield Expression
+(yield_expression (_)@yielded_expr)@yield_expr {
+  ; propagate lexical scope
+  edge @yielded_expr.lexical_scope -> @yield_expr.lexical_scope
+}
+
+
+
+;; Class Expressions
+
+; (class
+;   decorator:(_) ; rep
+;   name:(_) ; opt
+;   type_parameters:(_) ; opt
+;   (class_heritage) ; opt
+;   body:(_)
+; ) {}
+
+; (class { });
+; (class Foo { });
+; (class Bar extends Foo {
+;   baz() {}
+; });
+
+; (class)@class
+; (class name:(_)@name)@class
+; (class (_) (_)@superclass (_))@class
+
+; type parameters are handled in generics rules below
+
+(class (class_heritage)@heritage)@class_expr {
+  ; propagate lexical scope
+  edge @heritage.lexical_scope -> @class_expr.lexical_scope
+
+  ; class type inherits from heritage type
+  edge @class_expr.generic_inner_type -> @heritage.type_members
+  attr (@class_expr.generic_inner_type -> @heritage.type_members) precedence = 1
+
+  ; type of class expression inherits heritage static members
+  edge @class_expr.type -> @heritage.static_members
+  attr (@class_expr.type -> @heritage.static_members) precedence = 1
+
+  ; mark type scope as endpoint
+  attr (@class_expr.type) is_endpoint
+  attr (@class_expr.generic_inner_type) is_endpoint
+
+  ; expose super definition
+  edge @class_expr.generic_inner_lexical_scope -> @heritage.lexical_defs
+}
+
+; this
+(class)@class_expr {
+  node @class_expr.this__expr_def
+  node @class_expr.this__expr_def__ns
+  node @class_expr.this__expr_def__typeof
+  node @class_expr.this__type_def
+  node @class_expr.this__type_def__ns
+  node @class_expr.this__type_def__typeof
+
+  ; this expr definition
+  edge @class_expr.generic_inner_lexical_scope -> @class_expr.this__expr_def__ns
+  ;
+  attr (@class_expr.this__expr_def__ns) pop_symbol = "%E"
+  edge @class_expr.this__expr_def__ns -> @class_expr.this__expr_def
+  ;
+  attr (@class_expr.this__expr_def) pop_symbol = "this"
+  edge @class_expr.this__expr_def -> @class_expr.this__expr_def__typeof
+  ;
+  attr (@class_expr.this__expr_def__typeof) pop_symbol = ":"
+  edge @class_expr.this__expr_def__typeof -> @class_expr.generic_inner_type
+
+  ; this type definition
+  ; FIXME this is more dynamic in reality
+  edge @class_expr.generic_inner_lexical_scope -> @class_expr.this__type_def__ns
+  ;
+  attr (@class_expr.this__type_def__ns) pop_symbol = "%T"
+  edge @class_expr.this__type_def__ns -> @class_expr.this__type_def
+  ;
+  attr (@class_expr.this__type_def) pop_symbol = "this"
+  edge @class_expr.this__type_def -> @class_expr.generic_inner_type
+}
+
+; default constructor
+; FIXME only if no other constructor is defined
+(class)@class_expr {
+  node @class_expr.ctor_def
+
+  ; default nullary constructor
+  edge @class_expr.type -> @class_expr.ctor_def
+  ;
+  attr (@class_expr.ctor_def) pop_symbol = "<new>"
+  ; FIXME constructor inherits type parameters of surrounding class
+  edge @class_expr.ctor_def -> @class_expr.generic_type
+}
+
+; body
+(class body:(_)@body)@class_expr {
+  ; propagate lexical scope
+  edge @body.lexical_scope -> @class_expr.lexical_scope
+
+  ; class type consists of body members
+  edge @class_expr.generic_inner_type -> @body.type_members
+
+  ; type of class expression consists of static members
+  edge @class_expr.type -> @body.static_members
+}
+
+
+
+;; Non-null Expression
+
+(non_null_expression
+  (_)@expr
+)@non_null_expr {
+  ; propagate lexical scope
+  edge @expr.lexical_scope -> @non_null_expr.lexical_scope
+}
+
+
+
+;; Type Assertion
+
+; (type_assertion
+;   (type_arguments)
+;   (expression)
+; )
+
+(type_assertion
+  (type_arguments)
+  (expression)@expr
+)@type_assert {
+  ; propagate lexical scope
+  edge @expr.lexical_scope -> @type_assert.lexical_scope
+}
+
+
+
+;; As Expression
+
+; (as_expression
+;   (expression)
+;   (template_string)
+; )
+; (as_expression
+;   (expression)
+;   (_)@type
+; )
+
+(as_expression
+  (_)@expr
+  (_)@type
+)@as_expr {
+  ; propagate lexical scope
+  edge @expr.lexical_scope -> @as_expr.lexical_scope
+  edge @type.lexical_scope -> @as_expr.lexical_scope
+
+  ; type is type of annotation
+  edge @as_expr.type -> @type.type
+}
+
+
+
+; ######
+; #     #   ##   ##### ##### ###### #####  #    #  ####
+; #     #  #  #    #     #   #      #    # ##   # #
+; ######  #    #   #     #   #####  #    # # #  #  ####
+; #       ######   #     #   #      #####  #  # #      #
+; #       #    #   #     #   #      #   #  #   ## #    #
+; #       #    #   #     #   ###### #    # #    #  ####
+
+;; Attributes defined on patterns
+;
+; in .lexical_scope
+;
+; out .defs
+;
+; in .cotype
+;
+
+[
+  (array_pattern)
+  (assignment_pattern)
+  (object_assignment_pattern)
+  (object_pattern)
+  (pair_pattern)
+  (rest_pattern)
+  (shorthand_property_identifier_pattern)
+]@pat {
+  node @pat.cotype
+  node @pat.defs
+  node @pat.lexical_scope
+}
+; these also appear in pattern positions, but already gets some nodes from other rules
+[
+  (this)
+  (member_expression)
+  (subscript_expression)
+]@pat {
+  node @pat.defs
+}
+
+[ ; NOTE these are the ones not also variables
+  (for_in_statement ["var" "let" "const"] left:(identifier)@name)
+  (variable_declarator name:(identifier)@name)
+  (pattern/identifier)@name
+  (rest_pattern (_)@name)
+] {
+  node @name.cotype
+  node @name.lexical_scope
+}
+
+[
+  (for_in_statement ["var" "let" "const"] left:(identifier)@name)
+  (variable_declarator name:(identifier)@name)
+  (pattern/identifier)@name
+  (rest_pattern (_)@name)
+] {
+  node @name.defs
+  node @name.expr_def
+  node @name.expr_def__ns
+  node @name.expr_def__typeof
+
+  ; pattern defs are this def
+  edge @name.defs -> @name.expr_def__ns
+
+  attr (@name.expr_def__ns) pop_symbol = "%E"
+  edge @name.expr_def__ns -> @name.expr_def
+
+  ; local definition
+  attr (@name.expr_def) node_definition = @name
+  edge @name.expr_def -> @name.expr_def__typeof
+
+  ; definition type
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @name.cotype
+}
+
+
+
+(object_pattern (_)@entry)@obj_pat {
+  edge @entry.lexical_scope -> @obj_pat.lexical_scope
+
+  edge @obj_pat.defs -> @entry.defs
+
+  edge @entry.cotype -> @obj_pat.cotype
+}
+
+
+
+; capture object field
+(shorthand_property_identifier_pattern)@prop_pat {
+  node @prop_pat.expr_def
+  node @prop_pat.expr_def__ns
+  node @prop_pat.expr_def__typeof
+  node @prop_pat.expr_ref
+  node @prop_pat.expr_ref__ns
+  node @prop_pat.expr_ref__typeof
+  node @prop_pat.member
+
+  ; link definitions
+  edge @prop_pat.defs -> @prop_pat.expr_def__ns
+
+  ; definition namespace
+  attr (@prop_pat.expr_def__ns) pop_symbol = "%E"
+  edge @prop_pat.expr_def__ns -> @prop_pat.expr_def
+
+  ; definition name
+  attr (@prop_pat.expr_def) node_definition = @prop_pat
+  edge @prop_pat.expr_def -> @prop_pat.expr_def__typeof
+
+  ; type of definition
+  attr (@prop_pat.expr_def__typeof) pop_symbol = ":"
+  edge @prop_pat.expr_def__typeof -> @prop_pat.expr_ref__typeof
+
+  ; type of reference
+  attr (@prop_pat.expr_ref__typeof) push_symbol = ":"
+  edge @prop_pat.expr_ref__typeof -> @prop_pat.expr_ref
+
+  ; reference name
+  attr (@prop_pat.expr_ref) node_reference = @prop_pat
+  edge @prop_pat.expr_ref -> @prop_pat.member
+
+  ; member projection
+  attr (@prop_pat.member) push_symbol = "."
+  edge @prop_pat.member -> @prop_pat.cotype
+}
+
+
+
+; capture object field with specific pattern
+(pair_pattern
+  key:(_)@key ; can be v or "v"!
+  value:(_)@value_pat
+)@pair_pat {
+  node @key.expr_ref
+  node @key.expr_ref__ns
+  node @key.expr_ref__typeof
+  node @pair_pat.member
+
+  edge @value_pat.lexical_scope -> @pair_pat.lexical_scope
+
+  edge @pair_pat.defs -> @value_pat.defs
+
+  ; value cotype through projection
+  edge @value_pat.cotype -> @key.expr_ref__typeof
+
+  ; type of reference
+  attr (@key.expr_ref__typeof) push_symbol = ":"
+  edge @key.expr_ref__typeof -> @key.expr_ref
+
+  ; reference name
+  attr (@key.expr_ref) symbol_reference = (replace (source-text @key) "[\"\']" "")
+  edge @key.expr_ref -> @pair_pat.member
+
+  ; member projection
+  attr (@pair_pat.member) push_symbol = "."
+  edge @pair_pat.member -> @pair_pat.cotype
+}
+
+
+
+; capture object field with default value
+(object_assignment_pattern
+  left:(_)@pat
+  right:(_)@expr
+)@obj_assgn_pat {
+  ; propagate lexical scope
+  edge @pat.lexical_scope -> @obj_assgn_pat.lexical_scope
+  edge @expr.lexical_scope -> @obj_assgn_pat.lexical_scope
+
+  ; propagate cotype
+  edge @pat.cotype -> @obj_assgn_pat.cotype
+
+  ; propagate defs
+  edge @obj_assgn_pat.defs -> @pat.defs
+
+  ; use default assignment type for cotype
+  edge @pat.cotype -> @expr.type
+}
+
+
+
+(array_pattern)@array_pat {
+  node @array_pat.indexable
+
+  ; propagate cotype
+  attr (@array_pat.indexable) push_symbol = "[]"
+  edge @array_pat.indexable -> @array_pat.cotype
+}
+
+(array_pattern
+  (_)@pat
+)@array_pat {
+  node @pat.comp_index
+
+  ; propagate lexical scope
+  edge @pat.lexical_scope -> @array_pat.lexical_scope
+
+  ; propagate cotype components
+  edge @pat.cotype -> @pat.comp_index
+  ;
+  attr (@pat.comp_index) push_symbol = (named-child-index @pat)
+  edge @pat.comp_index -> @array_pat.indexable
+
+  ; propagate defs
+  edge @array_pat.defs -> @pat.defs ;; FIXME
+}
+
+
+
+(assignment_pattern
+  left:(_)@pat
+  right:(_)@expr
+)@assignment_pat {
+  ; propagate lexical scope
+  edge @pat.lexical_scope -> @assignment_pat.lexical_scope
+  edge @expr.lexical_scope -> @assignment_pat.lexical_scope
+
+  ; propagate cotype
+  edge @pat.cotype -> @assignment_pat.cotype
+
+  ; propagate defs
+  edge @assignment_pat.defs -> @pat.defs
+
+  ; use default assignment type for cotype
+  edge @pat.cotype -> @expr.type
+}
+
+
+
+(rest_pattern (_)@inner)@rest_pat {
+  ; propagate lexical scope
+  edge @inner.lexical_scope -> @rest_pat.lexical_scope
+
+  ; propagate cotype
+  ; FIXME what is the cotype?
+
+  ; propagate defs
+  edge @rest_pat.defs -> @inner.defs
+}
+
+
+
+; #     #
+; ##   ## ###### #    # #####  ###### #####   ####
+; # # # # #      ##  ## #    # #      #    # #
+; #  #  # #####  # ## # #####  #####  #    #  ####
+; #     # #      #    # #    # #      #####       #
+; #     # #      #    # #    # #      #   #  #    #
+; #     # ###### #    # #####  ###### #    #  ####
+
+;; Attributes defined on members
+;
+; in .lexical_scope
+;     Scope to resolve type names.
+;     Set by enclosing node.
+;
+; out .type_members
+;     Scope representing the declared type members.
+;
+; out .static_members
+;     Scope representing the declared static members.
+
+[
+  (abstract_method_signature)
+  (call_signature)
+  (construct_signature)
+  (decorator) ; not strictly a member, but appears in same positions
+  (index_signature)
+  (method_definition)
+  (method_signature)
+  (property_signature)
+  (public_field_definition)
+]@mem {
+  node @mem.lexical_scope
+  node @mem.type_members
+  node @mem.static_members
+}
+
+
+
+;; Decorator
+
+(decorator (_)@expr)@dec {
+  edge @expr.lexical_scope -> @dec.lexical_scope
+}
+
+
+
+;; Construct Signature
+
+; (construct_signature
+;   (type_parameters) ; opt
+;   (formal_parameters)
+;   (type_annotation) ; opt
+; ) {}
+
+(construct_signature)@ctor_sig {
+  node @ctor_sig.ctor_def
+
+  ; constructor member
+  edge @ctor_sig.type_members -> @ctor_sig.ctor_def
+  ;
+  attr (@ctor_sig.ctor_def) pop_symbol = "<new>"
+  edge @ctor_sig.ctor_def -> @ctor_sig.generic_type
+}
+
+; type parameters are be handled by the generics rules
+
+(construct_signature
+  parameters:(_)@params
+)@construct_sig {
+  ; propagate lexical scope
+  edge @params.lexical_scope -> @construct_sig.generic_inner_lexical_scope
+}
+
+(construct_signature
+  type:(_)@type ; opt
+)@construct_sig {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @construct_sig.generic_inner_lexical_scope
+
+  ; propagate lexical scope
+  edge @construct_sig.generic_inner_type -> @type.type
+}
+
+
+
+;; Index Signature
+
+; (index_signature
+;   name:(_)@index_name
+;   index_type:(_)@index_type
+;   type:(_)@type
+; )@index_sig
+
+(index_signature
+  index_type:(_)@index_type
+  type:(_)@type
+)@index_sig {
+  node @index_sig.indexable
+
+  ; propagate lexical scope
+  edge @index_type.lexical_scope -> @index_sig.lexical_scope
+  edge @type.lexical_scope -> @index_sig.lexical_scope
+
+  ; member definition
+  edge @index_sig.type_members -> @index_sig.indexable
+  ;
+  attr (@index_sig.indexable) pop_symbol = "[]"
+  edge @index_sig.indexable -> @type.type
+}
+
+
+
+;; Call Signature
+
+; (call_signature
+;   type_parameters:(_) ; opt
+;   parameters:(_)
+;   return_type:[(type_annotation) (asserts) (type_predicate_annotation)] ; opt
+; ) {}
+
+(call_signature)@call_sig {
+  node @call_sig.callable
+  node @call_sig.callable__return
+
+  ; call definition
+  edge @call_sig.type_members -> @call_sig.callable
+  ;
+  attr (@call_sig.callable) pop_symbol = "->"
+  edge @call_sig.callable -> @call_sig.callable__return
+  ;
+  attr (@call_sig.callable__return) pop_symbol = "<return>"
+  edge @call_sig.callable__return -> @call_sig.generic_type
+}
+
+; type parameters are handled by generics rules below
+
+(call_signature
+  parameters:(_)@parameters
+)@call_sig {
+  ; propagate lexical scope
+  edge @parameters.lexical_scope -> @call_sig.generic_inner_lexical_scope
+}
+
+(call_signature
+  return_type:(_)@return_type
+)@call_sig {
+  ; propagate lexical scope
+  edge @return_type.lexical_scope -> @call_sig.generic_inner_lexical_scope
+
+  ; inner type is return type
+  edge @call_sig.generic_inner_type -> @return_type.type
+}
+
+
+
+;; Property Signature
+
+; (property_signature
+;   name:(_)@name
+;   type:(_)@type ; opt
+; )@sig
+
+(property_signature
+  name:(_)@name
+)@sig {
+  node @sig.member
+
+  ; member definition
+  edge @sig.type_members -> @sig.member
+  ;
+  attr (@sig.member) pop_symbol = "."
+  edge @sig.member -> @name.expr_def
+  ;
+  attr (@name.expr_def) node_definition = @name
+}
+
+(property_signature
+  name:(_)@name
+  type:(_)@type ; opt
+)@sig {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @sig.lexical_scope
+
+  ; type of property is type of annotation
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @type.type
+}
+
+
+
+;; Public Field Definition
+
+; (public_field_definition
+;   name:(_)@name
+;   type:(_)@type ; opt
+;   value:(_)@value ; opt
+; )@def
+
+(public_field_definition
+  name:(_)@name
+)@def {
+  node @def.member
+
+  ; member definition
+  edge @def.type_members -> @def.member
+  ;
+  attr (@def.member) pop_symbol = "."
+  edge @def.member -> @name.expr_def
+  ;
+  attr (@name.expr_def) node_definition = @name
+}
+
+(public_field_definition
+  name:(_)@name
+  type:(_)@type ; opt
+)@def {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @def.lexical_scope
+
+  ; type of field is type of annotation
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @type.type
+}
+
+(public_field_definition
+  name:(_)@name
+  !type ; opt
+  value:(_)@value ; opt
+) {
+  ; type of field is type of value
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @value.type
+}
+
+(public_field_definition
+  value:(_)@value ; opt
+)@def {
+  ; propagate lexical scope
+  edge @value.lexical_scope -> @def.lexical_scope
+}
+
+
+
+;; (Abstract) Method Signature & Definition
+
+; (method_signature
+;   ; 'get' | 'set' | '*' ; opt
+;   name:(_)
+;   type_parameters:(_) ; opt
+;   parameters:(_)
+;   return_type:[(type_annotation) (asserts) (type_predicate_annotation)]
+; )
+;
+; (abstract_method_signature
+;   ; 'get' | 'set' | '*' ; opt
+;   name:(_)
+;   type_parameters:(_) ; opt
+;   parameters:(_)
+;   return_type:[(type_annotation) (asserts) (type_predicate_annotation)]
+; ) { }
+
+; (method_definition
+;   ; 'get' | 'set' | '*' ; opt
+;   name:(_)
+;   type_parameters:(_) ; opt
+;   parameters:(_)
+;   return_type:[(type_annotation) (asserts) (type_predicate_annotation)]
+;   body:(_)
+; )
+
+;;;; regular members (not 'get' and 'set', not constructors)
+
+[
+  (method_signature          ["get" "set"]?@is_acc name:(_)@name) ; FIXME name:^("constructor")
+  (abstract_method_signature ["get" "set"]?@is_acc name:(_)@name) ; FIXME name:^("constructor")
+  (method_definition         ["get" "set"]?@is_acc name:(_)@name) ; FIXME name:^("constructor")
+]@mem {
+if none @is_acc {
+  node @mem.member
+  node @mem.callable
+  node @mem.callable__params
+  node @mem.callable__return
+
+  ; member definition
+  edge @mem.type_members -> @mem.member
+  ;
+  attr (@mem.member) pop_symbol = "."
+  edge @mem.member -> @name.expr_def
+  ;
+  attr (@name.expr_def) node_definition = @name
+
+  ; type of method is callable generic type
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @mem.callable
+  ;
+  attr (@mem.callable) pop_symbol = "->"
+  edge @mem.callable -> @mem.generic_type
+  ;
+  edge @mem.generic_inner_type -> @mem.callable__params
+  edge @mem.generic_inner_type -> @mem.callable__return
+  ;
+  attr (@mem.callable__return) pop_symbol = "<return>"
+}
+}
+
+; type parameters are handled by generics rules below
+
+[
+  (method_signature          ["get" "set"]?@is_acc parameters:(_)@params)
+  (abstract_method_signature ["get" "set"]?@is_acc parameters:(_)@params)
+  (method_definition         ["get" "set"]?@is_acc parameters:(_)@params)
+]@mem {
+if none @is_acc {
+  ; propagate lexical scope
+  edge @params.lexical_scope -> @mem.generic_inner_lexical_scope
+
+  ; parameters are visible in body
+  edge @mem.generic_inner_lexical_scope -> @params.defs
+  attr (@mem.generic_inner_lexical_scope -> @params.defs) precedence = 1
+
+  ; connect paarams to type
+  edge @mem.callable__params -> @params.params
+}
+}
+
+[
+  (method_signature          ["get" "set"]?@is_acc return_type:(_)@return_type)
+  (abstract_method_signature ["get" "set"]?@is_acc return_type:(_)@return_type)
+  (method_definition         ["get" "set"]?@is_acc return_type:(_)@return_type)
+]@mem {
+if none @is_acc {
+  ; propagate lexical scope
+  edge @return_type.lexical_scope -> @mem.generic_inner_lexical_scope
+
+  ; inner type is return type
+  edge @mem.callable__return -> @return_type.type
+}
+}
+
+[
+  (method_definition ["get" "set" "async"]?@is_acc !return_type body:(_)@body)
+]@mem {
+if none @is_acc {
+  ; inner type is type of return statement
+  edge @mem.callable__return -> @body.return_type
+}
+}
+
+[
+  (method_definition "async" !return_type body:(_)@body)
+]@mem {
+  ; inner type is type of return statement
+  edge @mem.callable__return -> @mem.async_type
+  ;
+  edge @mem.await_type -> @body.return_type
+}
+
+;;;; 'get' and 'set' methods
+
+[
+  (method_signature          ["get" "set"] name:(_)@name)
+  (abstract_method_signature ["get" "set"] name:(_)@name)
+  (method_definition         ["get" "set"] name:(_)@name)
+]@mem {
+  node @mem.member
+
+  ; member definition
+  edge @mem.type_members -> @mem.member
+  ;
+  attr (@mem.member) pop_symbol = "."
+  edge @mem.member -> @name.expr_def
+  ;
+  attr (@name.expr_def) node_definition = @name
+}
+
+[
+  ; NOTE type_parameters and parameters are assumed to be empty
+  (method_signature          "get" name:(_)@name return_type:(_)@return_type)
+  (abstract_method_signature "get" name:(_)@name return_type:(_)@return_type)
+  (method_definition         "get" name:(_)@name return_type:(_)@return_type)
+]@mem {
+  ; propagate lexical scope
+  edge @return_type.lexical_scope -> @mem.lexical_scope
+
+  ; type of field is return type
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @return_type.type
+}
+
+[
+  ; NOTE type_parameters and return_type are assumed to be empty
+  (method_signature          "set" name:(_)@name parameters:(formal_parameters (required_parameter (type_annotation)@param_type)))
+  (abstract_method_signature "set" name:(_)@name parameters:(formal_parameters (required_parameter (type_annotation)@param_type)))
+  (method_definition         "set" name:(_)@name parameters:(formal_parameters (required_parameter (type_annotation)@param_type)))
+]@mem {
+  ; propagate lexical scope
+  edge @param_type.lexical_scope -> @mem.lexical_scope
+
+  ; type of field is parameter type
+  edge @name.expr_def -> @name.expr_def__typeof
+  ;
+  attr (@name.expr_def__typeof) pop_symbol = ":"
+  edge @name.expr_def__typeof -> @param_type.type
+}
+
+;;;; method body
+
+[
+  (method_definition body:(_)@body)
+]@mem {
+  ; propagate lexical scope
+  edge @body.lexical_scope -> @mem.generic_inner_lexical_scope
+}
+
+
+
+;;;; FIXME constructor methods
+
+
+
+;; Class Heritage
+
+; (class_heritage
+;   (extends_clause)@extends       ; opt
+;   (implements_clause)@implements ; opt
+; )@class_heritage
+
+[
+  (class_heritage)
+  (extends_clause)
+  (extends_type_clause)
+  (implements_clause)
+]@heritage {
+  node @heritage.lexical_scope
+  node @heritage.lexical_defs
+  node @heritage.type_members
+  node @heritage.static_members
+}
+
+(class_heritage
+  (_)@extends_or_implements ; opt
+)@class_heritage {
+  ; propagate lexical scope
+  edge @extends_or_implements.lexical_scope -> @class_heritage.lexical_scope
+
+  node super__expr_def
+  node super__expr_def__ns
+  node super__expr_def__typeof
+  ;
+  ; super expr definition
+  edge @class_heritage.lexical_defs -> super__expr_def__ns
+  ;
+  attr (super__expr_def__ns) pop_symbol = "%E"
+  edge super__expr_def__ns -> super__expr_def
+  ;
+  attr (super__expr_def) pop_symbol = "super", source_node = @class_heritage, empty_source_span
+  edge super__expr_def -> super__expr_def__typeof
+  ;
+  attr (super__expr_def__typeof) pop_symbol = ":"
+
+  ; type members inherited from extends & implements clauses
+  edge @class_heritage.type_members -> @extends_or_implements.type_members
+  edge super__expr_def__typeof -> @extends_or_implements.type_members
+
+  ; static members inherited from extends & implements clauses
+  edge @class_heritage.static_members -> @extends_or_implements.static_members
+}
+
+
+
+;; Implements Clause
+
+; (implements_clause
+;   (_)@type ; commaSep1
+; )@implements
+
+(implements_clause)@implements {
+  edge @implements.type_members -> @implements.alias_type
+}
+
+(implements_clause
+  (_)@type ; commaSep1
+)@implements {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @implements.lexical_scope
+
+  ; type members from type of interface
+  edge @implements.aliased_type -> @type.type
+}
+
+
+
+;; Extends Clause
+
+; (extends_clause
+;   (expression)@expr ; commaSep1
+;   type_arguments:(_)@type_args ; commaSep1, opt
+; )@extends
+
+(extends_clause
+  (expression)@expr ; commaSep1
+; type_arguments
+)@extends {
+  node @extends.ctor_ref
+
+  ; propagate lexical scope
+  edge @expr.lexical_scope -> @extends.lexical_scope
+
+  ; static members from the super type
+  edge @extends.static_members -> @extends.alias_type
+  ;
+  edge @extends.aliased_type -> @expr.type
+
+  ; type members from the constructor return type
+  edge @extends.type_members -> @extends.ctor_ref
+  ;
+  attr (@extends.ctor_ref) push_symbol = "<new>"
+  edge @extends.ctor_ref -> @expr.type
+}
+
+(extends_clause
+  type_arguments:(_)@type_args
+)@extends {
+  ; propagate lexical scope
+  edge @type_args.lexical_scope -> @extends.lexical_scope
+
+  ; FIXME constructor type arguments are currently ignored
+}
+
+
+
+;; Extends Type Clause
+
+; (extends_type_clause
+;   [(type_identifier) (nested_type_identifier) (generic_type)]@type ; commaSep1
+; )@extends
+
+(extends_type_clause)@extends {
+  edge @extends.type_members -> @extends.alias_type
+}
+
+(extends_type_clause
+  (_)@type ; commaSep1
+)@extends {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @extends.lexical_scope
+
+  ; type members from the super interface
+  edge @extends.aliased_type -> @type.type
+}
+
+
+
+; #######
+;    #    #   # #####  ######  ####
+;    #     # #  #    # #      #
+;    #      #   #    # #####   ####
+;    #      #   #####  #           #
+;    #      #   #      #      #    #
+;    #      #   #      ######  ####
+;
+; ##################################
+
+;; Attributes defined on syntactic types
+;
+; in .lexical_scope
+;     Scope to resolve type names.
+;     Set by enclosing node.
+;
+; out .type
+;     Scope representing the type of the syntactic type.
+
+[
+  (array_type)
+  (asserts)
+  (conditional_type)
+  (constraint)
+  (constructor_type)
+  (default_type)
+  (existential_type)
+  (flow_maybe_type)
+  (function_type)
+  (generic_type)
+  (index_type_query)
+  (infer_type)
+  (intersection_type)
+  (literal_type)
+  (lookup_type)
+  (mapped_type_clause)
+  (nested_type_identifier)
+  (object_type)
+  (omitting_type_annotation)
+  (opting_type_annotation)
+  (optional_type)
+  (parenthesized_type)
+  (predefined_type)
+  (readonly_type)
+  (rest_type)
+  (template_literal_type)
+  (template_type)
+  (this_type)
+  (tuple_type)
+  (type_annotation)
+  (type_arguments)
+  (type_identifier)
+  (type_parameter)
+  (type_parameters)
+  (type_predicate)
+  (type_predicate_annotation)
+  (type_query)
+  (union_type)
+]@type {
+  node @type.lexical_scope
+  node @type.type
+}
+
+
+;; Accessibility Modifier
+
+; (accessibility_modifier) {}
+
+
+
+;; Omitting Type Annotation
+
+; (omitting_type_annotation
+;   (_)@type
+; )@type_annotation
+
+(omitting_type_annotation
+  (_)@type
+)@type_annotation {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @type_annotation.lexical_scope
+
+  ; type is type of inner
+  edge @type_annotation.type -> @type.type
+}
+
+
+
+;; Opting Type Annotation
+
+; (opting_type_annotation
+;   (_)@type
+; )@type_annotation
+
+(opting_type_annotation
+  (_)@type
+)@type_annotation {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @type_annotation.lexical_scope
+
+  ; type is type of inner
+  edge @type_annotation.type -> @type.type
+}
+
+
+
+;; Type Annotation
+
+; (type_annotation
+;   (_)@type
+; )@type_annotation
+
+(type_annotation
+  (_)@type
+)@type_annotation {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @type_annotation.lexical_scope
+
+  ; type is type of inner
+  edge @type_annotation.type -> @type.type
+}
+
+
+
+;; Assertion
+
+; (asserts
+;   [(type_predicate) (identifier) (this)]
+; ) {}
+
+(asserts
+  (_)@type
+)@asserts {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @asserts.lexical_scope
+}
+
+
+
+;; Optional Type
+
+(optional_type
+  (_)@type
+)@opt_type {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @opt_type.lexical_scope
+
+  ; type is type of inner
+  edge @opt_type.type -> @type.type
+}
+
+
+
+;; Rest Type
+
+(rest_type
+  (_)@type
+)@rest_type {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @rest_type.lexical_scope
+
+  ; FIXME is this an array type?
+  edge @rest_type.type -> @type.type
+}
+
+
+
+;; Constructor Type
+
+; (constructor_type
+;   (type_parameters) ; opt
+;   (formal_parameters)
+;   (_)@type
+; ) {}
+
+(constructor_type)@ctor_type {
+  node @ctor_type.ctor_def
+
+  ; type is ctor member
+  edge @ctor_type.type -> @ctor_type.ctor_def
+  ;
+  attr (@ctor_type.ctor_def) pop_symbol = "<new>"
+  edge @ctor_type.ctor_def -> @ctor_type.generic_type
+}
+
+; type parameters are handled by generics rules below
+
+(constructor_type
+  parameters:(_)@params
+  type:(_)@type
+)@ctor_type {
+  ; propagate lexical scope
+  edge @params.lexical_scope -> @ctor_type.generic_inner_lexical_scope
+  edge @type.lexical_scope -> @ctor_type.generic_inner_lexical_scope
+
+  ; type is the return type
+  edge @ctor_type.generic_inner_type -> @type.type
+}
+
+
+
+;; Infer Type
+
+; (infer_type
+;   (type_identifier)
+; ) {}
+
+(infer_type
+  (_)@type
+)@infer_type {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @infer_type.lexical_scope
+
+  ; type is the inner type
+  edge @infer_type.type -> @type.type
+}
+
+
+
+;; Conditional Type
+
+; T1 extends T2 ? T3 : T4
+
+(conditional_type
+  left:(_)@left
+  right:(_)@right
+  consequence:(_)@consequence
+  alternative:(_)@alternative
+)@cond_type {
+  ; propagate lexical scope
+  edge @left.lexical_scope -> @cond_type.lexical_scope
+  edge @right.lexical_scope -> @cond_type.lexical_scope
+  edge @consequence.lexical_scope -> @cond_type.lexical_scope
+  edge @alternative.lexical_scope -> @cond_type.lexical_scope
+
+  ; type is the union of the possible result types (over-approximation)
+  edge @cond_type.type -> @consequence.type
+  edge @cond_type.type -> @alternative.type
+}
+
+
+
+;; Generic Type
+
+; (generic_type
+;   [(type_identifier) (nested_type_identifier)]
+;   (type_arguments)
+; ) {}
+
+(generic_type
+  name: (_)@type
+)@generic_type {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @generic_type.lexical_scope
+
+  ; type is applied generic type
+  edge @generic_type.type -> @generic_type.applied_type
+  ;
+  ; type application is handled by the generics rules below
+  ;
+  edge @generic_type.generic_type -> @type.type
+}
+
+
+
+;; Type Predicate
+
+; NAME is TYPE
+
+; (type_predicate
+;   [(identifier) (this)]
+;   (_)@type
+; ) {}
+
+(type_predicate
+  (_)@name
+  (_)@type
+)@type_pred {
+  ; propagate lexical scope
+  edge @name.lexical_scope -> @type_pred.lexical_scope
+  edge @type.lexical_scope -> @type_pred.lexical_scope
+}
+
+
+;; Type Predicate Annotation
+
+; (type_predicate_annotation
+;   (type_predicate)@type_pred
+; )@type_pred_anno {}
+
+(type_predicate_annotation
+  (type_predicate)@type_pred
+)@type_pred_anno {
+  ; propagate lexical scope
+  edge @type_pred.lexical_scope -> @type_pred_anno.lexical_scope
+}
+
+
+
+;; Type Query
+
+; typeof E
+
+; (type_query
+;   (_)@expr
+; ) {}
+
+(type_query
+  (_)@expr
+)@type_query {
+  ; propagate lexical scope
+  edge @expr.lexical_scope -> @type_query.lexical_scope
+
+  ; type is type of expression
+  edge @type_query.type -> @expr.type
+}
+
+
+
+;; Index Type Query
+
+; keyof T
+
+(index_type_query
+  (_)@type
+)@index_type_query {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @index_type_query.lexical_scope
+}
+
+
+
+;; Lookup Type
+
+; T1[T2]
+
+(lookup_type
+  (_)@primary_type
+  (_)@type
+)@lookup_type {
+  ; propagate lexical scope
+  edge @primary_type.lexical_scope -> @lookup_type.lexical_scope
+  edge @type.lexical_scope -> @lookup_type.lexical_scope
+}
+
+
+
+;; Mapped Type Clause
+
+; [T1 in T2]
+
+; (mapped_type_clause
+;   (type_identifier)
+;   (_)@type
+; ) {}
+
+(mapped_type_clause
+  type:(_)@type
+)@mapped_type_clause {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @mapped_type_clause.lexical_scope
+
+  ; FIXME is this correct?
+  edge @mapped_type_clause.type -> @type.type
+}
+
+
+
+;; Literal Type
+
+; (literal_type
+;   [(unary_expression operator:(_) argument:(number))
+;    (number)
+;    (string)
+;    (true)
+;    (false)]
+; ) {}
+
+
+
+;; Existential Type
+
+(existential_type) {}
+
+
+
+;; Maybe Type
+
+(flow_maybe_type
+  (_)@primary_type
+)@flow_type {
+  ; propagate lexical scope
+  edge @primary_type.lexical_scope -> @flow_type.lexical_scope
+
+  ; type is type of inner
+  edge @flow_type.type -> @primary_type.type
+}
+
+
+
+;; Parenthesized Type
+
+(parenthesized_type
+  (_)@type
+)@parens_type {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @parens_type.lexical_scope
+
+  ; type is type of inner
+  edge @parens_type.type -> @type.type
+}
+
+
+
+;; Predefined Type
+
+; (predefined_type) {}
+
+
+
+;; Type Arguments
+
+(type_arguments)@type_args {
+  node @type_args.type_args
+  attr (@type_args.type_args) is_exported
+}
+
+(type_arguments
+  (_)@type ; commaSep1
+)@type_args {
+  node @type.arg_index
+
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @type_args.lexical_scope
+
+  ; type args are positional indexed types of sub terms
+  edge @type_args.type_args -> @type.arg_index
+  ;
+  attr (@type.arg_index) pop_symbol = (named-child-index @type)
+  edge @type.arg_index -> @type.type
+}
+
+
+
+;; Array Type
+
+; (array_type
+;   (_)@element_type
+; )@type
+
+(array_type)@type {
+  node @type.indexable
+
+  ; type is indexable element type
+  edge @type.type -> @type.indexable
+  ;
+  attr (@type.indexable) pop_symbol = "[]"
+}
+
+(array_type
+  (_)@element_type
+)@type {
+  ; propagate lexical scope
+  edge @element_type.lexical_scope -> @type.lexical_scope
+
+  edge @type.indexable -> @element_type.type
+}
+
+
+
+;; Tuple Type
+
+; (tuple_type
+;   (_)@component_type ; commaSep
+; )@type
+
+(tuple_type)@type {
+  node @type.indexable
+
+  ; type is indexable
+  edge @type.type -> @type.indexable
+  ;
+  attr (@type.indexable) pop_symbol = "[]"
+}
+
+(tuple_type
+  (_)@comp_type ; commaSep
+)@type {
+  node @comp_type.comp_index
+
+  ; propagate lexical scope
+  edge @comp_type.lexical_scope -> @type.lexical_scope
+
+  ; component indexed using position
+  edge @type.indexable -> @comp_type.comp_index
+  ;
+  attr (@comp_type.comp_index) pop_symbol = (named-child-index @comp_type)
+  edge @comp_type.comp_index -> @comp_type.type
+}
+
+; (tuple_parameter
+;   [(identifier) (rest_pattern)]
+;   (type_annotation)
+; ) {}
+
+; (optional_tuple_parameter
+;   (identifier)
+;   (type_annotation)
+; ) {}
+
+; tuple components can be parameters, but require extra properties
+(tuple_type [
+  (required_parameter)
+  (optional_parameter)
+]@_tuple_param) {
+  node @_tuple_param.type
+}
+(tuple_type [
+  (required_parameter type:(_)@type)
+  (optional_parameter type:(_)@type)
+]@_tuple_param) {
+  ; component type is type annotation
+  edge @_tuple_param.type -> @type.type
+}
+
+
+
+;; Readonly Type
+
+; (readonly_type
+;   (_)@inner_type
+; )@type
+
+(readonly_type
+  (_)@inner_type
+)@type {
+  ; propagate lexical scope
+  edge @inner_type.lexical_scope -> @type.lexical_scope
+
+  ; type is type of inner
+  edge @type.type -> @inner_type.type
+}
+
+
+
+;; Union Type
+
+; (union_type
+;   (_)@left_type ; opt
+;   (_)@right_type
+; )@type
+
+(union_type
+  (_)@inner_type
+)@type {
+  ; propagate lexical scope
+  edge @inner_type.lexical_scope -> @type.lexical_scope
+
+  ; type is union of types of inner
+  edge @type.type -> @inner_type.type
+}
+
+
+
+;; Intersection Type
+
+; (intersection_type
+;   (_)@left_type ; opt
+;   (_)@right_type
+; )@type
+
+(intersection_type
+  (_)@inner_type
+)@type {
+  ; propagate lexical scope
+  edge @inner_type.lexical_scope -> @type.lexical_scope
+
+  ; type is union of types of inner (over-approximation)
+  edge @type.type -> @inner_type.type
+}
+
+
+
+;; Function Type
+
+; (function_type
+;   (type_parameters) ; opt
+;   (formal_parameters)
+;   [(_)@type (type_predicate)]
+; ) {}
+
+(function_type)@fun_type {
+  node @fun_type.callable
+  node @fun_type.callable__params
+  node @fun_type.callable__return
+
+  ; type is callable generic type
+  edge @fun_type.type -> @fun_type.callable
+  ;
+  attr (@fun_type.callable) pop_symbol = "->"
+  edge @fun_type.callable -> @fun_type.generic_type
+  ;
+  edge @fun_type.generic_inner_type -> @fun_type.callable__params
+  edge @fun_type.generic_inner_type -> @fun_type.callable__return
+  ;
+  attr (@fun_type.callable__return) pop_symbol = "<return>"
+}
+
+; type parameters are handled by generics rules below
+
+(function_type parameters:(_)@params)@fun_type {
+  ; propagate lexical scope
+  edge @params.lexical_scope -> @fun_type.generic_inner_lexical_scope
+
+  ; connect params to type
+  edge @fun_type.callable__params -> @params.params
+}
+
+(function_type return_type:(_)@return_type)@fun_type {
+  ; propagate lexical scope
+  edge @return_type.lexical_scope -> @fun_type.generic_inner_lexical_scope
+
+  ; inner type is return type
+  edge @fun_type.callable__return -> @return_type.type
+}
+
+
+
+;; Type Identifier
+
+; (type_identifier)@name
+
+; FIXME shoulds not apply if
+;       - part of nested_type_identifier
+(type_identifier)@name {
+  node @name.type_ref
+  node @name.type_ref__ns
+
+  ; type reference
+  attr (@name.type_ref) node_reference = @name
+  edge @name.type_ref -> @name.type_ref__ns
+  ;
+  attr (@name.type_ref__ns) push_symbol = "%T"
+  edge @name.type_ref__ns -> @name.lexical_scope
+
+  ; type is the declaration
+  edge @name.type -> @name.type_ref
+}
+
+
+
+;; Nested Type Identifier
+
+; (nested_type_identifier
+;   module:[(identifier) (nested_identifier)]
+;   name:(_)
+; ) {}
+
+[
+  ; X
+  (nested_type_identifier module:(identifier)@name @mod)
+  ; X._
+  (nested_type_identifier module:(nested_identifier . (identifier)@name @mod))
+  ; X._._
+  (nested_type_identifier module:(nested_identifier . (nested_identifier . (identifier)@name @mod)))
+  ; X._._._
+  (nested_type_identifier module:(nested_identifier . (nested_identifier . (nested_identifier . (identifier)@name @mod))))
+  ; X._._._._
+  (nested_type_identifier module:(nested_identifier . (nested_identifier . (nested_identifier . (nested_identifier . (identifier)@name @mod)))))
+]@nested_type_id {
+  node @name.type_ref
+  node @name.type_ref__ns
+  node @mod.type
+
+  ; type reference to namespace name
+  edge @mod.type -> @name.type_ref
+  ;
+  attr (@name.type_ref) node_reference = @name
+  edge @name.type_ref -> @name.type_ref__ns
+  ;
+  attr (@name.type_ref__ns) push_symbol = "%T"
+  edge @name.type_ref__ns -> @nested_type_id.lexical_scope
+}
+
+[
+  ; _.X
+  (nested_type_identifier module:(nested_identifier . (_)@basemod . (identifier)@name .)@mod)
+  ; _._.X
+  (nested_type_identifier module:(nested_identifier . (nested_identifier . (_)@basemod . (identifier)@name .)@mod))
+  ; _._._.X
+  (nested_type_identifier module:(nested_identifier . (nested_identifier . (nested_identifier . (_)@basemod . (identifier)@name .)@mod)))
+  ; _._._._.X
+  (nested_type_identifier module:(nested_identifier . (nested_identifier . (nested_identifier . (nested_identifier . (_)@basemod . (identifier)@name .)@mod))))
+] {
+  node @name.type_ref
+  node @name.type_ref__ns
+  node @mod.member
+  node @mod.type
+
+  ; type reference to namespace name
+  edge @mod.type -> @name.type_ref
+  ;
+  attr (@name.type_ref) node_reference = @name
+  edge @name.type_ref -> @mod.member
+  ;
+  attr (@mod.member) push_symbol = "."
+  edge @mod.member -> @basemod.type
+}
+
+(nested_type_identifier
+  module:(_)@mod
+  name:(_)@name
+)@nested_type_id {
+  node @name.nested_type_ref ; FIXME non-standard name because the general (type_identifier) rule is also applied to @name
+  node @nested_type_id.member
+
+  ; type reference into namespace type
+  edge @nested_type_id.type -> @name.nested_type_ref
+  ;
+  attr (@name.nested_type_ref) node_reference = @name
+  edge @name.nested_type_ref -> @nested_type_id.member
+  ;
+  attr (@nested_type_id.member) push_symbol = "."
+  edge @nested_type_id.member -> @mod.type
+}
+
+
+
+;; Object Type
+
+; (object_type
+;   [(export_statement)
+;    (property_signature)
+;    (call_signature)
+;    (construct_signature)
+;    (index_signature)
+;    (method_signature)]@inner
+; )@type
+
+(object_type)@type {
+  ; mark type scope as endpoint
+  attr (@type.type) is_endpoint
+}
+
+(object_type
+  (_)@inner
+)@type {
+  ; propagate lexical scope
+  edge @inner.lexical_scope -> @type.lexical_scope
+
+  ; type consist of members
+  edge @type.type -> @inner.type_members
+}
+
+
+
+;; Type Parameters
+
+; (type_parameters
+;   (type_parameter) ; commaSep1
+; ) {}
+
+(type_parameters)@type_params {
+  node @type_params.defs
+}
+
+(type_parameters
+  (_)@param
+)@type_params {
+  ; propagate lexical scope
+  edge @param.lexical_scope -> @type_params.lexical_scope
+
+  ; type definitions are visible to each other
+  edge @param.lexical_scope -> @type_params.defs
+
+  ; expose type definitions
+  edge @type_params.defs -> @param.defs
+}
+
+; (type_parameter
+;   name:(type_identifier)
+;   constraint:(constraint) ; opt
+;   value:(default_type) ; opt
+; ) {}
+
+(type_parameter
+  name:(_)@name
+)@type_param {
+  node @name.type_def
+  node @name.type_def__ns
+  node @type_param.arg_index
+  node @type_param.defs
+
+  ; type definition
+  edge @type_param.defs -> @name.type_def__ns
+  ;
+  attr (@name.type_def__ns) pop_symbol = "%T"
+  edge @name.type_def__ns -> @name.type_def
+  ;
+  attr (@name.type_def) node_definition = @name
+
+  ; jump from parameter to positional type argument
+  edge @name.type_def -> @type_param.arg_index
+  ;
+  attr (@type_param.arg_index) push_symbol = (named-child-index @type_param)
+  edge @type_param.arg_index -> JUMP_TO_SCOPE_NODE
+}
+
+(type_parameter
+  name:(_)@name
+  value:(_)@type ; opt
+)@type_param {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @type_param.lexical_scope
+
+  ; type of definition is default type
+  edge @name.type_def -> @type_param.alias_type
+  ;
+  ; alias guards are set up by rules below
+  ;
+  edge @type_param.aliased_type -> @type.type
+}
+
+
+
+;; Default Type
+
+(default_type
+  (_)@type
+)@def_type {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @def_type.lexical_scope
+
+  ; type is type of inner
+  edge @def_type.type -> @type.type
+}
+
+
+
+;; Type Constraint
+
+(constraint
+  (_)@type
+)@type_c {
+  ; propagate lexical scope
+  edge @type.lexical_scope -> @type_c.lexical_scope
+
+  ; type is type of inner
+  edge @type_c.type -> @type.type
+}
+
+
+
+;; This Type
+
+(this_type)@this {
+  node @this.expr_ref
+  node @this.expr_ref__ns
+
+  ; expression reference
+  attr (@this.expr_ref) symbol_reference = "this", source_node = @this
+  edge @this.expr_ref -> @this.expr_ref__ns
+  ;
+  attr (@this.expr_ref__ns) push_symbol = "%T"
+  edge @this.expr_ref__ns -> @this.lexical_scope
+
+  ; type is the definition
+  edge @this.type -> @this.expr_ref
+}
+
+
+
+;; Template literal type
+
+; (template_literal_type)
+
+(template_literal_type (_)@inner)@type {
+  ; propagate lexical scope
+  edge @inner.lexical_scope -> @type.lexical_scope
+
+  ; type is type of inner
+  edge @type.type -> @inner.type
+}
+
+
+
+;; Template type
+
+; (template_type)
+
+(template_type (_)@inner)@type {
+  ; propagate lexical scope
+  edge @inner.lexical_scope -> @type.lexical_scope
+
+  ; type is type of inner
+  edge @type.type -> @inner.type
+}
+
+
+
+;  #####
+; #     # ###### #    # ###### #####  #  ####   ####
+; #       #      ##   # #      #    # # #    # #
+; #  #### #####  # #  # #####  #    # # #       ####
+; #     # #      #  # # #      #####  # #           #
+; #     # #      #   ## #      #   #  # #    # #    #
+;  #####  ###### #    # ###### #    # #  ####   ####
+
+;; Attributes defined on generic declarations
+;
+; in .lexical_scope
+;     Scope to resolve types in.
+;
+; out .generic_inner_lexical_scope
+;     Scope for types including the type parameters.
+;
+; out .generic_type
+;     Scope representing the (possibly) generic type.
+;
+; in .generic_inner_type
+;     Scope representing the type being abstracted over.
+
+[
+  (abstract_class_declaration)
+  (abstract_method_signature)
+  (call_signature)
+  (class)
+  (class_declaration)
+  (construct_signature)
+  (constructor_type)
+  (function_declaration)
+  (function_signature)
+  (function_type)
+  (generator_function_declaration)
+  (interface_declaration)
+  (method_definition)
+  (method_signature)
+  (type_alias_declaration)
+]@gen_decl {
+  node @gen_decl.generic_inner_lexical_scope
+  node @gen_decl.generic_inner_type
+  node @gen_decl.generic_type
+}
+
+[
+  (abstract_class_declaration     !type_parameters)
+  (abstract_method_signature      !type_parameters)
+  (call_signature                 !type_parameters)
+  (class                          !type_parameters)
+  (class_declaration              !type_parameters)
+  (construct_signature            !type_parameters)
+  (constructor_type               !type_parameters)
+  (function_declaration           !type_parameters)
+  (function_signature             !type_parameters)
+  (function_type                  !type_parameters)
+  (generator_function_declaration !type_parameters)
+  (interface_declaration          !type_parameters)
+  (method_definition              !type_parameters)
+  (method_signature               !type_parameters)
+  (type_alias_declaration         !type_parameters)
+]@gen_decl {
+  ; propagate lexical scope
+  edge @gen_decl.generic_inner_lexical_scope -> @gen_decl.lexical_scope
+
+  ; type is inner type, without abstraction
+  edge @gen_decl.generic_type -> @gen_decl.generic_inner_type
+}
+[
+  (abstract_class_declaration     type_parameters:(_)@type_params)
+  (abstract_method_signature      type_parameters:(_)@type_params)
+  (call_signature                 type_parameters:(_)@type_params)
+  (class                          type_parameters:(_)@type_params)
+  (class_declaration              type_parameters:(_)@type_params)
+  (construct_signature            type_parameters:(_)@type_params)
+  (constructor_type               type_parameters:(_)@type_params)
+  (function_declaration           type_parameters:(_)@type_params)
+  (function_signature             type_parameters:(_)@type_params)
+  (function_type                  type_parameters:(_)@type_params)
+  (generator_function_declaration type_parameters:(_)@type_params)
+  (interface_declaration          type_parameters:(_)@type_params)
+  (method_definition              type_parameters:(_)@type_params)
+  (method_signature               type_parameters:(_)@type_params)
+  (type_alias_declaration         type_parameters:(_)@type_params)
+]@gen_decl {
+  node @gen_decl.drop_type_args
+  node @gen_decl.drop_type_abs
+  node @gen_decl.type_abs
+
+  ; propagate lexical scope for parameters
+  edge @type_params.lexical_scope -> @gen_decl.lexical_scope
+
+  ; propagate lexical inner scope, dropping type arguments
+  edge @gen_decl.generic_inner_lexical_scope -> @gen_decl.drop_type_args
+  ;
+  attr (@gen_decl.drop_type_args) type = "drop_scopes"
+  edge @gen_decl.drop_type_args -> @gen_decl.lexical_scope
+
+  ; inner lexical scope includes type definitions
+  edge @gen_decl.generic_inner_lexical_scope -> @type_params.defs
+  attr (@gen_decl.generic_inner_lexical_scope -> @type_params.defs) precedence = 1
+
+  ; generic type is abstraction over inner type
+  edge @gen_decl.generic_type -> @gen_decl.type_abs
+  ;
+  attr (@gen_decl.type_abs) pop_scoped_symbol = "<>"
+  edge @gen_decl.type_abs -> @gen_decl.generic_inner_type
+}
+
+;; Attributes defined on generic applications
+;
+; in .lexical_scope
+;     Scope to resolve types in.
+;
+; out .applied_type
+;     Application of the generic type.
+;
+; in .generic_type
+;     Generic type to be applied.
+
+[
+  (call_expression)
+  (new_expression)
+  (generic_type)
+]@gen_expr {
+  node @gen_expr.applied_type
+  node @gen_expr.generic_type
+}
+
+[
+  (call_expression !type_arguments)
+  (new_expression  !type_arguments)
+]@gen_expr {
+  ; direct edge for non-generic functions
+  edge @gen_expr.applied_type -> @gen_expr.generic_type
+}
+
+[
+  (call_expression !type_arguments)
+  (new_expression  !type_arguments)
+]@gen_expr {
+  node @gen_expr.type_app
+  node @gen_expr.inferred_type_args
+  attr (@gen_expr.inferred_type_args) is_exported
+
+  ; push inferred type arguments
+  edge @gen_expr.applied_type -> @gen_expr.type_app
+  ;
+  attr (@gen_expr.type_app) push_scoped_symbol = "<>", scope = @gen_expr.inferred_type_args
+  edge @gen_expr.type_app -> @gen_expr.generic_type
+
+  ; FIXME infer type arguments
+}
+
+[
+  (call_expression type_arguments:(_)@type_args)
+  (new_expression  type_arguments:(_)@type_args)
+  (generic_type    type_arguments:(_)@type_args)
+]@gen_expr {
+  node @gen_expr.type_app
+
+  ; propagate lexical scope
+  edge @type_args.lexical_scope -> @gen_expr.lexical_scope
+
+  ; push given type arguments
+  edge @gen_expr.applied_type -> @gen_expr.type_app
+  ;
+  attr (@gen_expr.type_app) push_scoped_symbol = "<>", scope = @type_args.type_args
+  edge @gen_expr.type_app -> @gen_expr.generic_type
+}
+
+
+
+;    #
+;   # #   #      #   ##    ####  ######  ####
+;  #   #  #      #  #  #  #      #      #
+; #     # #      # #    #  ####  #####   ####
+; ####### #      # ######      # #           #
+; #     # #      # #    # #    # #      #    #
+; #     # ###### # #    #  ####  ######  ####
+
+; Attributes defined on type aliases
+;
+; out .alias_type
+;     Type with alias guards in place.
+;
+; in .aliased_type
+;     Type to be aliased.
+
+[
+  (extends_clause)
+  (extends_type_clause)
+  (implements_clause)
+  (type_alias_declaration)
+  (type_parameter)
+]@alias {
+  node @alias.alias_type
+  node @alias.alias_type__callable_pop
+  node @alias.alias_type__callable_push
+  node @alias.alias_type__ctor_pop
+  node @alias.alias_type__ctor_push
+  node @alias.alias_type__indexable_pop
+  node @alias.alias_type__indexable_push
+  node @alias.alias_type__member_pop
+  node @alias.alias_type__member_push
+  node @alias.aliased_type
+
+  ; alias members
+  edge @alias.alias_type -> @alias.alias_type__member_pop
+  ;
+  attr (@alias.alias_type__member_pop) pop_symbol = "."
+  edge @alias.alias_type__member_pop -> @alias.alias_type__member_push
+  ;
+  attr (@alias.alias_type__member_push) push_symbol = "."
+  edge @alias.alias_type__member_push -> @alias.aliased_type
+
+  ; alias callable
+  edge @alias.alias_type -> @alias.alias_type__callable_pop
+  ;
+  attr (@alias.alias_type__callable_pop) pop_symbol = "->"
+  edge @alias.alias_type__callable_pop -> @alias.alias_type__callable_push
+  ;
+  attr (@alias.alias_type__callable_push) push_symbol = "->"
+  edge @alias.alias_type__callable_push -> @alias.aliased_type
+
+  ; alias indexable
+  edge @alias.alias_type -> @alias.alias_type__indexable_pop
+  ;
+  attr (@alias.alias_type__indexable_pop) pop_symbol = "[]"
+  edge @alias.alias_type__indexable_pop -> @alias.alias_type__indexable_push
+  ;
+  attr (@alias.alias_type__indexable_push) push_symbol = "[]"
+  edge @alias.alias_type__indexable_push -> @alias.aliased_type
+
+  ; alias constructors
+  edge @alias.alias_type -> @alias.alias_type__ctor_pop
+  ;
+  attr (@alias.alias_type__ctor_pop) pop_symbol = "<new>"
+  edge @alias.alias_type__ctor_pop -> @alias.alias_type__ctor_push
+  ;
+  attr (@alias.alias_type__ctor_push) push_symbol = "<new>"
+  edge @alias.alias_type__ctor_push -> @alias.aliased_type
+}
+
+; Attributes defined on expr aliases
+;
+; out .alias_expr
+;     Type with alias guards in place.
+;
+; in .aliased_expr
+;     Type to be aliased.
+
+; [
+; ]@alias {
+;   ; type of expression
+;   edge @alias.alias_expr -> @alias.alias_expr__typeof
+;   ;
+;   attr (@alias.alias_expr__typeof) pop_symbol = ":"
+
+;   ; alias members
+;   edge @alias.alias_expr__typeof -> @alias.alias_expr__member_pop
+;   ;
+;   attr (@alias.alias_expr__member_pop) pop_symbol = "."
+;   edge @alias.alias_expr__member_pop -> @alias.alias_expr__member_push
+;   ;
+;   attr (@alias.alias_expr__member_push) push_symbol = "."
+;   edge @alias.alias_expr__member_push -> @alias.aliased_expr__typeof
+
+;   ; alias callable
+;   edge @alias.alias_expr__typeof -> @alias.alias_expr__callable_pop
+;   ;
+;   attr (@alias.alias_expr__callable_pop) pop_symbol = "->"
+;   edge @alias.alias_expr__callable_pop -> @alias.alias_expr__callable_push
+;   ;
+;   attr (@alias.alias_expr__callable_push) push_symbol = "->"
+;   edge @alias.alias_expr__callable_push -> @alias.aliased_expr__typeof
+
+;   ; alias indexable
+;   edge @alias.alias_expr__typeof -> @alias.alias_expr__indexable_pop
+;   ;
+;   attr (@alias.alias_expr__indexable_pop) pop_symbol = "[]"
+;   edge @alias.alias_expr__indexable_pop -> @alias.alias_expr__indexable_push
+;   ;
+;   attr (@alias.alias_expr__indexable_push) push_symbol = "[]"
+;   edge @alias.alias_expr__indexable_push -> @alias.aliased_expr__typeof
+
+;   ; alias constructors
+;   edge @alias.alias_expr__typeof -> @alias.alias_expr__ctor_pop
+;   ;
+;   attr (@alias.alias_expr__ctor_pop) pop_symbol = "<new>"
+;   edge @alias.alias_expr__ctor_pop -> @alias.alias_expr__ctor_push
+;   ;
+;   attr (@alias.alias_expr__ctor_push) push_symbol = "<new>"
+;   edge @alias.alias_expr__ctor_push -> @alias.aliased_expr__typeof
+
+;   ; type of target
+;   attr (@alias.aliased_expr__typeof) push_symbol = ":"
+;   edge @alias.aliased_expr__typeof -> @alias.aliased_expr
+; }
+
+
+
+;
+;    #                                        #       #
+;   # #    ####  #   # #    #  ####          #       # #   #    #   ##   # #####
+;  #   #  #       # #  ##   # #    #        #       #   #  #    #  #  #  #   #
+; #     #  ####    #   # #  # #            #       #     # #    # #    # #   #
+; #######      #   #   #  # # #           #        ####### # ## # ###### #   #
+; #     # #    #   #   #   ## #    #     #         #     # ##  ## #    # #   #
+; #     #  ####    #   #    #  ####     #          #     # #    # #    # #   #
+;
+
+; Attributes defined on await:
+;
+; in .async_type
+;   The async type being awaiting.
+;
+; out .await_type
+;   The type of the result of awaiting.
+
+[
+  (await_expression)
+]@await {
+  node @await.async_type
+  node @await.await_type
+  node @await.await_type__member
+  node @await.await_type__ref
+  node @await.await_type__typeof
+
+  ; type is the internal $Promise$T member of the promise type
+  edge @await.await_type -> @await.await_type__typeof
+  ;
+  attr (@await.await_type__typeof) push_symbol = ":"
+  edge @await.await_type__typeof -> @await.await_type__ref
+  ;
+  attr (@await.await_type__ref) push_symbol = "$Promise$T"
+  edge @await.await_type__ref -> @await.await_type__member
+  ;
+  attr (@await.await_type__member) push_symbol = "."
+  edge @await.await_type__member -> @await.async_type
+}
+
+; Attributes defined on async:
+;
+; out .async_type
+;   The async type being returned.
+;
+; out .await_type
+;   The type of the result of awaiting.
+
+[
+  (arrow_function                 "async")
+  (function                       "async")
+  (function_declaration           "async")
+  (generator_function             "async")
+  (generator_function_declaration "async")
+  (method_definition              "async")
+]@async {
+  node @async.async_type
+  node @async.async_type__type_app
+  node @async.async_type__type_arg
+  node @async.async_type__type_args
+  attr (@async.async_type__type_args) is_exported
+  node @async.async_type__promise_ref
+  node @async.async_type__promise_ref__ns
+  node @async.await_type
+  node @async.await_type__member
+  node @async.await_type__ref
+  node @async.await_type__typeof
+
+  ; type arguments
+  edge @async.async_type__type_args -> @async.async_type__type_arg
+  ;
+  attr (@async.async_type__type_arg) pop_symbol = 0
+  edge @async.async_type__type_arg -> @async.await_type
+
+  ; type is applied Promise
+  edge @async.async_type -> @async.async_type__type_app
+  ;
+  attr (@async.async_type__type_app) push_scoped_symbol = "<>", scope = @async.async_type__type_args
+  edge @async.async_type__type_app -> @async.async_type__promise_ref
+  ;
+  attr (@async.async_type__promise_ref) symbol_reference = "Promise", source_node = @async
+  edge @async.async_type__promise_ref -> @async.async_type__promise_ref__ns
+  ;
+  attr (@async.async_type__promise_ref__ns) push_symbol = "%T"
+  edge @async.async_type__promise_ref__ns -> @async.lexical_scope
+}

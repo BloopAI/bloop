@@ -86,8 +86,7 @@ impl File {
             builder.add_bytes_field("line_end_indices", BytesOptions::default().set_stored());
 
         let symbols = builder.add_text_field("symbols", trigram.clone());
-        let symbol_locations =
-            builder.add_bytes_field("symbol_locations", BytesOptions::default().set_stored());
+        let symbol_locations = builder.add_text_field("symbol_locations", STRING | STORED);
 
         let branches = builder.add_text_field("branches", trigram);
 

@@ -1,9 +1,9 @@
-use crate::intelligence::{MemoizedQuery, TSLanguageConfig};
+use crate::intelligence::{MemoizedQuery, MemoizedStackGraphConfig, TSLanguageConfig};
 
 pub static TYPESCRIPT: TSLanguageConfig = TSLanguageConfig {
     language_ids: &["TypeScript", "TSX"],
     file_extensions: &["ts", "tsx"],
-    grammar: tree_sitter_typescript::language_tsx,
+    grammar: tree_sitter_typescript::language_typescript,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
     hoverable_query: MemoizedQuery::new(
         r#"
@@ -34,6 +34,7 @@ pub static TYPESCRIPT: TSLanguageConfig = TSLanguageConfig {
         // misc.
         "label",
     ]],
+    stack_graph_config: Some(MemoizedStackGraphConfig::new(include_str!("ruleset.tsg"))),
 };
 
 #[cfg(test)]

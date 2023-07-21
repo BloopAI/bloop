@@ -3,14 +3,21 @@ mod language;
 mod namespace;
 mod scope_resolution;
 
+use std::path::Path;
+
 pub use {
-    language::{Language, MemoizedQuery, TSLanguage, TSLanguageConfig, ALL_LANGUAGES},
+    language::{
+        Language, MemoizedQuery, MemoizedStackGraphConfig, TSLanguage, TSLanguageConfig,
+        ALL_LANGUAGES,
+    },
     namespace::*,
     scope_resolution::{NodeKind, ScopeGraph},
 };
 
 use scope_resolution::ResolutionMethod;
+use stack_graphs::graph::StackGraph;
 use tree_sitter::{Parser, Tree};
+use tree_sitter_stack_graphs::{NoCancellation, Variables};
 
 /// A tree-sitter representation of a file
 pub struct TreeSitterFile<'a> {
@@ -31,6 +38,7 @@ pub enum TreeSitterFileError {
     LanguageMismatch,
     QueryError(tree_sitter::QueryError),
     FileTooLarge,
+    LoadError,
 }
 
 impl<'a> TreeSitterFile<'a> {
@@ -93,4 +101,38 @@ impl<'a> TreeSitterFile<'a> {
 
         Ok(ResolutionMethod::Generic.build_scope(query, root_node, self.src, self.language))
     }
+}
+
+pub fn try_build_stack_graph(
+    src: &str,
+    lang_id: &str,
+    source_path: &str,
+) -> Result<StackGraph, TreeSitterFileError> {
+    let language = match TSLanguage::from_id(lang_id) {
+        Language::Supported(language) => Ok(language),
+        Language::Unsupported => Err(TreeSitterFileError::UnsupportedLanguage),
+    }?;
+
+    let _c = language
+        .stack_graph_config
+        .as_ref()
+        .ok_or(TreeSitterFileError::UnsupportedLanguage)?;
+    let config = _c
+        .stack_graph_config(language.grammar, language.file_extensions)
+        .map_err(|e| {
+            tracing::error!("load error: {}", e);
+            TreeSitterFileError::LoadError
+        })?;
+
+    let mut graph = StackGraph::new();
+    let handle = graph.add_file(&source_path).unwrap();
+    let globals = Variables::new();
+    config
+        .sgl
+        .build_stack_graph_into(&mut graph, handle, src, &globals, &NoCancellation)
+        .map_err(|e| {
+            tracing::error!("stack-graphs: {e:?}");
+            TreeSitterFileError::LoadError
+        })?;
+    Ok(graph)
 }

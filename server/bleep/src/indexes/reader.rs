@@ -96,6 +96,7 @@ impl DocumentRead for ContentReader {
     }
 
     fn read_document(&self, schema: &File, doc: tantivy::Document) -> Self::Document {
+        let s = std::time::Instant::now();
         let relative_path = read_text_field(&doc, schema.relative_path);
         let repo_ref = read_text_field(&doc, schema.repo_ref);
         let repo_name = read_text_field(&doc, schema.repo_name);
@@ -112,13 +113,15 @@ impl DocumentRead for ContentReader {
             .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
             .collect();
 
-        let symbol_locations = bincode::deserialize(
+        tracing::info!("deser first fields at {}ms", s.elapsed().as_millis());
+        let symbol_locations = serde_json::from_str(
             doc.get_first(schema.symbol_locations)
                 .unwrap()
-                .as_bytes()
+                .as_text()
                 .unwrap(),
         )
         .unwrap_or_default();
+        tracing::info!("deser stack-graph + db at {}ms", s.elapsed().as_millis());
 
         ContentDocument {
             relative_path,
