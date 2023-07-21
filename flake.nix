@@ -186,6 +186,7 @@
               rust-analyzer
               cargo
               rustc
+              cargo-watch
             ]);
 
             src = pkgs.lib.sources.cleanSource ./.;
