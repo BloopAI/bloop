@@ -147,7 +147,7 @@ type ChatMessageUser = {
 
 export type MessageResultCite = {
   Cite: {
-    path_alias: number;
+    path_alias?: number;
     path: string;
     comment: string;
     start_line: number;
