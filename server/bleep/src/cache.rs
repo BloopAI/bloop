@@ -5,7 +5,7 @@ use qdrant_client::{
     qdrant::{PointId, PointStruct},
 };
 use sqlx::Sqlite;
-use tracing::{debug, trace};
+use tracing::trace;
 use uuid::Uuid;
 
 use crate::{
@@ -306,7 +306,8 @@ impl<'a> ChunkCache<'a> {
         //
         let new: Vec<_> = std::mem::take(self.new.write().unwrap().as_mut());
         let new_size = new.len();
-        for (p, branches) in std::mem::take(&mut *self.new_sql.write().unwrap()) {
+        let new_sql = std::mem::take(&mut *self.new_sql.write().unwrap());
+        for (p, branches) in new_sql {
             sqlx::query! {
                 "INSERT INTO chunk_cache (chunk_hash, file_hash, branches) \
                  VALUES (?, ?, ?)",
