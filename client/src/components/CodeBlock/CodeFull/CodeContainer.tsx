@@ -89,7 +89,7 @@ const CodeContainer = ({
         )
           .then((data) => {
             setTokenInfo({
-              data: mapTokenInfo(data.data),
+              data: mapTokenInfo(data.data, relativePath),
               hoverableRange,
               tokenRange,
               lineNumber,
