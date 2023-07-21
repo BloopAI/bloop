@@ -137,7 +137,6 @@ const mapFileTree = (siblings: DirectoryEntry[], relativePath: string) => {
       lang:
         item.entry_data !== 'Directory' ? item.entry_data.File.lang : undefined,
       children: [],
-      selected: item.currentFile,
     }))
     .sort(sortFiles);
 };
