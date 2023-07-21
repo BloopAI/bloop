@@ -9,7 +9,7 @@ import {
   SuggestionsResponse,
   TokenInfoResponse,
 } from '../types/api';
-import { RepoType } from '../types/general';
+import { EnvConfig, RepoType } from '../types/general';
 
 const DB_API = 'https://api.bloop.ai';
 let http: AxiosInstance;
@@ -202,6 +202,8 @@ export const githubWebLogin = (redirect_to: string) =>
     .then((r) => r.data);
 
 export const getConfig = () => http.get('/config').then((r) => r.data);
+export const putConfig = (data: Partial<EnvConfig>) =>
+  http.put('/config', data).then((r) => r.data);
 
 export const getAllConversations = (
   repo_ref: string,
