@@ -8,7 +8,6 @@ import React, {
 } from 'react';
 import * as Sentry from '@sentry/react';
 import { ResultClick, ResultItemType, ResultType } from '../../types/results';
-import Filters from '../../components/Filters';
 import { SearchContext } from '../../context/searchContext';
 import { mapFiltersData } from '../../mappers/filter';
 import { mapResults } from '../../mappers/results';
@@ -27,7 +26,6 @@ type Props = {
 
 const ResultsPage = ({ resultsData, loading }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const [totalCount, setTotalCount] = useState(1);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -37,10 +35,6 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   const { openFileModal } = useContext(FileModalContext);
   const { setSymbolsCollapsed } = useContext(UIContext);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
-
-  const toggleFiltersOpen = useCallback(() => {
-    setIsFiltersOpen((prev) => !prev);
-  }, []);
 
   const onlySymbolResults = useMemo(
     () =>
@@ -88,27 +82,24 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   }, [resultsData]);
 
   return (
-    <>
-      <Filters isOpen={isFiltersOpen} toggleOpen={toggleFiltersOpen} />
-      <div
-        className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content pb-44"
-        ref={ref}
-      >
-        <PageHeader
-          resultsNumber={totalCount || results.length}
-          showCollapseControls={onlySymbolResults}
-          loading={loading}
-        />
-        <ResultsList
-          results={results}
-          onResultClick={onResultClick}
-          page={page}
-          setPage={handlePageChange}
-          totalPages={totalPages}
-          loading={loading}
-        />
-      </div>
-    </>
+    <div
+      className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content pb-44"
+      ref={ref}
+    >
+      <PageHeader
+        resultsNumber={totalCount || results.length}
+        showCollapseControls={onlySymbolResults}
+        loading={loading}
+      />
+      <ResultsList
+        results={results}
+        onResultClick={onResultClick}
+        page={page}
+        setPage={handlePageChange}
+        totalPages={totalPages}
+        loading={loading}
+      />
+    </div>
   );
 };
 export default Sentry.withErrorBoundary(ResultsPage, {

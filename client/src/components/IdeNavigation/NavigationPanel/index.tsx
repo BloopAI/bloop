@@ -11,7 +11,7 @@ type Props = {
 const NavigationPanel = ({ repoName, children }: Props) => {
   const { navigateRepoPath } = useAppNavigation();
   return (
-    <div className="flex divide-y divide-bg-border bg-bg-base flex-col border-r border-bg-border w-90 h-full select-none">
+    <div className="flex divide-y divide-bg-border bg-bg-base flex-col border-r border-bg-border w-90 h-full select-none overflow-auto">
       <div
         className="w-full border-b border-bg-border flex justify-between py-7 px-8 select-none cursor-pointer"
         onClick={() => navigateRepoPath(repoName)}
@@ -22,9 +22,7 @@ const NavigationPanel = ({ repoName, children }: Props) => {
           className={'ellipsis'}
         />
       </div>
-      <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
-        {children}
-      </div>
+      <div className="flex-1 overflow-auto flex flex-col">{children}</div>
     </div>
   );
 };

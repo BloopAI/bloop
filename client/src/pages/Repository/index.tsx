@@ -132,7 +132,7 @@ const RepositoryPage = ({ repositoryData }: Props) => {
           </span>
         </div>
         <div className="flex-1 flex">
-          <Filters isOpen={true} toggleOpen={() => {}} showHeader={false} />
+          <Filters forceOpen showHeader={false} />
         </div>
       </div>
       <div className="p-12 pb-32 w-full overflow-y-auto">

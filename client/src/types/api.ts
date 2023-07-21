@@ -127,7 +127,6 @@ export interface DirectoryFileEntryData {
 export interface DirectoryEntry {
   name: string;
   entry_data: 'Directory' | DirectoryFileEntryData;
-  currentFile?: boolean;
 }
 
 export interface File {

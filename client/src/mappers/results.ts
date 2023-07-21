@@ -150,10 +150,6 @@ export const mapFileResult = (fileItem: FileItem) => {
     code: fileItem.data.contents,
     hoverableRanges: [],
     repoName: fileItem.data.repo_name,
-    fileTree: mapFileTree(
-      fileItem.data.siblings || [],
-      fileItem.data.relative_path,
-    ),
   };
 };
 
