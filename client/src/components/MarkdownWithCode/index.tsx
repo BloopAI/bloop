@@ -67,7 +67,9 @@ const MarkdownWithCode = ({
         );
       },
       code({ node, inline, className, children, ...props }: CodeProps) {
-        const matchLang = /lang:(\w+)/.exec(className || '');
+        const matchLang =
+          /lang:(\w+)/.exec(className || '') ||
+          /language-(\w+)/.exec(className || '');
         const matchType = /language-type:(\w+)/.exec(className || '');
         const matchPath = /path:(.+),/.exec(className || '');
         const matchLines = /lines:(.+)/.exec(className || '');
@@ -84,7 +86,10 @@ const MarkdownWithCode = ({
               style={{ backgroundColor: children[0] }}
             />
           ) : null;
-        return !inline && matchType?.[1] && typeof children[0] === 'string' ? (
+
+        return !inline &&
+          (matchType?.[1] || matchLang?.[1]) &&
+          typeof children[0] === 'string' ? (
           matchType?.[1] === 'Quoted' ? (
             <CodeWithBreadcrumbs
               code={code}
