@@ -7,6 +7,11 @@
 image:
   file: .gitpod.Dockerfile
 
+ports:
+  - name: Bloop Interface
+    port: 7878
+    protocol: https
+
 additionalRepositories:
   - url: https://github.com/bloopai/answer-api
     checkoutLocation: answer-api
@@ -26,7 +31,7 @@ tasks:
 
       # this is working around a gitpod bug
       # https://github.com/gitpod-io/gitpod/issues/524
-      mv ~/.cargo .
+      cp -a ~/.cargo .
       tar czpf target.tar.gz target .cargo
       rm -rf .cargo target
 
@@ -52,5 +57,5 @@ tasks:
     command: |
       cd /workspace/answer-api
       git checkout nix-cachix
-      nix run /workspace/answer-api#
+      nix run /workspace/answer-api?ref=nix-cachix#
     openMode: tab-after
