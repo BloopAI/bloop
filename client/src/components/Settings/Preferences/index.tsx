@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import React, { useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import SettingsText from '../SettingsText';
 import SettingsRow from '../SettingsRow';
