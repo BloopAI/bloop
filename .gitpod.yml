@@ -77,5 +77,5 @@ tasks:
     command: |
       cd /workspace/answer-api
       git checkout nix-cachix
-      nix run /workspace/answer-api?ref=nix-cachix#
+      nix run /workspace/answer-api?ref=origin/nix-cachix#
     openMode: tab-after
