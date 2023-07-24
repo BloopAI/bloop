@@ -48,7 +48,7 @@ tasks:
         cargo run --locked --features=ee -p bleep -- \
         \
         --qdrant-url http://localhost:6334 \
-        --answer-api-url http://localhost:6869 \
+        --answer-api-url http://localhost:7879 \
         --model-dir /workspace/bloop/model \
         --frontend-dist /workspace/bloop/client/dist \
         --instance-domain $bloop_url \

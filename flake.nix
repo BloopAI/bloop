@@ -22,7 +22,10 @@
         llvm = pkgs.llvmPackages_14;
         clang = llvm.clang;
         libclang = llvm.libclang;
-        stdenv = llvm.stdenv;
+        stdenv = if pkgs.stdenv.isLinux then
+          pkgs.stdenvAdapters.useMoldLinker llvm.stdenv
+        else
+          llvm.stdenv;
 
         rustPlatform = pkgs.makeRustPlatform {
           cargo = pkgs.cargo;
@@ -87,52 +90,57 @@
           ORT_STRATEGY = "system";
           ORT_LIB_LOCATION = "${onnxruntime14}/lib";
           ORT_DYLIB_PATH = "${onnxruntime14}/lib/${onnxruntime_lib}";
+          RUSTFLAGS =
+            lib.optionalString stdenv.isLinux "-C link-arg=-fuse-ld=mold";
         };
 
-        bleep = (rustPlatform.buildRustPackage rec {
-          inherit stdenv;
-          meta = with pkgs.lib; {
-            description = "Search code. Fast.";
-            homepage = "https://bloop.ai";
-            license = licenses.asl20;
-            platforms = platforms.all;
-          };
-
-          name = "bleep";
-          pname = name;
-          src = pkgs.lib.sources.cleanSource ./.;
-
-          cargoLock = {
-            lockFile = ./Cargo.lock;
-            outputHashes = {
-              "hyperpolyglot-0.1.7" =
-                "sha256-g+ZJxthxOYPMacYi3fK304KVldiykAvcpTZctWKVVU0=";
-              "tree-sitter-cpp-0.20.0" =
-                "sha256-h6mJdmQzJlxYIcY+d5IiaFghraUgBGZwqFPKwB3E4pQ=";
-              "tree-sitter-go-0.19.1" =
-                "sha256-f885YTswEDH/QfRPUxcLp/1E2zXLKl25R9IyTGKb1eM=";
-              "tree-sitter-java-0.20.0" =
-                "sha256-gQzoWGV9wYiLibMFkLoY2sdEJg+ae9NnHt/GFfFzP8U=";
-              "ort-1.14.8" =
-                "sha256-6YAhbrgI95WwRV0ngS0yaYlxfDGUFXYU0/oGf6vs68M=";
-              "esaxx-rs-0.1.8" =
-                "sha256-rPNNSn829eOo/glgmHPqnoylZmDLlaI5vKMRtfTikGs=";
+        bleep =
+          (rustPlatform.buildRustPackage.override { inherit stdenv; } rec {
+            meta = with pkgs.lib; {
+              description = "Search code. Fast.";
+              homepage = "https://bloop.ai";
+              license = licenses.asl20;
+              platforms = platforms.all;
             };
-          };
 
-          buildNoDefaultFeatures = true;
-          checkNoDefaultFeatures = true;
-          cargoTestFlags = "-p ${name}";
-          cargoBuildFlags = "-p ${name}";
+            name = "bleep";
+            pname = name;
+            src = pkgs.lib.sources.cleanSource ./.;
 
-          nativeCheckInputs = buildDeps;
-          nativeBuildInputs = buildDeps;
-          checkInputs = runtimeDeps;
-          buildInputs = runtimeDeps;
-        }).overrideAttrs (old: envVars);
+            cargoLock = {
+              lockFile = ./Cargo.lock;
+              outputHashes = {
+                "hyperpolyglot-0.1.7" =
+                  "sha256-JY75NB6sPxN0p/hksnBbat4S2EYFi2nExYoVHpYoib8=";
+                "tree-sitter-cpp-0.20.0" =
+                  "sha256-h6mJdmQzJlxYIcY+d5IiaFghraUgBGZwqFPKwB3E4pQ=";
+                "tree-sitter-go-0.19.1" =
+                  "sha256-f885YTswEDH/QfRPUxcLp/1E2zXLKl25R9IyTGKb1eM=";
+                "tree-sitter-java-0.20.0" =
+                  "sha256-gQzoWGV9wYiLibMFkLoY2sdEJg+ae9NnHt/GFfFzP8U=";
+                "ort-1.14.8" =
+                  "sha256-6YAhbrgI95WwRV0ngS0yaYlxfDGUFXYU0/oGf6vs68M=";
+                "comrak-0.18.0" =
+                  "sha256-UWY00jF2aKAG3Oz0P1UWF/7TiTIrCUGHwfjW+O1ok7Q=";
+                "tree-sitter-php-0.19.1" =
+                  "sha256-oHUfcuqtFFl+70/uJjE74J1JVV93G9++UaEIntOH5tM=";
+              };
+            };
+
+            buildNoDefaultFeatures = true;
+            checkNoDefaultFeatures = true;
+            cargoTestFlags = "-p ${name}";
+            cargoBuildFlags = "-p ${name}";
+
+            nativeCheckInputs = buildDeps;
+            nativeBuildInputs = buildDeps;
+            checkInputs = runtimeDeps;
+            buildInputs = runtimeDeps;
+          }).overrideAttrs (old: envVars);
 
         onnxruntime14 = import ./nix/onnxruntime.nix {
-          inherit pkgs stdenv;
+          inherit pkgs;
+          inherit (llvm) stdenv;
         };
 
         frontend = (pkgs.buildNpmPackage rec {
@@ -177,8 +185,7 @@
         };
 
         devShells = {
-          default = (pkgs.mkShell {
-            inherit stdenv;
+          default = (pkgs.mkShell.override { inherit stdenv; } {
             buildInputs = buildDeps ++ runtimeDeps ++ guiDeps ++ (with pkgs; [
               git-lfs
               rustfmt
