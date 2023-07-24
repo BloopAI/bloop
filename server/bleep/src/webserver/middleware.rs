@@ -10,11 +10,12 @@ use axum::{
 };
 use sentry::{Hub, SentryFutureExt};
 
-#[derive(Clone)]
+#[derive(Serialize, Clone)]
 pub enum User {
     Unknown,
     Authenticated {
         login: String,
+        #[serde(skip)]
         crab: Arc<dyn Fn() -> anyhow::Result<octocrab::Octocrab> + Send + Sync>,
     },
 }
