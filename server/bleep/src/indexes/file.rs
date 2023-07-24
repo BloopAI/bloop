@@ -6,6 +6,7 @@ use std::{
 
 use anyhow::{bail, Result};
 use async_trait::async_trait;
+use rayon::prelude::*;
 use scc::hash_map::Entry;
 use tantivy::{
     collector::TopDocs,
@@ -387,7 +388,7 @@ impl Indexer<File> {
         searcher
             .search(&query, &collector)
             .expect("failed to search index")
-            .into_iter()
+            .into_par_iter()
             .map(|(_, doc_addr)| {
                 let retrieved_doc = searcher
                     .doc(doc_addr)
