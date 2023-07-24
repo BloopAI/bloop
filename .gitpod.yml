@@ -44,6 +44,8 @@ tasks:
       echo "$BLOOP_GITHUB_SECRET_KEY" |base64 -d > /workspace/github-app-private-key.pem
       bloop_url=$(gp url 7878 | sed 's;https://;;')
 
+      git reset --hard
+
       nix develop -c cargo watch -w server -- \
         cargo run --locked --features=ee -p bleep -- \
         \
