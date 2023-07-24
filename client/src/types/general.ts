@@ -253,3 +253,50 @@ export type EnvConfig = {
     prompt_guide?: string;
   };
 };
+
+export type IpynbOutputType = {
+  name?: string;
+  stream?: string;
+  ename?: string;
+  evalue?: string;
+  traceback?: string[];
+  data?: {
+    'text/plain'?: string[];
+    'text/html'?: string[];
+    'text/latex'?: string[];
+    'image/png'?: string;
+    'image/jpeg'?: string;
+    'image/gif'?: string;
+    'image/svg+xml'?: string;
+    'application/javascript'?: string[];
+  };
+  output_type?: string;
+  png?: string;
+  jpeg?: string;
+  gif?: string;
+  svg?: string;
+  html?: string;
+  text?: string[];
+  execution_count?: number;
+  prompt_number?: number;
+  metadata?: {
+    scrolled?: boolean;
+  };
+};
+
+export type IpynbCellType = {
+  attachments?: {
+    [s: string]: {
+      [s: string]: string;
+    };
+  };
+  cell_type?: string;
+  language?: string;
+  execution_count?: number | null;
+  prompt_number?: number;
+  auto_number?: number;
+  level?: number;
+  source?: string[];
+  outputs?: IpynbOutputType[];
+  input?: string[];
+};

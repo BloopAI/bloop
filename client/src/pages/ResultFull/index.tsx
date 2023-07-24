@@ -15,6 +15,7 @@ import ErrorFallback from '../../components/ErrorFallback';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import FileMenu from '../../components/FileMenu';
 import SkeletonItem from '../../components/SkeletonItem';
+import IpynbRenderer from '../../components/IpynbRenderer';
 
 type Props = {
   data: any;
@@ -158,6 +159,8 @@ const ResultFull = ({ data, isLoading, selectedBranch }: Props) => {
                   <SkeletonItem />
                 </div>
               </div>
+            ) : result.language === 'jupyter notebook' ? (
+              <IpynbRenderer data={result.code} />
             ) : (
               <CodeFull
                 code={result.code}
