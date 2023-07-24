@@ -26,6 +26,7 @@ import { getFileName } from '../../utils/file';
 import FileMenu from '../../components/FileMenu';
 import SkeletonItem from '../../components/SkeletonItem';
 import { SearchContext } from '../../context/searchContext';
+import IpynbRenderer from '../../components/IpynbRenderer';
 
 type Props = {
   data: any;
@@ -210,6 +211,8 @@ const ResultFull = ({ data, isLoading }: Props) => {
                     <SkeletonItem />
                   </div>
                 </div>
+              ) : result.language === 'jupyter notebook' ? (
+                <IpynbRenderer data={result.code} />
               ) : (
                 <CodeFull
                   code={result.code}
