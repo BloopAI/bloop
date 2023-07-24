@@ -17,18 +17,19 @@ import {
 import { saveJsonToStorage, SEARCH_HISTORY_KEY } from '../../services/storage';
 import useAppNavigation from '../../hooks/useAppNavigation';
 import { SearchType } from '../../types/general';
+import { UIContext } from '../../context/uiContext';
 import FilterSection from './FilterSection';
 
 type Props = {
-  isOpen: boolean;
-  toggleOpen: () => void;
   showHeader?: boolean;
+  forceOpen?: boolean;
 };
 
-const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
+const Filters = ({ showHeader = true, forceOpen }: Props) => {
   const { t } = useTranslation();
   const { filters, setFilters, inputValue, setInputValue, setSearchHistory } =
     useContext(SearchContext);
+  const { isFiltersOpen, setFiltersOpen } = useContext(UIContext);
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [newFilters, setNewFilters] = useState(filters);
   const [hasFiltersChanged, setFiltersChanged] = useState(false);
@@ -134,8 +135,8 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
 
   return (
     <motion.div
-      className={`bg-bg-base border-r border-bg-border flex-shrink-0 select-none overflow-x-hidden relative`}
-      animate={{ width: isOpen ? '20.25rem' : '5rem' }}
+      className={`bg-bg-base border-r border-bg-border flex-shrink-0 select-none overflow-x-hidden relative h-full`}
+      animate={{ width: isFiltersOpen || forceOpen ? '20.25rem' : '5rem' }}
       transition={FILTER_PARENT_ANIMATION}
     >
       <div
@@ -144,14 +145,14 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
         {showHeader && (
           <div
             className={`px-8 subhead-m py-6 border-b border-bg-border flex items-center justify-between ${
-              isOpen ? 'px-8' : 'px-6'
+              isFiltersOpen || forceOpen ? 'px-8' : 'px-6'
             }`}
           >
-            <span className={isOpen ? '' : 'hidden'}>
+            <span className={isFiltersOpen || forceOpen ? '' : 'hidden'}>
               <Trans>Filters</Trans>
             </span>
             <div className="flex items-center gap-2 caption-strong">
-              {isOpen && (
+              {(isFiltersOpen || forceOpen) && (
                 <Button
                   variant="tertiary"
                   size="small"
@@ -170,7 +171,7 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
                 variant="secondary"
                 size="small"
                 onClick={onReset}
-                className={isOpen ? '' : 'hidden'}
+                className={isFiltersOpen || forceOpen ? '' : 'hidden'}
               >
                 <Trans>Reset filters</Trans>
               </Button>
@@ -178,16 +179,24 @@ const Filters = ({ isOpen, toggleOpen, showHeader = true }: Props) => {
                 variant="tertiary"
                 size="small"
                 onlyIcon
-                onClick={toggleOpen}
-                title={isOpen ? t('Hide filters') : t('Show filters')}
+                onClick={() => setFiltersOpen((prev) => !prev)}
+                title={
+                  isFiltersOpen || forceOpen
+                    ? t('Hide filters')
+                    : t('Show filters')
+                }
               >
-                {isOpen ? <DoubleChevronLeft /> : <DoubleChevronRight />}
+                {isFiltersOpen || forceOpen ? (
+                  <DoubleChevronLeft />
+                ) : (
+                  <DoubleChevronRight />
+                )}
               </Button>
             </div>
           </div>
         )}
         <AnimatePresence>
-          {isOpen && (
+          {(isFiltersOpen || forceOpen) && (
             <motion.div
               className={`w-full`}
               animate={{ visibility: 'visible' }}
