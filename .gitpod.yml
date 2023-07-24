@@ -32,11 +32,11 @@ tasks:
       # this is working around a gitpod bug
       # https://github.com/gitpod-io/gitpod/issues/524
       cp -a ~/.cargo .
-      tar czpf target.tar.gz target .cargo
+      tar czpf /workspace/target.tar.gz target .cargo
       rm -rf .cargo target
 
     command: |
-      tar -C /workspace -xzpf target.tar.gz
+      tar -C /workspace -xzpf /workspace/target.tar.gz
       rm -rf ~/.cargo target
       mv /workspace/.cargo ~
       mv /workspace/target .
