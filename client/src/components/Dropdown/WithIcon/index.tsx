@@ -47,7 +47,7 @@ const Dropdown = ({
   );
 
   return (
-    <div className="relative z-[120]" ref={ref}>
+    <div className="relative" ref={ref}>
       <ContextMenu
         items={items}
         visible={visible}

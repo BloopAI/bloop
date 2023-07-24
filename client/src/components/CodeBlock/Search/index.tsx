@@ -5,12 +5,9 @@ import Code from '../Code';
 import { ResultClick, Snippet } from '../../../types/results';
 import Button from '../../Button';
 import BreadcrumbsPath from '../../BreadcrumbsPath';
-import { DropdownWithIcon } from '../../Dropdown';
-import { MoreHorizontal } from '../../../icons';
-import { getFileManagerName, isWindowsPath, splitPath } from '../../../utils';
 import { DeviceContext } from '../../../context/deviceContext';
-import { MenuItemType } from '../../../types/general';
 import { FileTreeFileType } from '../../../types';
+import FileMenu from '../../FileMenu';
 
 type Props = {
   snippets: Snippet[];
@@ -46,7 +43,7 @@ const CodeBlockSearch = ({
 }: Props) => {
   const { t } = useTranslation();
   const [isExpanded, setExpanded] = useState(false);
-  const { os, openFolderInExplorer } = useContext(DeviceContext);
+  const { os, openFolderInExplorer, openLink } = useContext(DeviceContext);
 
   const handleMouseUp = useCallback(
     (startLine?: number, endLine?: number) => {
@@ -96,33 +93,7 @@ const CodeBlockSearch = ({
             ''
           )}
           {!hideDropdown && !repoPath.startsWith('github') && (
-            <span>
-              <DropdownWithIcon
-                items={[
-                  {
-                    type: MenuItemType.DEFAULT,
-                    text: t(`View in {{finder}}`, {
-                      finder: getFileManagerName(os.type),
-                    }),
-                    onClick: () => {
-                      openFolderInExplorer(
-                        repoPath +
-                          (isWindowsPath(repoPath) ? '\\' : '/') +
-                          (os.type === 'Darwin'
-                            ? filePath
-                            : splitPath(filePath)
-                                .slice(0, -1)
-                                .join(isWindowsPath(filePath) ? '\\' : '/')),
-                      );
-                    },
-                  },
-                ]}
-                icon={<MoreHorizontal />}
-                noChevron
-                btnSize="small"
-                btnOnlyIcon
-              />
-            </span>
+            <FileMenu repoPath={'local/' + repoPath} relativePath={filePath} />
           )}
         </div>
       </div>

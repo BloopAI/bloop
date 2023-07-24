@@ -22,7 +22,7 @@ const DeprecatedClientModal = ({ isOpen, onClose }: Props) => {
           </h4>
           <p className="body-s text-label-base text-center">
             <Trans>
-              We&apos;ve made some exciting enhancements to our app! To continue
+              We&apos;ve made some exciting enhancements to bloop! To continue
               enjoying the full functionality, including the natural language
               search feature, please update your app to the latest version.
             </Trans>
@@ -30,8 +30,7 @@ const DeprecatedClientModal = ({ isOpen, onClose }: Props) => {
           <p className="body-s text-label-base text-center">
             <Trans>
               To update your app, please visit our releases page on GitHub and
-              download the latest version manually. Thank you for being a valued
-              user of our app.
+              download the latest version manually. Thank you for using bloop.
             </Trans>
           </p>
         </div>
