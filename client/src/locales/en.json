@@ -257,5 +257,9 @@
 	"Regex search...": "Regex search...",
 	"Searching...": "Searching...",
 	"The folder is empty": "The folder is empty",
-	"We haven't found any files to index in this folder": "We haven't found any files to index in this folder"
+	"We haven't found any files to index in this folder": "We haven't found any files to index in this folder",
+	"We've made some exciting enhancements to bloop! To continue enjoying the full functionality, including the natural language search feature, please update your app to the latest version.": "We've made some exciting enhancements to bloop! To continue enjoying the full functionality, including the natural language search feature, please update your app to the latest version.",
+	"To update your app, please visit our releases page on GitHub and download the latest version manually. Thank you for using bloop.": "To update your app, please visit our releases page on GitHub and download the latest version manually. Thank you for using bloop.",
+	"View in {{viewer}}": "View in {{viewer}}",
+	"Open in VSCode": "Open in VSCode"
 }

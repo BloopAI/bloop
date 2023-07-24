@@ -256,5 +256,9 @@
 	"Yesterday": "昨日",
 	"Regex search...": "正規表現検索...",
 	"Searching...": "検索...",
-	"We haven't found any files to index in this folder": "このフォルダーにインデックスを作成するファイルが見つかりませんでした"
+	"We haven't found any files to index in this folder": "このフォルダーにインデックスを作成するファイルが見つかりませんでした",
+	"We've made some exciting enhancements to bloop! To continue enjoying the full functionality, including the natural language search feature, please update your app to the latest version.": "私たちは、Bloopにいくつかのエキサイティングな機能強化を行いました！ 自然言語検索機能を含む完全な機能を継続するには、アプリを最新バージョンに更新してください。",
+	"To update your app, please visit our releases page on GitHub and download the latest version manually. Thank you for using bloop.": "アプリを更新するには、GitHubのリリースページにアクセスして、最新バージョンを手動でダウンロードしてください。 Bloopを使用していただきありがとうございます。",
+	"View in {{viewer}}": "{{viewer}}で表示",
+	"Open in VSCode": "VSCodeで開きます"
 }

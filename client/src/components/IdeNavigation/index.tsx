@@ -20,7 +20,6 @@ const IdeNavigation = () => {
       const resp = await search(
         buildRepoQuery(tab.repoName, path, selectedBranch),
       );
-      console.log('path', path, resp);
       if (!resp.data?.[0]?.data) {
         return [];
       }
