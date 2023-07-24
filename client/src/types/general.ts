@@ -249,6 +249,9 @@ export type EnvConfig = {
     login: string;
     avatar_url: string;
   };
+  bloop_user_profile?: {
+    prompt_guide?: string;
+  };
 };
 
 export type IpynbOutputType = {

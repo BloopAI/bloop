@@ -9,6 +9,7 @@ import { buildRepoQuery } from '../../utils';
 import { SearchContext } from '../../context/searchContext';
 import { FileModalContext } from '../../context/fileModalContext';
 import { AppNavigationContext } from '../../context/appNavigationContext';
+import { UIContext } from '../../context/uiContext';
 import ResultModal from './index';
 
 type Props = {
@@ -26,6 +27,7 @@ const FileModalContainer = ({ repoName }: Props) => {
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
   const { selectedBranch } = useContext(SearchContext);
+  const { setFiltersOpen } = useContext(UIContext);
 
   useEffect(() => {
     if (isFileModalOpen) {
@@ -67,8 +69,15 @@ const FileModalContainer = ({ repoName }: Props) => {
     }
   }, [isFileModalOpen]);
 
+  useEffect(() => {
+    if (isFileModalOpen && mode === FullResultModeEnum.SIDEBAR) {
+      setFiltersOpen(false);
+    }
+  }, [isFileModalOpen, mode]);
+
   const onResultClosed = useCallback(() => {
     closeFileModalOpen();
+    setFiltersOpen(true);
   }, [closeFileModalOpen]);
 
   return (

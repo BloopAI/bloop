@@ -25,6 +25,7 @@ import { RepoSource } from './types';
 import { RepositoriesContext } from './context/repositoriesContext';
 import { AnalyticsContextProvider } from './context/providers/AnalyticsContextProvider';
 import { buildURLPart, getNavItemFromURL } from './utils/navigationUtils';
+import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
 
 register('ja', ja);
 
@@ -245,24 +246,21 @@ function App({ deviceContextValue }: Props) {
   );
 
   return (
-    <AnalyticsContextProvider
-      forceAnalytics={deviceContextValue.forceAnalytics}
-      isSelfServe={deviceContextValue.isSelfServe}
-      envConfig={deviceContextValue.envConfig}
-    >
-      <RepositoriesContext.Provider value={reposContextValue}>
-        <TabsContext.Provider value={contextValue}>
-          {tabs.map((t) => (
-            <Tab
-              key={t.key}
-              deviceContextValue={deviceContextValue}
-              isActive={t.key === activeTab}
-              tab={t}
-            />
-          ))}
-        </TabsContext.Provider>
-      </RepositoriesContext.Provider>
-    </AnalyticsContextProvider>
+    <DeviceContextProvider deviceContextValue={deviceContextValue}>
+      <AnalyticsContextProvider
+        forceAnalytics={deviceContextValue.forceAnalytics}
+        isSelfServe={deviceContextValue.isSelfServe}
+        envConfig={deviceContextValue.envConfig}
+      >
+        <RepositoriesContext.Provider value={reposContextValue}>
+          <TabsContext.Provider value={contextValue}>
+            {tabs.map((t) => (
+              <Tab key={t.key} isActive={t.key === activeTab} tab={t} />
+            ))}
+          </TabsContext.Provider>
+        </RepositoriesContext.Provider>
+      </AnalyticsContextProvider>
+    </DeviceContextProvider>
   );
 }
 
