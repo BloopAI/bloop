@@ -1,8 +1,12 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import sanitizeHtml from 'sanitize-html';
+import Convert from 'ansi-to-html';
 import Code from '../CodeBlock/Code';
 import { IpynbCellType } from '../../types/general';
+import { escapeHtml } from '../../utils';
+
+const convertAnsi = new Convert();
 
 type CellProps = {
   cell: IpynbCellType;
@@ -10,21 +14,22 @@ type CellProps = {
 };
 
 const Cell: React.FC<CellProps> = ({ cell, seq }) => {
-  if (!cell.outputs?.length && !cell.source?.length) {
+  console.log(seq, cell);
+  if (!cell.outputs?.length && !cell.source?.length && !cell.input?.length) {
     return null;
   }
 
   return (
     <div className="">
       <div className="flex gap-2">
-        <div className="prompt input_prompt">
-          {cell.cell_type === 'code' ? (
+        {cell.cell_type === 'code' ? (
+          <div className="prompt input_prompt">
             <div className="caption flex-shrink-0 w-13 mt-1">
               In [{cell.execution_count || cell.prompt_number || ' '}]:
             </div>
-          ) : null}
-        </div>
-        <div className="overflow-auto w-full border rounded-md border-bg-border">
+          </div>
+        ) : null}
+        <div className="overflow-auto w-full">
           {(() => {
             let source = '';
             if (cell.input) {
@@ -34,16 +39,18 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
             }
             if (cell.cell_type === 'markdown') {
               return (
-                <ReactMarkdown>
-                  {embedAttachments(source, cell.attachments)}
-                </ReactMarkdown>
+                <div className="markdown ipynb-markdown body-s">
+                  <ReactMarkdown>
+                    {embedAttachments(source, cell.attachments)}
+                  </ReactMarkdown>
+                </div>
               );
             }
             if (cell.cell_type === 'code') {
               return (
-                <div className="input_area">
+                <div className="input_area border rounded-md border-bg-border">
                   <div
-                    className="highlight hl-ipython3 p-1 code-s"
+                    className="p-1 code-s"
                     onDoubleClick={(e) => {
                       const selection = window.getSelection();
                       const range = document.createRange();
@@ -55,7 +62,7 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
                     {source && (
                       <Code
                         code={source}
-                        language="python"
+                        language={cell.language || 'python'}
                         showLines={false}
                         removePaddings
                       />
@@ -65,7 +72,19 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
               );
             }
             if (cell.cell_type === 'heading') {
-              return <h2>{source}</h2>;
+              return (
+                <div className="markdown ipynb-markdown">
+                  {cell.level === 1 ? (
+                    <h1>{source}</h1>
+                  ) : cell.level === 2 ? (
+                    <h2>{source}</h2>
+                  ) : cell.level === 3 ? (
+                    <h3>{source}</h3>
+                  ) : (
+                    <h4>{source}</h4>
+                  )}
+                </div>
+              );
             }
           })()}
         </div>
@@ -76,15 +95,15 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
           {(cell.outputs || []).map((output, j) => (
             <div className="flex gap-2 mt-2" key={j}>
               <div className="prompt output_prompt">
-                {output.execution_count ? (
+                {output.execution_count || output.prompt_number ? (
                   <div className="caption flex-shrink-0 w-13 mt-1">
-                    Out [{output.execution_count}]:
+                    Out [{output.execution_count || output.prompt_number}]:
                   </div>
                 ) : (
                   <div className="caption flex-shrink-0 w-13 mt-1" />
                 )}
               </div>
-              <div className="overflow-auto w-full border rounded-md border-bg-border p-1">
+              <div className="overflow-auto w-full">
                 {(() => {
                   if (output.data == null) {
                     if (output.png) {
@@ -122,7 +141,17 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
                         <div
                           className="output_svg output_subarea"
                           dangerouslySetInnerHTML={{
-                            __html: sanitizeHtml(output.svg),
+                            __html: sanitizeHtml(stringify(output.svg)),
+                          }}
+                        ></div>
+                      );
+                    }
+                    if (output.html) {
+                      return (
+                        <div
+                          className="output_html output_subarea markdown ipynb-markdown"
+                          dangerouslySetInnerHTML={{
+                            __html: sanitizeHtml(stringify(output.html)),
                           }}
                         ></div>
                       );
@@ -130,16 +159,36 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
                     if (output.text) {
                       return (
                         <div
-                          className={`output_subarea output_text output_${output.output_type} output_${output.name} output-${output.name}`}
+                          className={`output_subarea output_text ${
+                            output.stream === 'stderr' ||
+                            output.name === 'stderr' ||
+                            output.output_type === 'stderr'
+                              ? 'bg-bg-danger/30'
+                              : ''
+                          } output_${output.output_type} output_${
+                            output.stream
+                          } output-${output.name}`}
                         >
-                          <pre>{stringify(output.text)}</pre>
+                          <pre
+                            dangerouslySetInnerHTML={{
+                              __html: convertAnsi.toHtml(
+                                escapeHtml(stringify(output.text)),
+                              ),
+                            }}
+                          />
                         </div>
                       );
                     }
                     if (output.traceback) {
                       return (
-                        <div className="output_subarea bg-bg-danger">
-                          <p>{stringify(output.traceback)}</p>
+                        <div className="output_subarea bg-bg-danger/30 overflow-auto">
+                          <pre
+                            dangerouslySetInnerHTML={{
+                              __html: convertAnsi.toHtml(
+                                stringify(output.traceback),
+                              ),
+                            }}
+                          />
                         </div>
                       );
                     }
@@ -147,18 +196,20 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
                   }
                   if (output.data['text/latex']) {
                     return (
-                      <ReactMarkdown>
-                        {stringify(output.data['text/latex'])}
-                      </ReactMarkdown>
+                      <div className="markdown body-s ipynb-markdown">
+                        <ReactMarkdown>
+                          {stringify(output.data['text/latex'])}
+                        </ReactMarkdown>
+                      </div>
                     );
                   }
                   if (output.data['text/html']) {
                     const html = stringify(output.data['text/html']);
                     return (
                       <div
-                        className="output_html rendered_html output_subarea"
+                        className="output_html rendered_html output_subarea markdown ipynb-markdown"
                         dangerouslySetInnerHTML={{
-                          __html: sanitizeHtml(html),
+                          __html: sanitizeHtml(stringify(html)),
                         }}
                       ></div>
                     );
@@ -198,7 +249,9 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
                       <div
                         className="output_svg output_subarea"
                         dangerouslySetInnerHTML={{
-                          __html: sanitizeHtml(output.data['image/svg+xml']),
+                          __html: sanitizeHtml(
+                            stringify(output.data['image/svg+xml']),
+                          ),
                         }}
                       ></div>
                     );
@@ -238,7 +291,7 @@ const embedAttachments = (
 
 const stringify = (output: string | string[]): string => {
   if (Array.isArray(output)) {
-    return output.join('');
+    return output.filter((l) => !l.startsWith('<!--====-->')).join('');
   }
   return output;
 };

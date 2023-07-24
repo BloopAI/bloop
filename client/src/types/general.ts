@@ -253,6 +253,7 @@ export type EnvConfig = {
 
 export type IpynbOutputType = {
   name?: string;
+  stream?: string;
   ename?: string;
   evalue?: string;
   traceback?: string[];
@@ -271,8 +272,10 @@ export type IpynbOutputType = {
   jpeg?: string;
   gif?: string;
   svg?: string;
+  html?: string;
   text?: string[];
   execution_count?: number;
+  prompt_number?: number;
   metadata?: {
     scrolled?: boolean;
   };
@@ -285,9 +288,11 @@ export type IpynbCellType = {
     };
   };
   cell_type?: string;
+  language?: string;
   execution_count?: number | null;
   prompt_number?: number;
   auto_number?: number;
+  level?: number;
   source?: string[];
   outputs?: IpynbOutputType[];
   input?: string[];
