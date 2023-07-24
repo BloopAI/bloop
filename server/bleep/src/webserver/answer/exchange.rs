@@ -2,6 +2,7 @@ use crate::query::parser::SemanticQuery;
 use std::borrow::Cow;
 
 use anyhow::{Context, Result};
+use chrono::prelude::{DateTime, Utc};
 use lazy_regex::regex;
 use regex::Regex;
 use serde::Deserialize;
@@ -17,12 +18,17 @@ pub struct Exchange {
     pub outcome: Option<Outcome>,
     search_steps: Vec<SearchStep>,
     conclusion: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    query_timestamp: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_timestamp: Option<DateTime<Utc>>,
 }
 
 impl Exchange {
     pub fn new(query: SemanticQuery<'static>) -> Self {
         Self {
             query,
+            query_timestamp: Some(Utc::now()),
             ..Default::default()
         }
     }
@@ -34,6 +40,7 @@ impl Exchange {
         match update {
             Update::Step(search_step) => self.search_steps.push(search_step),
             Update::Filesystem(file_results) => {
+                self.response_timestamp = Some(Utc::now());
                 self.set_file_results(file_results);
             }
             Update::Article(full_text) => {
@@ -43,6 +50,7 @@ impl Exchange {
                 *outcome.as_article_mut().unwrap() = sanitize_article(&full_text);
             }
             Update::Conclude(conclusion) => {
+                self.response_timestamp = Some(Utc::now());
                 self.conclusion = Some(conclusion);
             }
         }
