@@ -758,8 +758,6 @@ impl Agent {
             Action::Proc { query, paths } => self.process_files(query, paths).await?,
         };
 
-        dbg!(&result);
-
         // Build the action selection prompt
         let functions = serde_json::from_value::<Vec<llm_gateway::api::Function>>(
             prompts::functions(!self.conversation.paths().is_empty()), // Only add proc if there are paths in context
@@ -770,9 +768,8 @@ impl Agent {
             &self.conversation.paths(),
         ))];
         history.extend(self.conversation.history()?);
-        dbg!(&history);
+
         let trimmed_history = self.conversation.trim_history(history.clone())?;
-        dbg!(&trimmed_history);
 
         let raw_response = self
             .llm_gateway
