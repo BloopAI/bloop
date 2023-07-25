@@ -398,33 +398,14 @@ impl Conversation {
             .collect::<Vec<_>>()
     }
 
-    fn get_path_alias(&mut self, path: &str) -> Option<usize> {
-        self.paths().iter().position(|p| *p == path)
-    }
-
-    fn utterance_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
-        // Take the last `ANSWER_MAX_CONTEXT_SIZE` 'user' and 'assistant' messages
-        self.exchanges
-            .iter()
-            .rev()
-            .take(ANSWER_MAX_HISTORY_SIZE)
-            .rev()
-            .flat_map(|e| {
-                let query = e.query().map(|q| llm_gateway::api::Message::PlainText {
-                    role: "user".to_owned(),
-                    content: q,
-                });
-
-                let conclusion = e.answer().map(|c| llm_gateway::api::Message::PlainText {
-                    role: "assistant".to_owned(),
-                    content: c.to_owned(),
-                });
-
-                query
-                    .into_iter()
-                    .chain(conclusion.into_iter())
-                    .collect::<Vec<_>>()
-            })
+    fn get_path_alias(&mut self, path: &str) -> usize {
+        if let Some(i) = self.paths().iter().position(|p| *p == path) {
+            i
+        } else {
+            let i = self.paths().len();
+            self.last_exchange_mut().paths.push(path.to_owned());
+            i
+        }
     }
 
     async fn store(&self, db: &SqlDb, id: ConversationId) -> Result<()> {
@@ -503,7 +484,11 @@ impl Conversation {
             .try_fold(Vec::new(), |mut acc, e| -> Result<_> {
                 let query = e
                     .query()
-                    .map(|q| llm_gateway::api::Message::user(&q))
+                    .map(|q| {
+                        llm_gateway::api::Message::user(&format!(
+                            "{q}\nCall a function. Do not answer."
+                        ))
+                    })
                     .ok_or_else(|| anyhow!("query does not have target"))?;
 
                 let steps = e
@@ -520,7 +505,10 @@ impl Conversation {
                                 name: Some(name.into()),
                                 arguments: call.into(),
                             }),
-                            llm_gateway::api::Message::function_return(name, response),
+                            llm_gateway::api::Message::function_return(
+                                name,
+                                &format!("{response}\nCall a function. Do not answer."),
+                            ),
                         ]
                     })
                     .collect::<Vec<_>>();
@@ -538,6 +526,31 @@ impl Conversation {
                 Ok(acc)
             })?;
         Ok(history)
+    }
+
+    fn utterance_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
+        // Take the last `ANSWER_MAX_CONTEXT_SIZE` 'user' and 'assistant' messages
+        self.exchanges
+            .iter()
+            .rev()
+            .take(ANSWER_MAX_HISTORY_SIZE)
+            .rev()
+            .flat_map(|e| {
+                let query = e.query().map(|q| llm_gateway::api::Message::PlainText {
+                    role: "user".to_owned(),
+                    content: q,
+                });
+
+                let conclusion = e.answer().map(|c| llm_gateway::api::Message::PlainText {
+                    role: "assistant".to_owned(),
+                    content: c.to_owned(),
+                });
+
+                query
+                    .into_iter()
+                    .chain(conclusion.into_iter())
+                    .collect::<Vec<_>>()
+            })
     }
 
     fn trim_history(
@@ -615,7 +628,7 @@ impl Conversation {
     }
 
     async fn canonicalize_code_chunks(&mut self, app: &Application) -> Vec<CodeChunk> {
-        let mut code_chunks = self.last_exchange_mut().code_chunks.clone();
+        let mut code_chunks = self.code_chunks();
         let mut chunks_by_path = HashMap::<_, Vec<_>>::new();
         for c in mem::take(&mut code_chunks) {
             chunks_by_path.entry(c.path.clone()).or_default().push(c);
@@ -703,6 +716,7 @@ impl Agent {
         self.complete = true;
     }
 
+    /// Update the last exchange
     async fn update(&mut self, update: Update) -> Result<()> {
         let exc = self.conversation.last_exchange_mut();
         exc.apply_update(update);
@@ -723,7 +737,7 @@ impl Agent {
     }
 
     async fn step(&mut self, action: Action) -> Result<Option<Action>> {
-        debug!(?action, %self.thread_id, "chosen next action");
+        debug!(?action, %self.thread_id, "executing next action");
 
         let result = match &action {
             Action::Query(s) => {
@@ -746,6 +760,7 @@ impl Agent {
 
         dbg!(&result);
 
+        // Build the action selection prompt
         let functions = serde_json::from_value::<Vec<llm_gateway::api::Function>>(
             prompts::functions(!self.conversation.paths().is_empty()), // Only add proc if there are paths in context
         )
@@ -789,18 +804,24 @@ impl Agent {
     }
 
     async fn code_search(&mut self, query: &String) -> Result<String> {
+        const CODE_SEARCH_LIMIT: u64 = 10;
+
         self.update(Update::StartStep(SearchStep::Code {
             call: query.clone(),
             response: String::new(),
         }))
         .await?;
 
-        let mut results = self.semantic_search(query.into(), 10, 0, true).await?;
+        let mut results = self
+            .semantic_search(query.into(), CODE_SEARCH_LIMIT, 0, true)
+            .await?;
 
         let hyde_docs = self.hyde(query).await?;
         if !hyde_docs.is_empty() {
             let hyde_doc = hyde_docs.first().unwrap().into();
-            let hyde_results = self.semantic_search(hyde_doc, 10, 0, true).await?;
+            let hyde_results = self
+                .semantic_search(hyde_doc, CODE_SEARCH_LIMIT, 0, true)
+                .await?;
             results.extend(hyde_results);
         }
 
@@ -808,18 +829,10 @@ impl Agent {
             .into_iter()
             .map(|chunk| {
                 let relative_path = chunk.relative_path;
-                self.conversation
-                    .last_exchange_mut()
-                    .paths
-                    .push(relative_path.clone());
 
                 CodeChunk {
                     path: relative_path.clone(),
-                    alias: self
-                        .conversation
-                        .get_path_alias(&relative_path)
-                        .expect("Path does not exist! Can't get alias")
-                        as u32,
+                    alias: self.conversation.get_path_alias(&relative_path) as u32,
                     snippet: chunk.text,
                     start_line: (chunk.start_line as u32).saturating_add(1),
                     end_line: (chunk.end_line as u32).saturating_add(1),
@@ -887,23 +900,11 @@ impl Agent {
             paths = semantic_paths;
         }
 
-        // Add paths to the exchange path field
-        for path in paths.iter() {
-            self.conversation
-                .last_exchange_mut()
-                .paths
-                .push(path.clone());
-        }
-
         let formatted_paths = paths
             .iter()
             .map(|p| SeenPath {
                 path: p.to_string(),
-                alias: self
-                    .conversation
-                    .get_path_alias(p)
-                    .expect("Path is not in the path list. Can't get alias")
-                    as u32,
+                alias: self.conversation.get_path_alias(p) as u32,
             })
             .collect::<Vec<_>>();
 
@@ -1095,10 +1096,7 @@ impl Agent {
             .await;
 
         for (relevant_chunks, path) in &processed {
-            let alias = self
-                .conversation
-                .get_path_alias(path)
-                .expect("Path not in the path list") as u32;
+            let alias = self.conversation.get_path_alias(path) as u32;
 
             for c in relevant_chunks {
                 let chunk = CodeChunk {
@@ -1177,30 +1175,31 @@ impl Agent {
     }
 
     async fn answer_context(&mut self, aliases: &[usize]) -> Result<String> {
-        self.conversation.canonicalize_code_chunks(&self.app).await;
+        let paths = self.conversation.paths();
+        let code_chunks = self.conversation.canonicalize_code_chunks(&self.app).await;
 
         let mut s = "".to_owned();
 
         let mut path_aliases = aliases
             .iter()
             .copied()
-            .filter(|alias| *alias < self.conversation.paths().len())
+            .filter(|alias| *alias < paths.len())
             .collect::<Vec<_>>();
 
         path_aliases.sort();
         path_aliases.dedup();
 
-        if !self.conversation.paths().is_empty() {
+        if !paths.is_empty() {
             s += "##### PATHS #####\npath alias, path\n";
 
             if path_aliases.len() == 1 {
                 // Only show matching path
                 let alias = path_aliases[0];
-                let path = self.conversation.paths()[alias].clone();
+                let path = paths[alias].clone();
                 s += &format!("{alias}, {}\n", &path);
             } else {
                 // Show all paths that have been seen
-                for (alias, path) in self.conversation.paths().iter().enumerate() {
+                for (alias, path) in paths.iter().enumerate() {
                     s += &format!("{alias}, {}\n", &path);
                 }
             }
@@ -1208,7 +1207,7 @@ impl Agent {
 
         let code_chunks = if path_aliases.len() == 1 {
             let alias = path_aliases[0];
-            let path = self.conversation.paths()[alias].clone();
+            let path = paths[alias].clone();
             let doc = self.get_file_content(&path).await?;
 
             match doc {
@@ -1232,8 +1231,7 @@ impl Agent {
                 }
             }
         } else {
-            self.conversation
-                .code_chunks()
+            code_chunks
                 .iter()
                 .filter(|c| path_aliases.contains(&(c.alias as usize)))
                 .cloned()
