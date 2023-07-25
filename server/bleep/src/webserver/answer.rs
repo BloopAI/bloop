@@ -309,7 +309,7 @@ pub(super) async fn _handle(
         Ok(sse::Event::default()
             .json_data(json!({
                 "thread_id": params.thread_id.to_string(),
-                "query_id": query_id,
+                "query_id": query_id
             }))
             // This should never happen, so we force an unwrap.
             .expect("failed to serialize initialization object"))
