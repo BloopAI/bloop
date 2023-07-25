@@ -122,6 +122,7 @@ const Chat = () => {
               "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
             ),
             loadingSteps: [],
+            responseTimestamp: new Date().toISOString(),
           };
           setInputValue(prev[prev.length - 2]?.text || submittedQuery);
           setSubmittedQuery('');
@@ -150,6 +151,7 @@ const Chat = () => {
                   "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
                 ),
                 loadingSteps: [],
+                responseTimestamp: new Date().toISOString(),
               };
               setInputValue(prev[prev.length - 1]?.text || submittedQuery);
               setSubmittedQuery('');
@@ -216,6 +218,7 @@ const Chat = () => {
                 loadingSteps: mapLoadingSteps(newMessage.search_steps, t),
                 text: newMessage.conclusion,
                 results: newMessage.outcome,
+                responseTimestamp: newMessage.response_timestamp,
               };
               const lastMessages: ChatMessage[] =
                 lastMessage?.author === ChatMessageAuthor.Server

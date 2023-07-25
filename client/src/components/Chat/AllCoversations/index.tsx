@@ -90,6 +90,7 @@ const AllConversations = ({
           text: m.conclusion,
           results: m.outcome,
           isFromHistory: true,
+          responseTimestamp: m.response_timestamp,
         });
       });
       setTitle(conv[0].text || '');

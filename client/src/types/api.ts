@@ -224,6 +224,7 @@ export type ConversationType = {
   search_steps: { content: string; type: string }[];
   conclusion: string;
   outcome: FileSystemResult & ArticleResult;
+  response_timestamp: string;
 };
 
 export interface SuggestionsResponse {
