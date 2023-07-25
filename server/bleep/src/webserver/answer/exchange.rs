@@ -13,15 +13,17 @@ use tracing::trace;
 /// conclusion from the model alongside the outcome, if any.
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Exchange {
+    pub id: uuid::Uuid,
     pub query: SemanticQuery<'static>,
     pub outcome: Option<Outcome>,
-    search_steps: Vec<SearchStep>,
+    pub search_steps: Vec<SearchStep>,
     conclusion: Option<String>,
 }
 
 impl Exchange {
-    pub fn new(query: SemanticQuery<'static>) -> Self {
+    pub fn new(id: uuid::Uuid, query: SemanticQuery<'static>) -> Self {
         Self {
+            id,
             query,
             ..Default::default()
         }
@@ -32,7 +34,13 @@ impl Exchange {
     /// An update should not result in fewer search results or fewer search steps.
     pub fn apply_update(&mut self, update: Update) {
         match update {
-            Update::Step(search_step) => self.search_steps.push(search_step),
+            Update::StartStep(search_step) => self.search_steps.push(search_step),
+            Update::ReplaceStep(search_step) => match (self.search_steps.last_mut(), search_step) {
+                (Some(l @ SearchStep::Path { .. }), r @ SearchStep::Path { .. }) => *l = r,
+                (Some(l @ SearchStep::Code { .. }), r @ SearchStep::Code { .. }) => *l = r,
+                (Some(l @ SearchStep::Proc { .. }), r @ SearchStep::Proc { .. }) => *l = r,
+                _ => panic!("Tried to replace a step that was not found"),
+            },
             Update::Filesystem(file_results) => {
                 self.set_file_results(file_results);
             }
@@ -49,11 +57,8 @@ impl Exchange {
     }
 
     /// Get the query associated with this exchange, if it has been made.
-    pub fn query(&self) -> Option<&str> {
-        self.search_steps.iter().find_map(|step| match step {
-            SearchStep::Query(q) => Some(q.as_str()),
-            _ => None,
-        })
+    pub fn query(&self) -> Option<String> {
+        self.query.target().map(|q| q.to_string())
     }
 
     /// Get the answer associated with this exchange, if it has been made.
@@ -185,16 +190,25 @@ impl Outcome {
 #[serde(rename_all = "UPPERCASE", tag = "type", content = "content")]
 #[non_exhaustive]
 pub enum SearchStep {
-    Query(String),
-    Path(String),
-    Code(String),
-    Proc(String),
-    Prompt(String),
+    Path {
+        call: String,
+        response: String,
+    },
+    Code {
+        call: String,
+        response: String,
+    },
+    Proc {
+        call: String,
+        steps: Vec<String>,
+        response: String,
+    },
 }
 
 #[derive(Debug)]
 pub enum Update {
-    Step(SearchStep),
+    StartStep(SearchStep),
+    ReplaceStep(SearchStep),
     Filesystem(Vec<FileResult>),
     Article(String),
     Conclude(String),
