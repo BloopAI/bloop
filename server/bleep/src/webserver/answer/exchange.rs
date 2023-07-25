@@ -7,6 +7,8 @@ use regex::Regex;
 use serde::Deserialize;
 use tracing::trace;
 
+use crate::webserver::answer;
+
 /// A continually updated conversation exchange.
 ///
 /// This contains the query from the user, the intermediate steps the model takes, and the final
@@ -18,6 +20,8 @@ pub struct Exchange {
     pub outcome: Option<Outcome>,
     pub search_steps: Vec<SearchStep>,
     conclusion: Option<String>,
+    pub paths: Vec<String>,
+    pub code_chunks: Vec<answer::CodeChunk>,
 }
 
 impl Exchange {
