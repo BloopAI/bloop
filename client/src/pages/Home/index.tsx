@@ -46,7 +46,7 @@ const HomePage = () => {
         <h4 className="mb-3">
           <Trans>Add</Trans>
         </h4>
-        <div className="flex gap-3.5">
+        <div className="flex gap-3.5 pb-2">
           <AddRepoCard type="github" onClick={setAddReposOpen} />
           <AddRepoCard type="public" onClick={setAddReposOpen} />
           {!isSelfServe && (

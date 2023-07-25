@@ -172,8 +172,7 @@ const RepoCard = ({
       </div>
       {(sync_status === SyncStatus.Indexing ||
         sync_status === SyncStatus.Syncing) &&
-      syncStatus &&
-      syncStatus.percentage < 100 ? (
+      syncStatus ? (
         <div className="flex flex-col gap-2">
           <p className="body-s text-label-title">
             <Trans>Indexing...</Trans>
