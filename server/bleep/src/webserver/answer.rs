@@ -849,9 +849,9 @@ impl Agent {
         Ok(response)
     }
 
-    async fn answer_context(&mut self, aliases: &[usize]) -> Result<String> {
+    async fn answer_context(&mut self, aliases: &[usize], path_scope: PathScope) -> Result<String> {
         let paths = self.paths();
-        let code_chunks = self.canonicalize_code_chunks().await;
+        let code_chunks = self.canonicalize_code_chunks(path_scope).await;
 
         let mut s = "".to_owned();
 
@@ -972,7 +972,7 @@ impl Agent {
     }
 
     async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
-        let context = self.answer_context(aliases).await?;
+        let context = self.answer_context(aliases, PathScope::Full).await?;
         let history = self.utter_history().collect::<Vec<_>>();
 
         let system_message = prompts::answer_article_prompt(&context);
@@ -981,7 +981,14 @@ impl Agent {
             .chain(history.iter().cloned())
             .collect::<Vec<_>>();
 
-        let mut stream = pin!(self.llm_gateway.chat(&messages, None).await?);
+        let mut stream = pin!(
+            self.llm_gateway
+                .clone()
+                .model("gpt-4-32k-0613")
+                .chat(&messages, None)
+                .await?
+        );
+
         let mut response = String::new();
         while let Some(fragment) = stream.next().await {
             let fragment = fragment?;
@@ -1119,7 +1126,7 @@ impl Agent {
     }
 
     /// Merge overlapping and nearby code chunks
-    async fn canonicalize_code_chunks(&self) -> Vec<CodeChunk> {
+    async fn canonicalize_code_chunks(&self, path_scope: PathScope) -> Vec<CodeChunk> {
         let mut chunks_by_path = HashMap::<_, Vec<_>>::new();
         for c in mem::take(&mut self.code_chunks()) {
             chunks_by_path.entry(c.path.clone()).or_default().push(c);
@@ -1134,6 +1141,19 @@ impl Agent {
                     .unwrap()
                     .unwrap_or_else(|| panic!("path did not exist in the index: {path}"))
                     .content;
+
+                if let PathScope::Full = path_scope {
+                    // There will always be at least one chunk.
+                    let chunk = chunks.pop().unwrap();
+
+                    return vec![CodeChunk {
+                        path: path,
+                        alias: chunk.alias,
+                        start_line: 1,
+                        end_line: contents.lines().count() as u32 + 1,
+                        snippet: contents,
+                    }];
+                }
 
                 chunks
                     .into_iter()
@@ -1518,6 +1538,16 @@ impl Action {
 
         Ok(serde_json::from_value(serde_json::Value::Object(map))?)
     }
+}
+
+/// Specifies how path aliases are interpreted when canonicalizing a conversation.
+#[derive(Copy, Clone)]
+enum PathScope {
+    /// Only use the code chunks the model has determined are relevant.
+    Seen,
+
+    /// Expand path aliases to encompass the entire file.
+    Full,
 }
 
 #[cfg(test)]
