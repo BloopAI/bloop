@@ -973,7 +973,7 @@ impl Agent {
     }
 
     async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
-        let gpt_model = if self.app.env.is_cloud_instance() {
+        let gpt_model = if cfg!(feature = "ee") || self.app.env.is_cloud_instance() {
             "gpt-4-32k-0613"
         } else {
             "gpt-4-0613"
