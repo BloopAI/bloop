@@ -197,6 +197,8 @@
             ]);
 
             src = pkgs.lib.sources.cleanSource ./.;
+
+            BLOOP_LOG="bleep=debug";
           }).overrideAttrs (old: envVars);
         };
 
