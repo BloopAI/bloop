@@ -972,17 +972,13 @@ impl Agent {
     }
 
     async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
-        let gpt_model = if cfg!(feature = "ee") || self.app.env.is_cloud_instance() {
-            "gpt-4-32k-0613"
-        } else {
-            "gpt-4-0613"
-        };
+        const ANSWER_ARTICLE_MODEL: &str = "gpt-4-0613";
 
         let context = self
             .answer_context(
                 aliases,
                 PathScope::Full {
-                    gpt_model: gpt_model.to_owned(),
+                    gpt_model: ANSWER_ARTICLE_MODEL.to_owned(),
                 },
             )
             .await?;
@@ -997,7 +993,7 @@ impl Agent {
         let mut stream = pin!(
             self.llm_gateway
                 .clone()
-                .model(gpt_model)
+                .model(ANSWER_ARTICLE_MODEL)
                 .chat(&messages, None)
                 .await?
         );
