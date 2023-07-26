@@ -430,11 +430,10 @@ impl Agent {
         self.exchanges.last_mut().expect("exchange list was empty")
     }
 
-    fn code_chunks(&self) -> Vec<CodeChunk> {
+    fn code_chunks(&self) -> impl Iterator<Item = CodeChunk> + '_ {
         self.exchanges
             .iter()
             .flat_map(|e| e.code_chunks.iter().cloned())
-            .collect::<Vec<_>>()
     }
 
     fn paths(&self) -> Vec<String> {
@@ -852,7 +851,7 @@ impl Agent {
 
     async fn answer_context(&mut self, aliases: &[usize], path_scope: PathScope) -> Result<String> {
         let paths = self.paths();
-        let code_chunks = self.canonicalize_code_chunks(path_scope).await;
+        let code_chunks = self.canonicalize_code_chunks(aliases, path_scope).await;
 
         let mut s = "".to_owned();
 
@@ -1140,7 +1139,11 @@ impl Agent {
     }
 
     /// Merge overlapping and nearby code chunks
-    async fn canonicalize_code_chunks(&mut self, path_scope: PathScope) -> Vec<CodeChunk> {
+    async fn canonicalize_code_chunks(
+        &mut self,
+        aliases: &[usize],
+        path_scope: PathScope,
+    ) -> Vec<CodeChunk> {
         /// The ratio of code tokens to context size.
         ///
         /// Making this closure to 1 means that more of the context is taken up by source code.
@@ -1157,7 +1160,7 @@ impl Agent {
         let max_tokens = (context_size as f32 * CONTEXT_CODE_RATIO) as usize;
 
         let mut spans_by_path = HashMap::<_, Vec<_>>::new();
-        for c in mem::take(&mut self.code_chunks()) {
+        for c in self.code_chunks().filter(|c| aliases.contains(&c.alias)) {
             spans_by_path
                 .entry(c.path.clone())
                 .or_default()
