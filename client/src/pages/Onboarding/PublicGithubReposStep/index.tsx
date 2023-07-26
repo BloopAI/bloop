@@ -89,6 +89,7 @@ const PublicGithubReposStep = ({
           <form className="flex gap-2" onSubmit={handleVerifyRepo}>
             <TextInput
               value={newRepoValue}
+              autoFocus
               name="new-repo"
               onChange={(e) => {
                 setErrorVerifying(false);

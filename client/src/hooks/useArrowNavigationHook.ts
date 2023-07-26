@@ -10,6 +10,7 @@ function handleEnter({
 
   activeElement.click();
   event.preventDefault();
+  event.stopPropagation();
   inputElement?.focus();
 }
 

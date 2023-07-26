@@ -2,6 +2,7 @@ import React, { MouseEvent, PropsWithChildren, useRef } from 'react';
 import Tippy, { TippyProps } from '@tippyjs/react/headless';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
 import { ExtendedMenuItemType, MenuItemType } from '../../types/general';
+import { useArrowKeyNavigation } from '../../hooks/useArrowNavigationHook';
 import ItemShared from './ContextMenuItem/ItemShared';
 import Item from './ContextMenuItem/Item';
 
@@ -67,7 +68,7 @@ const ContextMenu = ({
   size = 'medium',
   dropdownPlacement = 'bottom-start',
 }: PropsWithChildren<Props>) => {
-  const contextMenuRef = useRef<HTMLDivElement>(null);
+  const contextMenuRef = useArrowKeyNavigation({ selectors: 'button' });
   useOnClickOutside(
     contextMenuRef,
     closeOnClickOutside ? handleClose : () => {},

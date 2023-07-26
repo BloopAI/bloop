@@ -120,7 +120,7 @@ const RepoList = ({
                       <Button
                         variant="primary"
                         size="small"
-                        className="opacity-0 group-hover:opacity-100"
+                        className="opacity-0 group-hover:opacity-100 focus:opacity-100"
                         onClick={() => {
                           handleSync(repo.ref);
                         }}

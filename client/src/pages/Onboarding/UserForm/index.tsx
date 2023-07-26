@@ -56,7 +56,10 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
           </p>
         </div>
       </div>
-      <form className="flex flex-col gap-4 w-full">
+      <form
+        className="flex flex-col gap-4 w-full"
+        onSubmit={(e) => e.preventDefault()}
+      >
         <TextInput
           value={form.firstName}
           name="firstName"
@@ -144,7 +147,11 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
             !form.lastName ||
             !form.email
           }
-          onClick={onContinue}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onContinue();
+          }}
         >
           <Trans>Continue</Trans>
         </Button>

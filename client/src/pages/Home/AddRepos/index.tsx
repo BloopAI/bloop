@@ -1,8 +1,9 @@
+import { useCallback } from 'react';
 import LocalReposStep from '../../Onboarding/LocalReposStep';
 import GithubReposStep from '../../Onboarding/GithubReposStep';
 import SeparateOnboardingStep from '../../../components/SeparateOnboardingStep';
 import PublicGithubReposStep from '../../Onboarding/PublicGithubReposStep';
-import useAnalytics from '../../../hooks/useAnalytics';
+import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 
 type Props = {
   addRepos: null | 'local' | 'github' | 'public';
@@ -16,6 +17,13 @@ const AddRepos = ({ addRepos, onClose }: Props) => {
   const handleSubmit = () => {
     onClose(true);
   };
+  const handleEvent = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      handleClose();
+    }
+  }, []);
+  useKeyboardNavigation(handleEvent);
   return (
     <SeparateOnboardingStep isVisible={!!addRepos} onClose={handleClose}>
       {addRepos === 'local' ? (
