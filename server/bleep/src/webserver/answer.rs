@@ -908,7 +908,7 @@ impl Agent {
         } else {
             code_chunks
                 .iter()
-                .filter(|c| path_aliases.contains(&(c.alias as usize)))
+                .filter(|c| path_aliases.contains(&c.alias))
                 .cloned()
                 .collect()
         };
@@ -924,7 +924,7 @@ impl Agent {
                 .snippet
                 .lines()
                 .enumerate()
-                .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
+                .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line))
                 .collect::<String>();
 
             let formatted_snippet = format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
@@ -1170,7 +1170,7 @@ impl Agent {
                 spans.sort_by_key(|c| c.start);
 
                 let lines = self_
-                    .get_file_content(&path)
+                    .get_file_content(path)
                     .await
                     .unwrap()
                     .unwrap_or_else(|| panic!("path did not exist in the index: {path}"))
