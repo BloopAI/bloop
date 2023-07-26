@@ -170,6 +170,7 @@ export const saveBugReport = (report: {
   name: string;
   text: string;
   unique_id: string;
+  app_version: string;
 }) => axios.post(`${DB_API}/bug_reports`, report).then((r) => r.data);
 
 export const saveCrashReport = (report: {
@@ -177,6 +178,7 @@ export const saveCrashReport = (report: {
   unique_id: string;
   info: string;
   metadata: string;
+  app_version: string;
 }) => axios.post(`${DB_API}/crash_reports`, report).then((r) => r.data);
 
 export const saveUpvote = (upvote: {
