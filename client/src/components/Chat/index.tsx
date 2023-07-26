@@ -55,8 +55,6 @@ const Chat = () => {
     setSelectedLines,
     threadId,
     setThreadId,
-    queryId,
-    setQueryId,
   } = useContext(ChatContext);
   const {
     navigateConversationResults,
@@ -68,8 +66,9 @@ const Chat = () => {
   const [showPopup, setShowPopup] = useState(false);
   const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
+  const [parentIdToEdit, setParentIdToEdit] = useState('');
   useOnClickOutside(chatRef, () => setChatOpen(false));
-
+  console.log('parentIdToEdit', parentIdToEdit);
   useEffect(() => {
     if (isChatOpen) {
       focusInput();
@@ -85,6 +84,7 @@ const Chat = () => {
       prevEventSource?.close();
       setInputValue('');
       setLoading(true);
+      setParentIdToEdit('');
       const eventSource = new EventSource(
         `${apiUrl.replace('https:', '')}/answer?q=${encodeURIComponent(query)}${
           selectedBranch ? ` branch:${selectedBranch}` : ''
@@ -100,7 +100,7 @@ const Chat = () => {
           selectedLines
             ? `&start=${selectedLines[0]}&end=${selectedLines[1]}`
             : ''
-        }`,
+        }${parentIdToEdit ? `&parent_query_id=${parentIdToEdit}` : ''}`,
       );
       prevEventSource = eventSource;
       setSelectedLines(null);
@@ -122,6 +122,7 @@ const Chat = () => {
               "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
             ),
             loadingSteps: [],
+            queryId: '',
           };
           setInputValue(prev[prev.length - 2]?.text || submittedQuery);
           setSubmittedQuery('');
@@ -150,6 +151,7 @@ const Chat = () => {
                   "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
                 ),
                 loadingSteps: [],
+                queryId: '',
               };
               setInputValue(prev[prev.length - 1]?.text || submittedQuery);
               setSubmittedQuery('');
@@ -164,7 +166,6 @@ const Chat = () => {
           const data = JSON.parse(ev.data);
           thread_id = data.thread_id;
           setThreadId(data.thread_id);
-          setQueryId(data.query_id);
           return;
         }
         if (ev.data === '[DONE]') {
@@ -216,6 +217,7 @@ const Chat = () => {
                 loadingSteps: mapLoadingSteps(newMessage.search_steps, t),
                 text: newMessage.conclusion,
                 results: newMessage.outcome,
+                queryId: newMessage.id,
               };
               const lastMessages: ChatMessage[] =
                 lastMessage?.author === ChatMessageAuthor.Server
@@ -259,6 +261,7 @@ const Chat = () => {
       selectedLines,
       selectedBranch,
       t,
+      parentIdToEdit,
     ],
   );
 
@@ -341,6 +344,20 @@ const Chat = () => {
     focusInput();
   }, [navigatedItem?.type]);
 
+  const onMessageEdit = useCallback(
+    (parentQueryId: string, i: number) => {
+      setParentIdToEdit(parentQueryId);
+      if (isLoading) {
+        stopGenerating();
+      }
+      setConversation((prev) => {
+        setInputValue(prev[i].text!);
+        return prev.slice(0, i);
+      });
+    },
+    [isLoading],
+  );
+
   return (
     <>
       <div
@@ -385,10 +402,10 @@ const Chat = () => {
             <Conversation
               conversation={conversation}
               threadId={threadId}
-              queryId={queryId}
               repoRef={tab.key}
               isLoading={isLoading}
               repoName={tab.repoName}
+              onMessageEdit={onMessageEdit}
             />
           )}
           <form onSubmit={onSubmit} className="flex flex-col w-95">
