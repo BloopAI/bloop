@@ -141,7 +141,7 @@ pub(super) async fn _handle(
         thread_id: params.thread_id,
     };
 
-    let (repo_ref, exchanges) = load_conversation(&app.sql, &conversation_id)
+    let (repo_ref, mut exchanges) = load_conversation(&app.sql, &conversation_id)
         .await?
         .unwrap_or_else(|| (params.repo_ref.clone(), Vec::new()));
 
@@ -219,8 +219,8 @@ pub(super) async fn _handle(
 
         let mut agent = Agent {
             app,
-            repo_ref,
-            exchanges,
+            repo_ref: repo_ref.clone(),
+            exchanges: exchanges.clone(),
             exchange_tx,
             llm_gateway,
             user,
@@ -329,7 +329,7 @@ pub(super) async fn _handle(
 }
 
 #[derive(Hash, PartialEq, Eq, Clone)]
-pub(super) struct ConversationId {
+pub struct ConversationId {
     thread_id: uuid::Uuid,
     user_id: String,
 }
@@ -411,8 +411,12 @@ impl Agent {
     async fn update(&mut self, update: Update) -> Result<()> {
         let exc = self.last_exchange_mut();
         exc.apply_update(update);
-        self.exchange_tx
-            .send(exc.clone())
+
+        // Immutable reborrow of `self`
+        let self_ = &*self;
+        self_
+            .exchange_tx
+            .send(self.last_exchange().clone())
             .await
             .map_err(|_| anyhow!("exchange_tx was closed"))
     }
