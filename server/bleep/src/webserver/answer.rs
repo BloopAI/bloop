@@ -5,7 +5,6 @@ use std::{
     fmt, mem,
     panic::AssertUnwindSafe,
     pin::pin,
-    str::FromStr,
     time::Duration,
 };
 
@@ -28,7 +27,7 @@ use tracing::{debug, info, warn};
 use super::middleware::User;
 use crate::{
     analytics::{EventData, QueryEvent},
-    db::{QueryLog, SqlDb},
+    db::QueryLog,
     indexes::reader::{ContentDocument, FileDocument},
     query::parser::{self, Literal, SemanticQuery},
     repo::RepoRef,
@@ -85,7 +84,8 @@ pub struct Params {
     pub repo_ref: RepoRef,
     #[serde(default = "default_thread_id")]
     pub thread_id: uuid::Uuid,
-    pub parent_query_id: Option<uuid::Uuid>,
+    /// Optional id of exchange to overwrite
+    pub rephrase_exchange_id: Option<uuid::Uuid>,
 }
 
 fn default_thread_id() -> uuid::Uuid {
@@ -141,7 +141,7 @@ pub(super) async fn _handle(
         thread_id: params.thread_id,
     };
 
-    let (repo_ref, mut exchanges) = load_conversation(&app.sql, &conversation_id)
+    let (repo_ref, mut exchanges) = conversations::load(&app.sql, &conversation_id)
         .await?
         .unwrap_or_else(|| (params.repo_ref.clone(), Vec::new()));
 
@@ -183,18 +183,18 @@ pub(super) async fn _handle(
 
     let Params {
         thread_id,
-        parent_query_id,
+        rephrase_exchange_id,
         q,
         ..
     } = params;
 
-    if let Some(parent_query_id) = parent_query_id {
-        let parent_exchange_index = exchanges
+    if let Some(rephrase_exchange_id) = rephrase_exchange_id {
+        let rephrase_exchange_id = exchanges
             .iter()
-            .position(|e| e.id == parent_query_id)
+            .position(|e| e.id == rephrase_exchange_id)
             .ok_or_else(|| super::Error::user("parent query id not found in exchanges"))?;
 
-        exchanges.truncate(parent_exchange_index + 1);
+        exchanges.truncate(rephrase_exchange_id);
     }
 
     let query = parser::parse_nl(&q)
@@ -297,7 +297,7 @@ pub(super) async fn _handle(
         }
 
         // Storing the conversation here allows us to make subsequent requests.
-        store_conversation(&agent.app.sql, conversation_id, &(repo_ref, exchanges)).await?;
+        conversations::store(&agent.app.sql, conversation_id, (repo_ref, agent.exchanges.clone())).await?;
         agent.complete();
     };
 
@@ -528,7 +528,6 @@ impl Agent {
 
     async fn code_search(&mut self, query: &String) -> Result<String> {
         const CODE_SEARCH_LIMIT: u64 = 10;
-
         self.update(Update::StartStep(SearchStep::Code {
             call: query.clone(),
             response: String::new(),
@@ -1610,120 +1609,11 @@ pub enum AnswerMode {
     Filesystem,
 }
 
-async fn store_conversation(
-    db: &SqlDb,
-    id: ConversationId,
-    conversation: &Conversation,
-) -> Result<()> {
-    info!("writing conversation {}-{}", id.user_id, id.thread_id);
-    let mut transaction = db.begin().await?;
-
-    // Delete the old conversation for simplicity. This also deletes all its messages.
-    let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
-    sqlx::query! {
-        "DELETE FROM conversations \
-            WHERE user_id = ? AND thread_id = ?",
-        user_id,
-        thread_id,
-    }
-    .execute(&mut transaction)
-    .await?;
-
-    let (repo_ref, exchanges) = conversation;
-    let repo_ref = repo_ref.to_string();
-    let title = exchanges
-        .first()
-        .and_then(|list| list.query())
-        .and_then(|q| q.split('\n').next().map(|s| s.to_string()))
-        .context("couldn't find conversation title")?;
-
-    let exchanges = serde_json::to_string(&exchanges)?;
-    sqlx::query! {
-        "INSERT INTO conversations (\
-            user_id, thread_id, repo_ref, title, exchanges, created_at\
-            ) \
-            VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))",
-        user_id,
-        thread_id,
-        repo_ref,
-        title,
-        exchanges,
-    }
-    .execute(&mut transaction)
-    .await?;
-
-    transaction.commit().await?;
-
-    Ok(())
-}
-
-pub async fn load_conversation(db: &SqlDb, id: &ConversationId) -> Result<Option<Conversation>> {
-    let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
-
-    let row = sqlx::query! {
-        "SELECT repo_ref, exchanges FROM conversations \
-         WHERE user_id = ? AND thread_id = ?",
-        user_id,
-        thread_id,
-    }
-    .fetch_optional(db.as_ref())
-    .await?;
-
-    let row = match row {
-        Some(r) => r,
-        None => return Ok(None),
-    };
-
-    let repo_ref = RepoRef::from_str(&row.repo_ref).context("failed to parse repo ref")?;
-    let exchanges = serde_json::from_str(&row.exchanges)?;
-
-    Ok(Some((repo_ref, exchanges)))
-}
-
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-
-    #[test]
-    fn test_trimming() {
-        let long_string = "long string ".repeat(2000);
-
-        let conversation = Conversation {
-            history: vec![
-                llm_gateway::api::Message::system("foo"),
-                llm_gateway::api::Message::user("bar"),
-                llm_gateway::api::Message::assistant("baz"),
-                llm_gateway::api::Message::user(&long_string),
-                llm_gateway::api::Message::assistant("quux"),
-                llm_gateway::api::Message::user("fred"),
-                llm_gateway::api::Message::assistant("thud"),
-                llm_gateway::api::Message::user(&long_string),
-                llm_gateway::api::Message::user("corge"),
-            ]
-            .into(),
-            exchanges: Vec::new(),
-            paths: Vec::new(),
-            repo_ref: "github.com/foo/bar".parse().unwrap(),
-            code_chunks: vec![],
-        };
-
-        assert_eq!(
-            conversation.trim_history().unwrap(),
-            vec![
-                llm_gateway::api::Message::system("foo"),
-                llm_gateway::api::Message::user("[HIDDEN]"),
-                llm_gateway::api::Message::assistant("[HIDDEN]"),
-                llm_gateway::api::Message::user("[HIDDEN]"),
-                llm_gateway::api::Message::assistant("quux"),
-                llm_gateway::api::Message::user("fred"),
-                llm_gateway::api::Message::assistant("thud"),
-                llm_gateway::api::Message::user(&long_string),
-                llm_gateway::api::Message::user("corge"),
-            ]
-        );
-    }
 
     #[test]
     fn test_trim_lines_by_tokens() {
