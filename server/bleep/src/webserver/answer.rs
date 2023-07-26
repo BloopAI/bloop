@@ -45,7 +45,8 @@ use exchange::{Exchange, SearchStep, Update};
 use llm_gateway::api::FunctionCall;
 
 const TIMEOUT_SECS: u64 = 60;
-const ANSWER_MAX_HISTORY_SIZE: usize = 5;
+
+type Conversation = (RepoRef, Vec<Exchange>);
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Vote {
@@ -89,11 +90,6 @@ pub struct Params {
 
 fn default_thread_id() -> uuid::Uuid {
     uuid::Uuid::new_v4()
-}
-
-enum AgentError {
-    Timeout(Duration),
-    Processing(anyhow::Error),
 }
 
 pub(super) async fn handle(
@@ -145,9 +141,9 @@ pub(super) async fn _handle(
         thread_id: params.thread_id,
     };
 
-    let mut conversation = Conversation::load(&app.sql, &conversation_id)
+    let (repo_ref, exchanges) = load_conversation(&app.sql, &conversation_id)
         .await?
-        .unwrap_or_else(|| Conversation::new(params.repo_ref.clone()));
+        .unwrap_or_else(|| (params.repo_ref.clone(), Vec::new()));
 
     let gh_token = app
         .github_token()
@@ -193,13 +189,12 @@ pub(super) async fn _handle(
     } = params;
 
     if let Some(parent_query_id) = parent_query_id {
-        let parent_exchange_index = conversation
-            .exchanges
+        let parent_exchange_index = exchanges
             .iter()
             .position(|e| e.id == parent_query_id)
             .ok_or_else(|| super::Error::user("parent query id not found in exchanges"))?;
 
-        conversation.exchanges.truncate(parent_exchange_index + 1);
+        exchanges.truncate(parent_exchange_index + 1);
     }
 
     let query = parser::parse_nl(&q)
@@ -216,7 +211,7 @@ pub(super) async fn _handle(
         .clone()
         .into_owned();
 
-    conversation.exchanges.push(Exchange::new(query_id, query));
+    exchanges.push(Exchange::new(query_id, query));
 
     let stream = async_stream::try_stream! {
         let mut action = Action::Query(query_target);
@@ -224,7 +219,8 @@ pub(super) async fn _handle(
 
         let mut agent = Agent {
             app,
-            conversation,
+            repo_ref,
+            exchanges,
             exchange_tx,
             llm_gateway,
             user,
@@ -301,7 +297,7 @@ pub(super) async fn _handle(
         }
 
         // Storing the conversation here allows us to make subsequent requests.
-        agent.conversation.store(&agent.app.sql, conversation_id).await?;
+        store_conversation(&agent.app.sql, conversation_id, &(repo_ref, exchanges)).await?;
         agent.complete();
     };
 
@@ -344,12 +340,6 @@ impl fmt::Display for ConversationId {
     }
 }
 
-#[derive(Clone, Debug)]
-pub(super) struct Conversation {
-    exchanges: Vec<Exchange>,
-    repo_ref: RepoRef,
-}
-
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CodeChunk {
     path: String,
@@ -370,314 +360,15 @@ impl CodeChunk {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-struct SeenPath {
-    path: String,
-    alias: u32,
-}
-
-impl Conversation {
-    fn new(repo_ref: RepoRef) -> Self {
-        Self {
-            exchanges: Vec::new(),
-            repo_ref,
-        }
-    }
-
-    fn code_chunks(&self) -> Vec<CodeChunk> {
-        self.exchanges
-            .iter()
-            .flat_map(|e| e.code_chunks.iter().cloned())
-            .collect::<Vec<_>>()
-    }
-
-    fn paths(&self) -> Vec<String> {
-        self.exchanges
-            .iter()
-            .flat_map(|e| e.paths.iter().cloned())
-            .collect::<Vec<_>>()
-    }
-
-    fn get_path_alias(&mut self, path: &str) -> usize {
-        if let Some(i) = self.paths().iter().position(|p| *p == path) {
-            i
-        } else {
-            let i = self.paths().len();
-            self.last_exchange_mut().paths.push(path.to_owned());
-            i
-        }
-    }
-
-    async fn store(&self, db: &SqlDb, id: ConversationId) -> Result<()> {
-        info!("writing conversation {}-{}", id.user_id, id.thread_id);
-        let mut transaction = db.begin().await?;
-
-        // Delete the old conversation for simplicity. This also deletes all its messages.
-        let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
-        sqlx::query! {
-            "DELETE FROM conversations \
-             WHERE user_id = ? AND thread_id = ?",
-            user_id,
-            thread_id,
-        }
-        .execute(&mut transaction)
-        .await?;
-
-        let repo_ref = self.repo_ref.to_string();
-        let title = self
-            .exchanges
-            .first()
-            .and_then(|list| list.query())
-            .and_then(|q| q.split('\n').next().map(|s| s.to_string()))
-            .context("couldn't find conversation title")?;
-
-        let exchanges = serde_json::to_string(&self.exchanges)?;
-        sqlx::query! {
-            "INSERT INTO conversations (\
-               user_id, thread_id, repo_ref, title, exchanges, created_at\
-             ) \
-             VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))",
-            user_id,
-            thread_id,
-            repo_ref,
-            title,
-            exchanges,
-        }
-        .execute(&mut transaction)
-        .await?;
-
-        transaction.commit().await?;
-
-        Ok(())
-    }
-
-    async fn load(db: &SqlDb, id: &ConversationId) -> Result<Option<Self>> {
-        let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
-
-        let row = sqlx::query! {
-            "SELECT repo_ref, exchanges FROM conversations \
-             WHERE user_id = ? AND thread_id = ?",
-            user_id,
-            thread_id,
-        }
-        .fetch_optional(db.as_ref())
-        .await?;
-
-        let row = match row {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-
-        let repo_ref = RepoRef::from_str(&row.repo_ref).context("failed to parse repo ref")?;
-        let exchanges = serde_json::from_str(&row.exchanges)?;
-
-        Ok(Some(Self {
-            repo_ref,
-            exchanges,
-        }))
-    }
-
-    fn history(&self) -> Result<Vec<llm_gateway::api::Message>> {
-        let history = self
-            .exchanges
-            .iter()
-            .try_fold(Vec::new(), |mut acc, e| -> Result<_> {
-                let query = e
-                    .query()
-                    .map(|q| {
-                        llm_gateway::api::Message::user(&format!(
-                            "{q}\nCall a function. Do not answer."
-                        ))
-                    })
-                    .ok_or_else(|| anyhow!("query does not have target"))?;
-
-                let steps = e
-                    .search_steps
-                    .iter()
-                    .flat_map(|s| {
-                        let (name, call, response) = match s {
-                            SearchStep::Path { call, response } => ("path", call, response),
-                            SearchStep::Code { call, response } => ("code", call, response),
-                            SearchStep::Proc { call, response, .. } => ("proc", call, response),
-                        };
-                        vec![
-                            llm_gateway::api::Message::function_call(&FunctionCall {
-                                name: Some(name.into()),
-                                arguments: call.into(),
-                            }),
-                            llm_gateway::api::Message::function_return(
-                                name,
-                                &format!("{response}\nCall a function. Do not answer."),
-                            ),
-                        ]
-                    })
-                    .collect::<Vec<_>>();
-
-                let answer = e
-                    .answer_summarized()?
-                    .map(|a| llm_gateway::api::Message::assistant(&a));
-
-                acc.extend(
-                    vec![query]
-                        .into_iter()
-                        .chain(steps.into_iter())
-                        .chain(answer.into_iter()),
-                );
-                Ok(acc)
-            })?;
-        Ok(history)
-    }
-
-    fn utterance_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
-        // Take the last `ANSWER_MAX_CONTEXT_SIZE` 'user' and 'assistant' messages
-        self.exchanges
-            .iter()
-            .rev()
-            .take(ANSWER_MAX_HISTORY_SIZE)
-            .rev()
-            .flat_map(|e| {
-                let query = e.query().map(|q| llm_gateway::api::Message::PlainText {
-                    role: "user".to_owned(),
-                    content: q,
-                });
-
-                let conclusion = e.answer().map(|c| llm_gateway::api::Message::PlainText {
-                    role: "assistant".to_owned(),
-                    content: c.to_owned(),
-                });
-
-                query
-                    .into_iter()
-                    .chain(conclusion.into_iter())
-                    .collect::<Vec<_>>()
-            })
-    }
-
-    fn trim_history(
-        &self,
-        mut history: Vec<llm_gateway::api::Message>,
-    ) -> Result<Vec<llm_gateway::api::Message>> {
-        const HEADROOM: usize = 2048;
-
-        let mut tiktoken_msgs = history
-            .iter()
-            .map(|m| match m {
-                llm_gateway::api::Message::PlainText { role, content } => {
-                    tiktoken_rs::ChatCompletionRequestMessage {
-                        role: role.clone(),
-                        content: content.clone(),
-                        name: None,
-                    }
-                }
-                llm_gateway::api::Message::FunctionReturn {
-                    role,
-                    name,
-                    content,
-                } => tiktoken_rs::ChatCompletionRequestMessage {
-                    role: role.clone(),
-                    content: content.clone(),
-                    name: Some(name.clone()),
-                },
-                llm_gateway::api::Message::FunctionCall {
-                    role,
-                    function_call,
-                    content: _,
-                } => tiktoken_rs::ChatCompletionRequestMessage {
-                    role: role.clone(),
-                    content: serde_json::to_string(&function_call).unwrap(),
-                    name: None,
-                },
-            })
-            .collect::<Vec<_>>();
-
-        while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < HEADROOM {
-            let idx = history
-                .iter_mut()
-                .position(|m| match m {
-                    llm_gateway::api::Message::PlainText {
-                        role,
-                        ref mut content,
-                    } if (role == "user" || role == "assistant") && content != "[HIDDEN]" => {
-                        *content = "[HIDDEN]".into();
-                        true
-                    }
-                    llm_gateway::api::Message::FunctionReturn {
-                        role: _,
-                        name: _,
-                        ref mut content,
-                    } if content != "[HIDDEN]" => {
-                        *content = "[HIDDEN]".into();
-                        true
-                    }
-                    _ => false,
-                })
-                .ok_or_else(|| anyhow!("could not find message to trim"))?;
-
-            tiktoken_msgs[idx].content = "[HIDDEN]".into();
-        }
-
-        Ok(history)
-    }
-
-    fn last_exchange(&self) -> &Exchange {
-        self.exchanges.last().expect("exchange list was empty")
-    }
-
-    fn last_exchange_mut(&mut self) -> &mut Exchange {
-        self.exchanges.last_mut().expect("exchange list was empty")
-    }
-
-    async fn canonicalize_code_chunks(&mut self, app: &Application) -> Vec<CodeChunk> {
-        let mut code_chunks = self.code_chunks();
-        let mut chunks_by_path = HashMap::<_, Vec<_>>::new();
-        for c in mem::take(&mut code_chunks) {
-            chunks_by_path.entry(c.path.clone()).or_default().push(c);
-        }
-
-        let branch = self.last_exchange().query.first_branch();
-        let branch_str = branch.as_deref();
-
-        let self_ = &*self;
-        futures::stream::iter(chunks_by_path)
-            .then(|(path, mut chunks)| async move {
-                chunks.sort_by_key(|c| c.start_line);
-
-                let contents = app
-                    .indexes
-                    .file
-                    .by_path(&self_.repo_ref, &path, branch_str)
-                    .await
-                    .unwrap()
-                    .unwrap_or_else(|| panic!("path did not exist in the index: {path}"))
-                    .content;
-
-                chunks
-                    .into_iter()
-                    .fold(Vec::<CodeChunk>::new(), |mut a, next| {
-                        // There is some rightward drift here, which could be fixed once if-let
-                        // chains are stabilized.
-                        if let Some(prev) = a.last_mut() {
-                            if let Some(next) = merge_overlapping(prev, next) {
-                                if let Some(next) = merge_nearby(prev, next, &contents) {
-                                    a.push(next);
-                                }
-                            }
-                        } else {
-                            a.push(next);
-                        }
-
-                        a
-                    })
-            })
-            .flat_map(futures::stream::iter)
-            .collect()
-            .await
-    }
+enum AgentError {
+    Timeout(Duration),
+    Processing(anyhow::Error),
 }
 
 struct Agent {
     app: Application,
-    conversation: Conversation,
+    repo_ref: RepoRef,
+    exchanges: Vec<Exchange>,
     exchange_tx: Sender<Exchange>,
 
     llm_gateway: llm_gateway::Client,
@@ -718,7 +409,7 @@ impl Agent {
 
     /// Update the last exchange
     async fn update(&mut self, update: Update) -> Result<()> {
-        let exc = self.conversation.last_exchange_mut();
+        let exc = self.last_exchange_mut();
         exc.apply_update(update);
         self.exchange_tx
             .send(exc.clone())
@@ -730,16 +421,48 @@ impl Agent {
         let event = QueryEvent {
             query_id: self.query_id,
             thread_id: self.thread_id,
-            repo_ref: Some(self.conversation.repo_ref.clone()),
+            repo_ref: Some(self.repo_ref.clone()),
             data,
         };
         self.app.track_query(&self.user, &event);
     }
 
+    fn last_exchange(&self) -> &Exchange {
+        self.exchanges.last().expect("exchange list was empty")
+    }
+
+    fn last_exchange_mut(&mut self) -> &mut Exchange {
+        self.exchanges.last_mut().expect("exchange list was empty")
+    }
+
+    fn code_chunks(&self) -> Vec<CodeChunk> {
+        self.exchanges
+            .iter()
+            .flat_map(|e| e.code_chunks.iter().cloned())
+            .collect::<Vec<_>>()
+    }
+
+    fn paths(&self) -> Vec<String> {
+        self.exchanges
+            .iter()
+            .flat_map(|e| e.paths.iter().cloned())
+            .collect::<Vec<_>>()
+    }
+
+    fn get_path_alias(&mut self, path: &str) -> usize {
+        if let Some(i) = self.paths().iter().position(|p| *p == path) {
+            i
+        } else {
+            let i = self.paths().len();
+            self.last_exchange_mut().paths.push(path.to_owned());
+            i
+        }
+    }
+
     async fn step(&mut self, action: Action) -> Result<Option<Action>> {
         debug!(?action, %self.thread_id, "executing next action");
 
-        let result = match &action {
+        match &action {
             Action::Query(s) => {
                 self.track_query(EventData::input_stage("query").with_payload("q", s));
                 s.clone()
@@ -758,18 +481,17 @@ impl Agent {
             Action::Proc { query, paths } => self.process_files(query, paths).await?,
         };
 
-        // Build the action selection prompt
         let functions = serde_json::from_value::<Vec<llm_gateway::api::Function>>(
-            prompts::functions(!self.conversation.paths().is_empty()), // Only add proc if there are paths in context
+            prompts::functions(!self.paths().is_empty()), // Only add proc if there are paths in context
         )
         .unwrap();
 
         let mut history = vec![llm_gateway::api::Message::system(&prompts::system(
-            &self.conversation.paths(),
+            &self.paths(),
         ))];
-        history.extend(self.conversation.history()?);
+        history.extend(self.history()?);
 
-        let trimmed_history = self.conversation.trim_history(history.clone())?;
+        let trimmed_history = self.trim_history(history.clone())?;
 
         let raw_response = self
             .llm_gateway
@@ -829,7 +551,7 @@ impl Agent {
 
                 CodeChunk {
                     path: relative_path.clone(),
-                    alias: self.conversation.get_path_alias(&relative_path) as u32,
+                    alias: self.get_path_alias(&relative_path) as u32,
                     snippet: chunk.text,
                     start_line: (chunk.start_line as u32).saturating_add(1),
                     end_line: (chunk.end_line as u32).saturating_add(1),
@@ -838,8 +560,7 @@ impl Agent {
             .collect::<Vec<_>>();
 
         for chunk in chunks.iter().filter(|c| !c.is_empty()) {
-            self.conversation
-                .exchanges
+            self.exchanges
                 .last_mut()
                 .unwrap()
                 .code_chunks
@@ -899,10 +620,7 @@ impl Agent {
 
         let formatted_paths = paths
             .iter()
-            .map(|p| SeenPath {
-                path: p.to_string(),
-                alias: self.conversation.get_path_alias(p) as u32,
-            })
+            .map(|p| (p.to_string(), self.get_path_alias(p)))
             .collect::<Vec<_>>();
 
         let response = serde_json::to_string(&formatted_paths).unwrap();
@@ -932,7 +650,7 @@ impl Agent {
         let paths = path_aliases
             .iter()
             .copied()
-            .map(|i| self.conversation.paths().get(i).ok_or(i).cloned())
+            .map(|i| self.paths().get(i).ok_or(i).cloned())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|i| anyhow!("invalid path alias {i}"))?;
 
@@ -1093,7 +811,7 @@ impl Agent {
             .await;
 
         for (relevant_chunks, path) in &processed {
-            let alias = self.conversation.get_path_alias(path) as u32;
+            let alias = self.get_path_alias(path) as u32;
 
             for c in relevant_chunks {
                 let chunk = CodeChunk {
@@ -1104,10 +822,7 @@ impl Agent {
                     end_line: c.range.end as u32,
                 };
                 if !chunk.is_empty() {
-                    self.conversation
-                        .last_exchange_mut()
-                        .code_chunks
-                        .push(chunk);
+                    self.last_exchange_mut().code_chunks.push(chunk);
                 }
             }
         }
@@ -1120,7 +835,7 @@ impl Agent {
                         .iter()
                         .map(|c| c.enumerate_lines())
                         .collect::<Vec<_>>(),
-                    "path_alias": self.conversation.get_path_alias(&path),
+                    "path_alias": self.get_path_alias(&path),
                 })
             })
             .collect::<Vec<_>>();
@@ -1144,36 +859,9 @@ impl Agent {
         Ok(response)
     }
 
-    async fn hyde(&self, query: &str) -> Result<Vec<String>> {
-        let prompt = vec![llm_gateway::api::Message::system(
-            &prompts::hypothetical_document_prompt(query),
-        )];
-
-        tracing::trace!(?query, "generating hyde docs");
-
-        let response = self
-            .llm_gateway
-            .clone()
-            .model("gpt-3.5-turbo-0613")
-            .chat(&prompt, None)
-            .await?
-            .try_collect::<String>()
-            .await?;
-
-        tracing::trace!("parsing hyde response");
-
-        let documents = prompts::try_parse_hypothetical_documents(&response);
-
-        for doc in documents.iter() {
-            info!(?doc, "got hyde doc");
-        }
-
-        Ok(documents)
-    }
-
     async fn answer_context(&mut self, aliases: &[usize]) -> Result<String> {
-        let paths = self.conversation.paths();
-        let code_chunks = self.conversation.canonicalize_code_chunks(&self.app).await;
+        let paths = self.paths();
+        let code_chunks = self.canonicalize_code_chunks().await;
 
         let mut s = "".to_owned();
 
@@ -1295,7 +983,7 @@ impl Agent {
 
     async fn answer_article(&mut self, aliases: &[usize]) -> Result<()> {
         let context = self.answer_context(aliases).await?;
-        let history = self.conversation.utterance_history().collect::<Vec<_>>();
+        let history = self.utter_history().collect::<Vec<_>>();
 
         let system_message = prompts::answer_article_prompt(&context);
         let messages = Some(llm_gateway::api::Message::system(&system_message))
@@ -1335,7 +1023,7 @@ impl Agent {
 
         self.track_query(
             EventData::output_stage("answer_article")
-                .with_payload("query", self.conversation.last_exchange().query())
+                .with_payload("query", self.last_exchange().query())
                 .with_payload("query_history", &history)
                 .with_payload("response", &response)
                 .with_payload("raw_prompt", &system_message),
@@ -1346,7 +1034,7 @@ impl Agent {
 
     async fn answer_filesystem(&mut self, aliases: &[usize]) -> Result<()> {
         let context = self.answer_context(aliases).await?;
-        let mut query_history = self.conversation.utterance_history().collect::<Vec<_>>();
+        let mut query_history = self.utter_history().collect::<Vec<_>>();
 
         {
             let (role, content) = query_history
@@ -1414,7 +1102,7 @@ impl Agent {
                     }
                     item
                 })
-                .map(|s| s.substitute_path_alias(&self.conversation.paths()))
+                .map(|s| s.substitute_path_alias(&self.paths()))
                 .collect::<Vec<_>>();
 
             self.update(Update::Filesystem(search_results)).await?;
@@ -1422,13 +1110,225 @@ impl Agent {
 
         self.track_query(
             EventData::output_stage("answer_filesystem")
-                .with_payload("query", self.conversation.last_exchange().query())
+                .with_payload("query", self.last_exchange().query())
                 .with_payload("query_history", &query_history)
                 .with_payload("response", &buffer)
                 .with_payload("system_message", &system_message),
         );
 
         Ok(())
+    }
+
+    /// The full history of messages, including intermediate function calls
+    fn history(&self) -> Result<Vec<llm_gateway::api::Message>> {
+        let history = self
+            .exchanges
+            .iter()
+            .try_fold(Vec::new(), |mut acc, e| -> Result<_> {
+                let query = e
+                    .query()
+                    .map(|q| {
+                        llm_gateway::api::Message::user(&format!(
+                            "{q}\nCall a function. Do not answer."
+                        ))
+                    })
+                    .ok_or_else(|| anyhow!("query does not have target"))?;
+
+                let steps = e
+                    .search_steps
+                    .iter()
+                    .flat_map(|s| {
+                        let (name, call, response) = match s {
+                            SearchStep::Path { call, response } => ("path", call, response),
+                            SearchStep::Code { call, response } => ("code", call, response),
+                            SearchStep::Proc { call, response, .. } => ("proc", call, response),
+                        };
+                        vec![
+                            llm_gateway::api::Message::function_call(&FunctionCall {
+                                name: Some(name.into()),
+                                arguments: call.into(),
+                            }),
+                            llm_gateway::api::Message::function_return(
+                                name,
+                                &format!("{response}\nCall a function. Do not answer."),
+                            ),
+                        ]
+                    })
+                    .collect::<Vec<_>>();
+
+                let answer = e
+                    .answer_summarized()?
+                    .map(|a| llm_gateway::api::Message::assistant(&a));
+
+                acc.extend(
+                    vec![query]
+                        .into_iter()
+                        .chain(steps.into_iter())
+                        .chain(answer.into_iter()),
+                );
+                Ok(acc)
+            })?;
+        Ok(history)
+    }
+
+    /// History of `user`, `assistant` messages. These are the messages that are shown to the user.
+    fn utter_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
+        const ANSWER_MAX_HISTORY_SIZE: usize = 5;
+
+        self.exchanges
+            .iter()
+            .rev()
+            .take(ANSWER_MAX_HISTORY_SIZE)
+            .rev()
+            .flat_map(|e| {
+                let query = e.query().map(|q| llm_gateway::api::Message::PlainText {
+                    role: "user".to_owned(),
+                    content: q,
+                });
+
+                let conclusion = e.answer().map(|c| llm_gateway::api::Message::PlainText {
+                    role: "assistant".to_owned(),
+                    content: c.to_owned(),
+                });
+
+                query
+                    .into_iter()
+                    .chain(conclusion.into_iter())
+                    .collect::<Vec<_>>()
+            })
+    }
+
+    fn trim_history(
+        &self,
+        mut history: Vec<llm_gateway::api::Message>,
+    ) -> Result<Vec<llm_gateway::api::Message>> {
+        const HEADROOM: usize = 2048;
+
+        let mut tiktoken_msgs = history
+            .iter()
+            .map(|m| match m {
+                llm_gateway::api::Message::PlainText { role, content } => {
+                    tiktoken_rs::ChatCompletionRequestMessage {
+                        role: role.clone(),
+                        content: content.clone(),
+                        name: None,
+                    }
+                }
+                llm_gateway::api::Message::FunctionReturn {
+                    role,
+                    name,
+                    content,
+                } => tiktoken_rs::ChatCompletionRequestMessage {
+                    role: role.clone(),
+                    content: content.clone(),
+                    name: Some(name.clone()),
+                },
+                llm_gateway::api::Message::FunctionCall {
+                    role,
+                    function_call,
+                    content: _,
+                } => tiktoken_rs::ChatCompletionRequestMessage {
+                    role: role.clone(),
+                    content: serde_json::to_string(&function_call).unwrap(),
+                    name: None,
+                },
+            })
+            .collect::<Vec<_>>();
+
+        while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < HEADROOM {
+            let idx = history
+                .iter_mut()
+                .position(|m| match m {
+                    llm_gateway::api::Message::PlainText {
+                        role,
+                        ref mut content,
+                    } if (role == "user" || role == "assistant") && content != "[HIDDEN]" => {
+                        *content = "[HIDDEN]".into();
+                        true
+                    }
+                    llm_gateway::api::Message::FunctionReturn {
+                        role: _,
+                        name: _,
+                        ref mut content,
+                    } if content != "[HIDDEN]" => {
+                        *content = "[HIDDEN]".into();
+                        true
+                    }
+                    _ => false,
+                })
+                .ok_or_else(|| anyhow!("could not find message to trim"))?;
+
+            tiktoken_msgs[idx].content = "[HIDDEN]".into();
+        }
+
+        Ok(history)
+    }
+
+    /// Merge overlapping and nearby code chunks
+    async fn canonicalize_code_chunks(&self) -> Vec<CodeChunk> {
+        let mut chunks_by_path = HashMap::<_, Vec<_>>::new();
+        for c in mem::take(&mut self.code_chunks()) {
+            chunks_by_path.entry(c.path.clone()).or_default().push(c);
+        }
+
+        futures::stream::iter(chunks_by_path)
+            .then(|(path, mut chunks)| async move {
+                chunks.sort_by_key(|c| c.start_line);
+                let contents = self
+                    .get_file_content(&path)
+                    .await
+                    .unwrap()
+                    .unwrap_or_else(|| panic!("path did not exist in the index: {path}"))
+                    .content;
+
+                chunks
+                    .into_iter()
+                    .fold(Vec::<CodeChunk>::new(), |mut a, next| {
+                        // There is some rightward drift here, which could be fixed once if-let
+                        // chains are stabilized.
+                        if let Some(prev) = a.last_mut() {
+                            if let Some(next) = merge_overlapping(prev, next) {
+                                if let Some(next) = merge_nearby(prev, next, &contents) {
+                                    a.push(next);
+                                }
+                            }
+                        } else {
+                            a.push(next);
+                        }
+
+                        a
+                    })
+            })
+            .flat_map(futures::stream::iter)
+            .collect()
+            .await
+    }
+
+    async fn hyde(&self, query: &str) -> Result<Vec<String>> {
+        let prompt = vec![llm_gateway::api::Message::system(
+            &prompts::hypothetical_document_prompt(query),
+        )];
+
+        tracing::trace!(?query, "generating hyde docs");
+
+        let response = self
+            .llm_gateway
+            .clone()
+            .model("gpt-3.5-turbo-0613")
+            .chat(&prompt, None)
+            .await?
+            .try_collect::<String>()
+            .await?;
+
+        tracing::trace!("parsing hyde response");
+
+        let documents = prompts::try_parse_hypothetical_documents(&response);
+
+        for doc in documents.iter() {
+            info!(?doc, "got hyde doc");
+        }
+
+        Ok(documents)
     }
 
     async fn semantic_search(
@@ -1440,11 +1340,8 @@ impl Agent {
     ) -> Result<Vec<semantic::Payload>> {
         let query = SemanticQuery {
             target: Some(query),
-            repos: [Literal::Plain(
-                self.conversation.repo_ref.display_name().into(),
-            )]
-            .into(),
-            ..self.conversation.last_exchange().query.clone()
+            repos: [Literal::Plain(self.repo_ref.display_name().into())].into(),
+            ..self.last_exchange().query.clone()
         };
 
         debug!(?query, %self.thread_id, "executing semantic query");
@@ -1468,11 +1365,8 @@ impl Agent {
             .iter()
             .map(|q| SemanticQuery {
                 target: Some(q.clone()),
-                repos: [Literal::Plain(
-                    self.conversation.repo_ref.display_name().into(),
-                )]
-                .into(),
-                ..self.conversation.last_exchange().query.clone()
+                repos: [Literal::Plain(self.repo_ref.display_name().into())].into(),
+                ..self.last_exchange().query.clone()
             })
             .collect::<Vec<_>>();
 
@@ -1488,14 +1382,13 @@ impl Agent {
     }
 
     async fn get_file_content(&self, path: &str) -> Result<Option<ContentDocument>> {
-        let branch = self.conversation.last_exchange().query.first_branch();
-        let repo_ref = &self.conversation.repo_ref;
+        let branch = self.last_exchange().query.first_branch();
 
-        debug!(%repo_ref, path, ?branch, %self.thread_id, "executing file search");
+        debug!(%self.repo_ref, path, ?branch, %self.thread_id, "executing file search");
         self.app
             .indexes
             .file
-            .by_path(repo_ref, path, branch.as_deref())
+            .by_path(&self.repo_ref, path, branch.as_deref())
             .await
             .with_context(|| format!("failed to read path: {}", path))
     }
@@ -1504,14 +1397,13 @@ impl Agent {
         &'a self,
         query: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
-        let branch = self.conversation.last_exchange().query.first_branch();
-        let repo_ref = &self.conversation.repo_ref;
+        let branch = self.last_exchange().query.first_branch();
 
-        debug!(%repo_ref, query, ?branch, %self.thread_id, "executing fuzzy search");
+        debug!(%self.repo_ref, query, ?branch, %self.thread_id, "executing fuzzy search");
         self.app
             .indexes
             .file
-            .fuzzy_path_match(repo_ref, query, branch.as_deref(), 50)
+            .fuzzy_path_match(&self.repo_ref, query, branch.as_deref(), 50)
             .await
     }
 }
@@ -1712,6 +1604,76 @@ pub enum AnswerMode {
     Article,
     #[default]
     Filesystem,
+}
+
+async fn store_conversation(
+    db: &SqlDb,
+    id: ConversationId,
+    conversation: &Conversation,
+) -> Result<()> {
+    info!("writing conversation {}-{}", id.user_id, id.thread_id);
+    let mut transaction = db.begin().await?;
+
+    // Delete the old conversation for simplicity. This also deletes all its messages.
+    let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
+    sqlx::query! {
+        "DELETE FROM conversations \
+            WHERE user_id = ? AND thread_id = ?",
+        user_id,
+        thread_id,
+    }
+    .execute(&mut transaction)
+    .await?;
+
+    let (repo_ref, exchanges) = conversation;
+    let repo_ref = repo_ref.to_string();
+    let title = exchanges
+        .first()
+        .and_then(|list| list.query())
+        .and_then(|q| q.split('\n').next().map(|s| s.to_string()))
+        .context("couldn't find conversation title")?;
+
+    let exchanges = serde_json::to_string(&exchanges)?;
+    sqlx::query! {
+        "INSERT INTO conversations (\
+            user_id, thread_id, repo_ref, title, exchanges, created_at\
+            ) \
+            VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))",
+        user_id,
+        thread_id,
+        repo_ref,
+        title,
+        exchanges,
+    }
+    .execute(&mut transaction)
+    .await?;
+
+    transaction.commit().await?;
+
+    Ok(())
+}
+
+pub async fn load_conversation(db: &SqlDb, id: &ConversationId) -> Result<Option<Conversation>> {
+    let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
+
+    let row = sqlx::query! {
+        "SELECT repo_ref, exchanges FROM conversations \
+         WHERE user_id = ? AND thread_id = ?",
+        user_id,
+        thread_id,
+    }
+    .fetch_optional(db.as_ref())
+    .await?;
+
+    let row = match row {
+        Some(r) => r,
+        None => return Ok(None),
+    };
+
+    let repo_ref = RepoRef::from_str(&row.repo_ref).context("failed to parse repo ref")?;
+    let exchanges = serde_json::from_str(&row.exchanges)?;
+
+    Ok(Some((repo_ref, exchanges)))
 }
 
 #[cfg(test)]

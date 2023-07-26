@@ -11,7 +11,7 @@ use crate::{
     Application,
 };
 
-use super::{exchange::Exchange, Conversation, ConversationId};
+use super::{exchange::Exchange, load_conversation, ConversationId};
 
 #[derive(serde::Serialize)]
 pub struct ConversationPreview {
@@ -102,12 +102,11 @@ pub(in crate::webserver) async fn thread(
         .ok_or_else(|| Error::user("missing user ID"))?
         .to_owned();
 
-    let conversation = Conversation::load(&app.sql, &ConversationId { thread_id, user_id })
+    let (.., exchanges) = load_conversation(&app.sql, &ConversationId { thread_id, user_id })
         .await?
         .ok_or_else(|| Error::new(ErrorKind::NotFound, "thread was not found"))?;
 
-    let exchanges = conversation
-        .exchanges
+    let exchanges = exchanges
         .into_iter()
         .map(Exchange::encode)
         .collect::<Vec<_>>();
