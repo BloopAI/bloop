@@ -38,7 +38,7 @@ const ReportBugModal = ({
   const [serverCrashedMessage, setServerCrashedMessage] = useState('');
   const { onBoardingState, isBugReportModalOpen, setBugReportModalOpen } =
     useContext(UIContext);
-  const { envConfig, listen, os } = useContext(DeviceContext);
+  const { envConfig, listen, os, release } = useContext(DeviceContext);
   const { handleRemoveTab, setActiveTab, activeTab } = useContext(TabsContext);
 
   useEffect(() => {
@@ -85,14 +85,19 @@ const ReportBugModal = ({
           unique_id: envConfig.tracking_id || '',
           info: serverCrashedMessage,
           metadata: JSON.stringify(os),
+          app_version: release,
         });
       } else {
         const { emailError, ...values } = form;
-        saveBugReport({ ...values, unique_id: envConfig.tracking_id || '' });
+        saveBugReport({
+          ...values,
+          unique_id: envConfig.tracking_id || '',
+          app_version: release,
+        });
       }
       setSubmitted(true);
     },
-    [form, envConfig.tracking_id],
+    [form, envConfig.tracking_id, release],
   );
   const resetState = useCallback(() => {
     if (serverCrashedMessage) {
