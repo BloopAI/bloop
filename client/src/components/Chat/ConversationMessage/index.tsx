@@ -5,6 +5,7 @@ import {
   Checkmark,
   List,
   MagnifyTool,
+  PenUnderline,
   PointClick,
   QuillIcon,
   Sparkles,
@@ -40,6 +41,7 @@ type Props = {
   loadingSteps?: ChatLoadingStep[];
   results?: FileSystemResult & ArticleResult;
   i: number;
+  onMessageEdit: (i: number) => void;
 };
 
 const ConversationMessage = ({
@@ -57,6 +59,7 @@ const ConversationMessage = ({
   results,
   i,
   repoName,
+  onMessageEdit,
 }: Props) => {
   const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
@@ -88,8 +91,8 @@ const ConversationMessage = ({
               <span>{s.type === 'PROC' ? t('Reading ') : s.displayText}</span>
               {s.type === 'PROC' ? (
                 <FileChip
-                  onClick={() => openFileModal(s.content)}
-                  fileName={s.content.split('/').pop() || ''}
+                  onClick={() => openFileModal(s.content.call)}
+                  fileName={s.content.call.split('/').pop() || ''}
                 />
               ) : null}
             </div>
@@ -167,11 +170,25 @@ const ConversationMessage = ({
               )}
             </div>
             {message && (
-              <pre className="body-s text-label-title whitespace-pre-wrap break-word markdown">
+              <pre className="body-s text-label-title whitespace-pre-wrap break-word markdown relative w-full">
                 {author === ChatMessageAuthor.Server ? (
                   <ReactMarkdown>{message}</ReactMarkdown>
                 ) : (
-                  message
+                  <>
+                    <span>{message}</span>
+                    {i !== 0 && !isHistory && (
+                      <Button
+                        size="tiny"
+                        variant="tertiary"
+                        className="absolute top-0 right-0"
+                        onlyIcon
+                        title={t('Edit')}
+                        onClick={() => onMessageEdit(i)}
+                      >
+                        <PenUnderline />
+                      </Button>
+                    )}
+                  </>
                 )}
               </pre>
             )}

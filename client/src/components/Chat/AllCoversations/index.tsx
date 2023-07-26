@@ -90,6 +90,7 @@ const AllConversations = ({
           text: m.conclusion,
           results: m.outcome,
           isFromHistory: true,
+          queryId: m.id,
         });
       });
       setTitle(conv[0].text || '');
@@ -152,11 +153,11 @@ const AllConversations = ({
           <Conversation
             conversation={openItem}
             threadId={openThreadId}
-            queryId={''}
             repoRef={repoRef}
             isLoading={false}
             isHistory
             repoName={repoName}
+            onMessageEdit={() => {}}
           />
         </div>
       )}

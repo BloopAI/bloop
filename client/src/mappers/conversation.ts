@@ -8,7 +8,9 @@ export const mapLoadingSteps = (
       s.type === 'PROC'
         ? t(`Reading`) +
           ' ' +
-          `${s.content.length > 20 ? '...' : ''}${s.content.slice(-20)}`
-        : s.content,
+          `${s.content.call.length > 20 ? '...' : ''}${s.content.call.slice(
+            -20,
+          )}`
+        : s.content.call,
   }));
 };

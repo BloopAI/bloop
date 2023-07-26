@@ -220,6 +220,7 @@ export type AllConversationsResponse = {
 }[];
 
 export type ConversationType = {
+  id: string;
   search_steps: { content: string; type: string }[];
   conclusion: string;
   outcome: FileSystemResult & ArticleResult;

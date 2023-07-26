@@ -1,25 +1,29 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { ChatMessage, ChatMessageAuthor } from '../../types/general';
+import {
+  ChatMessage,
+  ChatMessageAuthor,
+  ChatMessageServer,
+} from '../../types/general';
 import Message from './ConversationMessage';
 
 type Props = {
   conversation: ChatMessage[];
   threadId: string;
-  queryId: string;
   repoRef: string;
   repoName: string;
   isLoading?: boolean;
   isHistory?: boolean;
+  onMessageEdit: (parentQueryId: string, i: number) => void;
 };
 
 const Conversation = ({
   conversation,
   threadId,
-  queryId,
   repoRef,
   isLoading,
   isHistory,
   repoName,
+  onMessageEdit,
 }: Props) => {
   const messagesRef = useRef<HTMLDivElement>(null);
 
@@ -36,6 +40,15 @@ const Conversation = ({
   useEffect(() => {
     scrollToBottom();
   }, [conversation, scrollToBottom]);
+
+  const handleMessageEdit = useCallback(
+    (i: number) => {
+      if ('queryId' in conversation[i - 1]) {
+        onMessageEdit((conversation[i - 1] as ChatMessageServer).queryId, i);
+      }
+    },
+    [conversation, onMessageEdit],
+  );
 
   return (
     <div
@@ -67,10 +80,11 @@ const Conversation = ({
             !m.isFromHistory
           }
           threadId={threadId}
-          queryId={queryId}
+          queryId={m.author === ChatMessageAuthor.Server ? m.queryId : ''}
           repoRef={repoRef}
           scrollToBottom={scrollToBottom}
           repoName={repoName}
+          onMessageEdit={handleMessageEdit}
         />
       ))}
     </div>
