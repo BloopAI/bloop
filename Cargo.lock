@@ -469,7 +469,6 @@ dependencies = [
  "console-subscriber",
  "criterion",
  "directories",
- "dunce",
  "either",
  "erased-serde",
  "expect-test",

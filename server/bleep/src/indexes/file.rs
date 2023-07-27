@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    path::{Path, PathBuf, MAIN_SEPARATOR},
+    path::{Path, PathBuf},
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
@@ -263,7 +263,7 @@ impl Indexer<File> {
                     .map(|f| f.is_match(&doc.relative_path))
                     .unwrap_or_default()
             })
-            .filter(|doc| !doc.relative_path.ends_with(MAIN_SEPARATOR)) // omit directories
+            .filter(|doc| !doc.relative_path.ends_with('/')) // omit directories
             .take(limit)
     }
 
@@ -531,7 +531,9 @@ impl RepoDir {
         last_commit: u64,
         tantivy_cache_key: String,
     ) -> tantivy::schema::Document {
-        let relative_path_str = format!("{}{MAIN_SEPARATOR}", relative_path.to_string_lossy());
+        let relative_path_str = format!("{}/", relative_path.to_string_lossy());
+        #[cfg(windows)]
+        let relative_path_str = relative_path_str.replace('\\', "/");
 
         let branches = self.branches.join("\n");
 
@@ -576,6 +578,9 @@ impl RepoFile {
         file_cache: &FileCache,
     ) -> Option<tantivy::schema::Document> {
         let relative_path_str = relative_path.to_string_lossy().to_string();
+        #[cfg(windows)]
+        let relative_path_str = relative_path_str.replace('\\', "/");
+
         let branches = self.branches.join("\n");
         let lang_str = repo_metadata
             .langs

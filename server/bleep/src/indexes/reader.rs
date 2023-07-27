@@ -1,5 +1,3 @@
-use std::path::MAIN_SEPARATOR;
-
 use anyhow::Result;
 use async_trait::async_trait;
 use tantivy::{
@@ -339,9 +337,7 @@ impl DocumentRead for OpenReader {
 /// - `"bar/" -> "bar/"`
 /// - `"foo.txt" -> ""`
 pub fn base_name(path: &str) -> &str {
-    path.rfind(MAIN_SEPARATOR)
-        .map(|i| &path[..i + 1])
-        .unwrap_or("")
+    path.rfind('/').map(|i| &path[..i + 1]).unwrap_or("")
 }
 
 fn read_text_field(doc: &tantivy::Document, field: Field) -> String {
@@ -371,9 +367,8 @@ mod test {
 
     #[test]
     fn test_base_name() {
-        let s = MAIN_SEPARATOR;
-        assert_eq!(base_name(&format!("bar{s}foo.txt")), format!("bar{s}"));
-        assert_eq!(base_name(&format!("bar{s}")), format!("bar{s}"));
+        assert_eq!(base_name(&format!("bar/foo.txt")), format!("bar/"));
+        assert_eq!(base_name(&format!("bar/")), format!("bar/"));
         assert_eq!(base_name("foo.txt"), "");
     }
 }

@@ -3,7 +3,7 @@ use super::*;
 use anyhow::Result;
 use gix::ThreadSafeRepository;
 use regex::RegexSet;
-use tracing::error;
+use tracing::{error, trace};
 
 use std::{
     collections::{BTreeSet, HashMap},
@@ -125,6 +125,7 @@ impl GitWalker {
                     .map(move |entry| {
                         let strpath = String::from_utf8_lossy(entry.filepath.as_ref());
                         let full_path = root_dir.join(strpath.as_ref());
+                        trace!(?strpath, ?full_path, "got path from gix");
                         (
                             is_head,
                             branch.clone(),
@@ -171,6 +172,7 @@ impl FileSource for GitWalker {
         self.entries
             .into_par_iter()
             .filter_map(|((path, kind, oid), branches)| {
+                trace!(?path, "walking over path");
                 let git = self.git.to_thread_local();
                 let Ok(Some(object)) = git.try_find_object(oid) else {
                     error!(?path, ?branches, "can't find object for file");

@@ -151,9 +151,6 @@ impl StateSource {
     }
 
     pub(crate) fn initialize_pool(&self) -> Result<RepositoryPool, RepoError> {
-        #[cfg(target = "windows")]
-        use dunce::canonicalize;
-        #[cfg(not(target = "windows"))]
         use std::fs::canonicalize;
 
         match (self.directory.as_ref(), self.state_file.as_ref()) {
