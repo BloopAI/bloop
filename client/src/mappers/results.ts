@@ -149,6 +149,8 @@ export const mapFileResult = (fileItem: FileItem) => {
     code: fileItem.data.contents,
     hoverableRanges: [],
     repoName: fileItem.data.repo_name,
+    size: fileItem.data.size,
+    loc: fileItem.data.sloc,
   };
 };
 
