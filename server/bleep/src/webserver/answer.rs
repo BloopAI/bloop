@@ -2,7 +2,7 @@ use rand::{rngs::OsRng, seq::SliceRandom};
 use secrecy::ExposeSecret;
 use std::{
     collections::{HashMap, HashSet},
-    fmt, mem,
+    mem,
     panic::AssertUnwindSafe,
     pin::pin,
     time::Duration,
@@ -131,7 +131,7 @@ pub(super) async fn _handle(
 > {
     QueryLog::new(&app.sql).insert(&params.q).await?;
 
-    let conversation_id = ConversationId {
+    let conversation_id = conversations::ConversationId {
         user_id: user
             .login()
             .ok_or_else(|| super::Error::user("didn't have user ID"))?
@@ -187,12 +187,12 @@ pub(super) async fn _handle(
     } = params;
 
     if let Some(rephrase_exchange_id) = rephrase_exchange_id {
-        let rephrase_exchange_id = exchanges
+        let rephrase_exchange_index = exchanges
             .iter()
             .position(|e| e.id == rephrase_exchange_id)
             .ok_or_else(|| super::Error::user("parent query id not found in exchanges"))?;
 
-        exchanges.truncate(rephrase_exchange_id);
+        exchanges.truncate(rephrase_exchange_index);
     }
 
     let query = parser::parse_nl(&q)
@@ -217,8 +217,8 @@ pub(super) async fn _handle(
 
         let mut agent = Agent {
             app,
-            repo_ref: repo_ref.clone(),
-            exchanges: exchanges.clone(),
+            repo_ref,
+            exchanges,
             exchange_tx,
             llm_gateway,
             user,
@@ -295,7 +295,7 @@ pub(super) async fn _handle(
         }
 
         // Storing the conversation here allows us to make subsequent requests.
-        conversations::store(&agent.app.sql, conversation_id, (repo_ref, agent.exchanges.clone())).await?;
+        conversations::store(&agent.app.sql, conversation_id, (agent.repo_ref.clone(), agent.exchanges.clone())).await?;
         agent.complete();
     };
 
@@ -324,18 +324,6 @@ pub(super) async fn _handle(
     let stream = init_stream.chain(answer_stream).chain(done_stream);
 
     Ok(Sse::new(Box::pin(stream)))
-}
-
-#[derive(Hash, PartialEq, Eq, Clone)]
-pub struct ConversationId {
-    thread_id: uuid::Uuid,
-    user_id: String,
-}
-
-impl fmt::Display for ConversationId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}::{}", self.user_id, self.thread_id)
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]

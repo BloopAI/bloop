@@ -5,7 +5,7 @@ use axum::{
     Extension, Json,
 };
 use reqwest::StatusCode;
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 use tracing::info;
 
 use crate::{
@@ -15,9 +15,21 @@ use crate::{
     Application,
 };
 
-use super::{exchange::Exchange, ConversationId};
+use super::exchange::Exchange;
 
 type Conversation = (RepoRef, Vec<Exchange>);
+
+#[derive(Hash, PartialEq, Eq, Clone)]
+pub struct ConversationId {
+    pub thread_id: uuid::Uuid,
+    pub user_id: String,
+}
+
+impl fmt::Display for ConversationId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}::{}", self.user_id, self.thread_id)
+    }
+}
 
 #[derive(serde::Serialize)]
 pub struct ConversationPreview {
