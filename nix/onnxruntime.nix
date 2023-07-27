@@ -83,10 +83,6 @@ stdenv.mkDerivation rec {
 
   checkInputs = [ ];
 
-  # TODO: build server, and move .so's to lib output
-  # Python's wheel is stored in a separate dist output
-  outputs = [ "out" "dev" ];
-
   enableParallelBuilding = true;
 
   cmakeDir = "../cmake";
