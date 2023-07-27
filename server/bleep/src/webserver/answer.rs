@@ -45,8 +45,6 @@ use llm_gateway::api::FunctionCall;
 
 const TIMEOUT_SECS: u64 = 60;
 
-type Conversation = (RepoRef, Vec<Exchange>);
-
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Vote {
     pub feedback: VoteFeedback,
@@ -409,8 +407,7 @@ impl Agent {
 
     /// Update the last exchange
     async fn update(&mut self, update: Update) -> Result<()> {
-        let exc = self.last_exchange_mut();
-        exc.apply_update(update);
+        self.last_exchange_mut().apply_update(update);
 
         // Immutable reborrow of `self`
         let self_ = &*self;
@@ -495,11 +492,11 @@ impl Agent {
         ))];
         history.extend(self.history()?);
 
-        let trimmed_history = self.trim_history(history.clone())?;
+        let trimmed_history = trim_history(history.clone())?;
 
         let raw_response = self
             .llm_gateway
-            .chat(&trimmed_history, Some(&functions))
+            .chat(&trim_history(history.clone())?, Some(&functions))
             .await?
             .try_fold(
                 llm_gateway::api::FunctionCall::default(),
@@ -1137,36 +1134,31 @@ impl Agent {
                     })
                     .ok_or_else(|| anyhow!("query does not have target"))?;
 
-                let steps = e
-                    .search_steps
-                    .iter()
-                    .flat_map(|s| {
-                        let (name, call, response) = match s {
-                            SearchStep::Path { call, response } => ("path", call, response),
-                            SearchStep::Code { call, response } => ("code", call, response),
-                            SearchStep::Proc { call, response, .. } => ("proc", call, response),
-                        };
-                        vec![
-                            llm_gateway::api::Message::function_call(&FunctionCall {
-                                name: Some(name.into()),
-                                arguments: call.into(),
-                            }),
-                            llm_gateway::api::Message::function_return(
-                                name,
-                                &format!("{response}\nCall a function. Do not answer."),
-                            ),
-                        ]
-                    })
-                    .collect::<Vec<_>>();
+                let steps = e.search_steps.iter().flat_map(|s| {
+                    let (name, call, response) = match s {
+                        SearchStep::Path { call, response } => ("path", call, response),
+                        SearchStep::Code { call, response } => ("code", call, response),
+                        SearchStep::Proc { call, response, .. } => ("proc", call, response),
+                    };
+                    vec![
+                        llm_gateway::api::Message::function_call(&FunctionCall {
+                            name: Some(name.into()),
+                            arguments: call.into(),
+                        }),
+                        llm_gateway::api::Message::function_return(
+                            name,
+                            &format!("{response}\nCall a function. Do not answer."),
+                        ),
+                    ]
+                });
 
                 let answer = e
                     .answer_summarized()?
                     .map(|a| llm_gateway::api::Message::assistant(&a));
 
                 acc.extend(
-                    vec![query]
-                        .into_iter()
-                        .chain(steps.into_iter())
+                    std::iter::once(query)
+                        .chain(steps)
                         .chain(answer.into_iter()),
                 );
                 Ok(acc)
@@ -1199,72 +1191,6 @@ impl Agent {
                     .chain(conclusion.into_iter())
                     .collect::<Vec<_>>()
             })
-    }
-
-    fn trim_history(
-        &self,
-        mut history: Vec<llm_gateway::api::Message>,
-    ) -> Result<Vec<llm_gateway::api::Message>> {
-        const HEADROOM: usize = 2048;
-
-        let mut tiktoken_msgs = history
-            .iter()
-            .map(|m| match m {
-                llm_gateway::api::Message::PlainText { role, content } => {
-                    tiktoken_rs::ChatCompletionRequestMessage {
-                        role: role.clone(),
-                        content: content.clone(),
-                        name: None,
-                    }
-                }
-                llm_gateway::api::Message::FunctionReturn {
-                    role,
-                    name,
-                    content,
-                } => tiktoken_rs::ChatCompletionRequestMessage {
-                    role: role.clone(),
-                    content: content.clone(),
-                    name: Some(name.clone()),
-                },
-                llm_gateway::api::Message::FunctionCall {
-                    role,
-                    function_call,
-                    content: _,
-                } => tiktoken_rs::ChatCompletionRequestMessage {
-                    role: role.clone(),
-                    content: serde_json::to_string(&function_call).unwrap(),
-                    name: None,
-                },
-            })
-            .collect::<Vec<_>>();
-
-        while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < HEADROOM {
-            let idx = history
-                .iter_mut()
-                .position(|m| match m {
-                    llm_gateway::api::Message::PlainText {
-                        role,
-                        ref mut content,
-                    } if (role == "user" || role == "assistant") && content != "[HIDDEN]" => {
-                        *content = "[HIDDEN]".into();
-                        true
-                    }
-                    llm_gateway::api::Message::FunctionReturn {
-                        role: _,
-                        name: _,
-                        ref mut content,
-                    } if content != "[HIDDEN]" => {
-                        *content = "[HIDDEN]".into();
-                        true
-                    }
-                    _ => false,
-                })
-                .ok_or_else(|| anyhow!("could not find message to trim"))?;
-
-            tiktoken_msgs[idx].content = "[HIDDEN]".into();
-        }
-
-        Ok(history)
     }
 
     /// Merge overlapping and nearby code chunks
@@ -1307,6 +1233,10 @@ impl Agent {
             .await
     }
 
+    /// Hypothetical Document Embedding (HyDE): https://arxiv.org/abs/2212.10496
+    ///
+    /// This method generates synthetic documents based on the query. These are then
+    /// parsed and code is extracted. This has been shown to improve semantic search recall.
     async fn hyde(&self, query: &str) -> Result<Vec<String>> {
         let prompt = vec![llm_gateway::api::Message::system(
             &prompts::hypothetical_document_prompt(query),
@@ -1409,6 +1339,71 @@ impl Agent {
             .fuzzy_path_match(&self.repo_ref, query, branch.as_deref(), 50)
             .await
     }
+}
+
+fn trim_history(
+    mut history: Vec<llm_gateway::api::Message>,
+) -> Result<Vec<llm_gateway::api::Message>> {
+    const HEADROOM: usize = 2048;
+
+    let mut tiktoken_msgs = history
+        .iter()
+        .map(|m| match m {
+            llm_gateway::api::Message::PlainText { role, content } => {
+                tiktoken_rs::ChatCompletionRequestMessage {
+                    role: role.clone(),
+                    content: content.clone(),
+                    name: None,
+                }
+            }
+            llm_gateway::api::Message::FunctionReturn {
+                role,
+                name,
+                content,
+            } => tiktoken_rs::ChatCompletionRequestMessage {
+                role: role.clone(),
+                content: content.clone(),
+                name: Some(name.clone()),
+            },
+            llm_gateway::api::Message::FunctionCall {
+                role,
+                function_call,
+                content: _,
+            } => tiktoken_rs::ChatCompletionRequestMessage {
+                role: role.clone(),
+                content: serde_json::to_string(&function_call).unwrap(),
+                name: None,
+            },
+        })
+        .collect::<Vec<_>>();
+
+    while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < HEADROOM {
+        let idx = history
+            .iter_mut()
+            .position(|m| match m {
+                llm_gateway::api::Message::PlainText {
+                    role,
+                    ref mut content,
+                } if (role == "user" || role == "assistant") && content != "[HIDDEN]" => {
+                    *content = "[HIDDEN]".into();
+                    true
+                }
+                llm_gateway::api::Message::FunctionReturn {
+                    role: _,
+                    name: _,
+                    ref mut content,
+                } if content != "[HIDDEN]" => {
+                    *content = "[HIDDEN]".into();
+                    true
+                }
+                _ => false,
+            })
+            .ok_or_else(|| anyhow!("could not find message to trim"))?;
+
+        tiktoken_msgs[idx].content = "[HIDDEN]".into();
+    }
+
+    Ok(history)
 }
 
 fn trim_lines_by_tokens(lines: Vec<String>, bpe: CoreBPE, max_tokens: usize) -> Vec<String> {
@@ -1614,6 +1609,37 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
+
+    #[test]
+    fn test_trimming() {
+        let long_string = "long string ".repeat(2000);
+        let history = vec![
+            llm_gateway::api::Message::system("foo"),
+            llm_gateway::api::Message::user("bar"),
+            llm_gateway::api::Message::assistant("baz"),
+            llm_gateway::api::Message::user(&long_string),
+            llm_gateway::api::Message::assistant("quux"),
+            llm_gateway::api::Message::user("fred"),
+            llm_gateway::api::Message::assistant("thud"),
+            llm_gateway::api::Message::user(&long_string),
+            llm_gateway::api::Message::user("corge"),
+        ];
+
+        assert_eq!(
+            trim_history(history).unwrap(),
+            vec![
+                llm_gateway::api::Message::system("foo"),
+                llm_gateway::api::Message::user("[HIDDEN]"),
+                llm_gateway::api::Message::assistant("[HIDDEN]"),
+                llm_gateway::api::Message::user("[HIDDEN]"),
+                llm_gateway::api::Message::assistant("quux"),
+                llm_gateway::api::Message::user("fred"),
+                llm_gateway::api::Message::assistant("thud"),
+                llm_gateway::api::Message::user(&long_string),
+                llm_gateway::api::Message::user("corge"),
+            ]
+        );
+    }
 
     #[test]
     fn test_trim_lines_by_tokens() {

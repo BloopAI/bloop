@@ -15,7 +15,9 @@ use crate::{
     Application,
 };
 
-use super::{exchange::Exchange, Conversation, ConversationId};
+use super::{exchange::Exchange, ConversationId};
+
+type Conversation = (RepoRef, Vec<Exchange>);
 
 #[derive(serde::Serialize)]
 pub struct ConversationPreview {
