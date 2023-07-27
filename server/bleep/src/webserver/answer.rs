@@ -251,7 +251,7 @@ pub(super) async fn _handle(
                 timeout,
             ) {
                 match item {
-                    Ok(Either::Left(exchange)) => yield exchange,
+                    Ok(Either::Left(exchange)) => yield exchange.compressed(),
                     Ok(Either::Right(next_action)) => match next_action {
                         Ok(n) => break next = n,
                         Err(e) => break 'outer Err(AgentError::Processing(e)),
@@ -266,7 +266,7 @@ pub(super) async fn _handle(
             // of the above loop without ever processing the final message. Here, we empty the
             // queue.
             while let Some(Some(exchange)) = exchange_rx.next().now_or_never() {
-                yield exchange;
+                yield exchange.compressed();
             }
 
             match next {

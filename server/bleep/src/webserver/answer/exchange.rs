@@ -1,5 +1,5 @@
 use crate::query::parser::SemanticQuery;
-use std::borrow::Cow;
+use std::{borrow::Cow, mem};
 
 use anyhow::{Context, Result};
 use lazy_regex::regex;
@@ -128,6 +128,21 @@ impl Exchange {
         }))
     }
 
+    /// Return a copy of this exchange, with all function call responses redacted.
+    ///
+    /// This is used to reduce the size of an exchange when we send it over the wire, by removing
+    /// data that the front-end does not use.
+    pub fn compressed(&self) -> Self {
+        let mut ex = self.clone();
+
+        ex.search_steps = mem::take(&mut ex.search_steps)
+            .into_iter()
+            .map(|step| step.compressed())
+            .collect();
+
+        ex
+    }
+
     /// Set the current search result list.
     fn set_file_results(&mut self, mut new_results: Vec<FileResult>) {
         let results = self
@@ -207,6 +222,29 @@ pub enum SearchStep {
         steps: Vec<String>,
         response: String,
     },
+}
+
+impl SearchStep {
+    /// Create a "compressed" clone of this step, by redacting all response data.
+    ///
+    /// Used in `Exchange::compressed`.
+    fn compressed(&self) -> Self {
+        match self {
+            Self::Path { call, .. } => Self::Path {
+                call: call.clone(),
+                response: "[hidden, compressed]".into(),
+            },
+            Self::Code { call, .. } => Self::Code {
+                call: call.clone(),
+                response: "[hidden, compressed]".into(),
+            },
+            Self::Proc { call, .. } => Self::Proc {
+                call: call.clone(),
+                steps: Vec::new(),
+                response: "[hidden, compressed]".into(),
+            },
+        }
+    }
 }
 
 #[derive(Debug)]
