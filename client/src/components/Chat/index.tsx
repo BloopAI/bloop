@@ -77,7 +77,10 @@ const Chat = () => {
   }, [isChatOpen]);
 
   const makeSearch = useCallback(
-    (query: string) => {
+    (
+      query: string,
+      options?: { filePath: string; lineStart: string; lineEnd: string },
+    ) => {
       if (!query) {
         return;
       }
@@ -87,23 +90,17 @@ const Chat = () => {
       setLoading(true);
       setQueryIdToEdit('');
       setHideMessagesFrom(null);
-      const eventSource = new EventSource(
-        `${apiUrl.replace('https:', '')}/answer?q=${encodeURIComponent(query)}${
-          selectedBranch ? ` branch:${selectedBranch}` : ''
-        }&repo_ref=${tab.key}${threadId ? `&thread_id=${threadId}` : ''}${
-          navigatedItem?.type === 'repo' && navigatedItem?.path
-            ? `&relative_path=${navigatedItem?.path}&is_folder=true`
-            : ''
-        }${
-          navigatedItem?.type === 'full-result' && navigatedItem?.path
-            ? `&relative_path=${navigatedItem?.path}&is_folder=false`
-            : ''
-        }${
-          selectedLines
-            ? `&start=${selectedLines[0]}&end=${selectedLines[1]}`
-            : ''
-        }${queryIdToEdit ? `&parent_exchange_id=${queryIdToEdit}` : ''}`,
-      );
+      const url = `${apiUrl.replace(/http(s)*:/, '')}/answer${
+        options
+          ? `/explain?relative_path=${encodeURIComponent(
+              options.filePath,
+            )}&line_start=${options.lineStart}&line_end=${options.lineEnd}`
+          : `?q=${encodeURIComponent(query)}${
+              selectedBranch ? ` branch:${selectedBranch}` : ''
+            }`
+      }&repo_ref=${tab.key}${threadId ? `&thread_id=${threadId}${parentIdToEdit ? `&parent_query_id=${parentIdToEdit}` : ''}` : ''}`;
+      console.log(url);
+      const eventSource = new EventSource(url);
       prevEventSource = eventSource;
       setSelectedLines(null);
       let firstResultCame: boolean;
@@ -126,7 +123,9 @@ const Chat = () => {
             queryId: '',
             responseTimestamp: new Date().toISOString(),
           };
-          setInputValue(prev[prev.length - 2]?.text || submittedQuery);
+          if (!options) {
+            setInputValue(prev[prev.length - 2]?.text || submittedQuery);
+          }
           setSubmittedQuery('');
           return [...newConversation, lastMessage];
         });
@@ -155,7 +154,9 @@ const Chat = () => {
                 queryId: '',
                 responseTimestamp: new Date().toISOString(),
               };
-              setInputValue(prev[prev.length - 1]?.text || submittedQuery);
+              if (!options) {
+                setInputValue(prev[prev.length - 1]?.text || submittedQuery);
+              }
               setSubmittedQuery('');
               return [...newConversation, lastMessage];
             });
@@ -246,10 +247,12 @@ const Chat = () => {
                         "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
                       ),
               };
-              setInputValue(
-                prev[prev.length - (lastMessageIsServer ? 2 : 1)]?.text ||
+              if (!options) {
+                setInputValue(
+                  prev[prev.length - (lastMessageIsServer ? 2 : 1)]?.text ||
                   submittedQuery,
-              );
+                );
+              }
               setSubmittedQuery('');
               return [...newConversation, lastMessage];
             });
@@ -279,10 +282,16 @@ const Chat = () => {
       return;
     }
     let userQuery = submittedQuery;
+    let options = undefined;
     if (submittedQuery.startsWith('#explain_')) {
       const [prefix, ending] = submittedQuery.split(':');
       const [lineStart, lineEnd] = ending.split('-');
       const filePath = prefix.slice(9);
+      options = {
+        filePath,
+        lineStart,
+        lineEnd,
+      };
       userQuery = t(
         `Explain lines {{lineStart}} - {{lineEnd}} in {{filePath}}`,
         {
@@ -300,7 +309,7 @@ const Chat = () => {
         isLoading: false,
       },
     ]);
-    makeSearch(userQuery);
+    makeSearch(userQuery, options);
   }, [submittedQuery]);
 
   const stopGenerating = useCallback(() => {
