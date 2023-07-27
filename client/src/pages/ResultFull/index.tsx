@@ -8,6 +8,7 @@ import { mapFileResult, mapRanges } from '../../mappers/results';
 import { FullResult } from '../../types/results';
 import {
   breadcrumbsItemPath,
+  humanFileSize,
   isWindowsPath,
   splitPathForBreadcrumbs,
 } from '../../utils';
@@ -116,19 +117,16 @@ const ResultFull = ({ data, isLoading, selectedBranch }: Props) => {
               </div>
             )}
           </div>
-          {/*<div className="flex gap-2">*/}
-          {/*<SelectToggleButton onlyIcon title="Star">*/}
-          {/*  <Star />*/}
-          {/*</SelectToggleButton>*/}
-          {/*<Button variant="primary" onClick={() => setShareOpen(true)}>*/}
-          {/*  Share*/}
-          {/*  <ArrowBoxOut />*/}
-          {/*</Button>*/}
-          {/*</div>*/}
-          <FileMenu
-            relativePath={result?.relativePath || ''}
-            repoPath={result?.repoPath || ''}
-          />
+          <div className="flex-shrink-0 flex items-center gap-2">
+            <p className="code-s flex-shrink-0 text-label-base">
+              {result?.code.split('\n').length} lines ({result?.loc} loc) ·{' '}
+              {result?.size ? humanFileSize(result?.size) : ''}
+            </p>
+            <FileMenu
+              relativePath={result?.relativePath || ''}
+              repoPath={result?.repoPath || ''}
+            />
+          </div>
         </div>
         <div className="overflow-scroll flex-1" id="result-full-code-container">
           <div className={`flex py-3 px-8 h-full`}>
