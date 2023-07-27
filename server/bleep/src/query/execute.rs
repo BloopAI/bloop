@@ -161,6 +161,7 @@ pub struct FileData {
     siblings: Vec<DirEntry>,
     size: usize,
     loc: usize,
+    sloc: usize,
 }
 
 #[derive(Serialize)]
@@ -675,6 +676,13 @@ impl ExecuteQuery for OpenReader {
                         contents: doc.content.clone(),
                         size: doc.content.len(),
                         loc: doc.line_end_indices.len(),
+                        sloc: doc
+                            .line_end_indices
+                            .iter()
+                            .zip(doc.line_end_indices.iter().skip(1))
+                            .filter(|(&prev, &next)| next - prev != 1)
+                            .count()
+                            .saturating_add(1),
                         siblings: vec![],
                     });
 
