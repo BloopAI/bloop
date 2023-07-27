@@ -56,7 +56,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
                     if key.is_local() {
                         r.name().shorten().to_string()
                     } else {
-                        format!("origin/{}", r.name().shorten().to_string())
+                        format!("origin/{}", r.name().shorten())
                     }
                 })
                 .unwrap_or_else(|| default.0.clone());
