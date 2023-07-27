@@ -7,7 +7,6 @@ import {
   ChatMessage,
   ChatMessageAuthor,
   ChatMessageServer,
-  ChatMessageType,
   FileSystemResult,
   MessageResultCite,
   MessageResultDirectory,
@@ -71,7 +70,6 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
           conv.push({
             author: ChatMessageAuthor.Server,
             isLoading: false,
-            type: ChatMessageType.Answer,
             loadingSteps: mapLoadingSteps(m.search_steps, t),
             text: m.conclusion,
             results: m.outcome,

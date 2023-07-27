@@ -14,11 +14,7 @@ import {
 } from '../../../services/api';
 import { AllConversationsResponse } from '../../../types/api';
 import Conversation from '../Conversation';
-import {
-  ChatMessage,
-  ChatMessageAuthor,
-  ChatMessageType,
-} from '../../../types/general';
+import { ChatMessage, ChatMessageAuthor } from '../../../types/general';
 import { conversationsCache } from '../../../services/cache';
 import { mapLoadingSteps } from '../../../mappers/conversation';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
@@ -85,7 +81,6 @@ const AllConversations = ({
         conv.push({
           author: ChatMessageAuthor.Server,
           isLoading: false,
-          type: ChatMessageType.Answer,
           loadingSteps: mapLoadingSteps(m.search_steps, t),
           text: m.conclusion,
           results: m.outcome,

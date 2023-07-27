@@ -5,7 +5,6 @@ import {
   Checkmark,
   List,
   MagnifyTool,
-  PenUnderline,
   PointClick,
   QuillIcon,
   Sparkles,
@@ -176,18 +175,18 @@ const ConversationMessage = ({
                 ) : (
                   <>
                     <span>{message}</span>
-                    {i !== 0 && !isHistory && (
-                      <Button
-                        size="tiny"
-                        variant="tertiary"
-                        className="absolute top-0 right-0"
-                        onlyIcon
-                        title={t('Edit')}
-                        onClick={() => onMessageEdit(i)}
-                      >
-                        <PenUnderline />
-                      </Button>
-                    )}
+                    {/*{i !== 0 && !isHistory && (*/}
+                    {/*  <Button*/}
+                    {/*    size="tiny"*/}
+                    {/*    variant="tertiary"*/}
+                    {/*    className="absolute top-0 right-0"*/}
+                    {/*    onlyIcon*/}
+                    {/*    title={t('Edit')}*/}
+                    {/*    onClick={() => onMessageEdit(i)}*/}
+                    {/*  >*/}
+                    {/*    <PenUnderline />*/}
+                    {/*  </Button>*/}
+                    {/*)}*/}
                   </>
                 )}
               </pre>

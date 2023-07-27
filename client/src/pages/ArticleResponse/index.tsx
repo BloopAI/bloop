@@ -5,7 +5,6 @@ import {
   ChatMessage,
   ChatMessageAuthor,
   ChatMessageServer,
-  ChatMessageType,
 } from '../../types/general';
 import { ChatContext } from '../../context/chatContext';
 import { FileModalContext } from '../../context/fileModalContext';
@@ -51,7 +50,6 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
           conv.push({
             author: ChatMessageAuthor.Server,
             isLoading: false,
-            type: ChatMessageType.Answer,
             loadingSteps: mapLoadingSteps(m.search_steps, t),
             text: m.conclusion,
             results: m.outcome,

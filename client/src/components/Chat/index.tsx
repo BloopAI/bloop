@@ -15,7 +15,6 @@ import {
   ChatMessage,
   ChatMessageAuthor,
   ChatMessageServer,
-  ChatMessageType,
 } from '../../types/general';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { ChatContext } from '../../context/chatContext';
@@ -68,7 +67,7 @@ const Chat = () => {
   const [inputValue, setInputValue] = useState('');
   const [parentIdToEdit, setParentIdToEdit] = useState('');
   useOnClickOutside(chatRef, () => setChatOpen(false));
-  console.log('parentIdToEdit', parentIdToEdit);
+
   useEffect(() => {
     if (isChatOpen) {
       focusInput();
@@ -117,7 +116,6 @@ const Chat = () => {
           const lastMessage: ChatMessage = {
             author: ChatMessageAuthor.Server,
             isLoading: false,
-            type: ChatMessageType.Answer,
             error: t(
               "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
             ),
@@ -146,7 +144,6 @@ const Chat = () => {
               const lastMessage: ChatMessage = {
                 author: ChatMessageAuthor.Server,
                 isLoading: false,
-                type: ChatMessageType.Answer,
                 error: t(
                   "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
                 ),
@@ -213,7 +210,6 @@ const Chat = () => {
               const messageToAdd = {
                 author: ChatMessageAuthor.Server,
                 isLoading: true,
-                type: ChatMessageType.Answer,
                 loadingSteps: mapLoadingSteps(newMessage.search_steps, t),
                 text: newMessage.conclusion,
                 results: newMessage.outcome,
@@ -227,9 +223,20 @@ const Chat = () => {
             });
           } else if (data.Err) {
             setConversation((prev) => {
-              const newConversation = prev.slice(0, -2);
-              const lastMessage = {
-                ...prev.slice(-1)[0],
+              const lastMessageIsServer =
+                prev[prev.length - 1].author === ChatMessageAuthor.Server;
+              const newConversation = prev.slice(
+                0,
+                lastMessageIsServer ? -2 : -1,
+              );
+              const lastMessage: ChatMessageServer = {
+                ...(lastMessageIsServer
+                  ? (prev.slice(-1)[0] as ChatMessageServer)
+                  : {
+                      author: ChatMessageAuthor.Server,
+                      loadingSteps: [],
+                      queryId: '',
+                    }),
                 isLoading: false,
                 error:
                   data.Err === 'request failed 5 times'
@@ -240,7 +247,10 @@ const Chat = () => {
                         "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
                       ),
               };
-              setInputValue(prev[prev.length - 2]?.text || submittedQuery);
+              setInputValue(
+                prev[prev.length - (lastMessageIsServer ? 2 : 1)]?.text ||
+                  submittedQuery,
+              );
               setSubmittedQuery('');
               return [...newConversation, lastMessage];
             });

@@ -211,7 +211,6 @@ export type ChatMessageServer = {
   loadingSteps: ChatLoadingStep[];
   error?: string;
   isFromHistory?: boolean;
-  type: ChatMessageType;
   results?: FileSystemResult & ArticleResult;
   queryId: string;
 };
