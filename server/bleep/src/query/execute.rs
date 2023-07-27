@@ -159,6 +159,8 @@ pub struct FileData {
     lang: Option<String>,
     contents: String,
     siblings: Vec<DirEntry>,
+    size: usize,
+    loc: usize,
 }
 
 #[derive(Serialize)]
@@ -671,6 +673,8 @@ impl ExecuteQuery for OpenReader {
                         repo_ref: doc.repo_ref.to_owned(),
                         lang: doc.lang.clone(),
                         contents: doc.content.clone(),
+                        size: doc.content.len(),
+                        loc: doc.line_end_indices.len(),
                         siblings: vec![],
                     });
 
