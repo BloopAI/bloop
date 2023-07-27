@@ -64,6 +64,8 @@ const SeparateOnboardingStep = ({
             animate={modalAnimation}
             initial={initialModalStyles}
             exit={initialModalStyles}
+            role="dialog"
+            aria-modal="true"
             transition={MODAL_SIDEBAR_APPEAR_ANIMATION}
           >
             <div className="p-6 flex flex-col gap-8 w-99 relative flex-1 overflow-auto">

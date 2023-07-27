@@ -145,8 +145,9 @@ const RepoCard = ({
   }, [sync_status, onRepoRemove, onSync, onCancelSync]);
 
   return (
-    <div
-      className={`bg-bg-base hover:bg-bg-base-hover border border-bg-border rounded-md p-4 w-67 h-36 group
+    <a
+      href="#"
+      className={`bg-bg-base hover:bg-bg-base-hover focus:bg-bg-base-hover border border-bg-border rounded-md p-4 w-67 h-36 group
        flex-shrink-0 flex flex-col justify-between cursor-pointer transition-all duration-150`}
       onClick={handleClick}
     >
@@ -157,7 +158,7 @@ const RepoCard = ({
           </span>
           <p className="break-all text-label-title pt-0.5">{repoName}</p>
         </div>
-        <div className="opacity-0 group-hover:opacity-100 transition-all duration-150">
+        <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all duration-150">
           <Dropdown
             icon={<MoreVertical />}
             noChevron
@@ -206,7 +207,7 @@ const RepoCard = ({
           </p>
         </div>
       )}
-    </div>
+    </a>
   );
 };
 
