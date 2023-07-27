@@ -314,7 +314,7 @@ impl SyncHandle {
                 .await;
         }
 
-        FileCache::new(sql, &self.reporef)
+        FileCache::for_repo(sql, &self.reporef)
             .delete()
             .await
             .map_err(SyncError::Sql)?;

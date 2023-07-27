@@ -27,6 +27,11 @@
         else
           llvm.stdenv;
 
+        mkShell = if stdenv.isLinux then
+          pkgs.mkShell.override { inherit stdenv; }
+        else
+          pkgs.mkShell;
+
         rustPlatform = pkgs.makeRustPlatform {
           cargo = pkgs.cargo;
           rustc = pkgs.rustc;
@@ -90,8 +95,8 @@
           ORT_STRATEGY = "system";
           ORT_LIB_LOCATION = "${onnxruntime14}/lib";
           ORT_DYLIB_PATH = "${onnxruntime14}/lib/${onnxruntime_lib}";
-          RUSTFLAGS =
-            lib.optionalString stdenv.isLinux "-C link-arg=-fuse-ld=mold";
+        } // lib.optionalAttrs stdenv.isLinux {
+          RUSTFLAGS = "-C link-arg=-fuse-ld=mold";
         };
 
         bleep =
@@ -185,7 +190,7 @@
         };
 
         devShells = {
-          default = (pkgs.mkShell.override { inherit stdenv; } {
+          default = (mkShell {
             buildInputs = buildDeps ++ runtimeDeps ++ guiDeps ++ (with pkgs; [
               git-lfs
               rustfmt
@@ -198,7 +203,7 @@
 
             src = pkgs.lib.sources.cleanSource ./.;
 
-            BLOOP_LOG="bleep=debug";
+            BLOOP_LOG = "bleep=debug";
           }).overrideAttrs (old: envVars);
         };
 
