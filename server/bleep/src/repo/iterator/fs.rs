@@ -34,7 +34,7 @@ impl FileWalker {
     }
 }
 
-static HEAD: &str = "head";
+static HEAD: &str = "HEAD";
 
 impl FileSource for FileWalker {
     fn len(&self) -> usize {

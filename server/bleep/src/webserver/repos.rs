@@ -52,7 +52,13 @@ impl From<(&RepoRef, &Repository)> for Repo {
                 .head()
                 .ok()
                 .and_then(|head| head.try_into_referent())
-                .map(|r| format!("origin/{}", r.name().shorten()))
+                .map(|r| {
+                    if key.is_local() {
+                        r.name().shorten().to_string()
+                    } else {
+                        format!("origin/{}", r.name().shorten().to_string())
+                    }
+                })
                 .unwrap_or_else(|| default.0.clone());
 
             let Ok(refs) = git.references()

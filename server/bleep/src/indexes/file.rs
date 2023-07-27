@@ -36,7 +36,7 @@ use crate::{
     cache::{FileCache, FileCacheSnapshot},
     intelligence::TreeSitterFile,
     query::compiler::{case_permutations, trigrams},
-    repo::{iterator::*, RepoMetadata, RepoRef, RepoRemote, Repository},
+    repo::{iterator::*, RepoMetadata, RepoRef, Repository},
     symbol::SymbolLocations,
 };
 
@@ -91,8 +91,12 @@ impl Indexable for File {
         };
 
         let start = std::time::Instant::now();
-        if matches!(repo.remote, RepoRemote::Git { .. }) {
+
+        // If we could determine the time of the last commit, proceed
+        // with a Git Walker, otherwise use a FS walker
+        if repo_metadata.last_commit_unix_secs.is_some() {
             let walker = GitWalker::open_repository(
+                reporef,
                 &repo.disk_path,
                 repo.branch_filter.as_ref().map(Into::into),
             )?;
@@ -447,7 +451,7 @@ impl File {
             hash.finalize().to_hex().to_string()
         };
 
-        let last_commit = repo_metadata.last_commit_unix_secs;
+        let last_commit = repo_metadata.last_commit_unix_secs.unwrap_or(0);
 
         match dir_entry {
             _ if is_cache_fresh(cache_snapshot, &tantivy_hash, &entry_pathbuf) => {
