@@ -60,7 +60,7 @@ impl Indexable for File {
         writer: &IndexWriter,
         pipes: &SyncPipes,
     ) -> Result<()> {
-        let file_cache = Arc::new(FileCache::new(&self.sql, reporef));
+        let file_cache = Arc::new(FileCache::for_repo(&self.sql, reporef));
         let cache_snapshot = file_cache.retrieve().await;
         let repo_name = reporef.indexed_name();
         let processed = &AtomicU64::new(0);
