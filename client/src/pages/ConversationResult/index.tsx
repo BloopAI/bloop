@@ -60,13 +60,11 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
         const conv: ChatMessage[] = [];
         resp.forEach((m) => {
           const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
-          if (userQuery) {
-            conv.push({
-              author: ChatMessageAuthor.User,
-              text: userQuery.content,
-              isFromHistory: true,
-            });
-          }
+          conv.push({
+            author: ChatMessageAuthor.User,
+            text: m.query?.target?.Plain || userQuery?.content?.call || '',
+            isFromHistory: true,
+          });
           conv.push({
             author: ChatMessageAuthor.Server,
             isLoading: false,

@@ -187,7 +187,7 @@ export type MessageResultModify = {
 
 export type ChatLoadingStep = {
   type: string;
-  content: string;
+  content: { call: string };
   displayText: string;
 };
 

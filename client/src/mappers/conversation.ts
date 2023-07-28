@@ -1,8 +1,8 @@
 export const mapLoadingSteps = (
-  searchSteps: { type: string; content: string }[],
+  searchSteps: { type: string; content: { call: string } }[],
   t: (key: string) => string,
 ) => {
-  return searchSteps.map((s: { type: string; content: string }) => ({
+  return searchSteps.map((s) => ({
     ...s,
     displayText:
       s.type === 'PROC'
