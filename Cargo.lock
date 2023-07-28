@@ -1675,8 +1675,7 @@ dependencies = [
 [[package]]
 name = "esaxx-rs"
 version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f748b253ceca9fed5f42f8b5ceb3851e93102199bc25b64b65369f76e5c0a35"
+source = "git+https://github.com/bloopai/esaxx-rs#76222cfd485e7c5dbccefb7f836b0fa5497dc03b"
 dependencies = [
  "cc",
 ]
