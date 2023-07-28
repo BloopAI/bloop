@@ -1,3 +1,5 @@
+use crate::repo::RepoRef;
+
 use super::*;
 
 use anyhow::Result;
@@ -44,6 +46,7 @@ pub struct GitWalker {
 
 impl GitWalker {
     pub fn open_repository(
+        reporef: &RepoRef,
         dir: impl AsRef<Path>,
         filter: impl Into<Option<BranchFilter>>,
     ) -> Result<Self> {
@@ -64,10 +67,13 @@ impl GitWalker {
         // The easiest here is to check by name, and assume the
         // default remote is `origin`, since we don't configure it
         // otherwise.
-        let head_name = head
-            .clone()
-            .try_into_referent()
-            .map(|r| format!("origin/{}", human_readable_branch_name(&r)));
+        let head_name = head.clone().try_into_referent().map(|r| {
+            if reporef.is_local() {
+                human_readable_branch_name(&r)
+            } else {
+                format!("origin/{}", human_readable_branch_name(&r))
+            }
+        });
 
         let refs = local_git.references()?;
         let trees = if head_name.is_none() && matches!(branches, BranchFilter::Head) {
@@ -95,9 +101,15 @@ impl GitWalker {
                         r,
                     )
                 })
-                // Only consider remote branches
-                //
-                .filter(|(_, name, _)| name.starts_with("origin/"))
+                .filter(|(_, name, _)| {
+                    if reporef.is_local() {
+                        true
+                    } else {
+                        // Only consider remote branches
+                        //
+                        name.starts_with("origin/")
+                    }
+                })
                 // Apply branch filters, along whether it's HEAD
                 //
                 .filter(|(is_head, name, _)| branches.filter(*is_head, name))
@@ -151,7 +163,6 @@ impl GitWalker {
                         branches.insert("HEAD".to_string());
                     }
 
-                    // the HEAD branch will not have an origin prefix
                     branches.insert(branch);
                     acc
                 },
