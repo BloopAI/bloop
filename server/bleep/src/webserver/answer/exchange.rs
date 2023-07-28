@@ -135,6 +135,8 @@ impl Exchange {
     pub fn compressed(&self) -> Self {
         let mut ex = self.clone();
 
+        ex.code_chunks.clear();
+        ex.paths.clear();
         ex.search_steps = mem::take(&mut ex.search_steps)
             .into_iter()
             .map(|step| step.compressed())
