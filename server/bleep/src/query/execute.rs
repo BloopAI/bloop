@@ -1,6 +1,5 @@
 use std::{
     collections::{HashMap, HashSet},
-    path::MAIN_SEPARATOR,
     sync::Arc,
 };
 
@@ -627,14 +626,14 @@ impl ExecuteQuery for OpenReader {
                 // because the `BytesFilterCollector` operates on one field. So we sort through this
                 // later. It's unlikely that a search will use more than one open query.
                 relative_paths.iter().any(|rp| {
-                    let rp = rp.trim_end_matches(|c| c != MAIN_SEPARATOR);
+                    let rp = rp.trim_end_matches(|c| c != '/');
 
                     matches!(
                         // Trim trailing suffix and avoid returning results for an empty string
                         // (this means that the document we are looking at is the folder itself; a
                         // redundant result).
-                        relative_path.strip_prefix(rp).map(|p| p.trim_end_matches(MAIN_SEPARATOR)),
-                        Some(p) if !p.is_empty() && !p.contains(MAIN_SEPARATOR)
+                        relative_path.strip_prefix(rp).map(|p| p.trim_end_matches('/')),
+                        Some(p) if !p.is_empty() && !p.contains('/')
                     )
                 })
             },
@@ -653,7 +652,7 @@ impl ExecuteQuery for OpenReader {
         // Set of (repo_name, relative_path) that should be returned.
         let directories = open_directives
             .iter()
-            .filter(|d| d.relative_path.is_empty() || d.relative_path.ends_with(MAIN_SEPARATOR))
+            .filter(|d| d.relative_path.is_empty() || d.relative_path.ends_with('/'))
             .map(|d| (&d.repo_name, &d.relative_path))
             .collect::<HashSet<_>>();
 
@@ -694,7 +693,7 @@ impl ExecuteQuery for OpenReader {
                 if let Some(entry) = doc
                     .relative_path
                     .strip_prefix(relative_path)
-                    .and_then(|s| s.split_inclusive(MAIN_SEPARATOR).next())
+                    .and_then(|s| s.split_inclusive('/').next())
                 {
                     dir_entries
                         .entry((&directive.repo_name, relative_path))
@@ -702,7 +701,7 @@ impl ExecuteQuery for OpenReader {
                         .1
                         .insert(DirEntry {
                             name: entry.to_owned(),
-                            entry_data: if entry.contains(MAIN_SEPARATOR) {
+                            entry_data: if entry.contains('/') {
                                 EntryData::Directory
                             } else {
                                 EntryData::File {
