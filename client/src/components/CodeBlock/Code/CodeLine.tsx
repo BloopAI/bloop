@@ -71,7 +71,13 @@ const CodeLine = ({
 
   useEffect(() => {
     if (codeRef.current && searchTerm) {
-      markNode(codeRef.current, new RegExp(searchTerm, 'gi'));
+      markNode(
+        codeRef.current,
+        new RegExp(
+          searchTerm.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'),
+          'gi',
+        ),
+      );
     }
     return () => {
       if (codeRef.current) {
@@ -272,12 +278,12 @@ const CodeLine = ({
                ? ''
                : 'before:content-[attr(data-line)]'
            } ${
-            isRemovedLine
-              ? 'bg-bg-danger/30 text-label-base'
-              : isNewLine
-              ? 'bg-bg-success/30 text-label-base'
-              : 'text-label-muted'
-          }`}
+             isRemovedLine
+               ? 'bg-bg-danger/30 text-label-base'
+               : isNewLine
+               ? 'bg-bg-success/30 text-label-base'
+               : 'text-label-muted'
+           }`}
         />
       )}
       <div
