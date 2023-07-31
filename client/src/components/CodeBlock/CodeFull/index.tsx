@@ -291,11 +291,11 @@ const CodeFull = ({
       return code;
     }
 
-    let textToCopy = lines[startLine].slice(startChar, endChar);
+    let textToCopy = lines[startLine]?.slice(startChar, endChar);
     if (startLine !== endLine) {
-      const firstLine = lines[startLine].slice(startChar);
-      const lastLine = lines[endLine].slice(0, endChar + 1);
-      const textBetween = lines.slice(startLine + 1, endLine).join('\n');
+      const firstLine = lines[startLine]?.slice(startChar);
+      const lastLine = lines[endLine]?.slice(0, endChar + 1);
+      const textBetween = lines?.slice(startLine + 1, endLine).join('\n');
       textToCopy =
         firstLine + '\n' + (textBetween ? textBetween + '\n' : '') + lastLine;
     }

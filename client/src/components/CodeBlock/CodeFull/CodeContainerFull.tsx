@@ -34,6 +34,10 @@ type Props = {
     tokenRange: string,
   ) => void;
   relativePath: string;
+  highlights?: (
+    | { lines: [number, number]; color: string; index: number }
+    | undefined
+  )[];
 };
 
 const CodeContainerFull = ({
@@ -55,6 +59,7 @@ const CodeContainerFull = ({
   repoName,
   handleRefsDefsClick,
   relativePath,
+  highlights,
 }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -118,37 +123,50 @@ const CodeContainerFull = ({
 
   return (
     <div ref={ref} className="relative pb-44">
-      {tokens.map((line, index) => (
-        <CodeLine
-          key={pathHash + '-' + index.toString()}
-          lineNumber={index}
-          lineFoldable={!!foldableRanges[index]}
-          handleFold={toggleBlock}
-          showLineNumbers={true}
-          lineHidden={!!foldedLines[index]}
-          blameLine={blameLines[index]}
-          blame={!!metadata.blame?.length}
-          hoverEffect
-          onMouseSelectStart={onMouseSelectStart}
-          onMouseSelectEnd={onMouseSelectEnd}
-          shouldHighlight={
-            !!scrollToIndex &&
-            index >= scrollToIndex[0] &&
-            index <= scrollToIndex[1]
-          }
-          highlightColor={highlightColor}
-          searchTerm={searchTerm}
-        >
-          {line.map((token, i) => (
-            <Token
-              key={`cell-${index}-${i}`}
-              lineHoverRanges={metadata.hoverableRanges[index]}
-              token={token}
-              getHoverableContent={getHoverableContent}
-            />
-          ))}
-        </CodeLine>
-      ))}
+      {tokens.map((line, index) => {
+        let highlightForLine = highlights?.findIndex(
+          (h) => h && index >= h.lines[0] && index <= h.lines[1],
+        );
+        if (highlightForLine && highlightForLine < 0) {
+          highlightForLine = undefined;
+        }
+        return (
+          <CodeLine
+            key={pathHash + '-' + index.toString()}
+            lineNumber={index}
+            lineFoldable={!!foldableRanges[index]}
+            handleFold={toggleBlock}
+            showLineNumbers={true}
+            lineHidden={!!foldedLines[index]}
+            blameLine={blameLines[index]}
+            blame={!!metadata.blame?.length}
+            hoverEffect
+            onMouseSelectStart={onMouseSelectStart}
+            onMouseSelectEnd={onMouseSelectEnd}
+            shouldHighlight={
+              (!!scrollToIndex &&
+                index >= scrollToIndex[0] &&
+                index <= scrollToIndex[1]) ||
+              (highlights && highlightForLine !== undefined)
+            }
+            highlightColor={
+              highlights && highlightForLine !== undefined
+                ? highlights[highlightForLine]?.color
+                : highlightColor
+            }
+            searchTerm={searchTerm}
+          >
+            {line.map((token, i) => (
+              <Token
+                key={`cell-${index}-${i}`}
+                lineHoverRanges={metadata.hoverableRanges[index]}
+                token={token}
+                getHoverableContent={getHoverableContent}
+              />
+            ))}
+          </CodeLine>
+        );
+      })}
       {!!popupPosition && isPopupVisible && (
         <div className="absolute max-w-sm" style={popupPosition} ref={popupRef}>
           <RefsDefsPopup

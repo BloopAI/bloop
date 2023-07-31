@@ -61,6 +61,7 @@ const Chat = () => {
     navigateRepoPath,
     navigatedItem,
     navigateArticleResponse,
+    navigateFullResult,
   } = useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
@@ -214,8 +215,19 @@ const Chat = () => {
             // workaround: sometimes we get [^summary]: before it is removed from response
             if (newMessage.answer?.length > 11 && !firstResultCame) {
               setConversation((prev) => {
-                setChatOpen(false);
-                navigateArticleResponse(prev.length - 1, thread_id);
+                if (options && newMessage.outcome?.Article?.length) {
+                  setChatOpen(false);
+                  navigateFullResult(
+                    tab.repoName,
+                    options.filePath,
+                    undefined,
+                    prev.length - 1,
+                    thread_id,
+                  );
+                } else {
+                  setChatOpen(false);
+                  navigateArticleResponse(prev.length - 1, thread_id);
+                }
                 return prev;
               });
               firstResultCame = true;
