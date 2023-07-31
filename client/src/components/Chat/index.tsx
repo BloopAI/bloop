@@ -442,7 +442,7 @@ const Chat = () => {
                         ? [
                             {
                               displayText: t('Responding...'),
-                              content: '',
+                              content: { call: '' },
                               type: '',
                             },
                           ]

@@ -221,7 +221,8 @@ export type AllConversationsResponse = {
 
 export type ConversationType = {
   id: string;
-  search_steps: { content: string; type: string }[];
+  search_steps: { content: { call: string }; type: string }[];
+  query: { target: { Plain: string } };
   conclusion: string;
   outcome: FileSystemResult & ArticleResult;
 };
