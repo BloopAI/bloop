@@ -217,7 +217,7 @@ const ReportBugModal = ({
                   placeholder={t`Describe the bug to help us reproduce it...`}
                 />
               </form>
-              <Button type="submit" onClick={onSubmit}>
+              <Button type="submit" onClick={onSubmit} disabled={!form.text}>
                 <Trans>Submit bug report</Trans>
               </Button>
             </>
