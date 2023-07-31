@@ -849,9 +849,9 @@ impl Agent {
         Ok(response)
     }
 
-    async fn answer_context(&mut self, aliases: &[usize], path_scope: PathScope) -> Result<String> {
+    async fn answer_context(&mut self, aliases: &[usize], gpt_model: &str) -> Result<String> {
         let paths = self.paths();
-        let code_chunks = self.canonicalize_code_chunks(aliases, path_scope).await;
+        let code_chunks = self.canonicalize_code_chunks(aliases, gpt_model).await;
 
         let mut s = "".to_owned();
 
@@ -977,9 +977,7 @@ impl Agent {
         let context = self
             .answer_context(
                 aliases,
-                PathScope::Full {
-                    gpt_model: ANSWER_ARTICLE_MODEL.to_owned(),
-                },
+                ANSWER_ARTICLE_MODEL,
             )
             .await?;
         let history = self.utter_history().collect::<Vec<_>>();
@@ -1138,18 +1136,12 @@ impl Agent {
     async fn canonicalize_code_chunks(
         &mut self,
         aliases: &[usize],
-        path_scope: PathScope,
+        gpt_model: &str,
     ) -> Vec<CodeChunk> {
         /// The ratio of code tokens to context size.
         ///
         /// Making this closure to 1 means that more of the context is taken up by source code.
         const CONTEXT_CODE_RATIO: f32 = 0.7;
-
-        let gpt_model = match path_scope {
-            // TODO: Do we want to drop this?
-            PathScope::Seen => todo!(),
-            PathScope::Full { gpt_model } => gpt_model,
-        };
 
         let bpe = tiktoken_rs::get_bpe_from_model(&gpt_model).unwrap();
         let context_size = tiktoken_rs::model::get_context_size(&gpt_model);
@@ -1599,16 +1591,6 @@ impl Action {
 
         Ok(serde_json::from_value(serde_json::Value::Object(map))?)
     }
-}
-
-/// Specifies how path aliases are interpreted when canonicalizing a conversation.
-#[derive(Clone)]
-enum PathScope {
-    /// Only use the code chunks the model has determined are relevant.
-    Seen,
-
-    /// Expand path aliases to encompass the entire file.
-    Full { gpt_model: String },
 }
 
 #[cfg(test)]
