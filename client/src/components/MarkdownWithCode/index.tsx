@@ -3,13 +3,16 @@ import {
   AnchorHTMLAttributes,
   DetailedHTMLProps,
   ReactElement,
+  useContext,
   useMemo,
+  useRef,
 } from 'react';
 import { ReactMarkdownProps } from 'react-markdown/lib/complex-types';
 import { CodeProps } from 'react-markdown/lib/ast-to-react';
 import FileChip from '../Chat/ConversationMessage/FileChip';
 import CodeWithBreadcrumbs from '../../pages/ArticleResponse/CodeWithBreadcrumbs';
 import NewCode from '../../pages/ConversationResult/NewCode';
+import { AppNavigationContext } from '../../context/appNavigationContext';
 
 type Props = {
   openFileModal: (
@@ -20,6 +23,7 @@ type Props = {
   repoName: string;
   markdown: string;
   isSummary?: boolean;
+  hideCode?: boolean;
 };
 
 const MarkdownWithCode = ({
@@ -27,7 +31,11 @@ const MarkdownWithCode = ({
   repoName,
   markdown,
   isSummary,
+  hideCode,
 }: Props) => {
+  const fileChips = useRef([]);
+  const { updateScrollToIndex } = useContext(AppNavigationContext);
+
   const components = useMemo(() => {
     return {
       a(
@@ -56,12 +64,19 @@ const MarkdownWithCode = ({
         return (
           <FileChip
             fileName={fileName || filePath || ''}
+            filePath={filePath}
             skipIcon={!!fileName && fileName !== filePath}
+            fileChips={fileChips}
             onClick={() =>
-              openFileModal(
-                filePath,
-                start ? `${start - 1}_${(end ?? start) - 1}` : undefined,
-              )
+              hideCode
+                ? updateScrollToIndex(`${start - 1}_${(end ?? start) - 1}`)
+                : openFileModal(
+                    filePath,
+                    start ? `${start - 1}_${(end ?? start) - 1}` : undefined,
+                  )
+            }
+            lines={
+              hideCode && start ? [start - 1, (end ?? start) - 1] : undefined
             }
           />
         );
@@ -91,14 +106,29 @@ const MarkdownWithCode = ({
           (matchType?.[1] || matchLang?.[1]) &&
           typeof children[0] === 'string' ? (
           matchType?.[1] === 'Quoted' ? (
-            <CodeWithBreadcrumbs
-              code={code}
-              language={matchLang?.[1] || ''}
-              filePath={matchPath?.[1] || ''}
-              onResultClick={openFileModal}
-              startLine={lines[0] ? lines[0] - 1 : null}
-              repoName={repoName}
-            />
+            hideCode ? (
+              <FileChip
+                fileName={matchPath?.[1] || ''}
+                filePath={matchPath?.[1] || ''}
+                skipIcon={false}
+                onClick={() =>
+                  updateScrollToIndex(
+                    `${lines[0] - 1}_${(lines[1] ?? lines[0]) - 1}`,
+                  )
+                }
+                lines={[lines[0] - 1, (lines[1] ?? lines[0]) - 1]}
+                fileChips={fileChips}
+              />
+            ) : (
+              <CodeWithBreadcrumbs
+                code={code}
+                language={matchLang?.[1] || ''}
+                filePath={matchPath?.[1] || ''}
+                onResultClick={openFileModal}
+                startLine={lines[0] ? lines[0] - 1 : null}
+                repoName={repoName}
+              />
+            )
           ) : (
             <NewCode code={code} language={matchLang?.[1] || ''} />
           )
@@ -116,7 +146,7 @@ const MarkdownWithCode = ({
         );
       },
     };
-  }, [repoName, openFileModal, isSummary]);
+  }, [repoName, openFileModal, isSummary, hideCode, updateScrollToIndex]);
 
   return <ReactMarkdown components={components}>{markdown}</ReactMarkdown>;
 };

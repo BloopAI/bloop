@@ -60,6 +60,7 @@ const Chat = () => {
     navigateRepoPath,
     navigatedItem,
     navigateArticleResponse,
+    navigateFullResult,
   } = useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
@@ -215,7 +216,16 @@ const Chat = () => {
               !firstResultCame
             ) {
               setConversation((prev) => {
-                if (newMessage.outcome?.Article?.length) {
+                if (options && newMessage.outcome?.Article?.length) {
+                  setChatOpen(false);
+                  navigateFullResult(
+                    tab.repoName,
+                    options.filePath,
+                    undefined,
+                    prev.length - 1,
+                    thread_id,
+                  );
+                } else if (newMessage.outcome?.Article?.length) {
                   setChatOpen(false);
                   navigateArticleResponse(prev.length - 1, thread_id);
                 } else {

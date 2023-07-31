@@ -12,6 +12,7 @@ import FileModalContainer from './pages/ResultModal/FileModalContainer';
 import { FileModalContextProvider } from './context/providers/FileModalContextProvider';
 import PromptGuidePopup from './components/PromptGuidePopup';
 import Onboarding from './pages/Onboarding';
+import { FileHighlightsContextProvider } from './context/providers/FileHighlightsContextProvider';
 
 type Props = {
   isActive: boolean;
@@ -31,12 +32,14 @@ class Tab extends PureComponent<Props> {
             <AppNavigationProvider tab={tab}>
               <SearchContextProvider tab={tab}>
                 <ChatContextProvider>
-                  <ContentContainer tab={tab} />
-                  <Settings />
-                  <ReportBugModal />
-                  <FileModalContainer repoName={tab.repoName} />
-                  <PromptGuidePopup />
-                  <Onboarding />
+                  <FileHighlightsContextProvider>
+                    <ContentContainer tab={tab} />
+                    <Settings />
+                    <ReportBugModal />
+                    <FileModalContainer repoName={tab.repoName} />
+                    <PromptGuidePopup />
+                    <Onboarding />
+                  </FileHighlightsContextProvider>
                 </ChatContextProvider>
               </SearchContextProvider>
             </AppNavigationProvider>

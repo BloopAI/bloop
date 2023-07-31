@@ -300,3 +300,8 @@ export type IpynbCellType = {
   outputs?: IpynbOutputType[];
   input?: string[];
 };
+
+export type FileHighlightsType = Record<
+  string,
+  ({ lines: [number, number]; color: string; index: number } | undefined)[]
+>;

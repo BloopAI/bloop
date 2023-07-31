@@ -16,6 +16,7 @@ import { getTokenInfo } from '../../../services/api';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
 import { mapTokenInfo } from '../../../mappers/results';
 import { AppNavigationContext } from '../../../context/appNavigationContext';
+import { FileHighlightsContext } from '../../../context/fileHighlightsContext';
 import CodeContainerVirtualized from './CodeContainerVirtualized';
 import CodeContainerFull from './CodeContainerFull';
 import { Metadata, BlameLine } from './index';
@@ -69,6 +70,7 @@ const CodeContainer = ({
   });
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const { navigatedItem } = useContext(AppNavigationContext);
+  const { fileHighlights } = useContext(FileHighlightsContext);
 
   const getHoverableContent = useCallback(
     (hoverableRange: Range, tokenRange: Range, lineNumber?: number) => {
@@ -175,6 +177,7 @@ const CodeContainer = ({
       repoName={repoName}
       language={language}
       relativePath={relativePath}
+      highlights={fileHighlights[relativePath]}
       {...otherProps}
     />
   ) : (
@@ -189,6 +192,7 @@ const CodeContainer = ({
       repoName={repoName}
       language={language}
       relativePath={relativePath}
+      highlights={fileHighlights[relativePath]}
       {...otherProps}
     />
   );

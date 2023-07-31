@@ -184,6 +184,8 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
             isLoading={loading}
             repoName={tab.repoName}
             selectedBranch={selectedBranch}
+            recordId={navigatedItem?.recordId!}
+            threadId={navigatedItem?.threadId!}
           />
         );
       case 'conversation-result':

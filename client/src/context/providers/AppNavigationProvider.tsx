@@ -149,7 +149,13 @@ export const AppNavigationProvider = ({
   );
 
   const navigateFullResult = useCallback(
-    (repo: string, path: string, pathParams?: Record<string, string>) => {
+    (
+      repo: string,
+      path: string,
+      pathParams?: Record<string, string>,
+      messageIndex?: number,
+      threadId?: string,
+    ) => {
       closeFileModalOpen(true);
       saveState({
         type: 'full-result',
@@ -157,10 +163,24 @@ export const AppNavigationProvider = ({
         path,
         searchType: SearchType.REGEX,
         pathParams,
+        recordId: messageIndex,
+        threadId,
       });
     },
     [],
   );
+
+  const updateScrollToIndex = useCallback((lines: string) => {
+    updateTabNavHistory(tab.key, (prevState) => {
+      const newItem = prevState[prevState.length - 1];
+      if (!newItem) {
+        return prevState;
+      }
+      newItem.pathParams = { ...(newItem.pathParams || {}) };
+      newItem.pathParams.scrollToLine = lines;
+      return [...prevState.slice(0, -1), newItem];
+    });
+  }, []);
 
   const navigateBack = useCallback(
     (delta: number | 'auto' = -1) => {
@@ -244,6 +264,7 @@ export const AppNavigationProvider = ({
         navigateForward,
         navigateConversationResults,
         navigateArticleResponse,
+        updateScrollToIndex,
         query: query || '',
       }}
     >
