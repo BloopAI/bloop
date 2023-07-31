@@ -183,23 +183,6 @@ const Chat = () => {
           const data = JSON.parse(ev.data);
           if (data.Ok) {
             const newMessage = data.Ok;
-            if (
-              ((newMessage.outcome?.Filesystem?.length &&
-                !newMessage.conclusion) ||
-                newMessage.outcome?.Article?.length) &&
-              !firstResultCame
-            ) {
-              setConversation((prev) => {
-                if (newMessage.outcome?.Article?.length) {
-                  setChatOpen(false);
-                  navigateArticleResponse(prev.length - 1, thread_id);
-                } else {
-                  navigateConversationResults(prev.length - 1, thread_id);
-                }
-                return prev;
-              });
-              firstResultCame = true;
-            }
             if (newMessage.conclusion && !conclusionCame) {
               setChatOpen(true);
               conclusionCame = true;
@@ -221,6 +204,23 @@ const Chat = () => {
                   : [...prev.slice(-1), messageToAdd];
               return [...newConversation, ...lastMessages];
             });
+            if (
+              ((newMessage.outcome?.Filesystem?.length &&
+                !newMessage.conclusion) ||
+                newMessage.outcome?.Article?.length) &&
+              !firstResultCame
+            ) {
+              setConversation((prev) => {
+                if (newMessage.outcome?.Article?.length) {
+                  setChatOpen(false);
+                  navigateArticleResponse(prev.length - 1, thread_id);
+                } else {
+                  navigateConversationResults(prev.length - 1, thread_id);
+                }
+                return prev;
+              });
+              firstResultCame = true;
+            }
           } else if (data.Err) {
             setConversation((prev) => {
               const lastMessageIsServer =
