@@ -851,7 +851,6 @@ impl Agent {
 
     async fn answer_context(&mut self, aliases: &[usize], gpt_model: &str) -> Result<String> {
         let paths = self.paths();
-        let code_chunks = self.canonicalize_code_chunks(aliases, gpt_model).await;
 
         let mut s = "".to_owned();
 
@@ -880,38 +879,7 @@ impl Agent {
             }
         }
 
-        let code_chunks = if path_aliases.len() == 1 {
-            let alias = path_aliases[0];
-            let path = paths[alias].clone();
-            let doc = self.get_file_content(&path).await?;
-
-            match doc {
-                Some(doc) => {
-                    let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")
-                        .context("invalid model requested")?;
-
-                    let trimmed_file_contents = limit_tokens(&doc.content, bpe, 4000);
-
-                    vec![CodeChunk {
-                        alias,
-                        path,
-                        start_line: 1,
-                        end_line: trimmed_file_contents.lines().count() + 1,
-                        snippet: trimmed_file_contents.to_owned(),
-                    }]
-                }
-                None => {
-                    warn!("only path alias did not return any results");
-                    vec![]
-                }
-            }
-        } else {
-            code_chunks
-                .iter()
-                .filter(|c| path_aliases.contains(&c.alias))
-                .cloned()
-                .collect()
-        };
+        let code_chunks = self.canonicalize_code_chunks(aliases, gpt_model).await;
 
         const PROMPT_HEADROOM: usize = 1500;
         let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")?;
@@ -974,12 +942,7 @@ impl Agent {
     async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
         const ANSWER_ARTICLE_MODEL: &str = "gpt-4-0613";
 
-        let context = self
-            .answer_context(
-                aliases,
-                ANSWER_ARTICLE_MODEL,
-            )
-            .await?;
+        let context = self.answer_context(aliases, ANSWER_ARTICLE_MODEL).await?;
         let history = self.utter_history().collect::<Vec<_>>();
 
         let system_message = prompts::answer_article_prompt(&context);
@@ -1143,8 +1106,8 @@ impl Agent {
         /// Making this closure to 1 means that more of the context is taken up by source code.
         const CONTEXT_CODE_RATIO: f32 = 0.7;
 
-        let bpe = tiktoken_rs::get_bpe_from_model(&gpt_model).unwrap();
-        let context_size = tiktoken_rs::model::get_context_size(&gpt_model);
+        let bpe = tiktoken_rs::get_bpe_from_model(gpt_model).unwrap();
+        let context_size = tiktoken_rs::model::get_context_size(gpt_model);
         let max_tokens = (context_size as f32 * CONTEXT_CODE_RATIO) as usize;
 
         let mut spans_by_path = HashMap::<_, Vec<_>>::new();
