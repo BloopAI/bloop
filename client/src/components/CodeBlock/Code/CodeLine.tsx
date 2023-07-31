@@ -7,13 +7,11 @@ import React, {
   useState,
   memo,
 } from 'react';
-import { format } from 'timeago.js';
 import FoldButton from '../CodeFull/FoldButton';
 import Tooltip from '../../Tooltip';
 import SymbolIcon from '../../CodeSymbolIcon';
 import { SymbolType } from '../../../types/results';
 import { Commit } from '../../../types';
-import TooltipCommit from '../../TooltipCommit';
 import { markNode, unmark } from '../../../utils/textSearch';
 import { propsAreShallowEqual } from '../../../utils';
 
@@ -51,7 +49,6 @@ const CodeLine = ({
   lineFoldable,
   handleFold,
   lineHidden,
-  blame,
   blameLine,
   symbols,
   hoverEffect,
@@ -88,47 +85,6 @@ const CodeLine = ({
     }
     return '';
   }, [blameLine?.start]);
-
-  const renderBlameLine = useMemo(() => {
-    if (blame) {
-      if (blameLine?.commit && blameLine?.start) {
-        return (
-          <div className="p-0 pt-1 pl-2">
-            <span className="flex flex-row items-center gap-2">
-              <TooltipCommit
-                position={'left'}
-                image={blameLine.commit.image!}
-                name={blameLine.commit.author}
-                message={blameLine.commit.message}
-                date={blameLine.commit.datetime}
-                showOnClick
-              >
-                <img
-                  className="w-5 rounded-xl cursor-pointer select-none"
-                  src="/avatar.png"
-                  alt=""
-                />
-              </TooltipCommit>
-              <span className="text-label-muted caption">
-                {format(blameLine.commit.datetime)}
-              </span>
-            </span>
-          </div>
-        );
-      }
-    }
-    return (
-      <div
-        className={`p-0 ${blameStyle} ${
-          isRemovedLine
-            ? 'bg-bg-danger/30'
-            : isNewLine
-            ? 'bg-bg-success/30'
-            : ''
-        }`}
-      ></div>
-    );
-  }, [blame, blameLine]);
 
   const style = useMemo(
     () => ({
@@ -216,7 +172,6 @@ const CodeLine = ({
         onMouseSelectEnd?.(lineNumber, index);
       }}
     >
-      {renderBlameLine}
       {symbols?.length ? (
         <div
           className={`peer text-center text-purple ${lineHidden ? 'p-0' : ''}`}
@@ -272,12 +227,12 @@ const CodeLine = ({
                ? ''
                : 'before:content-[attr(data-line)]'
            } ${
-            isRemovedLine
-              ? 'bg-bg-danger/30 text-label-base'
-              : isNewLine
-              ? 'bg-bg-success/30 text-label-base'
-              : 'text-label-muted'
-          }`}
+             isRemovedLine
+               ? 'bg-bg-danger/30 text-label-base'
+               : isNewLine
+               ? 'bg-bg-success/30 text-label-base'
+               : 'text-label-muted'
+           }`}
         />
       )}
       <div

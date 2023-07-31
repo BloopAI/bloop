@@ -1,4 +1,7 @@
-import { format as timeAgo } from 'timeago.js';
+// eslint-disable-next-line import/no-duplicates
+import { formatDistanceToNow } from 'date-fns';
+// eslint-disable-next-line import/no-duplicates
+import { ja } from 'date-fns/locale';
 import { MouseEvent, useCallback, useContext, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import {
@@ -203,7 +206,11 @@ const RepoCard = ({
                 typeof sync_status === 'string' ? sync_status : 'error'
               ]?.text || sync_status,
             )}
-            {sync_status === 'done' && timeAgo(last_index, locale)}
+            {sync_status === 'done' &&
+              formatDistanceToNow(new Date(last_index), {
+                addSuffix: true,
+                ...(locale === 'ja' ? { locale: ja } : {}),
+              })}
           </p>
         </div>
       )}

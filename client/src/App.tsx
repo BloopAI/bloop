@@ -1,10 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { register } from 'timeago.js';
-import ja from 'timeago.js/lib/lang/ja';
 import { DeviceContextType } from './context/deviceContext';
 import './index.css';
-import 'highlight.js/styles/vs2015.css';
 import Tab from './Tab';
 import { TabsContext } from './context/tabsContext';
 import {
@@ -27,8 +24,6 @@ import { AnalyticsContextProvider } from './context/providers/AnalyticsContextPr
 import { buildURLPart, getNavItemFromURL } from './utils/navigationUtils';
 import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
 import useKeyboardNavigation from './hooks/useKeyboardNavigation';
-
-register('ja', ja);
 
 type Props = {
   deviceContextValue: DeviceContextType;
