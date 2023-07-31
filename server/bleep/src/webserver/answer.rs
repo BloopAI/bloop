@@ -514,7 +514,7 @@ impl Agent {
     async fn code_search(&mut self, query: &String) -> Result<String> {
         const CODE_SEARCH_LIMIT: u64 = 10;
         self.update(Update::StartStep(SearchStep::Code {
-            call: query.clone(),
+            query: query.clone(),
             response: String::new(),
         }))
         .await?;
@@ -558,7 +558,7 @@ impl Agent {
         let response = serde_json::to_string(&chunks).unwrap();
 
         self.update(Update::ReplaceStep(SearchStep::Code {
-            call: query.clone(),
+            query: query.clone(),
             response: response.clone(),
         }))
         .await?;
@@ -576,7 +576,7 @@ impl Agent {
 
     async fn path_search(&mut self, query: &String) -> Result<String> {
         self.update(Update::StartStep(SearchStep::Path {
-            call: query.clone(),
+            query: query.clone(),
             response: String::new(),
         }))
         .await?;
@@ -614,7 +614,7 @@ impl Agent {
         let response = serde_json::to_string(&formatted_paths).unwrap();
 
         self.update(Update::ReplaceStep(SearchStep::Path {
-            call: query.clone(),
+            query: query.clone(),
             response: response.clone(),
         }))
         .await?;
@@ -643,8 +643,8 @@ impl Agent {
             .map_err(|i| anyhow!("invalid path alias {i}"))?;
 
         self.update(Update::StartStep(SearchStep::Proc {
-            call: question.to_string(),
-            steps: paths.clone(),
+            query: question.to_string(),
+            paths: path_aliases.to_vec(),
             response: String::new(),
         }))
         .await?;
@@ -831,8 +831,8 @@ impl Agent {
         let response = serde_json::to_string(&out)?;
 
         self.update(Update::ReplaceStep(SearchStep::Proc {
-            call: question.to_string(),
-            steps: paths,
+            query: question.to_string(),
+            paths: path_aliases.to_vec(),
             response: response.clone(),
         }))
         .await?;
@@ -1123,19 +1123,15 @@ impl Agent {
                     .ok_or_else(|| anyhow!("query does not have target"))?;
 
                 let steps = e.search_steps.iter().flat_map(|s| {
-                    let (name, call, response) = match s {
-                        SearchStep::Path { call, response } => ("path", call, response),
-                        SearchStep::Code { call, response } => ("code", call, response),
-                        SearchStep::Proc { call, response, .. } => ("proc", call, response),
-                    };
+                    let (name, arguments) = s.serialize_call();
                     vec![
                         llm_gateway::api::Message::function_call(&FunctionCall {
-                            name: Some(name.into()),
-                            arguments: call.into(),
+                            name: Some(name.clone()),
+                            arguments,
                         }),
                         llm_gateway::api::Message::function_return(
-                            name,
-                            &format!("{response}\nCall a function. Do not answer."),
+                            &name,
+                            &format!("{}\nCall a function. Do not answer.", s.get_response()),
                         ),
                     ]
                 });

@@ -136,7 +136,6 @@ impl Exchange {
         let mut ex = self.clone();
 
         ex.code_chunks.clear();
-        ex.paths.clear();
         ex.search_steps = mem::take(&mut ex.search_steps)
             .into_iter()
             .map(|step| step.compressed())
@@ -208,20 +207,20 @@ impl Outcome {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-#[serde(rename_all = "UPPERCASE", tag = "type", content = "content")]
+#[serde(rename_all = "lowercase", tag = "type", content = "content")]
 #[non_exhaustive]
 pub enum SearchStep {
     Path {
-        call: String,
+        query: String,
         response: String,
     },
     Code {
-        call: String,
+        query: String,
         response: String,
     },
     Proc {
-        call: String,
-        steps: Vec<String>,
+        query: String,
+        paths: Vec<usize>,
         response: String,
     },
 }
@@ -232,19 +231,52 @@ impl SearchStep {
     /// Used in `Exchange::compressed`.
     fn compressed(&self) -> Self {
         match self {
-            Self::Path { call, .. } => Self::Path {
-                call: call.clone(),
+            Self::Path { query: call, .. } => Self::Path {
+                query: call.clone(),
                 response: "[hidden, compressed]".into(),
             },
-            Self::Code { call, .. } => Self::Code {
-                call: call.clone(),
+            Self::Code { query: call, .. } => Self::Code {
+                query: call.clone(),
                 response: "[hidden, compressed]".into(),
             },
-            Self::Proc { call, .. } => Self::Proc {
-                call: call.clone(),
-                steps: Vec::new(),
+            Self::Proc { query: call, .. } => Self::Proc {
+                query: call.clone(),
+                paths: Vec::new(),
                 response: "[hidden, compressed]".into(),
             },
+        }
+    }
+
+    pub fn get_response(&self) -> String {
+        match self {
+            Self::Path { response, .. } => response.clone(),
+            Self::Code { response, .. } => response.clone(),
+            Self::Proc { response, .. } => response.clone(),
+        }
+    }
+
+    pub fn serialize_call(&self) -> (String, String) {
+        match self {
+            SearchStep::Path { query, .. } => (
+                "path".to_owned(),
+                format!("{{\n \"query\": \"{query}\"\n}}"),
+            ),
+            SearchStep::Code { query, .. } => (
+                "code".to_owned(),
+                format!("{{\n \"query\": \"{query}\"\n}}"),
+            ),
+
+            SearchStep::Proc { query, paths, .. } => (
+                "proc".to_owned(),
+                format!(
+                    "{{\n \"paths\": [{}],\n \"query\": \"{query}\"\n}}",
+                    paths
+                        .iter()
+                        .map(usize::to_string)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            ),
         }
     }
 }
