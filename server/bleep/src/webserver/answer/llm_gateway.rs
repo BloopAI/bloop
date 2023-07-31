@@ -151,13 +151,6 @@ impl api::Message {
             content: content.to_string(),
         }
     }
-
-    pub fn as_plaintext_mut(&mut self) -> Option<(&mut String, &mut String)> {
-        match self {
-            Self::PlainText { role, content } => Some((role, content)),
-            _ => None,
-        }
-    }
 }
 
 enum ChatError {
