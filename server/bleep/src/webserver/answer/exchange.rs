@@ -231,17 +231,17 @@ impl SearchStep {
     /// Used in `Exchange::compressed`.
     fn compressed(&self) -> Self {
         match self {
-            Self::Path { query: call, .. } => Self::Path {
-                query: call.clone(),
+            Self::Path { query, .. } => Self::Path {
+                query: query.clone(),
                 response: "[hidden, compressed]".into(),
             },
-            Self::Code { query: call, .. } => Self::Code {
-                query: call.clone(),
+            Self::Code { query, .. } => Self::Code {
+                query: query.clone(),
                 response: "[hidden, compressed]".into(),
             },
-            Self::Proc { query: call, .. } => Self::Proc {
-                query: call.clone(),
-                paths: Vec::new(),
+            Self::Proc { query, paths, .. } => Self::Proc {
+                query: query.clone(),
+                paths: paths.clone(),
                 response: "[hidden, compressed]".into(),
             },
         }
