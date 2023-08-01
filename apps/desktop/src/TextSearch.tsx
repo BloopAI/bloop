@@ -79,9 +79,8 @@ const TextSearch = ({
         const resNum = allHighlights.length;
         setResultNum(resNum);
         let prevIndexInNewHighlights = currentHighlightParent
-          ? [...allHighlights].findIndex(
-              (el) =>
-                el.parentNode?.parentNode?.isSameNode(currentHighlightParent),
+          ? [...allHighlights].findIndex((el) =>
+              el.parentNode?.parentNode?.isSameNode(currentHighlightParent),
             )
           : -1;
         setCurrentResult((prev) => {

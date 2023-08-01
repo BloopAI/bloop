@@ -54,10 +54,10 @@ const Button = ({
       className={`py-0 rounded-4 focus:outline-none outline-none outline-0 flex items-center flex-grow-0 flex-shrink-0 
        ${selected ? selectedState : defaultState}
        ${onlyIcon ? sizeMap[size].square : sizeMap[size].default} ${
-         className || ''
-       } ${
-         onlyIcon ? '' : 'min-w-[84px] justify-center'
-       } transition-all duration-300 ease-in-bounce`}
+        className || ''
+      } ${
+        onlyIcon ? '' : 'min-w-[84px] justify-center'
+      } transition-all duration-300 ease-in-bounce`}
     >
       {children}
     </button>

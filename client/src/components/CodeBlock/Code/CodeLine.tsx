@@ -233,12 +233,12 @@ const CodeLine = ({
                ? ''
                : 'before:content-[attr(data-line)]'
            } ${
-             isRemovedLine
-               ? 'bg-bg-danger/30 text-label-base'
-               : isNewLine
-               ? 'bg-bg-success/30 text-label-base'
-               : 'text-label-muted'
-           }`}
+            isRemovedLine
+              ? 'bg-bg-danger/30 text-label-base'
+              : isNewLine
+              ? 'bg-bg-success/30 text-label-base'
+              : 'text-label-muted'
+          }`}
         />
       )}
       <div
