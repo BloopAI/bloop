@@ -216,6 +216,7 @@ pub(super) async fn _handle(
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
         let mut agent = Agent {
+            id: conversation_id.clone(),
             app,
             repo_ref,
             exchanges,
@@ -352,6 +353,7 @@ enum AgentError {
 }
 
 struct Agent {
+    id: conversations::ConversationId,
     app: Application,
     repo_ref: RepoRef,
     exchanges: Vec<Exchange>,
@@ -383,6 +385,17 @@ impl Drop for Agent {
                 EventData::output_stage("cancelled")
                     .with_payload("message", "request was cancelled"),
             );
+
+            let sql = self.app.sql.clone();
+            let repo_ref = self.repo_ref.clone();
+            let exchanges = self.exchanges.clone();
+            let id = self.id.clone();
+
+            tokio::spawn(async move {
+                conversations::store(&sql, id, (repo_ref, exchanges))
+                    .await
+                    .unwrap();
+            });
         }
     }
 }
