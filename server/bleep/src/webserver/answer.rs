@@ -1139,7 +1139,7 @@ impl Agent {
         // Total number of lines to try and expand by, per loop iteration.
         const TOTAL_LINE_INC: usize = 100;
 
-        while spans_by_path
+        while !spans_by_path.is_empty() && spans_by_path
             .iter()
             .flat_map(|(path, spans)| spans.iter().map(move |s| (path, s)))
             .map(|(path, span)| {
@@ -1155,7 +1155,8 @@ impl Agent {
                 / spans_by_path
                     .values()
                     .map(|spans| spans.len())
-                    .sum::<usize>();
+                    .sum::<usize>()
+                    .max(1);
 
             let range_step = range_step.max(1);
 
