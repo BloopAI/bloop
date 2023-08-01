@@ -20,13 +20,24 @@ pub struct Exchange {
     pub query: SemanticQuery<'static>,
     pub outcome: Option<Outcome>,
     pub search_steps: Vec<SearchStep>,
-    conclusion: Option<String>,
     pub paths: Vec<String>,
     pub code_chunks: Vec<answer::CodeChunk>,
+
+    /// A specifically chosen "focused" code chunk.
+    ///
+    /// This is different from the `code_chunks` list, as focused code chunks also contain the full
+    /// surrounding context from the source file, not just the relevant snippet.
+    ///
+    /// In the context of the app, this can be used to show code side-by-side with an outcome, such
+    /// as when displaying an article.
+    pub focused_chunk: Option<FocusedChunk>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     query_timestamp: Option<DateTime<Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     response_timestamp: Option<DateTime<Utc>>,
+
+    conclusion: Option<String>,
 }
 
 impl Exchange {
@@ -195,8 +206,8 @@ pub enum Outcome {
 impl Outcome {
     fn as_filesystem_mut(&mut self) -> Option<&mut Vec<FileResult>> {
         match self {
-            Self::Article(_) => None,
             Self::Filesystem(outcome) => Some(outcome),
+            Self::Article(_) => None,
         }
     }
 
@@ -263,6 +274,13 @@ impl SearchStep {
             Self::Proc { response, .. } => response.clone(),
         }
     }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
+pub struct FocusedChunk {
+    pub file_content: String,
+    pub start_line: usize,
+    pub end_line: usize,
 }
 
 #[derive(Debug)]
