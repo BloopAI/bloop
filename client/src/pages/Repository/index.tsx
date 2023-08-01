@@ -95,7 +95,7 @@ const RepositoryPage = ({ repositoryData }: Props) => {
   return !repository || initialLoad ? (
     <Skeleton isRepoPage />
   ) : (
-    <div className="flex w-full">
+    <div className="flex flex-1 overflow-auto">
       <div
         className={`h-full bg-bg-base flex flex-col overflow-hidden relative overflow-y-auto ${
           isRightPanelOpen ? 'w-0' : 'w-[20.25rem]'

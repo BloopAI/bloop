@@ -12,6 +12,9 @@ import { UIContext } from '../../context/uiContext';
 import { getConversation } from '../../services/api';
 import { mapLoadingSteps } from '../../mappers/conversation';
 import MarkdownWithCode from '../../components/MarkdownWithCode';
+import Button from '../../components/Button';
+import { CopyMD } from '../../icons';
+import { copyToClipboard } from '../../utils';
 
 type Props = {
   recordId: number;
@@ -39,10 +42,11 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
       getConversation(threadId).then((resp) => {
         const conv: ChatMessage[] = [];
         resp.forEach((m) => {
+          // @ts-ignore
           const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
           conv.push({
             author: ChatMessageAuthor.User,
-            text: m.query?.target?.Plain || userQuery?.content?.call || '',
+            text: m.query?.target?.Plain || userQuery?.content?.query || '',
             isFromHistory: true,
           });
           conv.push({
@@ -53,6 +57,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
             results: m.outcome,
             isFromHistory: true,
             queryId: m.id,
+            responseTimestamp: m.response_timestamp,
           });
         });
         conversationsCache[threadId] = conv;
@@ -64,7 +69,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
 
   return (
     <div className="overflow-auto p-8 w-screen">
-      <div className="flex-1 mx-auto max-w-3xl box-content article-response body-m text-label-base pb-44 break-word">
+      <div className="flex-1 mx-auto max-w-3xl box-content article-response body-m text-label-base pb-44 break-word relative">
         <MarkdownWithCode
           openFileModal={openFileModal}
           repoName={tab.repoName}
@@ -77,6 +82,14 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
               : data?.results?.Article
           }
         />
+        <Button
+          variant="secondary"
+          size="small"
+          onClick={() => copyToClipboard(data?.results?.Article)}
+          className="absolute top-0 right-0"
+        >
+          <CopyMD /> Copy
+        </Button>
       </div>
     </div>
   );

@@ -13,7 +13,7 @@ const IdeNavigation = () => {
   const { tab } = useContext(UIContext);
   const { selectedBranch } = useContext(SearchContext);
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
-  const { navigateRepoPath } = useContext(AppNavigationContext);
+  const { navigateFullResult } = useContext(AppNavigationContext);
 
   const fetchFiles = useCallback(
     async (path?: string) => {
@@ -40,9 +40,9 @@ const IdeNavigation = () => {
 
   const navigateToPath = useCallback(
     (path: string) => {
-      navigateRepoPath(tab.repoName, path);
+      navigateFullResult(tab.repoName, path);
     },
-    [tab.repoName, navigateRepoPath],
+    [tab.repoName, navigateFullResult],
   );
 
   return (

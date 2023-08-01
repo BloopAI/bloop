@@ -1,10 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { register } from 'timeago.js';
-import ja from 'timeago.js/lib/lang/ja';
 import { DeviceContextType } from './context/deviceContext';
 import './index.css';
-import 'highlight.js/styles/vs2015.css';
 import Tab from './Tab';
 import { TabsContext } from './context/tabsContext';
 import {
@@ -26,8 +23,7 @@ import { RepositoriesContext } from './context/repositoriesContext';
 import { AnalyticsContextProvider } from './context/providers/AnalyticsContextProvider';
 import { buildURLPart, getNavItemFromURL } from './utils/navigationUtils';
 import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
-
-register('ja', ja);
+import useKeyboardNavigation from './hooks/useKeyboardNavigation';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -198,6 +194,27 @@ function App({ deviceContextValue }: Props) {
     },
     [],
   );
+
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        if (Object.keys(tabs).includes(e.key)) {
+          const newTab = tabs[Number(e.key)]?.key;
+          if (newTab) {
+            e.preventDefault();
+            setActiveTab(newTab);
+          }
+        } else if (e.key === 'w' && activeTab !== 'initial') {
+          e.preventDefault();
+          e.stopPropagation();
+          handleRemoveTab(activeTab);
+          return true;
+        }
+      }
+    },
+    [tabs, activeTab],
+  );
+  useKeyboardNavigation(handleKeyEvent);
 
   const contextValue = useMemo(
     () => ({

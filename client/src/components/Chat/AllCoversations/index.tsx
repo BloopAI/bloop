@@ -70,10 +70,11 @@ const AllConversations = ({
     getConversation(threadId).then((resp) => {
       const conv: ChatMessage[] = [];
       resp.forEach((m) => {
+        // @ts-ignore
         const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
         conv.push({
           author: ChatMessageAuthor.User,
-          text: m.query?.target?.Plain || userQuery?.content?.call || '',
+          text: m.query?.target?.Plain || userQuery?.content?.query || '',
           isFromHistory: true,
         });
         conv.push({
@@ -84,6 +85,7 @@ const AllConversations = ({
           results: m.outcome,
           isFromHistory: true,
           queryId: m.id,
+          responseTimestamp: m.response_timestamp,
         });
       });
       setTitle(conv[0].text || '');
@@ -104,7 +106,9 @@ const AllConversations = ({
             <ArrowLeft sizeClassName="w-4 h-4" />
           </ChipButton>
         )}
-        <p className="flex-1 body-m">{openItem ? title : t('Conversations')}</p>
+        <p className="flex-1 body-m ellipsis">
+          {openItem ? title : t('Conversations')}
+        </p>
         {!openItem && (
           <ChipButton
             onClick={() => {
@@ -154,7 +158,7 @@ const AllConversations = ({
           />
         </div>
       )}
-      <div className="backdrop-blur-6 bg-chat-bg-base/75 -mt-10">
+      <div className="backdrop-blur-6 bg-chat-bg-base/75 -mt-10 z-40">
         <div
           className="p-4"
           onClick={() => {

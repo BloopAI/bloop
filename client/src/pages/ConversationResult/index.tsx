@@ -59,10 +59,11 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
       getConversation(threadId).then((resp) => {
         const conv: ChatMessage[] = [];
         resp.forEach((m) => {
+          // @ts-ignore
           const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
           conv.push({
             author: ChatMessageAuthor.User,
-            text: m.query?.target?.Plain || userQuery?.content?.call || '',
+            text: m.query?.target?.Plain || userQuery?.content?.query || '',
             isFromHistory: true,
           });
           conv.push({
@@ -73,6 +74,7 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
             results: m.outcome,
             isFromHistory: true,
             queryId: m.id,
+            responseTimestamp: m.response_timestamp,
           });
         });
         conversationsCache[threadId] = conv;

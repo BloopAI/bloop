@@ -1,4 +1,7 @@
-import { format as timeAgo } from 'timeago.js';
+// eslint-disable-next-line import/no-duplicates
+import { formatDistanceToNow } from 'date-fns';
+// eslint-disable-next-line import/no-duplicates
+import { ja } from 'date-fns/locale';
 import { MouseEvent, useCallback, useContext, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import {
@@ -145,8 +148,9 @@ const RepoCard = ({
   }, [sync_status, onRepoRemove, onSync, onCancelSync]);
 
   return (
-    <div
-      className={`bg-bg-base hover:bg-bg-base-hover border border-bg-border rounded-md p-4 w-67 h-36 group
+    <a
+      href="#"
+      className={`bg-bg-base hover:bg-bg-base-hover focus:bg-bg-base-hover border border-bg-border rounded-md p-4 w-67 h-36 group
        flex-shrink-0 flex flex-col justify-between cursor-pointer transition-all duration-150`}
       onClick={handleClick}
     >
@@ -157,7 +161,7 @@ const RepoCard = ({
           </span>
           <p className="break-all text-label-title pt-0.5">{repoName}</p>
         </div>
-        <div className="opacity-0 group-hover:opacity-100 transition-all duration-150">
+        <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all duration-150">
           <Dropdown
             icon={<MoreVertical />}
             noChevron
@@ -172,8 +176,7 @@ const RepoCard = ({
       </div>
       {(sync_status === SyncStatus.Indexing ||
         sync_status === SyncStatus.Syncing) &&
-      syncStatus &&
-      syncStatus.percentage < 100 ? (
+      syncStatus ? (
         <div className="flex flex-col gap-2">
           <p className="body-s text-label-title">
             <Trans>Indexing...</Trans>
@@ -203,11 +206,15 @@ const RepoCard = ({
                 typeof sync_status === 'string' ? sync_status : 'error'
               ]?.text || sync_status,
             )}
-            {sync_status === 'done' && timeAgo(last_index, locale)}
+            {sync_status === 'done' &&
+              formatDistanceToNow(new Date(last_index), {
+                addSuffix: true,
+                ...(locale === 'ja' ? { locale: ja } : {}),
+              })}
           </p>
         </div>
       )}
-    </div>
+    </a>
   );
 };
 

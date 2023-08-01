@@ -121,6 +121,7 @@ const Chat = () => {
             ),
             loadingSteps: [],
             queryId: '',
+            responseTimestamp: new Date().toISOString(),
           };
           setInputValue(prev[prev.length - 2]?.text || submittedQuery);
           setSubmittedQuery('');
@@ -149,6 +150,7 @@ const Chat = () => {
                 ),
                 loadingSteps: [],
                 queryId: '',
+                responseTimestamp: new Date().toISOString(),
               };
               setInputValue(prev[prev.length - 1]?.text || submittedQuery);
               setSubmittedQuery('');
@@ -197,6 +199,7 @@ const Chat = () => {
                 text: newMessage.conclusion,
                 results: newMessage.outcome,
                 queryId: newMessage.id,
+                responseTimestamp: newMessage.response_timestamp,
               };
               const lastMessages: ChatMessage[] =
                 lastMessage?.author === ChatMessageAuthor.Server
@@ -236,6 +239,7 @@ const Chat = () => {
                       author: ChatMessageAuthor.Server,
                       loadingSteps: [],
                       queryId: '',
+                      responseTimestamp: new Date().toISOString(),
                     }),
                 isLoading: false,
                 error:
@@ -442,8 +446,9 @@ const Chat = () => {
                         ? [
                             {
                               displayText: t('Responding...'),
-                              content: { call: '' },
-                              type: '',
+                              content: { query: '' },
+                              path: '',
+                              type: 'code' as const,
                             },
                           ]
                         : []),
