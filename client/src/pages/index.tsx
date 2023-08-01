@@ -33,7 +33,6 @@ export type RenderPage =
   | 'results'
   | 'repo'
   | 'full-result'
-  | 'nl-result'
   | 'no-results'
   | 'home'
   | 'conversation-result'
@@ -178,7 +177,14 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
           <RepositoryPage repositoryData={data as DirectorySearchResponse} />
         );
       case 'full-result':
-        return <ViewResult data={data} isLoading={loading} />;
+        return (
+          <ViewResult
+            data={data}
+            isLoading={loading}
+            repoName={tab.repoName}
+            selectedBranch={selectedBranch}
+          />
+        );
       case 'conversation-result':
         return (
           <ConversationResult
@@ -203,13 +209,11 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
     query,
     navigatedItem?.threadId,
     renderPage,
+    tab.repoName,
+    selectedBranch,
   ]);
 
-  return (
-    <PageTemplate withSearchBar={renderPage !== 'home'}>
-      {renderedPage}
-    </PageTemplate>
-  );
+  return <PageTemplate renderPage={renderPage}>{renderedPage}</PageTemplate>;
 };
 
 export default Sentry.withErrorBoundary(ContentContainer, {

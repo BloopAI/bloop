@@ -7,7 +7,6 @@ import {
   ChatMessage,
   ChatMessageAuthor,
   ChatMessageServer,
-  ChatMessageType,
   FileSystemResult,
   MessageResultCite,
   MessageResultDirectory,
@@ -60,22 +59,21 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
       getConversation(threadId).then((resp) => {
         const conv: ChatMessage[] = [];
         resp.forEach((m) => {
+          // @ts-ignore
           const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
-          if (userQuery) {
-            conv.push({
-              author: ChatMessageAuthor.User,
-              text: userQuery.content,
-              isFromHistory: true,
-            });
-          }
+          conv.push({
+            author: ChatMessageAuthor.User,
+            text: m.query?.target?.Plain || userQuery?.content?.query || '',
+            isFromHistory: true,
+          });
           conv.push({
             author: ChatMessageAuthor.Server,
             isLoading: false,
-            type: ChatMessageType.Answer,
             loadingSteps: mapLoadingSteps(m.search_steps, t),
             text: m.conclusion,
             results: m.outcome,
             isFromHistory: true,
+            queryId: m.id,
             responseTimestamp: m.response_timestamp,
           });
         });

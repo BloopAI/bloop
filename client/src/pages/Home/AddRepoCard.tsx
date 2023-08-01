@@ -46,8 +46,8 @@ const AddRepoCard = ({ type, onClick }: Props) => {
   const { t } = useTranslation();
 
   return (
-    <div
-      className="flex flex-1 flex-col gap-1 p-4 bg-bg-base border border-bg-base hover:bg-bg-base-hover hover:border-bg-border-hover rounded-md cursor-pointer group"
+    <button
+      className="flex flex-1 flex-col text-left gap-1 p-4 bg-bg-base border border-bg-base hover:bg-bg-base-hover hover:border-bg-border-hover focus:bg-bg-base-hover focus:border-bg-border-hover rounded-md cursor-pointer group"
       onClick={() => onClick(type)}
     >
       <div className="flex gap-2 items-center text-label-muted group-hover:text-label-title">
@@ -60,7 +60,7 @@ const AddRepoCard = ({ type, onClick }: Props) => {
       <p className="pl-6 caption text-label-muted group-hover:text-label-base">
         {t(typeMap[type].description)}
       </p>
-    </div>
+    </button>
   );
 };
 

@@ -9,7 +9,7 @@ import {
   SuggestionsResponse,
   TokenInfoResponse,
 } from '../types/api';
-import { RepoType } from '../types/general';
+import { EnvConfig, RepoType } from '../types/general';
 
 const DB_API = 'https://api.bloop.ai';
 let http: AxiosInstance;
@@ -140,9 +140,12 @@ export const scanLocalRepos = (path: string) => {
   }
   return http.get(`/repos/scan`, { params: { path } }).then((r) => {
     localScanCache[path] = r.data;
-    setTimeout(() => {
-      delete localScanCache[path];
-    }, 1000 * 60 * 10); // 10 minutes
+    setTimeout(
+      () => {
+        delete localScanCache[path];
+      },
+      1000 * 60 * 10,
+    ); // 10 minutes
     return r.data;
   });
 };
@@ -170,6 +173,7 @@ export const saveBugReport = (report: {
   name: string;
   text: string;
   unique_id: string;
+  app_version: string;
 }) => axios.post(`${DB_API}/bug_reports`, report).then((r) => r.data);
 
 export const saveCrashReport = (report: {
@@ -177,6 +181,7 @@ export const saveCrashReport = (report: {
   unique_id: string;
   info: string;
   metadata: string;
+  app_version: string;
 }) => axios.post(`${DB_API}/crash_reports`, report).then((r) => r.data);
 
 export const saveUpvote = (upvote: {
@@ -202,6 +207,8 @@ export const githubWebLogin = (redirect_to: string) =>
     .then((r) => r.data);
 
 export const getConfig = () => http.get('/config').then((r) => r.data);
+export const putConfig = (data: Partial<EnvConfig>) =>
+  http.put('/config', data).then((r) => r.data);
 
 export const getAllConversations = (
   repo_ref: string,

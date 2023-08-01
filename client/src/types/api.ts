@@ -127,7 +127,6 @@ export interface DirectoryFileEntryData {
 export interface DirectoryEntry {
   name: string;
   entry_data: 'Directory' | DirectoryFileEntryData;
-  currentFile?: boolean;
 }
 
 export interface File {
@@ -137,6 +136,9 @@ export interface File {
   contents: string;
   repo_ref: string;
   siblings: DirectoryEntry[];
+  size: number;
+  loc: number;
+  sloc: number;
 }
 
 export interface FileResponse {
@@ -220,10 +222,30 @@ export type AllConversationsResponse = {
   title: string;
 }[];
 
+type ProcStep = {
+  type: 'proc';
+  content: { query: string; paths: string[] };
+};
+
+type CodeStep = {
+  type: 'code';
+  content: { query: string };
+};
+
+type PathStep = {
+  type: 'path';
+  content: { query: string };
+};
+
+export type SearchStepType = ProcStep | CodeStep | PathStep;
+
 export type ConversationType = {
-  search_steps: { content: string; type: string }[];
+  id: string;
+  search_steps: SearchStepType[];
+  query: { target: { Plain: string } };
   conclusion: string;
   outcome: FileSystemResult & ArticleResult;
+  paths: string[];
   response_timestamp: string;
 };
 

@@ -1281,10 +1281,31 @@ h5, .h5 {
 .readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p, .readme span, .readme div,
 .article-response h1, .article-response h2, .article-response h3, .article-response h4, .article-response h5,
 .article-response h6, .article-response p {
+  margin: revert;
+}
+
+.readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p,
+.article-response h1, .article-response h2, .article-response h3, .article-response h4, .article-response h5,
+.article-response h6, .article-response p,
+.ipynb-markdown h1, .ipynb-markdown h2, .ipynb-markdown h3, .ipynb-markdown h4, .ipynb-markdown h5,
+.ipynb-markdown h6, .ipynb-markdown p {
   -webkit-user-select: initial;
   -moz-user-select: initial;
   user-select: initial;
-  margin: revert;
+}
+
+.ipynb-markdown p:not(:first-child), h1:not(:first-child), h2:not(:first-child), h3:not(:first-child), h4:not(:first-child) {
+  margin-top: revert;
+}
+
+.ipynb-markdown p:not(:last-child), h1:not(:last-child), h2:not(:last-child), h3:not(:last-child), h4:not(:last-child) {
+  margin-bottom: revert;
+}
+
+.ipynb-markdown blockquote {
+  @apply border-l-2 border-bg-border;
+  margin: 1em 2em;
+  padding: 0 1em;
 }
 
 .article-response h1, .article-response h2, .article-response h3, .article-response h4, .article-response h5,
@@ -1398,4 +1419,8 @@ h5, .h5 {
 
 .break-word {
   word-break: break-word;
+}
+
+.article-response>*:first-child {
+  padding-right: 100px;
 }

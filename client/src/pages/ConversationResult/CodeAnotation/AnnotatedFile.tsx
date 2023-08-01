@@ -48,7 +48,9 @@ const AnnotatedFile = ({
   useEffect(() => {
     if (repoName && filePath) {
       search(buildRepoQuery(repoName, filePath)).then((resp) => {
-        setFile(resp.data[0].data as File);
+        if (resp?.data?.[0]?.data) {
+          setFile(resp.data[0].data as File);
+        }
       });
     }
   }, [filePath, repoName]);

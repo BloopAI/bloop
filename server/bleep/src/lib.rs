@@ -20,12 +20,10 @@ use git_version as _;
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
 
-#[cfg(windows)]
-use dunce::canonicalize;
-
 use secrecy::SecretString;
-#[cfg(not(windows))]
+use state::PersistedState;
 use std::fs::canonicalize;
+use user::UserProfile;
 
 use crate::{background::SyncQueue, indexes::Indexes, semantic::Semantic, state::RepositoryPool};
 use anyhow::{bail, Result};
@@ -61,6 +59,7 @@ pub mod snippet;
 pub mod state;
 pub mod symbol;
 pub mod text_range;
+pub mod user;
 
 pub use config::{default_parallelism, minimum_parallelism, Configuration};
 pub use env::Environment;
@@ -96,6 +95,9 @@ pub struct Application {
 
     /// Main cookie encryption keypair
     cookie_key: axum_extra::extract::cookie::Key,
+
+    /// Store for user profiles
+    user_profiles: PersistedState<scc::HashMap<String, UserProfile>>,
 
     /// SQL database for persistent storage
     pub sql: SqlDb,
@@ -169,6 +171,7 @@ impl Application {
             sync_queue: SyncQueue::start(config.clone()),
             cookie_key: config.source.initialize_cookie_key()?,
             credentials: config.source.initialize_credentials()?.into(),
+            user_profiles: config.source.load_or_default("user_profiles")?,
             sql: sqlite,
             repo_pool,
             analytics,

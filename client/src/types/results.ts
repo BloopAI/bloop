@@ -131,7 +131,8 @@ export type FullResult = {
   language: string;
   hoverableRanges: Record<number, Range[]>;
   repoName: string;
-  fileTree?: FileTreeItem[];
+  size: number;
+  loc: number;
 };
 
 export type DirectoryResult = {

@@ -13,8 +13,8 @@ import ClearButton from '../ClearButton';
 import Tooltip from '../Tooltip';
 import { ChatLoadingStep } from '../../types/general';
 import LiteLoader from '../Loaders/LiteLoader';
-import { getPlainFromStorage, PROMPT_GUIDE_DONE } from '../../services/storage';
 import { UIContext } from '../../context/uiContext';
+import { DeviceContext } from '../../context/deviceContext';
 import InputLoader from './InputLoader';
 
 type Props = {
@@ -52,6 +52,7 @@ const NLInput = ({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setComposition] = useState(false);
   const { setPromptGuideOpen } = useContext(UIContext);
+  const { envConfig } = useContext(DeviceContext);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -85,10 +86,10 @@ const NLInput = ({
   );
 
   const handleInputFocus = useCallback(() => {
-    if (!getPlainFromStorage(PROMPT_GUIDE_DONE)) {
+    if (envConfig?.bloop_user_profile?.prompt_guide !== 'dismissed') {
       setPromptGuideOpen(true);
     }
-  }, []);
+  }, [envConfig?.bloop_user_profile?.prompt_guide]);
 
   return (
     <div

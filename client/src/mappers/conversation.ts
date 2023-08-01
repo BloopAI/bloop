@@ -1,14 +1,26 @@
+import { SearchStepType } from '../types/api';
+
 export const mapLoadingSteps = (
-  searchSteps: { type: string; content: string }[],
+  searchSteps: SearchStepType[],
   t: (key: string) => string,
 ) => {
-  return searchSteps.map((s: { type: string; content: string }) => ({
-    ...s,
-    displayText:
-      s.type === 'PROC'
-        ? t(`Reading`) +
-          ' ' +
-          `${s.content.length > 20 ? '...' : ''}${s.content.slice(-20)}`
-        : s.content,
-  }));
+  return searchSteps
+    .map((s) => {
+      if (s.type === 'proc') {
+        return s.content.paths.map((pa) => ({
+          ...s,
+          path: pa || '',
+          displayText:
+            t(`Reading`) +
+            ' ' +
+            `${pa?.length > 20 ? '...' : ''}${pa?.slice(-20)}`,
+        }));
+      }
+      return {
+        ...s,
+        path: s.content.query,
+        displayText: s.content.query,
+      };
+    })
+    .flat();
 };

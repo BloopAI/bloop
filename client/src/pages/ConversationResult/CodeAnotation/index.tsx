@@ -40,9 +40,8 @@ const CodeAnnotation = ({ repoName, citations }: Props) => {
   );
 
   useEffect(() => {
-    const scrollTop = findElementInCurrentTab(
-      '#results-page-container',
-    )?.scrollTop;
+    const scrollTop = findElementInCurrentTab('#results-page-container')
+      ?.scrollTop;
     if (scrollTop) {
       repositionAnnotationsOnScroll(scrollTop, citations);
     }

@@ -44,6 +44,7 @@ export const UIContextProvider = ({
   const [theme, setTheme] = useState<Theme>(
     (getPlainFromStorage(THEME) as 'system' | null) || 'system',
   );
+  const [isFiltersOpen, setFiltersOpen] = useState(true);
 
   useEffect(() => {
     if (!isSelfServe) {
@@ -83,6 +84,8 @@ export const UIContextProvider = ({
       setTheme,
       isPromptGuideOpen,
       setPromptGuideOpen,
+      isFiltersOpen,
+      setFiltersOpen,
     }),
     [
       isSettingsOpen,
@@ -97,6 +100,7 @@ export const UIContextProvider = ({
       tab,
       theme,
       isPromptGuideOpen,
+      isFiltersOpen,
     ],
   );
   return (

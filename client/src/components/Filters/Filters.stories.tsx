@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { UIContextProvider } from '../../context/providers/UiContextProvider';
+import { RepoSource } from '../../types';
 import FilterSection from './FilterSection';
 import Filters from './index';
 
@@ -42,15 +44,21 @@ const initialSections = [
 ];
 
 export const Default = () => {
-  const [isOpen, setIsOpen] = useState(true);
   return (
     <MemoryRouter initialEntries={['']}>
-      <div style={{ width: 350 }}>
-        <Filters
-          isOpen={isOpen}
-          toggleOpen={() => setIsOpen((prev) => !prev)}
-        />
-      </div>
+      <UIContextProvider
+        tab={{
+          name: 'bloop',
+          key: 'bloop',
+          repoName: 'bloop',
+          navigationHistory: [],
+          source: RepoSource.LOCAL,
+        }}
+      >
+        <div style={{ width: 350 }}>
+          <Filters />
+        </div>
+      </UIContextProvider>
     </MemoryRouter>
   );
 };

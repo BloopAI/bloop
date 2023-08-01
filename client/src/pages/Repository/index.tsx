@@ -95,7 +95,7 @@ const RepositoryPage = ({ repositoryData }: Props) => {
   return !repository || initialLoad ? (
     <Skeleton isRepoPage />
   ) : (
-    <div className="flex w-full">
+    <div className="flex flex-1 overflow-auto">
       <div
         className={`h-full bg-bg-base flex flex-col overflow-hidden relative overflow-y-auto ${
           isRightPanelOpen ? 'w-0' : 'w-[20.25rem]'
@@ -132,7 +132,7 @@ const RepositoryPage = ({ repositoryData }: Props) => {
           </span>
         </div>
         <div className="flex-1 flex">
-          <Filters isOpen={true} toggleOpen={() => {}} showHeader={false} />
+          <Filters forceOpen showHeader={false} />
         </div>
       </div>
       <div className="p-12 pb-32 w-full overflow-y-auto">

@@ -1,17 +1,35 @@
+use anyhow::{Context, Result};
 use axum::{
     extract::{Path, Query, State},
     response::IntoResponse,
     Extension, Json,
 };
 use reqwest::StatusCode;
+use std::{fmt, str::FromStr};
+use tracing::info;
 
 use crate::{
+    db::SqlDb,
     repo::RepoRef,
     webserver::{self, middleware::User, Error, ErrorKind},
     Application,
 };
 
-use super::{exchange::Exchange, Conversation, ConversationId};
+use super::exchange::Exchange;
+
+type Conversation = (RepoRef, Vec<Exchange>);
+
+#[derive(Hash, PartialEq, Eq, Clone)]
+pub struct ConversationId {
+    pub thread_id: uuid::Uuid,
+    pub user_id: String,
+}
+
+impl fmt::Display for ConversationId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}::{}", self.user_id, self.thread_id)
+    }
+}
 
 #[derive(serde::Serialize)]
 pub struct ConversationPreview {
@@ -102,15 +120,81 @@ pub(in crate::webserver) async fn thread(
         .ok_or_else(|| Error::user("missing user ID"))?
         .to_owned();
 
-    let conversation = Conversation::load(&app.sql, &ConversationId { thread_id, user_id })
+    let (.., exchanges) = load(&app.sql, &ConversationId { thread_id, user_id })
         .await?
         .ok_or_else(|| Error::new(ErrorKind::NotFound, "thread was not found"))?;
 
-    let exchanges = conversation
-        .exchanges
+    let exchanges = exchanges
         .into_iter()
         .map(Exchange::encode)
+        .map(|ex| ex.compressed())
         .collect::<Vec<_>>();
 
     Ok(Json(exchanges))
+}
+
+pub async fn store(db: &SqlDb, id: ConversationId, conversation: Conversation) -> Result<()> {
+    info!("writing conversation {}-{}", id.user_id, id.thread_id);
+    let mut transaction = db.begin().await?;
+
+    // Delete the old conversation for simplicity. This also deletes all its messages.
+    let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
+    sqlx::query! {
+        "DELETE FROM conversations \
+            WHERE user_id = ? AND thread_id = ?",
+        user_id,
+        thread_id,
+    }
+    .execute(&mut transaction)
+    .await?;
+
+    let (repo_ref, exchanges) = conversation;
+    let repo_ref = repo_ref.to_string();
+    let title = exchanges
+        .first()
+        .and_then(|list| list.query())
+        .and_then(|q| q.split('\n').next().map(|s| s.to_string()))
+        .context("couldn't find conversation title")?;
+
+    let exchanges = serde_json::to_string(&exchanges)?;
+    sqlx::query! {
+        "INSERT INTO conversations (\
+            user_id, thread_id, repo_ref, title, exchanges, created_at\
+            ) \
+            VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))",
+        user_id,
+        thread_id,
+        repo_ref,
+        title,
+        exchanges,
+    }
+    .execute(&mut transaction)
+    .await?;
+
+    transaction.commit().await?;
+
+    Ok(())
+}
+
+pub async fn load(db: &SqlDb, id: &ConversationId) -> Result<Option<Conversation>> {
+    let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
+
+    let row = sqlx::query! {
+        "SELECT repo_ref, exchanges FROM conversations \
+         WHERE user_id = ? AND thread_id = ?",
+        user_id,
+        thread_id,
+    }
+    .fetch_optional(db.as_ref())
+    .await?;
+
+    let row = match row {
+        Some(r) => r,
+        None => return Ok(None),
+    };
+
+    let repo_ref = RepoRef::from_str(&row.repo_ref).context("failed to parse repo ref")?;
+    let exchanges = serde_json::from_str(&row.exchanges)?;
+
+    Ok(Some((repo_ref, exchanges)))
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import Draggable from 'react-draggable';
+// import Draggable from 'react-draggable';
 import Code from '../Code';
 
 type Props = {
@@ -49,22 +49,22 @@ export const MiniMap = ({
         </div>
       </div>
 
-      <Draggable
-        axis={'y'}
-        bounds={'parent'}
-        position={{ x: 0, y: minimapCursor }}
-        onStop={(e, data) => {
-          setMinimapCursor(data.y);
-          handleScroll(
-            codeFullHeight * 0.01 * (data.y / (mapCodeHeight * 0.01)),
-          );
-        }}
-      >
-        <div
-          style={{ height: `${Math.floor(cursorHeight)}px` }}
-          className={`bg-bg-shade/50 w-full z-40 group-hover:visible invisible`}
-        ></div>
-      </Draggable>
+      {/*<Draggable*/}
+      {/*  axis={'y'}*/}
+      {/*  bounds={'parent'}*/}
+      {/*  position={{ x: 0, y: minimapCursor }}*/}
+      {/*  onStop={(e, data) => {*/}
+      {/*    setMinimapCursor(data.y);*/}
+      {/*    handleScroll(*/}
+      {/*      codeFullHeight * 0.01 * (data.y / (mapCodeHeight * 0.01)),*/}
+      {/*    );*/}
+      {/*  }}*/}
+      {/*>*/}
+      {/*  <div*/}
+      {/*    style={{ height: `${Math.floor(cursorHeight)}px` }}*/}
+      {/*    className={`bg-bg-shade/50 w-full z-40 group-hover:visible invisible`}*/}
+      {/*  ></div>*/}
+      {/*</Draggable>*/}
     </div>
   );
 };

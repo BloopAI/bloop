@@ -5,18 +5,25 @@ import Button from '../Button';
 import { CloseSign } from '../../icons';
 import { DeviceContext } from '../../context/deviceContext';
 import { UIContext } from '../../context/uiContext';
-import { PROMPT_GUIDE_DONE, savePlainToStorage } from '../../services/storage';
+import { getConfig, putConfig } from '../../services/api';
 import PromptSvg from './PromptSvg';
 
 const PromptGuidePopup = () => {
   const { t } = useTranslation();
-  const { openLink } = useContext(DeviceContext);
+  const { openLink, setEnvConfig, envConfig } = useContext(DeviceContext);
   const { isPromptGuideOpen, setPromptGuideOpen } = useContext(UIContext);
 
   const handlePromptGuideClose = useCallback(() => {
     setPromptGuideOpen(false);
-    savePlainToStorage(PROMPT_GUIDE_DONE, 'true');
-  }, []);
+    putConfig({
+      bloop_user_profile: {
+        ...(envConfig?.bloop_user_profile || {}),
+        prompt_guide: 'dismissed',
+      },
+    }).then(() => {
+      getConfig().then(setEnvConfig);
+    });
+  }, [envConfig?.bloop_user_profile]);
 
   return (
     <ModalOrSidebar

@@ -1,7 +1,7 @@
-use axum::extract::State;
+use axum::{extract::State, Json};
 
 use super::{middleware::User, prelude::*};
-use crate::{remotes, Application};
+use crate::{remotes, user::UserProfile, Application};
 
 #[derive(Serialize, Debug)]
 pub(super) struct ConfigResponse {
@@ -14,13 +14,14 @@ pub(super) struct ConfigResponse {
     tracking_id: String,
     device_id: String,
     github_user: Option<octocrab::models::Author>,
+    bloop_user_profile: UserProfile,
     bloop_version: String,
     bloop_commit: String,
 }
 
 impl super::ApiResponse for ConfigResponse {}
 
-pub(super) async fn handle(
+pub(super) async fn get(
     State(app): State<Application>,
     Extension(user): Extension<User>,
 ) -> impl IntoResponse {
@@ -49,6 +50,11 @@ pub(super) async fn handle(
         crab.current().user().await.ok()
     };
 
+    let user_profile = user
+        .login()
+        .and_then(|login| app.user_profiles.read(login, |_, v| v.clone()))
+        .unwrap_or_default();
+
     json(ConfigResponse {
         analytics_data_plane: app.config.analytics_data_plane.clone(),
         analytics_key_fe: app.config.analytics_key_fe.clone(),
@@ -57,9 +63,29 @@ pub(super) async fn handle(
         schema_version: crate::state::SCHEMA_VERSION.into(),
         bloop_version: env!("CARGO_PKG_VERSION").into(),
         bloop_commit: git_version::git_version!(fallback = "unknown").into(),
+        bloop_user_profile: user_profile,
         github_user,
         device_id,
         org_name,
         tracking_id,
     })
+}
+
+#[derive(Serialize, Deserialize)]
+pub(super) struct ConfigUpdate {
+    bloop_user_profile: UserProfile,
+}
+
+pub(super) async fn put(
+    State(app): State<Application>,
+    Extension(user): Extension<User>,
+    Json(update): Json<ConfigUpdate>,
+) -> impl IntoResponse {
+    let user = user.login().expect("authentication required").to_owned();
+    app.user_profiles
+        .entry_async(user)
+        .await
+        .or_default()
+        .insert(update.bloop_user_profile);
+    app.user_profiles.store().expect("failed to persist");
 }

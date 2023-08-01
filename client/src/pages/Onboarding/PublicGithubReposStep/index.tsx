@@ -50,6 +50,8 @@ const PublicGithubReposStep = ({
         .replace('https://', '')
         .replace('github.com/', '')
         .replace(/\.git$/, '')
+        .replace(/"$/, '')
+        .replace(/^"/, '')
         .replace(/\/$/, '');
       if (newRepoValue.startsWith('git@github.com:')) {
         cleanRef = newRepoValue.slice(15).replace(/\.git$/, '');
@@ -89,6 +91,7 @@ const PublicGithubReposStep = ({
           <form className="flex gap-2" onSubmit={handleVerifyRepo}>
             <TextInput
               value={newRepoValue}
+              autoFocus
               name="new-repo"
               onChange={(e) => {
                 setErrorVerifying(false);

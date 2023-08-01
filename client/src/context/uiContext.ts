@@ -19,6 +19,8 @@ type ContextType = {
   setShouldShowWelcome: (b: boolean) => void;
   isRightPanelOpen: boolean;
   setRightPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  isFiltersOpen: boolean;
+  setFiltersOpen: React.Dispatch<React.SetStateAction<boolean>>;
   tab: { key: string; name: string; repoName: string };
   theme: Theme;
   setTheme: (s: Theme) => void;
@@ -44,6 +46,8 @@ export const UIContext = createContext<ContextType>({
   setShouldShowWelcome: () => {},
   isRightPanelOpen: false,
   setRightPanelOpen: () => {},
+  isFiltersOpen: false,
+  setFiltersOpen: () => {},
   isPromptGuideOpen: false,
   setPromptGuideOpen: () => {},
   tab: { key: 'initial', name: 'Home', repoName: '' },

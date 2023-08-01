@@ -14,11 +14,7 @@ import {
 } from '../../../services/api';
 import { AllConversationsResponse } from '../../../types/api';
 import Conversation from '../Conversation';
-import {
-  ChatMessage,
-  ChatMessageAuthor,
-  ChatMessageType,
-} from '../../../types/general';
+import { ChatMessage, ChatMessageAuthor } from '../../../types/general';
 import { conversationsCache } from '../../../services/cache';
 import { mapLoadingSteps } from '../../../mappers/conversation';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
@@ -74,22 +70,21 @@ const AllConversations = ({
     getConversation(threadId).then((resp) => {
       const conv: ChatMessage[] = [];
       resp.forEach((m) => {
+        // @ts-ignore
         const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
-        if (userQuery) {
-          conv.push({
-            author: ChatMessageAuthor.User,
-            text: userQuery.content,
-            isFromHistory: true,
-          });
-        }
+        conv.push({
+          author: ChatMessageAuthor.User,
+          text: m.query?.target?.Plain || userQuery?.content?.query || '',
+          isFromHistory: true,
+        });
         conv.push({
           author: ChatMessageAuthor.Server,
           isLoading: false,
-          type: ChatMessageType.Answer,
           loadingSteps: mapLoadingSteps(m.search_steps, t),
           text: m.conclusion,
           results: m.outcome,
           isFromHistory: true,
+          queryId: m.id,
           responseTimestamp: m.response_timestamp,
         });
       });
@@ -111,7 +106,9 @@ const AllConversations = ({
             <ArrowLeft sizeClassName="w-4 h-4" />
           </ChipButton>
         )}
-        <p className="flex-1 body-m">{openItem ? title : t('Conversations')}</p>
+        <p className="flex-1 body-m ellipsis">
+          {openItem ? title : t('Conversations')}
+        </p>
         {!openItem && (
           <ChipButton
             onClick={() => {
@@ -153,15 +150,15 @@ const AllConversations = ({
           <Conversation
             conversation={openItem}
             threadId={openThreadId}
-            queryId={''}
             repoRef={repoRef}
             isLoading={false}
             isHistory
             repoName={repoName}
+            onMessageEdit={() => {}}
           />
         </div>
       )}
-      <div className="backdrop-blur-6 bg-chat-bg-base/75 -mt-10">
+      <div className="backdrop-blur-6 bg-chat-bg-base/75 -mt-10 z-40">
         <div
           className="p-4"
           onClick={() => {
