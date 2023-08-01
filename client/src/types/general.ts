@@ -213,6 +213,7 @@ export type ChatMessageServer = {
   isFromHistory?: boolean;
   results?: FileSystemResult & ArticleResult;
   queryId: string;
+  responseTimestamp: string;
 };
 
 export type ChatMessage = ChatMessageUser | ChatMessageServer;

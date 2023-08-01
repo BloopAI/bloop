@@ -2,6 +2,7 @@ use crate::query::parser::SemanticQuery;
 use std::{borrow::Cow, mem};
 
 use anyhow::{Context, Result};
+use chrono::prelude::{DateTime, Utc};
 use lazy_regex::regex;
 use regex::Regex;
 use serde::Deserialize;
@@ -22,6 +23,10 @@ pub struct Exchange {
     conclusion: Option<String>,
     pub paths: Vec<String>,
     pub code_chunks: Vec<answer::CodeChunk>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    query_timestamp: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_timestamp: Option<DateTime<Utc>>,
 }
 
 impl Exchange {
@@ -29,6 +34,7 @@ impl Exchange {
         Self {
             id,
             query,
+            query_timestamp: Some(Utc::now()),
             ..Default::default()
         }
     }
@@ -46,6 +52,7 @@ impl Exchange {
                 _ => panic!("Tried to replace a step that was not found"),
             },
             Update::Filesystem(file_results) => {
+                self.response_timestamp = Some(Utc::now());
                 self.set_file_results(file_results);
             }
             Update::Article(full_text) => {
@@ -55,6 +62,7 @@ impl Exchange {
                 *outcome.as_article_mut().unwrap() = sanitize_article(&full_text);
             }
             Update::Conclude(conclusion) => {
+                self.response_timestamp = Some(Utc::now());
                 self.conclusion = Some(conclusion);
             }
         }
