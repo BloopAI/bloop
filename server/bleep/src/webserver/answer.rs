@@ -1099,7 +1099,7 @@ impl Agent {
         /// The ratio of code tokens to context size.
         ///
         /// Making this closure to 1 means that more of the context is taken up by source code.
-        const CONTEXT_CODE_RATIO: f32 = 0.6;
+        const CONTEXT_CODE_RATIO: f32 = 0.5;
 
         let bpe = tiktoken_rs::get_bpe_from_model(gpt_model).unwrap();
         let context_size = tiktoken_rs::model::get_context_size(gpt_model);
