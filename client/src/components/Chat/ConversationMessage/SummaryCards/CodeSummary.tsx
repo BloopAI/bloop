@@ -17,7 +17,9 @@ const CodeSummary = ({ path, isMain, repoName, startLine }: Props) => {
   useEffect(() => {
     if (repoName && path && isMain) {
       search(buildRepoQuery(repoName, path)).then((resp) => {
-        setFile(resp.data[0].data as File);
+        if (resp?.data?.[0]?.data) {
+          setFile(resp.data[0].data as File);
+        }
       });
     }
   }, [path, repoName]);
