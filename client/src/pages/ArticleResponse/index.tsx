@@ -64,6 +64,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
             results: m.outcome,
             isFromHistory: true,
             queryId: m.id,
+            responseTimestamp: m.response_timestamp,
           });
         });
         conversationsCache[threadId] = conv;

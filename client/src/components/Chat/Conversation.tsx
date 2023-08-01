@@ -80,6 +80,9 @@ const Conversation = ({
           scrollToBottom={scrollToBottom}
           repoName={repoName}
           onMessageEdit={onMessageEdit}
+          responseTimestamp={
+            m.author === ChatMessageAuthor.Server ? m.responseTimestamp : null
+          }
         />
       ))}
     </div>

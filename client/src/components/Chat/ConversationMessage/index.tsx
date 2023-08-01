@@ -1,6 +1,10 @@
 import React, { useContext, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Trans, useTranslation } from 'react-i18next';
+// eslint-disable-next-line import/no-duplicates
+import { format } from 'date-fns';
+// eslint-disable-next-line import/no-duplicates
+import { ja } from 'date-fns/locale';
 import {
   Checkmark,
   List,
@@ -21,6 +25,7 @@ import {
 import { ChatContext } from '../../../context/chatContext';
 import Button from '../../Button';
 import { FileModalContext } from '../../../context/fileModalContext';
+import { LocaleContext } from '../../../context/localeContext';
 import MessageFeedback from './MessageFeedback';
 import FileChip from './FileChip';
 import SummaryCardsArticle from './SummaryCards/SummaryCardsArticle';
@@ -34,6 +39,7 @@ type Props = {
   queryId: string;
   repoRef: string;
   repoName: string;
+  responseTimestamp: string | null;
   isHistory?: boolean;
   showInlineFeedback: boolean;
   scrollToBottom?: () => void;
@@ -60,12 +66,14 @@ const ConversationMessage = ({
   i,
   repoName,
   onMessageEdit,
+  responseTimestamp,
 }: Props) => {
   const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
   const { envConfig } = useContext(DeviceContext);
   const { setChatOpen } = useContext(ChatContext);
   const { openFileModal } = useContext(FileModalContext);
+  const { locale } = useContext(LocaleContext);
 
   useEffect(() => {
     setChatOpen(true);
@@ -122,6 +130,15 @@ const ConversationMessage = ({
               <List />
             </Button>
           </div>
+          {!isLoading && !!responseTimestamp && (
+            <div className="justify-self-end caption text-label-muted">
+              {format(
+                new Date(responseTimestamp),
+                'hh:mm aa',
+                locale === 'ja' ? { locale: ja } : undefined,
+              )}
+            </div>
+          )}
         </div>
       )}
       {message ? (

@@ -246,6 +246,7 @@ export type ConversationType = {
   conclusion: string;
   outcome: FileSystemResult & ArticleResult;
   paths: string[];
+  response_timestamp: string;
 };
 
 export interface SuggestionsResponse {

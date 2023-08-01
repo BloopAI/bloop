@@ -85,6 +85,7 @@ const AllConversations = ({
           results: m.outcome,
           isFromHistory: true,
           queryId: m.id,
+          responseTimestamp: m.response_timestamp,
         });
       });
       setTitle(conv[0].text || '');
