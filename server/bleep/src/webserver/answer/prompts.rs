@@ -79,12 +79,14 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
     funcs
 }
 
-pub fn system(paths: &Vec<String>) -> String {
+pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
     let mut s = "".to_string();
 
-    if !paths.is_empty() {
+    let mut paths = paths.into_iter().peekable();
+
+    if paths.peek().is_some() {
         s.push_str("## PATHS ##\nalias, path\n");
-        for (i, path) in paths.iter().enumerate() {
+        for (i, path) in paths.enumerate() {
             s.push_str(&format!("{}, {}\n", i, path));
         }
     }
