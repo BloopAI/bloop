@@ -60,7 +60,7 @@ spec:
           - --frontend-dist=/frontend
           - --max-threads={{ .Values.bloop.maxThreads }}
           - --answer-api-url={{ .Values.bloop.answerApiUrl }}
-          - --qdrant-url=http://{{ include "qdrant.fullname" . }}:6334
+          - --qdrant-url={{ .Values.qdrant.url }}
           - --instance-domain={{ .Values.bloop.instanceDomain }}
           - --github-app-id={{ .Values.bloop.githubAppId }}
           - --github-app-install-id={{ .Values.bloop.githubAppInstallId }}
