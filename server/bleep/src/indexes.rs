@@ -68,7 +68,7 @@ impl<'a> GlobalWriteHandle<'a> {
         sync_handle: &SyncHandle,
         repo: &Repository,
     ) -> Result<Arc<RepoMetadata>, RepoError> {
-        let metadata = repo.get_repo_metadata().await?;
+        let metadata = repo.get_repo_metadata().await;
 
         futures::future::join_all(self.handles.iter().map(|handle| {
             handle.index(&sync_handle.reporef, repo, &metadata, sync_handle.pipes())
@@ -108,7 +108,7 @@ impl Indexes {
             });
 
             for reporef in refs {
-                FileCache::new(&sql, &reporef).delete().await?;
+                FileCache::for_repo(&sql, &reporef).delete().await?;
             }
         }
         config.source.save_index_version()?;

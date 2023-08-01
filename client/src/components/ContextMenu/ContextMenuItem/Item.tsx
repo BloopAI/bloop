@@ -56,8 +56,8 @@ const Item = ({
         disabled
           ? 'text-label-muted cursor-default'
           : type === MenuItemType.DANGER
-          ? 'hover:bg-bg-base-hover active:bg-transparent text-bg-danger cursor-pointer'
-          : 'hover:bg-bg-base-hover active:bg-transparent text-label-base hover:text-label-title focus:text-label-title active:text-label-title cursor-pointer'
+          ? 'hover:bg-bg-base-hover focus:bg-bg-base-hover active:bg-transparent text-bg-danger cursor-pointer'
+          : 'hover:bg-bg-base-hover focus:bg-bg-base-hover active:bg-transparent text-label-base hover:text-label-title focus:text-label-title active:text-label-title cursor-pointer'
       } flex items-center justify-between rounded text-sm duration-100 relative`}
       onClick={handleClick}
       disabled={disabled}

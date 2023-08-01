@@ -1,9 +1,11 @@
+use crate::repo::RepoRef;
+
 use super::*;
 
 use anyhow::Result;
 use gix::ThreadSafeRepository;
 use regex::RegexSet;
-use tracing::error;
+use tracing::{error, trace};
 
 use std::{
     collections::{BTreeSet, HashMap},
@@ -44,6 +46,7 @@ pub struct GitWalker {
 
 impl GitWalker {
     pub fn open_repository(
+        reporef: &RepoRef,
         dir: impl AsRef<Path>,
         filter: impl Into<Option<BranchFilter>>,
     ) -> Result<Self> {
@@ -64,10 +67,13 @@ impl GitWalker {
         // The easiest here is to check by name, and assume the
         // default remote is `origin`, since we don't configure it
         // otherwise.
-        let head_name = head
-            .clone()
-            .try_into_referent()
-            .map(|r| format!("origin/{}", human_readable_branch_name(&r)));
+        let head_name = head.clone().try_into_referent().map(|r| {
+            if reporef.is_local() {
+                human_readable_branch_name(&r)
+            } else {
+                format!("origin/{}", human_readable_branch_name(&r))
+            }
+        });
 
         let refs = local_git.references()?;
         let trees = if head_name.is_none() && matches!(branches, BranchFilter::Head) {
@@ -95,9 +101,15 @@ impl GitWalker {
                         r,
                     )
                 })
-                // Only consider remote branches
-                //
-                .filter(|(_, name, _)| name.starts_with("origin/"))
+                .filter(|(_, name, _)| {
+                    if reporef.is_local() {
+                        true
+                    } else {
+                        // Only consider remote branches
+                        //
+                        name.starts_with("origin/")
+                    }
+                })
                 // Apply branch filters, along whether it's HEAD
                 //
                 .filter(|(is_head, name, _)| branches.filter(*is_head, name))
@@ -125,6 +137,7 @@ impl GitWalker {
                     .map(move |entry| {
                         let strpath = String::from_utf8_lossy(entry.filepath.as_ref());
                         let full_path = root_dir.join(strpath.as_ref());
+                        trace!(?strpath, ?full_path, "got path from gix");
                         (
                             is_head,
                             branch.clone(),
@@ -151,7 +164,6 @@ impl GitWalker {
                         branches.insert("HEAD".to_string());
                     }
 
-                    // the HEAD branch will not have an origin prefix
                     branches.insert(branch);
                     acc
                 },
@@ -171,6 +183,7 @@ impl FileSource for GitWalker {
         self.entries
             .into_par_iter()
             .filter_map(|((path, kind, oid), branches)| {
+                trace!(?path, "walking over path");
                 let git = self.git.to_thread_local();
                 let Ok(Some(object)) = git.try_find_object(oid) else {
                     error!(?path, ?branches, "can't find object for file");

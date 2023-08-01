@@ -19,7 +19,7 @@ const RegexButton = ({ active, clasName, onClick }: Props) => {
          : 'bg-transparent hover:bg-bg-base text-label-muted'
      }`}
     >
-      <RegexIcon raw />
+      <RegexIcon raw sizeClassName="h-3 w-3" />
     </button>
   );
 };

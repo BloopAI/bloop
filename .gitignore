@@ -41,3 +41,9 @@ playwright-report
 apps/desktop/src-tauri/dylibs/*.so
 apps/desktop/src-tauri/dylibs/*.dll
 apps/desktop/src-tauri/frameworks/*.dylib
+
+# qdrant
+/qdrant/storage
+/qdrant/snapshots
+.qdrant-initialized
+

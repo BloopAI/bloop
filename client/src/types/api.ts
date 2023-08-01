@@ -136,6 +136,9 @@ export interface File {
   contents: string;
   repo_ref: string;
   siblings: DirectoryEntry[];
+  size: number;
+  loc: number;
+  sloc: number;
 }
 
 export interface FileResponse {

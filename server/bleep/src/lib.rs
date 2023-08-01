@@ -20,12 +20,8 @@ use git_version as _;
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
 
-#[cfg(windows)]
-use dunce::canonicalize;
-
 use secrecy::SecretString;
 use state::PersistedState;
-#[cfg(not(windows))]
 use std::fs::canonicalize;
 use user::UserProfile;
 

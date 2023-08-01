@@ -4,15 +4,10 @@ import DialogText from '../DialogText';
 import Button from '../../../components/Button';
 import { ArrowRight } from '../../../icons';
 import SearchableRepoList from '../../../components/RepoList/SearchableRepoList';
-import { scanLocalRepos } from '../../../services/api';
+import { scanLocalRepos, syncRepo } from '../../../services/api';
 import { RepoType, RepoUi } from '../../../types/general';
 import GoBackButton from '../GoBackButton';
 import { splitPath } from '../../../utils';
-import {
-  CHOSEN_SCAN_FOLDER_KEY,
-  getPlainFromStorage,
-  savePlainToStorage,
-} from '../../../services/storage';
 import { DeviceContext } from '../../../context/deviceContext';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 
@@ -42,6 +37,12 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
       scanLocalRepos(chosenFolder)
         .then((data) => {
           const mainFolder = splitPath(chosenFolder).pop() || '';
+
+          if (data.list.length === 1) {
+            syncRepo(data.list[0].ref);
+            handleNext();
+            return;
+          }
 
           setRepos(
             data.list

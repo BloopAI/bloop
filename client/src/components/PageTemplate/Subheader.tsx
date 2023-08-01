@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useCallback, useContext, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import SearchInput from '../SearchInput';
 import { AppNavigationContext } from '../../context/appNavigationContext';
@@ -19,6 +19,7 @@ import FileIcon from '../FileIcon';
 import { DropdownWithIcon } from '../Dropdown';
 import { ContextMenuItem } from '../ContextMenu';
 import { MenuItemType } from '../../types/general';
+import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import BranchSelector from './BranchSelector';
 import RepoHomeBtn from './RepoHomeBtn';
 import Separator from './Separator';
@@ -146,6 +147,22 @@ const Subheader = () => {
       .slice(-10);
     return list;
   }, [navigationHistory, forwardNavigation, navigateBack, navigateForward]);
+
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        if (e.key === 'ArrowLeft' && navigationHistory.length > 1) {
+          e.preventDefault();
+          navigateBack('auto');
+        } else if (e.key === 'ArrowRight' && forwardNavigation.length) {
+          e.preventDefault();
+          navigateForward('auto');
+        }
+      }
+    },
+    [forwardNavigation.length, navigationHistory.length],
+  );
+  useKeyboardNavigation(handleKeyEvent);
 
   return (
     <div className="w-full bg-bg-shade py-2 px-6 flex items-center justify-between border-b border-bg-border shadow-medium relative z-70">

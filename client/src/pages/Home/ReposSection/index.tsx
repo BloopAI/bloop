@@ -55,10 +55,10 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
             return newRepos;
           });
         }
-        if (data.ev?.index_percent) {
+        if (Number.isInteger(data.ev?.index_percent)) {
           setCurrentlySyncingRepo({
             repoRef: data.ref,
-            percentage: data.ev?.index_percent || 1,
+            percentage: data.ev.index_percent,
           });
         }
       } catch {}

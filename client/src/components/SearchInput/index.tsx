@@ -217,6 +217,7 @@ function SearchInput() {
       <div className="flex-1 max-w-3xl">
         <SearchTextInput
           type="search"
+          name="regex_search"
           placeholder={t('Regex search...')}
           regex
           {...getInputProps(

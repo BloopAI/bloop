@@ -196,7 +196,6 @@ module.exports = {
     namedGroups: ["tooltip","summary"],
   },
   plugins: [
-    require('@tailwindcss/line-clamp'),
     require('tailwindcss-labeled-groups')(['custom', 'summary'])
   ],
 };

@@ -279,19 +279,19 @@ impl Repository {
 
     /// Pre-scan the repository to provide supporting metadata for a
     /// new indexing operation
-    pub async fn get_repo_metadata(&self) -> Result<Arc<RepoMetadata>, RepoError> {
+    pub async fn get_repo_metadata(&self) -> Arc<RepoMetadata> {
         let last_commit_unix_secs = gix::open(&self.disk_path)
             .context("failed to open git repo")
             .and_then(|repo| Ok(repo.head()?.peel_to_commit_in_place()?.time()?.seconds))
-            .unwrap_or(0);
+            .ok();
 
         let langs = Default::default();
 
-        Ok(RepoMetadata {
+        RepoMetadata {
             last_commit_unix_secs,
             langs,
         }
-        .into())
+        .into()
     }
 
     /// Marks the repository for removal on the next sync
@@ -312,7 +312,7 @@ impl Repository {
         metadata: Arc<RepoMetadata>,
     ) {
         self.last_index_unix_secs = get_unix_time(SystemTime::now());
-        self.last_commit_unix_secs = metadata.last_commit_unix_secs;
+        self.last_commit_unix_secs = metadata.last_commit_unix_secs.unwrap_or(0);
         self.most_common_lang = metadata
             .langs
             .most_common_lang()
@@ -335,7 +335,7 @@ fn get_unix_time(time: SystemTime) -> u64 {
 
 #[derive(Debug)]
 pub struct RepoMetadata {
-    pub last_commit_unix_secs: u64,
+    pub last_commit_unix_secs: Option<u64>,
     pub langs: language::LanguageInfo,
 }
 
