@@ -14,11 +14,7 @@ import {
 } from '../../../services/api';
 import { AllConversationsResponse } from '../../../types/api';
 import Conversation from '../Conversation';
-import {
-  ChatMessage,
-  ChatMessageAuthor,
-  ChatMessageType,
-} from '../../../types/general';
+import { ChatMessage, ChatMessageAuthor } from '../../../types/general';
 import { conversationsCache } from '../../../services/cache';
 import { mapLoadingSteps } from '../../../mappers/conversation';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
@@ -74,22 +70,21 @@ const AllConversations = ({
     getConversation(threadId).then((resp) => {
       const conv: ChatMessage[] = [];
       resp.forEach((m) => {
+        // @ts-ignore
         const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
-        if (userQuery) {
-          conv.push({
-            author: ChatMessageAuthor.User,
-            text: userQuery.content,
-            isFromHistory: true,
-          });
-        }
+        conv.push({
+          author: ChatMessageAuthor.User,
+          text: m.query?.target?.Plain || userQuery?.content?.query || '',
+          isFromHistory: true,
+        });
         conv.push({
           author: ChatMessageAuthor.Server,
           isLoading: false,
-          type: ChatMessageType.Answer,
           loadingSteps: mapLoadingSteps(m.search_steps, t),
           text: m.conclusion,
           results: m.outcome,
           isFromHistory: true,
+          queryId: m.id,
         });
       });
       setTitle(conv[0].text || '');
@@ -154,11 +149,11 @@ const AllConversations = ({
           <Conversation
             conversation={openItem}
             threadId={openThreadId}
-            queryId={''}
             repoRef={repoRef}
             isLoading={false}
             isHistory
             repoName={repoName}
+            onMessageEdit={() => {}}
           />
         </div>
       )}

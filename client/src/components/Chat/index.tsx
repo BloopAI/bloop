@@ -15,7 +15,6 @@ import {
   ChatMessage,
   ChatMessageAuthor,
   ChatMessageServer,
-  ChatMessageType,
 } from '../../types/general';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { ChatContext } from '../../context/chatContext';
@@ -55,8 +54,6 @@ const Chat = () => {
     setSelectedLines,
     threadId,
     setThreadId,
-    queryId,
-    setQueryId,
   } = useContext(ChatContext);
   const {
     navigateConversationResults,
@@ -68,6 +65,7 @@ const Chat = () => {
   const [showPopup, setShowPopup] = useState(false);
   const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
+  const [parentIdToEdit, setParentIdToEdit] = useState('');
   useOnClickOutside(chatRef, () => setChatOpen(false));
 
   useEffect(() => {
@@ -85,6 +83,7 @@ const Chat = () => {
       prevEventSource?.close();
       setInputValue('');
       setLoading(true);
+      setParentIdToEdit('');
       const eventSource = new EventSource(
         `${apiUrl.replace('https:', '')}/answer?q=${encodeURIComponent(query)}${
           selectedBranch ? ` branch:${selectedBranch}` : ''
@@ -100,7 +99,7 @@ const Chat = () => {
           selectedLines
             ? `&start=${selectedLines[0]}&end=${selectedLines[1]}`
             : ''
-        }`,
+        }${parentIdToEdit ? `&parent_query_id=${parentIdToEdit}` : ''}`,
       );
       prevEventSource = eventSource;
       setSelectedLines(null);
@@ -117,11 +116,11 @@ const Chat = () => {
           const lastMessage: ChatMessage = {
             author: ChatMessageAuthor.Server,
             isLoading: false,
-            type: ChatMessageType.Answer,
             error: t(
               "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
             ),
             loadingSteps: [],
+            queryId: '',
           };
           setInputValue(prev[prev.length - 2]?.text || submittedQuery);
           setSubmittedQuery('');
@@ -145,11 +144,11 @@ const Chat = () => {
               const lastMessage: ChatMessage = {
                 author: ChatMessageAuthor.Server,
                 isLoading: false,
-                type: ChatMessageType.Answer,
                 error: t(
                   "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
                 ),
                 loadingSteps: [],
+                queryId: '',
               };
               setInputValue(prev[prev.length - 1]?.text || submittedQuery);
               setSubmittedQuery('');
@@ -164,7 +163,6 @@ const Chat = () => {
           const data = JSON.parse(ev.data);
           thread_id = data.thread_id;
           setThreadId(data.thread_id);
-          setQueryId(data.query_id);
           return;
         }
         if (ev.data === '[DONE]') {
@@ -185,6 +183,27 @@ const Chat = () => {
           const data = JSON.parse(ev.data);
           if (data.Ok) {
             const newMessage = data.Ok;
+            if (newMessage.conclusion && !conclusionCame) {
+              setChatOpen(true);
+              conclusionCame = true;
+            }
+            setConversation((prev) => {
+              const newConversation = prev?.slice(0, -1) || [];
+              const lastMessage = prev?.slice(-1)[0];
+              const messageToAdd = {
+                author: ChatMessageAuthor.Server,
+                isLoading: true,
+                loadingSteps: mapLoadingSteps(newMessage.search_steps, t),
+                text: newMessage.conclusion,
+                results: newMessage.outcome,
+                queryId: newMessage.id,
+              };
+              const lastMessages: ChatMessage[] =
+                lastMessage?.author === ChatMessageAuthor.Server
+                  ? [messageToAdd]
+                  : [...prev.slice(-1), messageToAdd];
+              return [...newConversation, ...lastMessages];
+            });
             if (
               ((newMessage.outcome?.Filesystem?.length &&
                 !newMessage.conclusion) ||
@@ -202,32 +221,22 @@ const Chat = () => {
               });
               firstResultCame = true;
             }
-            if (newMessage.conclusion && !conclusionCame) {
-              setChatOpen(true);
-              conclusionCame = true;
-            }
-            setConversation((prev) => {
-              const newConversation = prev?.slice(0, -1) || [];
-              const lastMessage = prev?.slice(-1)[0];
-              const messageToAdd = {
-                author: ChatMessageAuthor.Server,
-                isLoading: true,
-                type: ChatMessageType.Answer,
-                loadingSteps: mapLoadingSteps(newMessage.search_steps, t),
-                text: newMessage.conclusion,
-                results: newMessage.outcome,
-              };
-              const lastMessages: ChatMessage[] =
-                lastMessage?.author === ChatMessageAuthor.Server
-                  ? [messageToAdd]
-                  : [...prev.slice(-1), messageToAdd];
-              return [...newConversation, ...lastMessages];
-            });
           } else if (data.Err) {
             setConversation((prev) => {
-              const newConversation = prev.slice(0, -2);
-              const lastMessage = {
-                ...prev.slice(-1)[0],
+              const lastMessageIsServer =
+                prev[prev.length - 1].author === ChatMessageAuthor.Server;
+              const newConversation = prev.slice(
+                0,
+                lastMessageIsServer ? -2 : -1,
+              );
+              const lastMessage: ChatMessageServer = {
+                ...(lastMessageIsServer
+                  ? (prev.slice(-1)[0] as ChatMessageServer)
+                  : {
+                      author: ChatMessageAuthor.Server,
+                      loadingSteps: [],
+                      queryId: '',
+                    }),
                 isLoading: false,
                 error:
                   data.Err === 'request failed 5 times'
@@ -238,7 +247,10 @@ const Chat = () => {
                         "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
                       ),
               };
-              setInputValue(prev[prev.length - 2]?.text || submittedQuery);
+              setInputValue(
+                prev[prev.length - (lastMessageIsServer ? 2 : 1)]?.text ||
+                  submittedQuery,
+              );
               setSubmittedQuery('');
               return [...newConversation, lastMessage];
             });
@@ -259,6 +271,7 @@ const Chat = () => {
       selectedLines,
       selectedBranch,
       t,
+      parentIdToEdit,
     ],
   );
 
@@ -341,6 +354,20 @@ const Chat = () => {
     focusInput();
   }, [navigatedItem?.type]);
 
+  const onMessageEdit = useCallback(
+    (parentQueryId: string, i: number) => {
+      setParentIdToEdit(parentQueryId);
+      if (isLoading) {
+        stopGenerating();
+      }
+      setConversation((prev) => {
+        setInputValue(prev[i].text!);
+        return prev.slice(0, i);
+      });
+    },
+    [isLoading],
+  );
+
   return (
     <>
       <div
@@ -385,10 +412,10 @@ const Chat = () => {
             <Conversation
               conversation={conversation}
               threadId={threadId}
-              queryId={queryId}
               repoRef={tab.key}
               isLoading={isLoading}
               repoName={tab.repoName}
+              onMessageEdit={onMessageEdit}
             />
           )}
           <form onSubmit={onSubmit} className="flex flex-col w-95">
@@ -415,8 +442,9 @@ const Chat = () => {
                         ? [
                             {
                               displayText: t('Responding...'),
-                              content: '',
-                              type: '',
+                              content: { query: '' },
+                              path: '',
+                              type: 'code' as const,
                             },
                           ]
                         : []),

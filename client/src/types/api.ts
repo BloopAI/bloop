@@ -222,10 +222,30 @@ export type AllConversationsResponse = {
   title: string;
 }[];
 
+type ProcStep = {
+  type: 'proc';
+  content: { query: string; paths: string[] };
+};
+
+type CodeStep = {
+  type: 'code';
+  content: { query: string };
+};
+
+type PathStep = {
+  type: 'path';
+  content: { query: string };
+};
+
+export type SearchStepType = ProcStep | CodeStep | PathStep;
+
 export type ConversationType = {
-  search_steps: { content: string; type: string }[];
+  id: string;
+  search_steps: SearchStepType[];
+  query: { target: { Plain: string } };
   conclusion: string;
   outcome: FileSystemResult & ArticleResult;
+  paths: string[];
 };
 
 export interface SuggestionsResponse {

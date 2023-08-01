@@ -1,5 +1,5 @@
 use crate::query::parser::SemanticQuery;
-use std::borrow::Cow;
+use std::{borrow::Cow, mem};
 
 use anyhow::{Context, Result};
 use lazy_regex::regex;
@@ -7,21 +7,27 @@ use regex::Regex;
 use serde::Deserialize;
 use tracing::trace;
 
+use crate::webserver::answer;
+
 /// A continually updated conversation exchange.
 ///
 /// This contains the query from the user, the intermediate steps the model takes, and the final
 /// conclusion from the model alongside the outcome, if any.
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Exchange {
+    pub id: uuid::Uuid,
     pub query: SemanticQuery<'static>,
     pub outcome: Option<Outcome>,
-    search_steps: Vec<SearchStep>,
+    pub search_steps: Vec<SearchStep>,
     conclusion: Option<String>,
+    pub paths: Vec<String>,
+    pub code_chunks: Vec<answer::CodeChunk>,
 }
 
 impl Exchange {
-    pub fn new(query: SemanticQuery<'static>) -> Self {
+    pub fn new(id: uuid::Uuid, query: SemanticQuery<'static>) -> Self {
         Self {
+            id,
             query,
             ..Default::default()
         }
@@ -32,7 +38,13 @@ impl Exchange {
     /// An update should not result in fewer search results or fewer search steps.
     pub fn apply_update(&mut self, update: Update) {
         match update {
-            Update::Step(search_step) => self.search_steps.push(search_step),
+            Update::StartStep(search_step) => self.search_steps.push(search_step),
+            Update::ReplaceStep(search_step) => match (self.search_steps.last_mut(), search_step) {
+                (Some(l @ SearchStep::Path { .. }), r @ SearchStep::Path { .. }) => *l = r,
+                (Some(l @ SearchStep::Code { .. }), r @ SearchStep::Code { .. }) => *l = r,
+                (Some(l @ SearchStep::Proc { .. }), r @ SearchStep::Proc { .. }) => *l = r,
+                _ => panic!("Tried to replace a step that was not found"),
+            },
             Update::Filesystem(file_results) => {
                 self.set_file_results(file_results);
             }
@@ -49,11 +61,8 @@ impl Exchange {
     }
 
     /// Get the query associated with this exchange, if it has been made.
-    pub fn query(&self) -> Option<&str> {
-        self.search_steps.iter().find_map(|step| match step {
-            SearchStep::Query(q) => Some(q.as_str()),
-            _ => None,
-        })
+    pub fn query(&self) -> Option<String> {
+        self.query.target().map(|q| q.to_string())
     }
 
     /// Get the answer associated with this exchange, if it has been made.
@@ -119,6 +128,23 @@ impl Exchange {
         }))
     }
 
+    /// Return a copy of this exchange, with all function call responses redacted.
+    ///
+    /// This is used to reduce the size of an exchange when we send it over the wire, by removing
+    /// data that the front-end does not use.
+    pub fn compressed(&self) -> Self {
+        let mut ex = self.clone();
+
+        ex.code_chunks.clear();
+        ex.paths.clear();
+        ex.search_steps = mem::take(&mut ex.search_steps)
+            .into_iter()
+            .map(|step| step.compressed())
+            .collect();
+
+        ex
+    }
+
     /// Set the current search result list.
     fn set_file_results(&mut self, mut new_results: Vec<FileResult>) {
         let results = self
@@ -182,19 +208,59 @@ impl Outcome {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-#[serde(rename_all = "UPPERCASE", tag = "type", content = "content")]
+#[serde(rename_all = "lowercase", tag = "type", content = "content")]
 #[non_exhaustive]
 pub enum SearchStep {
-    Query(String),
-    Path(String),
-    Code(String),
-    Proc(String),
-    Prompt(String),
+    Path {
+        query: String,
+        response: String,
+    },
+    Code {
+        query: String,
+        response: String,
+    },
+    Proc {
+        query: String,
+        paths: Vec<String>,
+        response: String,
+    },
+}
+
+impl SearchStep {
+    /// Create a "compressed" clone of this step, by redacting all response data.
+    ///
+    /// Used in `Exchange::compressed`.
+    fn compressed(&self) -> Self {
+        match self {
+            Self::Path { query, .. } => Self::Path {
+                query: query.clone(),
+                response: "[hidden, compressed]".into(),
+            },
+            Self::Code { query, .. } => Self::Code {
+                query: query.clone(),
+                response: "[hidden, compressed]".into(),
+            },
+            Self::Proc { query, paths, .. } => Self::Proc {
+                query: query.clone(),
+                paths: paths.clone(),
+                response: "[hidden, compressed]".into(),
+            },
+        }
+    }
+
+    pub fn get_response(&self) -> String {
+        match self {
+            Self::Path { response, .. } => response.clone(),
+            Self::Code { response, .. } => response.clone(),
+            Self::Proc { response, .. } => response.clone(),
+        }
+    }
 }
 
 #[derive(Debug)]
 pub enum Update {
-    Step(SearchStep),
+    StartStep(SearchStep),
+    ReplaceStep(SearchStep),
     Filesystem(Vec<FileResult>),
     Article(String),
     Conclude(String),
