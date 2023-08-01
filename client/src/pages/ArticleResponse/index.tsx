@@ -49,7 +49,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
           conv.push({
             author: ChatMessageAuthor.Server,
             isLoading: false,
-            loadingSteps: mapLoadingSteps(m.search_steps, t, m.paths),
+            loadingSteps: mapLoadingSteps(m.search_steps, t),
             text: m.conclusion,
             results: m.outcome,
             isFromHistory: true,

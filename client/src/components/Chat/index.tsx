@@ -193,11 +193,7 @@ const Chat = () => {
               const messageToAdd = {
                 author: ChatMessageAuthor.Server,
                 isLoading: true,
-                loadingSteps: mapLoadingSteps(
-                  newMessage.search_steps,
-                  t,
-                  newMessage.paths,
-                ),
+                loadingSteps: mapLoadingSteps(newMessage.search_steps, t),
                 text: newMessage.conclusion,
                 results: newMessage.outcome,
                 queryId: newMessage.id,

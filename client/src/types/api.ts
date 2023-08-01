@@ -221,7 +221,7 @@ export type AllConversationsResponse = {
 
 type ProcStep = {
   type: 'proc';
-  content: { query: string; paths: number[] };
+  content: { query: string; paths: string[] };
 };
 
 type CodeStep = {
@@ -229,7 +229,12 @@ type CodeStep = {
   content: { query: string };
 };
 
-export type SearchStepType = ProcStep | CodeStep;
+type PathStep = {
+  type: 'path';
+  content: { query: string };
+};
+
+export type SearchStepType = ProcStep | CodeStep | PathStep;
 
 export type ConversationType = {
   id: string;
