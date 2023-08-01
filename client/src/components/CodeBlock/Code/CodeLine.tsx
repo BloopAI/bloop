@@ -68,7 +68,13 @@ const CodeLine = ({
 
   useEffect(() => {
     if (codeRef.current && searchTerm) {
-      markNode(codeRef.current, new RegExp(searchTerm, 'gi'));
+      markNode(
+        codeRef.current,
+        new RegExp(
+          searchTerm.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'),
+          'gi',
+        ),
+      );
     }
     return () => {
       if (codeRef.current) {

@@ -68,7 +68,10 @@ const TextSearch = ({
         setCurrentHighlightParent(null);
         return;
       }
-      const regex = new RegExp(searchTerm, 'gi');
+      const regex = new RegExp(
+        searchTerm.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'),
+        'gi',
+      );
       if (contentRoot) {
         markNode(contentRoot, regex);
         const allHighlights =
