@@ -140,9 +140,12 @@ export const scanLocalRepos = (path: string) => {
   }
   return http.get(`/repos/scan`, { params: { path } }).then((r) => {
     localScanCache[path] = r.data;
-    setTimeout(() => {
-      delete localScanCache[path];
-    }, 1000 * 60 * 10); // 10 minutes
+    setTimeout(
+      () => {
+        delete localScanCache[path];
+      },
+      1000 * 60 * 10,
+    ); // 10 minutes
     return r.data;
   });
 };
