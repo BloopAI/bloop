@@ -113,3 +113,4 @@ export { default as CodeIcon } from './Code';
 export { default as WrenchAndScrewdriver } from './WrenchAndScrewdriver';
 export { default as Paper } from './Paper';
 export { default as FolderClosed } from './FolderClosed';
+export { default as CopyMD } from './CopyMD';
