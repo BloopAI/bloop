@@ -24,7 +24,7 @@ use tiktoken_rs::CoreBPE;
 use tokio::sync::mpsc::Sender;
 use tracing::{debug, info, warn};
 
-use self::conversations::ConversationId;
+use self::{conversations::ConversationId, exchange::FocusedChunk};
 
 use super::middleware::User;
 use crate::{
@@ -394,21 +394,29 @@ pub async fn explain(
             .insert(Literal::Plain(std::borrow::Cow::Owned(branch)));
     }
 
-    let mut exchange = Exchange::new(query_id, query);
-
-    let snippet = app
+    let file_content = app
         .indexes
         .file
         .by_path(&virtual_req.repo_ref, &params.relative_path, None)
         .await
         .context("failed to conduct path search")?
         .context("path search returned no results")?
-        .content
+        .content;
+
+    let snippet = file_content
         .lines()
         .skip(params.line_start.saturating_sub(1))
         .take(params.line_end + 1 - params.line_start)
         .collect::<Vec<_>>()
         .join("\n");
+
+    let mut exchange = Exchange::new(query_id, query);
+
+    exchange.focused_chunk = Some(FocusedChunk {
+        file_content,
+        start_line: params.line_start,
+        end_line: params.line_end,
+    });
 
     exchange.paths.push(params.relative_path.clone());
     exchange.code_chunks.push(CodeChunk {
