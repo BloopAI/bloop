@@ -3,7 +3,6 @@ use secrecy::ExposeSecret;
 use std::{
     collections::{HashMap, HashSet},
     mem,
-    ops::Range,
     panic::AssertUnwindSafe,
     pin::pin,
     time::Duration,
@@ -348,7 +347,8 @@ async fn execute_agent(
 #[derive(serde::Deserialize)]
 pub struct Explain {
     pub relative_path: String,
-    pub lines: Range<usize>,
+    pub line_start: usize,
+    pub line_end: usize,
     pub repo_ref: RepoRef,
     #[serde(default = "default_thread_id")]
     pub thread_id: uuid::Uuid,
@@ -365,7 +365,7 @@ pub async fn explain(
     let virtual_req = Answer {
         q: format!(
             "Explain lines {} - {} in {}",
-            params.lines.start, params.lines.end, params.relative_path
+            params.line_start, params.line_end, params.relative_path
         ),
         repo_ref: params.repo_ref,
         thread_id: params.thread_id,
@@ -383,7 +383,7 @@ pub async fn explain(
     let query = parser::parse_nl(&virtual_req.q)
         .context("failed to parse virtual answer query")?
         .into_semantic()
-        // We synthesize this, it should never happen.
+        // We synthesize the query, this should never fail.
         .unwrap()
         .into_owned();
 
@@ -396,13 +396,18 @@ pub async fn explain(
         .await
         .context("failed to conduct path search")?
         .context("path search returned no results")?
-        .content;
+        .content
+        .lines()
+        .skip(params.line_start.saturating_sub(1))
+        .take(params.line_end + 1 - params.line_start)
+        .collect::<Vec<_>>()
+        .join("\n");
 
     exchange.paths.push(params.relative_path.clone());
     exchange.code_chunks.push(CodeChunk {
         path: params.relative_path.clone(),
         alias: 0,
-        start_line: 1,
+        start_line: params.line_start as u32,
         end_line: snippet.lines().count() as u32,
         snippet,
     });
