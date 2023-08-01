@@ -239,6 +239,7 @@ const Chat = () => {
                       author: ChatMessageAuthor.Server,
                       loadingSteps: [],
                       queryId: '',
+                      responseTimestamp: new Date().toISOString(),
                     }),
                 isLoading: false,
                 error:
