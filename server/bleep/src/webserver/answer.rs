@@ -3,6 +3,7 @@ use secrecy::ExposeSecret;
 use std::{
     collections::{HashMap, HashSet},
     mem,
+    ops::Range,
     panic::AssertUnwindSafe,
     pin::pin,
     time::Duration,
@@ -23,6 +24,8 @@ use serde_json::json;
 use tiktoken_rs::CoreBPE;
 use tokio::sync::mpsc::Sender;
 use tracing::{debug, info, warn};
+
+use self::conversations::ConversationId;
 
 use super::middleware::User;
 use crate::{
@@ -77,7 +80,7 @@ pub(super) async fn vote(
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
-pub struct Params {
+pub struct Answer {
     pub q: String,
     pub repo_ref: RepoRef,
     #[serde(default = "default_thread_id")]
@@ -90,17 +93,65 @@ fn default_thread_id() -> uuid::Uuid {
     uuid::Uuid::new_v4()
 }
 
-pub(super) async fn handle(
-    Query(params): Query<Params>,
+pub(super) async fn answer(
+    Query(params): Query<Answer>,
     Extension(app): Extension<Application>,
     Extension(user): Extension<User>,
 ) -> super::Result<impl IntoResponse> {
     let query_id = uuid::Uuid::new_v4();
-    let response = _handle(
-        Query(params.clone()),
-        Extension(app.clone()),
-        Extension(user.clone()),
+
+    let conversation_id = ConversationId {
+        user_id: user
+            .login()
+            .ok_or_else(|| super::Error::user("didn't have user ID"))?
+            .to_string(),
+        thread_id: params.thread_id,
+    };
+
+    let (_, mut exchanges) = conversations::load(&app.sql, &conversation_id)
+        .await?
+        .unwrap_or_else(|| (params.repo_ref.clone(), Vec::new()));
+
+    let Answer {
+        rephrase_exchange_id,
+        q,
+        ..
+    } = &params;
+
+    if let Some(rephrase_exchange_id) = rephrase_exchange_id {
+        let rephrase_exchange_index = exchanges
+            .iter()
+            .position(|e| e.id == *rephrase_exchange_id)
+            .ok_or_else(|| super::Error::user("parent query id not found in exchanges"))?;
+
+        exchanges.truncate(rephrase_exchange_index);
+    }
+
+    let query = parser::parse_nl(q)
+        .context("parse error")?
+        .into_semantic()
+        .context("got a 'Grep' query")?
+        .into_owned();
+    let query_target = query
+        .target
+        .as_ref()
+        .context("query was empty")?
+        .as_plain()
+        .context("user query was not plain text")?
+        .clone()
+        .into_owned();
+
+    let action = Action::Query(query_target);
+    exchanges.push(Exchange::new(query_id, query));
+
+    let response = execute_agent(
+        params.clone(),
+        app.clone(),
+        user.clone(),
         query_id,
+        conversation_id,
+        exchanges,
+        action,
     )
     .await;
 
@@ -121,27 +172,18 @@ pub(super) async fn handle(
     response
 }
 
-pub(super) async fn _handle(
-    Query(params): Query<Params>,
-    Extension(app): Extension<Application>,
-    Extension(user): Extension<User>,
+async fn execute_agent(
+    params: Answer,
+    app: Application,
+    user: User,
     query_id: uuid::Uuid,
+    conversation_id: ConversationId,
+    exchanges: Vec<Exchange>,
+    mut action: Action,
 ) -> super::Result<
     Sse<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>,
 > {
     QueryLog::new(&app.sql).insert(&params.q).await?;
-
-    let conversation_id = conversations::ConversationId {
-        user_id: user
-            .login()
-            .ok_or_else(|| super::Error::user("didn't have user ID"))?
-            .to_string(),
-        thread_id: params.thread_id,
-    };
-
-    let (repo_ref, mut exchanges) = conversations::load(&app.sql, &conversation_id)
-        .await?
-        .unwrap_or_else(|| (params.repo_ref.clone(), Vec::new()));
 
     let gh_token = app
         .github_token()
@@ -179,40 +221,12 @@ pub(super) async fn _handle(
         }
     };
 
-    let Params {
+    let Answer {
         thread_id,
-        rephrase_exchange_id,
-        q,
+        repo_ref,
         ..
-    } = params;
-
-    if let Some(rephrase_exchange_id) = rephrase_exchange_id {
-        let rephrase_exchange_index = exchanges
-            .iter()
-            .position(|e| e.id == rephrase_exchange_id)
-            .ok_or_else(|| super::Error::user("parent query id not found in exchanges"))?;
-
-        exchanges.truncate(rephrase_exchange_index);
-    }
-
-    let query = parser::parse_nl(&q)
-        .context("parse error")?
-        .into_semantic()
-        .context("got a 'Grep' query")?
-        .into_owned();
-    let query_target = query
-        .target
-        .as_ref()
-        .context("query was empty")?
-        .as_plain()
-        .context("user query was not plain text")?
-        .clone()
-        .into_owned();
-
-    exchanges.push(Exchange::new(query_id, query));
-
+    } = params.clone();
     let stream = async_stream::try_stream! {
-        let mut action = Action::Query(query_target);
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
         let mut agent = Agent {
@@ -326,6 +340,85 @@ pub(super) async fn _handle(
     Ok(Sse::new(Box::pin(stream)))
 }
 
+#[derive(serde::Deserialize)]
+pub struct Explain {
+    pub relative_path: String,
+    pub lines: Range<usize>,
+    pub repo_ref: RepoRef,
+    #[serde(default = "default_thread_id")]
+    pub thread_id: uuid::Uuid,
+}
+
+pub async fn explain(
+    Query(params): Query<Explain>,
+    Extension(app): Extension<Application>,
+    Extension(user): Extension<User>,
+) -> super::Result<impl IntoResponse> {
+    let query_id = uuid::Uuid::new_v4();
+
+    // We synthesize a virtual `/answer` request.
+    let virtual_req = Answer {
+        q: format!(
+            "Explain lines {} - {} in {}",
+            params.lines.start, params.lines.end, params.relative_path
+        ),
+        repo_ref: params.repo_ref,
+        thread_id: params.thread_id,
+        rephrase_exchange_id: None,
+    };
+
+    let conversation_id = ConversationId {
+        thread_id: params.thread_id,
+        user_id: user
+            .login()
+            .ok_or_else(|| super::Error::user("didn't have user ID"))?
+            .to_string(),
+    };
+
+    let query = parser::parse_nl(&virtual_req.q)
+        .context("failed to parse virtual answer query")?
+        .into_semantic()
+        // We synthesize this, it should never happen.
+        .unwrap()
+        .into_owned();
+
+    let mut exchange = Exchange::new(query_id, query);
+
+    let snippet = app
+        .indexes
+        .file
+        .by_path(&virtual_req.repo_ref, &params.relative_path, None)
+        .await
+        .context("failed to conduct path search")?
+        .context("path search returned no results")?
+        .content;
+
+    exchange.paths.push(params.relative_path.clone());
+    exchange.code_chunks.push(CodeChunk {
+        path: params.relative_path.clone(),
+        alias: 0,
+        start_line: 1,
+        end_line: snippet.lines().count() as u32,
+        snippet,
+    });
+
+    let action = Action::Answer {
+        mode: AnswerMode::Article,
+        paths: vec![0],
+    };
+
+    execute_agent(
+        virtual_req,
+        app,
+        user,
+        query_id,
+        conversation_id,
+        vec![exchange],
+        action,
+    )
+    .await
+}
+
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CodeChunk {
     path: String,
@@ -390,6 +483,7 @@ impl Drop for Agent {
 impl Agent {
     /// Mark this agent as "completed", preventing an analytics message from sending on drop.
     fn complete(&mut self) {
+        // Checked in `Drop::drop`
         self.complete = true;
     }
 
@@ -475,8 +569,9 @@ impl Agent {
         )
         .unwrap();
 
+        let paths = self.paths();
         let mut history = vec![llm_gateway::api::Message::system(&prompts::system(
-            &self.paths(),
+            paths.iter().map(String::as_str),
         ))];
         history.extend(self.history()?);
 
