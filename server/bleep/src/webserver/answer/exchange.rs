@@ -136,6 +136,7 @@ impl Exchange {
         let mut ex = self.clone();
 
         ex.code_chunks.clear();
+        ex.paths.clear();
         ex.search_steps = mem::take(&mut ex.search_steps)
             .into_iter()
             .map(|step| step.compressed())
@@ -220,7 +221,7 @@ pub enum SearchStep {
     },
     Proc {
         query: String,
-        paths: Vec<usize>,
+        paths: Vec<String>,
         response: String,
     },
 }
@@ -252,31 +253,6 @@ impl SearchStep {
             Self::Path { response, .. } => response.clone(),
             Self::Code { response, .. } => response.clone(),
             Self::Proc { response, .. } => response.clone(),
-        }
-    }
-
-    pub fn serialize_call(&self) -> (String, String) {
-        match self {
-            SearchStep::Path { query, .. } => (
-                "path".to_owned(),
-                format!("{{\n \"query\": \"{query}\"\n}}"),
-            ),
-            SearchStep::Code { query, .. } => (
-                "code".to_owned(),
-                format!("{{\n \"query\": \"{query}\"\n}}"),
-            ),
-
-            SearchStep::Proc { query, paths, .. } => (
-                "proc".to_owned(),
-                format!(
-                    "{{\n \"paths\": [{}],\n \"query\": \"{query}\"\n}}",
-                    paths
-                        .iter()
-                        .map(usize::to_string)
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
-            ),
         }
     }
 }

@@ -630,7 +630,7 @@ impl Agent {
         Ok(response)
     }
 
-    async fn process_files(&mut self, question: &str, path_aliases: &[usize]) -> Result<String> {
+    async fn process_files(&mut self, query: &str, path_aliases: &[usize]) -> Result<String> {
         const MAX_CHUNK_LINE_LENGTH: usize = 20;
         const CHUNK_MERGE_DISTANCE: usize = 10;
         const MAX_TOKENS: usize = 15400;
@@ -643,8 +643,8 @@ impl Agent {
             .map_err(|i| anyhow!("invalid path alias {i}"))?;
 
         self.update(Update::StartStep(SearchStep::Proc {
-            query: question.to_string(),
-            paths: path_aliases.to_vec(),
+            query: query.to_string(),
+            paths: paths.clone(),
             response: String::new(),
         }))
         .await?;
@@ -691,7 +691,7 @@ impl Agent {
                 // We store the lines separately, so that we can reference them later to trim
                 // this snippet by line number.
                 let contents = lines.join("\n");
-                let prompt = prompts::file_explanation(question, &path, &contents);
+                let prompt = prompts::file_explanation(query, &path, &contents);
 
                 debug!(?path, "calling chat API on file");
 
@@ -831,15 +831,15 @@ impl Agent {
         let response = serde_json::to_string(&out)?;
 
         self.update(Update::ReplaceStep(SearchStep::Proc {
-            query: question.to_string(),
-            paths: path_aliases.to_vec(),
+            query: query.to_string(),
+            paths,
             response: response.clone(),
         }))
         .await?;
 
         self.track_query(
             EventData::input_stage("process file")
-                .with_payload("question", question)
+                .with_payload("question", query)
                 .with_payload("chunks", &out)
                 .with_payload("raw_prompt", &response),
         );
@@ -1123,7 +1123,33 @@ impl Agent {
                     .ok_or_else(|| anyhow!("query does not have target"))?;
 
                 let steps = e.search_steps.iter().flat_map(|s| {
-                    let (name, arguments) = s.serialize_call();
+                    let (name, arguments) = match s {
+                        SearchStep::Path { query, .. } => (
+                            "path".to_owned(),
+                            format!("{{\n \"query\": \"{query}\"\n}}"),
+                        ),
+                        SearchStep::Code { query, .. } => (
+                            "code".to_owned(),
+                            format!("{{\n \"query\": \"{query}\"\n}}"),
+                        ),
+                        SearchStep::Proc { query, paths, .. } => (
+                            "proc".to_owned(),
+                            format!(
+                                "{{\n \"paths\": [{}],\n \"query\": \"{query}\"\n}}",
+                                paths
+                                    .iter()
+                                    .map(|path| self
+                                        .paths()
+                                        .iter()
+                                        .position(|p| p == path)
+                                        .unwrap()
+                                        .to_string())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            ),
+                        ),
+                    };
+
                     vec![
                         llm_gateway::api::Message::function_call(&FunctionCall {
                             name: Some(name.clone()),
