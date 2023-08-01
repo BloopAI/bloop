@@ -110,7 +110,9 @@ const AllConversations = ({
             <ArrowLeft sizeClassName="w-4 h-4" />
           </ChipButton>
         )}
-        <p className="flex-1 body-m">{openItem ? title : t('Conversations')}</p>
+        <p className="flex-1 body-m ellipsis">
+          {openItem ? title : t('Conversations')}
+        </p>
         {!openItem && (
           <ChipButton
             onClick={() => {
@@ -160,7 +162,7 @@ const AllConversations = ({
           />
         </div>
       )}
-      <div className="backdrop-blur-6 bg-chat-bg-base/75 -mt-10">
+      <div className="backdrop-blur-6 bg-chat-bg-base/75 -mt-10 z-40">
         <div
           className="p-4"
           onClick={() => {
