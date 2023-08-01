@@ -1,8 +1,7 @@
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ChevronRightFilled, FolderClosed } from '../../icons';
 import FileIcon from '../FileIcon';
 import { DirectoryEntry } from '../../types/api';
-import { AppNavigationContext } from '../../context/appNavigationContext';
 
 type Props = {
   name: string;
@@ -55,7 +54,7 @@ const DirEntry = ({
       className="flex flex-col transition-all ease-linear overflow-hidden flex-shrink-0 w-full min-w-fit"
     >
       <button
-        className={`min-w-full h-7 flex items-center gap-1.5 py-2 px-3 cursor-pointer caption 
+        className={`min-w-full w-max text-left h-7 flex items-center gap-1.5 py-2 px-3 cursor-pointer caption 
       ${
         currentPath === fullPath
           ? 'bg-bg-shade'

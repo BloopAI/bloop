@@ -50,6 +50,8 @@ const PublicGithubReposStep = ({
         .replace('https://', '')
         .replace('github.com/', '')
         .replace(/\.git$/, '')
+        .replace(/"$/, '')
+        .replace(/^"/, '')
         .replace(/\/$/, '');
       if (newRepoValue.startsWith('git@github.com:')) {
         cleanRef = newRepoValue.slice(15).replace(/\.git$/, '');
