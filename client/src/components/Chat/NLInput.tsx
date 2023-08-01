@@ -32,7 +32,7 @@ type Props = {
   selectedLines?: [number, number] | null;
   setSelectedLines?: (l: [number, number] | null) => void;
   queryIdToEdit?: string;
-  onMessageEditCancel: () => void;
+  onMessageEditCancel?: () => void;
 };
 
 const defaultPlaceholder = 'Anything I can help you with?';
