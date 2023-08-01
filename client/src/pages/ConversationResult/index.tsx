@@ -59,16 +59,17 @@ const ConversationResult = ({ recordId, threadId }: Props) => {
       getConversation(threadId).then((resp) => {
         const conv: ChatMessage[] = [];
         resp.forEach((m) => {
+          // @ts-ignore
           const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
           conv.push({
             author: ChatMessageAuthor.User,
-            text: m.query?.target?.Plain || userQuery?.content?.call || '',
+            text: m.query?.target?.Plain || userQuery?.content?.query || '',
             isFromHistory: true,
           });
           conv.push({
             author: ChatMessageAuthor.Server,
             isLoading: false,
-            loadingSteps: mapLoadingSteps(m.search_steps, t),
+            loadingSteps: mapLoadingSteps(m.search_steps, t, m.paths),
             text: m.conclusion,
             results: m.outcome,
             isFromHistory: true,

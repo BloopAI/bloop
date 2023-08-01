@@ -219,12 +219,25 @@ export type AllConversationsResponse = {
   title: string;
 }[];
 
+type ProcStep = {
+  type: 'proc';
+  content: { query: string; paths: number[] };
+};
+
+type CodeStep = {
+  type: 'code';
+  content: { query: string };
+};
+
+export type SearchStepType = ProcStep | CodeStep;
+
 export type ConversationType = {
   id: string;
-  search_steps: { content: { call: string }; type: string }[];
+  search_steps: SearchStepType[];
   query: { target: { Plain: string } };
   conclusion: string;
   outcome: FileSystemResult & ArticleResult;
+  paths: string[];
 };
 
 export interface SuggestionsResponse {

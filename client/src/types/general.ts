@@ -1,4 +1,5 @@
 import React, { ReactElement } from 'react';
+import { SearchStepType } from './api';
 import { RepoSource } from './index';
 
 export enum MenuItemType {
@@ -185,9 +186,8 @@ export type MessageResultModify = {
   };
 };
 
-export type ChatLoadingStep = {
-  type: string;
-  content: { call: string };
+export type ChatLoadingStep = SearchStepType & {
+  path: string;
   displayText: string;
 };
 

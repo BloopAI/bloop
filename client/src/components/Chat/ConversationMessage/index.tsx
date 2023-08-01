@@ -86,12 +86,12 @@ const ConversationMessage = ({
               className="flex gap-2 caption text-label-base items-center"
               key={i}
             >
-              {s.type === 'PROC' ? <PointClick /> : <MagnifyTool />}
-              <span>{s.type === 'PROC' ? t('Reading ') : s.displayText}</span>
-              {s.type === 'PROC' ? (
+              {s.type === 'proc' ? <PointClick /> : <MagnifyTool />}
+              <span>{s.type === 'proc' ? t('Reading ') : s.displayText}</span>
+              {s.type === 'proc' ? (
                 <FileChip
-                  onClick={() => openFileModal(s.content.call)}
-                  fileName={s.content.call.split('/').pop() || ''}
+                  onClick={() => openFileModal(s.path)}
+                  fileName={s.path.split('/').pop() || ''}
                 />
               ) : null}
             </div>

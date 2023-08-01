@@ -193,7 +193,11 @@ const Chat = () => {
               const messageToAdd = {
                 author: ChatMessageAuthor.Server,
                 isLoading: true,
-                loadingSteps: mapLoadingSteps(newMessage.search_steps, t),
+                loadingSteps: mapLoadingSteps(
+                  newMessage.search_steps,
+                  t,
+                  newMessage.paths,
+                ),
                 text: newMessage.conclusion,
                 results: newMessage.outcome,
                 queryId: newMessage.id,
@@ -442,8 +446,9 @@ const Chat = () => {
                         ? [
                             {
                               displayText: t('Responding...'),
-                              content: { call: '' },
-                              type: '',
+                              content: { query: '' },
+                              path: '',
+                              type: 'code' as const,
                             },
                           ]
                         : []),
