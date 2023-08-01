@@ -854,36 +854,26 @@ impl Agent {
 
         let mut s = "".to_owned();
 
-        let mut path_aliases = aliases
+        let mut aliases = aliases
             .iter()
             .copied()
             .filter(|alias| *alias < paths.len())
             .collect::<Vec<_>>();
 
-        path_aliases.sort();
-        path_aliases.dedup();
+        aliases.sort();
+        aliases.dedup();
 
-        if !paths.is_empty() {
+        debug!(?paths, ?aliases, "created filtered path alias list");
+
+        if !aliases.is_empty() {
             s += "##### PATHS #####\npath alias, path\n";
 
-            if path_aliases.len() == 1 {
-                // Only show matching path
-                let alias = path_aliases[0];
-                let path = paths[alias].clone();
-                s += &format!("{alias}, {}\n", &path);
-            } else {
-                // Show all paths that have been seen
-                for (alias, path) in paths.iter().enumerate() {
-                    s += &format!("{alias}, {}\n", &path);
-                }
+            for alias in aliases.iter() {
+                s += &format!("{alias}, {}\n", paths[*alias]);
             }
         }
 
-        let code_chunks = self.canonicalize_code_chunks(aliases, gpt_model).await;
-
-        const PROMPT_HEADROOM: usize = 1500;
-        let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")?;
-        let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens("gpt-4", &s)?;
+        let code_chunks = self.canonicalize_code_chunks(&aliases, gpt_model).await;
 
         // Select as many recent chunks as possible
         let mut recent_chunks = Vec::new();
@@ -897,17 +887,7 @@ impl Agent {
 
             let formatted_snippet = format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
 
-            let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
-
-            if snippet_tokens >= remaining_prompt_tokens - PROMPT_HEADROOM {
-                debug!("Breaking at {} tokens...", remaining_prompt_tokens);
-                break;
-            }
-
             recent_chunks.push((chunk.clone(), formatted_snippet));
-
-            remaining_prompt_tokens -= snippet_tokens;
-            debug!("{}", remaining_prompt_tokens);
         }
 
         // group recent chunks by path alias
@@ -941,6 +921,8 @@ impl Agent {
 
     async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
         const ANSWER_ARTICLE_MODEL: &str = "gpt-4-0613";
+
+        debug!(?aliases, "creating article response");
 
         let context = self.answer_context(aliases, ANSWER_ARTICLE_MODEL).await?;
         let history = self.utter_history().collect::<Vec<_>>();
@@ -1101,10 +1083,12 @@ impl Agent {
         aliases: &[usize],
         gpt_model: &str,
     ) -> Vec<CodeChunk> {
+        debug!(?aliases, "canonicalizing code chunks");
+
         /// The ratio of code tokens to context size.
         ///
         /// Making this closure to 1 means that more of the context is taken up by source code.
-        const CONTEXT_CODE_RATIO: f32 = 0.7;
+        const CONTEXT_CODE_RATIO: f32 = 0.6;
 
         let bpe = tiktoken_rs::get_bpe_from_model(gpt_model).unwrap();
         let context_size = tiktoken_rs::model::get_context_size(gpt_model);
@@ -1117,6 +1101,8 @@ impl Agent {
                 .or_default()
                 .push(c.start_line..c.end_line);
         }
+
+        debug!(?spans_by_path, "expanding spans");
 
         let self_ = &*self;
         // Map of path -> line list
@@ -1212,6 +1198,8 @@ impl Agent {
                     });
             }
         }
+
+        debug!(?spans_by_path, "expanded spans");
 
         spans_by_path
             .into_iter()
