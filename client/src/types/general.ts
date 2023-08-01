@@ -211,7 +211,7 @@ export type ChatMessageServer = {
   loadingSteps: ChatLoadingStep[];
   error?: string;
   isFromHistory?: boolean;
-  results?: FileSystemResult & ArticleResult;
+  results?: string;
   queryId: string;
   responseTimestamp: string;
 };

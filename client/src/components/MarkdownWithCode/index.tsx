@@ -9,7 +9,7 @@ import { ReactMarkdownProps } from 'react-markdown/lib/complex-types';
 import { CodeProps } from 'react-markdown/lib/ast-to-react';
 import FileChip from '../Chat/ConversationMessage/FileChip';
 import CodeWithBreadcrumbs from '../../pages/ArticleResponse/CodeWithBreadcrumbs';
-import NewCode from '../../pages/ConversationResult/NewCode';
+import NewCode from './NewCode';
 
 type Props = {
   openFileModal: (

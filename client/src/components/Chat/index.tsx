@@ -207,19 +207,10 @@ const Chat = () => {
                   : [...prev.slice(-1), messageToAdd];
               return [...newConversation, ...lastMessages];
             });
-            if (
-              ((newMessage.outcome?.Filesystem?.length &&
-                !newMessage.conclusion) ||
-                newMessage.outcome?.Article?.length) &&
-              !firstResultCame
-            ) {
+            if (newMessage.outcome?.length && !firstResultCame) {
               setConversation((prev) => {
-                if (newMessage.outcome?.Article?.length) {
-                  setChatOpen(false);
-                  navigateArticleResponse(prev.length - 1, thread_id);
-                } else {
-                  navigateConversationResults(prev.length - 1, thread_id);
-                }
+                setChatOpen(false);
+                navigateArticleResponse(prev.length - 1, thread_id);
                 return prev;
               });
               firstResultCame = true;
@@ -442,7 +433,7 @@ const Chat = () => {
                         conversation[
                           conversation.length - 1
                         ] as ChatMessageServer
-                      )?.results?.Article?.length
+                      )?.results?.length
                         ? [
                             {
                               displayText: t('Responding...'),

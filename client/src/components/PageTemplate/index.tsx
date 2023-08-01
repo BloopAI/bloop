@@ -30,7 +30,6 @@ const PageTemplate = ({ children, renderPage }: PropsWithChildren<Props>) => {
         style={mainContainerStyle}
       >
         {renderPage !== 'article-response' &&
-          renderPage !== 'conversation-result' &&
           renderPage !== 'repo' &&
           renderPage !== 'home' && <LeftSidebar renderPage={renderPage} />}
         {children}

@@ -15,12 +15,7 @@ import {
   WrenchAndScrewdriver,
 } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
-import {
-  ArticleResult,
-  ChatLoadingStep,
-  ChatMessageAuthor,
-  FileSystemResult,
-} from '../../../types/general';
+import { ChatLoadingStep, ChatMessageAuthor } from '../../../types/general';
 import { ChatContext } from '../../../context/chatContext';
 import Button from '../../Button';
 import { FileModalContext } from '../../../context/fileModalContext';
@@ -28,7 +23,6 @@ import { LocaleContext } from '../../../context/localeContext';
 import MessageFeedback from './MessageFeedback';
 import FileChip from './FileChip';
 import SummaryCardsArticle from './SummaryCards/SummaryCardsArticle';
-import SummaryCardsFilesystem from './SummaryCards/SummaryCardsFilesystem';
 
 type Props = {
   author: ChatMessageAuthor;
@@ -44,7 +38,7 @@ type Props = {
   scrollToBottom?: () => void;
   isLoading?: boolean;
   loadingSteps?: ChatLoadingStep[];
-  results?: FileSystemResult & ArticleResult;
+  results?: string;
   i: number;
   onMessageEdit: (i: number) => void;
 };
@@ -142,21 +136,13 @@ const ConversationMessage = ({
       )}
       {message ? (
         <>
-          {!isLoading &&
-          (!!results?.Article || !!results?.Filesystem?.length) ? (
+          {!isLoading && !!results?.length ? (
             <div className="mt-3 select-none cursor-default group-summary">
-              {!!results?.Article ? (
+              {!!results ? (
                 <SummaryCardsArticle
-                  article={results.Article}
+                  article={results}
                   threadId={threadId}
                   i={i}
-                />
-              ) : !!results?.Filesystem?.length ? (
-                <SummaryCardsFilesystem
-                  repoName={repoName}
-                  results={results.Filesystem}
-                  i={i}
-                  threadId={threadId}
                 />
               ) : null}
             </div>

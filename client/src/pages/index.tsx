@@ -18,7 +18,6 @@ import ResultsPage from './Results';
 import ViewResult from './ResultFull';
 import NoResults from './Results/NoResults';
 import HomePage from './Home';
-import ConversationResult from './ConversationResult';
 import ArticleResponse from './ArticleResponse';
 
 const mockQuerySuggestions = [
@@ -35,7 +34,6 @@ export type RenderPage =
   | 'full-result'
   | 'no-results'
   | 'home'
-  | 'conversation-result'
   | 'article-response';
 
 let prevRenderPage: RenderPage;
@@ -112,14 +110,9 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
     }
     if (
       navigatedItem?.type &&
-      ['conversation-result', 'full-result', 'article-response'].includes(
-        navigatedItem.type,
-      )
+      ['full-result', 'article-response'].includes(navigatedItem.type)
     ) {
-      return navigatedItem.type as
-        | 'conversation-result'
-        | 'full-result'
-        | 'article-response';
+      return navigatedItem.type as 'full-result' | 'article-response';
     }
     if (!data?.data?.[0] && !loading) {
       return 'no-results';
@@ -183,13 +176,6 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
             isLoading={loading}
             repoName={tab.repoName}
             selectedBranch={selectedBranch}
-          />
-        );
-      case 'conversation-result':
-        return (
-          <ConversationResult
-            recordId={navigatedItem?.recordId!}
-            threadId={navigatedItem?.threadId!}
           />
         );
       case 'article-response':

@@ -1,12 +1,12 @@
 import React, { useCallback, useContext, useMemo, useState } from 'react';
-import Code from '../../components/CodeBlock/Code';
-import Button from '../../components/Button';
+import Code from '../CodeBlock/Code';
+import Button from '../Button';
 import { Clipboard } from '../../icons';
 import { copyToClipboard } from '../../utils';
-import FileIcon from '../../components/FileIcon';
+import FileIcon from '../FileIcon';
 import { MessageResultModify } from '../../types/general';
 import { FileTreeFileType } from '../../types';
-import BreadcrumbsPath from '../../components/BreadcrumbsPath';
+import BreadcrumbsPath from '../BreadcrumbsPath';
 import { FileModalContext } from '../../context/fileModalContext';
 
 type Props = {
