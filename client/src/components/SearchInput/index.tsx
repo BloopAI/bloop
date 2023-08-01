@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next';
 import { useArrowKeyNavigation } from '../../hooks/useArrowNavigationHook';
 import { SearchContext } from '../../context/searchContext';
 import { parseFilters } from '../../utils';
-import { saveJsonToStorage, SEARCH_HISTORY_KEY } from '../../services/storage';
 import { getAutocomplete } from '../../services/api';
 import {
   LangResult,
@@ -20,7 +19,6 @@ import {
 } from '../../types/results';
 import { mapResults } from '../../mappers/results';
 import useAppNavigation from '../../hooks/useAppNavigation';
-import { SearchType } from '../../types/general';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { UIContext } from '../../context/uiContext';
 import AutocompleteMenu from './AutocompleteMenu';
@@ -40,17 +38,13 @@ const getAutocompleteThrottled = throttle(
 
 function SearchInput() {
   const { t } = useTranslation();
-  const {
-    inputValue,
-    setInputValue,
-    setFilters,
-    filters,
-    setSearchHistory,
-    globalRegex,
-    setGlobalRegex,
-    selectedBranch,
-  } = useContext(SearchContext);
-  const { tab } = useContext(UIContext);
+  const { inputValue, setInputValue } = useContext(SearchContext.InputValue);
+  const { tab } = useContext(UIContext.Tab);
+  const { selectedBranch } = useContext(SearchContext.SelectedBranch);
+  const { setFilters, filters } = useContext(SearchContext.Filters);
+  const { globalRegex, setGlobalRegex } = useContext(
+    SearchContext.RegexEnabled,
+  );
   const [options, setOptions] = useState<SuggestionType[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
@@ -191,18 +185,6 @@ function SearchInput() {
       }
       navigateSearch(val);
       closeMenu();
-      setSearchHistory((prev) => {
-        const newHistory = [
-          {
-            query: val,
-            searchType: SearchType.REGEX,
-            timestamp: new Date().toISOString(),
-          },
-          ...prev,
-        ].slice(0, 29);
-        saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
-        return newHistory;
-      });
     },
     [tab.name, selectedBranch],
   );

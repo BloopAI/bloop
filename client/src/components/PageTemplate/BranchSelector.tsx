@@ -28,9 +28,11 @@ const BranchSelector = () => {
   useOnClickOutside(contextMenuRef, () => setOpen(false));
 
   const { apiUrl, isSelfServe } = useContext(DeviceContext);
-  const { tab } = useContext(UIContext);
+  const { tab } = useContext(UIContext.Tab);
   const { repositories, setRepositories } = useContext(RepositoriesContext);
-  const { selectedBranch, setSelectedBranch } = useContext(SearchContext);
+  const { selectedBranch, setSelectedBranch } = useContext(
+    SearchContext.SelectedBranch,
+  );
 
   const currentRepo = useMemo(() => {
     return repositories?.find((r) => r.ref === tab.key);

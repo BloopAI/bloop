@@ -34,7 +34,7 @@ export const themesMap = {
 
 const Preferences = () => {
   const { t } = useTranslation();
-  const { theme, setTheme } = useContext(UIContext);
+  const { theme, setTheme } = useContext(UIContext.Theme);
 
   return (
     <div className="w-full relative">

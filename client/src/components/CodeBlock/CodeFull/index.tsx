@@ -113,8 +113,8 @@ const CodeFull = ({
     setSelectedLines,
     setConversation,
     setThreadId,
-  } = useContext(ChatContext);
-  const { setRightPanelOpen } = useContext(UIContext);
+  } = useContext(ChatContext.Setters);
+  const { setRightPanelOpen } = useContext(UIContext.RightPanel);
   const { navigateFullResult } = useAppNavigation();
 
   const [isSearchActive, setSearchActive] = useState(false);

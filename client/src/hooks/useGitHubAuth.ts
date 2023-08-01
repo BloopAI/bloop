@@ -23,7 +23,7 @@ export const useGitHubAuth = (
   const [tokenExpireIn, setTokenExpireIn] = useState<string | null>(null);
   const [timer, setTimer] = useState(0);
   const [deadline, setDeadline] = useState(Date.now() + 10 * 60 * 1000);
-  const { setGithubConnected } = useContext(UIContext);
+  const { setGithubConnected } = useContext(UIContext.GitHubConnected);
   const { openLink } = useContext(DeviceContext);
 
   useEffect(() => {
@@ -79,13 +79,10 @@ export const useGitHubAuth = (
         setTimer((prevState) => prevState + 0.5);
       }, 500);
       checkGHAuth();
-      setTimeout(
-        () => {
-          clearInterval(intervalId);
-          setAuthenticationFailed(true);
-        },
-        10 * 60 * 1000,
-      );
+      setTimeout(() => {
+        clearInterval(intervalId);
+        setAuthenticationFailed(true);
+      }, 10 * 60 * 1000);
 
       return () => {
         if (intervalId) {

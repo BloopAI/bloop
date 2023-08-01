@@ -29,9 +29,11 @@ type Props = {
 
 const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
   const { t } = useTranslation();
-  const { isGithubConnected, setGithubConnected } = useContext(UIContext);
+  const { isGithubConnected, setGithubConnected } = useContext(
+    UIContext.GitHubConnected,
+  );
   const { envConfig, openLink } = useContext(DeviceContext);
-  const { theme, setTheme } = useContext(UIContext);
+  const { theme, setTheme } = useContext(UIContext.Theme);
 
   const handleLogout = useCallback(() => {
     gitHubLogout();

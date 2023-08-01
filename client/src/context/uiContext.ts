@@ -28,29 +28,52 @@ type ContextType = {
   setPromptGuideOpen: (b: boolean) => void;
 };
 
-export const UIContext = createContext<ContextType>({
-  isSettingsOpen: false,
-  setSettingsOpen: (b) => {},
-  symbolsCollapsed: true,
-  setSymbolsCollapsed: (b) => {},
-  settingsSection: 0,
-  setSettingsSection: (s) => {},
-  onBoardingState: {},
-  setOnBoardingState: (state: Record<string, any>) => {},
-  isBugReportModalOpen: false,
-  setBugReportModalOpen: () => {},
-  isGithubConnected: false,
-  setGithubConnected: () => {},
-  isGithubChecked: false,
-  shouldShowWelcome: false,
-  setShouldShowWelcome: () => {},
-  isRightPanelOpen: false,
-  setRightPanelOpen: () => {},
-  isFiltersOpen: false,
-  setFiltersOpen: () => {},
-  isPromptGuideOpen: false,
-  setPromptGuideOpen: () => {},
-  tab: { key: 'initial', name: 'Home', repoName: '' },
-  theme: 'system',
-  setTheme: () => {},
-});
+export const UIContext = {
+  Settings: createContext({
+    isSettingsOpen: false,
+    setSettingsOpen: (b: boolean) => {},
+    settingsSection: 0,
+    setSettingsSection: (n: number) => {},
+  }),
+  Symbols: createContext({
+    symbolsCollapsed: true,
+    setSymbolsCollapsed: (b: boolean) => {},
+  }),
+  Onboarding: createContext({
+    shouldShowWelcome: false,
+    setShouldShowWelcome: (b: boolean) => {},
+    onBoardingState: {},
+    setOnBoardingState: (state: Record<string, any>) => {},
+  }),
+  BugReport: createContext({
+    isBugReportModalOpen: false,
+    setBugReportModalOpen: (b: boolean) => {},
+  }),
+  GitHubConnected: createContext({
+    isGithubConnected: false,
+    setGithubConnected: (b: boolean) => {},
+    isGithubChecked: false,
+  }),
+  RightPanel: createContext({
+    isRightPanelOpen: false,
+    setRightPanelOpen: (b: boolean) => {},
+  }),
+  Filters: createContext<{
+    isFiltersOpen: boolean;
+    setFiltersOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  }>({
+    isFiltersOpen: false,
+    setFiltersOpen: () => {},
+  }),
+  PromptGuide: createContext({
+    isPromptGuideOpen: false,
+    setPromptGuideOpen: (b: boolean) => {},
+  }),
+  Tab: createContext({
+    tab: { key: 'initial', name: 'Home', repoName: '' },
+  }),
+  Theme: createContext({
+    theme: 'system' as Theme,
+    setTheme: (t: Theme) => {},
+  }),
+};

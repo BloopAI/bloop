@@ -14,9 +14,7 @@ import {
   FILTER_TEXT_ANIMATION,
   FILTER_PARENT_ANIMATION,
 } from '../../consts/animations';
-import { saveJsonToStorage, SEARCH_HISTORY_KEY } from '../../services/storage';
 import useAppNavigation from '../../hooks/useAppNavigation';
-import { SearchType } from '../../types/general';
 import { UIContext } from '../../context/uiContext';
 import FilterSection from './FilterSection';
 
@@ -27,9 +25,9 @@ type Props = {
 
 const Filters = ({ showHeader = true, forceOpen }: Props) => {
   const { t } = useTranslation();
-  const { filters, setFilters, inputValue, setInputValue, setSearchHistory } =
-    useContext(SearchContext);
-  const { isFiltersOpen, setFiltersOpen } = useContext(UIContext);
+  const { filters, setFilters } = useContext(SearchContext.Filters);
+  const { inputValue, setInputValue } = useContext(SearchContext.InputValue);
+  const { isFiltersOpen, setFiltersOpen } = useContext(UIContext.Filters);
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [newFilters, setNewFilters] = useState(filters);
   const [hasFiltersChanged, setFiltersChanged] = useState(false);
@@ -78,18 +76,6 @@ const Filters = ({ showHeader = true, forceOpen }: Props) => {
 
     setFilters(newFilters);
     navigateSearch(result);
-    setSearchHistory((prev) => {
-      const newHistory = [
-        {
-          searchType: SearchType.REGEX,
-          query: result,
-          timestamp: new Date().toISOString(),
-        },
-        ...prev,
-      ].slice(0, 29);
-      saveJsonToStorage(SEARCH_HISTORY_KEY, newHistory);
-      return newHistory;
-    });
   }, [newFilters]);
 
   const handleFiltersChange = useCallback(

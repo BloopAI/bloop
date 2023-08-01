@@ -23,10 +23,10 @@ type Props = {
 
 const ArticleResponse = ({ recordId, threadId }: Props) => {
   const { t } = useTranslation();
-  const { conversation, setThreadId, setConversation } =
-    useContext(ChatContext);
+  const { conversation } = useContext(ChatContext.Values);
+  const { setThreadId, setConversation } = useContext(ChatContext.Setters);
   const { openFileModal } = useContext(FileModalContext);
-  const { tab } = useContext(UIContext);
+  const { tab } = useContext(UIContext.Tab);
   const data = useMemo(
     () => conversationsCache[threadId]?.[recordId] || conversation[recordId],
     [

@@ -14,7 +14,7 @@ import StatusItem from './StatusItem';
 const StatusBar = () => {
   const { t } = useTranslation();
 
-  const { setBugReportModalOpen } = useContext(UIContext);
+  const { setBugReportModalOpen } = useContext(UIContext.BugReport);
   const { openLink } = useContext(DeviceContext);
   const [isOnline, setIsOnline] = useState(true);
   const [discordLink, setDiscordLink] = useState(

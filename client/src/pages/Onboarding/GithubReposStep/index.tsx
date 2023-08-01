@@ -27,22 +27,8 @@ let intervalId: number;
 const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
   const { t } = useTranslation();
   const [repos, setRepos] = useState<RepoUi[]>([]);
-  const [nextButtonDisabled, setNextButtonDisabled] = useState(false);
   const [isLoading, setLoading] = useState(true);
-  const { onBoardingState, setOnBoardingState } = useContext(UIContext);
   const { repositories } = useContext(RepositoriesContext);
-
-  useEffect(() => {
-    if (repos.length) {
-      setOnBoardingState((prev) => ({
-        ...prev,
-        [STEP_KEY]: repos.filter((r) => r.selected).map((r) => r.ref),
-      }));
-      setNextButtonDisabled(!repos.filter((r) => r.selected).length);
-    } else {
-      setNextButtonDisabled(true);
-    }
-  }, [repos]);
 
   const handleSkip = useCallback(
     (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
@@ -57,18 +43,13 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
       repositories?.filter(
         (r: RepoType) => r.provider === RepoProvider.GitHub,
       ) || [];
-    const selectedRepos = onBoardingState[STEP_KEY];
 
     setRepos(
       githubRepos
         .map((r) => {
           const pathParts = splitPath(r.name);
-          let selected: boolean = selectedRepos?.length
-            ? !!selectedRepos.includes(r.ref)
-            : false;
           return {
             ...r,
-            selected,
             shortName: pathParts[pathParts.length - 1],
             folderName: pathParts[0],
             alreadySynced: ![

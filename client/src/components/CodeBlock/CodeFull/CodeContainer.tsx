@@ -67,7 +67,7 @@ const CodeContainer = ({
     isLoading: false,
     lineNumber: -1,
   });
-  const { selectedBranch } = useContext(SearchContext);
+  const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const { navigatedItem } = useContext(AppNavigationContext);
 
   const getHoverableContent = useCallback(
