@@ -26,8 +26,6 @@ import { UIContext } from '../../context/uiContext';
 import AutocompleteMenu from './AutocompleteMenu';
 import SearchTextInput from './SearchTextInput';
 
-const INPUT_POSITION_LEFT = 47;
-
 const getAutocompleteThrottled = throttle(
   async (
     query: string,
@@ -240,7 +238,6 @@ function SearchInput() {
       <AutocompleteMenu
         getMenuProps={getMenuProps}
         getItemProps={getItemProps}
-        left={INPUT_POSITION_LEFT}
         isOpen={isOpen && !!options.length}
         options={options}
       />
