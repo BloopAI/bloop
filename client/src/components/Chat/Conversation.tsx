@@ -13,7 +13,7 @@ type Props = {
   repoName: string;
   isLoading?: boolean;
   isHistory?: boolean;
-  onMessageEdit: (parentQueryId: string, i: number) => void;
+  onMessageEdit: (queryId: string, i: number) => void;
 };
 
 const Conversation = ({
@@ -41,19 +41,10 @@ const Conversation = ({
     scrollToBottom();
   }, [conversation, scrollToBottom]);
 
-  const handleMessageEdit = useCallback(
-    (i: number) => {
-      if ('queryId' in conversation[i - 1]) {
-        onMessageEdit((conversation[i - 1] as ChatMessageServer).queryId, i);
-      }
-    },
-    [conversation, onMessageEdit],
-  );
-
   return (
     <div
       className={`w-full flex flex-col gap-3 pb-3 overflow-auto ${
-        !isHistory ? 'max-h-80' : ''
+        !isHistory ? 'max-h-60' : ''
       }`}
       ref={messagesRef}
     >
@@ -80,11 +71,15 @@ const Conversation = ({
             !m.isFromHistory
           }
           threadId={threadId}
-          queryId={m.author === ChatMessageAuthor.Server ? m.queryId : ''}
+          queryId={
+            m.author === ChatMessageAuthor.Server
+              ? m.queryId
+              : (conversation[i + 1] as ChatMessageServer)?.queryId || ''
+          }
           repoRef={repoRef}
           scrollToBottom={scrollToBottom}
           repoName={repoName}
-          onMessageEdit={handleMessageEdit}
+          onMessageEdit={onMessageEdit}
         />
       ))}
     </div>

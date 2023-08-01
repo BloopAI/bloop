@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
-import { List } from '../../icons';
+import { Info, List } from '../../icons';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import {
@@ -65,7 +65,8 @@ const Chat = () => {
   const [showPopup, setShowPopup] = useState(false);
   const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
-  const [parentIdToEdit, setParentIdToEdit] = useState('');
+  const [queryIdToEdit, setQueryIdToEdit] = useState('');
+  const [hideMessagesFrom, setHideMessagesFrom] = useState<null | number>(null);
   useOnClickOutside(chatRef, () => setChatOpen(false));
 
   useEffect(() => {
@@ -83,7 +84,8 @@ const Chat = () => {
       prevEventSource?.close();
       setInputValue('');
       setLoading(true);
-      setParentIdToEdit('');
+      setQueryIdToEdit('');
+      setHideMessagesFrom(null);
       const eventSource = new EventSource(
         `${apiUrl.replace('https:', '')}/answer?q=${encodeURIComponent(query)}${
           selectedBranch ? ` branch:${selectedBranch}` : ''
@@ -99,7 +101,7 @@ const Chat = () => {
           selectedLines
             ? `&start=${selectedLines[0]}&end=${selectedLines[1]}`
             : ''
-        }${parentIdToEdit ? `&parent_query_id=${parentIdToEdit}` : ''}`,
+        }${queryIdToEdit ? `&rephrase_exchange_id=${queryIdToEdit}` : ''}`,
       );
       prevEventSource = eventSource;
       setSelectedLines(null);
@@ -271,7 +273,7 @@ const Chat = () => {
       selectedLines,
       selectedBranch,
       t,
-      parentIdToEdit,
+      queryIdToEdit,
     ],
   );
 
@@ -330,12 +332,15 @@ const Chat = () => {
       ) {
         return;
       }
+      if (hideMessagesFrom !== null) {
+        setConversation((prev) => prev.slice(0, hideMessagesFrom));
+      }
       blurInput();
       setSubmittedQuery(
         submittedQuery === inputValue ? `${inputValue} ` : inputValue, // to trigger new search if query hasn't changed
       );
     },
-    [inputValue, conversation, submittedQuery],
+    [inputValue, conversation, submittedQuery, hideMessagesFrom],
   );
 
   const handleNewConversation = useCallback(() => {
@@ -355,18 +360,22 @@ const Chat = () => {
   }, [navigatedItem?.type]);
 
   const onMessageEdit = useCallback(
-    (parentQueryId: string, i: number) => {
-      setParentIdToEdit(parentQueryId);
+    (queryId: string, i: number) => {
+      setQueryIdToEdit(queryId);
       if (isLoading) {
         stopGenerating();
       }
-      setConversation((prev) => {
-        setInputValue(prev[i].text!);
-        return prev.slice(0, i);
-      });
+      setHideMessagesFrom(i);
+      setInputValue(conversation[i].text!);
     },
-    [isLoading],
+    [isLoading, conversation],
   );
+
+  const onMessageEditCancel = useCallback(() => {
+    setQueryIdToEdit('');
+    setInputValue('');
+    setHideMessagesFrom(null);
+  }, []);
 
   return (
     <>
@@ -410,13 +419,28 @@ const Chat = () => {
         <div className="p-4 overflow-auto">
           {!!conversation.length && isChatOpen && (
             <Conversation
-              conversation={conversation}
+              conversation={
+                hideMessagesFrom === null
+                  ? conversation
+                  : conversation.slice(0, hideMessagesFrom + 1)
+              }
               threadId={threadId}
               repoRef={tab.key}
               isLoading={isLoading}
               repoName={tab.repoName}
               onMessageEdit={onMessageEdit}
             />
+          )}
+          {!!queryIdToEdit && (
+            <div className="mx-4 mb-3 flex gap-1.5 caption text-label-base select-none">
+              <Info raw sizeClassName="w-3.5 h-3.5" />
+              <p>
+                <Trans>
+                  Editing a previously submitted question will discard all
+                  answers and questions following it.
+                </Trans>
+              </p>
+            </div>
           )}
           <form onSubmit={onSubmit} className="flex flex-col w-95">
             <NLInput
@@ -458,6 +482,8 @@ const Chat = () => {
               onStop={stopGenerating}
               selectedLines={selectedLines}
               setSelectedLines={setSelectedLines}
+              queryIdToEdit={queryIdToEdit}
+              onMessageEditCancel={onMessageEditCancel}
             />
           </form>
         </div>
