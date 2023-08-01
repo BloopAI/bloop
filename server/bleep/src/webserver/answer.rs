@@ -349,6 +349,7 @@ pub struct Explain {
     pub relative_path: String,
     pub line_start: usize,
     pub line_end: usize,
+    pub branch: Option<String>,
     pub repo_ref: RepoRef,
     #[serde(default = "default_thread_id")]
     pub thread_id: uuid::Uuid,
@@ -380,12 +381,18 @@ pub async fn explain(
             .to_string(),
     };
 
-    let query = parser::parse_nl(&virtual_req.q)
+    let mut query = parser::parse_nl(&virtual_req.q)
         .context("failed to parse virtual answer query")?
         .into_semantic()
         // We synthesize the query, this should never fail.
         .unwrap()
         .into_owned();
+
+    if let Some(branch) = params.branch {
+        query
+            .branch
+            .insert(Literal::Plain(std::borrow::Cow::Owned(branch)));
+    }
 
     let mut exchange = Exchange::new(query_id, query);
 
