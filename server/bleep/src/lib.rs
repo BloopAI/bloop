@@ -356,6 +356,7 @@ fn tracing_subscribe(config: &Configuration) -> bool {
             .with_writer(non_blocking)
             .with_ansi(false)
             .with_filter(Targets::new().with_target("bleep", LevelFilter::DEBUG))
+            .with_filter(Targets::new().with_target("bleep::indexes::file", LevelFilter::WARN))
     });
 
     #[cfg(all(tokio_unstable, feature = "debug"))]
