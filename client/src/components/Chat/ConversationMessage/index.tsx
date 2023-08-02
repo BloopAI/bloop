@@ -70,7 +70,7 @@ const ConversationMessage = ({
   const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
   const { envConfig } = useContext(DeviceContext);
-  const { setChatOpen } = useContext(ChatContext);
+  const { setChatOpen } = useContext(ChatContext.Setters);
   const { openFileModal } = useContext(FileModalContext);
   const { locale } = useContext(LocaleContext);
 

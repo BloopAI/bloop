@@ -22,9 +22,9 @@ type Props = {
 const RepositoryPage = ({ repositoryData }: Props) => {
   const [repository, setRepository] = useState<Repository | undefined>();
   const [initialLoad, setInitialLoad] = useState(true);
-  const { setFilters } = useContext(SearchContext);
+  const { setFilters } = useContext(SearchContext.Filters);
   const { repositories } = useContext(RepositoriesContext);
-  const { isRightPanelOpen } = useContext(UIContext);
+  const { isRightPanelOpen } = useContext(UIContext.RightPanel);
 
   useEffect(() => {
     setInitialLoad(false);

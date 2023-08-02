@@ -11,7 +11,9 @@ import PromptSvg from './PromptSvg';
 const PromptGuidePopup = () => {
   const { t } = useTranslation();
   const { openLink, setEnvConfig, envConfig } = useContext(DeviceContext);
-  const { isPromptGuideOpen, setPromptGuideOpen } = useContext(UIContext);
+  const { isPromptGuideOpen, setPromptGuideOpen } = useContext(
+    UIContext.PromptGuide,
+  );
 
   const handlePromptGuideClose = useCallback(() => {
     setPromptGuideOpen(false);

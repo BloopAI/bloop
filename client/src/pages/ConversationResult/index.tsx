@@ -29,9 +29,9 @@ type Props = {
 
 const ConversationResult = ({ recordId, threadId }: Props) => {
   const { t } = useTranslation();
-  const { conversation, setConversation, setThreadId } =
-    useContext(ChatContext);
-  const { tab } = useContext(UIContext);
+  const { conversation } = useContext(ChatContext.Values);
+  const { setThreadId, setConversation } = useContext(ChatContext.Setters);
+  const { tab } = useContext(UIContext.Tab);
   const [isScrolled, setScrolled] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 

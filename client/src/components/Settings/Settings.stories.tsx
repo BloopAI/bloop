@@ -25,8 +25,6 @@ export const Default = () => {
             repositories: [],
             setRepositories: () => {},
             fetchRepos: () => {},
-            localSyncError: false,
-            githubSyncError: false,
           }}
         >
           <Settings />
