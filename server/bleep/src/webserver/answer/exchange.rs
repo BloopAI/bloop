@@ -201,7 +201,8 @@ fn encode_article(article: &str) -> String {
 }
 
 fn sanitize_article(article: &str) -> String {
-    xml_for_each(article, |code| Some(fixup_xml_code(code).into_owned()))
+    let sanitized = xml_for_each(article, |code| Some(fixup_xml_code(code).into_owned()));
+    regex!("<!--.*?-->").replace_all(&sanitized, "").into_owned()
 }
 
 fn fixup_xml_code(xml: &str) -> Cow<str> {
