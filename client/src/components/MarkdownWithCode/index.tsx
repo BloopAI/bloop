@@ -3,13 +3,17 @@ import {
   AnchorHTMLAttributes,
   DetailedHTMLProps,
   ReactElement,
+  useContext,
   useMemo,
 } from 'react';
 import { ReactMarkdownProps } from 'react-markdown/lib/complex-types';
 import { CodeProps } from 'react-markdown/lib/ast-to-react';
 import FileChip from '../Chat/ConversationMessage/FileChip';
 import CodeWithBreadcrumbs from '../../pages/ArticleResponse/CodeWithBreadcrumbs';
-import NewCode from '../../pages/ConversationResult/NewCode';
+import { AppNavigationContext } from '../../context/appNavigationContext';
+import { SearchContext } from '../../context/searchContext';
+import NewCode from './NewCode';
+import FolderChip from './FolderChip';
 
 type Props = {
   openFileModal: (
@@ -28,6 +32,9 @@ const MarkdownWithCode = ({
   markdown,
   isSummary,
 }: Props) => {
+  const { navigateRepoPath, navigateFullResult } =
+    useContext(AppNavigationContext);
+  const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const components = useMemo(() => {
     return {
       a(
@@ -53,7 +60,16 @@ const MarkdownWithCode = ({
             fileName = child.props.children?.[0];
           }
         }
-        return (
+        return filePath.endsWith('/') ? (
+          <FolderChip
+            onClick={() => navigateRepoPath(repoName, filePath)}
+            path={filePath}
+            navigateFullResult={navigateFullResult}
+            repoName={repoName}
+            selectedBranch={selectedBranch}
+            isSummary={isSummary}
+          />
+        ) : (
           <FileChip
             fileName={fileName || filePath || ''}
             skipIcon={!!fileName && fileName !== filePath}
@@ -116,7 +132,7 @@ const MarkdownWithCode = ({
         );
       },
     };
-  }, [repoName, openFileModal, isSummary]);
+  }, [repoName, openFileModal, isSummary, selectedBranch]);
 
   return <ReactMarkdown components={components}>{markdown}</ReactMarkdown>;
 };

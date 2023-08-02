@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import Code from '../../components/CodeBlock/Code';
-import Button from '../../components/Button';
+import Code from '../CodeBlock/Code';
+import Button from '../Button';
 import { CheckIcon, Clipboard } from '../../icons';
 import { copyToClipboard } from '../../utils';
 

@@ -200,7 +200,7 @@ const Chat = () => {
                 isLoading: true,
                 loadingSteps: mapLoadingSteps(newMessage.search_steps, t),
                 text: newMessage.conclusion,
-                results: newMessage.outcome,
+                results: newMessage.answer,
                 queryId: newMessage.id,
                 responseTimestamp: newMessage.response_timestamp,
               };
@@ -210,21 +210,11 @@ const Chat = () => {
                   : [...prev.slice(-1), messageToAdd];
               return [...newConversation, ...lastMessages];
             });
-            if (
-              ((newMessage.outcome?.Filesystem?.length &&
-                !newMessage.conclusion) ||
-                newMessage.outcome?.Article?.length > 11) &&
-              !firstResultCame
-            ) {
+            // workaround: sometimes we get [^summary]: before it is removed from response
+            if (newMessage.answer?.length > 11 && !firstResultCame) {
               setConversation((prev) => {
-                conversationsCache[threadId] = undefined;
-                // workaround: sometimes we get [^summary]: before it is removed from response
-                if (newMessage.outcome?.Article?.length > 11) {
-                  setChatOpen(false);
-                  navigateArticleResponse(prev.length - 1, thread_id);
-                } else {
-                  navigateConversationResults(prev.length - 1, thread_id);
-                }
+                setChatOpen(false);
+                navigateArticleResponse(prev.length - 1, thread_id);
                 return prev;
               });
               firstResultCame = true;
@@ -469,7 +459,7 @@ const Chat = () => {
                         conversation[
                           conversation.length - 1
                         ] as ChatMessageServer
-                      )?.results?.Article?.length
+                      )?.results?.length
                         ? [
                             {
                               displayText: t('Responding...'),

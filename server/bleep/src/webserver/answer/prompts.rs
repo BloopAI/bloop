@@ -35,11 +35,6 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "mode": {
-                            "type": "string",
-                            "enum": ["article", "filesystem"],
-                            "description": "The type of answer to provide. If the user's query is best answered with the location of one or multiple files and folders with no explanation choose filesystem. If the user's query is best answered with any explanation, or they're instructing you to write new code choose article. If the user's query is neither, choose filesystem."
-                        },
                         "paths": {
                             "type": "array",
                             "items": {
@@ -48,7 +43,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
                             }
                         }
                     },
-                    "required": ["mode", "paths"]
+                    "required": ["paths"]
                 }
             },
         ]
@@ -151,118 +146,6 @@ A: "#
     )
 }
 
-pub fn answer_filesystem_prompt(context: &str) -> String {
-    struct Rule<'a> {
-        title: &'a str,
-        description: &'a str,
-        note: &'a str,
-        schema: &'a str,
-        example: Option<&'a str>,
-    }
-
-    let rules = [
-        Rule {
-            title: "Cite a line range from a file",
-            description: "COMMENT should refer to the code in in the START LINE and END LINE range. The COMMENT should answer the query with respect to the given line range. It should NOT include information that is not in the code. If the code does not help answer the query, then do not include it in a citation.",
-            schema: "[\"cite\",PATH ALIAS:INT,COMMENT:STRING,START LINE:INT,END LINE:INT]",
-            note: "This object can occur multiple times",
-            example: None,
-        },
-        Rule {
-            title: "Cite a single directory from the codebase",
-            description: "When you wish to cite every file in a directory, use this to directly cite the directory instead. The COMMENT should answer the query with respect to the given directory.",
-            schema: "[\"dir\",PATH:STRING,COMMENT:STRING]",
-            note: "This object can occur multiple times",
-            example: Some(r#"The path is a relative path, with no leading slash. You must generate a trailing slash, for example: server/bleep/src/webserver/. On Windows, generate backslash separated components, for example: server\bleep\src\webserver\"#),
-        },
-        Rule {
-            title: "Cite line ranges from the file",
-            description: "START LINE and END LINE should focus on the code mentioned in the COMMENT. COMMENT should be a detailed explanation.",
-            schema: "[\"cite\",PATH ALIAS:INT,COMMENT:STRING,START LINE:INT,END LINE:INT]",
-            note: "This object can occur multiple times",
-            example: None,
-        },
-        Rule {
-            title: "Update the code in an existing file",
-            description: "Edit an existing code file by generating the diff between old and new versions. Changes should be as small as possible.",
-            schema: "[\"mod\",PATH ALIAS:INT,LANGUAGE:STRING,GIT DIFF:STRING]",
-            note: "This object can occur multiple times",
-            example: Some(r#"Where GIT DIFF describes the diff chunks for the file, including the git diff header.
-For example:
-@@ -1 +1 @@
--this is a git diff test example
-+this is a diff example"#),
-        },
-        Rule {
-            title: "Conclusion",
-            description: "Summarise your previous steps. Provide as much information as is necessary to answer the query. If you do not have enough information needed to answer the query, do not make up an answer.",
-            schema: "[\"con\",SUMMARY:STRING]",
-            note: "This is mandatory and must appear once at the end",
-            example: None,
-        },
-    ];
-
-    let output_rules_str = rules
-        .into_iter()
-        .zip(1..)
-        .map(|(r, i)| {
-            let Rule {
-                title,
-                description,
-                schema,
-                note,
-                example,
-                ..
-            } = r;
-            format!(
-                "{i}. {title}\n{description}\n{schema}\n{note}\n{}\n",
-                example.unwrap_or("")
-            )
-        })
-        .collect::<String>();
-
-    format!(
-        r#"{context}Your job is to answer a query about a codebase using the information above.
-Your answer should be an array of arrays, where each element in the array is an instance of one of the following objects:
-
-{output_rules_str}
-Respect these rules at all times:
-- Do not refer to paths by alias, quote the full path surrounded by single backticks. E.g. `server/bleep/src/webserver/`
-- Refer to directories by their full paths, surrounded by single backticks
-- If the query is a greeting, or not a question or an instruction just generate a conclusion
-- Your answer should always be an array of arrays, even when you only generate a conclusion
-
-#####
-
-Examples:
-
-Show all the analytics events
-
-[
-  ["cite", 27, "Track 'Search' event in `useAnalytics.ts`", 7, 12],
-  ["con", "I've found three analytics events"]
-]
-
-Where is the webserver code located
-
-[
-  ["dir","server/bleep/src/webserver/","This directory contains the webserver module"],
-  ["con","The webserver code is located under the server directory"]
-]
-
-What's the value of MAX_FILE_LEN?
-
-[
-  ["con": "None of files in the context contain the value of MAX_FILE_LEN"]
-]
-
-
-#####
-
-Output only JSON."#
-    )
-}
-
 pub fn answer_article_prompt(context: &str) -> String {
     format!(
         r#"{context}Your job is to answer a query about a codebase using the information above.
@@ -272,10 +155,11 @@ When referring to code, you must provide an example in a code block.
 
 Respect these rules at all times:
 - Do not refer to paths by alias, expand to the full path
-- Link ALL paths AND code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, etc) by embedding them in a markdown link, with the URL corresponding to the full path, and the anchor following the form `LX` or `LX-LY`, where X represents the starting line number, and Y represents the ending line number, if the reference is more than one line.
+- Link ALL paths AND code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, directories, etc) by embedding them in a markdown link, with the URL corresponding to the full path, and the anchor following the form `LX` or `LX-LY`, where X represents the starting line number, and Y represents the ending line number, if the reference is more than one line.
   - For example, to refer to lines 50 to 78 in a sentence, respond with something like: The compiler is initialized in [`src/foo.rs`](src/foo.rs#L50-L78)
   - For example, to refer to the `new` function on a struct, respond with something like: The [`new`](src/bar.rs#L26-53) function initializes the struct
   - For example, to refer to the `foo` field on a struct and link a single line, respond with something like: The [`foo`](src/foo.rs#L138) field contains foos. Do not respond with something like [`foo`](src/foo.rs#L138-L138)
+  - For example, to refer to a folder `foo`, respond with something like: The files can be found in [`foo`](path/to/foo/) folder
 - Do not print out line numbers directly, only in a link
 - Do not refer to more lines than necessary when creating a line range, be precise
 - Do NOT output bare symbols. ALL symbols must include a link

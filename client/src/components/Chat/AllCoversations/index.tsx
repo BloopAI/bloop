@@ -82,7 +82,7 @@ const AllConversations = ({
           isLoading: false,
           loadingSteps: mapLoadingSteps(m.search_steps, t),
           text: m.conclusion,
-          results: m.outcome,
+          results: m.answer,
           isFromHistory: true,
           queryId: m.id,
           responseTimestamp: m.response_timestamp,

@@ -1,5 +1,4 @@
 import { SymbolType, Range, TokenInfoType } from './results';
-import { ArticleResult, FileSystemResult } from './general';
 
 export interface RangeLine {
   byte: number;
@@ -244,7 +243,7 @@ export type ConversationType = {
   search_steps: SearchStepType[];
   query: { target: { Plain: string } };
   conclusion: string;
-  outcome: FileSystemResult & ArticleResult;
+  answer: string;
   paths: string[];
   response_timestamp: string;
 };

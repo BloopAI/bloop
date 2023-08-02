@@ -61,7 +61,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
             isLoading: false,
             loadingSteps: mapLoadingSteps(m.search_steps, t),
             text: m.conclusion,
-            results: m.outcome,
+            results: m.answer,
             isFromHistory: true,
             queryId: m.id,
             responseTimestamp: m.response_timestamp,
@@ -82,17 +82,14 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
           repoName={tab.repoName}
           markdown={
             data?.isLoading
-              ? data?.results?.Article?.replace(
-                  /\[\`[^`]*$|\[\`[^`]+\`\]\([^)]*$/,
-                  '',
-                )
-              : data?.results?.Article
+              ? data?.results?.replace(/\[\`[^`]*$|\[\`[^`]+\`\]\([^)]*$/, '')
+              : data?.results
           }
         />
         <Button
           variant="secondary"
           size="small"
-          onClick={() => copyToClipboard(data?.results?.Article)}
+          onClick={() => copyToClipboard(data?.results)}
           className="absolute top-0 right-0"
         >
           <CopyMD /> Copy

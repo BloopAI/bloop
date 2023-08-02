@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use axum::{
     extract::Query,
     response::{
@@ -37,7 +37,6 @@ use crate::{
 pub mod conversations;
 mod exchange;
 mod llm_gateway;
-mod partial_parse;
 mod prompts;
 
 use exchange::{Exchange, SearchStep, Update};
@@ -463,11 +462,8 @@ impl Agent {
                 s.clone()
             }
 
-            Action::Answer { paths, mode } => {
-                match mode {
-                    AnswerMode::Filesystem => self.answer_filesystem(paths).await?,
-                    AnswerMode::Article => self.answer_article(paths).await?,
-                }
+            Action::Answer { paths } => {
+                self.answer(paths).await?;
                 return Ok(None);
             }
 
@@ -975,7 +971,7 @@ impl Agent {
         Ok(s)
     }
 
-    async fn answer_article(&mut self, aliases: &[usize]) -> Result<()> {
+    async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
         let context = self.answer_context(aliases).await?;
         let history = self.utter_history().collect::<Vec<_>>();
 
@@ -1021,93 +1017,6 @@ impl Agent {
                 .with_payload("query_history", &history)
                 .with_payload("response", &response)
                 .with_payload("raw_prompt", &system_message),
-        );
-
-        Ok(())
-    }
-
-    async fn answer_filesystem(&mut self, aliases: &[usize]) -> Result<()> {
-        let context = self.answer_context(aliases).await?;
-        let mut query_history = self.utter_history().collect::<Vec<_>>();
-
-        {
-            let (role, content) = query_history
-                .last_mut()
-                .context("query history was empty")?
-                .as_plaintext_mut()
-                .context("last message was not plaintext")?;
-
-            if role != "user" {
-                bail!("last message was not a user message");
-            }
-
-            *content += "\n\nOutput only JSON.";
-        }
-
-        let system_message = prompts::answer_filesystem_prompt(&context);
-        let messages = Some(llm_gateway::api::Message::system(&system_message))
-            .into_iter()
-            .chain(query_history.iter().cloned())
-            .collect::<Vec<_>>();
-
-        let mut stream = self.llm_gateway.chat(&messages, None).await?.boxed();
-        let mut buffer = String::new();
-
-        while let Some(token) = stream.next().await {
-            buffer += &token?;
-
-            if buffer.is_empty() {
-                continue;
-            }
-
-            fn as_array(v: serde_json::Value) -> Option<Vec<serde_json::Value>> {
-                match v {
-                    serde_json::Value::Array(a) => Some(a),
-                    _ => None,
-                }
-            }
-
-            let (s, _) = partial_parse::rectify_json(&buffer);
-
-            // this /should/ be infallible if rectify_json works
-            let rectified_json: serde_json::Value =
-                serde_json::from_str(&s).expect("failed to rectify_json");
-
-            let json_array = as_array(rectified_json.clone()).ok_or_else(|| {
-                anyhow!(
-                    "failed to parse `answer` response, expected array but buffer was `{buffer}`"
-                )
-            })?;
-
-            let array_of_arrays = json_array
-                .clone()
-                .into_iter()
-                .map(as_array)
-                .collect::<Option<Vec<Vec<_>>>>()
-                .unwrap_or_else(|| vec![json_array]);
-
-            let search_results = array_of_arrays
-                .iter()
-                .map(Vec::as_slice)
-                .filter_map(|v| {
-                    let item = exchange::FileResult::from_json_array(v);
-                    if item.is_none() {
-                        warn!("failed to build search result from: {v:?}");
-                    }
-                    item
-                })
-                .map(|s| s.substitute_path_alias(&self.paths()))
-                .collect::<Vec<_>>();
-
-            self.update(Update::Filesystem(search_results)).await?;
-        }
-
-        self.track_query(
-            EventData::output_stage("answer_filesystem")
-                .with_payload("query", self.last_exchange().query())
-                .with_payload("query_history", &query_history)
-                .with_payload("response", &buffer)
-                .with_payload("system_message", &system_message),
         );
 
         Ok(())
@@ -1571,7 +1480,6 @@ enum Action {
     },
     #[serde(rename = "none")]
     Answer {
-        mode: AnswerMode,
         paths: Vec<usize>,
     },
     Code {
@@ -1610,14 +1518,6 @@ impl Action {
 
         Ok(serde_json::from_value(serde_json::Value::Object(map))?)
     }
-}
-
-#[derive(Debug, Default, Clone, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum AnswerMode {
-    Article,
-    #[default]
-    Filesystem,
 }
 
 #[cfg(test)]
