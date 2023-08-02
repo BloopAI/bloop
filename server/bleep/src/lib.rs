@@ -36,6 +36,8 @@ use std::{path::Path, sync::Arc};
 use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::{
     filter::{LevelFilter, Targets},
+    fmt,
+    prelude::*,
     EnvFilter,
 };
 
@@ -342,49 +344,31 @@ impl FromRef<Application> for axum_extra::extract::cookie::Key {
     }
 }
 
-#[cfg(all(tokio_unstable, feature = "debug"))]
 fn tracing_subscribe(config: &Configuration) -> bool {
-    use tracing_subscriber::{fmt, prelude::*};
-    let env_filter = fmt::layer().with_filter(EnvFilter::from_env(LOG_ENV_VAR));
-    let log_dir = config.index_dir.join("logs");
-    let file_appender = tracing_appender::rolling::hourly(log_dir, "bloop.log");
-    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+    let env_filter_layer = fmt::layer().with_filter(EnvFilter::from_env(LOG_ENV_VAR));
+    let sentry_layer = sentry_layer();
+    let log_writer_layer = (!config.disable_log_write).then(|| {
+        let log_dir = config.index_dir.join("logs");
+        let file_appender = tracing_appender::rolling::hourly(log_dir, "bloop.log");
+        let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+        _ = LOGGER_GUARD.set(guard);
+        fmt::layer()
+            .with_writer(non_blocking)
+            .with_ansi(false)
+            .with_filter(Targets::new().with_target("bleep", LevelFilter::DEBUG))
+    });
 
-    _ = LOGGER_GUARD.set(guard);
+    #[cfg(all(tokio_unstable, feature = "debug"))]
+    let console_subscriber_layer = Some(console_subscriber::spawn());
+    #[cfg(not(all(tokio_unstable, feature = "debug")))]
+    let console_subscriber_layer: Option<Box<dyn tracing_subscriber::Layer<_> + Send + Sync>> =
+        None;
 
     tracing_subscriber::registry()
-        .with(
-            fmt::layer()
-                .with_writer(non_blocking)
-                .with_ansi(false)
-                .with_filter(Targets::new().with_target("bleep", LevelFilter::DEBUG)),
-        )
-        .with(env_filter)
-        .with(sentry_layer())
-        .with(console_subscriber::spawn())
-        .try_init()
-        .is_ok()
-}
-
-#[cfg(not(all(tokio_unstable, feature = "debug")))]
-fn tracing_subscribe(config: &Configuration) -> bool {
-    use tracing_subscriber::{fmt, prelude::*};
-    let env_filter = fmt::layer().with_filter(EnvFilter::from_env(LOG_ENV_VAR));
-    let log_dir = config.index_dir.join("logs");
-    let file_appender = tracing_appender::rolling::hourly(log_dir, "bloop.log");
-    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
-
-    _ = LOGGER_GUARD.set(guard);
-
-    tracing_subscriber::registry()
-        .with(
-            fmt::layer()
-                .with_writer(non_blocking)
-                .with_ansi(false)
-                .with_filter(Targets::new().with_target("bleep", LevelFilter::DEBUG)),
-        )
-        .with(env_filter)
-        .with(sentry_layer())
+        .with(log_writer_layer)
+        .with(env_filter_layer)
+        .with(sentry_layer)
+        .with(console_subscriber_layer)
         .try_init()
         .is_ok()
 }

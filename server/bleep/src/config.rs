@@ -41,6 +41,13 @@ pub struct Configuration {
     /// Disable system-native notification backends to detect new git commits immediately.
     pub disable_fsevents: bool,
 
+    #[clap(long, default_value_t = false)]
+    #[serde(default)]
+    /// Avoid writing logs to files.
+    ///
+    /// If this flag is not set to `true`, logs are written to <index_dir>/logs/bloop.log.YYYY-MM-DD-HH
+    pub disable_log_write: bool,
+
     #[clap(short, long, default_value_t = default_buffer_size())]
     #[serde(default = "default_buffer_size")]
     /// Size of memory to use for file indexes
@@ -225,6 +232,8 @@ impl Configuration {
             disable_background: b.disable_background | a.disable_background,
 
             disable_fsevents: b.disable_fsevents | a.disable_fsevents,
+
+            disable_log_write: b.disable_log_write | a.disable_log_write,
 
             buffer_size: right_if_default!(b.buffer_size, a.buffer_size, default_buffer_size()),
 
