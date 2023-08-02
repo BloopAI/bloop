@@ -3,6 +3,7 @@ use secrecy::ExposeSecret;
 use std::{
     collections::{HashMap, HashSet},
     mem,
+    ops::Range,
     panic::AssertUnwindSafe,
     pin::pin,
     time::Duration,
@@ -335,13 +336,13 @@ pub(super) async fn _handle(
 pub struct CodeChunk {
     path: String,
     #[serde(rename = "alias")]
-    alias: u32,
+    alias: usize,
     #[serde(rename = "snippet")]
     snippet: String,
     #[serde(rename = "start")]
-    start_line: u32,
+    start_line: usize,
     #[serde(rename = "end")]
-    end_line: u32,
+    end_line: usize,
 }
 
 impl CodeChunk {
@@ -429,11 +430,10 @@ impl Agent {
         self.exchanges.last_mut().expect("exchange list was empty")
     }
 
-    fn code_chunks(&self) -> Vec<CodeChunk> {
+    fn code_chunks(&self) -> impl Iterator<Item = CodeChunk> + '_ {
         self.exchanges
             .iter()
             .flat_map(|e| e.code_chunks.iter().cloned())
-            .collect::<Vec<_>>()
     }
 
     fn paths(&self) -> Vec<String> {
@@ -541,10 +541,10 @@ impl Agent {
 
                 CodeChunk {
                     path: relative_path.clone(),
-                    alias: self.get_path_alias(&relative_path) as u32,
+                    alias: self.get_path_alias(&relative_path),
                     snippet: chunk.text,
-                    start_line: (chunk.start_line as u32).saturating_add(1),
-                    end_line: (chunk.end_line as u32).saturating_add(1),
+                    start_line: (chunk.start_line as usize).saturating_add(1),
+                    end_line: (chunk.end_line as usize).saturating_add(1),
                 }
             })
             .collect::<Vec<_>>();
@@ -801,15 +801,15 @@ impl Agent {
             .await;
 
         for (relevant_chunks, path) in &processed {
-            let alias = self.get_path_alias(path) as u32;
+            let alias = self.get_path_alias(path);
 
             for c in relevant_chunks {
                 let chunk = CodeChunk {
                     path: path.to_owned(),
                     alias,
                     snippet: c.code.clone(),
-                    start_line: c.range.start as u32,
-                    end_line: c.range.end as u32,
+                    start_line: c.range.start,
+                    end_line: c.range.end,
                 };
                 if !chunk.is_empty() {
                     self.last_exchange_mut().code_chunks.push(chunk);
@@ -849,73 +849,49 @@ impl Agent {
         Ok(response)
     }
 
-    async fn answer_context(&mut self, aliases: &[usize]) -> Result<String> {
+    async fn answer_context(&mut self, aliases: &[usize], gpt_model: &str) -> Result<String> {
         let paths = self.paths();
-        let code_chunks = self.canonicalize_code_chunks().await;
 
         let mut s = "".to_owned();
 
-        let mut path_aliases = aliases
+        let mut aliases = aliases
             .iter()
             .copied()
             .filter(|alias| *alias < paths.len())
             .collect::<Vec<_>>();
 
-        path_aliases.sort();
-        path_aliases.dedup();
+        aliases.sort();
+        aliases.dedup();
 
-        if !paths.is_empty() {
+        debug!(?paths, ?aliases, "created filtered path alias list");
+
+        // NB: If we have more than one selected alias passed to the agent `none` tool, we
+        // intentionally ignore the alias list. This is part of a bigger issue that is to be
+        // discussed and investigated separately, that points to odd behaviour with the agent
+        // implementation.
+        let aliases = if aliases.len() == 1 {
+            aliases
+        } else {
+            (0..paths.len()).collect()
+        };
+
+        if !aliases.is_empty() {
             s += "##### PATHS #####\npath alias, path\n";
 
-            if path_aliases.len() == 1 {
-                // Only show matching path
-                let alias = path_aliases[0];
-                let path = paths[alias].clone();
-                s += &format!("{alias}, {}\n", &path);
-            } else {
-                // Show all paths that have been seen
-                for (alias, path) in paths.iter().enumerate() {
-                    s += &format!("{alias}, {}\n", &path);
-                }
+            for alias in &aliases {
+                let path = &paths[*alias];
+                s += &format!("{alias}, {path}\n");
             }
         }
 
-        let code_chunks = if path_aliases.len() == 1 {
-            let alias = path_aliases[0];
-            let path = paths[alias].clone();
-            let doc = self.get_file_content(&path).await?;
+        let code_chunks = self.canonicalize_code_chunks(&aliases, gpt_model).await;
 
-            match doc {
-                Some(doc) => {
-                    let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")
-                        .context("invalid model requested")?;
-
-                    let trimmed_file_contents = limit_tokens(&doc.content, bpe, 4000);
-
-                    vec![CodeChunk {
-                        alias: alias as u32,
-                        path,
-                        start_line: 1,
-                        end_line: trimmed_file_contents.lines().count() as u32 + 1,
-                        snippet: trimmed_file_contents.to_owned(),
-                    }]
-                }
-                None => {
-                    warn!("only path alias did not return any results");
-                    vec![]
-                }
-            }
-        } else {
-            code_chunks
-                .iter()
-                .filter(|c| path_aliases.contains(&(c.alias as usize)))
-                .cloned()
-                .collect()
-        };
-
-        const PROMPT_HEADROOM: usize = 1500;
-        let bpe = tiktoken_rs::get_bpe_from_model("gpt-4")?;
-        let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens("gpt-4", &s)?;
+        // Sometimes, there are just too many code chunks in the context, and deduplication still
+        // doesn't trim enough chunks. So, we enforce a hard limit here that stops adding tokens
+        // early if we reach a heuristic limit.
+        const PROMPT_HEADROOM: usize = 2500;
+        let bpe = tiktoken_rs::get_bpe_from_model(gpt_model)?;
+        let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens(gpt_model, &s)?;
 
         // Select as many recent chunks as possible
         let mut recent_chunks = Vec::new();
@@ -924,7 +900,7 @@ impl Agent {
                 .snippet
                 .lines()
                 .enumerate()
-                .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line as usize))
+                .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line))
                 .collect::<String>();
 
             let formatted_snippet = format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
@@ -972,7 +948,11 @@ impl Agent {
     }
 
     async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
-        let context = self.answer_context(aliases).await?;
+        const ANSWER_ARTICLE_MODEL: &str = "gpt-4-0613";
+
+        debug!(?aliases, "creating article response");
+
+        let context = self.answer_context(aliases, ANSWER_ARTICLE_MODEL).await?;
         let history = self.utter_history().collect::<Vec<_>>();
 
         let system_message = prompts::answer_article_prompt(&context);
@@ -981,7 +961,14 @@ impl Agent {
             .chain(history.iter().cloned())
             .collect::<Vec<_>>();
 
-        let mut stream = pin!(self.llm_gateway.chat(&messages, None).await?);
+        let mut stream = pin!(
+            self.llm_gateway
+                .clone()
+                .model(ANSWER_ARTICLE_MODEL)
+                .chat(&messages, None)
+                .await?
+        );
+
         let mut response = String::new();
         while let Some(fragment) = stream.next().await {
             let fragment = fragment?;
@@ -1119,43 +1106,149 @@ impl Agent {
     }
 
     /// Merge overlapping and nearby code chunks
-    async fn canonicalize_code_chunks(&self) -> Vec<CodeChunk> {
-        let mut chunks_by_path = HashMap::<_, Vec<_>>::new();
-        for c in mem::take(&mut self.code_chunks()) {
-            chunks_by_path.entry(c.path.clone()).or_default().push(c);
+    async fn canonicalize_code_chunks(
+        &mut self,
+        aliases: &[usize],
+        gpt_model: &str,
+    ) -> Vec<CodeChunk> {
+        debug!(?aliases, "canonicalizing code chunks");
+
+        /// The ratio of code tokens to context size.
+        ///
+        /// Making this closure to 1 means that more of the context is taken up by source code.
+        const CONTEXT_CODE_RATIO: f32 = 0.5;
+
+        let bpe = tiktoken_rs::get_bpe_from_model(gpt_model).unwrap();
+        let context_size = tiktoken_rs::model::get_context_size(gpt_model);
+        let max_tokens = (context_size as f32 * CONTEXT_CODE_RATIO) as usize;
+
+        let mut spans_by_path = HashMap::<_, Vec<_>>::new();
+        for c in self.code_chunks().filter(|c| aliases.contains(&c.alias)) {
+            spans_by_path
+                .entry(c.path.clone())
+                .or_default()
+                .push(c.start_line..c.end_line);
         }
 
-        futures::stream::iter(chunks_by_path)
-            .then(|(path, mut chunks)| async move {
-                chunks.sort_by_key(|c| c.start_line);
-                let contents = self
-                    .get_file_content(&path)
+        debug!(?spans_by_path, "expanding spans");
+
+        let self_ = &*self;
+        // Map of path -> line list
+        let lines_by_file = futures::stream::iter(&mut spans_by_path)
+            .then(|(path, spans)| async move {
+                spans.sort_by_key(|c| c.start);
+
+                let lines = self_
+                    .get_file_content(path)
                     .await
                     .unwrap()
                     .unwrap_or_else(|| panic!("path did not exist in the index: {path}"))
-                    .content;
+                    .content
+                    .lines()
+                    .map(str::to_owned)
+                    .collect::<Vec<_>>();
 
-                chunks
+                (path.clone(), lines)
+            })
+            .collect::<HashMap<_, _>>()
+            .await;
+
+        // Total number of lines to try and expand by, per loop iteration.
+        const TOTAL_LINE_INC: usize = 100;
+
+        // We keep track of whether any spans were changed below, so that we know when to break
+        // out of this loop.
+        let mut changed = true;
+
+        while !spans_by_path.is_empty() && changed {
+            changed = false;
+
+            let tokens = spans_by_path
+                .iter()
+                .flat_map(|(path, spans)| spans.iter().map(move |s| (path, s)))
+                .map(|(path, span)| {
+                    let range = span.start.saturating_sub(1)..span.end.saturating_sub(1);
+                    let snippet = lines_by_file.get(path).unwrap()[range].join("\n");
+                    bpe.encode_ordinary(&snippet).len()
+                })
+                .sum::<usize>();
+
+            // First, we grow the spans if possible.
+            if tokens < max_tokens {
+                // NB: We divide TOTAL_LINE_INC by 2, because we expand in 2 directions.
+                let range_step = (TOTAL_LINE_INC / 2)
+                    / spans_by_path
+                        .values()
+                        .map(|spans| spans.len())
+                        .sum::<usize>()
+                        .max(1);
+
+                let range_step = range_step.max(1);
+
+                for (path, span) in spans_by_path
+                    .iter_mut()
+                    .flat_map(|(path, spans)| spans.iter_mut().map(move |s| (path, s)))
+                {
+                    let file_lines = lines_by_file.get(path.as_str()).unwrap().len();
+
+                    let old_span = span.clone();
+
+                    // Decrease the start line, but make sure that we don't end up with 0, as our lines
+                    // are 1-based.
+                    span.start = span.start.saturating_sub(range_step).max(1);
+
+                    // Expand the end line forwards, capping at the total number of lines (NB: this is
+                    // also 1-based).
+                    span.end += range_step;
+                    span.end = span.end.min(file_lines);
+
+                    if *span != old_span {
+                        debug!(?path, "growing span");
+                        changed = true;
+                    }
+                }
+            }
+
+            // Next, we merge any overlapping spans.
+            for spans in spans_by_path.values_mut() {
+                *spans = mem::take(spans)
                     .into_iter()
-                    .fold(Vec::<CodeChunk>::new(), |mut a, next| {
+                    .fold(Vec::new(), |mut a, next| {
                         // There is some rightward drift here, which could be fixed once if-let
                         // chains are stabilized.
                         if let Some(prev) = a.last_mut() {
                             if let Some(next) = merge_overlapping(prev, next) {
-                                if let Some(next) = merge_nearby(prev, next, &contents) {
-                                    a.push(next);
-                                }
+                                a.push(next);
+                            } else {
+                                changed = true;
                             }
                         } else {
                             a.push(next);
                         }
 
                         a
-                    })
+                    });
+            }
+        }
+
+        debug!(?spans_by_path, "expanded spans");
+
+        spans_by_path
+            .into_iter()
+            .flat_map(|(path, spans)| spans.into_iter().map(move |s| (path.clone(), s)))
+            .map(|(path, span)| {
+                let range = span.start.saturating_sub(1)..span.end.saturating_sub(1);
+                let snippet = lines_by_file.get(&path).unwrap()[range].join("\n");
+
+                CodeChunk {
+                    alias: self.get_path_alias(&path),
+                    path,
+                    snippet,
+                    start_line: span.start,
+                    end_line: span.end,
+                }
             })
-            .flat_map(futures::stream::iter)
             .collect()
-            .await
     }
 
     /// Hypothetical Document Embedding (HyDE): https://arxiv.org/abs/2212.10496
@@ -1366,58 +1459,21 @@ fn limit_tokens(text: &str, bpe: CoreBPE, max_tokens: usize) -> &str {
     ""
 }
 
-/// Merge code chunks if they overlap.
+/// Merge line ranges if they overlap.
 ///
-/// This function assumes that the first paramter is a chunk which starts *before* the second
-/// parameter starts.
-fn merge_overlapping(a: &mut CodeChunk, b: CodeChunk) -> Option<CodeChunk> {
-    if a.end_line >= b.start_line {
+/// This function assumes that the first parameter is a line range which starts *before* the line
+/// range given by the second parameter.
+fn merge_overlapping(a: &mut Range<usize>, b: Range<usize>) -> Option<Range<usize>> {
+    if a.end >= b.start {
         // `b` might be contained in `a`, which allows us to discard it.
-        if a.end_line < b.end_line {
-            a.snippet += "\n";
-            a.snippet += &b
-                .snippet
-                .lines()
-                .skip((a.end_line - b.start_line) as usize)
-                .collect::<Vec<_>>()
-                .join("\n");
-
-            a.end_line = b.end_line;
+        if a.end < b.end {
+            a.end = b.end;
         }
 
         None
     } else {
         Some(b)
     }
-}
-
-/// Merge nearby code chunks if possible, returning the second code chunk if it is too far away.
-///
-/// This function assumes that the input chunks do not overlap, and that the first paramter is a
-/// chunk which ends *before* the second parameter starts.
-fn merge_nearby(a: &mut CodeChunk, b: CodeChunk, contents: &str) -> Option<CodeChunk> {
-    const NEAR_THRESHOLD: u32 = 20;
-
-    // This should never underflow, as we already merge overlapping chunks before getting
-    // here.
-    let missing = b.start_line - a.end_line;
-
-    if missing > NEAR_THRESHOLD {
-        return Some(b);
-    }
-
-    a.snippet += "\n";
-    a.snippet += &contents
-        .lines()
-        .skip(a.end_line as usize - 1)
-        .take(missing as usize)
-        .collect::<Vec<_>>()
-        .join("\n");
-    a.snippet += "\n";
-    a.snippet += &b.snippet;
-    a.end_line = b.end_line;
-
-    None
 }
 
 fn split_article_summary(response: &str) -> Option<(String, String)> {
@@ -1606,462 +1662,6 @@ mod tests {
         assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 4), "fn 🚨");
         assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 5), "fn 🚨()");
         assert_eq!(limit_tokens("fn 🚨() {}", bpe, 6), "fn 🚨() {}");
-    }
-
-    #[test]
-    fn test_merge_overlapping_no_overlap() {
-        let _code = vec![
-            "/// Non recursive function.",
-            "///",
-            "/// `n` the rank used to compute the member of the sequence.",
-            "pub fn fibonacci(n: i32) -> u64 {",
-            "    if n < 0 {",
-            "        panic!(\"{} is negative!\", n);",
-            "    } else if n == 0 {",
-            "        panic!(\"zero is not a right argument to fibonacci()!\");",
-            "    } else if n == 1 {",
-            "        return 1;",
-            "    }",
-            "",
-            "    let mut sum = 0;",
-            "    let mut last = 0;",
-            "    let mut curr = 1;",
-            "    for _i in 1..n {",
-            "        sum = last + curr;",
-            "        last = curr;",
-            "        curr = sum;",
-            "    }",
-            "    sum",
-            "}",
-        ]
-        .join("\n");
-
-        let a = CodeChunk {
-            path: "fib.rs".into(),
-            alias: 0,
-            snippet: vec![
-                "pub fn fibonacci(n: i32) -> u64 {",
-                "    if n < 0 {",
-                "        panic!(\"{} is negative!\", n);",
-                "    } else if n == 0 {",
-                "        panic!(\"zero is not a right argument to fibonacci()!\");",
-                "    } else if n == 1 {",
-                "        return 1;",
-                "    }",
-            ]
-            .join("\n"),
-            start_line: 4,
-            end_line: 12,
-        };
-
-        let b = CodeChunk {
-            path: "foo.rs".into(),
-            alias: 0,
-            snippet: vec![
-                "    let mut sum = 0;",
-                "    let mut last = 0;",
-                "    let mut curr = 1;",
-                "    for _i in 1..n {",
-                "        sum = last + curr;",
-                "        last = curr;",
-                "        curr = sum;",
-                "    }",
-            ]
-            .join("\n"),
-
-            start_line: 13,
-            end_line: 21,
-        };
-
-        let mut a2 = a.clone();
-        assert_eq!(Some(b.clone()), merge_overlapping(&mut a2, b));
-        assert_eq!(a2, a);
-    }
-
-    #[test]
-    fn test_merge_overlapping_consecutive() {
-        let _code = vec![
-            "/// Non recursive function.",
-            "///",
-            "/// `n` the rank used to compute the member of the sequence.",
-            "pub fn fibonacci(n: i32) -> u64 {",
-            "    if n < 0 {",
-            "        panic!(\"{} is negative!\", n);",
-            "    } else if n == 0 {",
-            "        panic!(\"zero is not a right argument to fibonacci()!\");",
-            "    } else if n == 1 {",
-            "        return 1;",
-            "    }",
-            "",
-            "    let mut sum = 0;",
-            "    let mut last = 0;",
-            "    let mut curr = 1;",
-            "    for _i in 1..n {",
-            "        sum = last + curr;",
-            "        last = curr;",
-            "        curr = sum;",
-            "    }",
-            "    sum",
-            "}",
-        ]
-        .join("\n");
-
-        let mut a = CodeChunk {
-            path: "fib.rs".into(),
-            alias: 0,
-            snippet: vec![
-                "pub fn fibonacci(n: i32) -> u64 {",
-                "    if n < 0 {",
-                "        panic!(\"{} is negative!\", n);",
-                "    } else if n == 0 {",
-                "        panic!(\"zero is not a right argument to fibonacci()!\");",
-                "    } else if n == 1 {",
-                "        return 1;",
-                "    }",
-            ]
-            .join("\n"),
-            start_line: 4,
-            end_line: 12,
-        };
-
-        let b = CodeChunk {
-            path: "foo.rs".into(),
-            alias: 0,
-            snippet: vec![
-                "",
-                "    let mut sum = 0;",
-                "    let mut last = 0;",
-                "    let mut curr = 1;",
-                "    for _i in 1..n {",
-                "        sum = last + curr;",
-                "        last = curr;",
-                "        curr = sum;",
-                "    }",
-            ]
-            .join("\n"),
-
-            start_line: 12,
-            end_line: 21,
-        };
-
-        assert_eq!(None, merge_overlapping(&mut a, b.clone()));
-        assert_eq!(a.end_line, b.end_line);
-
-        assert_eq!(
-            a.snippet,
-            vec![
-                "pub fn fibonacci(n: i32) -> u64 {",
-                "    if n < 0 {",
-                "        panic!(\"{} is negative!\", n);",
-                "    } else if n == 0 {",
-                "        panic!(\"zero is not a right argument to fibonacci()!\");",
-                "    } else if n == 1 {",
-                "        return 1;",
-                "    }",
-                "",
-                "    let mut sum = 0;",
-                "    let mut last = 0;",
-                "    let mut curr = 1;",
-                "    for _i in 1..n {",
-                "        sum = last + curr;",
-                "        last = curr;",
-                "        curr = sum;",
-                "    }",
-            ]
-            .join("\n")
-        );
-    }
-
-    #[test]
-    fn test_merge_overlapping_overlap() {
-        let _code = vec![
-            "/// Non recursive function.",
-            "///",
-            "/// `n` the rank used to compute the member of the sequence.",
-            "pub fn fibonacci(n: i32) -> u64 {",
-            "    if n < 0 {",
-            "        panic!(\"{} is negative!\", n);",
-            "    } else if n == 0 {",
-            "        panic!(\"zero is not a right argument to fibonacci()!\");",
-            "    } else if n == 1 {",
-            "        return 1;",
-            "    }",
-            "",
-            "    let mut sum = 0;",
-            "    let mut last = 0;",
-            "    let mut curr = 1;",
-            "    for _i in 1..n {",
-            "        sum = last + curr;",
-            "        last = curr;",
-            "        curr = sum;",
-            "    }",
-            "    sum",
-            "}",
-        ]
-        .join("\n");
-
-        let mut a = CodeChunk {
-            path: "fib.rs".into(),
-            alias: 0,
-            snippet: vec![
-                "pub fn fibonacci(n: i32) -> u64 {",
-                "    if n < 0 {",
-                "        panic!(\"{} is negative!\", n);",
-                "    } else if n == 0 {",
-                "        panic!(\"zero is not a right argument to fibonacci()!\");",
-                "    } else if n == 1 {",
-                "        return 1;",
-                "    }",
-            ]
-            .join("\n"),
-            start_line: 4,
-            end_line: 12,
-        };
-
-        let b = CodeChunk {
-            path: "foo.rs".into(),
-            alias: 0,
-            snippet: vec![
-                "    } else if n == 1 {",
-                "        return 1;",
-                "    }",
-                "",
-                "    let mut sum = 0;",
-                "    let mut last = 0;",
-                "    let mut curr = 1;",
-                "    for _i in 1..n {",
-                "        sum = last + curr;",
-                "        last = curr;",
-                "        curr = sum;",
-                "    }",
-            ]
-            .join("\n"),
-
-            start_line: 9,
-            end_line: 21,
-        };
-
-        assert_eq!(None, merge_overlapping(&mut a, b.clone()));
-        assert_eq!(a.end_line, b.end_line);
-
-        assert_eq!(
-            a.snippet,
-            vec![
-                "pub fn fibonacci(n: i32) -> u64 {",
-                "    if n < 0 {",
-                "        panic!(\"{} is negative!\", n);",
-                "    } else if n == 0 {",
-                "        panic!(\"zero is not a right argument to fibonacci()!\");",
-                "    } else if n == 1 {",
-                "        return 1;",
-                "    }",
-                "",
-                "    let mut sum = 0;",
-                "    let mut last = 0;",
-                "    let mut curr = 1;",
-                "    for _i in 1..n {",
-                "        sum = last + curr;",
-                "        last = curr;",
-                "        curr = sum;",
-                "    }",
-            ]
-            .join("\n")
-        );
-    }
-
-    #[test]
-    fn test_merge_overlapping_subset() {
-        let _code = vec![
-            "/// Non recursive function.",
-            "///",
-            "/// `n` the rank used to compute the member of the sequence.",
-            "pub fn fibonacci(n: i32) -> u64 {",
-            "    if n < 0 {",
-            "        panic!(\"{} is negative!\", n);",
-            "    } else if n == 0 {",
-            "        panic!(\"zero is not a right argument to fibonacci()!\");",
-            "    } else if n == 1 {",
-            "        return 1;",
-            "    }",
-            "",
-            "    let mut sum = 0;",
-            "    let mut last = 0;",
-            "    let mut curr = 1;",
-            "    for _i in 1..n {",
-            "        sum = last + curr;",
-            "        last = curr;",
-            "        curr = sum;",
-            "    }",
-            "    sum",
-            "}",
-        ]
-        .join("\n");
-
-        let mut a = CodeChunk {
-            path: "fib.rs".into(),
-            alias: 0,
-            snippet: vec![
-                "pub fn fibonacci(n: i32) -> u64 {",
-                "    if n < 0 {",
-                "        panic!(\"{} is negative!\", n);",
-                "    } else if n == 0 {",
-                "        panic!(\"zero is not a right argument to fibonacci()!\");",
-                "    } else if n == 1 {",
-                "        return 1;",
-                "    }",
-            ]
-            .join("\n"),
-            start_line: 4,
-            end_line: 12,
-        };
-
-        let b = CodeChunk {
-            path: "foo.rs".into(),
-            alias: 0,
-            snippet: vec![
-                "        panic!(\"{} is negative!\", n);",
-                "    } else if n == 0 {",
-                "        panic!(\"zero is not a right argument to fibonacci()!\");",
-            ]
-            .join("\n"),
-            start_line: 6,
-            end_line: 9,
-        };
-
-        assert_eq!(None, merge_overlapping(&mut a, b));
-        assert_eq!(a.start_line, 4);
-        assert_eq!(a.end_line, 12);
-
-        assert_eq!(
-            a.snippet,
-            vec![
-                "pub fn fibonacci(n: i32) -> u64 {",
-                "    if n < 0 {",
-                "        panic!(\"{} is negative!\", n);",
-                "    } else if n == 0 {",
-                "        panic!(\"zero is not a right argument to fibonacci()!\");",
-                "    } else if n == 1 {",
-                "        return 1;",
-                "    }",
-            ]
-            .join("\n")
-        );
-    }
-
-    #[test]
-    fn test_merge_nearby() {
-        {
-            let mut a = CodeChunk {
-                path: "foo.txt".into(),
-                alias: 0,
-                snippet: "fn main() {".into(),
-                start_line: 1,
-                end_line: 2,
-            };
-
-            let b = CodeChunk {
-                path: "foo.txt".into(),
-                alias: 0,
-                snippet: "}".into(),
-                start_line: 3,
-                end_line: 4,
-            };
-
-            let contents = "fn main() {\nprintln!(\"hello world\");\n}\n";
-
-            assert_eq!(None, merge_nearby(&mut a, b.clone(), contents));
-            assert_eq!(a.end_line, b.end_line);
-            assert_eq!(a.snippet, contents.trim());
-        }
-
-        {
-            let code = vec![
-                "/// Non recursive function.",
-                "///",
-                "/// `n` the rank used to compute the member of the sequence.",
-                "pub fn fibonacci(n: i32) -> u64 {",
-                "    if n < 0 {",
-                "        panic!(\"{} is negative!\", n);",
-                "    } else if n == 0 {",
-                "        panic!(\"zero is not a right argument to fibonacci()!\");",
-                "    } else if n == 1 {",
-                "        return 1;",
-                "    }",
-                "",
-                "    let mut sum = 0;",
-                "    let mut last = 0;",
-                "    let mut curr = 1;",
-                "    for _i in 1..n {",
-                "        sum = last + curr;",
-                "        last = curr;",
-                "        curr = sum;",
-                "    }",
-                "    sum",
-                "}",
-            ]
-            .join("\n");
-
-            let mut a = CodeChunk {
-                path: "fib.rs".into(),
-                alias: 0,
-                snippet: vec![
-                    "pub fn fibonacci(n: i32) -> u64 {",
-                    "    if n < 0 {",
-                    "        panic!(\"{} is negative!\", n);",
-                    "    } else if n == 0 {",
-                    "        panic!(\"zero is not a right argument to fibonacci()!\");",
-                    "    } else if n == 1 {",
-                    "        return 1;",
-                    "    }",
-                ]
-                .join("\n"),
-                start_line: 4,
-                end_line: 12,
-            };
-
-            let b = CodeChunk {
-                path: "foo.rs".into(),
-                alias: 0,
-                snippet: vec![
-                    "    for _i in 1..n {",
-                    "        sum = last + curr;",
-                    "        last = curr;",
-                    "        curr = sum;",
-                    "    }",
-                ]
-                .join("\n"),
-
-                start_line: 16,
-                end_line: 21,
-            };
-
-            assert_eq!(None, merge_nearby(&mut a, b.clone(), &code));
-            assert_eq!(a.end_line, b.end_line);
-
-            assert_eq!(
-                a.snippet,
-                vec![
-                    "pub fn fibonacci(n: i32) -> u64 {",
-                    "    if n < 0 {",
-                    "        panic!(\"{} is negative!\", n);",
-                    "    } else if n == 0 {",
-                    "        panic!(\"zero is not a right argument to fibonacci()!\");",
-                    "    } else if n == 1 {",
-                    "        return 1;",
-                    "    }",
-                    "",
-                    "    let mut sum = 0;",
-                    "    let mut last = 0;",
-                    "    let mut curr = 1;",
-                    "    for _i in 1..n {",
-                    "        sum = last + curr;",
-                    "        last = curr;",
-                    "        curr = sum;",
-                    "    }",
-                ]
-                .join("\n")
-            );
-        }
     }
 
     #[test]
