@@ -79,7 +79,13 @@ impl Exchange {
     /// answer is an `article`, this returns the full text.
     pub fn answer(&self) -> Option<&str> {
         match self.outcome {
-            Some(Outcome::Article(..)) => self.outcome.as_ref().and_then(Outcome::as_article),
+            Some(Outcome::Article(..)) => {
+                if self.conclusion.is_some() {
+                    self.outcome.as_ref().and_then(Outcome::as_article)
+                } else {
+                    None
+                }
+            }
             Some(Outcome::Filesystem(..)) => self.conclusion.as_deref(),
             None => None,
         }

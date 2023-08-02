@@ -82,8 +82,9 @@ pub struct Params {
     pub repo_ref: RepoRef,
     #[serde(default = "default_thread_id")]
     pub thread_id: uuid::Uuid,
-    /// Optional id of exchange to overwrite
-    pub rephrase_exchange_id: Option<uuid::Uuid>,
+    /// Optional id of the parent of the exchange to overwrite
+    /// If this UUID is nil, then overwrite the first exchange in the thread
+    pub parent_exchange_id: Option<uuid::Uuid>,
 }
 
 fn default_thread_id() -> uuid::Uuid {
@@ -181,18 +182,23 @@ pub(super) async fn _handle(
 
     let Params {
         thread_id,
-        rephrase_exchange_id,
+        parent_exchange_id,
         q,
         ..
     } = params;
 
-    if let Some(rephrase_exchange_id) = rephrase_exchange_id {
-        let rephrase_exchange_index = exchanges
-            .iter()
-            .position(|e| e.id == rephrase_exchange_id)
-            .ok_or_else(|| super::Error::user("parent query id not found in exchanges"))?;
+    if let Some(parent_exchange_id) = parent_exchange_id {
+        let truncate_from_index = if parent_exchange_id.is_nil() {
+            0
+        } else {
+            exchanges
+                .iter()
+                .position(|e| e.id == parent_exchange_id)
+                .ok_or_else(|| super::Error::user("parent query id not found in exchanges"))?
+                + 1
+        };
 
-        exchanges.truncate(rephrase_exchange_index);
+        exchanges.truncate(truncate_from_index);
     }
 
     let query = parser::parse_nl(&q)
@@ -216,7 +222,6 @@ pub(super) async fn _handle(
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
         let mut agent = Agent {
-            conversation_id: conversation_id.clone(),
             app,
             repo_ref,
             exchanges,
@@ -353,7 +358,6 @@ enum AgentError {
 }
 
 struct Agent {
-    conversation_id: conversations::ConversationId,
     app: Application,
     repo_ref: RepoRef,
     exchanges: Vec<Exchange>,
@@ -385,20 +389,6 @@ impl Drop for Agent {
                 EventData::output_stage("cancelled")
                     .with_payload("message", "request was cancelled"),
             );
-
-            // Clone before moving into async block
-            let (sql, repo_ref, exchanges, id) = (
-                self.app.sql.clone(),
-                self.repo_ref.clone(),
-                self.exchanges.clone(),
-                self.conversation_id.clone(),
-            );
-
-            tokio::spawn(async move {
-                conversations::store(&sql, id, (repo_ref, exchanges))
-                    .await
-                    .unwrap();
-            });
         }
     }
 }
