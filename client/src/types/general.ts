@@ -213,6 +213,7 @@ export type ChatMessageServer = {
   results?: FileSystemResult & ArticleResult;
   queryId: string;
   responseTimestamp: string;
+  explainedFile?: string;
 };
 
 export type ChatMessage = ChatMessageUser | ChatMessageServer;

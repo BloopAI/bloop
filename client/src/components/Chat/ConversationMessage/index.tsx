@@ -47,6 +47,7 @@ type Props = {
   results?: FileSystemResult & ArticleResult;
   i: number;
   onMessageEdit: (i: number) => void;
+  explainedFile?: string;
 };
 
 const ConversationMessage = ({
@@ -66,6 +67,7 @@ const ConversationMessage = ({
   repoName,
   onMessageEdit,
   responseTimestamp,
+  explainedFile,
 }: Props) => {
   const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
@@ -151,6 +153,7 @@ const ConversationMessage = ({
                   article={results.Article}
                   threadId={threadId}
                   i={i}
+                  explainedFile={explainedFile}
                 />
               ) : !!results?.Filesystem?.length ? (
                 <SummaryCardsFilesystem

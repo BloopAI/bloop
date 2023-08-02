@@ -208,6 +208,7 @@ const Chat = () => {
                 results: newMessage.outcome,
                 queryId: newMessage.id,
                 responseTimestamp: newMessage.response_timestamp,
+                explainedFile: newMessage.focused_chunk?.file_path,
               };
               const lastMessages: ChatMessage[] =
                 lastMessage?.author === ChatMessageAuthor.Server
@@ -222,11 +223,13 @@ const Chat = () => {
               !firstResultCame
             ) {
               setConversation((prev) => {
-                if (options && newMessage.outcome?.Article?.length) {
+                if (
+                  newMessage.focused_chunk?.file_path &&
+                  newMessage.outcome?.Article?.length
+                ) {
                   setChatOpen(false);
                   navigateFullResult(
-                    tab.repoName,
-                    options.filePath,
+                    newMessage.focused_chunk?.file_path,
                     undefined,
                     prev.length - 1,
                     thread_id,

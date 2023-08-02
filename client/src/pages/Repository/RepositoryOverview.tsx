@@ -71,7 +71,7 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
 
   const fileClick = useCallback((path: string, type: FileTreeFileType) => {
     if (type === FileTreeFileType.FILE) {
-      navigateFullResult(repository.name, path);
+      navigateFullResult(path);
     } else if (type === FileTreeFileType.DIR) {
       navigateRepoPath(repository.name, path === '/' ? '' : path);
     }

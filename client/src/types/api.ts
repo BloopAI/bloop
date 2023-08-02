@@ -247,6 +247,7 @@ export type ConversationType = {
   outcome: FileSystemResult & ArticleResult;
   paths: string[];
   response_timestamp: string;
+  focused_chunk: { file_path: string } | null;
 };
 
 export interface SuggestionsResponse {

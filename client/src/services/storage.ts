@@ -30,3 +30,5 @@ export const LAST_ACTIVE_TAB_KEY = 'last_active_tab';
 export const TABS_HISTORY_KEY = 'tabs_history';
 export const PROMPT_GUIDE_DONE = 'prompt_guide_done';
 export const LANGUAGE_KEY = 'language';
+export const RIGHT_SIDEBAR_WIDTH_KEY = 'right_sidebar_width_key';
+export const LEFT_SIDEBAR_WIDTH_KEY = 'left_sidebar_width_key';

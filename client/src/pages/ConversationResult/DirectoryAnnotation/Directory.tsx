@@ -60,7 +60,7 @@ const Directory = ({
 
   const fileClick = useCallback((path: string, type: FileTreeFileType) => {
     if (type === FileTreeFileType.FILE) {
-      navigateFullResult(repo, path);
+      navigateFullResult(path);
     } else if (type === FileTreeFileType.DIR) {
       navigateRepoPath(repo, path === '/' ? '' : path);
     }

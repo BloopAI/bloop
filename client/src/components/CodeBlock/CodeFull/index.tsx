@@ -234,7 +234,7 @@ const CodeFull = ({
       if (filePath === relativePath) {
         setScrollToIndex([lineNum, lineNum]);
       } else {
-        navigateFullResult(repoName, filePath, {
+        navigateFullResult(filePath, {
           scrollToLine: `${lineNum}_${lineNum}`,
           type,
           tokenName,

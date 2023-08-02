@@ -8,10 +8,17 @@ type Props = {
   article: string;
   i: number;
   threadId: string;
+  explainedFile?: string;
 };
 
-const SummaryCardsArticle = ({ article, i, threadId }: Props) => {
-  const { navigateArticleResponse } = useContext(AppNavigationContext);
+const SummaryCardsArticle = ({
+  article,
+  i,
+  threadId,
+  explainedFile,
+}: Props) => {
+  const { navigateArticleResponse, navigateFullResult } =
+    useContext(AppNavigationContext);
   return (
     <>
       {article
@@ -29,7 +36,13 @@ const SummaryCardsArticle = ({ article, i, threadId }: Props) => {
         .map((p, index, array) =>
           index === array.length - 1 ? (
             <SummaryCardMain
-              onClick={() => navigateArticleResponse(i, threadId)}
+              onClick={() => {
+                if (explainedFile) {
+                  navigateFullResult(explainedFile, undefined, i, threadId);
+                } else {
+                  navigateArticleResponse(i, threadId);
+                }
+              }}
               key={index}
               isArticle
             >
