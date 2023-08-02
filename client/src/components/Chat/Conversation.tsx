@@ -74,7 +74,8 @@ const Conversation = ({
           queryId={
             m.author === ChatMessageAuthor.Server
               ? m.queryId
-              : (conversation[i + 1] as ChatMessageServer)?.queryId || ''
+              : (conversation[i - 1] as ChatMessageServer)?.queryId ||
+                '00000000-0000-0000-0000-000000000000'
           }
           repoRef={repoRef}
           scrollToBottom={scrollToBottom}

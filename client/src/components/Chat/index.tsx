@@ -21,6 +21,7 @@ import { ChatContext } from '../../context/chatContext';
 import { SearchContext } from '../../context/searchContext';
 import { mapLoadingSteps } from '../../mappers/conversation';
 import { findElementInCurrentTab } from '../../utils/domUtils';
+import { conversationsCache } from '../../services/cache';
 import NLInput from './NLInput';
 import ChipButton from './ChipButton';
 import AllConversations from './AllCoversations';
@@ -101,7 +102,7 @@ const Chat = () => {
           selectedLines
             ? `&start=${selectedLines[0]}&end=${selectedLines[1]}`
             : ''
-        }${queryIdToEdit ? `&rephrase_exchange_id=${queryIdToEdit}` : ''}`,
+        }${queryIdToEdit ? `&parent_exchange_id=${queryIdToEdit}` : ''}`,
       );
       prevEventSource = eventSource;
       setSelectedLines(null);
@@ -216,6 +217,7 @@ const Chat = () => {
               !firstResultCame
             ) {
               setConversation((prev) => {
+                conversationsCache[threadId] = undefined;
                 if (newMessage.outcome?.Article?.length) {
                   setChatOpen(false);
                   navigateArticleResponse(prev.length - 1, thread_id);
@@ -364,8 +366,8 @@ const Chat = () => {
   }, [navigatedItem?.type]);
 
   const onMessageEdit = useCallback(
-    (queryId: string, i: number) => {
-      setQueryIdToEdit(queryId);
+    (parentQueryId: string, i: number) => {
+      setQueryIdToEdit(parentQueryId);
       if (isLoading) {
         stopGenerating();
       }

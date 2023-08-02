@@ -27,15 +27,22 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
   const { setThreadId, setConversation } = useContext(ChatContext.Setters);
   const { openFileModal } = useContext(FileModalContext);
   const { tab } = useContext(UIContext.Tab);
-  const data = useMemo(
-    () => conversationsCache[threadId]?.[recordId] || conversation[recordId],
-    [
-      (conversation[recordId] as ChatMessageServer)?.results,
-      (conversation[recordId] as ChatMessageServer)?.isLoading,
-      recordId,
-      threadId,
-    ],
+  const [data, setData] = useState(
+    conversationsCache[threadId]?.[recordId] || conversation[recordId],
   );
+
+  useEffect(() => {
+    const d =
+      conversationsCache[threadId]?.[recordId] || conversation[recordId];
+    if (d?.results) {
+      setData(d);
+    }
+  }, [
+    (conversation[recordId] as ChatMessageServer)?.results,
+    (conversation[recordId] as ChatMessageServer)?.isLoading,
+    recordId,
+    threadId,
+  ]);
 
   useEffect(() => {
     if (!conversationsCache[threadId]?.[recordId] && !conversation[recordId]) {
