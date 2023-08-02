@@ -67,6 +67,7 @@ const MarkdownWithCode = ({
             navigateFullResult={navigateFullResult}
             repoName={repoName}
             selectedBranch={selectedBranch}
+            isSummary={isSummary}
           />
         ) : (
           <FileChip
