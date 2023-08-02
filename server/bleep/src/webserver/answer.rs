@@ -1156,56 +1156,57 @@ impl Agent {
         // Total number of lines to try and expand by, per loop iteration.
         const TOTAL_LINE_INC: usize = 100;
 
-        while !spans_by_path.is_empty() && spans_by_path
-            .iter()
-            .flat_map(|(path, spans)| spans.iter().map(move |s| (path, s)))
-            .map(|(path, span)| {
-                let range = span.start.saturating_sub(1)..span.end.saturating_sub(1);
-                let snippet = lines_by_file.get(path).unwrap()[range].join("\n");
-                bpe.encode_ordinary(&snippet).len()
-            })
-            .sum::<usize>()
-            < max_tokens
-        {
-            // NB: We divide TOTAL_LINE_INC by 2, because we expand in 2 directions.
-            let range_step = (TOTAL_LINE_INC / 2)
-                / spans_by_path
-                    .values()
-                    .map(|spans| spans.len())
-                    .sum::<usize>()
-                    .max(1);
+        // We keep track of whether any spans were changed below, so that we know when to break
+        // out of this loop.
+        let mut changed = true;
 
-            let range_step = range_step.max(1);
+        while !spans_by_path.is_empty() && changed {
+            changed = false;
 
-            // We keep track of whether any spans were grown below, so that we know when to break
-            // out of this loop.
-            let mut changed = false;
+            let tokens = spans_by_path
+                .iter()
+                .flat_map(|(path, spans)| spans.iter().map(move |s| (path, s)))
+                .map(|(path, span)| {
+                    let range = span.start.saturating_sub(1)..span.end.saturating_sub(1);
+                    let snippet = lines_by_file.get(path).unwrap()[range].join("\n");
+                    bpe.encode_ordinary(&snippet).len()
+                })
+                .sum::<usize>();
 
-            // First, we grow the spans.
-            for (path, span) in spans_by_path
-                .iter_mut()
-                .flat_map(|(path, spans)| spans.iter_mut().map(move |s| (path, s)))
-            {
-                let file_lines = lines_by_file.get(path.as_str()).unwrap().len();
+            // First, we grow the spans if possible.
+            if tokens < max_tokens {
+                // NB: We divide TOTAL_LINE_INC by 2, because we expand in 2 directions.
+                let range_step = (TOTAL_LINE_INC / 2)
+                    / spans_by_path
+                        .values()
+                        .map(|spans| spans.len())
+                        .sum::<usize>()
+                        .max(1);
 
-                let old_span = span.clone();
+                let range_step = range_step.max(1);
 
-                // Decrease the start line, but make sure that we don't end up with 0, as our lines
-                // are 1-based.
-                span.start = span.start.saturating_sub(range_step).max(1);
+                for (path, span) in spans_by_path
+                    .iter_mut()
+                    .flat_map(|(path, spans)| spans.iter_mut().map(move |s| (path, s)))
+                {
+                    let file_lines = lines_by_file.get(path.as_str()).unwrap().len();
 
-                // Expand the end line forwards, capping at the total number of lines (NB: this is
-                // also 1-based).
-                span.end += range_step;
-                span.end = span.end.min(file_lines);
+                    let old_span = span.clone();
 
-                if *span != old_span {
-                    changed = true;
+                    // Decrease the start line, but make sure that we don't end up with 0, as our lines
+                    // are 1-based.
+                    span.start = span.start.saturating_sub(range_step).max(1);
+
+                    // Expand the end line forwards, capping at the total number of lines (NB: this is
+                    // also 1-based).
+                    span.end += range_step;
+                    span.end = span.end.min(file_lines);
+
+                    if *span != old_span {
+                        debug!(?path, "growing span");
+                        changed = true;
+                    }
                 }
-            }
-
-            if !changed {
-                break;
             }
 
             // Next, we merge any overlapping spans.
@@ -1218,6 +1219,8 @@ impl Agent {
                         if let Some(prev) = a.last_mut() {
                             if let Some(next) = merge_overlapping(prev, next) {
                                 a.push(next);
+                            } else {
+                                changed = true;
                             }
                         } else {
                             a.push(next);
