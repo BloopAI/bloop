@@ -194,16 +194,17 @@ const ConversationMessage = ({
                   <>
                     <span>{message}</span>
                     {!isHistory && !!queryId && (
-                      <Button
-                        size="tiny"
-                        variant="tertiary"
-                        className="absolute bottom-1 right-1"
-                        onlyIcon
-                        title={t('Edit')}
-                        onClick={() => onMessageEdit(queryId, i)}
-                      >
-                        <PenUnderline />
-                      </Button>
+                      <div className="absolute bottom-1 right-1">
+                        <Button
+                          size="tiny"
+                          variant="tertiary"
+                          onlyIcon
+                          title={t('Edit')}
+                          onClick={() => onMessageEdit(queryId, i)}
+                        >
+                          <PenUnderline />
+                        </Button>
+                      </div>
                     )}
                   </>
                 )}
