@@ -889,7 +889,7 @@ impl Agent {
         // Sometimes, there are just too many code chunks in the context, and deduplication still
         // doesn't trim enough chunks. So, we enforce a hard limit here that stops adding tokens
         // early if we reach a heuristic limit.
-        const PROMPT_HEADROOM: usize = 1500;
+        const PROMPT_HEADROOM: usize = 2500;
         let bpe = tiktoken_rs::get_bpe_from_model(gpt_model)?;
         let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens(gpt_model, &s)?;
 
