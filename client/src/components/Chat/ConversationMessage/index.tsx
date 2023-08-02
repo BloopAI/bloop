@@ -100,6 +100,7 @@ const ConversationMessage = ({
                 <FileChip
                   onClick={() => openFileModal(s.path)}
                   fileName={s.path.split('/').pop() || ''}
+                  filePath={s.path || ''}
                 />
               ) : null}
             </div>
