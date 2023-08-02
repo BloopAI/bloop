@@ -4,6 +4,7 @@ import { NavigationItem, SearchType, UITabType } from '../../types/general';
 import { AppNavigationContext } from '../appNavigationContext';
 import { FileModalContext } from '../fileModalContext';
 import { TabsContext } from '../tabsContext';
+import { findElementInCurrentTab } from '../../utils/domUtils';
 
 export const AppNavigationProvider = ({
   tab,
@@ -176,6 +177,16 @@ export const AppNavigationProvider = ({
         return prevState;
       }
       newItem.pathParams = { ...(newItem.pathParams || {}) };
+      if (newItem.pathParams.scrollToLine === lines) {
+        const [startLine, endLine] = lines.split('_');
+        // suboptimal way to scroll to the same line as in path params when the user scrolled away from it
+        findElementInCurrentTab(
+          `[data-line-number="${startLine}"]`,
+        )?.scrollIntoView({
+          behavior: 'smooth',
+          block: Number(endLine) - Number(startLine) < 8 ? 'center' : 'start',
+        });
+      }
       newItem.pathParams.scrollToLine = lines;
       return [...prevState.slice(0, -1), newItem];
     });
