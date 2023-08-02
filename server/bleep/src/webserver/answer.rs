@@ -413,7 +413,7 @@ pub async fn explain(
     let mut exchange = Exchange::new(query_id, query);
 
     exchange.focused_chunk = Some(FocusedChunk {
-        file_content,
+        file_path: params.relative_path.clone(),
         start_line: params.line_start,
         end_line: params.line_end,
     });
