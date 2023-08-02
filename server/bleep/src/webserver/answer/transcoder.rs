@@ -966,4 +966,46 @@ Bar.
 
         assert_eq!(expected, encoded);
     }
+
+    #[test]
+    fn test_xml_empty_lines() {
+        let input = "
+Foo
+
+
+
+bar
+
+<GeneratedCode>
+<Code>
+fn main() {
+    let x = 1;
+
+    dbg!(x);
+}
+</Code>
+<Language>Rust</Language>
+</GeneratedCode>
+
+quux";
+
+        let expected = "Foo
+
+bar
+
+``` type:Generated,lang:Rust,path:,lines:0-0
+fn main() {
+    let x = 1;
+
+    dbg!(x);
+}
+```
+
+quux";
+
+        let (body, conclusion) = decode(&sanitize(input));
+
+        assert_eq!(None, conclusion);
+        assert_eq!(expected, body);
+    }
 }
