@@ -1,7 +1,6 @@
 import React, { useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Collapsed, Expanded } from '../../icons';
-import { MenuListItemType } from '../ContextMenu';
 import Tabs from '../../components/Tabs';
 import SkeletonItem from '../../components/SkeletonItem';
 import { UIContext } from '../../context/uiContext';
@@ -13,28 +12,15 @@ type Props = {
   loading?: boolean;
 };
 
-const dropdownItems = [
-  {
-    text: 'Best match',
-    type: MenuListItemType.DEFAULT,
-  },
-  {
-    text: 'Last indexed',
-    type: MenuListItemType.DEFAULT,
-  },
-  {
-    text: 'Frequency',
-    type: MenuListItemType.DEFAULT,
-  },
-];
-
 const PageHeader = ({
   resultsNumber,
   showCollapseControls,
   loading,
 }: Props) => {
   const { t } = useTranslation();
-  const { symbolsCollapsed, setSymbolsCollapsed } = useContext(UIContext);
+  const { symbolsCollapsed, setSymbolsCollapsed } = useContext(
+    UIContext.Symbols,
+  );
   return (
     <div className="w-full flex justify-between items-center mb-5 select-none">
       <div>
@@ -73,7 +59,6 @@ const PageHeader = ({
         ) : (
           ''
         )}
-        {/*<Dropdown items={dropdownItems} btnHint="Sort by:" />*/}
       </div>
     </div>
   );

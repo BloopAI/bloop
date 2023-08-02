@@ -60,7 +60,7 @@ const RepoCard = ({
   indexedBranches,
 }: Props) => {
   const { t } = useTranslation();
-  const { isGithubConnected } = useContext(UIContext);
+  const { isGithubConnected } = useContext(UIContext.GitHubConnected);
   const { locale } = useContext(LocaleContext);
   const { handleAddTab, tabs, handleRemoveTab } = useContext(TabsContext);
   const isGh = useMemo(() => provider === 'github', [provider]);

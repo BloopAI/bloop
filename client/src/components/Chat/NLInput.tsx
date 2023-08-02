@@ -54,7 +54,7 @@ const NLInput = ({
   const { t } = useTranslation();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setComposition] = useState(false);
-  const { setPromptGuideOpen } = useContext(UIContext);
+  const { setPromptGuideOpen } = useContext(UIContext.PromptGuide);
   const { envConfig } = useContext(DeviceContext);
 
   useEffect(() => {

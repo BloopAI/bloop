@@ -12,14 +12,12 @@ type Props = {
     item: SuggestionType;
     index: number;
   }) => any;
-  left: number;
   isOpen: boolean;
   options: SuggestionType[];
 };
 
 const AutocompleteMenu = ({
   getMenuProps,
-  left,
   isOpen,
   options,
   getItemProps,
@@ -41,20 +39,14 @@ const AutocompleteMenu = ({
     () => options.filter((o) => o.type === ResultItemType.CODE),
     [options],
   );
-  const containerStyle = useMemo(
-    () => ({
-      left,
-    }),
-    [left],
-  );
+
   return (
     <div
-      className={`absolute top-[40px] list-none p-0 ${
+      className={`absolute top-[40px] right-0 list-none p-0 ${
         resultOptions.length ? 'w-98' : 'w-68 '
       } bg-bg-shade bg-opacity-75 backdrop-blur-6 ${
         isOpen ? 'block' : 'hidden'
       } border border-bg-border rounded-4 shadow-high overflow-auto max-h-[calc(100vh-130px)]`}
-      style={containerStyle}
     >
       <ul {...getMenuProps()}>
         {isOpen ? (

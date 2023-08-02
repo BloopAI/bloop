@@ -8,7 +8,7 @@ import { Repository } from '../../icons';
 const RepoHomeBtn = () => {
   const { t } = useTranslation();
   const { navigateRepoPath } = useContext(AppNavigationContext);
-  const { tab } = useContext(UIContext);
+  const { tab } = useContext(UIContext.Tab);
 
   return (
     <Button
