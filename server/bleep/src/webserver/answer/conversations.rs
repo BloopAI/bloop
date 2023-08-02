@@ -126,7 +126,6 @@ pub(in crate::webserver) async fn thread(
 
     let exchanges = exchanges
         .into_iter()
-        .map(Exchange::encode)
         .map(|ex| ex.compressed())
         .collect::<Vec<_>>();
 

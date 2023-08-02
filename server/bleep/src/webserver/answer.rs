@@ -39,6 +39,7 @@ pub mod conversations;
 mod exchange;
 mod llm_gateway;
 mod prompts;
+mod transcoder;
 
 use exchange::{Exchange, SearchStep, Update};
 use llm_gateway::api::FunctionCall;
@@ -321,7 +322,7 @@ pub(super) async fn _handle(
         .map(|res| res.unwrap_or_else(|_| Err(anyhow!("stream panicked"))))
         .map(|ex: Result<Exchange>| {
             sse::Event::default()
-                .json_data(ex.map(Exchange::encode).map_err(|e| e.to_string()))
+                .json_data(ex.map_err(|e| e.to_string()))
                 .map_err(anyhow::Error::new)
         });
 
@@ -643,6 +644,8 @@ impl Agent {
             .map(|i| self.paths().get(i).ok_or(i).cloned())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|i| anyhow!("invalid path alias {i}"))?;
+
+        debug!(?query, ?paths, "invoking proc");
 
         self.update(Update::StartStep(SearchStep::Proc {
             query: query.to_string(),
@@ -974,27 +977,25 @@ impl Agent {
             let fragment = fragment?;
             response += &fragment;
 
-            if let Some((article, summary)) = split_article_summary(&response) {
-                self.update(Update::Article(article)).await?;
+            let (article, summary) = transcoder::decode(&response);
+            self.update(Update::Article(article)).await?;
+
+            if let Some(summary) = summary {
                 self.update(Update::Conclude(summary)).await?;
-            } else {
-                self.update(Update::Article(response.clone())).await?;
             }
         }
 
-        let summary = split_article_summary(&response)
-            .map(|(_article, summary)| summary)
-            .unwrap_or_else(|| {
-                [
-                    "I hope that was useful, can I help with anything else?",
-                    "Is there anything else I can help you with?",
-                    "Can I help you with anything else?",
-                ]
-                .choose(&mut OsRng)
-                .copied()
-                .unwrap()
-                .to_owned()
-            });
+        let summary = transcoder::decode(&response).1.unwrap_or_else(|| {
+            [
+                "I hope that was useful, can I help with anything else?",
+                "Is there anything else I can help you with?",
+                "Can I help you with anything else?",
+            ]
+            .choose(&mut OsRng)
+            .copied()
+            .unwrap()
+            .to_owned()
+        });
 
         self.update(Update::Conclude(summary)).await?;
 
@@ -1064,9 +1065,15 @@ impl Agent {
                     ]
                 });
 
-                let answer = e
-                    .answer_summarized()?
-                    .map(|a| llm_gateway::api::Message::assistant(&a));
+                let answer = match e.answer() {
+                    // NB: We intentionally discard the summary as it is redundant.
+                    Some((answer, _conclusion)) => {
+                        let encoded = transcoder::encode_summarized(answer, None, "gpt-3.5-turbo")?;
+                        Some(llm_gateway::api::Message::assistant(&encoded))
+                    }
+
+                    None => None,
+                };
 
                 acc.extend(
                     std::iter::once(query)
@@ -1093,9 +1100,15 @@ impl Agent {
                     content: q,
                 });
 
-                let conclusion = e.answer().map(|c| llm_gateway::api::Message::PlainText {
-                    role: "assistant".to_owned(),
-                    content: c.to_owned(),
+                let conclusion = e.answer().map(|(answer, conclusion)| {
+                    let encoded =
+                        transcoder::encode_summarized(answer, Some(conclusion), "gpt-4-0613")
+                            .unwrap();
+
+                    llm_gateway::api::Message::PlainText {
+                        role: "assistant".to_owned(),
+                        content: encoded,
+                    }
                 });
 
                 query
@@ -1476,55 +1489,6 @@ fn merge_overlapping(a: &mut Range<usize>, b: Range<usize>) -> Option<Range<usiz
     }
 }
 
-fn split_article_summary(response: &str) -> Option<(String, String)> {
-    // The `comrak` crate has a very unusual API which makes this logic difficult to follow. It
-    // favours arena allocation instead of a tree-based AST, and requires `Write`rs to regenerate
-    // markdown output.
-    //
-    // There are quirks to the parsing logic, comments have been added for clarity.
-
-    let arena = comrak::Arena::new();
-    let mut options = comrak::ComrakOptions::default();
-    options.extension.footnotes = true;
-
-    // We don't have an easy built-in way to generate a string with `comrak`, so we encapsulate
-    // that logic here.
-    let comrak_to_string = |node| {
-        let mut out = Vec::<u8>::new();
-        comrak::format_commonmark(node, &options, &mut out).unwrap();
-        String::from_utf8_lossy(&out).trim().to_owned()
-    };
-
-    // `comrak` will not recognize footnote definitions unless they have been referenced at least
-    // once. To ensure our potential summary appears in the parse tree, we prepend the entire
-    // response with a sentinel reference to the footnote. After parsing, we look for that
-    // footnote and immediately remove (detach) it from the root node. This ensures that our
-    // artifical reference does not appear in the output.
-
-    let document = format!("[^summary]\n\n{response}");
-    let root = comrak::parse_document(&arena, &document, &options);
-    let mut children = root.children();
-    // Detach the sentinel footnote reference.
-    children.next().unwrap().detach();
-
-    for child in children {
-        match &child.data.borrow().value {
-            comrak::nodes::NodeValue::FootnoteDefinition(def) if def.name == "summary" => (),
-            _ => continue,
-        };
-
-        let first_child = child.children().next()?;
-        if let comrak::nodes::NodeValue::Paragraph = &first_child.data.borrow().value {
-            // We detach the summary from the main text, so that it does not end up in the final
-            // article output.
-            child.detach();
-            return Some((comrak_to_string(root), comrak_to_string(first_child)));
-        }
-    }
-
-    None
-}
-
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum Action {
@@ -1662,35 +1626,5 @@ mod tests {
         assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 4), "fn 🚨");
         assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 5), "fn 🚨()");
         assert_eq!(limit_tokens("fn 🚨() {}", bpe, 6), "fn 🚨() {}");
-    }
-
-    #[test]
-    fn test_split_article_summary() {
-        let (body, summary) = split_article_summary(
-            r#"Hello world
-
-[^summary]: This is an example summary, with **bold text**."#,
-        )
-        .unwrap();
-
-        assert_eq!(body, "Hello world");
-        assert_eq!(summary, "This is an example summary, with **bold text**.");
-
-        let (body, summary) = split_article_summary(
-            r#"Hello world.
-
-Goodbye world.
-
-Hello again, world.
-
-[^summary]: This is an example summary, with **bold text**."#,
-        )
-        .unwrap();
-
-        assert_eq!(
-            body,
-            "Hello world.\n\nGoodbye world.\n\nHello again, world."
-        );
-        assert_eq!(summary, "This is an example summary, with **bold text**.");
     }
 }
