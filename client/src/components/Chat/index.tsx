@@ -213,12 +213,13 @@ const Chat = () => {
             if (
               ((newMessage.outcome?.Filesystem?.length &&
                 !newMessage.conclusion) ||
-                newMessage.outcome?.Article?.length) &&
+                newMessage.outcome?.Article?.length > 11) &&
               !firstResultCame
             ) {
               setConversation((prev) => {
                 conversationsCache[threadId] = undefined;
-                if (newMessage.outcome?.Article?.length) {
+                // workaround: sometimes we get [^summary]: before it is removed from response
+                if (newMessage.outcome?.Article?.length > 11) {
                   setChatOpen(false);
                   navigateArticleResponse(prev.length - 1, thread_id);
                 } else {
