@@ -82,8 +82,9 @@ pub struct Params {
     pub repo_ref: RepoRef,
     #[serde(default = "default_thread_id")]
     pub thread_id: uuid::Uuid,
-    /// Optional id of exchange to overwrite
-    pub rephrase_exchange_id: Option<uuid::Uuid>,
+    /// Optional id of the parent of the exchange to overwrite
+    /// If this UUID is nil, then overwrite the first exchange in the thread
+    pub parent_exchange_id: Option<uuid::Uuid>,
 }
 
 fn default_thread_id() -> uuid::Uuid {
@@ -181,18 +182,23 @@ pub(super) async fn _handle(
 
     let Params {
         thread_id,
-        rephrase_exchange_id,
+        parent_exchange_id,
         q,
         ..
     } = params;
 
-    if let Some(rephrase_exchange_id) = rephrase_exchange_id {
-        let rephrase_exchange_index = exchanges
-            .iter()
-            .position(|e| e.id == rephrase_exchange_id)
-            .ok_or_else(|| super::Error::user("parent query id not found in exchanges"))?;
+    if let Some(parent_exchange_id) = parent_exchange_id {
+        let truncate_from_index = if parent_exchange_id.is_nil() {
+            0
+        } else {
+            exchanges
+                .iter()
+                .position(|e| e.id == parent_exchange_id)
+                .ok_or_else(|| super::Error::user("parent query id not found in exchanges"))?
+                + 1
+        };
 
-        exchanges.truncate(rephrase_exchange_index);
+        exchanges.truncate(truncate_from_index);
     }
 
     let query = parser::parse_nl(&q)

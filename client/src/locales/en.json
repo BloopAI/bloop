@@ -258,5 +258,7 @@
 	"We've made some exciting enhancements to bloop! To continue enjoying the full functionality, including the natural language search feature, please update your app to the latest version.": "We've made some exciting enhancements to bloop! To continue enjoying the full functionality, including the natural language search feature, please update your app to the latest version.",
 	"To update your app, please visit our releases page on GitHub and download the latest version manually. Thank you for using bloop.": "To update your app, please visit our releases page on GitHub and download the latest version manually. Thank you for using bloop.",
 	"View in {{viewer}}": "View in {{viewer}}",
-	"Open file": "Open file"
+	"Open file": "Open file",
+	"Edit": "Edit",
+	"Editing a previously submitted question will discard all answers and questions following it.": "Editing a previously submitted question will discard all answers and questions following it."
 }

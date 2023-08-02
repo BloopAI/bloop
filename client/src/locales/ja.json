@@ -258,5 +258,7 @@
 	"We've made some exciting enhancements to bloop! To continue enjoying the full functionality, including the natural language search feature, please update your app to the latest version.": "私たちは、Bloopにいくつかのエキサイティングな機能強化を行いました！ 自然言語検索機能を含む完全な機能を継続するには、アプリを最新バージョンに更新してください。",
 	"To update your app, please visit our releases page on GitHub and download the latest version manually. Thank you for using bloop.": "アプリを更新するには、GitHubのリリースページにアクセスして、最新バージョンを手動でダウンロードしてください。 Bloopを使用していただきありがとうございます。",
 	"View in {{viewer}}": "{{viewer}}で表示",
-	"Open file": "ファイルを開く"
+	"Open file": "ファイルを開く",
+	"Edit": "編集",
+	"Editing a previously submitted question will discard all answers and questions following it.": "以前に提出された質問を編集すると、それに続くすべての回答と質問が破棄されます。"
 }
