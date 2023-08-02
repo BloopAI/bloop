@@ -278,7 +278,7 @@ impl SearchStep {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct FocusedChunk {
-    pub file_content: String,
+    pub file_path: String,
     pub start_line: usize,
     pub end_line: usize,
 }
