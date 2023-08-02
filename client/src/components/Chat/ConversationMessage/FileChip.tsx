@@ -10,7 +10,7 @@ type Props = {
   filePath: string;
   skipIcon?: boolean;
   lines?: [number, number];
-  fileChips: MutableRefObject<HTMLButtonElement[]>;
+  fileChips?: MutableRefObject<HTMLButtonElement[]>;
 };
 
 let isRendered = false;
@@ -27,12 +27,12 @@ const FileChip = ({
 
   useEffect(() => {
     let chip = ref.current;
-    if (chip) {
+    if (chip && fileChips) {
       fileChips.current.push(chip);
     }
 
     return () => {
-      if (chip) {
+      if (chip && fileChips) {
         const index = fileChips.current.indexOf(chip);
         if (index !== -1) {
           fileChips.current.splice(index, 1);
@@ -41,7 +41,8 @@ const FileChip = ({
     };
   }, []);
 
-  const index = ref.current ? fileChips.current.indexOf(ref.current) : -1;
+  const index =
+    ref.current && fileChips ? fileChips.current.indexOf(ref.current) : -1;
 
   useEffect(() => {
     if (lines && index > -1) {

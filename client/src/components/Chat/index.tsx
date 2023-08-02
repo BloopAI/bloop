@@ -99,7 +99,13 @@ const Chat = () => {
           : `?q=${encodeURIComponent(query)}${
               selectedBranch ? ` branch:${selectedBranch}` : ''
             }`
-      }&repo_ref=${tab.key}${threadId ? `&thread_id=${threadId}${parentIdToEdit ? `&parent_query_id=${parentIdToEdit}` : ''}` : ''}`;
+      }&repo_ref=${tab.key}${
+        threadId
+          ? `&thread_id=${threadId}${
+              parentIdToEdit ? `&parent_query_id=${parentIdToEdit}` : ''
+            }`
+          : ''
+      }`;
       console.log(url);
       const eventSource = new EventSource(url);
       prevEventSource = eventSource;
@@ -262,7 +268,7 @@ const Chat = () => {
               if (!options) {
                 setInputValue(
                   prev[prev.length - (lastMessageIsServer ? 2 : 1)]?.text ||
-                  submittedQuery,
+                    submittedQuery,
                 );
               }
               setSubmittedQuery('');

@@ -1421,7 +1421,7 @@ h5, .h5 {
   word-break: break-word;
 }
 
-.article-response .padding-start>*:first-child {
+.article-response.padding-start>*:first-child {
   padding-left: 35px;
 }
 

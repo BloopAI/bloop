@@ -1,7 +1,9 @@
 import React, { useContext, useState } from 'react';
 import MarkdownWithCode from '../../components/MarkdownWithCode';
-import { Sparkles } from '../../icons';
+import { CopyMD, Sparkles } from '../../icons';
 import { FileModalContext } from '../../context/fileModalContext';
+import { copyToClipboard } from '../../utils';
+import Button from '../../components/Button';
 
 type Props = {
   repoName: string;
@@ -36,8 +38,8 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
   };
   return (
     <div className="overflow-auto" style={{ width }}>
-      <div className="w-full p-5 article-response body-m text-label-base pb-44 break-word relative">
-        <div className="relative padding-start">
+      <div className="w-full p-5 body-m text-label-base pb-44 break-word relative">
+        <div className="article-response relative padding-start">
           <MarkdownWithCode
             openFileModal={openFileModal}
             repoName={repoName}
@@ -49,6 +51,14 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
               <Sparkles raw />
             </div>
           </div>
+          <Button
+            variant="secondary"
+            size="small"
+            onClick={() => copyToClipboard(markdown)}
+            className="absolute top-0 right-0"
+          >
+            <CopyMD /> Copy
+          </Button>
         </div>
         <div
           className="absolute top-0 bottom-0 left-0 w-2 border-l border-bg-border hover:border-bg-main cursor-w-resize"

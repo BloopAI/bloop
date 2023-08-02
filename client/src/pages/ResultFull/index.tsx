@@ -1,16 +1,9 @@
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import * as Sentry from '@sentry/react';
-import { useTranslation } from 'react-i18next';
 import FileIcon from '../../components/FileIcon';
 import Breadcrumbs from '../../components/Breadcrumbs';
 import CodeFull from '../../components/CodeBlock/CodeFull';
-import { getConversation, getHoverables } from '../../services/api';
+import { getHoverables } from '../../services/api';
 import { mapFileResult, mapRanges } from '../../mappers/results';
 import { FullResult } from '../../types/results';
 import {
@@ -24,15 +17,7 @@ import useAppNavigation from '../../hooks/useAppNavigation';
 import FileMenu from '../../components/FileMenu';
 import SkeletonItem from '../../components/SkeletonItem';
 import IpynbRenderer from '../../components/IpynbRenderer';
-import { ChatContext } from '../../context/chatContext';
-import { conversationsCache } from '../../services/cache';
-import {
-  ChatMessage,
-  ChatMessageAuthor,
-  ChatMessageServer,
-  ChatMessageType,
-} from '../../types/general';
-import { mapLoadingSteps } from '../../mappers/conversation';
+import useConversation from '../../hooks/useConversation';
 import FileExplanation from './FileExplanation';
 
 type Props = {
@@ -58,54 +43,9 @@ const ResultFull = ({
   recordId,
   threadId,
 }: Props) => {
-  const { t } = useTranslation();
   const { navigateFullResult, navigateRepoPath } = useAppNavigation();
   const [result, setResult] = useState<FullResult | null>(null);
-  const { conversation, setConversation, setThreadId } =
-    useContext(ChatContext);
-  const answer = useMemo(
-    () => conversationsCache[threadId]?.[recordId] || conversation[recordId],
-    [
-      (conversation[recordId] as ChatMessageServer)?.results,
-      (conversation[recordId] as ChatMessageServer)?.isLoading,
-      recordId,
-      threadId,
-    ],
-  );
-
-  useEffect(() => {
-    if (
-      threadId &&
-      !conversationsCache[threadId]?.[recordId] &&
-      !conversation[recordId]
-    ) {
-      getConversation(threadId).then((resp) => {
-        const conv: ChatMessage[] = [];
-        resp.forEach((m) => {
-          const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
-          if (userQuery) {
-            conv.push({
-              author: ChatMessageAuthor.User,
-              text: userQuery.content,
-              isFromHistory: true,
-            });
-          }
-          conv.push({
-            author: ChatMessageAuthor.Server,
-            isLoading: false,
-            type: ChatMessageType.Answer,
-            loadingSteps: mapLoadingSteps(m.search_steps, t),
-            text: m.conclusion,
-            results: m.outcome,
-            isFromHistory: true,
-          });
-        });
-        conversationsCache[threadId] = conv;
-        setThreadId(threadId);
-        setConversation(conv);
-      });
-    }
-  }, []);
+  const { data: answer } = useConversation(threadId, recordId);
 
   useEffect(() => {
     if (!data || data?.data?.[0]?.kind !== 'file') {
