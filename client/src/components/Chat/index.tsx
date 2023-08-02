@@ -102,7 +102,7 @@ const Chat = () => {
       }&repo_ref=${tab.key}${
         threadId
           ? `&thread_id=${threadId}${
-              parentIdToEdit ? `&parent_query_id=${parentIdToEdit}` : ''
+              queryIdToEdit ? `&parent_query_id=${queryIdToEdit}` : ''
             }`
           : ''
       }`;
@@ -222,10 +222,7 @@ const Chat = () => {
             // workaround: sometimes we get [^summary]: before it is removed from response
             if (newMessage.answer?.length > 11 && !firstResultCame) {
               setConversation((prev) => {
-                if (
-                  newMessage.focused_chunk?.file_path &&
-                  newMessage.outcome?.Article?.length
-                ) {
+                if (newMessage.focused_chunk?.file_path) {
                   setChatOpen(false);
                   navigateFullResult(
                     newMessage.focused_chunk?.file_path,
