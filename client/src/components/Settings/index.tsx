@@ -29,7 +29,7 @@ const Settings = () => {
     settingsSection,
     isSettingsOpen,
     setSettingsOpen,
-  } = useContext(UIContext);
+  } = useContext(UIContext.Settings);
 
   useEffect(() => {
     const action = isSettingsOpen ? 'add' : 'remove';

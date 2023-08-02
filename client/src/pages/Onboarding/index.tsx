@@ -45,8 +45,10 @@ const Onboarding = () => {
   });
   const [isGitHubScreen, setGitHubScreen] = useState(false);
   const [shouldShowPopup, setShouldShowPopup] = useState(false);
-  const { shouldShowWelcome, setShouldShowWelcome, isGithubConnected } =
-    useContext(UIContext);
+  const { shouldShowWelcome, setShouldShowWelcome } = useContext(
+    UIContext.Onboarding,
+  );
+  const { isGithubConnected } = useContext(UIContext.GitHubConnected);
   const { isSelfServe, os, setEnvConfig, envConfig } =
     useContext(DeviceContext);
 

@@ -34,7 +34,7 @@ const MarkdownWithCode = ({
 }: Props) => {
   const { navigateRepoPath, navigateFullResult } =
     useContext(AppNavigationContext);
-  const { selectedBranch } = useContext(SearchContext);
+  const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const components = useMemo(() => {
     return {
       a(

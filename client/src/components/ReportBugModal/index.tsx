@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
@@ -15,6 +16,7 @@ import { EMAIL_REGEX } from '../../consts/validations';
 import { saveBugReport, saveCrashReport } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
 import { TabsContext } from '../../context/tabsContext';
+import { getJsonFromStorage, USER_DATA_FORM } from '../../services/storage';
 import ConfirmImg from './ConfirmImg';
 
 type Props = {
@@ -36,10 +38,17 @@ const ReportBugModal = ({
   });
   const [isSubmitted, setSubmitted] = useState(false);
   const [serverCrashedMessage, setServerCrashedMessage] = useState('');
-  const { onBoardingState, isBugReportModalOpen, setBugReportModalOpen } =
-    useContext(UIContext);
+  const { isBugReportModalOpen, setBugReportModalOpen } = useContext(
+    UIContext.BugReport,
+  );
   const { envConfig, listen, os, release } = useContext(DeviceContext);
   const { handleRemoveTab, setActiveTab, activeTab } = useContext(TabsContext);
+
+  const userForm = useMemo(
+    (): { email: string; firstName: string; lastName: string } | null =>
+      getJsonFromStorage(USER_DATA_FORM),
+    [],
+  );
 
   useEffect(() => {
     listen('server-crashed', (event) => {
@@ -56,14 +65,12 @@ const ReportBugModal = ({
   }, [errorBoundaryMessage]);
 
   useEffect(() => {
-    const savedForm = onBoardingState['STEP_DATA_FORM'];
-
     setForm((prev) => ({
       ...prev,
-      name: (savedForm?.firstName || '') + (savedForm?.lastName || ''),
-      email: savedForm?.email || '',
+      name: (userForm?.firstName || '') + (userForm?.lastName || ''),
+      email: userForm?.email || '',
     }));
-  }, [onBoardingState]);
+  }, [userForm]);
 
   const onChange = useCallback(
     (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

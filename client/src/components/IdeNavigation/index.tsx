@@ -10,8 +10,8 @@ import DirEntry from './DirEntry';
 
 const IdeNavigation = () => {
   const { navigatedItem } = useContext(AppNavigationContext);
-  const { tab } = useContext(UIContext);
-  const { selectedBranch } = useContext(SearchContext);
+  const { tab } = useContext(UIContext.Tab);
+  const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
   const { navigateFullResult } = useContext(AppNavigationContext);
 

@@ -30,10 +30,11 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [results, setResults] = useState<ResultType[]>([]);
-  const { filters, setFilters, inputValue, globalRegex } =
-    useContext(SearchContext);
+  const { filters, setFilters } = useContext(SearchContext.Filters);
+  const { inputValue } = useContext(SearchContext.InputValue);
+  const { globalRegex } = useContext(SearchContext.RegexEnabled);
   const { openFileModal } = useContext(FileModalContext);
-  const { setSymbolsCollapsed } = useContext(UIContext);
+  const { setSymbolsCollapsed } = useContext(UIContext.Symbols);
   const { navigateSearch, navigateRepoPath } = useAppNavigation();
 
   const onlySymbolResults = useMemo(

@@ -75,7 +75,6 @@ export type RepoType = {
 };
 
 export type RepoUi = RepoType & {
-  selected: boolean;
   shortName: string;
   folderName: string;
   alreadySynced?: boolean;

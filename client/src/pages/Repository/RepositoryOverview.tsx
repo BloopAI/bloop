@@ -35,7 +35,7 @@ type Props = {
 const RepositoryOverview = ({ syncState, repository }: Props) => {
   const [sortedFiles, setSortedFiles] = useState(repository.files);
   const { openLink } = useContext(DeviceContext);
-  const { selectedBranch } = useContext(SearchContext);
+  const { selectedBranch } = useContext(SearchContext.SelectedBranch);
 
   const [readme, setReadme] = useState<{
     contents: string;

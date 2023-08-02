@@ -39,8 +39,9 @@ export type RenderPage =
 let prevRenderPage: RenderPage;
 
 const ContentContainer = ({ tab }: { tab: UITabType }) => {
-  const { setInputValue, globalRegex, selectedBranch } =
-    useContext(SearchContext);
+  const { setInputValue } = useContext(SearchContext.InputValue);
+  const { globalRegex } = useContext(SearchContext.RegexEnabled);
+  const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
 
   const { navigatedItem, query, navigateBack, navigateRepoPath } =

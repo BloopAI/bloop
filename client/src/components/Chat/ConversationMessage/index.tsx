@@ -9,6 +9,7 @@ import {
   Checkmark,
   List,
   MagnifyTool,
+  PenUnderline,
   PointClick,
   QuillIcon,
   Sparkles,
@@ -40,7 +41,7 @@ type Props = {
   loadingSteps?: ChatLoadingStep[];
   results?: string;
   i: number;
-  onMessageEdit: (i: number) => void;
+  onMessageEdit: (queryId: string, i: number) => void;
 };
 
 const ConversationMessage = ({
@@ -64,7 +65,7 @@ const ConversationMessage = ({
   const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
   const { envConfig } = useContext(DeviceContext);
-  const { setChatOpen } = useContext(ChatContext);
+  const { setChatOpen } = useContext(ChatContext.Setters);
   const { openFileModal } = useContext(FileModalContext);
   const { locale } = useContext(LocaleContext);
 
@@ -172,24 +173,25 @@ const ConversationMessage = ({
               )}
             </div>
             {message && (
-              <pre className="body-s text-label-title whitespace-pre-wrap break-word markdown relative w-full">
+              <pre className="body-s text-label-title whitespace-pre-wrap break-word markdown w-full">
                 {author === ChatMessageAuthor.Server ? (
                   <ReactMarkdown>{message}</ReactMarkdown>
                 ) : (
                   <>
                     <span>{message}</span>
-                    {/*{i !== 0 && !isHistory && (*/}
-                    {/*  <Button*/}
-                    {/*    size="tiny"*/}
-                    {/*    variant="tertiary"*/}
-                    {/*    className="absolute top-0 right-0"*/}
-                    {/*    onlyIcon*/}
-                    {/*    title={t('Edit')}*/}
-                    {/*    onClick={() => onMessageEdit(i)}*/}
-                    {/*  >*/}
-                    {/*    <PenUnderline />*/}
-                    {/*  </Button>*/}
-                    {/*)}*/}
+                    {!isHistory && !!queryId && (
+                      <div className="absolute bottom-1 right-1">
+                        <Button
+                          size="tiny"
+                          variant="tertiary"
+                          onlyIcon
+                          title={t('Edit')}
+                          onClick={() => onMessageEdit(queryId, i)}
+                        >
+                          <PenUnderline />
+                        </Button>
+                      </div>
+                    )}
                   </>
                 )}
               </pre>
