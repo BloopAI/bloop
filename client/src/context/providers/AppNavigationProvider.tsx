@@ -150,7 +150,6 @@ export const AppNavigationProvider = ({
 
   const navigateFullResult = useCallback(
     (
-      repo: string,
       path: string,
       pathParams?: Record<string, string>,
       messageIndex?: number,
@@ -159,7 +158,7 @@ export const AppNavigationProvider = ({
       closeFileModalOpen(true);
       saveState({
         type: 'full-result',
-        repo,
+        repo: tab.repoName,
         path,
         searchType: SearchType.REGEX,
         pathParams,
@@ -167,7 +166,7 @@ export const AppNavigationProvider = ({
         threadId,
       });
     },
-    [],
+    [tab.repoName],
   );
 
   const updateScrollToIndex = useCallback((lines: string) => {

@@ -4,6 +4,12 @@ import { CopyMD, Sparkles } from '../../icons';
 import { FileModalContext } from '../../context/fileModalContext';
 import { copyToClipboard } from '../../utils';
 import Button from '../../components/Button';
+import {
+  getPlainFromStorage,
+  RIGHT_SIDEBAR_WIDTH_KEY,
+  savePlainToStorage,
+} from '../../services/storage';
+import useResizeableWidth from '../../hooks/useResizeableWidth';
 
 type Props = {
   repoName: string;
@@ -11,34 +17,16 @@ type Props = {
 };
 
 const FileExplanation = ({ repoName, markdown }: Props) => {
-  const [width, setWidth] = useState(384);
   const { openFileModal } = useContext(FileModalContext);
-  const handleResize = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const startWidth = width;
-    const startPosition = e.pageX;
+  const { width, handleResize } = useResizeableWidth(
+    RIGHT_SIDEBAR_WIDTH_KEY,
+    384,
+    true,
+  );
 
-    function onMouseMove(mouseMoveEvent: MouseEvent) {
-      mouseMoveEvent.preventDefault();
-      setWidth(() =>
-        Math.min(
-          Math.max(startWidth + startPosition - mouseMoveEvent.pageX, 200),
-          window.innerWidth - 200,
-        ),
-      );
-    }
-    function onMouseUp(e: MouseEvent) {
-      e.stopPropagation();
-      document.body.removeEventListener('mousemove', onMouseMove);
-      document.body.removeEventListener('mouseup', onMouseUp, true);
-    }
-
-    document.body.addEventListener('mousemove', onMouseMove);
-    document.body.addEventListener('mouseup', onMouseUp, true);
-  };
   return (
-    <div className="overflow-auto" style={{ width }}>
-      <div className="w-full p-5 body-m text-label-base pb-44 break-word relative">
+    <div className="min-h-full w-full relative" style={{ width }}>
+      <div className="w-full p-5 body-m text-label-base pb-44 break-word overflow-auto h-full">
         <div className="article-response relative padding-start">
           <MarkdownWithCode
             openFileModal={openFileModal}
@@ -60,11 +48,11 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
             <CopyMD /> Copy
           </Button>
         </div>
-        <div
-          className="absolute top-0 bottom-0 left-0 w-2 border-l border-bg-border hover:border-bg-main cursor-w-resize"
-          onMouseDown={handleResize}
-        />
       </div>
+      <div
+        className="absolute top-0 bottom-0 left-0 w-2 border-l border-bg-border hover:border-bg-main cursor-col-resize"
+        onMouseDown={handleResize}
+      />
     </div>
   );
 };

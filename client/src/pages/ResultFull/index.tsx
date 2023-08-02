@@ -73,7 +73,7 @@ const ResultFull = ({
         return;
       }
       if (isFile) {
-        navigateFullResult(result.repoName, path);
+        navigateFullResult(path);
       } else {
         navigateRepoPath(result.repoName, path);
       }
@@ -144,9 +144,9 @@ const ResultFull = ({
             className="overflow-scroll flex-1"
             id="result-full-code-container"
           >
-            <div className={`flex py-3 px-8 h-full`}>
+            <div className={`flex py-3 pl-2 h-full`}>
               {!result ? (
-                <div className="w-full h-full flex flex-col gap-3">
+                <div className="w-full h-full flex flex-col gap-3 pl-4">
                   <div className="h-4 w-48">
                     <SkeletonItem />
                   </div>

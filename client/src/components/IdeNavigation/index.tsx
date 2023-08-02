@@ -40,7 +40,7 @@ const IdeNavigation = () => {
 
   const navigateToPath = useCallback(
     (path: string) => {
-      navigateFullResult(tab.repoName, path);
+      navigateFullResult(path);
     },
     [tab.repoName, navigateFullResult],
   );
