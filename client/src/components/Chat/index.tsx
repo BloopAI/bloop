@@ -200,7 +200,7 @@ const Chat = () => {
                 isLoading: true,
                 loadingSteps: mapLoadingSteps(newMessage.search_steps, t),
                 text: newMessage.conclusion,
-                results: newMessage.outcome,
+                results: newMessage.answer,
                 queryId: newMessage.id,
                 responseTimestamp: newMessage.response_timestamp,
               };
@@ -211,7 +211,7 @@ const Chat = () => {
               return [...newConversation, ...lastMessages];
             });
             // workaround: sometimes we get [^summary]: before it is removed from response
-            if (newMessage.outcome?.length > 11 && !firstResultCame) {
+            if (newMessage.answer?.length > 11 && !firstResultCame) {
               setConversation((prev) => {
                 setChatOpen(false);
                 navigateArticleResponse(prev.length - 1, thread_id);

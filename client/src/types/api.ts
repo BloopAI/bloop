@@ -243,7 +243,7 @@ export type ConversationType = {
   search_steps: SearchStepType[];
   query: { target: { Plain: string } };
   conclusion: string;
-  outcome: string;
+  answer: string;
   paths: string[];
   response_timestamp: string;
 };
