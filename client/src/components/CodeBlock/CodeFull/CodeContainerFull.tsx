@@ -124,9 +124,15 @@ const CodeContainerFull = ({
   return (
     <div ref={ref} className="relative pb-44">
       {tokens.map((line, index) => {
-        let highlightForLine = highlights?.findIndex(
-          (h) => h && index >= h.lines[0] && index <= h.lines[1],
-        );
+        let highlightForLine = highlights
+          ?.sort((a, b) =>
+            a &&
+            b &&
+            a?.lines?.[1] - a?.lines?.[0] < b?.lines?.[1] - b?.lines?.[0]
+              ? -1
+              : 1,
+          )
+          .findIndex((h) => h && index >= h.lines[0] && index <= h.lines[1]);
         if (highlightForLine && highlightForLine < 0) {
           highlightForLine = undefined;
         }
