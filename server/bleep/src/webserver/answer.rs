@@ -886,6 +886,13 @@ impl Agent {
 
         let code_chunks = self.canonicalize_code_chunks(&aliases, gpt_model).await;
 
+        // Sometimes, there are just too many code chunks in the context, and deduplication still
+        // doesn't trim enough chunks. So, we enforce a hard limit here that stops adding tokens
+        // early if we reach a heuristic limit.
+        const PROMPT_HEADROOM: usize = 1500;
+        let bpe = tiktoken_rs::get_bpe_from_model(gpt_model)?;
+        let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens(gpt_model, &s)?;
+
         // Select as many recent chunks as possible
         let mut recent_chunks = Vec::new();
         for chunk in code_chunks.iter().rev() {
@@ -898,7 +905,17 @@ impl Agent {
 
             let formatted_snippet = format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
 
+            let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
+
+            if snippet_tokens >= remaining_prompt_tokens - PROMPT_HEADROOM {
+                debug!("Breaking at {} tokens...", remaining_prompt_tokens);
+                break;
+            }
+
             recent_chunks.push((chunk.clone(), formatted_snippet));
+
+            remaining_prompt_tokens -= snippet_tokens;
+            debug!("{}", remaining_prompt_tokens);
         }
 
         // group recent chunks by path alias
