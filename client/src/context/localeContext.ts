@@ -1,5 +1,4 @@
 import React, { createContext } from 'react';
-import { Theme } from '../types';
 
 type ContextType = {
   locale: string;

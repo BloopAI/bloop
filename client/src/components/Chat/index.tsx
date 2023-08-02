@@ -39,22 +39,22 @@ const blurInput = () => {
 
 const Chat = () => {
   const { t } = useTranslation();
-  const { isRightPanelOpen, setRightPanelOpen, tab } = useContext(UIContext);
+  const { isRightPanelOpen, setRightPanelOpen } = useContext(
+    UIContext.RightPanel,
+  );
+  const { tab } = useContext(UIContext.Tab);
   const { apiUrl } = useContext(DeviceContext);
-  const { selectedBranch } = useContext(SearchContext);
+  const { selectedBranch } = useContext(SearchContext.SelectedBranch);
+  const { conversation, isChatOpen, submittedQuery, selectedLines, threadId } =
+    useContext(ChatContext.Values);
   const {
-    conversation,
+    setThreadId,
+    setSelectedLines,
+    setSubmittedQuery,
     setConversation,
-    isChatOpen,
     setChatOpen,
     setShowTooltip,
-    submittedQuery,
-    setSubmittedQuery,
-    selectedLines,
-    setSelectedLines,
-    threadId,
-    setThreadId,
-  } = useContext(ChatContext);
+  } = useContext(ChatContext.Setters);
   const {
     navigateConversationResults,
     navigateRepoPath,

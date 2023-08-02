@@ -14,7 +14,7 @@ type Props = {
 let wasRendered = false;
 
 const ResultPreview = ({ result, onClick }: Props) => {
-  const { symbolsCollapsed } = useContext(UIContext);
+  const { symbolsCollapsed } = useContext(UIContext.Symbols);
   const ref = useRef(null);
   const isOnScreen = useIsOnScreen(ref);
 

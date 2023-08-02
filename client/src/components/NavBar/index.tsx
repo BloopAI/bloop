@@ -17,12 +17,10 @@ type Props = {
 
 const NavBar = ({ isSkeleton }: Props) => {
   const { t } = useTranslation();
-  const {
-    setBugReportModalOpen,
-    setShouldShowWelcome,
-    setGithubConnected,
-    setSettingsOpen,
-  } = useContext(UIContext);
+  const { setSettingsOpen } = useContext(UIContext.Settings);
+  const { setBugReportModalOpen } = useContext(UIContext.BugReport);
+  const { setShouldShowWelcome } = useContext(UIContext.Onboarding);
+  const { setGithubConnected } = useContext(UIContext.GitHubConnected);
   const { openLink, isSelfServe, os, envConfig } = useContext(DeviceContext);
   const { tabs, setActiveTab, activeTab, handleRemoveTab } =
     useContext(TabsContext);

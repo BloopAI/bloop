@@ -26,8 +26,8 @@ const FileModalContainer = ({ repoName }: Props) => {
   const [openResult, setOpenResult] = useState<FullResult | null>(null);
   const { searchQuery: fileModalSearchQuery, data: fileResultData } =
     useSearch<FileSearchResponse>();
-  const { selectedBranch } = useContext(SearchContext);
-  const { setFiltersOpen } = useContext(UIContext);
+  const { selectedBranch } = useContext(SearchContext.SelectedBranch);
+  const { setFiltersOpen } = useContext(UIContext.Filters);
 
   useEffect(() => {
     if (isFileModalOpen) {
