@@ -79,10 +79,13 @@ export const useGitHubAuth = (
         setTimer((prevState) => prevState + 0.5);
       }, 500);
       checkGHAuth();
-      setTimeout(() => {
-        clearInterval(intervalId);
-        setAuthenticationFailed(true);
-      }, 10 * 60 * 1000);
+      setTimeout(
+        () => {
+          clearInterval(intervalId);
+          setAuthenticationFailed(true);
+        },
+        10 * 60 * 1000,
+      );
 
       return () => {
         if (intervalId) {
