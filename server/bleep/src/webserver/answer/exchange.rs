@@ -13,12 +13,12 @@ use crate::webserver::answer;
 /// A continually updated conversation exchange.
 ///
 /// This contains the query from the user, the intermediate steps the model takes, and the final
-/// conclusion from the model alongside the outcome, if any.
+/// conclusion from the model alongside the answer, if any.
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Exchange {
     pub id: uuid::Uuid,
     pub query: SemanticQuery<'static>,
-    pub outcome: Option<String>,
+    pub answer: Option<String>,
     pub search_steps: Vec<SearchStep>,
     conclusion: Option<String>,
     pub paths: Vec<String>,
@@ -52,8 +52,8 @@ impl Exchange {
                 _ => panic!("Tried to replace a step that was not found"),
             },
             Update::Article(full_text) => {
-                let outcome = self.outcome.get_or_insert_with(String::new);
-                *outcome = sanitize_article(&full_text);
+                let answer = self.answer.get_or_insert_with(String::new);
+                *answer = sanitize_article(&full_text);
             }
             Update::Conclude(conclusion) => {
                 self.response_timestamp = Some(Utc::now());
@@ -72,10 +72,10 @@ impl Exchange {
     /// If the final answer is in `filesystem` format, this returns a conclusion. If the the final
     /// answer is an `article`, this returns the full text.
     pub fn answer(&self) -> Option<&str> {
-        match self.outcome {
+        match self.answer {
             Some(_) => {
                 if self.conclusion.is_some() {
-                    self.outcome.as_deref()
+                    self.answer.as_deref()
                 } else {
                     None
                 }
@@ -91,7 +91,7 @@ impl Exchange {
     /// the model "sees" previous answers in markdown format, it is more likely to generate
     /// markdown a second time and ignore the XML format.
     pub fn encode(mut self) -> Self {
-        if let Some(article) = self.outcome.as_mut() {
+        if let Some(article) = self.answer.as_mut() {
             *article = encode_article(article);
         }
 
@@ -104,7 +104,7 @@ impl Exchange {
             return Ok(None);
         }
 
-        Ok(Some(match self.outcome.as_ref() {
+        Ok(Some(match self.answer.as_ref() {
             None => return Ok(None),
             Some(article) => {
                 let article = xml_for_each(article, |code| match try_trim_code_xml(code) {
