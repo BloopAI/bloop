@@ -11,6 +11,7 @@ type Props = {
   fullPath: string;
   fetchFiles: (path: string) => Promise<DirectoryEntry[]>;
   navigateToPath: (path: string) => void;
+  defaultOpen?: boolean;
 };
 
 const DirEntry = ({
@@ -21,8 +22,11 @@ const DirEntry = ({
   fullPath,
   fetchFiles,
   navigateToPath,
+  defaultOpen,
 }: Props) => {
-  const [isOpen, setOpen] = useState(currentPath && name.includes(currentPath));
+  const [isOpen, setOpen] = useState(
+    defaultOpen || (currentPath && name.includes(currentPath)),
+  );
   const [subItems, setSubItems] = useState<DirectoryEntry[] | null>(null);
 
   useEffect(() => {
@@ -33,7 +37,6 @@ const DirEntry = ({
 
   useEffect(() => {
     if (isDirectory && isOpen && !subItems) {
-      console.log('fetchFiles');
       fetchFiles(fullPath).then(setSubItems);
     }
   }, [isOpen, isDirectory, subItems, fullPath]);
