@@ -424,8 +424,8 @@ pub async fn explain(
         .file
         .by_path(&virtual_req.repo_ref, &params.relative_path, None)
         .await
-        .context("failed to conduct path search")?
-        .context("path search returned no results")?
+        .context("file retrieval failed")?
+        .context("did not find requested file")?
         .content;
 
     let snippet = file_content
