@@ -349,14 +349,18 @@ fn tracing_subscribe(config: &Configuration) -> bool {
     let sentry_layer = sentry_layer();
     let log_writer_layer = (!config.disable_log_write).then(|| {
         let log_dir = config.index_dir.join("logs");
-        let file_appender = tracing_appender::rolling::hourly(log_dir, "bloop.log");
+        let file_appender = tracing_appender::rolling::daily(log_dir, "bloop.log");
         let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
         _ = LOGGER_GUARD.set(guard);
         fmt::layer()
             .with_writer(non_blocking)
             .with_ansi(false)
-            .with_filter(Targets::new().with_target("bleep", LevelFilter::DEBUG))
-            .with_filter(Targets::new().with_target("bleep::indexes::file", LevelFilter::WARN))
+            .with_filter(
+                Targets::new()
+                    .with_target("bleep", LevelFilter::DEBUG)
+                    .with_target("bleep::indexes::file", LevelFilter::WARN)
+                    .with_target("bleep::semantic", LevelFilter::WARN),
+            )
     });
 
     #[cfg(all(tokio_unstable, feature = "debug"))]
