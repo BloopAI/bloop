@@ -3,6 +3,7 @@ use secrecy::ExposeSecret;
 use std::{
     collections::{HashMap, HashSet},
     mem,
+    ops::Range,
     panic::AssertUnwindSafe,
     pin::pin,
     time::Duration,
@@ -422,8 +423,8 @@ pub async fn explain(
     exchange.code_chunks.push(CodeChunk {
         path: params.relative_path.clone(),
         alias: 0,
-        start_line: params.line_start as u32,
-        end_line: snippet.lines().count() as u32,
+        start_line: params.line_start,
+        end_line: snippet.lines().count(),
         snippet,
     });
 
