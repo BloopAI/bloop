@@ -42,6 +42,10 @@ type Props = {
     tokenRange: string,
   ) => void;
   relativePath: string;
+  highlights?: (
+    | { lines: [number, number]; color: string; index: number }
+    | undefined
+  )[];
 };
 
 const CodeContainerVirtualized = ({
@@ -65,6 +69,7 @@ const CodeContainerVirtualized = ({
   language,
   highlightColor,
   relativePath,
+  highlights,
 }: Props) => {
   const ref = useRef<FixedSizeList>(null);
   const listProps = useMemo(
@@ -137,8 +142,14 @@ const CodeContainerVirtualized = ({
 
   return (
     <FixedSizeList ref={ref} {...listProps}>
-      {({ index, style }) =>
-        index < tokens.length ? (
+      {({ index, style }) => {
+        let highlightForLine = highlights?.findIndex(
+          (h) => h && index >= h.lines[0] && index <= h.lines[1],
+        );
+        if (highlightForLine && highlightForLine < 0) {
+          highlightForLine = undefined;
+        }
+        return index < tokens.length ? (
           <CodeLine
             key={pathHash + '-' + index.toString()}
             lineNumber={index}
@@ -152,11 +163,16 @@ const CodeContainerVirtualized = ({
             onMouseSelectStart={onMouseSelectStart}
             onMouseSelectEnd={onMouseSelectEnd}
             shouldHighlight={
-              !!scrollToIndex &&
-              index >= scrollToIndex[0] &&
-              index <= scrollToIndex[1]
+              (!!scrollToIndex &&
+                index >= scrollToIndex[0] &&
+                index <= scrollToIndex[1]) ||
+              (highlights && highlightForLine !== undefined)
             }
-            highlightColor={highlightColor}
+            highlightColor={
+              highlights && highlightForLine !== undefined
+                ? highlights[highlightForLine]?.color
+                : highlightColor
+            }
             searchTerm={searchTerm}
             stylesGenerated={style}
           >
@@ -193,8 +209,8 @@ const CodeContainerVirtualized = ({
           </CodeLine>
         ) : (
           <div className="w-fll h-5" />
-        )
-      }
+        );
+      }}
     </FixedSizeList>
   );
 };

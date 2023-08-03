@@ -1420,7 +1420,3 @@ h5, .h5 {
 .break-word {
   word-break: break-word;
 }
-
-.article-response>*:first-child {
-  padding-right: 100px;
-}

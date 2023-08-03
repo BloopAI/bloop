@@ -22,6 +22,8 @@ export const buildURLPart = (navItem: NavigationItem) => {
     case 'full-result':
       return `full-result?${new URLSearchParams({
         path: navItem.path || '',
+        threadId: navItem.threadId?.toString() || '',
+        recordId: navItem.recordId?.toString() || '',
         ...navItem.pathParams,
       }).toString()}`;
     case 'conversation-result':

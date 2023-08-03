@@ -196,6 +196,6 @@ module.exports = {
     namedGroups: ["tooltip","summary"],
   },
   plugins: [
-    require('tailwindcss-labeled-groups')(['custom', 'summary'])
+    require('tailwindcss-labeled-groups')(['custom', 'summary' , 'code'])
   ],
 };

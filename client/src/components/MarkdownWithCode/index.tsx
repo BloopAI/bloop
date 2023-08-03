@@ -4,7 +4,9 @@ import {
   DetailedHTMLProps,
   ReactElement,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
 } from 'react';
 import { ReactMarkdownProps } from 'react-markdown/lib/complex-types';
 import { CodeProps } from 'react-markdown/lib/ast-to-react';
@@ -12,6 +14,7 @@ import FileChip from '../Chat/ConversationMessage/FileChip';
 import CodeWithBreadcrumbs from '../../pages/ArticleResponse/CodeWithBreadcrumbs';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { SearchContext } from '../../context/searchContext';
+import { FileHighlightsContext } from '../../context/fileHighlightsContext';
 import NewCode from './NewCode';
 import FolderChip from './FolderChip';
 
@@ -24,6 +27,7 @@ type Props = {
   repoName: string;
   markdown: string;
   isSummary?: boolean;
+  hideCode?: boolean;
 };
 
 const MarkdownWithCode = ({
@@ -31,10 +35,21 @@ const MarkdownWithCode = ({
   repoName,
   markdown,
   isSummary,
+  hideCode,
 }: Props) => {
   const { navigateRepoPath, navigateFullResult } =
     useContext(AppNavigationContext);
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
+  const fileChips = useRef([]);
+  const { updateScrollToIndex } = useContext(AppNavigationContext);
+  const { setFileHighlights } = useContext(FileHighlightsContext);
+
+  useEffect(() => {
+    return () => {
+      setFileHighlights({});
+    };
+  }, []);
+
   const components = useMemo(() => {
     return {
       a(
@@ -72,13 +87,21 @@ const MarkdownWithCode = ({
         ) : (
           <FileChip
             fileName={fileName || filePath || ''}
+            filePath={filePath}
             skipIcon={!!fileName && fileName !== filePath}
+            fileChips={fileChips}
             onClick={() =>
-              openFileModal(
-                filePath,
-                start ? `${start - 1}_${(end ?? start) - 1}` : undefined,
-              )
+              hideCode
+                ? updateScrollToIndex(`${start - 1}_${(end ?? start) - 1}`)
+                : openFileModal(
+                    filePath,
+                    start ? `${start - 1}_${(end ?? start) - 1}` : undefined,
+                  )
             }
+            lines={
+              hideCode && start ? [start - 1, (end ?? start) - 1] : undefined
+            }
+            setFileHighlights={setFileHighlights}
           />
         );
       },
@@ -107,14 +130,30 @@ const MarkdownWithCode = ({
           (matchType?.[1] || matchLang?.[1]) &&
           typeof children[0] === 'string' ? (
           matchType?.[1] === 'Quoted' ? (
-            <CodeWithBreadcrumbs
-              code={code}
-              language={matchLang?.[1] || ''}
-              filePath={matchPath?.[1] || ''}
-              onResultClick={openFileModal}
-              startLine={lines[0] ? lines[0] - 1 : null}
-              repoName={repoName}
-            />
+            hideCode ? (
+              <FileChip
+                fileName={matchPath?.[1] || ''}
+                filePath={matchPath?.[1] || ''}
+                skipIcon={false}
+                onClick={() =>
+                  updateScrollToIndex(
+                    `${lines[0] - 1}_${(lines[1] ?? lines[0]) - 1}`,
+                  )
+                }
+                lines={[lines[0] - 1, (lines[1] ?? lines[0]) - 1]}
+                fileChips={fileChips}
+                setFileHighlights={setFileHighlights}
+              />
+            ) : (
+              <CodeWithBreadcrumbs
+                code={code}
+                language={matchLang?.[1] || ''}
+                filePath={matchPath?.[1] || ''}
+                onResultClick={openFileModal}
+                startLine={lines[0] ? lines[0] - 1 : null}
+                repoName={repoName}
+              />
+            )
           ) : (
             <NewCode code={code} language={matchLang?.[1] || ''} />
           )
@@ -132,7 +171,14 @@ const MarkdownWithCode = ({
         );
       },
     };
-  }, [repoName, openFileModal, isSummary, selectedBranch]);
+  }, [
+    repoName,
+    openFileModal,
+    isSummary,
+    hideCode,
+    updateScrollToIndex,
+    selectedBranch,
+  ]);
 
   return <ReactMarkdown components={components}>{markdown}</ReactMarkdown>;
 };

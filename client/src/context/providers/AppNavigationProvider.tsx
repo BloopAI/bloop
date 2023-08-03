@@ -4,6 +4,7 @@ import { NavigationItem, SearchType, UITabType } from '../../types/general';
 import { AppNavigationContext } from '../appNavigationContext';
 import { FileModalContext } from '../fileModalContext';
 import { TabsContext } from '../tabsContext';
+import { findElementInCurrentTab } from '../../utils/domUtils';
 
 export const AppNavigationProvider = ({
   tab,
@@ -149,18 +150,47 @@ export const AppNavigationProvider = ({
   );
 
   const navigateFullResult = useCallback(
-    (repo: string, path: string, pathParams?: Record<string, string>) => {
+    (
+      path: string,
+      pathParams?: Record<string, string>,
+      messageIndex?: number,
+      threadId?: string,
+    ) => {
       closeFileModalOpen(true);
       saveState({
         type: 'full-result',
-        repo,
+        repo: tab.repoName,
         path,
         searchType: SearchType.REGEX,
         pathParams,
+        recordId: messageIndex,
+        threadId,
       });
     },
-    [],
+    [tab.repoName],
   );
+
+  const updateScrollToIndex = useCallback((lines: string) => {
+    updateTabNavHistory(tab.key, (prevState) => {
+      const newItem = prevState[prevState.length - 1];
+      if (!newItem) {
+        return prevState;
+      }
+      newItem.pathParams = { ...(newItem.pathParams || {}) };
+      if (newItem.pathParams.scrollToLine === lines) {
+        const [startLine, endLine] = lines.split('_');
+        // suboptimal way to scroll to the same line as in path params when the user scrolled away from it
+        findElementInCurrentTab(
+          `[data-line-number="${startLine}"]`,
+        )?.scrollIntoView({
+          behavior: 'smooth',
+          block: Number(endLine) - Number(startLine) < 8 ? 'center' : 'start',
+        });
+      }
+      newItem.pathParams.scrollToLine = lines;
+      return [...prevState.slice(0, -1), newItem];
+    });
+  }, []);
 
   const navigateBack = useCallback(
     (delta: number | 'auto' = -1) => {
@@ -244,6 +274,7 @@ export const AppNavigationProvider = ({
         navigateForward,
         navigateConversationResults,
         navigateArticleResponse,
+        updateScrollToIndex,
         query: query || '',
       }}
     >

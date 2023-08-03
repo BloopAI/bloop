@@ -28,10 +28,10 @@ const ModeToggle = ({
 
   const handleFull = useCallback(() => {
     closeFileModalOpen();
-    navigateFullResult(repoName, relativePath, {
+    navigateFullResult(relativePath, {
       scrollToLine: searchParams.get('modalScrollToLine') || '',
     });
-  }, [searchParams, repoName, relativePath, closeFileModalOpen]);
+  }, [searchParams, relativePath, closeFileModalOpen]);
 
   const handleModal = useCallback(() => {
     startTransition(() => {

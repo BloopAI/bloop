@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { FolderFilled, ArrowOut, FolderClosed } from '../../icons';
+import { ArrowOut, FolderClosed } from '../../icons';
 import DirEntry from '../IdeNavigation/DirEntry';
 import { search } from '../../services/api';
 import { buildRepoQuery } from '../../utils';
@@ -10,7 +10,7 @@ type Props = {
   path: string;
   selectedBranch: string | null;
   repoName: string;
-  navigateFullResult: (repoName: string, path: string) => void;
+  navigateFullResult: (path: string) => void;
   isSummary?: boolean;
 };
 
@@ -41,9 +41,9 @@ const FolderChip = ({
 
   const navigateToPath = useCallback(
     (path: string) => {
-      navigateFullResult(repoName, path);
+      navigateFullResult(path);
     },
-    [repoName, navigateFullResult],
+    [navigateFullResult],
   );
   return (
     <>

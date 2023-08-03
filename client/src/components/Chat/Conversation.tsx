@@ -84,6 +84,9 @@ const Conversation = ({
           responseTimestamp={
             m.author === ChatMessageAuthor.Server ? m.responseTimestamp : null
           }
+          explainedFile={
+            m.author === ChatMessageAuthor.Server ? m.explainedFile : undefined
+          }
         />
       ))}
     </div>

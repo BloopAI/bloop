@@ -42,6 +42,7 @@ type Props = {
   results?: string;
   i: number;
   onMessageEdit: (queryId: string, i: number) => void;
+  explainedFile?: string;
 };
 
 const ConversationMessage = ({
@@ -61,6 +62,7 @@ const ConversationMessage = ({
   repoName,
   onMessageEdit,
   responseTimestamp,
+  explainedFile,
 }: Props) => {
   const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
@@ -95,6 +97,7 @@ const ConversationMessage = ({
                 <FileChip
                   onClick={() => openFileModal(s.path)}
                   fileName={s.path.split('/').pop() || ''}
+                  filePath={s.path || ''}
                 />
               ) : null}
             </div>
@@ -144,6 +147,7 @@ const ConversationMessage = ({
                   article={results}
                   threadId={threadId}
                   i={i}
+                  explainedFile={explainedFile}
                 />
               ) : null}
             </div>
