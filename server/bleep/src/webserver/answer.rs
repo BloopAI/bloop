@@ -424,7 +424,7 @@ pub async fn explain(
         path: params.relative_path.clone(),
         alias: 0,
         start_line: params.line_start,
-        end_line: snippet.lines().count(),
+        end_line: params.line_end,
         snippet,
     });
 
