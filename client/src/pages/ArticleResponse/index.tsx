@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext } from 'react';
 import { FileModalContext } from '../../context/fileModalContext';
 import { UIContext } from '../../context/uiContext';
 import MarkdownWithCode from '../../components/MarkdownWithCode';
@@ -19,7 +19,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
 
   return (
     <div className="overflow-auto p-8 w-screen">
-      <div className="flex-1 mx-auto max-w-3xl box-content article-response body-m text-label-base pb-44 break-word relative">
+      <div className="flex-1 mx-auto max-w-3xl box-content article-response body-m text-label-base pb-44 break-word relative group-custom">
         <MarkdownWithCode
           openFileModal={openFileModal}
           repoName={tab.repoName}
@@ -33,7 +33,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
           variant="secondary"
           size="small"
           onClick={() => copyToClipboard(data?.results)}
-          className="absolute top-0 right-0"
+          className="absolute top-0 right-0 opacity-0 group-custom-hover:opacity-100 transition-opacity"
         >
           <CopyMD /> Copy
         </Button>

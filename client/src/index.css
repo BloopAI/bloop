@@ -1424,7 +1424,3 @@ h5, .h5 {
 .article-response.padding-start>*:first-child {
   padding-left: 35px;
 }
-
-.article-response>*:first-child {
-  padding-right: 100px;
-}
