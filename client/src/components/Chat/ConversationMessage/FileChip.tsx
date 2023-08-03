@@ -17,7 +17,7 @@ type Props = {
   skipIcon?: boolean;
   lines?: [number, number];
   fileChips?: MutableRefObject<HTMLButtonElement[]>;
-  setFileHighlights: Dispatch<SetStateAction<FileHighlightsType>>;
+  setFileHighlights?: Dispatch<SetStateAction<FileHighlightsType>>;
 };
 
 const FileChip = ({
@@ -51,7 +51,7 @@ const FileChip = ({
     ref.current && fileChips ? fileChips.current.indexOf(ref.current) : -1;
 
   useEffect(() => {
-    if (lines && index > -1) {
+    if (lines && index > -1 && setFileHighlights) {
       setFileHighlights((prev) => {
         const newHighlights = { ...prev };
         if (!newHighlights[filePath]) {

@@ -1,14 +1,10 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext } from 'react';
 import MarkdownWithCode from '../../components/MarkdownWithCode';
-import { CopyMD, Sparkles } from '../../icons';
+import { CopyMD } from '../../icons';
 import { FileModalContext } from '../../context/fileModalContext';
 import { copyToClipboard } from '../../utils';
 import Button from '../../components/Button';
-import {
-  getPlainFromStorage,
-  RIGHT_SIDEBAR_WIDTH_KEY,
-  savePlainToStorage,
-} from '../../services/storage';
+import { RIGHT_SIDEBAR_WIDTH_KEY } from '../../services/storage';
 import useResizeableWidth from '../../hooks/useResizeableWidth';
 
 type Props = {
