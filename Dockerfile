@@ -40,4 +40,4 @@ COPY model /model
 COPY --from=builder /bleep /
 COPY --from=builder /dylib /dylib
 COPY --from=frontend /build/client/dist /frontend
-ENTRYPOINT ["/bleep", "--host=0.0.0.0", "--source-dir=/repos", "--index-dir=/data", "--model-dir=/model", "--dylib-dir=/dylib"]
+ENTRYPOINT ["/bleep", "--host=0.0.0.0", "--source-dir=/repos", "--index-dir=/data", "--model-dir=/model", "--dylib-dir=/dylib", "--disable-log-write"]

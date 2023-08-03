@@ -3,8 +3,6 @@
     windows_subsystem = "windows"
 )]
 
-use bleep::Application;
-
 mod backend;
 mod qdrant;
 
@@ -36,8 +34,6 @@ fn relative_command_path(command: impl AsRef<str>) -> Option<PathBuf> {
 
 #[tokio::main]
 async fn main() {
-    Application::install_logging();
-
     tauri::Builder::default()
         .plugin(qdrant::QdrantSupervisor::default())
         .setup(backend::bleep)

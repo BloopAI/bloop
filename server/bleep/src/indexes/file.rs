@@ -603,10 +603,7 @@ impl RepoFile {
                 // we have a graph, use that
                 Ok(graph) => SymbolLocations::TreeSitter(graph),
                 // no graph, it's empty
-                Err(err) => {
-                    warn!(?err, %lang_str, "failed to build scope graph");
-                    SymbolLocations::Empty
-                }
+                Err(_) => SymbolLocations::Empty,
             }
         };
 

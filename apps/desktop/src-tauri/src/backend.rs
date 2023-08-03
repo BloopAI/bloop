@@ -69,6 +69,8 @@ where
         )
     };
 
+    Application::install_logging(&configuration);
+
     if let Some(dsn) = &configuration.sentry_dsn {
         initialize_sentry(dsn);
     }

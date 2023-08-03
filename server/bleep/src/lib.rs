@@ -34,7 +34,12 @@ use once_cell::sync::OnceCell;
 use sentry_tracing::{EventFilter, SentryLayer};
 use std::{path::Path, sync::Arc};
 use tracing::{debug, error, info, warn, Level};
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{
+    filter::{LevelFilter, Targets},
+    fmt,
+    prelude::*,
+    EnvFilter,
+};
 
 mod background;
 mod cache;
@@ -67,6 +72,7 @@ pub use env::Environment;
 const LOG_ENV_VAR: &str = "BLOOP_LOG";
 static LOGGER_INSTALLED: OnceCell<bool> = OnceCell::new();
 static SENTRY_GUARD: OnceCell<sentry::ClientInitGuard> = OnceCell::new();
+static LOGGER_GUARD: OnceCell<tracing_appender::non_blocking::WorkerGuard> = OnceCell::new();
 
 /// The global state
 #[derive(Clone)]
@@ -218,12 +224,12 @@ impl Application {
         _ = SENTRY_GUARD.set(guard);
     }
 
-    pub fn install_logging() {
+    pub fn install_logging(config: &Configuration) {
         if let Some(true) = LOGGER_INSTALLED.get() {
             return;
         }
 
-        if !tracing_subscribe() {
+        if !tracing_subscribe(config) {
             warn!("Failed to install tracing_subscriber. There's probably one already...");
         };
 
@@ -239,7 +245,7 @@ impl Application {
     }
 
     pub async fn run(self) -> Result<()> {
-        Self::install_logging();
+        Self::install_logging(&self.config);
 
         let mut joins = tokio::task::JoinSet::new();
 
@@ -338,25 +344,36 @@ impl FromRef<Application> for axum_extra::extract::cookie::Key {
     }
 }
 
-#[cfg(all(tokio_unstable, feature = "debug"))]
-fn tracing_subscribe() -> bool {
-    use tracing_subscriber::{fmt, prelude::*};
-    let env_filter = fmt::layer().with_filter(EnvFilter::from_env(LOG_ENV_VAR));
-    tracing_subscriber::registry()
-        .with(env_filter)
-        .with(sentry_layer())
-        .with(console_subscriber::spawn())
-        .try_init()
-        .is_ok()
-}
+fn tracing_subscribe(config: &Configuration) -> bool {
+    let env_filter_layer = fmt::layer().with_filter(EnvFilter::from_env(LOG_ENV_VAR));
+    let sentry_layer = sentry_layer();
+    let log_writer_layer = (!config.disable_log_write).then(|| {
+        let log_dir = config.index_dir.join("logs");
+        let file_appender = tracing_appender::rolling::daily(log_dir, "bloop.log");
+        let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+        _ = LOGGER_GUARD.set(guard);
+        fmt::layer()
+            .with_writer(non_blocking)
+            .with_ansi(false)
+            .with_filter(
+                Targets::new()
+                    .with_target("bleep", LevelFilter::DEBUG)
+                    .with_target("bleep::indexes::file", LevelFilter::WARN)
+                    .with_target("bleep::semantic", LevelFilter::WARN),
+            )
+    });
 
-#[cfg(not(all(tokio_unstable, feature = "debug")))]
-fn tracing_subscribe() -> bool {
-    use tracing_subscriber::{fmt, prelude::*};
-    let env_filter = fmt::layer().with_filter(EnvFilter::from_env(LOG_ENV_VAR));
+    #[cfg(all(tokio_unstable, feature = "debug"))]
+    let console_subscriber_layer = Some(console_subscriber::spawn());
+    #[cfg(not(all(tokio_unstable, feature = "debug")))]
+    let console_subscriber_layer: Option<Box<dyn tracing_subscriber::Layer<_> + Send + Sync>> =
+        None;
+
     tracing_subscriber::registry()
-        .with(env_filter)
-        .with(sentry_layer())
+        .with(log_writer_layer)
+        .with(env_filter_layer)
+        .with(sentry_layer)
+        .with(console_subscriber_layer)
         .try_init()
         .is_ok()
 }

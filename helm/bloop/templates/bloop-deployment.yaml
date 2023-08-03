@@ -72,6 +72,7 @@ spec:
           - --sentry-dsn={{ .Values.bloop.sentryDsn }}
           - --sentry-dsn-fe={{ .Values.bloop.sentryDsnFE }}
           - --analytics-key-fe={{ .Values.bloop.analyticsKeyFE }}
+          - --disable-log-write
           env:
           - name: BLOOP_LOG
             value: {{ .Values.bloop.logLevel }}
