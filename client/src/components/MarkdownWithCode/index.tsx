@@ -160,7 +160,14 @@ const MarkdownWithCode = ({
         );
       },
     };
-  }, [repoName, openFileModal, isSummary, hideCode, updateScrollToIndex, selectedBranch]);
+  }, [
+    repoName,
+    openFileModal,
+    isSummary,
+    hideCode,
+    updateScrollToIndex,
+    selectedBranch,
+  ]);
 
   return <ReactMarkdown components={components}>{markdown}</ReactMarkdown>;
 };
