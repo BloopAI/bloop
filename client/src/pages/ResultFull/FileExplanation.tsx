@@ -27,7 +27,7 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
   return (
     <div className="min-h-full w-full relative" style={{ width }}>
       <div className="w-full p-5 body-m text-label-base pb-44 break-word overflow-auto h-full">
-        <div className="article-response relative padding-start">
+        <div className="article-response relative padding-start group-custom">
           <MarkdownWithCode
             openFileModal={openFileModal}
             repoName={repoName}
@@ -41,11 +41,11 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
           </div>
           <Button
             variant="secondary"
-            size="small"
+            size="tiny"
             onClick={() => copyToClipboard(markdown)}
-            className="absolute top-0 right-0"
+            className="absolute top-0 right-0 opacity-0 group-custom-hover:opacity-100 transition-opacity"
           >
-            <CopyMD /> Copy
+            <CopyMD raw sizeClassName="w-3.5 h-3.5" /> Copy
           </Button>
         </div>
       </div>
