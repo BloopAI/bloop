@@ -1,8 +1,5 @@
 use secrecy::ExposeSecret;
-use std::{
-    panic::AssertUnwindSafe,
-    time::Duration,
-};
+use std::{panic::AssertUnwindSafe, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use axum::{
@@ -22,11 +19,17 @@ use self::conversations::ConversationId;
 
 use super::middleware::User;
 use crate::{
+    agent::{
+        self,
+        exchange::{CodeChunk, Exchange, FocusedChunk},
+        Action, Agent,
+    },
     analytics::{EventData, QueryEvent},
     db::QueryLog,
+    llm_gateway,
     query::parser::{self, Literal},
     repo::RepoRef,
-    Application, agent::{exchange::{Exchange, FocusedChunk, CodeChunk}, Action, Agent, self}, llm_gateway,
+    Application,
 };
 
 pub mod conversations;

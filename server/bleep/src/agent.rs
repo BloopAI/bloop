@@ -1,17 +1,9 @@
-use std::{
-    collections::{HashMap, HashSet},
-    mem,
-    ops::Range,
-    pin::pin,
-    time::Duration,
-};
+use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
-use futures::{stream, StreamExt, TryStreamExt};
-use rand::{rngs::OsRng, seq::SliceRandom};
-use tiktoken_rs::CoreBPE;
+use futures::TryStreamExt;
 use tokio::sync::mpsc::Sender;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::{
     analytics::{EventData, QueryEvent},
@@ -24,11 +16,23 @@ use crate::{
     Application,
 };
 
-use self::exchange::{CodeChunk, Exchange, SearchStep, Update};
+use self::exchange::{Exchange, SearchStep, Update};
 
 pub mod exchange;
 mod prompts;
 mod transcoder;
+
+/// A collection of modules that each add methods to `Agent`.
+///
+/// These methods correspond to `Action` handlers, and often have supporting methods and supporting
+/// functions, that are local to their own implementation. These modules also have independent
+/// tests.
+mod tools {
+    pub mod answer;
+    pub mod code;
+    pub mod path;
+    pub mod proc;
+}
 
 const ANSWER_MODEL: &str = "gpt-4-0613";
 
@@ -74,8 +78,8 @@ impl Drop for Agent {
 }
 
 impl Agent {
-    /// Mark this agent as "completed", preventing an analytics message from sending on drop.
-    pub fn complete(&mut self) {
+    /// Complete this agent, preventing an analytics message from sending on drop.
+    pub fn complete(mut self) {
         // Checked in `Drop::drop`
         self.complete = true;
     }
@@ -109,12 +113,6 @@ impl Agent {
 
     fn last_exchange_mut(&mut self) -> &mut Exchange {
         self.exchanges.last_mut().expect("exchange list was empty")
-    }
-
-    fn code_chunks(&self) -> impl Iterator<Item = CodeChunk> + '_ {
-        self.exchanges
-            .iter()
-            .flat_map(|e| e.code_chunks.iter().cloned())
     }
 
     fn paths(&self) -> Vec<String> {
@@ -195,507 +193,6 @@ impl Agent {
         Ok(Some(action))
     }
 
-    async fn code_search(&mut self, query: &String) -> Result<String> {
-        const CODE_SEARCH_LIMIT: u64 = 10;
-        self.update(Update::StartStep(SearchStep::Code {
-            query: query.clone(),
-            response: String::new(),
-        }))
-        .await?;
-
-        let mut results = self
-            .semantic_search(query.into(), CODE_SEARCH_LIMIT, 0, 0.0, true)
-            .await?;
-
-        let hyde_docs = self.hyde(query).await?;
-        if !hyde_docs.is_empty() {
-            let hyde_doc = hyde_docs.first().unwrap().into();
-            let hyde_results = self
-                .semantic_search(hyde_doc, CODE_SEARCH_LIMIT, 0, 0.3, true)
-                .await?;
-            results.extend(hyde_results);
-        }
-
-        let chunks = results
-            .into_iter()
-            .map(|chunk| {
-                let relative_path = chunk.relative_path;
-
-                CodeChunk {
-                    path: relative_path.clone(),
-                    alias: self.get_path_alias(&relative_path),
-                    snippet: chunk.text,
-                    start_line: (chunk.start_line as usize).saturating_add(1),
-                    end_line: (chunk.end_line as usize).saturating_add(1),
-                }
-            })
-            .collect::<Vec<_>>();
-
-        for chunk in chunks.iter().filter(|c| !c.is_empty()) {
-            self.exchanges
-                .last_mut()
-                .unwrap()
-                .code_chunks
-                .push(chunk.clone())
-        }
-
-        let response = serde_json::to_string(&chunks).unwrap();
-
-        self.update(Update::ReplaceStep(SearchStep::Code {
-            query: query.clone(),
-            response: response.clone(),
-        }))
-        .await?;
-
-        self.track_query(
-            EventData::input_stage("semantic code search")
-                .with_payload("query", query)
-                .with_payload("hyde_queries", &hyde_docs)
-                .with_payload("chunks", &chunks)
-                .with_payload("raw_prompt", &response),
-        );
-
-        Ok(response)
-    }
-
-    async fn path_search(&mut self, query: &String) -> Result<String> {
-        self.update(Update::StartStep(SearchStep::Path {
-            query: query.clone(),
-            response: String::new(),
-        }))
-        .await?;
-
-        // First, perform a lexical search for the path
-        let mut paths = self
-            .fuzzy_path_search(query)
-            .await
-            .map(|c| c.relative_path)
-            .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.
-            .into_iter()
-            .collect::<Vec<_>>();
-
-        let is_semantic = paths.is_empty();
-
-        // If there are no lexical results, perform a semantic search.
-        if paths.is_empty() {
-            let semantic_paths = self
-                .semantic_search(query.into(), 30, 0, 0.0, true)
-                .await?
-                .into_iter()
-                .map(|chunk| chunk.relative_path)
-                .collect::<HashSet<_>>()
-                .into_iter()
-                .collect();
-
-            paths = semantic_paths;
-        }
-
-        let formatted_paths = paths
-            .iter()
-            .map(|p| (p.to_string(), self.get_path_alias(p)))
-            .collect::<Vec<_>>();
-
-        let response = serde_json::to_string(&formatted_paths).unwrap();
-
-        self.update(Update::ReplaceStep(SearchStep::Path {
-            query: query.clone(),
-            response: response.clone(),
-        }))
-        .await?;
-
-        self.track_query(
-            EventData::input_stage("path search")
-                .with_payload("query", query)
-                .with_payload("is_semantic", is_semantic)
-                .with_payload("results", &paths)
-                .with_payload("raw_prompt", &response),
-        );
-
-        Ok(response)
-    }
-
-    async fn process_files(&mut self, query: &str, path_aliases: &[usize]) -> Result<String> {
-        const MAX_CHUNK_LINE_LENGTH: usize = 20;
-        const CHUNK_MERGE_DISTANCE: usize = 10;
-        const MAX_TOKENS: usize = 15400;
-
-        let paths = path_aliases
-            .iter()
-            .copied()
-            .map(|i| self.paths().get(i).ok_or(i).cloned())
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|i| anyhow!("invalid path alias {i}"))?;
-
-        debug!(?query, ?paths, "invoking proc");
-
-        self.update(Update::StartStep(SearchStep::Proc {
-            query: query.to_string(),
-            paths: paths.clone(),
-            response: String::new(),
-        }))
-        .await?;
-
-        // Immutable reborrow of `self`, to copy freely to async closures.
-        let self_ = &*self;
-        let chunks = stream::iter(paths.clone())
-            .map(|path| async move {
-                tracing::debug!(?path, "reading file");
-
-                let lines = self_
-                    .get_file_content(&path)
-                    .await?
-                    .with_context(|| format!("path does not exist in the index: {path}"))?
-                    .content
-                    .lines()
-                    .enumerate()
-                    .map(|(i, line)| format!("{} {line}", i + 1))
-                    .collect::<Vec<_>>();
-
-                let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo")?;
-
-                let iter =
-                    tokio::task::spawn_blocking(|| trim_lines_by_tokens(lines, bpe, MAX_TOKENS))
-                        .await
-                        .context("failed to split by token")?;
-
-                Result::<_>::Ok((iter, path.clone()))
-            })
-            // Buffer file loading to load multiple paths at once
-            .buffered(10)
-            .map(|result| async {
-                let (lines, path) = result?;
-
-                // The unwraps here should never fail, we generated this string above to always
-                // have the same format.
-                let start_line = lines[0]
-                    .split_once(' ')
-                    .unwrap()
-                    .0
-                    .parse::<usize>()
-                    .unwrap();
-
-                // We store the lines separately, so that we can reference them later to trim
-                // this snippet by line number.
-                let contents = lines.join("\n");
-                let prompt = prompts::file_explanation(query, &path, &contents);
-
-                debug!(?path, "calling chat API on file");
-
-                let json = self_
-                    .llm_gateway
-                    .clone()
-                    .model("gpt-3.5-turbo-16k-0613")
-                    // Set low frequency penalty to discourage long outputs.
-                    .frequency_penalty(0.1)
-                    .chat(&[llm_gateway::api::Message::system(&prompt)], None)
-                    .await?
-                    .try_collect::<String>()
-                    .await?;
-
-                #[derive(
-                    serde::Deserialize,
-                    serde::Serialize,
-                    PartialEq,
-                    Eq,
-                    PartialOrd,
-                    Ord,
-                    Copy,
-                    Clone,
-                    Debug,
-                )]
-                struct Range {
-                    start: usize,
-                    end: usize,
-                }
-
-                #[derive(serde::Serialize)]
-                struct RelevantChunk {
-                    #[serde(flatten)]
-                    range: Range,
-                    code: String,
-                }
-
-                impl RelevantChunk {
-                    fn enumerate_lines(&self) -> Self {
-                        Self {
-                            range: self.range,
-                            code: self
-                                .code
-                                .lines()
-                                .enumerate()
-                                .map(|(i, line)| format!("{} {line}", i + self.range.start))
-                                .collect::<Vec<_>>()
-                                .join("\n"),
-                        }
-                    }
-                }
-
-                let mut line_ranges: Vec<Range> = serde_json::from_str::<Vec<Range>>(&json)?
-                    .into_iter()
-                    .filter(|r| r.start > 0 && r.end > 0)
-                    .map(|mut r| {
-                        r.end = r.end.min(r.start + MAX_CHUNK_LINE_LENGTH); // Cap relevant chunk size by line number
-                        r
-                    })
-                    .collect();
-
-                line_ranges.sort();
-                line_ranges.dedup();
-
-                let relevant_chunks = line_ranges
-                    .into_iter()
-                    .fold(Vec::<Range>::new(), |mut exps, next| {
-                        if let Some(prev) = exps.last_mut() {
-                            if prev.end + CHUNK_MERGE_DISTANCE >= next.start {
-                                prev.end = next.end;
-                                return exps;
-                            }
-                        }
-
-                        exps.push(next);
-                        exps
-                    })
-                    .into_iter()
-                    .filter_map(|range| {
-                        Some(RelevantChunk {
-                            range,
-                            code: lines
-                                .get(
-                                    range.start.saturating_sub(start_line)
-                                        ..range.end.saturating_sub(start_line),
-                                )?
-                                .iter()
-                                .map(|line| line.split_once(' ').unwrap().1)
-                                .collect::<Vec<_>>()
-                                .join("\n"),
-                        })
-                    })
-                    .collect::<Vec<_>>();
-
-                Ok::<_, anyhow::Error>((relevant_chunks, path))
-            });
-
-        let processed = chunks
-            // This box seems unnecessary, but it avoids a compiler bug:
-            // https://github.com/rust-lang/rust/issues/64552
-            .boxed()
-            .buffered(5)
-            .filter_map(|res| async { res.ok() })
-            .collect::<Vec<_>>()
-            .await;
-
-        for (relevant_chunks, path) in &processed {
-            let alias = self.get_path_alias(path);
-
-            for c in relevant_chunks {
-                let chunk = CodeChunk {
-                    path: path.to_owned(),
-                    alias,
-                    snippet: c.code.clone(),
-                    start_line: c.range.start,
-                    end_line: c.range.end,
-                };
-                if !chunk.is_empty() {
-                    self.last_exchange_mut().code_chunks.push(chunk);
-                }
-            }
-        }
-
-        let out = processed
-            .into_iter()
-            .map(|(relevant_chunks, path)| {
-                serde_json::json!({
-                    "relevant_chunks": relevant_chunks
-                        .iter()
-                        .map(|c| c.enumerate_lines())
-                        .collect::<Vec<_>>(),
-                    "path_alias": self.get_path_alias(&path),
-                })
-            })
-            .collect::<Vec<_>>();
-
-        let response = serde_json::to_string(&out)?;
-
-        self.update(Update::ReplaceStep(SearchStep::Proc {
-            query: query.to_string(),
-            paths,
-            response: response.clone(),
-        }))
-        .await?;
-
-        self.track_query(
-            EventData::input_stage("process file")
-                .with_payload("question", query)
-                .with_payload("chunks", &out)
-                .with_payload("raw_prompt", &response),
-        );
-
-        Ok(response)
-    }
-
-    async fn answer_context(&mut self, aliases: &[usize], gpt_model: &str) -> Result<String> {
-        let paths = self.paths();
-
-        let mut s = "".to_owned();
-
-        let mut aliases = aliases
-            .iter()
-            .copied()
-            .filter(|alias| *alias < paths.len())
-            .collect::<Vec<_>>();
-
-        aliases.sort();
-        aliases.dedup();
-
-        debug!(?paths, ?aliases, "created filtered path alias list");
-
-        // NB: If we have more than one selected alias passed to the agent `none` tool, we
-        // intentionally ignore the alias list. This is part of a bigger issue that is to be
-        // discussed and investigated separately, that points to odd behaviour with the agent
-        // implementation.
-        let aliases = if aliases.len() == 1 {
-            aliases
-        } else {
-            (0..paths.len()).collect()
-        };
-
-        if !aliases.is_empty() {
-            s += "##### PATHS #####\npath alias, path\n";
-
-            for alias in &aliases {
-                let path = &paths[*alias];
-                s += &format!("{alias}, {path}\n");
-            }
-        }
-
-        let code_chunks = self.canonicalize_code_chunks(&aliases, gpt_model).await;
-
-        // Sometimes, there are just too many code chunks in the context, and deduplication still
-        // doesn't trim enough chunks. So, we enforce a hard limit here that stops adding tokens
-        // early if we reach a heuristic limit.
-        const PROMPT_HEADROOM: usize = 2500;
-        let bpe = tiktoken_rs::get_bpe_from_model(gpt_model)?;
-        let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens(gpt_model, &s)?;
-
-        // Select as many recent chunks as possible
-        let mut recent_chunks = Vec::new();
-        for chunk in code_chunks.iter().rev() {
-            let snippet = chunk
-                .snippet
-                .lines()
-                .enumerate()
-                .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line))
-                .collect::<String>();
-
-            let formatted_snippet = format!("### path alias: {} ###\n{snippet}\n\n", chunk.alias);
-
-            let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
-
-            if snippet_tokens >= remaining_prompt_tokens - PROMPT_HEADROOM {
-                debug!("Breaking at {} tokens...", remaining_prompt_tokens);
-                break;
-            }
-
-            recent_chunks.push((chunk.clone(), formatted_snippet));
-
-            remaining_prompt_tokens -= snippet_tokens;
-            debug!("{}", remaining_prompt_tokens);
-        }
-
-        // group recent chunks by path alias
-        let mut recent_chunks_by_alias: HashMap<_, _> =
-            recent_chunks
-                .into_iter()
-                .fold(HashMap::new(), |mut map, item| {
-                    map.entry(item.0.alias).or_insert_with(Vec::new).push(item);
-                    map
-                });
-
-        // write the header if we have atleast one chunk
-        if !recent_chunks_by_alias.values().all(Vec::is_empty) {
-            s += "\n##### CODE CHUNKS #####\n\n";
-        }
-
-        // sort by alias, then sort by lines
-        let mut aliases = recent_chunks_by_alias.keys().copied().collect::<Vec<_>>();
-        aliases.sort();
-
-        for alias in aliases {
-            let chunks = recent_chunks_by_alias.get_mut(&alias).unwrap();
-            chunks.sort_by(|a, b| a.0.start_line.cmp(&b.0.start_line));
-            for (_, formatted_snippet) in chunks {
-                s += formatted_snippet;
-            }
-        }
-
-        Ok(s)
-    }
-
-    async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
-        const ANSWER_HEADROOM: usize = 1024; // the number of tokens reserved for the answer
-
-        debug!(?aliases, "creating article response");
-
-        let context = self.answer_context(aliases, ANSWER_MODEL).await?;
-        let system_prompt = prompts::answer_article_prompt(&context);
-        let system_message = llm_gateway::api::Message::system(&system_prompt);
-        let history = {
-            let h = self.utter_history().collect::<Vec<_>>();
-            let system_headroom =
-                tiktoken_rs::num_tokens_from_messages(ANSWER_MODEL, &[(&system_message).into()])?;
-            trim_utter_history(h, ANSWER_HEADROOM + system_headroom)?
-        };
-        let messages = Some(system_message)
-            .into_iter()
-            .chain(history.iter().cloned())
-            .collect::<Vec<_>>();
-
-        let mut stream = pin!(
-            self.llm_gateway
-                .clone()
-                .model(ANSWER_MODEL)
-                .chat(&messages, None)
-                .await?
-        );
-
-        let mut response = String::new();
-        while let Some(fragment) = stream.next().await {
-            let fragment = fragment?;
-            response += &fragment;
-
-            let (article, summary) = transcoder::decode(&response);
-            self.update(Update::Article(article)).await?;
-
-            if let Some(summary) = summary {
-                self.update(Update::Conclude(summary)).await?;
-            }
-        }
-
-        let summary = transcoder::decode(&response).1.unwrap_or_else(|| {
-            [
-                "I hope that was useful, can I help with anything else?",
-                "Is there anything else I can help you with?",
-                "Can I help you with anything else?",
-            ]
-            .choose(&mut OsRng)
-            .copied()
-            .unwrap()
-            .to_owned()
-        });
-
-        self.update(Update::Conclude(summary)).await?;
-
-        self.track_query(
-            EventData::output_stage("answer_article")
-                .with_payload("query", self.last_exchange().query())
-                .with_payload("query_history", &history)
-                .with_payload("response", &response)
-                .with_payload("raw_prompt", &system_prompt),
-        );
-
-        Ok(())
-    }
-
     /// The full history of messages, including intermediate function calls
     fn history(&self) -> Result<Vec<llm_gateway::api::Message>> {
         const ANSWER_MAX_HISTORY_SIZE: usize = 3;
@@ -710,7 +207,7 @@ impl Agent {
                     .query()
                     .map(|q| {
                         llm_gateway::api::Message::user(&format!(
-                            "{q}\nCall a function. Do not answer."
+                            "{q}\nCall a function. Do not answer"
                         ))
                     })
                     .ok_or_else(|| anyhow!("query does not have target"))?;
@@ -750,7 +247,7 @@ impl Agent {
                         }),
                         llm_gateway::api::Message::function_return(
                             &name,
-                            &format!("{}\nCall a function. Do not answer.", s.get_response()),
+                            &format!("{}\nCall a function. Do not answer", s.get_response()),
                         ),
                     ]
                 });
@@ -773,216 +270,6 @@ impl Agent {
                 Ok(acc)
             })?;
         Ok(history)
-    }
-
-    /// History of `user`, `assistant` messages. These are the messages that are shown to the user.
-    fn utter_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
-        const ANSWER_MAX_HISTORY_SIZE: usize = 5;
-
-        self.exchanges
-            .iter()
-            .rev()
-            .take(ANSWER_MAX_HISTORY_SIZE)
-            .rev()
-            .flat_map(|e| {
-                let query = e.query().map(|q| llm_gateway::api::Message::PlainText {
-                    role: "user".to_owned(),
-                    content: q,
-                });
-
-                let conclusion = e.answer().map(|(answer, conclusion)| {
-                    let encoded =
-                        transcoder::encode_summarized(answer, Some(conclusion), "gpt-4-0613")
-                            .unwrap();
-
-                    llm_gateway::api::Message::PlainText {
-                        role: "assistant".to_owned(),
-                        content: encoded,
-                    }
-                });
-
-                query
-                    .into_iter()
-                    .chain(conclusion.into_iter())
-                    .collect::<Vec<_>>()
-            })
-    }
-
-    /// Merge overlapping and nearby code chunks
-    async fn canonicalize_code_chunks(
-        &mut self,
-        aliases: &[usize],
-        gpt_model: &str,
-    ) -> Vec<CodeChunk> {
-        debug!(?aliases, "canonicalizing code chunks");
-
-        /// The ratio of code tokens to context size.
-        ///
-        /// Making this closure to 1 means that more of the context is taken up by source code.
-        const CONTEXT_CODE_RATIO: f32 = 0.5;
-
-        let bpe = tiktoken_rs::get_bpe_from_model(gpt_model).unwrap();
-        let context_size = tiktoken_rs::model::get_context_size(gpt_model);
-        let max_tokens = (context_size as f32 * CONTEXT_CODE_RATIO) as usize;
-
-        let mut spans_by_path = HashMap::<_, Vec<_>>::new();
-        for c in self.code_chunks().filter(|c| aliases.contains(&c.alias)) {
-            spans_by_path
-                .entry(c.path.clone())
-                .or_default()
-                .push(c.start_line..c.end_line);
-        }
-
-        debug!(?spans_by_path, "expanding spans");
-
-        let self_ = &*self;
-        // Map of path -> line list
-        let lines_by_file = futures::stream::iter(&mut spans_by_path)
-            .then(|(path, spans)| async move {
-                spans.sort_by_key(|c| c.start);
-
-                let lines = self_
-                    .get_file_content(path)
-                    .await
-                    .unwrap()
-                    .unwrap_or_else(|| panic!("path did not exist in the index: {path}"))
-                    .content
-                    .lines()
-                    .map(str::to_owned)
-                    .collect::<Vec<_>>();
-
-                (path.clone(), lines)
-            })
-            .collect::<HashMap<_, _>>()
-            .await;
-
-        // Total number of lines to try and expand by, per loop iteration.
-        const TOTAL_LINE_INC: usize = 100;
-
-        // We keep track of whether any spans were changed below, so that we know when to break
-        // out of this loop.
-        let mut changed = true;
-
-        while !spans_by_path.is_empty() && changed {
-            changed = false;
-
-            let tokens = spans_by_path
-                .iter()
-                .flat_map(|(path, spans)| spans.iter().map(move |s| (path, s)))
-                .map(|(path, span)| {
-                    let range = span.start.saturating_sub(1)..span.end.saturating_sub(1);
-                    let snippet = lines_by_file.get(path).unwrap()[range].join("\n");
-                    bpe.encode_ordinary(&snippet).len()
-                })
-                .sum::<usize>();
-
-            // First, we grow the spans if possible.
-            if tokens < max_tokens {
-                // NB: We divide TOTAL_LINE_INC by 2, because we expand in 2 directions.
-                let range_step = (TOTAL_LINE_INC / 2)
-                    / spans_by_path
-                        .values()
-                        .map(|spans| spans.len())
-                        .sum::<usize>()
-                        .max(1);
-
-                let range_step = range_step.max(1);
-
-                for (path, span) in spans_by_path
-                    .iter_mut()
-                    .flat_map(|(path, spans)| spans.iter_mut().map(move |s| (path, s)))
-                {
-                    let file_lines = lines_by_file.get(path.as_str()).unwrap().len();
-
-                    let old_span = span.clone();
-
-                    // Decrease the start line, but make sure that we don't end up with 0, as our lines
-                    // are 1-based.
-                    span.start = span.start.saturating_sub(range_step).max(1);
-
-                    // Expand the end line forwards, capping at the total number of lines (NB: this is
-                    // also 1-based).
-                    span.end += range_step;
-                    span.end = span.end.min(file_lines);
-
-                    if *span != old_span {
-                        debug!(?path, "growing span");
-                        changed = true;
-                    }
-                }
-            }
-
-            // Next, we merge any overlapping spans.
-            for spans in spans_by_path.values_mut() {
-                *spans = mem::take(spans)
-                    .into_iter()
-                    .fold(Vec::new(), |mut a, next| {
-                        // There is some rightward drift here, which could be fixed once if-let
-                        // chains are stabilized.
-                        if let Some(prev) = a.last_mut() {
-                            if let Some(next) = merge_overlapping(prev, next) {
-                                a.push(next);
-                            } else {
-                                changed = true;
-                            }
-                        } else {
-                            a.push(next);
-                        }
-
-                        a
-                    });
-            }
-        }
-
-        debug!(?spans_by_path, "expanded spans");
-
-        spans_by_path
-            .into_iter()
-            .flat_map(|(path, spans)| spans.into_iter().map(move |s| (path.clone(), s)))
-            .map(|(path, span)| {
-                let range = span.start.saturating_sub(1)..span.end.saturating_sub(1);
-                let snippet = lines_by_file.get(&path).unwrap()[range].join("\n");
-
-                CodeChunk {
-                    alias: self.get_path_alias(&path),
-                    path,
-                    snippet,
-                    start_line: span.start,
-                    end_line: span.end,
-                }
-            })
-            .collect()
-    }
-
-    /// Hypothetical Document Embedding (HyDE): https://arxiv.org/abs/2212.10496
-    ///
-    /// This method generates synthetic documents based on the query. These are then
-    /// parsed and code is extracted. This has been shown to improve semantic search recall.
-    async fn hyde(&self, query: &str) -> Result<Vec<String>> {
-        let prompt = vec![llm_gateway::api::Message::system(
-            &prompts::hypothetical_document_prompt(query),
-        )];
-
-        tracing::trace!(?query, "generating hyde docs");
-
-        let response = self
-            .llm_gateway
-            .clone()
-            .model("gpt-3.5-turbo-0613")
-            .chat(&prompt, None)
-            .await?
-            .try_collect::<String>()
-            .await?;
-
-        tracing::trace!("parsing hyde response");
-
-        let documents = prompts::try_parse_hypothetical_documents(&response);
-
-        for doc in documents.iter() {
-            info!(?doc, "got hyde doc");
-        }
-
-        Ok(documents)
     }
 
     async fn semantic_search(
@@ -1064,33 +351,11 @@ impl Agent {
     }
 }
 
-// headroom refers to the amount of space reserved for the rest of the prompt
-fn trim_utter_history(
-    mut history: Vec<llm_gateway::api::Message>,
-    headroom: usize,
-) -> Result<Vec<llm_gateway::api::Message>> {
-    let mut tiktoken_msgs: Vec<tiktoken_rs::ChatCompletionRequestMessage> =
-        history.iter().map(|m| m.into()).collect::<Vec<_>>();
-
-    // remove the earliest messages, one by one, until we can accomodate into prompt
-    while tiktoken_rs::get_chat_completion_max_tokens(ANSWER_MODEL, &tiktoken_msgs)? < headroom {
-        if !tiktoken_msgs.is_empty() {
-            tiktoken_msgs.remove(0);
-            history.remove(0);
-        } else {
-            return Err(anyhow!("could not find message to trim"));
-        }
-    }
-
-    Ok(history)
-}
-
 fn trim_history(
     mut history: Vec<llm_gateway::api::Message>,
 ) -> Result<Vec<llm_gateway::api::Message>> {
     const HEADROOM: usize = 2048;
     const HIDDEN: &str = "[HIDDEN]";
-    const HIDDEN_WITH_INSTRUCTION: &str = "[HIDDEN]\nCall a function. Do not answer.";
 
     let mut tiktoken_msgs = history.iter().map(|m| m.into()).collect::<Vec<_>>();
 
@@ -1103,11 +368,7 @@ fn trim_history(
                     role,
                     ref mut content,
                 } => {
-                    if (role == "user") && content != HIDDEN_WITH_INSTRUCTION {
-                        *content = HIDDEN_WITH_INSTRUCTION.into();
-                        tm.content = HIDDEN_WITH_INSTRUCTION.into();
-                        true
-                    } else if role == "assistant" && content != HIDDEN {
+                    if (role == "user" || role == "assistant") && content != HIDDEN {
                         *content = HIDDEN.into();
                         tm.content = HIDDEN.into();
                         true
@@ -1119,9 +380,9 @@ fn trim_history(
                     role: _,
                     name: _,
                     ref mut content,
-                } if content != HIDDEN_WITH_INSTRUCTION => {
-                    *content = HIDDEN_WITH_INSTRUCTION.into();
-                    tm.content = HIDDEN_WITH_INSTRUCTION.into();
+                } if content != HIDDEN => {
+                    *content = HIDDEN.into();
+                    tm.content = HIDDEN.into();
                     true
                 }
                 _ => false,
@@ -1130,58 +391,6 @@ fn trim_history(
     }
 
     Ok(history)
-}
-
-fn trim_lines_by_tokens(lines: Vec<String>, bpe: CoreBPE, max_tokens: usize) -> Vec<String> {
-    let line_tokens = lines
-        .iter()
-        .map(|line| bpe.encode_ordinary(line).len())
-        .collect::<Vec<_>>();
-
-    let mut trimmed_lines = Vec::new();
-
-    // Push lines to `trimmed_lines` until we reach the maximum number of tokens.
-    let mut i = 0usize;
-    let mut tokens = 0usize;
-    while i < lines.len() && tokens < max_tokens {
-        tokens += line_tokens[i];
-        trimmed_lines.push(lines[i].clone());
-        i += 1;
-    }
-
-    trimmed_lines
-}
-
-fn limit_tokens(text: &str, bpe: CoreBPE, max_tokens: usize) -> &str {
-    let mut tokens = bpe.encode_ordinary(text);
-    tokens.truncate(max_tokens);
-
-    while !tokens.is_empty() {
-        if let Ok(s) = bpe.decode(tokens.clone()) {
-            return &text[..s.len()];
-        }
-
-        let _ = tokens.pop();
-    }
-
-    ""
-}
-
-/// Merge line ranges if they overlap.
-///
-/// This function assumes that the first parameter is a line range which starts *before* the line
-/// range given by the second parameter.
-fn merge_overlapping(a: &mut Range<usize>, b: Range<usize>) -> Option<Range<usize>> {
-    if a.end >= b.start {
-        // `b` might be contained in `a`, which allows us to discard it.
-        if a.end < b.end {
-            a.end = b.end;
-        }
-
-        None
-    } else {
-        Some(b)
-    }
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -1260,9 +469,9 @@ mod tests {
             trim_history(history).unwrap(),
             vec![
                 llm_gateway::api::Message::system("foo"),
-                llm_gateway::api::Message::user("[HIDDEN]\nCall a function. Do not answer."),
+                llm_gateway::api::Message::user("[HIDDEN]"),
                 llm_gateway::api::Message::assistant("[HIDDEN]"),
-                llm_gateway::api::Message::user("[HIDDEN]\nCall a function. Do not answer."),
+                llm_gateway::api::Message::user("[HIDDEN]"),
                 llm_gateway::api::Message::assistant("quux"),
                 llm_gateway::api::Message::user("fred"),
                 llm_gateway::api::Message::assistant("thud"),
@@ -1270,90 +479,5 @@ mod tests {
                 llm_gateway::api::Message::user("corge"),
             ]
         );
-    }
-
-    #[test]
-    fn test_trimming_utter_history() {
-        let long_string = "long string ".repeat(2000);
-        let history = vec![
-            llm_gateway::api::Message::user("bar"),
-            llm_gateway::api::Message::assistant("baz"),
-            llm_gateway::api::Message::user(&long_string),
-            llm_gateway::api::Message::assistant("quux"),
-            llm_gateway::api::Message::user("fred"),
-            llm_gateway::api::Message::assistant("thud"),
-            llm_gateway::api::Message::user(&long_string),
-            llm_gateway::api::Message::user("corge"),
-        ];
-
-        // the answer needs 8100 tokens of 8192, the utter history can admit just one message
-        assert_eq!(
-            trim_utter_history(history.clone(), 8100).unwrap(),
-            vec![llm_gateway::api::Message::user("corge"),]
-        );
-
-        // the answer needs just 4000 tokens of 8192, the utter history can accomodate
-        // one long_string, but no more long_strings
-        assert_eq!(
-            trim_utter_history(history, 4000).unwrap(),
-            vec![
-                llm_gateway::api::Message::assistant("quux"),
-                llm_gateway::api::Message::user("fred"),
-                llm_gateway::api::Message::assistant("thud"),
-                llm_gateway::api::Message::user(&long_string),
-                llm_gateway::api::Message::user("corge"),
-            ]
-        );
-    }
-
-    #[test]
-    fn test_trim_lines_by_tokens() {
-        let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
-
-        let lines = vec![
-            "fn main() {".to_string(),
-            "    one();".to_string(),
-            "    two();".to_string(),
-            "    three();".to_string(),
-            "    four();".to_string(),
-            "    five();".to_string(),
-            "    six();".to_string(),
-            "}".to_string(),
-        ];
-        assert_eq!(
-            trim_lines_by_tokens(lines, bpe.clone(), 15),
-            vec![
-                "fn main() {".to_string(),
-                "    one();".to_string(),
-                "    two();".to_string(),
-                "    three();".to_string(),
-                "    four();".to_string()
-            ]
-        );
-
-        let lines = vec!["fn main() {".to_string(), "    one();".to_string()];
-        assert_eq!(
-            trim_lines_by_tokens(lines, bpe.clone(), 15),
-            vec!["fn main() {".to_string(), "    one();".to_string()]
-        );
-
-        let expected: Vec<String> = vec![];
-        assert_eq!(trim_lines_by_tokens(vec![], bpe, 15), expected);
-    }
-
-    #[test]
-    fn test_limit_tokens() {
-        let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
-        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 1), "fn");
-
-        // Note: the following calls return a string that does not split the emoji, despite the
-        // tokenizer interpreting the tokens like that.
-        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 2), "fn");
-        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 3), "fn");
-
-        // Now we have a sufficient number of input tokens to overcome the emoji.
-        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 4), "fn 🚨");
-        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 5), "fn 🚨()");
-        assert_eq!(limit_tokens("fn 🚨() {}", bpe, 6), "fn 🚨() {}");
     }
 }

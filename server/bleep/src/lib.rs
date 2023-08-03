@@ -48,10 +48,10 @@ mod collector;
 mod config;
 mod db;
 mod env;
+mod llm_gateway;
 mod remotes;
 mod repo;
 mod webserver;
-mod llm_gateway;
 
 #[cfg(feature = "ee")]
 mod ee;
