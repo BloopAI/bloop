@@ -15,7 +15,7 @@ const StatusBar = () => {
   const { t } = useTranslation();
 
   const { setBugReportModalOpen } = useContext(UIContext.BugReport);
-  const { openLink } = useContext(DeviceContext);
+  const { openLink, release } = useContext(DeviceContext);
   const [isOnline, setIsOnline] = useState(true);
   const [discordLink, setDiscordLink] = useState(
     'https://discord.com/invite/kZEgj5pyjm',
@@ -61,7 +61,8 @@ const StatusBar = () => {
         {/*  textSecondary={'80k'}*/}
         {/*/>*/}
       </span>
-      <span className="flex gap-3">
+      <span className="flex gap-3 items-center">
+        <p className="text-label-muted caption">v{release}</p>
         <Button
           size="small"
           variant="secondary"
