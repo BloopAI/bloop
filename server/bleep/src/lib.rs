@@ -41,6 +41,7 @@ use tracing_subscriber::{
     EnvFilter,
 };
 
+mod agent;
 mod background;
 mod cache;
 mod collector;
@@ -50,6 +51,7 @@ mod env;
 mod remotes;
 mod repo;
 mod webserver;
+mod llm_gateway;
 
 #[cfg(feature = "ee")]
 mod ee;

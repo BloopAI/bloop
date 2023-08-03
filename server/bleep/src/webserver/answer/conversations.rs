@@ -12,10 +12,8 @@ use crate::{
     db::SqlDb,
     repo::RepoRef,
     webserver::{self, middleware::User, Error, ErrorKind},
-    Application,
+    Application, agent::exchange::Exchange,
 };
-
-use super::exchange::Exchange;
 
 type Conversation = (RepoRef, Vec<Exchange>);
 
