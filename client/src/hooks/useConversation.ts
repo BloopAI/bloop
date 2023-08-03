@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { conversationsCache } from '../services/cache';
 import {
@@ -14,16 +14,25 @@ const useConversation = (threadId: string, recordId: number) => {
   const { t } = useTranslation();
   const { conversation } = useContext(ChatContext.Values);
   const { setThreadId, setConversation } = useContext(ChatContext.Setters);
-
-  const data = useMemo(
-    () => conversationsCache[threadId]?.[recordId] || conversation[recordId],
-    [
-      (conversation[recordId] as ChatMessageServer)?.results,
-      (conversation[recordId] as ChatMessageServer)?.isLoading,
-      recordId,
-      threadId,
-    ],
+  const [data, setData] = useState(
+    conversationsCache[threadId]?.[recordId] || conversation[recordId],
   );
+
+  useEffect(() => {
+    if (!threadId || (!recordId && recordId !== 0)) {
+      setData(null);
+    }
+    const d =
+      conversationsCache[threadId]?.[recordId] || conversation[recordId];
+    if (d?.results) {
+      setData(d);
+    }
+  }, [
+    (conversation[recordId] as ChatMessageServer)?.results,
+    (conversation[recordId] as ChatMessageServer)?.isLoading,
+    recordId,
+    threadId,
+  ]);
 
   useEffect(() => {
     if (!conversationsCache[threadId]?.[recordId] && !conversation[recordId]) {
@@ -42,7 +51,7 @@ const useConversation = (threadId: string, recordId: number) => {
             isLoading: false,
             loadingSteps: mapLoadingSteps(m.search_steps, t),
             text: m.conclusion,
-            results: m.outcome,
+            results: m.answer,
             isFromHistory: true,
             queryId: m.id,
             responseTimestamp: m.response_timestamp,

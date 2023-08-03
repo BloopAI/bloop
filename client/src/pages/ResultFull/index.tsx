@@ -204,7 +204,7 @@ const ResultFull = ({
       </div>
       {!!answer && (
         <FileExplanation
-          markdown={answer.results.Article}
+          markdown={answer.results}
           repoName={result?.repoName || ''}
         />
       )}
