@@ -1,8 +1,14 @@
-import React, { MutableRefObject, useContext, useEffect, useRef } from 'react';
+import React, {
+  Dispatch,
+  MutableRefObject,
+  SetStateAction,
+  useEffect,
+  useRef,
+} from 'react';
 import FileIcon from '../../FileIcon';
 import { ArrowOut } from '../../../icons';
-import { FileHighlightsContext } from '../../../context/fileHighlightsContext';
 import { highlightColors } from '../../../consts/code';
+import { FileHighlightsType } from '../../../types/general';
 
 type Props = {
   onClick: () => void;
@@ -11,9 +17,9 @@ type Props = {
   skipIcon?: boolean;
   lines?: [number, number];
   fileChips?: MutableRefObject<HTMLButtonElement[]>;
+  setFileHighlights: Dispatch<SetStateAction<FileHighlightsType>>;
 };
 
-let isRendered = false;
 const FileChip = ({
   onClick,
   fileName,
@@ -21,9 +27,9 @@ const FileChip = ({
   skipIcon,
   lines,
   fileChips,
+  setFileHighlights,
 }: Props) => {
   const ref = useRef<HTMLButtonElement>(null);
-  const { setFileHighlights } = useContext(FileHighlightsContext);
 
   useEffect(() => {
     let chip = ref.current;

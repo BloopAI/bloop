@@ -4,6 +4,7 @@ import {
   DetailedHTMLProps,
   ReactElement,
   useContext,
+  useEffect,
   useMemo,
   useRef,
 } from 'react';
@@ -13,6 +14,7 @@ import FileChip from '../Chat/ConversationMessage/FileChip';
 import CodeWithBreadcrumbs from '../../pages/ArticleResponse/CodeWithBreadcrumbs';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { SearchContext } from '../../context/searchContext';
+import { FileHighlightsContext } from '../../context/fileHighlightsContext';
 import NewCode from './NewCode';
 import FolderChip from './FolderChip';
 
@@ -40,6 +42,13 @@ const MarkdownWithCode = ({
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const fileChips = useRef([]);
   const { updateScrollToIndex } = useContext(AppNavigationContext);
+  const { setFileHighlights } = useContext(FileHighlightsContext);
+
+  useEffect(() => {
+    return () => {
+      setFileHighlights({});
+    };
+  }, []);
 
   const components = useMemo(() => {
     return {
@@ -92,6 +101,7 @@ const MarkdownWithCode = ({
             lines={
               hideCode && start ? [start - 1, (end ?? start) - 1] : undefined
             }
+            setFileHighlights={setFileHighlights}
           />
         );
       },
@@ -132,6 +142,7 @@ const MarkdownWithCode = ({
                 }
                 lines={[lines[0] - 1, (lines[1] ?? lines[0]) - 1]}
                 fileChips={fileChips}
+                setFileHighlights={setFileHighlights}
               />
             ) : (
               <CodeWithBreadcrumbs
