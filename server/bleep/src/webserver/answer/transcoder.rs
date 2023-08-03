@@ -82,9 +82,9 @@ pub fn encode(markdown: &str, conclusion: Option<&str>) -> String {
         };
 
         let attributes = info
-            .split(",")
+            .split(',')
             .filter_map(|param| {
-                let mut iter = param.trim().split(":");
+                let mut iter = param.trim().split(':');
 
                 let key = iter.next()?;
                 let value = iter.next()?;
@@ -97,7 +97,7 @@ pub fn encode(markdown: &str, conclusion: Option<&str>) -> String {
             "Quoted" => {
                 let path = attributes.get("path")?;
                 let lang = attributes.get("lang")?;
-                let mut lines = attributes.get("lines")?.split("-");
+                let mut lines = attributes.get("lines")?.split('-');
 
                 let start_line = lines.next()?;
                 let end_line = lines.next()?;
