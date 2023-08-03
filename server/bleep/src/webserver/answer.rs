@@ -44,6 +44,8 @@ use exchange::{Exchange, SearchStep, Update};
 use llm_gateway::api::FunctionCall;
 
 const TIMEOUT_SECS: u64 = 60;
+const ANSWER_MODEL: &str = "gpt-4";
+const ANSWER_MODEL_WITH_REV: &str = "gpt-4-0613";
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Vote {
@@ -948,18 +950,17 @@ impl Agent {
     }
 
     async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
-        const ANSWER_ARTICLE_MODEL: &str = "gpt-4-0613";
         const ANSWER_HEADROOM: usize = 1024; // the number of tokens reserved for the answer
 
         debug!(?aliases, "creating article response");
 
-        let context = self.answer_context(aliases, ANSWER_ARTICLE_MODEL).await?;
+        let context = self.answer_context(aliases, ANSWER_MODEL_WITH_REV).await?;
         let system_prompt = prompts::answer_article_prompt(&context);
         let system_message = llm_gateway::api::Message::system(&system_prompt);
         let history = {
             let h = self.utter_history().collect::<Vec<_>>();
             let system_headroom =
-                tiktoken_rs::num_tokens_from_messages("gpt-4", &[(&system_message).into()])?;
+                tiktoken_rs::num_tokens_from_messages(ANSWER_MODEL, &[(&system_message).into()])?;
             trim_utter_history(h, ANSWER_HEADROOM + system_headroom)?
         };
         let messages = Some(system_message)
@@ -970,7 +971,7 @@ impl Agent {
         let mut stream = pin!(
             self.llm_gateway
                 .clone()
-                .model(ANSWER_ARTICLE_MODEL)
+                .model(ANSWER_MODEL_WITH_REV)
                 .chat(&messages, None)
                 .await?
         );
@@ -1376,8 +1377,8 @@ fn trim_utter_history(
         history.iter().map(|m| m.into()).collect::<Vec<_>>();
 
     // remove the earliest messages, one by one, until we can accomodate into prompt
-    while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < headroom {
-        if tiktoken_msgs.len() > 0 {
+    while tiktoken_rs::get_chat_completion_max_tokens(ANSWER_MODEL, &tiktoken_msgs)? < headroom {
+        if !tiktoken_msgs.is_empty() {
             tiktoken_msgs.remove(0);
             history.remove(0);
         } else {
@@ -1395,7 +1396,7 @@ fn trim_history(
 
     let mut tiktoken_msgs = history.iter().map(|m| m.into()).collect::<Vec<_>>();
 
-    while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < HEADROOM {
+    while tiktoken_rs::get_chat_completion_max_tokens(ANSWER_MODEL, &tiktoken_msgs)? < HEADROOM {
         let idx = history
             .iter_mut()
             .position(|m| match m {
