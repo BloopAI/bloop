@@ -949,14 +949,20 @@ impl Agent {
 
     async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
         const ANSWER_ARTICLE_MODEL: &str = "gpt-4-0613";
+        const ANSWER_HEADROOM: usize = 1024; // the number of tokens reserved for the answer
 
         debug!(?aliases, "creating article response");
 
         let context = self.answer_context(aliases, ANSWER_ARTICLE_MODEL).await?;
-        let history = self.utter_history().collect::<Vec<_>>();
-
-        let system_message = prompts::answer_article_prompt(&context);
-        let messages = Some(llm_gateway::api::Message::system(&system_message))
+        let system_prompt = prompts::answer_article_prompt(&context);
+        let system_message = llm_gateway::api::Message::system(&system_prompt);
+        let history = {
+            let h = self.utter_history().collect::<Vec<_>>();
+            let system_headroom =
+                tiktoken_rs::num_tokens_from_messages("gpt-4", &[(&system_message).into()])?;
+            trim_utter_history(h, ANSWER_HEADROOM + system_headroom)?
+        };
+        let messages = Some(system_message)
             .into_iter()
             .chain(history.iter().cloned())
             .collect::<Vec<_>>();
@@ -1003,7 +1009,7 @@ impl Agent {
                 .with_payload("query", self.last_exchange().query())
                 .with_payload("query_history", &history)
                 .with_payload("response", &response)
-                .with_payload("raw_prompt", &system_message),
+                .with_payload("raw_prompt", &system_prompt),
         );
 
         Ok(())
@@ -1361,41 +1367,33 @@ impl Agent {
     }
 }
 
+// headroom refers to the amount of space reserved for the rest of the prompt
+fn trim_utter_history(
+    mut history: Vec<llm_gateway::api::Message>,
+    headroom: usize,
+) -> Result<Vec<llm_gateway::api::Message>> {
+    let mut tiktoken_msgs: Vec<tiktoken_rs::ChatCompletionRequestMessage> =
+        history.iter().map(|m| m.into()).collect::<Vec<_>>();
+
+    // remove the earliest messages, one by one, until we can accomodate into prompt
+    while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < headroom {
+        if tiktoken_msgs.len() > 0 {
+            tiktoken_msgs.remove(0);
+            history.remove(0);
+        } else {
+            return Err(anyhow!("could not find message to trim"));
+        }
+    }
+
+    Ok(history)
+}
+
 fn trim_history(
     mut history: Vec<llm_gateway::api::Message>,
 ) -> Result<Vec<llm_gateway::api::Message>> {
     const HEADROOM: usize = 2048;
 
-    let mut tiktoken_msgs = history
-        .iter()
-        .map(|m| match m {
-            llm_gateway::api::Message::PlainText { role, content } => {
-                tiktoken_rs::ChatCompletionRequestMessage {
-                    role: role.clone(),
-                    content: content.clone(),
-                    name: None,
-                }
-            }
-            llm_gateway::api::Message::FunctionReturn {
-                role,
-                name,
-                content,
-            } => tiktoken_rs::ChatCompletionRequestMessage {
-                role: role.clone(),
-                content: content.clone(),
-                name: Some(name.clone()),
-            },
-            llm_gateway::api::Message::FunctionCall {
-                role,
-                function_call,
-                content: _,
-            } => tiktoken_rs::ChatCompletionRequestMessage {
-                role: role.clone(),
-                content: serde_json::to_string(&function_call).unwrap(),
-                name: None,
-            },
-        })
-        .collect::<Vec<_>>();
+    let mut tiktoken_msgs = history.iter().map(|m| m.into()).collect::<Vec<_>>();
 
     while tiktoken_rs::get_chat_completion_max_tokens("gpt-4", &tiktoken_msgs)? < HEADROOM {
         let idx = history
@@ -1585,7 +1583,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_trimming() {
+    fn test_trimming_history() {
         let long_string = "long string ".repeat(2000);
         let history = vec![
             llm_gateway::api::Message::system("foo"),
@@ -1606,6 +1604,40 @@ mod tests {
                 llm_gateway::api::Message::user("[HIDDEN]"),
                 llm_gateway::api::Message::assistant("[HIDDEN]"),
                 llm_gateway::api::Message::user("[HIDDEN]"),
+                llm_gateway::api::Message::assistant("quux"),
+                llm_gateway::api::Message::user("fred"),
+                llm_gateway::api::Message::assistant("thud"),
+                llm_gateway::api::Message::user(&long_string),
+                llm_gateway::api::Message::user("corge"),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_trimming_utter_history() {
+        let long_string = "long string ".repeat(2000);
+        let history = vec![
+            llm_gateway::api::Message::user("bar"),
+            llm_gateway::api::Message::assistant("baz"),
+            llm_gateway::api::Message::user(&long_string),
+            llm_gateway::api::Message::assistant("quux"),
+            llm_gateway::api::Message::user("fred"),
+            llm_gateway::api::Message::assistant("thud"),
+            llm_gateway::api::Message::user(&long_string),
+            llm_gateway::api::Message::user("corge"),
+        ];
+
+        // the answer needs 8100 tokens of 8192, the utter history can admit just one message
+        assert_eq!(
+            trim_utter_history(history.clone(), 8100).unwrap(),
+            vec![llm_gateway::api::Message::user("corge"),]
+        );
+
+        // the answer needs just 4000 tokens of 8192, the utter history can accomodate
+        // one long_string, but no more long_strings
+        assert_eq!(
+            trim_utter_history(history, 4000).unwrap(),
+            vec![
                 llm_gateway::api::Message::assistant("quux"),
                 llm_gateway::api::Message::user("fred"),
                 llm_gateway::api::Message::assistant("thud"),
