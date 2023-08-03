@@ -34,11 +34,6 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
             markdown={markdown}
             hideCode
           />
-          <div className="w-6 h-6 rounded-full bg-chat-bg-border overflow-hidden flex items-center justify-center select-none absolute top-0 left-0">
-            <div className="w-3 h-3">
-              <Sparkles raw />
-            </div>
-          </div>
           <Button
             variant="secondary"
             size="tiny"

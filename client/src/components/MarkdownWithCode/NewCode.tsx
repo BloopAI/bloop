@@ -16,7 +16,7 @@ const NewCode = ({ code, language, isSummary }: Props) => {
     <div
       className={`${
         !isSummary ? 'my-4 p-4 bg-bg-shade' : 'bg-chat-bg-sub'
-      } text-sm pr-20 border border-bg-border rounded-md relative`}
+      } text-sm border border-bg-border rounded-md relative group-code`}
     >
       <div className="overflow-auto">
         <Code showLines={false} code={code} language={language} canWrap />
@@ -24,10 +24,10 @@ const NewCode = ({ code, language, isSummary }: Props) => {
       <div
         className={`absolute ${
           code.split('\n').length > 1 ? 'top-4 right-4' : 'top-2.5 right-2.5'
-        }`}
+        } opacity-0 group-code-hover:opacity-100 transition-opacity`}
       >
         <Button
-          variant="tertiary"
+          variant="secondary"
           size="small"
           onClick={() => {
             copyToClipboard(code);
