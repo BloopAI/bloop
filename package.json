@@ -3,7 +3,9 @@
   "private": true,
   "scripts": {
     "start": "run-s lfs:install lfs:pull start:tauri",
-    "start:tauri": "npm --prefix apps/desktop run tauri dev -- -- -- --config-file=../../../local_config.json",
+    "watch": "run-s lfs:install lfs:pull watch:tauri",
+    "start:tauri": "npm --prefix apps/desktop run tauri dev -- --no-watch -- -- --config-file=../../../local_config.json",
+    "watch:tauri": "npm --prefix apps/desktop run tauri dev --            -- -- --config-file=../../../local_config.json",
     "start-app": "npm start",
     "start-web": "npm --prefix client run dev",
     "lfs:install": "git lfs install",
