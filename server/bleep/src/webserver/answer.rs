@@ -1154,9 +1154,13 @@ impl Agent {
 
     /// The full history of messages, including intermediate function calls
     fn history(&self) -> Result<Vec<llm_gateway::api::Message>> {
+        const ANSWER_MAX_HISTORY_SIZE: usize = 5;
         let history = self
             .exchanges
             .iter()
+            .rev()
+            .take(ANSWER_MAX_HISTORY_SIZE)
+            .rev()
             .try_fold(Vec::new(), |mut acc, e| -> Result<_> {
                 let query = e
                     .query()
@@ -1541,33 +1545,44 @@ fn trim_history(
     mut history: Vec<llm_gateway::api::Message>,
 ) -> Result<Vec<llm_gateway::api::Message>> {
     const HEADROOM: usize = 2048;
+    const HIDDEN: &str = "[HIDDEN]";
+    const HIDDEN_WITH_INSTRUCTION: &str = "[HIDDEN]\nCall a function. Do not answer.";
 
     let mut tiktoken_msgs = history.iter().map(|m| m.into()).collect::<Vec<_>>();
 
     while tiktoken_rs::get_chat_completion_max_tokens(ANSWER_MODEL, &tiktoken_msgs)? < HEADROOM {
-        let idx = history
+        let _ = history
             .iter_mut()
-            .position(|m| match m {
+            .zip(tiktoken_msgs.iter_mut())
+            .position(|(m, tm)| match m {
                 llm_gateway::api::Message::PlainText {
                     role,
                     ref mut content,
-                } if (role == "user" || role == "assistant") && content != "[HIDDEN]" => {
-                    *content = "[HIDDEN]".into();
-                    true
+                } => {
+                    if (role == "user") && content != HIDDEN_WITH_INSTRUCTION {
+                        *content = HIDDEN_WITH_INSTRUCTION.into();
+                        tm.content = HIDDEN_WITH_INSTRUCTION.into();
+                        true
+                    } else if role == "assistant" && content != HIDDEN {
+                        *content = HIDDEN.into();
+                        tm.content = HIDDEN.into();
+                        true
+                    } else {
+                        false
+                    }
                 }
                 llm_gateway::api::Message::FunctionReturn {
                     role: _,
                     name: _,
                     ref mut content,
-                } if content != "[HIDDEN]" => {
-                    *content = "[HIDDEN]".into();
+                } if content != HIDDEN_WITH_INSTRUCTION => {
+                    *content = HIDDEN_WITH_INSTRUCTION.into();
+                    tm.content = HIDDEN_WITH_INSTRUCTION.into();
                     true
                 }
                 _ => false,
             })
             .ok_or_else(|| anyhow!("could not find message to trim"))?;
-
-        tiktoken_msgs[idx].content = "[HIDDEN]".into();
     }
 
     Ok(history)
