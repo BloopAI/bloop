@@ -319,6 +319,7 @@ impl Semantic {
         vector: Embedding,
         limit: u64,
         offset: u64,
+        threshold: f32,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
         let response = self
             .qdrant
@@ -327,7 +328,7 @@ impl Semantic {
                 vector,
                 collection_name: COLLECTION_NAME.to_string(),
                 offset: Some(offset),
-                score_threshold: Some(SCORE_THRESHOLD),
+                score_threshold: Some(threshold),
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
@@ -351,6 +352,7 @@ impl Semantic {
         vectors: Vec<Embedding>,
         limit: u64,
         offset: u64,
+        threshold: f32,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
         // FIXME: This method uses `search_points` internally, and not `search_batch_points`. It's
         // not clear why, but it seems that the `batch` variant of the `qdrant` calls leads to
@@ -406,6 +408,7 @@ impl Semantic {
         parsed_query: &SemanticQuery<'a>,
         limit: u64,
         offset: u64,
+        threshold: f32,
         retrieve_more: bool,
     ) -> anyhow::Result<Vec<Payload>> {
         let Some(query) = parsed_query.target() else {
@@ -422,6 +425,7 @@ impl Semantic {
                 vector.clone(),
                 if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
                 offset,
+                threshold,
             )
             .await
             .map(|raw| {
@@ -437,6 +441,7 @@ impl Semantic {
         parsed_queries: &[&SemanticQuery<'a>],
         limit: u64,
         offset: u64,
+        threshold: f32,
         retrieve_more: bool,
     ) -> anyhow::Result<Vec<Payload>> {
         if parsed_queries.iter().any(|q| q.target().is_none()) {
@@ -456,6 +461,7 @@ impl Semantic {
                 vectors.clone(),
                 if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
                 offset,
+                threshold,
             )
             .await;
 

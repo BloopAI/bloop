@@ -22,6 +22,7 @@ pub async fn execute(
             &query,
             params.page_size as u64,
             ((params.page + 1) * params.page_size) as u64,
+            0.0,
             false,
         )
         .await?;

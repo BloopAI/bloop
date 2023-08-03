@@ -522,14 +522,14 @@ impl Agent {
         .await?;
 
         let mut results = self
-            .semantic_search(query.into(), CODE_SEARCH_LIMIT, 0, true)
+            .semantic_search(query.into(), CODE_SEARCH_LIMIT, 0, 0.0, true)
             .await?;
 
         let hyde_docs = self.hyde(query).await?;
         if !hyde_docs.is_empty() {
             let hyde_doc = hyde_docs.first().unwrap().into();
             let hyde_results = self
-                .semantic_search(hyde_doc, CODE_SEARCH_LIMIT, 0, true)
+                .semantic_search(hyde_doc, CODE_SEARCH_LIMIT, 0, 0.3, true)
                 .await?;
             results.extend(hyde_results);
         }
@@ -597,7 +597,7 @@ impl Agent {
         // If there are no lexical results, perform a semantic search.
         if paths.is_empty() {
             let semantic_paths = self
-                .semantic_search(query.into(), 30, 0, true)
+                .semantic_search(query.into(), 30, 0, 0.0, true)
                 .await?
                 .into_iter()
                 .map(|chunk| chunk.relative_path)
@@ -1287,6 +1287,7 @@ impl Agent {
         query: Literal<'_>,
         limit: u64,
         offset: u64,
+        threshold: f32,
         retrieve_more: bool,
     ) -> Result<Vec<semantic::Payload>> {
         let query = SemanticQuery {
@@ -1300,7 +1301,7 @@ impl Agent {
             .semantic
             .as_ref()
             .unwrap()
-            .search(&query, limit, offset, retrieve_more)
+            .search(&query, limit, offset, threshold, retrieve_more)
             .await
     }
 
@@ -1310,6 +1311,7 @@ impl Agent {
         queries: Vec<Literal<'_>>,
         limit: u64,
         offset: u64,
+        threshold: f32,
         retrieve_more: bool,
     ) -> Result<Vec<semantic::Payload>> {
         let queries = queries
@@ -1328,7 +1330,7 @@ impl Agent {
             .semantic
             .as_ref()
             .unwrap()
-            .batch_search(queries.as_slice(), limit, offset, retrieve_more)
+            .batch_search(queries.as_slice(), limit, offset, threshold, retrieve_more)
             .await
     }
 
