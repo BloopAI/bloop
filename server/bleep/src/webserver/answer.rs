@@ -1716,9 +1716,9 @@ mod tests {
             trim_history(history).unwrap(),
             vec![
                 llm_gateway::api::Message::system("foo"),
-                llm_gateway::api::Message::user("[HIDDEN]"),
+                llm_gateway::api::Message::user("[HIDDEN]\nCall a function. Do not answer."),
                 llm_gateway::api::Message::assistant("[HIDDEN]"),
-                llm_gateway::api::Message::user("[HIDDEN]"),
+                llm_gateway::api::Message::user("[HIDDEN]\nCall a function. Do not answer."),
                 llm_gateway::api::Message::assistant("quux"),
                 llm_gateway::api::Message::user("fred"),
                 llm_gateway::api::Message::assistant("thud"),
