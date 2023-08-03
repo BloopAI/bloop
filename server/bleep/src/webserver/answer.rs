@@ -44,8 +44,7 @@ use exchange::{Exchange, SearchStep, Update};
 use llm_gateway::api::FunctionCall;
 
 const TIMEOUT_SECS: u64 = 60;
-const ANSWER_MODEL: &str = "gpt-4";
-const ANSWER_MODEL_WITH_REV: &str = "gpt-4-0613";
+const ANSWER_MODEL: &str = "gpt-4-0613";
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Vote {
@@ -954,7 +953,7 @@ impl Agent {
 
         debug!(?aliases, "creating article response");
 
-        let context = self.answer_context(aliases, ANSWER_MODEL_WITH_REV).await?;
+        let context = self.answer_context(aliases, ANSWER_MODEL).await?;
         let system_prompt = prompts::answer_article_prompt(&context);
         let system_message = llm_gateway::api::Message::system(&system_prompt);
         let history = {
@@ -971,7 +970,7 @@ impl Agent {
         let mut stream = pin!(
             self.llm_gateway
                 .clone()
-                .model(ANSWER_MODEL_WITH_REV)
+                .model(ANSWER_MODEL)
                 .chat(&messages, None)
                 .await?
         );
