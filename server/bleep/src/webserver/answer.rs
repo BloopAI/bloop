@@ -1154,7 +1154,7 @@ impl Agent {
 
     /// The full history of messages, including intermediate function calls
     fn history(&self) -> Result<Vec<llm_gateway::api::Message>> {
-        const ANSWER_MAX_HISTORY_SIZE: usize = 5;
+        const ANSWER_MAX_HISTORY_SIZE: usize = 3;
         let history = self
             .exchanges
             .iter()
