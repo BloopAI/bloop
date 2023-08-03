@@ -354,5 +354,9 @@
 	"Manage subscription": "サブスクリプションを管理します",
 	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "今日は無料の使用法がなくなっています。クォータがリセットまたはアップグレードされるのを待ってください。",
 	"This file is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "このファイルは現在利用できません。 生成能力は、この問題が解決されるとすぐに再開されます。",
-	"Search code studio...": "コードスタジオを検索..."
+	"Search code studio...": "コードスタジオを検索...",
+	"Faster answers may impact the quality of results": "より速い回答は、結果の質に影響を与える可能性があります",
+	"Normal": "普通",
+	"Fast": "速い",
+	"Answer speed": "回答速度"
 }

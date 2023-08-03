@@ -32,3 +32,4 @@ export const PROMPT_GUIDE_DONE = 'prompt_guide_done';
 export const LANGUAGE_KEY = 'language';
 export const RIGHT_SIDEBAR_WIDTH_KEY = 'right_sidebar_width_key';
 export const LEFT_SIDEBAR_WIDTH_KEY = 'left_sidebar_width_key';
+export const ANSWER_SPEED_KEY = 'answer_speed_key';
