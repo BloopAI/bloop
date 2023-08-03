@@ -149,7 +149,31 @@ pub(super) async fn answer(
     let action = Action::Query(query_target);
     exchanges.push(Exchange::new(query_id, query));
 
-    let response = execute_agent(
+    execute_agent(
+        params.clone(),
+        app.clone(),
+        user.clone(),
+        query_id,
+        conversation_id,
+        exchanges,
+        action,
+    )
+    .await
+}
+
+/// Like `try_execute_agent`, but additionally logs errors in our analytics.
+async fn execute_agent(
+    params: Answer,
+    app: Application,
+    user: User,
+    query_id: uuid::Uuid,
+    conversation_id: ConversationId,
+    exchanges: Vec<Exchange>,
+    action: Action,
+) -> super::Result<
+    Sse<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>,
+> {
+    let response = try_execute_agent(
         params.clone(),
         app.clone(),
         user.clone(),
@@ -166,7 +190,7 @@ pub(super) async fn answer(
             &QueryEvent {
                 query_id,
                 thread_id: params.thread_id,
-                repo_ref: Some(params.repo_ref.clone()),
+                repo_ref: Some(params.repo_ref),
                 data: EventData::output_stage("error")
                     .with_payload("status", err.status.as_u16())
                     .with_payload("message", err.message()),
@@ -177,7 +201,7 @@ pub(super) async fn answer(
     response
 }
 
-async fn execute_agent(
+async fn try_execute_agent(
     params: Answer,
     app: Application,
     user: User,
