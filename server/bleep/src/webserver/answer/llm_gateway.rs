@@ -153,6 +153,38 @@ impl api::Message {
     }
 }
 
+impl From<&api::Message> for tiktoken_rs::ChatCompletionRequestMessage {
+    fn from(m: &api::Message) -> tiktoken_rs::ChatCompletionRequestMessage {
+        match m {
+            api::Message::PlainText { role, content } => {
+                tiktoken_rs::ChatCompletionRequestMessage {
+                    role: role.clone(),
+                    content: content.clone(),
+                    name: None,
+                }
+            }
+            api::Message::FunctionReturn {
+                role,
+                name,
+                content,
+            } => tiktoken_rs::ChatCompletionRequestMessage {
+                role: role.clone(),
+                content: content.clone(),
+                name: Some(name.clone()),
+            },
+            api::Message::FunctionCall {
+                role,
+                function_call,
+                content: _,
+            } => tiktoken_rs::ChatCompletionRequestMessage {
+                role: role.clone(),
+                content: serde_json::to_string(&function_call).unwrap(),
+                name: None,
+            },
+        }
+    }
+}
+
 enum ChatError {
     BadRequest,
     TooManyRequests,
