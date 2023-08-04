@@ -91,7 +91,7 @@ const Chat = () => {
       setLoading(true);
       setQueryIdToEdit('');
       setHideMessagesFrom(null);
-      const url = `${apiUrl.replace(/http(s)*:/, '')}/answer${
+      const url = `${apiUrl}/answer${
         options
           ? `/explain?relative_path=${encodeURIComponent(
               options.filePath,
