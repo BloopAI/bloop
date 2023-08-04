@@ -18,6 +18,7 @@ export const Default = () => {
           key: '',
           source: RepoSource.LOCAL,
           navigationHistory: [],
+          currentUrl: '',
         }}
       >
         <div className="relative">

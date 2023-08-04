@@ -57,7 +57,6 @@ const Chat = () => {
     setShowTooltip,
   } = useContext(ChatContext.Setters);
   const {
-    navigateConversationResults,
     navigateRepoPath,
     navigatedItem,
     navigateArticleResponse,

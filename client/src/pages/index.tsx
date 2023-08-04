@@ -1,5 +1,12 @@
-import React, { useCallback, useContext, useEffect, useMemo } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import * as Sentry from '@sentry/react';
+import { useSearchParams } from 'react-router-dom';
 import { SearchContext } from '../context/searchContext';
 import { useSearch } from '../hooks/useSearch';
 import {
@@ -13,6 +20,7 @@ import { buildRepoQuery } from '../utils';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import { UITabType } from '../types/general';
 import { AppNavigationContext } from '../context/appNavigationContext';
+import useUrlParser from '../hooks/useUrlParser';
 import RepositoryPage from './Repository';
 import ResultsPage from './Results';
 import ViewResult from './ResultFull';
@@ -43,9 +51,19 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
   const { globalRegex } = useContext(SearchContext.RegexEnabled);
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const { searchQuery, data, loading } = useSearch<SearchResponse>();
+  const [searchParams] = useSearchParams();
+  const { repoRef, page } = useUrlParser();
+  const [currentPage, setCurrentPage] = useState(
+    repoRef === tab.key ? page : 'repo',
+  );
 
-  const { navigatedItem, query, navigateBack, navigateRepoPath } =
-    useContext(AppNavigationContext);
+  const { navigateBack } = useContext(AppNavigationContext);
+
+  useEffect(() => {
+    if (repoRef === tab.key) {
+      setCurrentPage(page);
+    }
+  }, [page, repoRef]);
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (
@@ -65,15 +83,12 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
   }, []);
 
   useEffect(() => {
-    if (!navigatedItem) {
-      if (tab.key !== 'initial') {
-        navigateRepoPath(tab.repoName);
-      }
+    if (repoRef !== tab.key) {
       return;
     }
 
     setInputValue(
-      query
+      (searchParams.get('query') || '')
         .replace(/repo:.*?\s/, '')
         .replace(/branch:.*?\s/, '')
         .replace(/branch:.*$/, '')
@@ -81,28 +96,25 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
         .trim(),
     );
 
-    switch (navigatedItem.type) {
+    switch (currentPage) {
       case 'repo':
       case 'full-result':
-        searchQuery(
-          buildRepoQuery(
-            navigatedItem.repo,
-            navigatedItem.path,
-            selectedBranch,
-          ),
-        );
+        const path = searchParams.get('path') || '';
+        searchQuery(buildRepoQuery(tab.repoName, path, selectedBranch));
         break;
       case 'home':
       case 'conversation-result':
       case 'article-response':
         break;
       default:
-        const search = navigatedItem.query!.includes(`repo:${tab.name}`)
-          ? navigatedItem.query!
-          : `${navigatedItem.query} repo:${tab.name}`;
-        searchQuery(search, navigatedItem.page, globalRegex);
+        const query = searchParams.get('query') || '';
+        const page = searchParams.get('page');
+        const search = query.includes(`repo:${tab.name}`)
+          ? query
+          : `${query} repo:${tab.name}`;
+        searchQuery(search, page ? Number(page) : undefined, globalRegex);
     }
-  }, [navigatedItem, tab.key, tab.name, selectedBranch]);
+  }, [tab.key, tab.name, selectedBranch, searchParams, currentPage]);
 
   const getRenderPage = useCallback((): RenderPage => {
     let renderPage: RenderPage;
@@ -110,15 +122,15 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
       return 'home';
     }
     if (
-      navigatedItem?.type &&
-      ['full-result', 'article-response'].includes(navigatedItem.type)
+      currentPage &&
+      ['full-result', 'article-response'].includes(currentPage)
     ) {
-      return navigatedItem.type as 'full-result' | 'article-response';
+      return currentPage as 'full-result' | 'article-response';
     }
     if (!data?.data?.[0] && !loading) {
       return 'no-results';
     }
-    if (loading && prevRenderPage && navigatedItem?.type === 'repo') {
+    if (loading && prevRenderPage && currentPage === 'repo') {
       return prevRenderPage;
     }
     const resultType = data?.data?.[0]?.kind;
@@ -134,14 +146,15 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
     }
     prevRenderPage = renderPage;
     return renderPage;
-  }, [navigatedItem, data, loading, tab.key]);
+  }, [data, loading, tab.key]);
 
   const renderPage: RenderPage = useMemo(
     () => getRenderPage(),
-    [data, loading, navigatedItem, query, navigatedItem?.threadId],
+    [data, loading],
   );
 
   const renderedPage = useMemo(() => {
+    const path = searchParams.get('path');
     switch (renderPage) {
       case 'results':
         return (
@@ -154,16 +167,10 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
         return (
           <NoResults
             suggestions={mockQuerySuggestions}
-            isRepo={navigatedItem?.type === 'repo' && !navigatedItem?.path}
-            isFolder={!!navigatedItem?.path}
-            repo={
-              navigatedItem?.type === 'repo' ? navigatedItem?.repo : undefined
-            }
-            refetchRepo={() =>
-              navigatedItem?.repo
-                ? searchQuery(buildRepoQuery(navigatedItem?.repo))
-                : {}
-            }
+            isRepo={currentPage === 'repo' && !path}
+            isFolder={!!path}
+            repo={currentPage === 'repo' ? tab.repoName : undefined}
+            refetchRepo={() => searchQuery(buildRepoQuery(tab.repoName))}
           />
         );
       case 'repo':
@@ -177,30 +184,21 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
             isLoading={loading}
             repoName={tab.repoName}
             selectedBranch={selectedBranch}
-            recordId={navigatedItem?.recordId!}
-            threadId={navigatedItem?.threadId!}
+            recordId={Number(searchParams.get('recordId'))}
+            threadId={searchParams.get('threadId') || ''}
           />
         );
       case 'article-response':
         return (
           <ArticleResponse
-            recordId={navigatedItem?.recordId!}
-            threadId={navigatedItem?.threadId!}
+            recordId={Number(searchParams.get('recordId')) || -1}
+            threadId={searchParams.get('threadId') || ''}
           />
         );
       default:
         return <HomePage />;
     }
-  }, [
-    data,
-    loading,
-    navigatedItem,
-    query,
-    navigatedItem?.threadId,
-    renderPage,
-    tab.repoName,
-    selectedBranch,
-  ]);
+  }, [data, loading, renderPage, tab.repoName, selectedBranch]);
 
   return <PageTemplate renderPage={renderPage}>{renderedPage}</PageTemplate>;
 };

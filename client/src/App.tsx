@@ -21,9 +21,10 @@ import { useComponentWillMount } from './hooks/useComponentWillMount';
 import { RepoSource } from './types';
 import { RepositoriesContext } from './context/repositoriesContext';
 import { AnalyticsContextProvider } from './context/providers/AnalyticsContextProvider';
-import { buildURLPart, getNavItemFromURL } from './utils/navigationUtils';
+import { getNavItemFromURL } from './utils/navigationUtils';
 import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
 import useKeyboardNavigation from './hooks/useKeyboardNavigation';
+import useUrlParser from './hooks/useUrlParser';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -39,32 +40,14 @@ function App({ deviceContextValue }: Props) {
       repoName: '',
       source: RepoSource.LOCAL,
       navigationHistory: [],
+      currentUrl: '/',
     },
   ]);
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState('initial');
+  const navigateBrowser = useNavigate();
   const [repositories, setRepositories] = useState<RepoType[] | undefined>();
   const [isLoading, setLoading] = useState(true);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-    const tab = tabs.find((t) => t.key === activeTab);
-    if (tab) {
-      if (activeTab === 'initial') {
-        navigate('/');
-        return;
-      }
-      const lastNav = tab.navigationHistory[tab.navigationHistory.length - 1];
-      navigate(
-        `/${encodeURIComponent(activeTab)}/${encodeURIComponent(
-          tab.branch || 'all',
-        )}/${lastNav ? buildURLPart(lastNav) : ''}`,
-      );
-    }
-  }, [activeTab, tabs]);
+  const { repoRef, branch: urlBranch } = useUrlParser();
 
   const handleAddTab = useCallback(
     (
@@ -82,16 +65,19 @@ function App({ deviceContextValue }: Props) {
         source,
         branch,
         navigationHistory: navHistory || [],
+        currentUrl: `/${encodeURIComponent(repoRef)}/${encodeURIComponent(
+          branch || 'all',
+        )}/repo`,
       };
       setTabs((prev) => {
         const existing = prev.find((t) => t.key === newTab.key);
         if (existing) {
-          setActiveTab(existing.key);
+          navigateBrowser(existing.currentUrl);
           return prev;
         }
         return [...prev, newTab];
       });
-      setActiveTab(newTab.key);
+      navigateBrowser(newTab.currentUrl);
     },
     [],
   );
@@ -102,13 +88,8 @@ function App({ deviceContextValue }: Props) {
       return;
     }
     if (isLoading && repositories?.length) {
-      const repo = repositories.find(
-        (r) =>
-          r.ref ===
-          decodeURIComponent(location.pathname.slice(1).split('/')[0]),
-      );
+      const repo = repositories.find((r) => r.ref === repoRef);
       if (repo) {
-        const urlBranch = decodeURIComponent(location.pathname.split('/')[2]);
         handleAddTab(
           repo.ref,
           repo.provider === RepoProvider.GitHub ? repo.ref : repo.name,
@@ -128,30 +109,69 @@ function App({ deviceContextValue }: Props) {
   }, [repositories, isLoading]);
 
   useEffect(() => {
+    if (!isLoading && repositories) {
+      if (location.pathname === '/') {
+        return;
+      }
+      const repo = repositories.find((r) => r.ref === repoRef);
+      if (repo) {
+        const existingTab = tabs.find((t) => t.key === repo.ref);
+        if (existingTab) {
+        } else {
+          const urlBranch = decodeURIComponent(location.pathname.split('/')[2]);
+          handleAddTab(
+            repo.ref,
+            repo.provider === RepoProvider.GitHub ? repo.ref : repo.name,
+            repo.name,
+            repo.provider === RepoProvider.GitHub
+              ? RepoSource.GH
+              : RepoSource.LOCAL,
+            urlBranch === 'all' ? null : urlBranch,
+            getNavItemFromURL(
+              location,
+              repo.provider === RepoProvider.GitHub ? repo.ref : repo.name,
+            ),
+          );
+        }
+      }
+    }
+  }, [location.pathname, isLoading, repositories?.length]);
+
+  useEffect(() => {
+    // update currentUrl for tab on location change
+    setTabs((prev) => {
+      const currentTab = prev.findIndex((t) => t.key === repoRef);
+      const newTabs = [...prev];
+      newTabs[currentTab] = {
+        ...newTabs[currentTab],
+        currentUrl: location.pathname + location.search + location.hash,
+      };
+      return newTabs;
+    });
+  }, [location, repoRef]);
+
+  useEffect(() => {
     saveJsonToStorage(TABS_KEY, tabs);
   }, [tabs]);
 
   useEffect(() => {
-    savePlainToStorage(LAST_ACTIVE_TAB_KEY, activeTab);
-  }, [activeTab]);
+    savePlainToStorage(LAST_ACTIVE_TAB_KEY, repoRef);
+  }, [repoRef]);
 
   useEffect(() => {
-    if (!tabs.find((t) => t.key === activeTab)) {
-      setActiveTab('initial');
+    if (!tabs.find((t) => t.key === repoRef)) {
+      navigateBrowser('/');
     }
-  }, [activeTab, tabs]);
+  }, [repoRef, tabs]);
 
   const handleRemoveTab = useCallback(
     (tabKey: string) => {
-      setActiveTab((prev) => {
-        const prevIndex = tabs.findIndex((t) => t.key === prev);
-        if (tabKey === prev) {
-          return prevIndex > 0
-            ? tabs[prevIndex - 1].key
-            : tabs[prevIndex + 1].key;
-        }
-        return prev;
-      });
+      const prevIndex = tabs.findIndex((t) => t.key === repoRef);
+      if (tabKey === repoRef) {
+        const newTab =
+          prevIndex > 0 ? tabs[prevIndex - 1] : tabs[prevIndex + 1];
+        navigateBrowser(newTab.currentUrl);
+      }
       setTabs((prev) => prev.filter((t) => t.key !== tabKey));
     },
     [tabs],
@@ -199,41 +219,32 @@ function App({ deviceContextValue }: Props) {
     (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey) {
         if (Object.keys(tabs).includes(e.key)) {
-          const newTab = tabs[Number(e.key)]?.key;
+          const newTab = tabs[Number(e.key)];
           if (newTab) {
             e.preventDefault();
-            setActiveTab(newTab);
+            navigateBrowser(newTab.currentUrl);
           }
-        } else if (e.key === 'w' && activeTab !== 'initial') {
+        } else if (e.key === 'w' && repoRef !== 'initial') {
           e.preventDefault();
           e.stopPropagation();
-          handleRemoveTab(activeTab);
+          handleRemoveTab(repoRef);
           return true;
         }
       }
     },
-    [tabs, activeTab],
+    [tabs, repoRef],
   );
   useKeyboardNavigation(handleKeyEvent);
 
   const contextValue = useMemo(
     () => ({
       tabs,
-      activeTab,
       handleAddTab,
       handleRemoveTab,
-      setActiveTab,
       updateTabNavHistory,
       updateTabBranch,
     }),
-    [
-      tabs,
-      activeTab,
-      handleAddTab,
-      handleRemoveTab,
-      updateTabNavHistory,
-      updateTabBranch,
-    ],
+    [tabs, handleAddTab, handleRemoveTab, updateTabNavHistory, updateTabBranch],
   );
 
   const fetchRepos = useCallback(() => {
@@ -272,7 +283,7 @@ function App({ deviceContextValue }: Props) {
         <RepositoriesContext.Provider value={reposContextValue}>
           <TabsContext.Provider value={contextValue}>
             {tabs.map((t) => (
-              <Tab key={t.key} isActive={t.key === activeTab} tab={t} />
+              <Tab key={t.key} isActive={t.key === repoRef} tab={t} />
             ))}
           </TabsContext.Provider>
         </RepositoriesContext.Provider>

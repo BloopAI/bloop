@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import ModalOrSidebar from '../ModalOrSidebar';
 import { Bug, CloseSign } from '../../icons';
 import TextInput from '../TextInput';
@@ -17,6 +18,7 @@ import { saveBugReport, saveCrashReport } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
 import { TabsContext } from '../../context/tabsContext';
 import { getJsonFromStorage, USER_DATA_FORM } from '../../services/storage';
+import useUrlParser from '../../hooks/useUrlParser';
 import ConfirmImg from './ConfirmImg';
 
 type Props = {
@@ -42,7 +44,9 @@ const ReportBugModal = ({
     UIContext.BugReport,
   );
   const { envConfig, listen, os, release } = useContext(DeviceContext);
-  const { handleRemoveTab, setActiveTab, activeTab } = useContext(TabsContext);
+  const { handleRemoveTab } = useContext(TabsContext);
+  const { repoRef } = useUrlParser();
+  const navigateBrowser = useNavigate();
 
   const userForm = useMemo(
     (): { email: string; firstName: string; lastName: string } | null =>
@@ -108,15 +112,15 @@ const ReportBugModal = ({
   );
   const resetState = useCallback(() => {
     if (serverCrashedMessage) {
-      handleRemoveTab(activeTab);
-      setActiveTab('initial');
+      handleRemoveTab(repoRef);
+      navigateBrowser('/');
     }
     setForm((prev) => ({ ...prev, text: '', emailError: '' }));
     setSubmitted(false);
     setBugReportModalOpen(false);
     setServerCrashedMessage('');
     handleSubmit?.();
-  }, [handleRemoveTab, setActiveTab, serverCrashedMessage, activeTab]);
+  }, [handleRemoveTab, serverCrashedMessage, repoRef]);
 
   return (
     <ModalOrSidebar

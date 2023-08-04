@@ -98,6 +98,7 @@ export type UITabType = {
   source: RepoSource;
   branch?: string | null;
   navigationHistory: NavigationItem[];
+  currentUrl: string;
 };
 
 export type TabHistoryType = {

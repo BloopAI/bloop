@@ -1,4 +1,5 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { buildRepoQuery } from '../../utils';
 import { NavigationItem, SearchType, UITabType } from '../../types/general';
 import { AppNavigationContext } from '../appNavigationContext';
@@ -13,6 +14,7 @@ export const AppNavigationProvider = ({
   tab: UITabType;
   children: JSX.Element | JSX.Element[];
 }) => {
+  const navigateBrowser = useNavigate();
   const [forwardNavigation, setForwardNavigation] = useState<NavigationItem[]>(
     [],
   );
@@ -73,25 +75,17 @@ export const AppNavigationProvider = ({
     setForwardNavigation([]);
   }, []);
 
-  const navigate = useCallback(
-    (
-      type: NavigationItem['type'],
-      query?: string,
-      repo?: string,
-      path?: string,
-      page?: number,
-    ) => {
-      saveState({ type, query, repo, path, page });
-    },
-    [],
-  );
-
   const navigateSearch = useCallback((query: string, page?: number) => {
     saveState({
       type: 'search',
       page,
       query,
     });
+    navigateBrowser(
+      `search?${new URLSearchParams(
+        page !== undefined ? { query, page: page.toString() } : { query },
+      ).toString()}`,
+    );
   }, []);
 
   const navigateRepoPath = useCallback(
@@ -111,25 +105,21 @@ export const AppNavigationProvider = ({
         searchType: SearchType.REGEX,
         pathParams,
       });
+      navigateBrowser(
+        `/${encodeURIComponent(repo)}/${encodeURIComponent(
+          tab.branch || 'all',
+        )}/repo${
+          path
+            ? '?' +
+              new URLSearchParams({
+                path: path,
+                ...pathParams,
+              }).toString()
+            : ''
+        }`,
+      );
     },
     [closeFileModalOpen],
-  );
-
-  const navigateConversationResults = useCallback(
-    (messageIndex: number, threadId: string) => {
-      if (
-        navigatedItem?.type !== 'conversation-result' ||
-        navigatedItem?.recordId !== messageIndex ||
-        navigatedItem?.threadId !== threadId
-      ) {
-        saveState({
-          type: 'conversation-result',
-          recordId: messageIndex,
-          threadId,
-        });
-      }
-    },
-    [navigatedItem],
   );
 
   const navigateArticleResponse = useCallback(
@@ -145,6 +135,14 @@ export const AppNavigationProvider = ({
           threadId,
         });
       }
+      navigateBrowser(
+        `/${encodeURIComponent(tab.key)}/${encodeURIComponent(
+          tab.branch || 'all',
+        )}/article-response?${new URLSearchParams({
+          threadId: threadId?.toString() || '',
+          recordId: messageIndex?.toString() || '',
+        }).toString()}`,
+      );
     },
     [navigatedItem],
   );
@@ -166,6 +164,19 @@ export const AppNavigationProvider = ({
         recordId: messageIndex,
         threadId,
       });
+      navigateBrowser(
+        `/${encodeURIComponent(tab.key)}/${encodeURIComponent(
+          tab.branch || 'all',
+        )}/full-result${
+          path
+            ? '?' +
+              new URLSearchParams({
+                path: path,
+                ...pathParams,
+              }).toString()
+            : ''
+        }`,
+      );
     },
     [tab.repoName],
   );
@@ -255,24 +266,17 @@ export const AppNavigationProvider = ({
     [forwardNavigation, closeFileModalOpen],
   );
 
-  const navigateHome = useCallback(() => {
-    saveState({ type: 'home' });
-  }, []);
-
   return (
     <AppNavigationContext.Provider
       value={{
         navigationHistory: tab.navigationHistory,
         forwardNavigation,
-        navigate,
         navigateBack,
         navigatedItem,
         navigateRepoPath,
         navigateFullResult,
         navigateSearch,
-        navigateHome,
         navigateForward,
-        navigateConversationResults,
         navigateArticleResponse,
         updateScrollToIndex,
         query: query || '',

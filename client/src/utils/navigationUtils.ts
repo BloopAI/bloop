@@ -4,11 +4,11 @@ import { NavigationItem } from '../types/general';
 export const buildURLPart = (navItem: NavigationItem) => {
   switch (navItem?.type) {
     case 'search':
-      return `search${
+      return `search?query=${navItem.query}${
         navItem.pathParams
-          ? '?' + new URLSearchParams(navItem.pathParams).toString()
+          ? '&' + new URLSearchParams(navItem.pathParams).toString()
           : ''
-      }#${navItem.query}`;
+      }`;
     case 'repo':
       return `repo${
         navItem.path

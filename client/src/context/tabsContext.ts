@@ -4,7 +4,6 @@ import { RepoSource } from '../types';
 
 type ContextType = {
   tabs: UITabType[];
-  activeTab: string;
   handleAddTab: (
     repoRef: string,
     repoName: string,
@@ -14,7 +13,6 @@ type ContextType = {
     history?: NavigationItem[],
   ) => void;
   handleRemoveTab: (t: string) => void;
-  setActiveTab: (t: string) => void;
   updateTabNavHistory: (
     t: string,
     history: (prev: NavigationItem[]) => NavigationItem[],
@@ -30,12 +28,11 @@ export const TabsContext = createContext<ContextType>({
       repoName: '',
       source: RepoSource.LOCAL,
       navigationHistory: [],
+      currentUrl: '/',
     },
   ],
-  activeTab: 'initial',
   handleAddTab: () => {},
   handleRemoveTab: () => {},
-  setActiveTab: () => {},
   updateTabNavHistory: () => {},
   updateTabBranch: () => {},
 });

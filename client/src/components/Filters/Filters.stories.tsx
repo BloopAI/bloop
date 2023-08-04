@@ -53,6 +53,7 @@ export const Default = () => {
           repoName: 'bloop',
           navigationHistory: [],
           source: RepoSource.LOCAL,
+          currentUrl: '',
         }}
       >
         <div style={{ width: 350 }}>

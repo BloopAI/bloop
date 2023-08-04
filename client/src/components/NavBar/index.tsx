@@ -22,8 +22,7 @@ const NavBar = ({ isSkeleton }: Props) => {
   const { setShouldShowWelcome } = useContext(UIContext.Onboarding);
   const { setGithubConnected } = useContext(UIContext.GitHubConnected);
   const { openLink, isSelfServe, os, envConfig } = useContext(DeviceContext);
-  const { tabs, setActiveTab, activeTab, handleRemoveTab } =
-    useContext(TabsContext);
+  const { tabs } = useContext(TabsContext);
 
   return (
     <div
@@ -37,6 +36,7 @@ const NavBar = ({ isSkeleton }: Props) => {
         name="Home"
         key="initial"
         source={RepoSource.LOCAL}
+        currentUrl={'/'}
       />
       <div
         className={`flex-1 flex items-center justify-start h-full overflow-x-auto pb-1 -mb-1 pr-6 fade-right`}
@@ -46,7 +46,13 @@ const NavBar = ({ isSkeleton }: Props) => {
           tabs
             .slice(1)
             .map((t) => (
-              <Tab tabKey={t.key} name={t.name} key={t.key} source={t.source} />
+              <Tab
+                tabKey={t.key}
+                name={t.name}
+                key={t.key}
+                source={t.source}
+                currentUrl={t.currentUrl}
+              />
             ))}
       </div>
       {!isSkeleton && (

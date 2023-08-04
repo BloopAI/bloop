@@ -18,6 +18,7 @@ export const Default = () => {
           repoName: '',
           source: RepoSource.LOCAL,
           navigationHistory: [],
+          currentUrl: '',
         }}
       >
         <RepositoriesContext.Provider
