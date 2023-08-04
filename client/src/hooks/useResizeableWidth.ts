@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { getPlainFromStorage, savePlainToStorage } from '../services/storage';
 
 const useResizeableWidth = (
@@ -43,7 +43,14 @@ const useResizeableWidth = (
     document.body.addEventListener('mouseup', onMouseUp, true);
   };
 
-  return { width, handleResize };
+  const handleReset = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setWidth(defaultWidth);
+    savePlainToStorage(localStorageKey, defaultWidth);
+  }, []);
+
+  return { width, handleResize, handleReset };
 };
 
 export default useResizeableWidth;

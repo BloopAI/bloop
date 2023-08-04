@@ -12,7 +12,7 @@ type Props = {
 
 const NavigationPanel = ({ repoName, children }: Props) => {
   const { navigateRepoPath } = useAppNavigation();
-  const { width, handleResize } = useResizeableWidth(
+  const { width, handleResize, handleReset } = useResizeableWidth(
     LEFT_SIDEBAR_WIDTH_KEY,
     360,
     false,
@@ -37,6 +37,7 @@ const NavigationPanel = ({ repoName, children }: Props) => {
       <div
         className="absolute top-0 bottom-0 right-0 w-2 border-r border-bg-border hover:border-bg-main cursor-col-resize"
         onMouseDown={handleResize}
+        onDoubleClick={handleReset}
       />
     </div>
   );

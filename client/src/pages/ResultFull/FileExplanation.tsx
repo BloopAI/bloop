@@ -14,7 +14,7 @@ type Props = {
 
 const FileExplanation = ({ repoName, markdown }: Props) => {
   const { openFileModal } = useContext(FileModalContext);
-  const { width, handleResize } = useResizeableWidth(
+  const { width, handleResize, handleReset } = useResizeableWidth(
     RIGHT_SIDEBAR_WIDTH_KEY,
     384,
     true,
@@ -22,7 +22,7 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
 
   return (
     <div className="min-h-full w-full relative" style={{ width }}>
-      <div className="w-full p-5 body-m text-label-base pb-44 break-word overflow-auto h-full">
+      <div className="w-full p-5 body-m text-label-base pb-60 break-word overflow-auto h-full">
         <div className="article-response relative padding-start group-custom">
           <MarkdownWithCode
             openFileModal={openFileModal}
@@ -43,6 +43,7 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
       <div
         className="absolute top-0 bottom-0 left-0 w-2 border-l border-bg-border hover:border-bg-main cursor-col-resize"
         onMouseDown={handleResize}
+        onDoubleClick={handleReset}
       />
     </div>
   );
