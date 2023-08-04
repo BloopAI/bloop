@@ -1040,4 +1040,31 @@ quux";
         assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 5), "fn 🚨()");
         assert_eq!(limit_tokens("fn 🚨() {}", bpe, 6), "fn 🚨() {}");
     }
+
+    #[test]
+    fn test_mid_block_summary() {
+        let input = "Dummy code block:
+
+<GeneratedCode>
+<Code>
+println!(\"[^summary]\");
+</Code>
+<Language>Rust</Language>
+</GeneratedCode>
+
+Foo *bar* quux. [^summary]: Baz fred **thud** corge.\n\n";
+
+let expected = "Dummy code block:
+
+``` type:Generated,lang:Rust,path:,lines:0-0
+println!(\"[^summary]\");
+```
+
+Foo *bar* quux.";
+
+        let (body, conclusion) = decode(input);
+
+        assert_eq!(expected, body);
+        assert_eq!("Baz fred **thud** corge.", conclusion.unwrap());
+    }
 }
