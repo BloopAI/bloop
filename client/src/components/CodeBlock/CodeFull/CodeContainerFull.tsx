@@ -122,7 +122,7 @@ const CodeContainerFull = ({
   }, [scrollToIndex, tokens.length]);
 
   return (
-    <div ref={ref} className="relative pb-44">
+    <div ref={ref} className="relative pb-60">
       {tokens.map((line, index) => {
         let highlightForLine = highlights
           ?.sort((a, b) =>
