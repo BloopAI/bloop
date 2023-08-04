@@ -50,17 +50,51 @@ pub fn decode(llm_message: &str) -> (String, Option<String>) {
     // Detach the sentinel footnote reference.
     children.next().unwrap().detach();
 
-    for child in children {
-        match &child.data.borrow().value {
+    for block in children {
+        match &block.data.borrow().value {
+            NodeValue::Paragraph => {
+                // Store our reconstructed markdown summary here, if it is found
+                let mut buf: Option<String> = None;
+
+                for child in block.children() {
+                    // NB: We have to store this here due to more `comrak` quirks. Because `comrak`
+                    // uses an arena-based API with `RefCell`s, we cannot both mutably borrow its
+                    // inner data and also immutably generate a string from the outer container.
+                    // So, we generate the string ahead of time in case we need it.
+                    let child_text = comrak_to_string(child);
+
+                    match &mut child.data.borrow_mut().value {
+                        NodeValue::Text(s) if s.contains("[^summary]:") && buf.is_none() => {
+                            let (l, r) = s.split_once("[^summary]:").unwrap();
+
+                            buf = Some(r.trim_start().to_owned());
+                            *s = l.trim_end().to_owned();
+                        }
+
+                        _ => {
+                            if let Some(buf) = buf.as_mut() {
+                                child.detach();
+                                *buf += &child_text;
+                                buf.push(' ');
+                            }
+                        }
+                    }
+                }
+
+                if let Some(conclusion) = buf {
+                    return (comrak_to_string(root), Some(conclusion.trim().to_owned()));
+                }
+            }
+
             NodeValue::FootnoteDefinition(def) if def.name == "summary" => (),
             _ => continue,
         };
 
-        if let Some(first_child) = child.children().next() {
+        if let Some(first_child) = block.children().next() {
             if let NodeValue::Paragraph = &first_child.data.borrow().value {
                 // We detach the summary from the main text, so that it does not end up in the final
                 // article output.
-                child.detach();
+                block.detach();
                 return (comrak_to_string(root), Some(comrak_to_string(first_child)));
             }
         }
@@ -1043,24 +1077,30 @@ quux";
 
     #[test]
     fn test_mid_block_summary() {
+        // We test a line with `[^summary]: ..` in the middle. This is not valid markdown but the
+        // LLM generates this sometimes anyway. There is nuance here, because we can *only* do this
+        // if a `Text` child node in a top-level `Paragraph` contains the string `[^summary]:`. To
+        // ensure the code doesn't break on that substring being contained elsewhere, we include
+        // the same string in the middle of a code block, as a test.
+
         let input = "Dummy code block:
 
 <GeneratedCode>
 <Code>
-println!(\"[^summary]\");
+println!(\"[^summary]: dummy\");
 </Code>
 <Language>Rust</Language>
 </GeneratedCode>
 
-Foo *bar* quux. [^summary]: Baz fred **thud** corge.\n\n";
+Foo *bar* `[^summary]: allow this, it is in code quotes` quux. [^summary]: Baz fred **thud** corge.\n\n";
 
-let expected = "Dummy code block:
+        let expected = "Dummy code block:
 
 ``` type:Generated,lang:Rust,path:,lines:0-0
-println!(\"[^summary]\");
+println!(\"[^summary]: dummy\");
 ```
 
-Foo *bar* quux.";
+Foo *bar* `[^summary]: allow this, it is in code quotes` quux.";
 
         let (body, conclusion) = decode(input);
 
