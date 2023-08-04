@@ -30,7 +30,6 @@ mod schema;
 pub use schema::{Embedding, Payload};
 
 pub(crate) const COLLECTION_NAME: &str = "documents";
-pub(crate) const SCORE_THRESHOLD: f32 = 0.3;
 pub(crate) const EMBEDDING_DIM: usize = 384;
 
 #[derive(Error, Debug)]
@@ -376,7 +375,7 @@ impl Semantic {
                     vector,
                     collection_name: COLLECTION_NAME.to_string(),
                     offset: Some(offset),
-                    score_threshold: Some(SCORE_THRESHOLD),
+                    score_threshold: Some(threshold),
                     with_payload: Some(WithPayloadSelector {
                         selector_options: Some(with_payload_selector::SelectorOptions::Enable(
                             true,
