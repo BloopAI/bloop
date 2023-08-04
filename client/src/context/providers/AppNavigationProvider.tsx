@@ -1,4 +1,5 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import findLastIndex from 'lodash.findlastindex';
 import { buildRepoQuery } from '../../utils';
 import { NavigationItem, SearchType, UITabType } from '../../types/general';
 import { AppNavigationContext } from '../appNavigationContext';
@@ -205,7 +206,8 @@ export const AppNavigationProvider = ({
         let index = delta as number;
         if (delta === 'auto') {
           const currentItem = prevState[prevState.length - 1];
-          const lastIndex = prevState.findLastIndex(
+          const lastIndex = findLastIndex(
+            prevState,
             (item) =>
               item.type !== currentItem.type ||
               item.path !== currentItem.path ||
