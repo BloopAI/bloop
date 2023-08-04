@@ -200,6 +200,7 @@ const Chat = () => {
               setChatOpen(true);
               conclusionCame = true;
             }
+            conversationsCache[thread_id] = undefined; // clear cache on new answer
             setConversation((prev) => {
               const newConversation = prev?.slice(0, -1) || [];
               const lastMessage = prev?.slice(-1)[0];
