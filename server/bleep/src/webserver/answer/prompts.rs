@@ -94,22 +94,23 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
     s.push_str(
         r#"Follow these rules at all times:
 
-- If the output of a function is empty, try the same function again with different arguments or try using a different function
+- ALWAYS call a function, DO NOT answer the question directly, even if the query is not in English
+- DO NOT call a function that you've used before with the same arguments
+- DO NOT assume the structure of the codebase, or the existence of files or folders
+- Call functions to find information that will help answer the user's query, until all relevant information has been found
+- Only call functions.proc with path indices that are under the PATHS heading above
+- If the output of a function is empty, try calling the function again with different arguments OR try calling a different function
+- If functions.code or functions.path did not return any relevant information, call them again with a SIGNIFICANTLY different query. The terms in the new query should not overlap with terms in your old one
+- Call functions.proc with paths that you have reason to believe might contain relevant information. Either because of the path name, or to expand on code that's already been returned by functions.code 
+- DO NOT pass more than 5 paths to functions.proc at a time
+- In most cases call functions.code or functions.path functions before calling functions.none
+- When you have enough information to answer the user call functions.none. DO NOT answer the user directly
+- If the user is referring to information that is already in your history, call functions.none
 - When calling functions.code or functions.path, your query should consist of keywords. E.g. if the user says 'What does contextmanager do?', your query should be 'contextmanager'. If the user says 'How is contextmanager used in app', your query should be 'contextmanager app'. If the user says 'What is in the src directory', your query should be 'src'
-- In most cases respond with functions.code or functions.path functions before responding with functions.none
-- If the user is referring to information that is already in your history, respond with functions.none
-- Do not assume the structure of the codebase, or the existence of files or folders
-- Do NOT respond with a function that you've used before with the same arguments
-- When you have enough information to answer the user's query respond with functions.none
-- Only refer to path aliases that are under the PATHS heading above
-- Respond with functions to find information related to the query, until all relevant information has been found
-- Only call functions.none with paths that contain code that might help answer the user's query, or which answer it directly
-- If you have already called functions.code or functions.path but they did not return any relevant information, try again with a substantively different query. The terms in your new query should not overlap with terms in previous queries
-- Use functions.proc on paths that you suspect might contain relevant information, or to expand on code that's already been returned by a code search. Do not pass more than 10 paths to functions.proc at a time
+- Only call functions.none with paths that might help answer the user's query
 - If after attempting to gather information you are still unsure how to answer the query, respond with the functions.none function
 - If the query is a greeting, or not a question or an instruction use functions.none
-- Always use a function, even if the query is not in English
-- Always respond with a function call. Do NOT answer the question directly"#);
+- ALWAYS call a function. DO NOT answer the question directly"#);
     s
 }
 
