@@ -1,5 +1,6 @@
 import React, { useCallback, useContext, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import findLastIndex from 'lodash.findlastindex';
 import SearchInput from '../SearchInput';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { splitPath } from '../../utils';
@@ -34,7 +35,8 @@ const Subheader = () => {
   } = useContext(AppNavigationContext);
 
   const resultsBackIndex = useMemo(() => {
-    const index = navigationHistory.findLastIndex(
+    const index = findLastIndex(
+      navigationHistory,
       (item) =>
         item.type === 'conversation-result' || item.type === 'article-response',
     );

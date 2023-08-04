@@ -19,7 +19,7 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
 
   return (
     <div className="overflow-auto p-8 w-screen">
-      <div className="flex-1 mx-auto max-w-3xl box-content article-response body-m text-label-base pb-44 break-word relative group-custom">
+      <div className="flex-1 mx-auto max-w-3xl box-content article-response body-m text-label-base pb-60 break-word relative group-custom">
         <MarkdownWithCode
           openFileModal={openFileModal}
           repoName={tab.repoName}
