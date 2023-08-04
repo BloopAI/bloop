@@ -842,7 +842,7 @@ impl Agent {
                     .clone()
                     .model("gpt-3.5-turbo-16k-0613")
                     // Set low frequency penalty to discourage long outputs.
-                    .frequency_penalty(0.1)
+                    .frequency_penalty(0.2)
                     .chat(&[llm_gateway::api::Message::system(&prompt)], None)
                     .await?
                     .try_collect::<String>()
@@ -1166,7 +1166,7 @@ impl Agent {
                     .query()
                     .map(|q| {
                         llm_gateway::api::Message::user(&format!(
-                            "{q}\nCall a function. Do not answer."
+                            "{q}\nCall a function. Do not answer"
                         ))
                     })
                     .ok_or_else(|| anyhow!("query does not have target"))?;
@@ -1206,7 +1206,7 @@ impl Agent {
                         }),
                         llm_gateway::api::Message::function_return(
                             &name,
-                            &format!("{}\nCall a function. Do not answer.", s.get_response()),
+                            &format!("{}\nCall a function. Do not answer", s.get_response()),
                         ),
                     ]
                 });
@@ -1546,7 +1546,6 @@ fn trim_history(
 ) -> Result<Vec<llm_gateway::api::Message>> {
     const HEADROOM: usize = 2048;
     const HIDDEN: &str = "[HIDDEN]";
-    const HIDDEN_WITH_INSTRUCTION: &str = "[HIDDEN]\nCall a function. Do not answer.";
 
     let mut tiktoken_msgs = history.iter().map(|m| m.into()).collect::<Vec<_>>();
 
@@ -1559,11 +1558,7 @@ fn trim_history(
                     role,
                     ref mut content,
                 } => {
-                    if (role == "user") && content != HIDDEN_WITH_INSTRUCTION {
-                        *content = HIDDEN_WITH_INSTRUCTION.into();
-                        tm.content = HIDDEN_WITH_INSTRUCTION.into();
-                        true
-                    } else if role == "assistant" && content != HIDDEN {
+                    if (role == "user" || role == "assistant") && content != HIDDEN {
                         *content = HIDDEN.into();
                         tm.content = HIDDEN.into();
                         true
@@ -1575,9 +1570,9 @@ fn trim_history(
                     role: _,
                     name: _,
                     ref mut content,
-                } if content != HIDDEN_WITH_INSTRUCTION => {
-                    *content = HIDDEN_WITH_INSTRUCTION.into();
-                    tm.content = HIDDEN_WITH_INSTRUCTION.into();
+                } if content != HIDDEN => {
+                    *content = HIDDEN.into();
+                    tm.content = HIDDEN.into();
                     true
                 }
                 _ => false,
@@ -1716,9 +1711,9 @@ mod tests {
             trim_history(history).unwrap(),
             vec![
                 llm_gateway::api::Message::system("foo"),
-                llm_gateway::api::Message::user("[HIDDEN]\nCall a function. Do not answer."),
+                llm_gateway::api::Message::user("[HIDDEN]"),
                 llm_gateway::api::Message::assistant("[HIDDEN]"),
-                llm_gateway::api::Message::user("[HIDDEN]\nCall a function. Do not answer."),
+                llm_gateway::api::Message::user("[HIDDEN]"),
                 llm_gateway::api::Message::assistant("quux"),
                 llm_gateway::api::Message::user("fred"),
                 llm_gateway::api::Message::assistant("thud"),
