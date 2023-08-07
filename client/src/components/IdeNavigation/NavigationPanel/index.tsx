@@ -18,7 +18,7 @@ const NavigationPanel = ({ repoName, children }: Props) => {
     false,
   );
   return (
-    <div className="min-h-full relative flex" style={{ width }}>
+    <div className="min-h-full relative flex max-w-[30vw]" style={{ width }}>
       <div className="flex flex-1 divide-y divide-bg-border bg-bg-base flex-col border-r border-bg-border min-h-full select-none overflow-auto">
         <div
           className="w-full border-b border-bg-border flex justify-between py-7 px-8 select-none cursor-pointer"
