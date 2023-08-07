@@ -1,7 +1,4 @@
-// eslint-disable-next-line import/no-duplicates
 import { formatDistanceToNow } from 'date-fns';
-// eslint-disable-next-line import/no-duplicates
-import { ja } from 'date-fns/locale';
 import { MouseEvent, useCallback, useContext, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import {
@@ -13,7 +10,7 @@ import {
 } from '../../icons';
 import { MenuItemType, SyncStatus } from '../../types/general';
 import FileIcon from '../FileIcon';
-import { getFileExtensionForLang } from '../../utils';
+import { getDateFnsLocale, getFileExtensionForLang } from '../../utils';
 import BarLoader from '../Loaders/BarLoader';
 import { UIContext } from '../../context/uiContext';
 import { TabsContext } from '../../context/tabsContext';
@@ -209,7 +206,7 @@ const RepoCard = ({
             {sync_status === 'done' &&
               formatDistanceToNow(new Date(last_index), {
                 addSuffix: true,
-                ...(locale === 'ja' ? { locale: ja } : {}),
+                ...(getDateFnsLocale(locale) || {}),
               })}
           </p>
         </div>

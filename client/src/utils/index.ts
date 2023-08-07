@@ -1,6 +1,7 @@
-import { MouseEvent, useCallback } from 'react';
+import { MouseEvent } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { RepoType, RepoUi } from '../types/general';
+import { ja } from 'date-fns/locale';
+import { LocaleType, RepoType, RepoUi } from '../types/general';
 import langs from './langs.json';
 
 export const copyToClipboard = (value: string) => {
@@ -326,3 +327,12 @@ export function humanFileSize(
 
   return bytes.toFixed(dp) + ' ' + units[u];
 }
+
+export const getDateFnsLocale = (locale: LocaleType) => {
+  switch (locale) {
+    case 'ja':
+      return { locale: ja };
+    default:
+      return undefined;
+  }
+};
