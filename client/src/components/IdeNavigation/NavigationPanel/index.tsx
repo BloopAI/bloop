@@ -18,8 +18,8 @@ const NavigationPanel = ({ repoName, children }: Props) => {
     false,
   );
   return (
-    <div className="min-h-full relative" style={{ width }}>
-      <div className="flex divide-y divide-bg-border bg-bg-base flex-col border-r border-bg-border h-full select-none overflow-auto">
+    <div className="min-h-full relative flex" style={{ width }}>
+      <div className="flex flex-1 divide-y divide-bg-border bg-bg-base flex-col border-r border-bg-border min-h-full select-none overflow-auto">
         <div
           className="w-full border-b border-bg-border flex justify-between py-7 px-8 select-none cursor-pointer"
           onClick={() => navigateRepoPath(repoName)}
@@ -30,7 +30,7 @@ const NavigationPanel = ({ repoName, children }: Props) => {
             className={'ellipsis'}
           />
         </div>
-        <div className="flex-1 overflow-auto flex flex-col h-full">
+        <div className="flex-1 overflow-auto flex flex-col min-h-full">
           {children}
         </div>
       </div>

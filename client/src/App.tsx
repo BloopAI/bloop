@@ -198,8 +198,9 @@ function App({ deviceContextValue }: Props) {
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey) {
-        if (Object.keys(tabs).includes(e.key)) {
-          const newTab = tabs[Number(e.key)]?.key;
+        const num = Number(e.key);
+        if (Object.keys(tabs).includes((num - 1).toString())) {
+          const newTab = tabs[num - 1]?.key;
           if (newTab) {
             e.preventDefault();
             setActiveTab(newTab);
