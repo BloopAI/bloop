@@ -5,8 +5,8 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
-import { CloseSign } from '../../icons';
+import { Trans, useTranslation } from 'react-i18next';
+import { CloseSign, Sparkles } from '../../icons';
 import Button from '../../components/Button';
 import CodeFull from '../../components/CodeBlock/CodeFull';
 import { FullResult } from '../../types/results';
@@ -103,6 +103,10 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
             />
           )}
           <div className="flex gap-2">
+            <Button onClick={handleExplain}>
+              <Sparkles raw sizeClassName="w-3.5 h-3.5" />
+              <Trans>Explain</Trans>
+            </Button>
             <Button
               onlyIcon
               variant="tertiary"
@@ -120,7 +124,6 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
               repoName={result.repoName}
               repoPath={result.repoPath}
               onResultClosed={onResultClosed}
-              handleExplain={handleExplain}
             />
           )}
           <div
