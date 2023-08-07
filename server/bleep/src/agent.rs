@@ -368,7 +368,7 @@ fn trim_history(
                     role,
                     ref mut content,
                 } => {
-                    if (role == "user" || role == "assistant") && content != HIDDEN {
+                    if role == "assistant" && content != HIDDEN {
                         *content = HIDDEN.into();
                         tm.content = HIDDEN.into();
                         true
@@ -457,8 +457,8 @@ mod tests {
             llm_gateway::api::Message::system("foo"),
             llm_gateway::api::Message::user("bar"),
             llm_gateway::api::Message::assistant("baz"),
-            llm_gateway::api::Message::user(&long_string),
-            llm_gateway::api::Message::assistant("quux"),
+            llm_gateway::api::Message::user("box"),
+            llm_gateway::api::Message::assistant(&long_string),
             llm_gateway::api::Message::user("fred"),
             llm_gateway::api::Message::assistant("thud"),
             llm_gateway::api::Message::user(&long_string),
@@ -469,10 +469,10 @@ mod tests {
             trim_history(history).unwrap(),
             vec![
                 llm_gateway::api::Message::system("foo"),
-                llm_gateway::api::Message::user("[HIDDEN]"),
+                llm_gateway::api::Message::user("bar"),
                 llm_gateway::api::Message::assistant("[HIDDEN]"),
-                llm_gateway::api::Message::user("[HIDDEN]"),
-                llm_gateway::api::Message::assistant("quux"),
+                llm_gateway::api::Message::user("box"),
+                llm_gateway::api::Message::assistant("[HIDDEN]"),
                 llm_gateway::api::Message::user("fred"),
                 llm_gateway::api::Message::assistant("thud"),
                 llm_gateway::api::Message::user(&long_string),
