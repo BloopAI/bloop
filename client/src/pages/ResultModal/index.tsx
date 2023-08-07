@@ -1,6 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { CloseSign } from '../../icons';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import { CloseSign, Sparkles } from '../../icons';
 import Button from '../../components/Button';
 import CodeFull from '../../components/CodeBlock/CodeFull';
 import { FullResult } from '../../types/results';
@@ -8,6 +14,8 @@ import { FullResultModeEnum } from '../../types/general';
 import ModalOrSidebar from '../../components/ModalOrSidebar';
 import ShareFileModal from '../../components/ShareFileModal';
 import { splitPathForBreadcrumbs } from '../../utils';
+import { ChatContext } from '../../context/chatContext';
+import { UIContext } from '../../context/uiContext';
 import ModeToggle from './ModeToggle';
 import Subheader from './Subheader';
 
@@ -21,6 +29,14 @@ type Props = {
 const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
   const { t } = useTranslation();
   const [isShareOpen, setShareOpen] = useState(false);
+  const {
+    setSubmittedQuery,
+    setChatOpen,
+    setSelectedLines,
+    setConversation,
+    setThreadId,
+  } = useContext(ChatContext.Setters);
+  const { setRightPanelOpen } = useContext(UIContext.RightPanel);
 
   useEffect(() => {
     const action =
@@ -49,6 +65,23 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
     [result?.hoverableRanges],
   );
 
+  const handleExplain = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.stopPropagation();
+      if (!result) {
+        return;
+      }
+      setConversation([]);
+      setThreadId('');
+      const endLine = result.code.split('\n').length;
+      setSelectedLines([1, endLine]);
+      setRightPanelOpen(false);
+      setSubmittedQuery(`#explain_${result.relativePath}:1-${endLine}`);
+      setChatOpen(true);
+    },
+    [result?.code, result?.relativePath],
+  );
+
   return (
     <>
       <ModalOrSidebar
@@ -70,6 +103,10 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
             />
           )}
           <div className="flex gap-2">
+            <Button onClick={handleExplain}>
+              <Sparkles raw sizeClassName="w-3.5 h-3.5" />
+              <Trans>Explain</Trans>
+            </Button>
             <Button
               onlyIcon
               variant="tertiary"
