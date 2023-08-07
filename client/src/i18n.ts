@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import backend from 'i18next-http-backend';
 import en from './locales/en.json';
 import ja from './locales/ja.json';
+import zhCN from './locales/zh-CN.json';
 import { getPlainFromStorage, LANGUAGE_KEY } from './services/storage';
 
 // the translations
@@ -14,6 +15,9 @@ const resources = {
   },
   ja: {
     translation: ja,
+  },
+  zhCN: {
+    translation: zhCN,
   },
 };
 

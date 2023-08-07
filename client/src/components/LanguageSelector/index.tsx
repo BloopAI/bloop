@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { MenuListItemType } from '../ContextMenu';
 import DropdownWithIcon from '../Dropdown/WithIcon';
 import { LocaleContext } from '../../context/localeContext';
@@ -6,10 +6,12 @@ import { LocaleContext } from '../../context/localeContext';
 const localesMap = {
   en: { name: 'English', icon: '🇬🇧' },
   ja: { name: '日本', icon: '🇯🇵' },
+  zhCN: { name: '简体中文', icon: '🇨🇳' },
 };
 
 const LanguageSelector = () => {
   const { locale, setLocale } = useContext(LocaleContext);
+
   return (
     <DropdownWithIcon
       items={[
@@ -27,6 +29,14 @@ const LanguageSelector = () => {
           type: MenuListItemType.DEFAULT,
           onClick: () => {
             setLocale('ja');
+          },
+        },
+        {
+          text: localesMap.zhCN.name,
+          icon: <span>{localesMap.zhCN.icon}</span>,
+          type: MenuListItemType.DEFAULT,
+          onClick: () => {
+            setLocale('zhCN');
           },
         },
       ]}
