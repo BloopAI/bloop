@@ -478,14 +478,14 @@ const CodeFull = ({
                             setConversation([]);
                             setThreadId('');
                             setSelectedLines([
-                              currentSelection[0]![0],
-                              currentSelection[1]![0],
+                              currentSelection[0]![0] + 1,
+                              currentSelection[1]![0] + 1,
                             ]);
                             setRightPanelOpen(false);
                             setSubmittedQuery(
                               `#explain_${relativePath}:${
-                                currentSelection[0]![0]
-                              }-${currentSelection[1]![0]}`,
+                                currentSelection[0]![0] + 1
+                              }-${currentSelection[1]![0] + 1}`,
                             );
                             setChatOpen(true);
                             setPopupPosition(null);
