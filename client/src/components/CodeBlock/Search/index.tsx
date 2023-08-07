@@ -43,7 +43,6 @@ const CodeBlockSearch = ({
 }: Props) => {
   const { t } = useTranslation();
   const [isExpanded, setExpanded] = useState(false);
-  const { os, openFolderInExplorer, openLink } = useContext(DeviceContext);
 
   const handleMouseUp = useCallback(
     (startLine?: number, endLine?: number) => {
@@ -57,7 +56,7 @@ const CodeBlockSearch = ({
         );
       }
     },
-    [onClick],
+    [onClick, repoName, filePath],
   );
 
   const totalMatches = useMemo(() => {

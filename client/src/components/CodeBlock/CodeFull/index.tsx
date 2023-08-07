@@ -403,6 +403,7 @@ const CodeFull = ({
           ref={ref}
         >
           <CodeContainer
+            key={relativePath}
             width={containerWidth}
             height={containerHeight}
             language={language}
