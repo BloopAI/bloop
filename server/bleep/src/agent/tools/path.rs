@@ -43,12 +43,17 @@ impl Agent {
             paths = semantic_paths;
         }
 
-        let formatted_paths = paths
+        let mut paths = paths
             .iter()
-            .map(|p| (p.to_string(), self.get_path_alias(p)))
+            .map(|p| (self.get_path_alias(p), p.to_string()))
             .collect::<Vec<_>>();
+        paths.sort_by(|a: &(usize, String), b| a.0.cmp(&b.0)); // Sort by alias
 
-        let response = serde_json::to_string(&formatted_paths).unwrap();
+        let response = paths
+            .iter()
+            .map(|(alias, path)| format!("{}: {}", alias, path))
+            .collect::<Vec<_>>()
+            .join("\n");
 
         self.update(Update::ReplaceStep(SearchStep::Path {
             query: query.clone(),
