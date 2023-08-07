@@ -21,7 +21,7 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
   );
 
   return (
-    <div className="min-h-full w-full relative" style={{ width }}>
+    <div className="min-h-full w-full relative max-w-[50vw]" style={{ width }}>
       <div className="w-full p-5 body-m text-label-base pb-60 break-word overflow-auto h-full">
         <div className="article-response relative padding-start group-custom">
           <MarkdownWithCode
