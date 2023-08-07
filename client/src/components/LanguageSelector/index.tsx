@@ -1,9 +1,10 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useContext } from 'react';
 import { MenuListItemType } from '../ContextMenu';
 import DropdownWithIcon from '../Dropdown/WithIcon';
 import { LocaleContext } from '../../context/localeContext';
+import { LocaleType } from '../../types/general';
 
-const localesMap = {
+const localesMap: Record<LocaleType, { name: string; icon: string }> = {
   en: { name: 'English', icon: '🇬🇧' },
   ja: { name: '日本', icon: '🇯🇵' },
   zhCN: { name: '简体中文', icon: '🇨🇳' },
@@ -14,32 +15,14 @@ const LanguageSelector = () => {
 
   return (
     <DropdownWithIcon
-      items={[
-        {
-          text: localesMap.en.name,
-          icon: <span>{localesMap.en.icon}</span>,
-          type: MenuListItemType.DEFAULT,
-          onClick: () => {
-            setLocale('en');
-          },
+      items={Object.entries(localesMap).map(([key, value]) => ({
+        text: value.name,
+        icon: <span>{value.icon}</span>,
+        type: MenuListItemType.DEFAULT,
+        onClick: () => {
+          setLocale(key as LocaleType);
         },
-        {
-          text: localesMap.ja.name,
-          icon: <span>{localesMap.ja.icon}</span>,
-          type: MenuListItemType.DEFAULT,
-          onClick: () => {
-            setLocale('ja');
-          },
-        },
-        {
-          text: localesMap.zhCN.name,
-          icon: <span>{localesMap.zhCN.icon}</span>,
-          type: MenuListItemType.DEFAULT,
-          onClick: () => {
-            setLocale('zhCN');
-          },
-        },
-      ]}
+      }))}
       icon={
         <div className="flex items-center gap-2">
           <span> {localesMap[locale]?.icon}</span>
