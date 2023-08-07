@@ -85,10 +85,11 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
     let mut paths = paths.into_iter().peekable();
 
     if paths.peek().is_some() {
-        s.push_str("## PATHS ##\nalias, path\n");
+        s.push_str("## PATHS ##\nindex, path\n");
         for (i, path) in paths.enumerate() {
             s.push_str(&format!("{}, {}\n", i, path));
         }
+        s.push('\n');
     }
 
     s.push_str(
