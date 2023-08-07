@@ -1,10 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Trans, useTranslation } from 'react-i18next';
-// eslint-disable-next-line import/no-duplicates
 import { format } from 'date-fns';
-// eslint-disable-next-line import/no-duplicates
-import { ja } from 'date-fns/locale';
 import {
   Checkmark,
   List,
@@ -21,6 +18,7 @@ import { ChatContext } from '../../../context/chatContext';
 import Button from '../../Button';
 import { FileModalContext } from '../../../context/fileModalContext';
 import { LocaleContext } from '../../../context/localeContext';
+import { getDateFnsLocale } from '../../../utils';
 import MessageFeedback from './MessageFeedback';
 import FileChip from './FileChip';
 import SummaryCardsArticle from './SummaryCards/SummaryCardsArticle';
@@ -132,7 +130,7 @@ const ConversationMessage = ({
               {format(
                 new Date(responseTimestamp),
                 'hh:mm aa',
-                locale === 'ja' ? { locale: ja } : undefined,
+                getDateFnsLocale(locale),
               )}
             </div>
           )}

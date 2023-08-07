@@ -1,11 +1,12 @@
 import React, { createContext } from 'react';
+import { LocaleType } from '../types/general';
 
 type ContextType = {
-  locale: string;
-  setLocale: React.Dispatch<React.SetStateAction<string>>;
+  locale: LocaleType;
+  setLocale: React.Dispatch<React.SetStateAction<LocaleType>>;
 };
 
 export const LocaleContext = createContext<ContextType>({
-  locale: '',
+  locale: 'en',
   setLocale: () => {},
 });

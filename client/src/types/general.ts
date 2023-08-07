@@ -306,3 +306,5 @@ export type FileHighlightsType = Record<
   string,
   ({ lines: [number, number]; color: string; index: number } | undefined)[]
 >;
+
+export type LocaleType = 'en' | 'ja';

@@ -3,44 +3,37 @@ import { MenuListItemType } from '../ContextMenu';
 import DropdownWithIcon from '../Dropdown/WithIcon';
 import { LocaleContext } from '../../context/localeContext';
 
+const localesMap = {
+  en: { name: 'English', icon: '🇬🇧' },
+  ja: { name: '日本', icon: '🇯🇵' },
+  zhCN: { name: '简体中文', icon: '🇨🇳' },
+};
+
 const LanguageSelector = () => {
   const { locale, setLocale } = useContext(LocaleContext);
-
-  const { langTag, langName } = useMemo(() => {
-    switch (locale) {
-      case 'ja':
-        return { langTag: '🇯🇵', langName: '日本' };
-
-      case 'zhCN':
-        return { langTag: '🇨🇳', langName: '简体中文' };
-
-      default:
-        return { langTag: '🇬🇧', langName: 'English' };
-    }
-  }, [locale]);
 
   return (
     <DropdownWithIcon
       items={[
         {
-          text: 'English',
-          icon: <span>🇬🇧</span>,
+          text: localesMap.en.name,
+          icon: <span>{localesMap.en.icon}</span>,
           type: MenuListItemType.DEFAULT,
           onClick: () => {
             setLocale('en');
           },
         },
         {
-          text: '日本',
-          icon: <span>🇯🇵</span>,
+          text: localesMap.ja.name,
+          icon: <span>{localesMap.ja.icon}</span>,
           type: MenuListItemType.DEFAULT,
           onClick: () => {
             setLocale('ja');
           },
         },
         {
-          text: '简体中文',
-          icon: <span>🇨🇳</span>,
+          text: localesMap.zhCN.name,
+          icon: <span>{localesMap.zhCN.icon}</span>,
           type: MenuListItemType.DEFAULT,
           onClick: () => {
             setLocale('zhCN');
@@ -49,8 +42,8 @@ const LanguageSelector = () => {
       ]}
       icon={
         <div className="flex items-center gap-2">
-          <span>{langTag}</span>
-          <span>{langName}</span>
+          <span> {localesMap[locale]?.icon}</span>
+          <span>{localesMap[locale]?.name}</span>
         </div>
       }
       noChevron
