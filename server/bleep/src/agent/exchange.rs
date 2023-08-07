@@ -3,8 +3,6 @@ use std::mem;
 
 use chrono::prelude::{DateTime, Utc};
 
-use crate::webserver::answer;
-
 /// A continually updated conversation exchange.
 ///
 /// This contains the query from the user, the intermediate steps the model takes, and the final
@@ -16,7 +14,7 @@ pub struct Exchange {
     pub answer: Option<String>,
     pub search_steps: Vec<SearchStep>,
     pub paths: Vec<String>,
-    pub code_chunks: Vec<answer::CodeChunk>,
+    pub code_chunks: Vec<CodeChunk>,
 
     /// A specifically chosen "focused" code chunk.
     ///
@@ -147,6 +145,26 @@ impl SearchStep {
             Self::Code { response, .. } => response.clone(),
             Self::Proc { response, .. } => response.clone(),
         }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct CodeChunk {
+    pub path: String,
+    #[serde(rename = "alias")]
+    pub alias: usize,
+    #[serde(rename = "snippet")]
+    pub snippet: String,
+    #[serde(rename = "start")]
+    pub start_line: usize,
+    #[serde(rename = "end")]
+    pub end_line: usize,
+}
+
+impl CodeChunk {
+    /// Returns true if a code-chunk contains an empty snippet or a snippet with only whitespace
+    pub fn is_empty(&self) -> bool {
+        self.snippet.trim().is_empty()
     }
 }
 

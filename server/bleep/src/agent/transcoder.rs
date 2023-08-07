@@ -11,6 +11,7 @@ use comrak::nodes::{NodeHtmlBlock, NodeValue};
 use lazy_regex::regex;
 use regex::Regex;
 use serde::Deserialize;
+use tiktoken_rs::CoreBPE;
 
 /// Decode an article.
 ///
@@ -156,7 +157,7 @@ pub fn encode_summarized(markdown: &str, conclusion: Option<&str>, model: &str) 
         try_trim_code_xml(xml).ok()
     });
     let bpe = tiktoken_rs::get_bpe_from_model(model)?;
-    Ok(super::limit_tokens(&article, bpe, 500).to_owned())
+    Ok(limit_tokens(&article, bpe, 500).to_owned())
 }
 
 fn sanitize(article: &str) -> String {
@@ -421,6 +422,21 @@ fn try_trim_code_xml(xml: &str) -> Result<String> {
             )
         }
     })
+}
+
+fn limit_tokens(text: &str, bpe: CoreBPE, max_tokens: usize) -> &str {
+    let mut tokens = bpe.encode_ordinary(text);
+    tokens.truncate(max_tokens);
+
+    while !tokens.is_empty() {
+        if let Ok(s) = bpe.decode(tokens.clone()) {
+            return &text[..s.len()];
+        }
+
+        let _ = tokens.pop();
+    }
+
+    ""
 }
 
 #[cfg(test)]
@@ -1007,5 +1023,21 @@ quux";
 
         assert_eq!(None, conclusion);
         assert_eq!(expected, body);
+    }
+
+    #[test]
+    fn test_limit_tokens() {
+        let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo").unwrap();
+        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 1), "fn");
+
+        // Note: the following calls return a string that does not split the emoji, despite the
+        // tokenizer interpreting the tokens like that.
+        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 2), "fn");
+        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 3), "fn");
+
+        // Now we have a sufficient number of input tokens to overcome the emoji.
+        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 4), "fn 🚨");
+        assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 5), "fn 🚨()");
+        assert_eq!(limit_tokens("fn 🚨() {}", bpe, 6), "fn 🚨() {}");
     }
 }

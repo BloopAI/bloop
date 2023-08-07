@@ -41,12 +41,14 @@ use tracing_subscriber::{
     EnvFilter,
 };
 
+mod agent;
 mod background;
 mod cache;
 mod collector;
 mod config;
 mod db;
 mod env;
+mod llm_gateway;
 mod remotes;
 mod repo;
 mod webserver;
