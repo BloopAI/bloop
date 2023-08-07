@@ -64,6 +64,7 @@ const CodeContainerFull = ({
   const ref = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const [isPopupVisible, setPopupVisible] = useState(false);
+  const firstRender = useRef(true);
   const [popupPosition, setPopupPosition] = useState<{
     top: number;
     left?: number;
@@ -117,9 +118,18 @@ const CodeContainerFull = ({
       if (!line) {
         line = findElementInCurrentTab(`[data-line-number="${scrollToItem}"]`);
       }
-      line?.scrollIntoView({ behavior: 'smooth', block: align });
+      line?.scrollIntoView({
+        behavior: firstRender.current ? 'auto' : 'smooth',
+        block: align,
+      });
     }
   }, [scrollToIndex, tokens.length]);
+
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+    }
+  }, []);
 
   return (
     <div ref={ref} className="relative pb-60">

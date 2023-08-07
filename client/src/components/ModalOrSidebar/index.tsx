@@ -120,7 +120,7 @@ const ModalOrSidebar = ({
         {shouldShow && (
           <motion.div
             key="modal"
-            className={`modal-or-sidebar overflow-hidden fixed flex flex-col ${
+            className={`modal-or-sidebar fixed flex flex-col ${
               isSidebar ? `border-y-0` : `rounded-md shadow-float`
             } bg-bg-shade border border-bg-border ${
               isSidebar ? 'z-60' : 'z-[110]'

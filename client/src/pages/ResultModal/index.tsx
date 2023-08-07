@@ -127,7 +127,7 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
             />
           )}
           <div
-            className={`flex px-2 py-4 bg-bg-sub h-[calc(100vh-17rem)] overflow-y-auto code-modal-container`}
+            className={`flex px-2 pt-4 bg-bg-sub overflow-y-auto code-modal-container`}
           >
             {!!result && (
               <CodeFull
@@ -138,8 +138,8 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
                 repoName={result.repoName}
                 metadata={metadata}
                 scrollElement={null}
-                containerWidth={window.innerWidth * 0.6 - 56}
-                containerHeight={window.innerHeight - 15 * 16 - 114}
+                containerWidth={window.innerWidth * 0.6 - 30}
+                containerHeight={window.innerHeight - 16.6 * 16}
                 closePopup={onResultClosed}
               />
             )}
