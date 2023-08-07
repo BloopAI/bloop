@@ -1,5 +1,5 @@
 use crate::query::parser::SemanticQuery;
-use std::mem;
+use std::{fmt, mem};
 
 use chrono::prelude::{DateTime, Utc};
 
@@ -165,6 +165,12 @@ impl CodeChunk {
     /// Returns true if a code-chunk contains an empty snippet or a snippet with only whitespace
     pub fn is_empty(&self) -> bool {
         self.snippet.trim().is_empty()
+    }
+}
+
+impl fmt::Display for CodeChunk {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}: {}\n{}", self.alias, self.path, self.snippet)
     }
 }
 

@@ -114,21 +114,6 @@ impl Agent {
                     code: String,
                 }
 
-                impl RelevantChunk {
-                    fn enumerate_lines(&self) -> Self {
-                        Self {
-                            range: self.range,
-                            code: self
-                                .code
-                                .lines()
-                                .enumerate()
-                                .map(|(i, line)| format!("{} {line}", i + self.range.start))
-                                .collect::<Vec<_>>()
-                                .join("\n"),
-                        }
-                    }
-                }
-
                 let mut line_ranges: Vec<Range> = serde_json::from_str::<Vec<Range>>(&json)?
                     .into_iter()
                     .filter(|r| r.start > 0 && r.end > 0)
@@ -183,37 +168,35 @@ impl Agent {
             .collect::<Vec<_>>()
             .await;
 
-        for (relevant_chunks, path) in &processed {
-            let alias = self.get_path_alias(path);
+        let chunks = processed
+            .into_iter()
+            .flat_map(|(relevant_chunks, path)| {
+                let alias = self.get_path_alias(&path);
 
-            for c in relevant_chunks {
-                let chunk = CodeChunk {
-                    path: path.to_owned(),
+                relevant_chunks.into_iter().map(move |c| CodeChunk {
+                    path: path.clone(),
                     alias,
-                    snippet: c.code.clone(),
+                    snippet: c.code,
                     start_line: c.range.start,
                     end_line: c.range.end,
-                };
-                if !chunk.is_empty() {
-                    self.last_exchange_mut().code_chunks.push(chunk);
-                }
-            }
-        }
-
-        let out = processed
-            .into_iter()
-            .map(|(relevant_chunks, path)| {
-                serde_json::json!({
-                    "relevant_chunks": relevant_chunks
-                        .iter()
-                        .map(|c| c.enumerate_lines())
-                        .collect::<Vec<_>>(),
-                    "path_alias": self.get_path_alias(&path),
                 })
             })
             .collect::<Vec<_>>();
 
-        let response = serde_json::to_string(&out)?;
+        for chunk in chunks.iter().filter(|c| !c.is_empty()) {
+            self.exchanges
+                .last_mut()
+                .unwrap()
+                .code_chunks
+                .push(chunk.clone())
+        }
+
+        let response = chunks
+            .iter()
+            .filter(|c| !c.is_empty())
+            .map(|c| c.to_string())
+            .collect::<Vec<_>>()
+            .join("\n\n");
 
         self.update(Update::ReplaceStep(SearchStep::Proc {
             query: query.to_string(),
@@ -225,8 +208,7 @@ impl Agent {
         self.track_query(
             EventData::input_stage("process file")
                 .with_payload("question", query)
-                .with_payload("chunks", &out)
-                .with_payload("raw_prompt", &response),
+                .with_payload("chunks", &response),
         );
 
         Ok(response)

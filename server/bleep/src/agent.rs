@@ -196,6 +196,8 @@ impl Agent {
     /// The full history of messages, including intermediate function calls
     fn history(&self) -> Result<Vec<llm_gateway::api::Message>> {
         const ANSWER_MAX_HISTORY_SIZE: usize = 3;
+        const FUNCTION_CALL_INSTRUCTION: &str = "Call a function. Do not answer";
+
         let history = self
             .exchanges
             .iter()
@@ -205,11 +207,7 @@ impl Agent {
             .try_fold(Vec::new(), |mut acc, e| -> Result<_> {
                 let query = e
                     .query()
-                    .map(|q| {
-                        llm_gateway::api::Message::user(&format!(
-                            "{q}\nCall a function. Do not answer"
-                        ))
-                    })
+                    .map(|q| llm_gateway::api::Message::user(&q))
                     .ok_or_else(|| anyhow!("query does not have target"))?;
 
                 let steps = e.search_steps.iter().flat_map(|s| {
@@ -245,10 +243,8 @@ impl Agent {
                             name: Some(name.clone()),
                             arguments,
                         }),
-                        llm_gateway::api::Message::function_return(
-                            &name,
-                            &format!("{}\nCall a function. Do not answer", s.get_response()),
-                        ),
+                        llm_gateway::api::Message::function_return(&name, &s.get_response()),
+                        llm_gateway::api::Message::user(FUNCTION_CALL_INSTRUCTION),
                     ]
                 });
 
@@ -264,6 +260,9 @@ impl Agent {
 
                 acc.extend(
                     std::iter::once(query)
+                        .chain(vec![llm_gateway::api::Message::user(
+                            FUNCTION_CALL_INSTRUCTION,
+                        )])
                         .chain(steps)
                         .chain(answer.into_iter()),
                 );

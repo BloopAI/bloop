@@ -56,7 +56,12 @@ impl Agent {
                 .push(chunk.clone())
         }
 
-        let response = serde_json::to_string(&chunks).unwrap();
+        let response = chunks
+            .iter()
+            .filter(|c| !c.is_empty())
+            .map(|c| c.to_string())
+            .collect::<Vec<_>>()
+            .join("\n\n");
 
         self.update(Update::ReplaceStep(SearchStep::Code {
             query: query.clone(),
