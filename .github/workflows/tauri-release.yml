@@ -38,15 +38,13 @@ jobs:
       - name: Checkout code
         uses: nschloe/action-cached-lfs-checkout@v1
 
-      - name: Setup nix
-        uses: cachix/install-nix-action@v22
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v2
         with:
-          github_access_token: "${{ secrets.GITHUB_TOKEN }}"
-
-      - run: nix profile install nixpkgs#protobuf
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - if: matrix.name == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf protobuf-compiler
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf
 
       - name: Use Node.js
         uses: actions/setup-node@v3
