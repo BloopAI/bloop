@@ -1,5 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeMathJax from 'rehype-mathjax';
 import sanitizeHtml from 'sanitize-html';
 import Convert from 'ansi-to-html';
 import Code from '../CodeBlock/Code';
@@ -14,7 +16,6 @@ type CellProps = {
 };
 
 const Cell: React.FC<CellProps> = ({ cell, seq }) => {
-  console.log(seq, cell);
   if (!cell.outputs?.length && !cell.source?.length && !cell.input?.length) {
     return null;
   }
@@ -40,7 +41,10 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
             if (cell.cell_type === 'markdown') {
               return (
                 <div className="markdown ipynb-markdown body-s">
-                  <ReactMarkdown>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkMath]}
+                    rehypePlugins={[rehypeMathJax]}
+                  >
                     {embedAttachments(source, cell.attachments)}
                   </ReactMarkdown>
                 </div>
@@ -197,7 +201,10 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
                   if (output.data['text/latex']) {
                     return (
                       <div className="markdown body-s ipynb-markdown">
-                        <ReactMarkdown>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkMath]}
+                          rehypePlugins={[rehypeMathJax]}
+                        >
                           {stringify(output.data['text/latex'])}
                         </ReactMarkdown>
                       </div>
