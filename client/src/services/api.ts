@@ -174,6 +174,7 @@ export const saveBugReport = (report: {
   text: string;
   unique_id: string;
   app_version: string;
+  metadata: string;
 }) => axios.post(`${DB_API}/bug_reports`, report).then((r) => r.data);
 
 export const saveCrashReport = (report: {
