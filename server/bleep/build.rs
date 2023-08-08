@@ -21,7 +21,7 @@ fn main() {
 fn set_index_version() {
     use std::fs::{read_dir, read_to_string};
 
-    let model_directories = &["src/intelligence/scope_resolution"];
+    let model_directories = &["src/intelligence/scope_resolution", "migrations"];
     let model_files = &[
         "sqlx-data.json",
         "src/indexes/file.rs",
