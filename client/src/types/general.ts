@@ -277,6 +277,7 @@ export type IpynbOutputType = {
   gif?: string;
   svg?: string;
   html?: string;
+  latex?: string;
   text?: string[];
   execution_count?: number;
   prompt_number?: number;
