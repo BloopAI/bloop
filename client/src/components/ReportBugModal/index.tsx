@@ -100,6 +100,7 @@ const ReportBugModal = ({
           ...values,
           unique_id: envConfig.tracking_id || '',
           app_version: release,
+          metadata: JSON.stringify(os),
         });
       }
       setSubmitted(true);
