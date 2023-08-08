@@ -110,6 +110,18 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
               <div className="overflow-auto w-full">
                 {(() => {
                   if (output.data == null) {
+                    if (output.latex) {
+                      return (
+                        <div className="markdown body-s ipynb-markdown">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkMath]}
+                            rehypePlugins={[rehypeMathJax]}
+                          >
+                            {stringify(output.latex)}
+                          </ReactMarkdown>
+                        </div>
+                      );
+                    }
                     if (output.png) {
                       return (
                         <div className="output_png output_subarea">
