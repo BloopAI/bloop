@@ -141,6 +141,12 @@ const ResultFull = ({
     },
     [result?.code, result?.relativePath],
   );
+  const metadata = useMemo(() => {
+    return {
+      hoverableRanges: result?.hoverableRanges || [],
+      lexicalBlocks: [],
+    };
+  }, [result?.hoverableRanges]);
 
   return (
     <>
@@ -220,10 +226,7 @@ const ResultFull = ({
                   language={result.language}
                   repoPath={result.repoPath}
                   relativePath={result.relativePath}
-                  metadata={{
-                    hoverableRanges: result.hoverableRanges,
-                    lexicalBlocks: [],
-                  }}
+                  metadata={metadata}
                   scrollElement={null}
                   containerWidth={
                     window.innerWidth - SIDEBAR_WIDTH - HORIZONTAL_PADDINGS
