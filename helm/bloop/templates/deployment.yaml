@@ -58,6 +58,7 @@ spec:
           - --model-dir=/model
           - --dylib-dir=/dylib
           - --frontend-dist=/frontend
+          - --collection-name={{ .Values.qdrant.collectionName }}
           - --max-threads={{ .Values.bloop.maxThreads }}
           - --answer-api-url={{ .Values.bloop.answerApiUrl }}
           - --qdrant-url={{ .Values.qdrant.url }}

@@ -195,7 +195,6 @@ pub fn by_tokens<'s>(
     src: &'s str,
     tokenizer: &Tokenizer, // we count from line
     token_bounds: Range<usize>,
-    max_lines: usize,
     strategy: OverlapStrategy,
 ) -> Vec<Chunk<'s>> {
     if tokenizer.get_padding().is_some() || tokenizer.get_truncation().is_some() {
@@ -211,7 +210,7 @@ pub fn by_tokens<'s>(
     let Ok(encoding) = tokenizer.encode(src, true)
     else {
         warn!("Could not encode \"{}\"", src);
-        return by_lines(src, max_lines);
+        return by_lines(src, 15);
     };
 
     let offsets = encoding.get_offsets();
