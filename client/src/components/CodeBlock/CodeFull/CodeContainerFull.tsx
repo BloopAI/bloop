@@ -1,7 +1,6 @@
 import React, { memo, useEffect, useRef, useState } from 'react';
 import CodeLine from '../Code/CodeLine';
 import { Token as TokenType } from '../../../types/prism';
-import { propsAreShallowEqual } from '../../../utils';
 import { Range, TokenInfoType, TokenInfoWrapped } from '../../../types/results';
 import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
@@ -199,4 +198,4 @@ const CodeContainerFull = ({
   );
 };
 
-export default memo(CodeContainerFull, propsAreShallowEqual);
+export default memo(CodeContainerFull);

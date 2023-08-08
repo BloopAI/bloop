@@ -6,7 +6,6 @@ import { findElementInCurrentTab } from '../../../utils/domUtils';
 import PortalContainer from '../../PortalContainer';
 import { ChatContext } from '../../../context/chatContext';
 import { UIContext } from '../../../context/uiContext';
-import { propsAreShallowEqual } from '../../../utils';
 
 type Props = {
   popupPosition: {
@@ -126,4 +125,4 @@ const ExplainButton = ({
   );
 };
 
-export default memo(ExplainButton, propsAreShallowEqual);
+export default memo(ExplainButton);

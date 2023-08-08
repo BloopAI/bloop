@@ -2,7 +2,6 @@ import { Align, FixedSizeList } from 'react-window';
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import CodeLine from '../Code/CodeLine';
 import { Token as TokenType } from '../../../types/prism';
-import { propsAreShallowEqual } from '../../../utils';
 import { Range, TokenInfoType, TokenInfoWrapped } from '../../../types/results';
 import { getOffsetForIndexAndAlignment } from '../../../utils/scrollUtils';
 import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
@@ -215,4 +214,4 @@ const CodeContainerVirtualized = ({
   );
 };
 
-export default memo(CodeContainerVirtualized, propsAreShallowEqual);
+export default memo(CodeContainerVirtualized);

@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { memo, useContext } from 'react';
 import MarkdownWithCode from '../../components/MarkdownWithCode';
 import { CopyMD } from '../../icons';
 import { FileModalContext } from '../../context/fileModalContext';
@@ -49,4 +49,4 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
   );
 };
 
-export default FileExplanation;
+export default memo(FileExplanation);

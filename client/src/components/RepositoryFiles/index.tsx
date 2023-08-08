@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { Trans } from 'react-i18next';
 import { FileTreeFileType, RepositoryFile } from '../../types';
 import Accordion from '../Accordion';
@@ -106,4 +106,4 @@ const RepositoryFiles = ({
     </Accordion>
   );
 };
-export default RepositoryFiles;
+export default memo(RepositoryFiles);

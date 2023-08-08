@@ -221,16 +221,6 @@ export const generateUniqueId = (): string => {
   return uuidv4();
 };
 
-export const propsAreShallowEqual = <P>(
-  prevProps: Readonly<P>,
-  nextProps: Readonly<P>,
-) =>
-  Object.keys(prevProps).every(
-    (k) =>
-      prevProps[k as keyof typeof prevProps] ===
-      nextProps[k as keyof typeof nextProps],
-  );
-
 export const deleteAuthCookie = () => {
   document.cookie =
     'auth_cookie=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';

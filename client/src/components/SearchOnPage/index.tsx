@@ -1,6 +1,7 @@
 import React, {
   ChangeEvent,
   Dispatch,
+  memo,
   SetStateAction,
   useCallback,
 } from 'react';
@@ -83,4 +84,4 @@ const SearchOnPage = ({
   ) : null;
 };
 
-export default SearchOnPage;
+export default memo(SearchOnPage);

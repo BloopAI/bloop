@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { memo, useContext, useEffect, useMemo, useState } from 'react';
 import { Trans } from 'react-i18next';
 import { SearchContext } from '../../context/searchContext';
 import { FileTreeFileType, Repository, RepoSource } from '../../types';
@@ -142,4 +142,4 @@ const RepositoryPage = ({ repositoryData }: Props) => {
   );
 };
 
-export default RepositoryPage;
+export default memo(RepositoryPage);

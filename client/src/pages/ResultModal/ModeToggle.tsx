@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useTransition } from 'react';
+import React, { memo, useCallback, useContext, useTransition } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import SelectToggleButton from '../../components/SelectToggleButton';
@@ -75,4 +75,4 @@ const ModeToggle = ({
   );
 };
 
-export default ModeToggle;
+export default memo(ModeToggle);

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { FileTreeFileType } from '../../types';
 import { FolderFilled } from '../../icons';
 import FileIcon from '../FileIcon';
@@ -32,4 +32,4 @@ const FileRow = ({ path, name, type, onClick }: Props) => {
   );
 };
 
-export default FileRow;
+export default memo(FileRow);

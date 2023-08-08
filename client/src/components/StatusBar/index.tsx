@@ -1,13 +1,10 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { memo, useContext, useEffect, useState } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import Button from '../Button';
-import { DiscordLogo, Globe, Magazine, Papers, PowerPlug } from '../../icons';
+import { DiscordLogo, Magazine, PowerPlug } from '../../icons';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { getDiscordLink } from '../../services/api';
-import { MenuListItemType } from '../ContextMenu';
-import DropdownWithIcon from '../Dropdown/WithIcon';
-import { LocaleContext } from '../../context/localeContext';
 import LanguageSelector from '../LanguageSelector';
 import StatusItem from './StatusItem';
 
@@ -90,4 +87,4 @@ const StatusBar = () => {
     </div>
   );
 };
-export default StatusBar;
+export default memo(StatusBar);

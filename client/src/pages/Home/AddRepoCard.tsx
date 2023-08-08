@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { memo } from 'react';
 import {
   ChevronRight,
   Globe2,
@@ -64,4 +65,4 @@ const AddRepoCard = ({ type, onClick }: Props) => {
   );
 };
 
-export default AddRepoCard;
+export default memo(AddRepoCard);

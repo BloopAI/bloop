@@ -240,7 +240,12 @@ function App({ deviceContextValue }: Props) {
   const fetchRepos = useCallback(() => {
     getRepos().then((data) => {
       const list = data?.list?.sort((a, b) => (a.name < b.name ? -1 : 1)) || [];
-      setRepositories(list);
+      setRepositories((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(list)) {
+          return prev;
+        }
+        return list;
+      });
     });
   }, []);
 

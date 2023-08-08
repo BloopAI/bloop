@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { memo, useCallback } from 'react';
 import LocalReposStep from '../../Onboarding/LocalReposStep';
 import GithubReposStep from '../../Onboarding/GithubReposStep';
 import SeparateOnboardingStep from '../../../components/SeparateOnboardingStep';
@@ -37,4 +37,4 @@ const AddRepos = ({ addRepos, onClose }: Props) => {
   );
 };
 
-export default AddRepos;
+export default memo(AddRepos);

@@ -15,7 +15,6 @@ import { Range, TokenInfoType } from '../../../types/results';
 import {
   calculatePopupPositionInsideContainer,
   copyToClipboard,
-  propsAreShallowEqual,
 } from '../../../utils';
 import { Commit } from '../../../types';
 import useAppNavigation from '../../../hooks/useAppNavigation';
@@ -438,4 +437,4 @@ const CodeFull = ({
   );
 };
 
-export default memo(CodeFull, propsAreShallowEqual);
+export default memo(CodeFull);

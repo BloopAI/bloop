@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import isEqual from 'lodash.isequal';
 import { Trans, useTranslation } from 'react-i18next';
@@ -234,4 +234,4 @@ const Filters = ({ showHeader = true, forceOpen }: Props) => {
   );
 };
 
-export default Filters;
+export default memo(Filters);
