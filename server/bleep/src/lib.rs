@@ -258,6 +258,10 @@ impl Application {
                 tokio::spawn(periodic::sync_github_status(self.clone()));
                 tokio::spawn(periodic::check_repo_updates(self.clone()));
                 tokio::spawn(periodic::log_and_branch_rotate(self.clone()));
+
+                if !self.env.is_cloud_instance() {
+                    tokio::spawn(periodic::clear_disk_logs(self.clone()));
+                }
             }
 
             joins.spawn(webserver::start(self));
@@ -350,8 +354,7 @@ fn tracing_subscribe(config: &Configuration) -> bool {
     let env_filter_layer = fmt::layer().with_filter(EnvFilter::from_env(LOG_ENV_VAR));
     let sentry_layer = sentry_layer();
     let log_writer_layer = (!config.disable_log_write).then(|| {
-        let log_dir = config.index_dir.join("logs");
-        let file_appender = tracing_appender::rolling::daily(log_dir, "bloop.log");
+        let file_appender = tracing_appender::rolling::daily(config.log_dir(), "bloop.log");
         let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
         _ = LOGGER_GUARD.set(guard);
         fmt::layer()

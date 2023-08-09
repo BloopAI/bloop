@@ -3,7 +3,7 @@ use std::{borrow::Cow, collections::HashSet};
 use chrono::{Duration, Utc};
 use rand::{distributions, thread_rng, Rng};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
-use tracing::error;
+use tracing::{error, info};
 
 use crate::{
     query::parser::{self, ParsedQuery},
@@ -31,6 +31,42 @@ pub(crate) async fn log_and_branch_rotate(app: crate::Application) {
         if let Err(err) = log.prune(cutoff).await {
             error!(?err, "failed to prune old log entries");
         };
+    }
+}
+
+/// Remove log files older than 7 days.
+///
+/// Runs on startup and every hour thereafter
+pub(crate) async fn clear_disk_logs(app: crate::Application) {
+    let log_dir = app.config.log_dir();
+    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(3600));
+    loop {
+        interval.tick().await;
+        info!("removing old logs");
+
+        let today = Utc::now().date_naive();
+        let allowed_files = (0..7)
+            .map(|offset| today - Duration::days(offset))
+            .map(|d| format!("bloop.log.{}", d.format("%Y-%m-%d")))
+            .collect::<Vec<_>>();
+
+        if let Ok(mut r) = tokio::fs::read_dir(&log_dir).await {
+            while let Ok(Some(entry)) = r.next_entry().await {
+                if !allowed_files
+                    .iter()
+                    .any(|f| f.as_str() == entry.file_name().to_string_lossy())
+                {
+                    if tokio::fs::remove_file(entry.path()).await.is_ok() {
+                        info!("removed old log file {:?}", entry.file_name())
+                    } else {
+                        info!(
+                            "failed to remove log file {:?} ... skipping",
+                            entry.file_name()
+                        )
+                    };
+                }
+            }
+        }
     }
 }
 
