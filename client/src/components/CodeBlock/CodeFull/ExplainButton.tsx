@@ -121,14 +121,14 @@ const ExplainButton = ({
                       setConversation([]);
                       setThreadId('');
                       setSelectedLines([
-                        currentSelection[0]![0] + 1,
-                        currentSelection[1]![0] + 1,
+                        currentSelection[0]![0],
+                        currentSelection[1]![0],
                       ]);
                       setRightPanelOpen(false);
                       setSubmittedQuery(
-                        `#explain_${relativePath}:${
-                          currentSelection[0]![0] + 1
-                        }-${currentSelection[1]![0] + 1}-${Date.now()}`,
+                        `#explain_${relativePath}:${currentSelection[0]![0]}-${
+                          currentSelection[1]![0]
+                        }-${Date.now()}`,
                       );
                       setChatOpen(true);
                       setPopupPosition(null);
