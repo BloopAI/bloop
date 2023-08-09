@@ -94,6 +94,8 @@ const CodeContainerFull = ({
         });
         setPopupVisible(true);
       }
+    } else {
+      setPopupPosition(null);
     }
   }, [tokenInfo]);
 

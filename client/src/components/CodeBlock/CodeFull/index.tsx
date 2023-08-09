@@ -218,16 +218,12 @@ const CodeFull = ({
       tokenName: string,
       tokenRange: string,
     ) => {
-      if (filePath === relativePath) {
-        setScrollToIndex([lineNum, lineNum]);
-      } else {
-        navigateFullResult(filePath, {
-          scrollToLine: `${lineNum}_${lineNum}`,
-          type,
-          tokenName,
-          tokenRange,
-        });
-      }
+      navigateFullResult(filePath, {
+        scrollToLine: `${lineNum}_${lineNum}`,
+        type,
+        tokenName,
+        tokenRange,
+      });
     },
     [repoName, relativePath],
   );
