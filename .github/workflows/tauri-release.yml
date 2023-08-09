@@ -132,20 +132,13 @@ jobs:
       - name: Generate Changelog
         run: |
           release_version="${{ steps.release-version.outputs.RELEASE_VERSION }}"
-          new_description="macOS 11+ (Apple Silicon) - [bloop_${release_version}_aarch64.dmg](https://github.com/BloopAI/bloop/releases/download/v${release_version}/bloop_${release_version}_aarch64.dmg)$'\n'macOS 11+ (Intel) - [bloop_${release_version}_x64.dmg](https://github.com/BloopAI/bloop/releases/download/v${release_version}/bloop_${release_version}_x64.dmg)$'\n'Ubuntu Linux - [bloop_${release_version}_amd64.deb](https://github.com/BloopAI/bloop/releases/download/v${release_version}/bloop_${release_version}_amd64.deb)$'\n'Linux AppImage (Works on most distributions) - [bloop_${release_version}_amd64.AppImage](https://github.com/BloopAI/bloop/releases/download/v${release_version}/bloop_${release_version}_amd64.AppImage)$'\n'Windows - [bloop_${release_version}_x64_en-US.msi](https://github.com/BloopAI/bloop/releases/download/v${release_version}/bloop_${release_version}_x64_en-US.msi)"
-      
-          updated_description="$new_description"$'\n'
-          echo "$updated_description" > ${{ github.workspace }}-CHANGELOG.txt
-
-      - name: Check Changelog
-        run: cat ${{ github.workspace }}-CHANGELOG.txt
+          sed "s/VERSION/${release_version}/g" release_description_template.txt > new_description.txt
+          cat new_description.txt
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/v')
         with:
-          body_path: ${{ github.workspace }}-CHANGELOG.txt
-          generate_release_notes: true
           files: |
             target/${{ matrix.target }}/release/bundle/**/*.deb
             target/${{ matrix.target }}/release/bundle/**/*.AppImage
