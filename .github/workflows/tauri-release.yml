@@ -120,6 +120,21 @@ jobs:
           path: target/${{ matrix.target }}/release/bundle
           retention-days: 5
 
+      - name: Rename tar.gz in macos
+        if: matrix.name == 'macos-11'
+        run: |
+          new_filename="bloop_${{ steps.release-version.outputs.RELEASE_VERSION }}_$(echo ${{ matrix.target }} | cut -d '-' -f 1).app.tar.gz"
+          mv "target/${{ matrix.target }}/release/bundle/macos/bloop.app.tar.gz" "target/${{ matrix.target }}/release/bundle/macos/${new_filename}"
+
+      - name: List files
+        run: ls -R target/${{ matrix.target }}/release/bundle
+
+      - name: Generate Changelog
+        run: |
+          release_version="${{ steps.release-version.outputs.RELEASE_VERSION }}"
+          sed "s/VERSION/${release_version}/g" release_description_template.txt > new_description.txt
+          cat new_description.txt
+
       - name: Upload release assets
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/v')
@@ -128,3 +143,4 @@ jobs:
             target/${{ matrix.target }}/release/bundle/**/*.deb
             target/${{ matrix.target }}/release/bundle/**/*.AppImage
             target/${{ matrix.target }}/release/bundle/**/*.dmg
+            target/${{ matrix.target }}/release/bundle/**/*.tar.gz
