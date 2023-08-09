@@ -33,8 +33,15 @@ async fn connect(data_dir: &str) -> Result<SqlitePool> {
     let url = format!("sqlite://{data_dir}/bleep.db?mode=rwc");
     debug!("loading db from {url}");
     let pool = SqlitePool::connect(&url).await?;
-    sqlx::migrate!().run(&pool).await?;
-    Ok(pool)
+
+    if let Err(e) = sqlx::migrate!().run(&pool).await {
+        // We manually close the pool here to ensure file handles are properly cleaned up on
+        // Windows.
+        pool.close().await;
+        Err(e)?
+    } else {
+        Ok(pool)
+    }
 }
 
 fn reset(data_dir: &str) -> Result<()> {
