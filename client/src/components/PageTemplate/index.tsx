@@ -1,4 +1,4 @@
-import React, { PropsWithChildren, useMemo } from 'react';
+import React, { memo, PropsWithChildren, useMemo } from 'react';
 import * as Sentry from '@sentry/react';
 import NavBar from '../NavBar';
 import StatusBar from '../StatusBar';
@@ -39,6 +39,8 @@ const PageTemplate = ({ children, renderPage }: PropsWithChildren<Props>) => {
     </div>
   );
 };
-export default Sentry.withErrorBoundary(PageTemplate, {
-  fallback: (props) => <ErrorFallback {...props} />,
-});
+export default memo(
+  Sentry.withErrorBoundary(PageTemplate, {
+    fallback: (props) => <ErrorFallback {...props} />,
+  }),
+);

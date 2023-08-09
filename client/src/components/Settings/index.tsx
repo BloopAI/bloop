@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo } from 'react';
+import React, { memo, useContext, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import ListNavigation from '../IdeNavigation/ListNavigation';
 import { Person, TuneControls } from '../../icons';
@@ -84,4 +84,4 @@ const Settings = () => {
   );
 };
 
-export default Settings;
+export default memo(Settings);

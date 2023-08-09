@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { ResultClick, ResultType } from '../../types/results';
 import Pagination from '../../components/Pagination';
 import { ResultsPreviewSkeleton } from '../../components/Skeleton';
@@ -46,4 +46,4 @@ const ResultsList = ({
   );
 };
 
-export default ResultsList;
+export default memo(ResultsList);

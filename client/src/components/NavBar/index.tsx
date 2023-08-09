@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { memo, useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bug, Cog, DoorRight, Magazine, Person } from '../../icons';
 import { MenuListItemType } from '../ContextMenu';
@@ -22,8 +22,43 @@ const NavBar = ({ isSkeleton }: Props) => {
   const { setShouldShowWelcome } = useContext(UIContext.Onboarding);
   const { setGithubConnected } = useContext(UIContext.GitHubConnected);
   const { openLink, isSelfServe, os, envConfig } = useContext(DeviceContext);
-  const { tabs, setActiveTab, activeTab, handleRemoveTab } =
-    useContext(TabsContext);
+  const { tabs } = useContext(TabsContext);
+
+  const dropdownItems = useMemo(() => {
+    return [
+      {
+        text: t('Settings'),
+        icon: <Cog />,
+        type: MenuListItemType.DEFAULT,
+        onClick: () => setSettingsOpen(true),
+      },
+      {
+        text: t('Documentation'),
+        icon: <Magazine />,
+        type: MenuListItemType.DEFAULT,
+        onClick: () => openLink('https://bloop.ai/docs'),
+      },
+      {
+        text: t('Report a bug'),
+        icon: <Bug />,
+        type: MenuListItemType.DEFAULT,
+        onClick: () => setBugReportModalOpen(true),
+      },
+      {
+        text: t('Sign out'),
+        icon: <DoorRight />,
+        type: MenuListItemType.DEFAULT,
+        onClick: () => {
+          setShouldShowWelcome(true);
+          deleteAuthCookie();
+          setGithubConnected(false);
+          if (!isSelfServe) {
+            gitHubLogout();
+          }
+        },
+      },
+    ];
+  }, [isSelfServe, openLink, gitHubLogout]);
 
   return (
     <div
@@ -52,39 +87,7 @@ const NavBar = ({ isSkeleton }: Props) => {
       {!isSkeleton && (
         <div>
           <DropdownWithIcon
-            items={[
-              {
-                text: t('Settings'),
-                icon: <Cog />,
-                type: MenuListItemType.DEFAULT,
-                onClick: () => setSettingsOpen(true),
-              },
-              {
-                text: t('Documentation'),
-                icon: <Magazine />,
-                type: MenuListItemType.DEFAULT,
-                onClick: () => openLink('https://bloop.ai/docs'),
-              },
-              {
-                text: t('Report a bug'),
-                icon: <Bug />,
-                type: MenuListItemType.DEFAULT,
-                onClick: () => setBugReportModalOpen(true),
-              },
-              {
-                text: t('Sign out'),
-                icon: <DoorRight />,
-                type: MenuListItemType.DEFAULT,
-                onClick: () => {
-                  setShouldShowWelcome(true);
-                  deleteAuthCookie();
-                  setGithubConnected(false);
-                  if (!isSelfServe) {
-                    gitHubLogout();
-                  }
-                },
-              },
-            ]}
+            items={dropdownItems}
             icon={
               envConfig.github_user?.avatar_url ? (
                 <div className="w-5 h-5 rounded-full overflow-hidden">
@@ -103,4 +106,4 @@ const NavBar = ({ isSkeleton }: Props) => {
     </div>
   );
 };
-export default NavBar;
+export default memo(NavBar);

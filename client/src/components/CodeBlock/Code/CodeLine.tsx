@@ -13,7 +13,6 @@ import SymbolIcon from '../../CodeSymbolIcon';
 import { SymbolType } from '../../../types/results';
 import { Commit } from '../../../types';
 import { markNode, unmark } from '../../../utils/textSearch';
-import { propsAreShallowEqual } from '../../../utils';
 
 type Props = {
   lineNumber: number;
@@ -272,4 +271,4 @@ const CodeLine = ({
     </div>
   );
 };
-export default memo(CodeLine, propsAreShallowEqual);
+export default memo(CodeLine);

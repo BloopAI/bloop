@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { ChevronRightFilled, FolderClosed } from '../../icons';
 import FileIcon from '../FileIcon';
 import { DirectoryEntry } from '../../types/api';
@@ -104,4 +104,4 @@ const DirEntry = ({
   );
 };
 
-export default DirEntry;
+export default memo(DirEntry);

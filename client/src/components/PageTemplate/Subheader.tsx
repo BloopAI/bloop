@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useMemo } from 'react';
+import React, { memo, useCallback, useContext, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import findLastIndex from 'lodash.findlastindex';
 import SearchInput from '../SearchInput';
@@ -229,4 +229,4 @@ const Subheader = () => {
   );
 };
 
-export default Subheader;
+export default memo(Subheader);

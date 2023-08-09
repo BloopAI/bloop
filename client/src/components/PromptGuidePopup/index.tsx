@@ -1,4 +1,4 @@
-import React, { useCallback, useContext } from 'react';
+import React, { memo, useCallback, useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import ModalOrSidebar from '../ModalOrSidebar';
 import Button from '../Button';
@@ -89,4 +89,4 @@ const PromptGuidePopup = () => {
   );
 };
 
-export default PromptGuidePopup;
+export default memo(PromptGuidePopup);

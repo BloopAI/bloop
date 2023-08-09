@@ -1,5 +1,6 @@
 import React, {
   ChangeEvent,
+  memo,
   useCallback,
   useContext,
   useEffect,
@@ -266,4 +267,4 @@ const ReportBugModal = ({
   );
 };
 
-export default ReportBugModal;
+export default memo(ReportBugModal);

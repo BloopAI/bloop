@@ -1,6 +1,8 @@
 import React, {
   Dispatch,
+  memo,
   SetStateAction,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -72,6 +74,10 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
     };
   }, []);
 
+  const onDelete = useCallback((ref: string) => {
+    setReposToShow((prev) => prev.filter((r) => r.ref !== ref));
+  }, []);
+
   return (
     <div className="p-8 flex-1 overflow-x-auto relative">
       <h4 className="mb-3">
@@ -92,9 +98,7 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
                 ? currentlySyncingRepo
                 : null
             }
-            onDelete={() => {
-              setReposToShow((prev) => prev.filter((r) => r.ref !== ref));
-            }}
+            onDelete={onDelete}
             indexedBranches={r.branch_filter?.select}
           />
         ))}
@@ -124,4 +128,4 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
   );
 };
 
-export default ReposSection;
+export default memo(ReposSection);

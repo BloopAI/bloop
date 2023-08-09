@@ -1,4 +1,10 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
@@ -198,4 +204,4 @@ const Onboarding = () => {
   );
 };
 
-export default Onboarding;
+export default memo(Onboarding);

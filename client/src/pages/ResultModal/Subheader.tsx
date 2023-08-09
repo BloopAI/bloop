@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import FileIcon from '../../components/FileIcon';
 import BreadcrumbsPath from '../../components/BreadcrumbsPath';
 import FileMenu from '../../components/FileMenu';
@@ -36,4 +36,4 @@ const Subheader = ({
   );
 };
 
-export default Subheader;
+export default memo(Subheader);

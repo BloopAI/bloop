@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from 'date-fns';
-import { MouseEvent, useCallback, useContext, useMemo } from 'react';
+import { memo, MouseEvent, useCallback, useContext, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import {
   GitHubLogo,
@@ -28,7 +28,7 @@ type Props = {
   repoRef: string;
   provider: 'local' | 'github';
   syncStatus?: { percentage: number } | null;
-  onDelete: () => void;
+  onDelete: (ref: string) => void;
   indexedBranches?: string[];
 };
 
@@ -85,7 +85,7 @@ const RepoCard = ({
       if (tabs.find((t) => t.key === repoRef)) {
         handleRemoveTab(repoRef);
       }
-      onDelete();
+      onDelete(repoRef);
     },
     [repoRef, tabs],
   );
@@ -215,4 +215,4 @@ const RepoCard = ({
   );
 };
 
-export default RepoCard;
+export default memo(RepoCard);

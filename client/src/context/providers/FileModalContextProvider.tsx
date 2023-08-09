@@ -1,4 +1,5 @@
 import React, {
+  memo,
   PropsWithChildren,
   useCallback,
   useContext,
@@ -54,64 +55,65 @@ const getTabNavHistory = (
   ];
 };
 
-export const FileModalContextProvider = ({
-  children,
-  tab,
-}: PropsWithChildren<Props>) => {
-  const [isFileModalOpen, setFileModalOpen] = useState(false);
-  const [path, setPath] = useState('');
-  const [scrollToLine, setScrollToLine] = useState<string | undefined>();
-  const [highlightColor, setHighlightColor] = useState<string | undefined>();
-  const { updateTabNavHistory } = useContext(TabsContext);
+export const FileModalContextProvider = memo(
+  ({ children, tab }: PropsWithChildren<Props>) => {
+    const [isFileModalOpen, setFileModalOpen] = useState(false);
+    const [path, setPath] = useState('');
+    const [scrollToLine, setScrollToLine] = useState<string | undefined>();
+    const [highlightColor, setHighlightColor] = useState<string | undefined>();
+    const { updateTabNavHistory } = useContext(TabsContext);
 
-  const openFileModal = useCallback(
-    (p: string, line?: string, color?: string, noNavUpdate?: boolean) => {
-      setPath(p);
-      setScrollToLine(line);
-      setHighlightColor(color);
-      setFileModalOpen(true);
-      if (!noNavUpdate) {
-        updateTabNavHistory(tab.key, (prev) =>
-          getTabNavHistory(prev, true, line, color, p),
-        );
-      }
-    },
-    [],
-  );
+    const openFileModal = useCallback(
+      (p: string, line?: string, color?: string, noNavUpdate?: boolean) => {
+        setPath(p);
+        setScrollToLine(line);
+        setHighlightColor(color);
+        setFileModalOpen(true);
+        if (!noNavUpdate) {
+          updateTabNavHistory(tab.key, (prev) =>
+            getTabNavHistory(prev, true, line, color, p),
+          );
+        }
+      },
+      [],
+    );
 
-  const closeFileModalOpen = useCallback(
-    (noNavUpdate?: boolean) => {
-      setFileModalOpen(false);
-      if (!noNavUpdate) {
-        updateTabNavHistory(tab.key, (prev) =>
-          getTabNavHistory(prev, false, scrollToLine, highlightColor, path),
-        );
-      }
-    },
-    [path, highlightColor, scrollToLine],
-  );
+    const closeFileModalOpen = useCallback(
+      (noNavUpdate?: boolean) => {
+        setFileModalOpen(false);
+        if (!noNavUpdate) {
+          updateTabNavHistory(tab.key, (prev) =>
+            getTabNavHistory(prev, false, scrollToLine, highlightColor, path),
+          );
+        }
+      },
+      [path, highlightColor, scrollToLine],
+    );
 
-  const contextValue = useMemo(
-    () => ({
-      isFileModalOpen,
-      closeFileModalOpen,
-      path,
-      scrollToLine,
-      openFileModal,
-      highlightColor,
-    }),
-    [
-      isFileModalOpen,
-      path,
-      scrollToLine,
-      openFileModal,
-      highlightColor,
-      closeFileModalOpen,
-    ],
-  );
-  return (
-    <FileModalContext.Provider value={contextValue}>
-      {children}
-    </FileModalContext.Provider>
-  );
-};
+    const contextValue = useMemo(
+      () => ({
+        isFileModalOpen,
+        closeFileModalOpen,
+        path,
+        scrollToLine,
+        openFileModal,
+        highlightColor,
+      }),
+      [
+        isFileModalOpen,
+        path,
+        scrollToLine,
+        openFileModal,
+        highlightColor,
+        closeFileModalOpen,
+      ],
+    );
+    return (
+      <FileModalContext.Provider value={contextValue}>
+        {children}
+      </FileModalContext.Provider>
+    );
+  },
+);
+
+FileModalContextProvider.displayName = 'FileModalContextProvider';
