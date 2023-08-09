@@ -148,6 +148,7 @@ jobs:
         if: matrix.name == 'macos-11'
         run: |
           new_filename="bloop_${{ steps.release-version.outputs.RELEASE_VERSION }}_$(echo ${{ matrix.target }} | cut -d '-' -f 1).app.tar.gz"
+          echo "${new_filename}"
           mv "target/${{ matrix.target }}/release/bundle/macos/bloop.app.tar.gz" "target/${{ matrix.target }}/release/bundle/macos/${new_filename}"
 
       - name: List files
