@@ -1388,6 +1388,7 @@ h5, .h5 {
   border: 1px solid rgb(var(--bg-border));
   border-radius: 8px;
   padding: 12px;
+  white-space: pre-wrap;
 }
 
 .hljs-addition {
