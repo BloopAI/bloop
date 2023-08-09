@@ -48,13 +48,15 @@ pub(crate) async fn clear_disk_logs(app: crate::Application) {
         let allowed_files = (0..7)
             .map(|offset| today - Duration::days(offset))
             .map(|d| format!("bloop.log.{}", d.format("%Y-%m-%d")))
-            .collect::<Vec<_>>();
+            .collect::<HashSet<_>>();
 
         if let Ok(mut r) = tokio::fs::read_dir(&log_dir).await {
             while let Ok(Some(entry)) = r.next_entry().await {
-                if !allowed_files
-                    .iter()
-                    .any(|f| f.as_str() == entry.file_name().to_string_lossy())
+                if entry
+                    .file_name()
+                    .to_str()
+                    .map(|f| allowed_files.contains(f))
+                    .unwrap_or_default()
                 {
                     if tokio::fs::remove_file(entry.path()).await.is_ok() {
                         info!("removed old log file {:?}", entry.file_name())
