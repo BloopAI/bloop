@@ -146,7 +146,9 @@ jobs:
 
       - name: Rename tar.gz in macos
         if: matrix.name == 'macos-11'
-        run: mv target/${{ matrix.target }}/release/bundle/macos/bloop.app.tar.gz target/${{ matrix.target }}/release/bundle/macos/bloop_${{ steps.release-version.outputs.RELEASE_VERSION }}_$(echo ${{ matrix.target }} | cut -d '-' -f 1).app.tar.gz
+        run: |
+          modified_target=$(echo "${{ matrix.target }}" | cut -d '-' -f 1)
+          mv target/${{ matrix.target }}/release/bundle/macos/bloop.app.tar.gz target/${{ matrix.target }}/release/bundle/macos/bloop_${{ steps.release-version.outputs.RELEASE_VERSION }}_${{ modified_target }}.app.tar.gz
 
       - name: List files
         run: ls -R target/${{ matrix.target }}/release/bundle
