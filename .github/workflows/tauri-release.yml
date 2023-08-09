@@ -150,13 +150,13 @@ jobs:
 
       - name: List files
         run: ls -R target/${{ matrix.target }}/release/bundle
-
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/v')
-        with:
-          files: |
-            target/${{ matrix.target }}/release/bundle/**/*.deb
-            target/${{ matrix.target }}/release/bundle/**/*.AppImage
-            target/${{ matrix.target }}/release/bundle/**/*.dmg
-            target/${{ matrix.target }}/release/bundle/**/*.tar.gz
+#
+#      - name: Upload release assets
+#        uses: softprops/action-gh-release@v1
+#        if: startsWith(github.ref, 'refs/tags/v')
+#        with:
+#          files: |
+#            target/${{ matrix.target }}/release/bundle/**/*.deb
+#            target/${{ matrix.target }}/release/bundle/**/*.AppImage
+#            target/${{ matrix.target }}/release/bundle/**/*.dmg
+#            target/${{ matrix.target }}/release/bundle/**/*.tar.gz
