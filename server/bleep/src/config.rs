@@ -295,6 +295,11 @@ impl Configuration {
             dylib_dir: b.dylib_dir.or(a.dylib_dir),
         }
     }
+
+    /// Directory where logs are written to
+    pub fn log_dir(&self) -> PathBuf {
+        self.index_dir.join("logs")
+    }
 }
 
 pub fn serialize_secret_opt_str<S>(
