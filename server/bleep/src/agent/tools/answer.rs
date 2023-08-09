@@ -66,7 +66,7 @@ impl Agent {
                 .snippet
                 .lines()
                 .enumerate()
-                .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line))
+                .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line + 1))
                 .collect::<String>();
 
             let formatted_snippet = format!("### {} ###\n{snippet}\n\n", chunk.path);
@@ -279,8 +279,7 @@ impl Agent {
                 .iter()
                 .flat_map(|(path, spans)| spans.iter().map(move |s| (path, s)))
                 .map(|(path, span)| {
-                    let range = span.start.saturating_sub(1)..span.end.saturating_sub(1);
-                    let snippet = lines_by_file.get(path).unwrap()[range].join("\n");
+                    let snippet = lines_by_file.get(path).unwrap()[span.clone()].join("\n");
                     bpe.encode_ordinary(&snippet).len()
                 })
                 .sum::<usize>();
@@ -305,14 +304,11 @@ impl Agent {
 
                     let old_span = span.clone();
 
-                    // Decrease the start line, but make sure that we don't end up with 0, as our lines
-                    // are 1-based.
-                    span.start = span.start.saturating_sub(range_step).max(1);
+                    span.start = span.start.saturating_sub(range_step);
 
-                    // Expand the end line forwards, capping at the total number of lines (NB: this is
-                    // also 1-based).
+                    // Expand the end line forwards, capping at the total number of lines.
                     span.end += range_step;
-                    span.end = span.end.min(file_lines);
+                    span.end = span.end.min(file_lines.saturating_sub(1));
 
                     if *span != old_span {
                         debug!(?path, "growing span");

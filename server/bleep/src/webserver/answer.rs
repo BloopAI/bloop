@@ -419,8 +419,8 @@ pub async fn explain(
 
     let snippet = file_content
         .lines()
-        .skip(params.line_start.saturating_sub(1))
-        .take(params.line_end + 1 - params.line_start)
+        .skip(params.line_start)
+        .take(params.line_end - params.line_start)
         .collect::<Vec<_>>()
         .join("\n");
 
