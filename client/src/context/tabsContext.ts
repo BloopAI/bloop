@@ -28,6 +28,7 @@ export const TabsContext = createContext<ContextType>({
       key: 'initial',
       name: 'Home',
       repoName: '',
+      repoRef: '',
       source: RepoSource.LOCAL,
       navigationHistory: [],
     },
