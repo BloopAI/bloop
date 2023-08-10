@@ -74,8 +74,8 @@ impl Exchange {
     ///
     /// This returns a tuple of `(full_text, conclusion)`.
     pub fn answer(&self) -> Option<(&str, &str)> {
-        match (&self.conclusion, &self.answer) {
-            (Some(conclusion), Some(answer)) => Some((conclusion.as_str(), answer.as_str())),
+        match (&self.answer, &self.conclusion) {
+            (Some(answer), Some(conclusion)) => Some((answer.as_str(), conclusion.as_str())),
             _ => None,
         }
     }
