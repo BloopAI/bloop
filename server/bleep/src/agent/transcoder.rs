@@ -136,8 +136,8 @@ pub fn encode(markdown: &str, conclusion: Option<&str>) -> String {
                 let lang = attributes.get("lang")?;
                 let mut lines = attributes.get("lines")?.split('-');
 
-                let start_line = lines.next()?;
-                let end_line = lines.next()?;
+                let start_line = lines.next()?.parse::<usize>().ok()? + 1;
+                let end_line = lines.next()?.parse::<usize>().ok()? + 1;
 
                 Some(format!(
                     "<QuotedCode>\n\
@@ -340,8 +340,8 @@ impl CodeChunk {
                 code,
                 language,
                 path.as_str(),
-                *start_line,
-                *end_line,
+                start_line.map(|n| n.saturating_sub(1)),
+                end_line.map(|n| n.saturating_sub(1)),
             ),
             CodeChunk::GeneratedCode { code, language } => {
                 ("Generated", code, language, "", None, None)
