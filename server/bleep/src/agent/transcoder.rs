@@ -713,7 +713,7 @@ fn foo<T>(t: T) -> bool {
 
 Then, we test some quoted code:
 
-``` type:Quoted,lang:Rust,path:src/main.rs,lines:10-12
+``` type:Quoted,lang:Rust,path:src/main.rs,lines:9-11
 fn foo<T>(t: T) -> bool {
     &foo < &bar<i32>(t)
 }
@@ -874,7 +874,7 @@ export const saveBugReport = (report: {
 
 Here is the relevant code:
 
-``` type:Quoted,lang:TypeScript,path:client/src/services/api.ts,lines:168-172
+``` type:Quoted,lang:TypeScript,path:client/src/services/api.ts,lines:167-171
 export const saveBugReport = (report: {
   email: string;
   name: string;
@@ -927,7 +927,7 @@ Hello again, world.
     fn test_encode() {
         let input = "Foo
 
-``` type:Quoted,lang:Rust,path:src/main.rs,lines:1-3
+``` type:Quoted,lang:Rust,path:src/main.rs,lines:0-2
 fn main() {
     println!(\"hello world\");
 }
@@ -979,7 +979,7 @@ fn main() {
     fn test_encode_summarized() {
         let input = "Foo
 
-``` type:Quoted,lang:Rust,path:src/main.rs,lines:1-3
+``` type:Quoted,lang:Rust,path:src/main.rs,lines:0-2
 fn main() {
     println!(\"hello world\");
 }

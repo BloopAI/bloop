@@ -234,12 +234,13 @@ impl Agent {
         let context_size = tiktoken_rs::model::get_context_size(gpt_model);
         let max_tokens = (context_size as f32 * CONTEXT_CODE_RATIO) as usize;
 
+        // Note: The end line number here is *not* inclusive.
         let mut spans_by_path = HashMap::<_, Vec<_>>::new();
         for c in self.code_chunks().filter(|c| aliases.contains(&c.alias)) {
             spans_by_path
                 .entry(c.path.clone())
                 .or_default()
-                .push(c.start_line..c.end_line);
+                .push(c.start_line..c.end_line + 1);
         }
 
         debug!(?spans_by_path, "expanding spans");
@@ -308,7 +309,7 @@ impl Agent {
 
                     // Expand the end line forwards, capping at the total number of lines.
                     span.end += range_step;
-                    span.end = span.end.min(file_lines.saturating_sub(1));
+                    span.end = span.end.min(file_lines);
 
                     if *span != old_span {
                         debug!(?path, "growing span");
@@ -345,8 +346,7 @@ impl Agent {
             .into_iter()
             .flat_map(|(path, spans)| spans.into_iter().map(move |s| (path.clone(), s)))
             .map(|(path, span)| {
-                let range = span.start.saturating_sub(1)..span.end.saturating_sub(1);
-                let snippet = lines_by_file.get(&path).unwrap()[range].join("\n");
+                let snippet = lines_by_file.get(&path).unwrap()[span.clone()].join("\n");
 
                 CodeChunk {
                     alias: self.get_path_alias(&path),
