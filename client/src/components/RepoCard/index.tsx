@@ -76,15 +76,16 @@ const RepoCard = ({
       isGh ? RepoSource.GH : RepoSource.LOCAL,
       indexedBranches?.[0],
     );
-  }, [repoName, provider, isGithubConnected, sync_status, last_index]);
+  }, [repoRef, repoName, isGh, last_index, indexedBranches, handleAddTab]);
 
   const onRepoRemove = useCallback(
     (e: MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation();
       deleteRepo(repoRef);
-      if (tabs.find((t) => t.key === repoRef)) {
-        handleRemoveTab(repoRef);
-      }
+      const tabsForThisRepo = tabs.filter((t) => t.repoRef === repoRef);
+      tabsForThisRepo.forEach((t) => {
+        handleRemoveTab(t.key);
+      });
       onDelete(repoRef);
     },
     [repoRef, tabs],

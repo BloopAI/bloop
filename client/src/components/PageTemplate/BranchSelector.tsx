@@ -35,16 +35,16 @@ const BranchSelector = () => {
   );
 
   const currentRepo = useMemo(() => {
-    return repositories?.find((r) => r.ref === tab.key);
-  }, [repositories, tab.key]);
+    return repositories?.find((r) => r.ref === tab.repoRef);
+  }, [repositories, tab.repoRef]);
 
   const allBranches = useMemo(() => {
     return [...(currentRepo?.branches || [])].reverse();
-  }, [currentRepo, tab.key]);
+  }, [currentRepo, tab.repoRef]);
 
   const indexedBranches = useMemo(() => {
     return currentRepo?.branch_filter?.select || [];
-  }, [currentRepo, tab.key]);
+  }, [currentRepo, tab.repoRef]);
 
   const branchesToShow = useMemo(() => {
     return indexedBranches
@@ -67,7 +67,7 @@ const BranchSelector = () => {
     eventSource.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
-        if (data.ref !== tab.key) {
+        if (data.ref !== tab.repoRef) {
           return;
         }
         if (data.ev?.status_change) {
@@ -119,7 +119,7 @@ const BranchSelector = () => {
     return () => {
       eventSource?.close();
     };
-  }, [tab.key]);
+  }, [tab.repoRef]);
 
   const items = useMemo(() => {
     return branchesToShow
@@ -131,7 +131,7 @@ const BranchSelector = () => {
           selectedBranch={selectedBranch}
           setSelectedBranch={setSelectedBranch}
           setOpen={setOpen}
-          repoRef={tab.key}
+          repoRef={tab.repoRef}
           isIndexed={indexedBranches.includes(itemName)}
           isIndexing={indexing.branch === itemName}
           percentage={indexing.percentage}

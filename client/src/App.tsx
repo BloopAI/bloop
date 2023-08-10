@@ -37,6 +37,7 @@ function App({ deviceContextValue }: Props) {
       key: 'initial',
       name: 'Home',
       repoName: '',
+      repoRef: '',
       source: RepoSource.LOCAL,
       navigationHistory: [],
     },
@@ -59,7 +60,7 @@ function App({ deviceContextValue }: Props) {
       }
       const lastNav = tab.navigationHistory[tab.navigationHistory.length - 1];
       navigate(
-        `/${encodeURIComponent(activeTab)}/${encodeURIComponent(
+        `/${encodeURIComponent(tab.repoRef)}/${encodeURIComponent(
           tab.branch || 'all',
         )}/${lastNav ? buildURLPart(lastNav) : ''}`,
       );
@@ -76,21 +77,15 @@ function App({ deviceContextValue }: Props) {
       navHistory?: NavigationItem[],
     ) => {
       const newTab = {
-        key: repoRef,
+        key: repoRef + '#' + Date.now(),
         name,
         repoName,
+        repoRef,
         source,
         branch,
         navigationHistory: navHistory || [],
       };
-      setTabs((prev) => {
-        const existing = prev.find((t) => t.key === newTab.key);
-        if (existing) {
-          setActiveTab(existing.key);
-          return prev;
-        }
-        return [...prev, newTab];
-      });
+      setTabs((prev) => [...prev, newTab]);
       setActiveTab(newTab.key);
     },
     [],

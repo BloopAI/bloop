@@ -98,7 +98,7 @@ const Chat = () => {
           : `?q=${encodeURIComponent(query)}${
               selectedBranch ? ` branch:${selectedBranch}` : ''
             }`
-      }&repo_ref=${tab.key}${
+      }&repo_ref=${tab.repoRef}${
         threadId
           ? `&thread_id=${threadId}${
               queryIdToEdit ? `&parent_query_id=${queryIdToEdit}` : ''
@@ -449,7 +449,7 @@ const Chat = () => {
                   : conversation.slice(0, hideMessagesFrom + 1)
               }
               threadId={threadId}
-              repoRef={tab.key}
+              repoRef={tab.repoRef}
               isLoading={isLoading}
               repoName={tab.repoName}
               onMessageEdit={onMessageEdit}
@@ -518,7 +518,7 @@ const Chat = () => {
         setActive={setChatOpen}
         setConversation={setConversation}
         setThreadId={setThreadId}
-        repoRef={tab.key}
+        repoRef={tab.repoRef}
         repoName={tab.repoName}
         handleNewConversation={handleNewConversation}
       />
