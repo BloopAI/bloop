@@ -303,9 +303,7 @@ impl<'a> ChunkCache<'a> {
 
         // qdrant doesn't like empty payloads.
         if !new.is_empty() {
-            qdrant
-                .upsert_points_blocking(collection_name, new, None)
-                .await?;
+            qdrant.upsert_points(collection_name, new, None).await?;
         }
         Ok(new_size)
     }
@@ -395,7 +393,7 @@ impl<'a> ChunkCache<'a> {
 
             qdrant_updates.push(async move {
                 qdrant
-                    .set_payload_blocking(collection_name, &id, payload, None)
+                    .set_payload(collection_name, &id, payload, None)
                     .await
             });
             next = entry.next();
