@@ -1,7 +1,7 @@
 {
   "name": "@bloop/client",
   "private": true,
-  "version": "0.4.12",
+  "version": "0.4.13",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
