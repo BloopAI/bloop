@@ -4,7 +4,7 @@
 //! instead of regular Markdown code blocks. This module both decodes this format into markdown
 //! components, and encodes them back.
 
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, mem};
 
 use anyhow::{Context, Result};
 use comrak::nodes::{NodeHtmlBlock, NodeValue};
@@ -53,6 +53,8 @@ pub fn decode(llm_message: &str) -> (String, Option<String>) {
     children.next().unwrap().detach();
 
     for block in children {
+        offset_embedded_link_ranges(block, -1);
+
         match &block.data.borrow().value {
             NodeValue::Paragraph => {
                 // Store our reconstructed markdown summary here, if it is found
@@ -105,6 +107,42 @@ pub fn decode(llm_message: &str) -> (String, Option<String>) {
     (comrak_to_string(root), None)
 }
 
+/// Offset line ranges in embedded links by a specific value.
+///
+/// This can be used to offset lines by one, either positively or negatively.
+fn offset_embedded_link_ranges<'a>(element: &'a comrak::nodes::AstNode<'a>, offset: i32) -> bool {
+    // We have to convert links to use 0-based indexes as the model works with 1-based indexes.
+    //
+    // TODO: We can update the model so that it works with 0-based indexes, and remove this
+    // altogether.
+
+    match &mut element.data.borrow_mut().value {
+        NodeValue::Link(link) => {
+            let url = mem::take(&mut link.url);
+            link.url = url
+                .split_once('#')
+                .and_then(|(url, anchor)| {
+                    let (start, end) = anchor.split_once('-')?;
+                    let start = start.get(1..)?.parse::<usize>().ok()?;
+                    let end = end.get(1..)?.parse::<usize>().ok()?;
+
+                    Some(format!(
+                        "{url}#L{}-L{}",
+                        start as i32 + offset,
+                        end as i32 + offset
+                    ))
+                })
+                .unwrap_or(url);
+
+            true
+        }
+
+        _ => element
+            .children()
+            .any(|child| offset_embedded_link_ranges(child, offset)),
+    }
+}
+
 pub fn encode(markdown: &str, conclusion: Option<&str>) -> String {
     let arena = comrak::Arena::new();
     let mut options = comrak::ComrakOptions::default();
@@ -112,8 +150,10 @@ pub fn encode(markdown: &str, conclusion: Option<&str>) -> String {
 
     let root = comrak::parse_document(&arena, markdown, &options);
 
-    for child in root.children() {
-        let (info, literal) = match &mut child.data.borrow_mut().value {
+    for block in root.children() {
+        offset_embedded_link_ranges(block, 1);
+
+        let (info, literal) = match &mut block.data.borrow_mut().value {
             NodeValue::CodeBlock(block) => (block.info.clone(), block.literal.clone()),
             _ => continue,
         };
@@ -169,7 +209,7 @@ pub fn encode(markdown: &str, conclusion: Option<&str>) -> String {
         });
 
         if let Some(xml) = xml {
-            child.data.borrow_mut().value = NodeValue::HtmlBlock(NodeHtmlBlock {
+            block.data.borrow_mut().value = NodeValue::HtmlBlock(NodeHtmlBlock {
                 literal: xml,
                 // The block type here is not used.
                 block_type: 0,
@@ -870,7 +910,7 @@ export const saveBugReport = (report: {
 [^summary]: Bug reports are sent to the endpoint `https://api.bloop.ai/bug_reports` via a POST request in the `saveBugReport` function.";
         let (article, summary) = decode(&input);
 
-        let expected_article = "Bug reports are sent to the endpoint `https://api.bloop.ai/bug_reports` via a POST request. This is done in the function [`saveBugReport`](client/src/services/api.ts#L168-L172) in the file `client/src/services/api.ts`.
+        let expected_article = "Bug reports are sent to the endpoint `https://api.bloop.ai/bug_reports` via a POST request. This is done in the function [`saveBugReport`](client/src/services/api.ts#L167-L171) in the file `client/src/services/api.ts`.
 
 Here is the relevant code:
 
@@ -1191,13 +1231,13 @@ func sendSlackMessage(org string) error {
 
 [^summary]: The code in `cmd/worker/slack.go` is a Go program that sends a message to a Slack channel using a webhook URL. The `sendSlackMessage` function constructs a message about a new organization, creates an HTTP POST request with this message, and sends it to the Slack webhook URL."#;
 
-        let expected_body = r#"The code in [`cmd/worker/slack.go`](cmd/worker/slack.go#L1-L42) is a Go program that sends a message to a Slack channel using a webhook URL.
+        let expected_body = r#"The code in [`cmd/worker/slack.go`](cmd/worker/slack.go#L0-L41) is a Go program that sends a message to a Slack channel using a webhook URL.
 
 Here's a breakdown of the code:
 
 - Lines 1-8: The package declaration and import statements. The program imports packages for handling bytes, formatting, HTTP requests, and environment variables.
 
-``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:1-8
+``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:0-7
 package main
 
 import (
@@ -1210,7 +1250,7 @@ import (
 
 - Lines 10-12: A constant `SLACK_WEBHOOK_URL` is declared. This constant is used to get the Slack webhook URL from the environment variables.
 
-``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:10-12
+``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:9-11
 const (
     SLACK_WEBHOOK_URL = "SLACK_WEBHOOK_URL"
 )
@@ -1218,7 +1258,7 @@ const (
 
 - Lines 14-41: The `sendSlackMessage` function is defined. This function takes an organization name as an argument and sends a message to a Slack channel.
 
-``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:14-41
+``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:13-40
 func sendSlackMessage(org string) error {
 
     endpoint := os.Getenv(SLACK_WEBHOOK_URL)
@@ -1256,5 +1296,34 @@ func sendSlackMessage(org string) error {
 
         assert_eq!(expected_body, body);
         assert_eq!(expected_conclusion, conclusion.unwrap());
+    }
+
+    #[test]
+    fn test_decode_indexing_base() {
+        let input = "Foo [bar](bar.rs#L1-L10) quux.
+
+- Fred [thud](thud.rs#L1-L10) corge.";
+
+        let expected = "Foo [bar](bar.rs#L0-L9) quux.
+
+- Fred [thud](thud.rs#L0-L9) corge.";
+
+        let (body, conclusion) = decode(input);
+
+        assert_eq!(expected, body);
+        assert_eq!(None, conclusion);
+    }
+
+    #[test]
+    fn test_encode_indexing_base() {
+        let input = "Foo [bar](bar.rs#L0-L9) quux.
+
+- Fred [thud](thud.rs#L0-L9) corge.";
+
+        let expected = "Foo [bar](bar.rs#L1-L10) quux.
+
+- Fred [thud](thud.rs#L1-L10) corge.";
+
+        assert_eq!(expected, encode(input, None));
     }
 }
