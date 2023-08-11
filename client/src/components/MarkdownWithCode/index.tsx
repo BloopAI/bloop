@@ -34,8 +34,7 @@ const MarkdownWithCode = ({
   isSummary,
   hideCode,
 }: Props) => {
-  const { navigateRepoPath, navigateFullResult } =
-    useContext(AppNavigationContext);
+  const { navigateRepoPath } = useContext(AppNavigationContext);
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const fileChips = useRef([]);
   const { updateScrollToIndex } = useContext(AppNavigationContext);
@@ -66,7 +65,6 @@ const MarkdownWithCode = ({
           <LinkRenderer
             href={props.href}
             navigateRepoPath={navigateRepoPath}
-            navigateFullResult={navigateFullResult}
             repoName={repoName}
             selectedBranch={selectedBranch}
             isSummary={isSummary}

@@ -16,12 +16,6 @@ type Props = {
   href?: string;
   children: ReactNode[];
   navigateRepoPath: (repo: string, path?: string | undefined) => void;
-  navigateFullResult: (
-    path: string,
-    pathParams?: Record<string, string> | undefined,
-    messageIndex?: number | undefined,
-    searchId?: string | undefined,
-  ) => void;
   repoName: string;
   selectedBranch: string | null;
   isSummary?: boolean;
@@ -41,7 +35,6 @@ const LinkRenderer = ({
   href,
   children,
   navigateRepoPath,
-  navigateFullResult,
   repoName,
   selectedBranch,
   isSummary,
@@ -94,7 +87,7 @@ const LinkRenderer = ({
         <FolderChip
           onClick={handleClickFolder}
           path={filePath}
-          navigateFullResult={navigateFullResult}
+          openFileModal={openFileModal}
           repoName={repoName}
           selectedBranch={selectedBranch}
           isSummary={isSummary}

@@ -88,7 +88,7 @@ const FileModalContainer = ({ repoName }: Props) => {
 
   return (
     <ResultModal
-      result={openResult}
+      result={openResult?.relativePath === path ? openResult : null}
       onResultClosed={onResultClosed}
       mode={mode}
       setMode={handleModeChange}
