@@ -256,7 +256,7 @@ fn sanitize(article: &str) -> String {
     let sanitized = xml_for_each(article, |code| Some(fixup_xml_code(code).into_owned()));
     regex!("<!--.*?-->")
         .replace_all(&sanitized, "")
-        .into_owned()
+        .replace("\n\n[^summary]:\n", "\n\n[^summary]: ")
 }
 
 fn fixup_xml_code(xml: &str) -> Cow<str> {
@@ -1380,5 +1380,24 @@ The Helm chart's configurable values are defined in the [`values.yaml`](helm/blo
 
         assert_eq!(expected_body, body);
         assert_eq!(expected_conclusion, conclusion.unwrap());
+    }
+
+    #[test]
+    fn test_malformed_summary() {
+        let input = "Foo bar.
+
+[^summary]:
+Baz quux.";
+
+        let (body, conclusion) = decode(input);
+
+        let arena = comrak::Arena::new();
+        let mut options = comrak::ComrakOptions::default();
+        options.extension.footnotes = true;
+
+        dbg!(comrak::parse_document(&arena, input, &options));
+
+        assert_eq!("Foo bar.", body);
+        assert_eq!("Baz quux.", conclusion.unwrap());
     }
 }
