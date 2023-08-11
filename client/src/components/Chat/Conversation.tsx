@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ChatMessage,
   ChatMessageAuthor,
@@ -26,6 +26,17 @@ const Conversation = ({
   onMessageEdit,
 }: Props) => {
   const messagesRef = useRef<HTMLDivElement>(null);
+  const [userScrolledUp, setUserScrolledUp] = useState(false);
+
+  const handleScroll = useCallback(() => {
+    if (messagesRef.current) {
+      const scrollTop = messagesRef.current.scrollTop;
+      const scrollHeight = messagesRef.current.scrollHeight;
+      const clientHeight = messagesRef.current.clientHeight;
+
+      setUserScrolledUp(scrollTop < scrollHeight - clientHeight);
+    }
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     if (messagesRef.current) {
@@ -38,8 +49,10 @@ const Conversation = ({
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [conversation, scrollToBottom]);
+    if (!userScrolledUp) {
+      scrollToBottom();
+    }
+  }, [conversation, scrollToBottom, userScrolledUp]);
 
   return (
     <div
@@ -47,6 +60,7 @@ const Conversation = ({
         !isHistory ? 'max-h-60' : ''
       }`}
       ref={messagesRef}
+      onScroll={handleScroll}
     >
       {conversation.map((m, i) => (
         <Message
