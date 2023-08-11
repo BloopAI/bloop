@@ -367,8 +367,8 @@ mod test {
 
     #[test]
     fn test_base_name() {
-        assert_eq!(base_name(&format!("bar/foo.txt")), format!("bar/"));
-        assert_eq!(base_name(&format!("bar/")), format!("bar/"));
+        assert_eq!(base_name(&"bar/foo.txt".to_string()), format!("bar/"));
+        assert_eq!(base_name(&"bar/".to_string()), format!("bar/"));
         assert_eq!(base_name("foo.txt"), "");
     }
 }
