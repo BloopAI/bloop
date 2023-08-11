@@ -204,7 +204,7 @@ async fn try_execute_agent(
     QueryLog::new(&app.sql).insert(&params.q).await?;
 
     let gh_token = app
-        .github_token()
+        .answer_api_token()
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .map(|s| s.expose_secret().clone());
 
@@ -227,9 +227,12 @@ async fn try_execute_agent(
             });
             return Ok(Sse::new(Box::pin(out_of_date)));
         }
-        // the Ok(_) case should be unreachable
-        Ok(_) | Err(_) => {
-            warn!("failed to check compatibility ... defaulting to `incompatible`");
+        Ok(_) => unreachable!(),
+        Err(err) => {
+            warn!(
+                ?err,
+                "failed to check compatibility ... defaulting to `incompatible`"
+            );
             let failed_to_check = futures::stream::once(async {
                 Ok(sse::Event::default()
                     .json_data(serde_json::json!({"Err": "failed to check compatibility"}))

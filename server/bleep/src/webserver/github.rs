@@ -1,10 +1,10 @@
 use super::prelude::*;
-use crate::{repo::Backend, Application};
+use crate::{
+    remotes::{github, AuthResponse},
+    repo::Backend,
+    Application,
+};
 
-use either::Either;
-use octocrab::{auth::DeviceCodes, Octocrab};
-use reqwest::header::ACCEPT;
-use secrecy::SecretString;
 use tracing::{debug, error, warn};
 
 use std::time::{Duration, Instant};
@@ -74,39 +74,48 @@ pub(super) async fn status(Extension(app): Extension<Application>) -> impl IntoR
 /// Connect to Github through OAuth Device Flow
 //
 pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoResponse {
-    let client_id = match app.config.github_client_id.as_ref() {
-        Some(id) => id.clone(),
-        None => {
-            return Err(
-                Error::new(ErrorKind::Configuration, "Github Client ID not available")
-                    .with_status(StatusCode::SERVICE_UNAVAILABLE),
-            );
-        }
-    };
+    let state = uuid::Uuid::new_v4().to_string();
 
-    let github = octocrab::Octocrab::builder()
-        .base_uri("https://github.com/")
-        .unwrap()
-        .add_header(ACCEPT, "application/json".to_string())
-        .build()
-        .map_err(|_| Error::internal("failed to build octocrab client"))?;
+    tokio::spawn(poll_for_oauth_token(state.clone(), app.clone()));
 
-    let codes = github
-        .authenticate_as_device(&client_id, ["public_repo", "repo", "read:org"])
-        .await
-        .map_err(|e| Error::internal(format!("failed to authenticate as device: {e:?}")))?;
+    let url_base = app
+        .config
+        .cognito_auth_url
+        .as_ref()
+        .expect("auth not configured");
+    let client_id = app
+        .config
+        .cognito_client_id
+        .as_ref()
+        .expect("auth not configured");
+    let redirect_url = reqwest::Url::parse(
+        app.config
+            .cognito_mgmt_url
+            .as_ref()
+            .expect("auth not configured"),
+    )
+    .unwrap()
+    .join("complete")
+    .unwrap()
+    .to_string();
 
-    tokio::spawn(poll_for_oauth_token(
-        github,
-        client_id,
-        codes.clone(),
-        app.clone(),
-    ));
+    let url = reqwest::Url::parse_with_params(
+        &url_base,
+        &[
+            ("response_type", "code"),
+            ("scope", "email openid profile"),
+            ("redirect_url", &redirect_url),
+            ("client_id", &client_id),
+            ("state", &state),
+        ],
+    )
+    .unwrap()
+    .to_string();
 
-    Ok(json(GithubResponse::AuthenticationNeeded {
-        url: codes.verification_uri,
-        code: codes.user_code,
-    }))
+    json(GithubResponse::AuthenticationNeeded {
+        url,
+        code: "DEAD-BEEF".to_string(),
+    })
 }
 
 /// Remove Github OAuth credentials
@@ -134,17 +143,26 @@ pub(super) async fn logout(Extension(app): Extension<Application>) -> impl IntoR
     )))
 }
 
-async fn poll_for_oauth_token(
-    github: Octocrab,
-    client_id: SecretString,
-    codes: DeviceCodes,
-    app: Application,
-) {
+async fn poll_for_oauth_token(code: String, app: Application) {
     let start = Instant::now();
 
-    let mut interval = Duration::from_secs(codes.interval);
-    let mut clock = tokio::time::interval(interval);
+    let query_url = {
+        let mut url = reqwest::Url::parse(
+            app.config
+                .cognito_mgmt_url
+                .as_ref()
+                .expect("auth not configured"),
+        )
+        .unwrap()
+        .join("access_token")
+        .unwrap();
 
+        url.set_query(Some(&format!("state={code}")));
+        url.to_string()
+    };
+
+    let interval = Duration::from_secs(3);
+    let mut clock = tokio::time::interval(interval);
     debug!(?interval, "github auth started");
 
     let auth = loop {
@@ -155,24 +173,26 @@ async fn poll_for_oauth_token(
             return;
         }
 
-        match codes.poll_once(&github, &client_id).await {
-            Ok(Either::Left(auth)) => break auth,
-            Ok(Either::Right(cont)) => match cont {
-                octocrab::auth::Continue::SlowDown => {
-                    // We were request to slow down. We add one second to the polling
-                    // duration.
-                    interval += Duration::from_secs(5);
-                    debug!(?interval, "slowing down polling");
+        let response = match reqwest::get(&query_url).await {
+            Ok(res) => res.json().await,
+            Err(err) => {
+                warn!(?err, "github authorization failed");
+                return;
+            }
+        };
 
-                    clock = tokio::time::interval(interval);
-                    clock.tick().await;
-                }
-                octocrab::auth::Continue::AuthorizationPending => {
-                    debug!(?interval, "waiting for user");
-                    // The user has not clicked authorize yet, but nothing has gone wrong.
-                    // We keep polling.
-                }
-            },
+        match response {
+            Ok(AuthResponse::Backoff { backoff_secs }) => {
+                clock = tokio::time::interval(Duration::from_secs(backoff_secs));
+                clock.tick().await;
+            }
+            Ok(AuthResponse::Success(success)) => {
+                break success;
+            }
+            Ok(AuthResponse::Error { error }) => {
+                warn!(?error, "bloop authentication failed");
+                return;
+            }
             Err(err) => {
                 warn!(?err, "github authorization failed");
                 return;
@@ -181,7 +201,7 @@ async fn poll_for_oauth_token(
     };
 
     debug!("acquired credentials");
-    app.credentials.set_github(auth.into());
+    app.credentials.set_github(github::Auth::OAuth(auth));
 
     let saved = app
         .config

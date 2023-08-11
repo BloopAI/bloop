@@ -24,6 +24,7 @@ const GitHubConnect = ({ goBack }: { goBack: () => void }) => {
     generateNewCode,
     buttonClicked,
     handleClick,
+    loginUrl
   } = useGitHubAuth(goBack);
   const { t } = useTranslation();
   return (
@@ -109,7 +110,7 @@ const GitHubConnect = ({ goBack }: { goBack: () => void }) => {
           </Button>
           <p className="text-center caption text-label-base">
             <Trans>or visit: </Trans>
-            <span className="text-label-link">github.com/login/device</span>
+            <span className="text-label-link">{loginUrl}</span>
           </p>
         </div>
       </div>

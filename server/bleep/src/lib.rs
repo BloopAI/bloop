@@ -25,7 +25,10 @@ use state::PersistedState;
 use std::fs::canonicalize;
 use user::UserProfile;
 
-use crate::{background::SyncQueue, indexes::Indexes, semantic::Semantic, state::RepositoryPool};
+use crate::{
+    background::SyncQueue, indexes::Indexes, remotes::CognitoGithubTokenBundle, semantic::Semantic,
+    state::RepositoryPool,
+};
 use anyhow::{bail, Result};
 use axum::extract::FromRef;
 
@@ -314,7 +317,7 @@ impl Application {
         self.sync_queue.bind(self.clone())
     }
 
-    fn github_token(&self) -> Result<Option<SecretString>> {
+    fn answer_api_token(&self) -> Result<Option<SecretString>> {
         Ok(if self.env.allow(env::Feature::GithubDeviceFlow) {
             let Some(cred) = self.credentials.github() else {
                 bail!("missing Github token");
@@ -324,18 +327,15 @@ impl Application {
             match cred {
                 State {
                     auth:
-                        Auth::OAuth {
+                        Auth::OAuth(CognitoGithubTokenBundle {
                             access_token: token,
                             ..
-                        },
+                        }),
                     ..
-                } => Some(token),
+                } => Some(token.into()),
 
-                State {
-                    auth: Auth::App { .. },
-                    ..
-                } => {
-                    bail!("cannot connect to answer API using installation token");
+                _ => {
+                    bail!("cannot connect to answer API");
                 }
             }
         } else {

@@ -24,6 +24,21 @@ pub mod github;
 
 type GitCreds = Account;
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub(crate) struct CognitoGithubTokenBundle {
+    pub(crate) access_token: String,
+    pub(crate) refresh_token: String,
+    pub(crate) github_access_token: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(untagged)]
+pub(crate) enum AuthResponse {
+    Backoff { backoff_secs: u64 },
+    Success(CognitoGithubTokenBundle),
+    Error { error: String },
+}
+
 pub(crate) type Result<T> = std::result::Result<T, RemoteError>;
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum RemoteError {
@@ -257,7 +272,8 @@ impl Backends {
         })
     }
 
-    pub(crate) fn set_github(&self, gh: github::State) {
+    pub(crate) fn set_github(&self, gh: impl Into<github::State>) {
+        let gh = gh.into();
         self.backends
             .entry(Backend::Github)
             .and_modify(|existing| {

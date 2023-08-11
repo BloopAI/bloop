@@ -229,7 +229,7 @@ impl StateSource {
     pub(crate) fn initialize_credentials(
         &self,
     ) -> Result<std::collections::HashMap<Backend, BackendCredential>, RepoError> {
-        read_file_or_default(self.credentials.as_ref().unwrap())
+        Ok(read_file_or_default(self.credentials.as_ref().unwrap()).unwrap_or_default())
     }
 
     pub(crate) fn save_credentials(&self, creds: impl Serialize) -> Result<(), RepoError> {

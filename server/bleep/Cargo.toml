@@ -129,6 +129,7 @@ thread-priority = "0.13.1"
 comrak = { default-features = false, git = "https://github.com/kivikakk/comrak" }
 lazy-regex = "3.0.0"
 quick-xml = { version = "0.29.0", features = ["serialize"] }
+jsonwebtokens-cognito = "0.1.1"
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["async_tokio"] }

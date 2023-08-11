@@ -127,6 +127,21 @@ pub struct Configuration {
     pub overlap: Option<OverlapStrategy>,
 
     //
+    // Cognito setup
+    //
+    /// Entry point to the Cognito authentication flow
+    pub cognito_userpool_id: Option<String>,
+
+    /// Entry point to the Cognito authentication flow
+    pub cognito_client_id: Option<String>,
+
+    /// Entry point to the Cognito authentication flow
+    pub cognito_auth_url: Option<String>,
+
+    /// Auth management base URL
+    pub cognito_mgmt_url: Option<String>,
+
+    //
     // Installation-specific values
     //
     #[clap(long)]
@@ -268,6 +283,14 @@ impl Configuration {
                 a.answer_api_url,
                 default_answer_api_url()
             ),
+
+            cognito_userpool_id: b.cognito_userpool_id.or(a.cognito_userpool_id),
+
+            cognito_client_id: b.cognito_client_id.or(a.cognito_client_id),
+
+            cognito_auth_url: b.cognito_auth_url.or(a.cognito_auth_url),
+
+            cognito_mgmt_url: b.cognito_mgmt_url.or(a.cognito_mgmt_url),
 
             github_client_id: b.github_client_id.or(a.github_client_id),
 
