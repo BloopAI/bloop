@@ -172,16 +172,20 @@ pub fn answer_article_prompt(aliases: &[usize], context: &str) -> String {
     // If there is only one alias, return "one" otherwise return "many"
     let one_prompt = format!(
         r#"{context}#####
-        
-        A user is looking at the code above, they'd like you to answer their queries.
+
+A user is looking at the code above, they'd like you to answer their queries.
 
 Your output will be interpreted as bloop-markdown which renders with the following rules:
-- All github-markdown rules are accepted
-- Lines of code can be referenced using the URL format: [foo.rs](src/foo.rs#L50-L78)
-  - In this example, the link is to the file src/foo.rs and the lines 50 to 78
-  - Links should be semantically named to help the user understand when they're clicking on
-- When referring to lines of code, you must use a link
-- When referring to code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, directories, etc), you must use a link"#
+- Inline code must be expressed as a link to the correct line of code using the URL format: `[bar](src/foo.rs#L50)` or `[bar](src/foo.rs#L50-L54)`
+- Do NOT output bare symbols. ALL symbols must include a link
+  - E.g. Do not simply write `Bar`, write [`Bar`](src/bar.rs#L100-L105).
+  - E.g. Do not simply write "Foos are functions that create `Foo` values out of thin air." Instead, write: "Foos are functions that create [`Foo`](src/foo.rs#L80-L120) values out of thin air."
+- Only internal links to the current file work
+
+Here is an example response:
+
+A function [`openCanOfBeans`](src/beans/open.py#L7-L19) is defined. This function is used to handle the opening of beans. It includes the variable [`openCanOfBeans`](src/beans/open.py#L9) which is used to store the value of the tin opener.
+"#
     );
 
     let many_prompt = format!(
@@ -191,7 +195,6 @@ Provide only as much information and code as is necessary to answer the query, b
 When referring to code, you must provide an example in a code block.
 
 Respect these rules at all times:
-- Previous messages in the history may not have been subject to these rules, but you must follow them now
 - Do not refer to paths by alias, expand to the full path
 - Link ALL paths AND code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, directories, etc) by embedding them in a markdown link, with the URL corresponding to the full path, and the anchor following the form `LX` or `LX-LY`, where X represents the starting line number, and Y represents the ending line number, if the reference is more than one line.
   - For example, to refer to lines 50 to 78 in a sentence, respond with something like: The compiler is initialized in [`src/foo.rs`](src/foo.rs#L50-L78)
