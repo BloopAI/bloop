@@ -37,6 +37,7 @@ type Props = {
     | { lines: [number, number]; color: string; index: number }
     | undefined
   )[];
+  hoveredLines: [number, number] | null;
 };
 
 const CodeContainerFull = ({
@@ -59,6 +60,7 @@ const CodeContainerFull = ({
   handleRefsDefsClick,
   relativePath,
   highlights,
+  hoveredLines,
 }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -170,6 +172,11 @@ const CodeContainerFull = ({
               highlights && highlightForLine !== undefined
                 ? highlights[highlightForLine]?.color
                 : highlightColor
+            }
+            hoveredBackground={
+              !!hoveredLines &&
+              index >= hoveredLines[0] &&
+              index <= hoveredLines[1]
             }
             searchTerm={searchTerm}
           >
