@@ -1,6 +1,6 @@
 import { MouseEvent } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { ja, zhCN } from 'date-fns/locale';
+import { ja, zhCN, es } from 'date-fns/locale';
 import { LocaleType, RepoType, RepoUi } from '../types/general';
 import langs from './langs.json';
 
@@ -324,6 +324,8 @@ export const getDateFnsLocale = (locale: LocaleType) => {
       return { locale: ja };
     case 'zhCN':
       return { locale: zhCN };
+    case 'es':
+      return { locale: es };
     default:
       return undefined;
   }

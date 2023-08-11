@@ -309,4 +309,4 @@ export type FileHighlightsType = Record<
   ({ lines: [number, number]; color: string; index: number } | undefined)[]
 >;
 
-export type LocaleType = 'en' | 'ja' | 'zhCN';
+export type LocaleType = 'en' | 'ja' | 'zhCN' | 'es';
