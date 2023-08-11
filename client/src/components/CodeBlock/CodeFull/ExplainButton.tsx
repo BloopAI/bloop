@@ -1,11 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Trans } from 'react-i18next';
 import React, { memo, useContext } from 'react';
-import { Feather, Info, Sparkle } from '../../../icons';
+import { Clipboard, Feather, Info, Sparkle } from '../../../icons';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
 import PortalContainer from '../../PortalContainer';
 import { ChatContext } from '../../../context/chatContext';
 import { UIContext } from '../../../context/uiContext';
+import { DeviceContext } from '../../../context/deviceContext';
+import { copyToClipboard } from '../../../utils';
 
 type Props = {
   popupPosition: {
@@ -38,6 +40,7 @@ const ExplainButton = ({
     setThreadId,
   } = useContext(ChatContext.Setters);
   const { setRightPanelOpen } = useContext(UIContext.RightPanel);
+  const { isSelfServe } = useContext(DeviceContext);
 
   return (
     <PortalContainer>
@@ -63,6 +66,29 @@ const ExplainButton = ({
                 </button>
               ) : (
                 <>
+                  {isSelfServe && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPopupPosition(null);
+                        const url = new URL(window.location.href);
+                        url.searchParams.set(
+                          'scrollToLine',
+                          `${currentSelection[0]![0]}_${
+                            currentSelection[1]![0]
+                          }`,
+                        );
+                        copyToClipboard(url.toString());
+                        closePopup?.();
+                      }}
+                      className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover border-r border-bg-border caption text-label-title"
+                    >
+                      <div className="w-4 h-4">
+                        <Clipboard raw />
+                      </div>
+                      <Trans>Copy link</Trans>
+                    </button>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

@@ -260,5 +260,6 @@
 	"View in {{viewer}}": "View in {{viewer}}",
 	"Open file": "Open file",
 	"Edit": "Edit",
-	"Editing a previously submitted question will discard all answers and questions following it.": "Editing a previously submitted question will discard all answers and questions following it."
+	"Editing a previously submitted question will discard all answers and questions following it.": "Editing a previously submitted question will discard all answers and questions following it.",
+	"Copy link": "Copy link"
 }
