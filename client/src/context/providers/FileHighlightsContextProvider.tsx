@@ -7,18 +7,31 @@ export const FileHighlightsContextProvider = memo(
     const [fileHighlights, setFileHighlights] = useState<FileHighlightsType>(
       {},
     );
+    const [hoveredLines, setHoveredLines] = useState<[number, number] | null>(
+      null,
+    );
 
-    const contextValue = useMemo(
+    const valuesContextValue = useMemo(
       () => ({
         fileHighlights,
-        setFileHighlights,
+        hoveredLines,
       }),
-      [fileHighlights],
+      [fileHighlights, hoveredLines],
+    );
+
+    const settersContextValue = useMemo(
+      () => ({
+        setFileHighlights,
+        setHoveredLines,
+      }),
+      [],
     );
     return (
-      <FileHighlightsContext.Provider value={contextValue}>
-        {children}
-      </FileHighlightsContext.Provider>
+      <FileHighlightsContext.Setters.Provider value={settersContextValue}>
+        <FileHighlightsContext.Values.Provider value={valuesContextValue}>
+          {children}
+        </FileHighlightsContext.Values.Provider>
+      </FileHighlightsContext.Setters.Provider>
     );
   },
 );

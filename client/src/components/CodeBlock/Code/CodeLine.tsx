@@ -39,6 +39,7 @@ type Props = {
   highlightColor?: string | null;
   leftHighlight?: boolean;
   removePaddings?: boolean;
+  hoveredBackground?: boolean;
 };
 
 const CodeLine = ({
@@ -62,6 +63,7 @@ const CodeLine = ({
   lineNumberToShow = lineNumber + 1,
   leftHighlight,
   removePaddings,
+  hoveredBackground,
 }: Props) => {
   const codeRef = useRef<HTMLTableCellElement>(null);
 
@@ -164,7 +166,7 @@ const CodeLine = ({
         lineHidden ? 'opacity-0' : ''
       } ${
         blameLine?.start && lineNumber !== 0 ? ' border-t border-bg-border' : ''
-      }`}
+      } ${hoveredBackground ? 'bg-bg-base' : ''}`}
       data-line-number={lineNumber}
       style={style}
       onMouseDown={(e) => {

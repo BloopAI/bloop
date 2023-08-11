@@ -10,7 +10,7 @@ type Props = {
   path: string;
   selectedBranch: string | null;
   repoName: string;
-  navigateFullResult: (path: string) => void;
+  openFileModal: (path: string) => void;
   isSummary?: boolean;
 };
 
@@ -19,7 +19,7 @@ const FolderChip = ({
   path,
   repoName,
   selectedBranch,
-  navigateFullResult,
+  openFileModal,
   isSummary,
 }: Props) => {
   const fetchFiles = useCallback(
@@ -41,9 +41,9 @@ const FolderChip = ({
 
   const navigateToPath = useCallback(
     (path: string) => {
-      navigateFullResult(path);
+      openFileModal(path);
     },
-    [navigateFullResult],
+    [openFileModal],
   );
   return (
     <>
