@@ -145,6 +145,19 @@ const RepoCard = ({
     return items;
   }, [sync_status, onRepoRemove, onSync, onCancelSync]);
 
+  const syncStatusToUse = useMemo(() => {
+    if (typeof sync_status !== 'string') {
+      return SyncStatus.Error;
+    }
+    if (
+      sync_status === 'done' &&
+      (!last_index || last_index === '1970-01-01T00:00:00Z')
+    ) {
+      return SyncStatus.Queued;
+    }
+    return sync_status;
+  }, [sync_status, last_index]);
+
   return (
     <a
       href="#"
@@ -193,18 +206,12 @@ const RepoCard = ({
           )}
           <span
             className={`w-2 h-2 ${
-              STATUS_MAP[
-                typeof sync_status === 'string' ? sync_status : 'error'
-              ]?.color || 'bg-yellow'
+              STATUS_MAP[syncStatusToUse]?.color || 'bg-yellow'
             } rounded-full`}
           />
           <p className="select-none">
-            {t(
-              STATUS_MAP[
-                typeof sync_status === 'string' ? sync_status : 'error'
-              ]?.text || sync_status,
-            )}
-            {sync_status === 'done' &&
+            {t(STATUS_MAP[syncStatusToUse]?.text || sync_status)}
+            {syncStatusToUse === 'done' &&
               formatDistanceToNow(new Date(last_index), {
                 addSuffix: true,
                 ...(getDateFnsLocale(locale) || {}),
