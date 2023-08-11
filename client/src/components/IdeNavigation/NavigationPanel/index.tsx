@@ -19,15 +19,15 @@ const NavigationPanel = ({ repoName, children }: Props) => {
   );
   return (
     <div className="min-h-full relative flex max-w-[30vw]" style={{ width }}>
-      <div className="flex flex-1 divide-y divide-bg-border bg-bg-base flex-col border-r border-bg-border min-h-full select-none overflow-auto">
+      <div className="flex flex-1 bg-bg-base flex-col border-r border-bg-border min-h-full select-none overflow-auto">
         <div
-          className="w-full border-b border-bg-border flex justify-between py-7 px-8 select-none cursor-pointer"
+          className="w-full border-b border-bg-border flex justify-between h-12 flex-shrink-0 px-6 select-none cursor-pointer"
           onClick={() => navigateRepoPath(repoName)}
         >
           <TextField
-            value={repoName}
+            value={repoName.replace(/^github\.com\//, '')}
             icon={<GitHubLogo />}
-            className={'ellipsis'}
+            className={'ellipsis subhead-s'}
           />
         </div>
         <div className="flex-1 overflow-auto flex flex-col min-h-full">

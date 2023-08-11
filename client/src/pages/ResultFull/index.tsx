@@ -153,7 +153,7 @@ const ResultFull = ({
       <div className="flex-1 overflow-auto w-full box-content flex flex-col">
         <div className="w-full flex flex-col overflow-auto flex-1">
           <div
-            className={`w-full border-b border-bg-border flex justify-between py-3 px-8`}
+            className={`w-full border-b border-bg-border flex justify-between px-3 h-12 flex-shrink-0 bg-bg-base`}
           >
             <div className="flex items-center gap-1 overflow-hidden w-full">
               <FileIcon filename={result?.relativePath?.slice(-5) || ''} />
