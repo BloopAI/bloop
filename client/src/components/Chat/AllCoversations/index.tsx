@@ -135,7 +135,7 @@ const AllConversations = ({
               title={c.title}
               subtitle={format(
                 new Date(c.created_at * 1000),
-                'EEEE, MMMM d, h:m a',
+                'EEEE, MMMM d, HH:mm',
                 getDateFnsLocale(locale),
               )}
               onClick={() => onClick(c.thread_id)}
