@@ -22,7 +22,7 @@ impl Agent {
         debug!("creating article response");
 
         let context = self.answer_context(aliases, ANSWER_MODEL).await?;
-        let system_prompt = prompts::answer_article_prompt(&context);
+        let system_prompt = prompts::answer_article_prompt(&aliases, &context);
         let system_message = llm_gateway::api::Message::system(&system_prompt);
         let history = {
             let h = self.utter_history().collect::<Vec<_>>();

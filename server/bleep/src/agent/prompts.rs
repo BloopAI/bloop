@@ -150,14 +150,48 @@ A: "#
     )
 }
 
-pub fn answer_article_prompt(context: &str) -> String {
+/*
+
     format!(
+        r#"{context}#####
+
+        A user is looking at the code above, they'd like you to answer their queries.
+
+Your output will be interpreted as bloop-markdown which renders with the following rules:
+- All github-markdown rules are accepted
+- Lines of code can be referenced using the URL format: [foo.rs](src/foo.rs#L50-L78)
+  - In this example, the link is to the file src/foo.rs and the lines 50 to 78
+  - Links should be semantically named to help the user understand when they're clicking on
+- When referring to lines of code, you must use a link
+- When referring to code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, directories, etc), you must use a link"#
+    )
+
+*/
+
+pub fn answer_article_prompt(aliases: &[usize], context: &str) -> String {
+    // If there is only one alias, return "one" otherwise return "many"
+    let one_prompt = format!(
+        r#"{context}#####
+        
+        A user is looking at the code above, they'd like you to answer their queries.
+
+Your output will be interpreted as bloop-markdown which renders with the following rules:
+- All github-markdown rules are accepted
+- Lines of code can be referenced using the URL format: [foo.rs](src/foo.rs#L50-L78)
+  - In this example, the link is to the file src/foo.rs and the lines 50 to 78
+  - Links should be semantically named to help the user understand when they're clicking on
+- When referring to lines of code, you must use a link
+- When referring to code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, directories, etc), you must use a link"#
+    );
+
+    let many_prompt = format!(
         r#"{context}Your job is to answer a query about a codebase using the information above.
 
 Provide only as much information and code as is necessary to answer the query, but be concise. Keep number of quoted lines to a minimum when possible. If you do not have enough information needed to answer the query, do not make up an answer.
 When referring to code, you must provide an example in a code block.
 
 Respect these rules at all times:
+- Previous messages in the history may not have been subject to these rules, but you must follow them now
 - Do not refer to paths by alias, expand to the full path
 - Link ALL paths AND code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, directories, etc) by embedding them in a markdown link, with the URL corresponding to the full path, and the anchor following the form `LX` or `LX-LY`, where X represents the starting line number, and Y represents the ending line number, if the reference is more than one line.
   - For example, to refer to lines 50 to 78 in a sentence, respond with something like: The compiler is initialized in [`src/foo.rs`](src/foo.rs#L50-L78)
@@ -207,7 +241,14 @@ println!("hello world!");
   - Note: the line range is inclusive
 - When writing example code blocks, use `<GeneratedCode>`, and when quoting existing code, use `<QuotedCode>`.
 - You MUST use XML code blocks instead of markdown."#
-    )
+    );
+
+    let one_or_many = if aliases.len() == 1 {
+        one_prompt
+    } else {
+        many_prompt
+    };
+    one_or_many.to_string()
 }
 
 pub fn hypothetical_document_prompt(query: &str) -> String {
