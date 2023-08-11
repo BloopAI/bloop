@@ -169,7 +169,7 @@ Your output will be interpreted as bloop-markdown which renders with the followi
 */
 
 pub fn answer_article_prompt(aliases: &[usize], context: &str) -> String {
-    // If there is only one alias, return "one" otherwise return "many"
+    // Return different prompts depending on whether there is one or many aliases
     let one_prompt = format!(
         r#"{context}#####
 
@@ -251,7 +251,7 @@ println!("hello world!");
     } else {
         many_prompt
     };
-    one_or_many.to_string()
+    one_or_many
 }
 
 pub fn hypothetical_document_prompt(query: &str) -> String {
