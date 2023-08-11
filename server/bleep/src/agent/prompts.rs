@@ -246,12 +246,11 @@ println!("hello world!");
 - You MUST use XML code blocks instead of markdown."#
     );
 
-    let one_or_many = if aliases.len() == 1 {
+    if aliases.len() == 1 {
         one_prompt
     } else {
         many_prompt
-    };
-    one_or_many
+    }
 }
 
 pub fn hypothetical_document_prompt(query: &str) -> String {
