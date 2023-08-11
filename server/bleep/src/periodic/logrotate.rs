@@ -52,7 +52,7 @@ pub(crate) async fn clear_disk_logs(app: crate::Application) {
 
         if let Ok(mut r) = tokio::fs::read_dir(&log_dir).await {
             while let Ok(Some(entry)) = r.next_entry().await {
-                if entry
+                if !entry
                     .file_name()
                     .to_str()
                     .map(|f| allowed_files.contains(f))
