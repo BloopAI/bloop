@@ -102,7 +102,7 @@ const ExplainButton = ({
                       setSubmittedQuery(
                         `#explain_${relativePath}:${
                           currentSelection[0]![0] + 1
-                        }-${currentSelection[1]![0] + 1}`,
+                        }-${currentSelection[1]![0] + 1}-${Date.now()}`,
                       );
                       setChatOpen(true);
                       setPopupPosition(null);

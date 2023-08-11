@@ -53,7 +53,7 @@ const FileChip = ({
   useEffect(() => {
     if (lines && index > -1 && setFileHighlights) {
       setFileHighlights((prev) => {
-        const newHighlights = { ...prev };
+        const newHighlights = JSON.parse(JSON.stringify(prev));
         if (!newHighlights[filePath]) {
           newHighlights[filePath] = [];
         }

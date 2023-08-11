@@ -288,7 +288,6 @@ const Chat = () => {
       threadId,
       navigatedItem?.path,
       navigatedItem?.type,
-      selectedLines,
       selectedBranch,
       t,
       queryIdToEdit,

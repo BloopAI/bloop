@@ -134,9 +134,10 @@ const ResultFull = ({
       setConversation([]);
       setThreadId('');
       const endLine = result.code.split('\n').length;
-      setSelectedLines([1, endLine]);
       setRightPanelOpen(false);
-      setSubmittedQuery(`#explain_${result.relativePath}:1-${endLine}`);
+      setSubmittedQuery(
+        `#explain_${result.relativePath}:1-${endLine}-${Date.now()}`,
+      );
       setChatOpen(true);
     },
     [result?.code, result?.relativePath],
