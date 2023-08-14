@@ -178,7 +178,8 @@ impl Agent {
                     })
                 },
             )
-            .await?;
+            .await
+            .context("failed to fold LLM function call output")?;
 
         self.track_query(
             EventData::output_stage("llm_reply")
@@ -189,7 +190,9 @@ impl Agent {
                 .with_payload("raw_response", &raw_response),
         );
 
-        let action = Action::deserialize_gpt(&raw_response)?;
+        let action =
+            Action::deserialize_gpt(&raw_response).context("failed to deserialize LLM output")?;
+
         Ok(Some(action))
     }
 
