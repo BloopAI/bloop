@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use futures::{stream, StreamExt, TryStreamExt};
 use tiktoken_rs::CoreBPE;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::{
     agent::{
@@ -13,6 +13,7 @@ use crate::{
 };
 
 impl Agent {
+    #[instrument(skip(self))]
     pub async fn process_files(&mut self, query: &str, path_aliases: &[usize]) -> Result<String> {
         const MAX_CHUNK_LINE_LENGTH: usize = 20;
         const CHUNK_MERGE_DISTANCE: usize = 10;
