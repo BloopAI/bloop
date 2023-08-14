@@ -122,15 +122,27 @@ fn offset_embedded_link_ranges<'a>(element: &'a comrak::nodes::AstNode<'a>, offs
             link.url = url
                 .split_once('#')
                 .and_then(|(url, anchor)| {
-                    let (start, end) = anchor.split_once('-')?;
-                    let start = start.get(1..)?.parse::<usize>().ok()?;
-                    let end = end.get(1..)?.parse::<usize>().ok()?;
+                    if let Some((start, end)) = anchor.split_once('-') {
+                        if !start.starts_with('L') || !end.starts_with('L') {
+                            return None;
+                        }
 
-                    Some(format!(
-                        "{url}#L{}-L{}",
-                        start as i32 + offset,
-                        end as i32 + offset
-                    ))
+                        let start = start.get(1..)?.parse::<usize>().ok()?;
+                        let end = end.get(1..)?.parse::<usize>().ok()?;
+
+                        Some(format!(
+                            "{url}#L{}-L{}",
+                            start as i32 + offset,
+                            end as i32 + offset,
+                        ))
+                    } else {
+                        if !anchor.starts_with('L') {
+                            return None;
+                        }
+
+                        let line = anchor.get(1..)?.parse::<usize>().ok()?;
+                        Some(format!("{url}#L{}", line as i32 + offset))
+                    }
                 })
                 .unwrap_or(url);
 
@@ -143,7 +155,7 @@ fn offset_embedded_link_ranges<'a>(element: &'a comrak::nodes::AstNode<'a>, offs
         _ => element
             .children()
             .map(|child| offset_embedded_link_ranges(child, offset))
-            .fold(false, |a, e| a || e)
+            .fold(false, |a, e| a || e),
     }
 }
 
@@ -1304,13 +1316,15 @@ func sendSlackMessage(org string) error {
 
     #[test]
     fn test_decode_indexing_base() {
-        let input = "Foo [bar](bar.rs#L1-L10) quux.
+        let input = "Foo [bar](bar.rs#L1-L10) [quux](quux.rs#L5).
 
-- Fred [thud](thud.rs#L1-L10) corge.";
+- Fred [thud](thud.rs#L1-L10) corge.
+- Grault [garply](waldo.rs#L1-L10) plugh.";
 
-        let expected = "Foo [bar](bar.rs#L0-L9) quux.
+        let expected = "Foo [bar](bar.rs#L0-L9) [quux](quux.rs#L4).
 
-- Fred [thud](thud.rs#L0-L9) corge.";
+- Fred [thud](thud.rs#L0-L9) corge.
+- Grault [garply](waldo.rs#L0-L9) plugh.";
 
         let (body, conclusion) = decode(input);
 
@@ -1323,12 +1337,12 @@ func sendSlackMessage(org string) error {
         // We test a list with *two* items to check that short circuiting logic doesn't case
         // issues.
 
-        let input = "Foo [bar](bar.rs#L0-L9) quux.
+        let input = "Foo [bar](bar.rs#L0-L9) [quux](quux.rs#L4).
 
 - Fred [thud](thud.rs#L0-L9) corge.
 - Grault [garply](waldo.rs#L0-L9) plugh.";
 
-        let expected = "Foo [bar](bar.rs#L1-L10) quux.
+        let expected = "Foo [bar](bar.rs#L1-L10) [quux](quux.rs#L5).
 
 - Fred [thud](thud.rs#L1-L10) corge.
 - Grault [garply](waldo.rs#L1-L10) plugh.";
