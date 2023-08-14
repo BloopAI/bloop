@@ -35,7 +35,9 @@ pub fn decode(llm_message: &str) -> (String, Option<String>) {
     let comrak_to_string = |node| {
         let mut out = Vec::<u8>::new();
         comrak::format_commonmark(node, &options, &mut out).unwrap();
-        String::from_utf8_lossy(&out).trim().to_owned()
+        String::from_utf8_lossy(&out)
+            .trim()
+            .replace("\n\n<!-- end list -->", "")
     };
 
     // `comrak` will not recognize footnote definitions unless they have been referenced at least
@@ -1106,5 +1108,153 @@ Foo *bar* `[^summary]: allow this, it is in code quotes` quux.";
 
         assert_eq!(expected, body);
         assert_eq!("Baz fred **thud** corge.", conclusion.unwrap());
+    }
+
+    #[test]
+    fn test_decode_erroneous_endlist() {
+        let input = r#"The code in [`cmd/worker/slack.go`](cmd/worker/slack.go#L1-L42) is a Go program that sends a message to a Slack channel using a webhook URL.
+
+Here's a breakdown of the code:
+
+- Lines 1-8: The package declaration and import statements. The program imports packages for handling bytes, formatting, HTTP requests, and environment variables.
+
+<QuotedCode>
+<Code>
+package main
+
+import (
+    "bytes"
+    "fmt"
+    "net/http"
+    "os"
+)
+</Code>
+<Language>Go</Language>
+<Path>cmd/worker/slack.go</Path>
+<StartLine>1</StartLine>
+<EndLine>8</EndLine>
+</QuotedCode>
+
+- Lines 10-12: A constant `SLACK_WEBHOOK_URL` is declared. This constant is used to get the Slack webhook URL from the environment variables.
+
+<QuotedCode>
+<Code>
+const (
+    SLACK_WEBHOOK_URL = "SLACK_WEBHOOK_URL"
+)
+</Code>
+<Language>Go</Language>
+<Path>cmd/worker/slack.go</Path>
+<StartLine>10</StartLine>
+<EndLine>12</EndLine>
+</QuotedCode>
+
+- Lines 14-41: The `sendSlackMessage` function is defined. This function takes an organization name as an argument and sends a message to a Slack channel.
+
+<QuotedCode>
+<Code>
+func sendSlackMessage(org string) error {
+
+    endpoint := os.Getenv(SLACK_WEBHOOK_URL)
+    if endpoint == "" {
+        return fmt.Errorf("sendSlackMessage: environment variables %s must not be empty",
+            SLACK_WEBHOOK_URL)
+    }
+
+    orgRelease := fmt.Sprintf("https://github.com/%s/%s/blob/main/%s/release.yaml",
+        REPO_OWNER, REPO_ENVS, org)
+    message := fmt.Sprintf("New organization %#q added.\nHelmRelease: %s",
+        org, orgRelease)
+
+    requestBody := []byte(`{"text": "` + message + `"}`)
+    req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(requestBody))
+    if err != nil {
+        return fmt.Errorf("sendSlackMessage: failed to create request: %v", err)
+    }
+    req.Header.Set("Content-Type", "application/json")
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        return fmt.Errorf("sendSlackMessage: failed to send Slack message: %v", err)
+    }
+    defer resp.Body.Close()
+
+    return nil
+}
+</Code>
+<Language>Go</Language>
+<Path>cmd/worker/slack.go</Path>
+<StartLine>14</StartLine>
+<EndLine>41</EndLine>
+</QuotedCode>
+
+[^summary]: The code in `cmd/worker/slack.go` is a Go program that sends a message to a Slack channel using a webhook URL. The `sendSlackMessage` function constructs a message about a new organization, creates an HTTP POST request with this message, and sends it to the Slack webhook URL."#;
+
+        let expected_body = r#"The code in [`cmd/worker/slack.go`](cmd/worker/slack.go#L1-L42) is a Go program that sends a message to a Slack channel using a webhook URL.
+
+Here's a breakdown of the code:
+
+- Lines 1-8: The package declaration and import statements. The program imports packages for handling bytes, formatting, HTTP requests, and environment variables.
+
+``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:1-8
+package main
+
+import (
+    "bytes"
+    "fmt"
+    "net/http"
+    "os"
+)
+```
+
+- Lines 10-12: A constant `SLACK_WEBHOOK_URL` is declared. This constant is used to get the Slack webhook URL from the environment variables.
+
+``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:10-12
+const (
+    SLACK_WEBHOOK_URL = "SLACK_WEBHOOK_URL"
+)
+```
+
+- Lines 14-41: The `sendSlackMessage` function is defined. This function takes an organization name as an argument and sends a message to a Slack channel.
+
+``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:14-41
+func sendSlackMessage(org string) error {
+
+    endpoint := os.Getenv(SLACK_WEBHOOK_URL)
+    if endpoint == "" {
+        return fmt.Errorf("sendSlackMessage: environment variables %s must not be empty",
+            SLACK_WEBHOOK_URL)
+    }
+
+    orgRelease := fmt.Sprintf("https://github.com/%s/%s/blob/main/%s/release.yaml",
+        REPO_OWNER, REPO_ENVS, org)
+    message := fmt.Sprintf("New organization %#q added.\nHelmRelease: %s",
+        org, orgRelease)
+
+    requestBody := []byte(`{"text": "` + message + `"}`)
+    req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(requestBody))
+    if err != nil {
+        return fmt.Errorf("sendSlackMessage: failed to create request: %v", err)
+    }
+    req.Header.Set("Content-Type", "application/json")
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        return fmt.Errorf("sendSlackMessage: failed to send Slack message: %v", err)
+    }
+    defer resp.Body.Close()
+
+    return nil
+}
+```"#;
+
+        let expected_conclusion = r#"The code in `cmd/worker/slack.go` is a Go program that sends a message to a Slack channel using a webhook URL. The `sendSlackMessage` function constructs a message about a new organization, creates an HTTP POST request with this message, and sends it to the Slack webhook URL."#;
+
+        let (body, conclusion) = decode(input);
+
+        assert_eq!(expected_body, body);
+        assert_eq!(expected_conclusion, conclusion.unwrap());
     }
 }
