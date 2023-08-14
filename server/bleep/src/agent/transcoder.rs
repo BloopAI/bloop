@@ -137,9 +137,13 @@ fn offset_embedded_link_ranges<'a>(element: &'a comrak::nodes::AstNode<'a>, offs
             true
         }
 
+        // False positive lint, we want the side effects:
+        // https://github.com/rust-lang/rust-clippy/issues/3351
+        #[allow(clippy::unnecessary_fold)]
         _ => element
             .children()
-            .any(|child| offset_embedded_link_ranges(child, offset)),
+            .map(|child| offset_embedded_link_ranges(child, offset))
+            .fold(false, |a, e| a || e)
     }
 }
 
@@ -1316,14 +1320,51 @@ func sendSlackMessage(org string) error {
 
     #[test]
     fn test_encode_indexing_base() {
+        // We test a list with *two* items to check that short circuiting logic doesn't case
+        // issues.
+
         let input = "Foo [bar](bar.rs#L0-L9) quux.
 
-- Fred [thud](thud.rs#L0-L9) corge.";
+- Fred [thud](thud.rs#L0-L9) corge.
+- Grault [garply](waldo.rs#L0-L9) plugh.";
 
         let expected = "Foo [bar](bar.rs#L1-L10) quux.
 
-- Fred [thud](thud.rs#L1-L10) corge.";
+- Fred [thud](thud.rs#L1-L10) corge.
+- Grault [garply](waldo.rs#L1-L10) plugh.";
 
         assert_eq!(expected, encode(input, None));
+    }
+
+    #[test]
+    fn test_bug_short_circuit_link_offset() {
+        let input = "Yes, this project is deployable on Kubernetes. The project contains a Helm chart located in the [`helm/bloop/`](helm/bloop/) directory. This chart includes various Kubernetes resource definitions such as:
+
+- A [`Deployment`](helm/bloop/templates/bloop-deployment.yaml#L1-L21) for the main application
+- A [`Service`](helm/bloop/templates/bloop-service.yaml#L1-L18) to expose the application within the cluster
+- A [`PersistentVolumeClaim`](helm/bloop/templates/bloop-pvc.yaml#L1-L15) for persistent storage
+- A [`StatefulSet`](helm/bloop/templates/qdrant-statefulset.yaml#L1-L145) for the Qdrant service
+- A [`Job`](helm/bloop/templates/notification-job.yaml#L1-L25) for sending notifications
+
+The Helm chart's configurable values are defined in the [`values.yaml`](helm/bloop/values.yaml#L1-L201) file.
+
+[^summary]: Yes, this project is deployable on Kubernetes. It includes a Helm chart with definitions for various Kubernetes resources such as Deployments, Services, PersistentVolumeClaims, StatefulSets, and Jobs.";
+
+        let expected_body = "Yes, this project is deployable on Kubernetes. The project contains a Helm chart located in the [`helm/bloop/`](helm/bloop/) directory. This chart includes various Kubernetes resource definitions such as:
+
+- A [`Deployment`](helm/bloop/templates/bloop-deployment.yaml#L0-L20) for the main application
+- A [`Service`](helm/bloop/templates/bloop-service.yaml#L0-L17) to expose the application within the cluster
+- A [`PersistentVolumeClaim`](helm/bloop/templates/bloop-pvc.yaml#L0-L14) for persistent storage
+- A [`StatefulSet`](helm/bloop/templates/qdrant-statefulset.yaml#L0-L144) for the Qdrant service
+- A [`Job`](helm/bloop/templates/notification-job.yaml#L0-L24) for sending notifications
+
+The Helm chart's configurable values are defined in the [`values.yaml`](helm/bloop/values.yaml#L0-L200) file.";
+
+        let expected_conclusion = "Yes, this project is deployable on Kubernetes. It includes a Helm chart with definitions for various Kubernetes resources such as Deployments, Services, PersistentVolumeClaims, StatefulSets, and Jobs.";
+
+        let (body, conclusion) = decode(input);
+
+        assert_eq!(expected_body, body);
+        assert_eq!(expected_conclusion, conclusion.unwrap());
     }
 }
