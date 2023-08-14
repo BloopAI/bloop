@@ -13,7 +13,7 @@ use axum::{
 use futures::{future::Either, stream, StreamExt};
 use reqwest::StatusCode;
 use serde_json::json;
-use tracing::warn;
+use tracing::{error, warn};
 
 use self::conversations::ConversationId;
 
@@ -174,6 +174,8 @@ async fn execute_agent(
     .await;
 
     if let Err(err) = response.as_ref() {
+        error!(?err, "failed to handle /answer query");
+
         app.track_query(
             &user,
             &QueryEvent {
