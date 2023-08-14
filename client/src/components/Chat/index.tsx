@@ -312,8 +312,8 @@ const Chat = () => {
       userQuery = t(
         `Explain lines {{lineStart}} - {{lineEnd}} in {{filePath}}`,
         {
-          lineStart: Number(lineStart),
-          lineEnd: Number(lineEnd),
+          lineStart: Number(lineStart) + 1,
+          lineEnd: Number(lineEnd) + 1,
           filePath,
         },
       );

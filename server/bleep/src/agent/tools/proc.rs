@@ -71,7 +71,8 @@ impl Agent {
                     .unwrap()
                     .0
                     .parse::<usize>()
-                    .unwrap();
+                    .unwrap()
+                    - 1;
 
                 // We store the lines separately, so that we can reference them later to trim
                 // this snippet by line number.
@@ -121,6 +122,10 @@ impl Agent {
                         r.end = r.end.min(r.start + MAX_CHUNK_LINE_LENGTH); // Cap relevant chunk size by line number
                         r
                     })
+                    .map(|r| Range {
+                        start: r.start - 1,
+                        end: r.end,
+                    })
                     .collect();
 
                 line_ranges.sort();
@@ -146,7 +151,7 @@ impl Agent {
                             code: lines
                                 .get(
                                     range.start.saturating_sub(start_line)
-                                        ..range.end.saturating_sub(start_line),
+                                        ..=range.end.saturating_sub(start_line),
                                 )?
                                 .iter()
                                 .map(|line| line.split_once(' ').unwrap().1)

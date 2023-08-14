@@ -4,7 +4,7 @@
 //! instead of regular Markdown code blocks. This module both decodes this format into markdown
 //! components, and encodes them back.
 
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, mem};
 
 use anyhow::{Context, Result};
 use comrak::nodes::{NodeHtmlBlock, NodeValue};
@@ -53,6 +53,8 @@ pub fn decode(llm_message: &str) -> (String, Option<String>) {
     children.next().unwrap().detach();
 
     for block in children {
+        offset_embedded_link_ranges(block, -1);
+
         match &block.data.borrow().value {
             NodeValue::Paragraph => {
                 // Store our reconstructed markdown summary here, if it is found
@@ -105,6 +107,58 @@ pub fn decode(llm_message: &str) -> (String, Option<String>) {
     (comrak_to_string(root), None)
 }
 
+/// Offset line ranges in embedded links by a specific value.
+///
+/// This can be used to offset lines by one, either positively or negatively.
+fn offset_embedded_link_ranges<'a>(element: &'a comrak::nodes::AstNode<'a>, offset: i32) -> bool {
+    // We have to convert links to use 0-based indexes as the model works with 1-based indexes.
+    //
+    // TODO: We can update the model so that it works with 0-based indexes, and remove this
+    // altogether.
+
+    match &mut element.data.borrow_mut().value {
+        NodeValue::Link(link) => {
+            let url = mem::take(&mut link.url);
+            link.url = url
+                .split_once('#')
+                .and_then(|(url, anchor)| {
+                    if let Some((start, end)) = anchor.split_once('-') {
+                        if !start.starts_with('L') || !end.starts_with('L') {
+                            return None;
+                        }
+
+                        let start = start.get(1..)?.parse::<usize>().ok()?;
+                        let end = end.get(1..)?.parse::<usize>().ok()?;
+
+                        Some(format!(
+                            "{url}#L{}-L{}",
+                            start as i32 + offset,
+                            end as i32 + offset,
+                        ))
+                    } else {
+                        if !anchor.starts_with('L') {
+                            return None;
+                        }
+
+                        let line = anchor.get(1..)?.parse::<usize>().ok()?;
+                        Some(format!("{url}#L{}", line as i32 + offset))
+                    }
+                })
+                .unwrap_or(url);
+
+            true
+        }
+
+        // False positive lint, we want the side effects:
+        // https://github.com/rust-lang/rust-clippy/issues/3351
+        #[allow(clippy::unnecessary_fold)]
+        _ => element
+            .children()
+            .map(|child| offset_embedded_link_ranges(child, offset))
+            .fold(false, |a, e| a || e),
+    }
+}
+
 pub fn encode(markdown: &str, conclusion: Option<&str>) -> String {
     let arena = comrak::Arena::new();
     let mut options = comrak::ComrakOptions::default();
@@ -112,8 +166,10 @@ pub fn encode(markdown: &str, conclusion: Option<&str>) -> String {
 
     let root = comrak::parse_document(&arena, markdown, &options);
 
-    for child in root.children() {
-        let (info, literal) = match &mut child.data.borrow_mut().value {
+    for block in root.children() {
+        offset_embedded_link_ranges(block, 1);
+
+        let (info, literal) = match &mut block.data.borrow_mut().value {
             NodeValue::CodeBlock(block) => (block.info.clone(), block.literal.clone()),
             _ => continue,
         };
@@ -136,8 +192,8 @@ pub fn encode(markdown: &str, conclusion: Option<&str>) -> String {
                 let lang = attributes.get("lang")?;
                 let mut lines = attributes.get("lines")?.split('-');
 
-                let start_line = lines.next()?;
-                let end_line = lines.next()?;
+                let start_line = lines.next()?.parse::<usize>().ok()? + 1;
+                let end_line = lines.next()?.parse::<usize>().ok()? + 1;
 
                 Some(format!(
                     "<QuotedCode>\n\
@@ -169,7 +225,7 @@ pub fn encode(markdown: &str, conclusion: Option<&str>) -> String {
         });
 
         if let Some(xml) = xml {
-            child.data.borrow_mut().value = NodeValue::HtmlBlock(NodeHtmlBlock {
+            block.data.borrow_mut().value = NodeValue::HtmlBlock(NodeHtmlBlock {
                 literal: xml,
                 // The block type here is not used.
                 block_type: 0,
@@ -340,8 +396,8 @@ impl CodeChunk {
                 code,
                 language,
                 path.as_str(),
-                *start_line,
-                *end_line,
+                start_line.map(|n| n.saturating_sub(1)),
+                end_line.map(|n| n.saturating_sub(1)),
             ),
             CodeChunk::GeneratedCode { code, language } => {
                 ("Generated", code, language, "", None, None)
@@ -713,7 +769,7 @@ fn foo<T>(t: T) -> bool {
 
 Then, we test some quoted code:
 
-``` type:Quoted,lang:Rust,path:src/main.rs,lines:10-12
+``` type:Quoted,lang:Rust,path:src/main.rs,lines:9-11
 fn foo<T>(t: T) -> bool {
     &foo < &bar<i32>(t)
 }
@@ -870,11 +926,11 @@ export const saveBugReport = (report: {
 [^summary]: Bug reports are sent to the endpoint `https://api.bloop.ai/bug_reports` via a POST request in the `saveBugReport` function.";
         let (article, summary) = decode(&input);
 
-        let expected_article = "Bug reports are sent to the endpoint `https://api.bloop.ai/bug_reports` via a POST request. This is done in the function [`saveBugReport`](client/src/services/api.ts#L168-L172) in the file `client/src/services/api.ts`.
+        let expected_article = "Bug reports are sent to the endpoint `https://api.bloop.ai/bug_reports` via a POST request. This is done in the function [`saveBugReport`](client/src/services/api.ts#L167-L171) in the file `client/src/services/api.ts`.
 
 Here is the relevant code:
 
-``` type:Quoted,lang:TypeScript,path:client/src/services/api.ts,lines:168-172
+``` type:Quoted,lang:TypeScript,path:client/src/services/api.ts,lines:167-171
 export const saveBugReport = (report: {
   email: string;
   name: string;
@@ -927,7 +983,7 @@ Hello again, world.
     fn test_encode() {
         let input = "Foo
 
-``` type:Quoted,lang:Rust,path:src/main.rs,lines:1-3
+``` type:Quoted,lang:Rust,path:src/main.rs,lines:0-2
 fn main() {
     println!(\"hello world\");
 }
@@ -979,7 +1035,7 @@ fn main() {
     fn test_encode_summarized() {
         let input = "Foo
 
-``` type:Quoted,lang:Rust,path:src/main.rs,lines:1-3
+``` type:Quoted,lang:Rust,path:src/main.rs,lines:0-2
 fn main() {
     println!(\"hello world\");
 }
@@ -1191,13 +1247,13 @@ func sendSlackMessage(org string) error {
 
 [^summary]: The code in `cmd/worker/slack.go` is a Go program that sends a message to a Slack channel using a webhook URL. The `sendSlackMessage` function constructs a message about a new organization, creates an HTTP POST request with this message, and sends it to the Slack webhook URL."#;
 
-        let expected_body = r#"The code in [`cmd/worker/slack.go`](cmd/worker/slack.go#L1-L42) is a Go program that sends a message to a Slack channel using a webhook URL.
+        let expected_body = r#"The code in [`cmd/worker/slack.go`](cmd/worker/slack.go#L0-L41) is a Go program that sends a message to a Slack channel using a webhook URL.
 
 Here's a breakdown of the code:
 
 - Lines 1-8: The package declaration and import statements. The program imports packages for handling bytes, formatting, HTTP requests, and environment variables.
 
-``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:1-8
+``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:0-7
 package main
 
 import (
@@ -1210,7 +1266,7 @@ import (
 
 - Lines 10-12: A constant `SLACK_WEBHOOK_URL` is declared. This constant is used to get the Slack webhook URL from the environment variables.
 
-``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:10-12
+``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:9-11
 const (
     SLACK_WEBHOOK_URL = "SLACK_WEBHOOK_URL"
 )
@@ -1218,7 +1274,7 @@ const (
 
 - Lines 14-41: The `sendSlackMessage` function is defined. This function takes an organization name as an argument and sends a message to a Slack channel.
 
-``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:14-41
+``` type:Quoted,lang:Go,path:cmd/worker/slack.go,lines:13-40
 func sendSlackMessage(org string) error {
 
     endpoint := os.Getenv(SLACK_WEBHOOK_URL)
@@ -1251,6 +1307,74 @@ func sendSlackMessage(org string) error {
 ```"#;
 
         let expected_conclusion = r#"The code in `cmd/worker/slack.go` is a Go program that sends a message to a Slack channel using a webhook URL. The `sendSlackMessage` function constructs a message about a new organization, creates an HTTP POST request with this message, and sends it to the Slack webhook URL."#;
+
+        let (body, conclusion) = decode(input);
+
+        assert_eq!(expected_body, body);
+        assert_eq!(expected_conclusion, conclusion.unwrap());
+    }
+
+    #[test]
+    fn test_decode_indexing_base() {
+        let input = "Foo [bar](bar.rs#L1-L10) [quux](quux.rs#L5).
+
+- Fred [thud](thud.rs#L1-L10) corge.
+- Grault [garply](waldo.rs#L1-L10) plugh.";
+
+        let expected = "Foo [bar](bar.rs#L0-L9) [quux](quux.rs#L4).
+
+- Fred [thud](thud.rs#L0-L9) corge.
+- Grault [garply](waldo.rs#L0-L9) plugh.";
+
+        let (body, conclusion) = decode(input);
+
+        assert_eq!(expected, body);
+        assert_eq!(None, conclusion);
+    }
+
+    #[test]
+    fn test_encode_indexing_base() {
+        // We test a list with *two* items to check that short circuiting logic doesn't case
+        // issues.
+
+        let input = "Foo [bar](bar.rs#L0-L9) [quux](quux.rs#L4).
+
+- Fred [thud](thud.rs#L0-L9) corge.
+- Grault [garply](waldo.rs#L0-L9) plugh.";
+
+        let expected = "Foo [bar](bar.rs#L1-L10) [quux](quux.rs#L5).
+
+- Fred [thud](thud.rs#L1-L10) corge.
+- Grault [garply](waldo.rs#L1-L10) plugh.";
+
+        assert_eq!(expected, encode(input, None));
+    }
+
+    #[test]
+    fn test_bug_short_circuit_link_offset() {
+        let input = "Yes, this project is deployable on Kubernetes. The project contains a Helm chart located in the [`helm/bloop/`](helm/bloop/) directory. This chart includes various Kubernetes resource definitions such as:
+
+- A [`Deployment`](helm/bloop/templates/bloop-deployment.yaml#L1-L21) for the main application
+- A [`Service`](helm/bloop/templates/bloop-service.yaml#L1-L18) to expose the application within the cluster
+- A [`PersistentVolumeClaim`](helm/bloop/templates/bloop-pvc.yaml#L1-L15) for persistent storage
+- A [`StatefulSet`](helm/bloop/templates/qdrant-statefulset.yaml#L1-L145) for the Qdrant service
+- A [`Job`](helm/bloop/templates/notification-job.yaml#L1-L25) for sending notifications
+
+The Helm chart's configurable values are defined in the [`values.yaml`](helm/bloop/values.yaml#L1-L201) file.
+
+[^summary]: Yes, this project is deployable on Kubernetes. It includes a Helm chart with definitions for various Kubernetes resources such as Deployments, Services, PersistentVolumeClaims, StatefulSets, and Jobs.";
+
+        let expected_body = "Yes, this project is deployable on Kubernetes. The project contains a Helm chart located in the [`helm/bloop/`](helm/bloop/) directory. This chart includes various Kubernetes resource definitions such as:
+
+- A [`Deployment`](helm/bloop/templates/bloop-deployment.yaml#L0-L20) for the main application
+- A [`Service`](helm/bloop/templates/bloop-service.yaml#L0-L17) to expose the application within the cluster
+- A [`PersistentVolumeClaim`](helm/bloop/templates/bloop-pvc.yaml#L0-L14) for persistent storage
+- A [`StatefulSet`](helm/bloop/templates/qdrant-statefulset.yaml#L0-L144) for the Qdrant service
+- A [`Job`](helm/bloop/templates/notification-job.yaml#L0-L24) for sending notifications
+
+The Helm chart's configurable values are defined in the [`values.yaml`](helm/bloop/values.yaml#L0-L200) file.";
+
+        let expected_conclusion = "Yes, this project is deployable on Kubernetes. It includes a Helm chart with definitions for various Kubernetes resources such as Deployments, Services, PersistentVolumeClaims, StatefulSets, and Jobs.";
 
         let (body, conclusion) = decode(input);
 

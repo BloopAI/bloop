@@ -85,12 +85,12 @@ const CodeRenderer = ({
   );
 
   const linesToUse: [number, number] | undefined = useMemo(
-    () => [lines[0] - 1, (lines[1] ?? lines[0]) - 1],
+    () => [lines[0], lines[1] ?? lines[0]],
     [lines],
   );
 
   const handleChipClick = useCallback(() => {
-    updateScrollToIndex(`${lines[0] - 1}_${(lines[1] ?? lines[0]) - 1}`);
+    updateScrollToIndex(`${lines[0]}_${lines[1] ?? lines[0]}`);
   }, [updateScrollToIndex, lines]);
 
   return (
@@ -116,7 +116,7 @@ const CodeRenderer = ({
               language={matchLang?.[1] || ''}
               filePath={matchPath?.[1] || ''}
               onResultClick={openFileModal}
-              startLine={lines[0] ? lines[0] - 1 : null}
+              startLine={lines[0] ? lines[0] : null}
               repoName={repoName}
             />
           )

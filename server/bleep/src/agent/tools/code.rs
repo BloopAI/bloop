@@ -42,8 +42,8 @@ impl Agent {
                     path: relative_path.clone(),
                     alias: self.get_path_alias(&relative_path),
                     snippet: chunk.text,
-                    start_line: (chunk.start_line as usize).saturating_add(1),
-                    end_line: (chunk.end_line as usize).saturating_add(1),
+                    start_line: chunk.start_line as usize,
+                    end_line: chunk.end_line as usize,
                 }
             })
             .collect::<Vec<_>>();
