@@ -240,7 +240,7 @@ impl Agent {
             spans_by_path
                 .entry(c.path.clone())
                 .or_default()
-                .push(c.start_line..c.end_line + 1);
+                .push(c.start_line..c.end_line);
         }
 
         debug!(?spans_by_path, "expanding spans");

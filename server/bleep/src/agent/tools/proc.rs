@@ -124,7 +124,7 @@ impl Agent {
                     })
                     .map(|r| Range {
                         start: r.start - 1,
-                        end: r.end - 1,
+                        end: r.end,
                     })
                     .collect();
 
