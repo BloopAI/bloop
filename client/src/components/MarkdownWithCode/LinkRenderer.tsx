@@ -65,16 +65,13 @@ const LinkRenderer = ({
   }, [children]);
 
   const linesToUse: [number, number] | undefined = useMemo(() => {
-    return hideCode && start ? [start - 1, (end ?? start) - 1] : undefined;
+    return hideCode && start ? [start, end ?? start] : undefined;
   }, [hideCode, start, end]);
 
   const handleClickFile = useCallback(() => {
     hideCode
-      ? updateScrollToIndex(`${start - 1}_${(end ?? start) - 1}`)
-      : openFileModal(
-          filePath,
-          start ? `${start - 1}_${(end ?? start) - 1}` : undefined,
-        );
+      ? updateScrollToIndex(`${start}_${end ?? start}`)
+      : openFileModal(filePath, start ? `${start}_${end ?? start}` : undefined);
   }, [hideCode, updateScrollToIndex, start, end, filePath]);
 
   const handleClickFolder = useCallback(() => {
