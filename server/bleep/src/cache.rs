@@ -204,7 +204,7 @@ impl<'a> ChunkCache<'a> {
         embedder: impl FnOnce(&'a str) -> anyhow::Result<Embedding>,
         payload: Payload,
     ) -> anyhow::Result<()> {
-        let id = self.cache_key(data);
+        let id = self.cache_key(data, &payload);
         let branches_hash = blake3::hash(payload.branches.join("\n").as_ref()).to_string();
 
         match self.cache.entry(id) {
@@ -408,10 +408,12 @@ impl<'a> ChunkCache<'a> {
 
     /// Generate a content hash from the embedding data, and pin it to
     /// the containing file's content id.
-    fn cache_key(&self, data: &str) -> String {
+    fn cache_key(&self, data: &str, payload: &Payload) -> String {
         let id = {
             let mut bytes = [0; 16];
             let mut hasher = blake3::Hasher::new();
+            hasher.update(&payload.start_line.to_le_bytes());
+            hasher.update(&payload.end_line.to_le_bytes());
             hasher.update(self.file_cache_key.as_bytes());
             hasher.update(data.as_ref());
             bytes.copy_from_slice(&hasher.finalize().as_bytes()[16..32]);
