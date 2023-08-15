@@ -4,6 +4,7 @@ import { getPlainFromStorage, savePlainToStorage } from '../services/storage';
 
 const useResizeableWidth = (
   localStorageKey: string,
+  oppositeLocalStorageKey: string,
   defaultWidth: number,
   isRightSidebar: boolean,
 ) => {
@@ -15,7 +16,12 @@ const useResizeableWidth = (
     const handler = throttle(
       () => {
         setWidth((prev) => {
-          return Math.min(prev, window.innerWidth / (isRightSidebar ? 2 : 3));
+          return Math.min(
+            prev,
+            (window.innerWidth -
+              (Number(getPlainFromStorage(oppositeLocalStorageKey)) || 360)) /
+              1.5,
+          );
         });
       },
       100,
@@ -45,7 +51,9 @@ const useResizeableWidth = (
             : pageX - startPosition,
           200,
         ),
-        window.innerWidth / (isRightSidebar ? 2 : 3),
+        (window.innerWidth -
+          (Number(getPlainFromStorage(oppositeLocalStorageKey)) || 360)) /
+          1.5,
       );
       setWidth(finalWidth);
     }

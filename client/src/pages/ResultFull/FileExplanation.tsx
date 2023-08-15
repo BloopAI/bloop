@@ -4,7 +4,10 @@ import { CopyMD } from '../../icons';
 import { FileModalContext } from '../../context/fileModalContext';
 import { copyToClipboard } from '../../utils';
 import Button from '../../components/Button';
-import { RIGHT_SIDEBAR_WIDTH_KEY } from '../../services/storage';
+import {
+  LEFT_SIDEBAR_WIDTH_KEY,
+  RIGHT_SIDEBAR_WIDTH_KEY,
+} from '../../services/storage';
 import useResizeableWidth from '../../hooks/useResizeableWidth';
 
 type Props = {
@@ -16,12 +19,13 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
   const { openFileModal } = useContext(FileModalContext);
   const { width, handleResize, handleReset } = useResizeableWidth(
     RIGHT_SIDEBAR_WIDTH_KEY,
+    LEFT_SIDEBAR_WIDTH_KEY,
     384,
     true,
   );
 
   return (
-    <div className="min-h-full w-full relative max-w-[50vw]" style={{ width }}>
+    <div className="min-h-full w-full relative" style={{ width }}>
       <div className="w-full p-5 body-m text-label-base pb-60 break-word overflow-auto h-full">
         <div className="article-response relative padding-start group-custom">
           <MarkdownWithCode

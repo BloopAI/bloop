@@ -3,7 +3,10 @@ import { GitHubLogo } from '../../../icons';
 import TextField from '../../TextField';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import useResizeableWidth from '../../../hooks/useResizeableWidth';
-import { LEFT_SIDEBAR_WIDTH_KEY } from '../../../services/storage';
+import {
+  LEFT_SIDEBAR_WIDTH_KEY,
+  RIGHT_SIDEBAR_WIDTH_KEY,
+} from '../../../services/storage';
 
 type Props = {
   repoName: string;
@@ -14,11 +17,12 @@ const NavigationPanel = ({ repoName, children }: Props) => {
   const { navigateRepoPath } = useAppNavigation();
   const { width, handleResize, handleReset } = useResizeableWidth(
     LEFT_SIDEBAR_WIDTH_KEY,
+    RIGHT_SIDEBAR_WIDTH_KEY,
     360,
     false,
   );
   return (
-    <div className="min-h-full relative flex max-w-[30vw]" style={{ width }}>
+    <div className="min-h-full relative flex" style={{ width }}>
       <div className="flex flex-1 bg-bg-base flex-col border-r border-bg-border min-h-full select-none overflow-auto">
         <div
           className="w-full border-b border-bg-border flex justify-between h-12 flex-shrink-0 px-6 select-none cursor-pointer"
