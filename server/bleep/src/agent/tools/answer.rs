@@ -3,7 +3,7 @@ use std::{collections::HashMap, mem, ops::Range, pin::pin};
 use anyhow::{anyhow, Result};
 use futures::StreamExt;
 use rand::{rngs::OsRng, seq::SliceRandom};
-use tracing::debug;
+use tracing::{debug, info, instrument, trace};
 
 use crate::{
     agent::{
@@ -15,6 +15,78 @@ use crate::{
 };
 
 impl Agent {
+    #[instrument(skip(self))]
+    pub async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
+        const ANSWER_HEADROOM: usize = 1024; // the number of tokens reserved for the answer
+
+        debug!("creating article response");
+
+        let context = self.answer_context(aliases, ANSWER_MODEL).await?;
+        let system_prompt = prompts::answer_article_prompt(&context);
+        let system_message = llm_gateway::api::Message::system(&system_prompt);
+        let history = {
+            let h = self.utter_history().collect::<Vec<_>>();
+            let system_headroom =
+                tiktoken_rs::num_tokens_from_messages(ANSWER_MODEL, &[(&system_message).into()])?;
+            trim_utter_history(h, ANSWER_HEADROOM + system_headroom)?
+        };
+        let messages = Some(system_message)
+            .into_iter()
+            .chain(history.iter().cloned())
+            .collect::<Vec<_>>();
+
+        let mut stream = pin!(
+            self.llm_gateway
+                .clone()
+                .model(ANSWER_MODEL)
+                .chat(&messages, None)
+                .await?
+        );
+
+        let mut response = String::new();
+        while let Some(fragment) = stream.next().await {
+            let fragment = fragment?;
+            response += &fragment;
+
+            let (article, summary) = transcoder::decode(&response);
+            self.update(Update::Article(article)).await?;
+
+            if let Some(summary) = summary {
+                self.update(Update::Conclude(summary)).await?;
+            }
+        }
+
+        // We re-decode one final time to catch cases where `summary` is `None`, and to log the
+        // output as a trace.
+        let (article, summary) = transcoder::decode(&response);
+        let summary = summary.unwrap_or_else(|| {
+            [
+                "I hope that was useful, can I help with anything else?",
+                "Is there anything else I can help you with?",
+                "Can I help you with anything else?",
+            ]
+            .choose(&mut OsRng)
+            .copied()
+            .unwrap()
+            .to_owned()
+        });
+
+        trace!(%article, "generated answer");
+
+        self.update(Update::Conclude(summary)).await?;
+
+        self.track_query(
+            EventData::output_stage("answer_article")
+                .with_payload("query", self.last_exchange().query())
+                .with_payload("query_history", &history)
+                .with_payload("response", &response)
+                .with_payload("raw_prompt", &system_prompt),
+        );
+
+        Ok(())
+    }
+
+    #[instrument(skip(self))]
     async fn answer_context(&mut self, aliases: &[usize], gpt_model: &str) -> Result<String> {
         let paths = self.paths();
 
@@ -74,7 +146,7 @@ impl Agent {
             let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
 
             if snippet_tokens >= remaining_prompt_tokens - PROMPT_HEADROOM {
-                debug!("Breaking at {} tokens...", remaining_prompt_tokens);
+                info!("breaking at {} tokens", remaining_prompt_tokens);
                 break;
             }
 
@@ -111,71 +183,6 @@ impl Agent {
         }
 
         Ok(s)
-    }
-
-    pub async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
-        const ANSWER_HEADROOM: usize = 1024; // the number of tokens reserved for the answer
-
-        debug!(?aliases, "creating article response");
-
-        let context = self.answer_context(aliases, ANSWER_MODEL).await?;
-        let system_prompt = prompts::answer_article_prompt(&context);
-        let system_message = llm_gateway::api::Message::system(&system_prompt);
-        let history = {
-            let h = self.utter_history().collect::<Vec<_>>();
-            let system_headroom =
-                tiktoken_rs::num_tokens_from_messages(ANSWER_MODEL, &[(&system_message).into()])?;
-            trim_utter_history(h, ANSWER_HEADROOM + system_headroom)?
-        };
-        let messages = Some(system_message)
-            .into_iter()
-            .chain(history.iter().cloned())
-            .collect::<Vec<_>>();
-
-        let mut stream = pin!(
-            self.llm_gateway
-                .clone()
-                .model(ANSWER_MODEL)
-                .chat(&messages, None)
-                .await?
-        );
-
-        let mut response = String::new();
-        while let Some(fragment) = stream.next().await {
-            let fragment = fragment?;
-            response += &fragment;
-
-            let (article, summary) = transcoder::decode(&response);
-            self.update(Update::Article(article)).await?;
-
-            if let Some(summary) = summary {
-                self.update(Update::Conclude(summary)).await?;
-            }
-        }
-
-        let summary = transcoder::decode(&response).1.unwrap_or_else(|| {
-            [
-                "I hope that was useful, can I help with anything else?",
-                "Is there anything else I can help you with?",
-                "Can I help you with anything else?",
-            ]
-            .choose(&mut OsRng)
-            .copied()
-            .unwrap()
-            .to_owned()
-        });
-
-        self.update(Update::Conclude(summary)).await?;
-
-        self.track_query(
-            EventData::output_stage("answer_article")
-                .with_payload("query", self.last_exchange().query())
-                .with_payload("query_history", &history)
-                .with_payload("response", &response)
-                .with_payload("raw_prompt", &system_prompt),
-        );
-
-        Ok(())
     }
 
     /// History of `user`, `assistant` messages. These are the messages that are shown to the user.
@@ -312,7 +319,7 @@ impl Agent {
                     span.end = span.end.min(file_lines);
 
                     if *span != old_span {
-                        debug!(?path, "growing span");
+                        trace!(?path, "growing span");
                         changed = true;
                     }
                 }

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use futures::TryStreamExt;
-use tracing::info;
+use tracing::{info, instrument};
 
 use crate::{
     agent::{
@@ -12,6 +12,7 @@ use crate::{
 };
 
 impl Agent {
+    #[instrument(skip(self))]
     pub async fn code_search(&mut self, query: &String) -> Result<String> {
         const CODE_SEARCH_LIMIT: u64 = 10;
         self.update(Update::StartStep(SearchStep::Code {

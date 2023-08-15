@@ -3,7 +3,7 @@ use std::time::Duration;
 use anyhow::{anyhow, Context, Result};
 use futures::TryStreamExt;
 use tokio::sync::mpsc::Sender;
-use tracing::debug;
+use tracing::{debug, info, instrument};
 
 use crate::{
     analytics::{EventData, QueryEvent},
@@ -85,6 +85,7 @@ impl Agent {
     }
 
     /// Update the last exchange
+    #[instrument(skip(self), level = "debug")]
     async fn update(&mut self, update: Update) -> Result<()> {
         self.last_exchange_mut().apply_update(update);
 
@@ -132,8 +133,9 @@ impl Agent {
         }
     }
 
+    #[instrument(skip(self))]
     pub async fn step(&mut self, action: Action) -> Result<Option<Action>> {
-        debug!(?action, %self.thread_id, "executing next action");
+        info!(?action, %self.thread_id, "executing next action");
 
         match &action {
             Action::Query(s) => {
@@ -178,7 +180,8 @@ impl Agent {
                     })
                 },
             )
-            .await?;
+            .await
+            .context("failed to fold LLM function call output")?;
 
         self.track_query(
             EventData::output_stage("llm_reply")
@@ -189,7 +192,9 @@ impl Agent {
                 .with_payload("raw_response", &raw_response),
         );
 
-        let action = Action::deserialize_gpt(&raw_response)?;
+        let action =
+            Action::deserialize_gpt(&raw_response).context("failed to deserialize LLM output")?;
+
         Ok(Some(action))
     }
 
