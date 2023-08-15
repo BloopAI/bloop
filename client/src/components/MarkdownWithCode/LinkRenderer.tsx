@@ -65,7 +65,7 @@ const LinkRenderer = ({
   }, [children]);
 
   const linesToUse: [number, number] | undefined = useMemo(() => {
-    return hideCode && start ? [start, end ?? start] : undefined;
+    return hideCode && start > -1 ? [start, end ?? start] : undefined;
   }, [hideCode, start, end]);
 
   const handleClickFile = useCallback(() => {
@@ -99,6 +99,7 @@ const LinkRenderer = ({
           lines={linesToUse}
           setFileHighlights={setFileHighlights}
           setHoveredLines={setHoveredLines}
+          isSummary={isSummary}
         />
       )}
     </>

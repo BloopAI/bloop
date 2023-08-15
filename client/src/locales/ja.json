@@ -261,5 +261,6 @@
 	"Open file": "ファイルを開く",
 	"Edit": "編集",
 	"Editing a previously submitted question will discard all answers and questions following it.": "以前に提出された質問を編集すると、それに続くすべての回答と質問が破棄されます。",
-	"Copy link": "リンクをコピーする"
+	"Copy link": "リンクをコピーする",
+	"Search using RegExp": "RegExpを使用して検索します"
 }

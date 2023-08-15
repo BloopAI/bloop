@@ -133,7 +133,7 @@ const CodeContainerFull = ({
       firstRender.current = false;
     }
   }, []);
-
+  console.log('hoveredLines', hoveredLines, 'highlights', highlights);
   return (
     <div ref={ref} className="relative pb-60">
       {tokens.map((line, index) => {

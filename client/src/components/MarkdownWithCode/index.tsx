@@ -44,8 +44,10 @@ const MarkdownWithCode = ({
 
   useEffect(() => {
     return () => {
-      setFileHighlights({});
-      setHoveredLines(null);
+      if (!isSummary) {
+        setFileHighlights({});
+        setHoveredLines(null);
+      }
     };
   }, []);
 
