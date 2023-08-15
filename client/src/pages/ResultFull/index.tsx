@@ -133,10 +133,10 @@ const ResultFull = ({
       }
       setConversation([]);
       setThreadId('');
-      const endLine = result.code.split('\n').length;
+      const endLine = result.code.split(/\n(?!$)/g).length - 1;
       setRightPanelOpen(false);
       setSubmittedQuery(
-        `#explain_${result.relativePath}:1-${endLine}-${Date.now()}`,
+        `#explain_${result.relativePath}:0-${endLine}-${Date.now()}`,
       );
       setChatOpen(true);
     },
