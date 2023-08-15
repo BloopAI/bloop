@@ -261,5 +261,6 @@
 	"Open file": "Abrir documento",
 	"Edit": "Editar",
 	"Editing a previously submitted question will discard all answers and questions following it.": "La edición de una pregunta enviada anteriormente descartará todas las respuestas y preguntas que lo sigan.",
-	"Copy link": "Copiar link"
+	"Copy link": "Copiar link",
+	"Search using RegExp": "Buscar usando RegExp"
 }

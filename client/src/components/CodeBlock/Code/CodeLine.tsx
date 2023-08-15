@@ -162,7 +162,7 @@ const CodeLine = ({
 
   return (
     <div
-      className={`flex transition-all duration-150 ease-in-bounce group hover:bg-transparent ${
+      className={`flex transition-all duration-150 ease-in-bounce group ${
         lineHidden ? 'opacity-0' : ''
       } ${
         blameLine?.start && lineNumber !== 0 ? ' border-t border-bg-border' : ''
