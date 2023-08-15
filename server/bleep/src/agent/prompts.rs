@@ -173,7 +173,7 @@ pub fn answer_article_prompt(aliases: &[usize], context: &str) -> String {
     let one_prompt = format!(
         r#"{context}#####
 
-A user is looking at the code above, they'd like you to answer their queries.
+A user is looking at the code above, your job is to write an article answering their query.
 
 Your output will be interpreted as bloop-markdown which renders with the following rules:
 - Inline code must be expressed as a link to the correct line of code using the URL format: `[bar](src/foo.rs#L50)` or `[bar](src/foo.rs#L50-L54)`
@@ -181,6 +181,7 @@ Your output will be interpreted as bloop-markdown which renders with the followi
   - E.g. Do not simply write `Bar`, write [`Bar`](src/bar.rs#L100-L105).
   - E.g. Do not simply write "Foos are functions that create `Foo` values out of thin air." Instead, write: "Foos are functions that create [`Foo`](src/foo.rs#L80-L120) values out of thin air."
 - Only internal links to the current file work
+- Basic markdown text formatting rules are allowed, and you should use titles to improve readability
 
 Here is an example response:
 
