@@ -1,13 +1,13 @@
 use std::{collections::HashMap, mem, ops::Range, pin::pin};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use futures::StreamExt;
 use rand::{rngs::OsRng, seq::SliceRandom};
 use tracing::{debug, info, instrument, trace};
 
 use crate::{
     agent::{
-        exchange::{CodeChunk, Update},
+        exchange::{CodeChunk, FocusedChunk, Update},
         prompts, transcoder, Agent, ANSWER_MODEL,
     },
     analytics::EventData,
@@ -20,6 +20,25 @@ impl Agent {
         const ANSWER_HEADROOM: usize = 1024; // the number of tokens reserved for the answer
 
         debug!("creating article response");
+
+        if aliases.len() == 1 {
+            let path = self
+                .paths()
+                .nth(aliases[0])
+                .context("invalid path alias passed")?;
+
+            let doc = self
+                .get_file_content(path)
+                .await?
+                .context("path did not exist")?;
+
+            self.update(Update::Focus(FocusedChunk {
+                file_path: path.to_owned(),
+                start_line: 0,
+                end_line: doc.content.lines().count(),
+            }))
+            .await?;
+        }
 
         let context = self.answer_context(aliases, ANSWER_MODEL).await?;
         let system_prompt = prompts::answer_article_prompt(&context);
@@ -88,7 +107,7 @@ impl Agent {
 
     #[instrument(skip(self))]
     async fn answer_context(&mut self, aliases: &[usize], gpt_model: &str) -> Result<String> {
-        let paths = self.paths();
+        let paths = self.paths().collect::<Vec<_>>();
 
         let mut s = "".to_owned();
 

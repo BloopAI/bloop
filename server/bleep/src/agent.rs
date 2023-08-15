@@ -116,18 +116,21 @@ impl Agent {
         self.exchanges.last_mut().expect("exchange list was empty")
     }
 
-    fn paths(&self) -> Vec<String> {
+    fn paths(&self) -> impl Iterator<Item = &str> {
         self.exchanges
             .iter()
-            .flat_map(|e| e.paths.iter().cloned())
-            .collect::<Vec<_>>()
+            .flat_map(|e| e.paths.iter())
+            .map(String::as_str)
     }
 
     fn get_path_alias(&mut self, path: &str) -> usize {
-        if let Some(i) = self.paths().iter().position(|p| *p == path) {
+        // This has to be stored a variable due to a Rust NLL bug:
+        // https://github.com/rust-lang/rust/issues/51826
+        let pos = self.paths().position(|p| p == path);
+        if let Some(i) = pos {
             i
         } else {
-            let i = self.paths().len();
+            let i = self.paths().count();
             self.last_exchange_mut().paths.push(path.to_owned());
             i
         }
@@ -144,7 +147,7 @@ impl Agent {
             }
 
             Action::Answer { paths } => {
-                self.answer(paths).await?;
+                self.answer(paths).await.context("answer action failed")?;
                 return Ok(None);
             }
 
@@ -154,13 +157,12 @@ impl Agent {
         };
 
         let functions = serde_json::from_value::<Vec<llm_gateway::api::Function>>(
-            prompts::functions(!self.paths().is_empty()), // Only add proc if there are paths in context
+            prompts::functions(self.paths().next().is_some()), // Only add proc if there are paths in context
         )
         .unwrap();
 
-        let paths = self.paths();
         let mut history = vec![llm_gateway::api::Message::system(&prompts::system(
-            paths.iter().map(String::as_str),
+            self.paths(),
         ))];
         history.extend(self.history()?);
 
@@ -233,7 +235,6 @@ impl Agent {
                                     .iter()
                                     .map(|path| self
                                         .paths()
-                                        .iter()
                                         .position(|p| p == path)
                                         .unwrap()
                                         .to_string())

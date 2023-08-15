@@ -22,7 +22,7 @@ impl Agent {
         let paths = path_aliases
             .iter()
             .copied()
-            .map(|i| self.paths().get(i).ok_or(i).cloned())
+            .map(|i| self.paths().nth(i).ok_or(i).map(str::to_owned))
             .collect::<Result<Vec<_>, _>>()
             .map_err(|i| anyhow!("invalid path alias {i}"))?;
 
