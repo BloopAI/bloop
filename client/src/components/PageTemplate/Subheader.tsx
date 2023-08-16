@@ -35,11 +35,7 @@ const Subheader = () => {
   } = useContext(AppNavigationContext);
 
   const resultsBackIndex = useMemo(() => {
-    const index = findLastIndex(
-      navigationHistory,
-      (item) =>
-        item.type === 'conversation-result' || item.type === 'article-response',
-    );
+    const index = findLastIndex(navigationHistory, (item) => !!item.threadId);
     if (index < 0) {
       return 0;
     }

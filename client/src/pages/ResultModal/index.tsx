@@ -27,13 +27,8 @@ type Props = {
 
 const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
   const { t } = useTranslation();
-  const {
-    setSubmittedQuery,
-    setChatOpen,
-    setSelectedLines,
-    setConversation,
-    setThreadId,
-  } = useContext(ChatContext.Setters);
+  const { setSubmittedQuery, setChatOpen, setConversation, setThreadId } =
+    useContext(ChatContext.Setters);
   const { setRightPanelOpen } = useContext(UIContext.RightPanel);
 
   useEffect(() => {
@@ -66,11 +61,13 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
       }
       setConversation([]);
       setThreadId('');
-      const endLine = result.code.split('\n').length;
-      setSelectedLines([1, endLine]);
+      const endLine = result.code.split(/\n(?!$)/g).length - 1;
       setRightPanelOpen(false);
-      setSubmittedQuery(`#explain_${result.relativePath}:1-${endLine}`);
+      setSubmittedQuery(
+        `#explain_${result.relativePath}:0-${endLine}-${Date.now()}`,
+      );
       setChatOpen(true);
+      onResultClosed();
     },
     [result?.code, result?.relativePath],
   );
