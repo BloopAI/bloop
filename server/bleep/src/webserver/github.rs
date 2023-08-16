@@ -1,6 +1,6 @@
 use super::prelude::*;
 use crate::{
-    remotes::{github, AuthResponse},
+    remotes::{github, AuthResponse, BackendCredential},
     repo::Backend,
     Application,
 };
@@ -121,8 +121,35 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
 /// Remove Github OAuth credentials
 //
 pub(super) async fn logout(Extension(app): Extension<Application>) -> impl IntoResponse {
-    let deleted = app.credentials.remove(&Backend::Github).is_some();
-    if deleted {
+    let deleted = app.credentials.remove(&Backend::Github);
+    if let Some(BackendCredential::Github(github::State {
+        auth: github::Auth::OAuth(creds),
+        ..
+    })) = deleted
+    {
+        let url_base = app
+            .config
+            .cognito_auth_url
+            .as_ref()
+            .expect("auth not configured");
+        let client_id = app
+            .config
+            .cognito_client_id
+            .as_ref()
+            .expect("auth not configured");
+
+        let url = reqwest::Url::parse(&url_base)
+            .unwrap()
+            .join("revoke")
+            .unwrap();
+
+        reqwest::Client::new()
+            .post(url)
+            .form(&[("client_id", client_id), ("token", &creds.refresh_token)])
+            .send()
+            .await
+            .unwrap();
+
         let saved = app
             .config
             .source
