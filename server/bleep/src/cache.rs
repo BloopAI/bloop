@@ -164,7 +164,7 @@ pub struct ChunkCache<'a> {
     file_cache_key: &'a str,
     cache: scc::HashMap<String, FreshValue<String>>,
     update: scc::HashMap<(Vec<String>, String), Vec<String>>,
-    new: RwLock<Vec<PointStruct>>,
+    new: RwLock<Vec<(PointStruct, String)>>,
     new_sql: RwLock<Vec<(String, String)>>,
 }
 
@@ -201,7 +201,6 @@ impl<'a> ChunkCache<'a> {
     pub fn update_or_embed(
         &self,
         data: &'a str,
-        embedder: impl FnOnce(&'a str) -> anyhow::Result<Embedding>,
         payload: Payload,
     ) -> anyhow::Result<()> {
         let id = self.cache_key(data, &payload);
@@ -228,11 +227,11 @@ impl<'a> ChunkCache<'a> {
                     .unwrap()
                     .push((vacant.key().to_owned(), branches_hash.clone()));
 
-                self.new.write().unwrap().push(PointStruct {
+                self.new.write().unwrap().push((PointStruct {
                     id: Some(PointId::from(vacant.key().clone())),
-                    vectors: Some(embedder(data)?.into()),
+                    vectors: None, //Some(embedder(data)?.into()),
                     payload: payload.into_qdrant(),
-                });
+                }, data.to_string()));
 
                 vacant.insert_entry(branches_hash.into());
             }
@@ -253,12 +252,14 @@ impl<'a> ChunkCache<'a> {
     /// Since qdrant changes are pipelined on their end, data written
     /// here is not necessarily available for querying when the
     /// commit's completed.
-    pub async fn commit(self, qdrant: &QdrantClient) -> anyhow::Result<(usize, usize, usize)> {
+    pub async fn commit(self, qdrant: &QdrantClient,
+                        embedder: impl FnOnce(&'a str) -> anyhow::Result<Embedding>,
+    ) -> anyhow::Result<(usize, usize, usize)> {
         let mut tx = self.sql.begin().await?;
 
         let update_size = self.commit_branch_updates(&mut tx, qdrant).await?;
         let delete_size = self.commit_deletes(&mut tx, qdrant).await?;
-        let new_size = self.commit_inserts(&mut tx, qdrant).await?;
+        let new_size = self.commit_inserts(&mut tx, qdrant, embedder).await?;
 
         tx.commit().await?;
 
@@ -274,10 +275,16 @@ impl<'a> ChunkCache<'a> {
         &self,
         tx: &mut sqlx::Transaction<'_, Sqlite>,
         qdrant: &QdrantClient,
+        embedder: impl FnOnce(&'a str) -> anyhow::Result<Embedding>
     ) -> Result<usize, anyhow::Error> {
-        let new: Vec<_> = std::mem::take(self.new.write().unwrap().as_mut());
+        let new: Vec<(PointStruct, String)> = std::mem::take(self.new.write().unwrap().as_mut());
+        let new_embedded: Vec<_> = new.into_iter().map(|(point, data)| PointStruct {
+            id: point.id.clone(),
+            vectors: Some(embedder(data)?.into()),
+            payload: point.payload.clone(),
+        }).collect();
         let new_sql = std::mem::take(&mut *self.new_sql.write().unwrap());
-        let new_size = new.len();
+        let new_size = new_embedded.len();
 
         let repo_str = self.reporef.to_string();
         for (p, branches) in new_sql {
@@ -291,9 +298,9 @@ impl<'a> ChunkCache<'a> {
         }
 
         // qdrant doesn't like empty payloads.
-        if !new.is_empty() {
+        if !new_embedded.is_empty() {
             qdrant
-                .upsert_points_blocking(semantic::COLLECTION_NAME, new, None)
+                .upsert_points_blocking(semantic::COLLECTION_NAME, new_embedded, None)
                 .await?;
         }
         Ok(new_size)

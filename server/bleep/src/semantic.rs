@@ -1,5 +1,4 @@
 use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
-use axum::body::HttpBody;
 
 use crate::{query::parser::SemanticQuery, Configuration};
 
@@ -563,13 +562,13 @@ impl Semantic {
                 ..Default::default()
             };
 
-            let cached = chunk_cache.update_or_embed(&data, embedder, payload);
+            let cached = chunk_cache.update_or_embed(&data,  payload);
             if let Err(err) = cached {
                 warn!(?err, %repo_name, %relative_path, "embedding failed");
             }
         });
 
-        match chunk_cache.commit(&self.qdrant).await {
+        match chunk_cache.commit(&self.qdrant, embedder).await {
             Ok((new, updated, deleted)) => {
                 info!(
                     repo_name,
