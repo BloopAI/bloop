@@ -278,6 +278,9 @@ impl<'a> ChunkCache<'a> {
         embedder: impl FnOnce(&'a str) -> anyhow::Result<Embedding>
     ) -> Result<usize, anyhow::Error> {
         let new: Vec<(PointStruct, String)> = std::mem::take(self.new.write().unwrap().as_mut());
+        // Idea is to embed everything here
+        // WIP
+        // Next use https://doc.rust-lang.org/std/primitive.slice.html#method.chunks and embedder with bsz >1
         let new_embedded: Vec<_> = new.into_iter().map(|(point, data)| PointStruct {
             id: point.id.clone(),
             vectors: Some(embedder(data)?.into()),
