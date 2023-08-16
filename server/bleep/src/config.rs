@@ -6,7 +6,7 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize, Serializer};
 use std::path::{Path, PathBuf};
 
-#[derive(Serialize, Deserialize, Parser, Debug)]
+#[derive(Serialize, Deserialize, Parser, Debug, Clone)]
 #[clap(author, version, about, long_about = None)]
 pub struct Configuration {
     //
