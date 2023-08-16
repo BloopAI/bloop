@@ -1,4 +1,5 @@
 use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
+use axum::body::HttpBody;
 
 use crate::{query::parser::SemanticQuery, Configuration};
 
@@ -17,6 +18,9 @@ use qdrant_client::{
         WithPayloadSelector, WithVectorsSelector,
     },
 };
+
+use reqwest;
+use serde::{Deserialize, Serialize};
 
 use futures::{stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
@@ -57,6 +61,21 @@ pub struct Semantic {
     tokenizer: Arc<tokenizers::Tokenizer>,
     session: Arc<ort::Session>,
     config: Arc<Configuration>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct RequestBody {
+    sequence: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Response {
+    data: Vec<CustomObject>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CustomObject {
+    embedding: Vec<f32>,
 }
 
 macro_rules! val_str(($hash:ident, $val:expr) => { serde_json::from_value($hash.remove($val).unwrap()).unwrap() });
@@ -276,7 +295,30 @@ impl Semantic {
         Ok(())
     }
 
+    pub fn _embed(&self, sequence: &str) -> anyhow::Result<Embedding> {
+        let client = reqwest::blocking::Client::new();
+        let request_body = RequestBody {
+            sequence: vec![sequence.to_string()],
+        };
+        let res: Response = client.post("http://localhost:8080/encode")
+            .json(&request_body)
+            .send()
+            .expect("Failed to send request")
+            .json()
+            .expect("Failed to parse response");
+
+        let result = (res.data[0].embedding).to_vec();
+        Ok(result)
+
+    }
+
     pub fn embed(&self, sequence: &str) -> anyhow::Result<Embedding> {
+        let result = tokio::task::block_in_place(|| {
+            self._embed(sequence)
+        });
+        result
+    }
+    pub fn embed_local(&self, sequence: &str) -> anyhow::Result<Embedding> {
         let tokenizer_output = self.tokenizer.encode(sequence, true).unwrap();
 
         let input_ids = tokenizer_output.get_ids();
