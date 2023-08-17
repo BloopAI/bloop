@@ -1,6 +1,6 @@
 use either::Either;
 use tokio::sync::OwnedSemaphorePermit;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::{
     cache::FileCache,
@@ -17,8 +17,8 @@ use super::control::SyncPipes;
 pub(crate) struct SyncHandle {
     pub(crate) reporef: RepoRef,
     pub(crate) new_branch_filters: Option<crate::repo::BranchFilter>,
-    pub(crate) app: Application,
     pub(super) pipes: SyncPipes,
+    app: Application,
     exited: flume::Sender<SyncStatus>,
     exit_signal: flume::Receiver<SyncStatus>,
 }
@@ -49,6 +49,9 @@ pub(super) enum SyncError {
 
     #[error("sql: {0:?}")]
     Sql(anyhow::Error),
+
+    #[error("syncing in progress")]
+    SyncInProgress,
 
     #[error("cancelled by user")]
     Cancelled,
@@ -152,9 +155,20 @@ impl SyncHandle {
             .unwrap_or(false);
 
         if !removed {
-            if let Err(err) = self.sync().await {
-                error!(?err, ?self.reporef, "failed to sync repository");
-                return Err(err);
+            match self.git_sync().await {
+                Ok(status) => {
+                    if let SyncStatus::Done = self.set_status(|_| status).unwrap() {
+                        return Ok(SyncStatus::Done);
+                    }
+                }
+                Err(err) => {
+                    error!(?err, ?self.reporef, "failed to sync repository");
+                    self.set_status(|_| SyncStatus::Error {
+                        message: err.to_string(),
+                    })
+                    .unwrap();
+                    return Err(err);
+                }
             }
         }
 
@@ -265,7 +279,7 @@ impl SyncHandle {
         deleted.map(|_| Either::Left(SyncStatus::Removed))
     }
 
-    async fn sync(&self) -> Result<()> {
+    async fn git_sync(&self) -> Result<SyncStatus> {
         let repo = self.reporef.clone();
         let backend = repo.backend();
         let creds = match self.app.credentials.for_repo(&repo) {
@@ -280,21 +294,70 @@ impl SyncHandle {
                 }
 
                 // we _never_ touch the git repositories of local repos
-                return Ok(());
+                return Ok(SyncStatus::Queued);
             }
         };
 
-        let synced = creds.sync(self).await;
-        if let Err(RemoteError::RemoteNotFound) = synced {
-            self.set_status(|_| SyncStatus::RemoteRemoved).unwrap();
-            error!(?repo, "remote repository removed; disabling local syncing");
+        let repo = self.sync_lock().await?;
 
-            // we want indexing to pick this up later and handle the new state
-            // all local cleanups are done, so everything should be consistent
-            return Ok(());
-        }
+        // This reads really badly, but essentially we need a way to
+        // retry after cleaning things up, and duplicating _too much_
+        // code.
+        let mut loop_counter = 0;
+        let loop_max = 1;
+        let git_err = loop {
+            match creds.git_sync(&self.reporef, repo.clone()).await {
+                Err(
+                    err @ RemoteError::GitOpen(_)
+                    | err @ RemoteError::GitFetch(_)
+                    | err @ RemoteError::GitPrepareFetch(_)
+                    | err @ RemoteError::GitClone(_)
+                    | err @ RemoteError::GitCloneFetch(_)
+                    | err @ RemoteError::GitConnect(_)
+                    | err @ RemoteError::GitFindRemote(_),
+                ) => {
+                    tokio::fs::remove_dir_all(&repo.disk_path)
+                        .await
+                        .expect("filesystem error");
 
-        synced.map_err(SyncError::Sync)
+                    if loop_counter == loop_max {
+                        break err;
+                    }
+
+                    loop_counter += 1;
+                }
+                Err(RemoteError::RemoteNotFound) => {
+                    error!(?repo, "remote repository removed; disabling local syncing");
+
+                    // we want indexing to pick this up later and handle the new state
+                    // all local cleanups are done, so everything should be consistent
+                    return Ok(SyncStatus::RemoteRemoved);
+                }
+                Err(RemoteError::GitHub(
+                    octocrab::Error::Service { .. }
+                    | octocrab::Error::Hyper { .. }
+                    | octocrab::Error::Http { .. },
+                )) => {
+                    warn!("likely network error, skipping further syncing");
+                    return Ok(SyncStatus::Done);
+                }
+                Err(err) => {
+                    error!(?err, ?self.reporef, "failed to sync repository");
+                    return Err(SyncError::Sync(err));
+                }
+                Ok(status) => {
+                    self.app
+                        .config
+                        .source
+                        .save_pool(self.app.repo_pool.clone())
+                        .expect("filesystem error");
+
+                    return Ok(status);
+                }
+            }
+        };
+
+        Err(SyncError::Sync(git_err))
     }
 
     async fn delete_repo_indexes(
@@ -336,12 +399,6 @@ impl SyncHandle {
         &self.pipes
     }
 
-    pub(crate) fn repo(&self) -> Option<Repository> {
-        self.app
-            .repo_pool
-            .read(&self.reporef, |_k, repo| repo.clone())
-    }
-
     pub(crate) fn set_status(
         &self,
         updater: impl FnOnce(&Repository) -> SyncStatus,
@@ -356,13 +413,13 @@ impl SyncHandle {
         Some(new_status)
     }
 
-    pub(crate) async fn sync_lock(&self) -> std::result::Result<Repository, RemoteError> {
+    async fn sync_lock(&self) -> std::result::Result<Repository, SyncError> {
         let repo = self
             .app
             .repo_pool
             .update_async(&self.reporef, |_k, repo| {
                 if repo.sync_status == SyncStatus::Syncing {
-                    Err(RemoteError::SyncInProgress)
+                    Err(SyncError::SyncInProgress)
                 } else {
                     repo.sync_status = SyncStatus::Syncing;
                     Ok(repo.clone())

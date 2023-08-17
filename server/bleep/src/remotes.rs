@@ -11,10 +11,9 @@ use anyhow::Context;
 use gix::sec::identity::Account;
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error, warn};
+use tracing::{error, warn};
 
 use crate::{
-    background::SyncHandle,
     remotes,
     repo::{Backend, RepoError, RepoRef, Repository, SyncStatus},
     Application,
@@ -47,9 +46,6 @@ pub(crate) enum RemoteError {
 
     #[error("permission denied")]
     PermissionDenied,
-
-    #[error("syncing in progress")]
-    SyncInProgress,
 
     #[error("invalid configuration; missing: {0}")]
     Configuration(&'static str),
@@ -95,6 +91,23 @@ pub(crate) enum RemoteError {
 
     #[error("git clone fetch: {0:?}")]
     GitCloneFetch(#[from] gix::clone::fetch::Error),
+}
+
+impl From<&RemoteError> for SyncStatus {
+    fn from(value: &RemoteError) -> Self {
+        SyncStatus::Error {
+            message: value.to_string(),
+        }
+    }
+}
+
+impl From<Result<SyncStatus>> for SyncStatus {
+    fn from(value: Result<SyncStatus>) -> Self {
+        match value {
+            Ok(status) => status,
+            Err(err) => (&err).into(),
+        }
+    }
 }
 
 macro_rules! creds_callback(($auth:ident) => {{
@@ -314,58 +327,31 @@ pub(crate) enum BackendCredential {
 }
 
 impl BackendCredential {
-    #[tracing::instrument(fields(repo=%sync_handle.reporef), skip_all)]
-    pub(crate) async fn sync(self, sync_handle: &SyncHandle) -> Result<()> {
-        let SyncHandle { app, .. } = sync_handle;
-
+    #[tracing::instrument(fields(repo=%reporef), skip_all)]
+    pub(crate) async fn git_sync(&self, reporef: &RepoRef, repo: Repository) -> Result<SyncStatus> {
         use BackendCredential::*;
-        let existing = sync_handle.sync_lock().await;
-
         let Github(gh) = self;
-        let mut synced = match existing {
-            Err(err) => return Err(err),
-            Ok(repo) if repo.last_index_unix_secs == 0 && repo.disk_path.exists() => {
-                // it is possible syncing was killed, but the repo is
-                // intact. pull if the dir exists, then quietly revert
-                // to cloning if that fails
-                if let Ok(success) = gh.auth.pull_repo(&repo).await {
-                    Ok(success)
-                } else {
-                    gh.auth.clone_repo(&repo).await
-                }
+
+        let synced = if repo.last_index_unix_secs == 0 && repo.disk_path.exists() {
+            // it is possible syncing was killed, but the repo is
+            // intact. pull if the dir exists, then quietly revert
+            // to cloning if that fails
+            if let Ok(success) = gh.auth.pull_repo(&repo).await {
+                Ok(success)
+            } else {
+                gh.auth.clone_repo(&repo).await
             }
-            Ok(repo) if repo.last_index_unix_secs == 0 => gh.auth.clone_repo(&repo).await,
-            Ok(repo) => gh.auth.pull_repo(&repo).await,
-        };
-
-        let new_status = match synced {
-            Ok(_) => SyncStatus::Queued,
-            Err(err) => {
-                warn!(?err, "sync failed; removing dir before retry");
-
-                let repo = sync_handle
-                    .repo()
-                    .expect("repo exists & locked, this shouldn't happen");
-
-                // try cloning again
-                let removed = tokio::fs::remove_dir_all(&repo.disk_path).await;
-                debug!(?removed, "removing recursively");
-
-                synced = gh.auth.clone_repo(&repo).await;
-                match synced {
-                    Ok(_) => SyncStatus::Queued,
-                    Err(ref err) => SyncStatus::Error {
-                        message: err.to_string(),
-                    },
-                }
+        } else if repo.last_index_unix_secs == 0 {
+            gh.auth.clone_repo(&repo).await
+        } else {
+            let pulled = gh.auth.pull_repo(&repo).await;
+            if pulled.is_err() {
+                gh.auth.clone_repo(&repo).await
+            } else {
+                pulled
             }
         };
 
-        sync_handle
-            .set_status(|_| new_status)
-            .expect("unlocking repo failed, this shouldn't happen");
-
-        app.config.source.save_pool(app.repo_pool.clone())?;
-        synced
+        synced.map(|_| SyncStatus::Queued)
     }
 }
