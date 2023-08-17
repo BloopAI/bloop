@@ -204,7 +204,7 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
             {!isGithubConnected && <ChevronRight />}
           </button>
         </div>
-        <div className="text-center caption">
+        <div className="text-center caption text-label-base">
           {isLinkShown ? (
             <p className="text-label-link select-auto text-center break-words">
               {loginUrl}
