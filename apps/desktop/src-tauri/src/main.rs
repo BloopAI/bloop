@@ -36,7 +36,7 @@ fn relative_command_path(command: impl AsRef<str>) -> Option<PathBuf> {
 async fn main() {
     tauri::Builder::default()
         .plugin(qdrant::QdrantSupervisor::default())
-        .setup(backend::bleep)
+        .plugin(backend::BloopBackend::default())
         .invoke_handler(tauri::generate_handler![
             show_folder_in_finder,
             enable_telemetry,

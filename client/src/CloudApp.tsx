@@ -35,7 +35,7 @@ const CloudApp = () => {
         platform: '',
         version: '',
       },
-      invokeTauriCommand: () => {},
+      invokeTauriCommand: () => Promise.resolve(''),
       release: packageJson.version,
       apiUrl: import.meta.env.API_URL || '/api',
       isRepoManagementAllowed: true,
