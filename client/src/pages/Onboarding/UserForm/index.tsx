@@ -3,6 +3,8 @@ import React, {
   SetStateAction,
   useCallback,
   useContext,
+  useEffect,
+  useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { BloopLogo, ChevronRight, GitHubLogo } from '../../../icons';
@@ -11,7 +13,11 @@ import { EMAIL_REGEX } from '../../../consts/validations';
 import Button from '../../../components/Button';
 import { UIContext } from '../../../context/uiContext';
 import { DeviceContext } from '../../../context/deviceContext';
-import { gitHubLogout } from '../../../services/api';
+import {
+  gitHubDeviceLogin,
+  gitHubLogout,
+  gitHubStatus,
+} from '../../../services/api';
 import { Form } from '../index';
 import Dropdown from '../../../components/Dropdown/Normal';
 import { MenuItemType } from '../../../types/general';
@@ -23,22 +29,75 @@ import LanguageSelector from '../../../components/LanguageSelector';
 type Props = {
   form: Form;
   setForm: Dispatch<SetStateAction<Form>>;
-  setGitHubScreen: (b: boolean) => void;
   onContinue: () => void;
 };
 
-const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
+const UserForm = ({ form, setForm, onContinue }: Props) => {
   const { t } = useTranslation();
   const { isGithubConnected, setGithubConnected } = useContext(
     UIContext.GitHubConnected,
   );
   const { envConfig, openLink } = useContext(DeviceContext);
   const { theme, setTheme } = useContext(UIContext.Theme);
+  const [loginUrl, setLoginUrl] = useState('');
+  const [isLinkShown, setLinkShown] = useState(false);
+  const [isBtnClicked, setBtnClicked] = useState(false);
 
   const handleLogout = useCallback(() => {
     gitHubLogout();
     setGithubConnected(false);
   }, []);
+
+  useEffect(() => {
+    gitHubDeviceLogin().then((data) => {
+      setLoginUrl(data.authentication_needed.url);
+    });
+  }, []);
+
+  const onClick = useCallback(() => {
+    if (isGithubConnected) {
+      handleLogout();
+      setBtnClicked(false);
+    } else {
+      openLink(loginUrl);
+      setBtnClicked(true);
+    }
+  }, [isGithubConnected]);
+
+  const checkGHAuth = () => {
+    gitHubStatus().then((d) => {
+      setGithubConnected(d.status === 'ok');
+    });
+  };
+
+  useEffect(() => {
+    if (loginUrl) {
+      checkGHAuth();
+      let intervalId: number;
+      intervalId = window.setInterval(() => {
+        checkGHAuth();
+      }, 500);
+      setTimeout(
+        () => {
+          clearInterval(intervalId);
+          setBtnClicked(false);
+        },
+        10 * 60 * 1000,
+      );
+
+      return () => {
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
+      };
+    }
+  }, [loginUrl]);
+
+  useEffect(() => {
+    if (loginUrl) {
+      checkGHAuth();
+    }
+  }, [loginUrl]);
 
   return (
     <>
@@ -133,14 +192,35 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
             type="button"
             className={`caption text-label-title ${
               isGithubConnected ? 'px-3' : 'pl-3 pr-2'
-            } h-10 flex gap-1 items-center border-l border-bg-border hover:bg-bg-base-hover`}
-            onClick={() =>
-              isGithubConnected ? handleLogout() : setGitHubScreen(true)
-            }
+            } h-10 flex gap-1 items-center border-l border-bg-border hover:bg-bg-base-hover disabled:bg-bg-base-hover`}
+            onClick={onClick}
+            disabled={isBtnClicked && !isGithubConnected}
           >
-            {isGithubConnected ? t('Disconnect') : t('Connect account')}{' '}
+            {isGithubConnected
+              ? t('Disconnect')
+              : isBtnClicked
+              ? t('Waiting for authentication...')
+              : t('Connect account')}{' '}
             {!isGithubConnected && <ChevronRight />}
           </button>
+        </div>
+        <div className="text-center caption">
+          {isLinkShown ? (
+            <p className="text-label-link select-auto text-center break-words">
+              {loginUrl}
+            </p>
+          ) : (
+            <p>
+              or go to the following link{' '}
+              <button
+                type="button"
+                className="text-label-link"
+                onClick={() => setLinkShown(true)}
+              >
+                Show link
+              </button>
+            </p>
+          )}
         </div>
         <Button
           disabled={
