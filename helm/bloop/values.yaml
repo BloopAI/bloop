@@ -65,6 +65,9 @@ ingress:
   className: nginx
   annotations:
     kubernetes.io/tls-acme: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+    nginx.ingress.kubernetes.io/cors-allow-origin: https://bloop.ai, https://staging.bloop.ai
+    nginx.ingress.kubernetes.io/enable-cors: "true"
   hosts: []
   tls: []
   #  - secretName: chart-example-tls
