@@ -62,7 +62,7 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
       openLink(loginUrl);
       setBtnClicked(true);
     }
-  }, [isGithubConnected]);
+  }, [isGithubConnected, loginUrl, openLink]);
 
   const checkGHAuth = () => {
     gitHubStatus().then((d) => {
