@@ -17,6 +17,13 @@ const PromptGuidePopup = () => {
 
   const handlePromptGuideClose = useCallback(() => {
     setPromptGuideOpen(false);
+    setEnvConfig((prev) => ({
+      ...prev,
+      bloop_user_profile: {
+        ...(prev.bloop_user_profile || {}),
+        prompt_guide: 'active',
+      },
+    }));
     putConfig({
       bloop_user_profile: {
         ...(envConfig?.bloop_user_profile || {}),
