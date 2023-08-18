@@ -3233,7 +3233,21 @@ checksum = "e5c13fb08e5d4dfc151ee5e88bae63f7773d61852f3bdc73c9f4b9e1bde03148"
 dependencies = [
  "log",
  "mac",
- "markup5ever",
+ "markup5ever 0.10.1",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "html5ever"
+version = "0.26.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bea68cab48b8459f17cf1c944c67ddc572d272d9f2b274140f223ecb1da4a3b7"
+dependencies = [
+ "log",
+ "mac",
+ "markup5ever 0.11.0",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -3785,7 +3799,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ea8e9c6e031377cff82ee3001dc8026cdf431ed4e2e6b51f98ab8c73484a358"
 dependencies = [
  "cssparser",
- "html5ever",
+ "html5ever 0.25.2",
+ "matches",
+ "selectors",
+]
+
+[[package]]
+name = "kuchikiki"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f29e4755b7b995046f510a7520c42b2fed58b77bd94d5a87a8eb43d2fd126da8"
+dependencies = [
+ "cssparser",
+ "html5ever 0.26.0",
+ "indexmap 1.9.3",
  "matches",
  "selectors",
 ]
@@ -3969,6 +3996,20 @@ dependencies = [
  "log",
  "phf 0.8.0",
  "phf_codegen 0.8.0",
+ "string_cache",
+ "string_cache_codegen",
+ "tendril",
+]
+
+[[package]]
+name = "markup5ever"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a2629bb1404f3d34c2e921f21fd34ba00b206124c81f65c50b43b6aaefeb016"
+dependencies = [
+ "log",
+ "phf 0.10.1",
+ "phf_codegen 0.10.0",
  "string_cache",
  "string_cache_codegen",
  "tendril",
@@ -4841,6 +4882,16 @@ checksum = "cbffee61585b0411840d3ece935cce9cb6321f01c45477d30066498cd5e1a815"
 dependencies = [
  "phf_generator 0.8.0",
  "phf_shared 0.8.0",
+]
+
+[[package]]
+name = "phf_codegen"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fb1c3a8bc4dd4e5cfce29b44ffc14bedd2ee294559a294e2a4d4c9e9a6a13cd"
+dependencies = [
+ "phf_generator 0.10.0",
+ "phf_shared 0.10.0",
 ]
 
 [[package]]
@@ -6803,8 +6854,7 @@ checksum = "1d2faeef5759ab89935255b1a4cd98e0baf99d1085e37d36599c625dac49ae8e"
 [[package]]
 name = "tauri"
 version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fbe522898e35407a8e60dc3870f7579fea2fc262a6a6072eccdd37ae1e1d91e"
+source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "anyhow",
  "base64 0.21.2",
@@ -6861,8 +6911,7 @@ dependencies = [
 [[package]]
 name = "tauri-build"
 version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d2edd6a259b5591c8efdeb9d5702cb53515b82a6affebd55c7fd6d3a27b7d1b"
+source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "anyhow",
  "cargo_toml",
@@ -6878,8 +6927,7 @@ dependencies = [
 [[package]]
 name = "tauri-codegen"
 version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54ad2d49fdeab4a08717f5b49a163bdc72efc3b1950b6758245fcde79b645e1a"
+source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "base64 0.21.2",
  "brotli",
@@ -6904,8 +6952,7 @@ dependencies = [
 [[package]]
 name = "tauri-macros"
 version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8eb12a2454e747896929338d93b0642144bb51e0dddbb36e579035731f0d76b7"
+source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "heck 0.4.1",
  "proc-macro2",
@@ -6918,8 +6965,7 @@ dependencies = [
 [[package]]
 name = "tauri-runtime"
 version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "108683199cb18f96d2d4134187bb789964143c845d2d154848dda209191fd769"
+source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "gtk",
  "http",
@@ -6939,8 +6985,7 @@ dependencies = [
 [[package]]
 name = "tauri-runtime-wry"
 version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b7aa256a1407a3a091b5d843eccc1a5042289baf0a43d1179d9f0fcfea37c1b"
+source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "cocoa",
  "gtk",
@@ -6959,18 +7004,17 @@ dependencies = [
 [[package]]
 name = "tauri-utils"
 version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03fc02bb6072bb397e1d473c6f76c953cda48b4a2d0cce605df284aa74a12e84"
+source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "brotli",
  "ctor",
  "dunce",
  "glob",
  "heck 0.4.1",
- "html5ever",
+ "html5ever 0.26.0",
  "infer",
  "json-patch",
- "kuchiki",
+ "kuchikiki",
  "memchr",
  "phf 0.10.1",
  "proc-macro2",
@@ -8539,7 +8583,7 @@ dependencies = [
  "gio",
  "glib",
  "gtk",
- "html5ever",
+ "html5ever 0.25.2",
  "http",
  "kuchiki",
  "libc",

@@ -20,7 +20,7 @@
     "@babel/core": "^7.22.9",
     "@playwright/test": "^1.36.2",
     "@sentry/vite-plugin": "^2.5.0",
-    "@tauri-apps/cli": "^1.4.0",
+    "@tauri-apps/cli": "github:calyptobai/tauri#cli",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^14.0.0",
     "@types/jest": "^29.5.3",
