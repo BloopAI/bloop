@@ -127,9 +127,6 @@ export const gitHubDeviceLogin = () =>
 export const gitHubLogout = () =>
   http.get('/remotes/github/logout').then((r) => r.data);
 
-export const gitHubStatus = () =>
-  http.get('/remotes/github/status').then((r) => r.data);
-
 export const getRepos = (): Promise<{ list: RepoType[] }> =>
   http.get('/repos').then((r) => r.data);
 

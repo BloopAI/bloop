@@ -18,12 +18,7 @@ import {
   SESSION_ID_KEY,
   USER_DATA_FORM,
 } from '../../services/storage';
-import {
-  getConfig,
-  getRepos,
-  gitHubStatus,
-  saveUserData,
-} from '../../services/api';
+import { getConfig, getRepos, saveUserData } from '../../services/api';
 import SeparateOnboardingStep from '../../components/SeparateOnboardingStep';
 import StatusBar from '../../components/StatusBar';
 import UserForm from './UserForm';
@@ -85,9 +80,9 @@ const Onboarding = () => {
           setShouldShowWelcome(true);
         });
     } else {
-      gitHubStatus()
+      getConfig()
         .then((d) => {
-          if (d.status !== 'ok') {
+          if (!d.github_user) {
             setShouldShowWelcome(true);
           } else {
             closeOnboarding();
