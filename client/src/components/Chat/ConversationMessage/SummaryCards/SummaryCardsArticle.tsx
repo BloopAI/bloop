@@ -51,6 +51,8 @@ const SummaryCardsArticle = ({
                 repoName={''}
                 markdown={p}
                 isSummary
+                recordId={i}
+                threadId={threadId}
               />
             </SummaryCardMain>
           ) : (
@@ -64,6 +66,8 @@ const SummaryCardsArticle = ({
                 repoName={''}
                 markdown={p}
                 isSummary
+                recordId={i}
+                threadId={threadId}
               />
             </SummaryCardSecondary>
           ),

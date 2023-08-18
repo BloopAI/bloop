@@ -13,9 +13,18 @@ import useResizeableWidth from '../../hooks/useResizeableWidth';
 type Props = {
   repoName: string;
   markdown: string;
+  isSingleFileExplanation?: boolean;
+  recordId: number;
+  threadId: string;
 };
 
-const FileExplanation = ({ repoName, markdown }: Props) => {
+const FileExplanation = ({
+  repoName,
+  markdown,
+  isSingleFileExplanation,
+  recordId,
+  threadId,
+}: Props) => {
   const { openFileModal } = useContext(FileModalContext);
   const { width, handleResize, handleReset } = useResizeableWidth(
     RIGHT_SIDEBAR_WIDTH_KEY,
@@ -32,7 +41,9 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
             openFileModal={openFileModal}
             repoName={repoName}
             markdown={markdown}
-            hideCode
+            hideCode={isSingleFileExplanation}
+            recordId={recordId}
+            threadId={threadId}
           />
           <Button
             variant="secondary"

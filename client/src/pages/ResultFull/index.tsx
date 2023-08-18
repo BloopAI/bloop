@@ -249,7 +249,10 @@ const ResultFull = ({
       {!!answer && (
         <FileExplanation
           markdown={answer.results}
+          isSingleFileExplanation={!!answer.focused_chunk?.file_path}
           repoName={result?.repoName || ''}
+          recordId={recordId}
+          threadId={threadId}
         />
       )}
     </>

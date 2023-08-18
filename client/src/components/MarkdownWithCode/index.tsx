@@ -25,6 +25,8 @@ type Props = {
   markdown: string;
   isSummary?: boolean;
   hideCode?: boolean;
+  recordId: number;
+  threadId: string;
 };
 
 const MarkdownWithCode = ({
@@ -33,8 +35,11 @@ const MarkdownWithCode = ({
   markdown,
   isSummary,
   hideCode,
+  recordId,
+  threadId,
 }: Props) => {
-  const { navigateRepoPath } = useContext(AppNavigationContext);
+  const { navigateRepoPath, navigateFullResult } =
+    useContext(AppNavigationContext);
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const fileChips = useRef([]);
   const { updateScrollToIndex } = useContext(AppNavigationContext);
@@ -76,6 +81,9 @@ const MarkdownWithCode = ({
             openFileModal={openFileModal}
             setFileHighlights={setFileHighlights}
             setHoveredLines={setHoveredLines}
+            navigateFullResult={navigateFullResult}
+            recordId={recordId}
+            threadId={threadId}
           >
             {props.children}
           </LinkRenderer>
@@ -86,7 +94,6 @@ const MarkdownWithCode = ({
           <CodeRenderer
             hideCode={hideCode}
             updateScrollToIndex={updateScrollToIndex}
-            openFileModal={openFileModal}
             setFileHighlights={setFileHighlights}
             setHoveredLines={setHoveredLines}
             fileChips={fileChips}
@@ -94,6 +101,9 @@ const MarkdownWithCode = ({
             repoName={repoName}
             className={className}
             propsJSON={JSON.stringify(props)}
+            navigateFullResult={navigateFullResult}
+            recordId={recordId}
+            threadId={threadId}
           >
             {children}
           </CodeRenderer>
