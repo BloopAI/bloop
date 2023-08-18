@@ -55,6 +55,22 @@ pub(super) async fn get(
         .and_then(|login| app.user_profiles.read(login, |_, v| v.clone()))
         .unwrap_or_default();
 
+    if let Some(username) = user.login() {
+        app.with_analytics(|analytics| {
+            use rudderanalytics::message::{Identify, Message};
+            analytics.send(Message::Identify(Identify {
+                user_id: Some(tracking_id.clone()),
+                traits: Some(serde_json::json!({
+                    "org_name": app.org_name(),
+                    "device_id": analytics.device_id(),
+                    "is_self_serve": app.env.is_cloud_instance(),
+                    "github_username": username.to_string(),
+                })),
+                ..Default::default()
+            }));
+        });
+    }
+
     json(ConfigResponse {
         analytics_data_plane: app.config.analytics_data_plane.clone(),
         analytics_key_fe: app.config.analytics_key_fe.clone(),

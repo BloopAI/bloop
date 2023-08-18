@@ -75,8 +75,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
     if app.env.allow(Feature::CognitoUserAuth) {
         api = api
             .route("/remotes/github/login", get(github::login))
-            .route("/remotes/github/logout", get(github::logout))
-            .route("/remotes/github/status", get(github::status));
+            .route("/remotes/github/logout", get(github::logout));
     }
 
     api = api.route("/panic", get(|| async { panic!("dead") }));
