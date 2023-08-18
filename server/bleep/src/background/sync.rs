@@ -316,9 +316,7 @@ impl SyncHandle {
                     | err @ RemoteError::GitConnect(_)
                     | err @ RemoteError::GitFindRemote(_),
                 ) => {
-                    tokio::fs::remove_dir_all(&repo.disk_path)
-                        .await
-                        .expect("filesystem error");
+                    _ = tokio::fs::remove_dir_all(&repo.disk_path).await;
 
                     if loop_counter == loop_max {
                         break err;
