@@ -16,7 +16,7 @@ import { DeviceContext } from '../../../context/deviceContext';
 import {
   gitHubDeviceLogin,
   gitHubLogout,
-  gitHubStatus,
+  getConfig,
 } from '../../../services/api';
 import { Form } from '../index';
 import Dropdown from '../../../components/Dropdown/Normal';

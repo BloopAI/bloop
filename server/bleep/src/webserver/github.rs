@@ -101,18 +101,12 @@ pub(super) async fn logout(Extension(app): Extension<Application>) -> impl IntoR
             .await
             .unwrap();
 
-        let saved = app
-            .config
-            .source
-            .save_credentials(&app.credentials.serialize().await);
-
-        if saved.is_ok() {
-            return Ok(json(GithubResponse::Status(GithubCredentialStatus::Ok)));
-        }
-
-        if let Err(err) = saved {
-            error!(?err, "Failed to delete credentials from disk");
-            return Err(Error::internal("failed to save changes"));
+        match app.credentials.store() {
+            Ok(_) => return Ok(json(GithubResponse::Status(GithubCredentialStatus::Ok))),
+            Err(err) => {
+                error!(?err, "Failed to delete credentials from disk");
+                return Err(Error::internal("failed to save changes"));
+            }
         }
     }
 
@@ -181,12 +175,7 @@ async fn poll_for_oauth_token(code: String, app: Application) {
     debug!("acquired credentials");
     app.credentials.set_github(github::Auth::OAuth(auth));
 
-    let saved = app
-        .config
-        .source
-        .save_credentials(&app.credentials.serialize().await);
-
-    if let Err(err) = saved {
+    if let Err(err) = app.credentials.store() {
         error!(?err, "failed to save credentials to disk");
     }
 

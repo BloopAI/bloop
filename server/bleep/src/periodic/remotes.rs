@@ -211,10 +211,7 @@ async fn update_credentials(app: &Application) {
                     error!(?err, "failed to refresh access token. forcing re-login");
 
                     if app.credentials.remove(&Backend::Github).is_some() {
-                        app.config
-                            .source
-                            .save_credentials(&app.credentials.serialize().await)
-                            .unwrap();
+                        app.credentials.store().unwrap();
                     }
 
                     return;
@@ -230,11 +227,8 @@ async fn update_credentials(app: &Application) {
                     },
                 )));
 
+            app.credentials.store().unwrap();
             info!("new bloop access keys saved");
-            app.config
-                .source
-                .save_credentials(&app.credentials.serialize().await)
-                .unwrap();
         }
 
         let github_expired = if let Some(github) = app.credentials.github() {
@@ -242,6 +236,9 @@ async fn update_credentials(app: &Application) {
             if let Ok(Some(ref user)) = username {
                 debug!(?user, "updated user");
                 app.credentials.set_user(user.into()).await;
+                if let Err(err) = app.credentials.store() {
+                    error!(?err, "failed to save user credentials");
+                }
             }
 
             username.is_err()
@@ -250,10 +247,7 @@ async fn update_credentials(app: &Application) {
         };
 
         if github_expired && app.credentials.remove(&Backend::Github).is_some() {
-            app.config
-                .source
-                .save_credentials(&app.credentials.serialize().await)
-                .unwrap();
+            app.credentials.store().unwrap();
             debug!("github oauth is invalid; credentials removed");
         }
     }

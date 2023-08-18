@@ -236,6 +236,25 @@ struct BackendEntry {
     updated_tx: flume::Sender<()>,
 }
 
+impl Serialize for BackendEntry {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.inner.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for BackendEntry {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let inner = BackendCredential::deserialize(deserializer)?;
+        Ok(inner.into())
+    }
+}
+
 impl From<BackendCredential> for BackendEntry {
     fn from(inner: BackendCredential) -> Self {
         let (updated_tx, updated) = flume::unbounded();
@@ -247,7 +266,7 @@ impl From<BackendCredential> for BackendEntry {
     }
 }
 
-#[derive(Clone)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct Backends {
     /// If the environment is a Tauri app, or auth is instance-wide,
     /// This will refresh the correct user.
@@ -299,17 +318,6 @@ impl Backends {
     pub(crate) fn github_updated(&self) -> Option<flume::Receiver<()>> {
         self.backends
             .read(&Backend::Github, |_, v| v.updated.clone())
-    }
-
-    pub(crate) async fn serialize(&self) -> impl Serialize + Send + Sync {
-        let mut output = HashMap::new();
-        self.backends
-            .scan_async(|k, v| {
-                output.insert(k.clone(), v.inner.clone());
-            })
-            .await;
-
-        output
     }
 
     pub(crate) async fn set_user(&self, user: String) {

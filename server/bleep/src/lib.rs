@@ -102,7 +102,7 @@ pub struct Application {
     indexes: Arc<Indexes>,
 
     /// Remote backend credentials
-    credentials: remotes::Backends,
+    credentials: PersistedState<remotes::Backends>,
 
     /// Main cookie encryption keypair
     cookie_key: axum_extra::extract::cookie::Key,
@@ -181,7 +181,9 @@ impl Application {
             .into(),
             sync_queue: SyncQueue::start(config.clone()),
             cookie_key: config.source.initialize_cookie_key()?,
-            credentials: config.source.initialize_credentials()?.into(),
+            credentials: config
+                .source
+                .load_state_or("credentials", remotes::Backends::default())?,
             user_profiles: config.source.load_or_default("user_profiles")?,
             sql: sqlite,
             repo_pool,

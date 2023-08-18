@@ -82,7 +82,7 @@ const Onboarding = () => {
     } else {
       getConfig()
         .then((d) => {
-          if (!d.github_user) {
+          if (!d.user_login) {
             setShouldShowWelcome(true);
           } else {
             closeOnboarding();
