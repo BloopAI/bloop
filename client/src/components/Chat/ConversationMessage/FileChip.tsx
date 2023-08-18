@@ -63,6 +63,14 @@ const FileChip = ({
     ref.current && fileChips ? fileChips.current.indexOf(ref.current) : -1;
 
   useEffect(() => {
+    if (!isSummary && lines && index === 0 && filePath) {
+      if (fileChips?.current?.length === 1) {
+        onClick();
+      }
+    }
+  }, [index, lines, isSummary, filePath]);
+
+  useEffect(() => {
     if (lines && index > -1 && setFileHighlights && !isSummary) {
       setFileHighlights((prev) => {
         const newHighlights = JSON.parse(JSON.stringify(prev));
