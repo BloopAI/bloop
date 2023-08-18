@@ -4,7 +4,7 @@ use bleep::{analytics, Application, Configuration, Environment};
 use once_cell::sync::OnceCell;
 use sentry::ClientInitGuard;
 use tauri::{plugin::Plugin, Invoke};
-use tracing::warn;
+use tracing::{error, warn};
 
 use super::{Manager, Payload, Runtime};
 
@@ -105,7 +105,25 @@ impl<R: Runtime> Plugin<R> for BloopBackend<R> {
     }
 }
 
+async fn wait_for_qdrant() {
+    use qdrant_client::prelude::*;
+    let qdrant =
+        QdrantClient::new(Some(QdrantClientConfig::from_url("http://127.0.0.1:6334"))).unwrap();
+
+    for _ in 0..60 {
+        if qdrant.health_check().await.is_ok() {
+            return;
+        }
+
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+
+    panic!("qdrant cannot be started");
+}
+
 async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::AppHandle<R>) {
+    wait_for_qdrant().await;
+
     let initialized = Application::initialize(
         Environment::insecure_local(),
         configuration,
@@ -145,11 +163,12 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
             });
         });
 
-        if let Err(_e) = backend.run().await {
+        if let Err(err) = backend.run().await {
+            error!(?err, "server finished with error");
             app.emit_all(
                 "server-crashed",
                 Payload {
-                    message: _e.to_string(),
+                    message: err.to_string(),
                 },
             )
             .unwrap()
