@@ -48,7 +48,6 @@ const CodeRenderer = ({
   recordId,
   threadId,
 }: Props) => {
-  console.log('className', className);
   const matchLang = useMemo(
     () =>
       /lang:(\w+)/.exec(className || '') ||
