@@ -394,7 +394,7 @@ fn trim_utter_history(
     let mut tiktoken_msgs: Vec<tiktoken_rs::ChatCompletionRequestMessage> =
         history.iter().map(|m| m.into()).collect::<Vec<_>>();
 
-    // remove the earliest messages, one by one, until we can accomodate into prompt
+    // remove the earliest messages, one by one, until we can accommodate into prompt
     while tiktoken_rs::get_chat_completion_max_tokens(ANSWER_MODEL, &tiktoken_msgs)? < headroom {
         if !tiktoken_msgs.is_empty() {
             tiktoken_msgs.remove(0);
