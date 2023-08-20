@@ -36,8 +36,8 @@ RUN . /home/gitpod/.nix-profile/etc/profile.d/nix.sh \
 RUN mkdir -p $HOME/.config/direnv && printf '%s\n' "[whitelist]" 'prefix = [ "/workspace" ]' >  $HOME/.config/direnv/config.toml \
     && printf '%s\n' 'source <(direnv hook bash)' > $HOME/.bashrc.d/999-direnv \
     && printf '%s\n' \
-        'dirs=($HOME/.cargo) && mkdir -p "${dirs[@]}"' \
-        'sudo create-overlay /nix "${dirs[@]}"' > $HOME/.runonce/100-nix \
+        'dirs=($HOME/.cargo $HOME/.cache/nix) && mkdir -p "${dirs[@]}"' \
+        'create-overlay /nix "${dirs[@]}"' > $HOME/.runonce/100-nix \
     && . /home/gitpod/.nix-profile/etc/profile.d/nix.sh \
     && nix-env -iA nixpkgs.direnv
 
