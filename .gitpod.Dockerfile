@@ -42,9 +42,9 @@ RUN mkdir -p $HOME/.config/direnv && printf '%s\n' "[whitelist]" 'prefix = [ "/w
     && nix-env -iA nixpkgs.direnv
 
 # Cache nix compilation for saving time
-ARG onetime_cache_dir="/tmp/.workdir"
-RUN mkdir -p "${onetime_cache_dir}"
-COPY --chown=gitpod:gitpod . "${onetime_cache_dir}"
+#ARG onetime_cache_dir="/tmp/.workdir"
+#RUN mkdir -p "${onetime_cache_dir}"
+#COPY --chown=gitpod:gitpod . "${onetime_cache_dir}"
 
 #WORKDIR "${onetime_cache_dir}"
 #SHELL [ "/bin/bash", "-c" ]
