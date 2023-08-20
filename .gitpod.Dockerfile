@@ -1,7 +1,7 @@
 FROM axonasif/workspace-base
 
 ARG NIX_VERSION="2.11.0"
-ARG NIX_CONFIG=""
+ARG NIX_CONFIG="experimental-features = nix-command flakes"
 
 ENV NIX_VERSION=${NIX_VERSION}
 
@@ -47,5 +47,5 @@ COPY --chown=gitpod:gitpod . "${onetime_cache_dir}"
 WORKDIR "${onetime_cache_dir}"
 SHELL [ "/bin/bash", "-c" ]
 RUN source "$HOME/.nix-profile/etc/profile.d/nix.sh" \
-    && nix run nixpkgs#cachix use bloopai \
+    && nix run nixpkgs \
     && nix develop
