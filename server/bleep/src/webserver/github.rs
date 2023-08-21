@@ -100,12 +100,12 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
     .to_string();
 
     let url = reqwest::Url::parse_with_params(
-        &url_base,
+        url_base,
         &[
             ("response_type", "code"),
             ("scope", "email openid profile"),
             ("redirect_url", &redirect_url),
-            ("client_id", &client_id),
+            ("client_id", client_id),
             ("state", &state),
         ],
     )
@@ -138,7 +138,7 @@ pub(super) async fn logout(Extension(app): Extension<Application>) -> impl IntoR
             .as_ref()
             .expect("auth not configured");
 
-        let url = reqwest::Url::parse(&url_base)
+        let url = reqwest::Url::parse(url_base)
             .unwrap()
             .join("revoke")
             .unwrap();
