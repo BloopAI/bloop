@@ -13,15 +13,18 @@ import { getConfig } from '../../services/api';
 import { SettingSections } from '../../components/Settings';
 import {
   getPlainFromStorage,
-  savePlainToStorage,
   ONBOARDING_DONE_KEY,
+  savePlainToStorage,
   THEME,
 } from '../../services/storage';
-import { UITabType } from '../../types/general';
+import { HomeTabType, RepoTabType, TabType } from '../../types/general';
 import { Theme } from '../../types';
 
 export const UIContextProvider = memo(
-  ({ children, tab }: PropsWithChildren<{ tab: UITabType }>) => {
+  ({
+    children,
+    tab,
+  }: PropsWithChildren<{ tab: RepoTabType | HomeTabType }>) => {
     const [isSettingsOpen, setSettingsOpen] = useState(false);
     const [isBugReportModalOpen, setBugReportModalOpen] = useState(false);
     const [settingsSection, setSettingsSection] = useState(
@@ -112,13 +115,6 @@ export const UIContextProvider = memo(
       [isRightPanelOpen],
     );
 
-    const tabContextValue = useMemo(
-      () => ({
-        tab,
-      }),
-      [tab],
-    );
-
     const themeContextValue = useMemo(
       () => ({
         theme,
@@ -143,6 +139,16 @@ export const UIContextProvider = memo(
       [isFiltersOpen],
     );
 
+    const WrappedChildren = useMemo(() => {
+      return tab.type === TabType.REPO ? (
+        <UIContext.Tab.Provider value={{ tab }}>
+          {children}
+        </UIContext.Tab.Provider>
+      ) : (
+        children
+      );
+    }, [tab]);
+
     return (
       <UIContext.Settings.Provider value={settingsContextValue}>
         <UIContext.Symbols.Provider value={symbolsContextValue}>
@@ -150,17 +156,13 @@ export const UIContextProvider = memo(
             <UIContext.BugReport.Provider value={bugReportContextValue}>
               <UIContext.GitHubConnected.Provider value={githubContextValue}>
                 <UIContext.RightPanel.Provider value={rightPanelContextValue}>
-                  <UIContext.Tab.Provider value={tabContextValue}>
-                    <UIContext.Theme.Provider value={themeContextValue}>
-                      <UIContext.PromptGuide.Provider
-                        value={promptContextValue}
-                      >
-                        <UIContext.Filters.Provider value={filtersContextValue}>
-                          {children}
-                        </UIContext.Filters.Provider>
-                      </UIContext.PromptGuide.Provider>
-                    </UIContext.Theme.Provider>
-                  </UIContext.Tab.Provider>
+                  <UIContext.Theme.Provider value={themeContextValue}>
+                    <UIContext.PromptGuide.Provider value={promptContextValue}>
+                      <UIContext.Filters.Provider value={filtersContextValue}>
+                        {WrappedChildren}
+                      </UIContext.Filters.Provider>
+                    </UIContext.PromptGuide.Provider>
+                  </UIContext.Theme.Provider>
                 </UIContext.RightPanel.Provider>
               </UIContext.GitHubConnected.Provider>
             </UIContext.BugReport.Provider>

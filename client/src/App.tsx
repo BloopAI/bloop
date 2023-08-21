@@ -2,12 +2,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DeviceContextType } from './context/deviceContext';
 import './index.css';
-import Tab from './Tab';
+import RepoTab from './pages/RepoTab';
 import { TabsContext } from './context/tabsContext';
 import {
   NavigationItem,
   RepoProvider,
+  RepoTabType,
   RepoType,
+  TabType,
   UITabType,
 } from './types/general';
 import {
@@ -24,6 +26,8 @@ import { AnalyticsContextProvider } from './context/providers/AnalyticsContextPr
 import { buildURLPart, getNavItemFromURL } from './utils/navigationUtils';
 import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
 import useKeyboardNavigation from './hooks/useKeyboardNavigation';
+import StudioTab from './pages/StudioTab';
+import HomeTab from './pages/HomeTab';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -36,10 +40,7 @@ function App({ deviceContextValue }: Props) {
     {
       key: 'initial',
       name: 'Home',
-      repoName: '',
-      repoRef: '',
-      source: RepoSource.LOCAL,
-      navigationHistory: [],
+      type: TabType.HOME,
     },
   ]);
   const location = useLocation();
@@ -53,7 +54,7 @@ function App({ deviceContextValue }: Props) {
       return;
     }
     const tab = tabs.find((t) => t.key === activeTab);
-    if (tab) {
+    if (tab && tab.type === TabType.REPO) {
       if (activeTab === 'initial') {
         navigate('/');
         return;
@@ -84,6 +85,7 @@ function App({ deviceContextValue }: Props) {
         source,
         branch,
         navigationHistory: navHistory || [],
+        type: TabType.REPO,
       };
       setTabs((prev) => [...prev, newTab]);
       setActiveTab(newTab.key);
@@ -156,12 +158,14 @@ function App({ deviceContextValue }: Props) {
     (tabKey: string, history: (prev: NavigationItem[]) => NavigationItem[]) => {
       setTabs((prev) => {
         const tabIndex = prev.findIndex((t) => t.key === tabKey);
-        if (tabIndex < 0) {
+        if (tabIndex < 0 || prev[tabIndex].type !== TabType.REPO) {
           return prev;
         }
         const newTab = {
           ...prev[tabIndex],
-          navigationHistory: history(prev[tabIndex].navigationHistory),
+          navigationHistory: history(
+            (prev[tabIndex] as RepoTabType).navigationHistory,
+          ),
         };
         const newTabs = [...prev];
         newTabs[tabIndex] = newTab;
@@ -272,9 +276,15 @@ function App({ deviceContextValue }: Props) {
       >
         <RepositoriesContext.Provider value={reposContextValue}>
           <TabsContext.Provider value={contextValue}>
-            {tabs.map((t) => (
-              <Tab key={t.key} isActive={t.key === activeTab} tab={t} />
-            ))}
+            {tabs.map((t) =>
+              t.type === TabType.STUDIO ? (
+                <StudioTab key={t.key} isActive={t.key === activeTab} tab={t} />
+              ) : t.type === TabType.REPO ? (
+                <RepoTab key={t.key} isActive={t.key === activeTab} tab={t} />
+              ) : (
+                <HomeTab key={t.key} isActive={t.key === activeTab} tab={t} />
+              ),
+            )}
           </TabsContext.Provider>
         </RepositoriesContext.Provider>
       </AnalyticsContextProvider>
