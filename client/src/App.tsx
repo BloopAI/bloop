@@ -9,6 +9,7 @@ import {
   RepoProvider,
   RepoTabType,
   RepoType,
+  StudioTabType,
   TabType,
   UITabType,
 } from './types/general';
@@ -68,7 +69,7 @@ function App({ deviceContextValue }: Props) {
     }
   }, [activeTab, tabs]);
 
-  const handleAddTab = useCallback(
+  const handleAddRepoTab = useCallback(
     (
       repoRef: string,
       repoName: string,
@@ -93,6 +94,16 @@ function App({ deviceContextValue }: Props) {
     [],
   );
 
+  const handleAddStudioTab = useCallback(() => {
+    const newTab: StudioTabType = {
+      key: '' + Date.now(),
+      name: 'New code studio',
+      type: TabType.STUDIO,
+    };
+    setTabs((prev: UITabType[]) => [...prev, newTab]);
+    setActiveTab(newTab.key);
+  }, []);
+
   useEffect(() => {
     if (location.pathname === '/') {
       setLoading(false);
@@ -106,7 +117,7 @@ function App({ deviceContextValue }: Props) {
       );
       if (repo) {
         const urlBranch = decodeURIComponent(location.pathname.split('/')[2]);
-        handleAddTab(
+        handleAddRepoTab(
           repo.ref,
           repo.provider === RepoProvider.GitHub ? repo.ref : repo.name,
           repo.name,
@@ -220,7 +231,8 @@ function App({ deviceContextValue }: Props) {
     () => ({
       tabs,
       activeTab,
-      handleAddTab,
+      handleAddRepoTab,
+      handleAddStudioTab,
       handleRemoveTab,
       setActiveTab,
       updateTabNavHistory,
@@ -229,7 +241,8 @@ function App({ deviceContextValue }: Props) {
     [
       tabs,
       activeTab,
-      handleAddTab,
+      handleAddRepoTab,
+      handleAddStudioTab,
       handleRemoveTab,
       updateTabNavHistory,
       updateTabBranch,
