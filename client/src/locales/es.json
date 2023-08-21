@@ -262,5 +262,13 @@
 	"Edit": "Editar","Click to copy": "Haga clic para copiar",
 	"Editing a previously submitted question will discard all answers and questions following it.": "La edición de una pregunta enviada anteriormente descartará todas las respuestas y preguntas posteriores.",
 	"Copy link": "Copiar link",
-	"Search using RegExp": "Buscar con RegExp"
+	"Search using RegExp": "Buscar con RegExp",
+	"New code studio": "Nuevo estudio de código",
+	"Rename": "Rebautizar",
+	"Last modified": "Última modificación",
+	"Studio project": "Proyecto de estudio",
+	"Use generative AI with a user defined context": "Utilice AI generativo con un contexto definido por el usuario",
+	"All studio projects": "Todos los proyectos de estudio",
+	"Give a short descriptive name for your new code studio.": "Dé un breve nombre descriptivo para su nuevo estudio de código.",
+	"Name": "Nombre"
 }

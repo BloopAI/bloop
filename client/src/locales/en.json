@@ -263,5 +263,13 @@
 	"Editing a previously submitted question will discard all answers and questions following it.": "Editing a previously submitted question will discard all answers and questions following it.",
 	"Click to copy": "Click to copy",
 	"Copy link": "Copy link",
-	"Search using RegExp": "Search using RegExp"
+	"Search using RegExp": "Search using RegExp",
+	"New code studio": "New code studio",
+	"Give a short descriptive name for your new code studio.": "Give a short descriptive name for your new code studio.",
+	"Name": "Name",
+	"Studio project": "Studio project",
+	"Use generative AI with a user defined context": "Use generative AI with a user defined context",
+	"All studio projects": "All studio projects",
+	"Rename": "Rename",
+	"Last modified": "Last modified"
 }

@@ -11,7 +11,7 @@ import { arrayUnique } from '../../../utils';
 import { getRepoSource } from '../../../utils/file';
 import { GitHubLogo, Repository as RepositoryIcon } from '../../../icons';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
-import { STATUS_MAP } from '../../../components/RepoCard';
+import { STATUS_MAP } from '../../HomeTab/ReposSection/RepoCard';
 import { UIContext } from '../../../context/uiContext';
 import RepositoryOverview from './RepositoryOverview';
 
