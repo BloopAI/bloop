@@ -1,11 +1,11 @@
 import React, { memo, useCallback, useContext, useTransition } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import SelectToggleButton from '../../components/SelectToggleButton';
-import { ChevronDoubleIntersected, Modal, Sidebar } from '../../icons';
-import { FullResultModeEnum } from '../../types/general';
-import useAppNavigation from '../../hooks/useAppNavigation';
-import { FileModalContext } from '../../context/fileModalContext';
+import SelectToggleButton from '../../../components/SelectToggleButton';
+import { ChevronDoubleIntersected, Modal, Sidebar } from '../../../icons';
+import { FullResultModeEnum } from '../../../types/general';
+import useAppNavigation from '../../../hooks/useAppNavigation';
+import { FileModalContext } from '../../../context/fileModalContext';
 
 type Props = {
   repoName: string;

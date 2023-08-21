@@ -6,12 +6,12 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { FilterType, UITabType } from '../../types/general';
+import { FilterType, RepoTabType } from '../../types/general';
 import { SearchContext } from '../searchContext';
 import { TabsContext } from '../tabsContext';
 
 type Props = {
-  tab: UITabType;
+  tab: RepoTabType;
 };
 
 export const SearchContextProvider = memo(

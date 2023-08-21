@@ -9,6 +9,7 @@ import { DeviceContext } from '../../context/deviceContext';
 import { TabsContext } from '../../context/tabsContext';
 import { gitHubLogout } from '../../services/api';
 import { RepoSource } from '../../types';
+import { TabType } from '../../types/general';
 import Tab from './Tab';
 
 type Props = {
@@ -81,7 +82,12 @@ const NavBar = ({ isSkeleton }: Props) => {
           tabs
             .slice(1)
             .map((t) => (
-              <Tab tabKey={t.key} name={t.name} key={t.key} source={t.source} />
+              <Tab
+                tabKey={t.key}
+                name={t.name}
+                key={t.key}
+                source={t.type === TabType.REPO ? t.source : undefined}
+              />
             ))}
       </div>
       {!isSkeleton && (
