@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     repo::RepoRef,
-    semantic::{self, Embedding, Payload},
+    semantic::{Embedding, Payload},
 };
 
 use super::db::SqlDb;
@@ -253,12 +253,22 @@ impl<'a> ChunkCache<'a> {
     /// Since qdrant changes are pipelined on their end, data written
     /// here is not necessarily available for querying when the
     /// commit's completed.
-    pub async fn commit(self, qdrant: &QdrantClient) -> anyhow::Result<(usize, usize, usize)> {
+    pub async fn commit(
+        self,
+        qdrant: &QdrantClient,
+        collection_name: &str,
+    ) -> anyhow::Result<(usize, usize, usize)> {
         let mut tx = self.sql.begin().await?;
 
-        let update_size = self.commit_branch_updates(&mut tx, qdrant).await?;
-        let delete_size = self.commit_deletes(&mut tx, qdrant).await?;
-        let new_size = self.commit_inserts(&mut tx, qdrant).await?;
+        let update_size = self
+            .commit_branch_updates(&mut tx, qdrant, collection_name)
+            .await?;
+        let delete_size = self
+            .commit_deletes(&mut tx, qdrant, collection_name)
+            .await?;
+        let new_size = self
+            .commit_inserts(&mut tx, qdrant, collection_name)
+            .await?;
 
         tx.commit().await?;
 
@@ -274,6 +284,7 @@ impl<'a> ChunkCache<'a> {
         &self,
         tx: &mut sqlx::Transaction<'_, Sqlite>,
         qdrant: &QdrantClient,
+        collection_name: &str,
     ) -> Result<usize, anyhow::Error> {
         let new: Vec<_> = std::mem::take(self.new.write().unwrap().as_mut());
         let new_sql = std::mem::take(&mut *self.new_sql.write().unwrap());
@@ -292,9 +303,7 @@ impl<'a> ChunkCache<'a> {
 
         // qdrant doesn't like empty payloads.
         if !new.is_empty() {
-            qdrant
-                .upsert_points_blocking(semantic::COLLECTION_NAME, new, None)
-                .await?;
+            qdrant.upsert_points(collection_name, new, None).await?;
         }
         Ok(new_size)
     }
@@ -304,6 +313,7 @@ impl<'a> ChunkCache<'a> {
         &self,
         tx: &mut sqlx::Transaction<'_, Sqlite>,
         qdrant: &QdrantClient,
+        collection_name: &str,
     ) -> Result<usize, anyhow::Error> {
         let mut to_delete = vec![];
         self.cache
@@ -329,7 +339,7 @@ impl<'a> ChunkCache<'a> {
         if !to_delete.is_empty() {
             qdrant
                 .delete_points(
-                    semantic::COLLECTION_NAME,
+                    collection_name,
                     &to_delete
                         .into_iter()
                         .map(PointId::from)
@@ -348,6 +358,7 @@ impl<'a> ChunkCache<'a> {
         &self,
         tx: &mut sqlx::Transaction<'_, Sqlite>,
         qdrant: &QdrantClient,
+        collection_name: &str,
     ) -> Result<usize, anyhow::Error> {
         let mut update_size = 0;
         let mut qdrant_updates = vec![];
@@ -382,7 +393,7 @@ impl<'a> ChunkCache<'a> {
 
             qdrant_updates.push(async move {
                 qdrant
-                    .set_payload_blocking(semantic::COLLECTION_NAME, &id, payload, None)
+                    .set_payload(collection_name, &id, payload, None)
                     .await
             });
             next = entry.next();

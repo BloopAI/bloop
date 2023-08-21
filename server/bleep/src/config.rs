@@ -1,4 +1,4 @@
-use crate::{semantic::chunk::OverlapStrategy, state::StateSource};
+use crate::state::StateSource;
 use anyhow::{Context, Result};
 use clap::Parser;
 
@@ -122,9 +122,10 @@ pub struct Configuration {
     /// Maximum number of tokens in a chunk (should be the model's input size)
     pub max_chunk_tokens: usize,
 
-    #[clap(long)]
-    /// Chunking strategy
-    pub overlap: Option<OverlapStrategy>,
+    #[clap(long, default_value_t = default_collection_name())]
+    #[serde(default = "default_collection_name")]
+    /// Qdrant collection name. Defaults to `documents`
+    pub collection_name: String,
 
     //
     // Installation-specific values
@@ -257,7 +258,11 @@ impl Configuration {
                 default_max_chunk_tokens()
             ),
 
-            overlap: b.overlap.or(a.overlap),
+            collection_name: right_if_default!(
+                b.collection_name,
+                a.collection_name,
+                default_collection_name()
+            ),
 
             frontend_dist: b.frontend_dist.or(a.frontend_dist),
 
@@ -334,6 +339,10 @@ fn default_index_dir() -> PathBuf {
 
 fn default_model_dir() -> PathBuf {
     "model".into()
+}
+
+fn default_collection_name() -> String {
+    "documents".into()
 }
 
 pub fn default_parallelism() -> usize {

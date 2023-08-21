@@ -29,7 +29,6 @@ mod schema;
 
 pub use schema::{Embedding, Payload};
 
-pub(crate) const COLLECTION_NAME: &str = "documents";
 pub(crate) const EMBEDDING_DIM: usize = 384;
 
 #[derive(Error, Debug)]
@@ -177,20 +176,6 @@ fn kind_to_value(kind: Option<qdrant_client::qdrant::value::Kind>) -> serde_json
     }
 }
 
-fn collection_config() -> CreateCollection {
-    CreateCollection {
-        collection_name: COLLECTION_NAME.to_string(),
-        vectors_config: Some(VectorsConfig {
-            config: Some(vectors_config::Config::Params(VectorParams {
-                size: EMBEDDING_DIM as u64,
-                distance: Distance::Cosine.into(),
-                ..Default::default()
-            })),
-        }),
-        ..Default::default()
-    }
-}
-
 impl Semantic {
     pub async fn initialize(
         model_dir: &Path,
@@ -199,17 +184,27 @@ impl Semantic {
     ) -> Result<Self, SemanticError> {
         let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url))).unwrap();
 
-        match qdrant.has_collection(COLLECTION_NAME).await {
+        match qdrant.has_collection(&config.collection_name).await {
             Ok(false) => {
                 let CollectionOperationResponse { result, time } = qdrant
-                    .create_collection(&collection_config())
+                    .create_collection(&CreateCollection {
+                        collection_name: config.collection_name.to_string(),
+                        vectors_config: Some(VectorsConfig {
+                            config: Some(vectors_config::Config::Params(VectorParams {
+                                size: EMBEDDING_DIM as u64,
+                                distance: Distance::Cosine.into(),
+                                ..Default::default()
+                            })),
+                        }),
+                        ..Default::default()
+                    })
                     .await
                     .unwrap();
 
                 debug!(
                     time,
                     created = result,
-                    name = COLLECTION_NAME,
+                    name = config.collection_name,
                     "created qdrant collection"
                 );
 
@@ -220,17 +215,35 @@ impl Semantic {
         }
 
         qdrant
-            .create_field_index(COLLECTION_NAME, "repo_ref", FieldType::Text, None, None)
-            .await?;
-        qdrant
-            .create_field_index(COLLECTION_NAME, "content_hash", FieldType::Text, None, None)
-            .await?;
-        qdrant
-            .create_field_index(COLLECTION_NAME, "branches", FieldType::Text, None, None)
+            .create_field_index(
+                &config.collection_name,
+                "repo_ref",
+                FieldType::Text,
+                None,
+                None,
+            )
             .await?;
         qdrant
             .create_field_index(
-                COLLECTION_NAME,
+                &config.collection_name,
+                "content_hash",
+                FieldType::Text,
+                None,
+                None,
+            )
+            .await?;
+        qdrant
+            .create_field_index(
+                &config.collection_name,
+                "branches",
+                FieldType::Text,
+                None,
+                None,
+            )
+            .await?;
+        qdrant
+            .create_field_index(
+                &config.collection_name,
                 "relative_path",
                 FieldType::Text,
                 None,
@@ -325,7 +338,7 @@ impl Semantic {
             .search_points(&SearchPoints {
                 limit,
                 vector,
-                collection_name: COLLECTION_NAME.to_string(),
+                collection_name: self.config.collection_name.to_string(),
                 offset: Some(offset),
                 score_threshold: Some(threshold),
                 with_payload: Some(WithPayloadSelector {
@@ -373,7 +386,7 @@ impl Semantic {
                 let points = SearchPoints {
                     limit,
                     vector,
-                    collection_name: COLLECTION_NAME.to_string(),
+                    collection_name: self.config.collection_name.to_string(),
                     offset: Some(offset),
                     score_threshold: Some(threshold),
                     with_payload: Some(WithPayloadSelector {
@@ -489,14 +502,15 @@ impl Semantic {
         branches: &[String],
         chunk_cache: crate::cache::ChunkCache<'_>,
     ) {
+        const MIN_CHUNK_TOKENS: usize = 50;
+
         let chunks = chunk::by_tokens(
             repo_name,
             relative_path,
             buffer,
             &self.tokenizer,
-            50..self.config.max_chunk_tokens,
-            15,
-            self.overlap_strategy(),
+            MIN_CHUNK_TOKENS..self.config.max_chunk_tokens,
+            chunk::OverlapStrategy::default(),
         );
         debug!(chunk_count = chunks.len(), "found chunks");
 
@@ -527,7 +541,10 @@ impl Semantic {
             }
         });
 
-        match chunk_cache.commit(&self.qdrant).await {
+        match chunk_cache
+            .commit(&self.qdrant, &self.config.collection_name)
+            .await
+        {
             Ok((new, updated, deleted)) => {
                 info!(
                     repo_name,
@@ -559,12 +576,8 @@ impl Semantic {
 
         let _ = self
             .qdrant
-            .delete_points(COLLECTION_NAME, &selector, None)
+            .delete_points(&self.config.collection_name, &selector, None)
             .await;
-    }
-
-    pub fn overlap_strategy(&self) -> chunk::OverlapStrategy {
-        self.config.overlap.unwrap_or_default()
     }
 }
 
