@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import { NavigationItem, UITabType } from '../types/general';
+import { NavigationItem, TabType, UITabType } from '../types/general';
 import { RepoSource } from '../types';
 
 type ContextType = {
@@ -27,10 +27,7 @@ export const TabsContext = createContext<ContextType>({
     {
       key: 'initial',
       name: 'Home',
-      repoName: '',
-      repoRef: '',
-      source: RepoSource.LOCAL,
-      navigationHistory: [],
+      type: TabType.HOME,
     },
   ],
   activeTab: 'initial',

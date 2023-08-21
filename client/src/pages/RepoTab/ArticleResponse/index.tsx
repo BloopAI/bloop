@@ -1,11 +1,11 @@
 import { useContext } from 'react';
-import { FileModalContext } from '../../context/fileModalContext';
-import { UIContext } from '../../context/uiContext';
-import MarkdownWithCode from '../../components/MarkdownWithCode';
-import Button from '../../components/Button';
-import { CopyMD } from '../../icons';
-import { copyToClipboard } from '../../utils';
-import useConversation from '../../hooks/useConversation';
+import { FileModalContext } from '../../../context/fileModalContext';
+import { UIContext } from '../../../context/uiContext';
+import MarkdownWithCode from '../../../components/MarkdownWithCode';
+import Button from '../../../components/Button';
+import { CopyMD } from '../../../icons';
+import { copyToClipboard } from '../../../utils';
+import useConversation from '../../../hooks/useConversation';
 
 type Props = {
   recordId: number;

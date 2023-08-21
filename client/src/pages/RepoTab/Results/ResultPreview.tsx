@@ -1,10 +1,14 @@
 import { useContext, useRef } from 'react';
-import CodeBlockSearch from '../../components/CodeBlock/Search';
-import SearchRepo from '../../components/CodeBlock/SearchRepo';
-import { ResultClick, ResultItemType, ResultType } from '../../types/results';
-import SearchFile from '../../components/CodeBlock/SearchFile';
-import { UIContext } from '../../context/uiContext';
-import useIsOnScreen from '../../hooks/useIsOnScreen';
+import CodeBlockSearch from '../../../components/CodeBlock/Search';
+import SearchRepo from '../../../components/CodeBlock/SearchRepo';
+import {
+  ResultClick,
+  ResultItemType,
+  ResultType,
+} from '../../../types/results';
+import SearchFile from '../../../components/CodeBlock/SearchFile';
+import { UIContext } from '../../../context/uiContext';
+import useIsOnScreen from '../../../hooks/useIsOnScreen';
 
 type Props = {
   result: ResultType;

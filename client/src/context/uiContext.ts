@@ -1,5 +1,6 @@
 import React, { createContext } from 'react';
-import { Theme } from '../types';
+import { RepoSource, Theme } from '../types';
+import { RepoTabType, TabType } from '../types/general';
 
 type ContextType = {
   isSettingsOpen: boolean;
@@ -69,8 +70,17 @@ export const UIContext = {
     isPromptGuideOpen: false,
     setPromptGuideOpen: (b: boolean) => {},
   }),
-  Tab: createContext({
-    tab: { key: 'initial', name: 'Home', repoName: '', repoRef: '' },
+  Tab: createContext<{ tab: RepoTabType }>({
+    tab: {
+      key: 'initial',
+      name: 'Home',
+      type: TabType.REPO,
+      repoName: '',
+      branch: '',
+      repoRef: '',
+      source: RepoSource.LOCAL,
+      navigationHistory: [],
+    },
   }),
   Theme: createContext({
     theme: 'system' as Theme,

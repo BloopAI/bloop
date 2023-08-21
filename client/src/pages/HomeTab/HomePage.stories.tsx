@@ -1,5 +1,5 @@
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import HomePage from './index';
+import HomePage from './Content';
 import '../../index.css';
 
 export default {

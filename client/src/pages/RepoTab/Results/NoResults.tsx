@@ -1,9 +1,9 @@
 import React, { useContext, useEffect, useMemo } from 'react';
 import { Trans } from 'react-i18next';
-import Button from '../../components/Button';
-import PageHeader from '../../components/ResultsPageHeader';
-import { RepositoriesContext } from '../../context/repositoriesContext';
-import { SyncStatus } from '../../types/general';
+import Button from '../../../components/Button';
+import PageHeader from '../../../components/ResultsPageHeader';
+import { RepositoriesContext } from '../../../context/repositoriesContext';
+import { SyncStatus } from '../../../types/general';
 
 type Props = {
   suggestions: string[];
