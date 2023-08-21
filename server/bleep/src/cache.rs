@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     repo::RepoRef,
-    semantic::{Embedding, Payload},
+    semantic::{Embedder, Payload},
 };
 
 use super::db::SqlDb;
@@ -201,7 +201,7 @@ impl<'a> ChunkCache<'a> {
     pub fn update_or_embed(
         &self,
         data: &'a str,
-        embedder: impl FnOnce(&'a str) -> anyhow::Result<Embedding>,
+        embedder: &impl Embedder,
         payload: Payload,
     ) -> anyhow::Result<()> {
         let id = self.cache_key(data, &payload);
@@ -230,7 +230,7 @@ impl<'a> ChunkCache<'a> {
 
                 self.new.write().unwrap().push(PointStruct {
                     id: Some(PointId::from(vacant.key().clone())),
-                    vectors: Some(embedder(data)?.into()),
+                    vectors: Some(embedder.embed(data)?.into()),
                     payload: payload.into_qdrant(),
                 });
 

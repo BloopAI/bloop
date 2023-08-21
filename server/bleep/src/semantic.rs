@@ -2,11 +2,6 @@ use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
 
 use crate::{query::parser::SemanticQuery, Configuration};
 
-use ndarray::Axis;
-use ort::{
-    tensor::{FromArray, InputTensor, OrtOwnedTensor},
-    Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
-};
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
@@ -21,12 +16,15 @@ use qdrant_client::{
 use futures::{stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use thiserror::Error;
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, warn};
 
 pub mod chunk;
+mod embedder;
 pub mod execute;
 mod schema;
 
+pub use embedder::Embedder;
+use embedder::LocalEmbedder;
 pub use schema::{Embedding, Payload};
 
 pub(crate) const EMBEDDING_DIM: usize = 384;
@@ -53,8 +51,7 @@ pub enum SemanticError {
 #[derive(Clone)]
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
-    tokenizer: Arc<tokenizers::Tokenizer>,
-    session: Arc<ort::Session>,
+    embedder: Arc<LocalEmbedder>,
     config: Arc<Configuration>,
 }
 
@@ -255,31 +252,9 @@ impl Semantic {
             init_ort_dylib(dylib_dir);
         }
 
-        let environment = Arc::new(
-            Environment::builder()
-                .with_name("Encode")
-                .with_log_level(LoggingLevel::Warning)
-                .with_execution_providers([ExecutionProvider::cpu()])
-                .with_telemetry(false)
-                .build()?,
-        );
-
-        let threads = if let Ok(v) = std::env::var("NUM_OMP_THREADS") {
-            str::parse(&v).unwrap_or(1)
-        } else {
-            1
-        };
-
         Ok(Self {
             qdrant: qdrant.into(),
-            tokenizer: tokenizers::Tokenizer::from_file(model_dir.join("tokenizer.json"))
-                .unwrap()
-                .into(),
-            session: SessionBuilder::new(&environment)?
-                .with_optimization_level(GraphOptimizationLevel::Level3)?
-                .with_intra_threads(threads)?
-                .with_model_from_file(model_dir.join("model.onnx"))?
-                .into(),
+            embedder: LocalEmbedder::new(model_dir)?.into(),
             config,
         })
     }
@@ -287,42 +262,6 @@ impl Semantic {
     pub async fn health_check(&self) -> anyhow::Result<()> {
         self.qdrant.health_check().await?;
         Ok(())
-    }
-
-    pub fn embed(&self, sequence: &str) -> anyhow::Result<Embedding> {
-        let tokenizer_output = self.tokenizer.encode(sequence, true).unwrap();
-
-        let input_ids = tokenizer_output.get_ids();
-        let attention_mask = tokenizer_output.get_attention_mask();
-        let token_type_ids = tokenizer_output.get_type_ids();
-        let length = input_ids.len();
-        trace!("embedding {} tokens {:?}", length, sequence);
-
-        let inputs_ids_array = ndarray::Array::from_shape_vec(
-            (1, length),
-            input_ids.iter().map(|&x| x as i64).collect(),
-        )?;
-
-        let attention_mask_array = ndarray::Array::from_shape_vec(
-            (1, length),
-            attention_mask.iter().map(|&x| x as i64).collect(),
-        )?;
-
-        let token_type_ids_array = ndarray::Array::from_shape_vec(
-            (1, length),
-            token_type_ids.iter().map(|&x| x as i64).collect(),
-        )?;
-
-        let outputs = self.session.run([
-            InputTensor::from_array(inputs_ids_array.into_dyn()),
-            InputTensor::from_array(attention_mask_array.into_dyn()),
-            InputTensor::from_array(token_type_ids_array.into_dyn()),
-        ])?;
-
-        let output_tensor: OrtOwnedTensor<f32, _> = outputs[0].try_extract().unwrap();
-        let sequence_embedding = &*output_tensor.view();
-        let pooled = sequence_embedding.mean_axis(Axis(1)).unwrap();
-        Ok(pooled.to_owned().as_slice().unwrap().to_vec())
     }
 
     pub async fn search_with<'a>(
@@ -426,7 +365,7 @@ impl Semantic {
         let Some(query) = parsed_query.target() else {
             anyhow::bail!("no search target for query");
         };
-        let vector = self.embed(&query)?;
+        let vector = self.embedder.embed(&query)?;
 
         // TODO: Remove the need for `retrieve_more`. It's here because:
         // In /q `limit` is the maximum number of results returned (the actual number will often be lower due to deduplication)
@@ -462,7 +401,7 @@ impl Semantic {
 
         let vectors = parsed_queries
             .iter()
-            .map(|q| self.embed(&q.target().unwrap()))
+            .map(|q| self.embedder.embed(&q.target().unwrap()))
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         tracing::trace!(?parsed_queries, "performing qdrant batch search");
@@ -508,16 +447,12 @@ impl Semantic {
             repo_name,
             relative_path,
             buffer,
-            &self.tokenizer,
+            self.embedder.tokenizer(),
             MIN_CHUNK_TOKENS..self.config.max_chunk_tokens,
             chunk::OverlapStrategy::default(),
         );
         debug!(chunk_count = chunks.len(), "found chunks");
 
-        let embedder = |c: &str| {
-            debug!("generating embedding");
-            self.embed(c)
-        };
         chunks.par_iter().for_each(|chunk| {
             let data = format!("{repo_name}\t{relative_path}\n{}", chunk.data,);
             let payload = Payload {
@@ -535,7 +470,7 @@ impl Semantic {
                 ..Default::default()
             };
 
-            let cached = chunk_cache.update_or_embed(&data, embedder, payload);
+            let cached = chunk_cache.update_or_embed(&data, self.embedder.as_ref(), payload);
             if let Err(err) = cached {
                 warn!(?err, %repo_name, %relative_path, "embedding failed");
             }
