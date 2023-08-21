@@ -55,7 +55,7 @@ const ReportBugModal = ({
 
   useEffect(() => {
     if (isBugReportModalOpen) {
-      invokeTauriCommand('plugin:bleep|get_last_log_file').then((log) => {
+      invokeTauriCommand('get_last_log_file').then((log) => {
         setServerLog(log);
       });
     }
