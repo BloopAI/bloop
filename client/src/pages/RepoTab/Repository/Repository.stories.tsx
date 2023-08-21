@@ -1,6 +1,6 @@
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-import { codeSearch } from '../../mocks/api_mocks';
+import { codeSearch } from '../../../mocks/api_mocks';
 import RepositoryPage from './index';
 
 export default {

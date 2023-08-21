@@ -8,7 +8,7 @@ import {
   useMemo,
 } from 'react';
 import FileChip from '../Chat/ConversationMessage/FileChip';
-import CodeWithBreadcrumbs from '../../pages/ArticleResponse/CodeWithBreadcrumbs';
+import CodeWithBreadcrumbs from '../../pages/RepoTab/ArticleResponse/CodeWithBreadcrumbs';
 import { FileHighlightsType } from '../../types/general';
 import NewCode from './NewCode';
 

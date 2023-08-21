@@ -114,3 +114,5 @@ export { default as WrenchAndScrewdriver } from './WrenchAndScrewdriver';
 export { default as Paper } from './Paper';
 export { default as FolderClosed } from './FolderClosed';
 export { default as CopyMD } from './CopyMD';
+export { default as CodeStudioIcon } from './CodeStudio';
+export { default as CodeStudioColored } from './CodeStudioColored';

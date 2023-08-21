@@ -7,14 +7,14 @@ import React, {
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { CloseSign, Sparkles } from '../../icons';
-import Button from '../../components/Button';
-import CodeFull from '../../components/CodeBlock/CodeFull';
-import { FullResult } from '../../types/results';
-import { FullResultModeEnum } from '../../types/general';
-import ModalOrSidebar from '../../components/ModalOrSidebar';
-import { ChatContext } from '../../context/chatContext';
-import { UIContext } from '../../context/uiContext';
+import { CloseSign, Sparkles } from '../../../icons';
+import Button from '../../../components/Button';
+import CodeFull from '../../../components/CodeBlock/CodeFull';
+import { FullResult } from '../../../types/results';
+import { FullResultModeEnum } from '../../../types/general';
+import ModalOrSidebar from '../../../components/ModalOrSidebar';
+import { ChatContext } from '../../../context/chatContext';
+import { UIContext } from '../../../context/uiContext';
 import ModeToggle from './ModeToggle';
 import Subheader from './Subheader';
 

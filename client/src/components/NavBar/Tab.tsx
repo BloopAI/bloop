@@ -1,12 +1,18 @@
 import React, { useContext } from 'react';
-import { CloseSign, GitHubLogo, HardDrive, Home } from '../../icons';
+import {
+  CloseSign,
+  GitHubLogo,
+  HardDrive,
+  Home,
+  CodeStudioColored,
+} from '../../icons';
 import { TabsContext } from '../../context/tabsContext';
 import { RepoSource } from '../../types';
 
 type Props = {
   tabKey: string;
   name: string;
-  source: RepoSource;
+  source?: RepoSource;
 };
 
 const Tab = ({ tabKey, name, source }: Props) => {
@@ -30,7 +36,13 @@ const Tab = ({ tabKey, name, source }: Props) => {
       ) : (
         <div className="flex items-center gap-1 ellipsis">
           <div className="w-4 h-4 flex-shrink-0">
-            {source === RepoSource.GH ? <GitHubLogo raw /> : <HardDrive raw />}
+            {source === undefined ? (
+              <CodeStudioColored />
+            ) : source === RepoSource.LOCAL ? (
+              <HardDrive raw />
+            ) : (
+              <GitHubLogo raw />
+            )}
           </div>
           <span className="ellipsis">{name.split('/').slice(-1)[0]}</span>
         </div>

@@ -2,20 +2,19 @@ import { formatDistanceToNow } from 'date-fns';
 import { memo, MouseEvent, useCallback, useContext, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import {
+  CloseSign,
+  Eye,
   GitHubLogo,
   MoreVertical,
   TrashCan,
-  CloseSign,
-  Eye,
 } from '../../icons';
-import { MenuItemType, SyncStatus } from '../../types/general';
+import { MenuItemType, SyncStatus, TabType } from '../../types/general';
 import FileIcon from '../FileIcon';
 import { getDateFnsLocale, getFileExtensionForLang } from '../../utils';
 import BarLoader from '../Loaders/BarLoader';
-import { UIContext } from '../../context/uiContext';
 import { TabsContext } from '../../context/tabsContext';
 import Dropdown from '../Dropdown/WithIcon';
-import { deleteRepo, cancelSync, syncRepo } from '../../services/api';
+import { cancelSync, deleteRepo, syncRepo } from '../../services/api';
 import { RepoSource } from '../../types';
 import { LocaleContext } from '../../context/localeContext';
 
@@ -57,7 +56,6 @@ const RepoCard = ({
   indexedBranches,
 }: Props) => {
   const { t } = useTranslation();
-  const { isGithubConnected } = useContext(UIContext.GitHubConnected);
   const { locale } = useContext(LocaleContext);
   const { handleAddTab, tabs, handleRemoveTab } = useContext(TabsContext);
   const isGh = useMemo(() => provider === 'github', [provider]);
@@ -82,7 +80,9 @@ const RepoCard = ({
     (e: MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation();
       deleteRepo(repoRef);
-      const tabsForThisRepo = tabs.filter((t) => t.repoRef === repoRef);
+      const tabsForThisRepo = tabs.filter(
+        (t) => t.type === TabType.REPO && t.repoRef === repoRef,
+      );
       tabsForThisRepo.forEach((t) => {
         handleRemoveTab(t.key);
       });

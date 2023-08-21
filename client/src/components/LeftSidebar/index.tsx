@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { RenderPage } from '../../pages';
+import { RenderPage } from '../../pages/RepoTab/Content';
 import IdeNavigation from '../IdeNavigation';
 import Filters from '../Filters';
 
