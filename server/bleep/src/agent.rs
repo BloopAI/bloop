@@ -258,7 +258,7 @@ impl Agent {
                     // NB: We intentionally discard the summary as it is redundant.
                     Some((answer, _conclusion)) => {
                         let encoded = transcoder::encode_summarized(answer, None, "gpt-3.5-turbo")?;
-                        Some(llm_gateway::api::Message::assistant(&encoded))
+                        Some(llm_gateway::api::Message::function_return("none", &encoded))
                     }
 
                     None => None,

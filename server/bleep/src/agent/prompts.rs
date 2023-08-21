@@ -9,7 +9,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "The query with which to search. This should consist of keywords that might match something in the codebase, e.g. 'react functional components', 'contextmanager', 'bearer token'"
+                            "description": "The query with which to search. This should consist of keywords that might match something in the codebase, e.g. 'react functional components', 'contextmanager', 'bearer token'. It should NOT contain redundant words like 'usage' or 'example'."
                         }
                     },
                     "required": ["query"]
@@ -17,7 +17,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
             },
             {
                 "name": "path",
-                "description": "Search the pathnames in a codebase. Results may not be exact matches, but will be similar by some edit-distance. Use when you want to find a specific file or directory.",
+                "description": "Search the pathnames in a codebase. Use when you want to find a specific file or directory. Results may not be exact matches, but will be similar by some edit-distance.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -31,7 +31,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
             },
             {
                 "name": "none",
-                "description": "You have enough information to answer the user's query. This is the final step, and signals that you have enough information to respond to the user's query. Use this if the user has instructed you to modify some code.",
+                "description": "Call this to answer the user. Call this only when you have enough information to answer the user's query.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -54,7 +54,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
             serde_json::json!(
             {
                 "name": "proc",
-                "description": "Read one or more files and extract the line ranges which are relevant to the search terms. Do not proc more than 10 files at a time.",
+                "description": "Read one or more files and extract the line ranges that are relevant to the search terms",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -66,7 +66,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
                             "type": "array",
                             "items": {
                                 "type": "integer",
-                                "description": "The indices of the paths to search. paths.len() <= 10"
+                                "description": "The indices of the paths to search. paths.len() <= 5"
                             }
                         }
                     },
@@ -93,24 +93,23 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
     }
 
     s.push_str(
-        r#"Follow these rules at all times:
+        r#"Your job is to choose the best action. Call functions to find information that will help answer the user's query. Call functions.none when you have enough information to answer. Follow these rules at all times:
 
 - ALWAYS call a function, DO NOT answer the question directly, even if the query is not in English
 - DO NOT call a function that you've used before with the same arguments
 - DO NOT assume the structure of the codebase, or the existence of files or folders
-- Call functions to find information that will help answer the user's query, until all relevant information has been found
-- Only call functions.proc with path indices that are under the PATHS heading above
-- If the output of a function is empty, try calling the function again with different arguments OR try calling a different function
-- If functions.code or functions.path did not return any relevant information, call them again with a SIGNIFICANTLY different query. The terms in the new query should not overlap with terms in your old one
-- Call functions.proc with paths that you have reason to believe might contain relevant information. Either because of the path name, or to expand on code that's already been returned by functions.code 
-- DO NOT pass more than 5 paths to functions.proc at a time
+- Call functions.none with paths that you are confident will help answer the user's query
 - In most cases call functions.code or functions.path functions before calling functions.none
-- When you have enough information to answer the user call functions.none. DO NOT answer the user directly
-- If the user is referring to information that is already in your history, call functions.none
+- If the user is referring to, or asking for, information that is in your history, call functions.none
+- If after attempting to gather information you are still unsure how to answer the query, call functions.none
+- If the query is a greeting, or not a question or an instruction call functions.none
 - When calling functions.code or functions.path, your query should consist of keywords. E.g. if the user says 'What does contextmanager do?', your query should be 'contextmanager'. If the user says 'How is contextmanager used in app', your query should be 'contextmanager app'. If the user says 'What is in the src directory', your query should be 'src'
-- Only call functions.none with paths that might help answer the user's query
-- If after attempting to gather information you are still unsure how to answer the query, respond with the functions.none function
-- If the query is a greeting, or not a question or an instruction use functions.none
+- If functions.code or functions.path did not return any relevant information, call them again with a SIGNIFICANTLY different query. The terms in the new query should not overlap with terms in your old one
+- If the output of a function is empty, try calling the function again with DIFFERENT arguments OR try calling a different function
+- Only call functions.proc with path indices that are under the PATHS heading above
+- Call functions.proc with paths that might contain relevant information. Either because of the path name, or to expand on code that's already been returned by functions.code 
+- DO NOT call functions.proc with more than 5 paths
+- DO NOT call functions.proc on the same file more than once
 - ALWAYS call a function. DO NOT answer the question directly"#);
     s
 }
@@ -149,24 +148,6 @@ Q: {question}
 A: "#
     )
 }
-
-/*
-
-    format!(
-        r#"{context}#####
-
-        A user is looking at the code above, they'd like you to answer their queries.
-
-Your output will be interpreted as bloop-markdown which renders with the following rules:
-- All github-markdown rules are accepted
-- Lines of code can be referenced using the URL format: [foo.rs](src/foo.rs#L50-L78)
-  - In this example, the link is to the file src/foo.rs and the lines 50 to 78
-  - Links should be semantically named to help the user understand when they're clicking on
-- When referring to lines of code, you must use a link
-- When referring to code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, directories, etc), you must use a link"#
-    )
-
-*/
 
 pub fn answer_article_prompt(aliases: &[usize], context: &str) -> String {
     // Return different prompts depending on whether there is one or many aliases

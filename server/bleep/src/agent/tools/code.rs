@@ -34,7 +34,7 @@ impl Agent {
             results.extend(hyde_results);
         }
 
-        let chunks = results
+        let mut chunks = results
             .into_iter()
             .map(|chunk| {
                 let relative_path = chunk.relative_path;
@@ -48,6 +48,8 @@ impl Agent {
                 }
             })
             .collect::<Vec<_>>();
+
+        chunks.sort_by(|a, b| a.alias.cmp(&b.alias).then(a.start_line.cmp(&b.start_line)));
 
         for chunk in chunks.iter().filter(|c| !c.is_empty()) {
             self.exchanges

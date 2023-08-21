@@ -174,7 +174,7 @@ impl Agent {
             .collect::<Vec<_>>()
             .await;
 
-        let chunks = processed
+        let mut chunks = processed
             .into_iter()
             .flat_map(|(relevant_chunks, path)| {
                 let alias = self.get_path_alias(&path);
@@ -188,6 +188,8 @@ impl Agent {
                 })
             })
             .collect::<Vec<_>>();
+
+        chunks.sort_by(|a, b| a.alias.cmp(&b.alias).then(a.start_line.cmp(&b.start_line)));
 
         for chunk in chunks.iter().filter(|c| !c.is_empty()) {
             self.exchanges
