@@ -129,6 +129,8 @@
                   "sha256-UWY00jF2aKAG3Oz0P1UWF/7TiTIrCUGHwfjW+O1ok7Q=";
                 "tree-sitter-php-0.19.1" =
                   "sha256-oHUfcuqtFFl+70/uJjE74J1JVV93G9++UaEIntOH5tM=";
+                "esaxx-rs-0.1.8" =
+                  "sha256-rPNNSn829eOo/glgmHPqnoylZmDLlaI5vKMRtfTikGs=";
               };
             };
 
@@ -210,4 +212,3 @@
         formatter = pkgs.nixfmt;
       });
 }
-
