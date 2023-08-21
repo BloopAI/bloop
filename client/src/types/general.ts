@@ -80,6 +80,12 @@ export type RepoUi = RepoType & {
   alreadySynced?: boolean;
 };
 
+export type CodeStudioShortType = {
+  id: string;
+  name: string;
+  last_modified: string;
+};
+
 export enum FullResultModeEnum {
   PAGE,
   SIDEBAR,
