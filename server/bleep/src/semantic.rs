@@ -209,47 +209,47 @@ impl Semantic {
                 );
 
                 assert!(result);
-
-                qdrant
-                    .create_field_index(
-                        &config.collection_name,
-                        "repo_ref",
-                        FieldType::Text,
-                        None,
-                        None,
-                    )
-                    .await?;
-                qdrant
-                    .create_field_index(
-                        &config.collection_name,
-                        "content_hash",
-                        FieldType::Text,
-                        None,
-                        None,
-                    )
-                    .await?;
-                qdrant
-                    .create_field_index(
-                        &config.collection_name,
-                        "branches",
-                        FieldType::Text,
-                        None,
-                        None,
-                    )
-                    .await?;
-                qdrant
-                    .create_field_index(
-                        &config.collection_name,
-                        "relative_path",
-                        FieldType::Text,
-                        None,
-                        None,
-                    )
-                    .await?;
             }
             Ok(true) => {}
             Err(_) => return Err(SemanticError::QdrantInitializationError),
         }
+
+        qdrant
+            .create_field_index(
+                &config.collection_name,
+                "repo_ref",
+                FieldType::Text,
+                None,
+                None,
+            )
+            .await?;
+        qdrant
+            .create_field_index(
+                &config.collection_name,
+                "content_hash",
+                FieldType::Text,
+                None,
+                None,
+            )
+            .await?;
+        qdrant
+            .create_field_index(
+                &config.collection_name,
+                "branches",
+                FieldType::Text,
+                None,
+                None,
+            )
+            .await?;
+        qdrant
+            .create_field_index(
+                &config.collection_name,
+                "relative_path",
+                FieldType::Text,
+                None,
+                None,
+            )
+            .await?;
 
         if let Some(dylib_dir) = config.dylib_dir.as_ref() {
             init_ort_dylib(dylib_dir);
