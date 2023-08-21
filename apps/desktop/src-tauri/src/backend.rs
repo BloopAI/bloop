@@ -23,7 +23,7 @@ fn get_device_id() -> String {
 static SENTRY: OnceCell<ClientInitGuard> = OnceCell::new();
 
 #[tauri::command]
-fn get_last_log_file(config: tauri::State<Configuration>) -> Option<String> {
+pub fn get_last_log_file(config: tauri::State<Configuration>) -> Option<String> {
     let log_dir = config.log_dir();
 
     let mut entries = std::fs::read_dir(log_dir)
@@ -52,57 +52,21 @@ fn get_last_log_file(config: tauri::State<Configuration>) -> Option<String> {
     std::fs::read_to_string(filename).ok()
 }
 
-pub(super) struct BloopBackend<R>
-where
-    R: Runtime,
-{
-    invoke_handler: Box<dyn Fn(Invoke<R>) + Send + Sync>,
-}
+pub fn initialize<R: Runtime>(app: &mut tauri::App<R>) -> tauri::plugin::Result<()> {
+    let handle = app.handle();
+    let configuration = setup_configuration(&handle);
 
-impl<R: Runtime> BloopBackend<R> {
-    pub fn new() -> Self {
-        Self {
-            invoke_handler: Box::new(tauri::generate_handler![get_last_log_file]),
-        }
-    }
-}
+    Application::install_logging(&configuration);
 
-impl<R: Runtime> Default for BloopBackend<R> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<R: Runtime> Plugin<R> for BloopBackend<R> {
-    fn name(&self) -> &'static str {
-        "bleep"
+    if let Some(dsn) = &configuration.sentry_dsn {
+        initialize_sentry(dsn);
     }
 
-    /// Extend the invoke handler.
-    fn extend_api(&mut self, message: Invoke<R>) {
-        (self.invoke_handler)(message)
-    }
+    app.manage(configuration.clone());
 
-    fn initialize(
-        &mut self,
-        app: &tauri::AppHandle<R>,
-        _config: serde_json::Value,
-    ) -> tauri::plugin::Result<()> {
-        let configuration = setup_configuration(app);
+    tokio::spawn(start_backend(configuration, handle));
 
-        Application::install_logging(&configuration);
-
-        if let Some(dsn) = &configuration.sentry_dsn {
-            initialize_sentry(dsn);
-        }
-
-        app.manage(configuration.clone());
-
-        let app = app.clone();
-        tokio::spawn(start_backend(configuration, app));
-
-        Ok(())
-    }
+    Ok(())
 }
 
 async fn wait_for_qdrant() {

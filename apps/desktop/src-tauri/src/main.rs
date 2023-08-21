@@ -36,11 +36,12 @@ fn relative_command_path(command: impl AsRef<str>) -> Option<PathBuf> {
 async fn main() {
     tauri::Builder::default()
         .plugin(qdrant::QdrantSupervisor::default())
-        .plugin(backend::BloopBackend::default())
+        .setup(backend::initialize)
         .invoke_handler(tauri::generate_handler![
             show_folder_in_finder,
             enable_telemetry,
             disable_telemetry,
+            backend::get_last_log_file,
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri application");
