@@ -264,5 +264,13 @@
 	"Click to copy": "Click to copy",
 	"Copy link": "Copy link",
 	"Search using RegExp": "Search using RegExp",
-	"We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub": "We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub"
+	"We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub": "We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub",
+	"New code studio": "New code studio",
+	"Give a short descriptive name for your new code studio.": "Give a short descriptive name for your new code studio.",
+	"Name": "Name",
+	"Studio project": "Studio project",
+	"Use generative AI with a user defined context": "Use generative AI with a user defined context",
+	"All studio projects": "All studio projects",
+	"Rename": "Rename",
+	"Last modified": "Last modified"
 }
