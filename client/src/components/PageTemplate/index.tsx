@@ -4,7 +4,7 @@ import NavBar from '../NavBar';
 import StatusBar from '../StatusBar';
 import Chat from '../Chat';
 import ErrorFallback from '../ErrorFallback';
-import { RenderPage } from '../../pages';
+import { RenderPage } from '../../pages/RepoTab/Content';
 import LeftSidebar from '../LeftSidebar';
 import Subheader from './Subheader';
 

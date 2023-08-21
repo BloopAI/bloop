@@ -1,7 +1,7 @@
 import React, { memo, useMemo } from 'react';
-import { ResultClick, ResultType } from '../../types/results';
-import Pagination from '../../components/Pagination';
-import { ResultsPreviewSkeleton } from '../../components/Skeleton';
+import { ResultClick, ResultType } from '../../../types/results';
+import Pagination from '../../../components/Pagination';
+import { ResultsPreviewSkeleton } from '../../../components/Skeleton';
 import ResultPreview from './ResultPreview';
 
 type Props = {

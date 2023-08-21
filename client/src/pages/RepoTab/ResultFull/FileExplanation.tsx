@@ -1,14 +1,14 @@
 import React, { memo, useContext } from 'react';
-import MarkdownWithCode from '../../components/MarkdownWithCode';
-import { CopyMD } from '../../icons';
-import { FileModalContext } from '../../context/fileModalContext';
-import { copyToClipboard } from '../../utils';
-import Button from '../../components/Button';
+import MarkdownWithCode from '../../../components/MarkdownWithCode';
+import { CopyMD } from '../../../icons';
+import { FileModalContext } from '../../../context/fileModalContext';
+import { copyToClipboard } from '../../../utils';
+import Button from '../../../components/Button';
 import {
   LEFT_SIDEBAR_WIDTH_KEY,
   RIGHT_SIDEBAR_WIDTH_KEY,
-} from '../../services/storage';
-import useResizeableWidth from '../../hooks/useResizeableWidth';
+} from '../../../services/storage';
+import useResizeableWidth from '../../../hooks/useResizeableWidth';
 
 type Props = {
   repoName: string;

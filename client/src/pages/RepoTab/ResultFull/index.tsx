@@ -7,28 +7,28 @@ import React, {
 } from 'react';
 import * as Sentry from '@sentry/react';
 import { Trans } from 'react-i18next';
-import FileIcon from '../../components/FileIcon';
-import Breadcrumbs from '../../components/Breadcrumbs';
-import CodeFull from '../../components/CodeBlock/CodeFull';
-import { getHoverables } from '../../services/api';
-import { mapFileResult, mapRanges } from '../../mappers/results';
-import { FullResult } from '../../types/results';
+import FileIcon from '../../../components/FileIcon';
+import Breadcrumbs from '../../../components/Breadcrumbs';
+import CodeFull from '../../../components/CodeBlock/CodeFull';
+import { getHoverables } from '../../../services/api';
+import { mapFileResult, mapRanges } from '../../../mappers/results';
+import { FullResult } from '../../../types/results';
 import {
   breadcrumbsItemPath,
   humanFileSize,
   isWindowsPath,
   splitPathForBreadcrumbs,
-} from '../../utils';
-import ErrorFallback from '../../components/ErrorFallback';
-import useAppNavigation from '../../hooks/useAppNavigation';
-import FileMenu from '../../components/FileMenu';
-import SkeletonItem from '../../components/SkeletonItem';
-import IpynbRenderer from '../../components/IpynbRenderer';
-import useConversation from '../../hooks/useConversation';
-import Button from '../../components/Button';
-import { Sparkles } from '../../icons';
-import { ChatContext } from '../../context/chatContext';
-import { UIContext } from '../../context/uiContext';
+} from '../../../utils';
+import ErrorFallback from '../../../components/ErrorFallback';
+import useAppNavigation from '../../../hooks/useAppNavigation';
+import FileMenu from '../../../components/FileMenu';
+import SkeletonItem from '../../../components/SkeletonItem';
+import IpynbRenderer from '../../../components/IpynbRenderer';
+import useConversation from '../../../hooks/useConversation';
+import Button from '../../../components/Button';
+import { Sparkles } from '../../../icons';
+import { ChatContext } from '../../../context/chatContext';
+import { UIContext } from '../../../context/uiContext';
 import FileExplanation from './FileExplanation';
 
 type Props = {
