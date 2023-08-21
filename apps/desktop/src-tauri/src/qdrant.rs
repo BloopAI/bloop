@@ -47,8 +47,8 @@ where
     }
 
     fn on_event(&mut self, _app: &tauri::AppHandle<R>, event: &tauri::RunEvent) {
-        use tauri::RunEvent::ExitRequested;
-        if matches!(event, ExitRequested { .. }) {
+        use tauri::RunEvent::{Exit, ExitRequested};
+        if matches!(event, Exit | ExitRequested { .. }) {
             self.child
                 .take()
                 .expect("qdrant not started")
