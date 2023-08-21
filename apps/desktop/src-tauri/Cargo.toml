@@ -12,13 +12,13 @@ rust-version = "1.57"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = { git = "https://github.com/calyptobai/tauri.git", features = [] }
+tauri-build = { git = "https://github.com/BloopAI/tauri.git", features = [] }
 
 
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { git = "https://github.com/calyptobai/tauri.git", features = ["dialog-open", "fs-all", "http-all", "native-tls-vendored", "os-all", "path-all", "process-all", "shell-all", "updater", "window-all"] }
+tauri = { git = "https://github.com/BloopAI/tauri.git", features = ["dialog-open", "fs-all", "http-all", "native-tls-vendored", "os-all", "path-all", "process-all", "shell-all", "updater", "window-all"] }
 bleep = { path = "../../../server/bleep", package = "bleep" }
 anyhow = "1.0.71"
 tokio = { version = "1.29.1", features = ["rt-multi-thread"] }

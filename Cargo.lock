@@ -6854,7 +6854,7 @@ checksum = "1d2faeef5759ab89935255b1a4cd98e0baf99d1085e37d36599c625dac49ae8e"
 [[package]]
 name = "tauri"
 version = "1.4.1"
-source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
+source = "git+https://github.com/BloopAI/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "anyhow",
  "base64 0.21.2",
@@ -6911,7 +6911,7 @@ dependencies = [
 [[package]]
 name = "tauri-build"
 version = "1.4.0"
-source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
+source = "git+https://github.com/BloopAI/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "anyhow",
  "cargo_toml",
@@ -6927,7 +6927,7 @@ dependencies = [
 [[package]]
 name = "tauri-codegen"
 version = "1.4.0"
-source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
+source = "git+https://github.com/BloopAI/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "base64 0.21.2",
  "brotli",
@@ -6952,7 +6952,7 @@ dependencies = [
 [[package]]
 name = "tauri-macros"
 version = "1.4.0"
-source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
+source = "git+https://github.com/BloopAI/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "heck 0.4.1",
  "proc-macro2",
@@ -6965,7 +6965,7 @@ dependencies = [
 [[package]]
 name = "tauri-runtime"
 version = "0.14.0"
-source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
+source = "git+https://github.com/BloopAI/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "gtk",
  "http",
@@ -6985,7 +6985,7 @@ dependencies = [
 [[package]]
 name = "tauri-runtime-wry"
 version = "0.14.0"
-source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
+source = "git+https://github.com/BloopAI/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "cocoa",
  "gtk",
@@ -7004,7 +7004,7 @@ dependencies = [
 [[package]]
 name = "tauri-utils"
 version = "1.4.0"
-source = "git+https://github.com/calyptobai/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
+source = "git+https://github.com/BloopAI/tauri.git#6d2ee31d4ffaef5bacf86e94f467d1b1f37971ab"
 dependencies = [
  "brotli",
  "ctor",
