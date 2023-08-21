@@ -57,7 +57,7 @@ const RepoCard = ({
 }: Props) => {
   const { t } = useTranslation();
   const { locale } = useContext(LocaleContext);
-  const { handleAddTab, tabs, handleRemoveTab } = useContext(TabsContext);
+  const { handleAddRepoTab, tabs, handleRemoveTab } = useContext(TabsContext);
   const isGh = useMemo(() => provider === 'github', [provider]);
   const repoName = useMemo(() => {
     return !isGh ? name.split('/').reverse()[0] : name;
@@ -67,14 +67,14 @@ const RepoCard = ({
     if (!last_index || last_index === '1970-01-01T00:00:00Z') {
       return;
     }
-    handleAddTab(
+    handleAddRepoTab(
       repoRef,
       isGh ? repoRef : repoName,
       repoName,
       isGh ? RepoSource.GH : RepoSource.LOCAL,
       indexedBranches?.[0],
     );
-  }, [repoRef, repoName, isGh, last_index, indexedBranches, handleAddTab]);
+  }, [repoRef, repoName, isGh, last_index, indexedBranches, handleAddRepoTab]);
 
   const onRepoRemove = useCallback(
     (e: MouseEvent<HTMLButtonElement>) => {

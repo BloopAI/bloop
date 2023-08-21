@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react';
 import { Trans, useTranslation } from 'react-i18next';
 import ErrorFallback from '../../components/ErrorFallback';
@@ -9,6 +9,7 @@ import { RepositoriesContext } from '../../context/repositoriesContext';
 import { RepoType, SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
 import PageTemplate from '../../components/PageTemplate';
+import { TabsContext } from '../../context/tabsContext';
 import AddRepos from './AddRepos';
 import ReposSection from './ReposSection';
 import AddRepoCard from './AddRepoCard';
@@ -27,6 +28,7 @@ const HomePage = () => {
   const { t } = useTranslation();
   const { fetchRepos, repositories } = useContext(RepositoriesContext);
   const { isSelfServe } = useContext(DeviceContext);
+  const { handleAddStudioTab } = useContext(TabsContext);
   const [popupOpen, setPopupOpen] = useState(false);
   const [addReposOpen, setAddReposOpen] = useState<
     null | 'local' | 'github' | 'public'
@@ -41,6 +43,17 @@ const HomePage = () => {
     }
   }, [repositories]);
 
+  const onAddClick = useCallback(
+    (type: 'local' | 'github' | 'public' | 'studio') => {
+      if (type === 'studio') {
+        handleAddStudioTab();
+      } else {
+        setAddReposOpen(type);
+      }
+    },
+    [],
+  );
+
   return (
     <PageTemplate renderPage="home">
       <div className="w-full flex flex-col mx-auto max-w-6.5xl">
@@ -49,11 +62,10 @@ const HomePage = () => {
             <Trans>Add</Trans>
           </h4>
           <div className="flex gap-3.5 pb-2">
-            <AddRepoCard type="github" onClick={setAddReposOpen} />
-            <AddRepoCard type="public" onClick={setAddReposOpen} />
-            {!isSelfServe && (
-              <AddRepoCard type="local" onClick={setAddReposOpen} />
-            )}
+            <AddRepoCard type="github" onClick={onAddClick} />
+            <AddRepoCard type="public" onClick={onAddClick} />
+            {!isSelfServe && <AddRepoCard type="local" onClick={onAddClick} />}
+            <AddRepoCard type="studio" onClick={onAddClick} />
           </div>
         </div>
         <ReposSection
