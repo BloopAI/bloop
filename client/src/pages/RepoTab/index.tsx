@@ -1,25 +1,25 @@
 import React, { PureComponent } from 'react';
-import Settings from './components/Settings';
-import { UITabType } from './types/general';
-import './index.css';
-import ReportBugModal from './components/ReportBugModal';
-import { UIContextProvider } from './context/providers/UiContextProvider';
-import { AppNavigationProvider } from './context/providers/AppNavigationProvider';
-import ContentContainer from './pages';
-import { SearchContextProvider } from './context/providers/SearchContextProvider';
-import { ChatContextProvider } from './context/providers/ChatContextProvider';
-import FileModalContainer from './pages/ResultModal/FileModalContainer';
-import { FileModalContextProvider } from './context/providers/FileModalContextProvider';
-import PromptGuidePopup from './components/PromptGuidePopup';
-import Onboarding from './pages/Onboarding';
-import { FileHighlightsContextProvider } from './context/providers/FileHighlightsContextProvider';
+import Settings from '../../components/Settings';
+import { RepoTabType } from '../../types/general';
+import '../../index.css';
+import ReportBugModal from '../../components/ReportBugModal';
+import { UIContextProvider } from '../../context/providers/UiContextProvider';
+import { AppNavigationProvider } from '../../context/providers/AppNavigationProvider';
+import { SearchContextProvider } from '../../context/providers/SearchContextProvider';
+import { ChatContextProvider } from '../../context/providers/ChatContextProvider';
+import { FileModalContextProvider } from '../../context/providers/FileModalContextProvider';
+import PromptGuidePopup from '../../components/PromptGuidePopup';
+import Onboarding from '../Onboarding';
+import { FileHighlightsContextProvider } from '../../context/providers/FileHighlightsContextProvider';
+import FileModalContainer from './ResultModal/FileModalContainer';
+import ContentContainer from './Content';
 
 type Props = {
   isActive: boolean;
-  tab: UITabType;
+  tab: RepoTabType;
 };
 
-class Tab extends PureComponent<Props> {
+class RepoTab extends PureComponent<Props> {
   render() {
     const { isActive, tab } = this.props;
     return (
@@ -50,4 +50,4 @@ class Tab extends PureComponent<Props> {
   }
 }
 
-export default Tab;
+export default RepoTab;

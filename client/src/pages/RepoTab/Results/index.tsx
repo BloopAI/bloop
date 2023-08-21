@@ -7,16 +7,20 @@ import React, {
   useState,
 } from 'react';
 import * as Sentry from '@sentry/react';
-import { ResultClick, ResultItemType, ResultType } from '../../types/results';
-import { SearchContext } from '../../context/searchContext';
-import { mapFiltersData } from '../../mappers/filter';
-import { mapResults } from '../../mappers/results';
-import { UIContext } from '../../context/uiContext';
-import useAppNavigation from '../../hooks/useAppNavigation';
-import { GeneralSearchResponse } from '../../types/api';
-import ErrorFallback from '../../components/ErrorFallback';
-import PageHeader from '../../components/ResultsPageHeader';
-import { FileModalContext } from '../../context/fileModalContext';
+import {
+  ResultClick,
+  ResultItemType,
+  ResultType,
+} from '../../../types/results';
+import { SearchContext } from '../../../context/searchContext';
+import { mapFiltersData } from '../../../mappers/filter';
+import { mapResults } from '../../../mappers/results';
+import { UIContext } from '../../../context/uiContext';
+import useAppNavigation from '../../../hooks/useAppNavigation';
+import { GeneralSearchResponse } from '../../../types/api';
+import ErrorFallback from '../../../components/ErrorFallback';
+import PageHeader from '../../../components/ResultsPageHeader';
+import { FileModalContext } from '../../../context/fileModalContext';
 import ResultsList from './ResultsList';
 
 type Props = {

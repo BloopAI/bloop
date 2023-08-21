@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
-import FileIcon from '../../components/FileIcon';
-import BreadcrumbsPath from '../../components/BreadcrumbsPath';
-import FileMenu from '../../components/FileMenu';
+import FileIcon from '../../../components/FileIcon';
+import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
+import FileMenu from '../../../components/FileMenu';
 
 type Props = {
   relativePath: string;

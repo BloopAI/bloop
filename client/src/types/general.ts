@@ -91,7 +91,13 @@ export enum SearchType {
   NL,
 }
 
-export type UITabType = {
+export enum TabType {
+  REPO = 'repo',
+  STUDIO = 'studio',
+  HOME = 'home',
+}
+
+export type RepoTabType = {
   key: string;
   name: string;
   repoName: string;
@@ -99,7 +105,22 @@ export type UITabType = {
   source: RepoSource;
   branch?: string | null;
   navigationHistory: NavigationItem[];
+  type: TabType.REPO;
 };
+
+export type HomeTabType = {
+  key: string;
+  name: string;
+  type: TabType.HOME;
+};
+
+export type StudioTabType = {
+  key: string;
+  name: string;
+  type: TabType.STUDIO;
+};
+
+export type UITabType = RepoTabType | HomeTabType | StudioTabType;
 
 export type TabHistoryType = {
   tabKey: string;
