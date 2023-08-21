@@ -7,16 +7,16 @@ import {
   GitHubLogo,
   MoreVertical,
   TrashCan,
-} from '../../icons';
-import { MenuItemType, SyncStatus, TabType } from '../../types/general';
-import FileIcon from '../FileIcon';
-import { getDateFnsLocale, getFileExtensionForLang } from '../../utils';
-import BarLoader from '../Loaders/BarLoader';
-import { TabsContext } from '../../context/tabsContext';
-import Dropdown from '../Dropdown/WithIcon';
-import { cancelSync, deleteRepo, syncRepo } from '../../services/api';
-import { RepoSource } from '../../types';
-import { LocaleContext } from '../../context/localeContext';
+} from '../../../../icons';
+import { MenuItemType, SyncStatus, TabType } from '../../../../types/general';
+import FileIcon from '../../../../components/FileIcon';
+import { getDateFnsLocale, getFileExtensionForLang } from '../../../../utils';
+import BarLoader from '../../../../components/Loaders/BarLoader';
+import { TabsContext } from '../../../../context/tabsContext';
+import Dropdown from '../../../../components/Dropdown/WithIcon';
+import { cancelSync, deleteRepo, syncRepo } from '../../../../services/api';
+import { RepoSource } from '../../../../types';
+import { LocaleContext } from '../../../../context/localeContext';
 
 type Props = {
   name: string;

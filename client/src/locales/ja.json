@@ -263,5 +263,11 @@
 	"Editing a previously submitted question will discard all answers and questions following it.": "以前に提出された質問を編集すると、それに続くすべての回答と質問が破棄されます。",
 	"Click to copy": "クリックしてコピーします",
 	"Copy link": "リンクをコピーする",
-	"Search using RegExp": "RegExpを使用して検索します"
+	"Search using RegExp": "RegExpを使用して検索します",
+	"Give a short descriptive name for your new code studio.": "新しいコードスタジオに短い説明的な名前を付けてください。",
+	"Last modified": "最終更新日",
+	"Studio project": "スタジオプロジェクト",
+	"All studio projects": "すべてのスタジオプロジェクト",
+	"Use generative AI with a user defined context": "ユーザー定義のコンテキストで生成AIを使用します",
+	"Name": "名前"
 }

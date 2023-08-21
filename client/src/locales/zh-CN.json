@@ -263,5 +263,11 @@
 	"Editing a previously submitted question will discard all answers and questions following it.": "编辑之前提交的问题将丢弃其后的所有答案和问题。",
 	"Click to copy": "单击复制",
 	"Copy link": "复制链接",
-	"Search using RegExp": "使用RegExp搜索"
+	"Search using RegExp": "使用RegExp搜索",
+	"New code studio": "新代码工作室",
+	"Last modified": "上一次更改",
+	"All studio projects": "所有工作室项目",
+	"Use generative AI with a user defined context": "将生成AI与用户定义的上下文一起使用",
+	"Give a short descriptive name for your new code studio.": "为您的新代码工作室提供一个简短的描述性名称。",
+	"Name": "姓名"
 }
