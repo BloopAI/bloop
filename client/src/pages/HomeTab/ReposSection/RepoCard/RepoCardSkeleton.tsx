@@ -1,4 +1,4 @@
-import SkeletonItem from '../SkeletonItem';
+import SkeletonItem from '../../../../components/SkeletonItem';
 
 const RepoCard = () => {
   return (
