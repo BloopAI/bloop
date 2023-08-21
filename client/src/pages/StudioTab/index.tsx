@@ -1,12 +1,13 @@
 import React, { PureComponent } from 'react';
 import Settings from '../../components/Settings';
-import { UITabType } from '../../types/general';
+import { StudioTabType, UITabType } from '../../types/general';
 import '../../index.css';
 import ReportBugModal from '../../components/ReportBugModal';
+import Content from './Content';
 
 type Props = {
   isActive: boolean;
-  tab: UITabType;
+  tab: StudioTabType;
 };
 
 class StudioTab extends PureComponent<Props> {
@@ -17,6 +18,7 @@ class StudioTab extends PureComponent<Props> {
         className={`${isActive ? '' : 'hidden'} `}
         data-active={isActive ? 'true' : 'false'}
       >
+        <Content tab={tab} />
         <Settings />
         <ReportBugModal />
       </div>
