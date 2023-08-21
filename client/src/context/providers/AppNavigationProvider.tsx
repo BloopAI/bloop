@@ -8,7 +8,7 @@ import {
 } from 'react';
 import findLastIndex from 'lodash.findlastindex';
 import { buildRepoQuery } from '../../utils';
-import { NavigationItem, SearchType, UITabType } from '../../types/general';
+import { NavigationItem, RepoTabType, SearchType } from '../../types/general';
 import { AppNavigationContext } from '../appNavigationContext';
 import { FileModalContext } from '../fileModalContext';
 import { TabsContext } from '../tabsContext';
@@ -19,7 +19,7 @@ export const AppNavigationProvider = memo(
     tab,
     children,
   }: {
-    tab: UITabType;
+    tab: RepoTabType;
     children: JSX.Element | JSX.Element[];
   }) => {
     const [forwardNavigation, setForwardNavigation] = useState<

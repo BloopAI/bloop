@@ -1,18 +1,18 @@
 import React, { memo, useContext, useEffect, useMemo, useState } from 'react';
 import { Trans } from 'react-i18next';
-import { SearchContext } from '../../context/searchContext';
-import { FileTreeFileType, Repository, RepoSource } from '../../types';
-import Skeleton from '../../components/Skeleton';
-import { mapDirResult } from '../../mappers/results';
-import { DirectorySearchResponse } from '../../types/api';
-import FileIcon from '../../components/FileIcon';
-import Filters from '../../components/Filters';
-import { arrayUnique } from '../../utils';
-import { getRepoSource } from '../../utils/file';
-import { GitHubLogo, Repository as RepositoryIcon } from '../../icons';
-import { RepositoriesContext } from '../../context/repositoriesContext';
-import { STATUS_MAP } from '../../components/RepoCard';
-import { UIContext } from '../../context/uiContext';
+import { SearchContext } from '../../../context/searchContext';
+import { FileTreeFileType, Repository, RepoSource } from '../../../types';
+import Skeleton from '../../../components/Skeleton';
+import { mapDirResult } from '../../../mappers/results';
+import { DirectorySearchResponse } from '../../../types/api';
+import FileIcon from '../../../components/FileIcon';
+import Filters from '../../../components/Filters';
+import { arrayUnique } from '../../../utils';
+import { getRepoSource } from '../../../utils/file';
+import { GitHubLogo, Repository as RepositoryIcon } from '../../../icons';
+import { RepositoriesContext } from '../../../context/repositoriesContext';
+import { STATUS_MAP } from '../../../components/RepoCard';
+import { UIContext } from '../../../context/uiContext';
 import RepositoryOverview from './RepositoryOverview';
 
 type Props = {

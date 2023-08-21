@@ -1,11 +1,11 @@
 import React, { useCallback, MouseEvent, useState } from 'react';
-import FileIcon from '../../components/FileIcon';
-import BreadcrumbsPath from '../../components/BreadcrumbsPath';
-import { FileTreeFileType } from '../../types';
-import Code from '../../components/CodeBlock/Code';
-import Button from '../../components/Button';
-import { copyToClipboard } from '../../utils';
-import { CheckIcon, Clipboard } from '../../icons';
+import FileIcon from '../../../components/FileIcon';
+import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
+import { FileTreeFileType } from '../../../types';
+import Code from '../../../components/CodeBlock/Code';
+import Button from '../../../components/Button';
+import { copyToClipboard } from '../../../utils';
+import { CheckIcon, Clipboard } from '../../../icons';
 
 type Props = {
   filePath: string;

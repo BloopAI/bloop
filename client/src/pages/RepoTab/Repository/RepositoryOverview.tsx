@@ -7,18 +7,18 @@ import React, {
 } from 'react';
 import { Remarkable } from 'remarkable';
 import { Trans } from 'react-i18next';
-import Accordion from '../../components/Accordion';
-import FileIcon from '../../components/FileIcon';
-import { FileTreeFileType, Repository } from '../../types';
-import RepositoryFiles from '../../components/RepositoryFiles';
-import { useSearch } from '../../hooks/useSearch';
-import { FileSearchResponse } from '../../types/api';
-import { cleanRepoName, sortFiles } from '../../utils/file';
-import { highlightCode } from '../../utils/prism';
-import useAppNavigation from '../../hooks/useAppNavigation';
-import { DeviceContext } from '../../context/deviceContext';
-import { buildRepoQuery } from '../../utils';
-import { SearchContext } from '../../context/searchContext';
+import Accordion from '../../../components/Accordion';
+import FileIcon from '../../../components/FileIcon';
+import { FileTreeFileType, Repository } from '../../../types';
+import RepositoryFiles from '../../../components/RepositoryFiles';
+import { useSearch } from '../../../hooks/useSearch';
+import { FileSearchResponse } from '../../../types/api';
+import { cleanRepoName, sortFiles } from '../../../utils/file';
+import { highlightCode } from '../../../utils/prism';
+import useAppNavigation from '../../../hooks/useAppNavigation';
+import { DeviceContext } from '../../../context/deviceContext';
+import { buildRepoQuery } from '../../../utils';
+import { SearchContext } from '../../../context/searchContext';
 
 const md = new Remarkable({
   html: true,
