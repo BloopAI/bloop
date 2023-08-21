@@ -5,17 +5,17 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { FullResult } from '../../types/results';
-import { useSearch } from '../../hooks/useSearch';
-import { FileSearchResponse } from '../../types/api';
-import { FullResultModeEnum } from '../../types/general';
-import { mapFileResult, mapRanges } from '../../mappers/results';
-import { getHoverables } from '../../services/api';
-import { buildRepoQuery } from '../../utils';
-import { SearchContext } from '../../context/searchContext';
-import { FileModalContext } from '../../context/fileModalContext';
-import { AppNavigationContext } from '../../context/appNavigationContext';
-import { UIContext } from '../../context/uiContext';
+import { FullResult } from '../../../types/results';
+import { useSearch } from '../../../hooks/useSearch';
+import { FileSearchResponse } from '../../../types/api';
+import { FullResultModeEnum } from '../../../types/general';
+import { mapFileResult, mapRanges } from '../../../mappers/results';
+import { getHoverables } from '../../../services/api';
+import { buildRepoQuery } from '../../../utils';
+import { SearchContext } from '../../../context/searchContext';
+import { FileModalContext } from '../../../context/fileModalContext';
+import { AppNavigationContext } from '../../../context/appNavigationContext';
+import { UIContext } from '../../../context/uiContext';
 import ResultModal from './index';
 
 type Props = {

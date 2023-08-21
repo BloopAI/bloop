@@ -6,24 +6,24 @@ import React, {
   useMemo,
 } from 'react';
 import * as Sentry from '@sentry/react';
-import { SearchContext } from '../context/searchContext';
-import { useSearch } from '../hooks/useSearch';
+import { SearchContext } from '../../context/searchContext';
+import { useSearch } from '../../hooks/useSearch';
 import {
   DirectorySearchResponse,
   GeneralSearchResponse,
   SearchResponse,
-} from '../types/api';
-import PageTemplate from '../components/PageTemplate';
-import ErrorFallback from '../components/ErrorFallback';
-import { buildRepoQuery } from '../utils';
-import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
-import { UITabType } from '../types/general';
-import { AppNavigationContext } from '../context/appNavigationContext';
+} from '../../types/api';
+import PageTemplate from '../../components/PageTemplate';
+import ErrorFallback from '../../components/ErrorFallback';
+import { buildRepoQuery } from '../../utils';
+import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
+import { RepoTabType } from '../../types/general';
+import { AppNavigationContext } from '../../context/appNavigationContext';
+import HomePage from '../HomeTab/Content';
 import RepositoryPage from './Repository';
 import ResultsPage from './Results';
 import ViewResult from './ResultFull';
 import NoResults from './Results/NoResults';
-import HomePage from './Home';
 import ArticleResponse from './ArticleResponse';
 
 const mockQuerySuggestions = [
@@ -44,7 +44,7 @@ export type RenderPage =
 
 let prevRenderPage: RenderPage;
 
-const ContentContainer = ({ tab }: { tab: UITabType }) => {
+const ContentContainer = ({ tab }: { tab: RepoTabType }) => {
   const { setInputValue } = useContext(SearchContext.InputValue);
   const { globalRegex } = useContext(SearchContext.RegexEnabled);
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
@@ -72,9 +72,7 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
 
   useEffect(() => {
     if (!navigatedItem) {
-      if (tab.key !== 'initial') {
-        navigateRepoPath(tab.repoName);
-      }
+      navigateRepoPath(tab.repoName);
       return;
     }
 
