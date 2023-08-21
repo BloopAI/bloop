@@ -23,8 +23,9 @@ import Dropdown from '../../../components/Dropdown/Normal';
 import { MenuItemType } from '../../../types/general';
 import { Theme } from '../../../types';
 import { themesMap } from '../../../components/Settings/Preferences';
-import { previewTheme } from '../../../utils';
+import { copyToClipboard, previewTheme } from '../../../utils';
 import LanguageSelector from '../../../components/LanguageSelector';
+import Tooltip from '../../../components/Tooltip';
 
 type Props = {
   form: Form;
@@ -42,6 +43,7 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
   const [loginUrl, setLoginUrl] = useState('');
   const [isLinkShown, setLinkShown] = useState(false);
   const [isBtnClicked, setBtnClicked] = useState(false);
+  const [isLinkCopied, setLinkCopied] = useState(false);
 
   const handleLogout = useCallback(() => {
     gitHubLogout();
@@ -97,6 +99,12 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
     if (loginUrl) {
       checkGHAuth();
     }
+  }, [loginUrl]);
+
+  const handleCopy = useCallback(() => {
+    copyToClipboard(loginUrl);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
   }, [loginUrl]);
 
   return (
@@ -206,16 +214,27 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
         </div>
         <div className="text-center caption text-label-base">
           {isLinkShown ? (
-            <p className="text-label-link select-auto text-center break-words">
-              {loginUrl}
-            </p>
+            <Tooltip
+              text={isLinkCopied ? t('Copied') : t('Click to copy')}
+              placement={'top'}
+            >
+              <p
+                className="text-label-link select-auto text-center break-words"
+                onClick={handleCopy}
+              >
+                {loginUrl}
+              </p>
+            </Tooltip>
           ) : (
             <p>
               or go to the following link{' '}
               <button
                 type="button"
                 className="text-label-link"
-                onClick={() => setLinkShown(true)}
+                onClick={() => {
+                  setLinkShown(true);
+                  handleCopy();
+                }}
               >
                 Show link
               </button>

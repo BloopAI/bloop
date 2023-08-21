@@ -260,5 +260,6 @@
 	"View in {{viewer}}": "Ver en {{viewer}}",
 	"Open file": "Abrir documento",
 	"Edit": "Editar",
-	"Editing a previously submitted question will discard all answers and questions following it.": "La edición de una pregunta enviada anteriormente descartará todas las respuestas y preguntas que lo sigan."
+	"Editing a previously submitted question will discard all answers and questions following it.": "La edición de una pregunta enviada anteriormente descartará todas las respuestas y preguntas que lo sigan.",
+	"Click to copy": "Haga clic para copiar"
 }
