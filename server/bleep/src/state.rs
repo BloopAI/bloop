@@ -334,7 +334,6 @@ mod test {
         let repo_pool = StateSource {
             directory: Some(path.to_path_buf()),
             state_file: Some(path.join("state.json")),
-            credentials: None,
             version_file: None,
             cookie_key: None,
         }
