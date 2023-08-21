@@ -29,6 +29,14 @@ type Props = {
   ) => void;
   setFileHighlights: Dispatch<SetStateAction<FileHighlightsType>>;
   setHoveredLines: Dispatch<SetStateAction<[number, number] | null>>;
+  navigateFullResult: (
+    path: string,
+    pathParams?: Record<string, string>,
+    recordId?: number,
+    threadId?: string,
+  ) => void;
+  recordId: number;
+  threadId: string;
 };
 
 const LinkRenderer = ({
@@ -44,6 +52,9 @@ const LinkRenderer = ({
   openFileModal,
   setFileHighlights,
   setHoveredLines,
+  navigateFullResult,
+  recordId,
+  threadId,
 }: Props) => {
   const [filePath, lines] = useMemo(() => href?.split('#') || [], [href]);
   const [start, end] = useMemo(
@@ -71,8 +82,13 @@ const LinkRenderer = ({
   const handleClickFile = useCallback(() => {
     hideCode
       ? updateScrollToIndex(`${start}_${end ?? start}`)
-      : openFileModal(filePath, start ? `${start}_${end ?? start}` : undefined);
-  }, [hideCode, updateScrollToIndex, start, end, filePath]);
+      : navigateFullResult(
+          filePath,
+          start > -1 ? { scrollToLine: `${start}_${end ?? start}` } : undefined,
+          recordId,
+          threadId,
+        );
+  }, [hideCode, updateScrollToIndex, start, end, filePath, recordId, threadId]);
 
   const handleClickFolder = useCallback(() => {
     navigateRepoPath(repoName, filePath);

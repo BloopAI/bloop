@@ -18,16 +18,19 @@ type Props = {
   fileChips: MutableRefObject<never[]>;
   hideCode?: boolean;
   updateScrollToIndex: (lines: string) => void;
-  openFileModal: (
-    path: string,
-    scrollToLine?: string | undefined,
-    highlightColor?: string | undefined,
-  ) => void;
   setFileHighlights: Dispatch<SetStateAction<FileHighlightsType>>;
   setHoveredLines: Dispatch<SetStateAction<[number, number] | null>>;
   className?: string;
   propsJSON: string;
   inline?: boolean;
+  navigateFullResult: (
+    path: string,
+    pathParams?: Record<string, string>,
+    recordId?: number,
+    threadId?: string,
+  ) => void;
+  recordId: number;
+  threadId: string;
 };
 
 const CodeRenderer = ({
@@ -39,9 +42,11 @@ const CodeRenderer = ({
   fileChips,
   setFileHighlights,
   setHoveredLines,
-  openFileModal,
   repoName,
   propsJSON,
+  navigateFullResult,
+  recordId,
+  threadId,
 }: Props) => {
   const matchLang = useMemo(
     () =>
@@ -115,7 +120,14 @@ const CodeRenderer = ({
               code={code}
               language={matchLang?.[1] || ''}
               filePath={matchPath?.[1] || ''}
-              onResultClick={openFileModal}
+              onResultClick={(path, lines) => {
+                navigateFullResult(
+                  path,
+                  lines ? { scrollToLine: lines } : undefined,
+                  recordId,
+                  threadId,
+                );
+              }}
               startLine={lines[0] ? lines[0] : null}
               repoName={repoName}
             />
