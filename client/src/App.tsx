@@ -94,10 +94,10 @@ function App({ deviceContextValue }: Props) {
     [],
   );
 
-  const handleAddStudioTab = useCallback(() => {
+  const handleAddStudioTab = useCallback((name: string) => {
     const newTab: StudioTabType = {
       key: '' + Date.now(),
-      name: 'New code studio',
+      name,
       type: TabType.STUDIO,
     };
     setTabs((prev: UITabType[]) => [...prev, newTab]);

@@ -116,3 +116,4 @@ export { default as FolderClosed } from './FolderClosed';
 export { default as CopyMD } from './CopyMD';
 export { default as CodeStudioIcon } from './CodeStudio';
 export { default as CodeStudioColored } from './CodeStudioColored';
+export { default as Calendar } from './Calendar';

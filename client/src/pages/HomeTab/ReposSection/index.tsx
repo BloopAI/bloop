@@ -8,12 +8,12 @@ import React, {
   useState,
 } from 'react';
 import { Trans } from 'react-i18next';
-import RepoCard from '../../../components/RepoCard';
 import { RepoType, SyncStatus } from '../../../types/general';
 import { DeviceContext } from '../../../context/deviceContext';
-import RepoCardSkeleton from '../../../components/RepoCard/RepoCardSkeleton';
-import NoRepos from '../../../components/RepoCard/NoRepos';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
+import RepoCard from './RepoCard';
+import RepoCardSkeleton from './RepoCard/RepoCardSkeleton';
+import NoRepos from './RepoCard/NoRepos';
 
 type Props = {
   reposToShow: RepoType[];
@@ -79,7 +79,7 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
   }, []);
 
   return (
-    <div className="p-8 flex-1 overflow-x-auto relative">
+    <div className="p-8 overflow-x-auto relative">
       <h4 className="mb-3">
         <Trans>All repositories</Trans>
       </h4>

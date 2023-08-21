@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react';
 import { Trans, useTranslation } from 'react-i18next';
 import ErrorFallback from '../../components/ErrorFallback';
@@ -6,13 +6,14 @@ import LiteLoader from '../../components/Loaders/LiteLoader';
 import Button from '../../components/Button';
 import { CloseSign } from '../../icons';
 import { RepositoriesContext } from '../../context/repositoriesContext';
-import { RepoType, SyncStatus } from '../../types/general';
+import { CodeStudioShortType, RepoType, SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
 import PageTemplate from '../../components/PageTemplate';
 import { TabsContext } from '../../context/tabsContext';
 import AddRepos from './AddRepos';
 import ReposSection from './ReposSection';
 import AddRepoCard from './AddRepoCard';
+import CodeStudiosSection from './CodeStudiosSection';
 
 const filterRepositories = (repos?: RepoType[]) => {
   return (
@@ -31,11 +32,27 @@ const HomePage = () => {
   const { handleAddStudioTab } = useContext(TabsContext);
   const [popupOpen, setPopupOpen] = useState(false);
   const [addReposOpen, setAddReposOpen] = useState<
-    null | 'local' | 'github' | 'public'
+    null | 'local' | 'github' | 'public' | 'studio'
   >(null);
   const [reposToShow, setReposToShow] = useState<RepoType[]>(
     filterRepositories(repositories),
   );
+  const [codeStudios, setCodeStudios] = useState<CodeStudioShortType[]>([]);
+
+  useEffect(() => {
+    Promise.resolve([
+      {
+        name: 'My code studio 1',
+        last_modified: '2023-08-21T13:00:00Z',
+        id: '1',
+      },
+      {
+        name: 'Another code studio',
+        last_modified: '2023-08-20T13:00:00Z',
+        id: '2',
+      },
+    ]).then(setCodeStudios);
+  }, []);
 
   useEffect(() => {
     if (repositories) {
@@ -43,16 +60,16 @@ const HomePage = () => {
     }
   }, [repositories]);
 
-  const onAddClick = useCallback(
-    (type: 'local' | 'github' | 'public' | 'studio') => {
-      if (type === 'studio') {
-        handleAddStudioTab();
-      } else {
-        setAddReposOpen(type);
-      }
-    },
-    [],
-  );
+  // const onAddClick = useCallback(
+  //   (type: 'local' | 'github' | 'public' | 'studio') => {
+  //     if (type === 'studio') {
+  //       handleAddStudioTab();
+  //     } else {
+  //       setAddReposOpen(type);
+  //     }
+  //   },
+  //   [],
+  // );
 
   return (
     <PageTemplate renderPage="home">
@@ -62,10 +79,12 @@ const HomePage = () => {
             <Trans>Add</Trans>
           </h4>
           <div className="flex gap-3.5 pb-2">
-            <AddRepoCard type="github" onClick={onAddClick} />
-            <AddRepoCard type="public" onClick={onAddClick} />
-            {!isSelfServe && <AddRepoCard type="local" onClick={onAddClick} />}
-            <AddRepoCard type="studio" onClick={onAddClick} />
+            <AddRepoCard type="github" onClick={setAddReposOpen} />
+            <AddRepoCard type="public" onClick={setAddReposOpen} />
+            {!isSelfServe && (
+              <AddRepoCard type="local" onClick={setAddReposOpen} />
+            )}
+            <AddRepoCard type="studio" onClick={setAddReposOpen} />
           </div>
         </div>
         <ReposSection
@@ -73,10 +92,17 @@ const HomePage = () => {
           setReposToShow={setReposToShow}
           repositories={repositories}
         />
+        <CodeStudiosSection codeStudios={codeStudios} />
         <AddRepos
           addRepos={addReposOpen}
-          onClose={(isSubmitted) => {
-            if (isSubmitted) {
+          onClose={(isSubmitted, name) => {
+            if (isSubmitted && name) {
+              handleAddStudioTab(name);
+              setCodeStudios((prev) => [
+                ...prev,
+                { id: '3', name, last_modified: '' },
+              ]);
+            } else if (isSubmitted) {
               fetchRepos();
               setTimeout(() => fetchRepos(), 1000);
               setPopupOpen(true);
