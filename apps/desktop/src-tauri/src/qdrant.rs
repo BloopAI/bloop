@@ -5,6 +5,7 @@ use std::{
 };
 
 use tauri::{plugin::Plugin, Runtime};
+use tracing::warn;
 
 use super::relative_command_path;
 
@@ -49,11 +50,14 @@ where
     fn on_event(&mut self, _app: &tauri::AppHandle<R>, event: &tauri::RunEvent) {
         use tauri::RunEvent::{Exit, ExitRequested};
         if matches!(event, Exit | ExitRequested { .. }) {
-            self.child
-                .take()
-                .expect("qdrant not started")
-                .kill()
-                .expect("failed to kill qdrant")
+            let Some(mut child) = self.child.take() else {
+		warn!("qdrant has been killed");
+		return;
+	    };
+
+            if let Err(err) = child.kill() {
+                warn!(?err, "failed to kill qdrant");
+            };
         }
     }
 }
