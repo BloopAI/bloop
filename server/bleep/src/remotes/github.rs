@@ -157,9 +157,12 @@ impl Auth {
     fn git_cred(&self) -> GitCreds {
         use Auth::*;
         match self {
-            OAuth(CognitoGithubTokenBundle { access_token, .. }) => GitCreds {
-                username: access_token.into(),
-                password: "".into(),
+            OAuth(CognitoGithubTokenBundle {
+                github_access_token,
+                ..
+            }) => GitCreds {
+                username: "x-access-token".into(),
+                password: github_access_token.into(),
             },
             App { token, .. } => GitCreds {
                 username: "x-access-token".into(),
