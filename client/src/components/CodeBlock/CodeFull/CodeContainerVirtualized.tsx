@@ -45,6 +45,7 @@ type Props = {
     | { lines: [number, number]; color: string; index: number }
     | undefined
   )[];
+  hoveredLines: [number, number] | null;
 };
 
 const CodeContainerVirtualized = ({
@@ -69,6 +70,7 @@ const CodeContainerVirtualized = ({
   highlightColor,
   relativePath,
   highlights,
+  hoveredLines,
 }: Props) => {
   const ref = useRef<FixedSizeList>(null);
   const listProps = useMemo(
@@ -174,6 +176,11 @@ const CodeContainerVirtualized = ({
             }
             searchTerm={searchTerm}
             stylesGenerated={style}
+            hoveredBackground={
+              !!hoveredLines &&
+              index >= hoveredLines[0] &&
+              index <= hoveredLines[1]
+            }
           >
             {tokens[index].map((token, i) => (
               <Token

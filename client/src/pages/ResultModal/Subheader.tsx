@@ -27,6 +27,7 @@ const Subheader = ({
               path={relativePath}
               activeStyle="secondary"
               onClick={onResultClosed}
+              shouldGoToFile
             />
           </div>
         </div>

@@ -133,10 +133,11 @@ const ResultFull = ({
       }
       setConversation([]);
       setThreadId('');
-      const endLine = result.code.split('\n').length;
-      setSelectedLines([1, endLine]);
+      const endLine = result.code.split(/\n(?!$)/g).length - 1;
       setRightPanelOpen(false);
-      setSubmittedQuery(`#explain_${result.relativePath}:1-${endLine}`);
+      setSubmittedQuery(
+        `#explain_${result.relativePath}:0-${endLine}-${Date.now()}`,
+      );
       setChatOpen(true);
     },
     [result?.code, result?.relativePath],
@@ -153,7 +154,7 @@ const ResultFull = ({
       <div className="flex-1 overflow-auto w-full box-content flex flex-col">
         <div className="w-full flex flex-col overflow-auto flex-1">
           <div
-            className={`w-full border-b border-bg-border flex justify-between py-3 px-8`}
+            className={`w-full border-b border-bg-border flex justify-between px-3 h-12 flex-shrink-0 bg-bg-base`}
           >
             <div className="flex items-center gap-1 overflow-hidden w-full">
               <FileIcon filename={result?.relativePath?.slice(-5) || ''} />
@@ -248,7 +249,10 @@ const ResultFull = ({
       {!!answer && (
         <FileExplanation
           markdown={answer.results}
+          isSingleFileExplanation={!!answer.focused_chunk?.file_path}
           repoName={result?.repoName || ''}
+          recordId={recordId}
+          threadId={threadId}
         />
       )}
     </>

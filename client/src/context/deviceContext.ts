@@ -20,7 +20,7 @@ export type DeviceContextType = {
     platform: string;
     version: string;
   };
-  invokeTauriCommand: (c: string, payload?: any) => void;
+  invokeTauriCommand: (c: string, payload?: any) => Promise<any>;
   relaunch: () => void;
   release: string;
   apiUrl: string;
@@ -44,7 +44,7 @@ export const DeviceContext = createContext<DeviceContextType>({
     platform: '',
     version: '',
   },
-  invokeTauriCommand: () => {},
+  invokeTauriCommand: () => Promise.resolve(''),
   relaunch: () => {},
   release: '0.0.0',
   apiUrl: '',

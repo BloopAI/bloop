@@ -3,7 +3,7 @@ use std::time::Duration;
 use anyhow::{anyhow, Context, Result};
 use futures::TryStreamExt;
 use tokio::sync::mpsc::Sender;
-use tracing::debug;
+use tracing::{debug, info, instrument};
 
 use crate::{
     analytics::{EventData, QueryEvent},
@@ -85,6 +85,7 @@ impl Agent {
     }
 
     /// Update the last exchange
+    #[instrument(skip(self), level = "debug")]
     async fn update(&mut self, update: Update) -> Result<()> {
         self.last_exchange_mut().apply_update(update);
 
@@ -115,25 +116,29 @@ impl Agent {
         self.exchanges.last_mut().expect("exchange list was empty")
     }
 
-    fn paths(&self) -> Vec<String> {
+    fn paths(&self) -> impl Iterator<Item = &str> {
         self.exchanges
             .iter()
-            .flat_map(|e| e.paths.iter().cloned())
-            .collect::<Vec<_>>()
+            .flat_map(|e| e.paths.iter())
+            .map(String::as_str)
     }
 
     fn get_path_alias(&mut self, path: &str) -> usize {
-        if let Some(i) = self.paths().iter().position(|p| *p == path) {
+        // This has to be stored a variable due to a Rust NLL bug:
+        // https://github.com/rust-lang/rust/issues/51826
+        let pos = self.paths().position(|p| p == path);
+        if let Some(i) = pos {
             i
         } else {
-            let i = self.paths().len();
+            let i = self.paths().count();
             self.last_exchange_mut().paths.push(path.to_owned());
             i
         }
     }
 
+    #[instrument(skip(self))]
     pub async fn step(&mut self, action: Action) -> Result<Option<Action>> {
-        debug!(?action, %self.thread_id, "executing next action");
+        info!(?action, %self.thread_id, "executing next action");
 
         match &action {
             Action::Query(s) => {
@@ -142,7 +147,7 @@ impl Agent {
             }
 
             Action::Answer { paths } => {
-                self.answer(paths).await?;
+                self.answer(paths).await.context("answer action failed")?;
                 return Ok(None);
             }
 
@@ -152,13 +157,12 @@ impl Agent {
         };
 
         let functions = serde_json::from_value::<Vec<llm_gateway::api::Function>>(
-            prompts::functions(!self.paths().is_empty()), // Only add proc if there are paths in context
+            prompts::functions(self.paths().next().is_some()), // Only add proc if there are paths in context
         )
         .unwrap();
 
-        let paths = self.paths();
         let mut history = vec![llm_gateway::api::Message::system(&prompts::system(
-            paths.iter().map(String::as_str),
+            self.paths(),
         ))];
         history.extend(self.history()?);
 
@@ -178,7 +182,8 @@ impl Agent {
                     })
                 },
             )
-            .await?;
+            .await
+            .context("failed to fold LLM function call output")?;
 
         self.track_query(
             EventData::output_stage("llm_reply")
@@ -189,7 +194,9 @@ impl Agent {
                 .with_payload("raw_response", &raw_response),
         );
 
-        let action = Action::deserialize_gpt(&raw_response)?;
+        let action =
+            Action::deserialize_gpt(&raw_response).context("failed to deserialize LLM output")?;
+
         Ok(Some(action))
     }
 
@@ -228,7 +235,6 @@ impl Agent {
                                     .iter()
                                     .map(|path| self
                                         .paths()
-                                        .iter()
                                         .position(|p| p == path)
                                         .unwrap()
                                         .to_string())
@@ -252,7 +258,7 @@ impl Agent {
                     // NB: We intentionally discard the summary as it is redundant.
                     Some((answer, _conclusion)) => {
                         let encoded = transcoder::encode_summarized(answer, None, "gpt-3.5-turbo")?;
-                        Some(llm_gateway::api::Message::assistant(&encoded))
+                        Some(llm_gateway::api::Message::function_return("none", &encoded))
                     }
 
                     None => None,

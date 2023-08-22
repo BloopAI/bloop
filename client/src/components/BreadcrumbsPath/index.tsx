@@ -14,10 +14,17 @@ type Props = {
   path: string;
   repo: string;
   onClick?: (path: string, fileType?: FileTreeFileType) => void;
+  shouldGoToFile?: boolean;
 } & Omit<BProps, 'pathParts'>;
 
-const BreadcrumbsPath = ({ path, onClick, repo, ...rest }: Props) => {
-  const { navigateRepoPath } = useAppNavigation();
+const BreadcrumbsPath = ({
+  path,
+  onClick,
+  repo,
+  shouldGoToFile,
+  ...rest
+}: Props) => {
+  const { navigateRepoPath, navigateFullResult } = useAppNavigation();
   const mapPath = useCallback(() => {
     return splitPathForBreadcrumbs(path, (e, item, index, pParts) => {
       e.stopPropagation();
@@ -35,8 +42,11 @@ const BreadcrumbsPath = ({ path, onClick, repo, ...rest }: Props) => {
       if (!isLastPart) {
         navigateRepoPath(repo, newPath);
       }
+      if (shouldGoToFile && isLastPart) {
+        navigateFullResult(path);
+      }
     });
-  }, [path]);
+  }, [path, shouldGoToFile]);
 
   const [pathParts, setPathParts] = useState<PathParts[]>(mapPath());
 

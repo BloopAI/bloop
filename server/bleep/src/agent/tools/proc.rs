@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use futures::{stream, StreamExt, TryStreamExt};
 use tiktoken_rs::CoreBPE;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::{
     agent::{
@@ -13,6 +13,7 @@ use crate::{
 };
 
 impl Agent {
+    #[instrument(skip(self))]
     pub async fn process_files(&mut self, query: &str, path_aliases: &[usize]) -> Result<String> {
         const MAX_CHUNK_LINE_LENGTH: usize = 20;
         const CHUNK_MERGE_DISTANCE: usize = 10;
@@ -21,7 +22,7 @@ impl Agent {
         let paths = path_aliases
             .iter()
             .copied()
-            .map(|i| self.paths().get(i).ok_or(i).cloned())
+            .map(|i| self.paths().nth(i).ok_or(i).map(str::to_owned))
             .collect::<Result<Vec<_>, _>>()
             .map_err(|i| anyhow!("invalid path alias {i}"))?;
 
@@ -71,7 +72,8 @@ impl Agent {
                     .unwrap()
                     .0
                     .parse::<usize>()
-                    .unwrap();
+                    .unwrap()
+                    - 1;
 
                 // We store the lines separately, so that we can reference them later to trim
                 // this snippet by line number.
@@ -121,6 +123,10 @@ impl Agent {
                         r.end = r.end.min(r.start + MAX_CHUNK_LINE_LENGTH); // Cap relevant chunk size by line number
                         r
                     })
+                    .map(|r| Range {
+                        start: r.start - 1,
+                        end: r.end,
+                    })
                     .collect();
 
                 line_ranges.sort();
@@ -146,7 +152,7 @@ impl Agent {
                             code: lines
                                 .get(
                                     range.start.saturating_sub(start_line)
-                                        ..range.end.saturating_sub(start_line),
+                                        ..=range.end.saturating_sub(start_line),
                                 )?
                                 .iter()
                                 .map(|line| line.split_once(' ').unwrap().1)
@@ -168,7 +174,7 @@ impl Agent {
             .collect::<Vec<_>>()
             .await;
 
-        let chunks = processed
+        let mut chunks = processed
             .into_iter()
             .flat_map(|(relevant_chunks, path)| {
                 let alias = self.get_path_alias(&path);
@@ -182,6 +188,8 @@ impl Agent {
                 })
             })
             .collect::<Vec<_>>();
+
+        chunks.sort_by(|a, b| a.alias.cmp(&b.alias).then(a.start_line.cmp(&b.start_line)));
 
         for chunk in chunks.iter().filter(|c| !c.is_empty()) {
             self.exchanges

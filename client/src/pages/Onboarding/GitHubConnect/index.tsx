@@ -9,8 +9,6 @@ import {
 import { useGitHubAuth } from '../../../hooks/useGitHubAuth';
 import Button from '../../../components/Button';
 import TextField from '../../../components/TextField';
-import { MenuListItemType } from '../../../components/ContextMenu';
-import DropdownWithIcon from '../../../components/Dropdown/WithIcon';
 import LanguageSelector from '../../../components/LanguageSelector';
 import StepsLine from './StepsLine';
 
@@ -110,7 +108,7 @@ const GitHubConnect = ({ goBack }: { goBack: () => void }) => {
           </Button>
           <p className="text-center caption text-label-base">
             <Trans>or visit: </Trans>
-            <span className="text-label-link">{loginUrl}</span>
+            <span className="text-label-link select-auto">{loginUrl}</span>
           </p>
         </div>
       </div>

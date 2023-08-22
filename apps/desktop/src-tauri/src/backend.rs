@@ -3,8 +3,10 @@ use std::sync::Arc;
 use bleep::{analytics, Application, Configuration, Environment};
 use once_cell::sync::OnceCell;
 use sentry::ClientInitGuard;
+use tauri::{plugin::Plugin, Invoke};
+use tracing::{error, warn};
 
-use super::{plugin, App, Manager, Payload, Runtime};
+use super::{Manager, Payload, Runtime};
 
 // a hack to get server/bleep/tests/desktop to run correctly
 #[cfg(not(test))]
@@ -20,54 +22,39 @@ fn get_device_id() -> String {
 
 static SENTRY: OnceCell<ClientInitGuard> = OnceCell::new();
 
-pub(super) fn bleep<R>(app: &mut App<R>) -> plugin::Result<()>
-where
-    R: Runtime,
-{
-    let configuration = {
-        let path = app
-            .path_resolver()
-            .resolve_resource("config/config.json")
-            .expect("failed to resolve resource");
+#[tauri::command]
+pub fn get_last_log_file(config: tauri::State<Configuration>) -> Option<String> {
+    let log_dir = config.log_dir();
 
-        let mut bundled = Configuration::read(path).unwrap();
-        bundled.qdrant_url = Some("http://127.0.0.1:6334".into());
-        bundled.max_threads = bleep::default_parallelism() / 2;
-        bundled.model_dir = app
-            .path_resolver()
-            .resolve_resource("model")
-            .expect("bad bundle");
+    let mut entries = std::fs::read_dir(log_dir)
+        .ok()?
+        .collect::<Result<Vec<_>, _>>()
+        .ok()?;
 
-        bundled.dylib_dir = Some(if cfg!(all(target_os = "macos", debug_assertions)) {
-            app.path_resolver()
-                .resolve_resource("dylibs")
-                .expect("missing `apps/desktop/src-tauri/dylibs`")
-                .parent()
-                .expect("invalid path")
-                .to_owned()
-        } else if cfg!(target_os = "macos") {
-            app.path_resolver()
-                .resolve_resource("dylibs")
-                .expect("missing `apps/desktop/src-tauri/dylibs`")
-                .parent()
-                .expect("invalid path")
-                .parent()
-                .expect("invalid path")
-                .join("Frameworks")
-        } else {
-            app.path_resolver()
-                .resolve_resource("dylibs")
-                .expect("missing `apps/desktop/src-tauri/dylibs`")
-        });
+    // Sort the entries by modified time (most recent first)
+    entries.sort_by_key(|entry| {
+        entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+    });
+    entries.reverse();
 
-        let data_dir = app.path_resolver().app_data_dir().unwrap();
-        bundled.index_dir = data_dir.join("bleep");
-
-        Configuration::merge(
-            bundled,
-            Configuration::cli_overriding_config_file().unwrap(),
-        )
+    // The first entry is the most recent log file
+    let filename = match entries.first() {
+        Some(path) => path.path().to_string_lossy().to_string(),
+        None => {
+            warn!("No log files found");
+            return None;
+        }
     };
+
+    std::fs::read_to_string(filename).ok()
+}
+
+pub fn initialize<R: Runtime>(app: &mut tauri::App<R>) -> tauri::plugin::Result<()> {
+    let handle = app.handle();
+    let configuration = setup_configuration(&handle);
 
     Application::install_logging(&configuration);
 
@@ -75,68 +62,135 @@ where
         initialize_sentry(dsn);
     }
 
-    let app = app.handle();
-    tokio::spawn(async move {
-        let initialized = Application::initialize(
-            Environment::insecure_local(),
-            configuration,
-            get_device_id(),
-            analytics::HubOptions {
-                event_filter: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
-                    true => Some(event),
-                    false => None,
-                })),
-                package_metadata: Some(analytics::PackageMetadata {
-                    name: env!("CARGO_CRATE_NAME"),
-                    version: env!("CARGO_PKG_VERSION"),
-                    git_rev: git_version::git_version!(fallback = "unknown"),
-                }),
-            },
-        )
-        .await;
+    app.manage(configuration.clone());
 
-        if let Ok(backend) = initialized {
-            sentry::Hub::main().configure_scope(|scope| {
-                let backend = backend.clone();
-                scope.add_event_processor(move |mut event| {
-                    event.user = Some(sentry_user()).map(|mut user| {
-                        let auth = backend.user();
-                        user.id = Some(
-                            if let (Some(analytics), Some(username)) = (&backend.analytics, &auth) {
-                                analytics.tracking_id(Some(username))
-                            } else {
-                                get_device_id()
-                            },
-                        );
-                        user.username = auth;
-                        user
-                    });
+    tokio::spawn(start_backend(configuration, handle));
 
-                    Some(event)
+    Ok(())
+}
+
+async fn wait_for_qdrant() {
+    use qdrant_client::prelude::*;
+    let qdrant =
+        QdrantClient::new(Some(QdrantClientConfig::from_url("http://127.0.0.1:6334"))).unwrap();
+
+    for _ in 0..60 {
+        if qdrant.health_check().await.is_ok() {
+            return;
+        }
+
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+
+    panic!("qdrant cannot be started");
+}
+
+async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::AppHandle<R>) {
+    wait_for_qdrant().await;
+
+    let initialized = Application::initialize(
+        Environment::insecure_local(),
+        configuration,
+        get_device_id(),
+        analytics::HubOptions {
+            event_filter: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
+                true => Some(event),
+                false => None,
+            })),
+            package_metadata: Some(analytics::PackageMetadata {
+                name: env!("CARGO_CRATE_NAME"),
+                version: env!("CARGO_PKG_VERSION"),
+                git_rev: git_version::git_version!(fallback = "unknown"),
+            }),
+        },
+    )
+    .await;
+
+    if let Ok(backend) = initialized {
+        sentry::Hub::main().configure_scope(|scope| {
+            let backend = backend.clone();
+            scope.add_event_processor(move |mut event| {
+                event.user = Some(sentry_user()).map(|mut user| {
+                    let auth = backend.user();
+                    user.id = Some(
+                        if let (Some(analytics), Some(username)) = (&backend.analytics, &auth) {
+                            analytics.tracking_id(Some(username))
+                        } else {
+                            get_device_id()
+                        },
+                    );
+                    user.username = auth;
+                    user
                 });
-            });
 
-            if let Err(_e) = backend.run().await {
-                app.emit_all(
-                    "server-crashed",
-                    Payload {
-                        message: _e.to_string(),
-                    },
-                )
-                .unwrap()
-            }
-        } else {
+                Some(event)
+            });
+        });
+
+        if let Err(err) = backend.run().await {
+            error!(?err, "server finished with error");
             app.emit_all(
                 "server-crashed",
                 Payload {
-                    message: "Something bad happened".into(),
+                    message: err.to_string(),
                 },
             )
-            .unwrap();
+            .unwrap()
         }
+    } else {
+        app.emit_all(
+            "server-crashed",
+            Payload {
+                message: "Something bad happened".into(),
+            },
+        )
+        .unwrap();
+    }
+}
+
+fn setup_configuration<R: Runtime>(app: &tauri::AppHandle<R>) -> Configuration {
+    let path = app
+        .path_resolver()
+        .resolve_resource("config/config.json")
+        .expect("failed to resolve resource");
+
+    let mut bundled = Configuration::read(path).unwrap();
+    bundled.qdrant_url = Some("http://127.0.0.1:6334".into());
+    bundled.max_threads = bleep::default_parallelism() / 2;
+    bundled.model_dir = app
+        .path_resolver()
+        .resolve_resource("model")
+        .expect("bad bundle");
+
+    bundled.dylib_dir = Some(if cfg!(all(target_os = "macos", debug_assertions)) {
+        app.path_resolver()
+            .resolve_resource("dylibs")
+            .expect("missing `apps/desktop/src-tauri/dylibs`")
+            .parent()
+            .expect("invalid path")
+            .to_owned()
+    } else if cfg!(target_os = "macos") {
+        app.path_resolver()
+            .resolve_resource("dylibs")
+            .expect("missing `apps/desktop/src-tauri/dylibs`")
+            .parent()
+            .expect("invalid path")
+            .parent()
+            .expect("invalid path")
+            .join("Frameworks")
+    } else {
+        app.path_resolver()
+            .resolve_resource("dylibs")
+            .expect("missing `apps/desktop/src-tauri/dylibs`")
     });
 
-    Ok(())
+    let data_dir = app.path_resolver().app_data_dir().unwrap();
+    bundled.index_dir = data_dir.join("bleep");
+
+    Configuration::merge(
+        bundled,
+        Configuration::cli_overriding_config_file().unwrap(),
+    )
 }
 
 fn initialize_sentry(dsn: &str) {

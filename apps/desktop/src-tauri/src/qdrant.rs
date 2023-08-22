@@ -2,7 +2,6 @@ use std::{
     fs::{create_dir_all, write},
     path::Path,
     process::{Child, Command},
-    time::Duration,
 };
 
 use tauri::{plugin::Plugin, Runtime};
@@ -44,16 +43,12 @@ where
         let command = relative_command_path("qdrant").expect("bad bundle");
         self.child = Some(run_command(&command, &qdrant_dir));
 
-        tokio::task::block_in_place(move || {
-            tokio::runtime::Handle::current().block_on(wait_for_qdrant())
-        });
-
         Ok(())
     }
 
     fn on_event(&mut self, _app: &tauri::AppHandle<R>, event: &tauri::RunEvent) {
-        use tauri::RunEvent::Exit;
-        if let Exit = event {
+        use tauri::RunEvent::{Exit, ExitRequested};
+        if matches!(event, Exit | ExitRequested { .. }) {
             self.child
                 .take()
                 .expect("qdrant not started")
@@ -105,20 +100,4 @@ fn run_command(command: &Path, qdrant_dir: &Path) -> Child {
         .creation_flags(0x08000000)
         .spawn()
         .expect("failed to start qdrant")
-}
-
-async fn wait_for_qdrant() {
-    use qdrant_client::prelude::*;
-    let qdrant =
-        QdrantClient::new(Some(QdrantClientConfig::from_url("http://127.0.0.1:6334"))).unwrap();
-
-    for _ in 0..60 {
-        if qdrant.health_check().await.is_ok() {
-            return;
-        }
-
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    }
-
-    panic!("qdrant cannot be started");
 }

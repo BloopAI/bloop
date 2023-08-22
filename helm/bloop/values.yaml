@@ -65,6 +65,9 @@ ingress:
   className: nginx
   annotations:
     kubernetes.io/tls-acme: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+    nginx.ingress.kubernetes.io/cors-allow-origin: https://bloop.ai, https://staging.bloop.ai
+    nginx.ingress.kubernetes.io/enable-cors: "true"
   hosts: []
   tls: []
   #  - secretName: chart-example-tls
@@ -90,118 +93,5 @@ persistence:
   storageClassName: gp3
 
 qdrant:
-  replicaCount: 1
-
-  image:
-    repository: qdrant/qdrant
-    pullPolicy: IfNotPresent
-    tag: v1.3.2
-
-  imagePullSecrets: []
-  nameOverride: ""
-  fullnameOverride: ""
-
-  serviceAccount:
-    # Specifies whether a service account should be created
-    create: true
-    # Annotations to add to the service account
-    annotations: {}
-    # The name of the service account to use.
-    # If not set and create is true, a name is generated using the fullname template
-    name: ""
-
-  # checks - Readiness and liveness checks can only be enabled for either rest or grpc (multiple checks not supported)
-  # grpc checks are only available from k8s 1.24+ so as of per default we check rest
-  service:
-    type: ClusterIP
-    annotations: {}
-    ports:
-      - name: rest
-        port: 6333
-        targetPort: 6333
-        protocol: TCP
-        checksEnabled: true
-      - name: grpc
-        port: 6334
-        targetPort: 6334
-        protocol: TCP
-        checksEnabled: false
-      - name: p2p
-        port: 6335
-        targetPort: 6335
-        protocol: TCP
-        checksEnabled: false
-
-  livenessProbe:
-    enabled: false
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    timeoutSeconds: 1
-    failureThreshold: 3
-    successThreshold: 1
-
-  readinessProbe:
-    enabled: true
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    timeoutSeconds: 1
-    failureThreshold: 3
-    successThreshold: 1
-
-  podAnnotations: {}
-
-  resources:
-    {}
-    # limits:
-    #   cpu: 100m
-    #   memory: 128Mi
-    # requests:
-    #   cpu: 100m
-    #   memory: 128Mi
-
-  nodeSelector: {}
-
-  tolerations: []
-
-  affinity: {}
-
-  persistence:
-    accessModes: ["ReadWriteOnce"]
-    size: 10Gi
-    storageClassName: gp3
-
-  backup:
-    enabled: false
-    awsBucketName: ""
-    awsDefaultRegion: ""
-    awsAccessKey: ""
-    awsSecretAccessKey: ""
-
-  #only supported for single node qdrant clusters.
-  snapshotRestoration:
-    enabled: false
-    pvcName: snapshots-pvc
-    snapshots:
-    #  - /qdrant/snapshots/test_collection/test_collection-2022-10-24-13-56-50.snapshot:test_collection
-
-  #modification example for configuration to overwrite defaults
-  config:
-    telemetry_disabled: true
-    cluster:
-      enabled: true
-      p2p:
-        port: 6335
-      consensus:
-        tick_period_ms: 100
-    storage:
-      async_scorer: true
-      snapshots_path: /qdrant/storage/snapshots
-      storage_path: /qdrant/storage/storage
-      on_disk_payload: true
-      wal:
-        wal_capacity_mb: 128
-        wal_segments_ahead: 8
-
-      optimizers:
-        memmap_threshold_kb: 1
-        flush_interval_sec: 1
+  url: ""
+  collectionName: ""

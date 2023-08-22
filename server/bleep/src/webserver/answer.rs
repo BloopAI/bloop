@@ -13,7 +13,7 @@ use axum::{
 use futures::{future::Either, stream, StreamExt};
 use reqwest::StatusCode;
 use serde_json::json;
-use tracing::warn;
+use tracing::{error, warn};
 
 use self::conversations::ConversationId;
 
@@ -174,6 +174,8 @@ async fn execute_agent(
     .await;
 
     if let Err(err) = response.as_ref() {
+        error!(?err, "failed to handle /answer query");
+
         app.track_query(
             &user,
             &QueryEvent {
@@ -383,7 +385,9 @@ pub async fn explain(
     let virtual_req = Answer {
         q: format!(
             "Explain lines {} - {} in {}",
-            params.line_start, params.line_end, params.relative_path
+            params.line_start + 1,
+            params.line_end + 1,
+            params.relative_path
         ),
         repo_ref: params.repo_ref,
         thread_id: params.thread_id,
@@ -422,8 +426,8 @@ pub async fn explain(
 
     let snippet = file_content
         .lines()
-        .skip(params.line_start.saturating_sub(1))
-        .take(params.line_end + 1 - params.line_start)
+        .skip(params.line_start)
+        .take(params.line_end - params.line_start)
         .collect::<Vec<_>>()
         .join("\n");
 

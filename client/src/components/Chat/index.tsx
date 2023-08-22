@@ -288,7 +288,6 @@ const Chat = () => {
       threadId,
       navigatedItem?.path,
       navigatedItem?.type,
-      selectedLines,
       selectedBranch,
       t,
       queryIdToEdit,
@@ -311,10 +310,10 @@ const Chat = () => {
         lineEnd,
       };
       userQuery = t(
-        `Explain lines {{lineStart}} - {{lineEnd}} in {{filePath}}`,
+        `Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}`,
         {
-          lineStart: Number(lineStart),
-          lineEnd: Number(lineEnd),
+          lineStart: Number(lineStart) + 1,
+          lineEnd: Number(lineEnd) + 1,
           filePath,
         },
       );

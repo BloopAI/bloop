@@ -134,9 +134,10 @@ where
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+#[derive(Debug)]
 pub struct Error {
     status: StatusCode,
-    body: Json<Response<'static>>,
+    body: EndpointError<'static>,
 }
 
 impl Error {
@@ -151,10 +152,10 @@ impl Error {
             ErrorKind::NotFound => StatusCode::NOT_FOUND,
         };
 
-        let body = Json(Response::from(EndpointError {
+        let body = EndpointError {
             kind,
             message: message.into(),
-        }));
+        };
 
         Error { status, body }
     }
@@ -167,28 +168,25 @@ impl Error {
     fn internal<S: std::fmt::Display>(message: S) -> Self {
         Error {
             status: StatusCode::INTERNAL_SERVER_ERROR,
-            body: Json(Response::from(EndpointError {
+            body: EndpointError {
                 kind: ErrorKind::Internal,
                 message: message.to_string().into(),
-            })),
+            },
         }
     }
 
     fn user<S: std::fmt::Display>(message: S) -> Self {
         Error {
             status: StatusCode::BAD_REQUEST,
-            body: Json(Response::from(EndpointError {
+            body: EndpointError {
                 kind: ErrorKind::User,
                 message: message.to_string().into(),
-            })),
+            },
         }
     }
 
     fn message(&self) -> &str {
-        match &self.body {
-            Json(Response::Error(EndpointError { message, .. })) => message.as_ref(),
-            _ => "",
-        }
+        self.body.message.as_ref()
     }
 }
 
@@ -200,7 +198,7 @@ impl From<anyhow::Error> for Error {
 
 impl IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
-        (self.status, self.body).into_response()
+        (self.status, Json(Response::from(self.body))).into_response()
     }
 }
 

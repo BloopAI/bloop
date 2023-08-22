@@ -172,7 +172,7 @@
 	"All conversations": "所有对话",
 	"Sorry, this repository is not ready for search": "抱歉，这个仓库还未准备好进行搜索",
 	"Wait for the repository to finish syncing and try again": "等待仓库完成同步后再试",
-	"Create new": "创建新的",
+	"Create new": "新会话",
 	"Show": "显示",
 	"Anything I can help you with?": "有什么我可以帮助您的吗？",
 	"Hide": "隐藏",
@@ -261,5 +261,7 @@
 	"Open file": "打开文件",
 	"Edit": "编辑",
 	"Editing a previously submitted question will discard all answers and questions following it.": "编辑之前提交的问题将丢弃其后的所有答案和问题。",
-	"Click to copy": "单击复制"
+	"Click to copy": "单击复制",
+	"Copy link": "复制链接",
+	"Search using RegExp": "使用RegExp搜索"
 }

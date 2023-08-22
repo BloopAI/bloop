@@ -261,5 +261,7 @@
 	"Open file": "Open file",
 	"Edit": "Edit",
 	"Editing a previously submitted question will discard all answers and questions following it.": "Editing a previously submitted question will discard all answers and questions following it.",
-	"Click to copy": "Click to copy"
+	"Click to copy": "Click to copy",
+	"Copy link": "Copy link",
+	"Search using RegExp": "Search using RegExp"
 }

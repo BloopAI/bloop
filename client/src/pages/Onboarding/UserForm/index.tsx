@@ -246,7 +246,8 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
             !isGithubConnected ||
             !form.firstName ||
             !form.lastName ||
-            !form.email
+            !form.email ||
+            !!form.emailError
           }
           onClick={(e) => {
             e.preventDefault();
