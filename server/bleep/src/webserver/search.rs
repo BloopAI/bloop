@@ -39,21 +39,18 @@ pub(super) async fn code_search(
     }
 }
 
-pub(super) async fn file_search(
+pub(super) async fn path_search(
     Query(args): Query<ApiQuery>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> impl IntoResponse {
     match parser::parse_nl(&args.q.clone()) {
         Ok(ParsedQuery::Semantic(q)) => {
-            let branch = q.first_branch();
-            dbg!(&q);
-
             let data = indexes
                 .file
                 .fuzzy_path_match(
                     &args.repo_ref.unwrap(),
                     q.target().as_deref().unwrap(),
-                    branch.as_deref(),
+                    q.first_branch().as_deref(),
                     args.page_size,
                 )
                 .await
@@ -68,15 +65,20 @@ pub(super) async fn file_search(
                 })
                 .collect::<Vec<QueryResult>>();
 
-            let stats = ResultStats::default();
-            let metadata = PagingMetadata::new(args.page, args.page_size, None);
             Ok(json(QueryResponse {
                 count: data.len(),
                 data,
-                metadata,
-                stats,
+                metadata: PagingMetadata::new(args.page, args.page_size, None),
+                stats: ResultStats::default(),
             }))
         }
-        _ => Err(Error::new(ErrorKind::UpstreamService, "error")),
+        Ok(ParsedQuery::Grep(_)) => {
+            error!("/search/path does not support grep queries");
+            Err(Error::new(ErrorKind::UpstreamService, "error"))
+        }
+        Err(err) => {
+            error!(?err, "Couldn't parse query");
+            Err(Error::new(ErrorKind::UpstreamService, "error"))
+        }
     }
 }
