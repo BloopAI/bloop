@@ -51,7 +51,7 @@ pub enum SemanticError {
 #[derive(Clone)]
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
-    embedder: Arc<LocalEmbedder>,
+    embedder: Arc<dyn Embedder>,
     config: Arc<Configuration>,
 }
 
@@ -252,9 +252,15 @@ impl Semantic {
             init_ort_dylib(dylib_dir);
         }
 
+        let embedder: Arc<dyn Embedder> = if let Some(ref url) = config.embedding_server {
+            Arc::new(embedder::RemoteEmbedder::new(url.clone(), model_dir)?)
+        } else {
+            Arc::new(LocalEmbedder::new(model_dir)?)
+        };
+
         Ok(Self {
             qdrant: qdrant.into(),
-            embedder: LocalEmbedder::new(model_dir)?.into(),
+            embedder,
             config,
         })
     }
@@ -267,7 +273,7 @@ impl Semantic {
         &self.qdrant
     }
 
-    pub fn embedder(&self) -> &impl Embedder {
+    pub fn embedder(&self) -> &dyn Embedder {
         self.embedder.as_ref()
     }
 

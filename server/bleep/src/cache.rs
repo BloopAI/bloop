@@ -9,7 +9,7 @@ use crate::{
     repo::RepoRef,
     semantic::{
         embedder::{EmbedChunk, EmbedLog},
-        Embedder, Payload, Semantic,
+        Payload, Semantic,
     },
 };
 
@@ -171,7 +171,10 @@ impl<'a> FileCache<'a> {
 	    return Ok(());
 	};
 
-        let to_commit = semantic.embedder().batch_embed(&self.embed_log, flush)?;
+        let to_commit = semantic
+            .embedder()
+            .batch_embed(&self.embed_log, flush)
+            .await?;
 
         if !to_commit.is_empty() {
             if let Err(err) = semantic

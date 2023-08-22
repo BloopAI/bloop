@@ -13,6 +13,7 @@ use ort::{
     Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
 };
 use qdrant_client::qdrant::{PointId, PointStruct};
+use serde::{Deserialize, Serialize};
 use tokenizers::Tokenizer;
 use tracing::trace;
 
@@ -60,10 +61,11 @@ pub struct EmbedChunk {
     pub payload: HashMap<String, qdrant_client::qdrant::Value>,
 }
 
-pub trait Embedder {
+#[async_trait::async_trait]
+pub trait Embedder: Send + Sync {
     fn embed(&self, data: &str) -> anyhow::Result<Embedding>;
-    fn batch_embed(&self, log: &EmbedLog, flush: bool) -> anyhow::Result<Vec<PointStruct>>;
     fn tokenizer(&self) -> &Tokenizer;
+    async fn batch_embed(&self, log: &EmbedLog, flush: bool) -> anyhow::Result<Vec<PointStruct>>;
 }
 
 pub struct LocalEmbedder {
@@ -99,6 +101,7 @@ impl LocalEmbedder {
     }
 }
 
+#[async_trait::async_trait]
 impl Embedder for LocalEmbedder {
     fn embed(&self, sequence: &str) -> anyhow::Result<Embedding> {
         let tokenizer_output = self.tokenizer.encode(sequence, true).unwrap();
@@ -140,16 +143,108 @@ impl Embedder for LocalEmbedder {
         &self.tokenizer
     }
 
-    fn batch_embed(&self, log: &EmbedLog, _flush: bool) -> anyhow::Result<Vec<PointStruct>> {
+    async fn batch_embed(&self, log: &EmbedLog, _flush: bool) -> anyhow::Result<Vec<PointStruct>> {
         let mut output = vec![];
         while let Some(entry) = log.pop() {
             output.push(PointStruct {
                 id: Some(PointId::from(entry.id)),
-                vectors: Some(self.embed(entry.data.as_ref())?.into()),
+                vectors: Some(
+                    tokio::task::block_in_place(|| self.embed(entry.data.as_ref()))?.into(),
+                ),
                 payload: entry.payload,
             });
         }
 
         Ok(output)
     }
+}
+
+pub struct RemoteEmbedder {
+    url: reqwest::Url,
+    session: reqwest::Client,
+    embedder: LocalEmbedder,
+}
+
+impl RemoteEmbedder {
+    pub fn new(url: reqwest::Url, model_dir: &Path) -> anyhow::Result<Self> {
+        Ok(Self {
+            url,
+            session: reqwest::Client::new(),
+            embedder: LocalEmbedder::new(model_dir)?,
+        })
+    }
+}
+
+#[async_trait::async_trait]
+impl Embedder for RemoteEmbedder {
+    fn embed(&self, data: &str) -> anyhow::Result<Embedding> {
+        self.embedder.embed(data)
+    }
+
+    fn tokenizer(&self) -> &Tokenizer {
+        self.embedder.tokenizer()
+    }
+
+    async fn batch_embed(&self, log: &EmbedLog, flush: bool) -> anyhow::Result<Vec<PointStruct>> {
+        const MAX_BATCH_SIZE: usize = 128;
+        let mut output = vec![];
+
+        loop {
+            // if we're not currently flushing the log, only process full batches
+            if log.len() < MAX_BATCH_SIZE && !flush {
+                return Ok(output);
+            }
+
+            let mut batch = vec![];
+
+            // fill this batch with embeddings
+            while let Some(embedding) = log.pop() {
+                batch.push(embedding);
+
+                if batch.len() == MAX_BATCH_SIZE {
+                    break;
+                }
+            }
+
+            let res: ServerResponse = self
+                .session
+                .post(self.url.clone())
+                .json(&ServerRequest {
+                    sequence: batch
+                        .iter()
+                        .map(|embed| embed.data.as_ref())
+                        .collect::<Vec<_>>(),
+                })
+                .send()
+                .await?
+                .json()
+                .await?;
+
+            output.extend(
+                res.data
+                    .into_iter()
+                    .zip(batch)
+                    .map(|(result, src)| PointStruct {
+                        id: Some(PointId::from(src.id)),
+                        vectors: Some(result.embedding.into()),
+                        payload: src.payload,
+                    }),
+            )
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct ServerRequest<'a> {
+    sequence: Vec<&'a str>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ServerResponse {
+    data: Vec<Processed>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Processed {
+    embedding: Embedding,
 }

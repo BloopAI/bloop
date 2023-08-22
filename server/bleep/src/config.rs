@@ -142,6 +142,10 @@ pub struct Configuration {
     /// Auth management base URL
     pub cognito_mgmt_url: Option<String>,
 
+    #[clap(long)]
+    /// Address for the embedding server
+    pub embedding_server: Option<reqwest::Url>,
+
     //
     // Installation-specific values
     //
@@ -278,6 +282,8 @@ impl Configuration {
                 a.collection_name,
                 default_collection_name()
             ),
+
+            embedding_server: b.embedding_server.or(a.embedding_server),
 
             frontend_dist: b.frontend_dist.or(a.frontend_dist),
 
