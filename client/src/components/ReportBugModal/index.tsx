@@ -1,5 +1,6 @@
 import React, {
   ChangeEvent,
+  memo,
   useCallback,
   useContext,
   useEffect,
@@ -37,11 +38,13 @@ const ReportBugModal = ({
     emailError: '',
   });
   const [isSubmitted, setSubmitted] = useState(false);
+  const [serverLog, setServerLog] = useState('');
   const [serverCrashedMessage, setServerCrashedMessage] = useState('');
   const { isBugReportModalOpen, setBugReportModalOpen } = useContext(
     UIContext.BugReport,
   );
-  const { envConfig, listen, os, release } = useContext(DeviceContext);
+  const { envConfig, listen, os, release, invokeTauriCommand } =
+    useContext(DeviceContext);
   const { handleRemoveTab, setActiveTab, activeTab } = useContext(TabsContext);
 
   const userForm = useMemo(
@@ -49,6 +52,14 @@ const ReportBugModal = ({
       getJsonFromStorage(USER_DATA_FORM),
     [],
   );
+
+  useEffect(() => {
+    if (isBugReportModalOpen) {
+      invokeTauriCommand('get_last_log_file').then((log) => {
+        setServerLog(log);
+      });
+    }
+  }, [isBugReportModalOpen]);
 
   useEffect(() => {
     listen('server-crashed', (event) => {
@@ -93,6 +104,7 @@ const ReportBugModal = ({
           info: serverCrashedMessage,
           metadata: JSON.stringify(os),
           app_version: release,
+          server_log: serverLog,
         });
       } else {
         const { emailError, ...values } = form;
@@ -100,11 +112,13 @@ const ReportBugModal = ({
           ...values,
           unique_id: envConfig.tracking_id || '',
           app_version: release,
+          metadata: JSON.stringify(os),
+          server_log: serverLog,
         });
       }
       setSubmitted(true);
     },
-    [form, envConfig.tracking_id, release],
+    [form, envConfig.tracking_id, release, serverLog],
   );
   const resetState = useCallback(() => {
     if (serverCrashedMessage) {
@@ -265,4 +279,4 @@ const ReportBugModal = ({
   );
 };
 
-export default ReportBugModal;
+export default memo(ReportBugModal);

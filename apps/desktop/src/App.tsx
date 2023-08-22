@@ -25,6 +25,7 @@ import {
   LANGUAGE_KEY,
   savePlainToStorage,
 } from '../../../client/src/services/storage';
+import { LocaleType } from '../../../client/src/types/general';
 import TextSearch from './TextSearch';
 
 // let askedToUpdate = false;
@@ -98,8 +99,8 @@ function App() {
   const [release, setRelease] = useState('');
   const contentContainer = useRef<HTMLDivElement>(null);
   const [envConfig, setEnvConfig] = useState({});
-  const [locale, setLocale] = useState(
-    getPlainFromStorage(LANGUAGE_KEY) || 'en',
+  const [locale, setLocale] = useState<LocaleType>(
+    (getPlainFromStorage(LANGUAGE_KEY) as LocaleType | null) || 'en',
   );
 
   useEffect(() => {

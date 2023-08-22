@@ -260,5 +260,7 @@
 	"View in {{viewer}}": "{{viewer}}で表示",
 	"Open file": "ファイルを開く",
 	"Edit": "編集",
-	"Editing a previously submitted question will discard all answers and questions following it.": "以前に提出された質問を編集すると、それに続くすべての回答と質問が破棄されます。"
+	"Editing a previously submitted question will discard all answers and questions following it.": "以前に提出された質問を編集すると、それに続くすべての回答と質問が破棄されます。",
+	"Copy link": "リンクをコピーする",
+	"Search using RegExp": "RegExpを使用して検索します"
 }

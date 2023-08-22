@@ -1,21 +1,34 @@
-import React, { useContext } from 'react';
+import React, { memo, useContext } from 'react';
 import MarkdownWithCode from '../../components/MarkdownWithCode';
 import { CopyMD } from '../../icons';
 import { FileModalContext } from '../../context/fileModalContext';
 import { copyToClipboard } from '../../utils';
 import Button from '../../components/Button';
-import { RIGHT_SIDEBAR_WIDTH_KEY } from '../../services/storage';
+import {
+  LEFT_SIDEBAR_WIDTH_KEY,
+  RIGHT_SIDEBAR_WIDTH_KEY,
+} from '../../services/storage';
 import useResizeableWidth from '../../hooks/useResizeableWidth';
 
 type Props = {
   repoName: string;
   markdown: string;
+  isSingleFileExplanation?: boolean;
+  recordId: number;
+  threadId: string;
 };
 
-const FileExplanation = ({ repoName, markdown }: Props) => {
+const FileExplanation = ({
+  repoName,
+  markdown,
+  isSingleFileExplanation,
+  recordId,
+  threadId,
+}: Props) => {
   const { openFileModal } = useContext(FileModalContext);
   const { width, handleResize, handleReset } = useResizeableWidth(
     RIGHT_SIDEBAR_WIDTH_KEY,
+    LEFT_SIDEBAR_WIDTH_KEY,
     384,
     true,
   );
@@ -28,7 +41,9 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
             openFileModal={openFileModal}
             repoName={repoName}
             markdown={markdown}
-            hideCode
+            hideCode={isSingleFileExplanation}
+            recordId={recordId}
+            threadId={threadId}
           />
           <Button
             variant="secondary"
@@ -49,4 +64,4 @@ const FileExplanation = ({ repoName, markdown }: Props) => {
   );
 };
 
-export default FileExplanation;
+export default memo(FileExplanation);

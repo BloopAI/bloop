@@ -1,4 +1,10 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { Remarkable } from 'remarkable';
 import { Trans } from 'react-i18next';
 import Accordion from '../../components/Accordion';
@@ -77,6 +83,18 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
     }
   }, []);
 
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      // @ts-ignore
+      const { href } = e.target;
+      if (href) {
+        e.preventDefault();
+        openLink(href);
+      }
+    },
+    [openLink],
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -101,14 +119,7 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
             <div className="py-4 text-xs overflow-x-auto px-4 readme">
               <div
                 dangerouslySetInnerHTML={{ __html: readme.contents }}
-                onClick={(e) => {
-                  // @ts-ignore
-                  const { href } = e.target;
-                  if (href) {
-                    e.preventDefault();
-                    openLink(href);
-                  }
-                }}
+                onClick={handleClick}
               />
             </div>
           </Accordion>
@@ -119,4 +130,4 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
     </div>
   );
 };
-export default RepositoryOverview;
+export default memo(RepositoryOverview);

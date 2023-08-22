@@ -70,7 +70,7 @@ export const UIContext = {
     setPromptGuideOpen: (b: boolean) => {},
   }),
   Tab: createContext({
-    tab: { key: 'initial', name: 'Home', repoName: '' },
+    tab: { key: 'initial', name: 'Home', repoName: '', repoRef: '' },
   }),
   Theme: createContext({
     theme: 'system' as Theme,

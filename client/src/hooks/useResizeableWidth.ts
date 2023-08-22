@@ -1,14 +1,37 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import throttle from 'lodash.throttle';
 import { getPlainFromStorage, savePlainToStorage } from '../services/storage';
 
 const useResizeableWidth = (
   localStorageKey: string,
+  oppositeLocalStorageKey: string,
   defaultWidth: number,
   isRightSidebar: boolean,
 ) => {
   const [width, setWidth] = useState(
     Number(getPlainFromStorage(localStorageKey)) || defaultWidth,
   );
+
+  useEffect(() => {
+    const handler = throttle(
+      () => {
+        setWidth((prev) => {
+          return Math.min(
+            prev,
+            (window.innerWidth -
+              (Number(getPlainFromStorage(oppositeLocalStorageKey)) || 360)) /
+              1.5,
+          );
+        });
+      },
+      100,
+      { trailing: true, leading: false },
+    );
+    window.addEventListener('resize', handler);
+    return () => {
+      window.removeEventListener('resize', handler);
+    };
+  }, []);
 
   const handleResize = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -20,7 +43,7 @@ const useResizeableWidth = (
       mouseMoveEvent.preventDefault();
       const pageX = isRightSidebar
         ? mouseMoveEvent.pageX
-        : Math.min(mouseMoveEvent.pageX, window.innerWidth - 200); // Adjust pageX for left sidebar
+        : Math.min(mouseMoveEvent.pageX, window.innerWidth / 3); // Adjust pageX for left sidebar
       finalWidth = Math.min(
         Math.max(
           isRightSidebar
@@ -28,7 +51,9 @@ const useResizeableWidth = (
             : pageX - startPosition,
           200,
         ),
-        window.innerWidth - 500,
+        (window.innerWidth -
+          (Number(getPlainFromStorage(oppositeLocalStorageKey)) || 360)) /
+          1.5,
       );
       setWidth(finalWidth);
     }

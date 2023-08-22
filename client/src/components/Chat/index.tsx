@@ -98,7 +98,7 @@ const Chat = () => {
           : `?q=${encodeURIComponent(query)}${
               selectedBranch ? ` branch:${selectedBranch}` : ''
             }`
-      }&repo_ref=${tab.key}${
+      }&repo_ref=${tab.repoRef}${
         threadId
           ? `&thread_id=${threadId}${
               queryIdToEdit ? `&parent_query_id=${queryIdToEdit}` : ''
@@ -288,7 +288,6 @@ const Chat = () => {
       threadId,
       navigatedItem?.path,
       navigatedItem?.type,
-      selectedLines,
       selectedBranch,
       t,
       queryIdToEdit,
@@ -311,7 +310,7 @@ const Chat = () => {
         lineEnd,
       };
       userQuery = t(
-        `Explain lines {{lineStart}} - {{lineEnd}} in {{filePath}}`,
+        `Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}`,
         {
           lineStart: Number(lineStart) + 1,
           lineEnd: Number(lineEnd) + 1,
@@ -449,7 +448,7 @@ const Chat = () => {
                   : conversation.slice(0, hideMessagesFrom + 1)
               }
               threadId={threadId}
-              repoRef={tab.key}
+              repoRef={tab.repoRef}
               isLoading={isLoading}
               repoName={tab.repoName}
               onMessageEdit={onMessageEdit}
@@ -518,7 +517,7 @@ const Chat = () => {
         setActive={setChatOpen}
         setConversation={setConversation}
         setThreadId={setThreadId}
-        repoRef={tab.key}
+        repoRef={tab.repoRef}
         repoName={tab.repoName}
         handleNewConversation={handleNewConversation}
       />

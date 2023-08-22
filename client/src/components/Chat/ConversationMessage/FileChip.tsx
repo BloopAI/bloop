@@ -4,6 +4,7 @@ import React, {
   SetStateAction,
   useEffect,
   useRef,
+  useState,
 } from 'react';
 import FileIcon from '../../FileIcon';
 import { ArrowOut } from '../../../icons';
@@ -15,9 +16,11 @@ type Props = {
   fileName: string;
   filePath: string;
   skipIcon?: boolean;
+  isSummary?: boolean;
   lines?: [number, number];
   fileChips?: MutableRefObject<HTMLButtonElement[]>;
   setFileHighlights?: Dispatch<SetStateAction<FileHighlightsType>>;
+  setHoveredLines?: Dispatch<SetStateAction<[number, number] | null>>;
 };
 
 const FileChip = ({
@@ -28,17 +31,26 @@ const FileChip = ({
   lines,
   fileChips,
   setFileHighlights,
+  setHoveredLines,
+  isSummary,
 }: Props) => {
   const ref = useRef<HTMLButtonElement>(null);
+  const [isHovered, setHovered] = useState(false);
+  const [, setRendered] = useState(false);
+
+  useEffect(() => {
+    // a hack to make this component rerender once when fileChips are updated
+    setRendered(true);
+  }, []);
 
   useEffect(() => {
     let chip = ref.current;
-    if (chip && fileChips) {
+    if (chip && fileChips && !isSummary) {
       fileChips.current.push(chip);
     }
 
     return () => {
-      if (chip && fileChips) {
+      if (chip && fileChips && !isSummary) {
         const index = fileChips.current.indexOf(chip);
         if (index !== -1) {
           fileChips.current.splice(index, 1);
@@ -51,9 +63,17 @@ const FileChip = ({
     ref.current && fileChips ? fileChips.current.indexOf(ref.current) : -1;
 
   useEffect(() => {
-    if (lines && index > -1 && setFileHighlights) {
+    if (!isSummary && lines && index === 0 && filePath) {
+      if (fileChips?.current?.length === 1) {
+        onClick();
+      }
+    }
+  }, [index, lines, isSummary, filePath]);
+
+  useEffect(() => {
+    if (lines && index > -1 && setFileHighlights && !isSummary) {
       setFileHighlights((prev) => {
-        const newHighlights = { ...prev };
+        const newHighlights = JSON.parse(JSON.stringify(prev));
         if (!newHighlights[filePath]) {
           newHighlights[filePath] = [];
         }
@@ -64,7 +84,6 @@ const FileChip = ({
           )})`,
           index,
         };
-        // newHighlights[filePath] = newHighlights[filePath].filter((h) => !!h);
         if (JSON.stringify(prev) === JSON.stringify(newHighlights)) {
           return prev;
         }
@@ -73,6 +92,28 @@ const FileChip = ({
     }
   }, [lines, filePath, index]);
 
+  useEffect(() => {
+    if (setHoveredLines && lines && index > -1 && !isSummary) {
+      setHoveredLines((prev) => {
+        if (
+          isHovered &&
+          (!prev || prev[0] !== lines[0] || prev[1] !== lines[1])
+        ) {
+          return lines;
+        }
+        if (
+          !isHovered &&
+          prev &&
+          prev[0] === lines[0] &&
+          prev[1] === lines[1]
+        ) {
+          return null;
+        }
+        return prev;
+      });
+    }
+  }, [isHovered]);
+
   return (
     <button
       className={`inline-flex items-center bg-chat-bg-shade rounded-4 overflow-hidden 
@@ -80,6 +121,8 @@ const FileChip = ({
                 cursor-pointer align-middle ellipsis`}
       ref={ref}
       onClick={onClick}
+      onMouseLeave={() => (setHoveredLines ? setHovered(false) : {})}
+      onMouseEnter={() => (setHoveredLines ? setHovered(true) : {})}
     >
       {!!lines && (
         <span

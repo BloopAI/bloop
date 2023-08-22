@@ -95,6 +95,7 @@ export type UITabType = {
   key: string;
   name: string;
   repoName: string;
+  repoRef: string;
   source: RepoSource;
   branch?: string | null;
   navigationHistory: NavigationItem[];
@@ -277,6 +278,7 @@ export type IpynbOutputType = {
   gif?: string;
   svg?: string;
   html?: string;
+  latex?: string;
   text?: string[];
   execution_count?: number;
   prompt_number?: number;

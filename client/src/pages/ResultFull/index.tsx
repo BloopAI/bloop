@@ -1,5 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import * as Sentry from '@sentry/react';
+import { Trans } from 'react-i18next';
 import FileIcon from '../../components/FileIcon';
 import Breadcrumbs from '../../components/Breadcrumbs';
 import CodeFull from '../../components/CodeBlock/CodeFull';
@@ -18,6 +25,10 @@ import FileMenu from '../../components/FileMenu';
 import SkeletonItem from '../../components/SkeletonItem';
 import IpynbRenderer from '../../components/IpynbRenderer';
 import useConversation from '../../hooks/useConversation';
+import Button from '../../components/Button';
+import { Sparkles } from '../../icons';
+import { ChatContext } from '../../context/chatContext';
+import { UIContext } from '../../context/uiContext';
 import FileExplanation from './FileExplanation';
 
 type Props = {
@@ -46,6 +57,14 @@ const ResultFull = ({
   const { navigateFullResult, navigateRepoPath } = useAppNavigation();
   const [result, setResult] = useState<FullResult | null>(null);
   const { data: answer } = useConversation(threadId, recordId);
+  const {
+    setSubmittedQuery,
+    setChatOpen,
+    setSelectedLines,
+    setConversation,
+    setThreadId,
+  } = useContext(ChatContext.Setters);
+  const { setRightPanelOpen } = useContext(UIContext.RightPanel);
 
   useEffect(() => {
     if (!data || data?.data?.[0]?.kind !== 'file') {
@@ -106,12 +125,36 @@ const ResultFull = ({
     return pathParts.length > 1 ? pathParts.slice(0, -1).join('/') + '/' : '';
   }, [result]);
 
+  const handleExplain = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.stopPropagation();
+      if (!result) {
+        return;
+      }
+      setConversation([]);
+      setThreadId('');
+      const endLine = result.code.split(/\n(?!$)/g).length - 1;
+      setRightPanelOpen(false);
+      setSubmittedQuery(
+        `#explain_${result.relativePath}:0-${endLine}-${Date.now()}`,
+      );
+      setChatOpen(true);
+    },
+    [result?.code, result?.relativePath],
+  );
+  const metadata = useMemo(() => {
+    return {
+      hoverableRanges: result?.hoverableRanges || [],
+      lexicalBlocks: [],
+    };
+  }, [result?.hoverableRanges]);
+
   return (
     <>
       <div className="flex-1 overflow-auto w-full box-content flex flex-col">
         <div className="w-full flex flex-col overflow-auto flex-1">
           <div
-            className={`w-full border-b border-bg-border flex justify-between py-3 px-8`}
+            className={`w-full border-b border-bg-border flex justify-between px-3 h-12 flex-shrink-0 bg-bg-base`}
           >
             <div className="flex items-center gap-1 overflow-hidden w-full">
               <FileIcon filename={result?.relativePath?.slice(-5) || ''} />
@@ -134,6 +177,10 @@ const ResultFull = ({
                 {result?.code.split('\n').length} lines ({result?.loc} loc) ·{' '}
                 {result?.size ? humanFileSize(result?.size) : ''}
               </p>
+              <Button size="tiny" onClick={handleExplain}>
+                <Sparkles raw sizeClassName="w-3.5 h-3.5" />
+                <Trans>Explain</Trans>
+              </Button>
               <FileMenu
                 relativePath={result?.relativePath || ''}
                 repoPath={result?.repoPath || ''}
@@ -180,10 +227,7 @@ const ResultFull = ({
                   language={result.language}
                   repoPath={result.repoPath}
                   relativePath={result.relativePath}
-                  metadata={{
-                    hoverableRanges: result.hoverableRanges,
-                    lexicalBlocks: [],
-                  }}
+                  metadata={metadata}
                   scrollElement={null}
                   containerWidth={
                     window.innerWidth - SIDEBAR_WIDTH - HORIZONTAL_PADDINGS
@@ -205,7 +249,10 @@ const ResultFull = ({
       {!!answer && (
         <FileExplanation
           markdown={answer.results}
+          isSingleFileExplanation={!!answer.focused_chunk?.file_path}
           repoName={result?.repoName || ''}
+          recordId={recordId}
+          threadId={threadId}
         />
       )}
     </>

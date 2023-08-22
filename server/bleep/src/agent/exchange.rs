@@ -1,9 +1,7 @@
 use crate::query::parser::SemanticQuery;
-use std::mem;
+use std::{fmt, mem};
 
 use chrono::prelude::{DateTime, Utc};
-
-use crate::webserver::answer;
 
 /// A continually updated conversation exchange.
 ///
@@ -16,7 +14,7 @@ pub struct Exchange {
     pub answer: Option<String>,
     pub search_steps: Vec<SearchStep>,
     pub paths: Vec<String>,
-    pub code_chunks: Vec<answer::CodeChunk>,
+    pub code_chunks: Vec<CodeChunk>,
 
     /// A specifically chosen "focused" code chunk.
     ///
@@ -64,6 +62,9 @@ impl Exchange {
                 self.response_timestamp = Some(Utc::now());
                 self.conclusion = Some(conclusion);
             }
+            Update::Focus(chunk) => {
+                self.focused_chunk = Some(chunk);
+            }
         }
     }
 
@@ -76,8 +77,8 @@ impl Exchange {
     ///
     /// This returns a tuple of `(full_text, conclusion)`.
     pub fn answer(&self) -> Option<(&str, &str)> {
-        match (&self.conclusion, &self.answer) {
-            (Some(conclusion), Some(answer)) => Some((conclusion.as_str(), answer.as_str())),
+        match (&self.answer, &self.conclusion) {
+            (Some(answer), Some(conclusion)) => Some((answer.as_str(), conclusion.as_str())),
             _ => None,
         }
     }
@@ -150,6 +151,32 @@ impl SearchStep {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct CodeChunk {
+    pub path: String,
+    #[serde(rename = "alias")]
+    pub alias: usize,
+    #[serde(rename = "snippet")]
+    pub snippet: String,
+    #[serde(rename = "start")]
+    pub start_line: usize,
+    #[serde(rename = "end")]
+    pub end_line: usize,
+}
+
+impl CodeChunk {
+    /// Returns true if a code-chunk contains an empty snippet or a snippet with only whitespace
+    pub fn is_empty(&self) -> bool {
+        self.snippet.trim().is_empty()
+    }
+}
+
+impl fmt::Display for CodeChunk {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}: {}\n{}", self.alias, self.path, self.snippet)
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct FocusedChunk {
     pub file_path: String,
@@ -163,4 +190,5 @@ pub enum Update {
     ReplaceStep(SearchStep),
     Article(String),
     Conclude(String),
+    Focus(FocusedChunk),
 }

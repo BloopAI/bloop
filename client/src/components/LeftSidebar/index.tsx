@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { RenderPage } from '../../pages';
 import IdeNavigation from '../IdeNavigation';
 import Filters from '../Filters';
@@ -14,4 +15,4 @@ const LeftSidebar = ({ renderPage }: Props) => {
   );
 };
 
-export default LeftSidebar;
+export default memo(LeftSidebar);

@@ -28,6 +28,8 @@ const ArticleResponse = ({ recordId, threadId }: Props) => {
               ? data?.results?.replace(/\[\`[^`]*$|\[\`[^`]+\`\]\([^)]*$/, '')
               : data?.results
           }
+          recordId={recordId}
+          threadId={threadId}
         />
         <Button
           variant="secondary"

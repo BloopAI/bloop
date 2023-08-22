@@ -195,7 +195,6 @@ pub fn by_tokens<'s>(
     src: &'s str,
     tokenizer: &Tokenizer, // we count from line
     token_bounds: Range<usize>,
-    max_lines: usize,
     strategy: OverlapStrategy,
 ) -> Vec<Chunk<'s>> {
     if tokenizer.get_padding().is_some() || tokenizer.get_truncation().is_some() {
@@ -211,7 +210,7 @@ pub fn by_tokens<'s>(
     let Ok(encoding) = tokenizer.encode(src, true)
     else {
         warn!("Could not encode \"{}\"", src);
-        return by_lines(src, max_lines);
+        return by_lines(src, 15);
     };
 
     let offsets = encoding.get_offsets();
@@ -363,14 +362,12 @@ mod tests {
     pub fn empty() {
         let tokenizer = minilm();
         let token_bounds = 50..256;
-        let max_lines = 15;
         let no_tokens = super::by_tokens(
             "bloop",
             "rmpty.rs",
             "",
             &tokenizer,
             token_bounds,
-            max_lines,
             OverlapStrategy::ByLines(1),
         );
         assert!(no_tokens.is_empty());
@@ -380,7 +377,6 @@ mod tests {
     pub fn by_tokens() {
         let tokenizer = minilm();
         let token_bounds = 50..256;
-        let max_lines = 15;
         let cur_dir = env::current_dir().unwrap();
         let base_dir = cur_dir.ancestors().nth(2).unwrap();
         let walk = ignore::WalkBuilder::new(base_dir)
@@ -414,7 +410,6 @@ mod tests {
                 &src,
                 &tokenizer,
                 token_bounds.clone(),
-                max_lines,
                 OverlapStrategy::Partial(0.5),
             );
             num_chunks += chunks.len();
@@ -434,7 +429,6 @@ mod tests {
     #[test]
     pub fn chunks_within_token_limit() {
         let tokenizer = minilm();
-        let max_lines = 15;
 
         let chunks = super::by_tokens(
             "bloop",
@@ -442,7 +436,6 @@ mod tests {
             SRC,
             &tokenizer,
             50..256,
-            max_lines,
             OverlapStrategy::Partial(0.5),
         );
 
@@ -459,7 +452,6 @@ mod tests {
     #[test]
     pub fn chunks_over_long_lined_file() {
         let tokenizer = minilm();
-        let max_lines = 15;
 
         // squish SRC into one big single-lined string
         let src = SRC.lines().collect::<String>();
@@ -470,7 +462,6 @@ mod tests {
             &src,
             &tokenizer,
             50..256,
-            max_lines,
             OverlapStrategy::Partial(0.5),
         );
 

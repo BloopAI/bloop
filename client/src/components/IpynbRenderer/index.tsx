@@ -12,7 +12,7 @@ const IpynbRenderer = ({ data }: Props) => {
     return ipynb.cells || ipynb.worksheets?.[0]?.cells || [];
   }, [data]);
   return (
-    <div className="pb-60 overflow-auto flex flex-col gap-4">
+    <div className="pb-60 pl-2 overflow-auto flex flex-col gap-4">
       {cells.map((cell: IpynbCellType, i: number) => {
         return <Cell key={i} cell={cell} seq={i + 1} />;
       })}

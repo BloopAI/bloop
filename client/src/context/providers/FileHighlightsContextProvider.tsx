@@ -1,22 +1,39 @@
-import React, { PropsWithChildren, useMemo, useState } from 'react';
+import React, { memo, PropsWithChildren, useMemo, useState } from 'react';
 import { FileHighlightsContext } from '../fileHighlightsContext';
 import { FileHighlightsType } from '../../types/general';
 
-export const FileHighlightsContextProvider = ({
-  children,
-}: PropsWithChildren) => {
-  const [fileHighlights, setFileHighlights] = useState<FileHighlightsType>({});
+export const FileHighlightsContextProvider = memo(
+  ({ children }: PropsWithChildren) => {
+    const [fileHighlights, setFileHighlights] = useState<FileHighlightsType>(
+      {},
+    );
+    const [hoveredLines, setHoveredLines] = useState<[number, number] | null>(
+      null,
+    );
 
-  const contextValue = useMemo(
-    () => ({
-      fileHighlights,
-      setFileHighlights,
-    }),
-    [fileHighlights],
-  );
-  return (
-    <FileHighlightsContext.Provider value={contextValue}>
-      {children}
-    </FileHighlightsContext.Provider>
-  );
-};
+    const valuesContextValue = useMemo(
+      () => ({
+        fileHighlights,
+        hoveredLines,
+      }),
+      [fileHighlights, hoveredLines],
+    );
+
+    const settersContextValue = useMemo(
+      () => ({
+        setFileHighlights,
+        setHoveredLines,
+      }),
+      [],
+    );
+    return (
+      <FileHighlightsContext.Setters.Provider value={settersContextValue}>
+        <FileHighlightsContext.Values.Provider value={valuesContextValue}>
+          {children}
+        </FileHighlightsContext.Values.Provider>
+      </FileHighlightsContext.Setters.Provider>
+    );
+  },
+);
+
+FileHighlightsContextProvider.displayName = 'FileHighlightsContextProvider';

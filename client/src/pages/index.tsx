@@ -1,4 +1,10 @@
-import React, { useCallback, useContext, useEffect, useMemo } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+} from 'react';
 import * as Sentry from '@sentry/react';
 import { SearchContext } from '../context/searchContext';
 import { useSearch } from '../hooks/useSearch';
@@ -205,6 +211,8 @@ const ContentContainer = ({ tab }: { tab: UITabType }) => {
   return <PageTemplate renderPage={renderPage}>{renderedPage}</PageTemplate>;
 };
 
-export default Sentry.withErrorBoundary(ContentContainer, {
-  fallback: (props) => <ErrorFallback {...props} />,
-});
+export default memo(
+  Sentry.withErrorBoundary(ContentContainer, {
+    fallback: (props) => <ErrorFallback {...props} />,
+  }),
+);

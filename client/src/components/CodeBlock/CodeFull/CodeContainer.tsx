@@ -10,7 +10,7 @@ import React, {
 } from 'react';
 import { SearchContext } from '../../../context/searchContext';
 import { Token as TokenType } from '../../../types/prism';
-import { hashCode, propsAreShallowEqual } from '../../../utils';
+import { hashCode } from '../../../utils';
 import { Range, TokenInfoType, TokenInfoWrapped } from '../../../types/results';
 import { getTokenInfo } from '../../../services/api';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
@@ -70,7 +70,9 @@ const CodeContainer = ({
   });
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const { navigatedItem } = useContext(AppNavigationContext);
-  const { fileHighlights } = useContext(FileHighlightsContext);
+  const { fileHighlights, hoveredLines } = useContext(
+    FileHighlightsContext.Values,
+  );
 
   const getHoverableContent = useCallback(
     (hoverableRange: Range, tokenRange: Range, lineNumber?: number) => {
@@ -178,6 +180,7 @@ const CodeContainer = ({
       language={language}
       relativePath={relativePath}
       highlights={fileHighlights[relativePath]}
+      hoveredLines={hoveredLines}
       {...otherProps}
     />
   ) : (
@@ -193,9 +196,10 @@ const CodeContainer = ({
       language={language}
       relativePath={relativePath}
       highlights={fileHighlights[relativePath]}
+      hoveredLines={hoveredLines}
       {...otherProps}
     />
   );
 };
 
-export default memo(CodeContainer, propsAreShallowEqual);
+export default memo(CodeContainer);

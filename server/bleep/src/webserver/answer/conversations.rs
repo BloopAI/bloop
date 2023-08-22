@@ -9,13 +9,12 @@ use std::{fmt, str::FromStr};
 use tracing::info;
 
 use crate::{
+    agent::exchange::Exchange,
     db::SqlDb,
     repo::RepoRef,
     webserver::{self, middleware::User, Error, ErrorKind},
     Application,
 };
-
-use super::exchange::Exchange;
 
 type Conversation = (RepoRef, Vec<Exchange>);
 

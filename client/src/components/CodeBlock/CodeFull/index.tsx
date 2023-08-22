@@ -1,6 +1,6 @@
 import React, {
+  memo,
   useCallback,
-  useContext,
   useDeferredValue,
   useEffect,
   useMemo,
@@ -9,8 +9,6 @@ import React, {
 } from 'react';
 import debounce from 'lodash.debounce';
 import { useSearchParams } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Trans } from 'react-i18next';
 import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
 import { Range, TokenInfoType } from '../../../types/results';
@@ -22,13 +20,10 @@ import { Commit } from '../../../types';
 import useAppNavigation from '../../../hooks/useAppNavigation';
 import SearchOnPage from '../../SearchOnPage';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
-import { Feather, Info, Sparkle } from '../../../icons';
-import { ChatContext } from '../../../context/chatContext';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
-import PortalContainer from '../../PortalContainer';
-import { UIContext } from '../../../context/uiContext';
 import CodeContainer from './CodeContainer';
+import ExplainButton from './ExplainButton';
 
 export interface BlameLine {
   start: boolean;
@@ -107,14 +102,6 @@ const CodeFull = ({
     top: number;
     left: number;
   } | null>(null);
-  const {
-    setSubmittedQuery,
-    setChatOpen,
-    setSelectedLines,
-    setConversation,
-    setThreadId,
-  } = useContext(ChatContext.Setters);
-  const { setRightPanelOpen } = useContext(UIContext.RightPanel);
   const { navigateFullResult } = useAppNavigation();
 
   const [isSearchActive, setSearchActive] = useState(false);
@@ -231,16 +218,12 @@ const CodeFull = ({
       tokenName: string,
       tokenRange: string,
     ) => {
-      if (filePath === relativePath) {
-        setScrollToIndex([lineNum, lineNum]);
-      } else {
-        navigateFullResult(filePath, {
-          scrollToLine: `${lineNum}_${lineNum}`,
-          type,
-          tokenName,
-          tokenRange,
-        });
-      }
+      navigateFullResult(filePath, {
+        scrollToLine: `${lineNum}_${lineNum}`,
+        type,
+        tokenName,
+        tokenRange,
+      });
     },
     [repoName, relativePath],
   );
@@ -403,6 +386,7 @@ const CodeFull = ({
           ref={ref}
         >
           <CodeContainer
+            key={relativePath}
             width={containerWidth}
             height={containerHeight}
             language={language}
@@ -421,90 +405,14 @@ const CodeFull = ({
             scrollToIndex={scrollToIndex}
             highlightColor={highlightColor}
           />
-          <PortalContainer>
-            <AnimatePresence>
-              {popupPosition && (
-                <motion.div
-                  className="fixed z-[120]"
-                  style={popupPosition}
-                  initial={{ opacity: 0, transform: 'translateY(1rem)' }}
-                  animate={{ transform: 'translateY(0rem)', opacity: 1 }}
-                  exit={{ opacity: 0, transform: 'translateY(1rem)' }}
-                >
-                  <div className="bg-bg-base border border-bg-border rounded-md shadow-high flex overflow-hidden select-none">
-                    {codeToCopy.split('\n').length > 1000 ? (
-                      <button
-                        className="h-8 flex items-center justify-center gap-1 px-2 caption text-label-muted"
-                        disabled
-                      >
-                        <div className="w-4 h-4">
-                          <Info raw />
-                        </div>
-                        <Trans>Select less code</Trans>
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setChatOpen(true);
-                            setPopupPosition(null);
-                            setRightPanelOpen(false);
-                            setThreadId('');
-                            setConversation([]);
-                            setSelectedLines([
-                              currentSelection[0]![0],
-                              currentSelection[1]![0],
-                            ]);
-                            closePopup?.();
-                            setTimeout(
-                              () =>
-                                findElementInCurrentTab(
-                                  '#question-input',
-                                )?.focus(),
-                              300,
-                            );
-                          }}
-                          className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover border-r border-bg-border caption text-label-title"
-                        >
-                          <div className="w-4 h-4">
-                            <Feather raw />
-                          </div>
-                          <Trans>Ask bloop</Trans>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConversation([]);
-                            setThreadId('');
-                            setSelectedLines([
-                              currentSelection[0]![0],
-                              currentSelection[1]![0],
-                            ]);
-                            setRightPanelOpen(false);
-                            setSubmittedQuery(
-                              `#explain_${relativePath}:${
-                                currentSelection[0]![0]
-                              }-${currentSelection[1]![0]}`,
-                            );
-                            setChatOpen(true);
-                            setPopupPosition(null);
-                            closePopup?.();
-                          }}
-                          className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover caption text-label-title"
-                        >
-                          <div className="w-4 h-4">
-                            <Sparkle raw />
-                          </div>
-                          <Trans>Explain</Trans>
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </PortalContainer>
+          <ExplainButton
+            currentSelection={currentSelection}
+            popupPosition={popupPosition}
+            setPopupPosition={setPopupPosition}
+            closePopup={closePopup}
+            relativePath={relativePath}
+            selectedLinesLength={codeToCopy.split('\n').length}
+          />
         </pre>
       </div>
       {minimap && (
@@ -525,4 +433,4 @@ const CodeFull = ({
   );
 };
 
-export default CodeFull;
+export default memo(CodeFull);

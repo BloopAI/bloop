@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Trans } from 'react-i18next';
 import { ChevronDownFilled, ChevronUpFilled } from '../../icons';
@@ -101,4 +101,4 @@ const Accordion = ({
   );
 };
 
-export default Accordion;
+export default memo(Accordion);

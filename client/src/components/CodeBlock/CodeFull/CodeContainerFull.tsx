@@ -1,7 +1,6 @@
 import React, { memo, useEffect, useRef, useState } from 'react';
 import CodeLine from '../Code/CodeLine';
 import { Token as TokenType } from '../../../types/prism';
-import { propsAreShallowEqual } from '../../../utils';
 import { Range, TokenInfoType, TokenInfoWrapped } from '../../../types/results';
 import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
@@ -38,6 +37,7 @@ type Props = {
     | { lines: [number, number]; color: string; index: number }
     | undefined
   )[];
+  hoveredLines: [number, number] | null;
 };
 
 const CodeContainerFull = ({
@@ -60,10 +60,12 @@ const CodeContainerFull = ({
   handleRefsDefsClick,
   relativePath,
   highlights,
+  hoveredLines,
 }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const [isPopupVisible, setPopupVisible] = useState(false);
+  const firstRender = useRef(true);
   const [popupPosition, setPopupPosition] = useState<{
     top: number;
     left?: number;
@@ -94,6 +96,8 @@ const CodeContainerFull = ({
         });
         setPopupVisible(true);
       }
+    } else {
+      setPopupPosition(null);
     }
   }, [tokenInfo]);
 
@@ -117,9 +121,18 @@ const CodeContainerFull = ({
       if (!line) {
         line = findElementInCurrentTab(`[data-line-number="${scrollToItem}"]`);
       }
-      line?.scrollIntoView({ behavior: 'smooth', block: align });
+      line?.scrollIntoView({
+        behavior: firstRender.current ? 'auto' : 'smooth',
+        block: align,
+      });
     }
   }, [scrollToIndex, tokens.length]);
+
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+    }
+  }, []);
 
   return (
     <div ref={ref} className="relative pb-60">
@@ -160,6 +173,11 @@ const CodeContainerFull = ({
                 ? highlights[highlightForLine]?.color
                 : highlightColor
             }
+            hoveredBackground={
+              !!hoveredLines &&
+              index >= hoveredLines[0] &&
+              index <= hoveredLines[1]
+            }
             searchTerm={searchTerm}
           >
             {line.map((token, i) => (
@@ -189,4 +207,4 @@ const CodeContainerFull = ({
   );
 };
 
-export default memo(CodeContainerFull, propsAreShallowEqual);
+export default memo(CodeContainerFull);

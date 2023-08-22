@@ -1,4 +1,10 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { FullResult } from '../../types/results';
 import { useSearch } from '../../hooks/useSearch';
 import { FileSearchResponse } from '../../types/api';
@@ -82,7 +88,7 @@ const FileModalContainer = ({ repoName }: Props) => {
 
   return (
     <ResultModal
-      result={openResult}
+      result={openResult?.relativePath === path ? openResult : null}
       onResultClosed={onResultClosed}
       mode={mode}
       setMode={handleModeChange}
@@ -90,4 +96,4 @@ const FileModalContainer = ({ repoName }: Props) => {
   );
 };
 
-export default FileModalContainer;
+export default memo(FileModalContainer);

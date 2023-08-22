@@ -37,6 +37,7 @@ function App({ deviceContextValue }: Props) {
       key: 'initial',
       name: 'Home',
       repoName: '',
+      repoRef: '',
       source: RepoSource.LOCAL,
       navigationHistory: [],
     },
@@ -59,7 +60,7 @@ function App({ deviceContextValue }: Props) {
       }
       const lastNav = tab.navigationHistory[tab.navigationHistory.length - 1];
       navigate(
-        `/${encodeURIComponent(activeTab)}/${encodeURIComponent(
+        `/${encodeURIComponent(tab.repoRef)}/${encodeURIComponent(
           tab.branch || 'all',
         )}/${lastNav ? buildURLPart(lastNav) : ''}`,
       );
@@ -76,21 +77,15 @@ function App({ deviceContextValue }: Props) {
       navHistory?: NavigationItem[],
     ) => {
       const newTab = {
-        key: repoRef,
+        key: repoRef + '#' + Date.now(),
         name,
         repoName,
+        repoRef,
         source,
         branch,
         navigationHistory: navHistory || [],
       };
-      setTabs((prev) => {
-        const existing = prev.find((t) => t.key === newTab.key);
-        if (existing) {
-          setActiveTab(existing.key);
-          return prev;
-        }
-        return [...prev, newTab];
-      });
+      setTabs((prev) => [...prev, newTab]);
       setActiveTab(newTab.key);
     },
     [],
@@ -198,8 +193,9 @@ function App({ deviceContextValue }: Props) {
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey) {
-        if (Object.keys(tabs).includes(e.key)) {
-          const newTab = tabs[Number(e.key)]?.key;
+        const num = Number(e.key);
+        if (Object.keys(tabs).includes((num - 1).toString())) {
+          const newTab = tabs[num - 1]?.key;
           if (newTab) {
             e.preventDefault();
             setActiveTab(newTab);
@@ -239,7 +235,12 @@ function App({ deviceContextValue }: Props) {
   const fetchRepos = useCallback(() => {
     getRepos().then((data) => {
       const list = data?.list?.sort((a, b) => (a.name < b.name ? -1 : 1)) || [];
-      setRepositories(list);
+      setRepositories((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(list)) {
+          return prev;
+        }
+        return list;
+      });
     });
   }, []);
 
