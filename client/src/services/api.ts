@@ -132,6 +132,8 @@ export const gitHubStatus = () =>
 
 export const getRepos = (): Promise<{ list: RepoType[] }> =>
   http.get('/repos').then((r) => r.data);
+export const getIndexedRepos = (): Promise<{ list: RepoType[] }> =>
+  http.get('/repos/indexed').then((r) => r.data);
 
 const localScanCache: Record<string, any> = {};
 export const scanLocalRepos = (path: string) => {
