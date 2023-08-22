@@ -29,6 +29,11 @@ import { DeviceContextProvider } from './context/providers/DeviceContextProvider
 import useKeyboardNavigation from './hooks/useKeyboardNavigation';
 import StudioTab from './pages/StudioTab';
 import HomeTab from './pages/HomeTab';
+import Settings from './components/Settings';
+import ReportBugModal from './components/ReportBugModal';
+import { GeneralUiContextProvider } from './context/providers/GeneralUiContextProvider';
+import PromptGuidePopup from './components/PromptGuidePopup';
+import Onboarding from './pages/Onboarding';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -298,15 +303,25 @@ function App({ deviceContextValue }: Props) {
       >
         <RepositoriesContext.Provider value={reposContextValue}>
           <TabsContext.Provider value={contextValue}>
-            {tabs.map((t) =>
-              t.type === TabType.STUDIO ? (
-                <StudioTab key={t.key} isActive={t.key === activeTab} tab={t} />
-              ) : t.type === TabType.REPO ? (
-                <RepoTab key={t.key} isActive={t.key === activeTab} tab={t} />
-              ) : (
-                <HomeTab key={t.key} isActive={t.key === activeTab} tab={t} />
-              ),
-            )}
+            <GeneralUiContextProvider>
+              {tabs.map((t) =>
+                t.type === TabType.STUDIO ? (
+                  <StudioTab
+                    key={t.key}
+                    isActive={t.key === activeTab}
+                    tab={t}
+                  />
+                ) : t.type === TabType.REPO ? (
+                  <RepoTab key={t.key} isActive={t.key === activeTab} tab={t} />
+                ) : (
+                  <HomeTab key={t.key} isActive={t.key === activeTab} tab={t} />
+                ),
+              )}
+              <Settings />
+              <ReportBugModal />
+              <PromptGuidePopup />
+              <Onboarding />
+            </GeneralUiContextProvider>
           </TabsContext.Provider>
         </RepositoriesContext.Provider>
       </AnalyticsContextProvider>
