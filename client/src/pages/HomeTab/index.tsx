@@ -1,10 +1,6 @@
 import React, { PureComponent } from 'react';
-import Settings from '../../components/Settings';
 import { HomeTabType } from '../../types/general';
-import '../../index.css';
-import ReportBugModal from '../../components/ReportBugModal';
-import { UIContextProvider } from '../../context/providers/UiContextProvider';
-import Onboarding from '../Onboarding';
+import { TabUiContextProvider } from '../../context/providers/TabUiContextProvider';
 import Home from './Content';
 
 type Props = {
@@ -20,12 +16,9 @@ class HomeTab extends PureComponent<Props> {
         className={`${isActive ? '' : 'hidden'} `}
         data-active={isActive ? 'true' : 'false'}
       >
-        <UIContextProvider tab={tab}>
+        <TabUiContextProvider tab={tab}>
           <Home />
-          <Settings />
-          <ReportBugModal />
-          <Onboarding />
-        </UIContextProvider>
+        </TabUiContextProvider>
       </div>
     );
   }
