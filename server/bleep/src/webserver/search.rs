@@ -39,11 +39,22 @@ pub(super) async fn path_search(
 ) -> impl IntoResponse {
     match parser::parse_nl(&args.q.clone()) {
         Ok(q) => {
+            let target = q.target();
+            let target = target.as_deref().ok_or_else(|| {
+                error!(?q, "Query has no target");
+                Error::new(ErrorKind::UpstreamService, "Query has no target")
+            })?;
+
+            let repo_ref = args.repo_ref.as_ref().ok_or_else(|| {
+                error!("No repo_ref provided");
+                Error::new(ErrorKind::UpstreamService, "No repo_ref provided")
+            })?;
+
             let data = indexes
                 .file
                 .fuzzy_path_match(
-                    &args.repo_ref.unwrap(),
-                    q.target().as_deref().unwrap_or(""),
+                    repo_ref,
+                    target,
                     q.first_branch().as_deref(),
                     args.page_size,
                 )
@@ -68,7 +79,7 @@ pub(super) async fn path_search(
         }
         Err(err) => {
             error!(?err, "Couldn't parse query");
-            Err(Error::new(ErrorKind::UpstreamService, "error"))
+            Err(Error::new(ErrorKind::UpstreamService, "parse error"))
         }
     }
 }

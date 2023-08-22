@@ -648,64 +648,6 @@ mod tests {
     }
 
     #[test]
-    fn test_force_parsing_mode_from_language() {
-        assert_eq!(
-            parse("repo:foo ParseError or repo:bar mode:grep").unwrap(),
-            vec![
-                Query {
-                    repo: Some(Literal::Plain("foo".into())),
-                    target: Some(Target::Content(Literal::Plain("ParseError".into()))),
-                    ..Query::default()
-                },
-                Query {
-                    repo: Some(Literal::Plain("bar".into())),
-                    ..Query::default()
-                },
-            ],
-        );
-
-        assert_eq!(
-            parse_nl("repo:foo ParseError or repo:bar mode:grep"),
-            Ok(ParsedQuery::Grep(vec![
-                Query {
-                    repo: Some(Literal::Plain("foo".into())),
-                    target: Some(Target::Content(Literal::Plain("ParseError".into()))),
-                    ..Query::default()
-                },
-                Query {
-                    repo: Some(Literal::Plain("bar".into())),
-                    ..Query::default()
-                },
-            ])),
-        );
-
-        assert_eq!(
-            parse("repo:foo ParseError or repo:bar").unwrap(),
-            vec![
-                Query {
-                    repo: Some(Literal::Plain("foo".into())),
-                    target: Some(Target::Content(Literal::Plain("ParseError".into()))),
-                    ..Query::default()
-                },
-                Query {
-                    repo: Some(Literal::Plain("bar".into())),
-                    ..Query::default()
-                },
-            ],
-        );
-
-        assert_eq!(
-            parse_nl("repo:bar or repo:foo ParseError mode:grep mode:semantic"),
-            Err(ParseError::MultiMode)
-        );
-
-        assert_eq!(
-            parse_nl("repo:bar or repo:foo ParseError mode:semantic mode:grep"),
-            Err(ParseError::MultiMode)
-        );
-    }
-
-    #[test]
     fn intersection_parse() {
         assert_eq!(
             parse("repo:foo ParseError or repo:bar").unwrap(),
@@ -1116,22 +1058,19 @@ mod tests {
     fn nl_parse() {
         assert_eq!(
             parse_nl("what is background color? lang:tsx repo:bloop").unwrap(),
-            ParsedQuery::Semantic(SemanticQuery {
+            SemanticQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into()].into(),
                 repos: [Literal::Plain("bloop".into())].into(),
                 paths: [].into(),
                 branch: [].into()
-            }),
+            },
         );
     }
 
     #[test]
     fn nl_parse_dedup_similar_filters() {
-        let ParsedQuery::Semantic(q) =
-            parse_nl("what is background color? lang:tsx repo:bloop repo:bloop").unwrap() else {
-            panic!("down with this sorta thing")
-        };
+        let q = parse_nl("what is background color? lang:tsx repo:bloop repo:bloop").unwrap();
         assert_eq!(q.repos().count(), 1);
     }
 
@@ -1140,7 +1079,7 @@ mod tests {
         assert_eq!(
             parse_nl("what is background color? lang:tsx lang:ts repo:bloop repo:bar path:server/bleep repo:baz")
                 .unwrap(),
-            ParsedQuery::Semantic(SemanticQuery {
+            SemanticQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into(), "typescript".into()].into(),
                 branch: [].into(),
@@ -1151,7 +1090,7 @@ mod tests {
                 ]
                 .into(),
                 paths: [Literal::Plain("server/bleep".into())].into(),
-            })
+            }
         );
     }
 
@@ -1162,24 +1101,24 @@ mod tests {
                 "what is background color? lang:tsx repo:bloop org:bloop symbol:foo open:true"
             )
             .unwrap(),
-            ParsedQuery::Semantic(SemanticQuery {
+            SemanticQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into()].into(),
                 repos: [Literal::Plain("bloop".into())].into(),
                 paths: [].into(),
                 branch: [].into(),
-            })
+            }
         );
 
         assert_eq!(
             parse_nl("case:ignore why are languages excluded from ctags? branch:main").unwrap(),
-            ParsedQuery::Semantic(SemanticQuery {
+            SemanticQuery {
                 target: Some(Literal::Plain(
                     "why are languages excluded from ctags?".into()
                 )),
                 branch: [Literal::Plain("main".into())].into(),
                 ..Default::default()
-            })
+            }
         );
     }
 

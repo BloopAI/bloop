@@ -94,7 +94,7 @@ fn update_branch_filters(
 fn collect_branches_for_repos(queries: Vec<String>) -> scc::HashMap<String, HashSet<String>> {
     let map = scc::HashMap::default();
     queries.par_iter().for_each(|q| {
-        parser::parse_nl(q).map(|parsed| {
+        if let Ok(parsed) = parser::parse_nl(q) {
             for r in parsed.repos() {
                 for b in parsed.branch() {
                     map.entry(r.to_string())
@@ -103,7 +103,7 @@ fn collect_branches_for_repos(queries: Vec<String>) -> scc::HashMap<String, Hash
                         .insert(b.to_string());
                 }
             }
-        });
+        }
     });
     map
 }
