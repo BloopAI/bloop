@@ -228,7 +228,6 @@ const ResultFull = ({
                   repoPath={result.repoPath}
                   relativePath={result.relativePath}
                   metadata={metadata}
-                  scrollElement={null}
                   containerWidth={
                     window.innerWidth - SIDEBAR_WIDTH - HORIZONTAL_PADDINGS
                   }

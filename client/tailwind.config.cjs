@@ -76,6 +76,7 @@ module.exports = {
         'px': '1px',
         1: "0.075rem",
         4: "0.25rem",
+        6: "6px",
         14: "0.875rem"
       },
       padding: {
