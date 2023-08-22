@@ -108,7 +108,7 @@ struct RefreshedAccessToken {
 }
 
 async fn update_credentials(app: &Application) {
-    if app.env.allow(Feature::GithubInstallation) {
+    if app.env.allow(Feature::GithubOrgInstallation) {
         match app.credentials.github().and_then(|c| c.expiry()) {
             // If we have a valid token, do nothing.
             Some(expiry) if expiry > Utc::now() + chrono::Duration::minutes(10) => {}
@@ -125,7 +125,7 @@ async fn update_credentials(app: &Application) {
         }
     }
 
-    if app.env.allow(Feature::GithubDeviceFlow) {
+    if app.env.allow(Feature::CognitoUserAuth) {
         let Some(github::State {
             auth: github::Auth::OAuth(ref creds),
             ..

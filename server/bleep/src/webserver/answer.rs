@@ -205,14 +205,14 @@ async fn try_execute_agent(
 > {
     QueryLog::new(&app.sql).insert(&params.q).await?;
 
-    let gh_token = app
+    let answer_api_token = app
         .answer_api_token()
         .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .map(|s| s.expose_secret().clone());
 
     let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
         .temperature(0.0)
-        .bearer(gh_token)
+        .bearer(answer_api_token)
         .session_reference_id(conversation_id.to_string());
 
     // confirm client compatibility with answer-api

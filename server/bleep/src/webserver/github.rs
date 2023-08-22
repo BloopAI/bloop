@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum GithubResponse {
-    AuthenticationNeeded { url: String, code: String },
+    AuthenticationNeeded { url: String },
     Status(GithubCredentialStatus),
 }
 
@@ -71,7 +71,7 @@ pub(super) async fn status(Extension(app): Extension<Application>) -> impl IntoR
     )
 }
 
-/// Connect to Github through OAuth Device Flow
+/// Connect to Github through Cognito & OAuth
 //
 pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoResponse {
     let state = uuid::Uuid::new_v4().to_string();
@@ -112,10 +112,7 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
     .unwrap()
     .to_string();
 
-    json(GithubResponse::AuthenticationNeeded {
-        url,
-        code: "DEAD-BEEF".to_string(),
-    })
+    json(GithubResponse::AuthenticationNeeded { url })
 }
 
 /// Remove Github OAuth credentials

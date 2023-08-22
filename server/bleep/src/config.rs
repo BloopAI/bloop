@@ -130,10 +130,10 @@ pub struct Configuration {
     //
     // Cognito setup
     //
-    /// Entry point to the Cognito authentication flow
+    /// Cognito userpool_id
     pub cognito_userpool_id: Option<String>,
 
-    /// Entry point to the Cognito authentication flow
+    /// Cognito client_id
     pub cognito_client_id: Option<String>,
 
     /// Entry point to the Cognito authentication flow
@@ -147,7 +147,7 @@ pub struct Configuration {
     //
     #[clap(long)]
     #[serde(serialize_with = "serialize_secret_opt_str", default)]
-    /// Github Client ID for either OAuth or GitHub Apps
+    /// Github Client ID for GitHub Apps
     pub github_client_id: Option<SecretString>,
 
     // Github client secret
