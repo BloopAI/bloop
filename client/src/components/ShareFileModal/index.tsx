@@ -79,7 +79,6 @@ const ShareFileModal = ({
             hoverableRanges: [],
             lexicalBlocks: [],
           }}
-          scrollElement={null}
           closePopup={onClose}
         />
       </div>

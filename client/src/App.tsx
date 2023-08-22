@@ -55,16 +55,21 @@ function App({ deviceContextValue }: Props) {
       return;
     }
     const tab = tabs.find((t) => t.key === activeTab);
-    if (tab && tab.type === TabType.REPO) {
-      if (activeTab === 'initial') {
-        navigate('/');
-        return;
-      }
+    if (tab && tab.type === TabType.HOME) {
+      navigate('/');
+      return;
+    } else if (tab && tab.type === TabType.REPO) {
       const lastNav = tab.navigationHistory[tab.navigationHistory.length - 1];
       navigate(
         `/${encodeURIComponent(tab.repoRef)}/${encodeURIComponent(
           tab.branch || 'all',
         )}/${lastNav ? buildURLPart(lastNav) : ''}`,
+      );
+    } else if (tab && tab.type === TabType.STUDIO) {
+      navigate(
+        `/studio/${encodeURIComponent(tab.key)}/${encodeURIComponent(
+          tab.name,
+        )}`,
       );
     }
   }, [activeTab, tabs]);
@@ -96,6 +101,7 @@ function App({ deviceContextValue }: Props) {
 
   const handleAddStudioTab = useCallback((name: string) => {
     const newTab: StudioTabType = {
+      // todo: use id from server as a key
       key: '' + Date.now(),
       name,
       type: TabType.STUDIO,
@@ -110,12 +116,15 @@ function App({ deviceContextValue }: Props) {
       return;
     }
     if (isLoading && repositories?.length) {
-      const repo = repositories.find(
-        (r) =>
-          r.ref ===
-          decodeURIComponent(location.pathname.slice(1).split('/')[0]),
+      const firstPart = decodeURIComponent(
+        location.pathname.slice(1).split('/')[0],
       );
-      if (repo) {
+      const repo = repositories.find((r) => r.ref === firstPart);
+      if (firstPart === 'studio') {
+        handleAddStudioTab(
+          decodeURIComponent(location.pathname.slice(1).split('/')[2]),
+        );
+      } else if (repo) {
         const urlBranch = decodeURIComponent(location.pathname.split('/')[2]);
         handleAddRepoTab(
           repo.ref,

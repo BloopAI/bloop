@@ -338,3 +338,35 @@ export type FileHighlightsType = Record<
 >;
 
 export type LocaleType = 'en' | 'ja' | 'zhCN' | 'es';
+
+export enum StudioConversationMessageAuthor {
+  USER = 'User',
+  ASSISTANT = 'Assistant',
+}
+
+export type StudioConversationMessage = {
+  author: StudioConversationMessageAuthor;
+  message: string;
+};
+
+export enum StudioLeftPanelType {
+  CONTEXT = 'context',
+  HISTORY = 'history',
+  TEMPLATES = 'templates',
+  FILE = 'file',
+}
+
+export type GeneralStudioPanelType = {
+  type:
+    | StudioLeftPanelType.CONTEXT
+    | StudioLeftPanelType.TEMPLATES
+    | StudioLeftPanelType.HISTORY;
+  data?: null;
+};
+
+export type FileStudioPanelType = {
+  type: StudioLeftPanelType.FILE;
+  data: { repo: RepoType; branch: string; filePath: string };
+};
+
+export type StudioPanelDataType = GeneralStudioPanelType | FileStudioPanelType;
