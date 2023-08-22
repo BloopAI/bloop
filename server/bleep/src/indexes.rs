@@ -108,7 +108,7 @@ impl Indexes {
             });
 
             for reporef in refs {
-                FileCache::for_repo(&sql, semantic.as_ref().map(|s| s.qdrant_client()), &reporef)
+                FileCache::for_repo(&sql, semantic.as_ref(), &reporef)
                     .delete()
                     .await?;
             }

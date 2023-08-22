@@ -1,14 +1,17 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 use qdrant_client::{prelude::QdrantClient, qdrant::PointId};
 use sqlx::Sqlite;
-use tracing::trace;
+use tracing::{error, trace};
 use uuid::Uuid;
 
-use crate::{repo::RepoRef, semantic::Payload};
+use crate::{
+    repo::RepoRef,
+    semantic::{
+        embedder::{EmbedChunk, EmbedLog},
+        Embedder, Payload, Semantic,
+    },
+};
 
 use super::db::SqlDb;
 
@@ -58,27 +61,20 @@ pub(crate) type FileCacheSnapshot = Arc<scc::HashMap<String, FreshValue<()>>>;
 pub(crate) struct FileCache<'a> {
     db: &'a SqlDb,
     reporef: &'a RepoRef,
-    qdrant: Option<&'a QdrantClient>,
+    semantic: Option<&'a Semantic>,
     embed_log: EmbedLog,
-}
-
-type EmbedLog = Arc<scc::Queue<EmbedChunk>>;
-struct EmbedChunk {
-    id: String,
-    data: Vec<u8>,
-    payload: HashMap<String, qdrant_client::qdrant::Value>,
 }
 
 impl<'a> FileCache<'a> {
     pub(crate) fn for_repo(
         db: &'a SqlDb,
-        qdrant: Option<&'a QdrantClient>,
+        semantic: Option<&'a Semantic>,
         reporef: &'a RepoRef,
     ) -> Self {
         Self {
             db,
             reporef,
-            qdrant,
+            semantic,
             embed_log: Default::default(),
         }
     }
@@ -164,19 +160,34 @@ impl<'a> FileCache<'a> {
         Ok(())
     }
 
-    pub async fn commit_embed_log(&self) -> anyhow::Result<()> {
-        const COMMIT_SIZE: usize = 128;
+    /// Commit the embed log, invoking the embedder if batch size is met.
+    ///
+    /// If `flush == true`, drain the log, send the entire batch to
+    /// the embedder, and commit the results, disregarding the internal
+    /// batch sizing.
+    pub async fn commit_embed_log(&self, flush: bool) -> anyhow::Result<()> {
+        let Some(semantic) = self.semantic
+	else {
+	    return Ok(());
+	};
 
-        let mut embed_log = self.embed_log;
-        if embed_log.len() <= COMMIT_SIZE {
-            return Ok(());
+        let to_commit = semantic.embedder().batch_embed(&self.embed_log, flush)?;
+
+        if !to_commit.is_empty() {
+            if let Err(err) = semantic
+                .qdrant_client()
+                .upsert_points(&semantic.collection_name(), to_commit, None)
+                .await
+            {
+                error!(?err, "failed to write new points into qdrant");
+            }
         }
 
-        todo!()
+        Ok(())
     }
 
-    pub async fn chunks_for_file(&self, key: &'a str) -> ChunkCache<'a> {
-        ChunkCache::for_file(self.db, self.reporef, self.embed_log.clone(), key).await
+    pub async fn chunks_for_file(&'a self, key: &'a str) -> ChunkCache<'a> {
+        ChunkCache::for_file(self.db, self.reporef, &self.embed_log, key).await
     }
 }
 
@@ -191,14 +202,14 @@ pub struct ChunkCache<'a> {
     cache: scc::HashMap<String, FreshValue<String>>,
     update: scc::HashMap<(Vec<String>, String), Vec<String>>,
     new_sql: RwLock<Vec<(String, String)>>,
-    embed_log: EmbedLog,
+    embed_log: &'a EmbedLog,
 }
 
 impl<'a> ChunkCache<'a> {
     async fn for_file(
         sql: &'a SqlDb,
         reporef: &'a RepoRef,
-        embed_log: EmbedLog,
+        embed_log: &'a EmbedLog,
         file_cache_key: &'a str,
     ) -> ChunkCache<'a> {
         let rows = sqlx::query! {

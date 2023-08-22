@@ -1,17 +1,68 @@
-use std::{path::Path, sync::Arc};
+use std::{
+    collections::HashMap,
+    path::Path,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, Mutex,
+    },
+};
 
 use ndarray::Axis;
 use ort::{
     tensor::{FromArray, InputTensor, OrtOwnedTensor},
     Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
 };
+use qdrant_client::qdrant::{PointId, PointStruct};
 use tokenizers::Tokenizer;
 use tracing::trace;
 
 use super::Embedding;
 
+#[derive(Default)]
+pub struct EmbedLog {
+    log: scc::Queue<Mutex<Option<EmbedChunk>>>,
+    len: AtomicUsize,
+}
+
+impl EmbedLog {
+    pub fn pop(&self) -> Option<EmbedChunk> {
+        let Some(val) = self.log.pop()
+	else {
+	    return None;
+	};
+
+        // wrapping shouldn't happen, because only decrements when
+        // `log` is non-empty.
+        self.len.fetch_sub(1, Ordering::SeqCst);
+
+        let val = val.lock().unwrap().take().unwrap();
+        Some(val)
+    }
+
+    pub fn push(&self, chunk: EmbedChunk) {
+        self.log.push(Mutex::new(Some(chunk)));
+        self.len.fetch_add(1, Ordering::SeqCst);
+    }
+
+    pub fn len(&self) -> usize {
+        self.len.load(Ordering::SeqCst)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+#[derive(Default)]
+pub struct EmbedChunk {
+    pub id: String,
+    pub data: String,
+    pub payload: HashMap<String, qdrant_client::qdrant::Value>,
+}
+
 pub trait Embedder {
     fn embed(&self, data: &str) -> anyhow::Result<Embedding>;
+    fn batch_embed(&self, log: &EmbedLog, flush: bool) -> anyhow::Result<Vec<PointStruct>>;
     fn tokenizer(&self) -> &Tokenizer;
 }
 
@@ -87,5 +138,18 @@ impl Embedder for LocalEmbedder {
 
     fn tokenizer(&self) -> &Tokenizer {
         &self.tokenizer
+    }
+
+    fn batch_embed(&self, log: &EmbedLog, _flush: bool) -> anyhow::Result<Vec<PointStruct>> {
+        let mut output = vec![];
+        while let Some(entry) = log.pop() {
+            output.push(PointStruct {
+                id: Some(PointId::from(entry.id)),
+                vectors: Some(self.embed(entry.data.as_ref())?.into()),
+                payload: entry.payload,
+            });
+        }
+
+        Ok(output)
     }
 }

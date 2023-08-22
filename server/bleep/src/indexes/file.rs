@@ -62,7 +62,7 @@ impl Indexable for File {
     ) -> Result<()> {
         let file_cache = Arc::new(FileCache::for_repo(
             &self.sql,
-            self.semantic.map(|s| s.qdrant_client()),
+            self.semantic.as_ref(),
             reporef,
         ));
         let cache_snapshot = file_cache.retrieve().await;
@@ -90,6 +90,13 @@ impl Indexable for File {
                 trace!(entry_disk_path, "queueing entry");
                 if let Err(err) = self.worker(workload, writer) {
                     warn!(%err, entry_disk_path, "indexing failed; skipping");
+                }
+
+                let commit_embeddings = tokio::task::block_in_place(|| {
+                    Handle::current().block_on(async { file_cache.commit_embed_log(false).await })
+                });
+                if let Err(err) = commit_embeddings {
+                    warn!(?err, "failed to commit embeddings");
                 }
             }
         };
@@ -145,6 +152,7 @@ impl Indexable for File {
 
         pipes.index_percent(100);
         file_cache.persist(cache_snapshot).await?;
+        file_cache.commit_embed_log(true).await?;
         Ok(())
     }
 

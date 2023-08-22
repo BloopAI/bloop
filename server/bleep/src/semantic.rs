@@ -19,7 +19,7 @@ use thiserror::Error;
 use tracing::{debug, info, warn};
 
 pub mod chunk;
-mod embedder;
+pub mod embedder;
 pub mod execute;
 mod schema;
 
@@ -259,8 +259,16 @@ impl Semantic {
         })
     }
 
+    pub fn collection_name(&self) -> &str {
+        &self.config.collection_name
+    }
+
     pub fn qdrant_client(&self) -> &QdrantClient {
         &self.qdrant
+    }
+
+    pub fn embedder(&self) -> &impl Embedder {
+        self.embedder.as_ref()
     }
 
     pub async fn health_check(&self) -> anyhow::Result<()> {
