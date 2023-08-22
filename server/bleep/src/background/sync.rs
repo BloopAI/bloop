@@ -387,10 +387,14 @@ impl SyncHandle {
                 .await;
         }
 
-        FileCache::for_repo(sql, &self.reporef)
-            .delete()
-            .await
-            .map_err(SyncError::Sql)?;
+        FileCache::for_repo(
+            sql,
+            semantic.as_ref().map(|s| s.qdrant_client()),
+            &self.reporef,
+        )
+        .delete()
+        .await
+        .map_err(SyncError::Sql)?;
 
         if !self.reporef.is_local() {
             tokio::fs::remove_dir_all(&repo.disk_path)

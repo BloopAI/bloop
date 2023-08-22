@@ -259,6 +259,10 @@ impl Semantic {
         })
     }
 
+    pub fn qdrant_client(&self) -> &QdrantClient {
+        &self.qdrant
+    }
+
     pub async fn health_check(&self) -> anyhow::Result<()> {
         self.qdrant.health_check().await?;
         Ok(())
@@ -470,7 +474,7 @@ impl Semantic {
                 ..Default::default()
             };
 
-            let cached = chunk_cache.update_or_embed(&data, self.embedder.as_ref(), payload);
+            let cached = chunk_cache.update_or_embed(&data, payload);
             if let Err(err) = cached {
                 warn!(?err, %repo_name, %relative_path, "embedding failed");
             }

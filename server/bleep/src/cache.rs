@@ -1,17 +1,14 @@
-use std::sync::{Arc, RwLock};
-
-use qdrant_client::{
-    prelude::QdrantClient,
-    qdrant::{PointId, PointStruct},
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
 };
+
+use qdrant_client::{prelude::QdrantClient, qdrant::PointId};
 use sqlx::Sqlite;
 use tracing::trace;
 use uuid::Uuid;
 
-use crate::{
-    repo::RepoRef,
-    semantic::{Embedder, Payload},
-};
+use crate::{repo::RepoRef, semantic::Payload};
 
 use super::db::SqlDb;
 
@@ -61,11 +58,29 @@ pub(crate) type FileCacheSnapshot = Arc<scc::HashMap<String, FreshValue<()>>>;
 pub(crate) struct FileCache<'a> {
     db: &'a SqlDb,
     reporef: &'a RepoRef,
+    qdrant: Option<&'a QdrantClient>,
+    embed_log: EmbedLog,
+}
+
+type EmbedLog = Arc<scc::Queue<EmbedChunk>>;
+struct EmbedChunk {
+    id: String,
+    data: Vec<u8>,
+    payload: HashMap<String, qdrant_client::qdrant::Value>,
 }
 
 impl<'a> FileCache<'a> {
-    pub(crate) fn for_repo(db: &'a SqlDb, reporef: &'a RepoRef) -> Self {
-        Self { db, reporef }
+    pub(crate) fn for_repo(
+        db: &'a SqlDb,
+        qdrant: Option<&'a QdrantClient>,
+        reporef: &'a RepoRef,
+    ) -> Self {
+        Self {
+            db,
+            reporef,
+            qdrant,
+            embed_log: Default::default(),
+        }
     }
 
     pub(crate) async fn retrieve(&self) -> FileCacheSnapshot {
@@ -149,8 +164,19 @@ impl<'a> FileCache<'a> {
         Ok(())
     }
 
+    pub async fn commit_embed_log(&self) -> anyhow::Result<()> {
+        const COMMIT_SIZE: usize = 128;
+
+        let mut embed_log = self.embed_log;
+        if embed_log.len() <= COMMIT_SIZE {
+            return Ok(());
+        }
+
+        todo!()
+    }
+
     pub async fn chunks_for_file(&self, key: &'a str) -> ChunkCache<'a> {
-        ChunkCache::for_file(self.db, self.reporef, key).await
+        ChunkCache::for_file(self.db, self.reporef, self.embed_log.clone(), key).await
     }
 }
 
@@ -164,14 +190,15 @@ pub struct ChunkCache<'a> {
     file_cache_key: &'a str,
     cache: scc::HashMap<String, FreshValue<String>>,
     update: scc::HashMap<(Vec<String>, String), Vec<String>>,
-    new: RwLock<Vec<PointStruct>>,
     new_sql: RwLock<Vec<(String, String)>>,
+    embed_log: EmbedLog,
 }
 
 impl<'a> ChunkCache<'a> {
     async fn for_file(
         sql: &'a SqlDb,
         reporef: &'a RepoRef,
+        embed_log: EmbedLog,
         file_cache_key: &'a str,
     ) -> ChunkCache<'a> {
         let rows = sqlx::query! {
@@ -192,18 +219,13 @@ impl<'a> ChunkCache<'a> {
             reporef,
             file_cache_key,
             cache,
+            embed_log,
             update: Default::default(),
-            new: Default::default(),
             new_sql: Default::default(),
         }
     }
 
-    pub fn update_or_embed(
-        &self,
-        data: &'a str,
-        embedder: &impl Embedder,
-        payload: Payload,
-    ) -> anyhow::Result<()> {
+    pub fn update_or_embed(&self, data: &'a str, payload: Payload) -> anyhow::Result<()> {
         let id = self.cache_key(data, &payload);
         let branches_hash = blake3::hash(payload.branches.join("\n").as_ref()).to_string();
 
@@ -228,9 +250,9 @@ impl<'a> ChunkCache<'a> {
                     .unwrap()
                     .push((vacant.key().to_owned(), branches_hash.clone()));
 
-                self.new.write().unwrap().push(PointStruct {
-                    id: Some(PointId::from(vacant.key().clone())),
-                    vectors: Some(embedder.embed(data)?.into()),
+                self.embed_log.push(EmbedChunk {
+                    id: vacant.key().clone(),
+                    data: data.into(),
                     payload: payload.into_qdrant(),
                 });
 
@@ -266,29 +288,26 @@ impl<'a> ChunkCache<'a> {
         let delete_size = self
             .commit_deletes(&mut tx, qdrant, collection_name)
             .await?;
-        let new_size = self
-            .commit_inserts(&mut tx, qdrant, collection_name)
-            .await?;
+        let new_size = self.commit_inserts(&mut tx).await?;
 
         tx.commit().await?;
 
         Ok((new_size, update_size, delete_size))
     }
 
-    /// Insert new additions to both qdrant and sqlite.
+    /// Insert new additions to sqlite
     ///
-    /// The qdrant write uses `upsert`, because we simply want to
-    /// express "these points should be in this state", without
-    /// being pedantic.
+    /// Note this step will update the cache before changes are
+    /// actually written to qdrant in batches.
+    ///
+    /// All qdrant operations are executed in batches through a call
+    /// to [`FileCache::commit_chunks`].
     async fn commit_inserts(
         &self,
         tx: &mut sqlx::Transaction<'_, Sqlite>,
-        qdrant: &QdrantClient,
-        collection_name: &str,
     ) -> Result<usize, anyhow::Error> {
-        let new: Vec<_> = std::mem::take(self.new.write().unwrap().as_mut());
         let new_sql = std::mem::take(&mut *self.new_sql.write().unwrap());
-        let new_size = new.len();
+        let new_size = new_sql.len();
 
         let repo_str = self.reporef.to_string();
         for (p, branches) in new_sql {
@@ -301,10 +320,6 @@ impl<'a> ChunkCache<'a> {
             .await?;
         }
 
-        // qdrant doesn't like empty payloads.
-        if !new.is_empty() {
-            qdrant.upsert_points(collection_name, new, None).await?;
-        }
         Ok(new_size)
     }
 
