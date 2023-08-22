@@ -25,7 +25,7 @@ const CodeStudioCard = ({ name, last_modified }: Props) => {
 
   const handleClick = useCallback(() => {
     handleAddStudioTab(name);
-  }, [name]);
+  }, [name, handleAddStudioTab]);
 
   const dropdownItems = useMemo(() => {
     const items = [
@@ -47,7 +47,7 @@ const CodeStudioCard = ({ name, last_modified }: Props) => {
     >
       <div className="flex justify-between items-start">
         <div className="flex items-start gap-4">
-          <span className="h-11 w-11 flex items-center justify-center rounded-md bg-[linear-gradient(135deg,#C7363E_0%,#C7369E_100%)]">
+          <span className="h-11 w-11 flex items-center justify-center rounded-md bg-[linear-gradient(135deg,#C7363E_0%,#C7369E_100%)] text-label-control">
             <CodeStudioIcon raw sizeClassName="h-4 w-4" />
           </span>
           <p className="break-all text-label-title pt-0.5">{name}</p>
