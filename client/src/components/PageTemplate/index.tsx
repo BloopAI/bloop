@@ -24,8 +24,6 @@ const PageTemplate = ({ children, renderPage }: PropsWithChildren<Props>) => {
 
   return (
     <div className="text-label-title">
-      <NavBar />
-      <div className="mt-8" />
       {renderPage !== 'home' && renderPage !== 'studio' && <Subheader />}
       <div
         className="flex mb-16 w-screen overflow-hidden relative"
@@ -38,7 +36,6 @@ const PageTemplate = ({ children, renderPage }: PropsWithChildren<Props>) => {
         {children}
         {renderPage !== 'home' && renderPage !== 'studio' && <Chat />}
       </div>
-      <StatusBar />
     </div>
   );
 };

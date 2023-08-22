@@ -34,6 +34,8 @@ import ReportBugModal from './components/ReportBugModal';
 import { GeneralUiContextProvider } from './context/providers/GeneralUiContextProvider';
 import PromptGuidePopup from './components/PromptGuidePopup';
 import Onboarding from './pages/Onboarding';
+import NavBar from './components/NavBar';
+import StatusBar from './components/StatusBar';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -111,7 +113,15 @@ function App({ deviceContextValue }: Props) {
       name,
       type: TabType.STUDIO,
     };
-    setTabs((prev: UITabType[]) => [...prev, newTab]);
+    setTabs((prev: UITabType[]) => {
+      // todo: use tab id instead of name
+      const existing = prev.find((t) => t.name === newTab.name);
+      if (existing) {
+        setActiveTab(existing.key);
+        return prev;
+      }
+      return [...prev, newTab];
+    });
     setActiveTab(newTab.key);
   }, []);
 
@@ -304,6 +314,8 @@ function App({ deviceContextValue }: Props) {
         <RepositoriesContext.Provider value={reposContextValue}>
           <TabsContext.Provider value={contextValue}>
             <GeneralUiContextProvider>
+              <NavBar />
+              <div className="mt-8" />
               {tabs.map((t) =>
                 t.type === TabType.STUDIO ? (
                   <StudioTab
@@ -321,6 +333,7 @@ function App({ deviceContextValue }: Props) {
               <ReportBugModal />
               <PromptGuidePopup />
               <Onboarding />
+              <StatusBar />
             </GeneralUiContextProvider>
           </TabsContext.Provider>
         </RepositoriesContext.Provider>
