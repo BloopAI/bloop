@@ -22,7 +22,7 @@ const GitHubConnect = ({ goBack }: { goBack: () => void }) => {
     generateNewCode,
     buttonClicked,
     handleClick,
-    loginUrl
+    loginUrl,
   } = useGitHubAuth(goBack);
   const { t } = useTranslation();
   return (
