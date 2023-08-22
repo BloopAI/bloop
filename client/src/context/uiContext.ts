@@ -2,33 +2,6 @@ import React, { createContext } from 'react';
 import { RepoSource, Theme } from '../types';
 import { RepoTabType, TabType } from '../types/general';
 
-type ContextType = {
-  isSettingsOpen: boolean;
-  setSettingsOpen: (v: boolean) => void;
-  symbolsCollapsed: boolean;
-  setSymbolsCollapsed: (v: boolean) => void;
-  settingsSection: number;
-  setSettingsSection: (s: number) => void;
-  onBoardingState: Record<string, any>;
-  setOnBoardingState: React.Dispatch<React.SetStateAction<Record<string, any>>>;
-  isBugReportModalOpen: boolean;
-  setBugReportModalOpen: (b: boolean) => void;
-  isGithubConnected: boolean;
-  setGithubConnected: (b: boolean) => void;
-  isGithubChecked: boolean;
-  shouldShowWelcome: boolean;
-  setShouldShowWelcome: (b: boolean) => void;
-  isRightPanelOpen: boolean;
-  setRightPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  isFiltersOpen: boolean;
-  setFiltersOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  tab: { key: string; name: string; repoName: string };
-  theme: Theme;
-  setTheme: (s: Theme) => void;
-  isPromptGuideOpen: boolean;
-  setPromptGuideOpen: (b: boolean) => void;
-};
-
 export const UIContext = {
   Settings: createContext({
     isSettingsOpen: false,
