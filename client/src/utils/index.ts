@@ -318,6 +318,16 @@ export function humanFileSize(
   return bytes.toFixed(dp) + ' ' + units[u];
 }
 
+export function humanNumber(num: number) {
+  if (!num) {
+    return num;
+  }
+  if (num < 1000) {
+    return num.toString();
+  }
+  return `${parseFloat((num / 1000).toFixed(1))}k`;
+}
+
 export const getDateFnsLocale = (locale: LocaleType) => {
   switch (locale) {
     case 'ja':

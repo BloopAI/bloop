@@ -117,3 +117,8 @@ export { default as CopyMD } from './CopyMD';
 export { default as CodeStudioIcon } from './CodeStudio';
 export { default as CodeStudioColored } from './CodeStudioColored';
 export { default as Calendar } from './Calendar';
+export { default as PlusSignInCircle } from './PlusSignInCircle';
+export { default as Template } from './Template';
+export { default as ArrowRefresh } from './ArrowRefresh';
+export { default as TrashCanFilled } from './TrashCanFilled';
+export { default as Fire } from './Fire';
