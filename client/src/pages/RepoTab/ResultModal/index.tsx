@@ -126,7 +126,6 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
               repoPath={result.repoPath}
               repoName={result.repoName}
               metadata={metadata}
-              scrollElement={null}
               containerWidth={window.innerWidth * 0.6 - 30}
               containerHeight={window.innerHeight - 16.6 * 16}
               closePopup={onResultClosed}

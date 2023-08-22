@@ -15,7 +15,9 @@ type Props = {
 const PageTemplate = ({ children, renderPage }: PropsWithChildren<Props>) => {
   const mainContainerStyle = useMemo(
     () => ({
-      height: `calc(100vh - ${renderPage !== 'home' ? '9.5rem' : '6rem'})`,
+      height: `calc(100vh - ${
+        renderPage !== 'home' && renderPage !== 'studio' ? '9.5rem' : '6rem'
+      })`,
     }),
     [renderPage],
   );
