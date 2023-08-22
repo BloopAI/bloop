@@ -53,6 +53,8 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         // intelligence
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))
+        .route("/related-files", get(intelligence::related_files))
+        .route("/token-value", get(intelligence::token_value))
         // misc
         .route("/search", get(semantic::complex_search))
         .route("/file", get(file::handle))

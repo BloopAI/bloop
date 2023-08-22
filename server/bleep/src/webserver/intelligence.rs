@@ -86,9 +86,8 @@ pub(super) async fn handle(
         .ok_or(Error::internal("invalid language"))?;
 
     let ctx = CodeNavigationContext {
-        repo_ref: repo_ref.clone(),
         token,
-        all_docs,
+        all_docs: &all_docs,
         source_document_idx,
     };
 
@@ -108,6 +107,126 @@ pub(super) async fn handle(
     } else {
         Ok(json(TokenInfoResponse { data }))
     }
+}
+
+/// The request made to the `related-files` endpoint.
+#[derive(Debug, Deserialize)]
+pub(super) struct RelatedFilesRequest {
+    /// The repo_ref of the file of interest
+    repo_ref: RepoRef,
+
+    /// The path to the file of interest, relative to the repo root
+    relative_path: String,
+
+    /// Branch name to use for the lookup,
+    branch: Option<String>,
+}
+
+/// The response from the `related-files` endpoint.
+#[derive(Serialize, Debug)]
+pub struct RelatedFilesResponse {
+    data: Vec<String>,
+}
+
+impl super::ApiResponse for RelatedFilesResponse {}
+
+pub(super) async fn related_files(
+    Query(payload): Query<RelatedFilesRequest>,
+    Extension(indexes): Extension<Arc<Indexes>>,
+) -> Result<impl IntoResponse> {
+    let source_document = indexes
+        .file
+        .by_path(
+            &payload.repo_ref,
+            &payload.relative_path,
+            payload.branch.as_deref(),
+        )
+        .await
+        .map_err(Error::user)?
+        .ok_or_else(|| Error::user("path not found").with_status(StatusCode::NOT_FOUND))?;
+    let lang = source_document.lang.as_deref();
+    let all_docs = {
+        let associated_langs = match lang.map(TSLanguage::from_id) {
+            Some(Language::Supported(config)) => config.language_ids,
+            _ => &[],
+        };
+        indexes
+            .file
+            .by_repo(
+                &payload.repo_ref,
+                associated_langs.iter(),
+                payload.branch.as_deref(),
+            )
+            .await
+    };
+
+    let source_document_idx = all_docs
+        .iter()
+        .position(|doc| doc.relative_path == payload.relative_path)
+        .ok_or(Error::internal("invalid language"))?;
+
+    return Ok(json(RelatedFilesResponse {
+        data: CodeNavigationContext::related_files(&all_docs, source_document_idx)
+            .into_iter()
+            .map(|doc| doc.relative_path.clone())
+            .collect(),
+    }));
+}
+
+/// The request made to the `token-value` endpoint.
+#[derive(Debug, Deserialize)]
+pub(super) struct TokenValueRequest {
+    /// The repo_ref of the file of interest
+    repo_ref: RepoRef,
+
+    /// The path to the file of interest, relative to the repo root
+    relative_path: String,
+
+    /// Branch name to use for the lookup,
+    branch: Option<String>,
+
+    /// The byte range to look for
+    start: usize,
+    end: usize,
+}
+
+/// The response from the `related-files` endpoint.
+#[derive(Serialize, Debug)]
+pub struct TokenValueResponse {
+    range: TextRange,
+    content: String,
+}
+
+impl super::ApiResponse for TokenValueResponse {}
+
+pub(super) async fn token_value(
+    Query(payload): Query<TokenValueRequest>,
+    Extension(indexes): Extension<Arc<Indexes>>,
+) -> Result<impl IntoResponse> {
+    let source_document = indexes
+        .file
+        .by_path(
+            &payload.repo_ref,
+            &payload.relative_path,
+            payload.branch.as_deref(),
+        )
+        .await
+        .map_err(Error::user)?
+        .ok_or_else(|| Error::user("path not found").with_status(StatusCode::NOT_FOUND))?;
+
+    let sg = source_document
+        .symbol_locations
+        .scope_graph()
+        .ok_or_else(|| Error::internal("path not supported for /token-value"))?;
+
+    let node_idx = sg
+        .node_by_range(payload.start, payload.end)
+        .ok_or_else(|| Error::internal("token not supported for /token-value"))?;
+
+    let range = sg.graph[sg.value_of_definition(node_idx).unwrap_or(node_idx)].range();
+    let content = source_document.content[std::ops::Range::from(range)].to_string();
+
+    Ok(json(TokenValueResponse { range, content }))
 }
 
 async fn search_nav(

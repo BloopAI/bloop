@@ -47,12 +47,16 @@ pub fn assert_eq_defs(src: &[u8], lang_id: &str, defs: Vec<(&str, &str)>) {
 }
 
 pub fn test_scopes(lang_id: &str, src: &[u8], expected: Expect) {
+    let graph = build_graph(lang_id, src);
     let language = match Language::from_id(lang_id) {
         Language::Supported(config) => config,
         _ => panic!("testing unsupported language"),
     };
-    let tsf = TreeSitterFile::try_build(src, lang_id).unwrap();
-    let observed = tsf.scope_graph().unwrap().debug(src, language);
-
+    let observed = graph.debug(src, language);
     expected.assert_debug_eq(&observed)
+}
+
+pub fn build_graph(lang_id: &str, src: &[u8]) -> crate::intelligence::ScopeGraph {
+    let tsf = TreeSitterFile::try_build(src, lang_id).unwrap();
+    tsf.scope_graph().unwrap()
 }
