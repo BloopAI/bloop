@@ -76,6 +76,11 @@ impl<'a> SemanticQuery<'a> {
         self.branch.iter().next().map(|t| t.clone().unwrap())
     }
 
+    // Ditto for repo
+    pub fn first_repo(&self) -> Option<Cow<'_, str>> {
+        self.repos.iter().next().map(|t| t.clone().unwrap())
+    }
+
     pub fn from_str(query: String, repo_ref: String) -> Self {
         Self {
             target: Some(Literal::Plain(Cow::Owned(query))),
