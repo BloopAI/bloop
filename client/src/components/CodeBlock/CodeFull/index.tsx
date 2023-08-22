@@ -7,9 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import debounce from 'lodash.debounce';
 import { useSearchParams } from 'react-router-dom';
-import MiniMap from '../MiniMap';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
 import { Range, TokenInfoType } from '../../../types/results';
 import {
@@ -45,8 +43,6 @@ type Props = {
   code: string;
   language: string;
   metadata: Metadata;
-  minimap?: boolean;
-  scrollElement: HTMLDivElement | null;
   relativePath: string;
   repoPath: string;
   repoName: string;
@@ -59,8 +55,6 @@ const CodeFull = ({
   language,
   code,
   metadata,
-  scrollElement,
-  minimap,
   relativePath,
   repoPath,
   repoName,
@@ -196,17 +190,7 @@ const CodeFull = ({
     [foldableRanges],
   );
 
-  const [scrollPosition, setScrollPosition] = useState(0);
   const codeRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleScroll = debounce((val) => {
-      setScrollPosition((val.target as HTMLDivElement).scrollTop || 0);
-    }, 300);
-
-    scrollElement?.addEventListener('scroll', handleScroll);
-    return () => scrollElement?.removeEventListener('scroll', handleScroll);
-  });
 
   const tokens = useMemo(() => tokenizeCode(code, lang), [code, lang]);
 
@@ -376,10 +360,7 @@ const CodeFull = ({
         searchValue={searchTerm}
         containerClassName="absolute top-0 -right-4"
       />
-      <div
-        className={`${!minimap ? 'w-full' : ''} overflow-auto`}
-        ref={codeRef}
-      >
+      <div className={`w-full overflow-auto`} ref={codeRef}>
         <pre
           className={`prism-code language-${lang} bg-bg-sub my-0 w-full h-full`}
           onCopy={handleCopy}
@@ -415,20 +396,6 @@ const CodeFull = ({
           />
         </pre>
       </div>
-      {minimap && (
-        <div className="w-36">
-          <MiniMap
-            code={code}
-            language={language}
-            codeFullHeight={scrollElement?.scrollHeight || 0}
-            codeVisibleHeight={scrollElement?.clientHeight || 0}
-            codeScroll={scrollPosition}
-            handleScroll={(v) => {
-              scrollElement?.scrollTo(0, v);
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 };
