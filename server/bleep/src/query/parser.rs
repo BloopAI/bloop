@@ -23,22 +23,6 @@ pub enum Target<'a> {
     Content(Literal<'a>),
 }
 
-#[derive(Debug, PartialEq, Eq)]
-#[allow(clippy::large_enum_variant)]
-pub enum ParsedQuery<'a> {
-    Semantic(SemanticQuery<'a>),
-    Grep(Vec<Query<'a>>),
-}
-
-impl<'a> ParsedQuery<'a> {
-    pub fn into_semantic(self) -> Option<SemanticQuery<'a>> {
-        match self {
-            Self::Semantic(q) => Some(q),
-            _ => None,
-        }
-    }
-}
-
 #[derive(Default, Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SemanticQuery<'a> {
     pub repos: HashSet<Literal<'a>>,
@@ -360,12 +344,6 @@ fn unescape(s: &str, term: char) -> String {
     result
 }
 
-#[derive(Debug, PartialEq, Clone, Eq)]
-enum ForceParsingAs {
-    Grep,
-    Semantic,
-}
-
 #[derive(Debug, PartialEq, Clone)]
 enum Expr<'a> {
     Or(Vec<Expr<'a>>),
@@ -382,10 +360,6 @@ enum Expr<'a> {
     CaseSensitive(bool),
     Open(bool),
     GlobalRegex(bool),
-
-    /// This is only parsed so we it doesn't mix with the actual query
-    /// Not actively used anywhere.
-    GlobalMode(ForceParsingAs),
 }
 
 impl<'a> Expr<'a> {
@@ -439,20 +413,6 @@ impl<'a> Expr<'a> {
                 match inner.as_str() {
                     "true" => GlobalRegex(true),
                     "false" => GlobalRegex(false),
-                    _ => unreachable!(),
-                }
-            }
-
-            Rule::mode_selector => {
-                // Avoid parsing this flag unless it's at the top level.
-                if !top_level {
-                    return Err(pair);
-                }
-
-                let inner = pair.into_inner().next().unwrap();
-                match inner.as_str() {
-                    "grep" => GlobalMode(ForceParsingAs::Grep),
-                    "semantic" => GlobalMode(ForceParsingAs::Semantic),
                     _ => unreachable!(),
                 }
             }
@@ -515,7 +475,7 @@ pub fn parse(query: &str) -> Result<Vec<Query<'_>>, ParseError> {
     Ok(qs.into_vec())
 }
 
-pub fn parse_nl(query: &str) -> Result<ParsedQuery<'_>, ParseError> {
+pub fn parse_nl(query: &str) -> Result<SemanticQuery<'_>, ParseError> {
     let pairs = PestParser::parse(Rule::nl_query, query).map_err(Box::new)?;
 
     let mut repos = HashSet::new();
@@ -523,7 +483,6 @@ pub fn parse_nl(query: &str) -> Result<ParsedQuery<'_>, ParseError> {
     let mut langs = HashSet::new();
     let mut branch = HashSet::new();
     let mut target: Option<Literal> = None;
-    let mut force_parsing_as = None;
     for pair in pairs {
         match pair.as_rule() {
             Rule::repo => {
@@ -550,32 +509,17 @@ pub fn parse_nl(query: &str) -> Result<ParsedQuery<'_>, ParseError> {
                     target = Some(rhs);
                 }
             }
-            Rule::mode_selector => {
-                let inner = pair.into_inner().next().unwrap();
-                match inner.as_str() {
-                    "grep" if force_parsing_as.is_none() => {
-                        force_parsing_as = Some(ForceParsingAs::Grep);
-                    }
-                    "semantic" if force_parsing_as.is_none() => {
-                        force_parsing_as = Some(ForceParsingAs::Semantic);
-                    }
-                    _ => return Err(ParseError::MultiMode),
-                };
-            }
             _ => {}
         }
     }
 
-    match force_parsing_as {
-        Some(ForceParsingAs::Grep) => parse(query).map(ParsedQuery::Grep),
-        _ => Ok(ParsedQuery::Semantic(SemanticQuery {
-            repos,
-            paths,
-            langs,
-            branch,
-            target,
-        })),
-    }
+    Ok(SemanticQuery {
+        repos,
+        paths,
+        langs,
+        branch,
+        target,
+    })
 }
 
 fn flatten(root: Expr<'_>) -> SmallVec<[Query<'_>; 1]> {
@@ -620,10 +564,6 @@ fn flatten(root: Expr<'_>) -> SmallVec<[Query<'_>; 1]> {
         }],
         Expr::GlobalRegex(flag) => smallvec![Query {
             global_regex: Some(flag),
-            ..Default::default()
-        }],
-        Expr::GlobalMode(_) => smallvec![Query {
-            // we don't propagate this flag down to the query level!
             ..Default::default()
         }],
 

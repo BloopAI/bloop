@@ -4,7 +4,7 @@ use crate::{
         execute::{
             ApiQuery, FileResultData, PagingMetadata, QueryResponse, QueryResult, ResultStats,
         },
-        parser::{self, ParsedQuery},
+        parser::{self},
     },
     semantic::{self, Semantic},
 };
@@ -12,7 +12,6 @@ use tracing::error;
 
 pub(super) async fn code_search(
     Query(args): Query<ApiQuery>,
-    Extension(indexes): Extension<Arc<Indexes>>,
     Extension(semantic): Extension<Option<Semantic>>,
 ) -> impl IntoResponse {
     let Some(semantic) = semantic else {
@@ -23,17 +22,12 @@ pub(super) async fn code_search(
     };
 
     match parser::parse_nl(&args.q.clone()) {
-        Ok(ParsedQuery::Semantic(q)) => semantic::execute::execute(semantic, q, args)
-            .await
-            .map(json)
-            .map_err(super::Error::from),
-        Ok(ParsedQuery::Grep(q)) => Arc::new(args)
-            .query_with(indexes, q)
+        Ok(q) => semantic::execute::execute(semantic, q, args)
             .await
             .map(json)
             .map_err(super::Error::from),
         Err(err) => {
-            error!(?err, "qdrant query failed");
+            error!(?err, "Couldn't parse query");
             Err(Error::new(ErrorKind::UpstreamService, "error"))
         }
     }
@@ -44,12 +38,12 @@ pub(super) async fn path_search(
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> impl IntoResponse {
     match parser::parse_nl(&args.q.clone()) {
-        Ok(ParsedQuery::Semantic(q)) => {
+        Ok(q) => {
             let data = indexes
                 .file
                 .fuzzy_path_match(
                     &args.repo_ref.unwrap(),
-                    q.target().as_deref().unwrap(),
+                    q.target().as_deref().unwrap_or(""),
                     q.first_branch().as_deref(),
                     args.page_size,
                 )
@@ -71,10 +65,6 @@ pub(super) async fn path_search(
                 metadata: PagingMetadata::new(args.page, args.page_size, None),
                 stats: ResultStats::default(),
             }))
-        }
-        Ok(ParsedQuery::Grep(_)) => {
-            error!("/search/path does not support grep queries");
-            Err(Error::new(ErrorKind::UpstreamService, "error"))
         }
         Err(err) => {
             error!(?err, "Couldn't parse query");

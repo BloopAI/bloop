@@ -121,11 +121,7 @@ pub(super) async fn answer(
         exchanges.truncate(truncate_from_index);
     }
 
-    let query = parser::parse_nl(q)
-        .context("parse error")?
-        .into_semantic()
-        .context("got a 'Grep' query")?
-        .into_owned();
+    let query = parser::parse_nl(q).context("parse error")?.into_owned();
     let query_target = query
         .target
         .as_ref()
@@ -401,9 +397,6 @@ pub async fn explain(
 
     let mut query = parser::parse_nl(&virtual_req.q)
         .context("failed to parse virtual answer query")?
-        .into_semantic()
-        // We synthesize the query, this should never fail.
-        .unwrap()
         .into_owned();
 
     if let Some(branch) = params.branch {

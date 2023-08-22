@@ -33,10 +33,7 @@ path = ${ "path:" ~ literal }
 branch = ${ "branch:" ~ literal }
 lang = ${ "lang:" ~ unquoted_literal }
 
-mode = _{ case | open | global_regex | mode_selector }
-mode_selector = ${ "mode:" ~ ( grep | semantic ) }
-grep = ${ "grep" }
-semantic = ${ "semantic" }
+mode = _{ case | open | global_regex }
 
 case = ${ "case:" ~ ( case_ignore | case_sensitive ) }
 case_ignore = { "ignore" }
@@ -57,4 +54,4 @@ WHITESPACE = _{ " " }
 
 // natural language queries
 raw_text = @{ (!WHITESPACE ~ ANY)+ }
-nl_query = _{ SOI ~ (label | mode | raw_text)* ~ EOI }
+nl_query = _{ SOI ~ (label | raw_text)* ~ EOI }
