@@ -28,6 +28,25 @@ pub struct ContentDocument {
     pub branches: Option<String>,
 }
 
+impl std::hash::Hash for ContentDocument {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.repo_ref.hash(state);
+        self.branches.hash(state);
+        self.relative_path.hash(state);
+        self.content.hash(state);
+    }
+}
+
+impl PartialEq for ContentDocument {
+    fn eq(&self, other: &Self) -> bool {
+        self.repo_ref == other.repo_ref
+            && self.branches == other.branches
+            && self.relative_path == other.relative_path
+            && self.content == other.content
+    }
+}
+impl Eq for ContentDocument {}
+
 impl ContentDocument {
     pub fn hoverable_ranges(&self) -> Option<Vec<TextRange>> {
         TreeSitterFile::try_build(self.content.as_bytes(), self.lang.as_ref()?)

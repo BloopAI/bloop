@@ -15,14 +15,12 @@ use crate::{symbol::Symbol, text_range::TextRange};
 
 use std::{collections::HashMap, str::FromStr};
 
-use petgraph::{
-    graph::{Graph, NodeIndex},
-    visit::EdgeRef,
-    Direction,
-};
+use petgraph::{graph::Graph, visit::EdgeRef, Direction};
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 use tree_sitter::{Node, Query, QueryCursor};
+
+pub type NodeIndex = petgraph::graph::NodeIndex<u32>;
 
 /// The algorithm used to resolve scopes.
 ///
@@ -112,7 +110,7 @@ pub struct ScopeGraph {
     // Graphs do not have the concept of a `root`, but lexical scopes follow the syntax
     // tree, and as a result, have a "root" node. The root_idx points to a scope node that
     // encompasses the entire file: the global scope.
-    root_idx: NodeIndex<u32>,
+    root_idx: NodeIndex,
 
     /// An index into ALL_LANGUAGES which corresponds to the language for this graph
     lang_id: usize,
@@ -129,7 +127,7 @@ impl ScopeGraph {
         }
     }
 
-    pub fn get_node(&self, node_idx: NodeIndex<u32>) -> Option<&NodeKind> {
+    pub fn get_node(&self, node_idx: NodeIndex) -> Option<&NodeKind> {
         self.graph.node_weight(node_idx)
     }
 
@@ -248,7 +246,7 @@ impl ScopeGraph {
         }
     }
 
-    fn scope_stack(&self, start: NodeIndex<u32>) -> ScopeStack<'_> {
+    fn scope_stack(&self, start: NodeIndex) -> ScopeStack<'_> {
         ScopeStack {
             scope_graph: self,
             start: Some(start),
@@ -256,7 +254,7 @@ impl ScopeGraph {
     }
 
     // The smallest scope that encompasses `range`. Start at `start` and narrow down if possible.
-    fn scope_by_range(&self, range: TextRange, start: NodeIndex<u32>) -> Option<NodeIndex<u32>> {
+    fn scope_by_range(&self, range: TextRange, start: NodeIndex) -> Option<NodeIndex> {
         let target_range = self.graph[start].range();
         if target_range.contains(&range) {
             let child_scopes = self
@@ -276,7 +274,7 @@ impl ScopeGraph {
     }
 
     // Produce the parent scope of a given scope
-    fn parent_scope(&self, start: NodeIndex<u32>) -> Option<NodeIndex<u32>> {
+    fn parent_scope(&self, start: NodeIndex) -> Option<NodeIndex> {
         if matches!(self.graph[start], NodeKind::Scope(_)) {
             return self
                 .graph
@@ -305,8 +303,8 @@ impl ScopeGraph {
     /// Produce possible definitions for a reference
     pub fn definitions(
         &self,
-        reference_node: NodeIndex<u32>,
-    ) -> Box<dyn Iterator<Item = NodeIndex<u32>> + '_> {
+        reference_node: NodeIndex,
+    ) -> Box<dyn Iterator<Item = NodeIndex> + '_> {
         let iterator = self
             .graph
             .edges_directed(reference_node, Direction::Outgoing)
@@ -316,10 +314,7 @@ impl ScopeGraph {
     }
 
     /// Produce possible imports for a reference
-    pub fn imports(
-        &self,
-        reference_node: NodeIndex<u32>,
-    ) -> Box<dyn Iterator<Item = NodeIndex<u32>> + '_> {
+    pub fn imports(&self, reference_node: NodeIndex) -> Box<dyn Iterator<Item = NodeIndex> + '_> {
         let iterator = self
             .graph
             .edges_directed(reference_node, Direction::Outgoing)
@@ -331,8 +326,8 @@ impl ScopeGraph {
     /// Produce possible references for a definition/import node
     pub fn references(
         &self,
-        definition_node: NodeIndex<u32>,
-    ) -> Box<dyn Iterator<Item = NodeIndex<u32>> + '_> {
+        definition_node: NodeIndex,
+    ) -> Box<dyn Iterator<Item = NodeIndex> + '_> {
         let iterator = self
             .graph
             .edges_directed(definition_node, Direction::Incoming)
@@ -343,25 +338,50 @@ impl ScopeGraph {
         Box::new(iterator)
     }
 
-    pub fn node_by_range(&self, start_byte: usize, end_byte: usize) -> Option<NodeIndex<u32>> {
+    pub fn node_by_range(&self, start_byte: usize, end_byte: usize) -> Option<NodeIndex> {
         self.graph
             .node_indices()
-            .filter(|&idx| {
-                matches!(
-                    self.graph[idx],
-                    NodeKind::Def(_) | NodeKind::Ref(_) | NodeKind::Import(_)
-                )
-            })
+            .filter(|&idx| self.is_definition(idx) || self.is_reference(idx) || self.is_import(idx))
             .find(|&idx| {
                 let node = self.graph[idx].range();
                 start_byte >= node.start.byte && end_byte <= node.end.byte
             })
     }
 
-    pub fn node_by_position(&self, line: usize, column: usize) -> Option<NodeIndex<u32>> {
+    /// The "value" of a definition is loosely characterized as
+    ///
+    /// - the body of a function block
+    /// - the body of a class
+    /// - the parameters list defining generic types
+    /// - the RHS of a value
+    ///
+    /// The heuristic used here is
+    ///  - the smallest scope-node that encompasses the definition_node
+    ///  - or the largest scope-node on the same line as the to the definition_node
+    pub fn value_of_definition(&self, def_idx: NodeIndex) -> Option<NodeIndex> {
+        let smallest_scope_node = self
+            .scope_by_range(self.graph[def_idx].range(), self.root_idx)
+            .filter(|&idx| {
+                self.graph[idx].range().start.line == self.graph[def_idx].range().start.line
+            });
+        let largest_adjacent_node = self
+            .graph
+            .node_indices()
+            .filter(|&idx| match self.graph[idx] {
+                NodeKind::Scope(scope) => {
+                    scope.range.start.line == self.graph[def_idx].range().start.line
+                }
+                _ => false,
+            })
+            .max_by_key(|idx| self.graph[*idx].range().size());
+
+        smallest_scope_node.or(largest_adjacent_node)
+    }
+
+    pub fn node_by_position(&self, line: usize, column: usize) -> Option<NodeIndex> {
         self.graph
             .node_indices()
-            .filter(|&idx| matches!(self.graph[idx], NodeKind::Def(_) | NodeKind::Ref(_)))
+            .filter(|&idx| self.is_definition(idx) || self.is_reference(idx))
             .find(|&idx| {
                 let node = self.graph[idx].range();
                 node.start.line == line
@@ -390,7 +410,7 @@ impl ScopeGraph {
     }
 
     // produce a stringified name of a def/ref's symbol
-    pub fn symbol_name_of(&self, idx: NodeIndex<u32>) -> Option<&'static str> {
+    pub fn symbol_name_of(&self, idx: NodeIndex) -> Option<&'static str> {
         let namespaces = ALL_LANGUAGES[self.lang_id].namespaces;
         match &self.graph[idx] {
             NodeKind::Def(d) => d.symbol_id.map(|s| s.name(namespaces)),
@@ -400,7 +420,7 @@ impl ScopeGraph {
     }
 
     // is the given ref/def a direct child of the root scope
-    pub fn is_top_level(&self, idx: NodeIndex<u32>) -> bool {
+    pub fn is_top_level(&self, idx: NodeIndex) -> bool {
         self.graph.contains_edge(idx, self.root_idx)
     }
 
@@ -409,6 +429,31 @@ impl ScopeGraph {
         let graph = &self.graph;
         let start = self.root_idx;
         debug::ScopeDebug::new(graph, start, src, language)
+    }
+
+    #[cfg(test)]
+    pub fn find_node_by_name(&self, src: &[u8], name: &[u8]) -> Option<NodeIndex> {
+        self.graph.node_indices().find(|idx| {
+            matches!(
+                    &self.graph[*idx],
+                    NodeKind::Def(d) if d.name(src) == name)
+        })
+    }
+
+    pub fn is_definition(&self, node_idx: NodeIndex) -> bool {
+        matches!(self.graph[node_idx], NodeKind::Def(_))
+    }
+
+    pub fn is_reference(&self, node_idx: NodeIndex) -> bool {
+        matches!(self.graph[node_idx], NodeKind::Ref(_))
+    }
+
+    pub fn is_scope(&self, node_idx: NodeIndex) -> bool {
+        matches!(self.graph[node_idx], NodeKind::Scope(_))
+    }
+
+    pub fn is_import(&self, node_idx: NodeIndex) -> bool {
+        matches!(self.graph[node_idx], NodeKind::Import(_))
     }
 }
 
