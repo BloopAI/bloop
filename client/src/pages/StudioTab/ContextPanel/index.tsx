@@ -13,24 +13,18 @@ import Button from '../../../components/Button';
 import { CodeStudioColored, PlusSignInCircle } from '../../../icons';
 import KeyboardChip from '../KeyboardChip';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
-import {
-  RepoType,
-  StudioContextFile,
-  StudioLeftPanelType,
-  StudioPanelDataType,
-} from '../../../types/general';
+import { StudioContextFile, StudioPanelDataType } from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
-import AddContextModal from './AddContextModal';
 import ContextFileRow from './ContextFileRow';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
+  setAddContextOpen: Dispatch<SetStateAction<boolean>>;
 };
 
-const ContextPanel = ({ setLeftPanel }: Props) => {
+const ContextPanel = ({ setLeftPanel, setAddContextOpen }: Props) => {
   const { t } = useTranslation();
   const { repositories } = useContext(RepositoriesContext);
-  const [isPopupOpen, setPopupOpen] = useState(false);
   const [contextFiles, setContextFiles] = useState<StudioContextFile[]>([]);
 
   useEffect(() => {
@@ -68,31 +62,15 @@ const ContextPanel = ({ setLeftPanel }: Props) => {
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      setPopupOpen(true);
+      setAddContextOpen(true);
     }
   }, []);
   useKeyboardNavigation(handleKeyEvent);
 
-  const handlePopupClose = useCallback(() => setPopupOpen(false), []);
-  const handlePopupOpen = useCallback(() => setPopupOpen(true), []);
-
-  const onSubmit = useCallback(
-    (repo: RepoType, branch: string, filePath: string) => {
-      setLeftPanel({
-        type: StudioLeftPanelType.FILE,
-        data: { repo, branch, filePath },
-      });
-    },
-    [],
-  );
+  const handlePopupOpen = useCallback(() => setAddContextOpen(true), []);
 
   return (
     <div className="flex flex-col w-full flex-1">
-      <AddContextModal
-        isVisible={isPopupOpen}
-        onClose={handlePopupClose}
-        onSubmit={onSubmit}
-      />
       <div className="flex gap-1 px-8 justify-between items-center border-b border-bg-border bg-bg-shade shadow-low h-11.5">
         <div className="flex gap-1.5 items-center text-bg-border-hover">
           <p className="body-s text-label-title">
