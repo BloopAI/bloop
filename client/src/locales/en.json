@@ -303,7 +303,11 @@
 	"# ranges_other": "{{count}} ranges",
 	"Only the selected lines (# - #) will be used as context.": "Only the selected lines ({{start}} - {{end}}) will be used as context.",
 	"Clear ranges": "Clear ranges",
-	"Only the selected ranges will be used as context.": "Only the selected ranges will be used as context."
+	"Only the selected ranges will be used as context.": "Only the selected ranges will be used as context.",
+	"Remove related files": "Remove related files",
+	"Imported files": "Imported files",
+	"Referencing target file": "Referencing target file"
 }
+
 
 
