@@ -122,16 +122,6 @@ impl Agent {
 
         debug!(?paths, ?aliases, "created filtered path alias list");
 
-        // NB: If we have more than one selected alias passed to the agent `none` tool, we
-        // intentionally ignore the alias list. This is part of a bigger issue that is to be
-        // discussed and investigated separately, that points to odd behaviour with the agent
-        // implementation.
-        let aliases = if aliases.len() == 1 {
-            aliases
-        } else {
-            (0..paths.len()).collect()
-        };
-
         if !aliases.is_empty() {
             s += "##### PATHS #####\n";
 
