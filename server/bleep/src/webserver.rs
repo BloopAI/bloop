@@ -3,7 +3,7 @@ use crate::{env::Feature, Application};
 use axum::{
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{get, patch, post},
     Extension, Json,
 };
 use std::{borrow::Cow, net::SocketAddr};
@@ -25,6 +25,8 @@ pub mod middleware;
 mod query;
 pub mod repos;
 mod search;
+mod semantic;
+mod studio;
 
 pub type Router<S = Application> = axum::Router<S>;
 
@@ -69,7 +71,11 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             "/answer/conversations/:thread_id",
             get(answer::conversations::thread),
         )
-        .route("/answer/vote", post(answer::vote));
+        .route("/answer/vote", post(answer::vote))
+        .route("/studio", post(studio::create))
+        .route("/studio", get(studio::list))
+        .route("/studio/:id", get(studio::get))
+        .route("/studio/:id", patch(studio::patch));
 
     if app.env.allow(Feature::AnyPathScan) {
         api = api.route("/repos/scan", get(repos::scan_local));

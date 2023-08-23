@@ -1,5 +1,15 @@
 {
   "db": "SQLite",
+  "0b8661afb0bd1a3806b96d07902fc6ba520b4efd1665f04b53f51c8dcd544343": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 4
+      }
+    },
+    "query": "INSERT INTO studios (id, name, context, messages) VALUES (?, ?, ?, ?)"
+  },
   "13d9aec6f721a649ab89c29c770ae5aa9f1bf34a0e30f6e608b697772774568e": {
     "describe": {
       "columns": [],
@@ -9,6 +19,78 @@
       }
     },
     "query": "INSERT INTO conversations (user_id, thread_id, repo_ref, title, exchanges, created_at) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))"
+  },
+  "18d1bdc46f4448448cb7121db7b2952076e6b17ba00ce370c919419d20d0fe07": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 2,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "SELECT id, name, modified_at FROM studios"
+  },
+  "21dfa10d31da4ec906483d92c4e885536b8020630f989306fb00fd5b861378e5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "context",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "messages",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 4,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT id, name, context, messages, modified_at\n         FROM studios\n         WHERE id = ?"
   },
   "392b563bb3af6711817fe99335d053691750426762dcde7b0381dc9f69cd804e": {
     "describe": {
@@ -62,6 +144,16 @@
     },
     "query": "SELECT cache_hash FROM file_cache WHERE repo_ref = ?"
   },
+  "4aacc9795c1a466afdc7c5cedcdf1a6b67652a7ddcdee0399e67024e087d75a9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE studios SET name = ? WHERE id = ?"
+  },
   "4bf8d04acb2c99669237578467e50ac6822cb46053bced5d7d7a9dc374353e0d": {
     "describe": {
       "columns": [],
@@ -92,6 +184,16 @@
     },
     "query": "DELETE FROM chunk_cache WHERE chunk_hash = ? AND file_hash = ?"
   },
+  "757d0afca2629937d717f9d6fc02df5dada4412e7b09bfed57423aa9b5f07b40": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE studios SET modified_at = ? WHERE id = ?"
+  },
   "9146d9c8a7f17cc65c017cb364d1a853a9163b5ece336c0a6ef4e28e8df56a6b": {
     "describe": {
       "columns": [],
@@ -111,6 +213,16 @@
       }
     },
     "query": "DELETE FROM file_cache WHERE repo_ref = ?"
+  },
+  "a65012ef1100880ed0a93569a397b4c0632e0f4f8d9be9577fbb5bcc8c31b8cf": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE studios SET context = ? WHERE id = ?"
   },
   "ac1299cb16ae8ff77ded6a11241b84414352c12e55ce40b89e5b85109c7dc523": {
     "describe": {
@@ -139,6 +251,24 @@
       }
     },
     "query": "INSERT INTO chunk_cache (chunk_hash, file_hash, branches, repo_ref) VALUES (?, ?, ?, ?)"
+  },
+  "b5bdd5f1da56c714031b94983c70a1ff4526d3b02d21addfd76f5f8641a5eecc": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT id FROM studios WHERE id = ?"
   },
   "bc60b0f34fd20feba2da3f16458770424534eacaba75e6f45b8218f32767671b": {
     "describe": {
@@ -169,6 +299,16 @@
       }
     },
     "query": "SELECT thread_id, created_at, title FROM conversations WHERE user_id = ? AND repo_ref = ? ORDER BY created_at DESC"
+  },
+  "d5d1d85ebd2740431593367145770ec13ab3b3f0eb23cfefacabb7a5711dbd99": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "UPDATE studios SET modified_at = datetime('now') WHERE id = ?"
   },
   "d5ee5becde7005920d7094fca5b7974bbf19713b3625fbf6d1a3e198e7cf4de4": {
     "describe": {
@@ -210,6 +350,24 @@
     },
     "query": "INSERT INTO file_cache (repo_ref, cache_hash) VALUES (?, ?)"
   },
+  "db80c758eb137530e6aad6e83778efcea787dfdf42f95b896ac482d3ffac2cfe": {
+    "describe": {
+      "columns": [
+        {
+          "name": "context",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT context FROM studios WHERE id = ?"
+  },
   "e444f39d4fc9219873c7a8565a13e65e4646658631b785431cb64ca0cc5d6ab9": {
     "describe": {
       "columns": [
@@ -243,5 +401,15 @@
       }
     },
     "query": "DELETE FROM chunk_cache WHERE repo_ref = ?"
+  },
+  "fcd51dfbd5e468d2517a9b21a444998cdf8fc9564a2b60961bddc4f5f9f49e2c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE studios SET messages = ? WHERE id = ?"
   }
 }
