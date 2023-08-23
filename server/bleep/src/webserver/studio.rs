@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use anyhow::Context;
-use axum::{extract::{Query, Path}, Extension, Json};
+use axum::{extract::Path, Extension, Json};
 use chrono::NaiveDateTime;
 use futures::{stream, StreamExt, TryStreamExt};
 use uuid::Uuid;
@@ -107,7 +107,6 @@ pub struct Patch {
     messages: Option<Vec<Message>>,
 }
 
-#[axum::debug_handler]
 pub async fn patch(
     app: Extension<Application>,
     Path(id): Path<String>,
@@ -156,10 +155,13 @@ pub async fn patch(
             .map_err(Error::internal)?;
     }
 
-    sqlx::query!("UPDATE studios SET modified_at = datetime('now') WHERE id = ?", id)
-        .execute(&mut transaction)
-        .await
-        .map_err(Error::internal)?;
+    sqlx::query!(
+        "UPDATE studios SET modified_at = datetime('now') WHERE id = ?",
+        id
+    )
+    .execute(&mut transaction)
+    .await
+    .map_err(Error::internal)?;
 
     // Re-fetch the context in case we didn't change it. If we did, this will now be the updated
     // value.
@@ -188,7 +190,6 @@ pub struct TokenCounts {
 
 async fn token_counts(app: Application, context: &[ContextFile]) -> webserver::Result<TokenCounts> {
     let per_file = stream::iter(context)
-        .filter(|file| async { !file.hidden })
         .then(|file| {
             let app = app.clone();
 
@@ -205,6 +206,10 @@ async fn token_counts(app: Application, context: &[ContextFile]) -> webserver::R
                             file.path, file.repo, file.branch
                         )
                     })?;
+
+                if file.hidden {
+                    return Ok(0);
+                }
 
                 let lines = doc.content.lines().collect::<Vec<_>>();
 
