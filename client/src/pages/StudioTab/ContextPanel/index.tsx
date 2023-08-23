@@ -3,6 +3,7 @@ import React, {
   memo,
   SetStateAction,
   useCallback,
+  useContext,
   useEffect,
   useState,
 } from 'react';
@@ -18,6 +19,7 @@ import {
   StudioLeftPanelType,
   StudioPanelDataType,
 } from '../../../types/general';
+import { RepositoriesContext } from '../../../context/repositoriesContext';
 import AddContextModal from './AddContextModal';
 import ContextFileRow from './ContextFileRow';
 
@@ -27,31 +29,30 @@ type Props = {
 
 const ContextPanel = ({ setLeftPanel }: Props) => {
   const { t } = useTranslation();
+  const { repositories } = useContext(RepositoriesContext);
   const [isPopupOpen, setPopupOpen] = useState(false);
   const [contextFiles, setContextFiles] = useState<StudioContextFile[]>([]);
 
   useEffect(() => {
     Promise.resolve([
       {
-        file_path: 'client/src/pages/StudioTab/Content.tsx',
+        file_path: 'client/src/App.tsx',
         ranges: [],
         tokens: 2500,
         repo_name: 'BloopAI/bloop',
         branch: 'origin/main',
         is_hidden: false,
-        related_files_num: null,
       },
       {
-        file_path: 'client/src/pages/StudioTab/index.tsx',
+        file_path: 'client/src/utils/domUtils.ts',
         ranges: [[1, 15]],
         tokens: 500,
         repo_name: 'BloopAI/bloop',
         branch: 'origin/anastasiia/blo-1211-ui-updates-for-context-files',
         is_hidden: true,
-        related_files_num: 3,
       },
       {
-        file_path: 'client/src/pages/HomeTab/index.tsx',
+        file_path: 'client/src/context/providers/AnalyticsContextProvider.tsx',
         ranges: [
           [1, 15],
           [20, 30],
@@ -60,7 +61,6 @@ const ContextPanel = ({ setLeftPanel }: Props) => {
         repo_name: 'BloopAI/bloop',
         branch: 'origin/main',
         is_hidden: false,
-        related_files_num: 3,
       },
     ] as StudioContextFile[]).then(setContextFiles);
   }, []);
@@ -139,7 +139,13 @@ const ContextPanel = ({ setLeftPanel }: Props) => {
       ) : (
         <div className="flex flex-col w-full">
           {contextFiles.map((f) => (
-            <ContextFileRow key={f.repo_name + f.file_path} {...f} />
+            <ContextFileRow
+              key={f.repo_name + f.file_path}
+              {...f}
+              contextFiles={contextFiles}
+              setLeftPanel={setLeftPanel}
+              repo={repositories?.find((r) => r.name === f.repo_name)}
+            />
           ))}
         </div>
       )}

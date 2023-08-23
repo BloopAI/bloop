@@ -14,15 +14,17 @@ const SelectBranch = ({ search, onSubmit, repo }: Props) => {
   const [branchesToShow, setBranchesToShow] = useState<string[]>([]);
 
   const allBranches = useMemo(() => {
-    return [...(repo?.branches || [])].reverse();
+    return [...(repo?.branch_filter?.select || [])].reverse();
   }, [repo?.branches]);
 
   useEffect(() => {
-    setBranchesToShow(
-      allBranches
-        .filter((r) => r.name.toLowerCase().includes(search.toLowerCase()))
-        .map((b) => b.name),
+    const branches = allBranches.filter((r) =>
+      r.toLowerCase().includes(search.toLowerCase()),
     );
+    setBranchesToShow(branches);
+    if (branches.length < 2) {
+      onSubmit(branches[0] || '');
+    }
   }, [search, allBranches]);
 
   return (

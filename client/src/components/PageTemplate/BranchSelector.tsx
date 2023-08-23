@@ -12,7 +12,6 @@ import { UIContext } from '../../context/uiContext';
 import TextInput from '../TextInput';
 import { RepoType, SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
-import CloudFeaturePopup from '../CloudFeaturePopup';
 import BranchItem from './BranchItem';
 
 let eventSource: EventSource;
@@ -21,7 +20,6 @@ const BranchSelector = () => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [isOpen, setOpen] = useState(false);
-  const [isPopupOpen, setPopupOpen] = useState(false);
   const [indexing, setIndexing] = useState({ branch: '', percentage: 0 });
   const [branchesToSync, setBranchesToSync] = useState<string[]>([]);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -33,6 +31,7 @@ const BranchSelector = () => {
   const { selectedBranch, setSelectedBranch } = useContext(
     SearchContext.SelectedBranch,
   );
+  const { setCloudFeaturePopupOpen } = useContext(UIContext.CloudFeaturePopup);
 
   const currentRepo = useMemo(() => {
     return repositories?.find((r) => r.ref === tab.repoRef);
@@ -106,7 +105,7 @@ const BranchSelector = () => {
           });
         }
         if (data.ev?.index_percent) {
-          setIndexing((prev) => ({
+          setIndexing(() => ({
             branch: data.b?.select[0],
             percentage: data.ev?.index_percent || 1,
           }));
@@ -143,10 +142,6 @@ const BranchSelector = () => {
 
   return allBranches.length > 1 ? (
     <div ref={contextMenuRef} className="max-w-full">
-      <CloudFeaturePopup
-        isOpen={isPopupOpen}
-        onClose={() => setPopupOpen(false)}
-      />
       <Tippy
         onHide={() => setOpen(false)}
         visible={isOpen}
@@ -199,7 +194,7 @@ const BranchSelector = () => {
             if (isSelfServe) {
               setOpen((prev) => !prev);
             } else {
-              setPopupOpen(true);
+              setCloudFeaturePopupOpen(true);
             }
           }}
           className="ellipsis"
