@@ -191,7 +191,7 @@ impl Indexer<File> {
         // lifted from query::compiler
         let reader = self.reader.read().await;
         let searcher = reader.searcher();
-        let collector = TopDocs::with_limit(100);
+        let collector = TopDocs::with_limit(5 * limit); // TODO: tune this
         let file_source = &self.source;
 
         // hits is a mapping between a document address and the number of trigrams in it that

@@ -23,22 +23,6 @@ pub enum Target<'a> {
     Content(Literal<'a>),
 }
 
-#[derive(Debug, PartialEq, Eq)]
-#[allow(clippy::large_enum_variant)]
-pub enum ParsedQuery<'a> {
-    Semantic(SemanticQuery<'a>),
-    Grep(Vec<Query<'a>>),
-}
-
-impl<'a> ParsedQuery<'a> {
-    pub fn into_semantic(self) -> Option<SemanticQuery<'a>> {
-        match self {
-            Self::Semantic(q) => Some(q),
-            _ => None,
-        }
-    }
-}
-
 #[derive(Default, Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SemanticQuery<'a> {
     pub repos: HashSet<Literal<'a>>,
@@ -74,6 +58,11 @@ impl<'a> SemanticQuery<'a> {
     // `SemanticQuery` to remove multiple branches altogether.
     pub fn first_branch(&self) -> Option<Cow<'_, str>> {
         self.branch.iter().next().map(|t| t.clone().unwrap())
+    }
+
+    // Ditto for repo
+    pub fn first_repo(&self) -> Option<Cow<'_, str>> {
+        self.repos.iter().next().map(|t| t.clone().unwrap())
     }
 
     pub fn from_str(query: String, repo_ref: String) -> Self {
@@ -355,12 +344,6 @@ fn unescape(s: &str, term: char) -> String {
     result
 }
 
-#[derive(Debug, PartialEq, Clone, Eq)]
-enum ForceParsingAs {
-    Grep,
-    Semantic,
-}
-
 #[derive(Debug, PartialEq, Clone)]
 enum Expr<'a> {
     Or(Vec<Expr<'a>>),
@@ -377,10 +360,6 @@ enum Expr<'a> {
     CaseSensitive(bool),
     Open(bool),
     GlobalRegex(bool),
-
-    /// This is only parsed so we it doesn't mix with the actual query
-    /// Not actively used anywhere.
-    GlobalMode(ForceParsingAs),
 }
 
 impl<'a> Expr<'a> {
@@ -434,20 +413,6 @@ impl<'a> Expr<'a> {
                 match inner.as_str() {
                     "true" => GlobalRegex(true),
                     "false" => GlobalRegex(false),
-                    _ => unreachable!(),
-                }
-            }
-
-            Rule::mode_selector => {
-                // Avoid parsing this flag unless it's at the top level.
-                if !top_level {
-                    return Err(pair);
-                }
-
-                let inner = pair.into_inner().next().unwrap();
-                match inner.as_str() {
-                    "grep" => GlobalMode(ForceParsingAs::Grep),
-                    "semantic" => GlobalMode(ForceParsingAs::Semantic),
                     _ => unreachable!(),
                 }
             }
@@ -510,7 +475,7 @@ pub fn parse(query: &str) -> Result<Vec<Query<'_>>, ParseError> {
     Ok(qs.into_vec())
 }
 
-pub fn parse_nl(query: &str) -> Result<ParsedQuery<'_>, ParseError> {
+pub fn parse_nl(query: &str) -> Result<SemanticQuery<'_>, ParseError> {
     let pairs = PestParser::parse(Rule::nl_query, query).map_err(Box::new)?;
 
     let mut repos = HashSet::new();
@@ -518,7 +483,6 @@ pub fn parse_nl(query: &str) -> Result<ParsedQuery<'_>, ParseError> {
     let mut langs = HashSet::new();
     let mut branch = HashSet::new();
     let mut target: Option<Literal> = None;
-    let mut force_parsing_as = None;
     for pair in pairs {
         match pair.as_rule() {
             Rule::repo => {
@@ -545,32 +509,17 @@ pub fn parse_nl(query: &str) -> Result<ParsedQuery<'_>, ParseError> {
                     target = Some(rhs);
                 }
             }
-            Rule::mode_selector => {
-                let inner = pair.into_inner().next().unwrap();
-                match inner.as_str() {
-                    "grep" if force_parsing_as.is_none() => {
-                        force_parsing_as = Some(ForceParsingAs::Grep);
-                    }
-                    "semantic" if force_parsing_as.is_none() => {
-                        force_parsing_as = Some(ForceParsingAs::Semantic);
-                    }
-                    _ => return Err(ParseError::MultiMode),
-                };
-            }
             _ => {}
         }
     }
 
-    match force_parsing_as {
-        Some(ForceParsingAs::Grep) => parse(query).map(ParsedQuery::Grep),
-        _ => Ok(ParsedQuery::Semantic(SemanticQuery {
-            repos,
-            paths,
-            langs,
-            branch,
-            target,
-        })),
-    }
+    Ok(SemanticQuery {
+        repos,
+        paths,
+        langs,
+        branch,
+        target,
+    })
 }
 
 fn flatten(root: Expr<'_>) -> SmallVec<[Query<'_>; 1]> {
@@ -615,10 +564,6 @@ fn flatten(root: Expr<'_>) -> SmallVec<[Query<'_>; 1]> {
         }],
         Expr::GlobalRegex(flag) => smallvec![Query {
             global_regex: Some(flag),
-            ..Default::default()
-        }],
-        Expr::GlobalMode(_) => smallvec![Query {
-            // we don't propagate this flag down to the query level!
             ..Default::default()
         }],
 
@@ -699,64 +644,6 @@ mod tests {
                 target: Some(Target::Content(Literal::Plain("Parse".into()))),
                 ..Query::default()
             }],
-        );
-    }
-
-    #[test]
-    fn test_force_parsing_mode_from_language() {
-        assert_eq!(
-            parse("repo:foo ParseError or repo:bar mode:grep").unwrap(),
-            vec![
-                Query {
-                    repo: Some(Literal::Plain("foo".into())),
-                    target: Some(Target::Content(Literal::Plain("ParseError".into()))),
-                    ..Query::default()
-                },
-                Query {
-                    repo: Some(Literal::Plain("bar".into())),
-                    ..Query::default()
-                },
-            ],
-        );
-
-        assert_eq!(
-            parse_nl("repo:foo ParseError or repo:bar mode:grep"),
-            Ok(ParsedQuery::Grep(vec![
-                Query {
-                    repo: Some(Literal::Plain("foo".into())),
-                    target: Some(Target::Content(Literal::Plain("ParseError".into()))),
-                    ..Query::default()
-                },
-                Query {
-                    repo: Some(Literal::Plain("bar".into())),
-                    ..Query::default()
-                },
-            ])),
-        );
-
-        assert_eq!(
-            parse("repo:foo ParseError or repo:bar").unwrap(),
-            vec![
-                Query {
-                    repo: Some(Literal::Plain("foo".into())),
-                    target: Some(Target::Content(Literal::Plain("ParseError".into()))),
-                    ..Query::default()
-                },
-                Query {
-                    repo: Some(Literal::Plain("bar".into())),
-                    ..Query::default()
-                },
-            ],
-        );
-
-        assert_eq!(
-            parse_nl("repo:bar or repo:foo ParseError mode:grep mode:semantic"),
-            Err(ParseError::MultiMode)
-        );
-
-        assert_eq!(
-            parse_nl("repo:bar or repo:foo ParseError mode:semantic mode:grep"),
-            Err(ParseError::MultiMode)
         );
     }
 
@@ -1171,22 +1058,19 @@ mod tests {
     fn nl_parse() {
         assert_eq!(
             parse_nl("what is background color? lang:tsx repo:bloop").unwrap(),
-            ParsedQuery::Semantic(SemanticQuery {
+            SemanticQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into()].into(),
                 repos: [Literal::Plain("bloop".into())].into(),
                 paths: [].into(),
                 branch: [].into()
-            }),
+            },
         );
     }
 
     #[test]
     fn nl_parse_dedup_similar_filters() {
-        let ParsedQuery::Semantic(q) =
-            parse_nl("what is background color? lang:tsx repo:bloop repo:bloop").unwrap() else {
-            panic!("down with this sorta thing")
-        };
+        let q = parse_nl("what is background color? lang:tsx repo:bloop repo:bloop").unwrap();
         assert_eq!(q.repos().count(), 1);
     }
 
@@ -1195,7 +1079,7 @@ mod tests {
         assert_eq!(
             parse_nl("what is background color? lang:tsx lang:ts repo:bloop repo:bar path:server/bleep repo:baz")
                 .unwrap(),
-            ParsedQuery::Semantic(SemanticQuery {
+            SemanticQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into(), "typescript".into()].into(),
                 branch: [].into(),
@@ -1206,7 +1090,7 @@ mod tests {
                 ]
                 .into(),
                 paths: [Literal::Plain("server/bleep".into())].into(),
-            })
+            }
         );
     }
 
@@ -1217,24 +1101,24 @@ mod tests {
                 "what is background color? lang:tsx repo:bloop org:bloop symbol:foo open:true"
             )
             .unwrap(),
-            ParsedQuery::Semantic(SemanticQuery {
+            SemanticQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: ["tsx".into()].into(),
                 repos: [Literal::Plain("bloop".into())].into(),
                 paths: [].into(),
                 branch: [].into(),
-            })
+            }
         );
 
         assert_eq!(
             parse_nl("case:ignore why are languages excluded from ctags? branch:main").unwrap(),
-            ParsedQuery::Semantic(SemanticQuery {
+            SemanticQuery {
                 target: Some(Literal::Plain(
                     "why are languages excluded from ctags?".into()
                 )),
                 branch: [Literal::Plain("main".into())].into(),
                 ..Default::default()
-            })
+            }
         );
     }
 
