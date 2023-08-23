@@ -370,3 +370,13 @@ export type FileStudioPanelType = {
 };
 
 export type StudioPanelDataType = GeneralStudioPanelType | FileStudioPanelType;
+
+export type StudioContextFile = {
+  file_path: string;
+  ranges: [number, number][];
+  tokens: number;
+  repo_name: string;
+  branch: string;
+  is_hidden: boolean;
+  related_files_num: number | null;
+};

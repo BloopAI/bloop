@@ -122,3 +122,6 @@ export { default as Template } from './Template';
 export { default as ArrowRefresh } from './ArrowRefresh';
 export { default as TrashCanFilled } from './TrashCanFilled';
 export { default as Fire } from './Fire';
+export { default as EyeCut } from './EyeCut';
+export { default as CornerArrow } from './CornerArrow';
+export { default as MinusSignInCircle } from './MinusSignInCircle';
