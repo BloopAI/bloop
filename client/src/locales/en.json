@@ -296,6 +296,14 @@
 	"Search branch...": "Search branch...",
 	"Select file": "Select file",
 	"Search file...": "Search file...",
-	"Tip: Select code to create ranges for context use.": "Tip: Select code to create ranges for context use."
+	"Tip: Select code to create ranges for context use.": "Tip: Select code to create ranges for context use.",
+	"Whole file": "Whole file",
+	"Lines # - #": "Lines {{start}} - {{end}}",
+	"# ranges_one": "{{count}} ranges",
+	"# ranges_other": "{{count}} ranges",
+	"Only the selected lines (# - #) will be used as context.": "Only the selected lines ({{start}} - {{end}}) will be used as context.",
+	"Clear ranges": "Clear ranges",
+	"Only the selected ranges will be used as context.": "Only the selected ranges will be used as context."
 }
+
 

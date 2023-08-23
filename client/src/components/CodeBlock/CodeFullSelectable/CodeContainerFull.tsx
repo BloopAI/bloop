@@ -1,7 +1,8 @@
-import React, { memo, useEffect, useRef } from 'react';
+import React, { Fragment, memo, useEffect, useRef, useState } from 'react';
 import { Token as TokenType } from '../../../types/prism';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
 import CodeLine from './CodeLine';
+import SelectionHandler from './SelectionHandler';
 
 type Props = {
   tokens: TokenType[][];
@@ -11,6 +12,8 @@ type Props = {
   onMouseSelectEnd: (lineNum: number) => void;
   scrollToIndex?: number[];
   currentSelection: ([number, number] | [number])[];
+  updateRange: (i: number, newRange: [number, number]) => void;
+  deleteRange: (i: number) => void;
 };
 
 const CodeContainerFull = ({
@@ -21,8 +24,11 @@ const CodeContainerFull = ({
   onMouseSelectEnd,
   scrollToIndex,
   currentSelection,
+  updateRange,
+  deleteRange,
 }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
+  const [currentlySelectingLine, setCurrentlySelectingLine] = useState(0);
 
   useEffect(() => {
     if (scrollToIndex && ref.current) {
@@ -53,7 +59,31 @@ const CodeContainerFull = ({
 
   return (
     <div ref={ref} className="relative pb-60">
+      {currentSelection.map(
+        (r, i) =>
+          r.length === 2 && (
+            <SelectionHandler
+              key={i}
+              initialRange={r}
+              updateRange={updateRange}
+              deleteRange={deleteRange}
+              i={i}
+            />
+          ),
+      )}
       {tokens.map((line, index) => {
+        const selectedRange = currentSelection.find(
+          (s) =>
+            (s[0] <= index &&
+              ((s[1] && s[1] >= index) ||
+                (!s[1] &&
+                  currentlySelectingLine &&
+                  currentlySelectingLine >= index))) ||
+            (s[0] >= index &&
+              !s[1] &&
+              currentlySelectingLine &&
+              currentlySelectingLine <= index),
+        );
         return (
           <CodeLine
             key={pathHash + '-' + index.toString()}
@@ -61,9 +91,8 @@ const CodeContainerFull = ({
             onMouseSelectStart={onMouseSelectStart}
             onMouseSelectEnd={onMouseSelectEnd}
             searchTerm={searchTerm}
-            isSelected={currentSelection.find(
-              (s) => s[0] >= index && s[1] && s[1] <= index,
-            )}
+            isSelected={!!selectedRange}
+            setCurrentlySelectingLine={setCurrentlySelectingLine}
           >
             {line.map((token, i) => (
               <span

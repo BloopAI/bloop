@@ -29,7 +29,7 @@ const Tab = ({ tabKey, name, source }: Props) => {
         activeTab === tabKey
           ? 'bg-bg-shade text-label-title'
           : 'bg-bg-base text-label-base'
-      } cursor-pointer max-w-12 relative`}
+      } cursor-pointer max-w-12`}
     >
       {tabKey === 'initial' ? (
         <Home sizeClassName="w-4 h-4" />
@@ -60,9 +60,6 @@ const Tab = ({ tabKey, name, source }: Props) => {
         >
           <CloseSign sizeClassName="w-3.5 h-3.5" />
         </button>
-      )}
-      {activeTab === tabKey && (
-        <span className="absolute left-0 right-0 -bottom-1 h-1 bg-bg-shade" />
       )}
     </div>
   );
