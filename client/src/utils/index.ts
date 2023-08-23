@@ -340,3 +340,30 @@ export const getDateFnsLocale = (locale: LocaleType) => {
       return undefined;
   }
 };
+
+export function mergeRanges(ranges: [number, number][]): [number, number][] {
+  ranges.sort((a, b) => a[0] - b[0]);
+
+  const mergedRanges: [number, number][] = [];
+
+  if (ranges.length === 0) {
+    return mergedRanges;
+  }
+
+  let currentRange = ranges[0];
+
+  for (let i = 1; i < ranges.length; i++) {
+    const nextRange = ranges[i];
+
+    if (nextRange[0] <= currentRange[1] + 1) {
+      currentRange[1] = Math.max(currentRange[1], nextRange[1]);
+    } else {
+      mergedRanges.push(currentRange);
+      currentRange = nextRange;
+    }
+  }
+
+  mergedRanges.push(currentRange);
+
+  return mergedRanges;
+}

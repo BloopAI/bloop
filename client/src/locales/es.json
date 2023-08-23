@@ -295,6 +295,14 @@
 	"Select": "Seleccionar",
 	"Search branch...": "Rama de búsqueda ...",
 	"Search file...": "Archivo de búsqueda ...",
-	"Tip: Select code to create ranges for context use.": "Consejo: seleccione código para crear rangos para uso del contexto."
+	"Tip: Select code to create ranges for context use.": "Consejo: seleccione código para crear rangos para uso del contexto.",
+	"Whole file": "Archivo completo",
+	"Lines # - #": "Líneas {{start}} - {{end}}",
+	"# ranges_one": "{{count}} ranges",
+	"# ranges_other": "{{count}} ranges",
+	"Only the selected lines (# - #) will be used as context.": "Solo las líneas seleccionadas ({{start}} - {{end}}) se utilizarán como contexto.",
+	"Clear ranges": "Rangos claros",
+	"Only the selected ranges will be used as context.": "Solo los rangos seleccionados se utilizarán como contexto."
 }
+
 
