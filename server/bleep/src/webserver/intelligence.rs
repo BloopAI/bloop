@@ -9,7 +9,7 @@ use crate::{
     },
     repo::RepoRef,
     snippet::Snipper,
-    text_range::TextRange,
+    text_range::{Point, TextRange},
 };
 
 use axum::{extract::Query, response::IntoResponse, Extension};
@@ -224,7 +224,15 @@ pub(super) async fn token_value(
         .ok_or_else(|| Error::internal("token not supported for /token-value"))?;
 
     let range = sg.graph[sg.value_of_definition(node_idx).unwrap_or(node_idx)].range();
-    let content = source_document.content[std::ops::Range::from(range)].to_string();
+
+    // extend the range to cover the entire start line and the entire end line
+    let new_start = range.start.byte - range.start.column;
+    let new_end = source_document
+        .line_end_indices
+        .get(range.end.line)
+        .map(|l| *l as usize)
+        .unwrap_or(range.end.byte);
+    let content = source_document.content[new_start..new_end].to_string();
 
     Ok(json(TokenValueResponse { range, content }))
 }
