@@ -54,4 +54,4 @@ WHITESPACE = _{ " " }
 
 // natural language queries
 raw_text = @{ (!WHITESPACE ~ ANY)+ }
-nl_query = _{ SOI ~ (label | raw_text)* ~ EOI }
+nl_query = _{ SOI ~ (label | mode | raw_text)* ~ EOI }
