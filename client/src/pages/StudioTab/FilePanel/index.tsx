@@ -17,6 +17,8 @@ import {
 import { File } from '../../../types/api';
 import CodeStudioToken from '../../../icons/CodeStudioToken';
 import CodeFullSelectable from '../../../components/CodeBlock/CodeFullSelectable';
+import LinesBadge from '../LinesBadge';
+import TokensUsageBadge from '../TokensUsageBadge';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
@@ -72,16 +74,7 @@ const FilePanel = ({ setLeftPanel, filePath, branch, repo }: Props) => {
           <p className="body-s-strong text-label-title ellipsis">
             {filePath.split('/').pop()}
           </p>
-          <div className="h-5 px-1 flex items-center rounded-sm bg-bg-main/15 caption text-bg-main">
-            {!selectedLines.length
-              ? t('Whole file')
-              : selectedLines.length === 1
-              ? t('Lines # - #', {
-                  start: selectedLines[0][0] + 1,
-                  end: selectedLines[0][1] ? selectedLines[0][1] + 1 : '',
-                })
-              : t('# ranges', { count: selectedLines.length })}
-          </div>
+          <LinesBadge ranges={selectedLines} />
         </div>
       </div>
       <div className="flex px-8 py-2 items-center gap-2 border-b border-bg-border bg-bg-sub  text-label-base">
@@ -100,14 +93,7 @@ const FilePanel = ({ setLeftPanel, filePath, branch, repo }: Props) => {
             </>
           )}
         </div>
-        {!!file && (
-          <div className="flex h-6 pl-1 pr-2 items-center gap-1 bg-bg-shade rounded-full">
-            <CodeStudioToken className="text-bg-danger" />
-            <span className="caption text-label-title">
-              {humanNumber(file?.contents?.length)}
-            </span>
-          </div>
-        )}
+        {!!file && <TokensUsageBadge tokens={file?.contents?.length} />}
       </div>
       <div className="py-4 px-4 overflow-auto flex flex-col">
         {!!file && (

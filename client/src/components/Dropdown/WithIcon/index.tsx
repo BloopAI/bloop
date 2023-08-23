@@ -53,7 +53,7 @@ const Dropdown = ({
         visible={visible}
         title={hint}
         handleClose={() => setVisibility(false)}
-        closeOnClickOutside={appendTo === 'parent'}
+        closeOnClickOutside
         lastItemFixed={lastItemFixed}
         size={size}
         dropdownPlacement={dropdownPlacement}
