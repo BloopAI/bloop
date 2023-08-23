@@ -1,10 +1,10 @@
 import { memo, useEffect, useState } from 'react';
 import { Trans } from 'react-i18next';
-import { getIndexedRepos } from '../../../../services/api';
-import { RepoType } from '../../../../types/general';
-import KeyboardChip from '../../KeyboardChip';
-import { getFileExtensionForLang } from '../../../../utils';
-import FileIcon from '../../../../components/FileIcon';
+import { getIndexedRepos } from '../../../services/api';
+import { RepoType } from '../../../types/general';
+import KeyboardChip from '../KeyboardChip';
+import { getFileExtensionForLang } from '../../../utils';
+import FileIcon from '../../../components/FileIcon';
 
 type Props = {
   search: string;
