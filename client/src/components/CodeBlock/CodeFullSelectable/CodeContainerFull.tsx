@@ -29,6 +29,10 @@ const CodeContainerFull = ({
 }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const [currentlySelectingLine, setCurrentlySelectingLine] = useState(0);
+  const [currentlySelectingRange, setCurrentlySelectingRange] = useState<
+    null | [number, number]
+  >(null);
+  const [modifyingRange, setModifyingRange] = useState(-1);
 
   useEffect(() => {
     if (scrollToIndex && ref.current) {
@@ -66,24 +70,32 @@ const CodeContainerFull = ({
               key={i}
               initialRange={r}
               updateRange={updateRange}
+              setCurrentlySelectingRange={setCurrentlySelectingRange}
               deleteRange={deleteRange}
               i={i}
+              setModifyingRange={setModifyingRange}
             />
           ),
       )}
       {tokens.map((line, index) => {
-        const selectedRange = currentSelection.find(
-          (s) =>
-            (s[0] <= index &&
-              ((s[1] && s[1] >= index) ||
-                (!s[1] &&
-                  currentlySelectingLine &&
-                  currentlySelectingLine >= index))) ||
-            (s[0] >= index &&
-              !s[1] &&
-              currentlySelectingLine &&
-              currentlySelectingLine <= index),
-        );
+        const selectedRange =
+          currentSelection.find(
+            (s, i) =>
+              (i !== modifyingRange &&
+                s[0] <= index &&
+                ((s[1] && s[1] >= index) ||
+                  (!s[1] &&
+                    currentlySelectingLine &&
+                    currentlySelectingLine >= index))) ||
+              (s[0] >= index &&
+                !s[1] &&
+                i !== modifyingRange &&
+                currentlySelectingLine &&
+                currentlySelectingLine <= index),
+          ) ||
+          (currentlySelectingRange &&
+            currentlySelectingRange[0] <= index &&
+            currentlySelectingRange[1] >= index);
         return (
           <CodeLine
             key={pathHash + '-' + index.toString()}
@@ -93,6 +105,7 @@ const CodeContainerFull = ({
             searchTerm={searchTerm}
             isSelected={!!selectedRange}
             setCurrentlySelectingLine={setCurrentlySelectingLine}
+            isSelectionDisabled={modifyingRange > -1}
           >
             {line.map((token, i) => (
               <span

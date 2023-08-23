@@ -43,6 +43,10 @@ export const UIContext = {
     isPromptGuideOpen: false,
     setPromptGuideOpen: (b: boolean) => {},
   }),
+  CloudFeaturePopup: createContext({
+    isCloudFeaturePopupOpen: false,
+    setCloudFeaturePopupOpen: (b: boolean) => {},
+  }),
   Tab: createContext<{ tab: RepoTabType }>({
     tab: {
       key: 'initial',
