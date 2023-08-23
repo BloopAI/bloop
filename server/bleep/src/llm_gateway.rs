@@ -323,7 +323,7 @@ impl Client {
     ) -> Result<impl Stream<Item = anyhow::Result<String>>, ChatError> {
         let mut event_source = Box::pin(
             EventSource::new({
-                let mut builder = self.http.post(format!("{}/v1/q", self.base_url));
+                let mut builder = self.http.post(format!("{}/v2/q", self.base_url));
 
                 if let Some(bearer) = &self.bearer_token {
                     builder = builder.bearer_auth(bearer);

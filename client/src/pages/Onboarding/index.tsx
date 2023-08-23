@@ -26,7 +26,6 @@ import {
 } from '../../services/api';
 import SeparateOnboardingStep from '../../components/SeparateOnboardingStep';
 import StatusBar from '../../components/StatusBar';
-import GitHubConnect from './GitHubConnect';
 import UserForm from './UserForm';
 import FeaturesStep from './FeaturesStep';
 import SelfServeStep from './SelfServeStep';
@@ -49,7 +48,6 @@ const Onboarding = () => {
     emailError: null,
     ...getJsonFromStorage(USER_DATA_FORM),
   });
-  const [isGitHubScreen, setGitHubScreen] = useState(false);
   const [shouldShowPopup, setShouldShowPopup] = useState(false);
   const { shouldShowWelcome, setShouldShowWelcome } = useContext(
     UIContext.Onboarding,
@@ -166,20 +164,9 @@ const Onboarding = () => {
         <div className="flex h-full justify-center mt-8">
           <div className="w-full lg:w-1/2 h-full flex justify-center">
             <div
-              className={`w-[512px] h-full flex flex-col items-center justify-center px-13 ${
-                isGitHubScreen ? 'gap-8' : 'gap-6'
-              }`}
+              className={`w-[512px] h-full flex flex-col items-center justify-center px-13 gap-6`}
             >
-              {!isGitHubScreen ? (
-                <UserForm
-                  form={form}
-                  setForm={setForm}
-                  setGitHubScreen={setGitHubScreen}
-                  onContinue={onSubmit}
-                />
-              ) : (
-                <GitHubConnect goBack={() => setGitHubScreen(false)} />
-              )}
+              <UserForm form={form} setForm={setForm} onContinue={onSubmit} />
             </div>
           </div>
           <div

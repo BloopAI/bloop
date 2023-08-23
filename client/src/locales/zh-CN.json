@@ -261,6 +261,7 @@
 	"Open file": "打开文件",
 	"Edit": "编辑",
 	"Editing a previously submitted question will discard all answers and questions following it.": "编辑之前提交的问题将丢弃其后的所有答案和问题。",
+	"Click to copy": "单击复制",
 	"Copy link": "复制链接",
 	"Search using RegExp": "使用RegExp搜索"
 }

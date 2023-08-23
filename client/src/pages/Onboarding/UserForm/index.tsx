@@ -3,6 +3,8 @@ import React, {
   SetStateAction,
   useCallback,
   useContext,
+  useEffect,
+  useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { BloopLogo, ChevronRight, GitHubLogo } from '../../../icons';
@@ -11,34 +13,99 @@ import { EMAIL_REGEX } from '../../../consts/validations';
 import Button from '../../../components/Button';
 import { UIContext } from '../../../context/uiContext';
 import { DeviceContext } from '../../../context/deviceContext';
-import { gitHubLogout } from '../../../services/api';
+import {
+  gitHubDeviceLogin,
+  gitHubLogout,
+  gitHubStatus,
+} from '../../../services/api';
 import { Form } from '../index';
 import Dropdown from '../../../components/Dropdown/Normal';
 import { MenuItemType } from '../../../types/general';
 import { Theme } from '../../../types';
 import { themesMap } from '../../../components/Settings/Preferences';
-import { previewTheme } from '../../../utils';
+import { copyToClipboard, previewTheme } from '../../../utils';
 import LanguageSelector from '../../../components/LanguageSelector';
+import Tooltip from '../../../components/Tooltip';
 
 type Props = {
   form: Form;
   setForm: Dispatch<SetStateAction<Form>>;
-  setGitHubScreen: (b: boolean) => void;
   onContinue: () => void;
 };
 
-const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
+const UserForm = ({ form, setForm, onContinue }: Props) => {
   const { t } = useTranslation();
   const { isGithubConnected, setGithubConnected } = useContext(
     UIContext.GitHubConnected,
   );
   const { envConfig, openLink } = useContext(DeviceContext);
   const { theme, setTheme } = useContext(UIContext.Theme);
+  const [loginUrl, setLoginUrl] = useState('');
+  const [isLinkShown, setLinkShown] = useState(false);
+  const [isBtnClicked, setBtnClicked] = useState(false);
+  const [isLinkCopied, setLinkCopied] = useState(false);
 
   const handleLogout = useCallback(() => {
     gitHubLogout();
     setGithubConnected(false);
   }, []);
+
+  useEffect(() => {
+    gitHubDeviceLogin().then((data) => {
+      setLoginUrl(data.authentication_needed.url);
+    });
+  }, []);
+
+  const onClick = useCallback(() => {
+    if (isGithubConnected) {
+      handleLogout();
+      setBtnClicked(false);
+    } else {
+      openLink(loginUrl);
+      setBtnClicked(true);
+    }
+  }, [isGithubConnected, loginUrl, openLink]);
+
+  const checkGHAuth = () => {
+    gitHubStatus().then((d) => {
+      setGithubConnected(d.status === 'ok');
+    });
+  };
+
+  useEffect(() => {
+    if (loginUrl) {
+      checkGHAuth();
+      let intervalId: number;
+      intervalId = window.setInterval(() => {
+        checkGHAuth();
+      }, 500);
+      setTimeout(
+        () => {
+          clearInterval(intervalId);
+          setBtnClicked(false);
+        },
+        10 * 60 * 1000,
+      );
+
+      return () => {
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
+      };
+    }
+  }, [loginUrl]);
+
+  useEffect(() => {
+    if (loginUrl) {
+      checkGHAuth();
+    }
+  }, [loginUrl]);
+
+  const handleCopy = useCallback(() => {
+    copyToClipboard(loginUrl);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  }, [loginUrl]);
 
   return (
     <>
@@ -133,14 +200,46 @@ const UserForm = ({ form, setForm, setGitHubScreen, onContinue }: Props) => {
             type="button"
             className={`caption text-label-title ${
               isGithubConnected ? 'px-3' : 'pl-3 pr-2'
-            } h-10 flex gap-1 items-center border-l border-bg-border hover:bg-bg-base-hover`}
-            onClick={() =>
-              isGithubConnected ? handleLogout() : setGitHubScreen(true)
-            }
+            } h-10 flex gap-1 items-center border-l border-bg-border hover:bg-bg-base-hover disabled:bg-bg-base-hover`}
+            onClick={onClick}
+            disabled={isBtnClicked && !isGithubConnected}
           >
-            {isGithubConnected ? t('Disconnect') : t('Connect account')}{' '}
+            {isGithubConnected
+              ? t('Disconnect')
+              : isBtnClicked
+              ? t('Waiting for authentication...')
+              : t('Connect account')}{' '}
             {!isGithubConnected && <ChevronRight />}
           </button>
+        </div>
+        <div className="text-center caption text-label-base">
+          {isLinkShown ? (
+            <Tooltip
+              text={isLinkCopied ? t('Copied') : t('Click to copy')}
+              placement={'top'}
+            >
+              <p
+                className="text-label-link select-auto text-center break-words"
+                onClick={handleCopy}
+              >
+                {loginUrl}
+              </p>
+            </Tooltip>
+          ) : (
+            <p>
+              or go to the following link{' '}
+              <button
+                type="button"
+                className="text-label-link"
+                onClick={() => {
+                  setLinkShown(true);
+                  handleCopy();
+                }}
+              >
+                Show link
+              </button>
+            </p>
+          )}
         </div>
         <Button
           disabled={

@@ -20,7 +20,7 @@ pub(crate) struct State {
 }
 
 impl State {
-    fn with_auth(auth: Auth) -> Self {
+    pub(crate) fn with_auth(auth: Auth) -> Self {
         Self {
             auth,
             repositories: Arc::default(),
@@ -77,13 +77,7 @@ impl State {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) enum Auth {
-    /// Copy of [`octocrab::auth::OAuth`] that can be serialized
-    OAuth {
-        #[serde(serialize_with = "crate::config::serialize_secret_str")]
-        access_token: SecretString,
-        token_type: String,
-        scope: Vec<String>,
-    },
+    OAuth(CognitoGithubTokenBundle),
     /// Github App installation token.
     App {
         #[serde(serialize_with = "crate::config::serialize_secret_str")]
@@ -96,13 +90,9 @@ pub(crate) enum Auth {
     },
 }
 
-impl From<octocrab::auth::OAuth> for State {
-    fn from(auth: octocrab::auth::OAuth) -> Self {
-        Self::with_auth(Auth::OAuth {
-            access_token: auth.access_token,
-            token_type: auth.token_type,
-            scope: auth.scope,
-        })
+impl From<Auth> for State {
+    fn from(value: Auth) -> Self {
+        State::with_auth(value)
     }
 }
 
@@ -167,9 +157,12 @@ impl Auth {
     fn git_cred(&self) -> GitCreds {
         use Auth::*;
         match self {
-            OAuth { access_token, .. } => GitCreds {
-                username: access_token.expose_secret().into(),
-                password: "".into(),
+            OAuth(CognitoGithubTokenBundle {
+                github_access_token,
+                ..
+            }) => GitCreds {
+                username: "x-access-token".into(),
+                password: github_access_token.into(),
             },
             App { token, .. } => GitCreds {
                 username: "x-access-token".into(),
@@ -181,15 +174,14 @@ impl Auth {
     fn client(&self) -> octocrab::Result<Octocrab> {
         use Auth::*;
         match self.clone() {
-            OAuth {
-                access_token,
-                token_type,
-                scope,
-            } => {
+            OAuth(CognitoGithubTokenBundle {
+                github_access_token,
+                ..
+            }) => {
                 let token = octocrab::auth::OAuth {
-                    access_token,
-                    token_type,
-                    scope,
+                    access_token: github_access_token.into(),
+                    token_type: "Bearer".into(),
+                    scope: vec![],
                 };
 
                 Octocrab::builder().oauth(token).build()

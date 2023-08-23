@@ -72,7 +72,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         api = api.route("/repos/scan", get(repos::scan_local));
     }
 
-    if app.env.allow(Feature::GithubDeviceFlow) {
+    if app.env.allow(Feature::CognitoUserAuth) {
         api = api
             .route("/remotes/github/login", get(github::login))
             .route("/remotes/github/logout", get(github::logout))

@@ -704,7 +704,7 @@ fn foo&lt;T&gt;(t: T) -&gt; bool {
 These should result in sanitized XML output, while maintaining the rest of the markdown article.
 ";
 
-        assert_eq!(expected, sanitize(&input));
+        assert_eq!(expected, sanitize(input));
     }
 
     #[test]
@@ -725,7 +725,7 @@ fn foo&lt;T&gt;(t: T) -&gt; bool {
     &amp;foo &lt;
 </Code></GeneratedCode>";
 
-        assert_eq!(expected, sanitize(&input));
+        assert_eq!(expected, sanitize(input));
     }
 
     #[test]
@@ -779,7 +779,7 @@ fn foo<T>(t: T) -> bool {
 
 These should result in base64-encoded XML output, while maintaining the rest of the markdown article.";
 
-        let (body, conclusion) = decode(&input);
+        let (body, conclusion) = decode(input);
         assert_eq!(None, conclusion);
         assert_eq!(expected, body);
     }
@@ -924,7 +924,7 @@ export const saveBugReport = (report: {
 </QuotedCode>
 
 [^summary]: Bug reports are sent to the endpoint `https://api.bloop.ai/bug_reports` via a POST request in the `saveBugReport` function.";
-        let (article, summary) = decode(&input);
+        let (article, summary) = decode(input);
 
         let expected_article = "Bug reports are sent to the endpoint `https://api.bloop.ai/bug_reports` via a POST request. This is done in the function [`saveBugReport`](client/src/services/api.ts#L167-L171) in the file `client/src/services/api.ts`.
 
