@@ -1,8 +1,8 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { Trans } from 'react-i18next';
-import { RepoType } from '../../../../types/general';
-import KeyboardChip from '../../KeyboardChip';
-import { Branch } from '../../../../icons';
+import { RepoType } from '../../../types/general';
+import KeyboardChip from '../KeyboardChip';
+import { Branch } from '../../../icons';
 
 type Props = {
   search: string;
