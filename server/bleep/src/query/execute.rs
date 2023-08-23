@@ -10,6 +10,7 @@ use crate::{
         reader::{base_name, ContentReader, FileReader, OpenReader, RepoReader},
         DocumentRead, File, Indexable, Indexer, Indexes, Repo,
     },
+    repo::RepoRef,
     snippet::{HighlightedString, SnippedFile, Snipper},
 };
 
@@ -43,6 +44,10 @@ fn div_ceil(a: usize, b: usize) -> usize {
 pub struct ApiQuery {
     /// A query written in the bloop query language
     pub q: String,
+
+    /// Optional RepoRef to constrain the search. If not provided, search all repos
+    #[serde(default)]
+    pub repo_ref: Option<RepoRef>,
 
     #[serde(default)]
     pub page: usize,
@@ -148,6 +153,24 @@ pub struct FileResultData {
     repo_ref: String,
     lang: Option<String>,
     branches: String,
+}
+
+impl FileResultData {
+    pub fn new(
+        repo_name: String,
+        relative_path: String,
+        repo_ref: String,
+        lang: Option<String>,
+        branches: String,
+    ) -> Self {
+        Self {
+            repo_name,
+            relative_path: HighlightedString::new(relative_path),
+            repo_ref,
+            lang,
+            branches,
+        }
+    }
 }
 
 #[derive(Serialize, Debug)]

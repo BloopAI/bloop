@@ -24,7 +24,7 @@ mod intelligence;
 pub mod middleware;
 mod query;
 pub mod repos;
-mod semantic;
+mod search;
 
 pub type Router<S = Application> = axum::Router<S>;
 
@@ -56,7 +56,8 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/related-files", get(intelligence::related_files))
         .route("/token-value", get(intelligence::token_value))
         // misc
-        .route("/search", get(semantic::complex_search))
+        .route("/search/code", get(search::semantic_code))
+        .route("/search/path", get(search::fuzzy_path))
         .route("/file", get(file::handle))
         .route("/answer", get(answer::answer))
         .route("/answer/explain", get(answer::explain))
