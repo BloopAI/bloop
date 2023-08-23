@@ -14,7 +14,10 @@ pub struct Create {
     name: String,
 }
 
-pub async fn create(app: Extension<Application>, params: Json<Create>) -> webserver::Result<()> {
+pub async fn create(
+    app: Extension<Application>,
+    params: Json<Create>,
+) -> webserver::Result<String> {
     let id = Uuid::new_v4().to_string();
 
     sqlx::query! {
@@ -28,7 +31,7 @@ pub async fn create(app: Extension<Application>, params: Json<Create>) -> webser
     .await
     .map_err(Error::internal)?;
 
-    Ok(())
+    Ok(id)
 }
 
 #[derive(serde::Serialize)]

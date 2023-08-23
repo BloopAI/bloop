@@ -25,7 +25,6 @@ pub mod middleware;
 mod query;
 pub mod repos;
 mod search;
-mod semantic;
 mod studio;
 
 pub type Router<S = Application> = axum::Router<S>;
