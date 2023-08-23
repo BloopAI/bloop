@@ -52,7 +52,7 @@ pub struct Studio {
     modified_at: NaiveDateTime,
     context: Vec<ContextFile>,
     messages: Vec<Message>,
-    token_count: usize,
+    token_counts: TokenCounts,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -93,9 +93,9 @@ pub async fn get(
     Ok(Json(Studio {
         modified_at: row.modified_at,
         name: row.name,
+        token_counts: token_counts((*app).clone(), &context).await?,
         context,
         messages,
-        token_count: 0,
     }))
 }
 
