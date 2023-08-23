@@ -1,4 +1,12 @@
-import React, { useState, useRef, useEffect, memo } from 'react';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  memo,
+  Dispatch,
+  SetStateAction,
+  useDeferredValue,
+} from 'react';
 import { CODE_LINE_HEIGHT } from '../../../consts/code';
 
 type Props = {
@@ -6,6 +14,8 @@ type Props = {
   updateRange: (i: number, range: [number, number]) => void;
   i: number;
   deleteRange: (i: number) => void;
+  setCurrentlySelectingRange: Dispatch<SetStateAction<null | [number, number]>>;
+  setModifyingRange: Dispatch<SetStateAction<number>>;
 };
 
 const SelectionHandler = ({
@@ -13,11 +23,13 @@ const SelectionHandler = ({
   updateRange,
   i,
   deleteRange,
+  setCurrentlySelectingRange,
+  setModifyingRange,
 }: Props) => {
   const [isDraggingStart, setIsDraggingStart] = useState(false);
   const [isDraggingEnd, setIsDraggingEnd] = useState(false);
   const [range, setRange] = useState(initialRange);
-  const [position, setPosition] = useState(0);
+  const deferredRange = useDeferredValue(range);
   const startHandlerRef = useRef<HTMLDivElement>(null);
   const endHandlerRef = useRef<HTMLDivElement>(null);
 
@@ -31,6 +43,7 @@ const SelectionHandler = ({
     e.preventDefault();
     e.stopPropagation();
     setIsDraggingStart(true);
+    setModifyingRange(i);
   };
   const handleMouseDownEnd = (
     e: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -38,7 +51,12 @@ const SelectionHandler = ({
     e.preventDefault();
     e.stopPropagation();
     setIsDraggingEnd(true);
+    setModifyingRange(i);
   };
+
+  useEffect(() => {
+    setCurrentlySelectingRange(deferredRange);
+  }, [deferredRange]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -53,7 +71,7 @@ const SelectionHandler = ({
           range[1],
         ];
         setRange(newRange);
-        setPosition(position + deltaY);
+        // setCurrentlySelectingRange(() => newRange);
       }
     };
     const handleMouseUp = (e: MouseEvent) => {
@@ -65,6 +83,8 @@ const SelectionHandler = ({
       } else {
         updateRange(i, range);
       }
+      setCurrentlySelectingRange(() => null);
+      setModifyingRange(-1);
     };
     if (isDraggingStart) {
       document.addEventListener('mousemove', handleMouseMove);
@@ -84,6 +104,12 @@ const SelectionHandler = ({
       if (isDraggingEnd && endHandlerRef.current) {
         const deltaY =
           e.clientY - endHandlerRef.current.getBoundingClientRect().top;
+        console.log(
+          'deltaY',
+          e.clientY,
+          deltaY,
+          Math.round(deltaY / CODE_LINE_HEIGHT),
+        );
         const newRange: [number, number] = [
           range[0],
           Math.max(
@@ -92,7 +118,7 @@ const SelectionHandler = ({
           ),
         ];
         setRange(newRange);
-        setPosition(position + deltaY);
+        // setCurrentlySelectingRange(() => newRange);
       }
     };
     const handleMouseUp = (e: MouseEvent) => {
@@ -104,6 +130,8 @@ const SelectionHandler = ({
       } else {
         updateRange(i, range);
       }
+      setCurrentlySelectingRange(() => null);
+      setModifyingRange(-1);
     };
     if (isDraggingEnd) {
       document.addEventListener('mousemove', handleMouseMove);
