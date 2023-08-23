@@ -9,13 +9,8 @@ import {
 import { ArrowLeft, Branch, CursorSelection, Fire } from '../../../icons';
 import FileIcon from '../../../components/FileIcon';
 import { search } from '../../../services/api';
-import {
-  buildRepoQuery,
-  getFileExtensionForLang,
-  humanNumber,
-} from '../../../utils';
+import { buildRepoQuery, getFileExtensionForLang } from '../../../utils';
 import { File } from '../../../types/api';
-import CodeStudioToken from '../../../icons/CodeStudioToken';
 import CodeFullSelectable from '../../../components/CodeBlock/CodeFullSelectable';
 import LinesBadge from '../LinesBadge';
 import TokensUsageBadge from '../TokensUsageBadge';
@@ -25,6 +20,7 @@ type Props = {
   filePath: string;
   branch: string;
   repo: RepoType;
+  initialRanges?: [number, number][];
 };
 
 const HEADER_HEIGHT = 32;
@@ -34,12 +30,18 @@ const VERTICAL_PADDINGS = 32;
 const HORIZONTAL_PADDINGS = 32;
 const BREADCRUMBS_HEIGHT = 41;
 
-const FilePanel = ({ setLeftPanel, filePath, branch, repo }: Props) => {
+const FilePanel = ({
+  setLeftPanel,
+  filePath,
+  branch,
+  repo,
+  initialRanges,
+}: Props) => {
   const { t } = useTranslation();
   const [file, setFile] = useState<File | null>(null);
   const [selectedLines, setSelectedLines] = useState<
     ([number, number] | [number])[]
-  >([]);
+  >(initialRanges || []);
 
   useEffect(() => {
     search(
