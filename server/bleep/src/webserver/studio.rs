@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use anyhow::Context;
-use axum::{extract::Query, Extension, Json};
+use axum::{extract::{Query, Path}, Extension, Json};
 use chrono::NaiveDateTime;
 use futures::{stream, StreamExt, TryStreamExt};
 use uuid::Uuid;
@@ -46,11 +46,6 @@ pub async fn list(app: Extension<Application>) -> webserver::Result<Json<Vec<Lis
         .map(Json)
 }
 
-#[derive(serde::Deserialize)]
-pub struct Get {
-    id: String,
-}
-
 #[derive(serde::Serialize)]
 pub struct Studio {
     name: String,
@@ -77,13 +72,13 @@ enum Message {
 
 pub async fn get(
     app: Extension<Application>,
-    params: Query<Get>,
+    Path(id): Path<String>,
 ) -> webserver::Result<Json<Studio>> {
     let row = sqlx::query! {
         "SELECT id, name, context, messages, modified_at
          FROM studios
          WHERE id = ?",
-         params.id
+         id
     }
     .fetch_optional(&*app.sql)
     .await
@@ -106,11 +101,6 @@ pub async fn get(
 
 #[derive(serde::Deserialize)]
 pub struct Patch {
-    id: String,
-}
-
-#[derive(serde::Deserialize)]
-pub struct PatchFields {
     name: Option<String>,
     modified_at: Option<NaiveDateTime>,
     context: Option<Vec<ContextFile>>,
@@ -120,8 +110,8 @@ pub struct PatchFields {
 #[axum::debug_handler]
 pub async fn patch(
     app: Extension<Application>,
-    Query(Patch { id }): Query<Patch>,
-    Json(patch): Json<PatchFields>,
+    Path(id): Path<String>,
+    Json(patch): Json<Patch>,
 ) -> webserver::Result<Json<TokenCounts>> {
     let mut transaction = app.sql.begin().await.map_err(Error::internal)?;
 
