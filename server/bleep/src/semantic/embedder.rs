@@ -191,7 +191,7 @@ impl Embedder for RemoteEmbedder {
 
         loop {
             // if we're not currently flushing the log, only process full batches
-            if log.len() < MAX_BATCH_SIZE && !flush {
+            if log.len() == 0 || (log.len() < MAX_BATCH_SIZE && !flush) {
                 return Ok(output);
             }
 
