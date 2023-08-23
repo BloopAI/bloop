@@ -1,15 +1,11 @@
-use std::{borrow::Cow, collections::HashSet};
+use std::collections::HashSet;
 
 use chrono::{Duration, Utc};
 use rand::{distributions, thread_rng, Rng};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use tracing::{error, info};
 
-use crate::{
-    query::parser::{self, ParsedQuery},
-    repo::BranchFilter,
-    state::RepositoryPool,
-};
+use crate::{query::parser, repo::BranchFilter, state::RepositoryPool};
 
 pub(crate) async fn log_and_branch_rotate(app: crate::Application) {
     let log = crate::db::QueryLog::new(&app.sql);
@@ -98,39 +94,16 @@ fn update_branch_filters(
 fn collect_branches_for_repos(queries: Vec<String>) -> scc::HashMap<String, HashSet<String>> {
     let map = scc::HashMap::default();
     queries.par_iter().for_each(|q| {
-        let parsed = parser::parse_nl(q);
-        match parsed {
-            Ok(ParsedQuery::Grep(list)) => {
-                for q in list {
-                    if let Some((r, b)) = q
-                        .repo
-                        .and_then(|r| r.as_plain())
-                        .zip(q.branch.and_then(|b| b.as_plain()))
-                    {
-                        record_branch(&map, r, b);
-                    }
+        if let Ok(parsed) = parser::parse_nl(q) {
+            for r in parsed.repos() {
+                for b in parsed.branch() {
+                    map.entry(r.to_string())
+                        .or_insert_with(HashSet::default)
+                        .get_mut()
+                        .insert(b.to_string());
                 }
             }
-            Ok(ParsedQuery::Semantic(semantic)) => {
-                for r in semantic.repos() {
-                    for b in semantic.branch() {
-                        record_branch(&map, r.clone(), b);
-                    }
-                }
-            }
-            Err(_) => (),
         }
     });
     map
-}
-
-fn record_branch<'a>(
-    map: &scc::HashMap<String, HashSet<String>>,
-    r: Cow<'a, str>,
-    b: Cow<'a, str>,
-) {
-    map.entry(r.to_string())
-        .or_insert_with(HashSet::default)
-        .get_mut()
-        .insert(b.to_string());
 }
