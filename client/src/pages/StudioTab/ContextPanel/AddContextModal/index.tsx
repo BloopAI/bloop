@@ -1,4 +1,11 @@
-import { ChangeEvent, memo, useCallback, useState } from 'react';
+import {
+  ChangeEvent,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import SeparateOnboardingStep from '../../../../components/SeparateOnboardingStep';
 import KeyboardChip from '../../KeyboardChip';
@@ -6,6 +13,8 @@ import { useArrowKeyNavigation } from '../../../../hooks/useArrowNavigationHook'
 import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import { Branch, Paper, RepositoryFilled } from '../../../../icons';
 import { RepoType } from '../../../../types/general';
+import { DeviceContext } from '../../../../context/deviceContext';
+import { UIContext } from '../../../../context/uiContext';
 import StepItem from './StepItem';
 import SelectRepo from './SelectRepo';
 import SelectBranch from './SelectBranch';
@@ -19,11 +28,19 @@ type Props = {
 
 const AddContextModal = ({ isVisible, onClose, onSubmit }: Props) => {
   const { t } = useTranslation();
+  const { isSelfServe } = useContext(DeviceContext);
   const [step, setStep] = useState(0);
   const [selectedRepo, setSelectedRepo] = useState<RepoType | null>(null);
   const [selectedBranch, setSelectedBranch] = useState('');
   const [search, setSearch] = useState('');
   const containerRef = useArrowKeyNavigation();
+  const { setCloudFeaturePopupOpen } = useContext(UIContext.CloudFeaturePopup);
+
+  useEffect(() => {
+    if (!isVisible) {
+      setStep(0);
+    }
+  }, [isVisible]);
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -83,9 +100,13 @@ const AddContextModal = ({ isVisible, onClose, onSubmit }: Props) => {
                 text={selectedBranch.replace(/^origin\//, '')}
                 icon={<Branch raw sizeClassName="w-3.5 h-3.5" />}
                 onClick={() => {
-                  setSelectedBranch('');
-                  setSearch('');
-                  setStep(1);
+                  if (isSelfServe) {
+                    setSelectedBranch('');
+                    setSearch('');
+                    setStep(1);
+                  } else {
+                    setCloudFeaturePopupOpen(true);
+                  }
                 }}
               />
             )}
@@ -111,6 +132,7 @@ const AddContextModal = ({ isVisible, onClose, onSubmit }: Props) => {
             />
           </div>
           <input
+            key={step}
             type="search"
             autoComplete="off"
             autoCorrect="off"

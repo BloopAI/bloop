@@ -17,6 +17,7 @@ type Props = {
   onMouseSelectStart?: (lineNum: number) => void;
   onMouseSelectEnd?: (lineNum: number) => void;
   isSelected: boolean;
+  isSelectionDisabled: boolean;
   setCurrentlySelectingLine: (line: number) => void;
 };
 
@@ -28,6 +29,7 @@ const CodeLine = ({
   onMouseSelectStart,
   onMouseSelectEnd,
   isSelected,
+  isSelectionDisabled,
   setCurrentlySelectingLine,
 }: Props) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -87,19 +89,27 @@ const CodeLine = ({
   }, [isDragging, lineNumber]);
   return (
     <div
-      className={`flex transition-all duration-150 ease-in-bounce group cursor-ns-resize ${
-        isSelected ? 'bg-bg-main/30' : ''
-      } relative z-0`}
+      className={`flex transition-all duration-150 ease-in-bounce group ${
+        isSelectionDisabled
+          ? 'cursor-row-resize'
+          : isSelected
+          ? 'cursor-default'
+          : 'cursor-ns-resize'
+      } ${isSelected ? 'bg-bg-main/30' : ''} relative z-0`}
       data-line-number={lineNumber}
       style={style}
       onMouseDown={(e) => {
         e.preventDefault();
-        setIsDragging(true);
-        onMouseSelectStart?.(lineNumber);
+        if (!isSelectionDisabled) {
+          setIsDragging(true);
+          onMouseSelectStart?.(lineNumber);
+        }
       }}
       onMouseUp={(e) => {
         e.preventDefault();
-        onMouseSelectEnd?.(lineNumber);
+        if (!isSelectionDisabled) {
+          onMouseSelectEnd?.(lineNumber);
+        }
       }}
       ref={ref}
     >

@@ -37,6 +37,7 @@ export const GeneralUiContextProvider = memo(
       !getPlainFromStorage(ONBOARDING_DONE_KEY),
     );
     const [isPromptGuideOpen, setPromptGuideOpen] = useState(false);
+    const [isCloudFeaturePopupOpen, setCloudFeaturePopupOpen] = useState(false);
     const [theme, setTheme] = useState<Theme>(
       (getPlainFromStorage(THEME) as 'system' | null) || 'system',
     );
@@ -108,6 +109,14 @@ export const GeneralUiContextProvider = memo(
       [isPromptGuideOpen],
     );
 
+    const cloudFeatureContextValue = useMemo(
+      () => ({
+        isCloudFeaturePopupOpen,
+        setCloudFeaturePopupOpen,
+      }),
+      [isCloudFeaturePopupOpen],
+    );
+
     return (
       <UIContext.Settings.Provider value={settingsContextValue}>
         <UIContext.Onboarding.Provider value={onboardingContextValue}>
@@ -115,7 +124,11 @@ export const GeneralUiContextProvider = memo(
             <UIContext.GitHubConnected.Provider value={githubContextValue}>
               <UIContext.Theme.Provider value={themeContextValue}>
                 <UIContext.PromptGuide.Provider value={promptContextValue}>
-                  {children}
+                  <UIContext.CloudFeaturePopup.Provider
+                    value={cloudFeatureContextValue}
+                  >
+                    {children}
+                  </UIContext.CloudFeaturePopup.Provider>
                 </UIContext.PromptGuide.Provider>
               </UIContext.Theme.Provider>
             </UIContext.GitHubConnected.Provider>
