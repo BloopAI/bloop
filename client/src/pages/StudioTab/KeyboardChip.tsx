@@ -9,7 +9,7 @@ type Props = {
 const KeyboardChip = ({ type, variant }: Props) => {
   const { os } = useContext(DeviceContext);
   return (
-    <div
+    <span
       className={`flex items-center justify-center p-1 h-4.5 rounded ${
         variant === 'primary'
           ? 'bg-bg-main-hover text-label-control'
@@ -25,7 +25,7 @@ const KeyboardChip = ({ type, variant }: Props) => {
           ? '⌘'
           : 'Ctrl'
         : type}
-    </div>
+    </span>
   );
 };
 
