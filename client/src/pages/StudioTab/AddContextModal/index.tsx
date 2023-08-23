@@ -1,20 +1,13 @@
-import {
-  ChangeEvent,
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from 'react';
+import { ChangeEvent, memo, useCallback, useContext, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import SeparateOnboardingStep from '../../../../components/SeparateOnboardingStep';
-import KeyboardChip from '../../KeyboardChip';
-import { useArrowKeyNavigation } from '../../../../hooks/useArrowNavigationHook';
-import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
-import { Branch, Paper, RepositoryFilled } from '../../../../icons';
-import { RepoType } from '../../../../types/general';
-import { DeviceContext } from '../../../../context/deviceContext';
-import { UIContext } from '../../../../context/uiContext';
+import SeparateOnboardingStep from '../../../components/SeparateOnboardingStep';
+import KeyboardChip from '../KeyboardChip';
+import { useArrowKeyNavigation } from '../../../hooks/useArrowNavigationHook';
+import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
+import { Branch, Paper, RepositoryFilled } from '../../../icons';
+import { RepoType } from '../../../types/general';
+import { DeviceContext } from '../../../context/deviceContext';
+import { UIContext } from '../../../context/uiContext';
 import StepItem from './StepItem';
 import SelectRepo from './SelectRepo';
 import SelectBranch from './SelectBranch';
@@ -35,12 +28,6 @@ const AddContextModal = ({ isVisible, onClose, onSubmit }: Props) => {
   const [search, setSearch] = useState('');
   const containerRef = useArrowKeyNavigation();
   const { setCloudFeaturePopupOpen } = useContext(UIContext.CloudFeaturePopup);
-
-  useEffect(() => {
-    if (!isVisible) {
-      setStep(0);
-    }
-  }, [isVisible]);
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
