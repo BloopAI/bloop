@@ -366,7 +366,12 @@ export type GeneralStudioPanelType = {
 
 export type FileStudioPanelType = {
   type: StudioLeftPanelType.FILE;
-  data: { repo: RepoType; branch: string; filePath: string };
+  data: {
+    repo: RepoType;
+    branch: string;
+    filePath: string;
+    initialRanges?: [number, number][];
+  };
 };
 
 export type StudioPanelDataType = GeneralStudioPanelType | FileStudioPanelType;
