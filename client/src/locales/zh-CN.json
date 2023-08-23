@@ -299,5 +299,14 @@
 	"Select": "选择",
 	"Search branch...": "搜索分支...",
 	"Select file": "选择文件",
-	"Tip: Select code to create ranges for context use.": "提示：选择代码以创建范围以供上下文使用。"
+	"Tip: Select code to create ranges for context use.": "提示：选择代码以创建范围以供上下文使用。",
+	"Whole file": "整个文件",
+	"Lines # - #": "行{{start}} - {{end}}",
+	"# ranges": "{{count}}个范围",
+	"# ranges_one": "{{count}}个范围",
+	"# ranges_other": "{{count}}个范围",
+	"Only the selected lines (# - #) will be used as context.": "仅选择的行（{{start}} - {{end}}）将被用作上下文。",
+	"Clear ranges": "清晰的范围",
+	"Only the selected ranges will be used as context.": "仅选择的范围将用作上下文。"
 }
+
