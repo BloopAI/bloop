@@ -5,6 +5,7 @@ import { ExtendedMenuItemType, MenuItemType } from '../../types/general';
 import { useArrowKeyNavigation } from '../../hooks/useArrowNavigationHook';
 import ItemShared from './ContextMenuItem/ItemShared';
 import Item from './ContextMenuItem/Item';
+import ItemSelectable from './ContextMenuItem/ItemSelectable';
 
 export const MenuListItemType = { ...MenuItemType, ...ExtendedMenuItemType };
 
@@ -21,12 +22,28 @@ export type ContextMenuLinkItem = {
   underline?: boolean;
 };
 
+export type ContextMenuSelectableItem = {
+  type: MenuItemType.SELECTABLE;
+  onChange: (b: boolean) => void;
+  icon?: React.ReactElement;
+  text: string;
+  disabled?: boolean;
+  isSelected: boolean;
+};
+
 export type ContextMenuItem =
   | ContextMenuLinkItem
+  | ContextMenuSelectableItem
   | {
       icon?: React.ReactElement;
       text?: string | React.ReactElement;
-      type: MenuItemType | ExtendedMenuItemType;
+      type:
+        | MenuItemType.DEFAULT
+        | MenuItemType.DANGER
+        | MenuItemType.REMOVABLE
+        | ExtendedMenuItemType.DIVIDER
+        | ExtendedMenuItemType.SHARED
+        | ExtendedMenuItemType.DIVIDER_WITH_TEXT;
       onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
       onMouseOver?: () => void;
       annotations?: number;
@@ -42,6 +59,7 @@ type Props = {
   visible: boolean;
   closeOnClickOutside?: boolean;
   lastItemFixed?: boolean;
+  isDark?: boolean;
   title?: string;
   handleClose: () => void;
   key?: string;
@@ -67,6 +85,7 @@ const ContextMenu = ({
   lastItemFixed,
   size = 'medium',
   dropdownPlacement = 'bottom-start',
+  isDark,
 }: PropsWithChildren<Props>) => {
   const contextMenuRef = useArrowKeyNavigation({ selectors: 'button' });
   useOnClickOutside(
@@ -80,7 +99,6 @@ const ContextMenu = ({
       case MenuItemType.LINK:
       case MenuItemType.DANGER:
       case MenuItemType.REMOVABLE:
-      case MenuItemType.SELECTABLE:
         return (
           <Item
             key={i}
@@ -97,6 +115,16 @@ const ContextMenu = ({
             disabled={item.disabled}
             tooltip={item.tooltip}
             underline={item.underline}
+          />
+        );
+      case MenuItemType.SELECTABLE:
+        return (
+          <ItemSelectable
+            text={item.text}
+            onChange={item.onChange}
+            isSelected={item.isSelected}
+            disabled={item.disabled}
+            icon={item.icon}
           />
         );
       case ExtendedMenuItemType.DIVIDER:
@@ -139,7 +167,9 @@ const ContextMenu = ({
           ref={contextMenuRef}
           className={`${visible ? '' : 'scale-0 opacity-0'}
       transition-all duration-300 ease-in-slow max-h-96 overflow-auto
-       rounded-md p-1 bg-bg-shade border border-bg-border shadow-high ${
+       rounded-md ${
+         isDark ? 'bg-bg-sub' : 'p-1 bg-bg-shade'
+       } border border-bg-border shadow-high ${
          sizesMap[size]
        } flex flex-col gap-1`}
         >
