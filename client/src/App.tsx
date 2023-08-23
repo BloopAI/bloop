@@ -36,6 +36,7 @@ import PromptGuidePopup from './components/PromptGuidePopup';
 import Onboarding from './pages/Onboarding';
 import NavBar from './components/NavBar';
 import StatusBar from './components/StatusBar';
+import CloudFeaturePopup from './components/CloudFeaturePopup';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -334,6 +335,7 @@ function App({ deviceContextValue }: Props) {
               <PromptGuidePopup />
               <Onboarding />
               <StatusBar />
+              <CloudFeaturePopup />
             </GeneralUiContextProvider>
           </TabsContext.Provider>
         </RepositoriesContext.Provider>
