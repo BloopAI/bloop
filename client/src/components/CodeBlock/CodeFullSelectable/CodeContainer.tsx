@@ -6,9 +6,7 @@ import React, {
   useMemo,
 } from 'react';
 import { Token as TokenType } from '../../../types/prism';
-import { hashCode } from '../../../utils';
-import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
-import CodeContainerVirtualized from './CodeContainerVirtualized';
+import { hashCode, mergeRanges } from '../../../utils';
 import CodeContainerFull from './CodeContainerFull';
 
 type Props = {
@@ -48,29 +46,43 @@ const CodeContainer = ({
       }
       const newSelection = JSON.parse(JSON.stringify(prev));
       const current = newSelection.pop();
+      if (current.length === 2) {
+        return prev;
+      }
       const startsAtTop = current[0] <= lineNum;
-
-      return [
+      const newRanges = [
         ...newSelection,
         startsAtTop ? [current[0], lineNum] : [lineNum, current[0]],
       ];
+
+      return mergeRanges(newRanges);
     });
   }, []);
 
-  return tokens.length > MAX_LINES_BEFORE_VIRTUALIZE ? (
-    <CodeContainerVirtualized
-      pathHash={pathHash}
-      onMouseSelectStart={onMouseSelectStart}
-      onMouseSelectEnd={onMouseSelectEnd}
-      tokens={tokens}
-      {...otherProps}
-    />
-  ) : (
+  const updateRange = useCallback((i: number, newRange: [number, number]) => {
+    setCurrentSelection((prev) => {
+      const newRanges = JSON.parse(JSON.stringify(prev));
+      newRanges[i] = newRange;
+      return mergeRanges(newRanges);
+    });
+  }, []);
+
+  const deleteRange = useCallback((i: number) => {
+    setCurrentSelection((prev) => {
+      const newRanges = JSON.parse(JSON.stringify(prev));
+      newRanges.splice(i, 1);
+      return mergeRanges(newRanges);
+    });
+  }, []);
+
+  return (
     <CodeContainerFull
       pathHash={pathHash}
       onMouseSelectStart={onMouseSelectStart}
       onMouseSelectEnd={onMouseSelectEnd}
       tokens={tokens}
+      updateRange={updateRange}
+      deleteRange={deleteRange}
       {...otherProps}
     />
   );

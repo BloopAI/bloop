@@ -294,6 +294,14 @@
 	"Select": "選択する",
 	"Search branch...": "ブランチを検索...",
 	"Select file": "ファイルを選ぶ",
-	"Tip: Select code to create ranges for context use.": "ヒント：コードを選択して、コンテキスト使用の範囲を作成します。"
+	"Tip: Select code to create ranges for context use.": "ヒント：コードを選択して、コンテキスト使用の範囲を作成します。",
+	"Whole file": "ファイル全体",
+	"Lines # - #": "行{{start}} - {{end}}",
+	"# ranges_one": "{{count}}つの範囲",
+	"# ranges_other": "{{count}}つの範囲",
+	"Only the selected lines (# - #) will be used as context.": "選択した行（{{start}} - {{end}}）のみがコンテキストとして使用されます。",
+	"Clear ranges": "クリア範囲",
+	"Only the selected ranges will be used as context.": "選択した範囲のみがコンテキストとして使用されます。"
 }
+
 

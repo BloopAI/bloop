@@ -6,7 +6,7 @@ import {
   StudioLeftPanelType,
   StudioPanelDataType,
 } from '../../../types/general';
-import { ArrowLeft, Branch, Fire } from '../../../icons';
+import { ArrowLeft, Branch, CursorSelection, Fire } from '../../../icons';
 import FileIcon from '../../../components/FileIcon';
 import { search } from '../../../services/api';
 import {
@@ -34,14 +34,12 @@ const BREADCRUMBS_HEIGHT = 41;
 
 const FilePanel = ({ setLeftPanel, filePath, branch, repo }: Props) => {
   const { t } = useTranslation();
-  const [tipShown, setTipShown] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const [selectedLines, setSelectedLines] = useState<
     ([number, number] | [number])[]
   >([]);
 
   useEffect(() => {
-    console.log(repo);
     search(
       buildRepoQuery(
         repo.ref.startsWith('github.com/') ? repo.ref : repo.name,
@@ -71,7 +69,19 @@ const FilePanel = ({ setLeftPanel, filePath, branch, repo }: Props) => {
           <div className="flex items-center p-1 rounded border border-bg-border bg-bg-base">
             <FileIcon filename={filePath || ''} noMargin />
           </div>
-          <p className="body-s-strong text-label-title ellipsis">{filePath}</p>
+          <p className="body-s-strong text-label-title ellipsis">
+            {filePath.split('/').pop()}
+          </p>
+          <div className="h-5 px-1 flex items-center rounded-sm bg-bg-main/15 caption text-bg-main">
+            {!selectedLines.length
+              ? t('Whole file')
+              : selectedLines.length === 1
+              ? t('Lines # - #', {
+                  start: selectedLines[0][0] + 1,
+                  end: selectedLines[0][1] ? selectedLines[0][1] + 1 : '',
+                })
+              : t('# ranges', { count: selectedLines.length })}
+          </div>
         </div>
       </div>
       <div className="flex px-8 py-2 items-center gap-2 border-b border-bg-border bg-bg-sub  text-label-base">
@@ -119,15 +129,34 @@ const FilePanel = ({ setLeftPanel, filePath, branch, repo }: Props) => {
           />
         )}
       </div>
-      {tipShown && (
-        <div
-          onClick={() => setTipShown(false)}
-          className="absolute bottom-4 left-1/2 transform -translate-x-1/2 rounded-full flex h-8 items-center gap-2 p-2 pr-2.5 border-bg-border bg-bg-base shadow-float caption text-label-title flex-shrink-0 w-fit select-none cursor-pointer"
-        >
-          <Fire />
-          <Trans>Tip: Select code to create ranges for context use.</Trans>
-        </div>
-      )}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 rounded-full flex h-8 items-center gap-2 p-2 pr-2.5 border border-bg-border bg-bg-base shadow-float caption text-label-title flex-shrink-0 w-fit">
+        {!selectedLines.length ? <Fire /> : <CursorSelection />}
+        <p className="pointer-events-none select-none cursor-default">
+          {!selectedLines.length ? (
+            <Trans>Tip: Select code to create ranges for context use.</Trans>
+          ) : selectedLines.length === 1 && selectedLines[0].length === 2 ? (
+            <Trans
+              values={{
+                start: selectedLines[0][0] + 1,
+                end: selectedLines[0][1] + 1,
+              }}
+            >
+              Only the selected lines (# - #) will be used as context.
+            </Trans>
+          ) : (
+            <Trans>Only the selected ranges will be used as context.</Trans>
+          )}
+        </p>
+        {!!selectedLines.length && (
+          <Button
+            variant="tertiary"
+            size="tiny"
+            onClick={() => setSelectedLines([])}
+          >
+            <Trans>Clear ranges</Trans>
+          </Button>
+        )}
+      </div>
     </div>
   );
 };
