@@ -251,4 +251,20 @@ mod tests {
             "#]],
         )
     }
+
+    #[test]
+    fn value_of_function_definition() {
+        let src = r#"foo <- function (a, b, c) { // 0
+                        a <- a + 1               // 1
+                        b <- a + 1               // 2
+                        c <- a + 1               // 3
+                    }                            // 4"#;
+
+        let sg = build_graph("R", src.as_bytes());
+        let foo_function = sg.find_node_by_name(src.as_bytes(), b"foo").unwrap();
+        let function_node = &sg.graph[sg.value_of_definition(foo_function).unwrap()];
+
+        assert_eq!(function_node.range().start.line, 0);
+        assert_eq!(function_node.range().end.line, 4);
+    }
 }

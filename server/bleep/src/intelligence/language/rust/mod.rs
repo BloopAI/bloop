@@ -922,4 +922,82 @@ mod tests {
             "#]],
         )
     }
+
+    #[test]
+    fn value_of_function_definition() {
+        let src = r#"fn main() {   // 0
+                        let a = 2; // 1
+                        let b = 2; // 2
+                        let c = 2; // 3
+                     }             // 4"#;
+
+        let sg = build_graph("Rust", src.as_bytes());
+        let main_function = sg.find_node_by_name(src.as_bytes(), b"main").unwrap();
+        let function_node = &sg.graph[sg.value_of_definition(main_function).unwrap()];
+
+        assert_eq!(function_node.range().start.line, 0);
+        assert_eq!(function_node.range().end.line, 4);
+    }
+
+    #[test]
+    fn value_of_function_with_generics() {
+        let src = r#"fn main<P, Q, R, S, T>(p: P, q: Q) { // 0
+                        let a = 2;                        // 1
+                        let b = 2;                        // 2
+                        let c = 2;                        // 3
+                        let d = 2;                        // 4
+                     }                                    // 5"#;
+
+        let sg = build_graph("Rust", src.as_bytes());
+        let main_function = sg.find_node_by_name(src.as_bytes(), b"main").unwrap();
+        let function_node = &sg.graph[sg.value_of_definition(main_function).unwrap()];
+
+        assert_eq!(function_node.range().start.line, 0);
+        assert_eq!(function_node.range().end.line, 5);
+    }
+
+    #[test]
+    fn value_of_struct_definition() {
+        let src = r#"struct P { // 0
+                        s: Y,   // 1
+                        c: H,   // 2
+                    }           // 3"#;
+
+        let sg = build_graph("Rust", src.as_bytes());
+        let struct_p = sg.find_node_by_name(src.as_bytes(), b"P").unwrap();
+        let struct_node = &sg.graph[sg.value_of_definition(struct_p).unwrap()];
+
+        assert_eq!(struct_node.range().start.line, 0);
+        assert_eq!(struct_node.range().end.line, 3);
+    }
+
+    #[test]
+    fn value_of_let_definition() {
+        let src = r#"fn main() {
+                        let a = 2;
+                        let b = 2;
+                    }"#;
+
+        let sg = build_graph("Rust", src.as_bytes());
+        let let_def_a = sg.find_node_by_name(src.as_bytes(), b"a").unwrap();
+
+        // no range produced for variable definitions
+        assert!(sg.value_of_definition(let_def_a).is_none());
+    }
+
+    #[test]
+    fn value_of_let_def_closures() {
+        let src = r#"fn main() {       // 0
+                        let a = |x| {  // 1
+                            foo_bar(); // 2
+                        };             // 3
+                    }                  // 4"#;
+
+        let sg = build_graph("Rust", src.as_bytes());
+        let let_def_a = sg.find_node_by_name(src.as_bytes(), b"a").unwrap();
+        let let_def_node = &sg.graph[sg.value_of_definition(let_def_a).unwrap()];
+
+        assert_eq!(let_def_node.range().start.line, 1);
+        assert_eq!(let_def_node.range().end.line, 3);
+    }
 }
