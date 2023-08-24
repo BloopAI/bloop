@@ -307,5 +307,7 @@
 	"Imported files": "Archivos importados",
 	"Referencing target file": "Referencia al archivo objetivo",
 	"Clear range": "Borrar rango",
-	"Use file": "Usar archivo"
+	"Use file": "Usar archivo",
+	"Add related files": "Agregar archivos relacionados",
+	"Add related file": "Agregar archivo relacionado"
 }
