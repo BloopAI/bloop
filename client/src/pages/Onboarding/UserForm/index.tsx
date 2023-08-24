@@ -31,9 +31,10 @@ type Props = {
   form: Form;
   setForm: Dispatch<SetStateAction<Form>>;
   onContinue: () => void;
+  isJustUpdated: boolean;
 };
 
-const UserForm = ({ form, setForm, onContinue }: Props) => {
+const UserForm = ({ form, setForm, onContinue, isJustUpdated }: Props) => {
   const { t } = useTranslation();
   const { isGithubConnected, setGithubConnected } = useContext(
     UIContext.GitHubConnected,
@@ -120,6 +121,14 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
           <h4 className="text-label-title">
             <Trans>Setup bloop</Trans>
           </h4>
+          {isJustUpdated && (
+            <p className="text-label-muted body-s">
+              <Trans>
+                We’ve updated our auth service to make bloop more secure, please
+                reauthorise your client with GitHub
+              </Trans>
+            </p>
+          )}
           <p className="text-label-muted body-s">
             <Trans>Please log into your GitHub account to complete setup</Trans>
           </p>

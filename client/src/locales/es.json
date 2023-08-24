@@ -259,8 +259,10 @@
 	"To update your app, please visit our releases page on GitHub and download the latest version manually. Thank you for using bloop.": "Para actualizar la aplicación, visite nuestra página de lanzamientos en GitHub y descargue la última versión manualmente. Gracias por usar bloop.",
 	"View in {{viewer}}": "Ver en {{viewer}}",
 	"Open file": "Abrir documento",
-	"Edit": "Editar","Click to copy": "Haga clic para copiar",
+	"Edit": "Editar",
+	"Click to copy": "Haga clic para copiar",
 	"Editing a previously submitted question will discard all answers and questions following it.": "La edición de una pregunta enviada anteriormente descartará todas las respuestas y preguntas posteriores.",
 	"Copy link": "Copiar link",
-	"Search using RegExp": "Buscar con RegExp"
+	"Search using RegExp": "Buscar con RegExp",
+	"We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub": "Hemos actualizado nuestro servicio de autores para que el Bloop sea más seguro, por favor reanice a su cliente con GitHub"
 }

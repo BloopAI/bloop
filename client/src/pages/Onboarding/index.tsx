@@ -50,6 +50,7 @@ const Onboarding = () => {
   const { isGithubConnected } = useContext(UIContext.GitHubConnected);
   const { isSelfServe, os, setEnvConfig, envConfig } =
     useContext(DeviceContext);
+  const [isJustUpdated, setJustUpdated] = useState(false);
 
   const closeOnboarding = useCallback(() => {
     setShouldShowWelcome(false);
@@ -83,6 +84,7 @@ const Onboarding = () => {
       getConfig()
         .then((d) => {
           if (!d.user_login) {
+            setJustUpdated(d.credentials_upgrade);
             setShouldShowWelcome(true);
           } else {
             closeOnboarding();
@@ -161,7 +163,12 @@ const Onboarding = () => {
             <div
               className={`w-[512px] h-full flex flex-col items-center justify-center px-13 gap-6`}
             >
-              <UserForm form={form} setForm={setForm} onContinue={onSubmit} />
+              <UserForm
+                form={form}
+                setForm={setForm}
+                onContinue={onSubmit}
+                isJustUpdated={isJustUpdated}
+              />
             </div>
           </div>
           <div

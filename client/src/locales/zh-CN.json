@@ -263,5 +263,6 @@
 	"Editing a previously submitted question will discard all answers and questions following it.": "编辑之前提交的问题将丢弃其后的所有答案和问题。",
 	"Click to copy": "单击复制",
 	"Copy link": "复制链接",
-	"Search using RegExp": "使用RegExp搜索"
+	"Search using RegExp": "使用RegExp搜索",
+	"We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub": "我们已经更新了我们的身份服务以使Bloop更加安全，请使用GitHub重新授权您的客户"
 }
