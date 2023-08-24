@@ -5,8 +5,10 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc, Mutex,
     },
+    time::Instant,
 };
 
+use async_trait::async_trait;
 use ndarray::Axis;
 use ort::{
     tensor::{FromArray, InputTensor, OrtOwnedTensor},
@@ -15,7 +17,7 @@ use ort::{
 use qdrant_client::qdrant::{PointId, PointStruct};
 use serde::{Deserialize, Serialize};
 use tokenizers::Tokenizer;
-use tracing::trace;
+use tracing::{error, info, trace};
 
 use super::Embedding;
 
@@ -61,7 +63,7 @@ pub struct EmbedChunk {
     pub payload: HashMap<String, qdrant_client::qdrant::Value>,
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait Embedder: Send + Sync {
     fn embed(&self, data: &str) -> anyhow::Result<Embedding>;
     fn tokenizer(&self) -> &Tokenizer;
@@ -101,7 +103,7 @@ impl LocalEmbedder {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl Embedder for LocalEmbedder {
     fn embed(&self, sequence: &str) -> anyhow::Result<Embedding> {
         let tokenizer_output = self.tokenizer.encode(sequence, true).unwrap();
@@ -173,9 +175,20 @@ impl RemoteEmbedder {
             embedder: LocalEmbedder::new(model_dir)?,
         })
     }
+
+    async fn make_request(&self, request: ServerRequest<'_>) -> anyhow::Result<ServerResponse> {
+        Ok(self
+            .session
+            .post(self.url.clone())
+            .json(&request)
+            .send()
+            .await?
+            .json()
+            .await?)
+    }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl Embedder for RemoteEmbedder {
     fn embed(&self, data: &str) -> anyhow::Result<Embedding> {
         self.embedder.embed(data)
@@ -191,7 +204,7 @@ impl Embedder for RemoteEmbedder {
 
         loop {
             // if we're not currently flushing the log, only process full batches
-            if log.len() == 0 || (log.len() < MAX_BATCH_SIZE && !flush) {
+            if log.is_empty() || (log.len() < MAX_BATCH_SIZE && !flush) {
                 return Ok(output);
             }
 
@@ -206,30 +219,37 @@ impl Embedder for RemoteEmbedder {
                 }
             }
 
-            let res: ServerResponse = self
-                .session
-                .post(self.url.clone())
-                .json(&ServerRequest {
+            let time = Instant::now();
+            let res = self
+                .make_request(ServerRequest {
                     sequence: batch
                         .iter()
                         .map(|embed| embed.data.as_ref())
                         .collect::<Vec<_>>(),
                 })
-                .send()
-                .await?
-                .json()
-                .await?;
+                .await;
+            let elapsed = time.elapsed();
 
-            output.extend(
-                res.data
-                    .into_iter()
-                    .zip(batch)
-                    .map(|(result, src)| PointStruct {
-                        id: Some(PointId::from(src.id)),
-                        vectors: Some(result.embedding.into()),
-                        payload: src.payload,
-                    }),
-            )
+            match res {
+                Ok(res) => {
+                    info!(?elapsed, size = batch.len(), "batch embedding successful");
+                    output.extend(res.data.into_iter().zip(batch).map(|(result, src)| {
+                        PointStruct {
+                            id: Some(PointId::from(src.id)),
+                            vectors: Some(result.embedding.into()),
+                            payload: src.payload,
+                        }
+                    }))
+                }
+                Err(err) => {
+                    error!(
+                        ?err,
+                        ?elapsed,
+                        size = batch.len(),
+                        "remote batch embeddings failed"
+                    )
+                }
+            }
         }
     }
 }
