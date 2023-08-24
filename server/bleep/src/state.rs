@@ -40,6 +40,10 @@ pub struct StateSource {
     #[clap(long)]
     #[serde(default)]
     cookie_key: Option<PathBuf>,
+
+    #[serde(skip)]
+    #[clap(skip)]
+    root_dir: PathBuf,
 }
 
 /// Unified wrapper to persist state in the central state-store.
@@ -110,6 +114,16 @@ impl StateSource {
 
             target
         });
+
+        self.root_dir = dir.to_owned();
+    }
+
+    pub(crate) fn exists(&self, path: &(impl AsRef<Path> + ?Sized)) -> bool {
+        self.root_dir.join(path.as_ref()).exists()
+    }
+
+    pub(crate) fn ensure_deleted(&self, path: &(impl AsRef<Path> + ?Sized)) {
+        _ = std::fs::remove_file(self.root_dir.join(path.as_ref()));
     }
 
     pub(crate) fn load_or_default<T: Serialize + DeserializeOwned + Default + Send + Sync>(

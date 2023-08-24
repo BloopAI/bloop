@@ -17,6 +17,7 @@ pub(super) struct ConfigResponse {
     bloop_user_profile: UserProfile,
     bloop_version: String,
     bloop_commit: String,
+    credentials_upgrade: bool,
 }
 
 impl super::ApiResponse for ConfigResponse {}
@@ -80,6 +81,7 @@ pub(super) async fn get(
         bloop_version: env!("CARGO_PKG_VERSION").into(),
         bloop_commit: git_version::git_version!(fallback = "unknown").into(),
         bloop_user_profile: user_profile,
+        credentials_upgrade: app.config.source.exists("credentials.json"),
         github_user,
         device_id,
         org_name,

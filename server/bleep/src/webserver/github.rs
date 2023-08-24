@@ -179,5 +179,7 @@ async fn poll_for_oauth_token(code: String, app: Application) {
         error!(?err, "failed to save credentials to disk");
     }
 
+    // the old place for credentials is now ready to be wiped
+    app.config.source.ensure_deleted("credentials.json");
     debug!("github auth complete");
 }
