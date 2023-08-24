@@ -14,11 +14,9 @@ type Props = {
   children: ReactNode;
   stylesGenerated?: any;
   searchTerm?: string;
-  onMouseSelectStart?: (lineNum: number) => void;
-  onMouseSelectEnd?: (lineNum: number) => void;
-  isSelected: boolean;
   isSelectionDisabled: boolean;
-  setCurrentlySelectingLine: (line: number) => void;
+  setCurrentlySelectingRange: (range: [number, number] | null) => void;
+  handleAddRange: () => void;
 };
 
 const CodeLine = ({
@@ -26,11 +24,9 @@ const CodeLine = ({
   children,
   stylesGenerated,
   searchTerm,
-  onMouseSelectStart,
-  onMouseSelectEnd,
-  isSelected,
   isSelectionDisabled,
-  setCurrentlySelectingLine,
+  setCurrentlySelectingRange,
+  handleAddRange,
 }: Props) => {
   const [isDragging, setIsDragging] = useState(false);
   const codeRef = useRef<HTMLTableCellElement>(null);
@@ -64,16 +60,23 @@ const CodeLine = ({
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging && ref.current) {
         const deltaY = e.clientY - ref.current.getBoundingClientRect().top;
-        setCurrentlySelectingLine(
-          lineNumber + Math.ceil(deltaY / CODE_LINE_HEIGHT) - 1,
-        );
+        setCurrentlySelectingRange([
+          Math.min(
+            lineNumber,
+            lineNumber + Math.ceil(deltaY / CODE_LINE_HEIGHT) - 1,
+          ),
+          Math.max(
+            lineNumber,
+            lineNumber + Math.ceil(deltaY / CODE_LINE_HEIGHT) - 1,
+          ),
+        ]);
       }
     };
     const handleMouseUp = (e: MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
-      setCurrentlySelectingLine(0);
+      handleAddRange();
     };
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
@@ -90,34 +93,21 @@ const CodeLine = ({
   return (
     <div
       className={`flex transition-all duration-150 ease-in-bounce group ${
-        isSelectionDisabled
-          ? 'cursor-row-resize'
-          : isSelected
-          ? 'cursor-default'
-          : 'cursor-ns-resize'
-      } ${isSelected ? 'bg-bg-main/30' : ''} relative z-0`}
+        isSelectionDisabled ? 'cursor-row-resize' : 'cursor-ns-resize'
+      } relative z-0`}
       data-line-number={lineNumber}
       style={style}
       onMouseDown={(e) => {
         e.preventDefault();
         if (!isSelectionDisabled) {
           setIsDragging(true);
-          onMouseSelectStart?.(lineNumber);
-        }
-      }}
-      onMouseUp={(e) => {
-        e.preventDefault();
-        if (!isSelectionDisabled) {
-          onMouseSelectEnd?.(lineNumber);
         }
       }}
       ref={ref}
     >
       <div
         data-line={lineNumber + 1}
-        className={`min-w-[27px] text-right select-none pr-0 leading-5 group-hover:text-label-base ${
-          isSelected ? 'text-label-base' : 'text-label-muted'
-        } before:content-[attr(data-line)] `}
+        className={`min-w-[27px] text-right select-none pr-0 leading-5 group-hover:text-label-base text-label-muted before:content-[attr(data-line)] `}
       />
       <div className={`pl-2`} ref={codeRef}>
         {children}

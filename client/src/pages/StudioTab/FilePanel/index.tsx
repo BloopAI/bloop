@@ -39,9 +39,9 @@ const FilePanel = ({
 }: Props) => {
   const { t } = useTranslation();
   const [file, setFile] = useState<File | null>(null);
-  const [selectedLines, setSelectedLines] = useState<
-    ([number, number] | [number])[]
-  >(initialRanges || []);
+  const [selectedLines, setSelectedLines] = useState<[number, number][]>(
+    initialRanges || [],
+  );
 
   useEffect(() => {
     search(
@@ -117,7 +117,7 @@ const FilePanel = ({
           />
         )}
       </div>
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 rounded-full flex h-8 items-center gap-2 p-2 pr-2.5 border border-bg-border bg-bg-base shadow-float caption text-label-title flex-shrink-0 w-fit">
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 rounded-full flex h-8 items-center gap-2 p-2 pr-2.5 border border-bg-border bg-bg-base shadow-float caption text-label-title flex-shrink-0 w-fit z-20">
         {!selectedLines.length ? <Fire /> : <CursorSelection />}
         <p className="pointer-events-none select-none cursor-default">
           {!selectedLines.length ? (
