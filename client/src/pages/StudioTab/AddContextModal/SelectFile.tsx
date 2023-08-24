@@ -1,9 +1,8 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Trans } from 'react-i18next';
 import { RepoType } from '../../../types/general';
 import KeyboardChip from '../KeyboardChip';
-import { Branch } from '../../../icons';
-import { search as searchReq } from '../../../services/api';
+import { searchFiles } from '../../../services/api';
 import FileIcon from '../../../components/FileIcon';
 
 type Props = {
@@ -17,11 +16,7 @@ const SelectBranch = ({ search, onSubmit, repo, branch }: Props) => {
   const [filesToShow, setFilesToShow] = useState<string[]>([]);
 
   useEffect(() => {
-    searchReq(
-      `repo:${repo.name} branch:${branch} path:${search || '/'}`,
-      0,
-      100,
-    ).then((resp) => {
+    searchFiles(`${search || '.'}`, repo.ref).then((resp) => {
       setFilesToShow(
         resp.data
           .map((r) =>

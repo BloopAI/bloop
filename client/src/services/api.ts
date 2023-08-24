@@ -40,6 +40,22 @@ export const search = (
     .then((r) => r.data);
 };
 
+export const searchFiles = (
+  q: string,
+  repo_ref: string,
+  page_size: number = 100,
+): Promise<SearchResponse> => {
+  return http
+    .get('/search/path', {
+      params: {
+        q,
+        repo_ref,
+        page_size,
+      },
+    })
+    .then((r) => r.data);
+};
+
 export const getFileLines = (
   repo_ref: string,
   path: string,
