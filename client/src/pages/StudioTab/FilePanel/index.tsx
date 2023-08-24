@@ -32,6 +32,7 @@ import LinesBadge from '../LinesBadge';
 import TokensUsageBadge from '../TokensUsageBadge';
 import useRelatedFiles from '../../../hooks/useRelatedFiles';
 import Dropdown from '../../../components/Dropdown/WithIcon';
+import RelatedFilesBadge from '../RelatedFilesBadge';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
@@ -220,7 +221,15 @@ const FilePanel = ({
             </>
           )}
         </div>
-        <TokensUsageBadge tokens={tokens} />
+        <div className="flex items-center gap-2">
+          <RelatedFilesBadge
+            relatedFiles={relatedFiles}
+            selectedFiles={contextFiles}
+            onFileRemove={handleRelatedFileRemoved}
+            onFileAdded={handleRelatedFileAdded}
+          />
+          <TokensUsageBadge tokens={tokens} />
+        </div>
       </div>
       <div className="py-4 px-4 overflow-auto flex flex-col">
         {!!file && (
