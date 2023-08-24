@@ -306,8 +306,10 @@
 	"Only the selected ranges will be used as context.": "Only the selected ranges will be used as context.",
 	"Remove related files": "Remove related files",
 	"Imported files": "Imported files",
-	"Referencing target file": "Referencing target file"
+	"Referencing target file": "Referencing target file",
+	"Clear range": "Clear range"
 }
+
 
 
 
