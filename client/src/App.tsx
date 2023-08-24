@@ -37,6 +37,8 @@ import Onboarding from './pages/Onboarding';
 import NavBar from './components/NavBar';
 import StatusBar from './components/StatusBar';
 import CloudFeaturePopup from './components/CloudFeaturePopup';
+import * as Sentry from '@sentry/react';
+import ErrorFallback from './components/ErrorFallback';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -107,10 +109,10 @@ function App({ deviceContextValue }: Props) {
     [],
   );
 
-  const handleAddStudioTab = useCallback((name: string) => {
+  const handleAddStudioTab = useCallback((name: string, id: string) => {
     const newTab: StudioTabType = {
       // todo: use id from server as a key
-      key: '' + Date.now(),
+      key: id,
       name,
       type: TabType.STUDIO,
     };
@@ -139,6 +141,7 @@ function App({ deviceContextValue }: Props) {
       if (firstPart === 'studio') {
         handleAddStudioTab(
           decodeURIComponent(location.pathname.slice(1).split('/')[2]),
+          decodeURIComponent(location.pathname.slice(1).split('/')[1]),
         );
       } else if (repo) {
         const urlBranch = decodeURIComponent(location.pathname.split('/')[2]);
@@ -344,4 +347,6 @@ function App({ deviceContextValue }: Props) {
   );
 }
 
-export default App;
+export default Sentry.withErrorBoundary(App, {
+  fallback: (props) => <ErrorFallback {...props} />,
+});

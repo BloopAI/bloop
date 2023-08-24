@@ -8,8 +8,16 @@ type Props = {
 
 const TokensUsageBadge = ({ tokens }: Props) => {
   return (
-    <div className="flex h-6 pl-1 pr-2 items-center gap-1 bg-bg-shade rounded-full">
-      <CodeStudioToken className="text-bg-danger" />
+    <div className="flex h-6 pl-1 pr-2 items-center gap-1 bg-bg-shade rounded-full select-none">
+      <CodeStudioToken
+        className={
+          tokens > 2000
+            ? 'text-bg-danger'
+            : tokens > 100
+            ? 'text-orange-600'
+            : 'text-label-base'
+        }
+      />
       <span className="caption text-label-title">{humanNumber(tokens)}</span>
     </div>
   );
