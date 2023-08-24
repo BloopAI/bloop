@@ -105,7 +105,7 @@
 	"Nothing matched your search. Try a different combination!": "検索に一致するものを見つかりませんでした。 別の検索を試してみてください！",
 	"Already synced": "シンク済み",
 	"Sync": "シンク",
-	"Scan a folder to sync it’s repositories.": "フォルダーをスキャンしてリポジトリをシンクする。",
+	"Scan a folder to sync it’s repositories.": "フォルダーをスキャンしてリポジトリをシンクする。.git フォルダーのあるディレクトリのみが同期されます",
 	"Select folder": "フォルダーの選択",
 	"Sync local repositories": "ローカルリポジトリをシンクする",
 	"Scan a folder": "フォルダーをスキャンする",

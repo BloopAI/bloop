@@ -105,7 +105,7 @@
 	"Nothing matched your search. Try a different combination!": "没有找到匹配您搜索的内容。尝试不同的组合吧！",
 	"Already synced": "已同步",
 	"Sync": "同步",
-	"Scan a folder to sync it’s repositories.": "扫描文件夹以同步其仓库。",
+	"Scan a folder to sync it’s repositories.": "扫描文件夹以同步其仓库。仅具有 .git 文件夹的目录才会同步",
 	"Select folder": "选择文件夹",
 	"Sync local repositories": "同步本地仓库",
 	"Scan a folder": "扫描文件夹",
