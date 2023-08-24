@@ -1,10 +1,11 @@
-use super::prelude::*;
+use super::{middleware::User, prelude::*};
 use crate::{
     remotes::{github, AuthResponse, BackendCredential},
     repo::Backend,
     Application,
 };
 
+use axum::extract::State;
 use tracing::{debug, error, warn};
 
 use std::time::{Duration, Instant};
@@ -71,7 +72,16 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
 
 /// Remove Github OAuth credentials
 //
-pub(super) async fn logout(Extension(app): Extension<Application>) -> impl IntoResponse {
+pub(super) async fn logout(
+    Extension(user): Extension<User>,
+    State(app): State<Application>,
+) -> impl IntoResponse {
+    if let Some(login) = user.login() {
+        app.user_profiles.remove(login);
+        app.user_profiles.store().unwrap();
+        app.credentials.remove_user().await;
+    }
+
     let deleted = app.credentials.remove(&Backend::Github);
     if let Some(BackendCredential::Github(github::State {
         auth: github::Auth::OAuth(creds),

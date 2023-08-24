@@ -320,6 +320,10 @@ impl Backends {
             .read(&Backend::Github, |_, v| v.updated.clone())
     }
 
+    pub(crate) async fn remove_user(&self) {
+        *self.authenticated_user.write().unwrap() = None;
+    }
+
     pub(crate) async fn set_user(&self, user: String) {
         self.authenticated_user.write().unwrap().replace(user);
     }
