@@ -121,7 +121,7 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
             <Trans>Setup bloop</Trans>
           </h4>
           {envConfig.credentials_upgrade && (
-            <p className="text-label-muted body-s">
+            <p className="text-sky/80 body-s border rounded-sm border-sky/30 p-1">
               <Trans>
                 We’ve updated our auth service to make bloop more secure, please
                 reauthorise your client with GitHub
