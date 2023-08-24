@@ -3,6 +3,7 @@ import React, {
   memo,
   SetStateAction,
   useCallback,
+  useEffect,
   useState,
 } from 'react';
 import { Trans } from 'react-i18next';
@@ -15,20 +16,44 @@ import {
 import Button from '../../../components/Button';
 import { ArrowRefresh, TrashCanFilled } from '../../../icons';
 import KeyboardChip from '../KeyboardChip';
+import { CodeStudioMessageType } from '../../../types/api';
+import { patchCodeStudio } from '../../../services/api';
+import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import ConversationInput from './Input';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
+  messages: CodeStudioMessageType[];
+  studioId: string;
+  refetchCodeStudio: () => void;
 };
 
-const Conversation = ({ setLeftPanel }: Props) => {
+function mapConversation(
+  messages: CodeStudioMessageType[],
+): StudioConversationMessage[] {
+  return messages.map((m) => {
+    const author = Object.keys(m)[0] as StudioConversationMessageAuthor;
+    return { author, message: Object.values(m)[0] };
+  });
+}
+
+const Conversation = ({
+  setLeftPanel,
+  messages,
+  studioId,
+  refetchCodeStudio,
+}: Props) => {
   const [conversation, setConversation] = useState<StudioConversationMessage[]>(
-    [],
+    mapConversation(messages),
   );
   const [input, setInput] = useState<StudioConversationMessage>({
     author: StudioConversationMessageAuthor.USER,
     message: '',
   });
+
+  useEffect(() => {
+    setConversation(mapConversation(messages));
+  }, [messages]);
 
   const onAuthorChange = useCallback(
     (author: StudioConversationMessageAuthor, i?: number) => {
@@ -55,6 +80,34 @@ const Conversation = ({ setLeftPanel }: Props) => {
       });
     }
   }, []);
+
+  const onSubmit = useCallback(() => {
+    if (!input.message) {
+      return;
+    }
+    const messages = conversation
+      .map((c) => ({ [c.author]: c.message }))
+      .concat([{ [input.author]: input.message }]);
+    patchCodeStudio(studioId, {
+      messages,
+    }).then(() => {
+      refetchCodeStudio();
+      setInput({
+        author: StudioConversationMessageAuthor.USER,
+        message: '',
+      });
+    });
+  }, [studioId, conversation, input]);
+
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        onSubmit();
+      }
+    },
+    [onSubmit],
+  );
+  useKeyboardNavigation(handleKeyEvent);
 
   return (
     <div className="p-8 flex flex-col gap-8">
@@ -94,11 +147,17 @@ const Conversation = ({ setLeftPanel }: Props) => {
               <Trans>Clear conversation</Trans>
             </Button>
           </div>
-          <Button size="small" disabled>
+          <Button size="small" disabled={!input.message} onClick={onSubmit}>
             <Trans>Generate</Trans>
             <div className="flex items-center gap-1 flex-shrink-0">
-              <KeyboardChip type="cmd" />
-              <KeyboardChip type="entr" />
+              <KeyboardChip
+                type="cmd"
+                variant={!input.message ? 'secondary' : 'primary'}
+              />
+              <KeyboardChip
+                type="entr"
+                variant={!input.message ? 'secondary' : 'primary'}
+              />
             </div>
           </Button>
         </div>

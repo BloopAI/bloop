@@ -83,7 +83,7 @@ export type RepoUi = RepoType & {
 export type CodeStudioShortType = {
   id: string;
   name: string;
-  last_modified: string;
+  modified_at: string;
 };
 
 export enum FullResultModeEnum {
@@ -377,11 +377,9 @@ export type FileStudioPanelType = {
 export type StudioPanelDataType = GeneralStudioPanelType | FileStudioPanelType;
 
 export type StudioContextFile = {
-  file_path: string;
-  ranges: [number, number][];
-  tokens: number;
-  repo_name: string;
+  path: string;
+  ranges: { start: number; end: number }[];
+  repo: string;
   branch: string;
-  is_hidden: boolean;
-  related_files_num: number | null;
+  hidden: boolean;
 };
