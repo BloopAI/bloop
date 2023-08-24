@@ -61,11 +61,11 @@ const ConversationInput = ({
   }, [inputRef.current, message]);
 
   return (
-    <div className="flex flex-col p-4 gap-3 rounded-6 border border-bg-main bg-bg-base shadow-medium">
+    <div className="flex flex-col p-4 gap-3 rounded-6 border border-transparent hover:shadow-medium hover:border-bg-border-hover focus-within:border-bg-main bg-bg-base hover:focus-within:border-bg-main focus-within:shadow-medium transition-all duration-150 ease-in-out">
       <div className="flex justify-between items-center">
         <button
           onClick={handleAuthorSwitch}
-          className="h-6 caption text-label-title flex items-center gap-1 flex-shrink-0 pl-1 pr-1.5 rounded border border-bg-border bg-bg-shade hover:border-bg-border-hover hover:bg-bg-base-hover transition-all duration-150 ease-in-out"
+          className="h-6 caption text-label-title flex items-center gap-1 flex-shrink-0 pl-1 pr-1.5 rounded border border-bg-border bg-bg-shade hover:border-bg-border-hover hover:bg-bg-base-hover transition-all duration-150 ease-in-out select-none"
         >
           <div className="w-4 h-4 rounded-full overflow-hidden bg-chat-bg-border flex items-center justify-center">
             {author === 'User' ? (

@@ -21,6 +21,12 @@ type Props = {
   branch: string;
   repo: RepoType;
   initialRanges?: [number, number][];
+  onFileRangesChanged: (
+    ranges: [number, number][],
+    filePath: string,
+    repo_ref: string,
+    branch: string,
+  ) => void;
 };
 
 const HEADER_HEIGHT = 32;
@@ -36,6 +42,7 @@ const FilePanel = ({
   branch,
   repo,
   initialRanges,
+  onFileRangesChanged,
 }: Props) => {
   const { t } = useTranslation();
   const [file, setFile] = useState<File | null>(null);
@@ -56,6 +63,10 @@ const FilePanel = ({
       }
     });
   }, [filePath, branch, repo]);
+
+  useEffect(() => {
+    onFileRangesChanged(selectedLines, filePath, repo.ref, branch);
+  }, [selectedLines, filePath, branch, repo]);
 
   return (
     <div className="flex flex-col w-full flex-1 overflow-auto relative">
