@@ -252,7 +252,7 @@ impl Semantic {
             init_ort_dylib(dylib_dir);
         }
 
-        let embedder: Arc<dyn Embedder> = if let Some(ref url) = config.embedding_server {
+        let embedder: Arc<dyn Embedder> = if let Some(ref url) = config.embedding_server_url {
             Arc::new(embedder::RemoteEmbedder::new(url.clone(), model_dir)?)
         } else {
             Arc::new(LocalEmbedder::new(model_dir)?)

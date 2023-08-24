@@ -61,7 +61,8 @@ spec:
           - --collection-name={{ .Values.qdrant.collectionName }}
           - --max-threads={{ .Values.bloop.maxThreads }}
           - --answer-api-url={{ .Values.bloop.answerApiUrl }}
-          - --qdrant-url={{ .Values.qdrant.url }}
+          - --qdrant-url=http://{{ include "qdrant.fullname" . }}:6334
+          - --embedding-server-url={{ .Values.bloop.embeddingServerUrl }}:8080
           - --instance-domain={{ .Values.bloop.instanceDomain }}
           - --github-app-id={{ .Values.bloop.githubAppId }}
           - --github-app-install-id={{ .Values.bloop.githubAppInstallId }}

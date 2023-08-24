@@ -142,10 +142,6 @@ pub struct Configuration {
     /// Auth management base URL
     pub cognito_mgmt_url: Option<String>,
 
-    #[clap(long)]
-    /// Address for the embedding server
-    pub embedding_server: Option<reqwest::Url>,
-
     //
     // Installation-specific values
     //
@@ -186,6 +182,10 @@ pub struct Configuration {
     /// Path to built front-end folder
     #[clap(long)]
     pub frontend_dist: Option<PathBuf>,
+
+    #[clap(long)]
+    /// Address for the embedding server
+    pub embedding_server_url: Option<reqwest::Url>,
 }
 
 macro_rules! right_if_default {
@@ -283,7 +283,7 @@ impl Configuration {
                 default_collection_name()
             ),
 
-            embedding_server: b.embedding_server.or(a.embedding_server),
+            embedding_server_url: b.embedding_server_url.or(a.embedding_server_url),
 
             frontend_dist: b.frontend_dist.or(a.frontend_dist),
 
