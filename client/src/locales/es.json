@@ -105,7 +105,7 @@
 	"Nothing matched your search. Try a different combination!": "No hay coincidencias con tu búsqueda. ¡Prueba una combinación diferente!",
 	"Already synced": "Ya sincronizado",
 	"Sync": "Sincronizar",
-	"Scan a folder to sync it’s repositories.": "Escanee una carpeta para sincronizar sus repositorios.",
+	"Scan a folder to sync it’s repositories.": "Escanee una carpeta para sincronizar sus repositorios. Solo se sincronizarán los directorios con una carpeta .git",
 	"Select folder": "Seleccione la carpeta",
 	"Sync local repositories": "Repositorios locales sincronizados",
 	"Scan a folder": "Escanear una carpeta",
@@ -259,7 +259,8 @@
 	"To update your app, please visit our releases page on GitHub and download the latest version manually. Thank you for using bloop.": "Para actualizar la aplicación, visite nuestra página de lanzamientos en GitHub y descargue la última versión manualmente. Gracias por usar bloop.",
 	"View in {{viewer}}": "Ver en {{viewer}}",
 	"Open file": "Abrir documento",
-	"Edit": "Editar","Click to copy": "Haga clic para copiar",
+	"Edit": "Editar",
+	"Click to copy": "Haga clic para copiar",
 	"Editing a previously submitted question will discard all answers and questions following it.": "La edición de una pregunta enviada anteriormente descartará todas las respuestas y preguntas posteriores.",
 	"Copy link": "Copiar link",
 	"Search using RegExp": "Buscar con RegExp"
