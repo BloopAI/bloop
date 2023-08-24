@@ -308,6 +308,18 @@ impl SyncHandle {
         let git_err = loop {
             match creds.git_sync(&self.reporef, repo.clone()).await {
                 Err(
+                    err @ RemoteError::GitCloneFetch(gix::clone::fetch::Error::PrepareFetch(
+                        gix::remote::fetch::prepare::Error::RefMap(
+                            gix::remote::ref_map::Error::Handshake(
+                                gix::protocol::handshake::Error::InvalidCredentials { .. },
+                            ),
+                        ),
+                    )),
+                ) => {
+                    error!(?err, ?self.reporef, "invalid credentials for accessing git repo");
+                    return Err(SyncError::Sync(err));
+                }
+                Err(
                     err @ RemoteError::GitOpen(_)
                     | err @ RemoteError::GitFetch(_)
                     | err @ RemoteError::GitPrepareFetch(_)
