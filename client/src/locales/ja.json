@@ -306,8 +306,11 @@
 	"Imported files": "インポートされたファイル",
 	"Referencing target file": "ターゲットファイルの参照",
 	"Clear range": "クリア範囲",
-	"Use file": "ファイルを使用します"
+	"Use file": "ファイルを使用します",
+	"Add related files": "関連ファイルを追加します",
+	"Add related file": "関連ファイルを追加します"
 }
+
 
 
 

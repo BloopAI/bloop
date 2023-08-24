@@ -1,19 +1,37 @@
-import { Dispatch, memo, SetStateAction, useEffect, useState } from 'react';
+import {
+  Dispatch,
+  memo,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
 import {
   RepoType,
+  StudioContextFile,
   StudioLeftPanelType,
   StudioPanelDataType,
 } from '../../../types/general';
-import { ArrowLeft, Branch, CursorSelection, Fire } from '../../../icons';
+import {
+  ArrowLeft,
+  Branch,
+  CursorSelection,
+  Eye,
+  Fire,
+  PlusSignInCircle,
+  TrashCanFilled,
+} from '../../../icons';
 import FileIcon from '../../../components/FileIcon';
-import { search } from '../../../services/api';
+import { getRelatedFiles, search } from '../../../services/api';
 import { buildRepoQuery, getFileExtensionForLang } from '../../../utils';
 import { File } from '../../../types/api';
 import CodeFullSelectable from '../../../components/CodeBlock/CodeFullSelectable';
 import LinesBadge from '../LinesBadge';
 import TokensUsageBadge from '../TokensUsageBadge';
+import useRelatedFiles from '../../../hooks/useRelatedFiles';
+import Dropdown from '../../../components/Dropdown/WithIcon';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
@@ -27,6 +45,23 @@ type Props = {
     repo_ref: string,
     branch: string,
   ) => void;
+  tokens: number;
+  onFileRemove: (
+    f: { path: string; repo: string; branch: string } | StudioContextFile[],
+  ) => void;
+  onFileHide: (
+    path: string,
+    repo: string,
+    branch: string,
+    hide: boolean,
+  ) => void;
+  onFileAdded: (
+    repo: RepoType,
+    branch: string,
+    filePath: string,
+    skip: boolean,
+  ) => void;
+  contextFiles: StudioContextFile[];
 };
 
 const HEADER_HEIGHT = 32;
@@ -43,12 +78,51 @@ const FilePanel = ({
   repo,
   initialRanges,
   onFileRangesChanged,
+  tokens,
+  onFileHide,
+  onFileAdded,
+  onFileRemove,
+  contextFiles,
 }: Props) => {
   const { t } = useTranslation();
   const [file, setFile] = useState<File | null>(null);
   const [selectedLines, setSelectedLines] = useState<[number, number][]>(
     initialRanges || [],
   );
+  const [relatedFiles, setRelatedFiles] = useState<
+    { type: string; path: string }[]
+  >([]);
+
+  const handleRelatedFileAdded = useCallback(
+    (filePath: string) => {
+      onFileAdded(repo, branch, filePath, true);
+    },
+    [repo, branch, onFileAdded],
+  );
+  const handleRelatedFileRemoved = useCallback(
+    (path: string) => {
+      onFileRemove({ branch, path, repo: repo.ref });
+    },
+    [repo, branch, onFileRemove],
+  );
+
+  const { items } = useRelatedFiles(
+    contextFiles,
+    relatedFiles,
+    handleRelatedFileAdded,
+    handleRelatedFileRemoved,
+  );
+
+  useEffect(() => {
+    getRelatedFiles(filePath, repo.ref, branch).then((resp) => {
+      setRelatedFiles(
+        resp.data.map((path) => ({ type: 'imported', path })),
+        // .concat(
+        //   resp.files_importing.map((path) => ({ type: 'importing', path })),
+        // ),
+      );
+    });
+  }, []);
 
   useEffect(() => {
     search(
@@ -70,7 +144,7 @@ const FilePanel = ({
 
   return (
     <div className="flex flex-col w-full flex-1 overflow-auto relative">
-      <div className="flex gap-1 px-8 justify-between items-center border-b border-bg-border bg-bg-shade shadow-low h-11.5">
+      <div className="flex gap-1 px-8 justify-between items-center border-b border-bg-border bg-bg-shade shadow-low h-11.5 flex-shrink-0">
         <div className="flex items-center gap-3">
           <Button
             size="small"
@@ -89,6 +163,46 @@ const FilePanel = ({
           </p>
           <LinesBadge ranges={selectedLines} />
         </div>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="tertiary"
+            size="small"
+            onlyIcon
+            title={t(`Hide`)}
+            onClick={() => {
+              onFileHide(filePath, repo.ref, branch, true);
+              setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
+            }}
+          >
+            <Eye />
+          </Button>
+          <Button
+            variant="tertiary"
+            size="small"
+            onlyIcon
+            title={t(`Remove`)}
+            onClick={() => {
+              onFileRemove({ path: filePath, repo: repo.ref, branch });
+              setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
+            }}
+          >
+            <TrashCanFilled />
+          </Button>
+          {!!items.length && (
+            <Dropdown
+              items={items}
+              icon={
+                <span className="flex gap-1 items-center flex-shrink-0">
+                  <PlusSignInCircle />
+                  {t('Add related file')}
+                </span>
+              }
+              btnSize="small"
+              btnVariant="primary"
+              noChevron
+            />
+          )}
+        </div>
       </div>
       <div className="flex px-8 py-2 items-center gap-2 border-b border-bg-border bg-bg-sub  text-label-base">
         <div className="flex items-center gap-1.5 flex-1">
@@ -106,7 +220,7 @@ const FilePanel = ({
             </>
           )}
         </div>
-        {!!file && <TokensUsageBadge tokens={file?.contents?.length} />}
+        <TokensUsageBadge tokens={tokens} />
       </div>
       <div className="py-4 px-4 overflow-auto flex flex-col">
         {!!file && (
