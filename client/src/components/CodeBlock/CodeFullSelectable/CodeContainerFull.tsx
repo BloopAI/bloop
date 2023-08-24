@@ -18,7 +18,7 @@ type Props = {
   searchTerm: string;
   pathHash: string | number;
   scrollToIndex?: number[];
-  currentSelection: ([number, number] | [number])[];
+  currentSelection: [number, number][];
   updateRange: (i: number, newRange: [number, number]) => void;
   deleteRange: (i: number) => void;
   onNewRange: (r: [number, number]) => void;
@@ -104,22 +104,19 @@ const CodeContainerFull = ({
 
   return (
     <div ref={ref} className="relative pb-60">
-      {currentSelection.map(
-        (r, i) =>
-          r.length === 2 && (
-            <Fragment key={i}>
-              <SelectionHandler
-                initialRange={r}
-                updateRange={updateRange}
-                setCurrentlySelectingRange={setCurrentlySelectingRange}
-                deleteRange={deleteRange}
-                i={i}
-                setModifyingRange={setModifyingRange}
-              />
-              <SelectionRect range={r} i={i} deleteRange={deleteRange} />
-            </Fragment>
-          ),
-      )}
+      {currentSelection.map((r, i) => (
+        <Fragment key={i}>
+          <SelectionHandler
+            initialRange={r}
+            updateRange={updateRange}
+            setCurrentlySelectingRange={setCurrentlySelectingRange}
+            deleteRange={deleteRange}
+            i={i}
+            setModifyingRange={setModifyingRange}
+          />
+          <SelectionRect range={r} i={i} deleteRange={deleteRange} />
+        </Fragment>
+      ))}
       {!!currentlySelectingRange && (
         <SelectionRect range={currentlySelectingRange} isTemporary />
       )}
