@@ -305,8 +305,10 @@
 	"Remove related files": "関連ファイルを削除します",
 	"Imported files": "インポートされたファイル",
 	"Referencing target file": "ターゲットファイルの参照",
-	"Clear range": "クリア範囲"
+	"Clear range": "クリア範囲",
+	"Use file": "ファイルを使用します"
 }
+
 
 
 

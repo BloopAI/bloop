@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react';
 import { Trans, useTranslation } from 'react-i18next';
 import ErrorFallback from '../../components/ErrorFallback';
@@ -10,6 +10,7 @@ import { CodeStudioShortType, RepoType, SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
 import PageTemplate from '../../components/PageTemplate';
 import { TabsContext } from '../../context/tabsContext';
+import { getCodeStudios, postCodeStudio } from '../../services/api';
 import AddRepos from './AddRepos';
 import ReposSection from './ReposSection';
 import AddRepoCard from './AddRepoCard';
@@ -39,19 +40,12 @@ const HomePage = () => {
   );
   const [codeStudios, setCodeStudios] = useState<CodeStudioShortType[]>([]);
 
+  const refreshCodeStudios = useCallback(() => {
+    getCodeStudios().then(setCodeStudios);
+  }, []);
+
   useEffect(() => {
-    Promise.resolve([
-      {
-        name: 'My code studio 1',
-        last_modified: '2023-08-21T13:00:00Z',
-        id: '1',
-      },
-      {
-        name: 'Another code studio',
-        last_modified: '2023-08-20T13:00:00Z',
-        id: '2',
-      },
-    ]).then(setCodeStudios);
+    refreshCodeStudios();
   }, []);
 
   useEffect(() => {
@@ -97,11 +91,10 @@ const HomePage = () => {
           addRepos={addReposOpen}
           onClose={(isSubmitted, name) => {
             if (isSubmitted && name) {
-              handleAddStudioTab(name);
-              setCodeStudios((prev) => [
-                ...prev,
-                { id: '3', name, last_modified: '' },
-              ]);
+              postCodeStudio(name).then((id) => {
+                handleAddStudioTab(name, id);
+                refreshCodeStudios();
+              });
             } else if (isSubmitted) {
               fetchRepos();
               setTimeout(() => fetchRepos(), 1000);

@@ -12,23 +12,25 @@ import {
 import { MenuItemType } from '../../../types/general';
 import { LocaleContext } from '../../../context/localeContext';
 import { TabsContext } from '../../../context/tabsContext';
+import { ContextMenuItem } from '../../../components/ContextMenu';
 
 type Props = {
-  last_modified: string;
+  modified_at: string;
   name: string;
+  id: string;
 };
 
-const CodeStudioCard = ({ name, last_modified }: Props) => {
+const CodeStudioCard = ({ name, modified_at, id }: Props) => {
   const { t } = useTranslation();
   const { locale } = useContext(LocaleContext);
   const { handleAddStudioTab } = useContext(TabsContext);
 
   const handleClick = useCallback(() => {
-    handleAddStudioTab(name);
+    handleAddStudioTab(name, id);
   }, [name, handleAddStudioTab]);
 
   const dropdownItems = useMemo(() => {
-    const items = [
+    const items: ContextMenuItem[] = [
       {
         type: MenuItemType.DEFAULT,
         text: t('Rename'),
@@ -69,7 +71,7 @@ const CodeStudioCard = ({ name, last_modified }: Props) => {
         <Calendar raw sizeClassName="w-4 h-4" />
         <p className="select-none">
           <Trans>Last modified</Trans>{' '}
-          {formatDistanceToNow(new Date(last_modified), {
+          {formatDistanceToNow(new Date(modified_at + '.000Z'), {
             addSuffix: true,
             ...(getDateFnsLocale(locale) || {}),
           })}

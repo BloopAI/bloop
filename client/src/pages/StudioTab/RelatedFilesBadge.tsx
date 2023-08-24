@@ -37,7 +37,7 @@ const RelatedFilesBadge = ({ selectedFiles, relatedFiles }: Props) => {
           type: MenuItemType.SELECTABLE,
           icon: <FileIcon filename={f.path} />,
           text: f.path,
-          isSelected: !!selectedFiles.find((s) => s.file_path === f.path),
+          isSelected: !!selectedFiles.find((s) => s.path === f.path),
           onChange: () => {},
         })),
       );
@@ -52,7 +52,7 @@ const RelatedFilesBadge = ({ selectedFiles, relatedFiles }: Props) => {
           type: MenuItemType.SELECTABLE,
           icon: <FileIcon filename={f.path} />,
           text: f.path,
-          isSelected: !!selectedFiles.find((s) => s.file_path === f.path),
+          isSelected: !!selectedFiles.find((s) => s.path === f.path),
           onChange: () => {},
         })),
       );
@@ -79,7 +79,7 @@ const RelatedFilesBadge = ({ selectedFiles, relatedFiles }: Props) => {
             isDark
           >
             <button
-              className={`flex h-6 pl-1.5 pr-2 items-center gap-1 border  rounded-full caption  ${
+              className={`flex h-6 pl-1.5 pr-2 items-center gap-1 border  rounded-full caption select-none ${
                 isVisible
                   ? 'bg-bg-base-hover border-bg-border-hover text-label-title'
                   : 'border-bg-border text-label-base hover:bg-bg-base-hover hover:border-bg-border-hover hover:text-label-title'
