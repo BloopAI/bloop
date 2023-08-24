@@ -311,8 +311,10 @@
 	"Remove related files": "删除相关文件",
 	"Imported files": "导入文件",
 	"Referencing target file": "引用目标文件",
-	"Clear range": "清除范围"
+	"Clear range": "清除范围",
+	"Use file": "使用文件"
 }
+
 
 
 

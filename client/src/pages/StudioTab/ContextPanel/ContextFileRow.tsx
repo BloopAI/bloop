@@ -32,19 +32,29 @@ import { ContextMenuItem } from '../../../components/ContextMenu';
 type Props = StudioContextFile & {
   contextFiles: StudioContextFile[];
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
-  repo?: RepoType;
+  repoFull?: RepoType;
+  tokens: number;
+  onFileHide: (
+    path: string,
+    repo: string,
+    branch: string,
+    hide: boolean,
+  ) => void;
+  onFileRemove: (path: string, repo: string, branch: string) => void;
 };
 
 const ContextFileRow = ({
-  file_path,
+  path,
   tokens,
   ranges,
-  repo_name,
+  repo,
   branch,
-  is_hidden,
+  hidden,
   contextFiles,
   setLeftPanel,
-  repo,
+  repoFull,
+  onFileRemove,
+  onFileHide,
 }: Props) => {
   const { t } = useTranslation();
   const [relatedFiles, setRelatedFiles] = useState<
@@ -52,7 +62,7 @@ const ContextFileRow = ({
   >([]);
   useEffect(() => {
     Promise.resolve(
-      file_path === 'client/src/context/providers/AnalyticsContextProvider.tsx'
+      path === 'client/src/context/providers/AnalyticsContextProvider.tsx'
         ? [
             { type: 'imported', path: 'client/src/App.tsx' },
             { type: 'imported', path: 'client/src/icons/Lock.tsx' },
@@ -77,62 +87,81 @@ const ContextFileRow = ({
         type: MenuItemType.DEFAULT,
         text: t(`Hide`),
         icon: <EyeCut />,
+        onClick: () => onFileHide(path, repo, branch, true),
       },
       {
         type: MenuItemType.DEFAULT,
         text: t(`Remove`),
         icon: <TrashCanFilled />,
+        onClick: () => onFileRemove(path, repo, branch),
       },
     ] as ContextMenuItem[];
-  }, []);
+  }, [onFileRemove, path, repo, branch]);
+
+  const mappedRanges = useMemo((): [number, number][] => {
+    return ranges.map((r) => [r.start, r.end - 1]);
+  }, [ranges]);
 
   const handleClick = useCallback(() => {
-    if (repo) {
+    if (repoFull) {
       setLeftPanel({
         type: StudioLeftPanelType.FILE,
-        data: { filePath: file_path, branch, repo, initialRanges: ranges },
+        data: {
+          filePath: path,
+          branch,
+          repo: repoFull,
+          initialRanges: mappedRanges,
+        },
       });
     }
-  }, [file_path, branch, repo, ranges]);
+  }, [path, branch, repoFull, mappedRanges]);
 
   return (
     <div
-      className="w-full overflow-x-auto border-b border-bg-base bg-bg-sub group"
+      className="w-full overflow-x-auto border-b border-bg-base bg-bg-sub group cursor-pointer"
       onClick={handleClick}
     >
       <div
-        className={`flex gap-3 items-center py-3 px-8 ${
-          is_hidden ? 'opacity-30' : ''
+        className={`max-w-full flex gap-3 items-center py-3 px-8 overflow-x-hidden ${
+          hidden ? 'opacity-30' : ''
         }`}
       >
         <div className="rounded bg-bg-base">
-          <FileIcon filename={file_path} noMargin />
+          <FileIcon filename={path} noMargin />
         </div>
         <div className="flex items-center gap-2 flex-1">
           <p className="body-s-strong text-label-title ellipsis">
-            {file_path.split('/').pop()}
+            {path.split('/').pop()}
           </p>
-          <LinesBadge ranges={ranges} isShort />
+          <LinesBadge ranges={mappedRanges} isShort />
           <RelatedFilesBadge
             selectedFiles={contextFiles}
             relatedFiles={relatedFiles}
           />
         </div>
-        <TokensUsageBadge tokens={tokens} />
-        <div className="h-6 px-2 flex items-center rounded-full border border-bg-border overflow-hidden max-w-12 caption text-label-base">
-          <span className="ellipsis">{`${repo_name.split('/').pop()}${
-            branch ? ` / ${branch.replace(/^origin\//, '')}` : ''
-          }`}</span>
+        <div className="w-16 flex items-center flex-shrink-0">
+          <TokensUsageBadge tokens={tokens} />
         </div>
-        {is_hidden ? (
+        <div className="w-30 flex items-center flex-shrink-0">
+          <div className="h-6 px-2 flex items-center rounded-full border border-bg-border overflow-hidden max-w-full caption text-label-base">
+            <span className="ellipsis">{`${repo.split('/').pop()}${
+              branch ? ` / ${branch.replace(/^origin\//, '')}` : ''
+            }`}</span>
+          </div>
+        </div>
+        {hidden ? (
           <Button
             variant="tertiary"
             size="tiny"
             onlyIcon
-            title={t(is_hidden ? '' : '')}
+            title={t('Use file')}
             className={
               'opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity '
             }
+            onClick={(e) => {
+              e.stopPropagation();
+              onFileHide(path, repo, branch, false);
+            }}
           >
             <EyeCut raw sizeClassName="w-3.5 h-3.5" />
           </Button>
@@ -143,6 +172,7 @@ const ContextFileRow = ({
             icon={<MoreHorizontal sizeClassName="w-3.5 h-3.5" />}
             noChevron
             btnSize="tiny"
+            dropdownBtnClassName="flex-shrink-0"
             appendTo={document.body}
           />
         )}

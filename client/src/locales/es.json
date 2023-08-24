@@ -306,5 +306,6 @@
 	"Remove related files": "Eliminar archivos relacionados",
 	"Imported files": "Archivos importados",
 	"Referencing target file": "Referencia al archivo objetivo",
-	"Clear range": "Borrar rango"
+	"Clear range": "Borrar rango",
+	"Use file": "Usar archivo"
 }
