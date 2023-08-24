@@ -77,7 +77,7 @@ tower-http = { version = "0.4.1", features = ["auth", "cors", "catch-panic", "fs
 
 # api integrations
 octocrab = { version = "0.25.1", features = ["rustls"] }
-reqwest = { version = "0.11.18", features = ["rustls-tls-webpki-roots", "cookies"], default-features = false }
+reqwest = { version = "0.11.20", features = ["rustls-tls-webpki-roots", "cookies"], default-features = false }
 reqwest-eventsource = "0.4.0"
 secrecy = { version = "0.8.0", features = ["serde"] }
 
@@ -122,7 +122,7 @@ erased-serde = "0.3.27"
 scc = { version= "1.8.3", features = ["serde"] }
 sentry-tracing = "0.31.5"
 git-version = "0.3.5"
-gix = { version="0.47.0", features = ["blocking-http-transport-reqwest-rust-tls", "pack-cache-lru-static"] }
+gix = { version="0.52.0", features = ["blocking-http-transport-reqwest-rust-tls", "pack-cache-lru-static"] }
 thread-priority = "0.13.1"
 # We use the git version here, so that we can pull in recent changes that make footnotes work. The
 # latest crates.io version at the time of writing does not include necessary patches.
@@ -136,7 +136,7 @@ criterion = { version = "0.5.1", features = ["async_tokio"] }
 pretty_assertions = "1.3.0"
 tempdir = "0.3.7"
 expect-test = "1.4.1"
-reqwest = { version = "0.11.18", default-features = false, features = ["blocking"] }
+reqwest = { version = "0.11.20", default-features = false, features = ["blocking"] }
 git-version = "0.3.5"
 
 [build-dependencies]
