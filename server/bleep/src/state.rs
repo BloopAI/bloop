@@ -350,6 +350,7 @@ mod test {
             state_file: Some(path.join("state.json")),
             version_file: None,
             cookie_key: None,
+            root_dir: Default::default(),
         }
         .initialize_pool()
         .unwrap();
