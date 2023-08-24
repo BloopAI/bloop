@@ -9,7 +9,7 @@ type Props = {
 const LinesBadge = ({ ranges, isShort }: Props) => {
   const { t } = useTranslation();
   return (
-    <div className="h-5 px-1 flex items-center rounded-sm bg-bg-main/15 caption text-bg-main flex-shrink-0 w-fit">
+    <div className="h-5 px-1 flex items-center rounded-sm bg-bg-main/15 caption text-bg-main flex-shrink-0 w-fit select-none">
       {!ranges.length
         ? t('Whole file')
         : ranges.length === 1
