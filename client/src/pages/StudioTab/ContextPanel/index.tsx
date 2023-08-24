@@ -11,7 +11,11 @@ import Button from '../../../components/Button';
 import { CodeStudioColored, PlusSignInCircle } from '../../../icons';
 import KeyboardChip from '../KeyboardChip';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
-import { StudioContextFile, StudioPanelDataType } from '../../../types/general';
+import {
+  RepoType,
+  StudioContextFile,
+  StudioPanelDataType,
+} from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import ContextFileRow from './ContextFileRow';
 
@@ -22,12 +26,20 @@ type Props = {
   contextFiles: StudioContextFile[];
   tokensTotal: number;
   tokensPerFile: number[];
-  onFileRemove: (path: string, repo: string, branch: string) => void;
+  onFileRemove: (
+    f: { path: string; repo: string; branch: string } | StudioContextFile[],
+  ) => void;
   onFileHide: (
     path: string,
     repo: string,
     branch: string,
     hide: boolean,
+  ) => void;
+  onFileAdded: (
+    repo: RepoType,
+    branch: string,
+    filePath: string,
+    skip: boolean,
   ) => void;
 };
 
@@ -40,6 +52,7 @@ const ContextPanel = ({
   tokensPerFile,
   onFileRemove,
   onFileHide,
+  onFileAdded,
 }: Props) => {
   const { t } = useTranslation();
   const { repositories } = useContext(RepositoriesContext);
@@ -111,6 +124,7 @@ const ContextPanel = ({
               tokens={tokensPerFile[i]}
               onFileRemove={onFileRemove}
               onFileHide={onFileHide}
+              onFileAdded={onFileAdded}
             />
           ))}
         </div>
