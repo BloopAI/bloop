@@ -68,7 +68,7 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
 
   const checkGHAuth = () => {
     getConfig().then((d) => {
-      setGithubConnected(!!d.github_user);
+      setGithubConnected(!!d.user_login);
     });
   };
 
@@ -194,7 +194,7 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
         <div className="flex items-center pl-2.5 gap-2.5 border border-bg-border rounded-4">
           <GitHubLogo />
           <p className="callout text-label-title flex-1">
-            {isGithubConnected ? envConfig.github_user?.login : 'GitHub'}
+            {isGithubConnected ? envConfig.user_login : 'GitHub'}
           </p>
           <button
             type="button"
