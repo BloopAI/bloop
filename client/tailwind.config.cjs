@@ -48,6 +48,7 @@ module.exports = {
         violet: '#8B5CF6',
         pink: '#EC4899',
         orange: '#F78166',
+        'orange-600': '#E9694C',
         yellow: "#EAB408",
         purple: "#652D90",
       },

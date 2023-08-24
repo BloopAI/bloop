@@ -1,4 +1,5 @@
 import { SymbolType, Range, TokenInfoType } from './results';
+import { StudioContextFile } from './general';
 
 export interface RangeLine {
   byte: number;
@@ -247,6 +248,21 @@ export type ConversationType = {
   paths: string[];
   response_timestamp: string;
   focused_chunk: { file_path: string } | null;
+};
+
+export type CodeStudioMessageType =
+  | {
+      User: string;
+    }
+  | { Assistant: string };
+
+export type CodeStudioType = {
+  id: string;
+  name: string;
+  modified_at: string;
+  messages: CodeStudioMessageType[];
+  context: StudioContextFile[];
+  token_counts: { total: number; per_file: [] };
 };
 
 export interface SuggestionsResponse {
