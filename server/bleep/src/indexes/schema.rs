@@ -1,3 +1,6 @@
+//! Every change in this file will trigger a reset of the databases.
+//! Use with care.
+//!
 use tantivy::schema::{
     BytesOptions, Field, IndexRecordOption, Schema, SchemaBuilder, TextFieldIndexing, TextOptions,
     FAST, STORED, STRING,

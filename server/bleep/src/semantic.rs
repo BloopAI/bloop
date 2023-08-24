@@ -5,11 +5,10 @@ use crate::{query::parser::SemanticQuery, Configuration};
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
-        point_id::PointIdOptions, r#match::MatchValue, vectors::VectorsOptions, vectors_config,
-        with_payload_selector, with_vectors_selector, CollectionOperationResponse,
-        CreateCollection, Distance, FieldCondition, FieldType, Filter, Match, PointId,
-        RetrievedPoint, ScoredPoint, SearchPoints, Value, VectorParams, Vectors, VectorsConfig,
-        WithPayloadSelector, WithVectorsSelector,
+        point_id::PointIdOptions, r#match::MatchValue, vectors::VectorsOptions,
+        with_payload_selector, with_vectors_selector, CollectionOperationResponse, FieldCondition,
+        FieldType, Filter, Match, PointId, RetrievedPoint, ScoredPoint, SearchPoints, Value,
+        Vectors, WithPayloadSelector, WithVectorsSelector,
     },
 };
 
@@ -25,9 +24,8 @@ mod schema;
 
 pub use embedder::Embedder;
 use embedder::LocalEmbedder;
+use schema::{create_collection, EMBEDDING_DIM};
 pub use schema::{Embedding, Payload};
-
-pub(crate) const EMBEDDING_DIM: usize = 384;
 
 #[derive(Error, Debug)]
 pub enum SemanticError {
@@ -173,6 +171,17 @@ fn kind_to_value(kind: Option<qdrant_client::qdrant::value::Kind>) -> serde_json
     }
 }
 
+async fn create_indexes(collection_name: &str, qdrant: &QdrantClient) -> anyhow::Result<()> {
+    let text_fields = &["repo_ref", "content_hash", "branches", "relative_path"];
+    for field in text_fields {
+        qdrant
+            .create_field_index(collection_name, field, FieldType::Text, None, None)
+            .await?;
+    }
+
+    Ok(())
+}
+
 impl Semantic {
     pub async fn initialize(
         model_dir: &Path,
@@ -184,17 +193,7 @@ impl Semantic {
         match qdrant.has_collection(&config.collection_name).await {
             Ok(false) => {
                 let CollectionOperationResponse { result, time } = qdrant
-                    .create_collection(&CreateCollection {
-                        collection_name: config.collection_name.to_string(),
-                        vectors_config: Some(VectorsConfig {
-                            config: Some(vectors_config::Config::Params(VectorParams {
-                                size: EMBEDDING_DIM as u64,
-                                distance: Distance::Cosine.into(),
-                                ..Default::default()
-                            })),
-                        }),
-                        ..Default::default()
-                    })
+                    .create_collection(&create_collection(&config.collection_name))
                     .await
                     .unwrap();
 
@@ -211,42 +210,7 @@ impl Semantic {
             Err(_) => return Err(SemanticError::QdrantInitializationError),
         }
 
-        qdrant
-            .create_field_index(
-                &config.collection_name,
-                "repo_ref",
-                FieldType::Text,
-                None,
-                None,
-            )
-            .await?;
-        qdrant
-            .create_field_index(
-                &config.collection_name,
-                "content_hash",
-                FieldType::Text,
-                None,
-                None,
-            )
-            .await?;
-        qdrant
-            .create_field_index(
-                &config.collection_name,
-                "branches",
-                FieldType::Text,
-                None,
-                None,
-            )
-            .await?;
-        qdrant
-            .create_field_index(
-                &config.collection_name,
-                "relative_path",
-                FieldType::Text,
-                None,
-                None,
-            )
-            .await?;
+        create_indexes(&config.collection_name, &qdrant).await?;
 
         if let Some(dylib_dir) = config.dylib_dir.as_ref() {
             init_ort_dylib(dylib_dir);
@@ -279,6 +243,14 @@ impl Semantic {
 
     pub fn embedder(&self) -> &dyn Embedder {
         self.embedder.as_ref()
+    }
+    pub async fn delete_collection(&self) -> anyhow::Result<()> {
+        _ = self
+            .qdrant
+            .delete_collection(&self.config.collection_name)
+            .await?;
+
+        Ok(())
     }
 
     pub async fn health_check(&self) -> anyhow::Result<()> {

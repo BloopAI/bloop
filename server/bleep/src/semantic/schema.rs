@@ -1,3 +1,11 @@
+//! Every change in this file will trigger a reset of the databases.
+//! Use with care.
+//!
+use qdrant_client::qdrant::{
+    vectors_config, CreateCollection, Distance, VectorParams, VectorsConfig,
+};
+
+pub(super) const EMBEDDING_DIM: usize = 384;
 pub type Embedding = Vec<f32>;
 
 #[derive(Default, Clone, Debug, serde::Deserialize, serde::Serialize)]
@@ -38,5 +46,20 @@ impl PartialEq for Payload {
 
         // ignoring deserialized fields that will not exist on a newly
         // created payload
+    }
+}
+
+pub(super) fn create_collection(name: &str) -> CreateCollection {
+    CreateCollection {
+        collection_name: name.to_string(),
+        vectors_config: Some(VectorsConfig {
+            config: Some(vectors_config::Config::Params(VectorParams {
+                size: EMBEDDING_DIM as u64,
+                distance: Distance::Cosine.into(),
+                on_disk: Some(true),
+                ..Default::default()
+            })),
+        }),
+        ..Default::default()
     }
 }
