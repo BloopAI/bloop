@@ -33,7 +33,8 @@ const CodeContainer = ({
 
   const onNewRange = useCallback((range: [number, number]) => {
     setCurrentSelection((prev) => {
-      return mergeRanges([...prev, range]);
+      const newRanges = JSON.parse(JSON.stringify(prev));
+      return mergeRanges([...newRanges, range]);
     });
   }, []);
 
