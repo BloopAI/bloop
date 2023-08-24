@@ -106,12 +106,6 @@ const SelectionHandler = ({
       if (isDraggingEnd && endHandlerRef.current) {
         const deltaY =
           e.clientY - endHandlerRef.current.getBoundingClientRect().top;
-        console.log(
-          'deltaY',
-          e.clientY,
-          deltaY,
-          Math.round(deltaY / CODE_LINE_HEIGHT),
-        );
         const newRange: [number, number] = [
           range[0],
           Math.max(
