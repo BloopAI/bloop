@@ -278,3 +278,12 @@ export const getCodeStudio = (id: string): Promise<CodeStudioType> =>
   http(`/studio/${id}`).then((r) => r.data);
 export const postCodeStudio = (name: string) =>
   http.post('/studio', { name }).then((r) => r.data);
+
+export const getRelatedFiles = (
+  relative_path: string,
+  repo_ref: string,
+  branch: string,
+): Promise<{ data: string[] }> =>
+  http(`/related-files`, { params: { relative_path, repo_ref, branch } }).then(
+    (r) => r.data,
+  );

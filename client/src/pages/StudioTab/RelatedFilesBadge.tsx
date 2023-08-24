@@ -1,64 +1,29 @@
-import { memo, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { memo, useMemo, useState } from 'react';
 import { CornerArrow } from '../../icons';
-import ContextMenu, { ContextMenuItem } from '../../components/ContextMenu';
-import {
-  ExtendedMenuItemType,
-  MenuItemType,
-  StudioContextFile,
-} from '../../types/general';
-import FileIcon from '../../components/FileIcon';
+import ContextMenu from '../../components/ContextMenu';
+import { MenuItemType, StudioContextFile } from '../../types/general';
+import useRelatedFiles from '../../hooks/useRelatedFiles';
 
 type Props = {
   selectedFiles: StudioContextFile[];
   relatedFiles: { type: string; path: string }[];
+  onFileAdded: (filePath: string) => void;
+  onFileRemove: (filePath: string) => void;
 };
 
-const RelatedFilesBadge = ({ selectedFiles, relatedFiles }: Props) => {
-  const { t } = useTranslation();
+const RelatedFilesBadge = ({
+  selectedFiles,
+  relatedFiles,
+  onFileAdded,
+  onFileRemove,
+}: Props) => {
   const [isVisible, setVisibility] = useState(false);
-  const [items, setItems] = useState<ContextMenuItem[]>([]);
-
-  useEffect(() => {
-    const imported = relatedFiles
-      .filter((f) => f.type === 'imported')
-      .sort((a, b) => (a.path < b.path ? -1 : 1));
-    const importing = relatedFiles
-      .filter((f) => f.type === 'importing')
-      .sort((a, b) => (a.path < b.path ? -1 : 1));
-    const menuItems = [];
-    if (imported.length) {
-      menuItems.push({
-        type: ExtendedMenuItemType.DIVIDER_WITH_TEXT,
-        text: t('Imported files'),
-      });
-      menuItems.push(
-        ...imported.map((f) => ({
-          type: MenuItemType.SELECTABLE,
-          icon: <FileIcon filename={f.path} />,
-          text: f.path,
-          isSelected: !!selectedFiles.find((s) => s.path === f.path),
-          onChange: () => {},
-        })),
-      );
-    }
-    if (importing.length) {
-      menuItems.push({
-        type: ExtendedMenuItemType.DIVIDER_WITH_TEXT,
-        text: t('Referencing target file'),
-      });
-      menuItems.push(
-        ...importing.map((f) => ({
-          type: MenuItemType.SELECTABLE,
-          icon: <FileIcon filename={f.path} />,
-          text: f.path,
-          isSelected: !!selectedFiles.find((s) => s.path === f.path),
-          onChange: () => {},
-        })),
-      );
-    }
-    setItems(menuItems);
-  }, [selectedFiles, relatedFiles]);
+  const { items } = useRelatedFiles(
+    selectedFiles,
+    relatedFiles,
+    onFileAdded,
+    onFileRemove,
+  );
 
   const filesNum = useMemo(() => {
     return items.filter(
@@ -69,7 +34,7 @@ const RelatedFilesBadge = ({ selectedFiles, relatedFiles }: Props) => {
   return (
     <>
       {!!filesNum && (
-        <div className="relative">
+        <div className="relative" onClick={(e) => e.stopPropagation()}>
           <ContextMenu
             items={items}
             visible={isVisible}
