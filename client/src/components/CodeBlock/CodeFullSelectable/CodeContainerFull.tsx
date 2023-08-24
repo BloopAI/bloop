@@ -1,34 +1,40 @@
-import React, { Fragment, memo, useEffect, useRef, useState } from 'react';
+import React, {
+  Fragment,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Token as TokenType } from '../../../types/prism';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
 import CodeLine from './CodeLine';
 import SelectionHandler from './SelectionHandler';
+import SelectionRect from './SelectionRect';
 
 type Props = {
   tokens: TokenType[][];
   searchTerm: string;
   pathHash: string | number;
-  onMouseSelectStart: (lineNum: number) => void;
-  onMouseSelectEnd: (lineNum: number) => void;
   scrollToIndex?: number[];
   currentSelection: ([number, number] | [number])[];
   updateRange: (i: number, newRange: [number, number]) => void;
   deleteRange: (i: number) => void;
+  onNewRange: (r: [number, number]) => void;
 };
 
 const CodeContainerFull = ({
   tokens,
   searchTerm,
   pathHash,
-  onMouseSelectStart,
-  onMouseSelectEnd,
   scrollToIndex,
   currentSelection,
   updateRange,
   deleteRange,
+  onNewRange,
 }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [currentlySelectingLine, setCurrentlySelectingLine] = useState(0);
   const [currentlySelectingRange, setCurrentlySelectingRange] = useState<
     null | [number, number]
   >(null);
@@ -61,65 +67,63 @@ const CodeContainerFull = ({
     }
   }, [scrollToIndex, tokens.length]);
 
+  const handleAddRange = useCallback(() => {
+    setCurrentlySelectingRange((prev) => {
+      if (prev) {
+        onNewRange(prev);
+      }
+      return null;
+    });
+  }, []);
+
+  const lines = useMemo(() => {
+    return tokens.map((line, index) => {
+      return (
+        <CodeLine
+          key={pathHash + '-' + index.toString()}
+          lineNumber={index}
+          handleAddRange={handleAddRange}
+          searchTerm={searchTerm}
+          setCurrentlySelectingRange={setCurrentlySelectingRange}
+          isSelectionDisabled={modifyingRange > -1}
+        >
+          {line.map((token, i) => (
+            <span
+              className={`token  ${token.types
+                .filter((t) => t !== 'table')
+                .join(' ')}`}
+              key={`cell-${index}-${i}`}
+            >
+              {token.content}
+            </span>
+          ))}
+        </CodeLine>
+      );
+    });
+  }, [tokens, pathHash, searchTerm, modifyingRange, handleAddRange]);
+
   return (
     <div ref={ref} className="relative pb-60">
       {currentSelection.map(
         (r, i) =>
           r.length === 2 && (
-            <SelectionHandler
-              key={i}
-              initialRange={r}
-              updateRange={updateRange}
-              setCurrentlySelectingRange={setCurrentlySelectingRange}
-              deleteRange={deleteRange}
-              i={i}
-              setModifyingRange={setModifyingRange}
-            />
+            <Fragment key={i}>
+              <SelectionHandler
+                initialRange={r}
+                updateRange={updateRange}
+                setCurrentlySelectingRange={setCurrentlySelectingRange}
+                deleteRange={deleteRange}
+                i={i}
+                setModifyingRange={setModifyingRange}
+              />
+              <SelectionRect range={r} i={i} deleteRange={deleteRange} />
+            </Fragment>
           ),
       )}
-      {tokens.map((line, index) => {
-        const selectedRange =
-          currentSelection.find(
-            (s, i) =>
-              (i !== modifyingRange &&
-                s[0] <= index &&
-                ((s[1] && s[1] >= index) ||
-                  (!s[1] &&
-                    currentlySelectingLine &&
-                    currentlySelectingLine >= index))) ||
-              (s[0] >= index &&
-                !s[1] &&
-                i !== modifyingRange &&
-                currentlySelectingLine &&
-                currentlySelectingLine <= index),
-          ) ||
-          (currentlySelectingRange &&
-            currentlySelectingRange[0] <= index &&
-            currentlySelectingRange[1] >= index);
-        return (
-          <CodeLine
-            key={pathHash + '-' + index.toString()}
-            lineNumber={index}
-            onMouseSelectStart={onMouseSelectStart}
-            onMouseSelectEnd={onMouseSelectEnd}
-            searchTerm={searchTerm}
-            isSelected={!!selectedRange}
-            setCurrentlySelectingLine={setCurrentlySelectingLine}
-            isSelectionDisabled={modifyingRange > -1}
-          >
-            {line.map((token, i) => (
-              <span
-                className={`token  ${token.types
-                  .filter((t) => t !== 'table')
-                  .join(' ')}`}
-                key={`cell-${index}-${i}`}
-              >
-                {token.content}
-              </span>
-            ))}
-          </CodeLine>
-        );
-      })}
+      {!!currentlySelectingRange && (
+        <SelectionRect range={currentlySelectingRange} isTemporary />
+      )}
+      {lines}
     </div>
   );
 };

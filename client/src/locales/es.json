@@ -301,12 +301,10 @@
 	"# ranges_one": "{{count}} ranges",
 	"# ranges_other": "{{count}} ranges",
 	"Only the selected lines (# - #) will be used as context.": "Solo las líneas seleccionadas ({{start}} - {{end}}) se utilizarán como contexto.",
-	"Clear ranges": "Rangos claros",
+	"Clear ranges": "Borrar rangos",
 	"Only the selected ranges will be used as context.": "Solo los rangos seleccionados se utilizarán como contexto.",
 	"Remove related files": "Eliminar archivos relacionados",
 	"Imported files": "Archivos importados",
-	"Referencing target file": "Referencia al archivo objetivo"
+	"Referencing target file": "Referencia al archivo objetivo",
+	"Clear range": "Borrar rango"
 }
-
-
-
