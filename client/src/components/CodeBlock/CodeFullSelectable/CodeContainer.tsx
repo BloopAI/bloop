@@ -16,10 +16,8 @@ type Props = {
   tokens: TokenType[][];
   searchTerm: string;
   scrollToIndex?: number[];
-  currentSelection: ([number, number] | [number])[];
-  setCurrentSelection: Dispatch<
-    SetStateAction<([number, number] | [number])[]>
-  >;
+  currentSelection: [number, number][];
+  setCurrentSelection: Dispatch<SetStateAction<[number, number][]>>;
 };
 
 const CodeContainer = ({
@@ -33,29 +31,9 @@ const CodeContainer = ({
     [relativePath],
   ); // To tell if code has changed
 
-  const onMouseSelectStart = useCallback((lineNum: number) => {
+  const onNewRange = useCallback((range: [number, number]) => {
     setCurrentSelection((prev) => {
-      return [...prev, [lineNum]];
-    });
-  }, []);
-
-  const onMouseSelectEnd = useCallback((lineNum: number) => {
-    setCurrentSelection((prev) => {
-      if (!prev.length) {
-        return [];
-      }
-      const newSelection = JSON.parse(JSON.stringify(prev));
-      const current = newSelection.pop();
-      if (current.length === 2) {
-        return prev;
-      }
-      const startsAtTop = current[0] <= lineNum;
-      const newRanges = [
-        ...newSelection,
-        startsAtTop ? [current[0], lineNum] : [lineNum, current[0]],
-      ];
-
-      return mergeRanges(newRanges);
+      return mergeRanges([...prev, range]);
     });
   }, []);
 
@@ -78,11 +56,10 @@ const CodeContainer = ({
   return (
     <CodeContainerFull
       pathHash={pathHash}
-      onMouseSelectStart={onMouseSelectStart}
-      onMouseSelectEnd={onMouseSelectEnd}
       tokens={tokens}
       updateRange={updateRange}
       deleteRange={deleteRange}
+      onNewRange={onNewRange}
       {...otherProps}
     />
   );

@@ -55,8 +55,10 @@ const SelectionHandler = ({
   };
 
   useEffect(() => {
-    setCurrentlySelectingRange(deferredRange);
-  }, [deferredRange]);
+    if (isDraggingEnd || isDraggingStart) {
+      setCurrentlySelectingRange(deferredRange);
+    }
+  }, [deferredRange, isDraggingEnd, isDraggingStart]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
