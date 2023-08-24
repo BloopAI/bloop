@@ -69,9 +69,6 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
   const checkGHAuth = () => {
     getConfig().then((d) => {
       setGithubConnected(!!d.github_user);
-      if (!!d.github_user) {
-        handleNext();
-      }
     });
   };
 
