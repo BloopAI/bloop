@@ -99,6 +99,18 @@ const Conversation = ({
     });
   }, [studioId, conversation, input]);
 
+  const handleClearConversation = useCallback(() => {
+    patchCodeStudio(studioId, {
+      messages: [],
+    }).then(() => {
+      refetchCodeStudio();
+      setInput({
+        author: StudioConversationMessageAuthor.USER,
+        message: '',
+      });
+    });
+  }, [studioId, refetchCodeStudio]);
+
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -142,7 +154,11 @@ const Conversation = ({
               <ArrowRefresh />
               <Trans>View history</Trans>
             </Button>
-            <Button size="small" variant="tertiary">
+            <Button
+              size="small"
+              variant="tertiary"
+              onClick={handleClearConversation}
+            >
               <TrashCanFilled />
               <Trans>Clear conversation</Trans>
             </Button>
