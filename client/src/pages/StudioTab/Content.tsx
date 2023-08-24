@@ -50,8 +50,8 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
   }, [refetchCodeStudio]);
 
   const handleAddContextClose = useCallback(() => setAddContextOpen(false), []);
-  const onNewContextSubmit = useCallback(
-    (repo: RepoType, branch: string, filePath: string) => {
+  const onFileAdded = useCallback(
+    (repo: RepoType, branch: string, filePath: string, skip?: boolean) => {
       if (tab.key) {
         patchCodeStudio(tab.key, {
           context: [
@@ -65,10 +65,12 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
             },
           ],
         }).then(() => refetchCodeStudio());
-        setLeftPanel({
-          type: StudioLeftPanelType.FILE,
-          data: { repo, branch, filePath },
-        });
+        if (!skip) {
+          setLeftPanel({
+            type: StudioLeftPanelType.FILE,
+            data: { repo, branch, filePath },
+          });
+        }
       }
     },
     [tab.key, contextFiles],
@@ -127,17 +129,24 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
   );
 
   const onFileRemove = useCallback(
-    (filePath: string, repo_ref: string, branch: string) => {
-      const patchedFile = contextFiles.findIndex(
-        (f) =>
-          f.path === filePath && f.repo === repo_ref && f.branch === branch,
+    (
+      f: { path: string; repo: string; branch: string } | StudioContextFile[],
+    ) => {
+      const files = Array.isArray(f) ? f : [f];
+      let newContext: StudioContextFile[] = JSON.parse(
+        JSON.stringify(contextFiles),
       );
-      if (tab.key && patchedFile > -1) {
-        const newContext = contextFiles.filter((f, i) => i !== patchedFile);
-        patchCodeStudio(tab.key, {
-          context: newContext,
-        }).then(() => refetchCodeStudio());
-      }
+      files.forEach(({ path, repo, branch }) => {
+        const patchedFile = newContext.findIndex(
+          (f) => f.path === path && f.repo === repo && f.branch === branch,
+        );
+        if (tab.key && patchedFile > -1) {
+          newContext = newContext.filter((f, i) => i !== patchedFile);
+        }
+      });
+      patchCodeStudio(tab.key, {
+        context: newContext,
+      }).then(() => refetchCodeStudio());
     },
     [tab.key, contextFiles],
   );
@@ -156,6 +165,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
               tokensPerFile={tokensPerFile}
               onFileRemove={onFileRemove}
               onFileHide={onFileHide}
+              onFileAdded={onFileAdded}
             />
           ) : leftPanel.type === StudioLeftPanelType.HISTORY ? (
             <HistoryPanel setLeftPanel={setLeftPanel} />
@@ -166,12 +176,17 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
               {...leftPanel.data}
               setLeftPanel={setLeftPanel}
               onFileRangesChanged={onFileRangesChanged}
+              tokens={tokensPerFile[tokensPerFile.length - 1]}
+              onFileHide={onFileHide}
+              onFileRemove={onFileRemove}
+              onFileAdded={onFileAdded}
+              contextFiles={contextFiles}
             />
           ) : null}
           <AddContextModal
             isVisible={isAddContextOpen}
             onClose={handleAddContextClose}
-            onSubmit={onNewContextSubmit}
+            onSubmit={onFileAdded}
           />
         </div>
         <div className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col">

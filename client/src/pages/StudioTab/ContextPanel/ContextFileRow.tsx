@@ -23,11 +23,14 @@ import {
   EyeCut,
   MinusSignInCircle,
   MoreHorizontal,
+  PlusSignInCircle,
   TrashCanFilled,
 } from '../../../icons';
 import RelatedFilesBadge from '../RelatedFilesBadge';
 import { DropdownWithIcon } from '../../../components/Dropdown';
 import { ContextMenuItem } from '../../../components/ContextMenu';
+import { getRelatedFiles } from '../../../services/api';
+import useRelatedFiles from '../../../hooks/useRelatedFiles';
 
 type Props = StudioContextFile & {
   contextFiles: StudioContextFile[];
@@ -40,7 +43,15 @@ type Props = StudioContextFile & {
     branch: string,
     hide: boolean,
   ) => void;
-  onFileRemove: (path: string, repo: string, branch: string) => void;
+  onFileRemove: (
+    f: { path: string; repo: string; branch: string } | StudioContextFile[],
+  ) => void;
+  onFileAdded: (
+    repo: RepoType,
+    branch: string,
+    filePath: string,
+    skip: boolean,
+  ) => void;
 };
 
 const ContextFileRow = ({
@@ -55,55 +66,70 @@ const ContextFileRow = ({
   repoFull,
   onFileRemove,
   onFileHide,
+  onFileAdded,
 }: Props) => {
   const { t } = useTranslation();
   const [relatedFiles, setRelatedFiles] = useState<
     { type: string; path: string }[]
   >([]);
+  const [isAddingRelatedFiles, setAddingRelatedFiles] = useState(false);
+
   useEffect(() => {
-    Promise.resolve(
-      path === 'client/src/context/providers/AnalyticsContextProvider.tsx'
-        ? [
-            { type: 'imported', path: 'client/src/App.tsx' },
-            { type: 'imported', path: 'client/src/icons/Lock.tsx' },
-            { type: 'importing', path: 'client/src/icons/Intellisense.tsx' },
-            { type: 'importing', path: 'client/src/icons/Paper.tsx' },
-            { type: 'imported', path: 'client/src/icons/Modal.tsx' },
-          ]
-        : [],
-    ).then((resp) => {
-      setRelatedFiles(resp);
+    getRelatedFiles(path, repo, branch).then((resp) => {
+      setRelatedFiles(
+        resp.data.map((path) => ({ type: 'imported', path })),
+        // .concat(
+        //   resp.files_importing.map((path) => ({ type: 'importing', path })),
+        // ),
+      );
     });
   }, []);
 
   const dropdownItems = useMemo(() => {
-    return [
-      {
+    const items: ContextMenuItem[] = [];
+    const usedRelatedFiles = contextFiles.filter(
+      (c) =>
+        !!relatedFiles.find(
+          (r) => r.path === c.path && c.repo === repo && c.branch === branch,
+        ),
+    );
+    if (usedRelatedFiles.length) {
+      items.push({
         type: MenuItemType.DEFAULT,
         text: t(`Remove related files`),
         icon: <MinusSignInCircle />,
-      },
-      {
+        onClick: () => onFileRemove(usedRelatedFiles),
+      });
+    } else if (relatedFiles.length) {
+      items.push({
         type: MenuItemType.DEFAULT,
-        text: t(`Hide`),
-        icon: <EyeCut />,
-        onClick: () => onFileHide(path, repo, branch, true),
-      },
-      {
-        type: MenuItemType.DEFAULT,
-        text: t(`Remove`),
-        icon: <TrashCanFilled />,
-        onClick: () => onFileRemove(path, repo, branch),
-      },
-    ] as ContextMenuItem[];
-  }, [onFileRemove, path, repo, branch]);
+        text: t(`Add related files`),
+        icon: <PlusSignInCircle />,
+        noCloseOnClick: true,
+        onClick: () => setAddingRelatedFiles(true),
+      });
+    }
+    items.push({
+      type: MenuItemType.DEFAULT,
+      text: t(`Hide`),
+      icon: <EyeCut />,
+      onClick: () => onFileHide(path, repo, branch, true),
+    });
+    items.push({
+      type: MenuItemType.DEFAULT,
+      text: t(`Remove`),
+      icon: <TrashCanFilled />,
+      onClick: () => onFileRemove({ path, repo, branch }),
+    });
+    return items;
+  }, [onFileRemove, path, repo, branch, contextFiles, relatedFiles]);
 
   const mappedRanges = useMemo((): [number, number][] => {
     return ranges.map((r) => [r.start, r.end - 1]);
   }, [ranges]);
 
   const handleClick = useCallback(() => {
-    if (repoFull) {
+    if (repoFull && !hidden) {
       setLeftPanel({
         type: StudioLeftPanelType.FILE,
         data: {
@@ -114,7 +140,36 @@ const ContextFileRow = ({
         },
       });
     }
-  }, [path, branch, repoFull, mappedRanges]);
+  }, [path, branch, repoFull, mappedRanges, hidden]);
+
+  const handleRelatedFileAdded = useCallback(
+    (filePath: string) => {
+      if (repoFull) {
+        onFileAdded(repoFull, branch, filePath, true);
+      }
+    },
+    [repoFull, branch, onFileAdded],
+  );
+
+  const handleRelatedFileRemoved = useCallback(
+    (path: string) => {
+      if (repoFull) {
+        onFileRemove({ branch, path, repo });
+      }
+    },
+    [repo, branch, onFileRemove],
+  );
+
+  const { items: relatedFilesItems } = useRelatedFiles(
+    contextFiles,
+    relatedFiles,
+    handleRelatedFileAdded,
+    handleRelatedFileRemoved,
+  );
+
+  const onRelatedFiledClosed = useCallback(() => {
+    setAddingRelatedFiles(false);
+  }, []);
 
   return (
     <div
@@ -122,7 +177,7 @@ const ContextFileRow = ({
       onClick={handleClick}
     >
       <div
-        className={`max-w-full flex gap-3 items-center py-3 px-8 overflow-x-hidden ${
+        className={`max-w-full flex gap-3 items-center py-3 px-8 ${
           hidden ? 'opacity-30' : ''
         }`}
       >
@@ -137,6 +192,8 @@ const ContextFileRow = ({
           <RelatedFilesBadge
             selectedFiles={contextFiles}
             relatedFiles={relatedFiles}
+            onFileAdded={handleRelatedFileAdded}
+            onFileRemove={handleRelatedFileRemoved}
           />
         </div>
         <div className="w-16 flex items-center flex-shrink-0">
@@ -166,15 +223,18 @@ const ContextFileRow = ({
             <EyeCut raw sizeClassName="w-3.5 h-3.5" />
           </Button>
         ) : (
-          <DropdownWithIcon
-            items={dropdownItems}
-            btnOnlyIcon
-            icon={<MoreHorizontal sizeClassName="w-3.5 h-3.5" />}
-            noChevron
-            btnSize="tiny"
-            dropdownBtnClassName="flex-shrink-0"
-            appendTo={document.body}
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <DropdownWithIcon
+              items={isAddingRelatedFiles ? relatedFilesItems : dropdownItems}
+              btnOnlyIcon
+              icon={<MoreHorizontal sizeClassName="w-3.5 h-3.5" />}
+              noChevron
+              btnSize="tiny"
+              dropdownBtnClassName="flex-shrink-0"
+              appendTo={document.body}
+              onClose={onRelatedFiledClosed}
+            />
+          </div>
         )}
       </div>
     </div>
