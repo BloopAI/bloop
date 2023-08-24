@@ -31,10 +31,9 @@ type Props = {
   form: Form;
   setForm: Dispatch<SetStateAction<Form>>;
   onContinue: () => void;
-  isJustUpdated: boolean;
 };
 
-const UserForm = ({ form, setForm, onContinue, isJustUpdated }: Props) => {
+const UserForm = ({ form, setForm, onContinue }: Props) => {
   const { t } = useTranslation();
   const { isGithubConnected, setGithubConnected } = useContext(
     UIContext.GitHubConnected,
@@ -121,7 +120,7 @@ const UserForm = ({ form, setForm, onContinue, isJustUpdated }: Props) => {
           <h4 className="text-label-title">
             <Trans>Setup bloop</Trans>
           </h4>
-          {isJustUpdated && (
+          {envConfig.credentials_upgrade && (
             <p className="text-label-muted body-s">
               <Trans>
                 We’ve updated our auth service to make bloop more secure, please

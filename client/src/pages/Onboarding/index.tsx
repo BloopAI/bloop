@@ -83,6 +83,7 @@ const Onboarding = () => {
     } else {
       getConfig()
         .then((d) => {
+          setEnvConfig(d);
           if (!d.user_login) {
             setJustUpdated(d.credentials_upgrade);
             setShouldShowWelcome(true);
@@ -163,12 +164,7 @@ const Onboarding = () => {
             <div
               className={`w-[512px] h-full flex flex-col items-center justify-center px-13 gap-6`}
             >
-              <UserForm
-                form={form}
-                setForm={setForm}
-                onContinue={onSubmit}
-                isJustUpdated={isJustUpdated}
-              />
+              <UserForm form={form} setForm={setForm} onContinue={onSubmit} />
             </div>
           </div>
           <div

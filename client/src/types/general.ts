@@ -254,6 +254,7 @@ export type EnvConfig = {
   bloop_user_profile?: {
     prompt_guide?: string;
   };
+  credentials_upgrade: boolean;
 };
 
 export type IpynbOutputType = {
