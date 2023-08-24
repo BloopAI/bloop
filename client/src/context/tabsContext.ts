@@ -13,7 +13,7 @@ type ContextType = {
     branch?: string | null,
     history?: NavigationItem[],
   ) => void;
-  handleAddStudioTab: (name: string) => void;
+  handleAddStudioTab: (name: string, id: string) => void;
   handleRemoveTab: (t: string) => void;
   setActiveTab: (t: string) => void;
   updateTabNavHistory: (
