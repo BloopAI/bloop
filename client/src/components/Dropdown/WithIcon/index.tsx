@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TippyProps } from '@tippyjs/react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDownFilled, ChevronUpFilled } from '../../../icons';
@@ -21,6 +21,7 @@ type Props = {
   size?: 'small' | 'medium' | 'large';
   dropdownPlacement?: TippyProps['placement'];
   appendTo?: TippyProps['appendTo'];
+  onClose?: () => void;
 };
 
 const Dropdown = ({
@@ -38,6 +39,7 @@ const Dropdown = ({
   appendTo = 'parent',
   btnTitle,
   disabled,
+  onClose,
 }: Props) => {
   const { t } = useTranslation();
   const [visible, setVisibility] = useState(false);
@@ -45,6 +47,12 @@ const Dropdown = ({
   useOnClickOutside(ref, () =>
     appendTo === 'parent' ? setVisibility(false) : {},
   );
+
+  useEffect(() => {
+    if (!visible && onClose) {
+      onClose();
+    }
+  }, [visible, onClose]);
 
   return (
     <div className="relative" ref={ref}>

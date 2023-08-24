@@ -1,4 +1,4 @@
-import React, { MouseEvent, PropsWithChildren, useRef } from 'react';
+import React, { MouseEvent, PropsWithChildren } from 'react';
 import Tippy, { TippyProps } from '@tippyjs/react/headless';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
 import { ExtendedMenuItemType, MenuItemType } from '../../types/general';
@@ -20,6 +20,7 @@ export type ContextMenuLinkItem = {
   disabled?: boolean;
   tooltip?: string;
   underline?: boolean;
+  noCloseOnClick?: boolean;
 };
 
 export type ContextMenuSelectableItem = {
@@ -52,6 +53,7 @@ export type ContextMenuItem =
       disabled?: boolean;
       tooltip?: string;
       underline?: boolean;
+      noCloseOnClick?: boolean;
     };
 
 type Props = {
@@ -106,7 +108,9 @@ const ContextMenu = ({
             onClick={(e) => {
               e.stopPropagation();
               item.onClick?.(e);
-              handleClose();
+              if (!item.noCloseOnClick) {
+                handleClose();
+              }
             }}
             onMouseOver={item.onMouseOver}
             text={item.text!}
