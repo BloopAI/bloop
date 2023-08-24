@@ -19,10 +19,8 @@ type Props = {
   relativePath: string;
   containerWidth: number;
   containerHeight: number;
-  currentSelection: ([number, number] | [number])[];
-  setCurrentSelection: Dispatch<
-    SetStateAction<([number, number] | [number])[]>
-  >;
+  currentSelection: [number, number][];
+  setCurrentSelection: Dispatch<SetStateAction<[number, number][]>>;
 };
 
 const CodeFull = ({

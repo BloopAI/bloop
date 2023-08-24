@@ -304,8 +304,10 @@
 	"Only the selected ranges will be used as context.": "選択した範囲のみがコンテキストとして使用されます。",
 	"Remove related files": "関連ファイルを削除します",
 	"Imported files": "インポートされたファイル",
-	"Referencing target file": "ターゲットファイルの参照"
+	"Referencing target file": "ターゲットファイルの参照",
+	"Clear range": "クリア範囲"
 }
+
 
 
 
