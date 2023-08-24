@@ -214,20 +214,24 @@ async fn token_counts(app: Application, context: &[ContextFile]) -> webserver::R
                     return Ok(0);
                 }
 
-                let lines = doc.content.lines().collect::<Vec<_>>();
-
                 let mut token_count = 0;
-                for range in &file.ranges {
-                    let chunk = lines
-                        .iter()
-                        .copied()
-                        .skip(range.start)
-                        .take(range.end - range.start)
-                        .collect::<Vec<_>>()
-                        .join("\n");
+                let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
 
-                    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
-                    token_count += core_bpe.encode_ordinary(&chunk).len();
+                if file.ranges.is_empty() {
+                    token_count = core_bpe.encode_ordinary(&doc.content).len();
+                } else {
+                    let lines = doc.content.lines().collect::<Vec<_>>();
+                    for range in &file.ranges {
+                        let chunk = lines
+                            .iter()
+                            .copied()
+                            .skip(range.start)
+                            .take(range.end - range.start)
+                            .collect::<Vec<_>>()
+                            .join("\n");
+
+                        token_count += core_bpe.encode_ordinary(&chunk).len();
+                    }
                 }
 
                 Ok::<_, Error>(token_count)
