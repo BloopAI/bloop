@@ -310,8 +310,11 @@
 	"Clear range": "Clear range",
 	"Use file": "Use file",
 	"Add related files": "Add related files",
-	"Add related file": "Add related file"
+	"Add related file": "Add related file",
+	"Use": "Use",
+	"Restore": "Restore"
 }
+
 
 
 

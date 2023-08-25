@@ -309,8 +309,12 @@
 	"Use file": "ファイルを使用します",
 	"Add related files": "関連ファイルを追加します",
 	"Add related file": "関連ファイルを追加します",
-	"Select branch": "ブランチを選択"
+	"Select branch": "ブランチを選択",
+	"Search file...": "ファイルを検索...",
+	"Use": "使用",
+	"Restore": "復元する"
 }
+
 
 
 

@@ -5,7 +5,12 @@ type Props = {
 };
 
 const UsageEmpty = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 20 20"
+    fill="none"
+    key="usage-0"
+  >
     <path
       fillRule="evenodd"
       clipRule="evenodd"
@@ -22,7 +27,12 @@ const UsageEmpty = () => (
 );
 
 const UsageLow = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 20 20"
+    fill="none"
+    key="usage-low"
+  >
     <path
       fillRule="evenodd"
       clipRule="evenodd"
@@ -63,7 +73,12 @@ const UsageLow = () => (
 );
 
 const UsageFull = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 26" fill="none">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 26"
+    fill="none"
+    key="usage-full"
+  >
     <g filter="url(#filter0_d_10969_4670)">
       <path
         fillRule="evenodd"
@@ -141,7 +156,12 @@ const UsageFull = () => (
 );
 
 const UsageMedium = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 20 20"
+    fill="none"
+    key="usage-med"
+  >
     <path
       fillRule="evenodd"
       clipRule="evenodd"
@@ -182,7 +202,12 @@ const UsageMedium = () => (
 );
 
 const UsageHigh = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 26" fill="none">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 26"
+    fill="none"
+    key="usage-hi"
+  >
     <g filter="url(#filter0_d_10650_70296)">
       <path
         fillRule="evenodd"
