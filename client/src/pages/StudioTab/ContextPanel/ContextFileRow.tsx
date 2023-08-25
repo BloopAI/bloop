@@ -77,10 +77,11 @@ const ContextFileRow = ({
   useEffect(() => {
     getRelatedFiles(path, repo, branch).then((resp) => {
       setRelatedFiles(
-        resp.data.map((path) => ({ type: 'imported', path })),
-        // .concat(
-        //   resp.files_importing.map((path) => ({ type: 'importing', path })),
-        // ),
+        resp.files_imported
+          .map((path) => ({ type: 'imported', path }))
+          .concat(
+            resp.files_importing.map((path) => ({ type: 'importing', path })),
+          ),
       );
     });
   }, []);
