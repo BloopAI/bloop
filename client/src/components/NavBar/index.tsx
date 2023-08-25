@@ -59,7 +59,7 @@ const NavBar = ({ isSkeleton }: Props) => {
         },
       },
     ];
-  }, [isSelfServe, openLink, gitHubLogout]);
+  }, [isSelfServe, openLink, gitHubLogout, t]);
 
   return (
     <div
