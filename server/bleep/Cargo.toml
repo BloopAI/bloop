@@ -30,10 +30,10 @@ harness = false
 
 # core
 tantivy = { version = "0.19.2", features = ["mmap"] }
-tokio = { version = "1.32.0", features = ["macros", "process", "rt", "rt-multi-thread", "io-std", "io-util", "sync", "fs"] }
+tokio = { version = "1.29.1", features = ["macros", "process", "rt", "rt-multi-thread", "io-std", "io-util", "sync", "fs"] }
 futures = "0.3.28"
 rayon = "1.7.0"
-clap = { version = "4.3.24", features = ["derive"] }
+clap = { version = "4.3.11", features = ["derive"] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "registry"] }
 tracing-appender = "0.2.2"
@@ -42,23 +42,23 @@ sqlx = { version = "0.6.3", features = ["sqlite", "migrate", "offline", "runtime
 
 # for debugging
 console-subscriber = { version = "0.1.10", optional = true }
-histogram = { version = "0.7.4", optional = true }
+histogram = { version = "0.7.3", optional = true }
 
 # error handling
-anyhow = "1.0.75"
-thiserror = "1.0.47"
+anyhow = "1.0.71"
+thiserror = "1.0.41"
 
 # query parsing
-pest = "2.7.2"
-pest_derive = "2.7.2"
+pest = "2.7.0"
+pest_derive = "2.7.0"
 
 # code-nav
 tree-sitter = "0.20.10"
-tree-sitter-c = "0.20.6"
+tree-sitter-c = "0.20.2"
 tree-sitter-go = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "05900fa" }
 tree-sitter-javascript = "0.20.0"
-tree-sitter-python = "0.20.4"
-tree-sitter-rust = "0.20.4"
+tree-sitter-python = "0.20.2"
+tree-sitter-rust = "0.20.3"
 tree-sitter-typescript = "0.20.2"
 tree-sitter-c-sharp = "0.20.0"
 tree-sitter-java = { git = "https://github.com/tree-sitter/tree-sitter-java", tag = "v0.20.0" }
@@ -66,14 +66,14 @@ tree-sitter-cpp = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev 
 tree-sitter-ruby = "0.20.0"
 tree-sitter-r = "0.19.5"
 tree-sitter-php = { git = "https://github.com/tree-sitter/tree-sitter-php" }
-petgraph = { version = "0.6.4", default-features = false, features = ["serde-1"] }
+petgraph = { version = "0.6.3", default-features = false, features = ["serde-1"] }
 
 # webserver
-serde_json = "1.0.105"
-axum = { version = "0.6.20", features = ["http2", "headers"] }
-axum-extra = { version = "0.7.7", features = ["cookie", "cookie-private"] }
+serde_json = "1.0.100"
+axum = { version = "0.6.18", features = ["http2", "headers"] }
+axum-extra = { version = "0.7.4", features = ["cookie", "cookie-private"] }
 tower = "0.4.13"
-tower-http = { version = "0.4.3", features = ["auth", "cors", "catch-panic", "fs"] }
+tower-http = { version = "0.4.1", features = ["auth", "cors", "catch-panic", "fs"] }
 
 # api integrations
 octocrab = { version = "0.25.1", features = ["rustls"] }
@@ -84,32 +84,32 @@ secrecy = { version = "0.8.0", features = ["serde"] }
 # file processing
 ignore = "=0.4.20"
 hyperpolyglot = { git = "https://github.com/bloopai/hyperpolyglot" }
-blake3 = "1.4.1"
+blake3 = "1.4.0"
 notify-debouncer-mini = { version = "0.3.0", default-features = false }
 
 # misc
-serde = "1.0.186"
-regex = "1.9.3"
+serde = "1.0.166"
+regex = "1.9.1"
 regex-syntax = "0.6.29"
 smallvec = { version = "1.11.0", features = ["serde"]}
-async-trait = "0.1.73"
+async-trait = "0.1.71"
 flume = "0.10.14"
-either = "1.9.0"
+either = "1.8.1"
 compact_str = "0.7.1"
 bincode = "1.3.3"
 directories = "5.0.1"
 chrono = { version = "0.4.26", features = ["serde"], default-features = false }
-time = { version = "0.3.27", default-features = false }
+time = { version = "0.3.22", default-features = false }
 phf = "0.11.2"
 rand = "0.8.5"
 once_cell = "1.18.0"
-relative-path = "1.9.0"
-qdrant-client = { version = "1.4.0", default-features = false }
-tokenizers = { version = "0.13.4", default-features = false, features = ["progressbar", "cli", "onig", "esaxx_fast"] }
+relative-path = "1.8.0"
+qdrant-client = { version = "1.3.0", default-features = false }
+tokenizers = { version = "0.13.3", default-features = false, features = ["progressbar", "cli", "onig", "esaxx_fast"] }
 tokio-stream = "0.1.14"
 ort = { git = "https://github.com/bloopai/ort", branch = "env-builder-telemetry" }
 ndarray = "0.15"
-uuid = { version = "1.4.1", features = ["v4", "fast-rng", "serde"] }
+uuid = { version = "1.4.0", features = ["v4", "fast-rng", "serde"] }
 jsonwebtoken = { version = "8.3.0", features = ["use_pem"] }
 tiktoken-rs = "0.4.5"
 semver = { version = "1", features = ["serde"] }
@@ -118,8 +118,8 @@ semver = { version = "1", features = ["serde"] }
 sentry = { version = "0.31.5", default-features = false, features = ["tracing", "contexts", "debug-images", "panic", "rustls", "reqwest"] }
 rudderanalytics = { version = "1.1.2", default-features = false, features = ["rustls-tls"] }
 async-stream = "0.3.5"
-erased-serde = "0.3.30"
-scc = { version= "1.9.1", features = ["serde"] }
+erased-serde = "0.3.27"
+scc = { version= "1.8.3", features = ["serde"] }
 sentry-tracing = "0.31.5"
 git-version = "0.3.5"
 gix = { version="0.52.0", features = ["blocking-http-transport-reqwest-rust-tls", "pack-cache-lru-static"] }
@@ -127,13 +127,13 @@ thread-priority = "0.13.1"
 # We use the git version here, so that we can pull in recent changes that make footnotes work. The
 # latest crates.io version at the time of writing does not include necessary patches.
 comrak = { default-features = false, git = "https://github.com/kivikakk/comrak" }
-lazy-regex = "3.0.1"
+lazy-regex = "3.0.0"
 quick-xml = { version = "0.29.0", features = ["serialize"] }
 jsonwebtokens-cognito = "0.1.1"
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["async_tokio"] }
-pretty_assertions = "1.4.0"
+pretty_assertions = "1.3.0"
 tempdir = "0.3.7"
 expect-test = "1.4.1"
 reqwest = { version = "0.11.20", default-features = false, features = ["blocking"] }
@@ -141,6 +141,6 @@ git-version = "0.3.5"
 
 [build-dependencies]
 phf_codegen = "0.11.2"
-serde = {version = "1.0.186", features = ["derive"]}
-serde_yaml = "0.9.25"
-blake3 = "1.4.1"
+serde = {version = "1.0.166", features = ["derive"]}
+serde_yaml = "0.9.22"
+blake3 = "1.4.0"
