@@ -149,7 +149,10 @@ A: "#
     )
 }
 
-pub fn answer_article_prompt(aliases: &[usize], context: &str) -> String {
+/// Generate an answer article prompt.
+///
+/// The `multi` argument determines whether to use the "multiple file" variant of this prompt.
+pub fn answer_article_prompt(multi: bool, context: &str) -> String {
     // Return different prompts depending on whether there is one or many aliases
     let one_prompt = format!(
         r#"{context}#####
@@ -177,7 +180,6 @@ Provide only as much information and code as is necessary to answer the query, b
 When referring to code, you must provide an example in a code block.
 
 Respect these rules at all times:
-- Do not refer to paths by alias, expand to the full path
 - Link ALL paths AND code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, directories, etc) by embedding them in a markdown link, with the URL corresponding to the full path, and the anchor following the form `LX` or `LX-LY`, where X represents the starting line number, and Y represents the ending line number, if the reference is more than one line.
   - For example, to refer to lines 50 to 78 in a sentence, respond with something like: The compiler is initialized in [`src/foo.rs`](src/foo.rs#L50-L78)
   - For example, to refer to the `new` function on a struct, respond with something like: The [`new`](src/bar.rs#L26-53) function initializes the struct
@@ -228,10 +230,10 @@ println!("hello world!");
 - You MUST use XML code blocks instead of markdown."#
     );
 
-    if aliases.len() == 1 {
-        one_prompt
-    } else {
+    if multi {
         many_prompt
+    } else {
+        one_prompt
     }
 }
 

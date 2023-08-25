@@ -19,8 +19,8 @@ use crate::{
 use self::exchange::{Exchange, SearchStep, Update};
 
 pub mod exchange;
-mod prompts;
-mod transcoder;
+pub mod prompts;
+pub mod transcoder;
 
 /// A collection of modules that each add methods to `Agent`.
 ///
