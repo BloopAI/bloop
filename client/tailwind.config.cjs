@@ -29,6 +29,7 @@ module.exports = {
         "label-muted": "rgb(var(--label-muted))",
         "label-base": "rgb(var(--label-base))",
         "label-title": "rgb(var(--label-title))",
+        "label-title/15": "rgba(var(--label-title), 0.15)",
         "label-link": "rgb(var(--label-link))",
         "chat-bg-base": "rgb(var(--chat-bg-base))",
         "chat-bg-base/35": "rgba(var(--chat-bg-base), 0.35)",

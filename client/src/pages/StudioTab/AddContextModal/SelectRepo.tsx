@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react';
-import { Trans } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { getIndexedRepos } from '../../../services/api';
 import { RepoType } from '../../../types/general';
 import KeyboardChip from '../KeyboardChip';
@@ -12,6 +12,7 @@ type Props = {
 };
 
 const SelectRepo = ({ search, onSubmit }: Props) => {
+  useTranslation();
   const [reposToShow, setReposToShow] = useState<RepoType[]>([]);
   const [repos, setRepos] = useState<RepoType[]>([]);
 
