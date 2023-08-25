@@ -237,6 +237,19 @@ println!("hello world!");
     }
 }
 
+pub fn studio_article_prompt(context: &str) -> String {
+    format!(
+        r#"{context}Your job is to answer a query about a codebase using the information above.
+
+Provide only as much information and code as is necessary to answer the query, but be concise. Keep number of quoted lines to a minimum when possible. If you do not have enough information needed to answer the query, do not make up an answer.
+When referring to code, you must provide an example in a code block.
+
+Respect these rules at all times:
+- Always begin your answer with an appropriate title
+"#
+    )
+}
+
 pub fn hypothetical_document_prompt(query: &str) -> String {
     format!(
         r#"Write a code snippet that could hypothetically be returned by a code search engine as the answer to the query: {query}

@@ -14,12 +14,7 @@ use tracing::error;
 use uuid::Uuid;
 
 use super::{Error, ErrorKind};
-use crate::{
-    agent::{prompts, transcoder},
-    llm_gateway,
-    repo::RepoRef,
-    webserver, Application,
-};
+use crate::{agent::prompts, llm_gateway, repo::RepoRef, webserver, Application};
 
 #[derive(serde::Deserialize)]
 pub struct Create {
@@ -85,22 +80,6 @@ enum Message {
     Assistant(String),
 }
 
-impl Message {
-    fn encode(&self) -> Self {
-        match self {
-            Self::User(s) => Self::User(s.clone()),
-            Self::Assistant(s) => Self::Assistant(transcoder::encode(s, None)),
-        }
-    }
-
-    fn decode(&self) -> Self {
-        match self {
-            Self::User(s) => Self::User(s.clone()),
-            Self::Assistant(s) => Self::Assistant(transcoder::decode(s).0),
-        }
-    }
-}
-
 impl From<&Message> for llm_gateway::api::Message {
     fn from(value: &Message) -> Self {
         match value {
@@ -127,11 +106,8 @@ pub async fn get(
 
     let context: Vec<ContextFile> =
         serde_json::from_str(&row.context).context("failed to deserialize context")?;
-    let messages = serde_json::from_str::<Vec<Message>>(&row.messages)
-        .context("failed to deserialize message list")?
-        .into_iter()
-        .map(|m| m.decode())
-        .collect();
+    let messages: Vec<Message> =
+        serde_json::from_str(&row.messages).context("failed to deserialize message list")?;
 
     Ok(Json(Studio {
         modified_at: row.modified_at,
@@ -191,9 +167,7 @@ pub async fn patch(
     }
 
     if let Some(messages) = patch.messages {
-        let encoded = messages.into_iter().map(|m| m.encode()).collect::<Vec<_>>();
-
-        let json = serde_json::to_string(&encoded).unwrap();
+        let json = serde_json::to_string(&messages).unwrap();
         sqlx::query!("UPDATE studios SET messages = ? WHERE id = ?", json, id)
             .execute(&mut transaction)
             .await
@@ -316,7 +290,7 @@ pub async fn generate(
         serde_json::from_str::<Vec<ContextFile>>(&context_json).map_err(Error::internal)?;
 
     let llm_context = generate_llm_context((*app).clone(), context).await?;
-    let system_prompt = prompts::answer_article_prompt(true, &llm_context);
+    let system_prompt = prompts::studio_article_prompt(&llm_context);
     let llm_messages = iter::once(llm_gateway::api::Message::system(&system_prompt))
         .chain(messages.iter().map(llm_gateway::api::Message::from))
         .collect::<Vec<_>>();
@@ -334,8 +308,7 @@ pub async fn generate(
         while let Some(fragment) = tokens.next().await {
             let fragment = fragment?;
             response += &fragment;
-            let (body, _) = transcoder::decode(&response);
-            yield body;
+            yield response.clone();
         }
 
         messages.push(Message::Assistant(response));
