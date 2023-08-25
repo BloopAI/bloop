@@ -1,13 +1,20 @@
-use std::ops::Range;
+use std::{iter, ops::Range, pin::Pin};
 
-use anyhow::Context;
-use axum::{extract::Path, Extension, Json};
+use anyhow::{Context, Result};
+use axum::{
+    extract::Path,
+    response::{sse, Sse},
+    Extension, Json,
+};
 use chrono::NaiveDateTime;
-use futures::{stream, StreamExt, TryStreamExt};
+use futures::{pin_mut, stream, StreamExt, TryStreamExt};
+use reqwest::StatusCode;
+use secrecy::ExposeSecret;
+use tracing::error;
 use uuid::Uuid;
 
 use super::{Error, ErrorKind};
-use crate::{repo::RepoRef, webserver, Application};
+use crate::{agent::prompts, llm_gateway, repo::RepoRef, webserver, Application};
 
 #[derive(serde::Deserialize)]
 pub struct Create {
@@ -71,6 +78,15 @@ struct ContextFile {
 enum Message {
     User(String),
     Assistant(String),
+}
+
+impl From<&Message> for llm_gateway::api::Message {
+    fn from(value: &Message) -> Self {
+        match value {
+            Message::User(s) => llm_gateway::api::Message::user(s),
+            Message::Assistant(s) => llm_gateway::api::Message::assistant(s),
+        }
+    }
 }
 
 pub async fn get(
@@ -244,4 +260,132 @@ async fn token_counts(app: Application, context: &[ContextFile]) -> webserver::R
         total: per_file.iter().sum(),
         per_file,
     })
+}
+
+pub async fn generate(
+    app: Extension<Application>,
+    Path(id): Path<String>,
+) -> webserver::Result<Sse<Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>> {
+    let answer_api_token = app
+        .answer_api_token()
+        .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
+        .map(|s| s.expose_secret().clone());
+
+    let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
+        .temperature(0.0)
+        .bearer(answer_api_token);
+
+    let (messages_json, context_json) =
+        sqlx::query!("SELECT messages, context FROM studios WHERE id = ?", id)
+            .fetch_optional(&*app.sql)
+            .await
+            .map_err(Error::internal)?
+            .map(|row| (row.messages, row.context))
+            .ok_or_else(|| Error::new(ErrorKind::NotFound, "unknown code studio ID"))?;
+
+    let mut messages =
+        serde_json::from_str::<Vec<Message>>(&messages_json).map_err(Error::internal)?;
+
+    let context =
+        serde_json::from_str::<Vec<ContextFile>>(&context_json).map_err(Error::internal)?;
+
+    let llm_context = generate_llm_context((*app).clone(), context).await?;
+    let system_prompt = prompts::studio_article_prompt(&llm_context);
+    let llm_messages = iter::once(llm_gateway::api::Message::system(&system_prompt))
+        .chain(messages.iter().map(llm_gateway::api::Message::from))
+        .collect::<Vec<_>>();
+
+    let tokens = llm_gateway
+        .chat(&llm_messages, None)
+        .await
+        .map_err(Error::internal)?;
+
+    let stream = async_stream::try_stream! {
+        pin_mut!(tokens);
+
+        let mut response = String::new();
+
+        while let Some(fragment) = tokens.next().await {
+            let fragment = fragment?;
+            response += &fragment;
+            yield response.clone();
+        }
+
+        messages.push(Message::Assistant(response));
+        let messages_json = serde_json::to_string(&messages).unwrap();
+        sqlx::query!("UPDATE studios SET messages = ? WHERE id = ?", messages_json, id)
+            .execute(&*app.sql)
+            .await?;
+    };
+
+    let mut errored = false;
+    let stream = stream.take_while(move |e| {
+        let ok = !errored;
+        if let Err(e) = &e {
+            error!(?e, "stream error");
+            errored = true;
+        }
+        async move { ok }
+    });
+
+    let event_stream = stream.map(|result| {
+        sse::Event::default()
+            .json_data(result.map_err(|e: anyhow::Error| e.to_string()))
+            .map_err(anyhow::Error::new)
+    });
+    let done_stream = stream::once(async { Ok(sse::Event::default().data("[DONE]")) });
+
+    let stream = event_stream.chain(done_stream);
+
+    Ok(Sse::new(Box::pin(stream)))
+}
+
+async fn generate_llm_context(app: Application, context: Vec<ContextFile>) -> Result<String> {
+    let mut s = String::new();
+
+    s += "##### PATHS #####\n";
+
+    for file in context.iter().filter(|f| !f.hidden) {
+        s += &format!("{}\n", file.path);
+    }
+
+    s += "\n##### CODE CHUNKS #####\n\n";
+
+    for file in context.iter().filter(|f| !f.hidden) {
+        let doc = app
+            .indexes
+            .file
+            .by_path(&file.repo, &file.path, Some(&file.branch))
+            .await?
+            .with_context(|| {
+                format!(
+                    "file `{}` did not exist in repo `{}`, branch `{}`",
+                    file.path, file.repo, file.branch
+                )
+            })?;
+
+        let lines = doc.content.lines()
+            .enumerate()
+            .map(|(i, s)| format!("{} {s}\n", i + 1))
+            .collect::<Vec<_>>();
+
+        let ranges = if file.ranges.is_empty() {
+            vec![0..lines.len()]
+        } else {
+            file.ranges.clone()
+        };
+
+        for range in ranges {
+            let snippet = lines
+                .iter()
+                .skip(range.start)
+                .take(range.end - range.start)
+                .map(String::as_str)
+                .collect::<String>();
+
+            s += &format!("### {} ###\n{snippet}\n", file.path);
+        }
+    }
+
+    Ok(s)
 }
