@@ -5,10 +5,11 @@ import React, {
   useContext,
   useEffect,
   useRef,
+  useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
-import { Sparkles, Template } from '../../../icons';
+import { Sparkles, Template, TrashCanFilled } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
 import { StudioConversationMessageAuthor } from '../../../types/general';
 
@@ -17,6 +18,7 @@ type Props = {
   message: string;
   onAuthorChange: (author: StudioConversationMessageAuthor, i?: number) => void;
   onMessageChange: (m: string, i?: number) => void;
+  onMessageRemoved?: (i: number) => void;
   i?: number;
 };
 
@@ -26,9 +28,11 @@ const ConversationInput = ({
   onAuthorChange,
   onMessageChange,
   i,
+  onMessageRemoved,
 }: Props) => {
   const { t } = useTranslation();
   const { envConfig } = useContext(DeviceContext);
+  const [isFocused, setFocused] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const handleAuthorSwitch = useCallback(() => {
@@ -76,10 +80,24 @@ const ConversationInput = ({
           </div>
           <Trans>{author}</Trans>
         </button>
-        <Button size="tiny" variant="secondary">
-          <Template raw sizeClassName="w-3.5 h-3.5" />
-          <Trans>Use templates</Trans>
-        </Button>
+        {isFocused ? (
+          <Button size="tiny" variant="secondary">
+            <Template raw sizeClassName="w-3.5 h-3.5" />
+            <Trans>Use templates</Trans>
+          </Button>
+        ) : (
+          i !== undefined && (
+            <Button
+              variant="secondary"
+              size="tiny"
+              onlyIcon
+              title={t('Remove')}
+              onClick={() => onMessageRemoved?.(i)}
+            >
+              <TrashCanFilled raw sizeClassName="w-3.5 h-3.5" />
+            </Button>
+          )
+        )}
       </div>
       <textarea
         className={`w-full bg-transparent outline-none focus:outline-0 resize-none body-m placeholder:text-label-base`}
@@ -90,6 +108,8 @@ const ConversationInput = ({
         autoComplete="off"
         spellCheck="false"
         ref={inputRef}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
       />
     </div>
   );

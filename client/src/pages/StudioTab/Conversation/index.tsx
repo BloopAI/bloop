@@ -100,6 +100,17 @@ const Conversation = ({
     });
   }, [studioId, conversation, input]);
 
+  const onMessageRemoved = useCallback((i: number) => {
+    const messages = conversation
+      .map((c) => ({ [c.author]: c.message }))
+      .filter((m, j) => i !== j);
+    patchCodeStudio(studioId, {
+      messages,
+    }).then(() => {
+      refetchCodeStudio();
+    });
+  }, []);
+
   const handleClearConversation = useCallback(() => {
     patchCodeStudio(studioId, {
       messages: [],
@@ -132,6 +143,7 @@ const Conversation = ({
             message={m.message}
             onAuthorChange={onAuthorChange}
             onMessageChange={onMessageChange}
+            onMessageRemoved={onMessageRemoved}
             i={i}
           />
         ))}
