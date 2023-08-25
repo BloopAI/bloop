@@ -124,6 +124,7 @@ const ContextMenu = ({
       case MenuItemType.SELECTABLE:
         return (
           <ItemSelectable
+            key={i}
             text={item.text}
             onChange={item.onChange}
             isSelected={item.isSelected}
