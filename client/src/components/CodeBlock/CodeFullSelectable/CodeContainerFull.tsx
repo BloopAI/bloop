@@ -86,6 +86,7 @@ const CodeContainerFull = ({
           searchTerm={searchTerm}
           setCurrentlySelectingRange={setCurrentlySelectingRange}
           isSelectionDisabled={modifyingRange > -1}
+          fileLinesNum={tokens.length}
         >
           {line.map((token, i) => (
             <span
@@ -113,6 +114,7 @@ const CodeContainerFull = ({
             deleteRange={deleteRange}
             i={i}
             setModifyingRange={setModifyingRange}
+            fileLinesNum={tokens.length}
           />
           <SelectionRect range={r} i={i} deleteRange={deleteRange} />
         </Fragment>
