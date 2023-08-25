@@ -1,12 +1,13 @@
 import { Dispatch, memo, SetStateAction, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import {
-  StudioConversationMessageAuthor,
   StudioLeftPanelType,
   StudioPanelDataType,
 } from '../../../types/general';
 import Button from '../../../components/Button';
 import { ArrowLeft } from '../../../icons';
+import { HistoryConversationTurn } from '../../../types/api';
+import ConversationTurn from './ConversationTurn';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
@@ -14,45 +15,47 @@ type Props = {
 
 const HistoryPanel = ({ setLeftPanel }: Props) => {
   const { t } = useTranslation();
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState<HistoryConversationTurn[]>([]);
 
   useEffect(() => {
     Promise.resolve([
       {
         messages: [
-          { author: StudioConversationMessageAuthor.USER, message: 'Hey' },
           {
-            author: StudioConversationMessageAuthor.ASSISTANT,
-            message: 'Hello',
+            User: 'Hey',
+            timestamp: '2023-08-21T13:00:00Z',
+          },
+          {
+            Assistant: 'Hello',
+            timestamp: '2023-08-21T13:01:00Z',
           },
         ],
-        timestamp: '2023-08-21T13:00:00Z',
-        id: '1',
       },
       {
         messages: [
-          { author: StudioConversationMessageAuthor.USER, message: 'Hey' },
           {
-            author: StudioConversationMessageAuthor.ASSISTANT,
-            message: 'Hello',
+            User: 'Hey',
+            timestamp: '2023-08-20T12:00:00Z',
           },
           {
-            author: StudioConversationMessageAuthor.USER,
-            message: 'Tell me a joke',
+            Assistant: 'Hello',
+            timestamp: '2023-08-20T12:03:00Z',
           },
           {
-            author: StudioConversationMessageAuthor.ASSISTANT,
-            message: `Sure, here's one for you:
+            User: 'Tell me a joke',
+            timestamp: '2023-08-20T13:04:00Z',
+          },
+          {
+            Assistant: `Sure, here's one for you:
 
 Why don't scientists trust atoms?
 
 Because they make up everything!`,
+            timestamp: '2023-08-20T13:05:00Z',
           },
         ],
-        timestamp: '2023-08-20T13:00:00Z',
-        id: '2',
       },
-    ]).then(setHistory);
+    ] as HistoryConversationTurn[]).then(setHistory);
   }, []);
 
   return (
@@ -73,7 +76,11 @@ Because they make up everything!`,
           </p>
         </div>
       </div>
-      <div className="flex flex-col gap-4 p-8"></div>
+      <div className="flex flex-col gap-4 p-8">
+        {history.map((turn, i) => (
+          <ConversationTurn key={i} messages={turn.messages} />
+        ))}
+      </div>
     </div>
   );
 };

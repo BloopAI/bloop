@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { RepoType } from '../../../types/general';
 import KeyboardChip from '../KeyboardChip';
 import { Branch } from '../../../icons';
@@ -11,6 +11,7 @@ type Props = {
 };
 
 const SelectBranch = ({ search, onSubmit, repo }: Props) => {
+  useTranslation();
   const [branchesToShow, setBranchesToShow] = useState<string[]>([]);
 
   const allBranches = useMemo(() => {
