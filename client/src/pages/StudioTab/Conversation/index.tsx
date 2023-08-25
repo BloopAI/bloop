@@ -6,7 +6,7 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { Trans } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   StudioConversationMessage,
   StudioConversationMessageAuthor,
@@ -43,6 +43,7 @@ const Conversation = ({
   studioId,
   refetchCodeStudio,
 }: Props) => {
+  useTranslation();
   const [conversation, setConversation] = useState<StudioConversationMessage[]>(
     mapConversation(messages),
   );
