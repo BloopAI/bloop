@@ -364,15 +364,23 @@ async fn generate_llm_context(app: Application, context: Vec<ContextFile>) -> Re
                 )
             })?;
 
-        let lines = doc.content.lines().collect::<Vec<_>>();
+        let lines = doc.content.lines()
+            .enumerate()
+            .map(|(i, s)| format!("{} {s}\n", i + 1))
+            .collect::<Vec<_>>();
 
-        for range in &file.ranges {
+        let ranges = if file.ranges.is_empty() {
+            vec![0..lines.len()]
+        } else {
+            file.ranges.clone()
+        };
+
+        for range in ranges {
             let snippet = lines
                 .iter()
-                .enumerate()
                 .skip(range.start)
                 .take(range.end - range.start)
-                .map(|(i, s)| format!("{i} {s}\n"))
+                .map(String::as_str)
                 .collect::<String>();
 
             s += &format!("### {} ###\n{snippet}\n", file.path);
