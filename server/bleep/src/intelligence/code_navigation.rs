@@ -82,7 +82,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                 let active_token_text =
                     source_doc.content.as_str().get(active_token_range).unwrap();
                 all_docs
-                    .iter()
+                    .par_iter()
                     .filter(|doc| doc.relative_path != source_doc.relative_path)
                     .filter(|doc| {
                         let Some(scope_graph) = doc.symbol_locations.scope_graph() else {
@@ -92,6 +92,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                         scope_graph
                             .graph
                             .node_indices()
+                            .par_bridge()
                             .filter(|&idx| scope_graph.is_top_level(idx))
                             .any(|idx| match scope_graph.get_node(idx).unwrap() {
                                 NodeKind::Def(n) => n.name(content) == active_token_text.as_bytes(),
@@ -101,6 +102,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                                 _ => false,
                             })
                     })
+                    .collect::<Vec<_>>()
             })
             .collect()
     }
@@ -148,7 +150,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                 let active_token_text =
                     source_doc.content.as_str().get(active_token_range).unwrap();
                 all_docs
-                    .iter()
+                    .par_iter()
                     .filter(|doc| doc.relative_path != source_doc.relative_path)
                     .filter(|doc| {
                         let Some(scope_graph) = doc.symbol_locations.scope_graph() else {
@@ -158,6 +160,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                         scope_graph
                             .graph
                             .node_indices()
+                            .par_bridge()
                             .filter(|idx| scope_graph.is_top_level(*idx))
                             .any(|idx| {
                                 if let Some(NodeKind::Def(d)) = scope_graph.get_node(idx) {
@@ -167,6 +170,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                                 }
                             })
                     })
+                    .collect::<Vec<_>>()
             })
             .collect::<HashSet<_>>()
     }
@@ -306,6 +310,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
 
     fn repo_wide_definitions(&self) -> Vec<FileSymbols> {
         self.non_source_documents()
+            .par_bridge()
             .filter_map(|doc| {
                 let scope_graph = doc.symbol_locations.scope_graph()?;
                 let content = doc.content.as_bytes();
@@ -365,6 +370,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
 
     fn repo_wide_references(&self) -> Vec<FileSymbols> {
         self.non_source_documents()
+            .par_bridge()
             .filter_map(|doc| {
                 let scope_graph = doc.symbol_locations.scope_graph()?;
                 let content = doc.content.as_bytes();
