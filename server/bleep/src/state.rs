@@ -41,6 +41,8 @@ pub struct StateSource {
     #[serde(default)]
     cookie_key: Option<PathBuf>,
 
+    /// The root directory that contains all other paths in this structure
+    /// (unless otherwise configured)
     #[serde(skip)]
     #[clap(skip)]
     root_dir: PathBuf,
