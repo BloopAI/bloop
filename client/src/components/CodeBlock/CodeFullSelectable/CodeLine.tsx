@@ -17,6 +17,7 @@ type Props = {
   isSelectionDisabled: boolean;
   setCurrentlySelectingRange: (range: [number, number] | null) => void;
   handleAddRange: () => void;
+  fileLinesNum: number;
 };
 
 const CodeLine = ({
@@ -27,6 +28,7 @@ const CodeLine = ({
   isSelectionDisabled,
   setCurrentlySelectingRange,
   handleAddRange,
+  fileLinesNum,
 }: Props) => {
   const [isDragging, setIsDragging] = useState(false);
   const codeRef = useRef<HTMLTableCellElement>(null);
@@ -61,13 +63,19 @@ const CodeLine = ({
       if (isDragging && ref.current) {
         const deltaY = e.clientY - ref.current.getBoundingClientRect().top;
         setCurrentlySelectingRange([
-          Math.min(
-            lineNumber,
-            lineNumber + Math.ceil(deltaY / CODE_LINE_HEIGHT) - 1,
-          ),
           Math.max(
-            lineNumber,
-            lineNumber + Math.ceil(deltaY / CODE_LINE_HEIGHT) - 1,
+            Math.min(
+              lineNumber,
+              lineNumber + Math.ceil(deltaY / CODE_LINE_HEIGHT) - 1,
+            ),
+            0,
+          ),
+          Math.min(
+            Math.max(
+              lineNumber,
+              lineNumber + Math.ceil(deltaY / CODE_LINE_HEIGHT) - 1,
+            ),
+            fileLinesNum - 1,
           ),
         ]);
       }
@@ -89,7 +97,7 @@ const CodeLine = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, lineNumber]);
+  }, [isDragging, lineNumber, fileLinesNum]);
   return (
     <div
       className={`flex transition-all duration-150 ease-in-bounce group ${
