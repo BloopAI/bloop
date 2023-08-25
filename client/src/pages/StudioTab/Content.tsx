@@ -21,6 +21,7 @@ import HistoryPanel from './HistoryPanel';
 import TemplatesPanel from './TemplatesPanel';
 import FilePanel from './FilePanel';
 import AddContextModal from './AddContextModal';
+import TokensUsageProgress from './TokensUsageProgress';
 
 const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
   const { t } = useTranslation();
@@ -195,7 +196,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
               <p className="body-s text-label-title">
                 <Trans>Studio conversation</Trans>
               </p>
-              <CodeStudioToken />
+              <TokensUsageProgress percent={(tokensTotal / 42000) * 100} />
               <span className="caption text-label-base">
                 {t('# of #', { count: tokensTotal, total: '42,000' })}
               </span>
