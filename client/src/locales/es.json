@@ -291,10 +291,10 @@
 	"Navigate": "Navegar",
 	"Add context file": "Agregar archivo de contexto",
 	"Select repository": "Seleccionar repositorio",
-	"Search repository": "Repositorio de búsqueda",
+	"Search repository": "Buscar repositorio",
 	"Select": "Seleccionar",
-	"Search branch...": "Rama de búsqueda ...",
-	"Search file...": "Archivo de búsqueda ...",
+	"Search branch...": "Buscar rama...",
+	"Search file...": "Buscar archivo...",
 	"Tip: Select code to create ranges for context use.": "Consejo: seleccione código para crear rangos para uso del contexto.",
 	"Whole file": "Archivo completo",
 	"Lines # - #": "Líneas {{start}} - {{end}}",
@@ -310,6 +310,8 @@
 	"Use file": "Usar archivo",
 	"Add related files": "Agregar archivos relacionados",
 	"Add related file": "Agregar archivo relacionado",
-	"Select branch": "Seleccionar sucursal",
-	"Select file": "Seleccione Archivo"
+	"Select branch": "Seleccionar rama",
+	"Select file": "Seleccionar archivo",
+	"Use": "Usar",
+	"Restore": "Restaurar"
 }
