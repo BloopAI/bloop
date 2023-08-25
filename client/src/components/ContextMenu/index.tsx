@@ -137,7 +137,7 @@ const ContextMenu = ({
       case ExtendedMenuItemType.DIVIDER_WITH_TEXT:
         return (
           <div
-            className="px-2.5 py-2 border-b border-bg-border caption text-label-base sticky top-0 bg-bg-shade"
+            className="px-2.5 py-2 border-b border-bg-border caption text-label-base sticky top-0 bg-bg-shade z-10"
             key={i}
           >
             {item.text}
@@ -173,7 +173,7 @@ const ContextMenu = ({
           className={`${visible ? '' : 'scale-0 opacity-0'}
       transition-all duration-300 ease-in-slow max-h-96 overflow-auto
        rounded-md ${
-         isDark ? 'bg-bg-sub' : 'p-1 bg-bg-shade'
+         isDark ? 'bg-bg-sub' : 'bg-bg-shade'
        } border border-bg-border shadow-high ${
          sizesMap[size]
        } flex flex-col gap-1`}

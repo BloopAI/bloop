@@ -124,23 +124,25 @@ const Conversation = ({
 
   return (
     <div className="p-8 flex flex-col gap-8">
-      {conversation.map((m, i) => (
+      <div className="flex flex-col gap-3">
+        {conversation.map((m, i) => (
+          <ConversationInput
+            key={i}
+            author={m.author}
+            message={m.message}
+            onAuthorChange={onAuthorChange}
+            onMessageChange={onMessageChange}
+            i={i}
+          />
+        ))}
         <ConversationInput
-          key={i}
-          author={m.author}
-          message={m.message}
+          key={'new'}
+          author={input.author}
+          message={input.message}
           onAuthorChange={onAuthorChange}
           onMessageChange={onMessageChange}
-          i={i}
         />
-      ))}
-      <ConversationInput
-        key={'new'}
-        author={input.author}
-        message={input.message}
-        onAuthorChange={onAuthorChange}
-        onMessageChange={onMessageChange}
-      />
+      </div>
       <div className="px-4 flex flex-col gap-8">
         <hr className="border-bg-border" />
         <div className="flex justify-between items-center flex-wrap gap-1">
