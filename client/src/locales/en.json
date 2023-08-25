@@ -105,7 +105,7 @@
 	"Nothing matched your search. Try a different combination!": "Nothing matched your search. Try a different combination!",
 	"Already synced": "Already synced",
 	"Sync": "Sync",
-	"Scan a folder to sync it’s repositories.": "Scan a folder to sync it’s repositories.",
+	"Scan a folder to sync it’s repositories.": "Scan a folder to sync it’s repositories. Only directories with a .git folder will be synced",
 	"Select folder": "Select folder",
 	"Sync local repositories": "Sync local repositories",
 	"Scan a folder": "Scan a folder",
