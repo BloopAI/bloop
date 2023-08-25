@@ -5,7 +5,7 @@ import KeyboardChip from '../KeyboardChip';
 import { useArrowKeyNavigation } from '../../../hooks/useArrowNavigationHook';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { Branch, Paper, RepositoryFilled } from '../../../icons';
-import { RepoType } from '../../../types/general';
+import { RepoType, StudioContextFile } from '../../../types/general';
 import { DeviceContext } from '../../../context/deviceContext';
 import { UIContext } from '../../../context/uiContext';
 import StepItem from './StepItem';
@@ -17,9 +17,15 @@ type Props = {
   isVisible: boolean;
   onClose: () => void;
   onSubmit: (repo: RepoType, branch: string, filePath: string) => void;
+  contextFiles: StudioContextFile[];
 };
 
-const AddContextModal = ({ isVisible, onClose, onSubmit }: Props) => {
+const AddContextModal = ({
+  isVisible,
+  onClose,
+  onSubmit,
+  contextFiles,
+}: Props) => {
   const { t } = useTranslation();
   const { isSelfServe } = useContext(DeviceContext);
   const [step, setStep] = useState(0);
@@ -151,6 +157,7 @@ const AddContextModal = ({ isVisible, onClose, onSubmit }: Props) => {
               repo={selectedRepo!}
               branch={selectedBranch}
               onSubmit={handleFileSubmit}
+              filterOutFiles={contextFiles}
             />
           )}
         </div>
