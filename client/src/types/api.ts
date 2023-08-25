@@ -292,3 +292,8 @@ export interface NLSearchResponse {
   snippets: NLSnippet[];
   user_id: string;
 }
+
+export type StudioTemplateType = {
+  name: string;
+  body: string;
+};
