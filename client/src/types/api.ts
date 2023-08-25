@@ -297,3 +297,7 @@ export type StudioTemplateType = {
   name: string;
   body: string;
 };
+
+export type HistoryConversationTurn = {
+  messages: (CodeStudioMessageType & { timestamp: string })[];
+};
