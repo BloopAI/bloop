@@ -17,6 +17,7 @@ import {
   StudioPanelDataType,
 } from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
+import TokensUsageProgress from '../TokensUsageProgress';
 import ContextFileRow from './ContextFileRow';
 
 type Props = {
@@ -74,7 +75,7 @@ const ContextPanel = ({
           <p className="body-s text-label-title">
             <Trans>Context files</Trans>
           </p>
-          <CodeStudioToken />
+          <TokensUsageProgress percent={(tokensTotal / 42000) * 100} />
           <p className="caption text-label-base">
             {t('# of #', { count: tokensTotal, total: '42,000' })}
           </p>
