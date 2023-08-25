@@ -283,7 +283,7 @@ export const getRelatedFiles = (
   relative_path: string,
   repo_ref: string,
   branch: string,
-): Promise<{ data: string[] }> =>
+): Promise<{ files_importing: string[]; files_imported: string[] }> =>
   http(`/related-files`, { params: { relative_path, repo_ref, branch } }).then(
     (r) => r.data,
   );
