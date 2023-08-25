@@ -85,7 +85,7 @@ const AddContextModal = ({ isVisible, onClose, onSubmit }: Props) => {
             {!!selectedBranch && (
               <StepItem
                 text={selectedBranch.replace(/^origin\//, '')}
-                icon={<Branch raw sizeClassName="w-3.5 h-3.5" />}
+                icon={<Branch sizeClassName="w-3.5 h-3.5" />}
                 onClick={() => {
                   if (isSelfServe) {
                     setSelectedBranch('');
@@ -110,7 +110,7 @@ const AddContextModal = ({ isVisible, onClose, onSubmit }: Props) => {
                   {step === 0 ? (
                     <RepositoryFilled raw />
                   ) : step === 1 ? (
-                    <Branch raw />
+                    <Branch />
                   ) : (
                     <Paper raw />
                   )}
