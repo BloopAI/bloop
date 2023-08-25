@@ -4,7 +4,6 @@ import { Trans, useTranslation } from 'react-i18next';
 import ErrorFallback from '../../components/ErrorFallback';
 import PageTemplate from '../../components/PageTemplate';
 import Button from '../../components/Button';
-import CodeStudioToken from '../../icons/CodeStudioToken';
 import { Template } from '../../icons';
 import {
   RepoType,
@@ -188,6 +187,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
             isVisible={isAddContextOpen}
             onClose={handleAddContextClose}
             onSubmit={onFileAdded}
+            contextFiles={contextFiles}
           />
         </div>
         <div className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col">

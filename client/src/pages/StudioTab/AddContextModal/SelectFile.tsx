@@ -1,6 +1,6 @@
 import { memo, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { RepoType } from '../../../types/general';
+import { RepoType, StudioContextFile } from '../../../types/general';
 import KeyboardChip from '../KeyboardChip';
 import { searchFiles } from '../../../services/api';
 import FileIcon from '../../../components/FileIcon';
@@ -10,23 +10,37 @@ type Props = {
   branch: string;
   onSubmit: (branch: string) => void;
   repo: RepoType;
+  filterOutFiles: StudioContextFile[];
 };
 
-const SelectBranch = ({ search, onSubmit, repo, branch }: Props) => {
+const SelectFile = ({
+  search,
+  onSubmit,
+  repo,
+  branch,
+  filterOutFiles,
+}: Props) => {
   useTranslation();
   const [filesToShow, setFilesToShow] = useState<string[]>([]);
 
   useEffect(() => {
-    searchFiles(`${search || '.'}`, repo.ref).then((resp) => {
+    searchFiles(`${search || '.'} branch:${branch}`, repo.ref).then((resp) => {
       setFilesToShow(
         resp.data
           .map((r) =>
             r.kind === 'file_result' ? r.data.relative_path.text : null,
           )
-          .filter((f): f is string => !!f),
+          .filter(
+            (f): f is string =>
+              !!f &&
+              !filterOutFiles.find(
+                (o) =>
+                  o.path === f && o.repo === repo.ref && o.branch === branch,
+              ),
+          ),
       );
     });
-  }, [search, branch, repo.name]);
+  }, [search, branch, repo.name, filterOutFiles]);
 
   return (
     <>
@@ -51,4 +65,4 @@ const SelectBranch = ({ search, onSubmit, repo, branch }: Props) => {
   );
 };
 
-export default memo(SelectBranch);
+export default memo(SelectFile);
