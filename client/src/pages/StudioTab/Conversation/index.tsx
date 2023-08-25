@@ -3,6 +3,7 @@ import React, {
   memo,
   SetStateAction,
   useCallback,
+  useContext,
   useEffect,
   useState,
 } from 'react';
@@ -19,6 +20,7 @@ import KeyboardChip from '../KeyboardChip';
 import { CodeStudioMessageType } from '../../../types/api';
 import { patchCodeStudio } from '../../../services/api';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
+import { DeviceContext } from '../../../context/deviceContext';
 import ConversationInput from './Input';
 
 type Props = {
@@ -27,6 +29,8 @@ type Props = {
   studioId: string;
   refetchCodeStudio: () => void;
 };
+
+let eventSource: EventSource;
 
 function mapConversation(
   messages: CodeStudioMessageType[],
@@ -51,6 +55,7 @@ const Conversation = ({
     author: StudioConversationMessageAuthor.USER,
     message: '',
   });
+  const { apiUrl } = useContext(DeviceContext);
 
   useEffect(() => {
     setConversation(mapConversation(messages));
@@ -97,6 +102,58 @@ const Conversation = ({
         author: StudioConversationMessageAuthor.USER,
         message: '',
       });
+      eventSource?.close();
+      eventSource = new EventSource(
+        `${apiUrl.replace('https:', '')}/studio/${studioId}/generate`,
+      );
+      eventSource.onerror = (err) => {
+        console.log('SSE error', err);
+        eventSource.close();
+      };
+      let i = 0;
+      eventSource.onmessage = (ev) => {
+        console.log(ev.data);
+        if (ev.data === '[DONE]') {
+          eventSource.close();
+          return;
+        }
+        try {
+          const data = JSON.parse(ev.data);
+          if (data.Ok) {
+            const newMessage = data.Ok;
+            setConversation((prev) =>
+              i === 0
+                ? [
+                    ...prev,
+                    {
+                      author: StudioConversationMessageAuthor.ASSISTANT,
+                      message: newMessage,
+                    },
+                  ]
+                : [
+                    ...prev.slice(0, -1),
+                    {
+                      author: StudioConversationMessageAuthor.ASSISTANT,
+                      message: newMessage,
+                    },
+                  ],
+            );
+            i++;
+          } else if (data.Err) {
+            setConversation((prev) => {
+              return [
+                ...prev,
+                {
+                  author: StudioConversationMessageAuthor.ASSISTANT,
+                  message: data.Err,
+                },
+              ];
+            });
+          }
+        } catch (err) {
+          console.log('failed to parse response', err);
+        }
+      };
     });
   }, [studioId, conversation, input]);
 
@@ -134,7 +191,7 @@ const Conversation = ({
   useKeyboardNavigation(handleKeyEvent);
 
   return (
-    <div className="p-8 flex flex-col gap-8">
+    <div className="p-8 flex flex-col gap-8 overflow-auto">
       <div className="flex flex-col gap-3">
         {conversation.map((m, i) => (
           <ConversationInput

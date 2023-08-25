@@ -12,6 +12,7 @@ import Button from '../../../components/Button';
 import { Sparkles, Template, TrashCanFilled } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
 import { StudioConversationMessageAuthor } from '../../../types/general';
+import MarkdownWithCode from '../../../components/MarkdownWithCode';
 
 type Props = {
   author: StudioConversationMessageAuthor;
@@ -59,10 +60,9 @@ const ConversationInput = ({
 
       // We then set the height directly, outside of the render loop
       // Trying to set this with state or a ref will product an incorrect value.
-      inputRef.current.style.height =
-        Math.max(Math.min(scrollHeight, 300), 24) + 'px';
+      inputRef.current.style.height = Math.max(scrollHeight, 24) + 'px';
     }
-  }, [inputRef.current, message]);
+  }, [inputRef.current, message, isFocused]);
 
   return (
     <div className="flex flex-col p-4 gap-3 rounded-6 border border-transparent hover:shadow-medium hover:border-bg-border-hover focus-within:border-bg-main bg-bg-base hover:focus-within:border-bg-main focus-within:shadow-medium transition-all duration-150 ease-in-out">
@@ -99,18 +99,31 @@ const ConversationInput = ({
           )
         )}
       </div>
-      <textarea
-        className={`w-full bg-transparent outline-none focus:outline-0 resize-none body-m placeholder:text-label-base`}
-        placeholder={t('Start typing...')}
-        value={message}
-        onChange={handleChange}
-        rows={1}
-        autoComplete="off"
-        spellCheck="false"
-        ref={inputRef}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-      />
+      <div onClick={() => setFocused(true)}>
+        {isFocused || !message ? (
+          <textarea
+            className={`w-full bg-transparent outline-none focus:outline-0 resize-none body-m placeholder:text-label-base`}
+            placeholder={t('Start typing...')}
+            value={message}
+            onChange={handleChange}
+            autoComplete="off"
+            spellCheck="false"
+            ref={inputRef}
+            rows={1}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            autoFocus
+          />
+        ) : (
+          <MarkdownWithCode
+            openFileModal={() => {}}
+            repoName={''}
+            markdown={message}
+            recordId={0}
+            threadId={''}
+          />
+        )}
+      </div>
     </div>
   );
 };
