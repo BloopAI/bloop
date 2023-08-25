@@ -9,7 +9,7 @@ use crate::{
     },
     repo::RepoRef,
     snippet::Snipper,
-    text_range::{Point, TextRange},
+    text_range::TextRange,
 };
 
 use axum::{extract::Query, response::IntoResponse, Extension};
@@ -125,7 +125,11 @@ pub(super) struct RelatedFilesRequest {
 /// The response from the `related-files` endpoint.
 #[derive(Serialize, Debug)]
 pub struct RelatedFilesResponse {
-    data: Vec<String>,
+    /// Files importing `target`, across this repo
+    files_importing: Vec<String>,
+
+    /// Files imported in `target`
+    files_imported: Vec<String>,
 }
 
 impl super::ApiResponse for RelatedFilesResponse {}
@@ -165,11 +169,28 @@ pub(super) async fn related_files(
         .position(|doc| doc.relative_path == payload.relative_path)
         .ok_or(Error::internal("invalid language"))?;
 
+    let (h1, h2) = std::thread::scope(|s| {
+        let h1 = s.spawn(|| {
+            CodeNavigationContext::files_imported(&all_docs, source_document_idx)
+                .into_iter()
+                .map(|doc| doc.relative_path.clone())
+                .collect()
+        });
+        let h2 = s.spawn(|| {
+            CodeNavigationContext::files_importing(&all_docs, source_document_idx)
+                .into_iter()
+                .map(|doc| doc.relative_path.clone())
+                .collect()
+        });
+        (h1.join(), h2.join())
+    });
+
+    let files_imported = h1.map_err(|_| Error::internal("failed to find imported files"))?;
+    let files_importing = h2.map_err(|_| Error::internal("failed to find importing files"))?;
+
     return Ok(json(RelatedFilesResponse {
-        data: CodeNavigationContext::related_files(&all_docs, source_document_idx)
-            .into_iter()
-            .map(|doc| doc.relative_path.clone())
-            .collect(),
+        files_imported,
+        files_importing,
     }));
 }
 
