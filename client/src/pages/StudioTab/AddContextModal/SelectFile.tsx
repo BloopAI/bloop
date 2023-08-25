@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react';
-import { Trans } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { RepoType } from '../../../types/general';
 import KeyboardChip from '../KeyboardChip';
 import { searchFiles } from '../../../services/api';
@@ -13,6 +13,7 @@ type Props = {
 };
 
 const SelectBranch = ({ search, onSubmit, repo, branch }: Props) => {
+  useTranslation();
   const [filesToShow, setFilesToShow] = useState<string[]>([]);
 
   useEffect(() => {
