@@ -49,7 +49,7 @@ const variantStylesMap = {
 
 const sizeMap = {
   tiny: {
-    default: 'h-6 px-1 gap-1 caption-strong min-w-[64px] ',
+    default: 'h-6 px-1 gap-1 caption-strong',
     square: 'h-6 w-6 justify-center p-0',
   },
   small: {
