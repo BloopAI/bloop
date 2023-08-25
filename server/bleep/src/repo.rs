@@ -232,7 +232,7 @@ pub struct Repository {
     pub disk_path: PathBuf,
     pub remote: RepoRemote,
     pub sync_status: SyncStatus,
-    pub last_commit_unix_secs: i64,
+    pub last_commit_unix_secs: u64,
     pub last_index_unix_secs: u64,
     pub most_common_lang: Option<String>,
     pub branch_filter: Option<BranchFilter>,
@@ -335,7 +335,7 @@ fn get_unix_time(time: SystemTime) -> u64 {
 
 #[derive(Debug)]
 pub struct RepoMetadata {
-    pub last_commit_unix_secs: Option<i64>,
+    pub last_commit_unix_secs: Option<u64>,
     pub langs: language::LanguageInfo,
 }
 

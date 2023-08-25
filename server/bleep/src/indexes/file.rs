@@ -532,7 +532,7 @@ impl RepoDir {
         relative_path: &Path,
         repo_disk_path: &Path,
         repo_ref: &str,
-        last_commit: i64,
+        last_commit: u64,
         tantivy_cache_key: String,
     ) -> tantivy::schema::Document {
         let relative_path_str = format!("{}/", relative_path.to_string_lossy());
@@ -577,7 +577,7 @@ impl RepoFile {
         tantivy_cache_key: String,
         entry_pathbuf: &Path,
         repo_ref: &str,
-        last_commit: i64,
+        last_commit: u64,
         repo_metadata: &RepoMetadata,
         file_cache: &FileCache,
     ) -> Option<tantivy::schema::Document> {

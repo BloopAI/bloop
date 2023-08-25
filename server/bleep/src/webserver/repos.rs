@@ -19,7 +19,7 @@ use super::{middleware::User, prelude::*};
 
 #[derive(Serialize, Debug, PartialEq, Eq)]
 pub(crate) struct Branch {
-    last_commit_unix_secs: i64,
+    last_commit_unix_secs: u64,
     name: String,
 }
 
@@ -118,7 +118,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
             repo_ref: key.clone(),
             sync_status: repo.sync_status.clone(),
             local_duplicates: vec![],
-            last_update: NaiveDateTime::from_timestamp_opt(repo.last_commit_unix_secs, 0)
+            last_update: NaiveDateTime::from_timestamp_opt(repo.last_commit_unix_secs as i64, 0)
                 .unwrap()
                 .and_local_timezone(Utc)
                 .unwrap(),
