@@ -123,7 +123,7 @@ const ContextFileRow = ({
       onClick: () => onFileRemove({ path, repo, branch }),
     });
     return items;
-  }, [onFileRemove, path, repo, branch, contextFiles, relatedFiles]);
+  }, [onFileRemove, path, repo, branch, contextFiles, relatedFiles, t]);
 
   const mappedRanges = useMemo((): [number, number][] => {
     return ranges.map((r) => [r.start, r.end - 1]);

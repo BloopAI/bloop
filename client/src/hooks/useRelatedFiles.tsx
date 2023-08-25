@@ -58,7 +58,7 @@ const useRelatedFiles = (
       );
     }
     setItems(menuItems);
-  }, [selectedFiles, relatedFiles, onFileAdded, onFileRemove]);
+  }, [selectedFiles, relatedFiles, onFileAdded, onFileRemove, t]);
 
   return { items };
 };
