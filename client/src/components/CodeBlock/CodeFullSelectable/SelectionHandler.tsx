@@ -16,6 +16,7 @@ type Props = {
   deleteRange: (i: number) => void;
   setCurrentlySelectingRange: Dispatch<SetStateAction<null | [number, number]>>;
   setModifyingRange: Dispatch<SetStateAction<number>>;
+  fileLinesNum: number;
 };
 
 const SelectionHandler = ({
@@ -25,6 +26,7 @@ const SelectionHandler = ({
   deleteRange,
   setCurrentlySelectingRange,
   setModifyingRange,
+  fileLinesNum,
 }: Props) => {
   const [isDraggingStart, setIsDraggingStart] = useState(false);
   const [isDraggingEnd, setIsDraggingEnd] = useState(false);
@@ -66,9 +68,12 @@ const SelectionHandler = ({
         const deltaY =
           e.clientY - startHandlerRef.current.getBoundingClientRect().top;
         const newRange: [number, number] = [
-          Math.min(
-            Math.max(range[0] + Math.round(deltaY / CODE_LINE_HEIGHT), 0),
-            range[1] + 1,
+          Math.max(
+            0,
+            Math.min(
+              Math.max(range[0] + Math.round(deltaY / CODE_LINE_HEIGHT), 0),
+              range[1] + 1,
+            ),
           ),
           range[1],
         ];
@@ -108,9 +113,12 @@ const SelectionHandler = ({
           e.clientY - endHandlerRef.current.getBoundingClientRect().top;
         const newRange: [number, number] = [
           range[0],
-          Math.max(
-            range[1] + Math.round(deltaY / CODE_LINE_HEIGHT),
-            range[0] - 1,
+          Math.min(
+            fileLinesNum - 1,
+            Math.max(
+              range[1] + Math.round(deltaY / CODE_LINE_HEIGHT),
+              range[0] - 1,
+            ),
           ),
         ];
         setRange(newRange);
@@ -140,7 +148,7 @@ const SelectionHandler = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDraggingEnd, i, range]);
+  }, [isDraggingEnd, i, range, fileLinesNum]);
 
   return (
     <>
