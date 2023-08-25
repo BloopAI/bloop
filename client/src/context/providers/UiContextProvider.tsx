@@ -9,7 +9,7 @@ import React, {
 import { UIContext } from '../uiContext';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { DeviceContext } from '../deviceContext';
-import { gitHubStatus } from '../../services/api';
+import { getConfig } from '../../services/api';
 import { SettingSections } from '../../components/Settings';
 import {
   getPlainFromStorage,
@@ -47,8 +47,8 @@ export const UIContextProvider = memo(
 
     useEffect(() => {
       if (!isSelfServe) {
-        gitHubStatus().then((d) => {
-          setGithubConnected(d.status === 'ok');
+        getConfig().then((d) => {
+          setGithubConnected(!!d.github_user);
           setGithubChecked(true);
         });
       }

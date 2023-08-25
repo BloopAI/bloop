@@ -1,10 +1,11 @@
-use super::prelude::*;
+use super::{middleware::User, prelude::*};
 use crate::{
     remotes::{github, AuthResponse, BackendCredential},
     repo::Backend,
     Application,
 };
 
+use axum::extract::State;
 use tracing::{debug, error, warn};
 
 use std::time::{Duration, Instant};
@@ -23,52 +24,6 @@ impl super::ApiResponse for GithubResponse {}
 pub(super) enum GithubCredentialStatus {
     Ok,
     Missing,
-}
-
-/// Get the status of the Github OAuth authentication
-//
-pub(super) async fn status(Extension(app): Extension<Application>) -> impl IntoResponse {
-    let github = app.credentials.github();
-
-    if github.is_some() {
-        let username = app
-            .credentials
-            .github()
-            // We just initialized this above.
-            .expect("github credentials were not initialized")
-            .client()
-            // We know the builder won't fail as we just built it above.
-            .expect("failed to get octocrab client")
-            .current()
-            .user()
-            .await
-            // There is no sensible way to track this error, so we panic if it fails.
-            .expect("failed to get current user info")
-            .login;
-
-        app.with_analytics(|analytics| {
-            use rudderanalytics::message::{Identify, Message};
-            analytics.send(Message::Identify(Identify {
-                user_id: Some(analytics.tracking_id(Some(&username))),
-                traits: Some(serde_json::json!({
-                    "org_name": app.org_name(),
-                    "device_id": analytics.device_id(),
-                    "is_self_serve": app.env.is_cloud_instance(),
-                    "github_username": username,
-                })),
-                ..Default::default()
-            }));
-        });
-    }
-
-    (
-        StatusCode::OK,
-        json(GithubResponse::Status(if github.is_some() {
-            GithubCredentialStatus::Ok
-        } else {
-            GithubCredentialStatus::Missing
-        })),
-    )
 }
 
 /// Connect to Github through Cognito & OAuth
@@ -117,7 +72,16 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
 
 /// Remove Github OAuth credentials
 //
-pub(super) async fn logout(Extension(app): Extension<Application>) -> impl IntoResponse {
+pub(super) async fn logout(
+    Extension(user): Extension<User>,
+    State(app): State<Application>,
+) -> impl IntoResponse {
+    if let Some(login) = user.login() {
+        app.user_profiles.remove(login);
+        app.user_profiles.store().unwrap();
+        app.credentials.remove_user().await;
+    }
+
     let deleted = app.credentials.remove(&Backend::Github);
     if let Some(BackendCredential::Github(github::State {
         auth: github::Auth::OAuth(creds),
@@ -147,18 +111,12 @@ pub(super) async fn logout(Extension(app): Extension<Application>) -> impl IntoR
             .await
             .unwrap();
 
-        let saved = app
-            .config
-            .source
-            .save_credentials(&app.credentials.serialize().await);
-
-        if saved.is_ok() {
-            return Ok(json(GithubResponse::Status(GithubCredentialStatus::Ok)));
-        }
-
-        if let Err(err) = saved {
-            error!(?err, "Failed to delete credentials from disk");
-            return Err(Error::internal("failed to save changes"));
+        match app.credentials.store() {
+            Ok(_) => return Ok(json(GithubResponse::Status(GithubCredentialStatus::Ok))),
+            Err(err) => {
+                error!(?err, "Failed to delete credentials from disk");
+                return Err(Error::internal("failed to save changes"));
+            }
         }
     }
 
@@ -227,14 +185,11 @@ async fn poll_for_oauth_token(code: String, app: Application) {
     debug!("acquired credentials");
     app.credentials.set_github(github::Auth::OAuth(auth));
 
-    let saved = app
-        .config
-        .source
-        .save_credentials(&app.credentials.serialize().await);
-
-    if let Err(err) = saved {
+    if let Err(err) = app.credentials.store() {
         error!(?err, "failed to save credentials to disk");
     }
 
+    // the old place for credentials is now ready to be wiped
+    app.config.source.ensure_deleted("credentials.json");
     debug!("github auth complete");
 }

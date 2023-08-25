@@ -17,6 +17,7 @@ pub(super) struct ConfigResponse {
     bloop_user_profile: UserProfile,
     bloop_version: String,
     bloop_commit: String,
+    credentials_upgrade: bool,
 }
 
 impl super::ApiResponse for ConfigResponse {}
@@ -55,6 +56,22 @@ pub(super) async fn get(
         .and_then(|login| app.user_profiles.read(login, |_, v| v.clone()))
         .unwrap_or_default();
 
+    if let Some(username) = user.login() {
+        app.with_analytics(|analytics| {
+            use rudderanalytics::message::{Identify, Message};
+            analytics.send(Message::Identify(Identify {
+                user_id: Some(tracking_id.clone()),
+                traits: Some(serde_json::json!({
+                    "org_name": app.org_name(),
+                    "device_id": analytics.device_id(),
+                    "is_self_serve": app.env.is_cloud_instance(),
+                    "github_username": username.to_string(),
+                })),
+                ..Default::default()
+            }));
+        });
+    }
+
     json(ConfigResponse {
         analytics_data_plane: app.config.analytics_data_plane.clone(),
         analytics_key_fe: app.config.analytics_key_fe.clone(),
@@ -64,6 +81,7 @@ pub(super) async fn get(
         bloop_version: env!("CARGO_PKG_VERSION").into(),
         bloop_commit: git_version::git_version!(fallback = "unknown").into(),
         bloop_user_profile: user_profile,
+        credentials_upgrade: app.config.source.exists("credentials.json"),
         github_user,
         device_id,
         org_name,

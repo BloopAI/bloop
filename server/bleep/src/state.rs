@@ -1,6 +1,6 @@
 use crate::{
-    remotes::{gather_repo_roots, BackendCredential},
-    repo::{Backend, RepoError, RepoRef, Repository},
+    remotes::gather_repo_roots,
+    repo::{RepoError, RepoRef, Repository},
 };
 use anyhow::Result;
 use clap::Args;
@@ -31,11 +31,6 @@ pub struct StateSource {
     #[serde(default)]
     state_file: Option<PathBuf>,
 
-    /// Credentials store for external providers
-    #[clap(long)]
-    #[serde(default)]
-    credentials: Option<PathBuf>,
-
     /// Version of the current schema
     #[clap(short, long)]
     #[serde(default)]
@@ -45,6 +40,12 @@ pub struct StateSource {
     #[clap(long)]
     #[serde(default)]
     cookie_key: Option<PathBuf>,
+
+    /// The root directory that contains all other paths in this structure
+    /// (unless otherwise configured)
+    #[serde(skip)]
+    #[clap(skip)]
+    root_dir: PathBuf,
 }
 
 /// Unified wrapper to persist state in the central state-store.
@@ -103,9 +104,6 @@ impl StateSource {
         self.state_file
             .get_or_insert_with(|| dir.join("repo_state.json"));
 
-        self.credentials
-            .get_or_insert_with(|| dir.join("credentials.json"));
-
         self.version_file
             .get_or_insert_with(|| dir.join("version.json"));
 
@@ -118,6 +116,16 @@ impl StateSource {
 
             target
         });
+
+        self.root_dir = dir.to_owned();
+    }
+
+    pub(crate) fn exists(&self, path: &(impl AsRef<Path> + ?Sized)) -> bool {
+        self.root_dir.join(path.as_ref()).exists()
+    }
+
+    pub(crate) fn ensure_deleted(&self, path: &(impl AsRef<Path> + ?Sized)) {
+        _ = std::fs::remove_file(self.root_dir.join(path.as_ref()));
     }
 
     pub(crate) fn load_or_default<T: Serialize + DeserializeOwned + Default + Send + Sync>(
@@ -226,19 +234,6 @@ impl StateSource {
         }
     }
 
-    pub(crate) fn initialize_credentials(
-        &self,
-    ) -> Result<std::collections::HashMap<Backend, BackendCredential>, RepoError> {
-        Ok(read_file_or_default(self.credentials.as_ref().unwrap()).unwrap_or_default())
-    }
-
-    pub(crate) fn save_credentials(&self, creds: impl Serialize) -> Result<(), RepoError> {
-        match self.credentials {
-            None => Err(RepoError::NoSourceGiven),
-            Some(ref path) => pretty_write_file(path, &creds),
-        }
-    }
-
     pub fn index_version_mismatch(&self) -> bool {
         let current: String = read_file_or_default(self.version_file.as_ref().unwrap()).unwrap();
 
@@ -269,8 +264,7 @@ pub fn pretty_write_file<T: Serialize + ?Sized>(
 ) -> Result<(), RepoError> {
     let tmpfile = path
         .as_ref()
-        .with_extension("new")
-        .with_extension(format!("{}", rand::thread_rng().gen_range(0..=9999)));
+        .with_extension(format!("new.{}", rand::thread_rng().gen_range(0..=9999)));
 
     let file = {
         let mut tries = 0;
@@ -356,9 +350,9 @@ mod test {
         let repo_pool = StateSource {
             directory: Some(path.to_path_buf()),
             state_file: Some(path.join("state.json")),
-            credentials: None,
             version_file: None,
             cookie_key: None,
+            root_dir: Default::default(),
         }
         .initialize_pool()
         .unwrap();

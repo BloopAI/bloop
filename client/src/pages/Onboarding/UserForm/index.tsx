@@ -16,7 +16,7 @@ import { DeviceContext } from '../../../context/deviceContext';
 import {
   gitHubDeviceLogin,
   gitHubLogout,
-  gitHubStatus,
+  getConfig,
 } from '../../../services/api';
 import { Form } from '../index';
 import Dropdown from '../../../components/Dropdown/Normal';
@@ -67,8 +67,8 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
   }, [isGithubConnected, loginUrl, openLink]);
 
   const checkGHAuth = () => {
-    gitHubStatus().then((d) => {
-      setGithubConnected(d.status === 'ok');
+    getConfig().then((d) => {
+      setGithubConnected(!!d.user_login);
     });
   };
 
@@ -120,6 +120,14 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
           <h4 className="text-label-title">
             <Trans>Setup bloop</Trans>
           </h4>
+          {envConfig.credentials_upgrade && (
+            <p className="text-sky/80 body-s border rounded-sm border-sky/30 p-1">
+              <Trans>
+                We’ve updated our auth service to make bloop more secure, please
+                reauthorise your client with GitHub
+              </Trans>
+            </p>
+          )}
           <p className="text-label-muted body-s">
             <Trans>Please log into your GitHub account to complete setup</Trans>
           </p>
@@ -194,7 +202,7 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
         <div className="flex items-center pl-2.5 gap-2.5 border border-bg-border rounded-4">
           <GitHubLogo />
           <p className="callout text-label-title flex-1">
-            {isGithubConnected ? envConfig.github_user?.login : 'GitHub'}
+            {isGithubConnected ? envConfig.user_login : 'GitHub'}
           </p>
           <button
             type="button"

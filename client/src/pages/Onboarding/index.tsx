@@ -18,12 +18,7 @@ import {
   SESSION_ID_KEY,
   USER_DATA_FORM,
 } from '../../services/storage';
-import {
-  getConfig,
-  getRepos,
-  gitHubStatus,
-  saveUserData,
-} from '../../services/api';
+import { getConfig, getRepos, saveUserData } from '../../services/api';
 import SeparateOnboardingStep from '../../components/SeparateOnboardingStep';
 import StatusBar from '../../components/StatusBar';
 import UserForm from './UserForm';
@@ -55,6 +50,7 @@ const Onboarding = () => {
   const { isGithubConnected } = useContext(UIContext.GitHubConnected);
   const { isSelfServe, os, setEnvConfig, envConfig } =
     useContext(DeviceContext);
+  const [isJustUpdated, setJustUpdated] = useState(false);
 
   const closeOnboarding = useCallback(() => {
     setShouldShowWelcome(false);
@@ -85,9 +81,11 @@ const Onboarding = () => {
           setShouldShowWelcome(true);
         });
     } else {
-      gitHubStatus()
+      getConfig()
         .then((d) => {
-          if (d.status !== 'ok') {
+          setEnvConfig(d);
+          if (!d.user_login) {
+            setJustUpdated(d.credentials_upgrade);
             setShouldShowWelcome(true);
           } else {
             closeOnboarding();
