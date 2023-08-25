@@ -159,6 +159,10 @@ mod tests {
                     imports: [
                         List {
                             context: "from typings import §List§",
+                            referenced in (2): [
+                                `def sines(items: §List§[int]) -> List[int]:`,
+                                `def sines(items: List[int]) -> §List§[int]:`,
+                            ],
                         },
                         math {
                             context: "import §math§",
