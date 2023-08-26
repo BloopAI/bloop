@@ -202,13 +202,6 @@ const ContextFileRow = ({
         <div className="w-16 flex items-center flex-shrink-0">
           <TokensUsageBadge tokens={tokens} />
         </div>
-        <div className="w-30 flex items-center flex-shrink-0">
-          <div className="h-6 px-2 flex items-center rounded-full border border-bg-border overflow-hidden max-w-full caption text-label-base">
-            <span className="ellipsis">{`${repo.split('/').pop()}${
-              branch ? ` / ${branch.replace(/^origin\//, '')}` : ''
-            }`}</span>
-          </div>
-        </div>
         <div onClick={(e) => e.stopPropagation()}>
           <DropdownWithIcon
             items={relatedFilesItems}
