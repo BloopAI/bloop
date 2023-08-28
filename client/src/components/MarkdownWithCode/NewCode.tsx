@@ -2,23 +2,42 @@ import { useState } from 'react';
 import Code from '../CodeBlock/Code';
 import Button from '../Button';
 import { CheckIcon, Clipboard } from '../../icons';
-import { copyToClipboard } from '../../utils';
+import {
+  copyToClipboard,
+  getFileExtensionForLang,
+  getPrettyLangName,
+} from '../../utils';
+import FileIcon from '../FileIcon';
 
 type Props = {
   code: string;
   language: string;
   isSummary?: boolean;
+  isCodeStudio?: boolean;
 };
 
-const NewCode = ({ code, language, isSummary }: Props) => {
+const NewCode = ({ code, language, isSummary, isCodeStudio }: Props) => {
   const [codeCopied, setCodeCopied] = useState(false);
   return (
     <div
       className={`${
-        !isSummary ? 'my-4 p-4 bg-bg-shade' : 'bg-chat-bg-sub'
+        !isSummary
+          ? isCodeStudio
+            ? 'my-4 bg-bg-sub'
+            : 'my-4 p-4 bg-bg-shade'
+          : 'bg-chat-bg-sub'
       } text-sm border border-bg-border rounded-md relative group-code`}
     >
-      <div className="overflow-auto">
+      {isCodeStudio && (
+        <div className="bg-bg-shade border-b border-bg-border p-2 flex items-center gap-2">
+          <FileIcon
+            filename={getFileExtensionForLang(language, true)}
+            noMargin
+          />
+          {getPrettyLangName(language)}
+        </div>
+      )}
+      <div className={`overflow-auto ${isCodeStudio ? 'p-2' : ''}`}>
         <Code showLines={false} code={code} language={language} canWrap />
       </div>
       <div
