@@ -1,13 +1,7 @@
-import { useState } from 'react';
 import Code from '../CodeBlock/Code';
-import Button from '../Button';
-import { CheckIcon, Clipboard } from '../../icons';
-import {
-  copyToClipboard,
-  getFileExtensionForLang,
-  getPrettyLangName,
-} from '../../utils';
+import { getFileExtensionForLang, getPrettyLangName } from '../../utils';
 import FileIcon from '../FileIcon';
+import CopyButton from './CopyButton';
 
 type Props = {
   code: string;
@@ -17,7 +11,6 @@ type Props = {
 };
 
 const NewCode = ({ code, language, isSummary, isCodeStudio }: Props) => {
-  const [codeCopied, setCodeCopied] = useState(false);
   return (
     <div
       className={`${
@@ -40,24 +33,7 @@ const NewCode = ({ code, language, isSummary, isCodeStudio }: Props) => {
       <div className={`overflow-auto ${isCodeStudio ? 'p-2' : ''}`}>
         <Code showLines={false} code={code} language={language} canWrap />
       </div>
-      <div
-        className={`absolute ${
-          code.split('\n').length > 1 ? 'top-4 right-4' : 'top-2.5 right-2.5'
-        } opacity-0 group-code-hover:opacity-100 transition-opacity`}
-      >
-        <Button
-          variant="secondary"
-          size="small"
-          onClick={() => {
-            copyToClipboard(code);
-            setCodeCopied(true);
-            setTimeout(() => setCodeCopied(false), 2000);
-          }}
-        >
-          {codeCopied ? <CheckIcon /> : <Clipboard />}
-          {codeCopied ? 'Copied' : 'Copy'}
-        </Button>
-      </div>
+      <CopyButton isCodeStudio={isCodeStudio} code={code} />
     </div>
   );
 };

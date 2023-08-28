@@ -1284,7 +1284,17 @@ h5, .h5 {
   margin: revert;
 }
 
+.code-studio-md h1:not(:first-child), .code-studio-md h2:not(:first-child), .code-studio-md h3:not(:first-child), .code-studio-md h4:not(:first-child), .code-studio-md h5:not(:first-child), .code-studio-md h6:not(:first-child), .code-studio-md p:not(:first-child) {
+  margin-top: revert;
+}
+
+.code-studio-md h1:not(:last-child), .code-studio-md h2:not(:last-child), .code-studio-md h3:not(:last-child), .code-studio-md h4:not(:last-child), .code-studio-md h5:not(:last-child), .code-studio-md h6:not(:last-child), .code-studio-md p:not(:last-child) {
+  margin-bottom: revert;
+}
+
 .readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p,
+.code-studio-md h1, .code-studio-md h2, .code-studio-md h3, .code-studio-md h4, .code-studio-md h5,
+.code-studio-md h6, .code-studio-md p,
 .article-response h1, .article-response h2, .article-response h3, .article-response h4, .article-response h5,
 .article-response h6, .article-response p,
 .ipynb-markdown h1, .ipynb-markdown h2, .ipynb-markdown h3, .ipynb-markdown h4, .ipynb-markdown h5,
@@ -1294,11 +1304,11 @@ h5, .h5 {
   user-select: initial;
 }
 
-.ipynb-markdown p:not(:first-child), h1:not(:first-child), h2:not(:first-child), h3:not(:first-child), h4:not(:first-child) {
+.ipynb-markdown p:not(:first-child), .ipynb-markdown h1:not(:first-child), .ipynb-markdown h2:not(:first-child), .ipynb-markdown h3:not(:first-child), .ipynb-markdown h4:not(:first-child){
   margin-top: revert;
 }
 
-.ipynb-markdown p:not(:last-child), h1:not(:last-child), h2:not(:last-child), h3:not(:last-child), h4:not(:last-child) {
+.ipynb-markdown p:not(:last-child), .ipynb-markdown h1:not(:last-child), .ipynb-markdown h2:not(:last-child), .ipynb-markdown h3:not(:last-child), .ipynb-markdown h4:not(:last-child){
   margin-bottom: revert;
 }
 
@@ -1318,37 +1328,37 @@ h5, .h5 {
   padding-bottom: 0.6rem;
 }
 
-.readme h1, .article-response h1, .markdown h1 {
+.readme h1, .article-response h1, .markdown h1, .code-studio-md h1 {
   font-size: 2rem;
 }
 
-.readme h2, .article-response h2, .markdown h2 {
+.readme h2, .article-response h2, .markdown h2, .code-studio-md h2 {
   font-size: 1.5rem;
 }
 
-.readme h3, .article-response h3, .markdown h3 {
+.readme h3, .article-response h3, .markdown h3, .code-studio-md h3 {
   font-size: 1.25rem
 }
 
-.readme h4, .article-response h4, .markdown h4 {
+.readme h4, .article-response h4, .markdown h4, .code-studio-md h4 {
   font-size: 1rem
 }
 
-.readme h5, .article-response h5, .markdown h5 {
+.readme h5, .article-response h5, .markdown h5, .code-studio-md h5 {
   font-size: .875rem
 }
 
-.readme h6, .article-response h6, .markdown h6 {
+.readme h6, .article-response h6, .markdown h6, .code-studio-md h6 {
   font-size: .85rem
 }
 
-.readme ul, .article-response ul, .markdown ul {
+.readme ul, .article-response ul, .markdown ul, .code-studio-md ul {
   list-style: revert;
   margin: revert;
   padding: revert;
 }
 
-.readme ol, .article-response ol, .markdown ol {
+.readme ol, .article-response ol, .markdown ol, .code-studio-md ol {
   list-style: revert;
   margin: revert;
   padding: revert;
@@ -1358,19 +1368,19 @@ h5, .h5 {
   color: rgb(var(--label-link));
 }
 
-.article-response a, .summary-card a {
+.article-response a, .summary-card a, .code-studio-md a {
   background-color: rgb(var(--bg-shade));
   border: 1px solid rgb(var(--bg-border));
   border-radius: 4px;
   padding: 2px 4px;
 }
 
-.article-response li>p {
+.article-response li>p, .code-studio-md li>p {
   margin: 0;
   display: unset;
 }
 
-.article-response code, .summary-card code {
+.article-response code, .summary-card code, .code-studio-md code {
   color: #14B8A6;
   font-family: Menlo, sans-serif;
   font-size: 0.95em;
@@ -1383,7 +1393,7 @@ h5, .h5 {
   border-radius: 4px;
 }
 
-.article-response pre:has(code) {
+.article-response pre:has(code), .code-studio-md pre:has(code) {
   background-color: rgb(var(--bg-shade));
   border: 1px solid rgb(var(--bg-border));
   border-radius: 8px;
