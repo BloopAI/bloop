@@ -21,6 +21,7 @@ type Props = {
   onMessageChange: (m: string, i?: number) => void;
   onMessageRemoved?: (i: number) => void;
   i?: number;
+  scrollToBottom?: () => void;
 };
 
 const ConversationInput = ({
@@ -30,11 +31,13 @@ const ConversationInput = ({
   onMessageChange,
   i,
   onMessageRemoved,
+  scrollToBottom,
 }: Props) => {
   const { t } = useTranslation();
   const { envConfig } = useContext(DeviceContext);
   const [isFocused, setFocused] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [isDragging, setDragging] = useState(false);
 
   const handleAuthorSwitch = useCallback(() => {
     onAuthorChange(
@@ -55,14 +58,23 @@ const ConversationInput = ({
   useEffect(() => {
     if (inputRef.current) {
       // We need to reset the height momentarily to get the correct scrollHeight for the textarea
-      inputRef.current.style.height = '24px';
+      inputRef.current.style.height = '25px';
       const scrollHeight = inputRef.current.scrollHeight;
 
       // We then set the height directly, outside of the render loop
       // Trying to set this with state or a ref will product an incorrect value.
-      inputRef.current.style.height = Math.max(scrollHeight, 24) + 'px';
+      inputRef.current.style.height =
+        Math.min(Math.max(scrollHeight, 25), 300) + 'px';
+      setTimeout(() => scrollToBottom?.(), 100);
     }
   }, [inputRef.current, message, isFocused]);
+
+  const handleModeChange = useCallback(() => {
+    if (!document.getSelection()?.isCollapsed) {
+    } else {
+      setFocused(true);
+    }
+  }, []);
 
   return (
     <div className="flex flex-col p-4 gap-3 rounded-6 border border-transparent hover:shadow-medium hover:border-bg-border-hover focus-within:border-bg-main bg-bg-base hover:focus-within:border-bg-main focus-within:shadow-medium transition-all duration-150 ease-in-out">
@@ -99,7 +111,7 @@ const ConversationInput = ({
           )
         )}
       </div>
-      <div onClick={() => setFocused(true)}>
+      <div onClick={handleModeChange}>
         {isFocused || !message ? (
           <textarea
             className={`w-full bg-transparent outline-none focus:outline-0 resize-none body-m placeholder:text-label-base`}
