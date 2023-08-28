@@ -21,10 +21,12 @@ import TokensUsageBadge from '../TokensUsageBadge';
 import Button from '../../../components/Button';
 import {
   EyeCut,
+  Eye,
   MinusSignInCircle,
   MoreHorizontal,
   PlusSignInCircle,
   TrashCanFilled,
+  PlusSignInBubble,
 } from '../../../icons';
 import RelatedFilesBadge from '../RelatedFilesBadge';
 import { DropdownWithIcon } from '../../../components/Dropdown';
@@ -177,16 +179,16 @@ const ContextFileRow = ({
       className="w-full overflow-x-auto border-b border-bg-base bg-bg-sub group cursor-pointer"
       onClick={handleClick}
     >
-      <div
-        className={`max-w-full flex gap-3 items-center py-3 px-8 ${
-          hidden ? 'opacity-30' : ''
-        }`}
-      >
+      <div className={`max-w-full flex gap-3 items-center py-3 px-8`}>
         <div className="rounded bg-bg-base">
           <FileIcon filename={path} noMargin />
         </div>
         <div className="flex items-center gap-2 flex-1">
-          <p className="body-s-strong text-label-title ellipsis">
+          <p
+            className={`body-s-strong text-label-title ellipsis ${
+              hidden ? 'opacity-30' : ''
+            }`}
+          >
             {path.split('/').pop()}
           </p>
           <LinesBadge ranges={mappedRanges} isShort />
@@ -200,43 +202,58 @@ const ContextFileRow = ({
         <div className="w-16 flex items-center flex-shrink-0">
           <TokensUsageBadge tokens={tokens} />
         </div>
-        <div className="w-30 flex items-center flex-shrink-0">
-          <div className="h-6 px-2 flex items-center rounded-full border border-bg-border overflow-hidden max-w-full caption text-label-base">
-            <span className="ellipsis">{`${repo.split('/').pop()}${
-              branch ? ` / ${branch.replace(/^origin\//, '')}` : ''
-            }`}</span>
-          </div>
-        </div>
-        {hidden ? (
-          <Button
-            variant="tertiary"
-            size="tiny"
-            onlyIcon
-            title={t('Use file')}
-            className={
-              'opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity '
+        <div onClick={(e) => e.stopPropagation()}>
+          <DropdownWithIcon
+            items={relatedFilesItems}
+            btnOnlyIcon
+            btnTitle="Add related files"
+            icon={
+              <PlusSignInBubble
+                raw
+                sizeClassName="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 group-focus:opacity-100"
+              />
             }
-            onClick={(e) => {
-              e.stopPropagation();
-              onFileHide(path, repo, branch, false);
-            }}
-          >
+            noChevron
+            btnSize="tiny"
+            dropdownBtnClassName="flex-shrink-0"
+            appendTo={document.body}
+            onClose={onRelatedFiledClosed}
+          />
+        </div>
+        <Button
+          variant="tertiary"
+          size="tiny"
+          onlyIcon
+          title={hidden ? t('Show file') : t('Hide file')}
+          className={
+            'opacity-50 group-hover:opacity-100 group-focus:opacity-100'
+          }
+          onClick={(e) => {
+            e.stopPropagation();
+            onFileHide(path, repo, branch, !hidden);
+          }}
+        >
+          {hidden ? (
             <EyeCut raw sizeClassName="w-3.5 h-3.5" />
-          </Button>
-        ) : (
-          <div onClick={(e) => e.stopPropagation()}>
-            <DropdownWithIcon
-              items={isAddingRelatedFiles ? relatedFilesItems : dropdownItems}
-              btnOnlyIcon
-              icon={<MoreHorizontal sizeClassName="w-3.5 h-3.5" />}
-              noChevron
-              btnSize="tiny"
-              dropdownBtnClassName="flex-shrink-0"
-              appendTo={document.body}
-              onClose={onRelatedFiledClosed}
-            />
-          </div>
-        )}
+          ) : (
+            <Eye raw sizeClassName="w-3.5 h-3.5" />
+          )}
+        </Button>
+        <Button
+          variant="tertiary"
+          size="tiny"
+          onlyIcon
+          title={'Remove file'}
+          className={
+            'opacity-50 group-hover:opacity-100 group-focus:opacity-100'
+          }
+          onClick={(e) => {
+            e.stopPropagation();
+            onFileRemove({ path, repo, branch });
+          }}
+        >
+          <TrashCanFilled raw sizeClassName="w-3.5 h-3.5" />
+        </Button>
       </div>
     </div>
   );
