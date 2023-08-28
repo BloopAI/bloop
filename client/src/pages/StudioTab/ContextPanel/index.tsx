@@ -4,6 +4,7 @@ import React, {
   SetStateAction,
   useCallback,
   useContext,
+  useMemo,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import CodeStudioToken from '../../../icons/CodeStudioToken';
@@ -44,6 +45,12 @@ type Props = {
   ) => void;
 };
 
+type FileList = {
+  repo: string;
+  branch: string;
+  files: (StudioContextFile & { originalIndex: number; fileName: string })[];
+}[];
+
 const ContextPanel = ({
   setLeftPanel,
   setAddContextOpen,
@@ -68,41 +75,40 @@ const ContextPanel = ({
 
   const handlePopupOpen = useCallback(() => setAddContextOpen(true), []);
 
-  type FileList = {
-    repo: string;
-    branch: string;
-    files: (StudioContextFile & { originalIndex: number })[];
-  }[];
-
-  const fileList = contextFiles
-    .reduce<FileList>((acc, f, originalIndex) => {
-      const existing = acc.find(
-        (a) => a.repo === f.repo && a.branch === f.branch,
-      );
-      if (existing) {
-        existing.files.push({ ...f, originalIndex });
-      } else {
-        acc.push({
-          repo: f.repo,
-          branch: f.branch,
-          files: [{ ...f, originalIndex }],
-        });
-      }
-      return acc;
-    }, [])
-    .sort((a, b) => {
-      const sortString = `${a.repo}${a.branch}`.localeCompare(
-        `${b.repo}${b.branch}`,
-      );
-      if (sortString === 0) {
-        return 1;
-      }
-      return sortString;
-    })
-    .map((f) => {
-      f.files.sort((a, b) => a.path.localeCompare(b.path));
-      return f;
-    });
+  const fileList = useMemo(
+    () =>
+      contextFiles
+        .reduce<FileList>((acc, f, originalIndex) => {
+          const existing = acc.find(
+            (a) => a.repo === f.repo && a.branch === f.branch,
+          );
+          const fileName = f.path.split('/').pop()!;
+          if (existing) {
+            existing.files.push({ ...f, originalIndex, fileName });
+          } else {
+            acc.push({
+              repo: f.repo,
+              branch: f.branch,
+              files: [{ ...f, originalIndex, fileName }],
+            });
+          }
+          return acc;
+        }, [])
+        .sort((a, b) => {
+          const sortString = `${a.repo}${a.branch}`.localeCompare(
+            `${b.repo}${b.branch}`,
+          );
+          if (sortString === 0) {
+            return 1;
+          }
+          return sortString;
+        })
+        .map((f) => {
+          f.files.sort((a, b) => a.path.localeCompare(b.path));
+          return f;
+        }),
+    [contextFiles],
+  );
 
   return (
     <div className="flex flex-col w-full flex-1">
@@ -175,6 +181,12 @@ const ContextPanel = ({
                   onFileRemove={onFileRemove}
                   onFileHide={onFileHide}
                   onFileAdded={onFileAdded}
+                  displayName={
+                    repoBranch.files.filter((f) => f.fileName === file.fileName)
+                      .length > 1
+                      ? file.path.split('/').slice(-2).join('/')
+                      : file.fileName
+                  }
                 />
               ))}
             </>
