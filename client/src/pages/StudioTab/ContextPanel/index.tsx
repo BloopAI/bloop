@@ -68,6 +68,42 @@ const ContextPanel = ({
 
   const handlePopupOpen = useCallback(() => setAddContextOpen(true), []);
 
+  type FileList = {
+    repo: string;
+    branch: string;
+    files: (StudioContextFile & { originalIndex: number })[];
+  }[];
+
+  const fileList = contextFiles
+    .reduce<FileList>((acc, f, originalIndex) => {
+      const existing = acc.find(
+        (a) => a.repo === f.repo && a.branch === f.branch,
+      );
+      if (existing) {
+        existing.files.push({ ...f, originalIndex });
+      } else {
+        acc.push({
+          repo: f.repo,
+          branch: f.branch,
+          files: [{ ...f, originalIndex }],
+        });
+      }
+      return acc;
+    }, [])
+    .sort((a, b) => {
+      const sortString = `${a.repo}${a.branch}`.localeCompare(
+        `${b.repo}${b.branch}`,
+      );
+      if (sortString === 0) {
+        return 1;
+      }
+      return sortString;
+    })
+    .map((f) => {
+      f.files.sort((a, b) => a.path.localeCompare(b.path));
+      return f;
+    });
+
   return (
     <div className="flex flex-col w-full flex-1">
       <div className="flex gap-1 px-8 justify-between items-center border-b border-bg-border bg-bg-shade shadow-low h-11.5">
@@ -75,9 +111,9 @@ const ContextPanel = ({
           <p className="body-s text-label-title">
             <Trans>Context files</Trans>
           </p>
-          <TokensUsageProgress percent={(tokensTotal / 42000) * 100} />
+          <TokensUsageProgress percent={(tokensTotal / 7000) * 100} />
           <p className="caption text-label-base">
-            {t('# of #', { count: tokensTotal, total: '42,000' })}
+            {t('# of #', { count: tokensTotal, total: '7000' })}
           </p>
         </div>
         <Button size="small" onClick={handlePopupOpen}>
@@ -115,18 +151,33 @@ const ContextPanel = ({
         </div>
       ) : (
         <div className="flex flex-col w-full">
-          {contextFiles.map((f, i) => (
-            <ContextFileRow
-              key={f.repo + f.path}
-              {...f}
-              contextFiles={contextFiles}
-              setLeftPanel={setLeftPanel}
-              repoFull={repositories?.find((r) => r.ref === f.repo)}
-              tokens={tokensPerFile[i]}
-              onFileRemove={onFileRemove}
-              onFileHide={onFileHide}
-              onFileAdded={onFileAdded}
-            />
+          {fileList.map((repoBranch) => (
+            <>
+              <div className="w-full overflow-x-auto border-b border-bg-base bg-bg-main/15 group cursor-pointer">
+                <div className={`max-w-full flex gap-3 items-center py-0 px-8`}>
+                  <p className={`body-s text-label-title ellipsis`}>
+                    {`${repoBranch.repo.split('/').pop()}${
+                      repoBranch.branch
+                        ? ` / ${repoBranch.branch.replace(/^origin\//, '')}`
+                        : ''
+                    }`}
+                  </p>
+                </div>
+              </div>
+              {repoBranch.files.map((file, i) => (
+                <ContextFileRow
+                  key={file.repo + file.path}
+                  {...file}
+                  contextFiles={contextFiles}
+                  setLeftPanel={setLeftPanel}
+                  repoFull={repositories?.find((r) => r.ref === file.repo)}
+                  tokens={tokensPerFile[file.originalIndex]}
+                  onFileRemove={onFileRemove}
+                  onFileHide={onFileHide}
+                  onFileAdded={onFileAdded}
+                />
+              ))}
+            </>
           ))}
         </div>
       )}
