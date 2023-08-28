@@ -14,6 +14,7 @@ import {
 } from '../../types/general';
 import { getCodeStudio, patchCodeStudio } from '../../services/api';
 import { CodeStudioMessageType } from '../../types/api';
+import { humanNumber } from '../../utils';
 import Conversation from './Conversation';
 import ContextPanel from './ContextPanel';
 import HistoryPanel from './HistoryPanel';
@@ -196,9 +197,9 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
               <p className="body-s text-label-title">
                 <Trans>Studio conversation</Trans>
               </p>
-              <TokensUsageProgress percent={(tokensTotal / 42000) * 100} />
+              <TokensUsageProgress percent={(tokensTotal / 7000) * 100} />
               <span className="caption text-label-base">
-                {t('# of #', { count: tokensTotal, total: '42,000' })}
+                {t('# of #', { count: tokensTotal, total: '7000' })}
               </span>
             </div>
             <Button
