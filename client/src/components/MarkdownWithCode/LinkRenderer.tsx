@@ -16,13 +16,13 @@ type Props = {
   href?: string;
   children: ReactNode[];
   navigateRepoPath: (repo: string, path?: string | undefined) => void;
-  repoName: string;
+  repoName?: string;
   selectedBranch: string | null;
   isSummary?: boolean;
   fileChips: MutableRefObject<never[]>;
   hideCode?: boolean;
   updateScrollToIndex: (lines: string) => void;
-  openFileModal: (
+  openFileModal?: (
     path: string,
     scrollToLine?: string | undefined,
     highlightColor?: string | undefined,
@@ -35,8 +35,8 @@ type Props = {
     recordId?: number,
     threadId?: string,
   ) => void;
-  recordId: number;
-  threadId: string;
+  recordId?: number;
+  threadId?: string;
 };
 
 const LinkRenderer = ({
@@ -91,7 +91,9 @@ const LinkRenderer = ({
   }, [hideCode, updateScrollToIndex, start, end, filePath, recordId, threadId]);
 
   const handleClickFolder = useCallback(() => {
-    navigateRepoPath(repoName, filePath);
+    if (repoName) {
+      navigateRepoPath(repoName, filePath);
+    }
   }, [navigateRepoPath, repoName, filePath]);
 
   return (

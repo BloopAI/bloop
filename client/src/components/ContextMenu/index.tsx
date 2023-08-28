@@ -14,7 +14,7 @@ export type ContextMenuLinkItem = {
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   onMouseOver?: () => void;
   icon?: React.ReactElement;
-  text?: string;
+  text?: string | React.ReactElement;
   href?: string;
   onDelete?: () => void;
   disabled?: boolean;
