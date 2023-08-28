@@ -45,8 +45,7 @@ struct Workload<'a> {
     repo_ref: String,
     repo_name: &'a str,
     repo_metadata: &'a RepoMetadata,
-    file_cache: &'a FileCache<'a>,
-    cache_snapshot: &'a FileCacheSnapshot,
+    cache_snapshot: &'a FileCacheSnapshot<'a>,
     dir_entry: RepoDirEntry,
 }
 
@@ -65,13 +64,12 @@ impl Indexable for File {
             self.semantic.as_ref(),
             reporef,
         ));
-        let cache_snapshot = file_cache.retrieve().await;
+        let cache = file_cache.retrieve().await;
         let repo_name = reporef.indexed_name();
         let processed = &AtomicU64::new(0);
 
         let file_worker = |count: usize| {
-            let cache_snapshot = cache_snapshot.clone();
-            let file_cache = file_cache.clone();
+            let cache_snapshot = &cache;
             move |dir_entry: RepoDirEntry| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
                 pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
@@ -81,8 +79,7 @@ impl Indexable for File {
                     repo_disk_path: &repo.disk_path,
                     repo_ref: reporef.to_string(),
                     repo_name: &repo_name,
-                    file_cache: &file_cache,
-                    cache_snapshot: &cache_snapshot,
+                    cache_snapshot,
                     repo_metadata,
                     dir_entry,
                 };
@@ -93,8 +90,12 @@ impl Indexable for File {
                 }
 
                 let commit_embeddings = tokio::task::block_in_place(|| {
-                    Handle::current()
-                        .block_on(async { file_cache.batched_process_embed_queue(false).await })
+                    Handle::current().block_on(async {
+                        cache_snapshot
+                            .parent()
+                            .batched_process_embed_queue(true)
+                            .await
+                    })
                 });
                 if let Err(err) = commit_embeddings {
                     warn!(?err, "failed to commit embeddings");
@@ -129,7 +130,7 @@ impl Indexable for File {
         // files that are no longer tracked by the git index are to be removed
         // from the tantivy & qdrant indices
         let mut qdrant_remove_list = vec![];
-        cache_snapshot.retain(|k, v| {
+        cache.retain(|k, v| {
             if !v.fresh {
                 writer.delete_term(Term::from_field_text(self.unique_hash, k));
                 qdrant_remove_list.push(k.to_string());
@@ -152,7 +153,7 @@ impl Indexable for File {
         }
 
         pipes.index_percent(100);
-        file_cache.persist(cache_snapshot).await?;
+        file_cache.persist(cache).await?;
         file_cache.batched_process_embed_queue(true).await?;
         Ok(())
     }
@@ -427,7 +428,6 @@ impl File {
             repo_disk_path,
             repo_name,
             repo_metadata,
-            file_cache,
             cache_snapshot,
             dir_entry,
         } = workload;
@@ -499,7 +499,7 @@ impl File {
                         repo_ref.as_str(),
                         last_commit,
                         repo_metadata,
-                        file_cache,
+                        cache_snapshot.parent(),
                     )
                     .ok_or(anyhow::anyhow!("failed to build document"))?;
                 writer.add_document(doc)?;

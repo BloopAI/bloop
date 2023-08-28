@@ -1,4 +1,5 @@
 use std::{
+    ops::Deref,
     sync::{Arc, RwLock},
     time::Instant,
 };
@@ -19,7 +20,7 @@ use crate::{
 use super::db::SqlDb;
 
 #[derive(serde::Serialize, serde::Deserialize, Eq)]
-pub(crate) struct FreshValue<T> {
+pub struct FreshValue<T> {
     // default value is `false` on deserialize
     pub(crate) fresh: bool,
     pub(crate) value: T,
@@ -52,7 +53,25 @@ impl<T> From<T> for FreshValue<T> {
 /// Snapshot of the current state of a FileCache
 /// Since it's atomically (as in ACID) read from SQLite, this will be
 /// representative at a single point in time
-pub(crate) type FileCacheSnapshot = Arc<scc::HashMap<String, FreshValue<()>>>;
+// pub(crate) type FileCacheSnapshot = ;
+pub struct FileCacheSnapshot<'a> {
+    snapshot: Arc<scc::HashMap<String, FreshValue<()>>>,
+    parent: &'a FileCache<'a>,
+}
+
+impl<'a> FileCacheSnapshot<'a> {
+    pub(crate) fn parent(&'a self) -> &'a FileCache<'a> {
+        self.parent
+    }
+}
+
+impl<'a> Deref for FileCacheSnapshot<'a> {
+    type Target = scc::HashMap<String, FreshValue<()>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.snapshot
+    }
+}
 
 /// Manage the SQL cache for a repository, establishing a
 /// content-addressed space for files in it.
@@ -82,7 +101,7 @@ impl<'a> FileCache<'a> {
         }
     }
 
-    pub(crate) async fn retrieve(&self) -> FileCacheSnapshot {
+    pub(crate) async fn retrieve(&'a self) -> FileCacheSnapshot<'a> {
         let repo_str = self.reporef.to_string();
         let rows = sqlx::query! {
             "SELECT cache_hash FROM file_cache \
@@ -97,10 +116,13 @@ impl<'a> FileCache<'a> {
             _ = output.insert(row.cache_hash, FreshValue::stale(()));
         }
 
-        output.into()
+        FileCacheSnapshot {
+            parent: self,
+            snapshot: output.into(),
+        }
     }
 
-    pub(crate) async fn persist(&self, cache: FileCacheSnapshot) -> anyhow::Result<()> {
+    pub(crate) async fn persist(&'a self, cache: FileCacheSnapshot<'a>) -> anyhow::Result<()> {
         let mut tx = self.db.begin().await?;
         self.delete_files(&mut tx).await?;
 
