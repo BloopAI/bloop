@@ -54,6 +54,7 @@ type Props = StudioContextFile & {
     filePath: string,
     skip: boolean,
   ) => void;
+  displayName: string;
 };
 
 const ContextFileRow = ({
@@ -69,6 +70,7 @@ const ContextFileRow = ({
   onFileRemove,
   onFileHide,
   onFileAdded,
+  displayName,
 }: Props) => {
   const { t } = useTranslation();
   const [relatedFiles, setRelatedFiles] = useState<
@@ -189,7 +191,7 @@ const ContextFileRow = ({
               hidden ? 'opacity-30' : ''
             }`}
           >
-            {path.split('/').pop()}
+            {displayName}
           </p>
           <LinesBadge ranges={mappedRanges} isShort />
           <RelatedFilesBadge
