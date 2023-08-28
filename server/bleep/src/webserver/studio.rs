@@ -1,8 +1,8 @@
-use std::{iter, ops::Range, pin::Pin};
+use std::{borrow::Cow, collections::HashMap, iter, ops::Range, pin::Pin};
 
 use anyhow::{Context, Result};
 use axum::{
-    extract::Path,
+    extract::{Path, Query},
     response::{sse, Sse},
     Extension, Json,
 };
@@ -13,8 +13,13 @@ use secrecy::ExposeSecret;
 use tracing::error;
 use uuid::Uuid;
 
-use super::{Error, ErrorKind};
-use crate::{agent::prompts, llm_gateway, repo::RepoRef, webserver, Application};
+use super::{middleware::User, Error, ErrorKind};
+use crate::{
+    agent::{exchange::Exchange, prompts},
+    llm_gateway,
+    repo::RepoRef,
+    webserver, Application,
+};
 
 #[derive(serde::Deserialize)]
 pub struct Create {
@@ -70,7 +75,7 @@ struct ContextFile {
     path: String,
     hidden: bool,
     repo: RepoRef,
-    branch: String,
+    branch: Option<String>,
     ranges: Vec<Range<usize>>,
 }
 
@@ -216,12 +221,12 @@ async fn token_counts(app: Application, context: &[ContextFile]) -> webserver::R
                 let doc = app
                     .indexes
                     .file
-                    .by_path(&file.repo, &file.path, Some(&file.branch))
+                    .by_path(&file.repo, &file.path, file.branch.as_deref())
                     .await
                     .map_err(Error::internal)?
                     .with_context(|| {
                         format!(
-                            "file `{}` did not exist in repo `{}`, branch `{}`",
+                            "file `{}` did not exist in repo `{}`, branch `{:?}`",
                             file.path, file.repo, file.branch
                         )
                     })?;
@@ -355,16 +360,18 @@ async fn generate_llm_context(app: Application, context: Vec<ContextFile>) -> Re
         let doc = app
             .indexes
             .file
-            .by_path(&file.repo, &file.path, Some(&file.branch))
+            .by_path(&file.repo, &file.path, file.branch.as_deref())
             .await?
             .with_context(|| {
                 format!(
-                    "file `{}` did not exist in repo `{}`, branch `{}`",
+                    "file `{}` did not exist in repo `{}`, branch `{:?}`",
                     file.path, file.repo, file.branch
                 )
             })?;
 
-        let lines = doc.content.lines()
+        let lines = doc
+            .content
+            .lines()
             .enumerate()
             .map(|(i, s)| format!("{} {s}\n", i + 1))
             .collect::<Vec<_>>();
@@ -388,4 +395,95 @@ async fn generate_llm_context(app: Application, context: Vec<ContextFile>) -> Re
     }
 
     Ok(s)
+}
+
+#[derive(serde::Deserialize)]
+pub struct Import {
+    pub thread_id: Uuid,
+}
+
+/// Returns a new studio UUID.
+pub async fn import(
+    app: Extension<Application>,
+    user: Extension<User>,
+    Query(params): Query<Import>,
+) -> webserver::Result<String> {
+    let user_id = user
+        .login()
+        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .to_string();
+
+    let thread_id = params.thread_id.to_string();
+
+    let conversation = sqlx::query! {
+        "SELECT title, repo_ref, exchanges
+         FROM conversations
+         WHERE user_id = ? AND thread_id = ?",
+        user_id,
+        thread_id,
+    }
+    .fetch_optional(&*app.sql)
+    .await
+    .map_err(Error::internal)?
+    .ok_or_else(|| Error::new(ErrorKind::NotFound, "conversation not found"))?;
+
+    let repo_ref = conversation.repo_ref;
+    let exchanges = serde_json::from_str::<Vec<Exchange>>(&conversation.exchanges)
+        .context("couldn't deserialize exchange list")?;
+
+    let context = exchanges
+        .iter()
+        .flat_map(|e| {
+            let mut chunk_map = HashMap::new();
+
+            for c in &e.code_chunks {
+                chunk_map
+                    .entry(&c.path)
+                    .or_insert_with(Vec::new)
+                    .push(c.start_line..c.end_line + 1);
+            }
+
+            chunk_map.into_iter().map(|(path, ranges)| ContextFile {
+                path: path.clone(),
+                hidden: false,
+                repo: repo_ref.parse().unwrap(),
+                branch: e.query.branch().next().map(Cow::into_owned),
+                ranges,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let messages = exchanges
+        .iter()
+        .filter_map(|e| {
+            let query = e.query.target()?;
+            let (answer, _) = e.answer()?;
+            Some((query, answer))
+        })
+        .flat_map(|(query, answer)| {
+            [
+                Message::User(query.into_owned()),
+                Message::Assistant(answer.to_owned()),
+            ]
+        })
+        .collect::<Vec<_>>();
+
+    let context_json = serde_json::to_string(&context).unwrap();
+    let messages_json = serde_json::to_string(&messages).unwrap();
+
+    let studio_id = Uuid::new_v4();
+    let studio_id_str = studio_id.to_string();
+
+    sqlx::query! {
+        "INSERT INTO studios (id, name, context, messages) VALUES (?, ?, ?, ?)",
+        studio_id_str,
+        conversation.title,
+        context_json,
+        messages_json,
+    }
+    .execute(&*app.sql)
+    .await
+    .map_err(Error::internal)?;
+
+    Ok(studio_id.to_string())
 }

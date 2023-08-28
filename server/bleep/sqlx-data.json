@@ -350,6 +350,36 @@
     },
     "query": "INSERT INTO file_cache (repo_ref, cache_hash) VALUES (?, ?)"
   },
+  "db11e62332a30ef95bf437eabcee804c17820c2c7bb760eb143e3ff587524e43": {
+    "describe": {
+      "columns": [
+        {
+          "name": "title",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_ref",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "exchanges",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT title, repo_ref, exchanges\n         FROM conversations\n         WHERE user_id = ? AND thread_id = ?"
+  },
   "db80c758eb137530e6aad6e83778efcea787dfdf42f95b896ac482d3ffac2cfe": {
     "describe": {
       "columns": [

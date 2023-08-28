@@ -75,7 +75,8 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/studio", get(studio::list))
         .route("/studio/:id", get(studio::get))
         .route("/studio/:id", patch(studio::patch))
-        .route("/studio/:id/generate", get(studio::generate));
+        .route("/studio/:id/generate", get(studio::generate))
+        .route("/studio/import", post(studio::import));
 
     if app.env.allow(Feature::AnyPathScan) {
         api = api.route("/repos/scan", get(repos::scan_local));
