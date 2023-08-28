@@ -35,14 +35,13 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
   const [tokensTotal, setTokensTotal] = useState(0);
   const [tokensPerFile, setTokensPerFile] = useState([]);
 
-  const refetchCodeStudio = useCallback(() => {
+  const refetchCodeStudio = useCallback(async () => {
     if (tab.key) {
-      getCodeStudio(tab.key).then((resp) => {
-        setMessages(resp.messages);
-        setContextFiles(resp.context);
-        setTokensTotal(resp.token_counts.total);
-        setTokensPerFile(resp.token_counts.per_file);
-      });
+      const resp = await getCodeStudio(tab.key);
+      setMessages(resp.messages);
+      setContextFiles(resp.context);
+      setTokensTotal(resp.token_counts.total);
+      setTokensPerFile(resp.token_counts.per_file);
     }
   }, [tab.key]);
 
@@ -192,7 +191,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
           />
         </div>
         <div className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col">
-          <div className="flex items-center justify-between gap-2 px-8 h-11.5 border-b border-bg-border bg-bg-sub shadow-low select-none">
+          <div className="flex items-center justify-between gap-2 px-8 h-11.5 border-b border-bg-border bg-bg-sub shadow-low select-none flex-shrink-0">
             <div className="flex items-center gap-1.5 text-label-muted">
               <p className="body-s text-label-title">
                 <Trans>Studio conversation</Trans>
