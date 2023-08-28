@@ -1,10 +1,12 @@
 use std::{
     ops::Deref,
+    path::PathBuf,
     sync::{Arc, RwLock},
     time::Instant,
 };
 
 use qdrant_client::qdrant::{PointId, PointStruct};
+use scc::hash_map::Entry;
 use sqlx::Sqlite;
 use tracing::{error, trace};
 use uuid::Uuid;
@@ -62,6 +64,24 @@ pub struct FileCacheSnapshot<'a> {
 impl<'a> FileCacheSnapshot<'a> {
     pub(crate) fn parent(&'a self) -> &'a FileCache<'a> {
         self.parent
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub(crate) fn is_fresh(&self, unique_hash: &str, entry_pathbuf: &PathBuf) -> bool {
+        match self.snapshot.entry(unique_hash.into()) {
+            Entry::Occupied(mut val) => {
+                val.get_mut().fresh = true;
+
+                trace!("cache hit");
+                true
+            }
+            Entry::Vacant(val) => {
+                _ = val.insert_entry(().into());
+
+                trace!("cache miss");
+                false
+            }
+        }
     }
 }
 

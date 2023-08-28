@@ -10,7 +10,6 @@ use std::{
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use rayon::prelude::*;
-use scc::hash_map::Entry;
 use tantivy::{
     collector::TopDocs,
     doc,
@@ -467,7 +466,7 @@ impl File {
         let last_commit = repo_metadata.last_commit_unix_secs.unwrap_or(0);
 
         match dir_entry {
-            _ if is_cache_fresh(cache_snapshot, &tantivy_hash, &entry_pathbuf) => {
+            _ if cache_snapshot.is_fresh(&tantivy_hash, &entry_pathbuf) => {
                 info!("fresh; skipping");
                 return Ok(());
             }
@@ -687,25 +686,6 @@ impl RepoFile {
             schema.is_directory => false,
         ))
     }
-}
-
-#[tracing::instrument(skip(cache))]
-fn is_cache_fresh(cache: &FileCacheSnapshot, unique_hash: &str, entry_pathbuf: &PathBuf) -> bool {
-    match cache.entry(unique_hash.into()) {
-        Entry::Occupied(mut val) => {
-            // skip processing if contents are up-to-date in the cache
-            val.get_mut().fresh = true;
-
-            trace!("cache hit");
-            return true;
-        }
-        Entry::Vacant(val) => {
-            _ = val.insert_entry(().into());
-        }
-    }
-
-    trace!("cache miss");
-    false
 }
 
 fn build_fuzzy_regex_filter(query_str: &str) -> Option<regex::RegexSet> {
