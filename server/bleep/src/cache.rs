@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use qdrant_client::{prelude::QdrantClient, qdrant::PointId};
+use qdrant_client::qdrant::PointId;
 use sqlx::Sqlite;
 use tracing::{error, trace};
 use uuid::Uuid;
@@ -190,7 +190,15 @@ impl<'a> FileCache<'a> {
     }
 
     pub async fn chunks_for_file(&'a self, key: &'a str) -> ChunkCache<'a> {
-        ChunkCache::for_file(self.db, self.reporef, &self.embed_log, key).await
+        ChunkCache::for_file(
+            self.db,
+            self.semantic
+                .expect("we shouldn't get here without semantic db configured"),
+            self.reporef,
+            &self.embed_log,
+            key,
+        )
+        .await
     }
 }
 
@@ -200,6 +208,7 @@ impl<'a> FileCache<'a> {
 /// Operates on a single file's level.
 pub struct ChunkCache<'a> {
     sql: &'a SqlDb,
+    semantic: &'a Semantic,
     reporef: &'a RepoRef,
     file_cache_key: &'a str,
     cache: scc::HashMap<String, FreshValue<String>>,
@@ -211,6 +220,7 @@ pub struct ChunkCache<'a> {
 impl<'a> ChunkCache<'a> {
     async fn for_file(
         sql: &'a SqlDb,
+        semantic: &'a Semantic,
         reporef: &'a RepoRef,
         embed_log: &'a EmbedLog,
         file_cache_key: &'a str,
@@ -230,6 +240,7 @@ impl<'a> ChunkCache<'a> {
 
         Self {
             sql,
+            semantic,
             reporef,
             file_cache_key,
             cache,
@@ -289,19 +300,11 @@ impl<'a> ChunkCache<'a> {
     /// Since qdrant changes are pipelined on their end, data written
     /// here is not necessarily available for querying when the
     /// commit's completed.
-    pub async fn commit(
-        self,
-        qdrant: &QdrantClient,
-        collection_name: &str,
-    ) -> anyhow::Result<(usize, usize, usize)> {
+    pub async fn commit(self) -> anyhow::Result<(usize, usize, usize)> {
         let mut tx = self.sql.begin().await?;
 
-        let update_size = self
-            .commit_branch_updates(&mut tx, qdrant, collection_name)
-            .await?;
-        let delete_size = self
-            .commit_deletes(&mut tx, qdrant, collection_name)
-            .await?;
+        let update_size = self.commit_branch_updates(&mut tx).await?;
+        let delete_size = self.commit_deletes(&mut tx).await?;
         let new_size = self.commit_inserts(&mut tx).await?;
 
         tx.commit().await?;
@@ -341,8 +344,6 @@ impl<'a> ChunkCache<'a> {
     async fn commit_deletes(
         &self,
         tx: &mut sqlx::Transaction<'_, Sqlite>,
-        qdrant: &QdrantClient,
-        collection_name: &str,
     ) -> Result<usize, anyhow::Error> {
         let mut to_delete = vec![];
         self.cache
@@ -366,9 +367,10 @@ impl<'a> ChunkCache<'a> {
         }
 
         if !to_delete.is_empty() {
-            qdrant
+            self.semantic
+                .qdrant_client()
                 .delete_points(
-                    collection_name,
+                    self.semantic.collection_name(),
                     &to_delete
                         .into_iter()
                         .map(PointId::from)
@@ -386,8 +388,6 @@ impl<'a> ChunkCache<'a> {
     async fn commit_branch_updates(
         &self,
         tx: &mut sqlx::Transaction<'_, Sqlite>,
-        qdrant: &QdrantClient,
-        collection_name: &str,
     ) -> Result<usize, anyhow::Error> {
         let mut update_size = 0;
         let mut qdrant_updates = vec![];
@@ -421,8 +421,9 @@ impl<'a> ChunkCache<'a> {
             );
 
             qdrant_updates.push(async move {
-                qdrant
-                    .set_payload(collection_name, &id, payload, None)
+                self.semantic
+                    .qdrant_client()
+                    .set_payload(self.semantic.collection_name(), &id, payload, None)
                     .await
             });
             next = entry.next();

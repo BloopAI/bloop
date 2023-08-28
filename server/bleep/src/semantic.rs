@@ -494,10 +494,7 @@ impl Semantic {
             }
         });
 
-        match chunk_cache
-            .commit(&self.qdrant, &self.config.collection_name)
-            .await
-        {
+        match chunk_cache.commit().await {
             Ok((new, updated, deleted)) => {
                 info!(
                     repo_name,
