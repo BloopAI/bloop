@@ -111,7 +111,7 @@ const ConversationInput = ({
           )
         )}
       </div>
-      <div onClick={handleModeChange}>
+      <div onClick={handleModeChange} className="code-studio-md">
         {isFocused || !message ? (
           <textarea
             className={`w-full bg-transparent outline-none focus:outline-0 resize-none body-m placeholder:text-label-base`}
