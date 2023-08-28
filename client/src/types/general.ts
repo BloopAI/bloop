@@ -346,6 +346,7 @@ export enum StudioConversationMessageAuthor {
 export type StudioConversationMessage = {
   author: StudioConversationMessageAuthor;
   message: string;
+  error?: string;
 };
 
 export enum StudioLeftPanelType {
