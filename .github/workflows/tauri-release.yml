@@ -58,7 +58,7 @@ jobs:
           VHUI_INI_BASE64: ${{ secrets.VHUI_INI_BASE64 }}
           BLOOP_CER_BASE64: ${{ secrets.BLOOP_CER_BASE64 }}
         run: |
-          choco install openvpn base64
+          choco install openvpn base64 safenet-authentication-client
           choco install --ignore-checksums virtualhere-client
           echo "$OVPN_AUTH_USER_PASS_BASE64" | base64 --decode > aup.txt
           echo "$OVPN_PROFILE_BASE64" | base64 --decode > profile.ovpn
