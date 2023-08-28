@@ -14,7 +14,7 @@ import NewCode from './NewCode';
 
 type Props = {
   children: ReactNode[];
-  repoName: string;
+  repoName?: string;
   fileChips: MutableRefObject<never[]>;
   hideCode?: boolean;
   updateScrollToIndex: (lines: string) => void;
@@ -29,8 +29,9 @@ type Props = {
     recordId?: number,
     threadId?: string,
   ) => void;
-  recordId: number;
-  threadId: string;
+  recordId?: number;
+  threadId?: string;
+  isCodeStudio?: boolean;
 };
 
 const CodeRenderer = ({
@@ -47,6 +48,7 @@ const CodeRenderer = ({
   navigateFullResult,
   recordId,
   threadId,
+  isCodeStudio,
 }: Props) => {
   const matchLang = useMemo(
     () =>
@@ -133,7 +135,11 @@ const CodeRenderer = ({
             />
           )
         ) : (
-          <NewCode code={code} language={matchLang?.[1] || ''} />
+          <NewCode
+            code={code}
+            language={matchLang?.[1] || ''}
+            isCodeStudio={isCodeStudio}
+          />
         )
       ) : colorPreview ? (
         <span className="inline-flex gap-1.5 items-center">
