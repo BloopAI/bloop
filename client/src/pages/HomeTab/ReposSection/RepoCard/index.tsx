@@ -17,6 +17,7 @@ import Dropdown from '../../../../components/Dropdown/WithIcon';
 import { cancelSync, deleteRepo, syncRepo } from '../../../../services/api';
 import { RepoSource } from '../../../../types';
 import { LocaleContext } from '../../../../context/localeContext';
+import { ContextMenuItem } from '../../../../components/ContextMenu';
 
 type Props = {
   name: string;
@@ -108,7 +109,7 @@ const RepoCard = ({
   );
 
   const dropdownItems = useMemo(() => {
-    const items = [
+    const items: ContextMenuItem[] = [
       {
         type: MenuItemType.DANGER,
         text: t('Remove'),

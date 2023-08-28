@@ -79,14 +79,16 @@ export const ContextMenuDefault = () => {
           {
             text: 'Item Three',
             icon: <MailIcon />,
-            onClick: () => {},
             type: MenuItemType.SELECTABLE,
+            isSelected: false,
+            onChange: () => {},
           },
           {
             text: 'Item Four',
             icon: <MailIcon />,
-            onClick: () => {},
             type: MenuItemType.SELECTABLE,
+            isSelected: false,
+            onChange: () => {},
           },
           {
             type: MenuListItemType.DIVIDER_WITH_TEXT,

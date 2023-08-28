@@ -65,12 +65,24 @@ export const parseFilters = (input: string) => {
   return filters;
 };
 
-export const getFileExtensionForLang = (lang: string) => {
+export const getFileExtensionForLang = (lang: string, lowercased?: boolean) => {
   if (!lang) {
     return 'default';
   }
   // @ts-ignore
-  return 'index' + langs[lang]?.[0];
+  let ext = langs[lang]?.[0];
+  if (lowercased) {
+    const key = Object.keys(langs).find((key) => key.toLowerCase() === lang);
+    if (key) {
+      // @ts-ignore
+      ext = langs[key]?.[0];
+    }
+  }
+  return 'index' + ext;
+};
+
+export const getPrettyLangName = (lang: string) => {
+  return Object.keys(langs).find((key) => key.toLowerCase() === lang);
 };
 
 export const isWindowsPath = (path: string) => path.includes('\\');

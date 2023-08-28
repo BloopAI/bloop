@@ -1,7 +1,7 @@
 import React, { memo, useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bug, Cog, DoorRight, Magazine, Person } from '../../icons';
-import { MenuListItemType } from '../ContextMenu';
+import { ContextMenuItem, MenuListItemType } from '../ContextMenu';
 import { deleteAuthCookie } from '../../utils';
 import DropdownWithIcon from '../Dropdown/WithIcon';
 import { UIContext } from '../../context/uiContext';
@@ -58,7 +58,7 @@ const NavBar = ({ isSkeleton }: Props) => {
           }
         },
       },
-    ];
+    ] as ContextMenuItem[];
   }, [isSelfServe, openLink, gitHubLogout, t]);
 
   return (

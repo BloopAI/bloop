@@ -16,17 +16,18 @@ import LinkRenderer from './LinkRenderer';
 import CodeRenderer from './CodeRenderer';
 
 type Props = {
-  openFileModal: (
+  openFileModal?: (
     path: string,
     scrollToLine?: string,
     highlightColor?: string,
   ) => void;
-  repoName: string;
+  repoName?: string;
   markdown: string;
   isSummary?: boolean;
   hideCode?: boolean;
-  recordId: number;
-  threadId: string;
+  recordId?: number;
+  threadId?: string;
+  isCodeStudio?: boolean;
 };
 
 const MarkdownWithCode = ({
@@ -37,6 +38,7 @@ const MarkdownWithCode = ({
   hideCode,
   recordId,
   threadId,
+  isCodeStudio,
 }: Props) => {
   const { navigateRepoPath, navigateFullResult } =
     useContext(AppNavigationContext);
@@ -104,6 +106,7 @@ const MarkdownWithCode = ({
             navigateFullResult={navigateFullResult}
             recordId={recordId}
             threadId={threadId}
+            isCodeStudio={isCodeStudio}
           >
             {children}
           </CodeRenderer>
