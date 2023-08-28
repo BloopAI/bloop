@@ -169,6 +169,7 @@ pub struct RemoteEmbedder {
 
 impl RemoteEmbedder {
     pub fn new(url: reqwest::Url, model_dir: &Path) -> anyhow::Result<Self> {
+        let url = url.join("encode")?;
         Ok(Self {
             url,
             session: reqwest::Client::new(),
