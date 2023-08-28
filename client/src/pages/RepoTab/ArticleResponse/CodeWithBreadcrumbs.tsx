@@ -9,7 +9,7 @@ import { CheckIcon, Clipboard } from '../../../icons';
 
 type Props = {
   filePath: string;
-  repoName: string;
+  repoName?: string;
   onResultClick: (path: string, lines?: string) => void;
   startLine: number | null;
   language: string;
@@ -65,7 +65,7 @@ const CodeWithBreadcrumbs = ({
           <FileIcon filename={filePath} />
           <BreadcrumbsPath
             path={filePath}
-            repo={repoName}
+            repo={repoName || ''}
             onClick={(path, type) =>
               type === FileTreeFileType.FILE ? onResultClick(path) : {}
             }
