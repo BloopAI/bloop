@@ -1,6 +1,7 @@
 import React, {
   Fragment,
   memo,
+  MutableRefObject,
   useCallback,
   useEffect,
   useMemo,
@@ -9,6 +10,7 @@ import React, {
 } from 'react';
 import { Token as TokenType } from '../../../types/prism';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
+import { CODE_LINE_HEIGHT } from '../../../consts/code';
 import CodeLine from './CodeLine';
 import SelectionHandler from './SelectionHandler';
 import SelectionRect from './SelectionRect';
@@ -22,6 +24,7 @@ type Props = {
   updateRange: (i: number, newRange: [number, number]) => void;
   deleteRange: (i: number) => void;
   onNewRange: (r: [number, number]) => void;
+  scrollContainerRef: MutableRefObject<HTMLDivElement | null>;
 };
 
 const CodeContainerFull = ({
@@ -33,39 +36,75 @@ const CodeContainerFull = ({
   updateRange,
   deleteRange,
   onNewRange,
+  scrollContainerRef,
 }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const [currentlySelectingRange, setCurrentlySelectingRange] = useState<
     null | [number, number]
   >(null);
   const [modifyingRange, setModifyingRange] = useState(-1);
+  const [shouldScroll, setShouldScroll] = useState<'top' | 'bottom' | false>(
+    false,
+  );
 
   useEffect(() => {
     if (scrollToIndex && ref.current) {
       let scrollToItem = scrollToIndex[0];
-      // eslint-disable-next-line no-undef
-      let align: ScrollLogicalPosition = 'center';
-      let multiline = scrollToIndex[1] && scrollToIndex[0] !== scrollToIndex[1];
-      if (multiline && scrollToIndex[1] - scrollToIndex[0] < 8) {
-        scrollToItem =
-          scrollToIndex[0] +
-          Math.floor((scrollToIndex[1] - scrollToIndex[0]) / 2);
-      } else if (multiline) {
-        align = 'start';
-      }
       scrollToItem = Math.max(0, Math.min(scrollToItem, tokens.length - 1));
-      let line = findElementInCurrentTab(
-        `.modal-or-sidebar [data-line-number="${scrollToItem}"]`,
+      const line = findElementInCurrentTab(
+        `[data-line-number="${scrollToItem}"]`,
       );
-      if (!line) {
-        line = findElementInCurrentTab(`[data-line-number="${scrollToItem}"]`);
-      }
       line?.scrollIntoView({
         behavior: 'smooth',
-        block: align,
+        block: 'center',
       });
     }
   }, [scrollToIndex, tokens.length]);
+
+  useEffect(() => {
+    const scrollingFunc = () => {
+      if (scrollContainerRef.current && shouldScroll) {
+        scrollContainerRef.current.scroll({
+          top:
+            scrollContainerRef.current?.scrollTop +
+            (shouldScroll === 'top' ? -CODE_LINE_HEIGHT : CODE_LINE_HEIGHT),
+        });
+      }
+    };
+    let intervalId: number;
+    if (shouldScroll) {
+      intervalId = window.setInterval(scrollingFunc, 200);
+    }
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [shouldScroll]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (scrollContainerRef.current) {
+        const containerBox = scrollContainerRef.current.getBoundingClientRect();
+        const isAtContainerTop =
+          e.clientY - CODE_LINE_HEIGHT <= containerBox.top;
+        const isAtContainerBottom =
+          e.clientY + CODE_LINE_HEIGHT >=
+          containerBox.top + containerBox.height;
+        if (isAtContainerTop || isAtContainerBottom) {
+          setShouldScroll(isAtContainerTop ? 'top' : 'bottom');
+        } else {
+          setShouldScroll(false);
+        }
+      }
+    };
+    if (!!currentlySelectingRange) {
+      document.body.addEventListener('mousemove', handleMouseMove);
+    } else {
+      setShouldScroll(false);
+    }
+    return () => {
+      document.body.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [!!currentlySelectingRange]);
 
   const handleAddRange = useCallback(() => {
     setCurrentlySelectingRange((prev) => {

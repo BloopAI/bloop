@@ -1,6 +1,7 @@
 import React, {
   Dispatch,
   memo,
+  MutableRefObject,
   SetStateAction,
   useCallback,
   useMemo,
@@ -18,6 +19,7 @@ type Props = {
   scrollToIndex?: number[];
   currentSelection: [number, number][];
   setCurrentSelection: Dispatch<SetStateAction<[number, number][]>>;
+  scrollContainerRef: MutableRefObject<HTMLDivElement | null>;
 };
 
 const CodeContainer = ({

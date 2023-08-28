@@ -4,6 +4,7 @@ import {
   SetStateAction,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -93,6 +94,7 @@ const FilePanel = ({
   const [relatedFiles, setRelatedFiles] = useState<
     { type: string; path: string }[]
   >([]);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleRelatedFileAdded = useCallback(
     (filePath: string) => {
@@ -232,7 +234,10 @@ const FilePanel = ({
           <TokensUsageBadge tokens={tokens} />
         </div>
       </div>
-      <div className="py-4 px-4 overflow-auto flex flex-col">
+      <div
+        className="py-4 px-4 overflow-auto flex flex-col"
+        ref={scrollContainerRef}
+      >
         {!!file && (
           <CodeFullSelectable
             code={file.contents}
@@ -249,6 +254,7 @@ const FilePanel = ({
             }
             currentSelection={selectedLines}
             setCurrentSelection={setSelectedLines}
+            scrollContainerRef={scrollContainerRef}
           />
         )}
       </div>
