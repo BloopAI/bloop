@@ -82,7 +82,16 @@ export const getFileExtensionForLang = (lang: string, lowercased?: boolean) => {
 };
 
 export const getPrettyLangName = (lang: string) => {
-  return Object.keys(langs).find((key) => key.toLowerCase() === lang);
+  switch (lang) {
+    case 'js':
+    case 'jsx':
+      return 'JavaScript';
+    case 'ts':
+    case 'tsx':
+      return 'TypeScript';
+    default:
+      return Object.keys(langs).find((key) => key.toLowerCase() === lang);
+  }
 };
 
 export const isWindowsPath = (path: string) => path.includes('\\');
