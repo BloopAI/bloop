@@ -207,12 +207,12 @@ const Conversation = ({
 
   return (
     <div className="px-8 flex flex-col overflow-auto">
-      <div className="fade-bottom overflow-auto">
-        <div
-          className="flex flex-col gap-3 overflow-auto py-8"
-          ref={messagesRef}
-          onScroll={handleScroll}
-        >
+      <div
+        className="fade-bottom overflow-auto"
+        ref={messagesRef}
+        onScroll={handleScroll}
+      >
+        <div className="flex flex-col gap-3 py-8">
           {conversation.map((m, i) => (
             <ConversationInput
               key={i}
