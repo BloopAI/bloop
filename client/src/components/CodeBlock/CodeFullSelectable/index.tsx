@@ -1,6 +1,7 @@
 import React, {
   Dispatch,
   memo,
+  MutableRefObject,
   SetStateAction,
   useDeferredValue,
   useEffect,
@@ -21,6 +22,7 @@ type Props = {
   containerHeight: number;
   currentSelection: [number, number][];
   setCurrentSelection: Dispatch<SetStateAction<[number, number][]>>;
+  scrollContainerRef: MutableRefObject<HTMLDivElement | null>;
 };
 
 const CodeFull = ({
@@ -31,6 +33,7 @@ const CodeFull = ({
   containerHeight,
   currentSelection,
   setCurrentSelection,
+  scrollContainerRef,
 }: Props) => {
   const [searchParams] = useSearchParams();
   const scrollLineNumber = useMemo(
@@ -131,7 +134,7 @@ const CodeFull = ({
   }, [currentResult, searchResults]);
 
   return (
-    <div className="code-full-view w-full text-xs gap-10 flex flex-row relative">
+    <div className="w-full text-xs gap-10 flex flex-row relative">
       <SearchOnPage
         handleSearch={setSearchTerm}
         isSearchActive={isSearchActive}
@@ -146,7 +149,7 @@ const CodeFull = ({
         searchValue={searchTerm}
         containerClassName="absolute top-0 -right-4"
       />
-      <div className={`w-full overflow-auto`} ref={codeRef}>
+      <div className={`w-full`} ref={codeRef}>
         <pre
           className={`prism-code language-${lang} bg-bg-sub my-0 w-full h-full`}
           ref={ref}
@@ -161,6 +164,7 @@ const CodeFull = ({
             currentSelection={currentSelection}
             searchTerm={deferredSearchTerm}
             scrollToIndex={scrollToIndex}
+            scrollContainerRef={scrollContainerRef}
           />
         </pre>
       </div>
