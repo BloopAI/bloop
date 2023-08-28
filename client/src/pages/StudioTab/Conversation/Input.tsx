@@ -127,13 +127,7 @@ const ConversationInput = ({
             autoFocus
           />
         ) : (
-          <MarkdownWithCode
-            openFileModal={() => {}}
-            repoName={''}
-            markdown={message}
-            recordId={0}
-            threadId={''}
-          />
+          <MarkdownWithCode markdown={message} isCodeStudio />
         )}
       </div>
     </div>
