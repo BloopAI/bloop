@@ -95,7 +95,6 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                             .par_bridge()
                             .filter(|&idx| scope_graph.is_top_level(idx))
                             .any(|idx| match scope_graph.get_node(idx).unwrap() {
-                                NodeKind::Def(n) => n.name(content) == active_token_text.as_bytes(),
                                 NodeKind::Import(n) => {
                                     n.name(content) == active_token_text.as_bytes()
                                 }
@@ -173,6 +172,14 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                     .collect::<Vec<_>>()
             })
             .collect::<HashSet<_>>()
+    }
+
+    fn singleton(source_document: &'b ContentDocument, token: Token<'a>) -> Self {
+        Self {
+            all_docs: std::slice::from_ref(source_document),
+            source_document_idx: 0,
+            token,
+        }
     }
 
     fn source_document(&self) -> &ContentDocument {
@@ -437,4 +444,118 @@ fn to_occurrence(doc: &ContentDocument, range: TextRange) -> Snippet {
     Snipper::default()
         .expand(highlight, src, line_end_indices)
         .reify(src, &[])
+}
+
+// ranges of defs in related_file_document used in source_document
+pub fn imported_ranges(
+    source_document: &ContentDocument,
+    related_file_document: &ContentDocument,
+) -> HashSet<TextRange> {
+    // scope graph of the source document
+    let Some(source_sg) = source_document.symbol_locations.scope_graph() else {
+        return HashSet::new();
+    };
+
+    // scope graph of the related_file document
+    let Some(related_file_sg) = related_file_document.symbol_locations.scope_graph() else {
+        return HashSet::new();
+    };
+    let related_file_content = &related_file_document.content;
+
+    source_sg
+        .graph
+        .node_indices()
+        .par_bridge()
+        .filter(|idx| source_sg.is_reference(*idx) || source_sg.is_import(*idx))
+        .filter(|&idx| {
+            let token = Token {
+                relative_path: &source_document.relative_path,
+                start_byte: source_sg.graph[idx].range().start.byte,
+                end_byte: source_sg.graph[idx].range().end.byte,
+            };
+            (CodeNavigationContext::singleton(source_document, token))
+                .local_definitions()
+                .is_none()
+        })
+        .flat_map(|idx| {
+            let range = source_sg.graph[idx].range();
+            let token = Token {
+                relative_path: &source_document.relative_path,
+                start_byte: range.start.byte,
+                end_byte: range.end.byte,
+            };
+            let active_token_range = token.start_byte..token.end_byte;
+            let active_token_text = source_document
+                .content
+                .as_str()
+                .get(active_token_range)
+                .unwrap();
+
+            related_file_sg
+                .graph
+                .node_indices()
+                .par_bridge()
+                .filter(|idx| related_file_sg.is_top_level(*idx))
+                .filter(|idx| {
+                    if let Some(NodeKind::Def(d)) = related_file_sg.get_node(*idx) {
+                        d.name(related_file_content.as_bytes()) == active_token_text.as_bytes()
+                    } else {
+                        false
+                    }
+                })
+                .filter_map(|idx| related_file_sg.value_of_definition(idx))
+                .map(|idx| related_file_sg.graph[idx].range())
+        })
+        .collect()
+}
+
+// ranges of refs in related_file_document which contain defs in source_document
+pub fn importing_ranges(
+    source_document: &ContentDocument,
+    related_file_document: &ContentDocument,
+) -> HashSet<TextRange> {
+    // scope graph of the source document
+    let Some(source_sg) = source_document.symbol_locations.scope_graph() else {
+        return HashSet::new();
+    };
+
+    // scope graph of the related_file document
+    let Some(related_file_sg) = related_file_document.symbol_locations.scope_graph() else {
+        return HashSet::new();
+    };
+    let related_file_content = &related_file_document.content;
+
+    source_sg
+        .graph
+        .node_indices()
+        .par_bridge()
+        .filter(|idx| source_sg.is_definition(*idx) && source_sg.is_top_level(*idx))
+        .flat_map_iter(|idx| {
+            let range = source_sg.graph[idx].range();
+            let token = Token {
+                relative_path: &source_document.relative_path,
+                start_byte: range.start.byte,
+                end_byte: range.end.byte,
+            };
+            let active_token_range = token.start_byte..token.end_byte;
+            let active_token_text = source_document
+                .content
+                .as_str()
+                .get(active_token_range)
+                .unwrap();
+
+            related_file_sg
+                .graph
+                .node_indices()
+                .filter(|&idx| related_file_sg.is_top_level(idx))
+                .filter(|idx| match related_file_sg.get_node(*idx).unwrap() {
+                    NodeKind::Import(n) => {
+                        n.name(related_file_content.as_bytes()) == active_token_text.as_bytes()
+                    }
+                    _ => false,
+                })
+                .flat_map(|idx| related_file_sg.references(idx))
+                .map(|idx| related_file_sg.graph[idx].range())
+        })
+        .collect()
 }
