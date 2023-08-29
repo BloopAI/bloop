@@ -263,7 +263,7 @@ pub(super) async fn related_file_with_ranges(
         }
         RelatedFileKind::Importing => {
             return Ok(json(WithRangesResponse {
-                ranges: code_navigation::imported_ranges(&source_document, &related_file_document)
+                ranges: code_navigation::importing_ranges(&source_document, &related_file_document)
                     .into_iter()
                     .collect(),
             }))

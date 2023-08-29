@@ -95,7 +95,6 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                             .par_bridge()
                             .filter(|&idx| scope_graph.is_top_level(idx))
                             .any(|idx| match scope_graph.get_node(idx).unwrap() {
-                                NodeKind::Def(n) => n.name(content) == active_token_text.as_bytes(),
                                 NodeKind::Import(n) => {
                                     n.name(content) == active_token_text.as_bytes()
                                 }
@@ -550,9 +549,6 @@ pub fn importing_ranges(
                 .node_indices()
                 .filter(|&idx| related_file_sg.is_top_level(idx))
                 .filter(|idx| match related_file_sg.get_node(*idx).unwrap() {
-                    NodeKind::Def(n) => {
-                        n.name(related_file_content.as_bytes()) == active_token_text.as_bytes()
-                    }
                     NodeKind::Import(n) => {
                         n.name(related_file_content.as_bytes()) == active_token_text.as_bytes()
                     }
