@@ -7,12 +7,19 @@ import {
   StudioContextFile,
 } from '../types/general';
 import FileIcon from '../components/FileIcon';
+import { getRelatedFileRanges } from '../services/api';
 
 const useRelatedFiles = (
   selectedFiles: StudioContextFile[],
   relatedFiles: { type: string; path: string }[],
-  onFileAdded: (filePath: string) => void,
+  onFileAdded: (
+    filePath: string,
+    ranges: { start: number; end: number }[],
+  ) => void,
   onFileRemove: (filePath: string) => void,
+  repoRef: string,
+  branch: string,
+  filePath: string,
 ) => {
   const { t } = useTranslation();
   const [items, setItems] = useState<ContextMenuItem[]>([]);
@@ -36,8 +43,26 @@ const useRelatedFiles = (
           icon: <FileIcon filename={f.path} />,
           text: f.path,
           isSelected: !!selectedFiles.find((s) => s.path === f.path),
-          onChange: (b: boolean) =>
-            b ? onFileAdded(f.path) : onFileRemove(f.path),
+          onChange: async (b: boolean) => {
+            if (b) {
+              const resp = await getRelatedFileRanges(
+                repoRef,
+                branch,
+                filePath,
+                f.path,
+                'Imported',
+              );
+              onFileAdded(
+                f.path,
+                resp?.ranges?.map((r) => ({
+                  start: r.start.line,
+                  end: r.end.line + 1,
+                })) || [],
+              );
+            } else {
+              onFileRemove(f.path);
+            }
+          },
         })),
       );
     }
@@ -52,8 +77,26 @@ const useRelatedFiles = (
           icon: <FileIcon filename={f.path} />,
           text: f.path,
           isSelected: !!selectedFiles.find((s) => s.path === f.path),
-          onChange: (b: boolean) =>
-            b ? onFileAdded(f.path) : onFileRemove(f.path),
+          onChange: async (b: boolean) => {
+            if (b) {
+              const resp = await getRelatedFileRanges(
+                repoRef,
+                branch,
+                filePath,
+                f.path,
+                'Importing',
+              );
+              onFileAdded(
+                f.path,
+                resp?.ranges?.map((r) => ({
+                  start: r.start.line,
+                  end: r.end.line + 1,
+                })) || [],
+              );
+            } else {
+              onFileRemove(f.path);
+            }
+          },
         })),
       );
     }

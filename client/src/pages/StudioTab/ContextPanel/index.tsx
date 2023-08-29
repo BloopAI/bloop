@@ -1,5 +1,6 @@
 import React, {
   Dispatch,
+  Fragment,
   memo,
   SetStateAction,
   useCallback,
@@ -7,7 +8,6 @@ import React, {
   useMemo,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import CodeStudioToken from '../../../icons/CodeStudioToken';
 import Button from '../../../components/Button';
 import { CodeStudioColored, PlusSignInCircle } from '../../../icons';
 import KeyboardChip from '../KeyboardChip';
@@ -42,6 +42,7 @@ type Props = {
     branch: string,
     filePath: string,
     skip: boolean,
+    ranges?: { start: number; end: number }[],
   ) => void;
 };
 
@@ -158,7 +159,7 @@ const ContextPanel = ({
       ) : (
         <div className="flex flex-col w-full overflow-auto">
           {fileList.map((repoBranch) => (
-            <>
+            <Fragment key={repoBranch.repo + repoBranch.branch}>
               <div className="w-full overflow-x-auto border-b border-bg-base bg-bg-main/15 group cursor-pointer flex-shrink-0">
                 <div className={`max-w-full flex gap-3 items-center py-0 px-8`}>
                   <p className={`body-s text-label-title ellipsis`}>
@@ -172,7 +173,7 @@ const ContextPanel = ({
               </div>
               {repoBranch.files.map((file, i) => (
                 <ContextFileRow
-                  key={file.repo + file.branch + file.path + i}
+                  key={file.repo + file.branch + file.path}
                   {...file}
                   contextFiles={contextFiles}
                   setLeftPanel={setLeftPanel}
@@ -189,7 +190,7 @@ const ContextPanel = ({
                   }
                 />
               ))}
-            </>
+            </Fragment>
           ))}
         </div>
       )}
