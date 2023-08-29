@@ -19,11 +19,23 @@ type Props = {
   reposToShow: RepoType[];
   setReposToShow: Dispatch<SetStateAction<RepoType[]>>;
   repositories?: RepoType[];
+  shouldShowFull?: boolean;
+  isFiltered?: boolean;
+  showAll: () => void;
 };
 
 let eventSource: EventSource;
 
-const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
+const LIMIT = 7;
+
+const ReposSection = ({
+  reposToShow,
+  setReposToShow,
+  repositories,
+  shouldShowFull,
+  isFiltered,
+  showAll,
+}: Props) => {
   const { apiUrl } = useContext(DeviceContext);
   const { setRepositories } = useContext(RepositoriesContext);
   const [currentlySyncingRepo, setCurrentlySyncingRepo] = useState<{
@@ -79,29 +91,47 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
   }, []);
 
   return (
-    <div className="p-8 overflow-x-auto relative">
-      <h4 className="mb-3">
-        <Trans>All repositories</Trans>
-      </h4>
+    <div className="px-8 pt-8 relative">
+      {!reposToShow.length && isFiltered ? null : (
+        <h4 className="mb-3">
+          <Trans>All repositories</Trans>
+        </h4>
+      )}
       <div className="flex flex-wrap gap-3.5 w-full relative items-start">
-        {reposToShow.map(({ ref, ...r }, i) => (
-          <RepoCard
-            name={r.name}
-            repoRef={ref}
-            sync_status={r.sync_status}
-            last_index={r.last_index}
-            lang={r.most_common_lang}
-            key={ref + i}
-            provider={r.provider}
-            syncStatus={
-              currentlySyncingRepo?.repoRef === ref
-                ? currentlySyncingRepo
-                : null
-            }
-            onDelete={onDelete}
-            indexedBranches={r.branch_filter?.select}
-          />
-        ))}
+        {(shouldShowFull ? reposToShow : reposToShow.slice(0, LIMIT)).map(
+          ({ ref, ...r }, i) => (
+            <RepoCard
+              name={r.name}
+              repoRef={ref}
+              sync_status={r.sync_status}
+              last_index={r.last_index}
+              lang={r.most_common_lang}
+              key={ref + i}
+              provider={r.provider}
+              syncStatus={
+                currentlySyncingRepo?.repoRef === ref
+                  ? currentlySyncingRepo
+                  : null
+              }
+              onDelete={onDelete}
+              indexedBranches={r.branch_filter?.select}
+            />
+          ),
+        )}
+        {reposToShow.length > LIMIT && !shouldShowFull && (
+          <button
+            onClick={showAll}
+            className="border border-bg-border rounded-md hover:border-bg-border-hover focus:border-bg-border-hover
+            p-4 w-67 h-36 group flex-shrink-0 flex flex-col justify-between cursor-pointer transition-all duration-150 select-none"
+          >
+            <p className="body-s text-label-link">
+              <Trans>View all</Trans>
+            </p>
+            <p className="caption-strong text-label-base">
+              <Trans count={reposToShow.length - LIMIT}>+ # more</Trans>
+            </p>
+          </button>
+        )}
       </div>
       {!repositories ? (
         <div className="flex flex-wrap gap-3.5 w-full relative items-start">
@@ -110,19 +140,32 @@ const ReposSection = ({ reposToShow, setReposToShow, repositories }: Props) => {
           ))}
         </div>
       ) : !reposToShow.length ? (
-        <div className="flex w-full flex-col items-center justify-center gap-4 px-4 py-11 bg-bg-sub border border-bg-border rounded-md">
-          <NoRepos />
-          <div className="flex flex-col gap-3 items-center">
-            <p className="subhead-m text-label-title">
-              <Trans>No repositories</Trans>
+        isFiltered ? (
+          <div className="flex flex-col gap-2 mx-auto text-center select-none">
+            <p className="body-s text-label-title">
+              <Trans>No results...</Trans>
             </p>
-            <p className="body-s text-label-muted">
+            <p className="caption text-label-muted">
               <Trans>
-                As soon as you add a repository it will appear here.
+                Nothing matched your search. Try a different combination!
               </Trans>
             </p>
           </div>
-        </div>
+        ) : (
+          <div className="flex w-full flex-col items-center justify-center gap-4 px-4 py-11 bg-bg-sub border border-bg-border rounded-md">
+            <NoRepos />
+            <div className="flex flex-col gap-3 items-center">
+              <p className="subhead-m text-label-title">
+                <Trans>No repositories</Trans>
+              </p>
+              <p className="body-s text-label-muted">
+                <Trans>
+                  As soon as you add a repository it will appear here.
+                </Trans>
+              </p>
+            </div>
+          </div>
+        )
       ) : null}
     </div>
   );
