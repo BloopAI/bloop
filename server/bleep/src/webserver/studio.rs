@@ -21,6 +21,8 @@ use crate::{
     webserver, Application,
 };
 
+const LLM_GATEWAY_MODEL: &str = "gpt-4-0613";
+
 #[derive(serde::Deserialize)]
 pub struct Create {
     name: String,
@@ -79,7 +81,7 @@ struct ContextFile {
     ranges: Vec<Range<usize>>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 enum Message {
     User(String),
     Assistant(String),
@@ -117,7 +119,7 @@ pub async fn get(
     Ok(Json(Studio {
         modified_at: row.modified_at,
         name: row.name,
-        token_counts: token_counts((*app).clone(), &context).await?,
+        token_counts: token_counts((*app).clone(), &messages, &context).await?,
         context,
         messages,
     }))
@@ -187,19 +189,23 @@ pub async fn patch(
     .await
     .map_err(Error::internal)?;
 
-    // Re-fetch the context in case we didn't change it. If we did, this will now be the updated
-    // value.
-    let context_json = sqlx::query!("SELECT context FROM studios WHERE id = ?", id)
-        .fetch_optional(&mut transaction)
-        .await
-        .map_err(Error::internal)?
-        .map(|r| r.context)
-        .unwrap_or_default();
+    // Re-fetch the context and messages in case we didn't change them. If we did, this will now
+    // contain the updated values.
+    let (messages_json, context_json) =
+        sqlx::query!("SELECT messages, context FROM studios WHERE id = ?", id)
+            .fetch_optional(&mut transaction)
+            .await
+            .map_err(Error::internal)?
+            .map(|r| (r.messages, r.context))
+            .unwrap_or_default();
 
     let context: Vec<ContextFile> =
         serde_json::from_str(&context_json).context("invalid context JSON")?;
 
-    let counts = token_counts((*app).clone(), &context).await?;
+    let messages: Vec<Message> =
+        serde_json::from_str(&messages_json).context("invalid messages JSON")?;
+
+    let counts = token_counts((*app).clone(), &messages, &context).await?;
 
     transaction.commit().await.map_err(Error::internal)?;
 
@@ -209,10 +215,15 @@ pub async fn patch(
 #[derive(serde::Serialize)]
 pub struct TokenCounts {
     total: usize,
+    messages: usize,
     per_file: Vec<usize>,
 }
 
-async fn token_counts(app: Application, context: &[ContextFile]) -> webserver::Result<TokenCounts> {
+async fn token_counts(
+    app: Application,
+    messages: &[Message],
+    context: &[ContextFile],
+) -> webserver::Result<TokenCounts> {
     let per_file = stream::iter(context)
         .then(|file| {
             let app = app.clone();
@@ -236,7 +247,7 @@ async fn token_counts(app: Application, context: &[ContextFile]) -> webserver::R
                 }
 
                 let mut token_count = 0;
-                let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
+                let core_bpe = tiktoken_rs::get_bpe_from_model(LLM_GATEWAY_MODEL).unwrap();
 
                 if file.ranges.is_empty() {
                     token_count = core_bpe.encode_ordinary(&doc.content).len();
@@ -261,8 +272,36 @@ async fn token_counts(app: Application, context: &[ContextFile]) -> webserver::R
         .try_collect::<Vec<_>>()
         .await?;
 
+    let empty_system_message = tiktoken_rs::ChatCompletionRequestMessage {
+        role: "system".to_owned(),
+        content: prompts::studio_article_prompt(""),
+        name: None,
+    };
+
+    let tiktoken_messages = messages.iter().cloned().map(|message| match message {
+        Message::User(content) => tiktoken_rs::ChatCompletionRequestMessage {
+            role: "user".to_owned(),
+            content,
+            name: None,
+        },
+        Message::Assistant(content) => tiktoken_rs::ChatCompletionRequestMessage {
+            role: "assistant".to_owned(),
+            content,
+            name: None,
+        },
+    });
+
+    let messages = tiktoken_rs::num_tokens_from_messages(
+        LLM_GATEWAY_MODEL,
+        &iter::once(empty_system_message)
+            .chain(tiktoken_messages)
+            .collect::<Vec<_>>(),
+    )
+    .unwrap();
+
     Ok(TokenCounts {
-        total: per_file.iter().sum(),
+        total: per_file.iter().sum::<usize>() + messages,
+        messages,
         per_file,
     })
 }
@@ -277,6 +316,7 @@ pub async fn generate(
         .map(|s| s.expose_secret().clone());
 
     let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
+        .model(LLM_GATEWAY_MODEL)
         .temperature(0.0)
         .bearer(answer_api_token);
 
