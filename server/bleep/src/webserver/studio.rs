@@ -453,23 +453,7 @@ pub async fn import(
         })
         .collect::<Vec<_>>();
 
-    let messages = exchanges
-        .iter()
-        .filter_map(|e| {
-            let query = e.query()?;
-            let (answer, _) = e.answer()?;
-            Some((query, answer))
-        })
-        .flat_map(|(query, answer)| {
-            [
-                Message::User(query),
-                Message::Assistant(answer.to_owned()),
-            ]
-        })
-        .collect::<Vec<_>>();
-
     let context_json = serde_json::to_string(&context).unwrap();
-    let messages_json = serde_json::to_string(&messages).unwrap();
 
     let studio_id = Uuid::new_v4();
     let studio_id_str = studio_id.to_string();
@@ -479,7 +463,7 @@ pub async fn import(
         studio_id_str,
         conversation.title,
         context_json,
-        messages_json,
+        "[]",
     }
     .execute(&*app.sql)
     .await
