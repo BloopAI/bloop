@@ -32,7 +32,7 @@ use super::{
 };
 use crate::{
     background::SyncPipes,
-    cache::{FileCache, FileCacheSnapshot},
+    cache::{CacheKeys, FileCache, FileCacheSnapshot},
     intelligence::TreeSitterFile,
     query::compiler::{case_permutations, trigrams},
     repo::{iterator::*, RepoMetadata, RepoRef, Repository},
@@ -40,12 +40,36 @@ use crate::{
 };
 
 struct Workload<'a> {
+    cache: &'a FileCacheSnapshot<'a>,
     repo_disk_path: &'a Path,
-    repo_ref: String,
     repo_name: &'a str,
     repo_metadata: &'a RepoMetadata,
-    cache_snapshot: &'a FileCacheSnapshot<'a>,
-    dir_entry: RepoDirEntry,
+    repo_ref: String,
+    relative_path: PathBuf,
+    normalized_path: PathBuf,
+}
+
+impl<'a> Workload<'a> {
+    fn cache_keys(&self, dir_entry: &RepoDirEntry) -> CacheKeys {
+        let semantic_hash = {
+            let mut hash = blake3::Hasher::new();
+            hash.update(crate::state::SCHEMA_VERSION.as_bytes());
+            hash.update(self.relative_path.to_string_lossy().as_ref().as_ref());
+            hash.update(self.repo_ref.as_bytes());
+            hash.update(dir_entry.buffer().unwrap_or_default().as_bytes());
+            hash.finalize().to_hex().to_string()
+        };
+
+        let tantivy_hash = {
+            let branch_list = dir_entry.branches().unwrap_or_default();
+            let mut hash = blake3::Hasher::new();
+            hash.update(semantic_hash.as_ref());
+            hash.update(branch_list.join("\n").as_bytes());
+            hash.finalize().to_hex().to_string()
+        };
+
+        CacheKeys::new(semantic_hash, tantivy_hash)
+    }
 }
 
 #[async_trait]
@@ -68,33 +92,39 @@ impl Indexable for File {
         let processed = &AtomicU64::new(0);
 
         let file_worker = |count: usize| {
-            let cache_snapshot = &cache;
+            let cache = &cache;
             move |dir_entry: RepoDirEntry| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
                 pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
 
-                let entry_disk_path = dir_entry.path().unwrap_or_default().to_owned();
+                let entry_disk_path = dir_entry.path().unwrap().to_owned();
+                let relative_path = {
+                    let entry_srcpath = PathBuf::from(&entry_disk_path);
+                    entry_srcpath
+                        .strip_prefix(&repo.disk_path)
+                        .map(ToOwned::to_owned)
+                        .unwrap_or(entry_srcpath)
+                };
+                let normalized_path = repo.disk_path.join(&relative_path);
+
                 let workload = Workload {
                     repo_disk_path: &repo.disk_path,
                     repo_ref: reporef.to_string(),
                     repo_name: &repo_name,
-                    cache_snapshot,
+                    relative_path,
+                    normalized_path,
                     repo_metadata,
-                    dir_entry,
+                    cache,
                 };
 
                 trace!(entry_disk_path, "queueing entry");
-                if let Err(err) = self.worker(workload, writer) {
+                if let Err(err) = self.worker(dir_entry, workload, writer) {
                     warn!(%err, entry_disk_path, "indexing failed; skipping");
                 }
 
                 let commit_embeddings = tokio::task::block_in_place(|| {
-                    Handle::current().block_on(async {
-                        cache_snapshot
-                            .parent()
-                            .batched_process_embed_queue(true)
-                            .await
-                    })
+                    Handle::current()
+                        .block_on(async { cache.parent().batched_process_embed_queue(false).await })
                 });
                 if let Err(err) = commit_embeddings {
                     warn!(?err, "failed to commit embeddings");
@@ -126,34 +156,13 @@ impl Indexable for File {
 
         info!(?repo.disk_path, "repo file indexing finished, took {:?}", start.elapsed());
 
-        // files that are no longer tracked by the git index are to be removed
-        // from the tantivy & qdrant indices
-        let mut qdrant_remove_list = vec![];
-        cache.retain(|k, v| {
-            if !v.fresh {
-                writer.delete_term(Term::from_field_text(self.unique_hash, k));
-                qdrant_remove_list.push(k.to_string());
-            }
-
-            v.fresh
-        });
-
-        // batch-delete points from qdrant index
-        if !qdrant_remove_list.is_empty() {
-            if let Some(semantic) = &self.semantic {
-                let semantic = semantic.clone();
-                let reporef = reporef.to_string();
-                tokio::spawn(async move {
-                    semantic
-                        .delete_points_for_hash(reporef.as_str(), qdrant_remove_list.into_iter())
-                        .await;
-                });
-            }
-        }
+        file_cache
+            .synchronize(cache, |key| {
+                writer.delete_term(Term::from_field_text(self.unique_hash, key));
+            })
+            .await?;
 
         pipes.index_percent(100);
-        file_cache.persist(cache).await?;
-        file_cache.batched_process_embed_queue(true).await?;
         Ok(())
     }
 
@@ -420,67 +429,31 @@ impl Indexer<File> {
 }
 
 impl File {
-    #[tracing::instrument(fields(repo=%workload.repo_ref, entry_disk_path=?workload.dir_entry.path()), skip_all)]
-    fn worker(&self, workload: Workload<'_>, writer: &IndexWriter) -> Result<()> {
-        let Workload {
-            repo_ref,
-            repo_disk_path,
-            repo_name,
-            repo_metadata,
-            cache_snapshot,
-            dir_entry,
-        } = workload;
-
+    #[tracing::instrument(fields(repo=%workload.repo_ref, entry_disk_path=?dir_entry.path()), skip_all)]
+    fn worker(
+        &self,
+        dir_entry: RepoDirEntry,
+        workload: Workload<'_>,
+        writer: &IndexWriter,
+    ) -> Result<()> {
         #[cfg(feature = "debug")]
         let start = Instant::now();
         trace!("processing file");
 
-        let relative_path = {
-            let entry_srcpath = PathBuf::from(dir_entry.path().ok_or(anyhow::anyhow!(
-                "dir entry is not a valid file or directory"
-            ))?);
-            entry_srcpath
-                .strip_prefix(repo_disk_path)
-                .map(ToOwned::to_owned)
-                .unwrap_or(entry_srcpath)
-        };
-        let entry_pathbuf = repo_disk_path.join(&relative_path);
-
-        let semantic_hash = {
-            let mut hash = blake3::Hasher::new();
-            hash.update(crate::state::SCHEMA_VERSION.as_bytes());
-            hash.update(relative_path.to_string_lossy().as_ref().as_ref());
-            hash.update(repo_ref.as_bytes());
-            hash.update(dir_entry.buffer().unwrap_or_default().as_bytes());
-            hash.finalize().to_hex().to_string()
-        };
-
-        let tantivy_hash = {
-            let branch_list = dir_entry.branches().unwrap_or_default();
-            let mut hash = blake3::Hasher::new();
-            hash.update(semantic_hash.as_ref());
-            hash.update(branch_list.join("\n").as_bytes());
-            hash.finalize().to_hex().to_string()
-        };
-
-        let last_commit = repo_metadata.last_commit_unix_secs.unwrap_or(0);
+        let cache_keys = workload.cache_keys(&dir_entry);
+        let last_commit = workload.repo_metadata.last_commit_unix_secs.unwrap_or(0);
 
         match dir_entry {
-            _ if cache_snapshot.is_fresh(&tantivy_hash, &entry_pathbuf) => {
+            _ if workload
+                .cache
+                .is_fresh(&cache_keys, &workload.normalized_path) =>
+            {
                 info!("fresh; skipping");
                 return Ok(());
             }
             RepoDirEntry::Dir(dir) => {
                 trace!("writing dir document");
-                let doc = dir.build_document(
-                    self,
-                    repo_name,
-                    relative_path.as_path(),
-                    repo_disk_path,
-                    repo_ref.as_str(),
-                    last_commit,
-                    tantivy_hash,
-                );
+                let doc = dir.build_document(self, &workload, last_commit, &cache_keys);
                 writer.add_document(doc)?;
                 trace!("dir document written");
             }
@@ -489,16 +462,10 @@ impl File {
                 let doc = file
                     .build_document(
                         self,
-                        repo_name,
-                        relative_path.as_path(),
-                        repo_disk_path,
-                        semantic_hash,
-                        tantivy_hash,
-                        entry_pathbuf.as_path(),
-                        repo_ref.as_str(),
+                        &workload,
+                        &cache_keys,
                         last_commit,
-                        repo_metadata,
-                        cache_snapshot.parent(),
+                        workload.cache.parent(),
                     )
                     .ok_or(anyhow::anyhow!("failed to build document"))?;
                 writer.add_document(doc)?;
@@ -540,13 +507,18 @@ impl RepoDir {
     fn build_document(
         self,
         schema: &File,
-        repo_name: &str,
-        relative_path: &Path,
-        repo_disk_path: &Path,
-        repo_ref: &str,
+        workload: &Workload<'_>,
         last_commit: u64,
-        tantivy_cache_key: String,
+        cache_keys: &CacheKeys,
     ) -> tantivy::schema::Document {
+        let Workload {
+            relative_path,
+            repo_name,
+            repo_disk_path,
+            repo_ref,
+            ..
+        } = workload;
+
         let relative_path_str = format!("{}/", relative_path.to_string_lossy());
         #[cfg(windows)]
         let relative_path_str = relative_path_str.replace('\\', "/");
@@ -558,12 +530,12 @@ impl RepoDir {
                 schema.raw_relative_path => relative_path_str.as_bytes(),
                 schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
                 schema.relative_path => relative_path_str,
-                schema.repo_ref => repo_ref,
-                schema.repo_name => repo_name,
+                schema.repo_ref => repo_ref.as_str(),
+                schema.repo_name => *repo_name,
                 schema.last_commit_unix_seconds => last_commit,
                 schema.branches => branches,
                 schema.is_directory => true,
-                schema.unique_hash => tantivy_cache_key,
+                schema.unique_hash => cache_keys.tantivy(),
 
                 // nulls
                 schema.raw_content => Vec::<u8>::default(),
@@ -582,17 +554,21 @@ impl RepoFile {
     fn build_document(
         mut self,
         schema: &File,
-        repo_name: &str,
-        relative_path: &Path,
-        repo_disk_path: &Path,
-        semantic_cache_key: String,
-        tantivy_cache_key: String,
-        entry_pathbuf: &Path,
-        repo_ref: &str,
+        workload: &Workload<'_>,
+        cache_keys: &CacheKeys,
         last_commit: u64,
-        repo_metadata: &RepoMetadata,
         file_cache: &FileCache,
     ) -> Option<tantivy::schema::Document> {
+        let Workload {
+            relative_path,
+            repo_name,
+            repo_disk_path,
+            repo_ref,
+            repo_metadata,
+            normalized_path,
+            ..
+        } = workload;
+
         let relative_path_str = relative_path.to_string_lossy().to_string();
         #[cfg(windows)]
         let relative_path_str = relative_path_str.replace('\\', "/");
@@ -600,9 +576,9 @@ impl RepoFile {
         let branches = self.branches.join("\n");
         let lang_str = repo_metadata
             .langs
-            .get(entry_pathbuf, self.buffer.as_ref())
+            .get(normalized_path, self.buffer.as_ref())
             .unwrap_or_else(|| {
-                warn!(?entry_pathbuf, "Path not found in language map");
+                warn!(?normalized_path, "Path not found in language map");
                 ""
             });
 
@@ -648,20 +624,20 @@ impl RepoFile {
 
         let lines_avg = self.buffer.len() as f64 / self.buffer.lines().count() as f64;
 
-        if let Some(semantic) = &schema.semantic {
+        if schema.semantic.is_some() {
             tokio::task::block_in_place(|| {
                 Handle::current().block_on(async {
-                    semantic
-                        .insert_points_for_buffer(
+                    file_cache
+                        .process_semantic(
+                            cache_keys,
                             repo_name,
                             repo_ref,
                             &relative_path_str,
                             &self.buffer,
                             lang_str,
                             &self.branches,
-                            file_cache.chunks_for_file(&semantic_cache_key).await,
                         )
-                        .await
+                        .await;
                 })
             });
         }
@@ -670,11 +646,11 @@ impl RepoFile {
             schema.raw_content => self.buffer.as_bytes(),
             schema.raw_repo_name => repo_name.as_bytes(),
             schema.raw_relative_path => relative_path_str.as_bytes(),
-            schema.unique_hash => tantivy_cache_key,
+            schema.unique_hash => cache_keys.tantivy(),
             schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
             schema.relative_path => relative_path_str,
-            schema.repo_ref => repo_ref,
-            schema.repo_name => repo_name,
+            schema.repo_ref => repo_ref.as_str(),
+            schema.repo_name => *repo_name,
             schema.content => self.buffer,
             schema.line_end_indices => line_end_indices,
             schema.lang => lang_str.to_ascii_lowercase().as_bytes(),
