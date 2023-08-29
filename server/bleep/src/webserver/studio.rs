@@ -1,8 +1,8 @@
-use std::{iter, ops::Range, pin::Pin};
+use std::{borrow::Cow, collections::HashMap, iter, mem, ops::Range, pin::Pin};
 
 use anyhow::{Context, Result};
 use axum::{
-    extract::Path,
+    extract::{Path, Query},
     response::{sse, Sse},
     Extension, Json,
 };
@@ -13,8 +13,13 @@ use secrecy::ExposeSecret;
 use tracing::error;
 use uuid::Uuid;
 
-use super::{Error, ErrorKind};
-use crate::{agent::prompts, llm_gateway, repo::RepoRef, webserver, Application};
+use super::{middleware::User, Error, ErrorKind};
+use crate::{
+    agent::{exchange::Exchange, prompts},
+    llm_gateway,
+    repo::RepoRef,
+    webserver, Application,
+};
 
 #[derive(serde::Deserialize)]
 pub struct Create {
@@ -70,7 +75,7 @@ struct ContextFile {
     path: String,
     hidden: bool,
     repo: RepoRef,
-    branch: String,
+    branch: Option<String>,
     ranges: Vec<Range<usize>>,
 }
 
@@ -216,12 +221,12 @@ async fn token_counts(app: Application, context: &[ContextFile]) -> webserver::R
                 let doc = app
                     .indexes
                     .file
-                    .by_path(&file.repo, &file.path, Some(&file.branch))
+                    .by_path(&file.repo, &file.path, file.branch.as_deref())
                     .await
                     .map_err(Error::internal)?
                     .with_context(|| {
                         format!(
-                            "file `{}` did not exist in repo `{}`, branch `{}`",
+                            "file `{}` did not exist in repo `{}`, branch `{:?}`",
                             file.path, file.repo, file.branch
                         )
                     })?;
@@ -355,16 +360,18 @@ async fn generate_llm_context(app: Application, context: Vec<ContextFile>) -> Re
         let doc = app
             .indexes
             .file
-            .by_path(&file.repo, &file.path, Some(&file.branch))
+            .by_path(&file.repo, &file.path, file.branch.as_deref())
             .await?
             .with_context(|| {
                 format!(
-                    "file `{}` did not exist in repo `{}`, branch `{}`",
+                    "file `{}` did not exist in repo `{}`, branch `{:?}`",
                     file.path, file.repo, file.branch
                 )
             })?;
 
-        let lines = doc.content.lines()
+        let lines = doc
+            .content
+            .lines()
             .enumerate()
             .map(|(i, s)| format!("{} {s}\n", i + 1))
             .collect::<Vec<_>>();
@@ -388,4 +395,168 @@ async fn generate_llm_context(app: Application, context: Vec<ContextFile>) -> Re
     }
 
     Ok(s)
+}
+
+#[derive(serde::Deserialize)]
+pub struct Import {
+    pub thread_id: Uuid,
+}
+
+/// Returns a new studio UUID.
+pub async fn import(
+    app: Extension<Application>,
+    user: Extension<User>,
+    Query(params): Query<Import>,
+) -> webserver::Result<String> {
+    let user_id = user
+        .login()
+        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .to_string();
+
+    let thread_id = params.thread_id.to_string();
+
+    let conversation = sqlx::query! {
+        "SELECT title, repo_ref, exchanges
+         FROM conversations
+         WHERE user_id = ? AND thread_id = ?",
+        user_id,
+        thread_id,
+    }
+    .fetch_optional(&*app.sql)
+    .await
+    .map_err(Error::internal)?
+    .ok_or_else(|| Error::new(ErrorKind::NotFound, "conversation not found"))?;
+
+    let repo_ref = conversation.repo_ref;
+    let exchanges = serde_json::from_str::<Vec<Exchange>>(&conversation.exchanges)
+        .context("couldn't deserialize exchange list")?;
+
+    let context = exchanges
+        .iter()
+        .flat_map(|e| {
+            let mut range_map = HashMap::new();
+
+            for c in &e.code_chunks {
+                range_map
+                    .entry(&c.path)
+                    .or_insert_with(Vec::new)
+                    .push(c.start_line..c.end_line + 1);
+            }
+
+            for ranges in range_map.values_mut() {
+                fold_ranges(ranges);
+            }
+
+            range_map.into_iter().map(|(path, ranges)| ContextFile {
+                path: path.clone(),
+                hidden: false,
+                repo: repo_ref.parse().unwrap(),
+                branch: e.query.branch().next().map(Cow::into_owned),
+                ranges,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let context_json = serde_json::to_string(&context).unwrap();
+
+    let studio_id = Uuid::new_v4();
+    let studio_id_str = studio_id.to_string();
+
+    sqlx::query! {
+        "INSERT INTO studios (id, name, context, messages) VALUES (?, ?, ?, ?)",
+        studio_id_str,
+        conversation.title,
+        context_json,
+        "[]",
+    }
+    .execute(&*app.sql)
+    .await
+    .map_err(Error::internal)?;
+
+    Ok(studio_id.to_string())
+}
+
+fn fold_ranges(ranges: &mut Vec<Range<usize>>) {
+    ranges.sort_by_key(|range| range.start);
+    *ranges = mem::take(ranges).into_iter().fold(Vec::new(), |mut a, e| {
+        if let Some(cur) = a.last_mut() {
+            if let Some(next) = merge_ranges(cur, e) {
+                a.push(next);
+            }
+        } else {
+            a.push(e);
+        }
+
+        a
+    });
+}
+
+/// Try to merge overlapping or nearby ranges.
+///
+/// This function assumes the input ranges are sorted, such that `a` starts before or at the same
+/// position as `b`.
+///
+/// If `b` is merged with `a`, this will return `None` and modify `a` directly. If this function
+/// determines that no merge needs to happen, then `a` will not be modified, and this function will
+/// return `Some(b)` back.
+fn merge_ranges(a: &mut Range<usize>, b: Range<usize>) -> Option<Range<usize>> {
+    const NEARBY_THRESHOLD: usize = 3;
+
+    if b.start <= a.end + NEARBY_THRESHOLD {
+        a.end = a.end.max(b.end);
+        a.start = a.start.min(b.start);
+        None
+    } else {
+        Some(b)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use rand::seq::SliceRandom;
+
+    use super::*;
+
+    #[test]
+    fn test_merge_ranges_nearby() {
+        let mut r = 1..10;
+        assert_eq!(merge_ranges(&mut r, 15..20), Some(15..20));
+        assert_eq!(r, 1..10);
+
+        assert_eq!(merge_ranges(&mut r, 14..20), Some(14..20));
+        assert_eq!(r, 1..10);
+
+        assert_eq!(merge_ranges(&mut r, 13..20), None);
+        assert_eq!(r, 1..20);
+    }
+
+    #[test]
+    fn test_merge_ranges_overlap() {
+        let mut r = 1..10;
+        assert_eq!(merge_ranges(&mut r, 5..20), None);
+        assert_eq!(r, 1..20);
+    }
+
+    #[test]
+    fn test_merge_weird_ranges() {
+        let mut r = 1..10;
+        assert_eq!(merge_ranges(&mut r, 1..20), None);
+        assert_eq!(r, 1..20);
+
+        // This shouldn't happen as we expect sorted input, but we test anyway.
+        let mut r = 5..20;
+        assert_eq!(merge_ranges(&mut r, 1..10), None);
+        assert_eq!(r, 1..20);
+    }
+
+    #[test]
+    fn test_fold_ranges() {
+        let mut ranges = vec![24..35, 5..12, 15..20, 24..30, 1..10];
+
+        ranges.shuffle(&mut rand::thread_rng());
+
+        fold_ranges(&mut ranges);
+
+        assert_eq!(ranges, [1..20, 24..35]);
+    }
 }
