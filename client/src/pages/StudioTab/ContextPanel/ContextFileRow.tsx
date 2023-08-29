@@ -43,6 +43,7 @@ type Props = StudioContextFile & {
     branch: string,
     filePath: string,
     skip: boolean,
+    ranges?: { start: number; end: number }[],
   ) => void;
   displayName: string;
 };
@@ -98,9 +99,9 @@ const ContextFileRow = ({
   }, [path, branch, repoFull, mappedRanges, hidden]);
 
   const handleRelatedFileAdded = useCallback(
-    (filePath: string) => {
+    (filePath: string, ranges: { start: number; end: number }[]) => {
       if (repoFull) {
-        onFileAdded(repoFull, branch, filePath, true);
+        onFileAdded(repoFull, branch, filePath, true, ranges);
       }
     },
     [repoFull, branch, onFileAdded],
@@ -120,6 +121,9 @@ const ContextFileRow = ({
     relatedFiles,
     handleRelatedFileAdded,
     handleRelatedFileRemoved,
+    repo,
+    branch,
+    path,
   );
 
   return (
@@ -145,6 +149,9 @@ const ContextFileRow = ({
             relatedFiles={relatedFiles}
             onFileAdded={handleRelatedFileAdded}
             onFileRemove={handleRelatedFileRemoved}
+            repoRef={repo}
+            filePath={path}
+            branch={branch}
           />
         </div>
         <div className="w-16 flex items-center flex-shrink-0">
