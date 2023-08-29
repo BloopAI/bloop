@@ -192,10 +192,10 @@ impl Semantic {
 
         match qdrant.has_collection(&config.collection_name).await {
             Ok(false) => {
-                let CollectionOperationResponse { result, time } = qdrant
-                    .create_collection(&create_collection(&config.collection_name))
-                    .await
-                    .unwrap();
+                let CollectionOperationResponse { result, time } =
+                    create_collection(&config.collection_name, &qdrant)
+                        .await
+                        .unwrap();
 
                 debug!(
                     time,
