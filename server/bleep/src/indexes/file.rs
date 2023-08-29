@@ -122,11 +122,7 @@ impl Indexable for File {
                     warn!(%err, entry_disk_path, "indexing failed; skipping");
                 }
 
-                let commit_embeddings = tokio::task::block_in_place(|| {
-                    Handle::current()
-                        .block_on(async { cache.parent().batched_process_embed_queue(false).await })
-                });
-                if let Err(err) = commit_embeddings {
+                if let Err(err) = cache.parent().process_embedding_queue() {
                     warn!(?err, "failed to commit embeddings");
                 }
             }

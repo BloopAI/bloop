@@ -140,6 +140,7 @@ impl<'a> FileCache<'a> {
         }
     }
 
+    /// Retrieve a file-level snapshot of the cache for the repository in scope.
     pub(crate) async fn retrieve(&'a self) -> FileCacheSnapshot<'a> {
         let repo_str = self.reporef.to_string();
         let rows = sqlx::query! {
@@ -244,11 +245,12 @@ impl<'a> FileCache<'a> {
         }
 
         // make sure we generate & commit all remaining embeddings
-        self.batched_process_embed_queue(true).await?;
+        self.batched_embed_or_flush_queue(true).await?;
 
         Ok(())
     }
 
+    /// Delete all caches for the repository in scope.
     pub(crate) async fn delete(&self) -> anyhow::Result<()> {
         let mut tx = self.db.begin().await?;
         self.delete_files(&mut tx).await?;
@@ -258,30 +260,12 @@ impl<'a> FileCache<'a> {
         Ok(())
     }
 
-    async fn delete_files(&self, tx: &mut sqlx::Transaction<'_, Sqlite>) -> anyhow::Result<()> {
-        let repo_str = self.reporef.to_string();
-        sqlx::query! {
-            "DELETE FROM file_cache \
-                 WHERE repo_ref = ?",
-            repo_str
-        }
-        .execute(&mut *tx)
-        .await?;
-
-        Ok(())
-    }
-
-    async fn delete_chunks(&self, tx: &mut sqlx::Transaction<'_, Sqlite>) -> anyhow::Result<()> {
-        let repo_str = self.reporef.to_string();
-        sqlx::query! {
-            "DELETE FROM chunk_cache \
-                 WHERE repo_ref = ?",
-            repo_str
-        }
-        .execute(&mut *tx)
-        .await?;
-
-        Ok(())
+    /// Process the next chunk from the embedding queue if the batch size is met.
+    pub fn process_embedding_queue(&self) -> anyhow::Result<()> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current()
+                .block_on(async { self.batched_embed_or_flush_queue(false).await })
+        })
     }
 
     /// Commit the embed log, invoking the embedder if batch size is met.
@@ -289,7 +273,7 @@ impl<'a> FileCache<'a> {
     /// If `flush == true`, drain the log, send the entire batch to
     /// the embedder, and commit the results, disregarding the internal
     /// batch sizing.
-    pub async fn batched_process_embed_queue(&self, flush: bool) -> anyhow::Result<()> {
+    async fn batched_embed_or_flush_queue(&self, flush: bool) -> anyhow::Result<()> {
         let Some(semantic) = self.semantic
 	else {
 	    return Ok(());
@@ -309,6 +293,8 @@ impl<'a> FileCache<'a> {
         Ok(())
     }
 
+    /// Empty the queue in batches, and generate embeddings using the
+    /// configured embedder
     async fn embed_queued_points(
         &self,
         semantic: &Semantic,
@@ -370,18 +356,6 @@ impl<'a> FileCache<'a> {
         }
     }
 
-    async fn chunks_for_file(&'a self, key: &'a CacheKeys) -> ChunkCache<'a> {
-        ChunkCache::for_file(
-            self.db,
-            self.semantic
-                .expect("we shouldn't get here without semantic db configured"),
-            self.reporef,
-            &self.embed_queue,
-            key.semantic(),
-        )
-        .await
-    }
-
     /// Chunks and inserts the buffer content into the semantic db.
     ///
     /// Assumes that the semantic db is initialized and usable, otherwise panics.
@@ -427,6 +401,46 @@ impl<'a> FileCache<'a> {
                 warn!(repo_name, relative_path, ?err, "Failed to upsert vectors")
             }
         }
+    }
+
+    /// Delete all files in the `file_cache` table for the repository in scope.
+    async fn delete_files(&self, tx: &mut sqlx::Transaction<'_, Sqlite>) -> anyhow::Result<()> {
+        let repo_str = self.reporef.to_string();
+        sqlx::query! {
+            "DELETE FROM file_cache \
+                 WHERE repo_ref = ?",
+            repo_str
+        }
+        .execute(&mut *tx)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Delete all chunks in the `chunk_cache` table for the repository in scope.
+    async fn delete_chunks(&self, tx: &mut sqlx::Transaction<'_, Sqlite>) -> anyhow::Result<()> {
+        let repo_str = self.reporef.to_string();
+        sqlx::query! {
+            "DELETE FROM chunk_cache \
+                 WHERE repo_ref = ?",
+            repo_str
+        }
+        .execute(&mut *tx)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn chunks_for_file(&'a self, key: &'a CacheKeys) -> ChunkCache<'a> {
+        ChunkCache::for_file(
+            self.db,
+            self.semantic
+                .expect("we shouldn't get here without semantic db configured"),
+            self.reporef,
+            &self.embed_queue,
+            key.semantic(),
+        )
+        .await
     }
 }
 
@@ -478,8 +492,12 @@ impl<'a> ChunkCache<'a> {
         }
     }
 
-    pub fn update_or_embed(&self, data: &'a str, payload: Payload) -> anyhow::Result<()> {
-        let id = self.cache_key(data, &payload);
+    /// Update a cache entry with the details from `payload`, or create a new embedding.
+    ///
+    /// New insertions are queued, and stored on the repository-level
+    /// `FileCache` instance that created this.
+    fn update_or_embed(&self, data: &'a str, payload: Payload) -> anyhow::Result<()> {
+        let id = self.derive_chunk_uuid(data, &payload);
         let branches_hash = blake3::hash(payload.branches.join("\n").as_ref()).to_string();
 
         match self.cache.entry(id) {
@@ -546,7 +564,7 @@ impl<'a> ChunkCache<'a> {
     /// actually written to qdrant in batches.
     ///
     /// All qdrant operations are executed in batches through a call
-    /// to [`FileCache::commit_chunks`].
+    /// to [`FileCache::commit_embed_log`].
     async fn commit_inserts(
         &self,
         tx: &mut sqlx::Transaction<'_, Sqlite>,
@@ -672,7 +690,7 @@ impl<'a> ChunkCache<'a> {
 
     /// Generate a content hash from the embedding data, and pin it to
     /// the containing file's content id.
-    fn cache_key(&self, data: &str, payload: &Payload) -> String {
+    fn derive_chunk_uuid(&self, data: &str, payload: &Payload) -> String {
         let id = {
             let mut bytes = [0; 16];
             let mut hasher = blake3::Hasher::new();
