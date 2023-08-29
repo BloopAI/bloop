@@ -456,13 +456,13 @@ pub async fn import(
     let messages = exchanges
         .iter()
         .filter_map(|e| {
-            let query = e.query.target()?;
+            let query = e.query()?;
             let (answer, _) = e.answer()?;
             Some((query, answer))
         })
         .flat_map(|(query, answer)| {
             [
-                Message::User(query.into_owned()),
+                Message::User(query),
                 Message::Assistant(answer.to_owned()),
             ]
         })
