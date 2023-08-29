@@ -63,4 +63,10 @@ export const UIContext = {
     theme: 'system' as Theme,
     setTheme: (t: Theme) => {},
   }),
+  HomeScreen: createContext({
+    search: '',
+    setSearch: (t: string) => {},
+    filterType: 'all' as 'all' | 'repos' | 'studios',
+    setFilterType: (t: 'all' | 'repos' | 'studios') => {},
+  }),
 };
