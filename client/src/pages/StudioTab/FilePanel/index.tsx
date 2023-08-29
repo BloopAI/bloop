@@ -62,6 +62,7 @@ type Props = {
     branch: string,
     filePath: string,
     skip: boolean,
+    ranges: { start: number; end: number }[],
   ) => void;
   contextFiles: StudioContextFile[];
 };
@@ -97,10 +98,10 @@ const FilePanel = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleRelatedFileAdded = useCallback(
-    (filePath: string) => {
-      onFileAdded(repo, branch, filePath, true);
+    async (path: string, ranges: { start: number; end: number }[]) => {
+      onFileAdded(repo, branch, path, true, ranges);
     },
-    [repo, branch, onFileAdded],
+    [repo, branch, onFileAdded, filePath],
   );
   const handleRelatedFileRemoved = useCallback(
     (path: string) => {
@@ -114,6 +115,9 @@ const FilePanel = ({
     relatedFiles,
     handleRelatedFileAdded,
     handleRelatedFileRemoved,
+    repo.ref,
+    branch,
+    filePath,
   );
 
   useEffect(() => {
@@ -230,6 +234,9 @@ const FilePanel = ({
             selectedFiles={contextFiles}
             onFileRemove={handleRelatedFileRemoved}
             onFileAdded={handleRelatedFileAdded}
+            repoRef={repo.ref}
+            branch={branch}
+            filePath={filePath}
           />
           <TokensUsageBadge tokens={tokens} />
         </div>
