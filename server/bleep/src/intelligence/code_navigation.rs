@@ -507,5 +507,59 @@ pub fn imported_ranges(
                 .filter_map(|idx| related_file_sg.value_of_definition(idx))
                 .map(|idx| related_file_sg.graph[idx].range())
         })
-        .collect::<HashSet<_>>()
+        .collect()
+}
+
+// ranges of refs in related_file_document which contain defs in source_document
+pub fn importing_ranges(
+    source_document: &ContentDocument,
+    related_file_document: &ContentDocument,
+) -> HashSet<TextRange> {
+    // scope graph of the source document
+    let Some(source_sg) = source_document.symbol_locations.scope_graph() else {
+        return HashSet::new();
+    };
+
+    // scope graph of the related_file document
+    let Some(related_file_sg) = related_file_document.symbol_locations.scope_graph() else {
+        return HashSet::new();
+    };
+    let related_file_content = &related_file_document.content;
+
+    source_sg
+        .graph
+        .node_indices()
+        .par_bridge()
+        .filter(|idx| source_sg.is_definition(*idx) && source_sg.is_top_level(*idx))
+        .flat_map_iter(|idx| {
+            let range = source_sg.graph[idx].range();
+            let token = Token {
+                relative_path: &source_document.relative_path,
+                start_byte: range.start.byte,
+                end_byte: range.end.byte,
+            };
+            let active_token_range = token.start_byte..token.end_byte;
+            let active_token_text = source_document
+                .content
+                .as_str()
+                .get(active_token_range)
+                .unwrap();
+
+            related_file_sg
+                .graph
+                .node_indices()
+                .filter(|&idx| related_file_sg.is_top_level(idx))
+                .filter(|idx| match related_file_sg.get_node(*idx).unwrap() {
+                    NodeKind::Def(n) => {
+                        n.name(related_file_content.as_bytes()) == active_token_text.as_bytes()
+                    }
+                    NodeKind::Import(n) => {
+                        n.name(related_file_content.as_bytes()) == active_token_text.as_bytes()
+                    }
+                    _ => false,
+                })
+                .flat_map(|idx| related_file_sg.references(idx))
+                .map(|idx| related_file_sg.graph[idx].range())
+        })
+        .collect()
 }
