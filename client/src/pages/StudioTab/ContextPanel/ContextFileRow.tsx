@@ -178,7 +178,7 @@ const ContextFileRow = ({
 
   return (
     <div
-      className="w-full overflow-x-auto border-b border-bg-base bg-bg-sub group cursor-pointer"
+      className="w-full overflow-x-auto border-b border-bg-base bg-bg-sub group cursor-pointer flex-shrink-0"
       onClick={handleClick}
     >
       <div className={`max-w-full flex gap-3 items-center py-3 px-8`}>
