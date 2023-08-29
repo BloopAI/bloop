@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, iter, ops::Range, pin::Pin};
+use std::{borrow::Cow, collections::HashMap, iter, mem, ops::Range, pin::Pin};
 
 use anyhow::{Context, Result};
 use axum::{
@@ -434,16 +434,20 @@ pub async fn import(
     let context = exchanges
         .iter()
         .flat_map(|e| {
-            let mut chunk_map = HashMap::new();
+            let mut range_map = HashMap::new();
 
             for c in &e.code_chunks {
-                chunk_map
+                range_map
                     .entry(&c.path)
                     .or_insert_with(Vec::new)
                     .push(c.start_line..c.end_line + 1);
             }
 
-            chunk_map.into_iter().map(|(path, ranges)| ContextFile {
+            for ranges in range_map.values_mut() {
+                fold_ranges(ranges);
+            }
+
+            range_map.into_iter().map(|(path, ranges)| ContextFile {
                 path: path.clone(),
                 hidden: false,
                 repo: repo_ref.parse().unwrap(),
@@ -470,4 +474,89 @@ pub async fn import(
     .map_err(Error::internal)?;
 
     Ok(studio_id.to_string())
+}
+
+fn fold_ranges(ranges: &mut Vec<Range<usize>>) {
+    ranges.sort_by_key(|range| range.start);
+    *ranges = mem::take(ranges).into_iter().fold(Vec::new(), |mut a, e| {
+        if let Some(cur) = a.last_mut() {
+            if let Some(next) = merge_ranges(cur, e) {
+                a.push(next);
+            }
+        } else {
+            a.push(e);
+        }
+
+        a
+    });
+}
+
+/// Try to merge overlapping or nearby ranges.
+///
+/// This function assumes the input ranges are sorted, such that `a` starts before or at the same
+/// position as `b`.
+///
+/// If `b` is merged with `a`, this will return `None` and modify `a` directly. If this function
+/// determines that no merge needs to happen, then `a` will not be modified, and this function will
+/// return `Some(b)` back.
+fn merge_ranges(a: &mut Range<usize>, b: Range<usize>) -> Option<Range<usize>> {
+    const NEARBY_THRESHOLD: usize = 3;
+
+    if b.start <= a.end + NEARBY_THRESHOLD {
+        a.end = a.end.max(b.end);
+        a.start = a.start.min(b.start);
+        None
+    } else {
+        Some(b)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use rand::seq::SliceRandom;
+
+    use super::*;
+
+    #[test]
+    fn test_merge_ranges_nearby() {
+        let mut r = 1..10;
+        assert_eq!(merge_ranges(&mut r, 15..20), Some(15..20));
+        assert_eq!(r, 1..10);
+
+        assert_eq!(merge_ranges(&mut r, 14..20), Some(14..20));
+        assert_eq!(r, 1..10);
+
+        assert_eq!(merge_ranges(&mut r, 13..20), None);
+        assert_eq!(r, 1..20);
+    }
+
+    #[test]
+    fn test_merge_ranges_overlap() {
+        let mut r = 1..10;
+        assert_eq!(merge_ranges(&mut r, 5..20), None);
+        assert_eq!(r, 1..20);
+    }
+
+    #[test]
+    fn test_merge_weird_ranges() {
+        let mut r = 1..10;
+        assert_eq!(merge_ranges(&mut r, 1..20), None);
+        assert_eq!(r, 1..20);
+
+        // This shouldn't happen as we expect sorted input, but we test anyway.
+        let mut r = 5..20;
+        assert_eq!(merge_ranges(&mut r, 1..10), None);
+        assert_eq!(r, 1..20);
+    }
+
+    #[test]
+    fn test_fold_ranges() {
+        let mut ranges = vec![24..35, 5..12, 15..20, 24..30, 1..10];
+
+        ranges.shuffle(&mut rand::thread_rng());
+
+        fold_ranges(&mut ranges);
+
+        assert_eq!(ranges, [1..20, 24..35]);
+    }
 }
