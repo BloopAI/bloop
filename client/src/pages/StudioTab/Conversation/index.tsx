@@ -136,23 +136,23 @@ const Conversation = ({
         const data = JSON.parse(ev.data);
         if (data.Ok) {
           const newMessage = data.Ok;
-          setConversation((prev) =>
-            i === 0
-              ? [
-                  ...prev,
-                  {
-                    author: StudioConversationMessageAuthor.ASSISTANT,
-                    message: newMessage,
-                  },
-                ]
-              : [
-                  ...prev.slice(0, -1),
-                  {
-                    author: StudioConversationMessageAuthor.ASSISTANT,
-                    message: newMessage,
-                  },
-                ],
-          );
+          if (i === 0) {
+            setConversation((prev) => [
+              ...prev,
+              {
+                author: StudioConversationMessageAuthor.ASSISTANT,
+                message: newMessage,
+              },
+            ]);
+          } else {
+            setConversation((prev) => [
+              ...prev.slice(0, -1),
+              {
+                author: StudioConversationMessageAuthor.ASSISTANT,
+                message: newMessage,
+              },
+            ]);
+          }
           i++;
         } else if (data.Err) {
           setConversation((prev) => {
