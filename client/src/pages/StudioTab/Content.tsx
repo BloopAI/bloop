@@ -14,7 +14,6 @@ import {
 } from '../../types/general';
 import { getCodeStudio, patchCodeStudio } from '../../services/api';
 import { CodeStudioMessageType } from '../../types/api';
-import { humanNumber } from '../../utils';
 import Conversation from './Conversation';
 import ContextPanel from './ContextPanel';
 import HistoryPanel from './HistoryPanel';
@@ -51,7 +50,13 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
 
   const handleAddContextClose = useCallback(() => setAddContextOpen(false), []);
   const onFileAdded = useCallback(
-    (repo: RepoType, branch: string, filePath: string, skip?: boolean) => {
+    (
+      repo: RepoType,
+      branch: string,
+      filePath: string,
+      skip?: boolean,
+      ranges?: { start: number; end: number }[],
+    ) => {
       if (tab.key) {
         patchCodeStudio(tab.key, {
           context: [
@@ -61,7 +66,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
               branch,
               repo: repo.ref,
               hidden: false,
-              ranges: [],
+              ranges: ranges || [],
             },
           ],
         }).then(() => refetchCodeStudio());

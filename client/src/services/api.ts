@@ -287,3 +287,14 @@ export const getRelatedFiles = (
   http(`/related-files`, { params: { relative_path, repo_ref, branch } }).then(
     (r) => r.data,
   );
+
+export const getRelatedFileRanges = (
+  repo_ref: string,
+  branch: string,
+  source_file_path: string,
+  related_file_path: string,
+  kind: 'Imported' | 'Importing',
+): Promise<{ ranges: { start: { line: number }; end: { line: number } }[] }> =>
+  http(`/related-files-with-ranges`, {
+    params: { source_file_path, repo_ref, branch, related_file_path, kind },
+  }).then((r) => r.data);
