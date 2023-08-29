@@ -11,19 +11,25 @@ import { DeviceContext } from '../../context/deviceContext';
 import PageTemplate from '../../components/PageTemplate';
 import { TabsContext } from '../../context/tabsContext';
 import { getCodeStudios, postCodeStudio } from '../../services/api';
+import { UIContext } from '../../context/uiContext';
 import AddRepos from './AddRepos';
 import ReposSection from './ReposSection';
 import AddRepoCard from './AddRepoCard';
 import CodeStudiosSection from './CodeStudiosSection';
 
-const filterRepositories = (repos?: RepoType[]) => {
-  return (
+const filterRepositories = (repos?: RepoType[], search?: string) => {
+  const indexed =
     repos?.filter(
       (r) =>
         r.sync_status !== SyncStatus.Uninitialized &&
         r.sync_status !== SyncStatus.Removed,
-    ) || []
-  );
+    ) || [];
+  if (search) {
+    return indexed.filter((r) =>
+      r.name.toLowerCase().includes(search.toLowerCase()),
+    );
+  }
+  return indexed;
 };
 
 const HomePage = () => {
@@ -31,6 +37,9 @@ const HomePage = () => {
   const { fetchRepos, repositories } = useContext(RepositoriesContext);
   const { isSelfServe } = useContext(DeviceContext);
   const { handleAddStudioTab } = useContext(TabsContext);
+  const { search, filterType, setFilterType } = useContext(
+    UIContext.HomeScreen,
+  );
   const [popupOpen, setPopupOpen] = useState(false);
   const [addReposOpen, setAddReposOpen] = useState<
     null | 'local' | 'github' | 'public' | 'studio'
@@ -39,10 +48,21 @@ const HomePage = () => {
     filterRepositories(repositories),
   );
   const [codeStudios, setCodeStudios] = useState<CodeStudioShortType[]>([]);
+  const [codeStudiosToShow, setCodeStudiosToShow] = useState<
+    CodeStudioShortType[]
+  >([]);
 
   const refreshCodeStudios = useCallback(() => {
     getCodeStudios().then(setCodeStudios);
   }, []);
+
+  useEffect(() => {
+    setCodeStudiosToShow(
+      codeStudios.filter((c) =>
+        c.name.toLowerCase().includes(search.toLowerCase()),
+      ),
+    );
+  }, [codeStudios, search]);
 
   useEffect(() => {
     refreshCodeStudios();
@@ -50,9 +70,9 @@ const HomePage = () => {
 
   useEffect(() => {
     if (repositories) {
-      setReposToShow(filterRepositories(repositories));
+      setReposToShow(filterRepositories(repositories, search));
     }
-  }, [repositories]);
+  }, [repositories, search]);
 
   // const onAddClick = useCallback(
   //   (type: 'local' | 'github' | 'public' | 'studio') => {
@@ -81,12 +101,26 @@ const HomePage = () => {
             <AddRepoCard type="studio" onClick={setAddReposOpen} />
           </div>
         </div>
-        <ReposSection
-          reposToShow={reposToShow}
-          setReposToShow={setReposToShow}
-          repositories={repositories}
-        />
-        <CodeStudiosSection codeStudios={codeStudios} />
+        <div className="overflow-auto">
+          {(filterType === 'all' || filterType === 'repos') && (
+            <ReposSection
+              reposToShow={reposToShow}
+              setReposToShow={setReposToShow}
+              repositories={repositories}
+              shouldShowFull={filterType === 'repos'}
+              isFiltered={!!search}
+              showAll={() => setFilterType('repos')}
+            />
+          )}
+          {(filterType === 'all' || filterType === 'studios') && (
+            <CodeStudiosSection
+              codeStudios={codeStudiosToShow}
+              shouldShowFull={filterType === 'studios'}
+              isFiltered={!!search}
+              showAll={() => setFilterType('studios')}
+            />
+          )}
+        </div>
         <AddRepos
           addRepos={addReposOpen}
           onClose={(isSubmitted, name) => {

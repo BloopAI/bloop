@@ -318,8 +318,21 @@
 	"Select branch": "选择分行",
 	"Search file...": "搜索文件...",
 	"Use": "使用",
-	"Restore": "恢复"
+	"Restore": "恢复",
+	"Hide file": "隐藏文件",
+	"Remove file": "删除文件",
+	"Show file": "显示文件",
+	"Search repos or Studio projects...": "搜索存储库或 Studio 项目...",
+	"All": "全部",
+	"StudioProjects": "工作室项目",
+	"View all": "查看全部",
+	"+ # more": "+ {{count}} 更多",
+	"+ # more_other": "+ {{count}} 更多",
+	"No Studio projects": "没有工作室项目",
+	"Repositories": "存储库",
+	"As soon as you create a new Studio project it will appear here.": "一旦您创建了新的 Studio 项目，它就会出现在此处。"
 }
+
 
 
 

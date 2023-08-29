@@ -312,8 +312,20 @@
 	"Select branch": "ブランチを選択",
 	"Search file...": "ファイルを検索...",
 	"Use": "使用",
-	"Restore": "復元する"
+	"Restore": "復元する",
+	"Hide file": "ファイルを隠す",
+	"Remove file": "ファイルを削除する",
+	"Show file": "ファイルを表示",
+	"Search repos or Studio projects...": "リポジトリまたは Studio プロジェクトを検索...",
+	"All": "全て",
+	"Repositories": "リポジトリ",
+	"View all": "すべて見る",
+	"+ # more_one": "+ さらに {{count}} つ",
+	"+ # more_other": "+ さらに {{count}} つ",
+	"As soon as you create a new Studio project it will appear here.": "新しい Studio プロジェクトを作成するとすぐに、ここに表示されます。",
+	"No Studio projects": "Studio プロジェクトはありません"
 }
+
 
 
 
