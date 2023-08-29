@@ -4,7 +4,9 @@ use super::prelude::*;
 use crate::{
     indexes::{reader::ContentDocument, Indexes},
     intelligence::{
-        code_navigation::{CodeNavigationContext, FileSymbols, Occurrence, OccurrenceKind, Token},
+        code_navigation::{
+            self, CodeNavigationContext, FileSymbols, Occurrence, OccurrenceKind, Token,
+        },
         Language, NodeKind, TSLanguage,
     },
     repo::RepoRef,
@@ -192,6 +194,75 @@ pub(super) async fn related_files(
         files_imported,
         files_importing,
     }));
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+pub(super) enum RelatedFileKind {
+    Imported,
+    Importing,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct WithRangesRequest {
+    /// The repo_ref of the file of interest
+    repo_ref: RepoRef,
+
+    /// Branch name to use for the lookup,
+    branch: Option<String>,
+
+    /// The path to the source-file
+    source_file_path: String,
+
+    /// The path to the related-file
+    related_file_path: String,
+
+    /// Whether this is an importing file or an imported file
+    kind: RelatedFileKind,
+}
+
+#[derive(Debug, Serialize)]
+pub(super) struct WithRangesResponse {
+    ranges: Vec<TextRange>,
+}
+
+impl super::ApiResponse for WithRangesResponse {}
+
+pub(super) async fn related_file_with_ranges(
+    Query(payload): Query<WithRangesRequest>,
+    Extension(indexes): Extension<Arc<Indexes>>,
+) -> Result<impl IntoResponse> {
+    let source_document = indexes
+        .file
+        .by_path(
+            &payload.repo_ref,
+            &payload.source_file_path,
+            payload.branch.as_deref(),
+        )
+        .await
+        .map_err(Error::user)?
+        .ok_or_else(|| Error::user("path not found").with_status(StatusCode::NOT_FOUND))?;
+
+    let related_file_document = indexes
+        .file
+        .by_path(
+            &payload.repo_ref,
+            &payload.related_file_path,
+            payload.branch.as_deref(),
+        )
+        .await
+        .map_err(Error::user)?
+        .ok_or_else(|| Error::user("path not found").with_status(StatusCode::NOT_FOUND))?;
+
+    match payload.kind {
+        RelatedFileKind::Imported => {
+            return Ok(json(WithRangesResponse {
+                ranges: code_navigation::imported_ranges(&source_document, &related_file_document)
+                    .into_iter()
+                    .collect(),
+            }))
+        }
+        _ => unimplemented!(),
+    }
 }
 
 /// The request made to the `token-value` endpoint.
