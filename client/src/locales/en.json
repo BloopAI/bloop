@@ -312,8 +312,21 @@
 	"Add related files": "Add related files",
 	"Add related file": "Add related file",
 	"Use": "Use",
-	"Restore": "Restore"
+	"Restore": "Restore",
+	"Hide file": "Hide file",
+	"Remove file": "Remove file",
+	"Show file": "Show file",
+	"Search repos or Studio projects...": "Search repos or Studio projects...",
+	"All": "All",
+	"Repositories": "Repositories",
+	"StudioProjects": "StudioProjects",
+	"View all": "View all",
+	"+ # more_one": "+ {{count}} more",
+	"+ # more_other": "+ {{count}} more",
+	"No Studio projects": "No Studio projects",
+	"As soon as you create a new Studio project it will appear here.": "As soon as you create a new Studio project it will appear here."
 }
+
 
 
 

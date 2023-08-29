@@ -9,7 +9,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  MenuItemType,
   RepoType,
   StudioContextFile,
   StudioLeftPanelType,
@@ -19,18 +18,9 @@ import FileIcon from '../../../components/FileIcon';
 import LinesBadge from '../LinesBadge';
 import TokensUsageBadge from '../TokensUsageBadge';
 import Button from '../../../components/Button';
-import {
-  EyeCut,
-  Eye,
-  MinusSignInCircle,
-  MoreHorizontal,
-  PlusSignInCircle,
-  TrashCanFilled,
-  PlusSignInBubble,
-} from '../../../icons';
+import { EyeCut, Eye, TrashCanFilled, PlusSignInBubble } from '../../../icons';
 import RelatedFilesBadge from '../RelatedFilesBadge';
 import { DropdownWithIcon } from '../../../components/Dropdown';
-import { ContextMenuItem } from '../../../components/ContextMenu';
 import { getRelatedFiles } from '../../../services/api';
 import useRelatedFiles from '../../../hooks/useRelatedFiles';
 
@@ -76,7 +66,6 @@ const ContextFileRow = ({
   const [relatedFiles, setRelatedFiles] = useState<
     { type: string; path: string }[]
   >([]);
-  const [isAddingRelatedFiles, setAddingRelatedFiles] = useState(false);
 
   useEffect(() => {
     getRelatedFiles(path, repo, branch).then((resp) => {
@@ -89,45 +78,6 @@ const ContextFileRow = ({
       );
     });
   }, []);
-
-  const dropdownItems = useMemo(() => {
-    const items: ContextMenuItem[] = [];
-    const usedRelatedFiles = contextFiles.filter(
-      (c) =>
-        !!relatedFiles.find(
-          (r) => r.path === c.path && c.repo === repo && c.branch === branch,
-        ),
-    );
-    if (usedRelatedFiles.length) {
-      items.push({
-        type: MenuItemType.DEFAULT,
-        text: t(`Remove related files`),
-        icon: <MinusSignInCircle />,
-        onClick: () => onFileRemove(usedRelatedFiles),
-      });
-    } else if (relatedFiles.length) {
-      items.push({
-        type: MenuItemType.DEFAULT,
-        text: t(`Add related files`),
-        icon: <PlusSignInCircle />,
-        noCloseOnClick: true,
-        onClick: () => setAddingRelatedFiles(true),
-      });
-    }
-    items.push({
-      type: MenuItemType.DEFAULT,
-      text: t(`Hide`),
-      icon: <EyeCut />,
-      onClick: () => onFileHide(path, repo, branch, true),
-    });
-    items.push({
-      type: MenuItemType.DEFAULT,
-      text: t(`Remove`),
-      icon: <TrashCanFilled />,
-      onClick: () => onFileRemove({ path, repo, branch }),
-    });
-    return items;
-  }, [onFileRemove, path, repo, branch, contextFiles, relatedFiles, t]);
 
   const mappedRanges = useMemo((): [number, number][] => {
     return ranges.map((r) => [r.start, r.end - 1]);
@@ -172,10 +122,6 @@ const ContextFileRow = ({
     handleRelatedFileRemoved,
   );
 
-  const onRelatedFiledClosed = useCallback(() => {
-    setAddingRelatedFiles(false);
-  }, []);
-
   return (
     <div
       className="w-full overflow-x-auto border-b border-bg-base bg-bg-sub group cursor-pointer flex-shrink-0"
@@ -208,7 +154,7 @@ const ContextFileRow = ({
           <DropdownWithIcon
             items={relatedFilesItems}
             btnOnlyIcon
-            btnTitle="Add related files"
+            btnTitle={t('Add related files')}
             icon={
               <PlusSignInBubble
                 raw
@@ -219,7 +165,6 @@ const ContextFileRow = ({
             btnSize="tiny"
             dropdownBtnClassName="flex-shrink-0"
             appendTo={document.body}
-            onClose={onRelatedFiledClosed}
           />
         </div>
         <Button
@@ -245,7 +190,7 @@ const ContextFileRow = ({
           variant="tertiary"
           size="tiny"
           onlyIcon
-          title={'Remove file'}
+          title={t('Remove file')}
           className={
             'opacity-50 group-hover:opacity-100 group-focus:opacity-100'
           }
