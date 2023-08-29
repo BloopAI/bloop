@@ -92,6 +92,24 @@
     },
     "query": "SELECT id, name, context, messages, modified_at\n         FROM studios\n         WHERE id = ?"
   },
+  "2463553250cf5cb24170b9f04e51b3defa7b639a7e6ac704781761566d922a69": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "DELETE FROM studios WHERE id = ? RETURNING id"
+  },
   "392b563bb3af6711817fe99335d053691750426762dcde7b0381dc9f69cd804e": {
     "describe": {
       "columns": [],
