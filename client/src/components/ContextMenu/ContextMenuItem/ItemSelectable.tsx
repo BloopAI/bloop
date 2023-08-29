@@ -12,7 +12,7 @@ export type ItemProps = {
 const Item = ({ text, icon, disabled, isSelected, onChange }: ItemProps) => {
   return (
     <div
-      className={`p-2.5 group w-full text-left ${
+      className={`p-2.5 group w-full text-left overflow-x-auto flex-shrink-0 ${
         disabled
           ? 'text-label-muted cursor-default'
           : 'text-label-base hover:text-label-title focus:text-label-title active:text-label-title cursor-pointer'
@@ -21,7 +21,10 @@ const Item = ({ text, icon, disabled, isSelected, onChange }: ItemProps) => {
       <Checkbox
         checked={isSelected}
         label={
-          <span className="flex gap-1 items-center flex-shrink-0 ellipsis text-label-base group-hover:text-label-title group-foxus:text-label-title caption-strong">
+          <span
+            className="flex gap-1 items-center flex-shrink-0 overflow-x-auto text-label-base
+          group-hover:text-label-title group-foxus:text-label-title caption-strong"
+          >
             {icon}
             {text}
           </span>
