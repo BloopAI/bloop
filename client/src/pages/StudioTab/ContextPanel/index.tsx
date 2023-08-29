@@ -111,8 +111,8 @@ const ContextPanel = ({
   );
 
   return (
-    <div className="flex flex-col w-full flex-1">
-      <div className="flex gap-1 px-8 justify-between items-center border-b border-bg-border bg-bg-shade shadow-low h-11.5">
+    <div className="flex flex-col w-full flex-1 overflow-auto">
+      <div className="flex gap-1 px-8 justify-between items-center border-b border-bg-border bg-bg-shade shadow-low h-11.5 flex-shrink-0">
         <div className="flex gap-1.5 items-center text-bg-border-hover select-none">
           <p className="body-s text-label-title">
             <Trans>Context files</Trans>
@@ -156,10 +156,10 @@ const ContextPanel = ({
           </p>
         </div>
       ) : (
-        <div className="flex flex-col w-full">
+        <div className="flex flex-col w-full overflow-auto">
           {fileList.map((repoBranch) => (
             <>
-              <div className="w-full overflow-x-auto border-b border-bg-base bg-bg-main/15 group cursor-pointer">
+              <div className="w-full overflow-x-auto border-b border-bg-base bg-bg-main/15 group cursor-pointer flex-shrink-0">
                 <div className={`max-w-full flex gap-3 items-center py-0 px-8`}>
                   <p className={`body-s text-label-title ellipsis`}>
                     {`${repoBranch.repo.split('/').pop()}${
@@ -172,7 +172,7 @@ const ContextPanel = ({
               </div>
               {repoBranch.files.map((file, i) => (
                 <ContextFileRow
-                  key={file.repo + file.path}
+                  key={file.repo + file.branch + file.path + i}
                   {...file}
                   contextFiles={contextFiles}
                   setLeftPanel={setLeftPanel}

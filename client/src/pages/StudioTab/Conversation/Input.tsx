@@ -87,7 +87,7 @@ const ConversationInput = ({
             {author === 'User' ? (
               <img src={envConfig.github_user?.avatar_url} alt={t('avatar')} />
             ) : (
-              <Sparkles raw sizeClassName="w-3.5 h-3.5" />
+              <Sparkles raw sizeClassName="w-2.5 h-2.5" />
             )}
           </div>
           <Trans>{author}</Trans>
