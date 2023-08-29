@@ -313,5 +313,17 @@
 	"Select branch": "Seleccionar rama",
 	"Select file": "Seleccionar archivo",
 	"Use": "Usar",
-	"Restore": "Restaurar"
+	"Restore": "Restaurar",
+	"Hide file": "Ocultar archivo",
+	"Remove file": "Remover archivo",
+	"Show file": "Mostrar archivo",
+	"Search repos or Studio projects...": "Buscar repositorios o proyectos de Studio...",
+	"All": "Toda",
+	"StudioProjects": "EstudioProyectos",
+	"View all": "Ver todo",
+	"+ # more_one": "+ {{count}} más",
+	"+ # more_other": "+ {{count}} más",
+	"No Studio projects": "Sin proyectos de estudio",
+	"Repositories": "Repositorios",
+	"As soon as you create a new Studio project it will appear here.": "Tan pronto como cree un nuevo proyecto de Studio, aparecerá aquí."
 }
