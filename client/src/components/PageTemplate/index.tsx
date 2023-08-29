@@ -1,12 +1,11 @@
 import React, { memo, PropsWithChildren, useMemo } from 'react';
 import * as Sentry from '@sentry/react';
-import NavBar from '../NavBar';
-import StatusBar from '../StatusBar';
 import Chat from '../Chat';
 import ErrorFallback from '../ErrorFallback';
 import { RenderPage } from '../../pages/RepoTab/Content';
 import LeftSidebar from '../LeftSidebar';
 import Subheader from './Subheader';
+import HomeSubheader from './HomeSubheader';
 
 type Props = {
   renderPage: RenderPage | 'studio';
@@ -15,9 +14,7 @@ type Props = {
 const PageTemplate = ({ children, renderPage }: PropsWithChildren<Props>) => {
   const mainContainerStyle = useMemo(
     () => ({
-      height: `calc(100vh - ${
-        renderPage !== 'home' && renderPage !== 'studio' ? '9.5rem' : '6rem'
-      })`,
+      height: `calc(100vh - ${renderPage !== 'studio' ? '9.5rem' : '6rem'})`,
     }),
     [renderPage],
   );
@@ -25,6 +22,7 @@ const PageTemplate = ({ children, renderPage }: PropsWithChildren<Props>) => {
   return (
     <div className="text-label-title">
       {renderPage !== 'home' && renderPage !== 'studio' && <Subheader />}
+      {renderPage === 'home' && <HomeSubheader />}
       <div
         className="flex mb-16 w-screen overflow-hidden relative"
         style={mainContainerStyle}
