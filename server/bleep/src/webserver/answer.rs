@@ -22,7 +22,7 @@ use crate::{
     agent::{
         self,
         exchange::{CodeChunk, Exchange, FocusedChunk},
-        Action, Agent,
+        Action, Agent, ExchangeState,
     },
     analytics::{EventData, QueryEvent},
     db::QueryLog,
@@ -261,7 +261,7 @@ async fn try_execute_agent(
             user,
             thread_id,
             query_id,
-            complete: false,
+            exchange_state: ExchangeState::Pending,
         };
 
         let mut exchange_rx = tokio_stream::wrappers::ReceiverStream::new(exchange_rx);
@@ -312,6 +312,8 @@ async fn try_execute_agent(
             }
         };
 
+        agent.complete(result.is_ok());
+
         match result {
             Ok(_) => {}
             Err(agent::Error::Timeout(duration)) => {
@@ -330,10 +332,6 @@ async fn try_execute_agent(
                 Err(e)?;
             }
         }
-
-        // Storing the conversation here allows us to make subsequent requests.
-        conversations::store(&agent.app.sql, conversation_id, (agent.repo_ref.clone(), agent.exchanges.clone())).await?;
-        agent.complete();
     };
 
     let init_stream = futures::stream::once(async move {
