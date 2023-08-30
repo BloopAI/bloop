@@ -22,6 +22,7 @@ import { SearchContext } from '../../context/searchContext';
 import { mapLoadingSteps } from '../../mappers/conversation';
 import { findElementInCurrentTab } from '../../utils/domUtils';
 import { conversationsCache } from '../../services/cache';
+import AddStudioContext from '../AddStudioContext';
 import NLInput from './NLInput';
 import ChipButton from './ChipButton';
 import AllConversations from './AllCoversations';
@@ -426,6 +427,12 @@ const Chat = () => {
                 <ChipButton onClick={handleNewConversation}>
                   <Trans>Create new</Trans>
                 </ChipButton>
+                {!!threadId && !isLoading && (
+                  <AddStudioContext
+                    threadId={threadId}
+                    name={conversation[0].text || 'New Studio'}
+                  />
+                )}
                 <ChipButton
                   variant="filled"
                   onClick={(e) => {

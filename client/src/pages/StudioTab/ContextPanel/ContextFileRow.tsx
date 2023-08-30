@@ -32,15 +32,17 @@ type Props = StudioContextFile & {
   onFileHide: (
     path: string,
     repo: string,
-    branch: string,
+    branch: string | null,
     hide: boolean,
   ) => void;
   onFileRemove: (
-    f: { path: string; repo: string; branch: string } | StudioContextFile[],
+    f:
+      | { path: string; repo: string; branch: string | null }
+      | StudioContextFile[],
   ) => void;
   onFileAdded: (
     repo: RepoType,
-    branch: string,
+    branch: string | null,
     filePath: string,
     skip: boolean,
     ranges?: { start: number; end: number }[],
@@ -69,7 +71,7 @@ const ContextFileRow = ({
   >([]);
 
   useEffect(() => {
-    getRelatedFiles(path, repo, branch).then((resp) => {
+    getRelatedFiles(path, repo, branch ? branch : undefined).then((resp) => {
       setRelatedFiles(
         resp.files_imported
           .map((path) => ({ type: 'imported', path }))

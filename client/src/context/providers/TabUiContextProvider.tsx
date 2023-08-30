@@ -57,7 +57,7 @@ export const TabUiContextProvider = memo(
       ) : (
         children
       );
-    }, [tab]);
+    }, [tab, children]);
 
     return (
       <UIContext.Symbols.Provider value={symbolsContextValue}>

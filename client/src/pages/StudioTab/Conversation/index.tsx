@@ -94,9 +94,9 @@ const Conversation = ({
     if (!input.message) {
       return;
     }
-    const messages = conversation
-      .map((c) => ({ [c.author]: c.message }))
-      .concat([{ [input.author]: input.message }]);
+    const messages: ({ User: string } | { Assistant: string })[] = conversation
+      .map((c) => ({ [c.author as 'User']: c.message }))
+      .concat([{ [input.author as 'User']: input.message }]);
     await patchCodeStudio(studioId, {
       messages,
     });
@@ -173,9 +173,10 @@ const Conversation = ({
 
   const onMessageRemoved = useCallback(
     async (i: number) => {
-      const messages = conversation
-        .map((c) => ({ [c.author]: c.message }))
-        .filter((m, j) => i !== j);
+      const messages: ({ User: string } | { Assistant: string })[] =
+        conversation
+          .map((c) => ({ [c.author as 'User']: c.message }))
+          .filter((m, j) => i !== j);
       await patchCodeStudio(studioId, {
         messages,
       });

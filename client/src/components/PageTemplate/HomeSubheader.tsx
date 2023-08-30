@@ -47,7 +47,7 @@ const HomeSubheader = ({}: Props) => {
           name={t('Studio Projects')}
           onClick={() => setFilterType('studios')}
           endIcon={
-            <span className="code-s text-label-control rounded bg-[linear-gradient(135deg,#C7363E_0%,#C7369E_100%)] px-1 h-4.5 flex-shrink-0 flex-grow-0">
+            <span className="code-s text-label-control rounded bg-studio px-1 h-4.5 flex-shrink-0 flex-grow-0">
               New
             </span>
           }

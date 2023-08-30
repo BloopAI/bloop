@@ -10,7 +10,7 @@ import {
   SuggestionsResponse,
   TokenInfoResponse,
 } from '../types/api';
-import { EnvConfig, RepoType } from '../types/general';
+import { EnvConfig, RepoType, StudioContextFile } from '../types/general';
 
 const DB_API = 'https://api.bloop.ai';
 let http: AxiosInstance;
@@ -270,19 +270,23 @@ export const patchCodeStudio = (
   id: string,
   data: {
     name?: string;
-    context?: any;
-    messages?: any[];
+    context?: StudioContextFile[];
+    messages?: ({ User: string } | { Assistant: string })[];
   },
 ) => http.patch(`/studio/${id}`, data).then((r) => r.data);
 export const getCodeStudio = (id: string): Promise<CodeStudioType> =>
   http(`/studio/${id}`).then((r) => r.data);
 export const postCodeStudio = (name: string) =>
   http.post('/studio', { name }).then((r) => r.data);
+export const importCodeStudio = (thread_id: string) =>
+  http
+    .post('/studio/import', {}, { params: { thread_id } })
+    .then((r) => r.data);
 
 export const getRelatedFiles = (
   relative_path: string,
   repo_ref: string,
-  branch: string,
+  branch?: string,
 ): Promise<{ files_importing: string[]; files_imported: string[] }> =>
   http(`/related-files`, { params: { relative_path, repo_ref, branch } }).then(
     (r) => r.data,
@@ -290,7 +294,7 @@ export const getRelatedFiles = (
 
 export const getRelatedFileRanges = (
   repo_ref: string,
-  branch: string,
+  branch: string | undefined,
   source_file_path: string,
   related_file_path: string,
   kind: 'Imported' | 'Importing',
