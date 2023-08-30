@@ -324,8 +324,15 @@
 	"+ # more_one": "+ {{count}} more",
 	"+ # more_other": "+ {{count}} more",
 	"No Studio projects": "No Studio projects",
-	"As soon as you create a new Studio project it will appear here.": "As soon as you create a new Studio project it will appear here."
+	"As soon as you create a new Studio project it will appear here.": "As soon as you create a new Studio project it will appear here.",
+	"Add to Studio context": "Add to Studio context",
+	"Add context": "Add context",
+	"Add context in a new Studio project or add it to an existing one.": "Add context in a new Studio project or add it to an existing one.",
+	"New Studio Project": "New Studio Project",
+	"Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}": "Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}",
+	"Create new Studio Project with context": "Create new Studio Project with context"
 }
+
 
 
 
