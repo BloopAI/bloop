@@ -137,11 +137,12 @@ impl Indexable for File {
                 reporef,
                 &repo.disk_path,
                 repo.branch_filter.as_ref().map(Into::into),
+                &repo.file_filter,
             )?;
             let count = walker.len();
             walker.for_each(pipes, file_worker(count));
         } else {
-            let walker = FileWalker::index_directory(&repo.disk_path);
+            let walker = FileWalker::index_directory(&repo.disk_path, &repo.file_filter);
             let count = walker.len();
             walker.for_each(pipes, file_worker(count));
         };

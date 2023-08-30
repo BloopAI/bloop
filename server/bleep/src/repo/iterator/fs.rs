@@ -9,12 +9,21 @@ pub struct FileWalker {
 }
 
 impl FileWalker {
-    pub fn index_directory(dir: impl AsRef<Path>) -> impl FileSource {
+    pub fn index_directory(
+        dir: impl AsRef<Path>,
+        file_filter: impl Into<FileFilter>,
+    ) -> impl FileSource {
+        let file_filter = file_filter.into();
+
         // note: this WILL observe .gitignore files for the respective repos.
         let walker = ignore::WalkBuilder::new(&dir)
             .standard_filters(true)
             .hidden(false)
-            .filter_entry(should_index_entry)
+            .filter_entry(move |entry| {
+                file_filter
+                    .is_allowed(entry.path())
+                    .unwrap_or(should_index(entry.path()))
+            })
             .build();
 
         let file_list = walker

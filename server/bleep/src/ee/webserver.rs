@@ -2,10 +2,9 @@ use axum::{
     extract::{Query, State},
     Json,
 };
-use serde::Deserialize;
 
 use crate::{
-    repo::BranchFilter,
+    repo::FilterUpdate,
     webserver::{
         prelude::*,
         repos::{RepoParams, ReposResponse},
@@ -13,24 +12,26 @@ use crate::{
     Application,
 };
 
-#[derive(Deserialize)]
-pub(crate) struct RepositoryPatch {
-    branch_filter: BranchFilter,
-}
-
 /// Patch a repository with the given payload
 /// This will automatically trigger a sync
 //
 pub(crate) async fn patch_with_branch(
     Query(RepoParams { repo }): Query<RepoParams>,
     State(app): State<Application>,
-    Json(patch): Json<RepositoryPatch>,
+    Json(patch): Json<FilterUpdate>,
 ) -> impl IntoResponse {
-    let _parsed = crate::repo::iterator::BranchFilter::from(&patch.branch_filter);
+    if let Some(ref file_filter) = patch.file_filter {
+        _ = crate::repo::iterator::FileFilter::from(file_filter);
+    }
 
-    app.write_index()
-        .add_branches_for_repo(repo, patch.branch_filter)
-        .await;
+    if let Some(ref branch_filter) = patch.branch_filter {
+        _ = crate::repo::iterator::BranchFilter::from(branch_filter);
+    }
 
-    json(ReposResponse::SyncQueued)
+    if patch.file_filter.is_some() || patch.branch_filter.is_some() {
+        app.write_index().add_branches_for_repo(repo, patch).await;
+        json(ReposResponse::SyncQueued)
+    } else {
+        json(ReposResponse::Unchanged)
+    }
 }

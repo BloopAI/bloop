@@ -1,8 +1,6 @@
 use anyhow::Context;
-use regex::RegexSet;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    collections::BTreeSet,
     fmt::{self, Display},
     path::{Path, PathBuf},
     str::FromStr,
@@ -15,6 +13,8 @@ use crate::state::get_relative_path;
 
 pub(crate) mod iterator;
 use iterator::language;
+
+pub use iterator::{BranchFilter, BranchFilterConfig, FileFilter, FileFilterConfig, FilterUpdate};
 
 // Types of repo
 #[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
@@ -186,56 +186,32 @@ impl<'de> Deserialize<'de> for RepoRef {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub enum BranchFilter {
-    All,
-    Head,
-    Select(Vec<String>),
-}
-
-impl BranchFilter {
-    pub(crate) fn patch(&self, old: Option<&BranchFilter>) -> Option<BranchFilter> {
-        let Some(BranchFilter::Select(ref old_list)) = old
-        else {
-            return Some(self.clone());
-        };
-
-        let BranchFilter::Select(new_list) = self
-        else {
-            return Some(self.clone());
-        };
-
-        let mut updated = old_list.iter().collect::<BTreeSet<_>>();
-        updated.extend(new_list);
-
-        Some(BranchFilter::Select(updated.into_iter().cloned().collect()))
-    }
-}
-
-impl From<&BranchFilter> for iterator::BranchFilter {
-    fn from(value: &BranchFilter) -> Self {
-        match value {
-            BranchFilter::All => iterator::BranchFilter::All,
-            BranchFilter::Head => iterator::BranchFilter::Head,
-            BranchFilter::Select(regexes) => {
-                let mut regexes = regexes.clone();
-                regexes.push("HEAD".into());
-                iterator::BranchFilter::Select(RegexSet::new(regexes).unwrap())
-            }
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Repository {
+    /// Path to the physical location of the repo root
     pub disk_path: PathBuf,
+
+    /// Configuration of the remote to sync with
     pub remote: RepoRemote,
+
+    /// Current user-readable status of syncing
     pub sync_status: SyncStatus,
+
+    /// Time of last commit at the last successful index
     pub last_commit_unix_secs: u64,
+
+    /// Time of last successful index
     pub last_index_unix_secs: u64,
+
+    /// Most common language
     pub most_common_lang: Option<String>,
-    pub branch_filter: Option<BranchFilter>,
+
+    /// Filters which branches to index
+    pub branch_filter: Option<BranchFilterConfig>,
+
+    /// Custom file filter overrides
+    #[serde(default)]
+    pub file_filter: FileFilterConfig,
 }
 
 impl Repository {
@@ -270,10 +246,11 @@ impl Repository {
             sync_status: SyncStatus::Queued,
             last_index_unix_secs: 0,
             last_commit_unix_secs: 0,
-            disk_path,
-            remote,
             most_common_lang: None,
             branch_filter: None,
+            file_filter: Default::default(),
+            disk_path,
+            remote,
         }
     }
 
@@ -308,7 +285,7 @@ impl Repository {
 
     pub(crate) fn sync_done_with(
         &mut self,
-        new_branch_filters: Option<&BranchFilter>,
+        filter_update: &FilterUpdate,
         metadata: Arc<RepoMetadata>,
     ) {
         self.last_index_unix_secs = get_unix_time(SystemTime::now());
@@ -319,8 +296,12 @@ impl Repository {
             .map(|l| l.to_string())
             .or_else(|| self.most_common_lang.take());
 
-        if let Some(bf) = new_branch_filters {
+        if let Some(ref bf) = filter_update.branch_filter {
             self.branch_filter = bf.patch(self.branch_filter.as_ref());
+        }
+
+        if let Some(ref ff) = filter_update.file_filter {
+            self.file_filter = ff.clone();
         }
 
         self.sync_status = SyncStatus::Done;

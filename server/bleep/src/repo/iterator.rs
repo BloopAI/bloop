@@ -5,12 +5,14 @@ use regex::Regex;
 use smallvec::SmallVec;
 use tracing::warn;
 
+mod filters;
 mod fs;
 mod git;
 pub(super) mod language;
 
+pub use filters::*;
 pub use fs::FileWalker;
-pub use git::{BranchFilter, GitWalker};
+pub use git::GitWalker;
 
 use crate::background::SyncPipes;
 
@@ -74,11 +76,7 @@ pub enum FileType {
     Other,
 }
 
-fn should_index_entry(de: &ignore::DirEntry) -> bool {
-    should_index(&de.path())
-}
-
-fn should_index<P: AsRef<Path>>(p: &P) -> bool {
+fn should_index<P: AsRef<Path> + ?Sized>(p: &P) -> bool {
     let path = p.as_ref();
 
     // TODO: Make this more robust

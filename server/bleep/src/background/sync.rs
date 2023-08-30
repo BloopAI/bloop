@@ -6,7 +6,7 @@ use crate::{
     cache::FileCache,
     indexes,
     remotes::RemoteError,
-    repo::{Backend, RepoError, RepoMetadata, RepoRef, Repository, SyncStatus},
+    repo::{Backend, FilterUpdate, RepoError, RepoMetadata, RepoRef, Repository, SyncStatus},
     Application,
 };
 
@@ -16,7 +16,7 @@ use super::control::SyncPipes;
 
 pub(crate) struct SyncHandle {
     pub(crate) reporef: RepoRef,
-    pub(crate) new_branch_filters: Option<crate::repo::BranchFilter>,
+    pub(crate) filter_updates: FilterUpdate,
     pub(super) pipes: SyncPipes,
     app: Application,
     exited: flume::Sender<SyncStatus>,
@@ -94,10 +94,16 @@ impl SyncHandle {
         app: Application,
         reporef: RepoRef,
         status: super::ProgressStream,
-        new_branch_filters: Option<crate::repo::BranchFilter>,
+        filter_updates: Option<FilterUpdate>,
     ) -> Arc<Self> {
+        // Going through an extra hoop here to ensure the outward
+        // facing interface communicates intent.
+        //
+        // How filter updates work specifically should not have to
+        // trickle down to all callers.
+        let filter_updates = filter_updates.unwrap_or_default();
         let (exited, exit_signal) = flume::bounded(1);
-        let pipes = SyncPipes::new(reporef.clone(), new_branch_filters.clone(), status);
+        let pipes = SyncPipes::new(reporef.clone(), filter_updates.clone(), status);
         let current = app
             .repo_pool
             .entry_async(reporef.clone())
@@ -121,6 +127,7 @@ impl SyncHandle {
                         last_commit_unix_secs: 0,
                         most_common_lang: None,
                         branch_filter: None,
+                        file_filter: Default::default(),
                     }
                 }
             });
@@ -129,7 +136,7 @@ impl SyncHandle {
             app: app.clone(),
             reporef: reporef.clone(),
             pipes,
-            new_branch_filters,
+            filter_updates,
             exited,
             exit_signal,
         };
@@ -184,7 +191,7 @@ impl SyncHandle {
             Ok(Either::Right(state)) => {
                 info!("commit complete; indexing done");
                 self.app.repo_pool.update(&self.reporef, |_k, repo| {
-                    repo.sync_done_with(self.new_branch_filters.as_ref(), state)
+                    repo.sync_done_with(&self.filter_updates, state)
                 });
 
                 // technically `sync_done_with` does this, but we want to send notifications
@@ -217,8 +224,12 @@ impl SyncHandle {
                 .await
                 .unwrap();
 
-            if let Some(ref bf) = self.new_branch_filters {
+            if let Some(ref bf) = self.filter_updates.branch_filter {
                 orig.branch_filter = bf.patch(orig.branch_filter.as_ref());
+            }
+
+            if let Some(ref ff) = self.filter_updates.file_filter {
+                orig.file_filter = ff.clone();
             }
             orig
         };

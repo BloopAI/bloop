@@ -3,7 +3,7 @@ use tokio::sync::Semaphore;
 use tracing::{debug, info};
 
 use crate::{
-    repo::{BranchFilter, RepoRef, SyncStatus},
+    repo::{BranchFilterConfig, RepoRef, SyncStatus},
     Application, Configuration,
 };
 
@@ -25,7 +25,7 @@ pub struct Progress {
     #[serde(rename = "ref")]
     reporef: RepoRef,
     #[serde(rename = "b")]
-    branch_filter: Option<BranchFilter>,
+    branch_filter: Option<BranchFilterConfig>,
     #[serde(rename = "ev")]
     event: ProgressEvent,
 }
@@ -187,7 +187,7 @@ impl SyncQueue {
             .scan_async(|_, handle| {
                 output.push(QueuedRepoStatus {
                     reporef: handle.reporef.clone(),
-                    branch_filter: handle.new_branch_filters.clone(),
+                    branch_filter: handle.filter_updates.branch_filter.clone(),
                     state: QueueState::Active,
                 });
             })
@@ -196,7 +196,7 @@ impl SyncQueue {
         for handle in self.queue.get_list().await {
             output.push(QueuedRepoStatus {
                 reporef: handle.reporef.clone(),
-                branch_filter: handle.new_branch_filters.clone(),
+                branch_filter: handle.filter_updates.branch_filter.clone(),
                 state: QueueState::Queued,
             });
         }
@@ -208,7 +208,7 @@ impl SyncQueue {
 #[derive(serde::Serialize, Debug)]
 pub(crate) struct QueuedRepoStatus {
     reporef: RepoRef,
-    branch_filter: Option<BranchFilter>,
+    branch_filter: Option<BranchFilterConfig>,
     state: QueueState,
 }
 

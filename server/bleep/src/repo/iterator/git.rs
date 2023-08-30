@@ -1,38 +1,18 @@
 use crate::repo::RepoRef;
 
-use super::*;
+use super::{
+    filters::{BranchFilter, FileFilter},
+    *,
+};
 
 use anyhow::Result;
 use gix::ThreadSafeRepository;
-use regex::RegexSet;
 use tracing::{error, trace};
 
 use std::{
     collections::{BTreeSet, HashMap},
     path::Path,
 };
-
-pub enum BranchFilter {
-    All,
-    Head,
-    Select(RegexSet),
-}
-
-impl BranchFilter {
-    fn filter(&self, is_head: bool, branch: &str) -> bool {
-        match self {
-            BranchFilter::All => true,
-            BranchFilter::Select(patterns) => is_head || patterns.is_match(branch),
-            BranchFilter::Head => is_head,
-        }
-    }
-}
-
-impl Default for BranchFilter {
-    fn default() -> Self {
-        Self::Head
-    }
-}
 
 fn human_readable_branch_name(r: &gix::Reference<'_>) -> String {
     use gix::bstr::ByteSlice;
@@ -48,10 +28,13 @@ impl GitWalker {
     pub fn open_repository(
         reporef: &RepoRef,
         dir: impl AsRef<Path>,
-        filter: impl Into<Option<BranchFilter>>,
+        branch_filter: impl Into<Option<BranchFilter>>,
+        file_filter: impl Into<FileFilter>,
     ) -> Result<Self> {
         let root_dir = dir.as_ref();
-        let branches = filter.into().unwrap_or_default();
+
+        let file_filter = file_filter.into();
+        let branches = branch_filter.into().unwrap_or_default();
         let git = gix::open::Options::isolated()
             .filter_config_section(|_| false)
             .open(dir.as_ref())?;
@@ -146,7 +129,9 @@ impl GitWalker {
                             entry.oid,
                         )
                     })
-                    .filter(|(_, _, path, _, _)| should_index(path))
+                    .filter(|(_, _, path, _, _)| {
+                        file_filter.is_allowed(path).unwrap_or(should_index(path))
+                    })
             })
             .fold(
                 HashMap::new(),
