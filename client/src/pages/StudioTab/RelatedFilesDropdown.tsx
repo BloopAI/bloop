@@ -16,6 +16,7 @@ type Props = {
   repoRef: string;
   branch: string;
   filePath: string;
+  selectedRanges: [number, number][];
 };
 
 const RelatedFilesDropdown = ({
@@ -29,6 +30,7 @@ const RelatedFilesDropdown = ({
   repoRef,
   filePath,
   branch,
+  selectedRanges,
 }: PropsWithChildren<Props>) => {
   const { items } = useRelatedFiles(
     selectedFiles,
@@ -38,6 +40,7 @@ const RelatedFilesDropdown = ({
     repoRef,
     branch,
     filePath,
+    selectedRanges,
   );
 
   return (

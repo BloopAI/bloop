@@ -120,6 +120,7 @@ const FilePanel = ({
     repo.ref,
     branch,
     filePath,
+    selectedLines,
   );
 
   useEffect(() => {
@@ -241,6 +242,7 @@ const FilePanel = ({
             repoRef={repo.ref}
             branch={branch}
             filePath={filePath}
+            selectedRanges={selectedLines}
           />
           <TokensUsageBadge tokens={tokens} />
         </div>

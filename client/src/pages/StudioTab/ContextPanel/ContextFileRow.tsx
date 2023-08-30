@@ -126,6 +126,7 @@ const ContextFileRow = ({
     repo,
     branch,
     path,
+    ranges.map((r) => [r.start, r.end]),
   );
 
   return (
@@ -154,6 +155,7 @@ const ContextFileRow = ({
             repoRef={repo}
             filePath={path}
             branch={branch}
+            selectedRanges={ranges.map((r) => [r.start, r.end])}
           />
         </div>
         <div className="w-16 flex items-center flex-shrink-0">

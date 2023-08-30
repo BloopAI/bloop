@@ -20,6 +20,7 @@ const useRelatedFiles = (
   repoRef: string,
   branch: string | null,
   filePath: string,
+  selectedRanges: [number, number][],
 ) => {
   const { t } = useTranslation();
   const [items, setItems] = useState<ContextMenuItem[]>([]);
@@ -51,6 +52,7 @@ const useRelatedFiles = (
                 filePath,
                 f.path,
                 'Imported',
+                selectedRanges.map((r) => ({ start: r[0], end: r[1] })),
               );
               onFileAdded(
                 f.path,
@@ -85,6 +87,7 @@ const useRelatedFiles = (
                 filePath,
                 f.path,
                 'Importing',
+                selectedRanges.map((r) => ({ start: r[0], end: r[1] })),
               );
               onFileAdded(
                 f.path,

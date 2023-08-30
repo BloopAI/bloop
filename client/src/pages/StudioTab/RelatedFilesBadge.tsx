@@ -15,6 +15,7 @@ type Props = {
   repoRef: string;
   branch: string | null;
   filePath: string;
+  selectedRanges: [number, number][];
 };
 
 const RelatedFilesBadge = ({
@@ -25,6 +26,7 @@ const RelatedFilesBadge = ({
   repoRef,
   filePath,
   branch,
+  selectedRanges,
 }: Props) => {
   const [isVisible, setVisibility] = useState(false);
   const { items } = useRelatedFiles(
@@ -35,6 +37,7 @@ const RelatedFilesBadge = ({
     repoRef,
     branch,
     filePath,
+    selectedRanges,
   );
 
   const filesNum = useMemo(() => {
