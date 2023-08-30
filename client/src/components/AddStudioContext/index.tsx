@@ -119,7 +119,7 @@ const AddStudioContext = ({ filePath, threadId, name }: Props) => {
         <button
           className={`flex items-center justify-center shadow-low ${
             !!filePath ? 'w-6 h-6 rounded' : 'w-7 h-7 rounded-full'
-          } bg-studio`}
+          } bg-studio text-label-control`}
           onClick={() => setIsOpen(true)}
         >
           <PlusSignInCircle raw sizeClassName="w-3.5 h-3.5" />
