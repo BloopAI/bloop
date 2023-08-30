@@ -29,6 +29,7 @@ import Button from '../../../components/Button';
 import { Sparkles } from '../../../icons';
 import { ChatContext } from '../../../context/chatContext';
 import { UIContext } from '../../../context/uiContext';
+import AddStudioContext from '../../../components/AddStudioContext';
 import FileExplanation from './FileExplanation';
 
 type Props = {
@@ -181,6 +182,7 @@ const ResultFull = ({
                 <Sparkles raw sizeClassName="w-3.5 h-3.5" />
                 <Trans>Explain</Trans>
               </Button>
+              {!!result && <AddStudioContext filePath={result.relativePath} />}
               <FileMenu
                 relativePath={result?.relativePath || ''}
                 repoPath={result?.repoPath || ''}

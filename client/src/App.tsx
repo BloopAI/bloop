@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import * as Sentry from '@sentry/react';
 import { DeviceContextType } from './context/deviceContext';
 import './index.css';
 import RepoTab from './pages/RepoTab';
@@ -37,7 +38,6 @@ import Onboarding from './pages/Onboarding';
 import NavBar from './components/NavBar';
 import StatusBar from './components/StatusBar';
 import CloudFeaturePopup from './components/CloudFeaturePopup';
-import * as Sentry from '@sentry/react';
 import ErrorFallback from './components/ErrorFallback';
 
 type Props = {
@@ -111,14 +111,12 @@ function App({ deviceContextValue }: Props) {
 
   const handleAddStudioTab = useCallback((name: string, id: string) => {
     const newTab: StudioTabType = {
-      // todo: use id from server as a key
       key: id,
       name,
       type: TabType.STUDIO,
     };
     setTabs((prev: UITabType[]) => {
-      // todo: use tab id instead of name
-      const existing = prev.find((t) => t.name === newTab.name);
+      const existing = prev.find((t) => t.key === newTab.key);
       if (existing) {
         setActiveTab(existing.key);
         return prev;

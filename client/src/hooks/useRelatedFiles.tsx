@@ -18,7 +18,7 @@ const useRelatedFiles = (
   ) => void,
   onFileRemove: (filePath: string) => void,
   repoRef: string,
-  branch: string,
+  branch: string | null,
   filePath: string,
 ) => {
   const { t } = useTranslation();
@@ -47,7 +47,7 @@ const useRelatedFiles = (
             if (b) {
               const resp = await getRelatedFileRanges(
                 repoRef,
-                branch,
+                branch ? branch : undefined,
                 filePath,
                 f.path,
                 'Imported',
@@ -81,7 +81,7 @@ const useRelatedFiles = (
             if (b) {
               const resp = await getRelatedFileRanges(
                 repoRef,
-                branch,
+                branch ? branch : undefined,
                 filePath,
                 f.path,
                 'Importing',

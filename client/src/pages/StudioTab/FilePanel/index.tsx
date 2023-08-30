@@ -38,28 +38,30 @@ import RelatedFilesBadge from '../RelatedFilesBadge';
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
   filePath: string;
-  branch: string;
+  branch: string | null;
   repo: RepoType;
   initialRanges?: [number, number][];
   onFileRangesChanged: (
     ranges: [number, number][],
     filePath: string,
     repo_ref: string,
-    branch: string,
+    branch: string | null,
   ) => void;
   tokens: number;
   onFileRemove: (
-    f: { path: string; repo: string; branch: string } | StudioContextFile[],
+    f:
+      | { path: string; repo: string; branch: string | null }
+      | StudioContextFile[],
   ) => void;
   onFileHide: (
     path: string,
     repo: string,
-    branch: string,
+    branch: string | null,
     hide: boolean,
   ) => void;
   onFileAdded: (
     repo: RepoType,
-    branch: string,
+    branch: string | null,
     filePath: string,
     skip: boolean,
     ranges: { start: number; end: number }[],
@@ -121,15 +123,17 @@ const FilePanel = ({
   );
 
   useEffect(() => {
-    getRelatedFiles(filePath, repo.ref, branch).then((resp) => {
-      setRelatedFiles(
-        resp.files_imported
-          .map((path) => ({ type: 'imported', path }))
-          .concat(
-            resp.files_importing.map((path) => ({ type: 'importing', path })),
-          ),
-      );
-    });
+    getRelatedFiles(filePath, repo.ref, branch ? branch : undefined).then(
+      (resp) => {
+        setRelatedFiles(
+          resp.files_imported
+            .map((path) => ({ type: 'imported', path }))
+            .concat(
+              resp.files_importing.map((path) => ({ type: 'importing', path })),
+            ),
+        );
+      },
+    );
   }, []);
 
   useEffect(() => {

@@ -1,7 +1,11 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
-import * as Sentry from '@sentry/react';
+import React, {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import ErrorFallback from '../../components/ErrorFallback';
 import LiteLoader from '../../components/Loaders/LiteLoader';
 import Button from '../../components/Button';
 import { CloseSign } from '../../icons';
@@ -32,7 +36,7 @@ const filterRepositories = (repos?: RepoType[], search?: string) => {
   return indexed;
 };
 
-const HomePage = () => {
+const HomePage = ({ randomKey }: { randomKey?: any }) => {
   const { t } = useTranslation();
   const { fetchRepos, repositories } = useContext(RepositoriesContext);
   const { isSelfServe } = useContext(DeviceContext);
@@ -66,7 +70,7 @@ const HomePage = () => {
 
   useEffect(() => {
     refreshCodeStudios();
-  }, []);
+  }, [randomKey]);
 
   useEffect(() => {
     if (repositories) {
@@ -170,6 +174,4 @@ const HomePage = () => {
   );
 };
 
-export default Sentry.withErrorBoundary(HomePage, {
-  fallback: (props) => <ErrorFallback {...props} />,
-});
+export default memo(HomePage);
