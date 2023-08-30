@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { invoke } from '@tauri-apps/api';
 import { open } from '@tauri-apps/api/shell';
 import { homeDir } from '@tauri-apps/api/path';
@@ -17,7 +18,7 @@ import { BrowserRouter } from 'react-router-dom';
 import ClientApp from '../../../client/src/App';
 import '../../../client/src/index.css';
 import useKeyboardNavigation from '../../../client/src/hooks/useKeyboardNavigation';
-import { getConfig } from '../../../client/src/services/api';
+import { getConfig, initApi } from '../../../client/src/services/api';
 import { LocaleContext } from '../../../client/src/context/localeContext';
 import i18n from '../../../client/src/i18n';
 import {
@@ -27,6 +28,7 @@ import {
 } from '../../../client/src/services/storage';
 import { LocaleType } from '../../../client/src/types/general';
 import TextSearch from './TextSearch';
+import SplashScreen from './SplashScreen';
 
 // let askedToUpdate = false;
 // let intervalId: number;
@@ -102,6 +104,7 @@ function App() {
   const [locale, setLocale] = useState<LocaleType>(
     (getPlainFromStorage(LANGUAGE_KEY) as LocaleType | null) || 'en',
   );
+  const [shouldShowSplashScreen, setShouldShowSplashScreen] = useState(true);
 
   useEffect(() => {
     i18n.changeLanguage(locale);
@@ -156,8 +159,22 @@ function App() {
   useKeyboardNavigation(handleKeyEvent);
 
   useEffect(() => {
-    setTimeout(() => getConfig().then(setEnvConfig), 1000); // server returns wrong tracking_id within first second
-  }, []);
+    let intervalId: number;
+    if (!Object.keys(envConfig).length) {
+      initApi('http://127.0.0.1:7878/api');
+      getConfig().then(setEnvConfig);
+      intervalId = window.setInterval(() => {
+        getConfig().then(setEnvConfig);
+      }, 500);
+    } else {
+      // just in case config changed
+      setTimeout(() => getConfig().then(setEnvConfig), 1000);
+      setShouldShowSplashScreen(false);
+    }
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [envConfig]);
 
   const deviceContextValue = useMemo(
     () => ({
@@ -186,8 +203,12 @@ function App() {
     }),
     [homeDirectory, indexFolder, os, release, envConfig],
   );
+
   return (
     <LocaleContext.Provider value={localeContextValue}>
+      <AnimatePresence initial={false}>
+        {shouldShowSplashScreen && <SplashScreen />}
+      </AnimatePresence>
       <TextSearch contentRoot={contentContainer.current} />
       <div ref={contentContainer}>
         <BrowserRouter>
