@@ -498,7 +498,7 @@ async fn extract_relevant_chunks(
     let result = response_stream
         .try_collect()
         .await
-        .and_then(|json: String| serde_json::from_str(&json).map_err(|e| anyhow::Error::new(e)));
+        .and_then(|json: String| serde_json::from_str(&json).map_err(anyhow::Error::new));
 
     // Parse the response into a JSON list of paths
     let paths: Vec<String> = match result {
