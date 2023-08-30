@@ -13,7 +13,7 @@ type Props = {
   ) => void;
   onFileRemove: (filePath: string) => void;
   repoRef: string;
-  branch: string;
+  branch: string | null;
   filePath: string;
 };
 

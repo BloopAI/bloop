@@ -52,7 +52,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
   const onFileAdded = useCallback(
     (
       repo: RepoType,
-      branch: string,
+      branch: string | null,
       filePath: string,
       skip?: boolean,
       ranges?: { start: number; end: number }[],
@@ -86,7 +86,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
       ranges: [number, number][],
       filePath: string,
       repo_ref: string,
-      branch: string,
+      branch: string | null,
     ) => {
       const patchedFile = contextFiles.find(
         (f) =>
@@ -112,7 +112,12 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
   );
 
   const onFileHide = useCallback(
-    (filePath: string, repo_ref: string, branch: string, hide: boolean) => {
+    (
+      filePath: string,
+      repo_ref: string,
+      branch: string | null,
+      hide: boolean,
+    ) => {
       const patchedFile = contextFiles.find(
         (f) =>
           f.path === filePath && f.repo === repo_ref && f.branch === branch,
@@ -135,7 +140,9 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
 
   const onFileRemove = useCallback(
     (
-      f: { path: string; repo: string; branch: string } | StudioContextFile[],
+      f:
+        | { path: string; repo: string; branch: string | null }
+        | StudioContextFile[],
     ) => {
       const files = Array.isArray(f) ? f : [f];
       let newContext: StudioContextFile[] = JSON.parse(

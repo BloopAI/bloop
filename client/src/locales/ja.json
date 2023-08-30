@@ -323,8 +323,15 @@
 	"+ # more_one": "+ さらに {{count}} つ",
 	"+ # more_other": "+ さらに {{count}} つ",
 	"As soon as you create a new Studio project it will appear here.": "新しい Studio プロジェクトを作成するとすぐに、ここに表示されます。",
-	"No Studio projects": "Studio プロジェクトはありません"
+	"No Studio projects": "Studio プロジェクトはありません",
+	"Add to Studio context": "Studio コンテキストに追加",
+	"Add context": "コンテキストを追加する",
+	"New Studio Project": "新しいスタジオプロジェクト",
+	"Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}": "ファイル {{filePath}} の目的を {{lineStart}} から {{lineEnd}} 行まで説明します。",
+	"Add context in a new Studio project or add it to an existing one.": "新しい Studio プロジェクトにコンテキストを追加するか、既存のプロジェクトにコンテキストを追加します。",
+	"Create new Studio Project with context": "コンテキストを使用して新しい Studio プロジェクトを作成する"
 }
+
 
 
 
