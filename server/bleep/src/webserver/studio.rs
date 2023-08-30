@@ -13,7 +13,7 @@ use secrecy::ExposeSecret;
 use tracing::error;
 use uuid::Uuid;
 
-use super::{middleware::User, Error, ErrorKind};
+use super::{middleware::User, Error};
 use crate::{
     agent::{exchange::Exchange, prompts},
     llm_gateway,
@@ -42,8 +42,7 @@ pub async fn create(
         "[]"
     }
     .execute(&*app.sql)
-    .await
-    .map_err(Error::internal)?;
+    .await?;
 
     Ok(id)
 }
@@ -117,9 +116,8 @@ pub async fn get(
          id
     }
     .fetch_optional(&*app.sql)
-    .await
-    .map_err(Error::internal)?
-    .ok_or_else(|| Error::new(ErrorKind::NotFound, "unknown studio ID"))?;
+    .await?
+    .ok_or_else(|| Error::not_found("unknown studio ID"))?;
 
     let context: Vec<ContextFile> =
         serde_json::from_str(&row.context).context("failed to deserialize context")?;
@@ -148,20 +146,18 @@ pub async fn patch(
     Path(id): Path<String>,
     Json(patch): Json<Patch>,
 ) -> webserver::Result<Json<TokenCounts>> {
-    let mut transaction = app.sql.begin().await.map_err(Error::internal)?;
+    let mut transaction = app.sql.begin().await?;
 
     // Ensure the ID is valid first.
     sqlx::query!("SELECT id FROM studios WHERE id = ?", id)
         .fetch_optional(&mut transaction)
-        .await
-        .map_err(Error::internal)?
-        .ok_or_else(|| Error::new(ErrorKind::NotFound, "unknown code studio ID"))?;
+        .await?
+        .ok_or_else(|| Error::not_found("unknown code studio ID"))?;
 
     if let Some(name) = patch.name {
         sqlx::query!("UPDATE studios SET name = ? WHERE id = ?", name, id)
             .execute(&mut transaction)
-            .await
-            .map_err(Error::internal)?;
+            .await?;
     }
 
     if let Some(modified_at) = patch.modified_at {
@@ -171,24 +167,21 @@ pub async fn patch(
             id
         )
         .execute(&mut transaction)
-        .await
-        .map_err(Error::internal)?;
+        .await?;
     }
 
     if let Some(context) = patch.context {
         let json = serde_json::to_string(&context).unwrap();
         sqlx::query!("UPDATE studios SET context = ? WHERE id = ?", json, id)
             .execute(&mut transaction)
-            .await
-            .map_err(Error::internal)?;
+            .await?;
     }
 
     if let Some(messages) = patch.messages {
         let json = serde_json::to_string(&messages).unwrap();
         sqlx::query!("UPDATE studios SET messages = ? WHERE id = ?", json, id)
             .execute(&mut transaction)
-            .await
-            .map_err(Error::internal)?;
+            .await?;
     }
 
     sqlx::query!(
@@ -196,16 +189,14 @@ pub async fn patch(
         id
     )
     .execute(&mut transaction)
-    .await
-    .map_err(Error::internal)?;
+    .await?;
 
     // Re-fetch the context and messages in case we didn't change them. If we did, this will now
     // contain the updated values.
     let (messages_json, context_json) =
         sqlx::query!("SELECT messages, context FROM studios WHERE id = ?", id)
             .fetch_optional(&mut transaction)
-            .await
-            .map_err(Error::internal)?
+            .await?
             .map(|r| (r.messages, r.context))
             .unwrap_or_default();
 
@@ -217,7 +208,7 @@ pub async fn patch(
 
     let counts = token_counts((*app).clone(), &messages, &context).await?;
 
-    transaction.commit().await.map_err(Error::internal)?;
+    transaction.commit().await?;
 
     Ok(Json(counts))
 }
@@ -225,9 +216,8 @@ pub async fn patch(
 pub async fn delete(app: Extension<Application>, Path(id): Path<String>) -> webserver::Result<()> {
     sqlx::query!("DELETE FROM studios WHERE id = ? RETURNING id", id)
         .fetch_optional(&*app.sql)
-        .await
-        .map_err(Error::internal)?
-        .ok_or_else(|| Error::new(ErrorKind::NotFound, "unknown code studio ID"))
+        .await?
+        .ok_or_else(|| Error::not_found("unknown code studio ID"))
         .map(|_| ())
 }
 
@@ -252,8 +242,7 @@ async fn token_counts(
                     .indexes
                     .file
                     .by_path(&file.repo, &file.path, file.branch.as_deref())
-                    .await
-                    .map_err(Error::internal)?
+                    .await?
                     .with_context(|| {
                         format!(
                             "file `{}` did not exist in repo `{}`, branch `{:?}`",
@@ -342,10 +331,9 @@ pub async fn generate(
     let (messages_json, context_json) =
         sqlx::query!("SELECT messages, context FROM studios WHERE id = ?", id)
             .fetch_optional(&*app.sql)
-            .await
-            .map_err(Error::internal)?
+            .await?
             .map(|row| (row.messages, row.context))
-            .ok_or_else(|| Error::new(ErrorKind::NotFound, "unknown code studio ID"))?;
+            .ok_or_else(|| Error::not_found("unknown code studio ID"))?;
 
     let mut messages =
         serde_json::from_str::<Vec<Message>>(&messages_json).map_err(Error::internal)?;
@@ -359,10 +347,7 @@ pub async fn generate(
         .chain(messages.iter().map(llm_gateway::api::Message::from))
         .collect::<Vec<_>>();
 
-    let tokens = llm_gateway
-        .chat(&llm_messages, None)
-        .await
-        .map_err(Error::internal)?;
+    let tokens = llm_gateway.chat(&llm_messages, None).await?;
 
     let stream = async_stream::try_stream! {
         pin_mut!(tokens);
@@ -501,10 +486,7 @@ async fn extract_relevant_chunks(
     ];
 
     // Call the LLM gateway
-    let response_stream = llm_gateway
-        .chat(&llm_messages, None)
-        .await
-        .map_err(Error::internal)?;
+    let response_stream = llm_gateway.chat(&llm_messages, None).await?;
 
     // Collect the response into a string
     let result = response_stream
@@ -553,9 +535,8 @@ pub async fn import(
         thread_id,
     }
     .fetch_optional(&*app.sql)
-    .await
-    .map_err(Error::internal)?
-    .ok_or_else(|| Error::new(ErrorKind::NotFound, "conversation not found"))?;
+    .await?
+    .ok_or_else(|| Error::not_found("conversation not found"))?;
 
     let repo_ref = conversation.repo_ref;
     let exchanges = serde_json::from_str::<Vec<Exchange>>(&conversation.exchanges)
@@ -568,9 +549,8 @@ pub async fn import(
             studio_id,
         }
         .fetch_optional(&*app.sql)
-        .await
-        .map_err(Error::internal)?
-        .ok_or_else(|| Error::new(ErrorKind::NotFound, "conversation not found"))
+        .await?
+        .ok_or_else(|| Error::not_found("conversation not found"))
         .and_then(|r| serde_json::from_str(&r.context).map_err(Error::internal))?
     } else {
         Vec::new()
@@ -613,8 +593,7 @@ pub async fn import(
             studio_id_str,
         }
         .execute(&*app.sql)
-        .await
-        .map_err(Error::internal)?;
+        .await?;
 
         Ok(studio_id_str)
     } else {
@@ -629,8 +608,7 @@ pub async fn import(
             "[]",
         }
         .execute(&*app.sql)
-        .await
-        .map_err(Error::internal)?;
+        .await?;
 
         Ok(studio_id_str)
     }
