@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { invoke } from '@tauri-apps/api';
 import { open } from '@tauri-apps/api/shell';
 import { homeDir } from '@tauri-apps/api/path';
@@ -26,8 +27,6 @@ import {
   savePlainToStorage,
 } from '../../../client/src/services/storage';
 import { LocaleType } from '../../../client/src/types/general';
-import { LogoFull } from '../../../client/src/icons';
-import CircleProgressLoader from '../../../client/src/components/Loaders/CircleProgressLoader';
 import TextSearch from './TextSearch';
 import SplashScreen from './SplashScreen';
 
@@ -203,10 +202,11 @@ function App() {
     [homeDirectory, indexFolder, os, release, envConfig],
   );
 
-  return shouldShowSplashScreen ? (
-    <SplashScreen />
-  ) : (
+  return (
     <LocaleContext.Provider value={localeContextValue}>
+      <AnimatePresence initial={false}>
+        {shouldShowSplashScreen && <SplashScreen />}
+      </AnimatePresence>
       <TextSearch contentRoot={contentContainer.current} />
       <div ref={contentContainer}>
         <BrowserRouter>
