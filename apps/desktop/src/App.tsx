@@ -167,6 +167,8 @@ function App() {
         getConfig().then(setEnvConfig);
       }, 500);
     } else {
+      // just in case config changed
+      setTimeout(() => getConfig().then(setEnvConfig), 1000);
       setShouldShowSplashScreen(false);
     }
     return () => {
