@@ -368,7 +368,7 @@ export type FileStudioPanelType = {
   type: StudioLeftPanelType.FILE;
   data: {
     repo: RepoType;
-    branch: string;
+    branch: string | null;
     filePath: string;
     initialRanges?: [number, number][];
   };
@@ -380,6 +380,6 @@ export type StudioContextFile = {
   path: string;
   ranges: { start: number; end: number }[];
   repo: string;
-  branch: string;
+  branch: string | null;
   hidden: boolean;
 };

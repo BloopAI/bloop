@@ -29,17 +29,19 @@ type Props = {
   tokensTotal: number;
   tokensPerFile: number[];
   onFileRemove: (
-    f: { path: string; repo: string; branch: string } | StudioContextFile[],
+    f:
+      | { path: string; repo: string; branch: string | null }
+      | StudioContextFile[],
   ) => void;
   onFileHide: (
     path: string,
     repo: string,
-    branch: string,
+    branch: string | null,
     hide: boolean,
   ) => void;
   onFileAdded: (
     repo: RepoType,
-    branch: string,
+    branch: string | null,
     filePath: string,
     skip: boolean,
     ranges?: { start: number; end: number }[],
@@ -48,7 +50,7 @@ type Props = {
 
 type FileList = {
   repo: string;
-  branch: string;
+  branch: string | null;
   files: (StudioContextFile & { originalIndex: number; fileName: string })[];
 }[];
 
@@ -149,7 +151,7 @@ const ContextPanel = ({
                 <KeyboardChip type="K" />
               </span>{' '}
               to search for a files or press{' '}
-              <span className="bg-[linear-gradient(135deg,#C7363E_0%,#C7369E_100%)] rounded px-1 py-0.5 text-label-control text-[9px]">
+              <span className="bg-studio rounded px-1 py-0.5 text-label-control text-[9px]">
                 Open in Studio
               </span>{' '}
               when creating semantic searches to open in a Studio Project.
