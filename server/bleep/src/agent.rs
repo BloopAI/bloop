@@ -78,7 +78,7 @@ pub enum ExchangeState {
 impl Drop for Agent {
     fn drop(&mut self) {
         match self.exchange_state {
-            ExchangeState::Failed => {},
+            ExchangeState::Failed => {}
             ExchangeState::Pending => {
                 self.track_query(
                     EventData::output_stage("cancelled")
