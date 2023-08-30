@@ -1,7 +1,7 @@
 import React, { memo, useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bug, Cog, DoorRight, Magazine, Person } from '../../icons';
-import { MenuListItemType } from '../ContextMenu';
+import { ContextMenuItem, MenuListItemType } from '../ContextMenu';
 import { deleteAuthCookie } from '../../utils';
 import DropdownWithIcon from '../Dropdown/WithIcon';
 import { UIContext } from '../../context/uiContext';
@@ -9,6 +9,7 @@ import { DeviceContext } from '../../context/deviceContext';
 import { TabsContext } from '../../context/tabsContext';
 import { gitHubLogout } from '../../services/api';
 import { RepoSource } from '../../types';
+import { TabType } from '../../types/general';
 import Tab from './Tab';
 
 type Props = {
@@ -57,8 +58,8 @@ const NavBar = ({ isSkeleton }: Props) => {
           }
         },
       },
-    ];
-  }, [isSelfServe, openLink, gitHubLogout]);
+    ] as ContextMenuItem[];
+  }, [isSelfServe, openLink, gitHubLogout, t]);
 
   return (
     <div
@@ -81,7 +82,12 @@ const NavBar = ({ isSkeleton }: Props) => {
           tabs
             .slice(1)
             .map((t) => (
-              <Tab tabKey={t.key} name={t.name} key={t.key} source={t.source} />
+              <Tab
+                tabKey={t.key}
+                name={t.name}
+                key={t.key}
+                source={t.type === TabType.REPO ? t.source : undefined}
+              />
             ))}
       </div>
       {!isSkeleton && (

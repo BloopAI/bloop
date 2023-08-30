@@ -15,6 +15,8 @@ module.exports = {
         "bg-border": "rgb(var(--bg-border))",
         "bg-border-hover": "rgb(var(--bg-border-hover))",
         "bg-main": "rgb(var(--bg-main))",
+        "bg-main/15": "rgba(var(--bg-main), 0.15)",
+        "bg-main/30": "rgba(var(--bg-main), 0.3)",
         "bg-main-hover": "rgb(var(--bg-main-hover))",
         "bg-danger": "rgb(var(--bg-danger))",
         "bg-danger/30": "rgba(var(--bg-danger), 0.3)",
@@ -27,6 +29,7 @@ module.exports = {
         "label-muted": "rgb(var(--label-muted))",
         "label-base": "rgb(var(--label-base))",
         "label-title": "rgb(var(--label-title))",
+        "label-title/15": "rgba(var(--label-title), 0.15)",
         "label-link": "rgb(var(--label-link))",
         "chat-bg-base": "rgb(var(--chat-bg-base))",
         "chat-bg-base/35": "rgba(var(--chat-bg-base), 0.35)",
@@ -46,6 +49,7 @@ module.exports = {
         violet: '#8B5CF6',
         pink: '#EC4899',
         orange: '#F78166',
+        'orange-600': '#E9694C',
         yellow: "#EAB408",
         purple: "#652D90",
       },
@@ -76,6 +80,7 @@ module.exports = {
         'px': '1px',
         1: "0.075rem",
         4: "0.25rem",
+        6: "6px",
         14: "0.875rem"
       },
       padding: {
@@ -118,6 +123,7 @@ module.exports = {
         'md': "6px"
       },
       backgroundImage: {
+        "studio": "linear-gradient(135deg, #C7363E 0%, #C7369E 100%)",
         skeleton: 'linear-gradient(90deg, rgba(var(--bg-base-hover), .1) 0%, rgba(var(--bg-base-hover), .1) 33%, rgb(var(--bg-base-hover)) 60%, rgba(var(--bg-base-hover), .1) 100%)',
       },
       backgroundSize :{
@@ -196,6 +202,6 @@ module.exports = {
     namedGroups: ["tooltip","summary"],
   },
   plugins: [
-    require('tailwindcss-labeled-groups')(['custom', 'summary' , 'code'])
+    require('tailwindcss-labeled-groups')(['custom', 'summary' , 'code' ,'row'])
   ],
 };

@@ -80,6 +80,12 @@ export type RepoUi = RepoType & {
   alreadySynced?: boolean;
 };
 
+export type CodeStudioShortType = {
+  id: string;
+  name: string;
+  modified_at: string;
+};
+
 export enum FullResultModeEnum {
   PAGE,
   SIDEBAR,
@@ -91,7 +97,13 @@ export enum SearchType {
   NL,
 }
 
-export type UITabType = {
+export enum TabType {
+  REPO = 'repo',
+  STUDIO = 'studio',
+  HOME = 'home',
+}
+
+export type RepoTabType = {
   key: string;
   name: string;
   repoName: string;
@@ -99,7 +111,22 @@ export type UITabType = {
   source: RepoSource;
   branch?: string | null;
   navigationHistory: NavigationItem[];
+  type: TabType.REPO;
 };
+
+export type HomeTabType = {
+  key: string;
+  name: string;
+  type: TabType.HOME;
+};
+
+export type StudioTabType = {
+  key: string;
+  name: string;
+  type: TabType.STUDIO;
+};
+
+export type UITabType = RepoTabType | HomeTabType | StudioTabType;
 
 export type TabHistoryType = {
   tabKey: string;
@@ -310,3 +337,49 @@ export type FileHighlightsType = Record<
 >;
 
 export type LocaleType = 'en' | 'ja' | 'zhCN' | 'es';
+
+export enum StudioConversationMessageAuthor {
+  USER = 'User',
+  ASSISTANT = 'Assistant',
+}
+
+export type StudioConversationMessage = {
+  author: StudioConversationMessageAuthor;
+  message: string;
+  error?: string;
+};
+
+export enum StudioLeftPanelType {
+  CONTEXT = 'context',
+  HISTORY = 'history',
+  TEMPLATES = 'templates',
+  FILE = 'file',
+}
+
+export type GeneralStudioPanelType = {
+  type:
+    | StudioLeftPanelType.CONTEXT
+    | StudioLeftPanelType.TEMPLATES
+    | StudioLeftPanelType.HISTORY;
+  data?: null;
+};
+
+export type FileStudioPanelType = {
+  type: StudioLeftPanelType.FILE;
+  data: {
+    repo: RepoType;
+    branch: string | null;
+    filePath: string;
+    initialRanges?: [number, number][];
+  };
+};
+
+export type StudioPanelDataType = GeneralStudioPanelType | FileStudioPanelType;
+
+export type StudioContextFile = {
+  path: string;
+  ranges: { start: number; end: number }[];
+  repo: string;
+  branch: string | null;
+  hidden: boolean;
+};

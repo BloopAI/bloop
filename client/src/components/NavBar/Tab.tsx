@@ -1,12 +1,18 @@
 import React, { useContext } from 'react';
-import { CloseSign, GitHubLogo, HardDrive, Home } from '../../icons';
+import {
+  CloseSign,
+  GitHubLogo,
+  HardDrive,
+  Home,
+  CodeStudioColored,
+} from '../../icons';
 import { TabsContext } from '../../context/tabsContext';
 import { RepoSource } from '../../types';
 
 type Props = {
   tabKey: string;
   name: string;
-  source: RepoSource;
+  source?: RepoSource;
 };
 
 const Tab = ({ tabKey, name, source }: Props) => {
@@ -23,14 +29,20 @@ const Tab = ({ tabKey, name, source }: Props) => {
         activeTab === tabKey
           ? 'bg-bg-shade text-label-title'
           : 'bg-bg-base text-label-base'
-      } cursor-pointer max-w-12 relative`}
+      } cursor-pointer max-w-12`}
     >
       {tabKey === 'initial' ? (
         <Home sizeClassName="w-4 h-4" />
       ) : (
         <div className="flex items-center gap-1 ellipsis">
           <div className="w-4 h-4 flex-shrink-0">
-            {source === RepoSource.GH ? <GitHubLogo raw /> : <HardDrive raw />}
+            {source === undefined ? (
+              <CodeStudioColored />
+            ) : source === RepoSource.LOCAL ? (
+              <HardDrive raw />
+            ) : (
+              <GitHubLogo raw />
+            )}
           </div>
           <span className="ellipsis">{name.split('/').slice(-1)[0]}</span>
         </div>
@@ -48,9 +60,6 @@ const Tab = ({ tabKey, name, source }: Props) => {
         >
           <CloseSign sizeClassName="w-3.5 h-3.5" />
         </button>
-      )}
-      {activeTab === tabKey && (
-        <span className="absolute left-0 right-0 -bottom-1 h-1 bg-bg-shade" />
       )}
     </div>
   );

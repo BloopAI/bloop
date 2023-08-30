@@ -32,10 +32,10 @@ type Props = {
   autoFocus?: boolean;
   inputClassName?: string;
   forceClear?: boolean;
-  high?: boolean;
   noBorder?: boolean;
   startIcon?: ReactElement;
   endIcon?: ReactElement;
+  height?: 'small' | 'medium' | 'high';
 };
 
 type SingleLineProps = Props & {
@@ -91,8 +91,8 @@ const TextInput = forwardRef(function TextInputWithRef(
     onEscape,
     startIcon,
     endIcon,
-    high,
     noBorder,
+    height = 'medium',
   }: Props & (SingleLineProps | MultilineProps),
   ref: ForwardedRef<HTMLInputElement>,
 ) {
@@ -128,7 +128,13 @@ const TextInput = forwardRef(function TextInputWithRef(
       ) : null}
       <div
         className={`group ${noBorder ? '' : 'border'} ${
-          high ? 'h-12 rounded-xl' : multiline ? 'p-2 rounded' : 'h-10 rounded'
+          height === 'high'
+            ? 'h-12 rounded-xl'
+            : multiline
+            ? 'p-2 rounded'
+            : height === 'small'
+            ? 'h-8 rounded'
+            : 'h-10 rounded'
         } flex box-border items-center ${
           noBorder
             ? ''
@@ -185,9 +191,9 @@ const TextInput = forwardRef(function TextInputWithRef(
             spellCheck="false"
             className={`bg-transparent border-none focus:outline-none w-full  ${
               type === 'email' || type === 'search' || startIcon
-                ? 'px-1'
-                : 'pl-2.5'
-            } transition-all duration-300 ease-in-bounce outline-none outline-0 pr-9 ${inputClassName}
+                ? 'pr-2.5'
+                : 'px-2.5'
+            } transition-all duration-300 ease-in-bounce outline-none outline-0 ${inputClassName}
             placeholder:text-label-base disabled:placeholder:text-label-muted
             group-focus-within:placeholder:text-label-title group-hover:placeholder:text-label-title
             placeholder:transition-all placeholder:duration-300 placeholder:ease-in-bounce`}

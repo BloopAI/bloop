@@ -85,8 +85,8 @@ const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {
       />
       <div className="flex flex-col overflow-auto">
         <SearchableRepoList
-          repos={repos}
-          source="GitHub"
+          items={repos}
+          type="GitHub"
           isLoading={isLoading}
           onSync={handleNext}
         />
