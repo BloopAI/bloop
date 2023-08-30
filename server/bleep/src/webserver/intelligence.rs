@@ -120,6 +120,9 @@ pub(super) struct RelatedFilesRequest {
     /// The path to the file of interest, relative to the repo root
     relative_path: String,
 
+    /// Selected ranges of source-file
+    source_file_ranges: Option<Vec<std::ops::Range<usize>>>,
+
     /// Branch name to use for the lookup,
     branch: Option<String>,
 }
@@ -173,16 +176,24 @@ pub(super) async fn related_files(
 
     let (h1, h2) = std::thread::scope(|s| {
         let h1 = s.spawn(|| {
-            CodeNavigationContext::files_imported(&all_docs, source_document_idx)
-                .into_iter()
-                .map(|doc| doc.relative_path.clone())
-                .collect()
+            CodeNavigationContext::files_imported(
+                &all_docs,
+                source_document_idx,
+                payload.source_file_ranges.as_ref().map(Vec::as_slice),
+            )
+            .into_iter()
+            .map(|doc| doc.relative_path.clone())
+            .collect()
         });
         let h2 = s.spawn(|| {
-            CodeNavigationContext::files_importing(&all_docs, source_document_idx)
-                .into_iter()
-                .map(|doc| doc.relative_path.clone())
-                .collect()
+            CodeNavigationContext::files_importing(
+                &all_docs,
+                source_document_idx,
+                payload.source_file_ranges.as_ref().map(Vec::as_slice),
+            )
+            .into_iter()
+            .map(|doc| doc.relative_path.clone())
+            .collect()
         });
         (h1.join(), h2.join())
     });
@@ -212,6 +223,9 @@ pub(super) struct WithRangesRequest {
 
     /// The path to the source-file
     source_file_path: String,
+
+    /// Selected ranges of source-file
+    source_file_ranges: Option<Vec<std::ops::Range<usize>>>,
 
     /// The path to the related-file
     related_file_path: String,
@@ -256,16 +270,24 @@ pub(super) async fn related_file_with_ranges(
     match payload.kind {
         RelatedFileKind::Imported => {
             return Ok(json(WithRangesResponse {
-                ranges: code_navigation::imported_ranges(&source_document, &related_file_document)
-                    .into_iter()
-                    .collect(),
+                ranges: code_navigation::imported_ranges(
+                    &source_document,
+                    payload.source_file_ranges.as_ref().map(Vec::as_slice),
+                    &related_file_document,
+                )
+                .into_iter()
+                .collect(),
             }))
         }
         RelatedFileKind::Importing => {
             return Ok(json(WithRangesResponse {
-                ranges: code_navigation::importing_ranges(&source_document, &related_file_document)
-                    .into_iter()
-                    .collect(),
+                ranges: code_navigation::importing_ranges(
+                    &source_document,
+                    payload.source_file_ranges.as_ref().map(Vec::as_slice),
+                    &related_file_document,
+                )
+                .into_iter()
+                .collect(),
             }))
         }
     }
