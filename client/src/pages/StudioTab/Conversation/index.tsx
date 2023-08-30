@@ -139,7 +139,6 @@ const Conversation = ({
     };
     let i = 0;
     eventSource.onmessage = (ev) => {
-      console.log(ev.data);
       if (ev.data === '[DONE]') {
         eventSource.close();
         setLoading(false);
@@ -187,7 +186,6 @@ const Conversation = ({
 
   const onMessageRemoved = useCallback(
     async (i: number, andSubsequent: boolean) => {
-      console.log(i)
       if (andSubsequent) {
         // Set input to the message being removed
         setInput(conversation[i]);

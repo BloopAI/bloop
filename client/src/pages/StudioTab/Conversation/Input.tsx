@@ -38,7 +38,7 @@ const ConversationInput = ({
   i,
   onMessageRemoved,
   scrollToBottom,
-  inputRef
+  inputRef,
 }: Props) => {
   const { t } = useTranslation();
   const { envConfig } = useContext(DeviceContext);
@@ -60,8 +60,6 @@ const ConversationInput = ({
     },
     [i],
   );
-
-  console.log('test2', inputRef)
 
   useEffect(() => {
     if (inputRef && inputRef.current) {
