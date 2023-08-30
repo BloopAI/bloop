@@ -212,6 +212,15 @@ pub async fn patch(
     Ok(Json(counts))
 }
 
+pub async fn delete(app: Extension<Application>, Path(id): Path<String>) -> webserver::Result<()> {
+    sqlx::query!("DELETE FROM studios WHERE id = ? RETURNING id", id)
+        .fetch_optional(&*app.sql)
+        .await
+        .map_err(Error::internal)?
+        .ok_or_else(|| Error::new(ErrorKind::NotFound, "unknown code studio ID"))
+        .map(|_| ())
+}
+
 #[derive(serde::Serialize)]
 pub struct TokenCounts {
     total: usize,
