@@ -49,7 +49,7 @@ const AddRepoCard = ({ type, onClick }: Props) => {
         <p className="subhead-s text-label-title flex-1">
           {t(typeMap[type].title)}
           {type === 'studio' && (
-            <span className="code-s text-label-control rounded bg-[linear-gradient(135deg,#C7363E_0%,#C7369E_100%)] px-1 py-0.5 ml-2">
+            <span className="code-s text-label-control rounded bg-studio px-1 py-0.5 ml-2">
               New
             </span>
           )}

@@ -1,6 +1,7 @@
-import React, { PureComponent } from 'react';
+import * as Sentry from '@sentry/react';
 import { HomeTabType } from '../../types/general';
 import { TabUiContextProvider } from '../../context/providers/TabUiContextProvider';
+import ErrorFallback from '../../components/ErrorFallback';
 import Home from './Content';
 
 type Props = {
@@ -8,20 +9,19 @@ type Props = {
   tab: HomeTabType;
 };
 
-class HomeTab extends PureComponent<Props> {
-  render() {
-    const { isActive, tab } = this.props;
-    return (
-      <div
-        className={`${isActive ? '' : 'hidden'} `}
-        data-active={isActive ? 'true' : 'false'}
-      >
-        <TabUiContextProvider tab={tab}>
-          <Home />
-        </TabUiContextProvider>
-      </div>
-    );
-  }
+function HomeTab({ isActive, tab }: Props) {
+  return (
+    <div
+      className={`${isActive ? '' : 'hidden'} `}
+      data-active={isActive ? 'true' : 'false'}
+    >
+      <TabUiContextProvider tab={tab}>
+        <Home randomKey={isActive ? Date.now() : ''} />
+      </TabUiContextProvider>
+    </div>
+  );
 }
 
-export default HomeTab;
+export default Sentry.withErrorBoundary(HomeTab, {
+  fallback: (props) => <ErrorFallback {...props} />,
+});
