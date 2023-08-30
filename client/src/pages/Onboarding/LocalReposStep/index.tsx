@@ -99,8 +99,8 @@ const LocalReposStep = ({ handleNext, handleBack }: Props) => {
       {chosenFolder ? (
         <div className="flex flex-col overflow-auto h-full relative">
           <SearchableRepoList
-            repos={repos}
-            source="local"
+            items={repos}
+            type="local"
             isLoading={isLoading}
             onSync={handleNext}
             onFolderChange={() => {

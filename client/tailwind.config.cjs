@@ -123,6 +123,7 @@ module.exports = {
         'md': "6px"
       },
       backgroundImage: {
+        "studio": "linear-gradient(135deg, #C7363E 0%, #C7369E 100%)",
         skeleton: 'linear-gradient(90deg, rgba(var(--bg-base-hover), .1) 0%, rgba(var(--bg-base-hover), .1) 33%, rgb(var(--bg-base-hover)) 60%, rgba(var(--bg-base-hover), .1) 100%)',
       },
       backgroundSize :{
@@ -201,6 +202,6 @@ module.exports = {
     namedGroups: ["tooltip","summary"],
   },
   plugins: [
-    require('tailwindcss-labeled-groups')(['custom', 'summary' , 'code'])
+    require('tailwindcss-labeled-groups')(['custom', 'summary' , 'code' ,'row'])
   ],
 };
