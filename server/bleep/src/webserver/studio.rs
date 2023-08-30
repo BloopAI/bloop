@@ -81,6 +81,16 @@ struct ContextFile {
     ranges: Vec<Range<usize>>,
 }
 
+impl ContextFile {
+    /// Merge two files.
+    ///
+    /// This just joins the two ranges. All other fields come from `self`.
+    fn merge(mut self, rhs: Self) -> Self {
+        self.ranges.extend(rhs.ranges);
+        self
+    }
+}
+
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 enum Message {
     User(String),
@@ -449,6 +459,8 @@ async fn generate_llm_context(app: Application, context: Vec<ContextFile>) -> Re
 #[derive(serde::Deserialize)]
 pub struct Import {
     pub thread_id: Uuid,
+    /// An optional studio ID to import into.
+    pub studio_id: Option<Uuid>,
 }
 
 async fn extract_relevant_chunks(
@@ -520,7 +532,7 @@ async fn extract_relevant_chunks(
     Ok(filtered_context)
 }
 
-/// Returns a new studio UUID.
+/// Returns a new studio UUID, or the `?studio_id=...` query param if present.
 pub async fn import(
     app: Extension<Application>,
     user: Extension<User>,
@@ -549,51 +561,79 @@ pub async fn import(
     let exchanges = serde_json::from_str::<Vec<Exchange>>(&conversation.exchanges)
         .context("couldn't deserialize exchange list")?;
 
+    let old_context: Vec<ContextFile> = if let Some(studio_id) = params.studio_id {
+        let studio_id = studio_id.to_string();
+        sqlx::query! {
+            "SELECT context FROM studios WHERE id = ?",
+            studio_id,
+        }
+        .fetch_optional(&*app.sql)
+        .await
+        .map_err(Error::internal)?
+        .ok_or_else(|| Error::new(ErrorKind::NotFound, "conversation not found"))
+        .and_then(|r| serde_json::from_str(&r.context).map_err(Error::internal))?
+    } else {
+        Vec::new()
+    };
+
     let context = exchanges
         .iter()
         .flat_map(|e| {
-            let mut range_map = HashMap::new();
-
-            for c in &e.code_chunks {
-                range_map
-                    .entry(&c.path)
-                    .or_insert_with(Vec::new)
-                    .push(c.start_line..c.end_line + 1);
-            }
-
-            for ranges in range_map.values_mut() {
-                fold_ranges(ranges);
-            }
-
-            range_map.into_iter().map(|(path, ranges)| ContextFile {
-                path: path.clone(),
+            e.code_chunks.iter().map(|c| ContextFile {
+                path: c.path.clone(),
                 hidden: false,
                 repo: repo_ref.parse().unwrap(),
                 branch: e.query.branch().next().map(Cow::into_owned),
-                ranges,
+                ranges: vec![c.start_line..c.end_line + 1],
             })
+        })
+        .chain(old_context.into_iter())
+        .fold(HashMap::new(), |mut map, file| {
+            let key = (file.path.clone(), file.branch.clone());
+            map.entry(key).or_insert_with(Vec::new).push(file);
+            map
+        })
+        .into_values()
+        .filter_map(|files| files.into_iter().reduce(ContextFile::merge))
+        .map(|mut c| {
+            fold_ranges(&mut c.ranges);
+            c
         })
         .collect::<Vec<_>>();
 
     let filtered_context = extract_relevant_chunks((*app).clone(), &exchanges, &context).await?;
-
     let filtered_context_json = serde_json::to_string(&filtered_context).unwrap();
 
-    let studio_id = Uuid::new_v4();
-    let studio_id_str = studio_id.to_string();
+    if let Some(studio_id) = params.studio_id {
+        let studio_id_str = studio_id.to_string();
 
-    sqlx::query! {
-        "INSERT INTO studios (id, name, context, messages) VALUES (?, ?, ?, ?)",
-        studio_id_str,
-        conversation.title,
-        filtered_context_json,
-        "[]",
+        sqlx::query! {
+            "UPDATE studios SET context = ? WHERE id = ?",
+            filtered_context_json,
+            studio_id_str,
+        }
+        .execute(&*app.sql)
+        .await
+        .map_err(Error::internal)?;
+
+        Ok(studio_id_str)
+    } else {
+        let studio_id = Uuid::new_v4();
+        let studio_id_str = studio_id.to_string();
+
+        sqlx::query! {
+            "INSERT INTO studios (id, name, context, messages) VALUES (?, ?, ?, ?)",
+            studio_id_str,
+            conversation.title,
+            filtered_context_json,
+            "[]",
+        }
+        .execute(&*app.sql)
+        .await
+        .map_err(Error::internal)?;
+
+        Ok(studio_id_str)
     }
-    .execute(&*app.sql)
-    .await
-    .map_err(Error::internal)?;
-
-    Ok(studio_id.to_string())
 }
 
 fn fold_ranges(ranges: &mut Vec<Range<usize>>) {
