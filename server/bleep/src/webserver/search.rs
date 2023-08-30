@@ -55,7 +55,7 @@ pub(super) async fn fuzzy_path(
 
     let data = indexes
         .file
-        .fuzzy_path_match(
+        .skim_fuzzy_path_match(
             repo_ref,
             target,
             q.first_branch().as_deref(),

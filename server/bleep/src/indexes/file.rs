@@ -271,6 +271,87 @@ impl Indexer<File> {
             .take(limit)
     }
 
+    pub async fn skim_fuzzy_path_match(
+        &self,
+        repo_ref: &RepoRef,
+        query_str: &str,
+        branch: Option<&str>,
+        limit: usize,
+    ) -> impl Iterator<Item = FileDocument> + '_ {
+        let reader = self.reader.read().await;
+        let searcher = reader.searcher();
+        let file_source = &self.source;
+        let repo_ref_term = Some(Box::new(TermQuery::new(
+            Term::from_field_text(self.source.repo_ref, &repo_ref.to_string()),
+            IndexRecordOption::Basic,
+        )) as Box<dyn Query>);
+        let branch_term = branch
+            .map(|b| {
+                trigrams(b)
+                    .map(|token| Term::from_field_text(self.source.branches, token.as_str()))
+                    .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
+                    .map(Box::new)
+                    .map(|q| q as Box<dyn Query>)
+                    .collect::<Vec<_>>()
+            })
+            .map(BooleanQuery::intersection)
+            .map(Box::new)
+            .map(|t| t as Box<dyn Query>);
+
+        let matcher = fuzzy_matcher::skim::SkimMatcherV2::default();
+
+        let mut results = searcher
+            .search(
+                &BooleanQuery::intersection(
+                    [repo_ref_term, branch_term].into_iter().flatten().collect(),
+                ),
+                &TopDocs::with_limit(1000),
+            )
+            .expect("failed to search index")
+            .into_iter()
+            .map(move |(_, addr)| {
+                let retrieved_doc = searcher
+                    .doc(addr)
+                    .expect("failed to get document by address");
+                FileReader.read_document(file_source, retrieved_doc)
+            })
+            .filter_map(|doc| {
+                let (score, positions) = matcher.fuzzy(&doc.relative_path, &query_str, true)?;
+
+                // the closer the position is to the end, the higher its score is
+                let position_bonus = positions
+                    .iter()
+                    .map(|p| *p as f32 / doc.relative_path.len() as f32)
+                    .sum::<f32>();
+
+                // add bonus if hits occur in the file-name
+                let file_name_bonus = {
+                    let file_name_start = doc.relative_path.rfind('/').unwrap_or(0);
+                    positions.iter().filter(|&p| p > &file_name_start).count() as f32
+                };
+
+                // if this doc is a file and not a directory, bump it up
+                let file_bonus = if doc.relative_path.ends_with('/') {
+                    0.
+                } else {
+                    1.
+                };
+
+                Some((
+                    doc,
+                    score as f32 + position_bonus + file_name_bonus + file_bonus,
+                ))
+            })
+            .collect::<Vec<_>>();
+
+        results.sort_by(|(_, a_score), (_, b_score)| {
+            b_score
+                .partial_cmp(&a_score)
+                .unwrap_or(std::cmp::Ordering::Less)
+        });
+        results.into_iter().map(|(doc, _)| doc).take(limit)
+    }
+
     pub async fn by_path(
         &self,
         repo_ref: &RepoRef,
