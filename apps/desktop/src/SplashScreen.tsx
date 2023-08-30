@@ -11,6 +11,10 @@ const SplashScreen = ({}: Props) => {
           className={`absolute top-0 left-1/2 z-10 transform -translate-x-1/2 h-px w-1/2 
         bg-[linear-gradient(90deg,rgba(48,48,55,0.00)_0%,#9F9FB5_50%,rgba(48,48,55,0.00)_100%)]`}
         />
+        <div
+          className={`absolute top-0 left-1/2 z-20 transform -translate-x-1/2 h-px w-1/2 animate-opacity-slow
+        bg-[linear-gradient(90deg,rgba(91,110,221,0.00)_0%,#5B6EDD_50%,rgba(91,110,221,0.00)_100%)]`}
+        />
         <div className="animate-pulse-slow">
           <LogoFull />
         </div>

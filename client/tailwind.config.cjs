@@ -132,6 +132,7 @@ module.exports = {
       },
       animation: {
         'pulse-slow': 'pulse 5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'opacity-slow': 'opacity 5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'pulse-shadow-slow': 'shadow 5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'spin-slow': 'spin 1.5s linear infinite',
         'spin-extra-slow': 'spin 2s linear infinite',
@@ -153,6 +154,17 @@ module.exports = {
           },
           '100%': {
             boxShadow: 'var(--shadow-float)',
+          },
+        },
+        opacity: {
+          '0%': {
+            opacity: 0,
+          },
+          '50%': {
+            opacity: 1,
+          },
+          '100%': {
+            opacity: 0,
           },
         },
         'move-x': {

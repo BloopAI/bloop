@@ -165,7 +165,6 @@ function App() {
       initApi('http://127.0.0.1:7878/api');
       getConfig().then(setEnvConfig);
       intervalId = window.setInterval(() => {
-        initApi('http://127.0.0.1:7878/api');
         getConfig().then(setEnvConfig);
       }, 500);
     } else {
