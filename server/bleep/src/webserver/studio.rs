@@ -72,7 +72,7 @@ pub struct Studio {
     token_counts: TokenCounts,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 struct ContextFile {
     path: String,
     hidden: bool,
@@ -451,6 +451,75 @@ pub struct Import {
     pub thread_id: Uuid,
 }
 
+async fn extract_relevant_chunks(
+    app: Application,
+    exchanges: &[Exchange],
+    context: &[ContextFile],
+) -> webserver::Result<Vec<ContextFile>> {
+    let context_json = serde_json::to_string(&context).unwrap();
+
+    let answer_api_token = app
+        .answer_api_token()
+        .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
+        .map(|s| s.expose_secret().clone());
+
+    // Create an instance of the LLM gateway client
+    let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
+        .model(LLM_GATEWAY_MODEL)
+        .temperature(0.0)
+        .bearer(answer_api_token);
+
+    // Get last message
+    let mut last_message = String::new();
+    for exchange in exchanges.iter().rev() {
+        if let Some(answer) = &exchange.answer {
+            last_message = answer.clone();
+            break;
+        }
+    }
+
+    // Construct LLM messages
+    let llm_messages = [
+        llm_gateway::api::Message::system(
+            "Your job is to output which file paths are used in the answer. Output ONLY a JSON list of \
+            paths. For example ['path/to/file1', 'path/to/file2']",
+        ),
+        llm_gateway::api::Message::assistant(&last_message),
+        llm_gateway::api::Message::assistant(&context_json)
+    ];
+
+    // Call the LLM gateway
+    let response_stream = llm_gateway
+        .chat(&llm_messages, None)
+        .await
+        .map_err(Error::internal)?;
+
+    // Collect the response into a string
+    let result = response_stream
+        .try_collect()
+        .await
+        .and_then(|json: String| serde_json::from_str(&json).map_err(|e| anyhow::Error::new(e)));
+
+    // Parse the response into a JSON list of paths
+    let paths: Vec<String> = match result {
+        Ok(paths) => paths,
+        Err(e) => {
+            error!(?e, "failed to parse response from LLM");
+            return Ok(context.to_owned());
+        }
+    };
+
+    // Create a new context with only the files that were in the list
+    let mut filtered_context = Vec::new();
+    for file in context {
+        if paths.contains(&file.path) {
+            filtered_context.push(file.clone());
+        }
+    }
+
+    Ok(filtered_context)
+}
+
 /// Returns a new studio UUID.
 pub async fn import(
     app: Extension<Application>,
@@ -506,7 +575,9 @@ pub async fn import(
         })
         .collect::<Vec<_>>();
 
-    let context_json = serde_json::to_string(&context).unwrap();
+    let filtered_context = extract_relevant_chunks((*app).clone(), &exchanges, &context).await?;
+
+    let filtered_context_json = serde_json::to_string(&filtered_context).unwrap();
 
     let studio_id = Uuid::new_v4();
     let studio_id_str = studio_id.to_string();
@@ -515,7 +586,7 @@ pub async fn import(
         "INSERT INTO studios (id, name, context, messages) VALUES (?, ?, ?, ?)",
         studio_id_str,
         conversation.title,
-        context_json,
+        filtered_context_json,
         "[]",
     }
     .execute(&*app.sql)
