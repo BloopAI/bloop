@@ -212,7 +212,9 @@ function App() {
       <TextSearch contentRoot={contentContainer.current} />
       <div ref={contentContainer}>
         <BrowserRouter>
-          <ClientApp deviceContextValue={deviceContextValue} />
+          {!shouldShowSplashScreen && (
+            <ClientApp deviceContextValue={deviceContextValue} />
+          )}
         </BrowserRouter>
       </div>
     </LocaleContext.Provider>
