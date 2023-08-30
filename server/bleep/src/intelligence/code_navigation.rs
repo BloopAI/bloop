@@ -60,6 +60,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
     pub fn files_importing(
         all_docs: &'b [ContentDocument],
         source_document_idx: usize,
+        source_file_ranges: Option<&[std::ops::Range<usize>]>,
     ) -> HashSet<&'b ContentDocument> {
         // scope graph of the source document
         let source_doc = all_docs.get(source_document_idx).unwrap();
@@ -71,6 +72,17 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
             .node_indices()
             .par_bridge()
             .filter(|idx| source_sg.is_definition(*idx) && source_sg.is_top_level(*idx))
+            .filter(|idx| {
+                let range = source_sg.graph[*idx].range();
+                source_file_ranges
+                    .map(|allowed_ranges| {
+                        allowed_ranges.iter().any(|allowed_range| {
+                            allowed_range.contains(&range.start.line)
+                                && allowed_range.contains(&range.end.line)
+                        })
+                    })
+                    .unwrap_or(true)
+            })
             .flat_map_iter(|idx| {
                 let range = source_sg.graph[idx].range();
                 let token = Token {
@@ -113,6 +125,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
     pub fn files_imported(
         all_docs: &'b [ContentDocument],
         source_document_idx: usize,
+        source_file_ranges: Option<&[std::ops::Range<usize>]>,
     ) -> HashSet<&'b ContentDocument> {
         // scope graph of the source document
         let source_doc = all_docs.get(source_document_idx).unwrap();
@@ -125,6 +138,17 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
             .node_indices()
             .par_bridge()
             .filter(|idx| source_sg.is_reference(*idx) || source_sg.is_import(*idx))
+            .filter(|idx| {
+                let range = source_sg.graph[*idx].range();
+                source_file_ranges
+                    .map(|allowed_ranges| {
+                        allowed_ranges.iter().any(|allowed_range| {
+                            allowed_range.contains(&range.start.line)
+                                && allowed_range.contains(&range.end.line)
+                        })
+                    })
+                    .unwrap_or(true)
+            })
             .filter(|&idx| {
                 CodeNavigationContext {
                     all_docs,
@@ -449,6 +473,7 @@ fn to_occurrence(doc: &ContentDocument, range: TextRange) -> Snippet {
 // ranges of defs in related_file_document used in source_document
 pub fn imported_ranges(
     source_document: &ContentDocument,
+    source_file_ranges: Option<&[std::ops::Range<usize>]>,
     related_file_document: &ContentDocument,
 ) -> HashSet<TextRange> {
     // scope graph of the source document
@@ -467,6 +492,17 @@ pub fn imported_ranges(
         .node_indices()
         .par_bridge()
         .filter(|idx| source_sg.is_reference(*idx) || source_sg.is_import(*idx))
+        .filter(|idx| {
+            let range = source_sg.graph[*idx].range();
+            source_file_ranges
+                .map(|allowed_ranges| {
+                    allowed_ranges.iter().any(|allowed_range| {
+                        allowed_range.contains(&range.start.line)
+                            && allowed_range.contains(&range.end.line)
+                    })
+                })
+                .unwrap_or(true)
+        })
         .filter(|&idx| {
             let token = Token {
                 relative_path: &source_document.relative_path,
@@ -512,6 +548,7 @@ pub fn imported_ranges(
 // ranges of refs in related_file_document which contain defs in source_document
 pub fn importing_ranges(
     source_document: &ContentDocument,
+    source_file_ranges: Option<&[std::ops::Range<usize>]>,
     related_file_document: &ContentDocument,
 ) -> HashSet<TextRange> {
     // scope graph of the source document
@@ -530,6 +567,17 @@ pub fn importing_ranges(
         .node_indices()
         .par_bridge()
         .filter(|idx| source_sg.is_definition(*idx) && source_sg.is_top_level(*idx))
+        .filter(|idx| {
+            let range = source_sg.graph[*idx].range();
+            source_file_ranges
+                .map(|allowed_ranges| {
+                    allowed_ranges.iter().any(|allowed_range| {
+                        allowed_range.contains(&range.start.line)
+                            && allowed_range.contains(&range.end.line)
+                    })
+                })
+                .unwrap_or(true)
+        })
         .flat_map_iter(|idx| {
             let range = source_sg.graph[idx].range();
             let token = Token {
