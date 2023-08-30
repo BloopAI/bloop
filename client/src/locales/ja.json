@@ -264,5 +264,6 @@
 	"Click to copy": "クリックしてコピーします",
 	"Copy link": "リンクをコピーする",
 	"Search using RegExp": "RegExpを使用して検索します",
-	"We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub": "Bloopをより安全にするためにAUTHサービスを更新しました。GitHubでクライアントを再承認してください"
+	"We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub": "Bloopをより安全にするためにAUTHサービスを更新しました。GitHubでクライアントを再承認してください",
+	"Loading...": "読み込み中..."
 }

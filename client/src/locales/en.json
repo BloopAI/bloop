@@ -264,5 +264,6 @@
 	"Click to copy": "Click to copy",
 	"Copy link": "Copy link",
 	"Search using RegExp": "Search using RegExp",
-	"We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub": "We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub"
+	"We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub": "We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub",
+	"Loading...": "Loading..."
 }

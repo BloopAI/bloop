@@ -264,5 +264,6 @@
 	"Click to copy": "单击复制",
 	"Copy link": "复制链接",
 	"Search using RegExp": "使用RegExp搜索",
-	"We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub": "我们已经更新了我们的身份服务以使Bloop更加安全，请使用GitHub重新授权您的客户"
+	"We’ve updated our auth service to make bloop more secure, please reauthorise your client with GitHub": "我们已经更新了我们的身份服务以使Bloop更加安全，请使用GitHub重新授权您的客户",
+	"Loading...": "正在加载..."
 }
