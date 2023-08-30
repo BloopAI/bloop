@@ -465,6 +465,7 @@ async fn extract_relevant_chunks(
 
     // Create an instance of the LLM gateway client
     let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
+        .model(LLM_GATEWAY_MODEL)
         .temperature(0.0)
         .bearer(answer_api_token);
 
