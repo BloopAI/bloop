@@ -212,10 +212,7 @@ pub async fn patch(
     Ok(Json(counts))
 }
 
-pub async fn delete(
-    app: Extension<Application>,
-    Path(id): Path<String>,
-) -> webserver::Result<()> {
+pub async fn delete(app: Extension<Application>, Path(id): Path<String>) -> webserver::Result<()> {
     sqlx::query!("DELETE FROM studios WHERE id = ? RETURNING id", id)
         .fetch_optional(&*app.sql)
         .await

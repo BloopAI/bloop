@@ -3,7 +3,7 @@ use crate::{env::Feature, Application};
 use axum::{
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, patch, post, delete},
+    routing::{get, post},
     Extension, Json,
 };
 use std::{borrow::Cow, net::SocketAddr};
@@ -77,9 +77,10 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/answer/vote", post(answer::vote))
         .route("/studio", post(studio::create))
         .route("/studio", get(studio::list))
-        .route("/studio/:id", get(studio::get))
-        .route("/studio/:id", patch(studio::patch))
-        .route("/studio/:id", delete(studio::delete))
+        .route(
+            "/studio/:id",
+            get(studio::get).patch(studio::patch).delete(studio::delete),
+        )
         .route("/studio/:id/generate", get(studio::generate))
         .route("/studio/import", post(studio::import));
 
