@@ -9,6 +9,7 @@ import React, {
   useRef,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import throttle from 'lodash.throttle';
 import {
   StudioConversationMessage,
   StudioConversationMessageAuthor,
@@ -33,6 +34,14 @@ type Props = {
 };
 
 let eventSource: EventSource;
+
+const throttledPatch = throttle(
+  (studioId, data) => {
+    return patchCodeStudio(studioId, data);
+  },
+  2000,
+  { leading: false, trailing: true },
+);
 
 function mapConversation(
   messages: CodeStudioMessageType[],
@@ -74,6 +83,31 @@ const Conversation = ({
     setConversation(mapConversation(messages));
   }, [messages]);
 
+  const saveConversation = useCallback(
+    async (force?: boolean) => {
+      const messages: ({ User: string } | { Assistant: string })[] =
+        conversation
+          .map((c) => ({ [c.author as 'User']: c.message }))
+          .concat(
+            input.message ? [{ [input.author as 'User']: input.message }] : [],
+          );
+      if (force) {
+        await patchCodeStudio(studioId, {
+          messages,
+        });
+      } else {
+        throttledPatch(studioId, {
+          messages,
+        });
+      }
+    },
+    [conversation, input],
+  );
+
+  useEffect(() => {
+    saveConversation();
+  }, [conversation, input]);
+
   const onAuthorChange = useCallback(
     (author: StudioConversationMessageAuthor, i?: number) => {
       if (i === undefined) {
@@ -104,12 +138,7 @@ const Conversation = ({
     if (!input.message) {
       return;
     }
-    const messages: ({ User: string } | { Assistant: string })[] = conversation
-      .map((c) => ({ [c.author as 'User']: c.message }))
-      .concat([{ [input.author as 'User']: input.message }]);
-    await patchCodeStudio(studioId, {
-      messages,
-    });
+    await saveConversation(true);
     await refetchCodeStudio();
     setInput({
       author: StudioConversationMessageAuthor.USER,
@@ -182,7 +211,7 @@ const Conversation = ({
         console.log('failed to parse response', err);
       }
     };
-  }, [studioId, conversation, input]);
+  }, [studioId, conversation, input, saveConversation]);
 
   const onMessageRemoved = useCallback(
     async (i: number, andSubsequent?: boolean) => {
@@ -231,7 +260,7 @@ const Conversation = ({
         ref={messagesRef}
         onScroll={handleScroll}
       >
-        <div className="flex flex-col gap-3 py-8">
+        <div className="flex flex-col gap-3 my-8">
           {conversation.map((m, i) => (
             <ConversationInput
               key={i}
