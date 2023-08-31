@@ -331,5 +331,6 @@
 	"Add context in a new Studio project or add it to an existing one.": "Agregue contexto en un nuevo proyecto de Studio o agréguelo a uno existente.",
 	"New Studio Project": "Nuevo proyecto de estudio",
 	"Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}": "Explique el propósito del archivo {{filePath}}, de las líneas {{lineStart}} - {{lineEnd}}",
-	"Create new Studio Project with context": "Crear un nuevo proyecto de estudio con contexto"
+	"Create new Studio Project with context": "Crear un nuevo proyecto de estudio con contexto",
+	"Retry": "Rever"
 }
