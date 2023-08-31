@@ -15,7 +15,6 @@ import {
   Template,
   TrashCanFilled,
   ArrowRotate,
-  Pen,
   PenUnderline,
 } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
@@ -68,13 +67,13 @@ const ConversationInput = ({
 
   useEffect(() => {
     if (ref.current && cloneRef.current) {
-      cloneRef.current.style.height = '25px';
+      cloneRef.current.style.height = '22px';
       const scrollHeight = cloneRef.current.scrollHeight;
 
       // We then set the height directly, outside of the render loop
       // Trying to set this with state or a ref will product an incorrect value.
       ref.current.style.height =
-        Math.min(Math.max(scrollHeight, 25), 300) + 'px';
+        Math.min(Math.max(scrollHeight, 22), 300) + 'px';
       setTimeout(() => scrollToBottom?.(), 10);
     }
   }, [message, isFocused]);
@@ -142,11 +141,11 @@ const ConversationInput = ({
           )
         )}
       </div>
-      <div className="code-studio-md relative">
-        {isFocused || !message ? (
+      <div className="code-studio-md body-s relative flex flex-col">
+        {isFocused || i === undefined ? (
           <>
             <textarea
-              className={`w-full bg-transparent outline-none focus:outline-0 resize-none body-m placeholder:text-label-base`}
+              className={`w-full bg-transparent outline-none focus:outline-0 resize-none body-s placeholder:text-label-base`}
               placeholder={t('Start typing...')}
               value={message}
               onChange={handleChange}
@@ -154,12 +153,11 @@ const ConversationInput = ({
               spellCheck="false"
               ref={ref}
               rows={1}
-              // onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               autoFocus
             />
             <textarea
-              className={`resize-none body-m absolute top-0 left-0 right-0 -z-10`}
+              className={`resize-none body-s absolute top-0 left-0 right-0 -z-10`}
               value={message}
               disabled
               rows={1}
