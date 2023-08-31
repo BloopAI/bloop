@@ -23,6 +23,7 @@ use uuid::Uuid;
 use super::{middleware::User, Error};
 use crate::{
     agent::{exchange::Exchange, prompts},
+    analytics::StudioEvent,
     llm_gateway,
     repo::RepoRef,
     webserver, Application,
@@ -39,7 +40,7 @@ pub async fn create(
     app: Extension<Application>,
     params: Json<Create>,
 ) -> webserver::Result<String> {
-    let id = Uuid::new_v4().to_string();
+    let id = Uuid::new_v4();
 
     sqlx::query! {
         "INSERT INTO studios (id, name, context, messages) VALUES (?, ?, ?, ?)",
@@ -51,22 +52,23 @@ pub async fn create(
     .execute(&*app.sql)
     .await?;
 
-    Ok(id)
+    Ok(id.to_string())
 }
 
 #[derive(serde::Serialize)]
 pub struct ListItem {
-    id: String,
+    id: Uuid,
     name: String,
     modified_at: NaiveDateTime,
     repos: Vec<String>,
     most_common_ext: String,
 }
 pub async fn list(app: Extension<Application>) -> webserver::Result<Json<Vec<ListItem>>> {
-    let studios = sqlx::query!("SELECT id, name, modified_at, context FROM studios")
-        .fetch_all(&*app.sql)
-        .await
-        .map_err(Error::internal)?;
+    let studios =
+        sqlx::query!("SELECT id as \"id: Uuid\", name, modified_at, context FROM studios")
+            .fetch_all(&*app.sql)
+            .await
+            .map_err(Error::internal)?;
 
     let mut list_items = Vec::new();
 
@@ -160,7 +162,7 @@ impl From<&Message> for llm_gateway::api::Message {
 
 pub async fn get(
     app: Extension<Application>,
-    Path(id): Path<String>,
+    Path(id): Path<Uuid>,
 ) -> webserver::Result<Json<Studio>> {
     let row = sqlx::query! {
         "SELECT id, name, context, messages, modified_at
@@ -196,7 +198,7 @@ pub struct Patch {
 
 pub async fn patch(
     app: Extension<Application>,
-    Path(id): Path<String>,
+    Path(id): Path<Uuid>,
     Json(patch): Json<Patch>,
 ) -> webserver::Result<Json<TokenCounts>> {
     let mut transaction = app.sql.begin().await?;
@@ -266,7 +268,7 @@ pub async fn patch(
     Ok(Json(counts))
 }
 
-pub async fn delete(app: Extension<Application>, Path(id): Path<String>) -> webserver::Result<()> {
+pub async fn delete(app: Extension<Application>, Path(id): Path<Uuid>) -> webserver::Result<()> {
     sqlx::query!("DELETE FROM studios WHERE id = ? RETURNING id", id)
         .fetch_optional(&*app.sql)
         .await?
@@ -382,7 +384,8 @@ async fn token_counts(
 
 pub async fn generate(
     app: Extension<Application>,
-    Path(id): Path<String>,
+    Extension(user): Extension<User>,
+    Path(id): Path<Uuid>,
 ) -> webserver::Result<Sse<Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>> {
     let answer_api_token = app
         .answer_api_token()
@@ -407,6 +410,13 @@ pub async fn generate(
     let context =
         serde_json::from_str::<Vec<ContextFile>>(&context_json).map_err(Error::internal)?;
 
+    app.track_studio(
+        &user,
+        StudioEvent::new(id, "generate")
+            .with_payload("context", &context)
+            .with_payload("messages", &messages),
+    );
+
     let llm_context = generate_llm_context((*app).clone(), context).await?;
     let system_prompt = prompts::studio_article_prompt(&llm_context);
     let llm_messages = iter::once(llm_gateway::api::Message::system(&system_prompt))
@@ -425,6 +435,12 @@ pub async fn generate(
             response += &fragment;
             yield response.clone();
         }
+
+        app.track_studio(
+            &user,
+            StudioEvent::new(id, "generate_complete")
+                .with_payload("response", &response)
+        );
 
         messages.push(Message::Assistant(response));
         let messages_json = serde_json::to_string(&messages).unwrap();
@@ -609,14 +625,13 @@ pub async fn import(
         .context("couldn't deserialize exchange list")?;
 
     let old_context: Vec<ContextFile> = if let Some(studio_id) = params.studio_id {
-        let studio_id = studio_id.to_string();
         sqlx::query! {
             "SELECT context FROM studios WHERE id = ?",
             studio_id,
         }
         .fetch_optional(&*app.sql)
         .await?
-        .ok_or_else(|| Error::not_found("conversation not found"))
+        .ok_or_else(|| Error::not_found("unknown studio ID"))
         .and_then(|r| serde_json::from_str(&r.context).map_err(Error::internal))?
     } else {
         Vec::new()
@@ -636,29 +651,32 @@ pub async fn import(
     let filtered_context =
         extract_relevant_chunks((*app).clone(), &exchanges, &imported_context).await?;
 
-    let context =
-        canonicalize_context(filtered_context.into_iter().chain(old_context)).collect::<Vec<_>>();
+    let context = canonicalize_context(
+        filtered_context
+            .clone()
+            .into_iter()
+            .chain(old_context.clone()),
+    )
+    .collect::<Vec<_>>();
+
     let context_json = serde_json::to_string(&context).unwrap();
 
-    if let Some(studio_id) = params.studio_id {
-        let studio_id_str = studio_id.to_string();
-
+    let studio_id = if let Some(studio_id) = params.studio_id {
         sqlx::query! {
             "UPDATE studios SET context = ? WHERE id = ?",
             context_json,
-            studio_id_str,
+            studio_id,
         }
         .execute(&*app.sql)
         .await?;
 
-        Ok(studio_id_str)
+        studio_id
     } else {
         let studio_id = Uuid::new_v4();
-        let studio_id_str = studio_id.to_string();
 
         sqlx::query! {
             "INSERT INTO studios (id, name, context, messages) VALUES (?, ?, ?, ?)",
-            studio_id_str,
+            studio_id,
             conversation.title,
             context_json,
             "[]",
@@ -666,8 +684,18 @@ pub async fn import(
         .execute(&*app.sql)
         .await?;
 
-        Ok(studio_id_str)
-    }
+        studio_id
+    };
+
+    app.track_studio(
+        &user,
+        StudioEvent::new(studio_id, "import")
+            .with_payload("thread_id", &params.thread_id)
+            .with_payload("old_context", &old_context)
+            .with_payload("new_filtered_context", &filtered_context),
+    );
+
+    Ok(studio_id.to_string())
 }
 
 fn canonicalize_context(

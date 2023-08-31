@@ -22,7 +22,7 @@ use console_subscriber as _;
 
 use secrecy::SecretString;
 use state::PersistedState;
-use std::fs::canonicalize;
+use std::{fs::canonicalize, sync::RwLock};
 use user::UserProfile;
 
 use crate::{
@@ -217,9 +217,9 @@ impl Application {
         sentry::configure_scope(|scope| {
             scope.add_event_processor(|event| {
                 let Some(ref logger) = event.logger
-		else {
-		    return Some(event);
-		};
+                else {
+                    return Some(event);
+                };
 
                 match logger.as_ref() {
                     "tower_http::catch_panic" => None,
@@ -298,6 +298,12 @@ impl Application {
     fn track_query(&self, user: &webserver::middleware::User, event: &analytics::QueryEvent) {
         if let Some(analytics) = self.analytics.as_ref() {
             analytics.track_query(user, event.clone());
+        }
+    }
+
+    fn track_studio(&self, user: &webserver::middleware::User, event: analytics::StudioEvent) {
+        if let Some(analytics) = self.analytics.as_ref() {
+            analytics.track_studio(user, event);
         }
     }
 
@@ -411,15 +417,15 @@ fn initialize_analytics(
     options: impl Into<Option<analytics::HubOptions>>,
 ) -> Result<Arc<analytics::RudderHub>> {
     let Some(key) = &config.analytics_key else {
-            bail!("analytics key missing; skipping initialization");
-        };
+        bail!("analytics key missing; skipping initialization");
+    };
 
     let Some(data_plane) = &config.analytics_data_plane else {
-            bail!("analytics data plane url missing; skipping initialization");
-        };
+        bail!("analytics data plane url missing; skipping initialization");
+    };
 
     let options = options.into().unwrap_or_else(|| analytics::HubOptions {
-        event_filter: Some(Arc::new(Some)),
+        enable_telemetry: Arc::new(RwLock::new(true)),
         package_metadata: Some(analytics::PackageMetadata {
             name: env!("CARGO_CRATE_NAME"),
             version: env!("CARGO_PKG_VERSION"),
