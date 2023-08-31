@@ -9,7 +9,12 @@ import React, {
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
-import { Sparkles, Template, TrashCanFilled } from '../../../icons';
+import {
+  Sparkles,
+  Template,
+  TrashCanFilled,
+  ArrowRotate,
+} from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
 import { StudioConversationMessageAuthor } from '../../../types/general';
 import MarkdownWithCode from '../../../components/MarkdownWithCode';
@@ -22,6 +27,7 @@ type Props = {
   onMessageRemoved?: (i: number) => void;
   i?: number;
   scrollToBottom?: () => void;
+  inputRef: React.RefObject<HTMLDivElement>;
 };
 
 const ConversationInput = ({
@@ -32,11 +38,11 @@ const ConversationInput = ({
   i,
   onMessageRemoved,
   scrollToBottom,
+  inputRef,
 }: Props) => {
   const { t } = useTranslation();
   const { envConfig } = useContext(DeviceContext);
   const [isFocused, setFocused] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isDragging, setDragging] = useState(false);
 
   const handleAuthorSwitch = useCallback(() => {
@@ -56,7 +62,7 @@ const ConversationInput = ({
   );
 
   useEffect(() => {
-    if (inputRef.current) {
+    if (inputRef && inputRef.current) {
       // We need to reset the height momentarily to get the correct scrollHeight for the textarea
       inputRef.current.style.height = '25px';
       const scrollHeight = inputRef.current.scrollHeight;
@@ -67,7 +73,7 @@ const ConversationInput = ({
         Math.min(Math.max(scrollHeight, 25), 300) + 'px';
       setTimeout(() => scrollToBottom?.(), 100);
     }
-  }, [inputRef.current, message, isFocused]);
+  }, [message, isFocused]);
 
   const handleModeChange = useCallback(() => {
     if (!document.getSelection()?.isCollapsed) {
@@ -78,7 +84,7 @@ const ConversationInput = ({
 
   return (
     <div className="flex flex-col p-4 gap-3 rounded-6 border border-transparent hover:shadow-medium hover:border-bg-border-hover focus-within:border-bg-main bg-bg-base hover:focus-within:border-bg-main focus-within:shadow-medium transition-all duration-150 ease-in-out">
-      <div className="flex justify-between items-center">
+      <div className="flex">
         <button
           onClick={handleAuthorSwitch}
           className="h-6 caption text-label-title flex items-center gap-1 flex-shrink-0 pl-1 pr-1.5 rounded border border-bg-border bg-bg-shade hover:border-bg-border-hover hover:bg-bg-base-hover transition-all duration-150 ease-in-out select-none"
@@ -92,6 +98,7 @@ const ConversationInput = ({
           </div>
           <Trans>{author}</Trans>
         </button>
+        <span className="ml-auto" />
         {isFocused ? (
           <Button size="tiny" variant="secondary">
             <Template raw sizeClassName="w-3.5 h-3.5" />
@@ -99,15 +106,30 @@ const ConversationInput = ({
           </Button>
         ) : (
           i !== undefined && (
-            <Button
-              variant="secondary"
-              size="tiny"
-              onlyIcon
-              title={t('Remove')}
-              onClick={() => onMessageRemoved?.(i)}
-            >
-              <TrashCanFilled raw sizeClassName="w-3.5 h-3.5" />
-            </Button>
+            <>
+              {author === 'User' && (
+                <Button
+                  variant="secondary"
+                  size="tiny"
+                  onlyIcon
+                  title={t('Retry')}
+                  onClick={() => onMessageRemoved?.(i, true)}
+                  className="mr-2 opacity-50 hover:opacity-100"
+                >
+                  <ArrowRotate raw sizeClassName="w-3.5 h-3.5" />
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                size="tiny"
+                onlyIcon
+                title={t('Remove')}
+                onClick={() => onMessageRemoved?.(i)}
+                className="opacity-50 hover:opacity-100"
+              >
+                <TrashCanFilled raw sizeClassName="w-3.5 h-3.5" />
+              </Button>
+            </>
           )
         )}
       </div>
