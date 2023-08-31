@@ -185,10 +185,9 @@ const ContextPanel = ({
                   onFileHide={onFileHide}
                   onFileAdded={onFileAdded}
                   displayName={
-                    repoBranch.files.filter((f) => f.fileName === file.fileName)
-                      .length > 1
+                    file.path.split('/').length > 1
                       ? file.path.split('/').slice(-2).join('/')
-                      : file.fileName
+                      : file.path
                   }
                 />
               ))}
