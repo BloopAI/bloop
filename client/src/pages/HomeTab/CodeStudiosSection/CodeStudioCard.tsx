@@ -8,22 +8,25 @@ import {
   CodeStudioIcon,
   MoreVertical,
   PenUnderline,
+  TrashCanFilled,
 } from '../../../icons';
 import { MenuItemType } from '../../../types/general';
 import { LocaleContext } from '../../../context/localeContext';
 import { TabsContext } from '../../../context/tabsContext';
 import { ContextMenuItem } from '../../../components/ContextMenu';
+import { deleteCodeStudio } from '../../../services/api';
 
 type Props = {
   modified_at: string;
   name: string;
   id: string;
+  refetchStudios: () => void;
 };
 
-const CodeStudioCard = ({ name, modified_at, id }: Props) => {
+const CodeStudioCard = ({ name, modified_at, id, refetchStudios }: Props) => {
   const { t } = useTranslation();
   const { locale } = useContext(LocaleContext);
-  const { handleAddStudioTab } = useContext(TabsContext);
+  const { handleAddStudioTab, handleRemoveTab } = useContext(TabsContext);
 
   const handleClick = useCallback(() => {
     handleAddStudioTab(name, id);
@@ -35,6 +38,17 @@ const CodeStudioCard = ({ name, modified_at, id }: Props) => {
         type: MenuItemType.DEFAULT,
         text: t('Rename'),
         icon: <PenUnderline />,
+      },
+      {
+        type: MenuItemType.DEFAULT,
+        text: t('Delete'),
+        icon: <TrashCanFilled />,
+        onClick: () => {
+          deleteCodeStudio(id).then(() => {
+            refetchStudios();
+            handleRemoveTab(id);
+          });
+        },
       },
     ];
     return items;
