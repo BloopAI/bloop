@@ -1,11 +1,4 @@
-import {
-  ChangeEvent,
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from 'react';
+import { ChangeEvent, memo, useCallback, useContext, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import SeparateOnboardingStep from '../../../components/SeparateOnboardingStep';
 import KeyboardChip from '../KeyboardChip';
