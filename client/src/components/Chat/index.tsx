@@ -1,8 +1,10 @@
 import React, {
+  ChangeEvent,
   FormEvent,
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -400,6 +402,32 @@ const Chat = () => {
     setHideMessagesFrom(null);
   }, []);
 
+  const loadingSteps = useMemo(() => {
+    return conversation[conversation.length - 1]?.author ===
+      ChatMessageAuthor.Server
+      ? [
+          ...(conversation[conversation.length - 1] as ChatMessageServer)
+            .loadingSteps,
+          ...((conversation[conversation.length - 1] as ChatMessageServer)
+            ?.results?.length
+            ? [
+                {
+                  displayText: t('Responding...'),
+                  content: { query: '' },
+                  path: '',
+                  type: 'code' as const,
+                },
+              ]
+            : []),
+        ]
+      : undefined;
+  }, [JSON.stringify(conversation[conversation.length - 1])]);
+
+  const handleInputChange = useCallback(
+    (e: ChangeEvent<HTMLTextAreaElement>) => setInputValue(e.target.value),
+    [],
+  );
+
   return (
     <>
       <div
@@ -470,34 +498,9 @@ const Chat = () => {
               id="question-input"
               value={inputValue}
               onSubmit={onSubmit}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={handleInputChange}
               isStoppable={isLoading}
-              loadingSteps={
-                conversation[conversation.length - 1]?.author ===
-                ChatMessageAuthor.Server
-                  ? [
-                      ...(
-                        conversation[
-                          conversation.length - 1
-                        ] as ChatMessageServer
-                      ).loadingSteps,
-                      ...((
-                        conversation[
-                          conversation.length - 1
-                        ] as ChatMessageServer
-                      )?.results?.length
-                        ? [
-                            {
-                              displayText: t('Responding...'),
-                              content: { query: '' },
-                              path: '',
-                              type: 'code' as const,
-                            },
-                          ]
-                        : []),
-                    ]
-                  : undefined
-              }
+              loadingSteps={loadingSteps}
               generationInProgress={
                 (conversation[conversation.length - 1] as ChatMessageServer)
                   ?.isLoading

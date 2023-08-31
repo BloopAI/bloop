@@ -101,17 +101,16 @@ const Onboarding = () => {
     let intervalId: number;
     let timerId: number;
     if (isGithubConnected && !envConfig.github_user?.login) {
-      intervalId = window.setInterval(
-        () =>
-          getConfig().then((resp) => {
-            setEnvConfig(resp);
-            if (resp.github_user?.login) {
-              clearInterval(intervalId);
-            }
-          }),
-        500,
-      );
-      timerId = window.setTimeout(() => clearInterval(intervalId), 30000);
+      intervalId = window.setInterval(() => {
+        getConfig().then((resp) => {
+          setEnvConfig((prev) =>
+            JSON.stringify(prev) === JSON.stringify(resp) ? prev : resp,
+          );
+        });
+      }, 500);
+      timerId = window.setTimeout(() => {
+        clearInterval(intervalId);
+      }, 30000);
     }
 
     return () => {

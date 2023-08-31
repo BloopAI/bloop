@@ -1,5 +1,6 @@
 import React, {
   ChangeEvent,
+  memo,
   useCallback,
   useContext,
   useEffect,
@@ -133,7 +134,10 @@ const NLInput = ({
           ref={inputRef}
           disabled={isStoppable && generationInProgress}
           onCompositionStart={() => setComposition(true)}
-          onCompositionEnd={() => setComposition(false)}
+          onCompositionEnd={() => {
+            // this event comes before keydown and sets state faster causing unintentional submit
+            setTimeout(() => setComposition(false), 10);
+          }}
           onKeyDown={handleKeyDown}
           onFocus={handleInputFocus}
         />
@@ -171,4 +175,4 @@ const NLInput = ({
   );
 };
 
-export default NLInput;
+export default memo(NLInput);

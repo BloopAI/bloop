@@ -168,11 +168,17 @@ function App() {
       }, 500);
     } else {
       // just in case config changed
-      setTimeout(() => getConfig().then(setEnvConfig), 1000);
+      setTimeout(() => {
+        getConfig().then((resp) =>
+          setEnvConfig((prev) =>
+            JSON.stringify(prev) === JSON.stringify(resp) ? prev : resp,
+          ),
+        );
+      }, 1000);
       setShouldShowSplashScreen(false);
     }
     return () => {
-      clearInterval(intervalId);
+      window.clearInterval(intervalId);
     };
   }, [envConfig]);
 
