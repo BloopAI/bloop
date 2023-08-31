@@ -55,6 +55,7 @@ const useConversation = (threadId: string, recordId: number) => {
             isFromHistory: true,
             queryId: m.id,
             responseTimestamp: m.response_timestamp,
+            explainedFile: m.focused_chunk?.file_path,
           });
         });
         conversationsCache[threadId] = conv;
