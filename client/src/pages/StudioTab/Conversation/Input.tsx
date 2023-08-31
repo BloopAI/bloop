@@ -15,6 +15,8 @@ import {
   Template,
   TrashCanFilled,
   ArrowRotate,
+  Pen,
+  PenUnderline,
 } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
 import { StudioConversationMessageAuthor } from '../../../types/general';
@@ -77,13 +79,6 @@ const ConversationInput = ({
     }
   }, [message, isFocused]);
 
-  const handleModeChange = useCallback(() => {
-    if (!document.getSelection()?.isCollapsed) {
-    } else {
-      setFocused(true);
-    }
-  }, []);
-
   return (
     <div className="flex flex-col p-4 gap-3 rounded-6 border border-transparent hover:shadow-medium hover:border-bg-border-hover focus-within:border-bg-main bg-bg-base hover:focus-within:border-bg-main focus-within:shadow-medium transition-all duration-150 ease-in-out">
       <div className="flex">
@@ -102,13 +97,25 @@ const ConversationInput = ({
         </button>
         <span className="ml-auto" />
         {isFocused ? (
-          <Button size="tiny" variant="secondary">
-            <Template raw sizeClassName="w-3.5 h-3.5" />
-            <Trans>Use templates</Trans>
-          </Button>
+          <>
+            <Button size="tiny" variant="secondary">
+              <Template raw sizeClassName="w-3.5 h-3.5" />
+              <Trans>Use templates</Trans>
+            </Button>
+          </>
         ) : (
           i !== undefined && (
             <>
+              <Button
+                variant="secondary"
+                size="tiny"
+                onlyIcon
+                title={t('Edit')}
+                onClick={() => setFocused(true)}
+                className="mr-2 opacity-50 hover:opacity-100"
+              >
+                <PenUnderline raw sizeClassName="w-3.5 h-3.5" />
+              </Button>
               {author === 'User' && (
                 <Button
                   variant="secondary"
@@ -135,7 +142,7 @@ const ConversationInput = ({
           )
         )}
       </div>
-      <div onClick={handleModeChange} className="code-studio-md relative">
+      <div className="code-studio-md relative">
         {isFocused || !message ? (
           <>
             <textarea
@@ -147,7 +154,7 @@ const ConversationInput = ({
               spellCheck="false"
               ref={ref}
               rows={1}
-              onFocus={() => setFocused(true)}
+              // onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               autoFocus
             />
