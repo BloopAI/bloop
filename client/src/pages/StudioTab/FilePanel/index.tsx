@@ -34,6 +34,7 @@ import TokensUsageBadge from '../TokensUsageBadge';
 import useRelatedFiles from '../../../hooks/useRelatedFiles';
 import Dropdown from '../../../components/Dropdown/WithIcon';
 import RelatedFilesBadge from '../RelatedFilesBadge';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
@@ -146,6 +147,20 @@ const FilePanel = ({
     ).then((resp) => {
       if (resp?.data?.[0]?.kind === 'file') {
         setFile(resp?.data?.[0]?.data);
+        if (initialRanges?.[0]) {
+          setTimeout(() => {
+            const line = findElementInCurrentTab(
+              `[data-line-number="${initialRanges[0][0]}"]`,
+            );
+            line?.scrollIntoView({
+              behavior: 'auto',
+              block:
+                initialRanges[0][1] - initialRanges[0][0] > 5
+                  ? 'start'
+                  : 'center',
+            });
+          }, 100);
+        }
       }
     });
   }, [filePath, branch, repo]);
