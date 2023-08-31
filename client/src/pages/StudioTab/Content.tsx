@@ -32,6 +32,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
   const [messages, setMessages] = useState<CodeStudioMessageType[]>([]);
   const [contextFiles, setContextFiles] = useState<StudioContextFile[]>([]);
   const [tokensTotal, setTokensTotal] = useState(0);
+  const [tokensContext, setTokensContext] = useState(0);
   const [tokensPerFile, setTokensPerFile] = useState([]);
 
   const refetchCodeStudio = useCallback(async () => {
@@ -40,6 +41,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
       setMessages(resp.messages);
       setContextFiles(resp.context);
       setTokensTotal(resp.token_counts.total);
+      setTokensContext(resp.token_counts.total - resp.token_counts.messages);
       setTokensPerFile(resp.token_counts.per_file);
     }
   }, [tab.key]);
@@ -173,7 +175,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
               setAddContextOpen={setAddContextOpen}
               studioId={tab.key}
               contextFiles={contextFiles}
-              tokensTotal={tokensTotal}
+              tokensTotal={tokensContext}
               tokensPerFile={tokensPerFile}
               onFileRemove={onFileRemove}
               onFileHide={onFileHide}

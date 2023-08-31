@@ -122,6 +122,7 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
               shouldShowFull={filterType === 'studios'}
               isFiltered={!!search}
               showAll={() => setFilterType('studios')}
+              refetchStudios={refreshCodeStudios}
             />
           )}
         </div>
