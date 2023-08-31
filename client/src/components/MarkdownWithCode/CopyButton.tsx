@@ -15,7 +15,8 @@ const CopyButton = ({ isCodeStudio, code }: Props) => {
     copyToClipboard(code);
     setCodeCopied(true);
     setTimeout(() => setCodeCopied(false), 2000);
-  }, []);
+  }, [code]);
+
   return (
     <div
       className={`absolute ${
