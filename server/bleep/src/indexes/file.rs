@@ -305,7 +305,7 @@ impl Indexer<File> {
                 &BooleanQuery::intersection(
                     [repo_ref_term, branch_term].into_iter().flatten().collect(),
                 ),
-                &TopDocs::with_limit(1000),
+                &TopDocs::with_limit(50_000),
             )
             .expect("failed to search index")
             .into_iter()
@@ -315,6 +315,7 @@ impl Indexer<File> {
                     .expect("failed to get document by address");
                 FileReader.read_document(file_source, retrieved_doc)
             })
+            .filter(|doc| !doc.relative_path.ends_with('/'))
             .filter_map(|doc| {
                 let (score, positions) = matcher.fuzzy(&doc.relative_path, &query_str, true)?;
 
@@ -330,17 +331,7 @@ impl Indexer<File> {
                     positions.iter().filter(|&p| p > &file_name_start).count() as f32
                 };
 
-                // if this doc is a file and not a directory, bump it up
-                let file_bonus = if doc.relative_path.ends_with('/') {
-                    0.
-                } else {
-                    1.
-                };
-
-                Some((
-                    doc,
-                    score as f32 + position_bonus + file_name_bonus + file_bonus,
-                ))
+                Some((doc, score as f32 + position_bonus + file_name_bonus))
             })
             .collect::<Vec<_>>();
 
