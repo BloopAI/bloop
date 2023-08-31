@@ -10,6 +10,7 @@ import {
 type Props = {
   text: string | React.ReactNode;
   placement: TippyProps['placement'];
+  delay?: TippyProps['delay'];
 };
 
 const positionsMap = {
@@ -58,7 +59,12 @@ const getTail = (orientation: Props['placement']) => {
 
 const tailWidth = 12;
 
-const Tooltip = ({ text, placement, children }: PropsWithChildren<Props>) => {
+const Tooltip = ({
+  text,
+  placement,
+  children,
+  delay,
+}: PropsWithChildren<Props>) => {
   const ref = useRef<HTMLDivElement>(null);
   const [childCenter, setChildCenter] = useState(10);
   useEffect(() => {
@@ -67,6 +73,7 @@ const Tooltip = ({ text, placement, children }: PropsWithChildren<Props>) => {
   return (
     <Tippy
       placement={placement}
+      delay={delay}
       render={(attrs) => (
         <span
           {...attrs}
