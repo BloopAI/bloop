@@ -44,8 +44,8 @@ const ConversationInput = ({
   const { t } = useTranslation();
   const { envConfig } = useContext(DeviceContext);
   const [isFocused, setFocused] = useState(false);
-  const [isDragging, setDragging] = useState(false);
   const ref = useRef<HTMLTextAreaElement | null>(null);
+  const cloneRef = useRef<HTMLTextAreaElement | null>(null);
   useImperativeHandle(inputRef, () => ref.current!);
 
   const handleAuthorSwitch = useCallback(() => {
@@ -55,26 +55,25 @@ const ConversationInput = ({
         : StudioConversationMessageAuthor.USER,
       i,
     );
-  }, [author, i]);
+  }, [author, i, onAuthorChange]);
 
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
       onMessageChange(e.target.value, i);
     },
-    [i],
+    [i, onMessageChange],
   );
 
   useEffect(() => {
-    if (ref && ref.current) {
-      // We need to reset the height momentarily to get the correct scrollHeight for the textarea
-      ref.current.style.height = '25px';
-      const scrollHeight = ref.current.scrollHeight;
+    if (ref.current && cloneRef.current) {
+      cloneRef.current.style.height = '25px';
+      const scrollHeight = cloneRef.current.scrollHeight;
 
       // We then set the height directly, outside of the render loop
       // Trying to set this with state or a ref will product an incorrect value.
       ref.current.style.height =
         Math.min(Math.max(scrollHeight, 25), 300) + 'px';
-      setTimeout(() => scrollToBottom?.(), 100);
+      setTimeout(() => scrollToBottom?.(), 10);
     }
   }, [message, isFocused]);
 
@@ -136,21 +135,30 @@ const ConversationInput = ({
           )
         )}
       </div>
-      <div onClick={handleModeChange} className="code-studio-md">
+      <div onClick={handleModeChange} className="code-studio-md relative">
         {isFocused || !message ? (
-          <textarea
-            className={`w-full bg-transparent outline-none focus:outline-0 resize-none body-m placeholder:text-label-base`}
-            placeholder={t('Start typing...')}
-            value={message}
-            onChange={handleChange}
-            autoComplete="off"
-            spellCheck="false"
-            ref={ref}
-            rows={1}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            autoFocus
-          />
+          <>
+            <textarea
+              className={`w-full bg-transparent outline-none focus:outline-0 resize-none body-m placeholder:text-label-base`}
+              placeholder={t('Start typing...')}
+              value={message}
+              onChange={handleChange}
+              autoComplete="off"
+              spellCheck="false"
+              ref={ref}
+              rows={1}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              autoFocus
+            />
+            <textarea
+              className={`resize-none body-m absolute top-0 left-0 right-0 -z-10`}
+              value={message}
+              disabled
+              rows={1}
+              ref={cloneRef}
+            />
+          </>
         ) : (
           <MarkdownWithCode markdown={message} isCodeStudio />
         )}
