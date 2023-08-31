@@ -23,10 +23,13 @@ const SelectBranch = ({ search, onSubmit, repo }: Props) => {
       r.toLowerCase().includes(search.toLowerCase()),
     );
     setBranchesToShow(branches);
-    if (branches.length < 2) {
-      onSubmit(branches[0] || '');
-    }
   }, [search, allBranches]);
+
+  useEffect(() => {
+    if (allBranches.length < 2) {
+      onSubmit(allBranches[0] || '');
+    }
+  }, [allBranches]);
 
   return (
     <>
