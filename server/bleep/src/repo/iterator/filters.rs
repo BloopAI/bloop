@@ -92,16 +92,16 @@ pub struct FileFilterConfig {
 #[serde(rename_all = "snake_case")]
 pub enum FileFilterRule {
     /// Include file with the exact relative path
-    IncludeFile { name: String },
+    IncludeFile(String),
 
     /// Include files matching the regex pattern
-    IncludeRegex { pattern: String },
+    IncludeRegex(String),
 
     /// Exclude file with the exact relative path
-    ExcludeFile { name: String },
+    ExcludeFile(String),
 
     /// Exclude files matchin the regex pattern
-    ExcludeRegex { pattern: String },
+    ExcludeRegex(String),
 }
 
 /// Compiled file filter.
@@ -121,10 +121,10 @@ impl FileFilter {
 
         for rule in config.rules {
             match rule {
-                FileFilterRule::IncludeFile { name } => include_list.insert(name),
-                FileFilterRule::IncludeRegex { pattern } => include_patterns.insert(pattern),
-                FileFilterRule::ExcludeFile { name } => exclude_list.insert(name),
-                FileFilterRule::ExcludeRegex { pattern } => exclude_patterns.insert(pattern),
+                FileFilterRule::IncludeFile(name) => include_list.insert(name),
+                FileFilterRule::IncludeRegex(pattern) => include_patterns.insert(pattern),
+                FileFilterRule::ExcludeFile(name) => exclude_list.insert(name),
+                FileFilterRule::ExcludeRegex(pattern) => exclude_patterns.insert(pattern),
             };
         }
 
