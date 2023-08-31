@@ -271,13 +271,13 @@ const Conversation = ({
   useKeyboardNavigation(handleKeyEvent);
 
   return (
-    <div className="px-8 flex flex-col overflow-auto">
+    <div className="px-7 flex flex-col overflow-auto">
       <div
         className="fade-bottom overflow-auto"
         ref={messagesRef}
         onScroll={handleScroll}
       >
-        <div className="flex flex-col gap-3 py-8">
+        <div className="flex flex-col gap-3 py-8 px-1">
           {conversation.map((m, i) => (
             <ConversationInput
               key={i}
