@@ -77,7 +77,7 @@ tower-http = { version = "0.4.1", features = ["auth", "cors", "catch-panic", "fs
 
 # api integrations
 octocrab = { version = "0.25.1", features = ["rustls"] }
-reqwest = { version = "0.11.18", features = ["rustls-tls-webpki-roots", "cookies"], default-features = false }
+reqwest = { version = "0.11.18", features = ["rustls-tls-webpki-roots", "cookies", "gzip"], default-features = false }
 reqwest-eventsource = "0.4.0"
 secrecy = { version = "0.8.0", features = ["serde"] }
 

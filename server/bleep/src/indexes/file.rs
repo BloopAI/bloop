@@ -60,7 +60,11 @@ impl Indexable for File {
         writer: &IndexWriter,
         pipes: &SyncPipes,
     ) -> Result<()> {
-        let file_cache = Arc::new(FileCache::for_repo(&self.sql, reporef));
+        let file_cache = Arc::new(FileCache::for_repo(
+            &self.sql,
+            self.semantic.as_ref(),
+            reporef,
+        ));
         let cache_snapshot = file_cache.retrieve().await;
         let repo_name = reporef.indexed_name();
         let processed = &AtomicU64::new(0);
@@ -86,6 +90,14 @@ impl Indexable for File {
                 trace!(entry_disk_path, "queueing entry");
                 if let Err(err) = self.worker(workload, writer) {
                     warn!(%err, entry_disk_path, "indexing failed; skipping");
+                }
+
+                let commit_embeddings = tokio::task::block_in_place(|| {
+                    Handle::current()
+                        .block_on(async { file_cache.batched_process_embed_queue(false).await })
+                });
+                if let Err(err) = commit_embeddings {
+                    warn!(?err, "failed to commit embeddings");
                 }
             }
         };
@@ -141,6 +153,7 @@ impl Indexable for File {
 
         pipes.index_percent(100);
         file_cache.persist(cache_snapshot).await?;
+        file_cache.batched_process_embed_queue(true).await?;
         Ok(())
     }
 
