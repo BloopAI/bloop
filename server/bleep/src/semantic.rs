@@ -252,11 +252,15 @@ impl Semantic {
             init_ort_dylib(dylib_dir);
         }
 
+        #[cfg(feature = "ee")]
         let embedder: Arc<dyn Embedder> = if let Some(ref url) = config.embedding_server_url {
             Arc::new(embedder::RemoteEmbedder::new(url.clone(), model_dir)?)
         } else {
             Arc::new(LocalEmbedder::new(model_dir)?)
         };
+
+        #[cfg(not(feature = "ee"))]
+        let embedder: Arc<dyn Embedder> = Arc::new(LocalEmbedder::new(model_dir)?);
 
         Ok(Self {
             qdrant: qdrant.into(),
