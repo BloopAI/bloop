@@ -180,6 +180,7 @@ pub(crate) enum ReposResponse {
     Item(Repo),
     SyncQueue(Vec<QueuedRepoStatus>),
     SyncQueued,
+    #[cfg(feature = "ee")]
     Unchanged,
     Deleted,
 }
@@ -476,6 +477,7 @@ mod test {
                     last_index_unix_secs: 123456,
                     most_common_lang: None,
                     branch_filter: Default::default(),
+                    file_filter: Default::default(),
                 },
             )
             .unwrap();
@@ -494,6 +496,7 @@ mod test {
                     last_index_unix_secs: 123456,
                     most_common_lang: None,
                     branch_filter: Default::default(),
+                    file_filter: Default::default(),
                 },
             )
             .unwrap();
@@ -514,6 +517,7 @@ mod test {
                     last_index_unix_secs: 0,
                     most_common_lang: None,
                     branch_filter: Default::default(),
+                    file_filter: Default::default(),
                 },
             )
                 .into(),
@@ -533,6 +537,7 @@ mod test {
                 last_index_unix_secs: 0,
                 most_common_lang: None,
                 branch_filter: Default::default(),
+                file_filter: Default::default(),
             },
         )
             .into();
