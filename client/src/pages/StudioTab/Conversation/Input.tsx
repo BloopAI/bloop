@@ -141,7 +141,11 @@ const ConversationInput = ({
           )
         )}
       </div>
-      <div className="code-studio-md body-s relative flex flex-col">
+      <div
+        className={`code-studio-md body-s relative ${
+          isFocused || i === undefined ? 'flex flex-col' : ''
+        }`}
+      >
         {isFocused || i === undefined ? (
           <>
             <textarea
