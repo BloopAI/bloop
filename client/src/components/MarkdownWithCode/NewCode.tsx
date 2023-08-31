@@ -16,10 +16,10 @@ const NewCode = ({ code, language, isSummary, isCodeStudio }: Props) => {
       className={`${
         !isSummary
           ? isCodeStudio
-            ? 'my-4 bg-bg-sub'
-            : 'my-4 p-4 bg-bg-shade'
-          : 'bg-chat-bg-sub'
-      } text-sm border border-bg-border rounded-md relative group-code`}
+            ? 'my-4 bg-bg-sub text-xs'
+            : 'my-4 p-4 bg-bg-shade text-sm'
+          : 'bg-chat-bg-sub text-sm'
+      } border border-bg-border rounded-md relative group-code`}
     >
       {isCodeStudio && (
         <div className="bg-bg-shade border-b border-bg-border p-2 flex items-center gap-2">
