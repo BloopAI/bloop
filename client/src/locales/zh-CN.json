@@ -336,14 +336,6 @@
 	"New Studio Project": "新工作室项目",
 	"Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}": "解释文件 {{filePath}} 的用途，从第 {{lineStart}} - {{lineEnd}} 行开始",
 	"Add to Studio context": "添加到 Studio 上下文",
-	"Create new Studio Project with context": "使用上下文创建新的 Studio 项目"
+	"Create new Studio Project with context": "使用上下文创建新的 Studio 项目",
+	"Retry": "重试"
 }
-
-
-
-
-
-
-
-
-
