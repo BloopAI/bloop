@@ -8,6 +8,7 @@ import {
 } from '../types/general';
 import FileIcon from '../components/FileIcon';
 import { getRelatedFileRanges } from '../services/api';
+import Tooltip from '../components/Tooltip';
 
 const useRelatedFiles = (
   selectedFiles: StudioContextFile[],
@@ -31,7 +32,7 @@ const useRelatedFiles = (
     const importing = relatedFiles
       .filter((f) => f.type === 'importing')
       .sort((a, b) => (a.path < b.path ? -1 : 1));
-    const menuItems = [];
+    const menuItems: ContextMenuItem[] = [];
     if (imported.length) {
       menuItems.push({
         type: ExtendedMenuItemType.DIVIDER_WITH_TEXT,
@@ -41,7 +42,14 @@ const useRelatedFiles = (
         ...imported.map((f) => ({
           type: MenuItemType.SELECTABLE,
           icon: <FileIcon filename={f.path} />,
-          text: f.path,
+          text:
+            f.path.length > 33 ? (
+              <Tooltip text={f.path} placement={'right'} delay={500}>
+                ...{f.path.slice(-31)}
+              </Tooltip>
+            ) : (
+              f.path
+            ),
           isSelected: !!selectedFiles.find((s) => s.path === f.path),
           onChange: async (b: boolean) => {
             if (b) {
@@ -75,7 +83,14 @@ const useRelatedFiles = (
         ...importing.map((f) => ({
           type: MenuItemType.SELECTABLE,
           icon: <FileIcon filename={f.path} />,
-          text: f.path,
+          text:
+            f.path.length > 33 ? (
+              <Tooltip text={f.path} placement={'right'} delay={500}>
+                ...{f.path.slice(-31)}
+              </Tooltip>
+            ) : (
+              f.path
+            ),
           isSelected: !!selectedFiles.find((s) => s.path === f.path),
           onChange: async (b: boolean) => {
             if (b) {
