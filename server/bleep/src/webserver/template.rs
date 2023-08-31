@@ -1,12 +1,8 @@
 use super::{Error, ErrorKind};
 use crate::{webserver, Application};
-use axum::{
-    extract::{Extension, Json, Path},
-    response::IntoResponse,
-};
+use axum::extract::{Extension, Json, Path};
 use chrono::NaiveDateTime;
-use serde::{Deserialize, Serialize};
-use sqlx::query;
+use serde::Deserialize;
 use uuid::Uuid;
 
 #[derive(Deserialize)]
