@@ -14,6 +14,7 @@ import {
 } from '../../types/general';
 import { getCodeStudio, patchCodeStudio } from '../../services/api';
 import { CodeStudioMessageType } from '../../types/api';
+import useResizeableSplitPanel from '../../hooks/useResizeableSplitPanel';
 import Conversation from './Conversation';
 import ContextPanel from './ContextPanel';
 import HistoryPanel from './HistoryPanel';
@@ -34,6 +35,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
   const [tokensTotal, setTokensTotal] = useState(0);
   const [tokensContext, setTokensContext] = useState(0);
   const [tokensPerFile, setTokensPerFile] = useState([]);
+  const { leftPanelRef, rightPanelRef, dividerRef } = useResizeableSplitPanel();
 
   const refetchCodeStudio = useCallback(async () => {
     if (tab.key) {
@@ -168,7 +170,10 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
   return (
     <PageTemplate renderPage="studio">
       <div className="flex flex-1 w-screen">
-        <div className="w-1/2 border-r border-bg-border flex-shrink-0 flex-grow-0 flex flex-col">
+        <div
+          className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col"
+          ref={leftPanelRef}
+        >
           {leftPanel.type === StudioLeftPanelType.CONTEXT ? (
             <ContextPanel
               setLeftPanel={setLeftPanel}
@@ -204,7 +209,14 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
             contextFiles={contextFiles}
           />
         </div>
-        <div className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col">
+        <div
+          ref={dividerRef}
+          className="w-0.5 h-full bg-bg-border hover:bg-bg-main cursor-col-resize flex-shrink-0"
+        />
+        <div
+          className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col"
+          ref={rightPanelRef}
+        >
           <div className="flex items-center justify-between gap-2 px-8 h-11.5 border-b border-bg-border bg-bg-sub shadow-low select-none flex-shrink-0">
             <div className="flex items-center gap-1.5 text-label-muted">
               <p className="body-s text-label-title">
