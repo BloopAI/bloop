@@ -276,6 +276,8 @@ export const patchCodeStudio = (
 ) => http.patch(`/studio/${id}`, data).then((r) => r.data);
 export const getCodeStudio = (id: string): Promise<CodeStudioType> =>
   http(`/studio/${id}`).then((r) => r.data);
+export const deleteCodeStudio = (id: string): Promise<CodeStudioType> =>
+  http.delete(`/studio/${id}`).then((r) => r.data);
 export const postCodeStudio = (name: string) =>
   http.post('/studio', { name }).then((r) => r.data);
 export const importCodeStudio = (thread_id: string) =>
