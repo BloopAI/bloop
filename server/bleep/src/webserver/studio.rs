@@ -71,7 +71,7 @@ pub struct Studio {
     token_counts: TokenCounts,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 struct ContextFile {
     path: String,
     hidden: bool,
@@ -556,40 +556,30 @@ pub async fn import(
         Vec::new()
     };
 
-    let context = exchanges
-        .iter()
-        .flat_map(|e| {
-            e.code_chunks.iter().map(|c| ContextFile {
-                path: c.path.clone(),
-                hidden: false,
-                repo: repo_ref.parse().unwrap(),
-                branch: e.query.branch().next().map(Cow::into_owned),
-                ranges: vec![c.start_line..c.end_line + 1],
-            })
+    let imported_context = canonicalize_context(exchanges.iter().flat_map(|e| {
+        e.code_chunks.iter().map(|c| ContextFile {
+            path: c.path.clone(),
+            hidden: false,
+            repo: repo_ref.parse().unwrap(),
+            branch: e.query.branch().next().map(Cow::into_owned),
+            ranges: vec![c.start_line..c.end_line + 1],
         })
-        .chain(old_context.into_iter())
-        .fold(HashMap::new(), |mut map, file| {
-            let key = (file.path.clone(), file.branch.clone());
-            map.entry(key).or_insert_with(Vec::new).push(file);
-            map
-        })
-        .into_values()
-        .filter_map(|files| files.into_iter().reduce(ContextFile::merge))
-        .map(|mut c| {
-            fold_ranges(&mut c.ranges);
-            c
-        })
-        .collect::<Vec<_>>();
+    }))
+    .collect::<Vec<_>>();
 
-    let filtered_context = extract_relevant_chunks((*app).clone(), &exchanges, &context).await?;
-    let filtered_context_json = serde_json::to_string(&filtered_context).unwrap();
+    let filtered_context =
+        extract_relevant_chunks((*app).clone(), &exchanges, &imported_context).await?;
+
+    let context =
+        canonicalize_context(filtered_context.into_iter().chain(old_context)).collect::<Vec<_>>();
+    let context_json = serde_json::to_string(&context).unwrap();
 
     if let Some(studio_id) = params.studio_id {
         let studio_id_str = studio_id.to_string();
 
         sqlx::query! {
             "UPDATE studios SET context = ? WHERE id = ?",
-            filtered_context_json,
+            context_json,
             studio_id_str,
         }
         .execute(&*app.sql)
@@ -604,7 +594,7 @@ pub async fn import(
             "INSERT INTO studios (id, name, context, messages) VALUES (?, ?, ?, ?)",
             studio_id_str,
             conversation.title,
-            filtered_context_json,
+            context_json,
             "[]",
         }
         .execute(&*app.sql)
@@ -612,6 +602,23 @@ pub async fn import(
 
         Ok(studio_id_str)
     }
+}
+
+fn canonicalize_context(
+    context: impl Iterator<Item = ContextFile>,
+) -> impl Iterator<Item = ContextFile> {
+    context
+        .fold(HashMap::new(), |mut map, file| {
+            let key = (file.path.clone(), file.branch.clone());
+            map.entry(key).or_insert_with(Vec::new).push(file);
+            map
+        })
+        .into_values()
+        .filter_map(|files| files.into_iter().reduce(ContextFile::merge))
+        .map(|mut c| {
+            fold_ranges(&mut c.ranges);
+            c
+        })
 }
 
 fn fold_ranges(ranges: &mut Vec<Range<usize>>) {
@@ -651,6 +658,7 @@ fn merge_ranges(a: &mut Range<usize>, b: Range<usize>) -> Option<Range<usize>> {
 
 #[cfg(test)]
 mod test {
+    use pretty_assertions::assert_eq;
     use rand::seq::SliceRandom;
 
     use super::*;
@@ -696,5 +704,54 @@ mod test {
         fold_ranges(&mut ranges);
 
         assert_eq!(ranges, [1..20, 24..35]);
+    }
+
+    #[test]
+    fn test_canonicalize_context() {
+        let context = [
+            ContextFile {
+                path: "README.md".to_owned(),
+                hidden: false,
+                repo: "github.com/BloopAI/bloop".parse().unwrap(),
+                branch: None,
+                ranges: vec![5..12, 40..50],
+            },
+            ContextFile {
+                path: "README.md".to_owned(),
+                hidden: false,
+                repo: "github.com/BloopAI/bloop".parse().unwrap(),
+                branch: None,
+                ranges: vec![0..10, 20..25],
+            },
+            ContextFile {
+                path: "server/bleep/src/main.rs".to_owned(),
+                hidden: true,
+                repo: "github.com/BloopAI/bloop".parse().unwrap(),
+                branch: None,
+                ranges: vec![50..60, 30..35, 25..32],
+            },
+        ];
+
+        let expected = [
+            ContextFile {
+                path: "README.md".to_owned(),
+                hidden: false,
+                repo: "github.com/BloopAI/bloop".parse().unwrap(),
+                branch: None,
+                ranges: vec![0..12, 20..25, 40..50],
+            },
+            ContextFile {
+                path: "server/bleep/src/main.rs".to_owned(),
+                hidden: true,
+                repo: "github.com/BloopAI/bloop".parse().unwrap(),
+                branch: None,
+                ranges: vec![25..35, 50..60],
+            },
+        ];
+
+        let mut output = canonicalize_context(context.into_iter()).collect::<Vec<_>>();
+        output.sort_by_key(|cf| cf.path.clone());
+
+        assert_eq!(&expected[..], &output);
     }
 }
