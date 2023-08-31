@@ -52,7 +52,7 @@ pub enum SemanticError {
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
     embedder: Arc<dyn Embedder>,
-    config: Arc<Configuration>,
+    pub(crate) config: Arc<Configuration>,
 }
 
 macro_rules! val_str(($hash:ident, $val:expr) => { serde_json::from_value($hash.remove($val).unwrap()).unwrap() });

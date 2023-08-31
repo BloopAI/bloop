@@ -5,7 +5,6 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc, Mutex,
     },
-    time::Instant,
 };
 
 use async_trait::async_trait;
@@ -14,10 +13,9 @@ use ort::{
     tensor::{FromArray, InputTensor, OrtOwnedTensor},
     Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
 };
-use qdrant_client::qdrant::{PointId, PointStruct};
 use serde::{Deserialize, Serialize};
 use tokenizers::Tokenizer;
-use tracing::{error, info, trace};
+use tracing::trace;
 
 use super::Embedding;
 
@@ -67,7 +65,7 @@ pub struct EmbedChunk {
 pub trait Embedder: Send + Sync {
     fn embed(&self, data: &str) -> anyhow::Result<Embedding>;
     fn tokenizer(&self) -> &Tokenizer;
-    async fn batch_embed(&self, log: &EmbedQueue, flush: bool) -> anyhow::Result<Vec<PointStruct>>;
+    async fn batch_embed(&self, log: Vec<&str>) -> anyhow::Result<Vec<Embedding>>;
 }
 
 pub struct LocalEmbedder {
@@ -145,23 +143,10 @@ impl Embedder for LocalEmbedder {
         &self.tokenizer
     }
 
-    async fn batch_embed(
-        &self,
-        log: &EmbedQueue,
-        _flush: bool,
-    ) -> anyhow::Result<Vec<PointStruct>> {
-        let mut output = vec![];
-        while let Some(entry) = log.pop() {
-            output.push(PointStruct {
-                id: Some(PointId::from(entry.id)),
-                vectors: Some(
-                    tokio::task::block_in_place(|| self.embed(entry.data.as_ref()))?.into(),
-                ),
-                payload: entry.payload,
-            });
-        }
-
-        Ok(output)
+    async fn batch_embed(&self, log: Vec<&str>) -> anyhow::Result<Vec<Embedding>> {
+        log.into_iter()
+            .map(|entry| tokio::task::block_in_place(|| self.embed(entry)))
+            .collect::<anyhow::Result<Vec<Embedding>>>()
     }
 }
 
@@ -203,59 +188,14 @@ impl Embedder for RemoteEmbedder {
         self.embedder.tokenizer()
     }
 
-    async fn batch_embed(&self, log: &EmbedQueue, flush: bool) -> anyhow::Result<Vec<PointStruct>> {
-        const MAX_BATCH_SIZE: usize = 128;
-        let mut output = vec![];
-
-        loop {
-            // if we're not currently flushing the log, only process full batches
-            if log.is_empty() || (log.len() < MAX_BATCH_SIZE && !flush) {
-                return Ok(output);
-            }
-
-            let mut batch = vec![];
-
-            // fill this batch with embeddings
-            while let Some(embedding) = log.pop() {
-                batch.push(embedding);
-
-                if batch.len() == MAX_BATCH_SIZE {
-                    break;
-                }
-            }
-
-            let time = Instant::now();
-            let res = self
-                .make_request(ServerRequest {
-                    sequence: batch
-                        .iter()
-                        .map(|embed| embed.data.as_ref())
-                        .collect::<Vec<_>>(),
-                })
-                .await;
-            let elapsed = time.elapsed();
-
-            match res {
-                Ok(res) => {
-                    info!(?elapsed, size = batch.len(), "batch embedding successful");
-                    output.extend(res.data.into_iter().zip(batch).map(|(result, src)| {
-                        PointStruct {
-                            id: Some(PointId::from(src.id)),
-                            vectors: Some(result.embedding.into()),
-                            payload: src.payload,
-                        }
-                    }))
-                }
-                Err(err) => {
-                    error!(
-                        ?err,
-                        ?elapsed,
-                        size = batch.len(),
-                        "remote batch embeddings failed"
-                    )
-                }
-            }
-        }
+    async fn batch_embed(&self, sequence: Vec<&str>) -> anyhow::Result<Vec<Embedding>> {
+        Ok(self
+            .make_request(ServerRequest { sequence })
+            .await?
+            .data
+            .into_iter()
+            .map(|p| p.embedding)
+            .collect())
     }
 }
 

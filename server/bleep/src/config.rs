@@ -4,7 +4,10 @@ use clap::Parser;
 
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize, Serializer};
-use std::path::{Path, PathBuf};
+use std::{
+    num::NonZeroUsize,
+    path::{Path, PathBuf},
+};
 
 #[derive(Serialize, Deserialize, Parser, Debug, Clone)]
 #[clap(author, version, about, long_about = None)]
@@ -126,6 +129,11 @@ pub struct Configuration {
     #[serde(default = "default_collection_name")]
     /// Qdrant collection name. Defaults to `documents`
     pub collection_name: String,
+
+    #[clap(long, default_value_t = interactive_batch_size())]
+    #[serde(default = "interactive_batch_size")]
+    /// Batch size for batched embeddings
+    pub embedding_batch_size: NonZeroUsize,
 
     //
     // Cognito setup
@@ -283,6 +291,12 @@ impl Configuration {
                 default_collection_name()
             ),
 
+            embedding_batch_size: right_if_default!(
+                b.embedding_batch_size,
+                a.embedding_batch_size,
+                interactive_batch_size()
+            ),
+
             embedding_server_url: b.embedding_server_url.or(a.embedding_server_url),
 
             frontend_dist: b.frontend_dist.or(a.frontend_dist),
@@ -404,4 +418,8 @@ fn default_answer_api_url() -> String {
 
 fn default_max_chunk_tokens() -> usize {
     256
+}
+
+fn interactive_batch_size() -> NonZeroUsize {
+    NonZeroUsize::new(1).unwrap()
 }

@@ -1,6 +1,9 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    sync::{Arc, RwLock},
+    time::Instant,
+};
 
-use qdrant_client::qdrant::PointId;
+use qdrant_client::qdrant::{PointId, PointStruct};
 use sqlx::Sqlite;
 use tracing::{error, trace};
 use uuid::Uuid;
@@ -62,7 +65,7 @@ pub(crate) struct FileCache<'a> {
     db: &'a SqlDb,
     reporef: &'a RepoRef,
     semantic: Option<&'a Semantic>,
-    embed_log: EmbedQueue,
+    embed_queue: EmbedQueue,
 }
 
 impl<'a> FileCache<'a> {
@@ -75,7 +78,7 @@ impl<'a> FileCache<'a> {
             db,
             reporef,
             semantic,
-            embed_log: Default::default(),
+            embed_queue: Default::default(),
         }
     }
 
@@ -171,10 +174,7 @@ impl<'a> FileCache<'a> {
 	    return Ok(());
 	};
 
-        let new_points = semantic
-            .embedder()
-            .batch_embed(&self.embed_log, flush)
-            .await?;
+        let new_points = self.embed_queued_points(semantic, flush).await?;
 
         if !new_points.is_empty() {
             if let Err(err) = semantic
@@ -185,8 +185,68 @@ impl<'a> FileCache<'a> {
                 error!(?err, "failed to write new points into qdrant");
             }
         }
-
         Ok(())
+    }
+
+    async fn embed_queued_points(
+        &self,
+        semantic: &Semantic,
+        flush: bool,
+    ) -> Result<Vec<PointStruct>, anyhow::Error> {
+        let batch_size = semantic.config.embedding_batch_size.get();
+        let log = &self.embed_queue;
+        let mut output = vec![];
+
+        loop {
+            // if we're not currently flushing the log, only process full batches
+            if log.is_empty() || (log.len() < batch_size && !flush) {
+                return Ok(output);
+            }
+
+            let mut batch = vec![];
+
+            // fill this batch with embeddings
+            while let Some(embedding) = log.pop() {
+                batch.push(embedding);
+
+                if batch.len() == batch_size {
+                    break;
+                }
+            }
+
+            let (elapsed, res) = {
+                let time = Instant::now();
+                let res = semantic
+                    .embedder()
+                    .batch_embed(batch.iter().map(|c| c.data.as_ref()).collect::<Vec<_>>())
+                    .await;
+
+                (time.elapsed(), res)
+            };
+
+            match res {
+                Ok(res) => {
+                    trace!(?elapsed, size = batch.len(), "batch embedding successful");
+                    output.extend(
+                        res.into_iter()
+                            .zip(batch)
+                            .map(|(embedding, src)| PointStruct {
+                                id: Some(PointId::from(src.id)),
+                                vectors: Some(embedding.into()),
+                                payload: src.payload,
+                            }),
+                    )
+                }
+                Err(err) => {
+                    error!(
+                        ?err,
+                        ?elapsed,
+                        size = batch.len(),
+                        "remote batch embeddings failed"
+                    )
+                }
+            }
+        }
     }
 
     pub async fn chunks_for_file(&'a self, key: &'a str) -> ChunkCache<'a> {
@@ -195,7 +255,7 @@ impl<'a> FileCache<'a> {
             self.semantic
                 .expect("we shouldn't get here without semantic db configured"),
             self.reporef,
-            &self.embed_log,
+            &self.embed_queue,
             key,
         )
         .await
