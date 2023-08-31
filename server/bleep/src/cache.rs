@@ -168,7 +168,7 @@ impl<'a> FileCache<'a> {
     /// If `flush == true`, drain the log, send the entire batch to
     /// the embedder, and commit the results, disregarding the internal
     /// batch sizing.
-    pub async fn commit_embed_queue(&self, flush: bool) -> anyhow::Result<()> {
+    pub async fn batched_process_embed_queue(&self, flush: bool) -> anyhow::Result<()> {
         let Some(semantic) = self.semantic
 	else {
 	    return Ok(());
@@ -274,7 +274,7 @@ pub struct ChunkCache<'a> {
     cache: scc::HashMap<String, FreshValue<String>>,
     update: scc::HashMap<(Vec<String>, String), Vec<String>>,
     new_sql: RwLock<Vec<(String, String)>>,
-    embed_log: &'a EmbedQueue,
+    embed_queue: &'a EmbedQueue,
 }
 
 impl<'a> ChunkCache<'a> {
@@ -304,7 +304,7 @@ impl<'a> ChunkCache<'a> {
             reporef,
             file_cache_key,
             cache,
-            embed_log,
+            embed_queue: embed_log,
             update: Default::default(),
             new_sql: Default::default(),
         }
@@ -335,7 +335,7 @@ impl<'a> ChunkCache<'a> {
                     .unwrap()
                     .push((vacant.key().to_owned(), branches_hash.clone()));
 
-                self.embed_log.push(EmbedChunk {
+                self.embed_queue.push(EmbedChunk {
                     id: vacant.key().clone(),
                     data: data.into(),
                     payload: payload.into_qdrant(),
