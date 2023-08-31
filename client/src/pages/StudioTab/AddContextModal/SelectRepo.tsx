@@ -1,7 +1,7 @@
 import { memo, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { getIndexedRepos } from '../../../services/api';
-import { RepoType } from '../../../types/general';
+import { RepoType, StudioContextFile } from '../../../types/general';
 import KeyboardChip from '../KeyboardChip';
 import { getFileExtensionForLang } from '../../../utils';
 import FileIcon from '../../../components/FileIcon';
@@ -9,9 +9,11 @@ import FileIcon from '../../../components/FileIcon';
 type Props = {
   search: string;
   onSubmit: (repo: RepoType) => void;
+  contextFiles: StudioContextFile[];
+  canSkip?: boolean;
 };
 
-const SelectRepo = ({ search, onSubmit }: Props) => {
+const SelectRepo = ({ search, onSubmit, contextFiles, canSkip }: Props) => {
   useTranslation();
   const [reposToShow, setReposToShow] = useState<RepoType[]>([]);
   const [repos, setRepos] = useState<RepoType[]>([]);
@@ -32,6 +34,25 @@ const SelectRepo = ({ search, onSubmit }: Props) => {
       repos.filter((r) => r.name.toLowerCase().includes(search.toLowerCase())),
     );
   }, [search, repos]);
+
+  useEffect(() => {
+    if (canSkip || repos.length === 1) {
+      const allFilesFromOneRepo =
+        Array.from(new Set(contextFiles.map((f) => f.repo))).length === 1;
+      if (
+        (allFilesFromOneRepo && contextFiles?.[0]?.repo) ||
+        repos.length === 1
+      ) {
+        const repo =
+          repos.length === 1
+            ? repos[0]
+            : repos.find((r) => r.ref === contextFiles[0].repo);
+        if (repo) {
+          onSubmit(repo);
+        }
+      }
+    }
+  }, [repos, canSkip]);
 
   return (
     <>

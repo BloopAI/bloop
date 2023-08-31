@@ -1,4 +1,11 @@
-import { ChangeEvent, memo, useCallback, useContext, useState } from 'react';
+import {
+  ChangeEvent,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import SeparateOnboardingStep from '../../../components/SeparateOnboardingStep';
 import KeyboardChip from '../KeyboardChip';
@@ -32,6 +39,7 @@ const AddContextModal = ({
   const [selectedRepo, setSelectedRepo] = useState<RepoType | null>(null);
   const [selectedBranch, setSelectedBranch] = useState('');
   const [search, setSearch] = useState('');
+  const [canSkipRepo, setCanSkipRepo] = useState(true);
   const containerRef = useArrowKeyNavigation();
   const { setCloudFeaturePopupOpen } = useContext(UIContext.CloudFeaturePopup);
 
@@ -84,6 +92,7 @@ const AddContextModal = ({
                   setSelectedRepo(null);
                   setSelectedBranch('');
                   setSearch('');
+                  setCanSkipRepo(false);
                   setStep(0);
                 }}
               />
@@ -144,7 +153,12 @@ const AddContextModal = ({
         </div>
         <div className="flex max-h-72 overflow-auto px-1 py-3 flex-col items-start gap-1">
           {step === 0 ? (
-            <SelectRepo search={search} onSubmit={handleRepoSubmit} />
+            <SelectRepo
+              search={search}
+              onSubmit={handleRepoSubmit}
+              contextFiles={contextFiles}
+              canSkip={canSkipRepo}
+            />
           ) : step === 1 ? (
             <SelectBranch
               onSubmit={handleBranchSubmit}
