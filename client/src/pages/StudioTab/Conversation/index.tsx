@@ -84,13 +84,16 @@ const Conversation = ({
   }, [messages]);
 
   const saveConversation = useCallback(
-    async (force?: boolean) => {
-      const messages: ({ User: string } | { Assistant: string })[] =
-        conversation
-          .map((c) => ({ [c.author as 'User']: c.message }))
-          .concat(
-            input.message ? [{ [input.author as 'User']: input.message }] : [],
-          );
+    async (force?: boolean, newConversation?: StudioConversationMessage[]) => {
+      const messages: ({ User: string } | { Assistant: string })[] = (
+        newConversation || conversation
+      )
+        .map((c) => ({ [c.author as 'User']: c.message }))
+        .concat(
+          !newConversation && input.message
+            ? [{ [input.author as 'User']: input.message }]
+            : [],
+        );
       if (force) {
         await patchCodeStudio(studioId, {
           messages,
@@ -104,10 +107,6 @@ const Conversation = ({
     [conversation, input],
   );
 
-  useEffect(() => {
-    saveConversation();
-  }, [conversation, input]);
-
   const onAuthorChange = useCallback(
     (author: StudioConversationMessageAuthor, i?: number) => {
       if (i === undefined) {
@@ -119,20 +118,25 @@ const Conversation = ({
           return newConv;
         });
       }
+      saveConversation();
     },
-    [],
+    [saveConversation],
   );
-  const onMessageChange = useCallback((message: string, i?: number) => {
-    if (i === undefined) {
-      setInputValue((prev) => ({ ...prev, message }));
-    } else {
-      setConversation((prev) => {
-        const newConv = JSON.parse(JSON.stringify(prev));
-        newConv[i].message = message;
-        return newConv;
-      });
-    }
-  }, []);
+  const onMessageChange = useCallback(
+    (message: string, i?: number) => {
+      if (i === undefined) {
+        setInputValue((prev) => ({ ...prev, message }));
+      } else {
+        setConversation((prev) => {
+          const newConv = JSON.parse(JSON.stringify(prev));
+          newConv[i].message = message;
+          return newConv;
+        });
+      }
+      saveConversation();
+    },
+    [saveConversation],
+  );
 
   const onSubmit = useCallback(async () => {
     if (!input.message) {
@@ -153,7 +157,7 @@ const Conversation = ({
     eventSource.onerror = (err) => {
       console.log('SSE error', err);
       setConversation((prev) => {
-        return [
+        const newConv = [
           ...prev,
           {
             author: StudioConversationMessageAuthor.ASSISTANT,
@@ -163,6 +167,8 @@ const Conversation = ({
             ),
           },
         ];
+        saveConversation(false, newConv);
+        return newConv;
       });
       eventSource.close();
     };
@@ -178,32 +184,42 @@ const Conversation = ({
         if (data.Ok) {
           const newMessage = data.Ok;
           if (i === 0) {
-            setConversation((prev) => [
-              ...prev,
-              {
-                author: StudioConversationMessageAuthor.ASSISTANT,
-                message: newMessage,
-              },
-            ]);
+            setConversation((prev) => {
+              const newConv = [
+                ...prev,
+                {
+                  author: StudioConversationMessageAuthor.ASSISTANT,
+                  message: newMessage,
+                },
+              ];
+              saveConversation(false, newConv);
+              return newConv;
+            });
           } else {
-            setConversation((prev) => [
-              ...prev.slice(0, -1),
-              {
-                author: StudioConversationMessageAuthor.ASSISTANT,
-                message: newMessage,
-              },
-            ]);
+            setConversation((prev) => {
+              const newConv = [
+                ...prev.slice(0, -1),
+                {
+                  author: StudioConversationMessageAuthor.ASSISTANT,
+                  message: newMessage,
+                },
+              ];
+              saveConversation(false, newConv);
+              return newConv;
+            });
           }
           i++;
         } else if (data.Err) {
           setConversation((prev) => {
-            return [
+            const newConv = [
               ...prev,
               {
                 author: StudioConversationMessageAuthor.ASSISTANT,
                 message: data.Err,
               },
             ];
+            saveConversation(false, newConv);
+            return newConv;
           });
         }
       } catch (err) {
@@ -215,6 +231,7 @@ const Conversation = ({
 
   const onMessageRemoved = useCallback(
     async (i: number, andSubsequent?: boolean) => {
+      console.log('onMessageRemoved', i, andSubsequent, conversation[i]);
       if (andSubsequent) {
         // Set input to the message being removed
         setInput(conversation[i]);
@@ -260,7 +277,7 @@ const Conversation = ({
         ref={messagesRef}
         onScroll={handleScroll}
       >
-        <div className="flex flex-col gap-3 my-8">
+        <div className="flex flex-col gap-3 py-8">
           {conversation.map((m, i) => (
             <ConversationInput
               key={i}
