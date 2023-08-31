@@ -21,7 +21,7 @@ const PromptGuidePopup = () => {
       ...prev,
       bloop_user_profile: {
         ...(prev.bloop_user_profile || {}),
-        prompt_guide: 'active',
+        prompt_guide: 'dismissed',
       },
     }));
     putConfig({
