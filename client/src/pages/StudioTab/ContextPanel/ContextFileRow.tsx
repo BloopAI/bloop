@@ -23,6 +23,7 @@ import RelatedFilesBadge from '../RelatedFilesBadge';
 import { DropdownWithIcon } from '../../../components/Dropdown';
 import { getRelatedFiles } from '../../../services/api';
 import useRelatedFiles from '../../../hooks/useRelatedFiles';
+import Tooltip from '../../../components/Tooltip';
 
 type Props = StudioContextFile & {
   contextFiles: StudioContextFile[];
@@ -143,7 +144,9 @@ const ContextFileRow = ({
               hidden ? 'opacity-30' : ''
             }`}
           >
-            {displayName}
+            <Tooltip text={path} placement={'bottom-start'} delay={500}>
+              {displayName}
+            </Tooltip>
           </p>
           <LinesBadge ranges={mappedRanges} isShort />
           <RelatedFilesBadge
