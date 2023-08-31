@@ -458,7 +458,7 @@ const Chat = () => {
                 {!!threadId && !isLoading && (
                   <AddStudioContext
                     threadId={threadId}
-                    name={conversation[0].text || 'New Studio'}
+                    name={conversation?.[0]?.text || 'New Studio'}
                   />
                 )}
                 <ChipButton
