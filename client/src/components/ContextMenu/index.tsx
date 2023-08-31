@@ -27,7 +27,7 @@ export type ContextMenuSelectableItem = {
   type: MenuItemType.SELECTABLE;
   onChange: (b: boolean) => void;
   icon?: React.ReactElement;
-  text: string;
+  text: string | React.ReactElement;
   disabled?: boolean;
   isSelected: boolean;
 };
