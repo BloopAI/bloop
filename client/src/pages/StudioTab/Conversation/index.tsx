@@ -6,6 +6,7 @@ import React, {
   useContext,
   useEffect,
   useState,
+  useRef,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import {
@@ -52,10 +53,19 @@ const Conversation = ({
   const [conversation, setConversation] = useState<StudioConversationMessage[]>(
     mapConversation(messages),
   );
-  const [input, setInput] = useState<StudioConversationMessage>({
+  const [input, setInputValue] = useState<StudioConversationMessage>({
     author: StudioConversationMessageAuthor.USER,
     message: '',
   });
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const setInput = (value: StudioConversationMessage) => {
+    setInputValue(value);
+    // Focus on the input
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+  const [loading, setLoading] = useState(false);
   const { apiUrl } = useContext(DeviceContext);
   const { messagesRef, handleScroll, scrollToBottom } =
     useScrollToBottom(conversation);
@@ -105,6 +115,8 @@ const Conversation = ({
       author: StudioConversationMessageAuthor.USER,
       message: '',
     });
+    setLoading(true);
+
     eventSource?.close();
     eventSource = new EventSource(
       `${apiUrl.replace('https:', '')}/studio/${studioId}/generate`,
@@ -127,9 +139,9 @@ const Conversation = ({
     };
     let i = 0;
     eventSource.onmessage = (ev) => {
-      console.log(ev.data);
       if (ev.data === '[DONE]') {
         eventSource.close();
+        setLoading(false);
         return;
       }
       try {
@@ -166,17 +178,23 @@ const Conversation = ({
           });
         }
       } catch (err) {
+        setLoading(false);
         console.log('failed to parse response', err);
       }
     };
   }, [studioId, conversation, input]);
 
   const onMessageRemoved = useCallback(
-    async (i: number) => {
+    async (i: number, andSubsequent: boolean) => {
+      if (andSubsequent) {
+        // Set input to the message being removed
+        setInput(conversation[i]);
+      }
+
       const messages: ({ User: string } | { Assistant: string })[] =
         conversation
           .map((c) => ({ [c.author as 'User']: c.message }))
-          .filter((m, j) => i !== j);
+          .filter((m, j) => (andSubsequent ? i > j : i !== j));
       await patchCodeStudio(studioId, {
         messages,
       });
@@ -225,14 +243,17 @@ const Conversation = ({
               i={i}
             />
           ))}
-          <ConversationInput
-            key={'new'}
-            author={input.author}
-            message={input.message}
-            onAuthorChange={onAuthorChange}
-            onMessageChange={onMessageChange}
-            scrollToBottom={scrollToBottom}
-          />
+          {!loading && (
+            <ConversationInput
+              key={'new'}
+              author={input.author}
+              message={input.message}
+              onAuthorChange={onAuthorChange}
+              onMessageChange={onMessageChange}
+              scrollToBottom={scrollToBottom}
+              inputRef={inputRef}
+            />
+          )}
         </div>
       </div>
       <div className="px-4 flex flex-col gap-8 pb-8">
