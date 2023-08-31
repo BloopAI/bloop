@@ -57,7 +57,7 @@ const Conversation = ({
     author: StudioConversationMessageAuthor.USER,
     message: '',
   });
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const setInput = (value: StudioConversationMessage) => {
     setInputValue(value);
     // Focus on the input
@@ -77,7 +77,7 @@ const Conversation = ({
   const onAuthorChange = useCallback(
     (author: StudioConversationMessageAuthor, i?: number) => {
       if (i === undefined) {
-        setInput((prev) => ({ ...prev, author }));
+        setInputValue((prev) => ({ ...prev, author }));
       } else {
         setConversation((prev) => {
           const newConv = JSON.parse(JSON.stringify(prev));
@@ -90,7 +90,7 @@ const Conversation = ({
   );
   const onMessageChange = useCallback((message: string, i?: number) => {
     if (i === undefined) {
-      setInput((prev) => ({ ...prev, message }));
+      setInputValue((prev) => ({ ...prev, message }));
     } else {
       setConversation((prev) => {
         const newConv = JSON.parse(JSON.stringify(prev));
@@ -185,7 +185,7 @@ const Conversation = ({
   }, [studioId, conversation, input]);
 
   const onMessageRemoved = useCallback(
-    async (i: number, andSubsequent: boolean) => {
+    async (i: number, andSubsequent?: boolean) => {
       if (andSubsequent) {
         // Set input to the message being removed
         setInput(conversation[i]);

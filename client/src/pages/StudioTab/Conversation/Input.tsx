@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useImperativeHandle,
   useRef,
   useState,
 } from 'react';
@@ -24,10 +25,10 @@ type Props = {
   message: string;
   onAuthorChange: (author: StudioConversationMessageAuthor, i?: number) => void;
   onMessageChange: (m: string, i?: number) => void;
-  onMessageRemoved?: (i: number) => void;
+  onMessageRemoved?: (i: number, andSubsequent?: boolean) => void;
   i?: number;
   scrollToBottom?: () => void;
-  inputRef: React.RefObject<HTMLDivElement>;
+  inputRef?: React.MutableRefObject<HTMLTextAreaElement | null>;
 };
 
 const ConversationInput = ({
@@ -44,6 +45,8 @@ const ConversationInput = ({
   const { envConfig } = useContext(DeviceContext);
   const [isFocused, setFocused] = useState(false);
   const [isDragging, setDragging] = useState(false);
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  useImperativeHandle(inputRef, () => ref.current!);
 
   const handleAuthorSwitch = useCallback(() => {
     onAuthorChange(
@@ -62,14 +65,14 @@ const ConversationInput = ({
   );
 
   useEffect(() => {
-    if (inputRef && inputRef.current) {
+    if (ref && ref.current) {
       // We need to reset the height momentarily to get the correct scrollHeight for the textarea
-      inputRef.current.style.height = '25px';
-      const scrollHeight = inputRef.current.scrollHeight;
+      ref.current.style.height = '25px';
+      const scrollHeight = ref.current.scrollHeight;
 
       // We then set the height directly, outside of the render loop
       // Trying to set this with state or a ref will product an incorrect value.
-      inputRef.current.style.height =
+      ref.current.style.height =
         Math.min(Math.max(scrollHeight, 25), 300) + 'px';
       setTimeout(() => scrollToBottom?.(), 100);
     }
@@ -142,7 +145,7 @@ const ConversationInput = ({
             onChange={handleChange}
             autoComplete="off"
             spellCheck="false"
-            ref={inputRef}
+            ref={ref}
             rows={1}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
