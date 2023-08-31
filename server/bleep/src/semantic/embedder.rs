@@ -22,12 +22,12 @@ use tracing::{error, info, trace};
 use super::Embedding;
 
 #[derive(Default)]
-pub struct EmbedLog {
+pub struct EmbedQueue {
     log: scc::Queue<Mutex<Option<EmbedChunk>>>,
     len: AtomicUsize,
 }
 
-impl EmbedLog {
+impl EmbedQueue {
     pub fn pop(&self) -> Option<EmbedChunk> {
         let Some(val) = self.log.pop()
 	else {
@@ -67,7 +67,7 @@ pub struct EmbedChunk {
 pub trait Embedder: Send + Sync {
     fn embed(&self, data: &str) -> anyhow::Result<Embedding>;
     fn tokenizer(&self) -> &Tokenizer;
-    async fn batch_embed(&self, log: &EmbedLog, flush: bool) -> anyhow::Result<Vec<PointStruct>>;
+    async fn batch_embed(&self, log: &EmbedQueue, flush: bool) -> anyhow::Result<Vec<PointStruct>>;
 }
 
 pub struct LocalEmbedder {
@@ -145,7 +145,11 @@ impl Embedder for LocalEmbedder {
         &self.tokenizer
     }
 
-    async fn batch_embed(&self, log: &EmbedLog, _flush: bool) -> anyhow::Result<Vec<PointStruct>> {
+    async fn batch_embed(
+        &self,
+        log: &EmbedQueue,
+        _flush: bool,
+    ) -> anyhow::Result<Vec<PointStruct>> {
         let mut output = vec![];
         while let Some(entry) = log.pop() {
             output.push(PointStruct {
@@ -199,7 +203,7 @@ impl Embedder for RemoteEmbedder {
         self.embedder.tokenizer()
     }
 
-    async fn batch_embed(&self, log: &EmbedLog, flush: bool) -> anyhow::Result<Vec<PointStruct>> {
+    async fn batch_embed(&self, log: &EmbedQueue, flush: bool) -> anyhow::Result<Vec<PointStruct>> {
         const MAX_BATCH_SIZE: usize = 128;
         let mut output = vec![];
 

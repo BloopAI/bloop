@@ -93,7 +93,7 @@ impl Indexable for File {
                 }
 
                 let commit_embeddings = tokio::task::block_in_place(|| {
-                    Handle::current().block_on(async { file_cache.commit_embed_log(false).await })
+                    Handle::current().block_on(async { file_cache.commit_embed_queue(false).await })
                 });
                 if let Err(err) = commit_embeddings {
                     warn!(?err, "failed to commit embeddings");
@@ -152,7 +152,7 @@ impl Indexable for File {
 
         pipes.index_percent(100);
         file_cache.persist(cache_snapshot).await?;
-        file_cache.commit_embed_log(true).await?;
+        file_cache.commit_embed_queue(true).await?;
         Ok(())
     }
 

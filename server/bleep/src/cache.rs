@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{
     repo::RepoRef,
     semantic::{
-        embedder::{EmbedChunk, EmbedLog},
+        embedder::{EmbedChunk, EmbedQueue},
         Payload, Semantic,
     },
 };
@@ -62,7 +62,7 @@ pub(crate) struct FileCache<'a> {
     db: &'a SqlDb,
     reporef: &'a RepoRef,
     semantic: Option<&'a Semantic>,
-    embed_log: EmbedLog,
+    embed_log: EmbedQueue,
 }
 
 impl<'a> FileCache<'a> {
@@ -165,21 +165,21 @@ impl<'a> FileCache<'a> {
     /// If `flush == true`, drain the log, send the entire batch to
     /// the embedder, and commit the results, disregarding the internal
     /// batch sizing.
-    pub async fn commit_embed_log(&self, flush: bool) -> anyhow::Result<()> {
+    pub async fn commit_embed_queue(&self, flush: bool) -> anyhow::Result<()> {
         let Some(semantic) = self.semantic
 	else {
 	    return Ok(());
 	};
 
-        let to_commit = semantic
+        let new_points = semantic
             .embedder()
             .batch_embed(&self.embed_log, flush)
             .await?;
 
-        if !to_commit.is_empty() {
+        if !new_points.is_empty() {
             if let Err(err) = semantic
                 .qdrant_client()
-                .upsert_points(&semantic.collection_name(), to_commit, None)
+                .upsert_points(&semantic.collection_name(), new_points, None)
                 .await
             {
                 error!(?err, "failed to write new points into qdrant");
@@ -214,7 +214,7 @@ pub struct ChunkCache<'a> {
     cache: scc::HashMap<String, FreshValue<String>>,
     update: scc::HashMap<(Vec<String>, String), Vec<String>>,
     new_sql: RwLock<Vec<(String, String)>>,
-    embed_log: &'a EmbedLog,
+    embed_log: &'a EmbedQueue,
 }
 
 impl<'a> ChunkCache<'a> {
@@ -222,7 +222,7 @@ impl<'a> ChunkCache<'a> {
         sql: &'a SqlDb,
         semantic: &'a Semantic,
         reporef: &'a RepoRef,
-        embed_log: &'a EmbedLog,
+        embed_log: &'a EmbedQueue,
         file_cache_key: &'a str,
     ) -> ChunkCache<'a> {
         let rows = sqlx::query! {
