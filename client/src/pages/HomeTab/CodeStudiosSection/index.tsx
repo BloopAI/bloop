@@ -9,6 +9,7 @@ type Props = {
   shouldShowFull?: boolean;
   isFiltered?: boolean;
   showAll: () => void;
+  refetchStudios: () => void;
 };
 
 const LIMIT = 7;
@@ -18,6 +19,7 @@ const CodeStudiosSection = ({
   shouldShowFull,
   isFiltered,
   showAll,
+  refetchStudios,
 }: Props) => {
   return (
     <div className="p-8 overflow-x-auto relative">
@@ -29,7 +31,11 @@ const CodeStudiosSection = ({
       <div className="flex flex-wrap gap-3.5 w-full relative items-start">
         {(shouldShowFull ? codeStudios : codeStudios.slice(0, LIMIT)).map(
           (cs) => (
-            <CodeStudioCard key={cs.id} {...cs} />
+            <CodeStudioCard
+              key={cs.id}
+              {...cs}
+              refetchStudios={refetchStudios}
+            />
           ),
         )}
         {codeStudios.length > LIMIT && !shouldShowFull && (
