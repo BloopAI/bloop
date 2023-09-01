@@ -411,7 +411,7 @@ const CodeFull = ({
             setPopupPosition={setPopupPosition}
             closePopup={closePopup}
             relativePath={relativePath}
-            selectedLinesLength={codeToCopy.split('\n').length}
+            selectedLinesLength={codeToCopy?.split('\n')?.length || 0}
           />
         </pre>
       </div>
