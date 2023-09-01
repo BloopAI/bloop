@@ -53,14 +53,50 @@ pub struct ListItem {
     id: String,
     name: String,
     modified_at: NaiveDateTime,
+    repos: Vec<String>,
+    most_common_ext: String,
 }
-
 pub async fn list(app: Extension<Application>) -> webserver::Result<Json<Vec<ListItem>>> {
-    sqlx::query_as! { ListItem, "SELECT id, name, modified_at FROM studios" }
+    let studios = sqlx::query!("SELECT id, name, modified_at FROM studios")
         .fetch_all(&*app.sql)
         .await
-        .map_err(Error::internal)
-        .map(Json)
+        .map_err(Error::internal)?;
+
+    let mut list_items = Vec::new();
+
+    for studio in studios {
+        let context_json: String = sqlx::query!("SELECT context FROM studios WHERE id = ?", studio.id)
+            .fetch_one(&*app.sql)
+            .await
+            .map_err(Error::internal)?
+            .context;
+
+        let context: Vec<ContextFile> = serde_json::from_str(&context_json).map_err(Error::internal)?;
+
+        let mut repos: Vec<String> = context.iter().map(|file| file.repo.name.clone()).collect();
+        repos.sort();
+        repos.dedup();
+
+        let mut ext_tokens = HashMap::new();
+        for file in &context {
+            let ext = file.path.split('.').last().unwrap_or("");
+            let tokens = token_counts((*app).clone(), &[], &[file.clone()]).await?;
+            *ext_tokens.entry(ext.to_string()).or_insert(0) += tokens.total;
+        }
+        let most_common_ext = ext_tokens.into_iter().max_by_key(|(_, tokens)| *tokens).map(|(ext, _)| ext).unwrap_or_default();
+
+        let list_item = ListItem {
+            id: studio.id,
+            name: studio.name,
+            modified_at: studio.modified_at,
+            repos,
+            most_common_ext,
+        };
+
+        list_items.push(list_item);
+    }
+
+    Ok(Json(list_items))
 }
 
 #[derive(serde::Serialize)]
