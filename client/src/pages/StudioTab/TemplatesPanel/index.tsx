@@ -1,4 +1,11 @@
-import { Dispatch, memo, SetStateAction, useEffect, useState } from 'react';
+import {
+  Dispatch,
+  memo,
+  SetStateAction,
+  useCallback,
+  useContext,
+  useEffect,
+} from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
 import {
@@ -6,7 +13,8 @@ import {
   StudioPanelDataType,
 } from '../../../types/general';
 import { ArrowLeft } from '../../../icons';
-import { StudioTemplateType } from '../../../types/api';
+import { getTemplates } from '../../../services/api';
+import { StudioContext } from '../../../context/studioContext';
 import TemplateCard from './TemplateCard';
 
 type Props = {
@@ -15,22 +23,16 @@ type Props = {
 
 const TemplatesPanel = ({ setLeftPanel }: Props) => {
   const { t } = useTranslation();
-  const [templates, setTemplates] = useState<StudioTemplateType[]>([]);
+  const { templates } = useContext(StudioContext.Templates);
+  const { refetchTemplates } = useContext(StudioContext.Setters);
 
   useEffect(() => {
-    Promise.resolve([
-      {
-        name: 'Unit testing',
-        body: 'Write an unit test for the ReadFileFromRepo function, make sure to handle different operating systems',
-      },
-      { name: 'Check code', body: 'Please check this code for any errors.' },
-      { name: 'My template', body: 'This is my awesome template' },
-    ]).then(setTemplates);
-  }, []);
+    refetchTemplates();
+  }, [refetchTemplates]);
 
   return (
-    <div className="flex flex-col w-full">
-      <div className="flex gap-1 px-8 justify-between items-center border-b border-bg-border bg-bg-shade shadow-low h-11.5">
+    <div className="flex flex-col w-full overflow-auto">
+      <div className="flex gap-1 px-8 justify-between items-center border-b border-bg-border bg-bg-shade shadow-low h-11.5 flex-shrink-0">
         <div className="flex items-center gap-3">
           <Button
             size="small"
@@ -46,9 +48,9 @@ const TemplatesPanel = ({ setLeftPanel }: Props) => {
           </p>
         </div>
       </div>
-      <div className="p-8 flex flex-col gap-3">
+      <div className="p-8 flex flex-col gap-3 overflow-auto">
         {templates.map((t, i) => (
-          <TemplateCard key={i} {...t} />
+          <TemplateCard key={t.id} {...t} refetchTemplates={refetchTemplates} />
         ))}
       </div>
     </div>

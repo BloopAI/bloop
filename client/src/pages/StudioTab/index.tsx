@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { StudioTabType } from '../../types/general';
+import { StudioContextProvider } from '../../context/providers/StudioContextProvider';
 import Content from './Content';
 
 type Props = {
@@ -13,7 +14,9 @@ const StudioTab = ({ isActive, tab }: Props) => {
       className={`${isActive ? '' : 'hidden'} `}
       data-active={isActive ? 'true' : 'false'}
     >
-      <Content tab={tab} />
+      <StudioContextProvider>
+        <Content tab={tab} />
+      </StudioContextProvider>
     </div>
   );
 };

@@ -294,8 +294,10 @@ export interface NLSearchResponse {
 }
 
 export type StudioTemplateType = {
+  id: string;
   name: string;
-  body: string;
+  content: string;
+  modified_at: string;
 };
 
 export type HistoryConversationTurn = {

@@ -332,5 +332,8 @@
 	"New Studio Project": "Nuevo proyecto de estudio",
 	"Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}": "Explique el propósito del archivo {{filePath}}, de las líneas {{lineStart}} - {{lineEnd}}",
 	"Create new Studio Project with context": "Crear un nuevo proyecto de estudio con contexto",
-	"Retry": "Rever"
+	"Retry": "Rever",
+	"Use template": "Usar plantilla",
+	"Save to templates": "Guardar a las plantillas",
+	"Clear input": "Borrar entrada"
 }
