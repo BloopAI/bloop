@@ -522,7 +522,10 @@ pub async fn generate(
         let messages_json = serde_json::to_string(&messages).unwrap();
 
         sqlx::query! {
-            "UPDATE studio_snapshots SET messages = ? WHERE id = ?",
+            "INSERT INTO studio_snapshots(studio_id, context, messages)
+            SELECT studio_id, context, ?
+            FROM studio_snapshots
+            WHERE id = ?",
             messages_json,
             snapshot_id,
         }

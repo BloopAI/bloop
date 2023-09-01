@@ -268,6 +268,16 @@
     },
     "query": "UPDATE templates SET modified_at = datetime('now') WHERE id = ?"
   },
+  "63938812eb2374512bb6dd750e14f363f67471ca85c2ed27f7c4b9404f5a875f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT INTO studio_snapshots(studio_id, context, messages)\n            SELECT studio_id, context, ?\n            FROM studio_snapshots\n            WHERE id = ?"
+  },
   "671df14b7c9077b95e586690f8c6d3f2eeb0a3942d0b800f272b010fcd2ca97b": {
     "describe": {
       "columns": [
