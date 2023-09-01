@@ -15,7 +15,10 @@ const AddRepos = ({ addRepos, onClose }: Props) => {
   const handleClose = () => {
     onClose(false);
   };
-  const handleSubmit = (name?: string) => {
+  const handleSubmit = () => {
+    onClose(true);
+  };
+  const handleSubmitStudio = (name?: string) => {
     onClose(true, name);
   };
   const handleEvent = useCallback((e: KeyboardEvent) => {
@@ -34,7 +37,7 @@ const AddRepos = ({ addRepos, onClose }: Props) => {
       ) : addRepos === 'public' ? (
         <PublicGithubReposStep handleNext={handleSubmit} disableSkip />
       ) : (
-        <AddCodeStudio handleSubmit={handleSubmit} />
+        <AddCodeStudio handleSubmit={handleSubmitStudio} />
       )}
     </SeparateOnboardingStep>
   );
