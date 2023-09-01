@@ -331,5 +331,8 @@
 	"New Studio Project": "New Studio Project",
 	"Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}": "Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}",
 	"Create new Studio Project with context": "Create new Studio Project with context",
-	"Retry": "Retry"
+	"Retry": "Retry",
+	"Use template": "Use template",
+	"Save to templates": "Save to templates",
+	"Clear input": "Clear input"
 }

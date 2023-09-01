@@ -15,6 +15,7 @@ import {
 import { getCodeStudio, patchCodeStudio } from '../../services/api';
 import { CodeStudioMessageType } from '../../types/api';
 import useResizeableSplitPanel from '../../hooks/useResizeableSplitPanel';
+import { TOKEN_LIMIT } from '../../consts/codeStudio';
 import Conversation from './Conversation';
 import ContextPanel from './ContextPanel';
 import HistoryPanel from './HistoryPanel';
@@ -33,7 +34,6 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
   const [messages, setMessages] = useState<CodeStudioMessageType[]>([]);
   const [contextFiles, setContextFiles] = useState<StudioContextFile[]>([]);
   const [tokensTotal, setTokensTotal] = useState(0);
-  const [tokensContext, setTokensContext] = useState(0);
   const [tokensPerFile, setTokensPerFile] = useState([]);
   const { leftPanelRef, rightPanelRef, dividerRef } = useResizeableSplitPanel();
 
@@ -43,7 +43,6 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
       setMessages(resp.messages);
       setContextFiles(resp.context);
       setTokensTotal(resp.token_counts.total);
-      setTokensContext(resp.token_counts.total - resp.token_counts.messages);
       setTokensPerFile(resp.token_counts.per_file);
     }
   }, [tab.key]);
@@ -180,7 +179,6 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
               setAddContextOpen={setAddContextOpen}
               studioId={tab.key}
               contextFiles={contextFiles}
-              tokensTotal={tokensContext}
               tokensPerFile={tokensPerFile}
               onFileRemove={onFileRemove}
               onFileHide={onFileHide}
@@ -222,9 +220,11 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
               <p className="body-s text-label-title">
                 <Trans>Studio conversation</Trans>
               </p>
-              <TokensUsageProgress percent={(tokensTotal / 7000) * 100} />
+              <TokensUsageProgress
+                percent={(tokensTotal / TOKEN_LIMIT) * 100}
+              />
               <span className="caption text-label-base">
-                {t('# of #', { count: tokensTotal, total: '7000' })}
+                {t('# of #', { count: tokensTotal, total: TOKEN_LIMIT })}
               </span>
             </div>
             <Button
@@ -246,6 +246,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
             studioId={tab.key}
             messages={messages}
             refetchCodeStudio={refetchCodeStudio}
+            isTokenLimitExceeded={tokensTotal > TOKEN_LIMIT}
           />
         </div>
       </div>
