@@ -57,7 +57,7 @@ impl Agent {
         let mut stream = pin!(
             self.llm_gateway
                 .clone()
-                .model(ANSWER_MODEL)
+                .model("ft:gpt-3.5-turbo-0613:bloop::7tkKlNOw")
                 .chat(&messages, None)
                 .await?
         );
