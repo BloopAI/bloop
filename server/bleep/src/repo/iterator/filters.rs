@@ -153,3 +153,9 @@ impl FileFilter {
         }
     }
 }
+
+impl From<&FileFilterConfig> for FileFilter {
+    fn from(value: &FileFilterConfig) -> Self {
+        Self::compile(value).unwrap()
+    }
+}
