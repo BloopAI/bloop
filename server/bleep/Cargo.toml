@@ -39,6 +39,7 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter", "registry"]
 tracing-appender = "0.2.2"
 color-eyre = "0.6.2"
 sqlx = { version = "0.6.3", features = ["sqlite", "migrate", "offline", "runtime-tokio-rustls", "chrono"] }
+fuzzy-matcher = "0.3.7"
 
 # for debugging
 console-subscriber = { version = "0.1.10", optional = true }
