@@ -80,6 +80,8 @@ impl Drop for Agent {
         match self.exchange_state {
             ExchangeState::Failed => {}
             ExchangeState::Pending => {
+                self.last_exchange_mut().apply_update(Update::Cancel);
+
                 self.track_query(
                     EventData::output_stage("cancelled")
                         .with_payload("message", "request was cancelled"),
