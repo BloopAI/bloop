@@ -241,12 +241,12 @@ pub fn studio_article_prompt(context: &str) -> String {
     format!(
         r#"{context}Your job is to answer a query about a codebase using the information above.
 
-Provide only as much information and code as is necessary to answer the query, but be concise. Keep number of quoted lines to a minimum when possible. If you do not have enough information needed to answer the query, do not make up an answer.
-When referring to code, you must provide an example in a code block.
-
-Respect these rules at all times:
-- Always begin your answer with an appropriate title
-"#
+You must use the following formatting rules at all times:
+- Provide only as much information and code as is necessary to answer the query and be concise
+- If you do not have enough information needed to answer the query, do not make up an answer
+- When referring to code, you must provide an example in a code block
+- Keep number of quoted lines of code to a minimum when possible
+- Basic markdown is allowed"#
     )
 }
 
