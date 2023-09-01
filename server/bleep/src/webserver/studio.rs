@@ -13,7 +13,7 @@ use secrecy::ExposeSecret;
 use tracing::error;
 use uuid::Uuid;
 
-use super::{middleware::User, Error, ErrorKind};
+use super::{middleware::User, Error};
 use crate::{
     agent::{exchange::Exchange, prompts},
     llm_gateway,
@@ -42,8 +42,7 @@ pub async fn create(
         "[]"
     }
     .execute(&*app.sql)
-    .await
-    .map_err(Error::internal)?;
+    .await?;
 
     Ok(id)
 }
@@ -72,13 +71,23 @@ pub struct Studio {
     token_counts: TokenCounts,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 struct ContextFile {
     path: String,
     hidden: bool,
     repo: RepoRef,
     branch: Option<String>,
     ranges: Vec<Range<usize>>,
+}
+
+impl ContextFile {
+    /// Merge two files.
+    ///
+    /// This just joins the two ranges. All other fields come from `self`.
+    fn merge(mut self, rhs: Self) -> Self {
+        self.ranges.extend(rhs.ranges);
+        self
+    }
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
@@ -107,9 +116,8 @@ pub async fn get(
          id
     }
     .fetch_optional(&*app.sql)
-    .await
-    .map_err(Error::internal)?
-    .ok_or_else(|| Error::new(ErrorKind::NotFound, "unknown studio ID"))?;
+    .await?
+    .ok_or_else(|| Error::not_found("unknown studio ID"))?;
 
     let context: Vec<ContextFile> =
         serde_json::from_str(&row.context).context("failed to deserialize context")?;
@@ -138,20 +146,18 @@ pub async fn patch(
     Path(id): Path<String>,
     Json(patch): Json<Patch>,
 ) -> webserver::Result<Json<TokenCounts>> {
-    let mut transaction = app.sql.begin().await.map_err(Error::internal)?;
+    let mut transaction = app.sql.begin().await?;
 
     // Ensure the ID is valid first.
     sqlx::query!("SELECT id FROM studios WHERE id = ?", id)
         .fetch_optional(&mut transaction)
-        .await
-        .map_err(Error::internal)?
-        .ok_or_else(|| Error::new(ErrorKind::NotFound, "unknown code studio ID"))?;
+        .await?
+        .ok_or_else(|| Error::not_found("unknown code studio ID"))?;
 
     if let Some(name) = patch.name {
         sqlx::query!("UPDATE studios SET name = ? WHERE id = ?", name, id)
             .execute(&mut transaction)
-            .await
-            .map_err(Error::internal)?;
+            .await?;
     }
 
     if let Some(modified_at) = patch.modified_at {
@@ -161,24 +167,21 @@ pub async fn patch(
             id
         )
         .execute(&mut transaction)
-        .await
-        .map_err(Error::internal)?;
+        .await?;
     }
 
     if let Some(context) = patch.context {
         let json = serde_json::to_string(&context).unwrap();
         sqlx::query!("UPDATE studios SET context = ? WHERE id = ?", json, id)
             .execute(&mut transaction)
-            .await
-            .map_err(Error::internal)?;
+            .await?;
     }
 
     if let Some(messages) = patch.messages {
         let json = serde_json::to_string(&messages).unwrap();
         sqlx::query!("UPDATE studios SET messages = ? WHERE id = ?", json, id)
             .execute(&mut transaction)
-            .await
-            .map_err(Error::internal)?;
+            .await?;
     }
 
     sqlx::query!(
@@ -186,16 +189,14 @@ pub async fn patch(
         id
     )
     .execute(&mut transaction)
-    .await
-    .map_err(Error::internal)?;
+    .await?;
 
     // Re-fetch the context and messages in case we didn't change them. If we did, this will now
     // contain the updated values.
     let (messages_json, context_json) =
         sqlx::query!("SELECT messages, context FROM studios WHERE id = ?", id)
             .fetch_optional(&mut transaction)
-            .await
-            .map_err(Error::internal)?
+            .await?
             .map(|r| (r.messages, r.context))
             .unwrap_or_default();
 
@@ -207,7 +208,7 @@ pub async fn patch(
 
     let counts = token_counts((*app).clone(), &messages, &context).await?;
 
-    transaction.commit().await.map_err(Error::internal)?;
+    transaction.commit().await?;
 
     Ok(Json(counts))
 }
@@ -215,9 +216,8 @@ pub async fn patch(
 pub async fn delete(app: Extension<Application>, Path(id): Path<String>) -> webserver::Result<()> {
     sqlx::query!("DELETE FROM studios WHERE id = ? RETURNING id", id)
         .fetch_optional(&*app.sql)
-        .await
-        .map_err(Error::internal)?
-        .ok_or_else(|| Error::new(ErrorKind::NotFound, "unknown code studio ID"))
+        .await?
+        .ok_or_else(|| Error::not_found("unknown code studio ID"))
         .map(|_| ())
 }
 
@@ -242,8 +242,7 @@ async fn token_counts(
                     .indexes
                     .file
                     .by_path(&file.repo, &file.path, file.branch.as_deref())
-                    .await
-                    .map_err(Error::internal)?
+                    .await?
                     .with_context(|| {
                         format!(
                             "file `{}` did not exist in repo `{}`, branch `{:?}`",
@@ -332,10 +331,9 @@ pub async fn generate(
     let (messages_json, context_json) =
         sqlx::query!("SELECT messages, context FROM studios WHERE id = ?", id)
             .fetch_optional(&*app.sql)
-            .await
-            .map_err(Error::internal)?
+            .await?
             .map(|row| (row.messages, row.context))
-            .ok_or_else(|| Error::new(ErrorKind::NotFound, "unknown code studio ID"))?;
+            .ok_or_else(|| Error::not_found("unknown code studio ID"))?;
 
     let mut messages =
         serde_json::from_str::<Vec<Message>>(&messages_json).map_err(Error::internal)?;
@@ -349,10 +347,7 @@ pub async fn generate(
         .chain(messages.iter().map(llm_gateway::api::Message::from))
         .collect::<Vec<_>>();
 
-    let tokens = llm_gateway
-        .chat(&llm_messages, None)
-        .await
-        .map_err(Error::internal)?;
+    let tokens = llm_gateway.chat(&llm_messages, None).await?;
 
     let stream = async_stream::try_stream! {
         pin_mut!(tokens);
@@ -449,6 +444,8 @@ async fn generate_llm_context(app: Application, context: Vec<ContextFile>) -> Re
 #[derive(serde::Deserialize)]
 pub struct Import {
     pub thread_id: Uuid,
+    /// An optional studio ID to import into.
+    pub studio_id: Option<Uuid>,
 }
 
 async fn extract_relevant_chunks(
@@ -489,16 +486,13 @@ async fn extract_relevant_chunks(
     ];
 
     // Call the LLM gateway
-    let response_stream = llm_gateway
-        .chat(&llm_messages, None)
-        .await
-        .map_err(Error::internal)?;
+    let response_stream = llm_gateway.chat(&llm_messages, None).await?;
 
     // Collect the response into a string
     let result = response_stream
         .try_collect()
         .await
-        .and_then(|json: String| serde_json::from_str(&json).map_err(|e| anyhow::Error::new(e)));
+        .and_then(|json: String| serde_json::from_str(&json).map_err(anyhow::Error::new));
 
     // Parse the response into a JSON list of paths
     let paths: Vec<String> = match result {
@@ -520,7 +514,7 @@ async fn extract_relevant_chunks(
     Ok(filtered_context)
 }
 
-/// Returns a new studio UUID.
+/// Returns a new studio UUID, or the `?studio_id=...` query param if present.
 pub async fn import(
     app: Extension<Application>,
     user: Extension<User>,
@@ -541,59 +535,90 @@ pub async fn import(
         thread_id,
     }
     .fetch_optional(&*app.sql)
-    .await
-    .map_err(Error::internal)?
-    .ok_or_else(|| Error::new(ErrorKind::NotFound, "conversation not found"))?;
+    .await?
+    .ok_or_else(|| Error::not_found("conversation not found"))?;
 
     let repo_ref = conversation.repo_ref;
     let exchanges = serde_json::from_str::<Vec<Exchange>>(&conversation.exchanges)
         .context("couldn't deserialize exchange list")?;
 
-    let context = exchanges
-        .iter()
-        .flat_map(|e| {
-            let mut range_map = HashMap::new();
+    let old_context: Vec<ContextFile> = if let Some(studio_id) = params.studio_id {
+        let studio_id = studio_id.to_string();
+        sqlx::query! {
+            "SELECT context FROM studios WHERE id = ?",
+            studio_id,
+        }
+        .fetch_optional(&*app.sql)
+        .await?
+        .ok_or_else(|| Error::not_found("conversation not found"))
+        .and_then(|r| serde_json::from_str(&r.context).map_err(Error::internal))?
+    } else {
+        Vec::new()
+    };
 
-            for c in &e.code_chunks {
-                range_map
-                    .entry(&c.path)
-                    .or_insert_with(Vec::new)
-                    .push(c.start_line..c.end_line + 1);
-            }
-
-            for ranges in range_map.values_mut() {
-                fold_ranges(ranges);
-            }
-
-            range_map.into_iter().map(|(path, ranges)| ContextFile {
-                path: path.clone(),
-                hidden: false,
-                repo: repo_ref.parse().unwrap(),
-                branch: e.query.branch().next().map(Cow::into_owned),
-                ranges,
-            })
+    let imported_context = canonicalize_context(exchanges.iter().flat_map(|e| {
+        e.code_chunks.iter().map(|c| ContextFile {
+            path: c.path.clone(),
+            hidden: false,
+            repo: repo_ref.parse().unwrap(),
+            branch: e.query.branch().next().map(Cow::into_owned),
+            ranges: vec![c.start_line..c.end_line + 1],
         })
-        .collect::<Vec<_>>();
+    }))
+    .collect::<Vec<_>>();
 
-    let filtered_context = extract_relevant_chunks((*app).clone(), &exchanges, &context).await?;
+    let filtered_context =
+        extract_relevant_chunks((*app).clone(), &exchanges, &imported_context).await?;
 
-    let filtered_context_json = serde_json::to_string(&filtered_context).unwrap();
+    let context =
+        canonicalize_context(filtered_context.into_iter().chain(old_context)).collect::<Vec<_>>();
+    let context_json = serde_json::to_string(&context).unwrap();
 
-    let studio_id = Uuid::new_v4();
-    let studio_id_str = studio_id.to_string();
+    if let Some(studio_id) = params.studio_id {
+        let studio_id_str = studio_id.to_string();
 
-    sqlx::query! {
-        "INSERT INTO studios (id, name, context, messages) VALUES (?, ?, ?, ?)",
-        studio_id_str,
-        conversation.title,
-        filtered_context_json,
-        "[]",
+        sqlx::query! {
+            "UPDATE studios SET context = ? WHERE id = ?",
+            context_json,
+            studio_id_str,
+        }
+        .execute(&*app.sql)
+        .await?;
+
+        Ok(studio_id_str)
+    } else {
+        let studio_id = Uuid::new_v4();
+        let studio_id_str = studio_id.to_string();
+
+        sqlx::query! {
+            "INSERT INTO studios (id, name, context, messages) VALUES (?, ?, ?, ?)",
+            studio_id_str,
+            conversation.title,
+            context_json,
+            "[]",
+        }
+        .execute(&*app.sql)
+        .await?;
+
+        Ok(studio_id_str)
     }
-    .execute(&*app.sql)
-    .await
-    .map_err(Error::internal)?;
+}
 
-    Ok(studio_id.to_string())
+fn canonicalize_context(
+    context: impl Iterator<Item = ContextFile>,
+) -> impl Iterator<Item = ContextFile> {
+    context
+        .fold(HashMap::new(), |mut map, file| {
+            let key = (file.path.clone(), file.branch.clone());
+            map.entry(key).or_insert_with(Vec::new).push(file);
+            map
+        })
+        .into_values()
+        .filter_map(|files| files.into_iter().reduce(ContextFile::merge))
+        .map(|mut c| {
+            fold_ranges(&mut c.ranges);
+            c
+        })
 }
 
 fn fold_ranges(ranges: &mut Vec<Range<usize>>) {
@@ -633,6 +658,7 @@ fn merge_ranges(a: &mut Range<usize>, b: Range<usize>) -> Option<Range<usize>> {
 
 #[cfg(test)]
 mod test {
+    use pretty_assertions::assert_eq;
     use rand::seq::SliceRandom;
 
     use super::*;
@@ -678,5 +704,54 @@ mod test {
         fold_ranges(&mut ranges);
 
         assert_eq!(ranges, [1..20, 24..35]);
+    }
+
+    #[test]
+    fn test_canonicalize_context() {
+        let context = [
+            ContextFile {
+                path: "README.md".to_owned(),
+                hidden: false,
+                repo: "github.com/BloopAI/bloop".parse().unwrap(),
+                branch: None,
+                ranges: vec![5..12, 40..50],
+            },
+            ContextFile {
+                path: "README.md".to_owned(),
+                hidden: false,
+                repo: "github.com/BloopAI/bloop".parse().unwrap(),
+                branch: None,
+                ranges: vec![0..10, 20..25],
+            },
+            ContextFile {
+                path: "server/bleep/src/main.rs".to_owned(),
+                hidden: true,
+                repo: "github.com/BloopAI/bloop".parse().unwrap(),
+                branch: None,
+                ranges: vec![50..60, 30..35, 25..32],
+            },
+        ];
+
+        let expected = [
+            ContextFile {
+                path: "README.md".to_owned(),
+                hidden: false,
+                repo: "github.com/BloopAI/bloop".parse().unwrap(),
+                branch: None,
+                ranges: vec![0..12, 20..25, 40..50],
+            },
+            ContextFile {
+                path: "server/bleep/src/main.rs".to_owned(),
+                hidden: true,
+                repo: "github.com/BloopAI/bloop".parse().unwrap(),
+                branch: None,
+                ranges: vec![25..35, 50..60],
+            },
+        ];
+
+        let mut output = canonicalize_context(context.into_iter()).collect::<Vec<_>>();
+        output.sort_by_key(|cf| cf.path.clone());
+
+        assert_eq!(&expected[..], &output);
     }
 }
