@@ -3,7 +3,6 @@ use crate::{webserver, Application};
 use axum::extract::{Extension, Json, Path};
 use chrono::NaiveDateTime;
 use serde::Deserialize;
-use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct Create {
@@ -15,18 +14,17 @@ pub async fn create(
     app: Extension<Application>,
     params: Json<Create>,
 ) -> webserver::Result<String> {
-    let id = Uuid::new_v4().to_string();
-
-    sqlx::query!(
+    let id = sqlx::query!(
         "INSERT INTO templates (name, content) VALUES (?, ?)",
         params.name,
         params.content
     )
     .execute(&*app.sql)
     .await
-    .map_err(Error::internal)?;
+    .map_err(Error::internal)?
+    .last_insert_rowid();
 
-    Ok(id)
+    Ok(id.to_string())
 }
 
 #[derive(serde::Serialize)]
