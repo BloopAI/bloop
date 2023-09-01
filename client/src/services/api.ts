@@ -7,6 +7,7 @@ import {
   HoverablesResponse,
   NLSearchResponse,
   SearchResponse,
+  StudioTemplateType,
   SuggestionsResponse,
   TokenInfoResponse,
 } from '../types/api';
@@ -304,3 +305,17 @@ export const getRelatedFileRanges = (
   http(`/related-files-with-ranges`, {
     params: { source_file_path, repo_ref, branch, related_file_path, kind },
   }).then((r) => r.data);
+
+export const getTemplates = (): Promise<StudioTemplateType[]> =>
+  http('/template').then((r) => r.data);
+export const patchTemplate = (
+  id: string,
+  data: {
+    name?: string;
+    content?: string;
+  },
+) => http.patch(`/template/${id}`, data).then((r) => r.data);
+export const deleteTemplate = (id: string): Promise<StudioTemplateType> =>
+  http.delete(`/template/${id}`).then((r) => r.data);
+export const postTemplate = (name: string, content: string) =>
+  http.post('/template', { name, content }).then((r) => r.data);

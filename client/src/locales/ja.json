@@ -330,5 +330,8 @@
 	"Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}": "ファイル {{filePath}} の目的を {{lineStart}} から {{lineEnd}} 行まで説明します。",
 	"Add context in a new Studio project or add it to an existing one.": "新しい Studio プロジェクトにコンテキストを追加するか、既存のプロジェクトにコンテキストを追加します。",
 	"Create new Studio Project with context": "コンテキストを使用して新しい Studio プロジェクトを作成する",
-	"Retry": "リトライ"
+	"Retry": "リトライ",
+	"Use template": "テンプレートを使用します",
+	"Save to templates": "テンプレートに保存します",
+	"Clear input": "入力をクリアします"
 }
