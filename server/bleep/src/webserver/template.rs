@@ -18,8 +18,7 @@ pub async fn create(
     let id = Uuid::new_v4().to_string();
 
     sqlx::query!(
-        "INSERT INTO templates (id, name, content) VALUES (?, ?, ?)",
-        id,
+        "INSERT INTO templates (name, content) VALUES (?, ?)",
         params.name,
         params.content
     )
@@ -32,7 +31,7 @@ pub async fn create(
 
 #[derive(serde::Serialize)]
 pub struct Template {
-    id: String,
+    id: i64,
     name: String,
     modified_at: NaiveDateTime,
     content: String,

@@ -16,7 +16,7 @@
         {
           "name": "id",
           "ordinal": 0,
-          "type_info": "Text"
+          "type_info": "Int64"
         },
         {
           "name": "name",
@@ -62,7 +62,7 @@
         {
           "name": "id",
           "ordinal": 0,
-          "type_info": "Text"
+          "type_info": "Int64"
         }
       ],
       "nullable": [
@@ -272,7 +272,7 @@
         {
           "name": "id",
           "ordinal": 0,
-          "type_info": "Text"
+          "type_info": "Int64"
         },
         {
           "name": "name",
@@ -312,6 +312,16 @@
     },
     "query": "UPDATE templates SET modified_at = datetime('now') WHERE id = ?"
   },
+  "69e7fcbe274e645ac8dece40ddad39b5f594731e4647a683f4537ede7e20b3d4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT INTO templates (name, content) VALUES (?, ?)"
+  },
   "757d0afca2629937d717f9d6fc02df5dada4412e7b09bfed57423aa9b5f07b40": {
     "describe": {
       "columns": [],
@@ -338,11 +348,11 @@
         {
           "name": "id",
           "ordinal": 0,
-          "type_info": "Text"
+          "type_info": "Int64"
         }
       ],
       "nullable": [
-        true
+        false
       ],
       "parameters": {
         "Right": 1
@@ -535,16 +545,6 @@
       }
     },
     "query": "SELECT title, repo_ref, exchanges\n         FROM conversations\n         WHERE user_id = ? AND thread_id = ?"
-  },
-  "dd36d3c21332fc378486815934808645a28ec828ab3464f23c9d26323660235f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 3
-      }
-    },
-    "query": "INSERT INTO templates (id, name, content) VALUES (?, ?, ?)"
   },
   "e444f39d4fc9219873c7a8565a13e65e4646658631b785431cb64ca0cc5d6ab9": {
     "describe": {
