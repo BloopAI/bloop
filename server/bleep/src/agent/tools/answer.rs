@@ -8,11 +8,13 @@ use tracing::{debug, info, instrument, trace};
 use crate::{
     agent::{
         exchange::{CodeChunk, FocusedChunk, Update},
-        prompts, transcoder, Agent, ANSWER_MODEL,
+        prompts, transcoder, Agent,
     },
     analytics::EventData,
     llm_gateway,
 };
+
+const ANSWER_MODEL: &str = "gpt-3.5-turbo-0613";
 
 impl Agent {
     #[instrument(skip(self))]
