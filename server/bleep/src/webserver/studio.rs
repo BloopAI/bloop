@@ -457,9 +457,9 @@ async fn token_counts(
 pub async fn generate(
     app: Extension<Application>,
     Extension(user): Extension<User>,
-    Path(id): Path<Uuid>,
+    Path(studio_id): Path<Uuid>,
 ) -> webserver::Result<Sse<Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>> {
-    let snapshot_id = latest_snapshot_id(id, &*app.sql).await?;
+    let snapshot_id = latest_snapshot_id(studio_id, &*app.sql).await?;
 
     let answer_api_token = app
         .answer_api_token()
@@ -488,7 +488,7 @@ pub async fn generate(
 
     app.track_studio(
         &user,
-        StudioEvent::new(id, "generate")
+        StudioEvent::new(studio_id, "generate")
             .with_payload("context", &context)
             .with_payload("messages", &messages),
     );
@@ -514,7 +514,7 @@ pub async fn generate(
 
         app.track_studio(
             &user,
-            StudioEvent::new(id, "generate_complete")
+            StudioEvent::new(studio_id, "generate_complete")
                 .with_payload("response", &response)
         );
 
@@ -840,6 +840,55 @@ fn merge_ranges(a: &mut Range<usize>, b: Range<usize>) -> Option<Range<usize>> {
     } else {
         Some(b)
     }
+}
+
+#[derive(serde::Serialize)]
+pub struct Snapshot {
+    id: i64,
+    modified_at: NaiveDateTime,
+    context: Vec<ContextFile>,
+    messages: Vec<Message>,
+}
+
+pub async fn list_snapshots(
+    app: Extension<Application>,
+    Path(studio_id): Path<Uuid>,
+) -> webserver::Result<Json<Vec<Snapshot>>> {
+    sqlx::query! {
+        "SELECT id as 'id!', modified_at, context, messages
+        FROM studio_snapshots
+        WHERE studio_id = ?
+        ORDER BY modified_at DESC",
+        studio_id,
+    }
+    .fetch(&*app.sql)
+    .map_err(Error::internal)
+    .and_then(|r| async move {
+        Ok(Snapshot {
+            id: r.id,
+            modified_at: r.modified_at,
+            context: serde_json::from_str(&r.context).context("failed to deserialize context")?,
+            messages: serde_json::from_str(&r.messages).context("failed to deserialize messages")?,
+        })
+    })
+    .try_collect::<Vec<_>>()
+    .await
+    .map(Json)
+}
+
+pub async fn delete_snapshot(
+    app: Extension<Application>,
+    Path((studio_id, snapshot_id)): Path<(Uuid, i64)>,
+) -> webserver::Result<()> {
+    sqlx::query! {
+        "DELETE FROM studio_snapshots WHERE studio_id = ? AND id = ? RETURNING id",
+        studio_id,
+        snapshot_id
+    }
+    .fetch_optional(&*app.sql)
+    .await?
+    .map(|_id| ())
+    .ok_or_else(|| Error::not_found("snapshot not found"))
 }
 
 #[cfg(test)]

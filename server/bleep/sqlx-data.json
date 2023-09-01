@@ -562,6 +562,24 @@
     },
     "query": "SELECT thread_id, created_at, title FROM conversations WHERE user_id = ? AND repo_ref = ? ORDER BY created_at DESC"
   },
+  "cdee6789dd26e6a7dcc7f9218d9b7307674408c1cae10c951324712af9e9858a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "DELETE FROM studio_snapshots WHERE studio_id = ? AND id = ? RETURNING id"
+  },
   "d2b52987aaa4bdc39c04254834c941cad2165eefd02eef46fda413822be91fd0": {
     "describe": {
       "columns": [
@@ -579,6 +597,42 @@
       }
     },
     "query": "SELECT messages FROM studio_snapshots WHERE id = ?"
+  },
+  "d3389a360f2b71adc8ca962d843738d724b48e84b22803692202631c78c066e5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id!",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 1,
+          "type_info": "Datetime"
+        },
+        {
+          "name": "context",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "messages",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT id as 'id!', modified_at, context, messages\n        FROM studio_snapshots\n        WHERE studio_id = ?\n        ORDER BY modified_at DESC"
   },
   "d5ee5becde7005920d7094fca5b7974bbf19713b3625fbf6d1a3e198e7cf4de4": {
     "describe": {
