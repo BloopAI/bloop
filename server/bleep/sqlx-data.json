@@ -212,24 +212,6 @@
     },
     "query": "DELETE FROM chunk_cache WHERE chunk_hash = ? AND file_hash = ?"
   },
-  "52b4b9dfaac3203b892b8c46a7659db3cebc2f98387005709e2e4480227be725": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int64"
-        }
-      ],
-      "nullable": [
-        true
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "SELECT id\n         FROM studio_snapshots\n         WHERE studio_id = ?\n         ORDER BY modified_at\n         LIMIT 1"
-  },
   "5776008bf71ba2a90bad43c66a6e622ad71a81e1751c00b62aafa70840997999": {
     "describe": {
       "columns": [],
@@ -319,6 +301,24 @@
       }
     },
     "query": "INSERT INTO templates (name, content) VALUES (?, ?)"
+  },
+  "877a7db4b5610a6e4bb45918d10870e8f345e6d194504d6a6f12857a1b5bd73e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT id\n         FROM studio_snapshots\n         WHERE studio_id = ?\n         ORDER BY modified_at DESC\n         LIMIT 1"
   },
   "8850cdae165c79f72e929c14de8b6ca67fd17dd745ca7fd62a0cd044f87f3e85": {
     "describe": {

@@ -193,7 +193,7 @@ where
         "SELECT id
          FROM studio_snapshots
          WHERE studio_id = ?
-         ORDER BY modified_at
+         ORDER BY modified_at DESC
          LIMIT 1",
         studio_id,
     }
