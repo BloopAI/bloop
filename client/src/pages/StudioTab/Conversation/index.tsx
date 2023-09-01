@@ -24,6 +24,7 @@ import { patchCodeStudio } from '../../../services/api';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { DeviceContext } from '../../../context/deviceContext';
 import useScrollToBottom from '../../../hooks/useScrollToBottom';
+import { StudioContext } from '../../../context/studioContext';
 import ConversationInput from './Input';
 
 type Props = {
@@ -31,6 +32,7 @@ type Props = {
   messages: CodeStudioMessageType[];
   studioId: string;
   refetchCodeStudio: () => Promise<void>;
+  isTokenLimitExceeded: boolean;
 };
 
 let eventSource: EventSource;
@@ -57,18 +59,21 @@ const Conversation = ({
   messages,
   studioId,
   refetchCodeStudio,
+  isTokenLimitExceeded,
 }: Props) => {
   const { t } = useTranslation();
+  const { inputValue } = useContext(StudioContext.Input);
+  const { setInputValue } = useContext(StudioContext.Setters);
   const [conversation, setConversation] = useState<StudioConversationMessage[]>(
     mapConversation(messages),
   );
-  const [input, setInputValue] = useState<StudioConversationMessage>({
-    author: StudioConversationMessageAuthor.USER,
-    message: '',
-  });
+  const [inputAuthor, setInputAuthor] = useState(
+    StudioConversationMessageAuthor.USER,
+  );
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const setInput = (value: StudioConversationMessage) => {
-    setInputValue(value);
+    setInputValue(value.message);
+    setInputAuthor(value.author);
     // Focus on the input
     if (inputRef.current) {
       inputRef.current.focus();
@@ -90,8 +95,8 @@ const Conversation = ({
       )
         .map((c) => ({ [c.author as 'User']: c.message }))
         .concat(
-          !newConversation && input.message
-            ? [{ [input.author as 'User']: input.message }]
+          !newConversation && inputValue
+            ? [{ [inputAuthor as 'User']: inputValue }]
             : [],
         );
       if (force) {
@@ -104,13 +109,13 @@ const Conversation = ({
         });
       }
     },
-    [conversation, input],
+    [conversation, inputValue, inputAuthor],
   );
 
   const onAuthorChange = useCallback(
     (author: StudioConversationMessageAuthor, i?: number) => {
       if (i === undefined) {
-        setInputValue((prev) => ({ ...prev, author }));
+        setInputAuthor(author);
       } else {
         setConversation((prev) => {
           const newConv = JSON.parse(JSON.stringify(prev));
@@ -125,7 +130,7 @@ const Conversation = ({
   const onMessageChange = useCallback(
     (message: string, i?: number) => {
       if (i === undefined) {
-        setInputValue((prev) => ({ ...prev, message }));
+        setInputValue(message);
       } else {
         setConversation((prev) => {
           const newConv = JSON.parse(JSON.stringify(prev));
@@ -139,7 +144,7 @@ const Conversation = ({
   );
 
   const onSubmit = useCallback(async () => {
-    if (!input.message) {
+    if (!inputValue) {
       return;
     }
     await saveConversation(true);
@@ -227,11 +232,10 @@ const Conversation = ({
         console.log('failed to parse response', err);
       }
     };
-  }, [studioId, conversation, input, saveConversation]);
+  }, [studioId, conversation, inputValue, saveConversation]);
 
   const onMessageRemoved = useCallback(
     async (i: number, andSubsequent?: boolean) => {
-      console.log('onMessageRemoved', i, andSubsequent, conversation[i]);
       if (andSubsequent) {
         // Set input to the message being removed
         setInput(conversation[i]);
@@ -287,17 +291,19 @@ const Conversation = ({
               onMessageChange={onMessageChange}
               onMessageRemoved={onMessageRemoved}
               i={i}
+              setLeftPanel={setLeftPanel}
             />
           ))}
           {!loading && (
             <ConversationInput
               key={'new'}
-              author={input.author}
-              message={input.message}
+              author={inputAuthor}
+              message={inputValue}
               onAuthorChange={onAuthorChange}
               onMessageChange={onMessageChange}
               scrollToBottom={scrollToBottom}
               inputRef={inputRef}
+              setLeftPanel={setLeftPanel}
             />
           )}
         </div>
@@ -325,16 +331,24 @@ const Conversation = ({
               <Trans>Clear conversation</Trans>
             </Button>
           </div>
-          <Button size="small" disabled={!input.message} onClick={onSubmit}>
+          <Button
+            size="small"
+            disabled={!inputValue || isTokenLimitExceeded}
+            onClick={onSubmit}
+          >
             <Trans>Generate</Trans>
             <div className="flex items-center gap-1 flex-shrink-0">
               <KeyboardChip
                 type="cmd"
-                variant={!input.message ? 'secondary' : 'primary'}
+                variant={
+                  !inputValue || isTokenLimitExceeded ? 'secondary' : 'primary'
+                }
               />
               <KeyboardChip
                 type="entr"
-                variant={!input.message ? 'secondary' : 'primary'}
+                variant={
+                  !inputValue || isTokenLimitExceeded ? 'secondary' : 'primary'
+                }
               />
             </div>
           </Button>
