@@ -64,6 +64,9 @@ pub struct File {
     /// list of branches in which this file can be found
     pub branches: Field,
 
+    /// list of branches in which this file can be found
+    pub indexed: Field,
+
     /// Whether this entry is a file or a directory
     pub is_directory: Field,
 }
@@ -106,6 +109,7 @@ impl File {
         let raw_relative_path = builder.add_bytes_field("raw_relative_path", FAST);
 
         let is_directory = builder.add_bool_field("is_directory", FAST);
+        let indexed = builder.add_bool_field("indexed", STORED);
 
         Self {
             repo_disk_path,
@@ -128,6 +132,7 @@ impl File {
             branches,
             is_directory,
             sql,
+            indexed,
 
             #[cfg(feature = "debug")]
             histogram: Arc::new(Histogram::builder().build().unwrap().into()),

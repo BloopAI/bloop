@@ -41,6 +41,7 @@ use crate::{
 
 struct Workload<'a> {
     cache: &'a FileCacheSnapshot<'a>,
+    file_filter: &'a FileFilter,
     repo_disk_path: &'a Path,
     repo_name: &'a str,
     repo_metadata: &'a RepoMetadata,
@@ -82,6 +83,7 @@ impl Indexable for File {
         writer: &IndexWriter,
         pipes: &SyncPipes,
     ) -> Result<()> {
+        let file_filter = FileFilter::compile(&repo.file_filter)?;
         let file_cache = Arc::new(FileCache::for_repo(
             &self.sql,
             self.semantic.as_ref(),
@@ -111,6 +113,7 @@ impl Indexable for File {
                     repo_disk_path: &repo.disk_path,
                     repo_ref: reporef.to_string(),
                     repo_name: &repo_name,
+                    file_filter: &file_filter,
                     relative_path,
                     normalized_path,
                     repo_metadata,
@@ -137,12 +140,11 @@ impl Indexable for File {
                 reporef,
                 &repo.disk_path,
                 repo.branch_filter.as_ref().map(Into::into),
-                &repo.file_filter,
             )?;
             let count = walker.len();
             walker.for_each(pipes, file_worker(count));
         } else {
-            let walker = FileWalker::index_directory(&repo.disk_path, &repo.file_filter);
+            let walker = FileWalker::index_directory(&repo.disk_path);
             let count = walker.len();
             walker.for_each(pipes, file_worker(count));
         };
@@ -611,25 +613,28 @@ impl RepoDir {
         let branches = self.branches.join("\n");
 
         doc!(
-                schema.raw_repo_name => repo_name.as_bytes(),
-                schema.raw_relative_path => relative_path_str.as_bytes(),
-                schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-                schema.relative_path => relative_path_str,
-                schema.repo_ref => repo_ref.as_str(),
-                schema.repo_name => *repo_name,
-                schema.last_commit_unix_seconds => last_commit,
-                schema.branches => branches,
-                schema.is_directory => true,
-                schema.unique_hash => cache_keys.tantivy(),
+            schema.raw_repo_name => repo_name.as_bytes(),
+            schema.raw_relative_path => relative_path_str.as_bytes(),
+            schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
+            schema.relative_path => relative_path_str,
+            schema.repo_ref => repo_ref.as_str(),
+            schema.repo_name => *repo_name,
+            schema.last_commit_unix_seconds => last_commit,
+            schema.branches => branches,
+            schema.is_directory => true,
+            schema.unique_hash => cache_keys.tantivy(),
 
-                // nulls
-                schema.raw_content => Vec::<u8>::default(),
-                schema.content => String::default(),
-                schema.line_end_indices => Vec::<u8>::default(),
-                schema.lang => Vec::<u8>::default(),
-                schema.avg_line_length => f64::default(),
-                schema.symbol_locations => bincode::serialize(&SymbolLocations::default()).unwrap(),
-                schema.symbols => String::default(),
+            // always indicate dirs as indexed
+            schema.indexed => true,
+
+            // nulls
+            schema.raw_content => Vec::<u8>::default(),
+            schema.content => String::default(),
+            schema.line_end_indices => Vec::<u8>::default(),
+            schema.lang => Vec::<u8>::default(),
+            schema.avg_line_length => f64::default(),
+            schema.symbol_locations => bincode::serialize(&SymbolLocations::default()).unwrap(),
+            schema.symbols => String::default(),
         )
     }
 }
@@ -651,6 +656,7 @@ impl RepoFile {
             repo_ref,
             repo_metadata,
             normalized_path,
+            file_filter,
             ..
         } = workload;
 
@@ -666,6 +672,33 @@ impl RepoFile {
                 warn!(?normalized_path, "Path not found in language map");
                 ""
             });
+
+        let indexed = file_filter
+            .is_allowed(relative_path)
+            .unwrap_or_else(|| should_index(relative_path));
+
+        if !indexed {
+            return Some(doc!(
+                schema.raw_content => vec![],
+                schema.content => "",
+                schema.line_end_indices => vec![],
+                schema.avg_line_length => 0f64,
+                schema.symbol_locations => vec![],
+                schema.symbols => vec![],
+                schema.raw_repo_name => repo_name.as_bytes(),
+                schema.raw_relative_path => relative_path_str.as_bytes(),
+                schema.unique_hash => cache_keys.tantivy(),
+                schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
+                schema.relative_path => relative_path_str,
+                schema.repo_ref => repo_ref.as_str(),
+                schema.repo_name => *repo_name,
+                schema.lang => lang_str.to_ascii_lowercase().as_bytes(),
+                schema.last_commit_unix_seconds => last_commit,
+                schema.branches => branches,
+                schema.is_directory => false,
+                schema.indexed => false,
+            ));
+        }
 
         let symbol_locations = {
             // build a syntax aware representation of the file
@@ -745,6 +778,7 @@ impl RepoFile {
             schema.symbols => symbols,
             schema.branches => branches,
             schema.is_directory => false,
+            schema.indexed => true,
         ))
     }
 }

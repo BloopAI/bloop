@@ -1,9 +1,6 @@
 use crate::repo::RepoRef;
 
-use super::{
-    filters::{BranchFilter, FileFilter},
-    *,
-};
+use super::{filters::BranchFilter, *};
 
 use anyhow::Result;
 use gix::ThreadSafeRepository;
@@ -29,11 +26,9 @@ impl GitWalker {
         reporef: &RepoRef,
         dir: impl AsRef<Path>,
         branch_filter: impl Into<Option<BranchFilter>>,
-        file_filter: impl Into<FileFilter>,
     ) -> Result<Self> {
         let root_dir = dir.as_ref();
 
-        let file_filter = file_filter.into();
         let branches = branch_filter.into().unwrap_or_default();
         let git = gix::open::Options::isolated()
             .filter_config_section(|_| false)
@@ -116,22 +111,18 @@ impl GitWalker {
             .flat_map(|(is_head, branch, tree)| {
                 let files = tree.traverse().breadthfirst.files().unwrap().into_iter();
 
-                files
-                    .map(move |entry| {
-                        let strpath = String::from_utf8_lossy(entry.filepath.as_ref());
-                        let full_path = root_dir.join(strpath.as_ref());
-                        trace!(?strpath, ?full_path, "got path from gix");
-                        (
-                            is_head,
-                            branch.clone(),
-                            full_path.to_string_lossy().to_string(),
-                            entry.mode,
-                            entry.oid,
-                        )
-                    })
-                    .filter(|(_, _, path, _, _)| {
-                        file_filter.is_allowed(path).unwrap_or(should_index(path))
-                    })
+                files.map(move |entry| {
+                    let strpath = String::from_utf8_lossy(entry.filepath.as_ref());
+                    let full_path = root_dir.join(strpath.as_ref());
+                    trace!(?strpath, ?full_path, "got path from gix");
+                    (
+                        is_head,
+                        branch.clone(),
+                        full_path.to_string_lossy().to_string(),
+                        entry.mode,
+                        entry.oid,
+                    )
+                })
             })
             .fold(
                 HashMap::new(),

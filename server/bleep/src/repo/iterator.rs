@@ -76,7 +76,7 @@ pub enum FileType {
     Other,
 }
 
-fn should_index<P: AsRef<Path> + ?Sized>(p: &P) -> bool {
+pub(crate) fn should_index<P: AsRef<Path> + ?Sized>(p: &P) -> bool {
     let path = p.as_ref();
 
     // TODO: Make this more robust

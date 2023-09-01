@@ -113,17 +113,17 @@ pub struct FileFilter {
 }
 
 impl FileFilter {
-    pub fn compile(config: FileFilterConfig) -> anyhow::Result<Self> {
+    pub fn compile(config: &FileFilterConfig) -> anyhow::Result<Self> {
         let mut exclude_list = HashSet::new();
         let mut include_list = HashSet::new();
         let mut exclude_patterns = HashSet::new();
         let mut include_patterns = HashSet::new();
 
-        for rule in config.rules {
+        for rule in &config.rules {
             match rule {
-                FileFilterRule::IncludeFile(name) => include_list.insert(name),
+                FileFilterRule::IncludeFile(name) => include_list.insert(name.to_string()),
                 FileFilterRule::IncludeRegex(pattern) => include_patterns.insert(pattern),
-                FileFilterRule::ExcludeFile(name) => exclude_list.insert(name),
+                FileFilterRule::ExcludeFile(name) => exclude_list.insert(name.to_string()),
                 FileFilterRule::ExcludeRegex(pattern) => exclude_patterns.insert(pattern),
             };
         }
@@ -151,11 +151,5 @@ impl FileFilter {
         } else {
             None
         }
-    }
-}
-
-impl From<&FileFilterConfig> for FileFilter {
-    fn from(config: &FileFilterConfig) -> Self {
-        Self::compile(config.clone()).unwrap()
     }
 }
