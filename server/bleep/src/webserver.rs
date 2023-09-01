@@ -26,6 +26,7 @@ mod query;
 pub mod repos;
 mod search;
 mod studio;
+mod template;
 
 pub type Router<S = Application> = axum::Router<S>;
 
@@ -82,7 +83,15 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             get(studio::get).patch(studio::patch).delete(studio::delete),
         )
         .route("/studio/:id/generate", get(studio::generate))
-        .route("/studio/import", post(studio::import));
+        .route("/studio/import", post(studio::import))
+        .route("/template", post(template::create))
+        .route("/template", get(template::list))
+        .route(
+            "/template/:id",
+            get(template::get)
+                .patch(template::patch)
+                .delete(template::delete),
+        );
 
     if app.env.allow(Feature::AnyPathScan) {
         api = api.route("/repos/scan", get(repos::scan_local));
