@@ -26,7 +26,6 @@ type Props = {
   setAddContextOpen: Dispatch<SetStateAction<boolean>>;
   studioId: string;
   contextFiles: StudioContextFile[];
-  tokensTotal: number;
   tokensPerFile: number[];
   onFileRemove: (
     f:
@@ -57,15 +56,13 @@ type FileList = {
 const ContextPanel = ({
   setLeftPanel,
   setAddContextOpen,
-  studioId,
   contextFiles,
-  tokensTotal,
   tokensPerFile,
   onFileRemove,
   onFileHide,
   onFileAdded,
 }: Props) => {
-  const { t } = useTranslation();
+  useTranslation();
   const { repositories } = useContext(RepositoriesContext);
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
@@ -119,10 +116,6 @@ const ContextPanel = ({
         <div className="flex gap-1.5 items-center text-bg-border-hover select-none">
           <p className="body-s text-label-title">
             <Trans>Context files</Trans>
-          </p>
-          <TokensUsageProgress percent={(tokensTotal / 7000) * 100} />
-          <p className="caption text-label-base">
-            {t('# of #', { count: tokensTotal, total: '7000' })}
           </p>
         </div>
         <Button size="small" onClick={handlePopupOpen}>
