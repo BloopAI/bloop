@@ -8,6 +8,7 @@ use axum::{
 };
 use chrono::NaiveDateTime;
 use futures::{pin_mut, stream, StreamExt, TryStreamExt};
+use rayon::prelude::*;
 use reqwest::StatusCode;
 use secrecy::ExposeSecret;
 use tracing::error;
@@ -234,10 +235,14 @@ async fn token_counts(
     context: &[ContextFile],
 ) -> webserver::Result<TokenCounts> {
     let per_file = stream::iter(context)
-        .then(|file| {
+        .map(|file| {
             let app = app.clone();
 
             async move {
+                if file.hidden {
+                    return Ok::<_, Error>(None);
+                }
+
                 let doc = app
                     .indexes
                     .file
@@ -251,35 +256,44 @@ async fn token_counts(
                         )
                     })?;
 
-                if file.hidden {
-                    return Ok(0);
-                }
-
-                let mut token_count = 0;
-                let core_bpe = tiktoken_rs::get_bpe_from_model(LLM_GATEWAY_MODEL).unwrap();
-
-                if file.ranges.is_empty() {
-                    token_count = core_bpe.encode_ordinary(&doc.content).len();
-                } else {
-                    let lines = doc.content.lines().collect::<Vec<_>>();
-                    for range in &file.ranges {
-                        let chunk = lines
-                            .iter()
-                            .copied()
-                            .skip(range.start)
-                            .take(range.end - range.start)
-                            .collect::<Vec<_>>()
-                            .join("\n");
-
-                        token_count += core_bpe.encode_ordinary(&chunk).len();
-                    }
-                }
-
-                Ok::<_, Error>(token_count)
+                Ok(Some((file, doc.content)))
             }
         })
+        // We need to box here, to avoid a higher-ranked lifetime error.
+        .boxed()
+        .buffered(16)
         .try_collect::<Vec<_>>()
-        .await?;
+        .await?
+        .into_par_iter()
+        .map(|data: Option<(&ContextFile, String)>| {
+            let (file, body) = match data {
+                Some(t) => t,
+                None => return 0,
+            };
+
+            let mut token_count = 0;
+            let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
+
+            if file.ranges.is_empty() {
+                token_count = core_bpe.encode_ordinary(&body).len();
+            } else {
+                let lines = body.lines().collect::<Vec<_>>();
+                for range in &file.ranges {
+                    let chunk = lines
+                        .iter()
+                        .copied()
+                        .skip(range.start)
+                        .take(range.end - range.start)
+                        .collect::<Vec<_>>()
+                        .join("\n");
+
+                    token_count += core_bpe.encode_ordinary(&chunk).len();
+                }
+            }
+
+            token_count
+        })
+        .collect::<Vec<_>>();
 
     let empty_system_message = tiktoken_rs::ChatCompletionRequestMessage {
         role: "system".to_owned(),
