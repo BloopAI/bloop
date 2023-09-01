@@ -23,14 +23,16 @@ impl RemoteEmbedder {
     }
 
     async fn make_request(&self, request: ServerRequest<'_>) -> anyhow::Result<ServerResponse> {
-        Ok(self
-            .session
-            .post(self.url.clone())
-            .json(&request)
-            .send()
-            .await?
-            .json()
-            .await?)
+        Ok(rmp_serde::from_slice(
+            &self
+                .session
+                .post(self.url.clone())
+                .body(rmp_serde::to_vec(&request)?)
+                .send()
+                .await?
+                .bytes()
+                .await?,
+        )?)
     }
 }
 
