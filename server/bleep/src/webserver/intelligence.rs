@@ -220,9 +220,15 @@ pub(super) struct WithRangesRequest {
     kind: RelatedFileKind,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 pub(super) struct WithRangesResponse {
     ranges: Vec<TextRange>,
+}
+
+impl WithRangesResponse {
+    fn empty() -> Self {
+        Self::default()
+    }
 }
 
 impl super::ApiResponse for WithRangesResponse {}
@@ -261,13 +267,7 @@ pub(super) async fn related_file_with_ranges(
                     .collect(),
             }))
         }
-        RelatedFileKind::Importing => {
-            return Ok(json(WithRangesResponse {
-                ranges: code_navigation::importing_ranges(&source_document, &related_file_document)
-                    .into_iter()
-                    .collect(),
-            }))
-        }
+        RelatedFileKind::Importing => return Ok(json(WithRangesResponse::empty())),
     }
 }
 
