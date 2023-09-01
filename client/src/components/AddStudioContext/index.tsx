@@ -92,6 +92,17 @@ const AddStudioContext = ({ filePath, threadId, name }: Props) => {
             exising.length ? ` #${Number.isNaN(lastNum) ? 1 : lastNum + 1}` : ''
           }`;
           const id = await postCodeStudio(name);
+          await patchCodeStudio(id, {
+            context: [
+              {
+                path: filePath,
+                repo: tab.repoRef,
+                branch: selectedBranch,
+                ranges: [],
+                hidden: false,
+              },
+            ],
+          });
           handleAddStudioTab(name, id);
           refetchStudios();
         }
