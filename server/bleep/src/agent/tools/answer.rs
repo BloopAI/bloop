@@ -19,7 +19,7 @@ const ANSWER_MODEL: &str = "gpt-3.5-turbo-0613";
 impl Agent {
     #[instrument(skip(self))]
     pub async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
-        const ANSWER_HEADROOM: usize = 1024; // the number of tokens reserved for the answer
+        const ANSWER_HEADROOM: usize = 512; // the number of tokens reserved for the answer
 
         debug!("creating article response");
 
@@ -138,7 +138,7 @@ impl Agent {
         // Sometimes, there are just too many code chunks in the context, and deduplication still
         // doesn't trim enough chunks. So, we enforce a hard limit here that stops adding tokens
         // early if we reach a heuristic limit.
-        const PROMPT_HEADROOM: usize = 2500;
+        const PROMPT_HEADROOM: usize = 1250;
         let bpe = tiktoken_rs::get_bpe_from_model(gpt_model)?;
         let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens(gpt_model, &s)?;
 
