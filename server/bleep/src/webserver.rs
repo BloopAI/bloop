@@ -209,6 +209,16 @@ impl Error {
         }
     }
 
+    fn not_found<S: std::fmt::Display>(message: S) -> Self {
+        Error {
+            status: StatusCode::NOT_FOUND,
+            body: EndpointError {
+                kind: ErrorKind::NotFound,
+                message: message.to_string().into(),
+            },
+        }
+    }
+
     fn message(&self) -> &str {
         self.body.message.as_ref()
     }
@@ -216,7 +226,13 @@ impl Error {
 
 impl From<anyhow::Error> for Error {
     fn from(value: anyhow::Error) -> Self {
-        Error::internal(value.to_string())
+        Error::internal(value)
+    }
+}
+
+impl From<sqlx::Error> for Error {
+    fn from(value: sqlx::Error) -> Self {
+        Error::internal(value)
     }
 }
 
