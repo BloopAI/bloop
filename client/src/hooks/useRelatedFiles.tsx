@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ContextMenuItem } from '../components/ContextMenu';
 import {
@@ -9,6 +9,7 @@ import {
 import FileIcon from '../components/FileIcon';
 import { getRelatedFileRanges } from '../services/api';
 import Tooltip from '../components/Tooltip';
+import { mergeRanges } from '../utils';
 
 const useRelatedFiles = (
   selectedFiles: StudioContextFile[],
@@ -24,6 +25,35 @@ const useRelatedFiles = (
 ) => {
   const { t } = useTranslation();
   const [items, setItems] = useState<ContextMenuItem[]>([]);
+
+  const onChange = useCallback(
+    async (path: string, kind: 'Imported' | 'Importing', b: boolean) => {
+      if (b) {
+        const resp = await getRelatedFileRanges(
+          repoRef,
+          branch ? branch : undefined,
+          filePath,
+          path,
+          kind,
+        );
+        onFileAdded(
+          path,
+          mergeRanges(
+            resp?.ranges?.map((r) => [r.start.line, r.end.line + 1]),
+          ).map(
+            (r) =>
+              ({
+                start: r[0],
+                end: r[1],
+              }) || [],
+          ),
+        );
+      } else {
+        onFileRemove(path);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     const imported = relatedFiles
@@ -51,26 +81,7 @@ const useRelatedFiles = (
               f.path
             ),
           isSelected: !!selectedFiles.find((s) => s.path === f.path),
-          onChange: async (b: boolean) => {
-            if (b) {
-              const resp = await getRelatedFileRanges(
-                repoRef,
-                branch ? branch : undefined,
-                filePath,
-                f.path,
-                'Imported',
-              );
-              onFileAdded(
-                f.path,
-                resp?.ranges?.map((r) => ({
-                  start: r.start.line,
-                  end: r.end.line + 1,
-                })) || [],
-              );
-            } else {
-              onFileRemove(f.path);
-            }
-          },
+          onChange: (b: boolean) => onChange(f.path, 'Imported', b),
         })),
       );
     }
@@ -92,26 +103,7 @@ const useRelatedFiles = (
               f.path
             ),
           isSelected: !!selectedFiles.find((s) => s.path === f.path),
-          onChange: async (b: boolean) => {
-            if (b) {
-              const resp = await getRelatedFileRanges(
-                repoRef,
-                branch ? branch : undefined,
-                filePath,
-                f.path,
-                'Importing',
-              );
-              onFileAdded(
-                f.path,
-                resp?.ranges?.map((r) => ({
-                  start: r.start.line,
-                  end: r.end.line + 1,
-                })) || [],
-              );
-            } else {
-              onFileRemove(f.path);
-            }
-          },
+          onChange: (b: boolean) => onChange(f.path, 'Importing', b),
         })),
       );
     }
