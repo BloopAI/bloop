@@ -281,10 +281,11 @@ impl Indexer<File> {
         let reader = self.reader.read().await;
         let searcher = reader.searcher();
         let file_source = &self.source;
-        let repo_ref_term = Some(Box::new(TermQuery::new(
+
+        let repo_ref_term = Box::new(TermQuery::new(
             Term::from_field_text(self.source.repo_ref, &repo_ref.to_string()),
             IndexRecordOption::Basic,
-        )) as Box<dyn Query>);
+        ));
         let branch_term = branch
             .map(|b| {
                 trigrams(b)
@@ -295,16 +296,34 @@ impl Indexer<File> {
                     .collect::<Vec<_>>()
             })
             .map(BooleanQuery::intersection)
-            .map(Box::new)
-            .map(|t| t as Box<dyn Query>);
+            .map(Box::new);
+        let search_terms = trigrams(query_str)
+            .flat_map(|s| case_permutations(s.as_str()))
+            .map(|token| Term::from_field_text(self.source.relative_path, token.as_str()))
+            .map(|term| {
+                BooleanQuery::intersection(
+                    [
+                        Some(Box::new(TermQuery::new(term, IndexRecordOption::Basic))
+                            as Box<dyn Query>),
+                        Some(Box::clone(&repo_ref_term) as Box<dyn Query>),
+                        branch_term
+                            .as_ref()
+                            .map(Box::clone)
+                            .map(|t| t as Box<dyn Query>),
+                    ]
+                    .into_iter()
+                    .flatten()
+                    .collect(),
+                )
+            })
+            .map(|t| Box::new(t) as Box<dyn Query>)
+            .collect::<Vec<_>>();
 
         let matcher = fuzzy_matcher::skim::SkimMatcherV2::default();
 
         let mut results = searcher
             .search(
-                &BooleanQuery::intersection(
-                    [repo_ref_term, branch_term].into_iter().flatten().collect(),
-                ),
+                &BooleanQuery::union(search_terms),
                 &TopDocs::with_limit(50_000),
             )
             .expect("failed to search index")
