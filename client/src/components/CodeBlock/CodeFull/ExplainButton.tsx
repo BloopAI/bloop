@@ -45,7 +45,7 @@ const ExplainButton = ({
   return (
     <PortalContainer>
       <AnimatePresence>
-        {popupPosition && (
+        {popupPosition && currentSelection?.length === 2 && (
           <motion.div
             className="fixed z-[120]"
             style={popupPosition}
@@ -74,9 +74,7 @@ const ExplainButton = ({
                         const url = new URL(window.location.href);
                         url.searchParams.set(
                           'scrollToLine',
-                          `${currentSelection[0]![0]}_${
-                            currentSelection[1]![0]
-                          }`,
+                          `${currentSelection[0][0]}_${currentSelection[1][0]}`,
                         );
                         copyToClipboard(url.toString());
                         closePopup?.();
@@ -98,8 +96,8 @@ const ExplainButton = ({
                       setThreadId('');
                       setConversation([]);
                       setSelectedLines([
-                        currentSelection[0]![0],
-                        currentSelection[1]![0],
+                        currentSelection[0][0],
+                        currentSelection[1][0],
                       ]);
                       closePopup?.();
                       setTimeout(
@@ -121,13 +119,13 @@ const ExplainButton = ({
                       setConversation([]);
                       setThreadId('');
                       setSelectedLines([
-                        currentSelection[0]![0],
-                        currentSelection[1]![0],
+                        currentSelection[0][0],
+                        currentSelection[1][0],
                       ]);
                       setRightPanelOpen(false);
                       setSubmittedQuery(
-                        `#explain_${relativePath}:${currentSelection[0]![0]}-${
-                          currentSelection[1]![0]
+                        `#explain_${relativePath}:${currentSelection[0][0]}-${
+                          currentSelection[1][0]
                         }-${Date.now()}`,
                       );
                       setChatOpen(true);
