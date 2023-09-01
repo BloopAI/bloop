@@ -63,6 +63,7 @@ spec:
           - --answer-api-url={{ .Values.bloop.answerApiUrl }}
           - --qdrant-url={{ .Values.qdrant.url }}
           - --embedding-server-url={{ .Values.bloop.embeddingServerUrl }}:8080
+          - --embedding-batch-size={{ .Values.bloop.embeddingBatchSize }}
           - --instance-domain={{ .Values.bloop.instanceDomain }}
           - --github-app-id={{ .Values.bloop.githubAppId }}
           - --github-app-install-id={{ .Values.bloop.githubAppInstallId }}
