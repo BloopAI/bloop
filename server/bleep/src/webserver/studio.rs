@@ -65,13 +65,15 @@ pub async fn list(app: Extension<Application>) -> webserver::Result<Json<Vec<Lis
     let mut list_items = Vec::new();
 
     for studio in studios {
-        let context_json: String = sqlx::query!("SELECT context FROM studios WHERE id = ?", studio.id)
-            .fetch_one(&*app.sql)
-            .await
-            .map_err(Error::internal)?
-            .context;
+        let context_json: String =
+            sqlx::query!("SELECT context FROM studios WHERE id = ?", studio.id)
+                .fetch_one(&*app.sql)
+                .await
+                .map_err(Error::internal)?
+                .context;
 
-        let context: Vec<ContextFile> = serde_json::from_str(&context_json).map_err(Error::internal)?;
+        let context: Vec<ContextFile> =
+            serde_json::from_str(&context_json).map_err(Error::internal)?;
 
         let mut repos: Vec<String> = context.iter().map(|file| file.repo.name.clone()).collect();
         repos.sort();
@@ -83,7 +85,11 @@ pub async fn list(app: Extension<Application>) -> webserver::Result<Json<Vec<Lis
             let tokens = token_counts((*app).clone(), &[], &[file.clone()]).await?;
             *ext_tokens.entry(ext.to_string()).or_insert(0) += tokens.total;
         }
-        let most_common_ext = ext_tokens.into_iter().max_by_key(|(_, tokens)| *tokens).map(|(ext, _)| ext).unwrap_or_default();
+        let most_common_ext = ext_tokens
+            .into_iter()
+            .max_by_key(|(_, tokens)| *tokens)
+            .map(|(ext, _)| ext)
+            .unwrap_or_default();
 
         let list_item = ListItem {
             id: studio.id,
