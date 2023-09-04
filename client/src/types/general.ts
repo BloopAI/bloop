@@ -84,6 +84,8 @@ export type CodeStudioShortType = {
   id: string;
   name: string;
   modified_at: string;
+  repos: string[];
+  most_common_ext: string;
 };
 
 export enum FullResultModeEnum {
