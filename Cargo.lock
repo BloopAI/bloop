@@ -6522,6 +6522,7 @@ dependencies = [
  "thiserror",
  "tokio-stream",
  "url",
+ "uuid",
  "webpki-roots 0.22.6",
 ]
 
