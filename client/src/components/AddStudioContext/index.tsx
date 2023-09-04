@@ -107,8 +107,15 @@ const AddStudioContext = ({ filePath, threadId, name }: Props) => {
           refetchStudios();
         }
       } else if (threadId) {
-        const id = await importCodeStudio(threadId);
-        handleAddStudioTab(name, id);
+        const id = await importCodeStudio(threadId, studioId);
+        let tabName = name;
+        if (studioId) {
+          const studio = studios.find((s) => s.id === studioId);
+          if (studio?.name) {
+            tabName = studio.name;
+          }
+        }
+        handleAddStudioTab(tabName, id);
         refetchStudios();
       }
       setIsSubmitting(false);
