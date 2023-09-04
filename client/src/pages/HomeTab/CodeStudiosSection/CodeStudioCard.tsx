@@ -15,15 +15,23 @@ import { LocaleContext } from '../../../context/localeContext';
 import { TabsContext } from '../../../context/tabsContext';
 import { ContextMenuItem } from '../../../components/ContextMenu';
 import { deleteCodeStudio } from '../../../services/api';
+import FileIcon from '../../../components/FileIcon';
 
 type Props = {
   modified_at: string;
   name: string;
   id: string;
   refetchStudios: () => void;
+  most_common_ext: string;
 };
 
-const CodeStudioCard = ({ name, modified_at, id, refetchStudios }: Props) => {
+const CodeStudioCard = ({
+  name,
+  modified_at,
+  id,
+  refetchStudios,
+  most_common_ext,
+}: Props) => {
   const { t } = useTranslation();
   const { locale } = useContext(LocaleContext);
   const { handleAddStudioTab, handleRemoveTab } = useContext(TabsContext);
@@ -63,10 +71,20 @@ const CodeStudioCard = ({ name, modified_at, id, refetchStudios }: Props) => {
     >
       <div className="flex justify-between items-start">
         <div className="flex items-start gap-4">
-          <span className="h-11 w-11 flex-shrink-0 flex items-center justify-center rounded-md bg-studio text-label-control">
-            <CodeStudioIcon raw sizeClassName="h-4 w-4" />
+          <span
+            className={`h-11 w-11 flex-shrink-0 flex items-center justify-center rounded-md ${
+              most_common_ext ? 'bg-bg-shade' : 'bg-studio'
+            } text-label-control`}
+          >
+            {most_common_ext ? (
+              <FileIcon filename={`index.${most_common_ext}`} noMargin />
+            ) : (
+              <CodeStudioIcon raw sizeClassName="h-4 w-4" />
+            )}
           </span>
-          <p className="break-all text-label-title pt-0.5">{name}</p>
+          <div className="min-h-[2.75rem] flex items-center">
+            <p className="break-all text-label-title -mt-1">{name}</p>
+          </div>
         </div>
         <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all duration-150">
           <Dropdown
