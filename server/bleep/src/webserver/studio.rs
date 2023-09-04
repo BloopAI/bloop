@@ -38,15 +38,22 @@ pub struct Create {
 
 pub async fn create(
     app: Extension<Application>,
+    user: Extension<User>,
     params: Json<Create>,
 ) -> webserver::Result<String> {
     let studio_id = Uuid::new_v4();
 
     let mut transaction = app.sql.begin().await?;
 
+    let user_id = user
+        .login()
+        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .to_string();
+
     sqlx::query! {
-        "INSERT INTO studios (id, name) VALUES (?, ?)",
+        "INSERT INTO studios (id, user_id, name) VALUES (?, ?, ?)",
         studio_id,
+        user_id,
         params.name,
     }
     .execute(&mut transaction)
@@ -76,24 +83,32 @@ pub struct ListItem {
     most_common_ext: String,
 }
 
-pub async fn list(app: Extension<Application>) -> webserver::Result<Json<Vec<ListItem>>> {
-    let studios =
-        sqlx::query!(
-            "SELECT
-                s.id as \"id: Uuid\",
-                s.name,
-                ss.modified_at as \"modified_at!\",
-                ss.context
-            FROM studios s
-            INNER JOIN studio_snapshots ss ON s.id = ss.studio_id
-            WHERE (ss.studio_id, ss.modified_at) IN (
-                SELECT studio_id, MAX(modified_at)
-                FROM studio_snapshots
-                GROUP BY studio_id
-            )"
-        )
-        .fetch_all(&*app.sql)
-        .await?;
+pub async fn list(
+    app: Extension<Application>,
+    user: Extension<User>,
+) -> webserver::Result<Json<Vec<ListItem>>> {
+    let user_id = user
+        .login()
+        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .to_string();
+
+    let studios = sqlx::query!(
+        "SELECT
+            s.id as \"id: Uuid\",
+            s.name,
+            ss.modified_at as \"modified_at!\",
+            ss.context
+        FROM studios s
+        INNER JOIN studio_snapshots ss ON s.id = ss.studio_id
+        WHERE s.user_id = ? AND (ss.studio_id, ss.modified_at) IN (
+            SELECT studio_id, MAX(modified_at)
+            FROM studio_snapshots
+            GROUP BY studio_id
+        )",
+        user_id,
+    )
+    .fetch_all(&*app.sql)
+    .await?;
 
     let mut list_items = Vec::new();
 
@@ -116,11 +131,7 @@ pub async fn list(app: Extension<Application>) -> webserver::Result<Json<Vec<Lis
                 *tokens_by_ext.entry(extension).or_insert(0) += count;
                 tokens_by_ext
             });
-        // for file in &context {
-        //     let ext = file.path.split('.').last().unwrap_or("");
-        //     let tokens = token_counts((*app).clone(), &[], &[file.clone()]).await?;
-        //     *ext_tokens.entry(ext.to_string()).or_insert(0) += tokens.total;
-        // }
+
         let most_common_ext = ext_tokens
             .into_iter()
             .max_by_key(|(_, tokens)| *tokens)
@@ -185,16 +196,22 @@ impl From<&Message> for llm_gateway::api::Message {
     }
 }
 
-async fn latest_snapshot_id<'a, E>(studio_id: Uuid, exec: E) -> webserver::Result<i64>
+async fn latest_snapshot_id<'a, E>(
+    studio_id: Uuid,
+    exec: E,
+    user_id: &str,
+) -> webserver::Result<i64>
 where
     E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
 {
     sqlx::query! {
-        "SELECT id
-         FROM studio_snapshots
-         WHERE studio_id = ?
-         ORDER BY modified_at DESC
-         LIMIT 1",
+        "SELECT ss.id
+        FROM studio_snapshots ss
+        JOIN studios s ON s.id = ss.id AND s.user_id = ?
+        WHERE ss.studio_id = ?
+        ORDER BY ss.modified_at DESC
+        LIMIT 1",
+        user_id,
         studio_id,
     }
     .fetch_optional(exec)
@@ -210,21 +227,28 @@ pub struct Get {
 
 pub async fn get(
     app: Extension<Application>,
+    user: Extension<User>,
     Path(id): Path<Uuid>,
     Query(params): Query<Get>,
 ) -> webserver::Result<Json<Studio>> {
+    let user_id = user
+        .login()
+        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .to_string();
+
     let snapshot_id = match params.snapshot_id {
         Some(id) => id,
-        None => latest_snapshot_id(id, &*app.sql).await?,
+        None => latest_snapshot_id(id, &*app.sql, &user_id).await?,
     };
 
     let row = sqlx::query! {
         "SELECT s.id, s.name, ss.context, ss.messages, ss.modified_at
-         FROM studios s
-         INNER JOIN studio_snapshots ss ON ss.id = ?
-         WHERE s.id = ?",
+        FROM studios s
+        INNER JOIN studio_snapshots ss ON ss.id = ?
+        WHERE s.id = ? AND s.user_id = ?",
         snapshot_id,
-        id
+        id,
+        user_id,
     }
     .fetch_optional(&*app.sql)
     .await?
@@ -255,21 +279,31 @@ pub struct Patch {
 
 pub async fn patch(
     app: Extension<Application>,
+    user: Extension<User>,
     Path(studio_id): Path<Uuid>,
     Json(patch): Json<Patch>,
 ) -> webserver::Result<Json<TokenCounts>> {
+    let user_id = user
+        .login()
+        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .to_string();
+
     let mut transaction = app.sql.begin().await?;
 
     let snapshot_id = match patch.snapshot_id {
         Some(id) => id,
-        None => latest_snapshot_id(studio_id, &mut transaction).await?,
+        None => latest_snapshot_id(studio_id, &mut transaction, &user_id).await?,
     };
 
     // Ensure the ID is valid first.
-    sqlx::query!("SELECT id FROM studios WHERE id = ?", studio_id)
-        .fetch_optional(&mut transaction)
-        .await?
-        .ok_or_else(|| Error::not_found("unknown code studio ID"))?;
+    sqlx::query!(
+        "SELECT id FROM studios WHERE id = ? AND user_id = ?",
+        studio_id,
+        user_id
+    )
+    .fetch_optional(&mut transaction)
+    .await?
+    .ok_or_else(|| Error::not_found("unknown code studio ID"))?;
 
     if let Some(name) = patch.name {
         sqlx::query!("UPDATE studios SET name = ? WHERE id = ?", name, studio_id)
@@ -340,12 +374,25 @@ pub async fn patch(
     Ok(Json(counts))
 }
 
-pub async fn delete(app: Extension<Application>, Path(id): Path<Uuid>) -> webserver::Result<()> {
-    sqlx::query!("DELETE FROM studios WHERE id = ? RETURNING id", id)
-        .fetch_optional(&*app.sql)
-        .await?
-        .ok_or_else(|| Error::not_found("unknown code studio ID"))
-        .map(|_| ())
+pub async fn delete(
+    app: Extension<Application>,
+    user: Extension<User>,
+    Path(id): Path<Uuid>,
+) -> webserver::Result<()> {
+    let user_id = user
+        .login()
+        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .to_string();
+
+    sqlx::query!(
+        "DELETE FROM studios WHERE id = ? AND user_id = ? RETURNING id",
+        id,
+        user_id
+    )
+    .fetch_optional(&*app.sql)
+    .await?
+    .ok_or_else(|| Error::not_found("unknown code studio ID"))
+    .map(|_| ())
 }
 
 #[derive(serde::Serialize)]
@@ -459,7 +506,12 @@ pub async fn generate(
     Extension(user): Extension<User>,
     Path(studio_id): Path<Uuid>,
 ) -> webserver::Result<Sse<Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>> {
-    let snapshot_id = latest_snapshot_id(studio_id, &*app.sql).await?;
+    let user_id = user
+        .login()
+        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .to_string();
+
+    let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
 
     let answer_api_token = app
         .answer_api_token()
@@ -473,7 +525,7 @@ pub async fn generate(
 
     let (messages_json, context_json) = sqlx::query!(
         "SELECT messages, context FROM studio_snapshots WHERE id = ?",
-        snapshot_id
+        snapshot_id,
     )
     .fetch_optional(&*app.sql)
     .await?
@@ -697,8 +749,8 @@ pub async fn import(
 
     let conversation = sqlx::query! {
         "SELECT title, repo_ref, exchanges
-         FROM conversations
-         WHERE user_id = ? AND thread_id = ?",
+        FROM conversations
+        WHERE user_id = ? AND thread_id = ?",
         user_id,
         thread_id,
     }
@@ -712,7 +764,7 @@ pub async fn import(
 
     let snapshot_id = match params.studio_id {
         None => None,
-        Some(studio_id) => Some(latest_snapshot_id(studio_id, &mut transaction).await?),
+        Some(studio_id) => Some(latest_snapshot_id(studio_id, &mut transaction, &user_id).await?),
     };
 
     let old_context: Vec<ContextFile> = if let Some(snapshot_id) = snapshot_id {
@@ -752,9 +804,10 @@ pub async fn import(
         None => {
             let id = Uuid::new_v4();
             sqlx::query!(
-                "INSERT INTO studios(id, name) VALUES (?, ?)",
+                "INSERT INTO studios(id, name, user_id) VALUES (?, ?, ?)",
                 id,
-                conversation.title
+                conversation.title,
+                user_id,
             )
             .execute(&mut transaction)
             .await?;
@@ -855,14 +908,22 @@ pub struct Snapshot {
 
 pub async fn list_snapshots(
     app: Extension<Application>,
+    user: Extension<User>,
     Path(studio_id): Path<Uuid>,
 ) -> webserver::Result<Json<Vec<Snapshot>>> {
+    let user_id = user
+        .login()
+        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .to_string();
+
     sqlx::query! {
-        "SELECT id as 'id!', modified_at, context, messages
-        FROM studio_snapshots
-        WHERE studio_id = ?
+        "SELECT ss.id as 'id!', ss.modified_at, ss.context, ss.messages
+        FROM studio_snapshots ss
+        JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?
+        WHERE ss.studio_id = ?
         ORDER BY modified_at DESC",
         studio_id,
+        user_id,
     }
     .fetch(&*app.sql)
     .map_err(Error::internal)
@@ -871,7 +932,8 @@ pub async fn list_snapshots(
             id: r.id,
             modified_at: r.modified_at,
             context: serde_json::from_str(&r.context).context("failed to deserialize context")?,
-            messages: serde_json::from_str(&r.messages).context("failed to deserialize messages")?,
+            messages: serde_json::from_str(&r.messages)
+                .context("failed to deserialize messages")?,
         })
     })
     .try_collect::<Vec<_>>()
@@ -881,12 +943,26 @@ pub async fn list_snapshots(
 
 pub async fn delete_snapshot(
     app: Extension<Application>,
+    user: Extension<User>,
     Path((studio_id, snapshot_id)): Path<(Uuid, i64)>,
 ) -> webserver::Result<()> {
+    let user_id = user
+        .login()
+        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .to_string();
+
     sqlx::query! {
-        "DELETE FROM studio_snapshots WHERE studio_id = ? AND id = ? RETURNING id",
+        "DELETE FROM studio_snapshots
+        WHERE id IN (
+            SELECT ss.id
+            FROM studio_snapshots ss
+            JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?
+            WHERE ss.id = ? AND ss.studio_id = ?
+        )
+        RETURNING id",
+        snapshot_id,
         studio_id,
-        snapshot_id
+        user_id,
     }
     .fetch_optional(&*app.sql)
     .await?
