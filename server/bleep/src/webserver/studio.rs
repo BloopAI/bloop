@@ -1,4 +1,10 @@
-use std::{borrow::Cow, collections::HashMap, iter, mem, ops::Range, pin::Pin};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+    iter, mem,
+    ops::Range,
+    pin::Pin,
+};
 
 use anyhow::{Context, Result};
 use axum::{
@@ -57,7 +63,7 @@ pub struct ListItem {
     most_common_ext: String,
 }
 pub async fn list(app: Extension<Application>) -> webserver::Result<Json<Vec<ListItem>>> {
-    let studios = sqlx::query!("SELECT id, name, modified_at FROM studios")
+    let studios = sqlx::query!("SELECT id, name, modified_at, context FROM studios")
         .fetch_all(&*app.sql)
         .await
         .map_err(Error::internal)?;
@@ -65,37 +71,41 @@ pub async fn list(app: Extension<Application>) -> webserver::Result<Json<Vec<Lis
     let mut list_items = Vec::new();
 
     for studio in studios {
-        let context_json: String =
-            sqlx::query!("SELECT context FROM studios WHERE id = ?", studio.id)
-                .fetch_one(&*app.sql)
-                .await
-                .map_err(Error::internal)?
-                .context;
-
         let context: Vec<ContextFile> =
-            serde_json::from_str(&context_json).map_err(Error::internal)?;
+            serde_json::from_str(&studio.context).map_err(Error::internal)?;
 
-        let mut repos: Vec<String> = context.iter().map(|file| file.repo.name.clone()).collect();
-        repos.sort();
-        repos.dedup();
+        let repos: HashSet<String> = context.iter().map(|file| file.repo.name.clone()).collect();
 
-        let mut ext_tokens = HashMap::new();
-        for file in &context {
-            let ext = file.path.split('.').last().unwrap_or("");
-            let tokens = token_counts((*app).clone(), &[], &[file.clone()]).await?;
-            *ext_tokens.entry(ext.to_string()).or_insert(0) += tokens.total;
-        }
+        let ext_tokens = token_counts((*app).clone(), &[], &context)
+            .await?
+            .per_file
+            .iter()
+            .zip(
+                context
+                    .iter()
+                    .map(|file| file.path.split('.').last().unwrap_or_default()),
+            )
+            .fold(HashMap::new(), |mut tokens_by_ext, (count, extension)| {
+                *tokens_by_ext.entry(extension).or_insert(0) += count;
+                tokens_by_ext
+            });
+        // for file in &context {
+        //     let ext = file.path.split('.').last().unwrap_or("");
+        //     let tokens = token_counts((*app).clone(), &[], &[file.clone()]).await?;
+        //     *ext_tokens.entry(ext.to_string()).or_insert(0) += tokens.total;
+        // }
         let most_common_ext = ext_tokens
             .into_iter()
             .max_by_key(|(_, tokens)| *tokens)
             .map(|(ext, _)| ext)
-            .unwrap_or_default();
+            .unwrap_or_default()
+            .to_owned();
 
         let list_item = ListItem {
             id: studio.id,
             name: studio.name,
             modified_at: studio.modified_at,
-            repos,
+            repos: repos.into_iter().collect::<Vec<_>>(),
             most_common_ext,
         };
 

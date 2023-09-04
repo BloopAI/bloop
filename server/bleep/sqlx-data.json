@@ -164,6 +164,42 @@
     },
     "query": "DELETE FROM studios WHERE id = ? RETURNING id"
   },
+  "34c0a1743016c76a50f543623940632f1e9daaf4233df7239d972e58ba05f3f3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 2,
+          "type_info": "Datetime"
+        },
+        {
+          "name": "context",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "SELECT id, name, modified_at, context FROM studios"
+  },
   "392b563bb3af6711817fe99335d053691750426762dcde7b0381dc9f69cd804e": {
     "describe": {
       "columns": [],
