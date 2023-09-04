@@ -184,6 +184,37 @@ async fn poll_for_oauth_token(code: String, app: Application) {
 
     debug!("acquired credentials");
     app.credentials.set_github(github::Auth::OAuth(auth));
+    let username = app
+        .credentials
+        .github()
+        .unwrap()
+        .client()
+        .unwrap()
+        .current()
+        .user()
+        .await
+        .unwrap()
+        .login;
+
+    let tracking_id = app
+        .analytics
+        .as_ref()
+        .map(|a| a.tracking_id(Some(&username)))
+        .unwrap_or_default();
+
+    app.with_analytics(|analytics| {
+        use rudderanalytics::message::{Identify, Message};
+        analytics.send(Message::Identify(Identify {
+            user_id: Some(tracking_id.clone()),
+            traits: Some(serde_json::json!({
+                "org_name": app.org_name(),
+                "device_id": analytics.device_id(),
+                "is_self_serve": app.env.is_cloud_instance(),
+                "github_username": username,
+            })),
+            ..Default::default()
+        }));
+    });
 
     if let Err(err) = app.credentials.store() {
         error!(?err, "failed to save credentials to disk");
