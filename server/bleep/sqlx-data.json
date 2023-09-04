@@ -74,36 +74,6 @@
     },
     "query": "SELECT id FROM templates WHERE id = ?"
   },
-  "18d1bdc46f4448448cb7121db7b2952076e6b17ba00ce370c919419d20d0fe07": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "modified_at",
-          "ordinal": 2,
-          "type_info": "Datetime"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "SELECT id, name, modified_at FROM studios"
-  },
   "21dfa10d31da4ec906483d92c4e885536b8020630f989306fb00fd5b861378e5": {
     "describe": {
       "columns": [
@@ -581,6 +551,24 @@
       }
     },
     "query": "SELECT title, repo_ref, exchanges\n         FROM conversations\n         WHERE user_id = ? AND thread_id = ?"
+  },
+  "db80c758eb137530e6aad6e83778efcea787dfdf42f95b896ac482d3ffac2cfe": {
+    "describe": {
+      "columns": [
+        {
+          "name": "context",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT context FROM studios WHERE id = ?"
   },
   "e444f39d4fc9219873c7a8565a13e65e4646658631b785431cb64ca0cc5d6ab9": {
     "describe": {
