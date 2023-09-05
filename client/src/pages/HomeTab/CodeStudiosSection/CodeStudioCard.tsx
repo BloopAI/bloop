@@ -16,6 +16,7 @@ import { TabsContext } from '../../../context/tabsContext';
 import { ContextMenuItem } from '../../../components/ContextMenu';
 import { deleteCodeStudio } from '../../../services/api';
 import FileIcon from '../../../components/FileIcon';
+import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
 
 type Props = {
   modified_at: string;
@@ -24,6 +25,8 @@ type Props = {
   refetchStudios: () => void;
   most_common_ext: string;
   handleRename: () => void;
+  showCodeStudioIndexingPopup: () => void;
+  isIndexing: boolean;
 };
 
 const CodeStudioCard = ({
@@ -33,14 +36,20 @@ const CodeStudioCard = ({
   refetchStudios,
   most_common_ext,
   handleRename,
+  isIndexing,
+  showCodeStudioIndexingPopup,
 }: Props) => {
   const { t } = useTranslation();
   const { locale } = useContext(LocaleContext);
   const { handleAddStudioTab, handleRemoveTab } = useContext(TabsContext);
 
   const handleClick = useCallback(() => {
-    handleAddStudioTab(name, id);
-  }, [name, handleAddStudioTab]);
+    if (!isIndexing) {
+      handleAddStudioTab(name, id);
+    } else {
+      showCodeStudioIndexingPopup();
+    }
+  }, [name, handleAddStudioTab, isIndexing]);
 
   const dropdownItems = useMemo(() => {
     const items: ContextMenuItem[] = [
@@ -69,7 +78,9 @@ const CodeStudioCard = ({
     <a
       href="#"
       className={`bg-bg-base hover:bg-bg-base-hover focus:bg-bg-base-hover border border-bg-border rounded-md p-4 w-67 h-36 group
-       flex-shrink-0 flex flex-col justify-between cursor-pointer transition-all duration-150`}
+       flex-shrink-0 flex flex-col justify-between ${
+         isIndexing ? 'cursor-default' : 'cursor-pointer'
+       } transition-all duration-150`}
       onClick={handleClick}
     >
       <div className="flex justify-between items-start">
@@ -103,14 +114,25 @@ const CodeStudioCard = ({
         </div>
       </div>
       <div className="flex items-center gap-2 caption text-label-base">
-        <Calendar raw sizeClassName="w-4 h-4" />
-        <p className="select-none">
-          <Trans>Last modified</Trans>{' '}
-          {formatDistanceToNow(new Date(modified_at + '.000Z'), {
-            addSuffix: true,
-            ...(getDateFnsLocale(locale) || {}),
-          })}
-        </p>
+        {isIndexing ? (
+          <>
+            <LiteLoaderContainer sizeClassName="w-4 h-4 text-bg-main" />
+            <p className="select-none text-label-title">
+              <Trans>Indexing...</Trans>
+            </p>
+          </>
+        ) : (
+          <>
+            <Calendar raw sizeClassName="w-4 h-4" />
+            <p className="select-none">
+              <Trans>Last modified</Trans>{' '}
+              {formatDistanceToNow(new Date(modified_at + '.000Z'), {
+                addSuffix: true,
+                ...(getDateFnsLocale(locale) || {}),
+              })}
+            </p>
+          </>
+        )}
       </div>
     </a>
   );

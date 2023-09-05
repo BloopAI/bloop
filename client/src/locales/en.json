@@ -335,5 +335,7 @@
 	"Use template": "Use template",
 	"Save to templates": "Save to templates",
 	"Clear input": "Clear input",
-	"Rename code studio": "Rename code studio"
+	"Rename code studio": "Rename code studio",
+	"One or more repositories used in this studio project is being indexed. Try again when this process in complete.": "One or more repositories used in this studio project is being indexed. Try again when this process in complete.",
+	"Can’t open studio project": "Can’t open studio project"
 }
