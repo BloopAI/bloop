@@ -22,18 +22,21 @@ const NewCode = ({ code, language, isSummary, isCodeStudio }: Props) => {
       } border border-bg-border rounded-md relative group-code`}
     >
       {isCodeStudio && (
-        <div className="bg-bg-shade border-b border-bg-border p-2 flex items-center gap-2">
-          <FileIcon
-            filename={getFileExtensionForLang(language, true)}
-            noMargin
-          />
-          {getPrettyLangName(language)}
+        <div className="bg-bg-shade border-b border-bg-border p-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FileIcon
+              filename={getFileExtensionForLang(language, true)}
+              noMargin
+            />
+            {getPrettyLangName(language)}
+          </div>
+          <CopyButton isCodeStudio={isCodeStudio} code={code} />
         </div>
       )}
       <div className={`overflow-auto ${isCodeStudio ? 'p-2' : ''}`}>
         <Code showLines={false} code={code} language={language} canWrap />
       </div>
-      <CopyButton isCodeStudio={isCodeStudio} code={code} />
+      {!isCodeStudio && <CopyButton isCodeStudio={isCodeStudio} code={code} />}
     </div>
   );
 };
