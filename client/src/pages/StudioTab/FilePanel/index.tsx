@@ -32,6 +32,7 @@ import LinesBadge from '../LinesBadge';
 import TokensUsageBadge from '../TokensUsageBadge';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
 import RelatedFilesDropdown from '../RelatedFilesDropdown';
+import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
@@ -143,7 +144,7 @@ const FilePanel = ({
             <FileIcon filename={filePath || ''} noMargin />
           </div>
           <p className="body-s-strong text-label-title ellipsis">
-            {filePath.split('/').pop()}
+            <BreadcrumbsPath path={filePath} repo={repo.ref} nonInteractive />
           </p>
           <LinesBadge ranges={selectedLines} />
         </div>

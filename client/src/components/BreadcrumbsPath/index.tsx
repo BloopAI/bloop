@@ -15,6 +15,7 @@ type Props = {
   repo: string;
   onClick?: (path: string, fileType?: FileTreeFileType) => void;
   shouldGoToFile?: boolean;
+  nonInteractive?: boolean;
 } & Omit<BProps, 'pathParts'>;
 
 const BreadcrumbsPath = ({
