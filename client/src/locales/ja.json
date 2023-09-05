@@ -333,5 +333,6 @@
 	"Retry": "リトライ",
 	"Use template": "テンプレートを使用します",
 	"Save to templates": "テンプレートに保存します",
-	"Clear input": "入力をクリアします"
+	"Clear input": "入力をクリアします",
+	"Rename code studio": "コードスタジオの名前を変更します"
 }
