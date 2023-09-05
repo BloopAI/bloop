@@ -23,6 +23,7 @@ type Props = {
   id: string;
   refetchStudios: () => void;
   most_common_ext: string;
+  handleRename: () => void;
 };
 
 const CodeStudioCard = ({
@@ -31,6 +32,7 @@ const CodeStudioCard = ({
   id,
   refetchStudios,
   most_common_ext,
+  handleRename,
 }: Props) => {
   const { t } = useTranslation();
   const { locale } = useContext(LocaleContext);
@@ -46,6 +48,7 @@ const CodeStudioCard = ({
         type: MenuItemType.DEFAULT,
         text: t('Rename'),
         icon: <PenUnderline />,
+        onClick: () => handleRename(),
       },
       {
         type: MenuItemType.DEFAULT,
@@ -60,7 +63,7 @@ const CodeStudioCard = ({
       },
     ];
     return items;
-  }, []);
+  }, [handleRename, refetchStudios, handleRemoveTab]);
 
   return (
     <a

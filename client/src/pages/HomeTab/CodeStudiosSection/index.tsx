@@ -10,6 +10,7 @@ type Props = {
   isFiltered?: boolean;
   showAll: () => void;
   refetchStudios: () => void;
+  handleRename: (studio: CodeStudioShortType) => void;
 };
 
 const LIMIT = 7;
@@ -20,6 +21,7 @@ const CodeStudiosSection = ({
   isFiltered,
   showAll,
   refetchStudios,
+  handleRename,
 }: Props) => {
   return (
     <div className="p-8 overflow-x-auto relative">
@@ -35,6 +37,7 @@ const CodeStudiosSection = ({
               key={cs.id}
               {...cs}
               refetchStudios={refetchStudios}
+              handleRename={() => handleRename(cs)}
             />
           ),
         )}
