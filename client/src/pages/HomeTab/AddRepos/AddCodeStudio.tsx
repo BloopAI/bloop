@@ -3,6 +3,7 @@ import React, {
   FormEvent,
   memo,
   useCallback,
+  useEffect,
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -13,11 +14,18 @@ import Button from '../../../components/Button';
 
 type Props = {
   handleSubmit: (name: string) => void;
+  initialValue?: string;
 };
 
-const AddCodeStudio = ({ handleSubmit }: Props) => {
+const AddCodeStudio = ({ handleSubmit, initialValue }: Props) => {
   const { t } = useTranslation();
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initialValue || '');
+
+  useEffect(() => {
+    if (initialValue) {
+      setName(initialValue);
+    }
+  }, [initialValue]);
 
   const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
@@ -33,7 +41,7 @@ const AddCodeStudio = ({ handleSubmit }: Props) => {
   return (
     <>
       <DialogText
-        title={t('New code studio')}
+        title={initialValue ? t('Rename code studio') : t('New code studio')}
         description={t(
           'Give a short descriptive name for your new code studio.',
         )}

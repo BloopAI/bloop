@@ -9,9 +9,10 @@ import AddCodeStudio from './AddCodeStudio';
 type Props = {
   addRepos: null | 'local' | 'github' | 'public' | 'studio';
   onClose: (submitted: boolean, name?: string) => void;
+  initialValue?: string;
 };
 
-const AddRepos = ({ addRepos, onClose }: Props) => {
+const AddRepos = ({ addRepos, onClose, initialValue }: Props) => {
   const handleClose = () => {
     onClose(false);
   };
@@ -37,7 +38,10 @@ const AddRepos = ({ addRepos, onClose }: Props) => {
       ) : addRepos === 'public' ? (
         <PublicGithubReposStep handleNext={handleSubmit} disableSkip />
       ) : (
-        <AddCodeStudio handleSubmit={handleSubmitStudio} />
+        <AddCodeStudio
+          initialValue={initialValue}
+          handleSubmit={handleSubmitStudio}
+        />
       )}
     </SeparateOnboardingStep>
   );

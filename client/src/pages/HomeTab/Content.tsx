@@ -14,7 +14,11 @@ import { CodeStudioShortType, RepoType, SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
 import PageTemplate from '../../components/PageTemplate';
 import { TabsContext } from '../../context/tabsContext';
-import { getCodeStudios, postCodeStudio } from '../../services/api';
+import {
+  getCodeStudios,
+  patchCodeStudio,
+  postCodeStudio,
+} from '../../services/api';
 import { UIContext } from '../../context/uiContext';
 import AddRepos from './AddRepos';
 import ReposSection from './ReposSection';
@@ -55,6 +59,9 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
   const [codeStudiosToShow, setCodeStudiosToShow] = useState<
     CodeStudioShortType[]
   >([]);
+  const [studioToEdit, setStudioToEdit] = useState<null | CodeStudioShortType>(
+    null,
+  );
 
   const refreshCodeStudios = useCallback(() => {
     getCodeStudios().then(setCodeStudios);
@@ -88,6 +95,11 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
   //   },
   //   [],
   // );
+
+  const handleRename = useCallback((studio: CodeStudioShortType) => {
+    setStudioToEdit(studio);
+    setAddReposOpen('studio');
+  }, []);
 
   return (
     <PageTemplate renderPage="home">
@@ -123,6 +135,7 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
               isFiltered={!!search}
               showAll={() => setFilterType('studios')}
               refetchStudios={refreshCodeStudios}
+              handleRename={handleRename}
             />
           )}
         </div>
@@ -130,18 +143,27 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
           addRepos={addReposOpen}
           onClose={(isSubmitted, name) => {
             if (isSubmitted && name) {
-              postCodeStudio(name).then((id) => {
-                handleAddStudioTab(name, id);
-                refreshCodeStudios();
-              });
+              if (studioToEdit) {
+                setStudioToEdit(null);
+                patchCodeStudio(studioToEdit.id, { name }).then(
+                  refreshCodeStudios,
+                );
+              } else {
+                postCodeStudio(name).then((id) => {
+                  handleAddStudioTab(name, id);
+                  refreshCodeStudios();
+                });
+              }
             } else if (isSubmitted) {
               fetchRepos();
               setTimeout(() => fetchRepos(), 1000);
               setPopupOpen(true);
               setTimeout(() => setPopupOpen(false), 3000);
             }
+            setStudioToEdit(null);
             setAddReposOpen(null);
           }}
+          initialValue={studioToEdit?.name}
         />
         {popupOpen && (
           <div
