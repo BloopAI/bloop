@@ -17,7 +17,8 @@ type Props = {
     | 'tertiary'
     | 'tertiary-outlined'
     | 'tertiary-disabled'
-    | 'tertiary-active';
+    | 'tertiary-active'
+    | 'danger';
   size?: 'tiny' | 'small' | 'medium' | 'large';
   className?: string;
 } & (OnlyIconProps | TextBtnProps);
@@ -45,6 +46,8 @@ const variantStylesMap = {
     'text-label-muted bg-transparent border border-bg-border hover:bg-bg-base-hover focus:bg-bg-base-hover active:bg-transparent hover:text-label-title focus:text-label-title active:text-label-title disabled:bg-bg-base disabled:text-label-muted disabled:border-transparent disabled:hover:border-transparent',
   'tertiary-disabled':
     'text-label-muted bg-transparent hover:text-label-title focus:text-label-title hover:bg-bg-base-hover focus:bg-bg-base-hover active:text-label-title active:bg-transparent disabled:opacity-50 disabled:text-label-muted disabled:hover:text-label-muted disabled:hover:bg-transparent',
+  danger:
+    'text-label-control bg-bg-danger hover:bg-bg-danger-hover focus:bg-bg-danger-hover active:bg-bg-danger active:shadow-low disabled:bg-bg-base disabled:text-label-muted disabled:hover:border-none disabled:hover:bg-bg-base disabled:active:shadow-none disabled:border-none',
 };
 
 const sizeMap = {

@@ -58,7 +58,6 @@ const Conversation = ({
   setLeftPanel,
   messages,
   studioId,
-  refetchCodeStudio,
   isTokenLimitExceeded,
 }: Props) => {
   const { t } = useTranslation();
@@ -79,7 +78,7 @@ const Conversation = ({
       inputRef.current.focus();
     }
   };
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { apiUrl } = useContext(DeviceContext);
   const { messagesRef, handleScroll, scrollToBottom } =
     useScrollToBottom(conversation);
@@ -145,7 +144,8 @@ const Conversation = ({
 
   const handleCancel = useCallback(() => {
     eventSource?.close();
-    setLoading(false);
+    setIsLoading(false);
+    saveConversation();
   }, []);
 
   const onSubmit = useCallback(async () => {
@@ -153,12 +153,15 @@ const Conversation = ({
       return;
     }
     await saveConversation(true);
-    await refetchCodeStudio();
+    setConversation((prev) => [
+      ...prev,
+      { message: inputValue, author: inputAuthor },
+    ]);
     setInput({
       author: StudioConversationMessageAuthor.USER,
       message: '',
     });
-    setLoading(true);
+    setIsLoading(true);
 
     eventSource?.close();
     eventSource = new EventSource(
@@ -180,13 +183,14 @@ const Conversation = ({
         saveConversation(false, newConv);
         return newConv;
       });
+      setIsLoading(false);
       eventSource.close();
     };
     let i = 0;
     eventSource.onmessage = (ev) => {
       if (ev.data === '[DONE]') {
         eventSource.close();
-        setLoading(false);
+        setIsLoading(false);
         return;
       }
       try {
@@ -233,11 +237,11 @@ const Conversation = ({
           });
         }
       } catch (err) {
-        setLoading(false);
+        setIsLoading(false);
         console.log('failed to parse response', err);
       }
     };
-  }, [studioId, conversation, inputValue, saveConversation]);
+  }, [studioId, conversation, inputValue, inputAuthor, saveConversation]);
 
   const onMessageRemoved = useCallback(
     async (i: number, andSubsequent?: boolean) => {
@@ -245,6 +249,9 @@ const Conversation = ({
         // Set input to the message being removed
         setInput(conversation[i]);
       }
+      setConversation((prev) =>
+        prev.filter((_, j) => (andSubsequent ? i > j : i !== j)),
+      );
 
       const messages: ({ User: string } | { Assistant: string })[] =
         conversation
@@ -253,7 +260,6 @@ const Conversation = ({
       await patchCodeStudio(studioId, {
         messages,
       });
-      await refetchCodeStudio();
     },
     [conversation],
   );
@@ -266,16 +272,19 @@ const Conversation = ({
       author: StudioConversationMessageAuthor.USER,
       message: '',
     });
-    await refetchCodeStudio();
-  }, [studioId, refetchCodeStudio]);
+    setConversation([]);
+  }, [studioId]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         onSubmit();
       }
+      if (e.key === 'Escape' && isLoading) {
+        handleCancel();
+      }
     },
-    [onSubmit],
+    [onSubmit, isLoading],
   );
   useKeyboardNavigation(handleKeyEvent);
 
@@ -299,7 +308,7 @@ const Conversation = ({
               setLeftPanel={setLeftPanel}
             />
           ))}
-          {!loading && (
+          {!isLoading && (
             <ConversationInput
               key={'new'}
               author={inputAuthor}
@@ -337,41 +346,38 @@ const Conversation = ({
             </Button>
           </div>
           <div className="flex items-center gap-3">
-            {loading && (
+            {isLoading ? (
+              <Button size="small" onClick={handleCancel} variant="danger">
+                <Trans>Stop generating</Trans>
+                <KeyboardChip type="Esc" variant="danger" />
+              </Button>
+            ) : (
               <Button
                 size="small"
-                variant="tertiary-outlined"
-                onClick={handleCancel}
+                disabled={!inputValue || isTokenLimitExceeded}
+                onClick={onSubmit}
               >
-                <Trans>Cancel</Trans>
+                <Trans>Generate</Trans>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <KeyboardChip
+                    type="cmd"
+                    variant={
+                      !inputValue || isTokenLimitExceeded
+                        ? 'secondary'
+                        : 'primary'
+                    }
+                  />
+                  <KeyboardChip
+                    type="entr"
+                    variant={
+                      !inputValue || isTokenLimitExceeded
+                        ? 'secondary'
+                        : 'primary'
+                    }
+                  />
+                </div>
               </Button>
             )}
-
-            <Button
-              size="small"
-              disabled={!inputValue || isTokenLimitExceeded}
-              onClick={onSubmit}
-            >
-              <Trans>Generate</Trans>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <KeyboardChip
-                  type="cmd"
-                  variant={
-                    !inputValue || isTokenLimitExceeded
-                      ? 'secondary'
-                      : 'primary'
-                  }
-                />
-                <KeyboardChip
-                  type="entr"
-                  variant={
-                    !inputValue || isTokenLimitExceeded
-                      ? 'secondary'
-                      : 'primary'
-                  }
-                />
-              </div>
-            </Button>
           </div>
         </div>
       </div>
