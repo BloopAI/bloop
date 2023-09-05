@@ -4,6 +4,7 @@ import {
   CodeStudioType,
   ConversationType,
   FileResponse,
+  HistoryConversationTurn,
   HoverablesResponse,
   NLSearchResponse,
   SearchResponse,
@@ -277,6 +278,10 @@ export const patchCodeStudio = (
 ) => http.patch(`/studio/${id}`, data).then((r) => r.data);
 export const getCodeStudio = (id: string): Promise<CodeStudioType> =>
   http(`/studio/${id}`).then((r) => r.data);
+export const getCodeStudioHistory = (
+  id: string,
+): Promise<HistoryConversationTurn[]> =>
+  http(`/studio/${id}/snapshots`).then((r) => r.data);
 export const deleteCodeStudio = (id: string): Promise<CodeStudioType> =>
   http.delete(`/studio/${id}`).then((r) => r.data);
 export const postCodeStudio = (name: string) =>
