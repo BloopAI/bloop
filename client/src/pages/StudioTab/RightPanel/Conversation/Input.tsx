@@ -94,10 +94,10 @@ const ConversationInput = ({
     <div className="flex flex-col p-4 gap-3 rounded-6 border border-transparent hover:shadow-medium hover:border-bg-border-hover focus-within:border-bg-main bg-bg-base hover:focus-within:border-bg-main focus-within:shadow-medium transition-all duration-150 ease-in-out">
       <div className="flex items-center gap-2">
         <span
-          className={`h-6 caption text-label-title flex mr-auto items-center gap-1 flex-shrink-0 pl-1 pr-1.5 ${
+          className={`h-6 caption flex mr-auto items-center gap-1 flex-shrink-0 pl-1 pr-1.5 ${
             author === StudioConversationMessageAuthor.ASSISTANT
-              ? 'bg-studio border border-transparent'
-              : 'bg-bg-shade border border-bg-border hover:border-bg-border-hover hover:bg-bg-base-hover'
+              ? 'bg-studio border border-transparent text-label-control'
+              : 'bg-bg-shade border border-bg-border hover:border-bg-border-hover hover:bg-bg-base-hover text-label-title'
           } rounded  transition-all duration-150 ease-in-out select-none cursor-default`}
         >
           {author === 'User' ? (
