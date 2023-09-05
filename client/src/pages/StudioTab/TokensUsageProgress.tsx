@@ -28,7 +28,7 @@ const Usage = ({ percent }: UsageProps) => {
     { fill: 'fill-bg-danger', stroke: 'stroke-bg-danger' },
   ];
 
-  const index = percent > 100 ? 4 : Math.floor(percent / 25);
+  const index = Math.max(Math.min(Math.floor(percent / 25), map.length - 1), 0);
 
   return (
     <svg

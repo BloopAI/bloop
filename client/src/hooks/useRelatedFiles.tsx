@@ -7,13 +7,12 @@ import {
   StudioContextFile,
 } from '../types/general';
 import FileIcon from '../components/FileIcon';
-import { getRelatedFileRanges } from '../services/api';
+import { getRelatedFileRanges, getRelatedFiles } from '../services/api';
 import Tooltip from '../components/Tooltip';
 import { mergeRanges } from '../utils';
 
 const useRelatedFiles = (
   selectedFiles: StudioContextFile[],
-  relatedFiles: { type: string; path: string }[],
   onFileAdded: (
     filePath: string,
     ranges: { start: number; end: number }[],
@@ -25,6 +24,25 @@ const useRelatedFiles = (
 ) => {
   const { t } = useTranslation();
   const [items, setItems] = useState<ContextMenuItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [relatedFiles, setRelatedFiles] = useState<
+    { type: string; path: string }[]
+  >([]);
+
+  useEffect(() => {
+    setIsLoading(true);
+    getRelatedFiles(filePath, repoRef, branch ? branch : undefined)
+      .then((resp) => {
+        setRelatedFiles(
+          resp.files_imported
+            .map((path) => ({ type: 'imported', path }))
+            .concat(
+              resp.files_importing.map((path) => ({ type: 'importing', path })),
+            ),
+        );
+      })
+      .finally(() => setIsLoading(false));
+  }, [filePath, repoRef, branch]);
 
   const onChange = useCallback(
     async (path: string, kind: 'Imported' | 'Importing', b: boolean) => {
@@ -107,8 +125,14 @@ const useRelatedFiles = (
         })),
       );
     }
+    if (!menuItems.length) {
+      menuItems.push({
+        type: ExtendedMenuItemType.DIVIDER_WITH_TEXT,
+        text: isLoading ? t('Loading...') : t('No related files found'),
+      });
+    }
     setItems(menuItems);
-  }, [selectedFiles, relatedFiles, t, onChange]);
+  }, [selectedFiles, relatedFiles, t, onChange, isLoading]);
 
   return { items };
 };

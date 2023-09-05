@@ -24,6 +24,7 @@ import { DropdownWithIcon } from '../../../components/Dropdown';
 import { getRelatedFiles } from '../../../services/api';
 import useRelatedFiles from '../../../hooks/useRelatedFiles';
 import Tooltip from '../../../components/Tooltip';
+import RelatedFilesDropdown from '../RelatedFilesDropdown';
 
 type Props = StudioContextFile & {
   contextFiles: StudioContextFile[];
@@ -67,21 +68,6 @@ const ContextFileRow = ({
   displayName,
 }: Props) => {
   const { t } = useTranslation();
-  const [relatedFiles, setRelatedFiles] = useState<
-    { type: string; path: string }[]
-  >([]);
-
-  useEffect(() => {
-    getRelatedFiles(path, repo, branch ? branch : undefined).then((resp) => {
-      setRelatedFiles(
-        resp.files_imported
-          .map((path) => ({ type: 'imported', path }))
-          .concat(
-            resp.files_importing.map((path) => ({ type: 'importing', path })),
-          ),
-      );
-    });
-  }, []);
 
   const mappedRanges = useMemo((): [number, number][] => {
     return ranges.map((r) => [r.start, r.end - 1]);
@@ -100,34 +86,6 @@ const ContextFileRow = ({
       });
     }
   }, [path, branch, repoFull, mappedRanges, hidden]);
-
-  const handleRelatedFileAdded = useCallback(
-    (filePath: string, ranges: { start: number; end: number }[]) => {
-      if (repoFull) {
-        onFileAdded(repoFull, branch, filePath, true, ranges);
-      }
-    },
-    [repoFull, branch, onFileAdded],
-  );
-
-  const handleRelatedFileRemoved = useCallback(
-    (path: string) => {
-      if (repoFull) {
-        onFileRemove({ branch, path, repo });
-      }
-    },
-    [repo, branch, onFileRemove],
-  );
-
-  const { items: relatedFilesItems } = useRelatedFiles(
-    contextFiles,
-    relatedFiles,
-    handleRelatedFileAdded,
-    handleRelatedFileRemoved,
-    repo,
-    branch,
-    path,
-  );
 
   return (
     <div
@@ -149,35 +107,45 @@ const ContextFileRow = ({
             </Tooltip>
           </p>
           <LinesBadge ranges={mappedRanges} isShort />
-          <RelatedFilesBadge
-            selectedFiles={contextFiles}
-            relatedFiles={relatedFiles}
-            onFileAdded={handleRelatedFileAdded}
-            onFileRemove={handleRelatedFileRemoved}
-            repoRef={repo}
-            filePath={path}
-            branch={branch}
-          />
+          {/*<RelatedFilesBadge*/}
+          {/*  selectedFiles={contextFiles}*/}
+          {/*  onFileAdded={handleRelatedFileAdded}*/}
+          {/*  onFileRemove={handleRelatedFileRemoved}*/}
+          {/*  repoRef={repo}*/}
+          {/*  filePath={path}*/}
+          {/*  branch={branch}*/}
+          {/*/>*/}
         </div>
         <div className="w-16 flex items-center flex-shrink-0">
           <TokensUsageBadge tokens={tokens} />
         </div>
         <div onClick={(e) => e.stopPropagation()}>
-          <DropdownWithIcon
-            items={relatedFilesItems}
-            btnOnlyIcon
-            btnTitle={t('Add related files')}
-            icon={
-              <PlusSignInBubble
-                raw
-                sizeClassName="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 group-focus:opacity-100"
-              />
-            }
-            noChevron
-            btnSize="tiny"
-            dropdownBtnClassName="flex-shrink-0"
-            appendTo={document.body}
-          />
+          {repoFull && (
+            <RelatedFilesDropdown
+              selectedFiles={contextFiles}
+              onFileAdded={onFileAdded}
+              onFileRemove={onFileRemove}
+              filePath={path}
+              branch={branch}
+              repo={repoFull}
+              dropdownPlacement="bottom"
+            >
+              <Button
+                variant="tertiary"
+                size="tiny"
+                id="dropdownDefault"
+                data-dropdown-toggle="dropdown"
+                className={'flex-shrink-0'}
+                onlyIcon
+                title={t('Add related files')}
+              >
+                <PlusSignInBubble
+                  raw
+                  sizeClassName="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 group-focus:opacity-100"
+                />
+              </Button>
+            </RelatedFilesDropdown>
+          )}
         </div>
         <Button
           variant="tertiary"

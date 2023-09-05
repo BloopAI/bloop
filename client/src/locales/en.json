@@ -341,5 +341,8 @@
 	"<0>#</0> of #_one": "<0>{{count}}</0> of {{total}}",
 	"<0>#</0> of #_other": "<0>{{count}}</0> of {{total}}",
 	"Conversation tokens exceeded. Reduce the number of messages to generate!": "Conversation tokens exceeded. Reduce the number of messages to generate!",
-	"Conversation tokens exceeded. Reduce the number of files to generate!": "Conversation tokens exceeded. Reduce the number of files to generate!"
+	"Conversation tokens exceeded. Reduce the number of files to generate!": "Conversation tokens exceeded. Reduce the number of files to generate!",
+	"Templates": "Templates",
+	"Loading...": "Loading...",
+	"No related files found": "No related files found"
 }
