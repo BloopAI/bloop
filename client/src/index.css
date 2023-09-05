@@ -1431,3 +1431,7 @@ h5, .h5 {
 .break-word {
   word-break: break-word;
 }
+
+.file-icon-lg span[class*="-icon"]:before {
+  transform: scale(125%);
+}

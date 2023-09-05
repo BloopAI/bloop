@@ -168,7 +168,7 @@ const RepoCard = ({
     >
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-4">
-          <span className="h-11 w-11 rounded-md bg-bg-shade flex items-center justify-center mt-1">
+          <span className="h-11 w-11 rounded-md bg-bg-shade flex items-center justify-center mt-1 file-icon-lg">
             <FileIcon filename={getFileExtensionForLang(lang)} noMargin />
           </span>
           <p className="break-all text-label-title pt-0.5">{repoName}</p>
