@@ -6,7 +6,6 @@ import useRelatedFiles from '../../hooks/useRelatedFiles';
 
 type Props = {
   selectedFiles: StudioContextFile[];
-  relatedFiles: { type: string; path: string }[];
   onFileAdded: (
     filePath: string,
     ranges: { start: number; end: number }[],
@@ -19,7 +18,6 @@ type Props = {
 
 const RelatedFilesBadge = ({
   selectedFiles,
-  relatedFiles,
   onFileAdded,
   onFileRemove,
   repoRef,
@@ -29,7 +27,6 @@ const RelatedFilesBadge = ({
   const [isVisible, setVisibility] = useState(false);
   const { items } = useRelatedFiles(
     selectedFiles,
-    relatedFiles,
     onFileAdded,
     onFileRemove,
     repoRef,

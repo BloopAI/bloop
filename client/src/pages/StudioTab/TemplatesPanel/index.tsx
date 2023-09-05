@@ -1,11 +1,4 @@
-import {
-  Dispatch,
-  memo,
-  SetStateAction,
-  useCallback,
-  useContext,
-  useEffect,
-} from 'react';
+import { Dispatch, memo, SetStateAction, useContext, useEffect } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
 import {
@@ -13,7 +6,6 @@ import {
   StudioPanelDataType,
 } from '../../../types/general';
 import { ArrowLeft } from '../../../icons';
-import { getTemplates } from '../../../services/api';
 import { StudioContext } from '../../../context/studioContext';
 import TemplateCard from './TemplateCard';
 
@@ -49,7 +41,7 @@ const TemplatesPanel = ({ setLeftPanel }: Props) => {
         </div>
       </div>
       <div className="p-8 flex flex-col gap-3 overflow-auto">
-        {templates.map((t, i) => (
+        {templates.map((t) => (
           <TemplateCard key={t.id} {...t} refetchTemplates={refetchTemplates} />
         ))}
       </div>

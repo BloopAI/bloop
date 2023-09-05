@@ -126,20 +126,21 @@ const ConversationInput = ({
               }
             >
               <Template raw sizeClassName="w-3.5 h-3.5" />
-              <Trans>Use template</Trans>
+              <Trans>Templates</Trans>
             </Button>
+            {!isSaved && (
+              <Button
+                variant="secondary"
+                size="tiny"
+                onClick={saveAsTemplate}
+                disabled={!message.length}
+              >
+                <TemplateAdd raw sizeClassName="w-3.5 h-3.5" />
+                <Trans>Save to templates</Trans>
+              </Button>
+            )}
             {!!message.length && (
               <>
-                {!isSaved && (
-                  <Button
-                    variant="secondary"
-                    size="tiny"
-                    onClick={saveAsTemplate}
-                  >
-                    <TemplateAdd raw sizeClassName="w-3.5 h-3.5" />
-                    <Trans>Save to templates</Trans>
-                  </Button>
-                )}
                 <Button
                   variant="secondary"
                   size="tiny"

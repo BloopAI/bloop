@@ -64,7 +64,11 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
   );
 
   const refreshCodeStudios = useCallback(() => {
-    getCodeStudios().then(setCodeStudios);
+    getCodeStudios().then((cs: CodeStudioShortType[]) => {
+      setCodeStudios(
+        cs.sort((a, b) => (a.modified_at > b.modified_at ? -1 : 1)),
+      );
+    });
   }, []);
 
   useEffect(() => {
