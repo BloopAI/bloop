@@ -112,6 +112,10 @@ impl Indexes {
                     .delete()
                     .await?;
             }
+
+            if let Some(ref semantic) = semantic {
+                semantic.delete_collection().await?;
+            }
         }
         config.source.save_index_version()?;
 
