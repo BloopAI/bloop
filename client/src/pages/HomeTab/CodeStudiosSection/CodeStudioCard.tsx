@@ -88,7 +88,7 @@ const CodeStudioCard = ({
           <span
             className={`h-11 w-11 flex-shrink-0 flex items-center justify-center rounded-md ${
               most_common_ext ? 'bg-bg-shade' : 'bg-studio'
-            } text-label-control`}
+            } text-label-control file-icon-lg`}
           >
             {most_common_ext ? (
               <FileIcon filename={`index.${most_common_ext}`} noMargin />
