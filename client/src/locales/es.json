@@ -342,5 +342,8 @@
 	"<0>#</0> of #_one": "<0>{{count}}</0> de {{total}}",
 	"<0>#</0> of #_other": "<0>{{count}}</0> de {{total}}",
 	"Conversation tokens exceeded. Reduce the number of messages to generate!": "Los tokens de conversación excedieron. ¡Reduzca la cantidad de mensajes para generar!",
-	"Conversation tokens exceeded. Reduce the number of files to generate!": "Los tokens de conversación excedieron. ¡Reduzca la cantidad de archivos para generar!"
+	"Conversation tokens exceeded. Reduce the number of files to generate!": "Los tokens de conversación excedieron. ¡Reduzca la cantidad de archivos para generar!",
+	"Templates": "Plantillas",
+	"Loading...": "Cargando...",
+	"No related files found": "No se encontraron archivos relacionados"
 }

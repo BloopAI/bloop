@@ -128,6 +128,7 @@ const TemplateCard = ({ id, name, content, refetchTemplates }: Props) => {
               onClick={() => {
                 setIsEditing(false);
                 setForm({ name, content });
+                refetchTemplates();
               }}
             >
               <Trans>Cancel</Trans>

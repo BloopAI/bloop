@@ -340,5 +340,8 @@
 	"<0>#</0> of #_one": "<0>{{count}}</0>の{{total}}",
 	"<0>#</0> of #_other": "<0>{{count}}</0>の{{total}}",
 	"Conversation tokens exceeded. Reduce the number of messages to generate!": "会話トークンが超えました。 生成するメッセージの数を減らしてください！",
-	"Conversation tokens exceeded. Reduce the number of files to generate!": "会話トークンが超えました。 生成するファイルの数を減らしてください！"
+	"Conversation tokens exceeded. Reduce the number of files to generate!": "会話トークンが超えました。 生成するファイルの数を減らしてください！",
+	"Templates": "テンプレート",
+	"Loading...": "読み込み...",
+	"No related files found": "関連するファイルは見つかりません"
 }

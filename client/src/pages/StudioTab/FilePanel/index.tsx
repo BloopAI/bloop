@@ -2,7 +2,6 @@ import {
   Dispatch,
   memo,
   SetStateAction,
-  useCallback,
   useEffect,
   useRef,
   useState,
@@ -25,16 +24,14 @@ import {
   TrashCanFilled,
 } from '../../../icons';
 import FileIcon from '../../../components/FileIcon';
-import { getRelatedFiles, search } from '../../../services/api';
+import { search } from '../../../services/api';
 import { buildRepoQuery, getFileExtensionForLang } from '../../../utils';
 import { File } from '../../../types/api';
 import CodeFullSelectable from '../../../components/CodeBlock/CodeFullSelectable';
 import LinesBadge from '../LinesBadge';
 import TokensUsageBadge from '../TokensUsageBadge';
-import useRelatedFiles from '../../../hooks/useRelatedFiles';
-import Dropdown from '../../../components/Dropdown/WithIcon';
-import RelatedFilesBadge from '../RelatedFilesBadge';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
+import RelatedFilesDropdown from '../RelatedFilesDropdown';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
@@ -95,47 +92,7 @@ const FilePanel = ({
   const [selectedLines, setSelectedLines] = useState<[number, number][]>(
     initialRanges || [],
   );
-  const [relatedFiles, setRelatedFiles] = useState<
-    { type: string; path: string }[]
-  >([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const handleRelatedFileAdded = useCallback(
-    async (path: string, ranges: { start: number; end: number }[]) => {
-      onFileAdded(repo, branch, path, true, ranges);
-    },
-    [repo, branch, onFileAdded, filePath],
-  );
-  const handleRelatedFileRemoved = useCallback(
-    (path: string) => {
-      onFileRemove({ branch, path, repo: repo.ref });
-    },
-    [repo, branch, onFileRemove],
-  );
-
-  const { items } = useRelatedFiles(
-    contextFiles,
-    relatedFiles,
-    handleRelatedFileAdded,
-    handleRelatedFileRemoved,
-    repo.ref,
-    branch,
-    filePath,
-  );
-
-  useEffect(() => {
-    getRelatedFiles(filePath, repo.ref, branch ? branch : undefined).then(
-      (resp) => {
-        setRelatedFiles(
-          resp.files_imported
-            .map((path) => ({ type: 'imported', path }))
-            .concat(
-              resp.files_importing.map((path) => ({ type: 'importing', path })),
-            ),
-        );
-      },
-    );
-  }, []);
 
   useEffect(() => {
     search(
@@ -215,20 +172,26 @@ const FilePanel = ({
           >
             <TrashCanFilled />
           </Button>
-          {!!items.length && (
-            <Dropdown
-              items={items}
-              icon={
-                <span className="flex gap-1 items-center flex-shrink-0">
-                  <PlusSignInCircle />
-                  {t('Add related file')}
-                </span>
-              }
-              btnSize="small"
-              btnVariant="primary"
-              noChevron
-            />
-          )}
+          <RelatedFilesDropdown
+            filePath={filePath}
+            onFileAdded={onFileAdded}
+            onFileRemove={onFileRemove}
+            branch={branch}
+            selectedFiles={contextFiles}
+            repo={repo}
+          >
+            <Button
+              variant="primary"
+              size="small"
+              id="dropdownDefault"
+              data-dropdown-toggle="dropdown"
+            >
+              <span className="flex gap-1 items-center flex-shrink-0">
+                <PlusSignInCircle />
+                {t('Add related file')}
+              </span>
+            </Button>
+          </RelatedFilesDropdown>
         </div>
       </div>
       <div className="flex px-8 py-2 items-center gap-2 border-b border-bg-border bg-bg-sub  text-label-base">
@@ -248,15 +211,14 @@ const FilePanel = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <RelatedFilesBadge
-            relatedFiles={relatedFiles}
-            selectedFiles={contextFiles}
-            onFileRemove={handleRelatedFileRemoved}
-            onFileAdded={handleRelatedFileAdded}
-            repoRef={repo.ref}
-            branch={branch}
-            filePath={filePath}
-          />
+          {/*<RelatedFilesBadge*/}
+          {/*  selectedFiles={contextFiles}*/}
+          {/*  onFileRemove={handleRelatedFileRemoved}*/}
+          {/*  onFileAdded={handleRelatedFileAdded}*/}
+          {/*  repoRef={repo.ref}*/}
+          {/*  branch={branch}*/}
+          {/*  filePath={filePath}*/}
+          {/*/>*/}
           <TokensUsageBadge tokens={tokens} />
         </div>
       </div>

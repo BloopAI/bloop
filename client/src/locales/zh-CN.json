@@ -348,5 +348,8 @@
 	"<0>#</0> of #_one": "{{total}} 中的 <0>{{count}}</0>",
 	"<0>#</0> of #_other": "{{total}} 中的 <0>{{count}}</0>",
 	"Conversation tokens exceeded. Reduce the number of messages to generate!": "对话代币超过了。 减少要生成的消息数！",
-	"Conversation tokens exceeded. Reduce the number of files to generate!": "对话代币超过了。 减少要生成的文件数！"
+	"Conversation tokens exceeded. Reduce the number of files to generate!": "对话代币超过了。 减少要生成的文件数！",
+	"Templates": "模板",
+	"Loading...": "加载...",
+	"No related files found": "找不到相关文件"
 }
