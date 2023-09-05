@@ -341,5 +341,7 @@
 	"Use template": "使用模板",
 	"Save to templates": "保存到模板",
 	"Clear input": "清除输入",
-	"Rename code studio": "重命名代码工作室"
+	"Rename code studio": "重命名代码工作室",
+	"One or more repositories used in this studio project is being indexed. Try again when this process in complete.": "该工作室项目中使用的一个或多个存储库正在索引。 完成此过程时，请重试。",
+	"Can’t open studio project": "无法打开录音室项目"
 }

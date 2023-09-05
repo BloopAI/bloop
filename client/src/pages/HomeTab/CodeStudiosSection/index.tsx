@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Trans } from 'react-i18next';
-import { CodeStudioShortType } from '../../../types/general';
+import { CodeStudioShortType, RepoType } from '../../../types/general';
 import NoRepos from '../ReposSection/RepoCard/NoRepos';
 import CodeStudioCard from './CodeStudioCard';
 
@@ -10,7 +10,9 @@ type Props = {
   isFiltered?: boolean;
   showAll: () => void;
   refetchStudios: () => void;
+  showCodeStudioIndexingPopup: () => void;
   handleRename: (studio: CodeStudioShortType) => void;
+  repositories?: RepoType[];
 };
 
 const LIMIT = 7;
@@ -22,6 +24,8 @@ const CodeStudiosSection = ({
   showAll,
   refetchStudios,
   handleRename,
+  repositories,
+  showCodeStudioIndexingPopup,
 }: Props) => {
   return (
     <div className="p-8 overflow-x-auto relative">
@@ -38,6 +42,16 @@ const CodeStudiosSection = ({
               {...cs}
               refetchStudios={refetchStudios}
               handleRename={() => handleRename(cs)}
+              showCodeStudioIndexingPopup={showCodeStudioIndexingPopup}
+              isIndexing={
+                !!repositories?.find(
+                  (r) =>
+                    cs.repos.includes(
+                      r.ref.replace(/^(local\/)|(github\.com\/)/, ''),
+                    ) &&
+                    (!r.last_index || r.last_index === '1970-01-01T00:00:00Z'),
+                )
+              }
             />
           ),
         )}

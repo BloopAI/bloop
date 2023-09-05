@@ -336,5 +336,7 @@
 	"Use template": "Usar plantilla",
 	"Save to templates": "Guardar a las plantillas",
 	"Clear input": "Borrar entrada",
-	"Rename code studio": "Cambiar el nombre de Code Studio"
+	"Rename code studio": "Cambiar el nombre de Code Studio",
+	"Can’t open studio project": "No se puede abrir el proyecto de estudio",
+	"One or more repositories used in this studio project is being indexed. Try again when this process in complete.": "Se están indexando uno o más repositorios utilizados en este proyecto de estudio. Intente nuevamente cuando este proceso esté completo."
 }
