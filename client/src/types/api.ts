@@ -300,6 +300,7 @@ export type StudioTemplateType = {
   modified_at: string;
 };
 
-export type HistoryConversationTurn = {
-  messages: (CodeStudioMessageType & { timestamp: string })[];
+export type HistoryConversationTurn = CodeStudioType & {
+  id: number;
+  modified_at: string;
 };

@@ -180,7 +180,11 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
               tokensTotal={tokensTotal}
             />
           ) : leftPanel.type === StudioLeftPanelType.HISTORY ? (
-            <HistoryPanel setLeftPanel={setLeftPanel} />
+            <HistoryPanel
+              setLeftPanel={setLeftPanel}
+              studioId={tab.key}
+              refetchCodeStudio={refetchCodeStudio}
+            />
           ) : leftPanel.type === StudioLeftPanelType.TEMPLATES ? (
             <TemplatesPanel setLeftPanel={setLeftPanel} />
           ) : leftPanel.type === StudioLeftPanelType.FILE ? (
