@@ -40,19 +40,31 @@ pub async fn create(
     app: Extension<Application>,
     params: Json<Create>,
 ) -> webserver::Result<String> {
-    let id = Uuid::new_v4();
+    let studio_id = Uuid::new_v4();
+
+    let mut transaction = app.sql.begin().await?;
 
     sqlx::query! {
-        "INSERT INTO studios (id, name, context, messages) VALUES (?, ?, ?, ?)",
-        id,
+        "INSERT INTO studios (id, name) VALUES (?, ?)",
+        studio_id,
         params.name,
-        "[]",
-        "[]"
     }
-    .execute(&*app.sql)
+    .execute(&mut transaction)
     .await?;
 
-    Ok(id.to_string())
+    sqlx::query! {
+        "INSERT INTO studio_snapshots (studio_id, context, messages)
+         VALUES (?, ?, ?)",
+        studio_id,
+        "[]",
+        "[]",
+    }
+    .execute(&mut transaction)
+    .await?;
+
+    transaction.commit().await?;
+
+    Ok(studio_id.to_string())
 }
 
 #[derive(serde::Serialize)]
@@ -63,12 +75,25 @@ pub struct ListItem {
     repos: Vec<String>,
     most_common_ext: String,
 }
+
 pub async fn list(app: Extension<Application>) -> webserver::Result<Json<Vec<ListItem>>> {
     let studios =
-        sqlx::query!("SELECT id as \"id: Uuid\", name, modified_at, context FROM studios")
-            .fetch_all(&*app.sql)
-            .await
-            .map_err(Error::internal)?;
+        sqlx::query!(
+            "SELECT
+                s.id as \"id: Uuid\",
+                s.name,
+                ss.modified_at as \"modified_at!\",
+                ss.context
+            FROM studios s
+            INNER JOIN studio_snapshots ss ON s.id = ss.studio_id
+            WHERE (ss.studio_id, ss.modified_at) IN (
+                SELECT studio_id, MAX(modified_at)
+                FROM studio_snapshots
+                GROUP BY studio_id
+            )"
+        )
+        .fetch_all(&*app.sql)
+        .await?;
 
     let mut list_items = Vec::new();
 
@@ -160,15 +185,46 @@ impl From<&Message> for llm_gateway::api::Message {
     }
 }
 
+async fn latest_snapshot_id<'a, E>(studio_id: Uuid, exec: E) -> webserver::Result<i64>
+where
+    E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
+{
+    sqlx::query! {
+        "SELECT id
+         FROM studio_snapshots
+         WHERE studio_id = ?
+         ORDER BY modified_at DESC
+         LIMIT 1",
+        studio_id,
+    }
+    .fetch_optional(exec)
+    .await?
+    .and_then(|r| r.id)
+    .ok_or_else(|| Error::not_found("no snapshots with given studio ID"))
+}
+
+#[derive(serde::Deserialize)]
+pub struct Get {
+    pub snapshot_id: Option<i64>,
+}
+
 pub async fn get(
     app: Extension<Application>,
     Path(id): Path<Uuid>,
+    Query(params): Query<Get>,
 ) -> webserver::Result<Json<Studio>> {
+    let snapshot_id = match params.snapshot_id {
+        Some(id) => id,
+        None => latest_snapshot_id(id, &*app.sql).await?,
+    };
+
     let row = sqlx::query! {
-        "SELECT id, name, context, messages, modified_at
-         FROM studios
-         WHERE id = ?",
-         id
+        "SELECT s.id, s.name, ss.context, ss.messages, ss.modified_at
+         FROM studios s
+         INNER JOIN studio_snapshots ss ON ss.id = ?
+         WHERE s.id = ?",
+        snapshot_id,
+        id
     }
     .fetch_optional(&*app.sql)
     .await?
@@ -194,32 +250,38 @@ pub struct Patch {
     modified_at: Option<NaiveDateTime>,
     context: Option<Vec<ContextFile>>,
     messages: Option<Vec<Message>>,
+    snapshot_id: Option<i64>,
 }
 
 pub async fn patch(
     app: Extension<Application>,
-    Path(id): Path<Uuid>,
+    Path(studio_id): Path<Uuid>,
     Json(patch): Json<Patch>,
 ) -> webserver::Result<Json<TokenCounts>> {
     let mut transaction = app.sql.begin().await?;
 
+    let snapshot_id = match patch.snapshot_id {
+        Some(id) => id,
+        None => latest_snapshot_id(studio_id, &mut transaction).await?,
+    };
+
     // Ensure the ID is valid first.
-    sqlx::query!("SELECT id FROM studios WHERE id = ?", id)
+    sqlx::query!("SELECT id FROM studios WHERE id = ?", studio_id)
         .fetch_optional(&mut transaction)
         .await?
         .ok_or_else(|| Error::not_found("unknown code studio ID"))?;
 
     if let Some(name) = patch.name {
-        sqlx::query!("UPDATE studios SET name = ? WHERE id = ?", name, id)
+        sqlx::query!("UPDATE studios SET name = ? WHERE id = ?", name, studio_id)
             .execute(&mut transaction)
             .await?;
     }
 
     if let Some(modified_at) = patch.modified_at {
         sqlx::query!(
-            "UPDATE studios SET modified_at = ? WHERE id = ?",
+            "UPDATE studio_snapshots SET modified_at = ? WHERE id = ?",
             modified_at,
-            id
+            snapshot_id
         )
         .execute(&mut transaction)
         .await?;
@@ -227,33 +289,43 @@ pub async fn patch(
 
     if let Some(context) = patch.context {
         let json = serde_json::to_string(&context).unwrap();
-        sqlx::query!("UPDATE studios SET context = ? WHERE id = ?", json, id)
-            .execute(&mut transaction)
-            .await?;
+        sqlx::query!(
+            "UPDATE studio_snapshots SET context = ? WHERE id = ?",
+            json,
+            snapshot_id
+        )
+        .execute(&mut transaction)
+        .await?;
     }
 
     if let Some(messages) = patch.messages {
         let json = serde_json::to_string(&messages).unwrap();
-        sqlx::query!("UPDATE studios SET messages = ? WHERE id = ?", json, id)
-            .execute(&mut transaction)
-            .await?;
+        sqlx::query!(
+            "UPDATE studio_snapshots SET messages = ? WHERE id = ?",
+            json,
+            snapshot_id
+        )
+        .execute(&mut transaction)
+        .await?;
     }
 
-    sqlx::query!(
-        "UPDATE studios SET modified_at = datetime('now') WHERE id = ?",
-        id
-    )
+    sqlx::query! {
+        "UPDATE studio_snapshots SET modified_at = datetime('now') WHERE id = ?",
+        snapshot_id,
+    }
     .execute(&mut transaction)
     .await?;
 
     // Re-fetch the context and messages in case we didn't change them. If we did, this will now
     // contain the updated values.
-    let (messages_json, context_json) =
-        sqlx::query!("SELECT messages, context FROM studios WHERE id = ?", id)
-            .fetch_optional(&mut transaction)
-            .await?
-            .map(|r| (r.messages, r.context))
-            .unwrap_or_default();
+    let (messages_json, context_json) = sqlx::query!(
+        "SELECT messages, context FROM studio_snapshots WHERE id = ?",
+        snapshot_id
+    )
+    .fetch_optional(&mut transaction)
+    .await?
+    .map(|r| (r.messages, r.context))
+    .unwrap_or_default();
 
     let context: Vec<ContextFile> =
         serde_json::from_str(&context_json).context("invalid context JSON")?;
@@ -385,8 +457,10 @@ async fn token_counts(
 pub async fn generate(
     app: Extension<Application>,
     Extension(user): Extension<User>,
-    Path(id): Path<Uuid>,
+    Path(studio_id): Path<Uuid>,
 ) -> webserver::Result<Sse<Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>> {
+    let snapshot_id = latest_snapshot_id(studio_id, &*app.sql).await?;
+
     let answer_api_token = app
         .answer_api_token()
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
@@ -397,12 +471,14 @@ pub async fn generate(
         .temperature(0.0)
         .bearer(answer_api_token);
 
-    let (messages_json, context_json) =
-        sqlx::query!("SELECT messages, context FROM studios WHERE id = ?", id)
-            .fetch_optional(&*app.sql)
-            .await?
-            .map(|row| (row.messages, row.context))
-            .ok_or_else(|| Error::not_found("unknown code studio ID"))?;
+    let (messages_json, context_json) = sqlx::query!(
+        "SELECT messages, context FROM studio_snapshots WHERE id = ?",
+        snapshot_id
+    )
+    .fetch_optional(&*app.sql)
+    .await?
+    .map(|row| (row.messages, row.context))
+    .ok_or_else(|| Error::not_found("unknown code studio ID"))?;
 
     let mut messages =
         serde_json::from_str::<Vec<Message>>(&messages_json).map_err(Error::internal)?;
@@ -412,7 +488,7 @@ pub async fn generate(
 
     app.track_studio(
         &user,
-        StudioEvent::new(id, "generate")
+        StudioEvent::new(studio_id, "generate")
             .with_payload("context", &context)
             .with_payload("messages", &messages),
     );
@@ -438,15 +514,23 @@ pub async fn generate(
 
         app.track_studio(
             &user,
-            StudioEvent::new(id, "generate_complete")
+            StudioEvent::new(studio_id, "generate_complete")
                 .with_payload("response", &response)
         );
 
         messages.push(Message::Assistant(response));
         let messages_json = serde_json::to_string(&messages).unwrap();
-        sqlx::query!("UPDATE studios SET messages = ? WHERE id = ?", messages_json, id)
-            .execute(&*app.sql)
-            .await?;
+
+        sqlx::query! {
+            "INSERT INTO studio_snapshots(studio_id, context, messages)
+            SELECT studio_id, context, ?
+            FROM studio_snapshots
+            WHERE id = ?",
+            messages_json,
+            snapshot_id,
+        }
+        .execute(&*app.sql)
+        .await?;
     };
 
     let mut errored = false;
@@ -602,6 +686,8 @@ pub async fn import(
     user: Extension<User>,
     Query(params): Query<Import>,
 ) -> webserver::Result<String> {
+    let mut transaction = app.sql.begin().await?;
+
     let user_id = user
         .login()
         .ok_or_else(|| super::Error::user("didn't have user ID"))?
@@ -616,7 +702,7 @@ pub async fn import(
         user_id,
         thread_id,
     }
-    .fetch_optional(&*app.sql)
+    .fetch_optional(&mut transaction)
     .await?
     .ok_or_else(|| Error::not_found("conversation not found"))?;
 
@@ -624,12 +710,17 @@ pub async fn import(
     let exchanges = serde_json::from_str::<Vec<Exchange>>(&conversation.exchanges)
         .context("couldn't deserialize exchange list")?;
 
-    let old_context: Vec<ContextFile> = if let Some(studio_id) = params.studio_id {
+    let snapshot_id = match params.studio_id {
+        None => None,
+        Some(studio_id) => Some(latest_snapshot_id(studio_id, &mut transaction).await?),
+    };
+
+    let old_context: Vec<ContextFile> = if let Some(snapshot_id) = snapshot_id {
         sqlx::query! {
-            "SELECT context FROM studios WHERE id = ?",
-            studio_id,
+            "SELECT context FROM studio_snapshots WHERE id = ?",
+            snapshot_id,
         }
-        .fetch_optional(&*app.sql)
+        .fetch_optional(&mut transaction)
         .await?
         .ok_or_else(|| Error::not_found("unknown studio ID"))
         .and_then(|r| serde_json::from_str(&r.context).map_err(Error::internal))?
@@ -648,52 +739,56 @@ pub async fn import(
     }))
     .collect::<Vec<_>>();
 
-    let filtered_context =
+    let new_context =
         extract_relevant_chunks((*app).clone(), &exchanges, &imported_context).await?;
 
-    let context = canonicalize_context(
-        filtered_context
-            .clone()
-            .into_iter()
-            .chain(old_context.clone()),
-    )
-    .collect::<Vec<_>>();
+    let context = canonicalize_context(new_context.clone().into_iter().chain(old_context.clone()))
+        .collect::<Vec<_>>();
 
     let context_json = serde_json::to_string(&context).unwrap();
 
-    let studio_id = if let Some(studio_id) = params.studio_id {
-        sqlx::query! {
-            "UPDATE studios SET context = ? WHERE id = ?",
-            context_json,
-            studio_id,
+    let studio_id = match params.studio_id {
+        Some(id) => id,
+        None => {
+            let id = Uuid::new_v4();
+            sqlx::query!(
+                "INSERT INTO studios(id, name) VALUES (?, ?)",
+                id,
+                conversation.title
+            )
+            .execute(&mut transaction)
+            .await?;
+            id
         }
-        .execute(&*app.sql)
-        .await?;
-
-        studio_id
-    } else {
-        let studio_id = Uuid::new_v4();
-
-        sqlx::query! {
-            "INSERT INTO studios (id, name, context, messages) VALUES (?, ?, ?, ?)",
-            studio_id,
-            conversation.title,
-            context_json,
-            "[]",
-        }
-        .execute(&*app.sql)
-        .await?;
-
-        studio_id
     };
+
+    let messages_json = sqlx::query! {
+        "SELECT messages FROM studio_snapshots WHERE id = ?",
+        snapshot_id
+    }
+    .fetch_optional(&mut transaction)
+    .await?
+    .map(|r| r.messages)
+    .unwrap_or_else(|| "[]".to_owned());
+
+    sqlx::query! {
+        "INSERT INTO studio_snapshots(studio_id, context, messages) VALUES (?, ?, ?)",
+        studio_id,
+        context_json,
+        messages_json,
+    }
+    .execute(&mut transaction)
+    .await?;
 
     app.track_studio(
         &user,
         StudioEvent::new(studio_id, "import")
             .with_payload("thread_id", &params.thread_id)
             .with_payload("old_context", &old_context)
-            .with_payload("new_filtered_context", &filtered_context),
+            .with_payload("new_context", &new_context),
     );
+
+    transaction.commit().await?;
 
     Ok(studio_id.to_string())
 }
@@ -748,6 +843,55 @@ fn merge_ranges(a: &mut Range<usize>, b: Range<usize>) -> Option<Range<usize>> {
     } else {
         Some(b)
     }
+}
+
+#[derive(serde::Serialize)]
+pub struct Snapshot {
+    id: i64,
+    modified_at: NaiveDateTime,
+    context: Vec<ContextFile>,
+    messages: Vec<Message>,
+}
+
+pub async fn list_snapshots(
+    app: Extension<Application>,
+    Path(studio_id): Path<Uuid>,
+) -> webserver::Result<Json<Vec<Snapshot>>> {
+    sqlx::query! {
+        "SELECT id as 'id!', modified_at, context, messages
+        FROM studio_snapshots
+        WHERE studio_id = ?
+        ORDER BY modified_at DESC",
+        studio_id,
+    }
+    .fetch(&*app.sql)
+    .map_err(Error::internal)
+    .and_then(|r| async move {
+        Ok(Snapshot {
+            id: r.id,
+            modified_at: r.modified_at,
+            context: serde_json::from_str(&r.context).context("failed to deserialize context")?,
+            messages: serde_json::from_str(&r.messages).context("failed to deserialize messages")?,
+        })
+    })
+    .try_collect::<Vec<_>>()
+    .await
+    .map(Json)
+}
+
+pub async fn delete_snapshot(
+    app: Extension<Application>,
+    Path((studio_id, snapshot_id)): Path<(Uuid, i64)>,
+) -> webserver::Result<()> {
+    sqlx::query! {
+        "DELETE FROM studio_snapshots WHERE studio_id = ? AND id = ? RETURNING id",
+        studio_id,
+        snapshot_id
+    }
+    .fetch_optional(&*app.sql)
+    .await?
+    .map(|_id| ())
+    .ok_or_else(|| Error::not_found("snapshot not found"))
 }
 
 #[cfg(test)]
