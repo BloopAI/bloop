@@ -162,7 +162,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
 
   return (
     <PageTemplate renderPage="studio">
-      <div className="flex flex-1 w-screen">
+      <div className="flex flex-1 w-screen relative">
         <div
           className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col"
           ref={leftPanelRef}
@@ -208,8 +208,10 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
         </div>
         <div
           ref={dividerRef}
-          className="w-0.5 h-full bg-bg-border hover:bg-bg-main cursor-col-resize flex-shrink-0"
-        />
+          className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2.5 h-full group cursor-col-resize flex-shrink-0"
+        >
+          <div className="mx-auto w-0.5 h-full bg-bg-border group-hover:bg-bg-main" />
+        </div>
         <div
           className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col"
           ref={rightPanelRef}
