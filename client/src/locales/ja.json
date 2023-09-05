@@ -336,5 +336,9 @@
 	"Clear input": "入力をクリアします",
 	"Rename code studio": "コードスタジオの名前を変更します",
 	"Can’t open studio project": "スタジオプロジェクトを開くことができません",
-	"One or more repositories used in this studio project is being indexed. Try again when this process in complete.": "このスタジオプロジェクトで使用される1つ以上のリポジトリは、インデックス付けされています。 このプロセスが完全になったら再試行してください。"
+	"One or more repositories used in this studio project is being indexed. Try again when this process in complete.": "このスタジオプロジェクトで使用される1つ以上のリポジトリは、インデックス付けされています。 このプロセスが完全になったら再試行してください。",
+	"<0>#</0> of #_one": "<0>{{count}}</0>の{{total}}",
+	"<0>#</0> of #_other": "<0>{{count}}</0>の{{total}}",
+	"Conversation tokens exceeded. Reduce the number of messages to generate!": "会話トークンが超えました。 生成するメッセージの数を減らしてください！",
+	"Conversation tokens exceeded. Reduce the number of files to generate!": "会話トークンが超えました。 生成するファイルの数を減らしてください！"
 }

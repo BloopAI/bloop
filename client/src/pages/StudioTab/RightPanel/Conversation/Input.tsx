@@ -11,7 +11,7 @@ import React, {
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import Button from '../../../components/Button';
+import Button from '../../../../components/Button';
 import {
   ArrowRotate,
   PenUnderline,
@@ -19,15 +19,15 @@ import {
   Template,
   TemplateAdd,
   TrashCanFilled,
-} from '../../../icons';
-import { DeviceContext } from '../../../context/deviceContext';
+} from '../../../../icons';
+import { DeviceContext } from '../../../../context/deviceContext';
 import {
   StudioConversationMessageAuthor,
   StudioLeftPanelType,
   StudioPanelDataType,
-} from '../../../types/general';
-import MarkdownWithCode from '../../../components/MarkdownWithCode';
-import { StudioContext } from '../../../context/studioContext';
+} from '../../../../types/general';
+import MarkdownWithCode from '../../../../components/MarkdownWithCode';
+import { StudioContext } from '../../../../context/studioContext';
 
 type Props = {
   author: StudioConversationMessageAuthor;

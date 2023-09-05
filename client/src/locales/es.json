@@ -338,5 +338,9 @@
 	"Clear input": "Borrar entrada",
 	"Rename code studio": "Cambiar el nombre de Code Studio",
 	"Can’t open studio project": "No se puede abrir el proyecto de estudio",
-	"One or more repositories used in this studio project is being indexed. Try again when this process in complete.": "Se están indexando uno o más repositorios utilizados en este proyecto de estudio. Intente nuevamente cuando este proceso esté completo."
+	"One or more repositories used in this studio project is being indexed. Try again when this process in complete.": "Se están indexando uno o más repositorios utilizados en este proyecto de estudio. Intente nuevamente cuando este proceso esté completo.",
+	"<0>#</0> of #_one": "<0>{{count}}</0> de {{total}}",
+	"<0>#</0> of #_other": "<0>{{count}}</0> de {{total}}",
+	"Conversation tokens exceeded. Reduce the number of messages to generate!": "Los tokens de conversación excedieron. ¡Reduzca la cantidad de mensajes para generar!",
+	"Conversation tokens exceeded. Reduce the number of files to generate!": "Los tokens de conversación excedieron. ¡Reduzca la cantidad de archivos para generar!"
 }

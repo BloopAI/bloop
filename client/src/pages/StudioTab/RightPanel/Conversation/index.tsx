@@ -15,16 +15,16 @@ import {
   StudioConversationMessageAuthor,
   StudioLeftPanelType,
   StudioPanelDataType,
-} from '../../../types/general';
-import Button from '../../../components/Button';
-import { ArrowRefresh, TrashCanFilled } from '../../../icons';
-import KeyboardChip from '../KeyboardChip';
-import { CodeStudioMessageType } from '../../../types/api';
-import { patchCodeStudio } from '../../../services/api';
-import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
-import { DeviceContext } from '../../../context/deviceContext';
-import useScrollToBottom from '../../../hooks/useScrollToBottom';
-import { StudioContext } from '../../../context/studioContext';
+} from '../../../../types/general';
+import Button from '../../../../components/Button';
+import { ArrowRefresh, TrashCanFilled } from '../../../../icons';
+import KeyboardChip from '../../KeyboardChip';
+import { CodeStudioMessageType } from '../../../../types/api';
+import { patchCodeStudio } from '../../../../services/api';
+import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
+import { DeviceContext } from '../../../../context/deviceContext';
+import useScrollToBottom from '../../../../hooks/useScrollToBottom';
+import { StudioContext } from '../../../../context/studioContext';
 import ConversationInput from './Input';
 
 type Props = {

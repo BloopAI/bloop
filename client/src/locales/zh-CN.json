@@ -343,5 +343,10 @@
 	"Clear input": "清除输入",
 	"Rename code studio": "重命名代码工作室",
 	"One or more repositories used in this studio project is being indexed. Try again when this process in complete.": "该工作室项目中使用的一个或多个存储库正在索引。 完成此过程时，请重试。",
-	"Can’t open studio project": "无法打开录音室项目"
+	"Can’t open studio project": "无法打开录音室项目",
+	"<0>#</0> of #": "{{total}} 中的 <0>{{count}}</0>",
+	"<0>#</0> of #_one": "{{total}} 中的 <0>{{count}}</0>",
+	"<0>#</0> of #_other": "{{total}} 中的 <0>{{count}}</0>",
+	"Conversation tokens exceeded. Reduce the number of messages to generate!": "对话代币超过了。 减少要生成的消息数！",
+	"Conversation tokens exceeded. Reduce the number of files to generate!": "对话代币超过了。 减少要生成的文件数！"
 }
