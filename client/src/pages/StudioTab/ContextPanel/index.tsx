@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
-import { CodeStudioColored, PlusSignInCircle } from '../../../icons';
+import { CodeStudioColored, Info, PlusSignInCircle } from '../../../icons';
 import KeyboardChip from '../KeyboardChip';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import {
@@ -19,6 +19,7 @@ import {
 } from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import TokensUsageProgress from '../TokensUsageProgress';
+import { TOKEN_LIMIT } from '../../../consts/codeStudio';
 import ContextFileRow from './ContextFileRow';
 
 type Props = {
@@ -45,6 +46,7 @@ type Props = {
     skip: boolean,
     ranges?: { start: number; end: number }[],
   ) => void;
+  tokensTotal: number;
 };
 
 type FileList = {
@@ -61,6 +63,7 @@ const ContextPanel = ({
   onFileRemove,
   onFileHide,
   onFileAdded,
+  tokensTotal,
 }: Props) => {
   useTranslation();
   const { repositories } = useContext(RepositoriesContext);
@@ -127,6 +130,17 @@ const ContextPanel = ({
           </div>
         </Button>
       </div>
+      {tokensTotal > TOKEN_LIMIT && (
+        <div className="flex items-center gap-2 px-8 py-2 bg-bg-danger/12 select-none">
+          <Info raw sizeClassName="w-4.5 h-4.5" className="text-bg-danger" />
+          <p className="text-bg-danger caption">
+            <Trans>
+              Conversation tokens exceeded. Reduce the number of files to
+              generate!
+            </Trans>
+          </p>
+        </div>
+      )}
       {!contextFiles.length ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <div className="w-30 h-30">

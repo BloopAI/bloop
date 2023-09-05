@@ -1,10 +1,7 @@
 import React, { memo, useCallback, useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react';
-import { Trans, useTranslation } from 'react-i18next';
 import ErrorFallback from '../../components/ErrorFallback';
 import PageTemplate from '../../components/PageTemplate';
-import Button from '../../components/Button';
-import { Template } from '../../icons';
 import {
   RepoType,
   StudioContextFile,
@@ -15,17 +12,14 @@ import {
 import { getCodeStudio, patchCodeStudio } from '../../services/api';
 import { CodeStudioMessageType } from '../../types/api';
 import useResizeableSplitPanel from '../../hooks/useResizeableSplitPanel';
-import { TOKEN_LIMIT } from '../../consts/codeStudio';
-import Conversation from './Conversation';
 import ContextPanel from './ContextPanel';
 import HistoryPanel from './HistoryPanel';
 import TemplatesPanel from './TemplatesPanel';
 import FilePanel from './FilePanel';
 import AddContextModal from './AddContextModal';
-import TokensUsageProgress from './TokensUsageProgress';
+import RightPanel from './RightPanel';
 
 const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
-  const { t } = useTranslation();
   const [leftPanel, setLeftPanel] = useState<StudioPanelDataType>({
     type: StudioLeftPanelType.CONTEXT,
     data: null,
@@ -183,6 +177,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
               onFileRemove={onFileRemove}
               onFileHide={onFileHide}
               onFileAdded={onFileAdded}
+              tokensTotal={tokensTotal}
             />
           ) : leftPanel.type === StudioLeftPanelType.HISTORY ? (
             <HistoryPanel setLeftPanel={setLeftPanel} />
@@ -215,38 +210,12 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
           className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col"
           ref={rightPanelRef}
         >
-          <div className="flex items-center justify-between gap-2 px-8 h-11.5 border-b border-bg-border bg-bg-sub shadow-low select-none flex-shrink-0">
-            <div className="flex items-center gap-1.5 text-label-muted">
-              <p className="body-s text-label-title">
-                <Trans>Studio conversation</Trans>
-              </p>
-              <TokensUsageProgress
-                percent={(tokensTotal / TOKEN_LIMIT) * 100}
-              />
-              <span className="caption text-label-base">
-                {t('# of #', { count: tokensTotal, total: TOKEN_LIMIT })}
-              </span>
-            </div>
-            <Button
-              size="tiny"
-              variant="secondary"
-              onClick={() =>
-                setLeftPanel({
-                  type: StudioLeftPanelType.TEMPLATES,
-                  data: null,
-                })
-              }
-            >
-              <Template raw sizeClassName="w-3.5 h-3.5" />
-              <Trans>My templates</Trans>
-            </Button>
-          </div>
-          <Conversation
+          <RightPanel
             setLeftPanel={setLeftPanel}
             studioId={tab.key}
             messages={messages}
             refetchCodeStudio={refetchCodeStudio}
-            isTokenLimitExceeded={tokensTotal > TOKEN_LIMIT}
+            tokensTotal={tokensTotal}
           />
         </div>
       </div>
