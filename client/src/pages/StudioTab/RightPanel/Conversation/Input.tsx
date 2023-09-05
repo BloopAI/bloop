@@ -44,7 +44,6 @@ type Props = {
 const ConversationInput = ({
   author,
   message,
-  onAuthorChange,
   onMessageChange,
   i,
   onMessageRemoved,
@@ -60,15 +59,6 @@ const ConversationInput = ({
   const cloneRef = useRef<HTMLTextAreaElement | null>(null);
   const [isSaved, setSaved] = useState(false);
   useImperativeHandle(inputRef, () => ref.current!);
-
-  const handleAuthorSwitch = useCallback(() => {
-    onAuthorChange(
-      author === StudioConversationMessageAuthor.USER
-        ? StudioConversationMessageAuthor.ASSISTANT
-        : StudioConversationMessageAuthor.USER,
-      i,
-    );
-  }, [author, i, onAuthorChange]);
 
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -103,19 +93,22 @@ const ConversationInput = ({
   return (
     <div className="flex flex-col p-4 gap-3 rounded-6 border border-transparent hover:shadow-medium hover:border-bg-border-hover focus-within:border-bg-main bg-bg-base hover:focus-within:border-bg-main focus-within:shadow-medium transition-all duration-150 ease-in-out">
       <div className="flex items-center gap-2">
-        <button
-          onClick={handleAuthorSwitch}
-          className="h-6 caption text-label-title flex mr-auto items-center gap-1 flex-shrink-0 pl-1 pr-1.5 rounded border border-bg-border bg-bg-shade hover:border-bg-border-hover hover:bg-bg-base-hover transition-all duration-150 ease-in-out select-none"
+        <span
+          className={`h-6 caption text-label-title flex mr-auto items-center gap-1 flex-shrink-0 pl-1 pr-1.5 ${
+            author === StudioConversationMessageAuthor.ASSISTANT
+              ? 'bg-studio border border-transparent'
+              : 'bg-bg-shade border border-bg-border hover:border-bg-border-hover hover:bg-bg-base-hover'
+          } rounded  transition-all duration-150 ease-in-out select-none cursor-default`}
         >
-          <div className="w-4 h-4 rounded-full overflow-hidden bg-chat-bg-border flex items-center justify-center">
-            {author === 'User' ? (
+          {author === 'User' ? (
+            <div className="w-4 h-4 rounded-full overflow-hidden bg-chat-bg-border flex items-center justify-center">
               <img src={envConfig.github_user?.avatar_url} alt={t('avatar')} />
-            ) : (
-              <Sparkles raw sizeClassName="w-2.5 h-2.5" />
-            )}
-          </div>
+            </div>
+          ) : (
+            <Sparkles raw sizeClassName="w-4 h-4" />
+          )}
           <Trans>{author}</Trans>
-        </button>
+        </span>
         {isFocused || i === undefined ? (
           <div className="flex items-center gap-2">
             <Button
