@@ -8,7 +8,7 @@ import React, {
 import { Trans, useTranslation } from 'react-i18next';
 import LiteLoader from '../../components/Loaders/LiteLoader';
 import Button from '../../components/Button';
-import { CloseSign } from '../../icons';
+import { CloseSign, Info } from '../../icons';
 import { RepositoriesContext } from '../../context/repositoriesContext';
 import { CodeStudioShortType, RepoType, SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
@@ -48,7 +48,7 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
   const { search, filterType, setFilterType } = useContext(
     UIContext.HomeScreen,
   );
-  const [popupOpen, setPopupOpen] = useState(false);
+  const [popupOpen, setPopupOpen] = useState<false | 'repo' | 'studio'>(false);
   const [addReposOpen, setAddReposOpen] = useState<
     null | 'local' | 'github' | 'public' | 'studio'
   >(null);
@@ -101,6 +101,10 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
     setAddReposOpen('studio');
   }, []);
 
+  const showCodeStudioIndexingPopup = useCallback(() => {
+    setPopupOpen('studio');
+  }, []);
+
   return (
     <PageTemplate renderPage="home">
       <div className="w-full flex flex-col mx-auto max-w-6.5xl">
@@ -136,6 +140,8 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
               showAll={() => setFilterType('studios')}
               refetchStudios={refreshCodeStudios}
               handleRename={handleRename}
+              repositories={repositories}
+              showCodeStudioIndexingPopup={showCodeStudioIndexingPopup}
             />
           )}
         </div>
@@ -157,7 +163,7 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
             } else if (isSubmitted) {
               fetchRepos();
               setTimeout(() => fetchRepos(), 1000);
-              setPopupOpen(true);
+              setPopupOpen('repo');
               setTimeout(() => setPopupOpen(false), 3000);
             }
             setStudioToEdit(null);
@@ -165,20 +171,35 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
           }}
           initialValue={studioToEdit?.name}
         />
-        {popupOpen && (
+        {!!popupOpen && (
           <div
             className={`fixed w-85 p-3 flex gap-3 bg-bg-shade border border-bg-border rounded-lg shadow-high left-8 bottom-24 z-40 text-bg-main`}
           >
-            <LiteLoader />
+            {popupOpen === 'repo' ? (
+              <LiteLoader />
+            ) : (
+              <Info className="text-bg-danger" />
+            )}
             <div className="flex flex-col gap-1">
               <p className="body-s text-label-title">
-                <Trans>Syncing repository</Trans>
+                {popupOpen === 'repo' ? (
+                  <Trans>Syncing repository</Trans>
+                ) : (
+                  <Trans>Can’t open studio project</Trans>
+                )}
               </p>
               <p className="caption text-label-base">
-                <Trans>
-                  We are syncing your repository to bloop. This might take a
-                  couple of minutes
-                </Trans>
+                {popupOpen === 'repo' ? (
+                  <Trans>
+                    We are syncing your repository to bloop. This might take a
+                    couple of minutes
+                  </Trans>
+                ) : (
+                  <Trans>
+                    One or more repositories used in this studio project is
+                    being indexed. Try again when this process in complete.
+                  </Trans>
+                )}
               </p>
             </div>
             <Button
