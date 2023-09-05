@@ -52,7 +52,7 @@ const useRelatedFiles = (
         onFileRemove(path);
       }
     },
-    [],
+    [onFileRemove, onFileAdded],
   );
 
   useEffect(() => {
@@ -108,7 +108,7 @@ const useRelatedFiles = (
       );
     }
     setItems(menuItems);
-  }, [selectedFiles, relatedFiles, onFileAdded, onFileRemove, t]);
+  }, [selectedFiles, relatedFiles, t, onChange]);
 
   return { items };
 };
