@@ -143,6 +143,11 @@ const Conversation = ({
     [saveConversation],
   );
 
+  const handleCancel = useCallback(() => {
+    eventSource?.close();
+    setLoading(false);
+  }, []);
+
   const onSubmit = useCallback(async () => {
     if (!inputValue) {
       return;
@@ -275,7 +280,7 @@ const Conversation = ({
   useKeyboardNavigation(handleKeyEvent);
 
   return (
-    <div className="px-7 flex flex-col overflow-auto">
+    <div className="px-7 flex flex-col overflow-auto h-full">
       <div
         className="fade-bottom overflow-auto"
         ref={messagesRef}
@@ -308,7 +313,7 @@ const Conversation = ({
           )}
         </div>
       </div>
-      <div className="px-4 flex flex-col gap-8 pb-8">
+      <div className="px-4 flex flex-col gap-8 pb-8 mt-auto">
         <hr className="border-bg-border" />
         <div className="flex justify-between items-center flex-wrap gap-1">
           <div className="flex items-center gap-3">
@@ -331,27 +336,43 @@ const Conversation = ({
               <Trans>Clear conversation</Trans>
             </Button>
           </div>
-          <Button
-            size="small"
-            disabled={!inputValue || isTokenLimitExceeded}
-            onClick={onSubmit}
-          >
-            <Trans>Generate</Trans>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <KeyboardChip
-                type="cmd"
-                variant={
-                  !inputValue || isTokenLimitExceeded ? 'secondary' : 'primary'
-                }
-              />
-              <KeyboardChip
-                type="entr"
-                variant={
-                  !inputValue || isTokenLimitExceeded ? 'secondary' : 'primary'
-                }
-              />
-            </div>
-          </Button>
+          <div className="flex items-center gap-3">
+            {loading && (
+              <Button
+                size="small"
+                variant="tertiary-outlined"
+                onClick={handleCancel}
+              >
+                <Trans>Cancel</Trans>
+              </Button>
+            )}
+
+            <Button
+              size="small"
+              disabled={!inputValue || isTokenLimitExceeded}
+              onClick={onSubmit}
+            >
+              <Trans>Generate</Trans>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <KeyboardChip
+                  type="cmd"
+                  variant={
+                    !inputValue || isTokenLimitExceeded
+                      ? 'secondary'
+                      : 'primary'
+                  }
+                />
+                <KeyboardChip
+                  type="entr"
+                  variant={
+                    !inputValue || isTokenLimitExceeded
+                      ? 'secondary'
+                      : 'primary'
+                  }
+                />
+              </div>
+            </Button>
+          </div>
         </div>
       </div>
     </div>
