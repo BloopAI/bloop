@@ -35,6 +35,7 @@ type Props = {
   path: string;
   separator?: string;
   limitSectionWidth?: boolean;
+  nonInteractive?: boolean;
   type?: 'link' | 'button';
   activeStyle?: 'primary' | 'secondary';
 };
@@ -44,6 +45,7 @@ const Breadcrumbs = ({
   separator = '/',
   type = 'link',
   limitSectionWidth,
+  nonInteractive,
   path,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -150,6 +152,7 @@ const Breadcrumbs = ({
                 isLast={i == formattedPathParts.length - 1}
                 type={type}
                 limitSectionWidth={limitSectionWidth}
+                nonInteractive={nonInteractive}
               />
             </span>
           )}
