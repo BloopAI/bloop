@@ -148,6 +148,23 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
               showCodeStudioIndexingPopup={showCodeStudioIndexingPopup}
             />
           )}
+          {!!search &&
+            ((filterType === 'all' &&
+              !reposToShow.length &&
+              !codeStudiosToShow.length) ||
+              (filterType === 'repos' && !reposToShow.length) ||
+              (filterType === 'studios' && !codeStudiosToShow.length)) && (
+              <div className="flex flex-col gap-2 mx-auto text-center select-none">
+                <p className="body-s text-label-title">
+                  <Trans>No results...</Trans>
+                </p>
+                <p className="caption text-label-muted">
+                  <Trans>
+                    Nothing matched your search. Try a different combination!
+                  </Trans>
+                </p>
+              </div>
+            )}
         </div>
         <AddRepos
           addRepos={addReposOpen}
