@@ -70,35 +70,21 @@ const CodeStudiosSection = ({
           </button>
         )}
       </div>
-      {!codeStudios.length && shouldShowFull ? (
-        !isFiltered ? (
-          <div className="flex w-full flex-col items-center justify-center gap-4 px-4 py-11 bg-bg-sub border border-bg-border rounded-md">
-            <NoRepos />
-            <div className="flex flex-col gap-3 items-center">
-              <p className="subhead-m text-label-title">
-                <Trans>No Studio projects</Trans>
-              </p>
-              <p className="body-s text-label-muted">
-                <Trans>
-                  As soon as you create a new Studio project it will appear
-                  here.
-                </Trans>
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2 mx-auto text-center select-none">
-            <p className="body-s text-label-title">
-              <Trans>No results...</Trans>
+      {!codeStudios.length && shouldShowFull && !isFiltered && (
+        <div className="flex w-full flex-col items-center justify-center gap-4 px-4 py-11 bg-bg-sub border border-bg-border rounded-md">
+          <NoRepos />
+          <div className="flex flex-col gap-3 items-center">
+            <p className="subhead-m text-label-title">
+              <Trans>No Studio projects</Trans>
             </p>
-            <p className="caption text-label-muted">
+            <p className="body-s text-label-muted">
               <Trans>
-                Nothing matched your search. Try a different combination!
+                As soon as you create a new Studio project it will appear here.
               </Trans>
             </p>
           </div>
-        )
-      ) : null}
+        </div>
+      )}
     </div>
   );
 };
