@@ -1,17 +1,17 @@
 import React, { memo, useCallback, useContext, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
-import Button from '../../../components/Button';
 import { getDateFnsLocale } from '../../../utils';
-import MarkdownWithCode from '../../../components/MarkdownWithCode';
 import { HistoryConversationTurn } from '../../../types/api';
 import { patchCodeStudio } from '../../../services/api';
 import { LocaleContext } from '../../../context/localeContext';
+import Button from '../../../components/Button';
 
 type Props = HistoryConversationTurn & {
   studioId: string;
   refetchCodeStudio: () => void;
   refetchHistory: () => void;
+  handlePreview: (e: any, closeHistory?: boolean) => void;
   isCurrent: boolean;
 };
 
@@ -23,6 +23,7 @@ const ConversationTurn = ({
   refetchCodeStudio,
   studioId,
   isCurrent,
+  handlePreview,
 }: Props) => {
   useTranslation();
   const { locale } = useContext(LocaleContext);
@@ -31,6 +32,7 @@ const ConversationTurn = ({
     patchCodeStudio(studioId, { context, messages }).then(() => {
       refetchCodeStudio();
       refetchHistory();
+      handlePreview(null, true);
     });
   }, [studioId, refetchCodeStudio, context, messages, refetchHistory]);
 
@@ -39,7 +41,10 @@ const ConversationTurn = ({
   }, []);
 
   return (
-    <div className="flex overflow-hidden flex-col items-start gap-3 p-3 pl-7 rounded-md border border-transparent hover:border-bg-border hover:bg-bg-base group relative">
+    <button
+      className="flex overflow-hidden flex-col items-start gap-3 p-3 pl-7 rounded-md border text-left border-transparent hover:border-bg-border hover:bg-bg-base cursor-pointer group relative"
+      onClick={handlePreview}
+    >
       <div
         className={`absolute top-5 left-1.5 transform translate-x-px w-1.5 h-1.5 rounded-full ${
           modified_at ? 'bg-bg-border-hover' : 'bg-bg-main'
@@ -69,15 +74,15 @@ const ConversationTurn = ({
               getDateFnsLocale(locale),
             )}
       </div>
-      <div className="code-studio-md body-s  text-label-title overflow-hidden w-full">
-        <MarkdownWithCode
-          markdown={
-            'User' in lastMessage ? lastMessage.User : lastMessage.Assistant
-          }
-          isCodeStudio
-        />
+      <div className="body-s text-label-title overflow-hidden w-full">
+        <p>
+          {('User' in lastMessage ? lastMessage.User : lastMessage.Assistant)
+            .split(' ')
+            .slice(0, 3)
+            .join(' ')}
+        </p>
       </div>
-    </div>
+    </button>
   );
 };
 

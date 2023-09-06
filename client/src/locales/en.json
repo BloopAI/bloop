@@ -338,6 +338,7 @@
 	"Rename code studio": "Rename code studio",
 	"One or more repositories used in this studio project is being indexed. Try again when this process in complete.": "One or more repositories used in this studio project is being indexed. Try again when this process in complete.",
 	"Can’t open studio project": "Can’t open studio project",
+	"<0>#</0> of #": "<0>{{count}}</0> of {{total}}",
 	"<0>#</0> of #_one": "<0>{{count}}</0> of {{total}}",
 	"<0>#</0> of #_other": "<0>{{count}}</0> of {{total}}",
 	"Conversation tokens exceeded. Reduce the number of messages to generate!": "Conversation tokens exceeded. Reduce the number of messages to generate!",

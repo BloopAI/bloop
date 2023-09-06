@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import * as Sentry from '@sentry/react';
 import ErrorFallback from '../../components/ErrorFallback';
 import PageTemplate from '../../components/PageTemplate';
@@ -10,7 +10,7 @@ import {
   StudioTabType,
 } from '../../types/general';
 import { getCodeStudio, patchCodeStudio } from '../../services/api';
-import { CodeStudioMessageType } from '../../types/api';
+import { CodeStudioType, HistoryConversationTurn } from '../../types/api';
 import useResizeableSplitPanel from '../../hooks/useResizeableSplitPanel';
 import ContextPanel from './ContextPanel';
 import HistoryPanel from './HistoryPanel';
@@ -19,25 +19,34 @@ import FilePanel from './FilePanel';
 import AddContextModal from './AddContextModal';
 import RightPanel from './RightPanel';
 
+const emptyCodeStudio: CodeStudioType = {
+  messages: [],
+  context: [],
+  token_counts: { total: 0, per_file: [], messages: 0 },
+  name: '',
+  id: '',
+  modified_at: '',
+};
+
 const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
   const [leftPanel, setLeftPanel] = useState<StudioPanelDataType>({
     type: StudioLeftPanelType.CONTEXT,
     data: null,
   });
   const [isAddContextOpen, setAddContextOpen] = useState(false);
-  const [messages, setMessages] = useState<CodeStudioMessageType[]>([]);
-  const [contextFiles, setContextFiles] = useState<StudioContextFile[]>([]);
-  const [tokensTotal, setTokensTotal] = useState(0);
-  const [tokensPerFile, setTokensPerFile] = useState([]);
-  const { leftPanelRef, rightPanelRef, dividerRef } = useResizeableSplitPanel();
+  const [currentState, setCurrentState] =
+    useState<CodeStudioType>(emptyCodeStudio);
+  const [previewingState, setPreviewingState] = useState<null | CodeStudioType>(
+    null,
+  );
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const { leftPanelRef, rightPanelRef, dividerRef, containerRef } =
+    useResizeableSplitPanel();
 
   const refetchCodeStudio = useCallback(async () => {
     if (tab.key) {
       const resp = await getCodeStudio(tab.key);
-      setMessages(resp.messages);
-      setContextFiles(resp.context);
-      setTokensTotal(resp.token_counts.total);
-      setTokensPerFile(resp.token_counts.per_file);
+      setCurrentState(resp);
     }
   }, [tab.key]);
 
@@ -57,7 +66,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
       if (tab.key) {
         patchCodeStudio(tab.key, {
           context: [
-            ...contextFiles,
+            ...currentState.context,
             {
               path: filePath,
               branch,
@@ -75,7 +84,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
         }
       }
     },
-    [tab.key, contextFiles],
+    [tab.key, currentState.context],
   );
 
   const onFileRangesChanged = useCallback(
@@ -85,7 +94,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
       repo_ref: string,
       branch: string | null,
     ) => {
-      const patchedFile = contextFiles.find(
+      const patchedFile = currentState.context.find(
         (f) =>
           f.path === filePath && f.repo === repo_ref && f.branch === branch,
       );
@@ -94,7 +103,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
           start: r[0],
           end: r[1] + 1,
         }));
-        const newContext = contextFiles
+        const newContext = currentState.context
           .filter(
             (f) =>
               f.path !== filePath || f.repo !== repo_ref || f.branch !== branch,
@@ -105,7 +114,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
         }).then(() => refetchCodeStudio());
       }
     },
-    [tab.key, contextFiles],
+    [tab.key, currentState.context],
   );
 
   const onFileHide = useCallback(
@@ -115,13 +124,13 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
       branch: string | null,
       hide: boolean,
     ) => {
-      const patchedFile = contextFiles.find(
+      const patchedFile = currentState.context.find(
         (f) =>
           f.path === filePath && f.repo === repo_ref && f.branch === branch,
       );
       if (tab.key && patchedFile) {
         patchedFile.hidden = hide;
-        const newContext = contextFiles
+        const newContext = currentState.context
           .filter(
             (f) =>
               f.path !== filePath || f.repo !== repo_ref || f.branch !== branch,
@@ -132,7 +141,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
         }).then(() => refetchCodeStudio());
       }
     },
-    [tab.key, contextFiles],
+    [tab.key, currentState.context],
   );
 
   const onFileRemove = useCallback(
@@ -143,7 +152,7 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
     ) => {
       const files = Array.isArray(f) ? f : [f];
       let newContext: StudioContextFile[] = JSON.parse(
-        JSON.stringify(contextFiles),
+        JSON.stringify(currentState.context),
       );
       files.forEach(({ path, repo, branch }) => {
         const patchedFile = newContext.findIndex(
@@ -157,72 +166,106 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
         context: newContext,
       }).then(() => refetchCodeStudio());
     },
-    [tab.key, contextFiles],
+    [tab.key, currentState.context],
   );
+
+  const handlePreview = useCallback(
+    (state?: HistoryConversationTurn, closeHistory?: boolean) => {
+      setPreviewingState(state || null);
+      if (closeHistory) {
+        setIsHistoryOpen(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!isHistoryOpen) {
+      setPreviewingState(null);
+    }
+  }, [isHistoryOpen]);
+
+  const stateToShow = useMemo(() => {
+    return isHistoryOpen && previewingState ? previewingState : currentState;
+  }, [isHistoryOpen, previewingState, currentState]);
 
   return (
     <PageTemplate renderPage="studio">
-      <div className="flex flex-1 w-screen relative">
-        <div
-          className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col"
-          ref={leftPanelRef}
-        >
-          {leftPanel.type === StudioLeftPanelType.CONTEXT ? (
-            <ContextPanel
-              setLeftPanel={setLeftPanel}
-              setAddContextOpen={setAddContextOpen}
-              studioId={tab.key}
-              contextFiles={contextFiles}
-              tokensPerFile={tokensPerFile}
-              onFileRemove={onFileRemove}
-              onFileHide={onFileHide}
-              onFileAdded={onFileAdded}
-              tokensTotal={tokensTotal}
-            />
-          ) : leftPanel.type === StudioLeftPanelType.HISTORY ? (
-            <HistoryPanel
-              setLeftPanel={setLeftPanel}
-              studioId={tab.key}
-              refetchCodeStudio={refetchCodeStudio}
-            />
-          ) : leftPanel.type === StudioLeftPanelType.TEMPLATES ? (
-            <TemplatesPanel setLeftPanel={setLeftPanel} />
-          ) : leftPanel.type === StudioLeftPanelType.FILE ? (
-            <FilePanel
-              {...leftPanel.data}
-              setLeftPanel={setLeftPanel}
-              onFileRangesChanged={onFileRangesChanged}
-              tokens={tokensPerFile[tokensPerFile.length - 1]}
-              onFileHide={onFileHide}
-              onFileRemove={onFileRemove}
-              onFileAdded={onFileAdded}
-              contextFiles={contextFiles}
-            />
-          ) : null}
-          <AddContextModal
-            isVisible={isAddContextOpen}
-            onClose={handleAddContextClose}
-            onSubmit={onFileAdded}
-            contextFiles={contextFiles}
-          />
-        </div>
-        <div
-          ref={dividerRef}
-          className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2.5 h-full group cursor-col-resize flex-shrink-0"
-        >
-          <div className="mx-auto w-0.5 h-full bg-bg-border group-hover:bg-bg-main" />
-        </div>
-        <div
-          className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col"
-          ref={rightPanelRef}
-        >
-          <RightPanel
-            setLeftPanel={setLeftPanel}
+      <div className="flex flex-1 w-screen">
+        {isHistoryOpen && (
+          <HistoryPanel
+            setIsHistoryOpen={setIsHistoryOpen}
             studioId={tab.key}
-            messages={messages}
             refetchCodeStudio={refetchCodeStudio}
-            tokensTotal={tokensTotal}
+            handlePreview={handlePreview}
           />
+        )}
+        <div
+          className={`flex flex-1 relative ${
+            isHistoryOpen ? 'w-[calc(100%-13rem)]' : 'w-full'
+          }`}
+          ref={containerRef}
+        >
+          <div
+            className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col"
+            ref={leftPanelRef}
+          >
+            {leftPanel.type === StudioLeftPanelType.CONTEXT ? (
+              <ContextPanel
+                setLeftPanel={setLeftPanel}
+                setAddContextOpen={setAddContextOpen}
+                studioId={tab.key}
+                contextFiles={stateToShow.context}
+                tokensPerFile={stateToShow.token_counts?.per_file || []}
+                onFileRemove={onFileRemove}
+                onFileHide={onFileHide}
+                onFileAdded={onFileAdded}
+                tokensTotal={stateToShow.token_counts?.total}
+              />
+            ) : leftPanel.type === StudioLeftPanelType.TEMPLATES ? (
+              <TemplatesPanel setLeftPanel={setLeftPanel} />
+            ) : leftPanel.type === StudioLeftPanelType.FILE ? (
+              <FilePanel
+                {...leftPanel.data}
+                setLeftPanel={setLeftPanel}
+                onFileRangesChanged={onFileRangesChanged}
+                tokens={
+                  stateToShow.token_counts?.per_file[
+                    stateToShow.token_counts?.per_file.length - 1
+                  ]
+                }
+                onFileHide={onFileHide}
+                onFileRemove={onFileRemove}
+                onFileAdded={onFileAdded}
+                contextFiles={stateToShow.context}
+              />
+            ) : null}
+            <AddContextModal
+              isVisible={isAddContextOpen}
+              onClose={handleAddContextClose}
+              onSubmit={onFileAdded}
+              contextFiles={stateToShow.context}
+            />
+          </div>
+          <div
+            ref={dividerRef}
+            className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2.5 h-full group cursor-col-resize flex-shrink-0"
+          >
+            <div className="mx-auto w-0.5 h-full bg-bg-border group-hover:bg-bg-main" />
+          </div>
+          <div
+            className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col"
+            ref={rightPanelRef}
+          >
+            <RightPanel
+              setLeftPanel={setLeftPanel}
+              studioId={tab.key}
+              messages={stateToShow.messages}
+              refetchCodeStudio={refetchCodeStudio}
+              tokensTotal={stateToShow.token_counts?.total}
+              setIsHistoryOpen={setIsHistoryOpen}
+            />
+          </div>
         </div>
       </div>
     </PageTemplate>

@@ -13,6 +13,10 @@ type Props = {
   refetchHistory: () => void;
   turns: HistoryConversationTurn[];
   isFirst: boolean;
+  handlePreview: (
+    turn?: HistoryConversationTurn,
+    closeHistory?: boolean,
+  ) => void;
 };
 
 const ConversationDay = ({
@@ -22,6 +26,7 @@ const ConversationDay = ({
   refetchCodeStudio,
   refetchHistory,
   isFirst,
+  handlePreview,
 }: Props) => {
   const { locale } = useContext(LocaleContext);
   return (
@@ -29,10 +34,10 @@ const ConversationDay = ({
       <div className="flex items-center gap-2 body-s-strong text-label-title mb-1 select-none">
         <Calendar className="text-label-base" />
         {!date
-          ? format(new Date(), 'EEEE, d MMM yyyy', getDateFnsLocale(locale))
+          ? format(new Date(), 'EE, d MMM yyyy', getDateFnsLocale(locale))
           : format(
               new Date(date + 'T00:00:00.000Z'),
-              'EEEE, d MMM yyyy',
+              'EE, d MMM yyyy',
               getDateFnsLocale(locale),
             )}
       </div>
@@ -45,6 +50,12 @@ const ConversationDay = ({
           studioId={studioId}
           refetchHistory={refetchHistory}
           isCurrent={isFirst && i === 0}
+          handlePreview={(e, closeHistory) =>
+            handlePreview(
+              (isFirst && i === 0) || closeHistory ? undefined : turn,
+              closeHistory,
+            )
+          }
         />
       ))}
     </div>
