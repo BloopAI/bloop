@@ -151,3 +151,67 @@ impl Embedder for LocalEmbedder {
             .collect::<anyhow::Result<Vec<Embedding>>>()
     }
 }
+
+pub struct GgmlEmbedder {
+    model: Box<dyn llm::Model>,
+    session: Arc<Mutex<llm::InferenceSession>>,
+    tokenizer: Tokenizer,
+}
+
+// InferenceSession is explicitly not Sync because it uses ggml::Tensor internally,
+// Bert does not make use of these tensors however
+unsafe impl Sync for GgmlEmbedder {}
+
+impl GgmlEmbedder {
+    pub fn new(model_dir: &Path) -> anyhow::Result<Self> {
+        let mut model_params = llm::ModelParameters::default();
+        model_params.use_gpu = true; // TODO: make configurable
+        let model = llm::load_dynamic(
+            Some(llm::ModelArchitecture::Bert),
+            &model_dir.join("ggml-model-q4_0.bin"),
+            llm::TokenizerSource::HuggingFaceTokenizerFile(model_dir.join("tokenizer.json")),
+            model_params,
+            llm::load_progress_callback_stdout,
+        )?;
+        let session = Arc::new(Mutex::new(model.start_session(Default::default())));
+        let tokenizer = Tokenizer::from_file(model_dir.join("tokenizer.json")).unwrap();
+
+        Ok(Self {
+            model,
+            session,
+            tokenizer,
+        })
+    }
+}
+
+#[async_trait]
+impl Embedder for GgmlEmbedder {
+    fn embed(&self, sequence: &str) -> anyhow::Result<Embedding> {
+        let mut output_request = llm::OutputRequest {
+            all_logits: None,
+            embeddings: Some(Vec::new()),
+        };
+        let vocab = self.model.tokenizer();
+        let beginning_of_sentence = true;
+        let query_token_ids = vocab
+            .tokenize(sequence, beginning_of_sentence)
+            .unwrap()
+            .iter()
+            .map(|(_, tok)| *tok)
+            .collect::<Vec<_>>();
+        let mut session = self.session.lock().unwrap();
+        self.model
+            .evaluate(&mut session, &query_token_ids, &mut output_request);
+        Ok(output_request.embeddings.unwrap())
+    }
+
+    fn tokenizer(&self) -> &Tokenizer {
+        &self.tokenizer
+    }
+
+    async fn batch_embed(&self, log: Vec<&str>) -> anyhow::Result<Vec<Embedding>> {
+        log.into_iter()
+            .map(|entry| tokio::task::block_in_place(|| self.embed(entry)))
+            .collect::<anyhow::Result<Vec<Embedding>>>()
+    }
+}

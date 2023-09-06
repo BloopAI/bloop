@@ -7,3 +7,4 @@ apps/desktop/src-tauri/bin/qdrant-x86_64-apple-darwin filter=lfs diff=lfs merge=
 apps/desktop/src-tauri/bin/qdrant-aarch64-apple-darwin filter=lfs diff=lfs merge=lfs -text
 apps/desktop/src-tauri/bin/qdrant-x86_64-unknown-linux-gnu filter=lfs diff=lfs merge=lfs -text
 apps/desktop/src-tauri/bin/qdrant-x86_64-pc-windows-msvc.exe filter=lfs diff=lfs merge=lfs -text
+apps/desktop/src-tauri/model/ggml-model-q4_0.bin filter=lfs diff=lfs merge=lfs -text

@@ -136,6 +136,15 @@ lazy-regex = "3.0.2"
 quick-xml = { version = "0.29.0", features = ["serialize"] }
 jsonwebtokens-cognito = "0.1.1"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+#)llm = { path = "/home/np/bloop/ggml/llm/crates/llm", default-features = false, features = ["bert", "metal"] }
+llm = { git = "https://github.com/nerdypepper/llm", branch = "metal-experiments", default-features = false, features = ["bert", "metal"] }
+
+# TODO: make cublas a feature flag
+# [target.'cfg(not(target_os = "macos"))'.dependencies]
+# llm = { path = "/home/np/bloop/ggml/llm/crates/llm", default-features = false, features = ["bert", "cublas"] }
+# llm = { git = "https://github.com/nerdypepper/llm", branch = "metal-experiments", default-features = false, features = ["bert", "cublas"] }
+
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["async_tokio"] }
 pretty_assertions = "1.4.0"
