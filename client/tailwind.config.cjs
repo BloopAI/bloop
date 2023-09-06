@@ -28,6 +28,7 @@ module.exports = {
         "label-control": "rgb(var(--label-control))",
         "label-faint": "rgb(var(--label-faint))",
         "label-muted": "rgb(var(--label-muted))",
+        "label-muted/15": "rgba(var(--label-muted), 0.15)",
         "label-base": "rgb(var(--label-base))",
         "label-title": "rgb(var(--label-title))",
         "label-title/15": "rgba(var(--label-title), 0.15)",

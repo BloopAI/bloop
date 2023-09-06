@@ -351,5 +351,6 @@
 	"Conversation tokens exceeded. Reduce the number of files to generate!": "对话代币超过了。 减少要生成的文件数！",
 	"Templates": "模板",
 	"Loading...": "加载...",
-	"No related files found": "找不到相关文件"
+	"No related files found": "找不到相关文件",
+	"Unavailable": "不可用"
 }
