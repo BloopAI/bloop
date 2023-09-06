@@ -7,23 +7,28 @@ import {
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import {
-  StudioLeftPanelType,
-  StudioPanelDataType,
-} from '../../../types/general';
 import Button from '../../../components/Button';
-import { ArrowLeft } from '../../../icons';
-import { CodeStudioType, HistoryConversationTurn } from '../../../types/api';
+import { CloseSign } from '../../../icons';
+import { HistoryConversationTurn } from '../../../types/api';
 import { getCodeStudioHistory } from '../../../services/api';
 import ConversationTurn from './ConversationDay';
 
 type Props = {
-  setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
+  setIsHistoryOpen: Dispatch<SetStateAction<boolean>>;
   studioId: string;
   refetchCodeStudio: () => void;
+  handlePreview: (
+    turn?: HistoryConversationTurn,
+    closeHistory?: boolean,
+  ) => void;
 };
 
-const HistoryPanel = ({ setLeftPanel, studioId, refetchCodeStudio }: Props) => {
+const HistoryPanel = ({
+  setIsHistoryOpen,
+  studioId,
+  refetchCodeStudio,
+  handlePreview,
+}: Props) => {
   const { t } = useTranslation();
   const [history, setHistory] = useState<
     Record<string, HistoryConversationTurn[]>
@@ -45,24 +50,24 @@ const HistoryPanel = ({ setLeftPanel, studioId, refetchCodeStudio }: Props) => {
   }, [studioId]);
 
   return (
-    <div className="flex flex-col w-full overflow-auto">
+    <div className="flex flex-col w-52 flex-shrink-0 border-r border-bg-border overflow-auto">
       <div className="flex gap-1 px-8 justify-between items-center border-b flex-shrink-0 border-bg-border bg-bg-shade shadow-low h-11.5">
         <div className="flex items-center gap-3">
-          <Button
-            size="small"
-            variant="tertiary"
-            onlyIcon
-            title={t('Back')}
-            onClick={() => setLeftPanel({ type: StudioLeftPanelType.CONTEXT })}
-          >
-            <ArrowLeft />
-          </Button>
           <p className="body-s text-label-title">
             <Trans>History</Trans>
           </p>
         </div>
+        <Button
+          size="small"
+          variant="tertiary"
+          onlyIcon
+          title={t('Close')}
+          onClick={() => setIsHistoryOpen(false)}
+        >
+          <CloseSign />
+        </Button>
       </div>
-      <div className="flex flex-col gap-4 p-8 overflow-auto">
+      <div className="flex flex-col gap-4 py-8 px-4 overflow-auto">
         {Object.keys(history).map((date, i) => (
           <ConversationTurn
             key={date}
@@ -72,6 +77,7 @@ const HistoryPanel = ({ setLeftPanel, studioId, refetchCodeStudio }: Props) => {
             refetchHistory={refetchHistory}
             turns={history[date]}
             isFirst={i === 0}
+            handlePreview={handlePreview}
           />
         ))}
       </div>

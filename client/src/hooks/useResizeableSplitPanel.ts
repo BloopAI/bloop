@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 const useResizeableSplitPanel = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
   const dividerRef = useRef<HTMLDivElement>(null);
@@ -9,6 +10,7 @@ const useResizeableSplitPanel = () => {
     const leftPanel = leftPanelRef.current;
     const rightPanel = rightPanelRef.current;
     const divider = dividerRef.current;
+    const container = containerRef.current;
 
     const savedPanelSize = Number(localStorage.getItem('leftPanelWidth'));
     if (savedPanelSize && leftPanel && rightPanel) {
@@ -20,14 +22,19 @@ const useResizeableSplitPanel = () => {
       e.preventDefault();
 
       const handleMouseMove = (e: MouseEvent) => {
-        let newLeftPanelWidth = (e.clientX / window.innerWidth) * 100;
-        newLeftPanelWidth = Math.max(5, Math.min(newLeftPanelWidth, 95));
-        if (leftPanel && rightPanel && divider) {
-          leftPanel.style.width = `${newLeftPanelWidth}%`;
-          rightPanel.style.width = `${100 - newLeftPanelWidth}%`;
-          divider.style.left = `${newLeftPanelWidth}%`;
+        if (container) {
+          let newLeftPanelWidth =
+            ((e.clientX - container.getBoundingClientRect().left) /
+              container.clientWidth) *
+            100;
+          newLeftPanelWidth = Math.max(5, Math.min(newLeftPanelWidth, 95));
+          if (leftPanel && rightPanel && divider) {
+            leftPanel.style.width = `${newLeftPanelWidth}%`;
+            rightPanel.style.width = `${100 - newLeftPanelWidth}%`;
+            divider.style.left = `${newLeftPanelWidth}%`;
 
-          localStorage.setItem('leftPanelSize', newLeftPanelWidth.toString());
+            localStorage.setItem('leftPanelSize', newLeftPanelWidth.toString());
+          }
         }
       };
 
@@ -59,7 +66,7 @@ const useResizeableSplitPanel = () => {
     };
   }, []);
 
-  return { leftPanelRef, rightPanelRef, dividerRef };
+  return { leftPanelRef, rightPanelRef, dividerRef, containerRef };
 };
 
 export default useResizeableSplitPanel;

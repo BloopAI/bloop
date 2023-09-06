@@ -213,7 +213,6 @@ const RelatedFilesDropdown = ({
       <Tippy
         placement={dropdownPlacement}
         interactive
-        trigger="manual"
         visible={isVisible}
         render={() =>
           !isVisible ? null : (
