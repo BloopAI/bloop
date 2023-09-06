@@ -11,7 +11,6 @@ import { Trans, useTranslation } from 'react-i18next';
 import {
   ExtendedMenuItemType,
   MenuItemType,
-  RepoType,
   StudioContextFile,
 } from '../../types/general';
 import { getRelatedFileRanges, getRelatedFiles } from '../../services/api';
@@ -31,15 +30,14 @@ type Props = {
       | StudioContextFile[],
   ) => void;
   onFileAdded: (
-    repo: RepoType,
+    repoRef: string,
     branch: string | null,
     filePath: string,
-    skip: boolean,
     ranges: { start: number; end: number }[],
   ) => void;
   branch: string | null;
   filePath: string;
-  repo: RepoType;
+  repoRef: string;
   isDark?: boolean;
   size?: 'small' | 'medium' | 'large';
 };
@@ -52,7 +50,7 @@ const RelatedFilesDropdown = ({
   onFileRemove,
   branch,
   filePath,
-  repo,
+  repoRef,
   isDark,
   size = 'medium',
 }: PropsWithChildren<Props>) => {
@@ -68,22 +66,22 @@ const RelatedFilesDropdown = ({
 
   const handleRelatedFileAdded = useCallback(
     async (path: string, ranges: { start: number; end: number }[]) => {
-      onFileAdded(repo, branch, path, true, ranges);
+      onFileAdded(repoRef, branch, path, ranges);
     },
-    [repo, branch, onFileAdded, filePath],
+    [repoRef, branch, onFileAdded, filePath],
   );
   const handleRelatedFileRemoved = useCallback(
     (path: string) => {
-      onFileRemove({ branch, path, repo: repo.ref });
+      onFileRemove({ branch, path, repo: repoRef });
     },
-    [repo, branch, onFileRemove],
+    [repoRef, branch, onFileRemove],
   );
 
   const onChange = useCallback(
     async (path: string, kind: 'Imported' | 'Importing', b: boolean) => {
       if (b) {
         const resp = await getRelatedFileRanges(
-          repo.ref,
+          repoRef,
           branch ? branch : undefined,
           filePath,
           path,
@@ -105,7 +103,13 @@ const RelatedFilesDropdown = ({
         handleRelatedFileRemoved(path);
       }
     },
-    [onFileRemove, onFileAdded, repo.ref, branch, filePath],
+    [
+      handleRelatedFileRemoved,
+      handleRelatedFileAdded,
+      repoRef,
+      branch,
+      filePath,
+    ],
   );
 
   useEffect(() => {
@@ -165,7 +169,7 @@ const RelatedFilesDropdown = ({
 
   useEffect(() => {
     if (isVisible) {
-      getRelatedFiles(filePath, repo.ref, branch ? branch : undefined)
+      getRelatedFiles(filePath, repoRef, branch ? branch : undefined)
         .then((resp) => {
           setRelatedFiles(
             resp.files_imported
@@ -180,7 +184,7 @@ const RelatedFilesDropdown = ({
         })
         .finally(() => setIsLoading(false));
     }
-  }, [filePath, repo.ref, branch, isVisible]);
+  }, [filePath, repoRef, branch, isVisible]);
 
   const renderItem = useCallback((item: ContextMenuItem, i: number) => {
     switch (item.type) {

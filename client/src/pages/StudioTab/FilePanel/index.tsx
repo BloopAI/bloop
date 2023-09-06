@@ -1,7 +1,8 @@
-import {
+import React, {
   Dispatch,
   memo,
   SetStateAction,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -10,19 +11,10 @@ import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
 import {
   RepoType,
-  StudioContextFile,
   StudioLeftPanelType,
   StudioPanelDataType,
 } from '../../../types/general';
-import {
-  ArrowLeft,
-  Branch,
-  CursorSelection,
-  Eye,
-  Fire,
-  PlusSignInCircle,
-  TrashCanFilled,
-} from '../../../icons';
+import { Branch, CursorSelection, Fire } from '../../../icons';
 import FileIcon from '../../../components/FileIcon';
 import { search } from '../../../services/api';
 import { buildRepoQuery, getFileExtensionForLang } from '../../../utils';
@@ -31,8 +23,9 @@ import CodeFullSelectable from '../../../components/CodeBlock/CodeFullSelectable
 import LinesBadge from '../LinesBadge';
 import TokensUsageBadge from '../TokensUsageBadge';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
-import RelatedFilesDropdown from '../RelatedFilesDropdown';
 import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
+import KeyboardChip from '../KeyboardChip';
+import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
@@ -47,25 +40,6 @@ type Props = {
     branch: string | null,
   ) => void;
   tokens: number;
-  onFileRemove: (
-    f:
-      | { path: string; repo: string; branch: string | null }
-      | StudioContextFile[],
-  ) => void;
-  onFileHide: (
-    path: string,
-    repo: string,
-    branch: string | null,
-    hide: boolean,
-  ) => void;
-  onFileAdded: (
-    repo: RepoType,
-    branch: string | null,
-    filePath: string,
-    skip: boolean,
-    ranges: { start: number; end: number }[],
-  ) => void;
-  contextFiles: StudioContextFile[];
 };
 
 const HEADER_HEIGHT = 32;
@@ -83,12 +57,8 @@ const FilePanel = ({
   initialRanges,
   onFileRangesChanged,
   tokens,
-  onFileHide,
-  onFileAdded,
-  onFileRemove,
-  contextFiles,
 }: Props) => {
-  const { t } = useTranslation();
+  useTranslation();
   const [file, setFile] = useState<File | null>(null);
   const [selectedLines, setSelectedLines] = useState<[number, number][]>(
     initialRanges || [],
@@ -123,76 +93,54 @@ const FilePanel = ({
     });
   }, [filePath, branch, repo]);
 
-  useEffect(() => {
+  const onCancel = useCallback(() => {
+    setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
+  }, [setLeftPanel]);
+
+  const onSubmit = useCallback(() => {
     onFileRangesChanged(selectedLines, filePath, repo.ref, branch);
-  }, [selectedLines, filePath, branch, repo]);
+    setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
+  }, [
+    onFileRangesChanged,
+    selectedLines,
+    filePath,
+    repo.ref,
+    branch,
+    setLeftPanel,
+  ]);
+
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        onSubmit();
+      }
+    },
+    [onSubmit],
+  );
+  useKeyboardNavigation(handleKeyEvent);
 
   return (
     <div className="flex flex-col w-full flex-1 overflow-auto relative">
       <div className="flex gap-1 px-8 justify-between items-center border-b border-bg-border bg-bg-shade shadow-low h-11.5 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <Button
-            size="small"
-            variant="tertiary"
-            onlyIcon
-            title={t('Back')}
-            onClick={() => setLeftPanel({ type: StudioLeftPanelType.CONTEXT })}
-          >
-            <ArrowLeft />
-          </Button>
+        <div className="flex items-center gap-3 overflow-auto">
           <div className="flex items-center p-1 rounded border border-bg-border bg-bg-base">
             <FileIcon filename={filePath || ''} noMargin />
           </div>
-          <p className="body-s-strong text-label-title ellipsis">
+          <p className="body-s-strong text-label-title ellipsis overflow-hidden">
             <BreadcrumbsPath path={filePath} repo={repo.ref} nonInteractive />
           </p>
-          <LinesBadge ranges={selectedLines} />
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="tertiary"
-            size="small"
-            onlyIcon
-            title={t(`Hide`)}
-            onClick={() => {
-              onFileHide(filePath, repo.ref, branch, true);
-              setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
-            }}
-          >
-            <Eye />
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <Button size="small" variant="secondary" onClick={onCancel}>
+            <Trans>Cancel</Trans>
           </Button>
-          <Button
-            variant="tertiary"
-            size="small"
-            onlyIcon
-            title={t(`Remove`)}
-            onClick={() => {
-              onFileRemove({ path: filePath, repo: repo.ref, branch });
-              setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
-            }}
-          >
-            <TrashCanFilled />
+          <Button size="small" onClick={onSubmit}>
+            <Trans>Submit</Trans>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <KeyboardChip type="cmd" variant="primary" />
+              <KeyboardChip type="entr" variant="primary" />
+            </div>
           </Button>
-          <RelatedFilesDropdown
-            filePath={filePath}
-            onFileAdded={onFileAdded}
-            onFileRemove={onFileRemove}
-            branch={branch}
-            selectedFiles={contextFiles}
-            repo={repo}
-          >
-            <Button
-              variant="primary"
-              size="small"
-              id="dropdownDefault"
-              data-dropdown-toggle="dropdown"
-            >
-              <span className="flex gap-1 items-center flex-shrink-0">
-                <PlusSignInCircle />
-                {t('Add related file')}
-              </span>
-            </Button>
-          </RelatedFilesDropdown>
         </div>
       </div>
       <div className="flex px-8 py-2 items-center gap-2 border-b border-bg-border bg-bg-sub  text-label-base">
@@ -210,6 +158,7 @@ const FilePanel = ({
               </span>
             </>
           )}
+          <LinesBadge ranges={selectedLines} />
         </div>
         <div className="flex items-center gap-2">
           {/*<RelatedFilesBadge*/}

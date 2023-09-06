@@ -3,9 +3,7 @@ import React, {
   memo,
   SetStateAction,
   useCallback,
-  useEffect,
   useMemo,
-  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -19,10 +17,6 @@ import LinesBadge from '../LinesBadge';
 import TokensUsageBadge from '../TokensUsageBadge';
 import Button from '../../../components/Button';
 import { EyeCut, Eye, TrashCanFilled, PlusSignInBubble } from '../../../icons';
-import RelatedFilesBadge from '../RelatedFilesBadge';
-import { DropdownWithIcon } from '../../../components/Dropdown';
-import { getRelatedFiles } from '../../../services/api';
-import useRelatedFiles from '../../../hooks/useRelatedFiles';
 import Tooltip from '../../../components/Tooltip';
 import RelatedFilesDropdown from '../RelatedFilesDropdown';
 
@@ -43,10 +37,9 @@ type Props = StudioContextFile & {
       | StudioContextFile[],
   ) => void;
   onFileAdded: (
-    repo: RepoType,
+    repoRef: string,
     branch: string | null,
     filePath: string,
-    skip: boolean,
     ranges?: { start: number; end: number }[],
   ) => void;
   displayName: string;
@@ -127,7 +120,7 @@ const ContextFileRow = ({
               onFileRemove={onFileRemove}
               filePath={path}
               branch={branch}
-              repo={repoFull}
+              repoRef={repo}
               dropdownPlacement="bottom"
             >
               <Button
