@@ -281,12 +281,14 @@ const Conversation = ({
     (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         onSubmit();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 't') {
+        setLeftPanel({ type: StudioLeftPanelType.TEMPLATES });
       }
       if (e.key === 'Escape' && isLoading) {
         handleCancel();
       }
     },
-    [onSubmit, isLoading],
+    [onSubmit, isLoading, setLeftPanel],
   );
   useKeyboardNavigation(handleKeyEvent);
 
