@@ -207,7 +207,7 @@ where
     sqlx::query! {
         "SELECT ss.id
         FROM studio_snapshots ss
-        JOIN studios s ON s.id = ss.id AND s.user_id = ?
+        JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?
         WHERE ss.studio_id = ?
         ORDER BY ss.modified_at DESC
         LIMIT 1",
@@ -922,8 +922,8 @@ pub async fn list_snapshots(
         JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?
         WHERE ss.studio_id = ?
         ORDER BY modified_at DESC",
-        studio_id,
         user_id,
+        studio_id,
     }
     .fetch(&*app.sql)
     .map_err(Error::internal)
@@ -960,9 +960,9 @@ pub async fn delete_snapshot(
             WHERE ss.id = ? AND ss.studio_id = ?
         )
         RETURNING id",
+        user_id,
         snapshot_id,
         studio_id,
-        user_id,
     }
     .fetch_optional(&*app.sql)
     .await?

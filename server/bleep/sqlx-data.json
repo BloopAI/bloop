@@ -122,6 +122,24 @@
     },
     "query": "DELETE FROM conversations WHERE user_id = ? AND thread_id = ?"
   },
+  "3973050a775486df80905b03ef3c8a73d285fb34b03b7820853d5372a329c388": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT ss.id\n        FROM studio_snapshots ss\n        JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?\n        WHERE ss.studio_id = ?\n        ORDER BY ss.modified_at DESC\n        LIMIT 1"
+  },
   "476c0b82963b9a2333edec797133770f32c8269a21a17d3165e7785f69e886ab": {
     "describe": {
       "columns": [
@@ -369,24 +387,6 @@
       }
     },
     "query": "SELECT title, repo_ref, exchanges\n        FROM conversations\n        WHERE user_id = ? AND thread_id = ?"
-  },
-  "7afda2795a4ca1d597319867c5146706ee9b7a595c2485364943faf51922181f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int64"
-        }
-      ],
-      "nullable": [
-        true
-      ],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "SELECT ss.id\n        FROM studio_snapshots ss\n        JOIN studios s ON s.id = ss.id AND s.user_id = ?\n        WHERE ss.studio_id = ?\n        ORDER BY ss.modified_at DESC\n        LIMIT 1"
   },
   "7ca39c2d8aebd7ebe1dbda00b4fb5fce6f4ea17894ce64c3d9786585c61739f0": {
     "describe": {
