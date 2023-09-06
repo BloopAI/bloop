@@ -36,8 +36,8 @@ impl RemoteEmbedder {
 
 #[async_trait]
 impl Embedder for RemoteEmbedder {
-    fn embed(&self, data: &str) -> anyhow::Result<Embedding> {
-        self.embedder.embed(data)
+    async fn embed(&self, data: &str) -> anyhow::Result<Embedding> {
+        self.embedder.embed(data).await
     }
 
     fn tokenizer(&self) -> &Tokenizer {
