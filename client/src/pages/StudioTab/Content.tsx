@@ -57,10 +57,9 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
   const handleAddContextClose = useCallback(() => setAddContextOpen(false), []);
   const onFileAdded = useCallback(
     (
-      repo: RepoType,
+      repoRef: string,
       branch: string | null,
       filePath: string,
-      skip?: boolean,
       ranges?: { start: number; end: number }[],
     ) => {
       if (tab.key) {
@@ -70,21 +69,25 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
             {
               path: filePath,
               branch,
-              repo: repo.ref,
+              repo: repoRef,
               hidden: false,
               ranges: ranges || [],
             },
           ],
         }).then(() => refetchCodeStudio());
-        if (!skip) {
-          setLeftPanel({
-            type: StudioLeftPanelType.FILE,
-            data: { repo, branch, filePath },
-          });
-        }
       }
     },
     [tab.key, currentState.context],
+  );
+
+  const onFileSelected = useCallback(
+    (repo: RepoType, branch: string | null, filePath: string) => {
+      setLeftPanel({
+        type: StudioLeftPanelType.FILE,
+        data: { repo, branch, filePath },
+      });
+    },
+    [],
   );
 
   const onFileRangesChanged = useCallback(
@@ -98,11 +101,16 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
         (f) =>
           f.path === filePath && f.repo === repo_ref && f.branch === branch,
       );
+      const mappedRanges = ranges.map((r) => ({
+        start: r[0],
+        end: r[1] + 1,
+      }));
+      if (!patchedFile) {
+        onFileAdded(repo_ref, branch, filePath, mappedRanges);
+        return;
+      }
       if (tab.key && patchedFile) {
-        patchedFile.ranges = ranges.map((r) => ({
-          start: r[0],
-          end: r[1] + 1,
-        }));
+        patchedFile.ranges = mappedRanges;
         const newContext = currentState.context
           .filter(
             (f) =>
@@ -234,16 +242,12 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
                     stateToShow.token_counts?.per_file.length - 1
                   ]
                 }
-                onFileHide={onFileHide}
-                onFileRemove={onFileRemove}
-                onFileAdded={onFileAdded}
-                contextFiles={stateToShow.context}
               />
             ) : null}
             <AddContextModal
               isVisible={isAddContextOpen}
               onClose={handleAddContextClose}
-              onSubmit={onFileAdded}
+              onSubmit={onFileSelected}
               contextFiles={stateToShow.context}
             />
           </div>

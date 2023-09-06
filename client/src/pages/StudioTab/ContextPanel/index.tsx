@@ -12,13 +12,8 @@ import Button from '../../../components/Button';
 import { CodeStudioColored, Info, PlusSignInCircle } from '../../../icons';
 import KeyboardChip from '../KeyboardChip';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
-import {
-  RepoType,
-  StudioContextFile,
-  StudioPanelDataType,
-} from '../../../types/general';
+import { StudioContextFile, StudioPanelDataType } from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
-import TokensUsageProgress from '../TokensUsageProgress';
 import { TOKEN_LIMIT } from '../../../consts/codeStudio';
 import ContextFileRow from './ContextFileRow';
 
@@ -40,10 +35,9 @@ type Props = {
     hide: boolean,
   ) => void;
   onFileAdded: (
-    repo: RepoType,
+    repoRef: string,
     branch: string | null,
     filePath: string,
-    skip: boolean,
     ranges?: { start: number; end: number }[],
   ) => void;
   tokensTotal: number;
@@ -180,7 +174,7 @@ const ContextPanel = ({
                   </p>
                 </div>
               </div>
-              {repoBranch.files.map((file, i) => (
+              {repoBranch.files.map((file) => (
                 <ContextFileRow
                   key={file.repo + file.branch + file.path}
                   {...file}
