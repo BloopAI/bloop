@@ -29,6 +29,7 @@ import ConversationInput from './Input';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
+  setIsHistoryOpen: Dispatch<SetStateAction<boolean>>;
   messages: CodeStudioMessageType[];
   studioId: string;
   refetchCodeStudio: () => Promise<void>;
@@ -59,6 +60,7 @@ const Conversation = ({
   messages,
   studioId,
   isTokenLimitExceeded,
+  setIsHistoryOpen,
 }: Props) => {
   const { t } = useTranslation();
   const { inputValue } = useContext(StudioContext.Input);
@@ -329,9 +331,7 @@ const Conversation = ({
             <Button
               size="small"
               variant="secondary"
-              onClick={() =>
-                setLeftPanel({ type: StudioLeftPanelType.HISTORY })
-              }
+              onClick={() => setIsHistoryOpen((prev) => !prev)}
             >
               <ArrowRefresh />
               <Trans>View history</Trans>

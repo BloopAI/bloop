@@ -354,16 +354,12 @@ export type StudioConversationMessage = {
 
 export enum StudioLeftPanelType {
   CONTEXT = 'context',
-  HISTORY = 'history',
   TEMPLATES = 'templates',
   FILE = 'file',
 }
 
 export type GeneralStudioPanelType = {
-  type:
-    | StudioLeftPanelType.CONTEXT
-    | StudioLeftPanelType.TEMPLATES
-    | StudioLeftPanelType.HISTORY;
+  type: StudioLeftPanelType.CONTEXT | StudioLeftPanelType.TEMPLATES;
   data?: null;
 };
 

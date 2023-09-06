@@ -10,6 +10,7 @@ import Conversation from './Conversation';
 type Props = {
   tokensTotal: number;
   setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
+  setIsHistoryOpen: Dispatch<SetStateAction<boolean>>;
   messages: CodeStudioMessageType[];
   studioId: string;
   refetchCodeStudio: () => Promise<void>;
@@ -21,6 +22,7 @@ const RightPanel = ({
   studioId,
   messages,
   refetchCodeStudio,
+  setIsHistoryOpen,
 }: Props) => {
   useTranslation();
   return (
@@ -62,6 +64,7 @@ const RightPanel = ({
         messages={messages}
         refetchCodeStudio={refetchCodeStudio}
         isTokenLimitExceeded={tokensTotal > TOKEN_LIMIT}
+        setIsHistoryOpen={setIsHistoryOpen}
       />
     </>
   );
