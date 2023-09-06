@@ -28,6 +28,7 @@ import {
 } from '../../../../types/general';
 import MarkdownWithCode from '../../../../components/MarkdownWithCode';
 import { StudioContext } from '../../../../context/studioContext';
+import KeyboardChip from '../../KeyboardChip';
 
 type Props = {
   author: StudioConversationMessageAuthor;
@@ -90,6 +91,10 @@ const ConversationInput = ({
     setLeftPanel({ type: StudioLeftPanelType.TEMPLATES });
   }, [message, refetchTemplates]);
 
+  const useTemplates = useCallback(() => {
+    setLeftPanel({ type: StudioLeftPanelType.TEMPLATES });
+  }, []);
+
   return (
     <div className="flex flex-col p-4 gap-3 rounded-6 border border-transparent hover:shadow-medium hover:border-bg-border-hover focus-within:border-bg-main bg-bg-base hover:focus-within:border-bg-main focus-within:shadow-medium transition-all duration-150 ease-in-out">
       <div className="flex items-center gap-2">
@@ -111,15 +116,21 @@ const ConversationInput = ({
         </span>
         {isFocused || i === undefined ? (
           <div className="flex items-center gap-2">
-            <Button
-              size="tiny"
-              variant="secondary"
-              onClick={() =>
-                setLeftPanel({ type: StudioLeftPanelType.TEMPLATES })
-              }
-            >
+            <Button size="tiny" variant="secondary" onClick={useTemplates}>
               <Template raw sizeClassName="w-3.5 h-3.5" />
               <Trans>Templates</Trans>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <KeyboardChip
+                  type="cmd"
+                  variant="secondary-light"
+                  size="small"
+                />
+                <KeyboardChip
+                  type={'T'}
+                  variant="secondary-light"
+                  size="small"
+                />
+              </div>
             </Button>
             {!isSaved && (
               <Button
