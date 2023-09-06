@@ -520,6 +520,7 @@ dependencies = [
  "jsonwebtoken",
  "jwt-authorizer",
  "lazy-regex",
+ "llm",
  "ndarray",
  "notify-debouncer-mini",
  "octocrab",
@@ -2247,6 +2248,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "ggml"
+version = "0.2.0-dev"
+source = "git+https://github.com/nerdypepper/llm?branch=metal-experiments#0b7475e047756530d972dc0e547cb048e2ef40a7"
+dependencies = [
+ "ggml-sys",
+ "memmap2 0.5.10",
+ "thiserror",
+]
+
+[[package]]
+name = "ggml-sys"
+version = "0.2.0-dev"
+source = "git+https://github.com/nerdypepper/llm?branch=metal-experiments#0b7475e047756530d972dc0e547cb048e2ef40a7"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "ghash"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3157,11 +3176,10 @@ checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
 
 [[package]]
 name = "half"
-version = "2.3.1"
+version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc52e53916c08643f1b56ec082790d1e86a32e58dc5268f897f313fbae7b4872"
+checksum = "02b4af3693f1b705df946e9fe5631932443781d0aabb423b62fcd4d73f6d2fd0"
 dependencies = [
- "cfg-if",
  "crunchy",
 ]
 
@@ -4012,6 +4030,46 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a9bad9f94746442c783ca431b22403b519cd7fbeed0533fdd6328b2f2212128"
 
 [[package]]
+name = "llm"
+version = "0.2.0-dev"
+source = "git+https://github.com/nerdypepper/llm?branch=metal-experiments#0b7475e047756530d972dc0e547cb048e2ef40a7"
+dependencies = [
+ "llm-base",
+ "llm-bert",
+ "serde",
+ "tracing",
+]
+
+[[package]]
+name = "llm-base"
+version = "0.2.0-dev"
+source = "git+https://github.com/nerdypepper/llm?branch=metal-experiments#0b7475e047756530d972dc0e547cb048e2ef40a7"
+dependencies = [
+ "bytemuck",
+ "ggml",
+ "half 2.2.1",
+ "memmap2 0.5.10",
+ "partial_sort",
+ "rand 0.8.5",
+ "regex",
+ "serde",
+ "serde_bytes",
+ "thiserror",
+ "tokenizers",
+ "tracing",
+]
+
+[[package]]
+name = "llm-bert"
+version = "0.2.0-dev"
+source = "git+https://github.com/nerdypepper/llm?branch=metal-experiments#0b7475e047756530d972dc0e547cb048e2ef40a7"
+dependencies = [
+ "bytemuck",
+ "llm-base",
+ "tracing",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4751,7 +4809,7 @@ version = "1.14.8"
 source = "git+https://github.com/bloopai/ort?branch=env-builder-telemetry#dfd92ae5cf2dff3318c99de1a8b1a801cb5a3c9e"
 dependencies = [
  "flate2",
- "half 2.3.1",
+ "half 2.2.1",
  "lazy_static",
  "libc",
  "libloading",
@@ -4879,6 +4937,12 @@ dependencies = [
  "smallvec",
  "windows-targets 0.48.5",
 ]
+
+[[package]]
+name = "partial_sort"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7924d1d0ad836f665c9065e26d016c673ece3993f30d340068b16f282afc1156"
 
 [[package]]
 name = "paste"
@@ -6244,6 +6308,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf9e0fcba69a370eed61bcf2b728575f726b50b55cba78064753d708ddc7549e"
 dependencies = [
  "serde_derive",
+]
+
+[[package]]
+name = "serde_bytes"
+version = "0.11.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab33ec92f677585af6d88c65593ae2375adde54efdbf16d597f2cbc7a6d368ff"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
