@@ -345,5 +345,6 @@
 	"Conversation tokens exceeded. Reduce the number of files to generate!": "Conversation tokens exceeded. Reduce the number of files to generate!",
 	"Templates": "Templates",
 	"Loading...": "Loading...",
-	"No related files found": "No related files found"
+	"No related files found": "No related files found",
+	"Unavailable": "Unavailable"
 }

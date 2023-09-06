@@ -1,10 +1,11 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { getIndexedRepos } from '../../../services/api';
 import { RepoType, StudioContextFile } from '../../../types/general';
 import KeyboardChip from '../KeyboardChip';
 import { getFileExtensionForLang } from '../../../utils';
 import FileIcon from '../../../components/FileIcon';
+import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
 
 type Props = {
   search: string;
@@ -54,22 +55,41 @@ const SelectRepo = ({ search, onSubmit, contextFiles, canSkip }: Props) => {
     }
   }, [repos, canSkip]);
 
+  const handleSubmit = useCallback((r: RepoType) => {
+    if (!r.last_index || r.last_index === '1970-01-01T00:00:00Z') {
+      return;
+    }
+    onSubmit(r);
+  }, []);
+
   return (
     <>
       {reposToShow.map((r) => (
         <button
           type="button"
-          onClick={() => onSubmit(r)}
+          onClick={() => handleSubmit(r)}
           key={r.ref}
           className="flex h-9 px-3 gap-3 items-center justify-between group rounded-6 bg-bg-shade hover:bg-bg-base-hover focus:bg-bg-base-hover focus:outline-0 focus:outline-none w-full cursor-pointer body-s ellipsis flex-shrink-0"
         >
           <div className="body-s text-label-base group-hover:text-label-title group-focus:text-label-title ellipsis flex gap-2 items-center">
             <FileIcon filename={getFileExtensionForLang(r.most_common_lang)} />
             {r.name}
+            {(!r.last_index || r.last_index === '1970-01-01T00:00:00Z') && (
+              <div className="h-5 px-1 flex items-center gap-1 rounded-sm bg-label-muted/15 caption text-label-base flex-shrink-0 w-fit select-none">
+                <LiteLoaderContainer sizeClassName="w-3.5 h-3.5" />
+                <Trans>Indexing...</Trans>
+              </div>
+            )}
           </div>
           <div className="opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all flex gap-1.5 items-center caption text-label-base">
-            <Trans>Select</Trans>
-            <KeyboardChip type="entr" variant="tertiary" />
+            <Trans>
+              {!r.last_index || r.last_index === '1970-01-01T00:00:00Z'
+                ? 'Unavailable'
+                : 'Select'}
+            </Trans>
+            {r.last_index && r.last_index !== '1970-01-01T00:00:00Z' && (
+              <KeyboardChip type="entr" variant="tertiary" />
+            )}
           </div>
         </button>
       ))}

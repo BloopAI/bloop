@@ -344,5 +344,6 @@
 	"Conversation tokens exceeded. Reduce the number of files to generate!": "会話トークンが超えました。 生成するファイルの数を減らしてください！",
 	"Templates": "テンプレート",
 	"Loading...": "読み込み...",
-	"No related files found": "関連するファイルは見つかりません"
+	"No related files found": "関連するファイルは見つかりません",
+	"Unavailable": "利用できません"
 }

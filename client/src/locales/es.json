@@ -346,5 +346,6 @@
 	"Conversation tokens exceeded. Reduce the number of files to generate!": "Los tokens de conversación excedieron. ¡Reduzca la cantidad de archivos para generar!",
 	"Templates": "Plantillas",
 	"Loading...": "Cargando...",
-	"No related files found": "No se encontraron archivos relacionados"
+	"No related files found": "No se encontraron archivos relacionados",
+	"Unavailable": "Indisponible"
 }
