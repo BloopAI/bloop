@@ -88,6 +88,7 @@ pub mod api {
         #[serde(default)]
         pub extra_stop_sequences: Vec<String>,
         pub session_reference_id: Option<String>,
+        pub quota_gated: bool,
     }
 
     #[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
@@ -205,6 +206,7 @@ pub struct Client {
     pub provider: api::Provider,
     pub model: Option<String>,
     pub session_reference_id: Option<String>,
+    pub quota_gated: bool,
 }
 
 impl Client {
@@ -222,6 +224,7 @@ impl Client {
             frequency_penalty: None,
             model: None,
             session_reference_id: None,
+            quota_gated: false,
         }
     }
 
@@ -264,6 +267,11 @@ impl Client {
 
     pub fn session_reference_id(mut self, session_reference_id: String) -> Self {
         self.session_reference_id = Some(session_reference_id);
+        self
+    }
+
+    pub fn quota_gated(mut self, quota_gated: bool) -> Self {
+        self.quota_gated = quota_gated;
         self
     }
 
@@ -344,6 +352,7 @@ impl Client {
                     model: self.model.clone(),
                     extra_stop_sequences: vec![],
                     session_reference_id: self.session_reference_id.clone(),
+                    quota_gated: self.quota_gated,
                 })
             })
             // We don't have a `Stream` body so this can't fail.

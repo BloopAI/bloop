@@ -519,6 +519,7 @@ pub async fn generate(
         .map(|s| s.expose_secret().clone());
 
     let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
+        .quota_gated(true)
         .model(LLM_GATEWAY_MODEL)
         .temperature(0.0)
         .bearer(answer_api_token);
