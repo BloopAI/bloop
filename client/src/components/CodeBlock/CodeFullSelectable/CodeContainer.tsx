@@ -56,12 +56,40 @@ const CodeContainer = ({
     });
   }, []);
 
+  const invertRanges = useCallback(() => {
+    setCurrentSelection((prev) => {
+      const totalLines = tokens.length; // assuming tokens.length gives the total number of lines
+      let newRanges: [number, number][] = [];
+      let lastEnd = 0;
+
+      // Sort the ranges by their start index
+      const sortedRanges = [...prev].sort((a, b) => a[0] - b[0]);
+
+      sortedRanges.forEach((range) => {
+        // If there is a gap between the last range and this one, add it to newRanges
+        if (range[0] > lastEnd) {
+          newRanges.push([lastEnd, range[0] - 1]);
+        }
+        // Update lastEnd to be the end of this range
+        lastEnd = range[1] + 1;
+      });
+
+      // If there is a gap between the last range and the end of the code, add it to newRanges
+      if (lastEnd < totalLines) {
+        newRanges.push([lastEnd, totalLines - 1]);
+      }
+
+      return newRanges;
+    });
+  }, [tokens.length]);
+
   return (
     <CodeContainerFull
       pathHash={pathHash}
       tokens={tokens}
       updateRange={updateRange}
       deleteRange={deleteRange}
+      invertRanges={invertRanges}
       onNewRange={onNewRange}
       {...otherProps}
     />
