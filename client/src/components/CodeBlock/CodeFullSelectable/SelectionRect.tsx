@@ -8,18 +8,26 @@ type TemporaryRangeProps = {
   isTemporary: true;
   i?: never;
   deleteRange?: never;
+  invertRanges?: never;
 };
 
 type StaticRangeProps = {
   range: [number, number];
   i: number;
   deleteRange: (i: number) => void;
+  invertRanges: () => void;
   isTemporary?: false;
 };
 
 type Props = TemporaryRangeProps | StaticRangeProps;
 
-const SelectionRect = ({ range, isTemporary, deleteRange, i }: Props) => {
+const SelectionRect = ({
+  range,
+  isTemporary,
+  deleteRange,
+  invertRanges,
+  i,
+}: Props) => {
   useTranslation();
   const style = useMemo(() => {
     return {
@@ -31,14 +39,18 @@ const SelectionRect = ({ range, isTemporary, deleteRange, i }: Props) => {
     <div className="absolute left-0 right-0 z-10 group" style={style}>
       <div className="w-full h-full bg-bg-main opacity-20 hover:opacity-30 z-10" />
       {!isTemporary && (
-        <Button
-          size="tiny"
-          variant="secondary"
-          className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100"
-          onClick={() => deleteRange(i)}
-        >
-          <Trans>Clear range</Trans>
-        </Button>
+        <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 flex gap-1 items-center">
+          <Button size="tiny" variant="secondary" onClick={invertRanges}>
+            <Trans>Invert</Trans>
+          </Button>
+          <Button
+            size="tiny"
+            variant="secondary"
+            onClick={() => deleteRange(i)}
+          >
+            <Trans>Clear range</Trans>
+          </Button>
+        </div>
       )}
     </div>
   );

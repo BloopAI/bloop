@@ -23,6 +23,7 @@ type Props = {
   currentSelection: [number, number][];
   updateRange: (i: number, newRange: [number, number]) => void;
   deleteRange: (i: number) => void;
+  invertRanges: () => void;
   onNewRange: (r: [number, number]) => void;
   scrollContainerRef: MutableRefObject<HTMLDivElement | null>;
 };
@@ -35,6 +36,7 @@ const CodeContainerFull = ({
   currentSelection,
   updateRange,
   deleteRange,
+  invertRanges,
   onNewRange,
   scrollContainerRef,
 }: Props) => {
@@ -61,19 +63,25 @@ const CodeContainerFull = ({
     }
   }, [scrollToIndex, tokens.length]);
 
+  let scrollMomentum = 1;
+
   useEffect(() => {
     const scrollingFunc = () => {
+      scrollMomentum++;
       if (scrollContainerRef.current && shouldScroll) {
+        const scollMomentumSmooth = Math.floor(scrollMomentum / 4);
         scrollContainerRef.current.scroll({
           top:
             scrollContainerRef.current?.scrollTop +
-            (shouldScroll === 'top' ? -CODE_LINE_HEIGHT : CODE_LINE_HEIGHT),
+            (shouldScroll === 'top'
+              ? -CODE_LINE_HEIGHT * scollMomentumSmooth
+              : CODE_LINE_HEIGHT * scollMomentumSmooth),
         });
       }
     };
     let intervalId: number;
     if (shouldScroll) {
-      intervalId = window.setInterval(scrollingFunc, 200);
+      intervalId = window.setInterval(scrollingFunc, 50);
     }
     return () => {
       clearInterval(intervalId);
@@ -155,7 +163,12 @@ const CodeContainerFull = ({
             setModifyingRange={setModifyingRange}
             fileLinesNum={tokens.length}
           />
-          <SelectionRect range={r} i={i} deleteRange={deleteRange} />
+          <SelectionRect
+            range={r}
+            i={i}
+            deleteRange={deleteRange}
+            invertRanges={invertRanges}
+          />
         </Fragment>
       ))}
       {!!currentlySelectingRange && (
