@@ -39,6 +39,23 @@ mod tools {
 
 const ANSWER_MODEL: &str = "gpt-4-0613";
 
+pub struct AnswerModel {
+    /// The name of this model according to tiktoken
+    tokenizer: &'static str,
+
+    /// The name of this model for use in the llm gateway
+    model_name: &'static str,
+
+    /// The number of tokens reserved for the answer
+    headroom: usize,
+}
+
+pub const GPT3_FINETUNED: AnswerModel = AnswerModel {
+    tokenizer: "gpt-3.5-turbo-0613",
+    model_name: "gpt-3.5-finetuned", // ft:gpt-3.5-turbo-0613:bloop::7tkKlNOw
+    headroom: 512,
+};
+
 pub enum Error {
     Timeout(Duration),
     Processing(anyhow::Error),
