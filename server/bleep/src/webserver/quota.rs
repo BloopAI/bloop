@@ -9,7 +9,7 @@ use super::Error;
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct QuotaResponse {
     paid: bool,
-    used: u32,
+    used: String,
 }
 
 pub async fn get(app: Extension<Application>) -> super::Result<Json<QuotaResponse>> {
@@ -32,13 +32,13 @@ pub async fn get(app: Extension<Application>) -> super::Result<Json<QuotaRespons
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
-struct SubscriptionResponse {
+pub struct SubscriptionResponse {
     url: String,
 }
 
 pub async fn create_checkout_session(
     app: Extension<Application>,
-) -> super::Result<Json<QuotaResponse>> {
+) -> super::Result<Json<SubscriptionResponse>> {
     let answer_api_token = app
         .answer_api_token()
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
