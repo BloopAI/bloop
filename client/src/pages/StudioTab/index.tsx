@@ -15,7 +15,7 @@ const StudioTab = ({ isActive, tab }: Props) => {
       data-active={isActive ? 'true' : 'false'}
     >
       <StudioContextProvider>
-        <Content tab={tab} />
+        <Content tab={tab} isActive={isActive} />
       </StudioContextProvider>
     </div>
   );

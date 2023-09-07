@@ -345,5 +345,6 @@
 	"Loading...": "読み込み...",
 	"No related files found": "関連するファイルは見つかりません",
 	"Unavailable": "利用できません",
-	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "トークンの制限が超えました。 コンテキストファイルまたはメッセージの数を減らして、生成する機能を有効にします。"
+	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "トークンの制限が超えました。 コンテキストファイルまたはメッセージの数を減らして、生成する機能を有効にします。",
+	"Invert": "反転"
 }

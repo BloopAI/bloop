@@ -22,7 +22,7 @@ type Props = {
   scrollContainerRef: MutableRefObject<HTMLDivElement | null>;
 };
 
-const CodeContainer = ({
+const CodeContainerSelectable = ({
   tokens,
   setCurrentSelection,
   relativePath,
@@ -96,4 +96,4 @@ const CodeContainer = ({
   );
 };
 
-export default memo(CodeContainer);
+export default memo(CodeContainerSelectable);

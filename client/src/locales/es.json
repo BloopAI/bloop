@@ -347,5 +347,6 @@
 	"Loading...": "Cargando...",
 	"No related files found": "No se encontraron archivos relacionados",
 	"Unavailable": "Indisponible",
-	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "Límite de token excedido. Reduzca la cantidad de archivos o mensajes de contexto para habilitar la capacidad de generar."
+	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "Límite de token excedido. Reduzca la cantidad de archivos o mensajes de contexto para habilitar la capacidad de generar.",
+	"Invert": "Invertir"
 }

@@ -67,7 +67,7 @@ const ContextFileRow = ({
   }, [ranges]);
 
   const handleClick = useCallback(() => {
-    if (repoFull && !hidden) {
+    if (repoFull) {
       setLeftPanel({
         type: StudioLeftPanelType.FILE,
         data: {
@@ -78,11 +78,11 @@ const ContextFileRow = ({
         },
       });
     }
-  }, [path, branch, repoFull, mappedRanges, hidden]);
+  }, [path, branch, repoFull, mappedRanges]);
 
   return (
     <div
-      className="w-full overflow-x-auto border-b border-bg-base bg-bg-sub group cursor-pointer flex-shrink-0"
+      className="w-full overflow-x-auto border-b border-bg-base bg-bg-sub group cursor-pointer flex-shrink-0 select-none"
       onClick={handleClick}
     >
       <div className={`max-w-full flex gap-3 items-center py-3 px-8`}>
