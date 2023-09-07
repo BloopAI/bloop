@@ -12,12 +12,15 @@ import Button from '../../../components/Button';
 import { CodeStudioColored, PlusSignInCircle } from '../../../icons';
 import KeyboardChip from '../KeyboardChip';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
-import { StudioContextFile, StudioPanelDataType } from '../../../types/general';
+import {
+  StudioContextFile,
+  StudioRightPanelDataType,
+} from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import ContextFileRow from './ContextFileRow';
 
 type Props = {
-  setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
+  setRightPanel: Dispatch<SetStateAction<StudioRightPanelDataType>>;
   setAddContextOpen: Dispatch<SetStateAction<boolean>>;
   studioId: string;
   contextFiles: StudioContextFile[];
@@ -48,7 +51,7 @@ type FileList = {
 }[];
 
 const ContextPanel = ({
-  setLeftPanel,
+  setRightPanel,
   setAddContextOpen,
   contextFiles,
   tokensPerFile,
@@ -165,7 +168,7 @@ const ContextPanel = ({
                   key={file.repo + file.branch + file.path}
                   {...file}
                   contextFiles={contextFiles}
-                  setLeftPanel={setLeftPanel}
+                  setRightPanel={setRightPanel}
                   repoFull={repositories?.find((r) => r.ref === file.repo)}
                   tokens={tokensPerFile[file.originalIndex]}
                   onFileRemove={onFileRemove}

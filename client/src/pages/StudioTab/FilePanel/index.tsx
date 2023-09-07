@@ -11,8 +11,8 @@ import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
 import {
   RepoType,
-  StudioLeftPanelType,
-  StudioPanelDataType,
+  StudioRightPanelDataType,
+  StudioRightPanelType,
 } from '../../../types/general';
 import { Branch, CursorSelection, Fire } from '../../../icons';
 import FileIcon from '../../../components/FileIcon';
@@ -28,7 +28,7 @@ import KeyboardChip from '../KeyboardChip';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 
 type Props = {
-  setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
+  setRightPanel: Dispatch<SetStateAction<StudioRightPanelDataType>>;
   filePath: string;
   branch: string | null;
   repo: RepoType;
@@ -50,7 +50,7 @@ const HORIZONTAL_PADDINGS = 32;
 const BREADCRUMBS_HEIGHT = 41;
 
 const FilePanel = ({
-  setLeftPanel,
+  setRightPanel,
   filePath,
   branch,
   repo,
@@ -94,19 +94,19 @@ const FilePanel = ({
   }, [filePath, branch, repo]);
 
   const onCancel = useCallback(() => {
-    setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
-  }, [setLeftPanel]);
+    setRightPanel({ type: StudioRightPanelType.CONVERSATION });
+  }, [setRightPanel]);
 
   const onSubmit = useCallback(() => {
     onFileRangesChanged(selectedLines, filePath, repo.ref, branch);
-    setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
+    setRightPanel({ type: StudioRightPanelType.CONVERSATION });
   }, [
     onFileRangesChanged,
     selectedLines,
     filePath,
     repo.ref,
     branch,
-    setLeftPanel,
+    setRightPanel,
   ]);
 
   const handleKeyEvent = useCallback(

@@ -14,7 +14,7 @@ import {
   StudioConversationMessage,
   StudioConversationMessageAuthor,
   StudioLeftPanelType,
-  StudioPanelDataType,
+  StudioLeftPanelDataType,
 } from '../../../../types/general';
 import Button from '../../../../components/Button';
 import { ArrowRefresh, TrashCanFilled } from '../../../../icons';
@@ -28,7 +28,7 @@ import { StudioContext } from '../../../../context/studioContext';
 import ConversationInput from './Input';
 
 type Props = {
-  setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
+  setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
   setIsHistoryOpen: Dispatch<SetStateAction<boolean>>;
   messages: CodeStudioMessageType[];
   studioId: string;

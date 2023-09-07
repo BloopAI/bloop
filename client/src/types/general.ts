@@ -355,16 +355,15 @@ export type StudioConversationMessage = {
 export enum StudioLeftPanelType {
   CONTEXT = 'context',
   TEMPLATES = 'templates',
-  FILE = 'file',
 }
 
-export type GeneralStudioPanelType = {
-  type: StudioLeftPanelType.CONTEXT | StudioLeftPanelType.TEMPLATES;
-  data?: null;
-};
+export enum StudioRightPanelType {
+  FILE = 'file',
+  CONVERSATION = 'conversation',
+}
 
 export type FileStudioPanelType = {
-  type: StudioLeftPanelType.FILE;
+  type: StudioRightPanelType.FILE;
   data: {
     repo: RepoType;
     branch: string | null;
@@ -373,7 +372,14 @@ export type FileStudioPanelType = {
   };
 };
 
-export type StudioPanelDataType = GeneralStudioPanelType | FileStudioPanelType;
+export type StudioLeftPanelDataType = {
+  type: StudioLeftPanelType.CONTEXT | StudioLeftPanelType.TEMPLATES;
+  data?: null;
+};
+
+export type StudioRightPanelDataType =
+  | FileStudioPanelType
+  | { type: StudioRightPanelType.CONVERSATION; data?: null };
 
 export type StudioContextFile = {
   path: string;

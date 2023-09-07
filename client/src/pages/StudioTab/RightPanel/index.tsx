@@ -2,13 +2,13 @@ import React, { Dispatch, memo, SetStateAction } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import TokensUsageProgress from '../TokensUsageProgress';
 import { TOKEN_LIMIT } from '../../../consts/codeStudio';
-import { StudioPanelDataType } from '../../../types/general';
+import { StudioLeftPanelDataType } from '../../../types/general';
 import { CodeStudioMessageType } from '../../../types/api';
 import Conversation from './Conversation';
 
 type Props = {
   tokensTotal: number;
-  setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
+  setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
   setIsHistoryOpen: Dispatch<SetStateAction<boolean>>;
   messages: CodeStudioMessageType[];
   studioId: string;
