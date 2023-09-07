@@ -6,8 +6,10 @@ import PageTemplate from '../../components/PageTemplate';
 import {
   RepoType,
   StudioContextFile,
+  StudioLeftPanelDataType,
   StudioLeftPanelType,
-  StudioPanelDataType,
+  StudioRightPanelDataType,
+  StudioRightPanelType,
   StudioTabType,
 } from '../../types/general';
 import { getCodeStudio, patchCodeStudio } from '../../services/api';
@@ -18,9 +20,9 @@ import { Info } from '../../icons';
 import ContextPanel from './ContextPanel';
 import HistoryPanel from './HistoryPanel';
 import TemplatesPanel from './TemplatesPanel';
-import FilePanel from './FilePanel';
 import AddContextModal from './AddContextModal';
 import RightPanel from './RightPanel';
+import FilePanel from './FilePanel';
 
 const emptyCodeStudio: CodeStudioType = {
   messages: [],
@@ -38,8 +40,12 @@ const ContentContainer = ({
   tab: StudioTabType;
   isActive: boolean;
 }) => {
-  const [leftPanel, setLeftPanel] = useState<StudioPanelDataType>({
+  const [leftPanel, setLeftPanel] = useState<StudioLeftPanelDataType>({
     type: StudioLeftPanelType.CONTEXT,
+    data: null,
+  });
+  const [rightPanel, setRightPanel] = useState<StudioRightPanelDataType>({
+    type: StudioRightPanelType.CONVERSATION,
     data: null,
   });
   const [isAddContextOpen, setAddContextOpen] = useState(false);
@@ -93,8 +99,8 @@ const ContentContainer = ({
 
   const onFileSelected = useCallback(
     (repo: RepoType, branch: string | null, filePath: string) => {
-      setLeftPanel({
-        type: StudioLeftPanelType.FILE,
+      setRightPanel({
+        type: StudioRightPanelType.FILE,
         data: { repo, branch, filePath },
       });
     },
@@ -243,7 +249,7 @@ const ContentContainer = ({
             >
               {leftPanel.type === StudioLeftPanelType.CONTEXT ? (
                 <ContextPanel
-                  setLeftPanel={setLeftPanel}
+                  setRightPanel={setRightPanel}
                   setAddContextOpen={setAddContextOpen}
                   studioId={tab.key}
                   contextFiles={stateToShow.context}
@@ -254,17 +260,6 @@ const ContentContainer = ({
                 />
               ) : leftPanel.type === StudioLeftPanelType.TEMPLATES ? (
                 <TemplatesPanel setLeftPanel={setLeftPanel} />
-              ) : leftPanel.type === StudioLeftPanelType.FILE ? (
-                <FilePanel
-                  {...leftPanel.data}
-                  setLeftPanel={setLeftPanel}
-                  onFileRangesChanged={onFileRangesChanged}
-                  tokens={
-                    stateToShow.token_counts?.per_file[
-                      stateToShow.token_counts?.per_file.length - 1
-                    ]
-                  }
-                />
               ) : null}
               <AddContextModal
                 isVisible={isAddContextOpen}
@@ -283,14 +278,27 @@ const ContentContainer = ({
               className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col"
               ref={rightPanelRef}
             >
-              <RightPanel
-                setLeftPanel={setLeftPanel}
-                studioId={tab.key}
-                messages={stateToShow.messages}
-                refetchCodeStudio={refetchCodeStudio}
-                tokensTotal={stateToShow.token_counts?.total}
-                setIsHistoryOpen={setIsHistoryOpen}
-              />
+              {rightPanel.type === StudioRightPanelType.CONVERSATION ? (
+                <RightPanel
+                  setLeftPanel={setLeftPanel}
+                  studioId={tab.key}
+                  messages={stateToShow.messages}
+                  refetchCodeStudio={refetchCodeStudio}
+                  tokensTotal={stateToShow.token_counts?.total}
+                  setIsHistoryOpen={setIsHistoryOpen}
+                />
+              ) : rightPanel.type === StudioRightPanelType.FILE ? (
+                <FilePanel
+                  {...rightPanel.data}
+                  setRightPanel={setRightPanel}
+                  onFileRangesChanged={onFileRangesChanged}
+                  tokens={
+                    stateToShow.token_counts?.per_file[
+                      stateToShow.token_counts?.per_file.length - 1
+                    ]
+                  }
+                />
+              ) : null}
             </div>
           </div>
         </div>

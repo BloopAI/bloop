@@ -3,14 +3,14 @@ import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
 import {
   StudioLeftPanelType,
-  StudioPanelDataType,
+  StudioLeftPanelDataType,
 } from '../../../types/general';
 import { ArrowLeft } from '../../../icons';
 import { StudioContext } from '../../../context/studioContext';
 import TemplateCard from './TemplateCard';
 
 type Props = {
-  setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
+  setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
 };
 
 const TemplatesPanel = ({ setLeftPanel }: Props) => {

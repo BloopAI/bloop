@@ -151,7 +151,7 @@ const CodeContainerFull = ({
   }, [tokens, pathHash, searchTerm, modifyingRange, handleAddRange]);
 
   return (
-    <div ref={ref} className="relative pb-60">
+    <div ref={ref} className="relative pb-16">
       {currentSelection.map((r, i) => (
         <Fragment key={i}>
           <SelectionHandler

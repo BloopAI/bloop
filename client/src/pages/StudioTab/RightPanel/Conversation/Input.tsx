@@ -24,7 +24,7 @@ import { DeviceContext } from '../../../../context/deviceContext';
 import {
   StudioConversationMessageAuthor,
   StudioLeftPanelType,
-  StudioPanelDataType,
+  StudioLeftPanelDataType,
 } from '../../../../types/general';
 import MarkdownWithCode from '../../../../components/MarkdownWithCode';
 import { StudioContext } from '../../../../context/studioContext';
@@ -38,7 +38,7 @@ type Props = {
   i?: number;
   scrollToBottom?: () => void;
   inputRef?: React.MutableRefObject<HTMLTextAreaElement | null>;
-  setLeftPanel: Dispatch<SetStateAction<StudioPanelDataType>>;
+  setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
 };
 
 const ConversationInput = ({
