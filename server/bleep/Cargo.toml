@@ -140,7 +140,7 @@ jwt-authorizer = { version = "0.11.0", default-features = false, features = ["ru
 
 [target.'cfg(target_os = "macos")'.dependencies]
 #)llm = { path = "/home/np/bloop/ggml/llm/crates/llm", default-features = false, features = ["bert", "metal"] }
-llm = { git = "https://github.com/nerdypepper/llm", branch = "metal-experiments", default-features = false, features = ["bert", "metal"] }
+llm = { git = "https://github.com/nerdypepper/llm", branch = "metal-kernels", default-features = false, features = ["bert", "metal"] }
 
 # TODO: make cublas a feature flag
 # [target.'cfg(not(target_os = "macos"))'.dependencies]
