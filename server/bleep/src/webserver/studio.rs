@@ -41,8 +41,6 @@ pub async fn create(
     user: Extension<User>,
     params: Json<Create>,
 ) -> webserver::Result<String> {
-    let studio_id = Uuid::new_v4();
-
     let mut transaction = app.sql.begin().await?;
 
     let user_id = user
@@ -50,14 +48,14 @@ pub async fn create(
         .ok_or_else(|| super::Error::user("didn't have user ID"))?
         .to_string();
 
-    sqlx::query! {
-        "INSERT INTO studios (id, user_id, name) VALUES (?, ?, ?)",
-        studio_id,
+    let studio_id: i64 = sqlx::query! {
+        "INSERT INTO studios (user_id, name) VALUES (?, ?) RETURNING id",
         user_id,
         params.name,
     }
-    .execute(&mut transaction)
-    .await?;
+    .fetch_one(&mut transaction)
+    .await?
+    .id;
 
     sqlx::query! {
         "INSERT INTO studio_snapshots (studio_id, context, messages)
@@ -67,7 +65,8 @@ pub async fn create(
         "[]",
     }
     .execute(&mut transaction)
-    .await?;
+    .await
+    .unwrap();
 
     transaction.commit().await?;
 
@@ -76,7 +75,7 @@ pub async fn create(
 
 #[derive(serde::Serialize)]
 pub struct ListItem {
-    id: Uuid,
+    id: i64,
     name: String,
     modified_at: NaiveDateTime,
     repos: Vec<String>,
@@ -94,7 +93,7 @@ pub async fn list(
 
     let studios = sqlx::query!(
         "SELECT
-            s.id as \"id: Uuid\",
+            s.id,
             s.name,
             ss.modified_at as \"modified_at!\",
             ss.context
@@ -196,11 +195,7 @@ impl From<&Message> for llm_gateway::api::Message {
     }
 }
 
-async fn latest_snapshot_id<'a, E>(
-    studio_id: Uuid,
-    exec: E,
-    user_id: &str,
-) -> webserver::Result<i64>
+async fn latest_snapshot_id<'a, E>(studio_id: i64, exec: E, user_id: &str) -> webserver::Result<i64>
 where
     E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
 {
@@ -228,7 +223,7 @@ pub struct Get {
 pub async fn get(
     app: Extension<Application>,
     user: Extension<User>,
-    Path(id): Path<Uuid>,
+    Path(id): Path<i64>,
     Query(params): Query<Get>,
 ) -> webserver::Result<Json<Studio>> {
     let user_id = user
@@ -280,7 +275,7 @@ pub struct Patch {
 pub async fn patch(
     app: Extension<Application>,
     user: Extension<User>,
-    Path(studio_id): Path<Uuid>,
+    Path(studio_id): Path<i64>,
     Json(patch): Json<Patch>,
 ) -> webserver::Result<Json<TokenCounts>> {
     let user_id = user
@@ -377,7 +372,7 @@ pub async fn patch(
 pub async fn delete(
     app: Extension<Application>,
     user: Extension<User>,
-    Path(id): Path<Uuid>,
+    Path(id): Path<i64>,
 ) -> webserver::Result<()> {
     let user_id = user
         .login()
@@ -546,7 +541,7 @@ pub async fn get_file_token_count(
 pub async fn generate(
     app: Extension<Application>,
     Extension(user): Extension<User>,
-    Path(studio_id): Path<Uuid>,
+    Path(studio_id): Path<i64>,
 ) -> webserver::Result<Sse<Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>> {
     let user_id = user
         .login()
@@ -706,7 +701,7 @@ async fn generate_llm_context(app: Application, context: Vec<ContextFile>) -> Re
 pub struct Import {
     pub thread_id: Uuid,
     /// An optional studio ID to import into.
-    pub studio_id: Option<Uuid>,
+    pub studio_id: Option<i64>,
 }
 
 async fn extract_relevant_chunks(
@@ -845,16 +840,14 @@ pub async fn import(
     let studio_id = match params.studio_id {
         Some(id) => id,
         None => {
-            let id = Uuid::new_v4();
             sqlx::query!(
-                "INSERT INTO studios(id, name, user_id) VALUES (?, ?, ?)",
-                id,
+                "INSERT INTO studios(name, user_id) VALUES (?, ?) RETURNING id",
                 conversation.title,
                 user_id,
             )
-            .execute(&mut transaction)
-            .await?;
-            id
+            .fetch_one(&mut transaction)
+            .await?
+            .id
         }
     };
 
@@ -952,7 +945,7 @@ pub struct Snapshot {
 pub async fn list_snapshots(
     app: Extension<Application>,
     user: Extension<User>,
-    Path(studio_id): Path<Uuid>,
+    Path(studio_id): Path<i64>,
 ) -> webserver::Result<Json<Vec<Snapshot>>> {
     let user_id = user
         .login()
@@ -987,7 +980,7 @@ pub async fn list_snapshots(
 pub async fn delete_snapshot(
     app: Extension<Application>,
     user: Extension<User>,
-    Path((studio_id, snapshot_id)): Path<(Uuid, i64)>,
+    Path((studio_id, snapshot_id)): Path<(i64, i64)>,
 ) -> webserver::Result<()> {
     let user_id = user
         .login()

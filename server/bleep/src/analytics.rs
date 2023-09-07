@@ -27,7 +27,7 @@ pub struct QueryEvent {
 
 #[derive(Debug, Clone)]
 pub struct StudioEvent {
-    pub studio_id: Uuid,
+    pub studio_id: i64,
 
     // This is not a `Map<K, V>`, to prevent RudderStack from collapsing these fields into columns
     // in the analytics DB.
@@ -36,7 +36,7 @@ pub struct StudioEvent {
 }
 
 impl StudioEvent {
-    pub fn new(studio_id: Uuid, type_: &str) -> Self {
+    pub fn new(studio_id: i64, type_: &str) -> Self {
         Self {
             studio_id,
             type_: type_.to_owned(),
