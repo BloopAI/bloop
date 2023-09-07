@@ -149,8 +149,20 @@ const Conversation = ({
   const handleCancel = useCallback(() => {
     eventSource?.close();
     setIsLoading(false);
-    saveConversation();
-  }, []);
+    if (
+      conversation[conversation.length - 1]?.author ===
+      StudioConversationMessageAuthor.USER
+    ) {
+      const editedMessage = conversation[conversation.length - 1];
+      setInputValue((prev) =>
+        prev < editedMessage.message ? editedMessage.message : prev,
+      );
+      setConversation(conversation.slice(0, -1));
+      saveConversation(false, conversation.slice(0, -1));
+    } else {
+      saveConversation();
+    }
+  }, [conversation]);
 
   const onSubmit = useCallback(async () => {
     if (!inputValue) {
@@ -253,9 +265,20 @@ const Conversation = ({
         // Set input to the message being removed
         setInput(conversation[i]);
       }
-      setConversation((prev) =>
-        prev.filter((_, j) => (andSubsequent ? i > j : i !== j)),
-      );
+      setConversation((prev) => {
+        const newConv = prev.filter((_, j) =>
+          andSubsequent ? i > j : i !== j,
+        );
+        if (
+          newConv[newConv.length - 1]?.author ===
+          StudioConversationMessageAuthor.USER
+        ) {
+          const editedMessage = newConv[messages.length - 1];
+          setInputValue(editedMessage.message);
+          return newConv.slice(0, -1);
+        }
+        return newConv;
+      });
 
       const messages: ({ User: string } | { Assistant: string })[] =
         conversation
