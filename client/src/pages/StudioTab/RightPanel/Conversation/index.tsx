@@ -5,8 +5,8 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useState,
   useRef,
+  useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import throttle from 'lodash.throttle';
@@ -86,18 +86,34 @@ const Conversation = ({
     useScrollToBottom(conversation);
 
   useEffect(() => {
-    setConversation(mapConversation(messages));
+    const mappedConv = mapConversation(messages);
+    if (
+      mappedConv[mappedConv.length - 1]?.author ===
+      StudioConversationMessageAuthor.USER
+    ) {
+      const editedMessage = mappedConv[messages.length - 1];
+      setInputValue((prev) =>
+        prev < editedMessage.message ? editedMessage.message : prev,
+      );
+      setConversation(mappedConv.slice(0, -1));
+    } else {
+      setConversation(mappedConv);
+    }
   }, [messages]);
 
   const saveConversation = useCallback(
-    async (force?: boolean, newConversation?: StudioConversationMessage[]) => {
+    async (
+      force?: boolean,
+      newConversation?: StudioConversationMessage[],
+      newInput?: string,
+    ) => {
       const messages: ({ User: string } | { Assistant: string })[] = (
         newConversation || conversation
       )
         .map((c) => ({ [c.author as 'User']: c.message }))
         .concat(
-          !newConversation && inputValue
-            ? [{ [inputAuthor as 'User']: inputValue }]
+          !newConversation && (newInput || inputValue)
+            ? [{ [inputAuthor as 'User']: newInput || inputValue }]
             : [],
         );
       if (force) {
@@ -113,33 +129,19 @@ const Conversation = ({
     [conversation, inputValue, inputAuthor],
   );
 
-  const onAuthorChange = useCallback(
-    (author: StudioConversationMessageAuthor, i?: number) => {
-      if (i === undefined) {
-        setInputAuthor(author);
-      } else {
-        setConversation((prev) => {
-          const newConv = JSON.parse(JSON.stringify(prev));
-          newConv[i].author = author;
-          return newConv;
-        });
-      }
-      saveConversation();
-    },
-    [saveConversation],
-  );
   const onMessageChange = useCallback(
     (message: string, i?: number) => {
       if (i === undefined) {
         setInputValue(message);
+        saveConversation(false, undefined, message);
       } else {
         setConversation((prev) => {
           const newConv = JSON.parse(JSON.stringify(prev));
           newConv[i].message = message;
+          saveConversation(false, newConv);
           return newConv;
         });
       }
-      saveConversation();
     },
     [saveConversation],
   );
@@ -305,25 +307,27 @@ const Conversation = ({
               key={i}
               author={m.author}
               message={m.error || m.message}
-              onAuthorChange={onAuthorChange}
               onMessageChange={onMessageChange}
               onMessageRemoved={onMessageRemoved}
               i={i}
               setLeftPanel={setLeftPanel}
             />
           ))}
-          {!isLoading && (
-            <ConversationInput
-              key={'new'}
-              author={inputAuthor}
-              message={inputValue}
-              onAuthorChange={onAuthorChange}
-              onMessageChange={onMessageChange}
-              scrollToBottom={scrollToBottom}
-              inputRef={inputRef}
-              setLeftPanel={setLeftPanel}
-            />
-          )}
+          {!isLoading &&
+            !(
+              conversation[conversation.length - 1]?.author ===
+              StudioConversationMessageAuthor.USER
+            ) && (
+              <ConversationInput
+                key={'new'}
+                author={inputAuthor}
+                message={inputValue}
+                onMessageChange={onMessageChange}
+                scrollToBottom={scrollToBottom}
+                inputRef={inputRef}
+                setLeftPanel={setLeftPanel}
+              />
+            )}
         </div>
       </div>
       <div className="px-4 flex flex-col gap-8 pb-8 mt-auto">

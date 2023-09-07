@@ -33,7 +33,6 @@ import KeyboardChip from '../../KeyboardChip';
 type Props = {
   author: StudioConversationMessageAuthor;
   message: string;
-  onAuthorChange: (author: StudioConversationMessageAuthor, i?: number) => void;
   onMessageChange: (m: string, i?: number) => void;
   onMessageRemoved?: (i: number, andSubsequent?: boolean) => void;
   i?: number;

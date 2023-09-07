@@ -111,7 +111,8 @@ const FilePanel = ({
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
         onSubmit();
       }
     },
@@ -138,7 +139,7 @@ const FilePanel = ({
             <Trans>Submit</Trans>
             <div className="flex items-center gap-1 flex-shrink-0">
               <KeyboardChip type="cmd" variant="primary" />
-              <KeyboardChip type="entr" variant="primary" />
+              <KeyboardChip type="S" variant="primary" />
             </div>
           </Button>
         </div>
