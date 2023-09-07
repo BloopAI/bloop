@@ -440,10 +440,7 @@ impl File {
         let last_commit = workload.repo_metadata.last_commit_unix_secs.unwrap_or(0);
 
         match dir_entry {
-            _ if workload
-                .cache
-                .is_fresh(&cache_keys, &workload.normalized_path) =>
-            {
+            _ if workload.cache.is_fresh(&cache_keys) => {
                 info!("fresh; skipping");
                 return Ok(());
             }

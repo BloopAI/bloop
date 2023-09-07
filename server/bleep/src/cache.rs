@@ -1,7 +1,6 @@
 use std::{
     collections::HashSet,
     ops::Deref,
-    path::PathBuf,
     sync::{Arc, RwLock},
     time::Instant,
 };
@@ -28,6 +27,15 @@ pub struct FreshValue<T> {
     // default value is `false` on deserialize
     pub(crate) fresh: bool,
     pub(crate) value: T,
+}
+
+impl<T: Default> FreshValue<T> {
+    fn fresh_default() -> Self {
+        Self {
+            fresh: true,
+            value: Default::default(),
+        }
+    }
 }
 
 impl<T> PartialEq for FreshValue<T>
@@ -57,12 +65,27 @@ impl<T> From<T> for FreshValue<T> {
 /// Snapshot of the current state of a FileCache
 /// Since it's atomically (as in ACID) read from SQLite, this will be
 /// representative at a single point in time
-// pub(crate) type FileCacheSnapshot = ;
 pub struct FileCacheSnapshot<'a> {
     snapshot: Arc<scc::HashMap<CacheKeys, FreshValue<()>>>,
     parent: &'a FileCache<'a>,
 }
 
+/// CacheKeys unifies the different keys to different databases.
+///
+/// Different layers of cache use different keys.
+///
+/// Tantivy keys are more specific. Since in Tantivy we can't update
+/// an existing record, all cache keys identify a record in the
+/// database universally (as in, in space & time).
+///
+/// In QDrant, however, it is possible to update existing records,
+/// therefore the cache key is less strong. We use the weaker key to
+/// identify existing, similar records, and update them with a
+/// refreshed property set.
+///
+/// For the specific calculation of what goes into these keys, take a
+/// look at
+/// [`Workload::cache_keys`][crate::indexes::file::Workload::cache_keys]
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct CacheKeys(String, String);
 
@@ -86,7 +109,7 @@ impl<'a> FileCacheSnapshot<'a> {
     }
 
     #[tracing::instrument(skip(self))]
-    pub(crate) fn is_fresh(&self, keys: &CacheKeys, entry_pathbuf: &PathBuf) -> bool {
+    pub(crate) fn is_fresh(&self, keys: &CacheKeys) -> bool {
         match self.snapshot.entry(keys.clone()) {
             Entry::Occupied(mut val) => {
                 val.get_mut().fresh = true;
@@ -95,7 +118,7 @@ impl<'a> FileCacheSnapshot<'a> {
                 true
             }
             Entry::Vacant(val) => {
-                _ = val.insert_entry(().into());
+                _ = val.insert_entry(FreshValue::fresh_default());
 
                 trace!("cache miss");
                 false
@@ -153,8 +176,11 @@ impl<'a> FileCache<'a> {
 
         let output = scc::HashMap::default();
         for row in rows.into_iter().flatten() {
-            let (s, t) = row.cache_hash.split_at(64);
-            _ = output.insert(CacheKeys::new(s, t), FreshValue::stale(()));
+            let (semantic_hash, tantivy_hash) = row.cache_hash.split_at(64);
+            _ = output.insert(
+                CacheKeys::new(semantic_hash, tantivy_hash),
+                FreshValue::stale(()),
+            );
         }
 
         FileCacheSnapshot {
