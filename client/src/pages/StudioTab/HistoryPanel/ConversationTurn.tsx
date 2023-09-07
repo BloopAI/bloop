@@ -76,10 +76,11 @@ const ConversationTurn = ({
       </div>
       <div className="body-s text-label-title overflow-hidden w-full">
         <p>
-          {('User' in lastMessage ? lastMessage.User : lastMessage.Assistant)
-            .split(' ')
-            .slice(0, 3)
-            .join(' ')}
+          {lastMessage &&
+            ('User' in lastMessage ? lastMessage.User : lastMessage.Assistant)
+              .split(' ')
+              .slice(0, 3)
+              .join(' ')}
         </p>
       </div>
     </button>

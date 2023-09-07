@@ -31,7 +31,13 @@ const emptyCodeStudio: CodeStudioType = {
   modified_at: '',
 };
 
-const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
+const ContentContainer = ({
+  tab,
+  isActive,
+}: {
+  tab: StudioTabType;
+  isActive: boolean;
+}) => {
   const [leftPanel, setLeftPanel] = useState<StudioPanelDataType>({
     type: StudioLeftPanelType.CONTEXT,
     data: null,
@@ -54,8 +60,10 @@ const ContentContainer = ({ tab }: { tab: StudioTabType }) => {
   }, [tab.key]);
 
   useEffect(() => {
-    refetchCodeStudio();
-  }, [refetchCodeStudio]);
+    if (isActive) {
+      refetchCodeStudio();
+    }
+  }, [refetchCodeStudio, isActive]);
 
   const handleAddContextClose = useCallback(() => setAddContextOpen(false), []);
   const onFileAdded = useCallback(

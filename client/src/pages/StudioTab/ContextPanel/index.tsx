@@ -146,7 +146,7 @@ const ContextPanel = ({
           </p>
         </div>
       ) : (
-        <div className="flex flex-col w-full overflow-auto">
+        <div className="flex flex-col w-full overflow-auto select-none">
           {fileList.map((repoBranch) => (
             <Fragment key={repoBranch.repo + repoBranch.branch}>
               <div className="w-full overflow-x-auto border-b border-bg-base bg-bg-main/15 group cursor-pointer flex-shrink-0">

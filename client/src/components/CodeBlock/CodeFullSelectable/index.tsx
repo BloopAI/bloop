@@ -25,7 +25,7 @@ type Props = {
   scrollContainerRef: MutableRefObject<HTMLDivElement | null>;
 };
 
-const CodeFull = ({
+const CodeFullSelectable = ({
   language,
   code,
   relativePath,
@@ -172,4 +172,4 @@ const CodeFull = ({
   );
 };
 
-export default memo(CodeFull);
+export default memo(CodeFullSelectable);

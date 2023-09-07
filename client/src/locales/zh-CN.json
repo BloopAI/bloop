@@ -351,5 +351,6 @@
 	"Loading...": "加载...",
 	"No related files found": "找不到相关文件",
 	"Unavailable": "不可用",
-	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "令牌限制超过了。 减少上下文文件的数量或消息，以实现生成能力。"
+	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "令牌限制超过了。 减少上下文文件的数量或消息，以实现生成能力。",
+	"Invert": "倒置"
 }
