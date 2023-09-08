@@ -23,6 +23,7 @@ mod index;
 mod intelligence;
 pub mod middleware;
 mod query;
+mod quota;
 pub mod repos;
 mod search;
 mod studio;
@@ -97,6 +98,11 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             get(template::get)
                 .patch(template::patch)
                 .delete(template::delete),
+        )
+        .route("/quota", get(quota::get))
+        .route(
+            "/quota/create-checkout-session",
+            get(quota::create_checkout_session),
         );
 
     if app.env.allow(Feature::AnyPathScan) {
@@ -220,6 +226,16 @@ impl Error {
             status: StatusCode::NOT_FOUND,
             body: EndpointError {
                 kind: ErrorKind::NotFound,
+                message: message.to_string().into(),
+            },
+        }
+    }
+
+    fn unauthorized<S: std::fmt::Display>(message: S) -> Self {
+        Error {
+            status: StatusCode::UNAUTHORIZED,
+            body: EndpointError {
+                kind: ErrorKind::User,
                 message: message.to_string().into(),
             },
         }
