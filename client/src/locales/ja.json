@@ -346,5 +346,10 @@
 	"No related files found": "関連するファイルは見つかりません",
 	"Unavailable": "利用できません",
 	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "トークンの制限が超えました。 コンテキストファイルまたはメッセージの数を減らして、生成する機能を有効にします。",
-	"Invert": "反転"
+	"Invert": "反転",
+	"# requests left_other": "リクエストが {{count}} つ残っています",
+	"# requests left_one": "残り {{count}} 件のリクエスト",
+	"Upgrade": "アップグレード",
+	"Requests reset every 24 hours. Upgrade to get unlimited requests!": "リクエストは24時間ごとにリセットされます。 アップグレードして無制限のリクエストを取得します！",
+	"Manage subscription": "サブスクリプションを管理します"
 }

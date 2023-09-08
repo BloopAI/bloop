@@ -339,3 +339,6 @@ export const deleteTemplate = (id: string): Promise<StudioTemplateType> =>
   http.delete(`/template/${id}`).then((r) => r.data);
 export const postTemplate = (name: string, content: string) =>
   http.post('/template', { name, content }).then((r) => r.data);
+export const getQuota = () => http('/quota').then((r) => r.data);
+export const getSubscriptionLink = () =>
+  http('/quota/create-checkout-session').then((r) => r.data);

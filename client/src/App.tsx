@@ -45,6 +45,7 @@ import NavBar from './components/NavBar';
 import StatusBar from './components/StatusBar';
 import CloudFeaturePopup from './components/CloudFeaturePopup';
 import ErrorFallback from './components/ErrorFallback';
+import { PersonalQuotaContextProvider } from './context/providers/PersonalQuotaContextProvider';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -327,38 +328,40 @@ function App({ deviceContextValue }: Props) {
         <RepositoriesContext.Provider value={reposContextValue}>
           <TabsContext.Provider value={contextValue}>
             <GeneralUiContextProvider>
-              <NavBar activeTab={activeTab} />
-              <div className="mt-8" />
-              {tabs.map((t) =>
-                t.type === TabType.STUDIO ? (
-                  <StudioTab
-                    key={t.key}
-                    isActive={t.key === activeTab}
-                    tab={t}
-                    isTransitioning={isTransitioning}
-                  />
-                ) : t.type === TabType.REPO ? (
-                  <RepoTab
-                    key={t.key}
-                    isActive={t.key === activeTab}
-                    tab={t}
-                    isTransitioning={isTransitioning}
-                  />
-                ) : (
-                  <HomeTab
-                    key={t.key}
-                    isActive={t.key === activeTab}
-                    tab={t}
-                    isTransitioning={isTransitioning}
-                  />
-                ),
-              )}
-              <Settings />
-              <ReportBugModal activeTab={activeTab} />
-              <PromptGuidePopup />
-              <Onboarding />
-              <StatusBar />
-              <CloudFeaturePopup />
+              <PersonalQuotaContextProvider>
+                <NavBar activeTab={activeTab} />
+                <div className="mt-8" />
+                {tabs.map((t) =>
+                  t.type === TabType.STUDIO ? (
+                    <StudioTab
+                      key={t.key}
+                      isActive={t.key === activeTab}
+                      tab={t}
+                      isTransitioning={isTransitioning}
+                    />
+                  ) : t.type === TabType.REPO ? (
+                    <RepoTab
+                      key={t.key}
+                      isActive={t.key === activeTab}
+                      tab={t}
+                      isTransitioning={isTransitioning}
+                    />
+                  ) : (
+                    <HomeTab
+                      key={t.key}
+                      isActive={t.key === activeTab}
+                      tab={t}
+                      isTransitioning={isTransitioning}
+                    />
+                  ),
+                )}
+                <Settings />
+                <ReportBugModal activeTab={activeTab} />
+                <PromptGuidePopup />
+                <Onboarding />
+                <StatusBar />
+                <CloudFeaturePopup />
+              </PersonalQuotaContextProvider>
             </GeneralUiContextProvider>
           </TabsContext.Provider>
         </RepositoriesContext.Provider>

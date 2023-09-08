@@ -1,15 +1,25 @@
-import React, { memo, useContext, useMemo } from 'react';
+import React, { memo, useCallback, useContext, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bug, Cog, DoorRight, Magazine, Person } from '../../icons';
+import {
+  Bug,
+  CodeStudioIcon,
+  Cog,
+  DoorRight,
+  Magazine,
+  Person,
+  Sparkle,
+} from '../../icons';
 import { ContextMenuItem, MenuListItemType } from '../ContextMenu';
 import { deleteAuthCookie } from '../../utils';
 import DropdownWithIcon from '../Dropdown/WithIcon';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { TabsContext } from '../../context/tabsContext';
-import { gitHubLogout } from '../../services/api';
+import { getSubscriptionLink, gitHubLogout } from '../../services/api';
 import { RepoSource } from '../../types';
 import { TabType } from '../../types/general';
+import { PersonalQuotaContext } from '../../context/personalQuotaContext';
+import LiteLoaderContainer from '../Loaders/LiteLoader';
 import Tab from './Tab';
 
 type Props = {
@@ -23,8 +33,19 @@ const NavBar = ({ isSkeleton, activeTab }: Props) => {
   const { setBugReportModalOpen } = useContext(UIContext.BugReport);
   const { setShouldShowWelcome } = useContext(UIContext.Onboarding);
   const { setGithubConnected } = useContext(UIContext.GitHubConnected);
+  const { isSubscribed } = useContext(PersonalQuotaContext.Values);
   const { openLink, isSelfServe, os, envConfig } = useContext(DeviceContext);
   const { tabs } = useContext(TabsContext);
+  const [isFetchingLink, setIsFetchingLink] = useState(false);
+
+  const handleUpgrade = useCallback(() => {
+    setIsFetchingLink(true);
+    getSubscriptionLink()
+      .then((resp) => {
+        openLink(resp.url);
+      })
+      .finally(() => setIsFetchingLink(false));
+  }, [openLink]);
 
   const dropdownItems = useMemo(() => {
     return [
@@ -34,6 +55,20 @@ const NavBar = ({ isSkeleton, activeTab }: Props) => {
         type: MenuListItemType.DEFAULT,
         onClick: () => setSettingsOpen(true),
       },
+      ...(isSubscribed
+        ? [
+            {
+              text: isFetchingLink ? (
+                <LiteLoaderContainer />
+              ) : (
+                t('Manage subscription')
+              ),
+              icon: <CodeStudioIcon />,
+              type: MenuListItemType.DEFAULT,
+              onClick: handleUpgrade,
+            },
+          ]
+        : []),
       {
         text: t('Documentation'),
         icon: <Magazine />,
@@ -60,7 +95,15 @@ const NavBar = ({ isSkeleton, activeTab }: Props) => {
         },
       },
     ] as ContextMenuItem[];
-  }, [isSelfServe, openLink, gitHubLogout, t]);
+  }, [
+    isSelfServe,
+    openLink,
+    gitHubLogout,
+    t,
+    isSubscribed,
+    handleUpgrade,
+    isFetchingLink,
+  ]);
 
   return (
     <div
