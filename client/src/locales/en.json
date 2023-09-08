@@ -346,5 +346,10 @@
 	"No related files found": "No related files found",
 	"Unavailable": "Unavailable",
 	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.",
-	"Invert": "Invert"
+	"Invert": "Invert",
+	"# requests left_one": "{{count}} request left",
+	"# requests left_other": "{{count}} requests left",
+	"Upgrade": "Upgrade",
+	"Requests reset every 24 hours. Upgrade to get unlimited requests!": "Requests reset every 24 hours. Upgrade to get unlimited requests!",
+	"Manage subscription": "Manage subscription"
 }

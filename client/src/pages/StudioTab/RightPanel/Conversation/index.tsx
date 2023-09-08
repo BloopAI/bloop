@@ -25,6 +25,7 @@ import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import { DeviceContext } from '../../../../context/deviceContext';
 import useScrollToBottom from '../../../../hooks/useScrollToBottom';
 import { StudioContext } from '../../../../context/studioContext';
+import { PersonalQuotaContext } from '../../../../context/personalQuotaContext';
 import ConversationInput from './Input';
 
 type Props = {
@@ -65,6 +66,10 @@ const Conversation = ({
   const { t } = useTranslation();
   const { inputValue } = useContext(StudioContext.Input);
   const { setInputValue } = useContext(StudioContext.Setters);
+  const { refetchQuota } = useContext(PersonalQuotaContext.Handlers);
+  const { requestsLeft, hasCheckedQuota } = useContext(
+    PersonalQuotaContext.Values,
+  );
   const [conversation, setConversation] = useState<StudioConversationMessage[]>(
     mapConversation(messages),
   );
@@ -149,6 +154,7 @@ const Conversation = ({
   const handleCancel = useCallback(() => {
     eventSource?.close();
     setIsLoading(false);
+    refetchQuota();
     if (
       conversation[conversation.length - 1]?.author ===
       StudioConversationMessageAuthor.USER
@@ -214,6 +220,7 @@ const Conversation = ({
         if (data.Ok) {
           const newMessage = data.Ok;
           if (i === 0) {
+            refetchQuota();
             setConversation((prev) => {
               const newConv = [
                 ...prev,
@@ -305,7 +312,15 @@ const Conversation = ({
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        onSubmit();
+        if (
+          !(
+            !inputValue ||
+            isTokenLimitExceeded ||
+            (hasCheckedQuota && !requestsLeft)
+          )
+        ) {
+          onSubmit();
+        }
       } else if ((e.metaKey || e.ctrlKey) && e.key === 't') {
         setLeftPanel({ type: StudioLeftPanelType.TEMPLATES });
       }
@@ -383,7 +398,11 @@ const Conversation = ({
             ) : (
               <Button
                 size="small"
-                disabled={!inputValue || isTokenLimitExceeded}
+                disabled={
+                  !inputValue ||
+                  isTokenLimitExceeded ||
+                  (hasCheckedQuota && !requestsLeft)
+                }
                 onClick={onSubmit}
               >
                 <Trans>Generate</Trans>
@@ -391,7 +410,9 @@ const Conversation = ({
                   <KeyboardChip
                     type="cmd"
                     variant={
-                      !inputValue || isTokenLimitExceeded
+                      !inputValue ||
+                      isTokenLimitExceeded ||
+                      (hasCheckedQuota && !requestsLeft)
                         ? 'secondary'
                         : 'primary'
                     }
@@ -399,7 +420,9 @@ const Conversation = ({
                   <KeyboardChip
                     type="entr"
                     variant={
-                      !inputValue || isTokenLimitExceeded
+                      !inputValue ||
+                      isTokenLimitExceeded ||
+                      (hasCheckedQuota && !requestsLeft)
                         ? 'secondary'
                         : 'primary'
                     }

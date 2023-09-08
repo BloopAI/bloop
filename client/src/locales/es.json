@@ -347,5 +347,10 @@
 	"No related files found": "No se encontraron archivos relacionados",
 	"Unavailable": "Indisponible",
 	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "Límite de token excedido. Reduzca la cantidad de archivos o mensajes de contexto para habilitar la capacidad de generar.",
-	"Invert": "Invertir"
+	"Invert": "Invertir",
+	"# requests left_one": "Queda {{count}} solicitud",
+	"# requests left_other": "Quedan {{count}} solicitudes",
+	"Upgrade": "Actualizar",
+	"Requests reset every 24 hours. Upgrade to get unlimited requests!": "Las solicitudes reinician cada 24 horas. ¡Actualice para obtener solicitudes ilimitadas!",
+	"Manage subscription": "Administrar suscripción"
 }
