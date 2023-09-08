@@ -27,7 +27,9 @@ impl RemoteEmbedder {
             &self
                 .session
                 .post(self.url.clone())
-                .body(rmp_serde::to_vec(&request)?)
+                .header(reqwest::headers::CONTENT_TYPE, "application/x-msgpack")
+                .header(reqwest::headers::ACCEPT, "application/x-msgpack")
+                .body(rmp_serde::to_vec_named(&request)?)
                 .send()
                 .await?
                 .bytes()
