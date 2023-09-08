@@ -1,14 +1,22 @@
 import React, {
   Dispatch,
+  Fragment,
   memo,
   MutableRefObject,
   SetStateAction,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { Token as TokenType } from '../../../types/prism';
 import { hashCode, mergeRanges } from '../../../utils';
-import CodeContainerFull from './CodeContainerFull';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
+import { CODE_LINE_HEIGHT } from '../../../consts/code';
+import SelectionHandler from './SelectionHandler';
+import SelectionRect from './SelectionRect';
+import LinesContainer from './LazyLinesContainer';
 
 type Props = {
   width: number;
@@ -26,12 +34,97 @@ const CodeContainerSelectable = ({
   tokens,
   setCurrentSelection,
   relativePath,
-  ...otherProps
+  searchTerm,
+  scrollToIndex,
+  currentSelection,
+  scrollContainerRef,
 }: Props) => {
   const pathHash = useMemo(
     () => (relativePath ? hashCode(relativePath) : ''),
     [relativePath],
   ); // To tell if code has changed
+  const ref = useRef<HTMLDivElement>(null);
+  const [currentlySelectingRange, setCurrentlySelectingRange] = useState<
+    null | [number, number]
+  >(null);
+  const [modifyingRange, setModifyingRange] = useState(-1);
+  const [shouldScroll, setShouldScroll] = useState<'top' | 'bottom' | false>(
+    false,
+  );
+
+  useEffect(() => {
+    if (scrollToIndex && ref.current) {
+      let scrollToItem = scrollToIndex[0];
+      scrollToItem = Math.max(0, Math.min(scrollToItem, tokens.length - 1));
+      const line = findElementInCurrentTab(
+        `[data-line-number="${scrollToItem}"]`,
+      );
+      line?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+  }, [scrollToIndex, tokens.length]);
+
+  let scrollMomentum = 1;
+
+  useEffect(() => {
+    const scrollingFunc = () => {
+      scrollMomentum++;
+      if (scrollContainerRef.current && shouldScroll) {
+        const scollMomentumSmooth = Math.floor(scrollMomentum / 4);
+        scrollContainerRef.current.scroll({
+          top:
+            scrollContainerRef.current?.scrollTop +
+            (shouldScroll === 'top'
+              ? -CODE_LINE_HEIGHT * scollMomentumSmooth
+              : CODE_LINE_HEIGHT * scollMomentumSmooth),
+        });
+      }
+    };
+    let intervalId: number;
+    if (shouldScroll) {
+      intervalId = window.setInterval(scrollingFunc, 50);
+    }
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [shouldScroll]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (scrollContainerRef.current) {
+        const containerBox = scrollContainerRef.current.getBoundingClientRect();
+        const isAtContainerTop =
+          e.clientY - CODE_LINE_HEIGHT <= containerBox.top;
+        const isAtContainerBottom =
+          e.clientY + CODE_LINE_HEIGHT >=
+          containerBox.top + containerBox.height;
+        if (isAtContainerTop || isAtContainerBottom) {
+          setShouldScroll(isAtContainerTop ? 'top' : 'bottom');
+        } else {
+          setShouldScroll(false);
+        }
+      }
+    };
+    if (!!currentlySelectingRange) {
+      document.body.addEventListener('mousemove', handleMouseMove);
+    } else {
+      setShouldScroll(false);
+    }
+    return () => {
+      document.body.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [!!currentlySelectingRange]);
+
+  const handleAddRange = useCallback(() => {
+    setCurrentlySelectingRange((prev) => {
+      if (prev) {
+        onNewRange(prev);
+      }
+      return null;
+    });
+  }, []);
 
   const onNewRange = useCallback((range: [number, number]) => {
     setCurrentSelection((prev) => {
@@ -84,15 +177,38 @@ const CodeContainerSelectable = ({
   }, [tokens.length]);
 
   return (
-    <CodeContainerFull
-      pathHash={pathHash}
-      tokens={tokens}
-      updateRange={updateRange}
-      deleteRange={deleteRange}
-      invertRanges={invertRanges}
-      onNewRange={onNewRange}
-      {...otherProps}
-    />
+    <div ref={ref} className="relative pb-16">
+      {currentSelection.map((r, i) => (
+        <Fragment key={i}>
+          <SelectionHandler
+            initialRange={r}
+            updateRange={updateRange}
+            setCurrentlySelectingRange={setCurrentlySelectingRange}
+            deleteRange={deleteRange}
+            i={i}
+            setModifyingRange={setModifyingRange}
+            fileLinesNum={tokens.length}
+          />
+          <SelectionRect
+            range={r}
+            i={i}
+            deleteRange={deleteRange}
+            invertRanges={invertRanges}
+          />
+        </Fragment>
+      ))}
+      {!!currentlySelectingRange && (
+        <SelectionRect range={currentlySelectingRange} isTemporary />
+      )}
+      <LinesContainer
+        items={tokens}
+        pathHash={pathHash}
+        handleAddRange={handleAddRange}
+        searchTerm={searchTerm}
+        setCurrentlySelectingRange={setCurrentlySelectingRange}
+        modifyingRange={modifyingRange}
+      />
+    </div>
   );
 };
 

@@ -80,21 +80,31 @@ const FilePanel = ({
         if (resp?.data?.[0]?.kind === 'file') {
           setFile(resp?.data?.[0]?.data);
           // if (initialRanges?.[0]) {
-          setTimeout(() => {
-            const line = findElementInCurrentTab(
-              `[data-line-number="${
-                initialRanges?.[0] ? initialRanges[0][0] : 0
-              }"]`,
-            );
-            line?.scrollIntoView({
-              behavior: 'auto',
-              block:
-                !!initialRanges?.[0] &&
-                initialRanges[0][1] - initialRanges[0][0] > 5
-                  ? 'start'
-                  : 'center',
-            });
-          }, 100);
+          setTimeout(
+            () => {
+              const line = findElementInCurrentTab(
+                `[data-line-number="${
+                  initialRanges?.[0] ? initialRanges[0][0] : 0
+                }"]`,
+              );
+              line?.scrollIntoView({
+                behavior: 'auto',
+                block:
+                  !!initialRanges?.[0] &&
+                  initialRanges[0][0] > 1 &&
+                  initialRanges[0][1] - initialRanges[0][0] > 5
+                    ? 'start'
+                    : 'center',
+              });
+            },
+            !initialRanges?.[0]
+              ? 100
+              : initialRanges[0][0] > 1000
+              ? 1000
+              : initialRanges[0][0] > 500
+              ? 800
+              : 500,
+          );
           // }
         }
       })
@@ -182,9 +192,7 @@ const FilePanel = ({
         </div>
       </div>
       <div
-        className={`py-4 px-4 overflow-auto flex flex-col ${
-          isLoading ? 'opacity-50' : ''
-        } transition-opacity duration-150 ease-in-out`}
+        className={`py-4 px-4 overflow-auto flex flex-col`}
         ref={scrollContainerRef}
       >
         {!!file && (
