@@ -1,9 +1,9 @@
 use std::path::Path;
 
 use async_trait::async_trait;
+use reqwest::header;
 use serde::{Deserialize, Serialize};
 use tokenizers::Tokenizer;
-use reqwest::header;
 
 use crate::semantic::{embedder::*, Embedding};
 
