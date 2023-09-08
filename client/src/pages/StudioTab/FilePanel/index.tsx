@@ -16,7 +16,7 @@ import {
 } from '../../../types/general';
 import { Branch, CursorSelection, Fire } from '../../../icons';
 import FileIcon from '../../../components/FileIcon';
-import { search } from '../../../services/api';
+import { getFileTokenCount, search } from '../../../services/api';
 import { buildRepoQuery, getFileExtensionForLang } from '../../../utils';
 import { File } from '../../../types/api';
 import CodeFullSelectable from '../../../components/CodeBlock/CodeFullSelectable';
@@ -39,7 +39,6 @@ type Props = {
     repo_ref: string,
     branch: string | null,
   ) => void;
-  tokens: number;
 };
 
 const HEADER_HEIGHT = 32;
@@ -56,18 +55,16 @@ const FilePanel = ({
   repo,
   initialRanges,
   onFileRangesChanged,
-  tokens,
 }: Props) => {
   useTranslation();
   const [file, setFile] = useState<File | null>(null);
   const [selectedLines, setSelectedLines] = useState<[number, number][]>(
     initialRanges || [],
   );
-  const [isLoading, setIsLoading] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [tokenCount, setTokenCount] = useState(0);
 
   useEffect(() => {
-    setIsLoading(true);
     setSelectedLines(initialRanges || []);
     search(
       buildRepoQuery(
@@ -75,41 +72,52 @@ const FilePanel = ({
         filePath,
         branch,
       ),
-    )
-      .then((resp) => {
-        if (resp?.data?.[0]?.kind === 'file') {
-          setFile(resp?.data?.[0]?.data);
-          // if (initialRanges?.[0]) {
-          setTimeout(
-            () => {
-              const line = findElementInCurrentTab(
-                `[data-line-number="${
-                  initialRanges?.[0] ? initialRanges[0][0] : 0
-                }"]`,
-              );
-              line?.scrollIntoView({
-                behavior: 'auto',
-                block:
-                  !!initialRanges?.[0] &&
-                  initialRanges[0][0] > 1 &&
-                  initialRanges[0][1] - initialRanges[0][0] > 5
-                    ? 'start'
-                    : 'center',
-              });
-            },
-            !initialRanges?.[0]
-              ? 100
-              : initialRanges[0][0] > 1000
-              ? 1000
-              : initialRanges[0][0] > 500
-              ? 800
-              : 500,
-          );
-          // }
-        }
-      })
-      .finally(() => setIsLoading(false));
+    ).then((resp) => {
+      if (resp?.data?.[0]?.kind === 'file') {
+        setFile(resp?.data?.[0]?.data);
+        // if (initialRanges?.[0]) {
+        setTimeout(
+          () => {
+            const line = findElementInCurrentTab(
+              `[data-line-number="${
+                initialRanges?.[0] ? initialRanges[0][0] : 0
+              }"]`,
+            );
+            line?.scrollIntoView({
+              behavior: 'auto',
+              block:
+                !!initialRanges?.[0] &&
+                initialRanges[0][0] > 1 &&
+                initialRanges[0][1] - initialRanges[0][0] > 5
+                  ? 'start'
+                  : 'center',
+            });
+          },
+          !initialRanges?.[0]
+            ? 100
+            : initialRanges[0][0] > 1000
+            ? 1000
+            : initialRanges[0][0] > 500
+            ? 800
+            : 500,
+        );
+        // }
+      }
+    });
   }, [filePath, branch, repo, initialRanges]);
+
+  useEffect(() => {
+    const mappedLines: [number, number][] = selectedLines.map((r) => [
+      r[0],
+      r[1] + 1,
+    ]);
+    getFileTokenCount(
+      filePath,
+      repo.ref,
+      branch || undefined,
+      mappedLines,
+    ).then(setTokenCount);
+  }, [filePath, repo.ref, branch, selectedLines]);
 
   const onCancel = useCallback(() => {
     setRightPanel({ type: StudioRightPanelType.CONVERSATION });
@@ -188,7 +196,7 @@ const FilePanel = ({
           {/*  branch={branch}*/}
           {/*  filePath={filePath}*/}
           {/*/>*/}
-          <TokensUsageBadge tokens={tokens} />
+          <TokensUsageBadge tokens={tokenCount} />
         </div>
       </div>
       <div

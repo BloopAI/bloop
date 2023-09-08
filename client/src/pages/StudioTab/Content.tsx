@@ -294,11 +294,6 @@ const ContentContainer = ({
                   {...rightPanel.data}
                   setRightPanel={setRightPanel}
                   onFileRangesChanged={onFileRangesChanged}
-                  tokens={
-                    stateToShow.token_counts?.per_file[
-                      stateToShow.token_counts?.per_file.length - 1
-                    ]
-                  }
                 />
               ) : null}
             </div>
