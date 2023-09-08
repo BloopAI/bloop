@@ -8,8 +8,9 @@ use super::Error;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct QuotaResponse {
-    paid: bool,
-    used: String,
+    upgraded: bool,
+    used: u32,
+    allowed: u32,
 }
 
 pub async fn get(app: Extension<Application>) -> super::Result<Json<QuotaResponse>> {
