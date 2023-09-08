@@ -395,6 +395,29 @@ pub async fn delete(
     .map(|_| ())
 }
 
+fn get_token_count(body: &str, ranges: &[Range<usize>]) -> usize {
+    let mut token_count = 0;
+    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
+
+    if ranges.is_empty() {
+        token_count = core_bpe.encode_ordinary(body).len();
+    } else {
+        let lines = body.lines().collect::<Vec<_>>();
+        for range in ranges {
+            let chunk = lines
+                .iter()
+                .copied()
+                .skip(range.start)
+                .take(range.end - range.start)
+                .collect::<Vec<_>>()
+                .join("\n");
+            token_count += core_bpe.encode_ordinary(&chunk).len();
+        }
+    }
+
+    token_count
+}
+
 #[derive(serde::Serialize)]
 pub struct TokenCounts {
     total: usize,
@@ -443,25 +466,7 @@ async fn token_counts(
                 None => return 0,
             };
 
-            let mut token_count = 0;
-            let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
-
-            if file.ranges.is_empty() {
-                token_count = core_bpe.encode_ordinary(&body).len();
-            } else {
-                let lines = body.lines().collect::<Vec<_>>();
-                for range in &file.ranges {
-                    let chunk = lines
-                        .iter()
-                        .copied()
-                        .skip(range.start)
-                        .take(range.end - range.start)
-                        .collect::<Vec<_>>()
-                        .join("\n");
-
-                    token_count += core_bpe.encode_ordinary(&chunk).len();
-                }
-            }
+            let token_count = get_token_count(&body, &file.ranges);
 
             token_count
         })
@@ -499,6 +504,43 @@ async fn token_counts(
         messages,
         per_file,
     })
+}
+
+#[derive(serde::Deserialize)]
+pub struct GetTokenCount {
+    pub path: String,
+    pub repo: RepoRef,
+    pub branch: Option<String>,
+    pub ranges: Option<Vec<Range<usize>>>,
+}
+
+pub async fn get_file_token_count(
+    app: Extension<Application>,
+    Json(params): Json<GetTokenCount>,
+) -> webserver::Result<Json<usize>> {
+    let file = ContextFile {
+        path: params.path,
+        hidden: false,
+        repo: params.repo,
+        branch: params.branch,
+        ranges: params.ranges.unwrap_or_default(),
+    };
+
+    let doc = app
+        .indexes
+        .file
+        .by_path(&file.repo, &file.path, file.branch.as_deref())
+        .await?
+        .with_context(|| {
+            format!(
+                "file `{}` did not exist in repo `{}`, branch `{:?}`",
+                file.path, file.repo, file.branch
+            )
+        })?;
+
+    let token_count = get_token_count(&doc.content, &file.ranges);
+
+    Ok(Json(token_count))
 }
 
 pub async fn generate(
