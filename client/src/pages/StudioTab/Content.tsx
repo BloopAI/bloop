@@ -61,7 +61,9 @@ const ContentContainer = ({
   const refetchCodeStudio = useCallback(async () => {
     if (tab.key) {
       const resp = await getCodeStudio(tab.key);
-      setCurrentState(resp);
+      setCurrentState((prev) =>
+        JSON.stringify(resp) === JSON.stringify(prev) ? prev : resp,
+      );
     }
   }, [tab.key]);
 

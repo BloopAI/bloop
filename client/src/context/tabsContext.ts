@@ -4,7 +4,6 @@ import { RepoSource } from '../types';
 
 type ContextType = {
   tabs: UITabType[];
-  activeTab: string;
   handleAddRepoTab: (
     repoRef: string,
     repoName: string,
@@ -31,7 +30,6 @@ export const TabsContext = createContext<ContextType>({
       type: TabType.HOME,
     },
   ],
-  activeTab: 'initial',
   handleAddRepoTab: () => {},
   handleAddStudioTab: () => {},
   handleRemoveTab: () => {},

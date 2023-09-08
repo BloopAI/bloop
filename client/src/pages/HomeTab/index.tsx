@@ -6,13 +6,16 @@ import Home from './Content';
 
 type Props = {
   isActive: boolean;
+  isTransitioning: boolean;
   tab: HomeTabType;
 };
 
-function HomeTab({ isActive, tab }: Props) {
+function HomeTab({ isActive, tab, isTransitioning }: Props) {
   return (
     <div
-      className={`${isActive ? '' : 'hidden'} `}
+      className={`${isActive ? '' : 'hidden'} ${
+        isTransitioning ? 'opacity-70' : 'opacity-100'
+      }`}
       data-active={isActive ? 'true' : 'false'}
     >
       <TabUiContextProvider tab={tab}>

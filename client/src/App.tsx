@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { DeviceContextType } from './context/deviceContext';
@@ -59,6 +65,7 @@ function App({ deviceContextValue }: Props) {
   const [repositories, setRepositories] = useState<RepoType[] | undefined>();
   const [isLoading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const [isTransitioning, startTransition] = useTransition();
 
   useEffect(() => {
     if (isLoading) {
@@ -253,20 +260,24 @@ function App({ deviceContextValue }: Props) {
   );
   useKeyboardNavigation(handleKeyEvent);
 
+  const handleChangeActiveTab = useCallback((t: string) => {
+    startTransition(() => {
+      setActiveTab(t);
+    });
+  }, []);
+
   const contextValue = useMemo(
     () => ({
       tabs,
-      activeTab,
       handleAddRepoTab,
       handleAddStudioTab,
       handleRemoveTab,
-      setActiveTab,
+      setActiveTab: handleChangeActiveTab,
       updateTabNavHistory,
       updateTabBranch,
     }),
     [
       tabs,
-      activeTab,
       handleAddRepoTab,
       handleAddStudioTab,
       handleRemoveTab,
@@ -316,7 +327,7 @@ function App({ deviceContextValue }: Props) {
         <RepositoriesContext.Provider value={reposContextValue}>
           <TabsContext.Provider value={contextValue}>
             <GeneralUiContextProvider>
-              <NavBar />
+              <NavBar activeTab={activeTab} />
               <div className="mt-8" />
               {tabs.map((t) =>
                 t.type === TabType.STUDIO ? (
@@ -324,15 +335,26 @@ function App({ deviceContextValue }: Props) {
                     key={t.key}
                     isActive={t.key === activeTab}
                     tab={t}
+                    isTransitioning={isTransitioning}
                   />
                 ) : t.type === TabType.REPO ? (
-                  <RepoTab key={t.key} isActive={t.key === activeTab} tab={t} />
+                  <RepoTab
+                    key={t.key}
+                    isActive={t.key === activeTab}
+                    tab={t}
+                    isTransitioning={isTransitioning}
+                  />
                 ) : (
-                  <HomeTab key={t.key} isActive={t.key === activeTab} tab={t} />
+                  <HomeTab
+                    key={t.key}
+                    isActive={t.key === activeTab}
+                    tab={t}
+                    isTransitioning={isTransitioning}
+                  />
                 ),
               )}
               <Settings />
-              <ReportBugModal />
+              <ReportBugModal activeTab={activeTab} />
               <PromptGuidePopup />
               <Onboarding />
               <StatusBar />
