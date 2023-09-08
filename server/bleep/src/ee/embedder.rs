@@ -3,6 +3,7 @@ use std::path::Path;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokenizers::Tokenizer;
+use reqwest::header;
 
 use crate::semantic::{embedder::*, Embedding};
 
@@ -17,7 +18,7 @@ impl RemoteEmbedder {
         let url = url.join("encode")?;
         Ok(Self {
             url,
-            session: reqwest::Client::builder().gzip(true).build()?,
+            session: reqwest::Client::builder().gzip(false).build()?,
             embedder: LocalEmbedder::new(model_dir)?,
         })
     }
@@ -27,7 +28,8 @@ impl RemoteEmbedder {
             &self
                 .session
                 .post(self.url.clone())
-                .body(rmp_serde::to_vec(&request)?)
+                .header(header::ACCEPT, "application/x-msgpack")
+                .json(&request)
                 .send()
                 .await?
                 .bytes()
