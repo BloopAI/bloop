@@ -63,35 +63,43 @@ const FilePanel = ({
   const [selectedLines, setSelectedLines] = useState<[number, number][]>(
     initialRanges || [],
   );
+  const [isLoading, setIsLoading] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setIsLoading(true);
+    setSelectedLines(initialRanges || []);
     search(
       buildRepoQuery(
         repo.ref.startsWith('github.com/') ? repo.ref : repo.name,
         filePath,
         branch,
       ),
-    ).then((resp) => {
-      if (resp?.data?.[0]?.kind === 'file') {
-        setFile(resp?.data?.[0]?.data);
-        if (initialRanges?.[0]) {
+    )
+      .then((resp) => {
+        if (resp?.data?.[0]?.kind === 'file') {
+          setFile(resp?.data?.[0]?.data);
+          // if (initialRanges?.[0]) {
           setTimeout(() => {
             const line = findElementInCurrentTab(
-              `[data-line-number="${initialRanges[0][0]}"]`,
+              `[data-line-number="${
+                initialRanges?.[0] ? initialRanges[0][0] : 0
+              }"]`,
             );
             line?.scrollIntoView({
               behavior: 'auto',
               block:
+                !!initialRanges?.[0] &&
                 initialRanges[0][1] - initialRanges[0][0] > 5
                   ? 'start'
                   : 'center',
             });
           }, 100);
+          // }
         }
-      }
-    });
-  }, [filePath, branch, repo]);
+      })
+      .finally(() => setIsLoading(false));
+  }, [filePath, branch, repo, initialRanges]);
 
   const onCancel = useCallback(() => {
     setRightPanel({ type: StudioRightPanelType.CONVERSATION });
@@ -174,7 +182,9 @@ const FilePanel = ({
         </div>
       </div>
       <div
-        className="py-4 px-4 overflow-auto flex flex-col"
+        className={`py-4 px-4 overflow-auto flex flex-col ${
+          isLoading ? 'opacity-50' : ''
+        } transition-opacity duration-150 ease-in-out`}
         ref={scrollContainerRef}
       >
         {!!file && (
