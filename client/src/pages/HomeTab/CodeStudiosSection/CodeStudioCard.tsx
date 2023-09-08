@@ -97,7 +97,9 @@ const CodeStudioCard = ({
             )}
           </span>
           <div className="min-h-[2.75rem] flex items-center">
-            <p className="break-all text-label-title -mt-1">{name}</p>
+            <p className="break-word text-label-title -mt-1">
+              {name.length > 43 ? `${name.slice(0, 41)}...` : name}
+            </p>
           </div>
         </div>
         <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all duration-150">
