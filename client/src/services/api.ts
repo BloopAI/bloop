@@ -291,6 +291,21 @@ export const importCodeStudio = (thread_id: string, studio_id?: string) =>
     .post('/studio/import', {}, { params: { thread_id, studio_id } })
     .then((r) => r.data);
 
+export const getFileTokenCount = (
+  path: string,
+  repo: string,
+  branch?: string,
+  ranges?: [number, number][],
+): Promise<number> =>
+  http
+    .post(`/studio/file-token-count`, {
+      path,
+      repo,
+      branch,
+      ranges,
+    })
+    .then((r) => r.data);
+
 export const getRelatedFiles = (
   relative_path: string,
   repo_ref: string,
