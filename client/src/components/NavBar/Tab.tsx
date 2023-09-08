@@ -13,10 +13,11 @@ type Props = {
   tabKey: string;
   name: string;
   source?: RepoSource;
+  activeTab: string;
 };
 
-const Tab = ({ tabKey, name, source }: Props) => {
-  const { setActiveTab, activeTab, handleRemoveTab } = useContext(TabsContext);
+const Tab = ({ tabKey, name, source, activeTab }: Props) => {
+  const { setActiveTab, handleRemoveTab } = useContext(TabsContext);
   return (
     <div
       key={tabKey}

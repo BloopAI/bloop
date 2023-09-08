@@ -11,15 +11,18 @@ import ContentContainer from './Content';
 
 type Props = {
   isActive: boolean;
+  isTransitioning: boolean;
   tab: RepoTabType;
 };
 
 class RepoTab extends PureComponent<Props> {
   render() {
-    const { isActive, tab } = this.props;
+    const { isActive, tab, isTransitioning } = this.props;
     return (
       <div
-        className={`${isActive ? '' : 'hidden'} `}
+        className={`${isActive ? '' : 'hidden'} ${
+          isTransitioning ? 'opacity-70' : 'opacity-100'
+        }`}
         data-active={isActive ? 'true' : 'false'}
       >
         <TabUiContextProvider tab={tab}>

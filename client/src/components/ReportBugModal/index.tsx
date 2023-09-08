@@ -24,11 +24,13 @@ type Props = {
   errorBoundaryMessage?: string;
   handleSubmit?: () => void;
   forceShow?: boolean;
+  activeTab: string;
 };
 const ReportBugModal = ({
   errorBoundaryMessage,
   handleSubmit,
   forceShow,
+  activeTab,
 }: Props) => {
   const { t } = useTranslation();
   const [form, setForm] = useState({
@@ -45,7 +47,7 @@ const ReportBugModal = ({
   );
   const { envConfig, listen, os, release, invokeTauriCommand } =
     useContext(DeviceContext);
-  const { handleRemoveTab, setActiveTab, activeTab } = useContext(TabsContext);
+  const { handleRemoveTab, setActiveTab } = useContext(TabsContext);
 
   const userForm = useMemo(
     (): { email: string; firstName: string; lastName: string } | null =>

@@ -14,9 +14,10 @@ import Tab from './Tab';
 
 type Props = {
   isSkeleton?: boolean;
+  activeTab: string;
 };
 
-const NavBar = ({ isSkeleton }: Props) => {
+const NavBar = ({ isSkeleton, activeTab }: Props) => {
   const { t } = useTranslation();
   const { setSettingsOpen } = useContext(UIContext.Settings);
   const { setBugReportModalOpen } = useContext(UIContext.BugReport);
@@ -73,6 +74,7 @@ const NavBar = ({ isSkeleton }: Props) => {
         name="Home"
         key="initial"
         source={RepoSource.LOCAL}
+        activeTab={activeTab}
       />
       <div
         className={`flex-1 flex items-center justify-start h-full overflow-x-auto pb-1 -mb-1 pr-6 fade-right`}
@@ -87,6 +89,7 @@ const NavBar = ({ isSkeleton }: Props) => {
                 name={t.name}
                 key={t.key}
                 source={t.type === TabType.REPO ? t.source : undefined}
+                activeTab={activeTab}
               />
             ))}
       </div>
