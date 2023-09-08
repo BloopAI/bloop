@@ -35,7 +35,12 @@ const useConversation = (threadId: string, recordId: number) => {
   ]);
 
   useEffect(() => {
-    if (!conversationsCache[threadId]?.[recordId] && !conversation[recordId]) {
+    if (
+      threadId &&
+      recordId > -1 &&
+      !conversationsCache[threadId]?.[recordId] &&
+      !conversation[recordId]
+    ) {
       getConversation(threadId).then((resp) => {
         const conv: ChatMessage[] = [];
         resp.forEach((m) => {
