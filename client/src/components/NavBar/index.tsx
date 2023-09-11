@@ -2,7 +2,7 @@ import React, { memo, useCallback, useContext, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bug,
-  CodeStudioIcon,
+  Card,
   Cog,
   DoorRight,
   Magazine,
@@ -63,7 +63,7 @@ const NavBar = ({ isSkeleton, activeTab }: Props) => {
               ) : (
                 t('Manage subscription')
               ),
-              icon: <CodeStudioIcon />,
+              icon: <Card />,
               type: MenuListItemType.DEFAULT,
               onClick: handleUpgrade,
             },
