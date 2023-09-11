@@ -1,0 +1,2 @@
+DELETE FROM templates;
+ALTER TABLE templates ADD COLUMN user_id TEXT NOT NULL;
