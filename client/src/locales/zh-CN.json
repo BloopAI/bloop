@@ -186,6 +186,7 @@
 	"Reading ": "正在阅读 ",
 	"avatar": "头像",
 	"Submit": "提交",
+	"Save": "保存",
 	"Generating response...": "正在生成回答...",
 	"Responding...": "正在回答...",
 	"Reading": "阅读",
@@ -353,10 +354,9 @@
 	"Unavailable": "不可用",
 	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "令牌限制超过了。 减少上下文文件的数量或消息，以实现生成能力。",
 	"Invert": "倒置",
-	"# requests left": "还剩 {{count}} 个请求",
-	"# requests left_one": "还剩 {{count}} 个请求",
-	"# requests left_other": "还剩 {{count}} 个请求",
+	"# requests left_one": "次数",
+	"# requests left_other": "次数",
 	"Upgrade": "升级",
-	"Requests reset every 24 hours. Upgrade to get unlimited requests!": "请求每24小时重置一次。 升级以获取无限请求！",
+	"Your quota resets every 24 hours, upgrade for unlimited uses": "您的配额每24小时重置一次，升级以获得无限请求",
 	"Manage subscription": "管理订阅"
 }

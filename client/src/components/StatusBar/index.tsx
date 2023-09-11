@@ -91,6 +91,39 @@ const StatusBar = () => {
       </span>
       <span className="flex gap-3 items-center">
         <p className="text-label-muted caption">v{release}</p>
+        {!isSubscribed && hasCheckedQuota && (
+          <>
+            <div className="w-px h-4 bg-bg-border" />
+            <Tooltip
+              text={
+                <div className="max-w-[13rem]">
+                  {t(
+                    'Your quota resets every 24 hours, upgrade for unlimited uses',
+                  )}
+                </div>
+              }
+              placement={'top'}
+            >
+              <div className="flex gap-1 items-center caption text-label-base">
+                <Info raw sizeClassName="w-3.5 h-3.5" />
+                <p className="pt-0.5">
+                  {requestsLeft.allowed - requestsLeft.used}/
+                  {requestsLeft.allowed}{' '}
+                  <Trans count={requestsLeft.allowed - requestsLeft.used}>
+                    uses left
+                  </Trans>
+                </p>
+              </div>
+            </Tooltip>
+            <Button size="small" onClick={handleUpgrade}>
+              {isFetchingLink ? (
+                <LiteLoaderContainer />
+              ) : (
+                <Trans>Upgrade</Trans>
+              )}
+            </Button>
+          </>
+        )}
         <Button
           size="small"
           variant="secondary"
@@ -114,35 +147,6 @@ const StatusBar = () => {
         >
           <Trans>Report a bug</Trans>
         </Button>
-        {!isSubscribed && hasCheckedQuota && (
-          <>
-            <div className="w-px h-4 bg-bg-border" />
-            <Tooltip
-              text={
-                <div className="max-w-[13rem]">
-                  {t(
-                    'Requests reset every 24 hours. Upgrade to get unlimited requests!',
-                  )}
-                </div>
-              }
-              placement={'top'}
-            >
-              <div className="flex gap-1 items-center caption text-label-base">
-                <Info raw sizeClassName="w-3.5 h-3.5" />
-                <p className="pt-0.5">
-                  <Trans count={requestsLeft}># requests left</Trans>
-                </p>
-              </div>
-            </Tooltip>
-            <Button size="small" onClick={handleUpgrade}>
-              {isFetchingLink ? (
-                <LiteLoaderContainer />
-              ) : (
-                <Trans>Upgrade</Trans>
-              )}
-            </Button>
-          </>
-        )}
       </span>
     </div>
   );
