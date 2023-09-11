@@ -31,6 +31,34 @@ use crate::{
 
 const LLM_GATEWAY_MODEL: &str = "gpt-4-0613";
 
+fn no_user_id() -> Error {
+    Error::user("didn't have user ID")
+}
+
+fn studio_not_found() -> Error {
+    Error::not_found("unknown code studio ID")
+}
+
+async fn latest_snapshot_id<'a, E>(studio_id: i64, exec: E, user_id: &str) -> webserver::Result<i64>
+where
+    E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
+{
+    sqlx::query! {
+        "SELECT ss.id
+        FROM studio_snapshots ss
+        JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?
+        WHERE ss.studio_id = ?
+        ORDER BY ss.modified_at DESC
+        LIMIT 1",
+        user_id,
+        studio_id,
+    }
+    .fetch_optional(exec)
+    .await?
+    .and_then(|r| r.id)
+    .ok_or_else(|| Error::not_found("no snapshots with given studio ID"))
+}
+
 #[derive(serde::Deserialize)]
 pub struct Create {
     name: String,
@@ -43,10 +71,7 @@ pub async fn create(
 ) -> webserver::Result<String> {
     let mut transaction = app.sql.begin().await?;
 
-    let user_id = user
-        .login()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
-        .to_string();
+    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
 
     let studio_id: i64 = sqlx::query! {
         "INSERT INTO studios (user_id, name) VALUES (?, ?) RETURNING id",
@@ -71,85 +96,6 @@ pub async fn create(
     transaction.commit().await?;
 
     Ok(studio_id.to_string())
-}
-
-#[derive(serde::Serialize)]
-pub struct ListItem {
-    id: i64,
-    name: String,
-    modified_at: NaiveDateTime,
-    repos: Vec<String>,
-    most_common_ext: String,
-}
-
-pub async fn list(
-    app: Extension<Application>,
-    user: Extension<User>,
-) -> webserver::Result<Json<Vec<ListItem>>> {
-    let user_id = user
-        .login()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
-        .to_string();
-
-    let studios = sqlx::query!(
-        "SELECT
-            s.id,
-            s.name,
-            ss.modified_at as \"modified_at!\",
-            ss.context
-        FROM studios s
-        INNER JOIN studio_snapshots ss ON s.id = ss.studio_id
-        WHERE s.user_id = ? AND (ss.studio_id, ss.modified_at) IN (
-            SELECT studio_id, MAX(modified_at)
-            FROM studio_snapshots
-            GROUP BY studio_id
-        )",
-        user_id,
-    )
-    .fetch_all(&*app.sql)
-    .await?;
-
-    let mut list_items = Vec::new();
-
-    for studio in studios {
-        let context: Vec<ContextFile> =
-            serde_json::from_str(&studio.context).map_err(Error::internal)?;
-
-        let repos: HashSet<String> = context.iter().map(|file| file.repo.name.clone()).collect();
-
-        let ext_tokens = token_counts((*app).clone(), &[], &context)
-            .await?
-            .per_file
-            .iter()
-            .zip(
-                context
-                    .iter()
-                    .map(|file| file.path.split('.').last().unwrap_or_default()),
-            )
-            .fold(HashMap::new(), |mut tokens_by_ext, (count, extension)| {
-                *tokens_by_ext.entry(extension).or_insert(0) += count;
-                tokens_by_ext
-            });
-
-        let most_common_ext = ext_tokens
-            .into_iter()
-            .max_by_key(|(_, tokens)| *tokens)
-            .map(|(ext, _)| ext)
-            .unwrap_or_default()
-            .to_owned();
-
-        let list_item = ListItem {
-            id: studio.id,
-            name: studio.name,
-            modified_at: studio.modified_at,
-            repos: repos.into_iter().collect::<Vec<_>>(),
-            most_common_ext,
-        };
-
-        list_items.push(list_item);
-    }
-
-    Ok(Json(list_items))
 }
 
 #[derive(serde::Serialize)]
@@ -195,26 +141,6 @@ impl From<&Message> for llm_gateway::api::Message {
     }
 }
 
-async fn latest_snapshot_id<'a, E>(studio_id: i64, exec: E, user_id: &str) -> webserver::Result<i64>
-where
-    E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
-{
-    sqlx::query! {
-        "SELECT ss.id
-        FROM studio_snapshots ss
-        JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?
-        WHERE ss.studio_id = ?
-        ORDER BY ss.modified_at DESC
-        LIMIT 1",
-        user_id,
-        studio_id,
-    }
-    .fetch_optional(exec)
-    .await?
-    .and_then(|r| r.id)
-    .ok_or_else(|| Error::not_found("no snapshots with given studio ID"))
-}
-
 #[derive(serde::Deserialize)]
 pub struct Get {
     pub snapshot_id: Option<i64>,
@@ -226,10 +152,7 @@ pub async fn get(
     Path(id): Path<i64>,
     Query(params): Query<Get>,
 ) -> webserver::Result<Json<Studio>> {
-    let user_id = user
-        .login()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
-        .to_string();
+    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
 
     let snapshot_id = match params.snapshot_id {
         Some(id) => id,
@@ -247,7 +170,7 @@ pub async fn get(
     }
     .fetch_optional(&*app.sql)
     .await?
-    .ok_or_else(|| Error::not_found("unknown studio ID"))?;
+    .ok_or_else(studio_not_found)?;
 
     let context: Vec<ContextFile> =
         serde_json::from_str(&row.context).context("failed to deserialize context")?;
@@ -278,10 +201,7 @@ pub async fn patch(
     Path(studio_id): Path<i64>,
     Json(patch): Json<Patch>,
 ) -> webserver::Result<Json<TokenCounts>> {
-    let user_id = user
-        .login()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
-        .to_string();
+    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
 
     let mut transaction = app.sql.begin().await?;
 
@@ -298,7 +218,7 @@ pub async fn patch(
     )
     .fetch_optional(&mut transaction)
     .await?
-    .ok_or_else(|| Error::not_found("unknown code studio ID"))?;
+    .ok_or_else(studio_not_found)?;
 
     if let Some(name) = patch.name {
         sqlx::query!("UPDATE studios SET name = ? WHERE id = ?", name, studio_id)
@@ -374,10 +294,7 @@ pub async fn delete(
     user: Extension<User>,
     Path(id): Path<i64>,
 ) -> webserver::Result<()> {
-    let user_id = user
-        .login()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
-        .to_string();
+    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
 
     sqlx::query!(
         "DELETE FROM studios WHERE id = ? AND user_id = ? RETURNING id",
@@ -386,38 +303,91 @@ pub async fn delete(
     )
     .fetch_optional(&*app.sql)
     .await?
-    .ok_or_else(|| Error::not_found("unknown code studio ID"))
+    .ok_or_else(studio_not_found)
     .map(|_| ())
 }
 
-fn get_token_count(body: &str, ranges: &[Range<usize>]) -> usize {
-    let mut token_count = 0;
-    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
+#[derive(serde::Serialize)]
+pub struct ListItem {
+    id: i64,
+    name: String,
+    modified_at: NaiveDateTime,
+    repos: Vec<String>,
+    most_common_ext: String,
+}
 
-    if ranges.is_empty() {
-        token_count = core_bpe.encode_ordinary(body).len();
-    } else {
-        let lines = body.lines().collect::<Vec<_>>();
-        for range in ranges {
-            let chunk = lines
-                .iter()
-                .copied()
-                .skip(range.start)
-                .take(range.end - range.start)
-                .collect::<Vec<_>>()
-                .join("\n");
-            token_count += core_bpe.encode_ordinary(&chunk).len();
-        }
+pub async fn list(
+    app: Extension<Application>,
+    user: Extension<User>,
+) -> webserver::Result<Json<Vec<ListItem>>> {
+    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+
+    let studios = sqlx::query!(
+        "SELECT
+            s.id,
+            s.name,
+            ss.modified_at as \"modified_at!\",
+            ss.context
+        FROM studios s
+        INNER JOIN studio_snapshots ss ON s.id = ss.studio_id
+        WHERE s.user_id = ? AND (ss.studio_id, ss.modified_at) IN (
+            SELECT studio_id, MAX(modified_at)
+            FROM studio_snapshots
+            GROUP BY studio_id
+        )",
+        user_id,
+    )
+    .fetch_all(&*app.sql)
+    .await?;
+
+    let mut list_items = Vec::new();
+
+    for studio in studios {
+        let context: Vec<ContextFile> =
+            serde_json::from_str(&studio.context).map_err(Error::internal)?;
+
+        let repos: HashSet<String> = context.iter().map(|file| file.repo.name.clone()).collect();
+
+        let ext_tokens = token_counts((*app).clone(), &[], &context)
+            .await?
+            .per_file
+            .iter()
+            .zip(
+                context
+                    .iter()
+                    .map(|file| file.path.split('.').last().unwrap_or_default()),
+            )
+            .fold(HashMap::new(), |mut tokens_by_ext, (count, extension)| {
+                *tokens_by_ext.entry(extension).or_insert(0) += count.unwrap_or(0);
+                tokens_by_ext
+            });
+
+        let most_common_ext = ext_tokens
+            .into_iter()
+            .max_by_key(|(_, tokens)| *tokens)
+            .map(|(ext, _)| ext)
+            .unwrap_or_default()
+            .to_owned();
+
+        let list_item = ListItem {
+            id: studio.id,
+            name: studio.name,
+            modified_at: studio.modified_at,
+            repos: repos.into_iter().collect::<Vec<_>>(),
+            most_common_ext,
+        };
+
+        list_items.push(list_item);
     }
 
-    token_count
+    Ok(Json(list_items))
 }
 
 #[derive(serde::Serialize)]
 pub struct TokenCounts {
     total: usize,
     messages: usize,
-    per_file: Vec<usize>,
+    per_file: Vec<Option<usize>>,
 }
 
 async fn token_counts(
@@ -434,19 +404,14 @@ async fn token_counts(
                     return Ok::<_, Error>(None);
                 }
 
-                let doc = app
+                let content = app
                     .indexes
                     .file
                     .by_path(&file.repo, &file.path, file.branch.as_deref())
                     .await?
-                    .with_context(|| {
-                        format!(
-                            "file `{}` did not exist in repo `{}`, branch `{:?}`",
-                            file.path, file.repo, file.branch
-                        )
-                    })?;
+                    .map(|doc| doc.content);
 
-                Ok(Some((file, doc.content)))
+                Ok(Some((file, content)))
             }
         })
         // We need to box here, to avoid a higher-ranked lifetime error.
@@ -455,13 +420,13 @@ async fn token_counts(
         .try_collect::<Vec<_>>()
         .await?
         .into_par_iter()
-        .map(|data: Option<(&ContextFile, String)>| {
+        .map(|data: Option<(&ContextFile, Option<String>)>| {
             let (file, body) = match data {
                 Some(t) => t,
-                None => return 0,
+                None => return Some(0),
             };
 
-            get_token_count(&body, &file.ranges)
+            body.map(|b| count_tokens_in_file(&b, &file.ranges))
         })
         .collect::<Vec<_>>();
 
@@ -493,7 +458,7 @@ async fn token_counts(
     .unwrap();
 
     Ok(TokenCounts {
-        total: per_file.iter().sum::<usize>() + messages,
+        total: per_file.iter().flatten().sum::<usize>() + messages,
         messages,
         per_file,
     })
@@ -531,9 +496,32 @@ pub async fn get_file_token_count(
             )
         })?;
 
-    let token_count = get_token_count(&doc.content, &file.ranges);
+    let token_count = count_tokens_in_file(&doc.content, &file.ranges);
 
     Ok(Json(token_count))
+}
+
+fn count_tokens_in_file(body: &str, ranges: &[Range<usize>]) -> usize {
+    let mut token_count = 0;
+    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
+
+    if ranges.is_empty() {
+        token_count = core_bpe.encode_ordinary(body).len();
+    } else {
+        let lines = body.lines().collect::<Vec<_>>();
+        for range in ranges {
+            let chunk = lines
+                .iter()
+                .copied()
+                .skip(range.start)
+                .take(range.end - range.start)
+                .collect::<Vec<_>>()
+                .join("\n");
+            token_count += core_bpe.encode_ordinary(&chunk).len();
+        }
+    }
+
+    token_count
 }
 
 pub async fn generate(
@@ -541,10 +529,7 @@ pub async fn generate(
     Extension(user): Extension<User>,
     Path(studio_id): Path<i64>,
 ) -> webserver::Result<Sse<Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>> {
-    let user_id = user
-        .login()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
-        .to_string();
+    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
 
@@ -566,7 +551,7 @@ pub async fn generate(
     .fetch_optional(&*app.sql)
     .await?
     .map(|row| (row.messages, row.context))
-    .ok_or_else(|| Error::not_found("unknown code studio ID"))?;
+    .ok_or_else(studio_not_found)?;
 
     let mut messages =
         serde_json::from_str::<Vec<Message>>(&messages_json).map_err(Error::internal)?;
@@ -702,72 +687,6 @@ pub struct Import {
     pub studio_id: Option<i64>,
 }
 
-async fn extract_relevant_chunks(
-    app: Application,
-    exchanges: &[Exchange],
-    context: &[ContextFile],
-) -> webserver::Result<Vec<ContextFile>> {
-    let context_json = serde_json::to_string(&context).unwrap();
-
-    let answer_api_token = app
-        .answer_api_token()
-        .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
-        .map(|s| s.expose_secret().clone());
-
-    // Create an instance of the LLM gateway client
-    let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
-        .model(LLM_GATEWAY_MODEL)
-        .temperature(0.0)
-        .bearer(answer_api_token);
-
-    // Get last message
-    let mut last_message = String::new();
-    for exchange in exchanges.iter().rev() {
-        if let Some(answer) = &exchange.answer {
-            last_message = answer.clone();
-            break;
-        }
-    }
-
-    // Construct LLM messages
-    let llm_messages = [
-        llm_gateway::api::Message::system(
-            "Your job is to output which file paths are used in the answer. Output ONLY a JSON list of \
-            paths. For example ['path/to/file1', 'path/to/file2']",
-        ),
-        llm_gateway::api::Message::assistant(&last_message),
-        llm_gateway::api::Message::assistant(&context_json)
-    ];
-
-    // Call the LLM gateway
-    let response_stream = llm_gateway.chat(&llm_messages, None).await?;
-
-    // Collect the response into a string
-    let result = response_stream
-        .try_collect()
-        .await
-        .and_then(|json: String| serde_json::from_str(&json).map_err(anyhow::Error::new));
-
-    // Parse the response into a JSON list of paths
-    let paths: Vec<String> = match result {
-        Ok(paths) => paths,
-        Err(e) => {
-            error!(?e, "failed to parse response from LLM");
-            return Ok(context.to_owned());
-        }
-    };
-
-    // Create a new context with only the files that were in the list
-    let mut filtered_context = Vec::new();
-    for file in context {
-        if paths.contains(&file.path) {
-            filtered_context.push(file.clone());
-        }
-    }
-
-    Ok(filtered_context)
-}
-
 /// Returns a new studio UUID, or the `?studio_id=...` query param if present.
 pub async fn import(
     app: Extension<Application>,
@@ -776,10 +695,7 @@ pub async fn import(
 ) -> webserver::Result<String> {
     let mut transaction = app.sql.begin().await?;
 
-    let user_id = user
-        .login()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
-        .to_string();
+    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
 
     let thread_id = params.thread_id.to_string();
 
@@ -810,7 +726,7 @@ pub async fn import(
         }
         .fetch_optional(&mut transaction)
         .await?
-        .ok_or_else(|| Error::not_found("unknown studio ID"))
+        .ok_or_else(studio_not_found)
         .and_then(|r| serde_json::from_str(&r.context).map_err(Error::internal))?
     } else {
         Vec::new()
@@ -880,6 +796,72 @@ pub async fn import(
     Ok(studio_id.to_string())
 }
 
+async fn extract_relevant_chunks(
+    app: Application,
+    exchanges: &[Exchange],
+    context: &[ContextFile],
+) -> webserver::Result<Vec<ContextFile>> {
+    let context_json = serde_json::to_string(&context).unwrap();
+
+    let answer_api_token = app
+        .answer_api_token()
+        .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
+        .map(|s| s.expose_secret().clone());
+
+    // Create an instance of the LLM gateway client
+    let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
+        .model(LLM_GATEWAY_MODEL)
+        .temperature(0.0)
+        .bearer(answer_api_token);
+
+    // Get last message
+    let mut last_message = String::new();
+    for exchange in exchanges.iter().rev() {
+        if let Some(answer) = &exchange.answer {
+            last_message = answer.clone();
+            break;
+        }
+    }
+
+    // Construct LLM messages
+    let llm_messages = [
+        llm_gateway::api::Message::system(
+            "Your job is to output which file paths are used in the answer. Output ONLY a JSON list of \
+            paths. For example ['path/to/file1', 'path/to/file2']",
+        ),
+        llm_gateway::api::Message::assistant(&last_message),
+        llm_gateway::api::Message::assistant(&context_json)
+    ];
+
+    // Call the LLM gateway
+    let response_stream = llm_gateway.chat(&llm_messages, None).await?;
+
+    // Collect the response into a string
+    let result = response_stream
+        .try_collect()
+        .await
+        .and_then(|json: String| serde_json::from_str(&json).map_err(anyhow::Error::new));
+
+    // Parse the response into a JSON list of paths
+    let paths: Vec<String> = match result {
+        Ok(paths) => paths,
+        Err(e) => {
+            error!(?e, "failed to parse response from LLM");
+            return Ok(context.to_owned());
+        }
+    };
+
+    // Create a new context with only the files that were in the list
+    let mut filtered_context = Vec::new();
+    for file in context {
+        if paths.contains(&file.path) {
+            filtered_context.push(file.clone());
+        }
+    }
+
+    Ok(filtered_context)
+}
+
 fn canonicalize_context(
     context: impl Iterator<Item = ContextFile>,
 ) -> impl Iterator<Item = ContextFile> {
@@ -945,10 +927,7 @@ pub async fn list_snapshots(
     user: Extension<User>,
     Path(studio_id): Path<i64>,
 ) -> webserver::Result<Json<Vec<Snapshot>>> {
-    let user_id = user
-        .login()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
-        .to_string();
+    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
 
     sqlx::query! {
         "SELECT ss.id as 'id!', ss.modified_at, ss.context, ss.messages
@@ -980,10 +959,7 @@ pub async fn delete_snapshot(
     user: Extension<User>,
     Path((studio_id, snapshot_id)): Path<(i64, i64)>,
 ) -> webserver::Result<()> {
-    let user_id = user
-        .login()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
-        .to_string();
+    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
 
     sqlx::query! {
         "DELETE FROM studio_snapshots
