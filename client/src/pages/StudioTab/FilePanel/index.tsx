@@ -26,6 +26,7 @@ import { findElementInCurrentTab } from '../../../utils/domUtils';
 import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
 import KeyboardChip from '../KeyboardChip';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
+import OverflowTracker from '../../../components/OverflowTracker';
 
 type Props = {
   setRightPanel: Dispatch<SetStateAction<StudioRightPanelDataType>>;
@@ -153,9 +154,10 @@ const FilePanel = ({
           <div className="flex items-center p-1 rounded border border-bg-border bg-bg-base">
             <FileIcon filename={filePath || ''} noMargin />
           </div>
-          <p className="body-s-strong text-label-title ellipsis overflow-hidden">
-            <BreadcrumbsPath path={filePath} repo={repo.ref} nonInteractive />
+          <p className="body-s-strong text-label-title">
+            {filePath.split('/').pop()}
           </p>
+          <LinesBadge ranges={selectedLines} />
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <Button size="small" variant="secondary" onClick={onCancel}>
@@ -170,13 +172,17 @@ const FilePanel = ({
           </Button>
         </div>
       </div>
-      <div className="flex px-8 py-2 items-center gap-2 border-b border-bg-border bg-bg-sub  text-label-base">
-        <div className="flex items-center gap-1.5 flex-1">
+      <div className="flex px-8 py-2 items-center gap-2 border-b border-bg-border bg-bg-sub text-label-base overflow-x-auto flex-shrink-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto overflow-y-hidden">
           <FileIcon filename={getFileExtensionForLang(repo.most_common_lang)} />
-          <span className="caption ellipsis">
-            {repo.name.replace(/^github\.com\//, '')}
-          </span>
-          <span className="w-0.5 h-0.5 bg-bg-border-hover rounded-full" />
+          <OverflowTracker className="auto-fade-horizontal">
+            <BreadcrumbsPath
+              path={`${repo.name.replace(/^github\.com\//, '')}/${filePath}`}
+              repo={repo.ref}
+              nonInteractive
+              allowOverflow
+            />
+          </OverflowTracker>
           {!!branch && (
             <>
               <Branch sizeClassName="w-4 h-4" />
@@ -185,7 +191,6 @@ const FilePanel = ({
               </span>
             </>
           )}
-          <LinesBadge ranges={selectedLines} />
         </div>
         <div className="flex items-center gap-2">
           {/*<RelatedFilesBadge*/}

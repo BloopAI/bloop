@@ -1220,6 +1220,26 @@ h5, .h5 {
   -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
 }
 
+.auto-fade-horizontal {
+  overflow-x: scroll;
+  --fade-length: 40px;
+  --start-fade: 0px;
+  --end-fade: 0px;
+  -webkit-mask: linear-gradient(
+          to right,
+          transparent,
+          black var(--start-fade),
+          black calc(100% - var(--end-fade)),
+          transparent
+  );
+}
+.auto-fade-horizontal[data-overflow-left] {
+  --start-fade: var(--fade-length);
+}
+.auto-fade-horizontal[data-overflow-right] {
+  --end-fade: var(--fade-length);
+}
+
 .backdrop-blur-0 {
   backdrop-filter: blur(0);
   -webkit-backdrop-filter: blur(0);

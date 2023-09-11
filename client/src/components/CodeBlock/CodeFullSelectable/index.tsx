@@ -134,7 +134,7 @@ const CodeFullSelectable = ({
   }, [currentResult, searchResults]);
 
   return (
-    <div className="w-full text-xs gap-10 flex flex-row relative">
+    <div className="w-full text-xs gap-10 flex flex-col overflow-auto relative">
       <SearchOnPage
         handleSearch={setSearchTerm}
         isSearchActive={isSearchActive}
@@ -149,9 +149,9 @@ const CodeFullSelectable = ({
         searchValue={searchTerm}
         containerClassName="absolute top-0 -right-4"
       />
-      <div className={`w-full`} ref={codeRef}>
+      <div className={`w-full overflow-auto`} ref={codeRef}>
         <pre
-          className={`prism-code language-${lang} bg-bg-sub my-0 w-full h-full`}
+          className={`prism-code language-${lang} bg-bg-sub my-0 w-full h-full overflow-auto`}
           ref={ref}
         >
           <CodeContainer

@@ -15,6 +15,7 @@ type Props = {
   modifyingRange: number;
   handleAddRange: () => void;
   setCurrentlySelectingRange: Dispatch<SetStateAction<null | [number, number]>>;
+  scrollToIndex?: number[];
 };
 
 const LazyLinesContainer = ({
@@ -24,6 +25,7 @@ const LazyLinesContainer = ({
   modifyingRange,
   handleAddRange,
   setCurrentlySelectingRange,
+  scrollToIndex,
 }: Props) => {
   const [renderedItems, setRenderedItems] = useState<TokenType[][]>(
     items.length > 300 ? [] : items,
@@ -78,6 +80,11 @@ const LazyLinesContainer = ({
             setCurrentlySelectingRange={setCurrentlySelectingRange}
             isSelectionDisabled={modifyingRange > -1}
             fileLinesNum={items.length}
+            shouldHighlight={
+              !!scrollToIndex &&
+              index >= scrollToIndex[0] &&
+              index <= scrollToIndex[1]
+            }
           >
             {line.map((token, i) => (
               <span
