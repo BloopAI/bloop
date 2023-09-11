@@ -183,6 +183,7 @@
 	"Reading ": "Leyendo",
 	"avatar": "avatar",
 	"Submit": "Enviar",
+	"Save": "Guardar",
 	"Generating response...": "Generando respuesta ...",
 	"Responding...": "Respondiendo ...",
 	"Reading": "Leyendo",
@@ -349,9 +350,9 @@
 	"Unavailable": "Indisponible",
 	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "Límite de token excedido. Reduzca la cantidad de archivos o mensajes de contexto para habilitar la capacidad de generar.",
 	"Invert": "Invertir",
-	"# requests left_one": "Queda {{count}} solicitud",
-	"# requests left_other": "Quedan {{count}} solicitudes",
+	"uses left_one": "Usos restantes",
+	"uses left_other": "uso restante",
 	"Upgrade": "Actualizar",
-	"Requests reset every 24 hours. Upgrade to get unlimited requests!": "Las solicitudes reinician cada 24 horas. ¡Actualice para obtener solicitudes ilimitadas!",
+	"Your quota resets every 24 hours, upgrade for unlimited uses": "Tu cuota se restablece cada 24 horas, actualiza para solicitudes ilimitadas",
 	"Manage subscription": "Administrar suscripción"
 }

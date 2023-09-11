@@ -164,7 +164,7 @@ const FilePanel = ({
             <Trans>Cancel</Trans>
           </Button>
           <Button size="small" onClick={onSubmit}>
-            <Trans>Submit</Trans>
+            <Trans>Save</Trans>
             <div className="flex items-center gap-1 flex-shrink-0">
               <KeyboardChip type="cmd" variant="primary" />
               <KeyboardChip type="S" variant="primary" />

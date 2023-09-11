@@ -183,6 +183,7 @@
 	"Reading ": "Reading ",
 	"avatar": "avatar",
 	"Submit": "Submit",
+	"Save": "Save",
 	"Generating response...": "Generating response...",
 	"Responding...": "Responding...",
 	"Reading": "Reading",
@@ -348,9 +349,9 @@
 	"Unavailable": "Unavailable",
 	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.",
 	"Invert": "Invert",
-	"# requests left_one": "{{count}} request left",
-	"# requests left_other": "{{count}} requests left",
+	"uses left_one": "use left",
+	"uses left_other": "uses left",
 	"Upgrade": "Upgrade",
-	"Requests reset every 24 hours. Upgrade to get unlimited requests!": "Requests reset every 24 hours. Upgrade to get unlimited requests!",
+	"Your quota resets every 24 hours, upgrade for unlimited uses": "Your quota resets every 24 hours, upgrade for unlimited uses",
 	"Manage subscription": "Manage subscription"
 }
