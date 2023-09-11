@@ -127,3 +127,4 @@ export { default as CornerArrow } from './CornerArrow';
 export { default as MinusSignInCircle } from './MinusSignInCircle';
 export { default as Pen } from './Pen';
 export { default as TemplateAdd } from './TemplateAdd';
+export { default as Card } from './Card';
