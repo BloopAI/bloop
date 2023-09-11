@@ -354,7 +354,7 @@ impl Indexer<File> {
             })
             .filter(|doc| !doc.relative_path.ends_with('/'))
             .filter_map(|doc| {
-                let (score, positions) = matcher.fuzzy(&doc.relative_path, &query_str, true)?;
+                let (score, positions) = matcher.fuzzy(&doc.relative_path, query_str, true)?;
 
                 // the closer the position is to the end, the higher its score is
                 let position_bonus = positions
@@ -374,7 +374,7 @@ impl Indexer<File> {
 
         results.sort_by(|(_, a_score), (_, b_score)| {
             b_score
-                .partial_cmp(&a_score)
+                .partial_cmp(a_score)
                 .unwrap_or(std::cmp::Ordering::Less)
         });
         results.into_iter().map(|(doc, _)| doc).take(limit)

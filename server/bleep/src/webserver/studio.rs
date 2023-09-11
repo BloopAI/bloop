@@ -461,9 +461,7 @@ async fn token_counts(
                 None => return 0,
             };
 
-            let token_count = get_token_count(&body, &file.ranges);
-
-            token_count
+            get_token_count(&body, &file.ranges)
         })
         .collect::<Vec<_>>();
 

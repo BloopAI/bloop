@@ -90,7 +90,10 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             "/studio/:studio_id/snapshots/:snapshot_id",
             delete(studio::delete_snapshot),
         )
-        .route("/studio/file-token-count", post(studio::get_file_token_count))
+        .route(
+            "/studio/file-token-count",
+            post(studio::get_file_token_count),
+        )
         .route("/template", post(template::create))
         .route("/template", get(template::list))
         .route(
