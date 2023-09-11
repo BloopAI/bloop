@@ -191,6 +191,7 @@ const Conversation = ({
     );
     eventSource.onerror = (err) => {
       console.log('SSE error', err);
+      refetchQuota();
       setConversation((prev) => {
         const newConv = [
           ...prev,
@@ -247,6 +248,7 @@ const Conversation = ({
           }
           i++;
         } else if (data.Err) {
+          refetchQuota();
           setConversation((prev) => {
             const newConv = [
               ...prev,
