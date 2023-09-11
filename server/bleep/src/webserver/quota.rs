@@ -1,4 +1,5 @@
 use axum::{Extension, Json};
+use chrono::{DateTime, Utc};
 use reqwest::StatusCode;
 use secrecy::ExposeSecret;
 
@@ -11,6 +12,7 @@ pub struct QuotaResponse {
     upgraded: bool,
     used: u32,
     allowed: u32,
+    reset_at: DateTime<Utc>,
 }
 
 pub async fn get(app: Extension<Application>) -> super::Result<Json<QuotaResponse>> {
