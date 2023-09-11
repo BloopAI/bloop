@@ -18,6 +18,7 @@ type Props = {
   setCurrentlySelectingRange: (range: [number, number] | null) => void;
   handleAddRange: () => void;
   fileLinesNum: number;
+  shouldHighlight?: boolean;
 };
 
 const CodeLine = ({
@@ -29,6 +30,7 @@ const CodeLine = ({
   setCurrentlySelectingRange,
   handleAddRange,
   fileLinesNum,
+  shouldHighlight,
 }: Props) => {
   const [isDragging, setIsDragging] = useState(false);
   const codeRef = useRef<HTMLTableCellElement>(null);
@@ -53,10 +55,10 @@ const CodeLine = ({
 
   const style = useMemo(
     () => ({
-      borderLeft: `3px solid transparent`,
+      borderLeft: `3px solid ${shouldHighlight ? '#EAB408' : 'transparent'}`,
       ...stylesGenerated,
     }),
-    [stylesGenerated],
+    [stylesGenerated, shouldHighlight],
   );
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {

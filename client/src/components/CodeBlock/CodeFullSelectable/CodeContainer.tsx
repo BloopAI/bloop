@@ -207,6 +207,7 @@ const CodeContainerSelectable = ({
         searchTerm={searchTerm}
         setCurrentlySelectingRange={setCurrentlySelectingRange}
         modifyingRange={modifyingRange}
+        scrollToIndex={scrollToIndex}
       />
     </div>
   );
