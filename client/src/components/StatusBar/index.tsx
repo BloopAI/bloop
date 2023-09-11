@@ -23,7 +23,7 @@ const StatusBar = () => {
 
   const { setBugReportModalOpen } = useContext(UIContext.BugReport);
   const { openLink, release } = useContext(DeviceContext);
-  const { requestsLeft, isSubscribed, hasCheckedQuota } = useContext(
+  const { quota, isSubscribed, hasCheckedQuota } = useContext(
     PersonalQuotaContext.Values,
   );
   const { refetchQuota } = useContext(PersonalQuotaContext.Handlers);
@@ -107,11 +107,8 @@ const StatusBar = () => {
               <div className="flex gap-1 items-center caption text-label-base">
                 <Info raw sizeClassName="w-3.5 h-3.5" />
                 <p className="pt-0.5">
-                  {requestsLeft.allowed - requestsLeft.used}/
-                  {requestsLeft.allowed}{' '}
-                  <Trans count={requestsLeft.allowed - requestsLeft.used}>
-                    uses left
-                  </Trans>
+                  {quota.allowed - quota.used}/{quota.allowed}{' '}
+                  <Trans count={quota.allowed - quota.used}>uses left</Trans>
                 </p>
               </div>
             </Tooltip>

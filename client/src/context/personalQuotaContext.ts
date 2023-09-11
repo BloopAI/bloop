@@ -1,7 +1,8 @@
 import { createContext } from 'react';
 
 type ContextType = {
-  requestsLeft: {
+  requestsLeft: number;
+  quota: {
     used: number;
     allowed: number;
   };
@@ -11,7 +12,8 @@ type ContextType = {
 
 export const PersonalQuotaContext = {
   Values: createContext<ContextType>({
-    requestsLeft: {
+    requestsLeft: 10,
+    quota: {
       used: 0,
       allowed: 10,
     },

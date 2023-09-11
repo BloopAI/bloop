@@ -355,8 +355,9 @@
 	"Unavailable": "不可用",
 	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "令牌限制超过了。 减少上下文文件的数量或消息，以实现生成能力。",
 	"Invert": "倒置",
-	"# requests left_one": "次数",
-	"# requests left_other": "次数",
+	"uses left": "使用左侧",
+	"uses left_one": "使用左侧",
+	"uses left_other": "使用左侧",
 	"Upgrade": "升级",
 	"Your quota resets every 24 hours, upgrade for unlimited uses": "您的配额每24小时重置一次，升级以获得无限请求",
 	"Manage subscription": "管理订阅"

@@ -13,14 +13,16 @@ type Props = {};
 
 export const PersonalQuotaContextProvider = memo(
   ({ children }: PropsWithChildren<Props>) => {
-    const [requestsLeft, setRequestsLeft] = useState({ used: 0, allowed: 10 });
+    const [quota, setQuota] = useState({ used: 0, allowed: 10 });
+    const [requestsLeft, setRequestsLeft] = useState(10);
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [hasCheckedQuota, setHasCheckedQuota] = useState(false);
 
     const refetchQuota = useCallback(() => {
       getQuota().then((resp) => {
         setIsSubscribed(resp.upgraded);
-        setRequestsLeft({ used: resp.used, allowed: resp.allowed });
+        setQuota({ used: resp.used, allowed: resp.allowed });
+        setRequestsLeft(Math.max(resp.allowed - resp.used, 0));
         setHasCheckedQuota(true);
       });
     }, []);
@@ -32,10 +34,11 @@ export const PersonalQuotaContextProvider = memo(
     const contextValue = useMemo(
       () => ({
         requestsLeft,
+        quota,
         isSubscribed,
         hasCheckedQuota,
       }),
-      [requestsLeft, isSubscribed, hasCheckedQuota],
+      [requestsLeft, isSubscribed, hasCheckedQuota, quota],
     );
 
     const handlersContextValue = useMemo(

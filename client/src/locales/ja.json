@@ -347,8 +347,8 @@
 	"Unavailable": "利用できません",
 	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "トークンの制限が超えました。 コンテキストファイルまたはメッセージの数を減らして、生成する機能を有効にします。",
 	"Invert": "反転",
-	"# requests left_one": "回数",
-	"# requests left_other": "回数",
+	"uses left_one": "回数",
+	"uses left_other": "回数",
 	"Upgrade": "アップグレード",
 	"Your quota resets every 24 hours, upgrade for unlimited uses": "あなたのクオータは24時間ごとにリセットされます、無制限のリクエストにアップグレードしてください",
 	"Manage subscription": "サブスクリプションを管理します"
