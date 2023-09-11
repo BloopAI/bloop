@@ -17,6 +17,7 @@ import { ContextMenuItem } from '../../../components/ContextMenu';
 import { deleteCodeStudio } from '../../../services/api';
 import FileIcon from '../../../components/FileIcon';
 import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
+import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
 
 type Props = {
   modified_at: string;
@@ -42,14 +43,16 @@ const CodeStudioCard = ({
   const { t } = useTranslation();
   const { locale } = useContext(LocaleContext);
   const { handleAddStudioTab, handleRemoveTab } = useContext(TabsContext);
+  const { refetchQuota } = useContext(PersonalQuotaContext.Handlers);
 
   const handleClick = useCallback(() => {
     if (!isIndexing) {
       handleAddStudioTab(name, id);
+      refetchQuota();
     } else {
       showCodeStudioIndexingPopup();
     }
-  }, [name, handleAddStudioTab, isIndexing]);
+  }, [name, handleAddStudioTab, isIndexing, refetchQuota]);
 
   const dropdownItems = useMemo(() => {
     const items: ContextMenuItem[] = [

@@ -21,7 +21,13 @@ export const PersonalQuotaContextProvider = memo(
     const refetchQuota = useCallback(() => {
       getQuota().then((resp) => {
         setIsSubscribed(resp.upgraded);
-        setQuota({ used: resp.used, allowed: resp.allowed });
+        setQuota((prev) => {
+          const newState = { used: resp.used, allowed: resp.allowed };
+          if (JSON.stringify(prev) === JSON.stringify(newState)) {
+            return prev;
+          }
+          return newState;
+        });
         setRequestsLeft(Math.max(resp.allowed - resp.used, 0));
         setHasCheckedQuota(true);
       });
@@ -29,6 +35,10 @@ export const PersonalQuotaContextProvider = memo(
 
     useEffect(() => {
       refetchQuota();
+      const intervalId = setInterval(() => refetchQuota(), 10 * 60 * 1000);
+      return () => {
+        clearInterval(intervalId);
+      };
     }, [refetchQuota]);
 
     const contextValue = useMemo(
