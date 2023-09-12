@@ -11,7 +11,6 @@ import SeparateOnboardingStep from '../SeparateOnboardingStep';
 import DialogText from '../../pages/Onboarding/DialogText';
 import SearchableRepoList from '../RepoList/SearchableRepoList';
 import Button from '../Button';
-import { CodeStudioType } from '../../types/api';
 import {
   getCodeStudio,
   getCodeStudios,
@@ -23,6 +22,7 @@ import Tooltip from '../Tooltip';
 import { UIContext } from '../../context/uiContext';
 import { SearchContext } from '../../context/searchContext';
 import { TabsContext } from '../../context/tabsContext';
+import { CodeStudioShortType } from '../../types/general';
 
 type Props =
   | {
@@ -40,10 +40,12 @@ const AddStudioContext = ({ filePath, threadId, name }: Props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setLoading] = useState(true);
-  const [studios, setStudios] = useState<CodeStudioType[]>([]);
+  const [studios, setStudios] = useState<CodeStudioShortType[]>([]);
 
   const refetchStudios = useCallback(() => {
-    return getCodeStudios().then(setStudios);
+    return getCodeStudios().then((list) => {
+      setStudios(list.sort((a, b) => (a.modified_at > b.modified_at ? -1 : 1)));
+    });
   }, []);
 
   useEffect(() => {

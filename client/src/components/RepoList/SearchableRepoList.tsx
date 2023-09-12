@@ -1,10 +1,9 @@
 import React, { ChangeEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MenuItemType, RepoUi } from '../../types/general';
+import { CodeStudioShortType, MenuItemType, RepoUi } from '../../types/general';
 import TextInput from '../TextInput';
 import { DropdownWithIcon } from '../Dropdown';
 import { Clock, SortAlphabetical } from '../../icons';
-import { CodeStudioType } from '../../types/api';
 import RepoList from './index';
 
 type GeneralProps = {
@@ -15,7 +14,7 @@ type GeneralProps = {
 
 type StudioProps = {
   type: 'studio';
-  items: CodeStudioType[];
+  items: CodeStudioShortType[];
   onFolderChange?: never;
 } & GeneralProps;
 
@@ -30,7 +29,9 @@ type Props = StudioProps | RepoProps;
 const SearchableRepoList = ({ containerClassName, ...restProps }: Props) => {
   const { t } = useTranslation();
   const [filter, setFilter] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'last_updated'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'last_updated'>(
+    restProps.type !== 'studio' ? 'name' : 'last_updated',
+  );
 
   const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setFilter(e.target.value);
