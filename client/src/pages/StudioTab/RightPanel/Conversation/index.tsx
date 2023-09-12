@@ -26,6 +26,7 @@ import { DeviceContext } from '../../../../context/deviceContext';
 import useScrollToBottom from '../../../../hooks/useScrollToBottom';
 import { StudioContext } from '../../../../context/studioContext';
 import { PersonalQuotaContext } from '../../../../context/personalQuotaContext';
+import { UIContext } from '../../../../context/uiContext';
 import ConversationInput from './Input';
 
 type Props = {
@@ -35,6 +36,8 @@ type Props = {
   studioId: string;
   refetchCodeStudio: () => Promise<void>;
   isTokenLimitExceeded: boolean;
+  isPreviewing: boolean;
+  handleRestore: () => void;
 };
 
 let eventSource: EventSource;
@@ -62,14 +65,15 @@ const Conversation = ({
   studioId,
   isTokenLimitExceeded,
   setIsHistoryOpen,
+  isPreviewing,
+  handleRestore,
 }: Props) => {
   const { t } = useTranslation();
   const { inputValue } = useContext(StudioContext.Input);
+  const { setUpgradePopupOpen } = useContext(UIContext.UpgradePopup);
   const { setInputValue } = useContext(StudioContext.Setters);
   const { refetchQuota } = useContext(PersonalQuotaContext.Handlers);
-  const { requestsLeft, hasCheckedQuota } = useContext(
-    PersonalQuotaContext.Values,
-  );
+  const { requestsLeft } = useContext(PersonalQuotaContext.Values);
   const [conversation, setConversation] = useState<StudioConversationMessage[]>(
     mapConversation(messages),
   );
@@ -175,6 +179,10 @@ const Conversation = ({
       return;
     }
     await saveConversation(true);
+    if (!requestsLeft) {
+      setUpgradePopupOpen(true);
+      return;
+    }
     setConversation((prev) => [
       ...prev,
       { message: inputValue, author: inputAuthor },
@@ -266,7 +274,14 @@ const Conversation = ({
         console.log('failed to parse response', err);
       }
     };
-  }, [studioId, conversation, inputValue, inputAuthor, saveConversation]);
+  }, [
+    studioId,
+    conversation,
+    inputValue,
+    inputAuthor,
+    saveConversation,
+    requestsLeft,
+  ]);
 
   const onMessageRemoved = useCallback(
     async (i: number, andSubsequent?: boolean) => {
@@ -314,14 +329,14 @@ const Conversation = ({
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        if (
-          !(
-            !inputValue ||
-            isTokenLimitExceeded ||
-            (hasCheckedQuota && !requestsLeft)
-          )
-        ) {
-          onSubmit();
+        if (isPreviewing) {
+          handleRestore();
+        } else {
+          if (inputValue && !isTokenLimitExceeded && requestsLeft) {
+            onSubmit();
+          } else {
+            setUpgradePopupOpen(true);
+          }
         }
       } else if ((e.metaKey || e.ctrlKey) && e.key === 't') {
         setLeftPanel({ type: StudioLeftPanelType.TEMPLATES });
@@ -330,7 +345,7 @@ const Conversation = ({
         handleCancel();
       }
     },
-    [onSubmit, isLoading, setLeftPanel],
+    [onSubmit, isLoading, setLeftPanel, isPreviewing],
   );
   useKeyboardNavigation(handleKeyEvent);
 
@@ -354,6 +369,7 @@ const Conversation = ({
             />
           ))}
           {!isLoading &&
+            !isPreviewing &&
             !(
               conversation[conversation.length - 1]?.author ===
               StudioConversationMessageAuthor.USER
@@ -372,68 +388,72 @@ const Conversation = ({
       </div>
       <div className="px-4 flex flex-col gap-8 pb-8 mt-auto">
         <hr className="border-bg-border" />
-        <div className="flex justify-between items-center flex-wrap gap-1">
-          <div className="flex items-center gap-3">
-            <Button
-              size="small"
-              variant="secondary"
-              onClick={() => setIsHistoryOpen((prev) => !prev)}
-            >
-              <ArrowRefresh />
-              <Trans>View history</Trans>
-            </Button>
-            <Button
-              size="small"
-              variant="tertiary"
-              onClick={handleClearConversation}
-            >
-              <TrashCanFilled />
-              <Trans>Clear conversation</Trans>
+        {isPreviewing ? (
+          <div className="flex items-center justify-end">
+            <Button onClick={handleRestore} size="small">
+              <Trans>Restore</Trans>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <KeyboardChip type="cmd" variant={'primary'} />
+                <KeyboardChip type="entr" variant={'primary'} />
+              </div>
             </Button>
           </div>
-          <div className="flex items-center gap-3">
-            {isLoading ? (
-              <Button size="small" onClick={handleCancel} variant="danger">
-                <Trans>Stop generating</Trans>
-                <KeyboardChip type="Esc" variant="danger" />
-              </Button>
-            ) : (
+        ) : (
+          <div className="flex justify-between items-center flex-wrap gap-1">
+            <div className="flex items-center gap-3">
               <Button
                 size="small"
-                disabled={
-                  !inputValue ||
-                  isTokenLimitExceeded ||
-                  (hasCheckedQuota && !requestsLeft)
-                }
-                onClick={onSubmit}
+                variant="secondary"
+                onClick={() => setIsHistoryOpen((prev) => !prev)}
               >
-                <Trans>Generate</Trans>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <KeyboardChip
-                    type="cmd"
-                    variant={
-                      !inputValue ||
-                      isTokenLimitExceeded ||
-                      (hasCheckedQuota && !requestsLeft)
-                        ? 'secondary'
-                        : 'primary'
-                    }
-                  />
-                  <KeyboardChip
-                    type="entr"
-                    variant={
-                      !inputValue ||
-                      isTokenLimitExceeded ||
-                      (hasCheckedQuota && !requestsLeft)
-                        ? 'secondary'
-                        : 'primary'
-                    }
-                  />
-                </div>
+                <ArrowRefresh />
+                <Trans>View history</Trans>
               </Button>
-            )}
+              <Button
+                size="small"
+                variant="tertiary"
+                onClick={handleClearConversation}
+              >
+                <TrashCanFilled />
+                <Trans>Clear conversation</Trans>
+              </Button>
+            </div>
+            <div className="flex items-center gap-3">
+              {isLoading ? (
+                <Button size="small" onClick={handleCancel} variant="danger">
+                  <Trans>Stop generating</Trans>
+                  <KeyboardChip type="Esc" variant="danger" />
+                </Button>
+              ) : (
+                <Button
+                  size="small"
+                  disabled={!inputValue || isTokenLimitExceeded}
+                  onClick={onSubmit}
+                >
+                  <Trans>Generate</Trans>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <KeyboardChip
+                      type="cmd"
+                      variant={
+                        !inputValue || isTokenLimitExceeded
+                          ? 'secondary'
+                          : 'primary'
+                      }
+                    />
+                    <KeyboardChip
+                      type="entr"
+                      variant={
+                        !inputValue || isTokenLimitExceeded
+                          ? 'secondary'
+                          : 'primary'
+                      }
+                    />
+                  </div>
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

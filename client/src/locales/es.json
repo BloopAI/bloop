@@ -354,5 +354,6 @@
 	"uses left_other": "usos restante",
 	"Upgrade": "Actualizar",
 	"Your quota resets every 24 hours, upgrade for unlimited uses": "Tu cuota se restablece cada 24 horas, actualiza para solicitudes ilimitadas",
-	"Manage subscription": "Administrar suscripción"
+	"Manage subscription": "Administrar suscripción",
+	"Usage resets in": "Restablecimiento de uso en"
 }

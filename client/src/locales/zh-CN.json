@@ -360,5 +360,6 @@
 	"uses left_other": "使用左侧",
 	"Upgrade": "升级",
 	"Your quota resets every 24 hours, upgrade for unlimited uses": "您的配额每24小时重置一次，升级以获得无限请求",
-	"Manage subscription": "管理订阅"
+	"Manage subscription": "管理订阅",
+	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "您今天的免费使用时间用完了，请等待您的配额重置或升级无限制"
 }

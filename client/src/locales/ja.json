@@ -351,5 +351,6 @@
 	"uses left_other": "回数",
 	"Upgrade": "アップグレード",
 	"Your quota resets every 24 hours, upgrade for unlimited uses": "あなたのクオータは24時間ごとにリセットされます、無制限のリクエストにアップグレードしてください",
-	"Manage subscription": "サブスクリプションを管理します"
+	"Manage subscription": "サブスクリプションを管理します",
+	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "今日は無料の使用法がなくなっています。クォータがリセットまたはアップグレードされるのを待ってください。"
 }

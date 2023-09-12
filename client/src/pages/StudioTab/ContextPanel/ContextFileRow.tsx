@@ -43,6 +43,7 @@ type Props = StudioContextFile & {
     ranges?: { start: number; end: number }[],
   ) => void;
   displayName: string;
+  isPreviewing: boolean;
 };
 
 const ContextFileRow = ({
@@ -59,6 +60,7 @@ const ContextFileRow = ({
   onFileHide,
   onFileAdded,
   displayName,
+  isPreviewing,
 }: Props) => {
   const { t } = useTranslation();
 
@@ -113,7 +115,7 @@ const ContextFileRow = ({
           <TokensUsageBadge tokens={tokens} />
         </div>
         <div onClick={(e) => e.stopPropagation()}>
-          {repoFull && (
+          {repoFull && !isPreviewing && (
             <RelatedFilesDropdown
               selectedFiles={contextFiles}
               onFileAdded={onFileAdded}
@@ -140,40 +142,44 @@ const ContextFileRow = ({
             </RelatedFilesDropdown>
           )}
         </div>
-        <Button
-          variant="tertiary"
-          size="tiny"
-          onlyIcon
-          title={hidden ? t('Show file') : t('Hide file')}
-          className={
-            'opacity-50 group-hover:opacity-100 group-focus:opacity-100'
-          }
-          onClick={(e) => {
-            e.stopPropagation();
-            onFileHide(path, repo, branch, !hidden);
-          }}
-        >
-          {hidden ? (
-            <EyeCut raw sizeClassName="w-3.5 h-3.5" />
-          ) : (
-            <Eye raw sizeClassName="w-3.5 h-3.5" />
-          )}
-        </Button>
-        <Button
-          variant="tertiary"
-          size="tiny"
-          onlyIcon
-          title={t('Remove file')}
-          className={
-            'opacity-50 group-hover:opacity-100 group-focus:opacity-100'
-          }
-          onClick={(e) => {
-            e.stopPropagation();
-            onFileRemove({ path, repo, branch });
-          }}
-        >
-          <TrashCanFilled raw sizeClassName="w-3.5 h-3.5" />
-        </Button>
+        {!isPreviewing && (
+          <>
+            <Button
+              variant="tertiary"
+              size="tiny"
+              onlyIcon
+              title={hidden ? t('Show file') : t('Hide file')}
+              className={
+                'opacity-50 group-hover:opacity-100 group-focus:opacity-100'
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                onFileHide(path, repo, branch, !hidden);
+              }}
+            >
+              {hidden ? (
+                <EyeCut raw sizeClassName="w-3.5 h-3.5" />
+              ) : (
+                <Eye raw sizeClassName="w-3.5 h-3.5" />
+              )}
+            </Button>
+            <Button
+              variant="tertiary"
+              size="tiny"
+              onlyIcon
+              title={t('Remove file')}
+              className={
+                'opacity-50 group-hover:opacity-100 group-focus:opacity-100'
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                onFileRemove({ path, repo, branch });
+              }}
+            >
+              <TrashCanFilled raw sizeClassName="w-3.5 h-3.5" />
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );

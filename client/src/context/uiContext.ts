@@ -47,6 +47,10 @@ export const UIContext = {
     isCloudFeaturePopupOpen: false,
     setCloudFeaturePopupOpen: (b: boolean) => {},
   }),
+  UpgradePopup: createContext({
+    isUpgradePopupOpen: false,
+    setUpgradePopupOpen: (b: boolean) => {},
+  }),
   Tab: createContext<{ tab: RepoTabType }>({
     tab: {
       key: 'initial',

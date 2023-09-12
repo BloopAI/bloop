@@ -42,6 +42,7 @@ type Props = {
     filePath: string,
     ranges?: { start: number; end: number }[],
   ) => void;
+  isPreviewing: boolean;
 };
 
 type FileList = {
@@ -58,16 +59,20 @@ const ContextPanel = ({
   onFileRemove,
   onFileHide,
   onFileAdded,
+  isPreviewing,
 }: Props) => {
   useTranslation();
   const { repositories } = useContext(RepositoriesContext);
 
-  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      setAddContextOpen(true);
-    }
-  }, []);
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.ctrlKey || e.metaKey) && !isPreviewing) {
+        e.preventDefault();
+        setAddContextOpen(true);
+      }
+    },
+    [isPreviewing],
+  );
   useKeyboardNavigation(handleKeyEvent);
 
   const handlePopupOpen = useCallback(() => setAddContextOpen(true), []);
@@ -115,12 +120,18 @@ const ContextPanel = ({
             <Trans>Context files</Trans>
           </p>
         </div>
-        <Button size="small" onClick={handlePopupOpen}>
+        <Button size="small" onClick={handlePopupOpen} disabled={isPreviewing}>
           <PlusSignInCircle />
           <Trans>Add file</Trans>
           <div className="flex items-center gap-1 flex-shrink-0">
-            <KeyboardChip type="cmd" variant="primary" />
-            <KeyboardChip type="K" variant="primary" />
+            <KeyboardChip
+              type="cmd"
+              variant={isPreviewing ? 'secondary' : 'primary'}
+            />
+            <KeyboardChip
+              type="K"
+              variant={isPreviewing ? 'secondary' : 'primary'}
+            />
           </div>
         </Button>
       </div>
@@ -174,6 +185,7 @@ const ContextPanel = ({
                   onFileRemove={onFileRemove}
                   onFileHide={onFileHide}
                   onFileAdded={onFileAdded}
+                  isPreviewing={isPreviewing}
                   displayName={
                     file.path.split('/').length > 1
                       ? file.path.split('/').slice(-2).join('/')

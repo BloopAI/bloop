@@ -16,23 +16,19 @@ import ConversationTurn from './ConversationDay';
 type Props = {
   setIsHistoryOpen: Dispatch<SetStateAction<boolean>>;
   studioId: string;
-  refetchCodeStudio: () => void;
   handlePreview: (
     turn?: HistoryConversationTurn,
     closeHistory?: boolean,
   ) => void;
 };
 
-const HistoryPanel = ({
-  setIsHistoryOpen,
-  studioId,
-  refetchCodeStudio,
-  handlePreview,
-}: Props) => {
+const HistoryPanel = ({ setIsHistoryOpen, studioId, handlePreview }: Props) => {
   const { t } = useTranslation();
   const [history, setHistory] = useState<
     Record<string, HistoryConversationTurn[]>
   >({});
+  const [currentlyPreviewingIndex, setCurrentlyPreviewingIndex] = useState(0);
+  const [currentlyPreviewingDate, setCurrentlyPreviewingDate] = useState('');
 
   const refetchHistory = useCallback(() => {
     getCodeStudioHistory(studioId).then((resp) => {
@@ -48,6 +44,17 @@ const HistoryPanel = ({
   useEffect(() => {
     refetchHistory();
   }, [studioId]);
+
+  const handlePreviewTurn = useCallback(
+    (date: string, turn?: HistoryConversationTurn, i?: number) => {
+      handlePreview(turn);
+      setCurrentlyPreviewingDate(date);
+      if (i !== undefined) {
+        setCurrentlyPreviewingIndex(i);
+      }
+    },
+    [],
+  );
 
   return (
     <div className="flex flex-col w-52 flex-shrink-0 border-r border-bg-border overflow-auto">
@@ -72,12 +79,12 @@ const HistoryPanel = ({
           <ConversationTurn
             key={date}
             date={date}
-            studioId={studioId}
-            refetchCodeStudio={refetchCodeStudio}
-            refetchHistory={refetchHistory}
             turns={history[date]}
             isFirst={i === 0}
-            handlePreview={handlePreview}
+            handlePreview={(turn, i) => handlePreviewTurn(date, turn, i)}
+            currentlyPreviewingIndex={
+              currentlyPreviewingDate === date ? currentlyPreviewingIndex : -1
+            }
           />
         ))}
       </div>

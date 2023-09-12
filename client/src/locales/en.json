@@ -353,5 +353,7 @@
 	"uses left_other": "uses left",
 	"Upgrade": "Upgrade",
 	"Your quota resets every 24 hours, upgrade for unlimited uses": "Your quota resets every 24 hours, upgrade for unlimited uses",
-	"Manage subscription": "Manage subscription"
+	"Manage subscription": "Manage subscription",
+	"Usage resets in": "Usage resets in",
+	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage"
 }

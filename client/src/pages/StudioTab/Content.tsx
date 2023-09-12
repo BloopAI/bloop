@@ -199,12 +199,28 @@ const ContentContainer = ({
   const handlePreview = useCallback(
     (state?: HistoryConversationTurn, closeHistory?: boolean) => {
       setPreviewingState(state || null);
+      if (state) {
+        setRightPanel({ type: StudioRightPanelType.CONVERSATION, data: null });
+        setLeftPanel({ type: StudioLeftPanelType.CONTEXT, data: null });
+      }
       if (closeHistory) {
         setIsHistoryOpen(false);
       }
     },
     [],
   );
+
+  const handleRestore = useCallback(() => {
+    if (previewingState) {
+      patchCodeStudio(tab.key, {
+        context: previewingState?.context,
+        messages: previewingState?.messages,
+      }).then(() => {
+        refetchCodeStudio();
+        handlePreview(undefined, true);
+      });
+    }
+  }, [tab.key, refetchCodeStudio, previewingState]);
 
   useEffect(() => {
     if (!isHistoryOpen) {
@@ -235,7 +251,6 @@ const ContentContainer = ({
             <HistoryPanel
               setIsHistoryOpen={setIsHistoryOpen}
               studioId={tab.key}
-              refetchCodeStudio={refetchCodeStudio}
               handlePreview={handlePreview}
             />
           )}
@@ -259,6 +274,7 @@ const ContentContainer = ({
                   onFileRemove={onFileRemove}
                   onFileHide={onFileHide}
                   onFileAdded={onFileAdded}
+                  isPreviewing={!!previewingState}
                 />
               ) : leftPanel.type === StudioLeftPanelType.TEMPLATES ? (
                 <TemplatesPanel setLeftPanel={setLeftPanel} />
@@ -288,6 +304,8 @@ const ContentContainer = ({
                   refetchCodeStudio={refetchCodeStudio}
                   tokensTotal={stateToShow.token_counts?.total}
                   setIsHistoryOpen={setIsHistoryOpen}
+                  isPreviewing={!!previewingState}
+                  handleRestore={handleRestore}
                 />
               ) : rightPanel.type === StudioRightPanelType.FILE ? (
                 <FilePanel

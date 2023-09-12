@@ -13,6 +13,8 @@ type Props = {
   messages: CodeStudioMessageType[];
   studioId: string;
   refetchCodeStudio: () => Promise<void>;
+  handleRestore: () => void;
+  isPreviewing: boolean;
 };
 
 const RightPanel = ({
@@ -22,6 +24,8 @@ const RightPanel = ({
   messages,
   refetchCodeStudio,
   setIsHistoryOpen,
+  isPreviewing,
+  handleRestore,
 }: Props) => {
   useTranslation();
   return (
@@ -53,6 +57,8 @@ const RightPanel = ({
         refetchCodeStudio={refetchCodeStudio}
         isTokenLimitExceeded={tokensTotal > TOKEN_LIMIT}
         setIsHistoryOpen={setIsHistoryOpen}
+        isPreviewing={isPreviewing}
+        handleRestore={handleRestore}
       />
     </>
   );

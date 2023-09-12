@@ -104,10 +104,10 @@
     --default-dark-bg-shade: 41, 41, 47; /* #29292F */
     --default-dark-bg-sub: 26, 26, 31; /* #1A1A1F */
     --default-dark-bg-border: 48, 48, 55;
-    --default-dark-bg-border-hover: 68, 68, 81;
+    --default-dark-bg-border-hover: 68, 68, 81; /* #444451 */
     --default-dark-bg-main: 91, 110, 221;
     --default-dark-bg-main-hover: 114, 133, 238;
-    --default-dark-bg-danger: 199, 54, 62;
+    --default-dark-bg-danger: 199, 54, 62; /* #C7363E */
     --default-dark-bg-danger-hover: 215, 66, 74;
     --default-dark-bg-success: 21, 128, 61;
     --default-dark-bg-success-hover: 33, 197, 94;
@@ -115,7 +115,7 @@
     --default-dark-label-faint: 57, 57, 57;
     --default-dark-label-muted: 85, 85, 85;
     --default-dark-label-base: 185, 185, 185; /* #B9B9B9 */
-    --default-dark-label-title: 238, 238, 238;
+    --default-dark-label-title: 238, 238, 238; /* #EEEEEE */
     --default-dark-label-link: 104, 141, 222;
     --default-dark-chat-bg-base: 37, 38, 56;
     --default-dark-chat-bg-base-hover: 43, 44, 66; /* #2B2C42 */

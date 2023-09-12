@@ -17,6 +17,7 @@ export const PersonalQuotaContextProvider = memo(
     const [requestsLeft, setRequestsLeft] = useState(10);
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [hasCheckedQuota, setHasCheckedQuota] = useState(false);
+    const [resetAt, setResetAt] = useState(new Date().toISOString());
 
     const refetchQuota = useCallback(() => {
       getQuota().then((resp) => {
@@ -30,6 +31,7 @@ export const PersonalQuotaContextProvider = memo(
         });
         setRequestsLeft(Math.max(resp.allowed - resp.used, 0));
         setHasCheckedQuota(true);
+        setResetAt(resp.reset_at);
       });
     }, []);
 
@@ -47,8 +49,9 @@ export const PersonalQuotaContextProvider = memo(
         quota,
         isSubscribed,
         hasCheckedQuota,
+        resetAt,
       }),
-      [requestsLeft, isSubscribed, hasCheckedQuota, quota],
+      [requestsLeft, isSubscribed, hasCheckedQuota, quota, resetAt],
     );
 
     const handlersContextValue = useMemo(

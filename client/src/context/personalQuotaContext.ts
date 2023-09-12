@@ -8,6 +8,7 @@ type ContextType = {
   };
   isSubscribed: boolean;
   hasCheckedQuota: boolean;
+  resetAt: string;
 };
 
 export const PersonalQuotaContext = {
@@ -19,6 +20,7 @@ export const PersonalQuotaContext = {
     },
     isSubscribed: false,
     hasCheckedQuota: false,
+    resetAt: new Date().toISOString(),
   }),
   Handlers: createContext({
     refetchQuota: () => {},

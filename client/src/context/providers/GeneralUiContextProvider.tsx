@@ -38,6 +38,7 @@ export const GeneralUiContextProvider = memo(
     );
     const [isPromptGuideOpen, setPromptGuideOpen] = useState(false);
     const [isCloudFeaturePopupOpen, setCloudFeaturePopupOpen] = useState(false);
+    const [isUpgradePopupOpen, setUpgradePopupOpen] = useState(false);
     const [theme, setTheme] = useState<Theme>(
       (getPlainFromStorage(THEME) as 'system' | null) || 'system',
     );
@@ -117,6 +118,14 @@ export const GeneralUiContextProvider = memo(
       [isCloudFeaturePopupOpen],
     );
 
+    const upgradePopupContextValue = useMemo(
+      () => ({
+        isUpgradePopupOpen,
+        setUpgradePopupOpen,
+      }),
+      [isUpgradePopupOpen],
+    );
+
     return (
       <UIContext.Settings.Provider value={settingsContextValue}>
         <UIContext.Onboarding.Provider value={onboardingContextValue}>
@@ -127,7 +136,11 @@ export const GeneralUiContextProvider = memo(
                   <UIContext.CloudFeaturePopup.Provider
                     value={cloudFeatureContextValue}
                   >
-                    {children}
+                    <UIContext.UpgradePopup.Provider
+                      value={upgradePopupContextValue}
+                    >
+                      {children}
+                    </UIContext.UpgradePopup.Provider>
                   </UIContext.CloudFeaturePopup.Provider>
                 </UIContext.PromptGuide.Provider>
               </UIContext.Theme.Provider>

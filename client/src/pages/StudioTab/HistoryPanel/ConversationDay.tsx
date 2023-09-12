@@ -8,25 +8,18 @@ import ConversationTurn from './ConversationTurn';
 
 type Props = {
   date: string;
-  studioId: string;
-  refetchCodeStudio: () => void;
-  refetchHistory: () => void;
   turns: HistoryConversationTurn[];
   isFirst: boolean;
-  handlePreview: (
-    turn?: HistoryConversationTurn,
-    closeHistory?: boolean,
-  ) => void;
+  handlePreview: (turn?: HistoryConversationTurn, i?: number) => void;
+  currentlyPreviewingIndex: number;
 };
 
 const ConversationDay = ({
   turns,
   date,
-  studioId,
-  refetchCodeStudio,
-  refetchHistory,
   isFirst,
   handlePreview,
+  currentlyPreviewingIndex,
 }: Props) => {
   const { locale } = useContext(LocaleContext);
   return (
@@ -46,16 +39,11 @@ const ConversationDay = ({
         <ConversationTurn
           key={turn.id}
           {...turn}
-          refetchCodeStudio={refetchCodeStudio}
-          studioId={studioId}
-          refetchHistory={refetchHistory}
           isCurrent={isFirst && i === 0}
-          handlePreview={(e, closeHistory) =>
-            handlePreview(
-              (isFirst && i === 0) || closeHistory ? undefined : turn,
-              closeHistory,
-            )
+          handlePreview={() =>
+            handlePreview(isFirst && i === 0 ? undefined : turn, i)
           }
+          isPreviewed={currentlyPreviewingIndex === i}
         />
       ))}
     </div>
