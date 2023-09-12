@@ -24,13 +24,11 @@ type Props = {
   errorBoundaryMessage?: string;
   handleSubmit?: () => void;
   forceShow?: boolean;
-  activeTab: string;
 };
 const ReportBugModal = ({
   errorBoundaryMessage,
   handleSubmit,
   forceShow,
-  activeTab,
 }: Props) => {
   const { t } = useTranslation();
   const [form, setForm] = useState({
@@ -42,7 +40,7 @@ const ReportBugModal = ({
   const [isSubmitted, setSubmitted] = useState(false);
   const [serverLog, setServerLog] = useState('');
   const [serverCrashedMessage, setServerCrashedMessage] = useState('');
-  const { isBugReportModalOpen, setBugReportModalOpen } = useContext(
+  const { isBugReportModalOpen, setBugReportModalOpen, activeTab } = useContext(
     UIContext.BugReport,
   );
   const { envConfig, listen, os, release, invokeTauriCommand } =

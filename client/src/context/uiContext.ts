@@ -22,6 +22,7 @@ export const UIContext = {
   BugReport: createContext({
     isBugReportModalOpen: false,
     setBugReportModalOpen: (b: boolean) => {},
+    activeTab: 'initial',
   }),
   GitHubConnected: createContext({
     isGithubConnected: false,

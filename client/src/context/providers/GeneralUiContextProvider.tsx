@@ -19,8 +19,12 @@ import {
 } from '../../services/storage';
 import { Theme } from '../../types';
 
+type Props = {
+  activeTab: string;
+};
+
 export const GeneralUiContextProvider = memo(
-  ({ children }: PropsWithChildren) => {
+  ({ children, activeTab }: PropsWithChildren<Props>) => {
     const [isSettingsOpen, setSettingsOpen] = useState(false);
     const [isBugReportModalOpen, setBugReportModalOpen] = useState(false);
     const [settingsSection, setSettingsSection] = useState(
@@ -81,8 +85,9 @@ export const GeneralUiContextProvider = memo(
       () => ({
         isBugReportModalOpen,
         setBugReportModalOpen,
+        activeTab,
       }),
-      [isBugReportModalOpen],
+      [isBugReportModalOpen, activeTab],
     );
 
     const githubContextValue = useMemo(

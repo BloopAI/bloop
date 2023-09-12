@@ -328,7 +328,7 @@ function App({ deviceContextValue }: Props) {
       >
         <RepositoriesContext.Provider value={reposContextValue}>
           <TabsContext.Provider value={contextValue}>
-            <GeneralUiContextProvider>
+            <GeneralUiContextProvider activeTab={activeTab}>
               <PersonalQuotaContextProvider>
                 <NavBar activeTab={activeTab} />
                 <div className="mt-8" />
@@ -357,9 +357,9 @@ function App({ deviceContextValue }: Props) {
                   ),
                 )}
                 <Settings />
-                <ReportBugModal activeTab={activeTab} />
+                <ReportBugModal />
                 <PromptGuidePopup />
-                <Onboarding />
+                <Onboarding activeTab={activeTab} />
                 <StatusBar />
                 <CloudFeaturePopup />
                 <UpgradePopup />

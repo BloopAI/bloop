@@ -34,7 +34,7 @@ export type Form = {
   emailError: string | null;
 };
 
-const Onboarding = () => {
+const Onboarding = ({ activeTab }: { activeTab: string }) => {
   const { t } = useTranslation();
   const [form, setForm] = useState<Form>({
     firstName: '',
@@ -134,7 +134,7 @@ const Onboarding = () => {
   return shouldShowWelcome ? (
     isSelfServe ? (
       <div className="text-label-title">
-        <NavBar isSkeleton />
+        <NavBar isSkeleton activeTab={activeTab} />
         <div
           className={`flex justify-center items-start mt-8 w-screen overflow-auto relative h-[calc(100vh-4rem)]`}
         >
@@ -152,7 +152,7 @@ const Onboarding = () => {
       </div>
     ) : (
       <div className="fixed top-0 bottom-0 left-0 right-0 z-100 bg-bg-sub select-none">
-        {os.type === 'Darwin' && <NavBar isSkeleton />}
+        {os.type === 'Darwin' && <NavBar isSkeleton activeTab={activeTab} />}
         <img
           src="/light.png"
           alt=""

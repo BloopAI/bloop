@@ -2,12 +2,14 @@ import React, {
   memo,
   PropsWithChildren,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
 } from 'react';
 import { getQuota } from '../../services/api';
 import { PersonalQuotaContext } from '../personalQuotaContext';
+import { DeviceContext } from '../deviceContext';
 
 type Props = {};
 
@@ -18,22 +20,25 @@ export const PersonalQuotaContextProvider = memo(
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [hasCheckedQuota, setHasCheckedQuota] = useState(false);
     const [resetAt, setResetAt] = useState(new Date().toISOString());
+    const { isSelfServe } = useContext(DeviceContext);
 
     const refetchQuota = useCallback(() => {
-      getQuota().then((resp) => {
-        setIsSubscribed(resp.upgraded);
-        setQuota((prev) => {
-          const newState = { used: resp.used, allowed: resp.allowed };
-          if (JSON.stringify(prev) === JSON.stringify(newState)) {
-            return prev;
-          }
-          return newState;
+      if (isSelfServe) {
+        getQuota().then((resp) => {
+          setIsSubscribed(resp.upgraded);
+          setQuota((prev) => {
+            const newState = { used: resp.used, allowed: resp.allowed };
+            if (JSON.stringify(prev) === JSON.stringify(newState)) {
+              return prev;
+            }
+            return newState;
+          });
+          setRequestsLeft(Math.max(resp.allowed - resp.used, 0));
+          setHasCheckedQuota(true);
+          setResetAt(resp.reset_at);
         });
-        setRequestsLeft(Math.max(resp.allowed - resp.used, 0));
-        setHasCheckedQuota(true);
-        setResetAt(resp.reset_at);
-      });
-    }, []);
+      }
+    }, [isSelfServe]);
 
     useEffect(() => {
       refetchQuota();
