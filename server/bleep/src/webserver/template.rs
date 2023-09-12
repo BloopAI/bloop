@@ -1,5 +1,6 @@
 use super::{middleware::User, Error, ErrorKind};
 use crate::{webserver, Application};
+use anyhow::Context;
 use axum::extract::{Extension, Json, Path};
 use chrono::NaiveDateTime;
 use serde::Deserialize;
@@ -27,8 +28,7 @@ pub async fn create(
         user_id,
     )
     .execute(&*app.sql)
-    .await
-    .map_err(Error::internal)?
+    .await?
     .last_insert_rowid();
 
     Ok(id.to_string())
@@ -40,6 +40,7 @@ pub struct Template {
     name: String,
     modified_at: NaiveDateTime,
     content: String,
+    is_default: bool,
 }
 
 pub async fn list(
@@ -53,12 +54,13 @@ pub async fn list(
 
     let templates = sqlx::query_as!(
         Template,
-        "SELECT id, name, modified_at, content FROM templates WHERE user_id = ?",
+        "SELECT id, name, modified_at, content, user_id IS NULL as \"is_default: bool\"
+        FROM templates
+        WHERE user_id = ? OR user_id IS NULL",
         user_id,
     )
     .fetch_all(&*app.sql)
-    .await
-    .map_err(Error::internal)?;
+    .await?;
 
     Ok(Json(templates))
 }
@@ -75,13 +77,14 @@ pub async fn get(
 
     let template = sqlx::query_as!(
         Template,
-        "SELECT id, name, modified_at, content FROM templates WHERE id = ? AND user_id = ?",
+        "SELECT id, name, modified_at, content, user_id IS NULL as \"is_default: bool\"
+        FROM templates
+        WHERE id = ? AND (user_id = ? OR user_id IS NULL)",
         id,
         user_id,
     )
     .fetch_optional(&*app.sql)
-    .await
-    .map_err(Error::internal)?
+    .await?
     .ok_or_else(|| Error::new(ErrorKind::NotFound, "Template not found"))?;
 
     Ok(Json(template))
@@ -96,39 +99,53 @@ pub struct Patch {
 pub async fn patch(
     app: Extension<Application>,
     user: Extension<User>,
-    Path(id): Path<String>,
+    Path(mut id): Path<i64>,
     Json(patch): Json<Patch>,
-) -> webserver::Result<()> {
+) -> webserver::Result<String> {
     let user_id = user
         .login()
         .ok_or_else(|| super::Error::user("didn't have user ID"))?
         .to_string();
 
-    let mut transaction = app.sql.begin().await.map_err(Error::internal)?;
+    let mut transaction = app.sql.begin().await?;
 
     // Ensure the ID is valid first.
-    sqlx::query!(
-        "SELECT id FROM templates WHERE id = ? AND user_id = ?",
+    let template_user_id = sqlx::query!(
+        "SELECT user_id FROM templates WHERE id = ? AND (user_id = ? OR user_id IS NULL)",
         id,
-        user_id
+        user_id,
     )
     .fetch_optional(&mut transaction)
-    .await
-    .map_err(Error::internal)?
+    .await?
+    .map(|row| row.user_id)
     .ok_or_else(|| Error::new(ErrorKind::NotFound, "unknown template ID"))?;
+
+    if template_user_id.is_none() {
+        id = sqlx::query! {
+            "INSERT INTO templates(name, content, user_id)
+            SELECT name, content, ?
+            FROM templates
+            WHERE id = ?
+            RETURNING id",
+            user_id,
+            id,
+        }
+        .fetch_one(&mut transaction)
+        .await
+        .map(|row| row.id)?
+        .context("query didn't return new ID")?;
+    }
 
     if let Some(name) = patch.name {
         sqlx::query!("UPDATE templates SET name = ? WHERE id = ?", name, id)
             .execute(&mut transaction)
-            .await
-            .map_err(Error::internal)?;
+            .await?;
     }
 
     if let Some(content) = patch.content {
         sqlx::query!("UPDATE templates SET content = ? WHERE id = ?", content, id)
             .execute(&mut transaction)
-            .await
-            .map_err(Error::internal)?;
+            .await?;
     }
 
     sqlx::query!(
@@ -136,18 +153,17 @@ pub async fn patch(
         id
     )
     .execute(&mut transaction)
-    .await
-    .map_err(Error::internal)?;
+    .await?;
 
-    transaction.commit().await.map_err(Error::internal)?;
+    transaction.commit().await?;
 
-    Ok(())
+    Ok(id.to_string())
 }
 
 pub async fn delete(
     app: Extension<Application>,
     user: Extension<User>,
-    Path(id): Path<String>,
+    Path(id): Path<i64>,
 ) -> webserver::Result<()> {
     let user_id = user
         .login()
@@ -160,8 +176,7 @@ pub async fn delete(
         user_id
     )
     .fetch_optional(&*app.sql)
-    .await
-    .map_err(Error::internal)?
+    .await?
     .ok_or_else(|| Error::new(ErrorKind::NotFound, "unknown template ID"))
     .map(|_| ())
 }

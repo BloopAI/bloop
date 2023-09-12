@@ -36,6 +36,24 @@
     },
     "query": "SELECT\n            s.id,\n            s.name,\n            ss.modified_at as \"modified_at!\",\n            ss.context\n        FROM studios s\n        INNER JOIN studio_snapshots ss ON s.id = ss.studio_id\n        WHERE s.user_id = ? AND (ss.studio_id, ss.modified_at) IN (\n            SELECT studio_id, MAX(modified_at)\n            FROM studio_snapshots\n            GROUP BY studio_id\n        )"
   },
+  "069c6404909c217e0b27e974480cce3f592a0d43ece6dec17fbcee37ce7a6ffa": {
+    "describe": {
+      "columns": [
+        {
+          "name": "user_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT user_id FROM templates WHERE id = ? AND (user_id = ? OR user_id IS NULL)"
+  },
   "0c72c51f4a5b726f6f524fcb269f074550b1a3a25ed050fb2701f8bec02678d7": {
     "describe": {
       "columns": [],
@@ -84,6 +102,48 @@
     },
     "query": "INSERT INTO studio_snapshots(studio_id, context, messages) VALUES (?, ?, ?)"
   },
+  "379eebe0708c4eaacf217368200c618e55e25f405b81e999dafb77a7579e2af4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 2,
+          "type_info": "Datetime"
+        },
+        {
+          "name": "content",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "is_default: bool",
+          "ordinal": 4,
+          "type_info": "Int"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT id, name, modified_at, content, user_id IS NULL as \"is_default: bool\"\n        FROM templates\n        WHERE user_id = ? OR user_id IS NULL"
+  },
   "392b563bb3af6711817fe99335d053691750426762dcde7b0381dc9f69cd804e": {
     "describe": {
       "columns": [],
@@ -111,42 +171,6 @@
       }
     },
     "query": "SELECT ss.id\n        FROM studio_snapshots ss\n        JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?\n        WHERE ss.studio_id = ?\n        ORDER BY ss.modified_at DESC\n        LIMIT 1"
-  },
-  "449c90c85dc8afd68e50448549d0a4f3a5cf591c8330e0b9c69c7a2dde8cd97d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int64"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "modified_at",
-          "ordinal": 2,
-          "type_info": "Datetime"
-        },
-        {
-          "name": "content",
-          "ordinal": 3,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "SELECT id, name, modified_at, content FROM templates WHERE user_id = ?"
   },
   "476c0b82963b9a2333edec797133770f32c8269a21a17d3165e7785f69e886ab": {
     "describe": {
@@ -278,24 +302,6 @@
     },
     "query": "UPDATE templates SET modified_at = datetime('now') WHERE id = ?"
   },
-  "623d5ba93bde27df707f2b7807cca5d853e2a9f5cd8c9b8ddc681776af50fdcc": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int64"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "SELECT id FROM templates WHERE id = ? AND user_id = ?"
-  },
   "63938812eb2374512bb6dd750e14f363f67471ca85c2ed27f7c4b9404f5a875f": {
     "describe": {
       "columns": [],
@@ -395,6 +401,48 @@
       }
     },
     "query": "SELECT title, repo_ref, exchanges\n        FROM conversations\n        WHERE user_id = ? AND thread_id = ?"
+  },
+  "6e842ac5eb4b5be53dff501a24b6b91c0557d6a7119480441a60c8e99de7daf1": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 2,
+          "type_info": "Datetime"
+        },
+        {
+          "name": "content",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "is_default: bool",
+          "ordinal": 4,
+          "type_info": "Int"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT id, name, modified_at, content, user_id IS NULL as \"is_default: bool\"\n        FROM templates\n        WHERE id = ? AND (user_id = ? OR user_id IS NULL)"
   },
   "76464f75732fee5c742a23d7a0b95de1def360bae7943a2389944b0177106033": {
     "describe": {
@@ -728,42 +776,6 @@
     },
     "query": "SELECT repo_ref, exchanges FROM conversations WHERE user_id = ? AND thread_id = ?"
   },
-  "e807398025b2b80405d3653e9ffc339d29d69d40dc2a57c4f1824822ab9da298": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int64"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "modified_at",
-          "ordinal": 2,
-          "type_info": "Datetime"
-        },
-        {
-          "name": "content",
-          "ordinal": 3,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "SELECT id, name, modified_at, content FROM templates WHERE id = ? AND user_id = ?"
-  },
   "ec193a038eb7fc3aaca3c3adebcc4dbde01b47ae34ac2df2227c5e5459617182": {
     "describe": {
       "columns": [],
@@ -783,5 +795,23 @@
       }
     },
     "query": "DELETE FROM chunk_cache WHERE repo_ref = ?"
+  },
+  "fd74b491f6b06bb58c7d62b461094e5463e397bb649ae338c2b1a0e67e6155c3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT INTO templates(name, content, user_id)\n            SELECT name, content, ?\n            FROM templates\n            WHERE id = ?\n            RETURNING id"
   }
 }
