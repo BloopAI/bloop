@@ -38,7 +38,8 @@ tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "registry"] }
 tracing-appender = "0.2.2"
 color-eyre = "0.6.2"
-sqlx = { version = "0.6.3", features = ["sqlite", "migrate", "offline", "runtime-tokio-rustls", "chrono"] }
+sqlx = { version = "0.6.3", features = ["sqlite", "migrate", "offline", "runtime-tokio-rustls", "chrono", "uuid"] }
+fuzzy-matcher = "0.3.7"
 
 # for debugging
 console-subscriber = { version = "0.1.10", optional = true }
@@ -70,7 +71,7 @@ petgraph = { version = "0.6.3", default-features = false, features = ["serde-1"]
 
 # webserver
 serde_json = "1.0.100"
-axum = { version = "0.6.18", features = ["http2", "headers"] }
+axum = { version = "0.6.18", features = ["http2", "headers", "macros"] }
 axum-extra = { version = "0.7.4", features = ["cookie", "cookie-private"] }
 tower = "0.4.13"
 tower-http = { version = "0.4.1", features = ["auth", "cors", "catch-panic", "fs"] }

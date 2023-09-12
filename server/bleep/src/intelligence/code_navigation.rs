@@ -2,16 +2,16 @@
 //! - scope-graph based handler that operates only in the owning file
 //! - search based handler that operates on any file belonging to the repo
 
-use std::ops::Not;
+use std::{collections::HashSet, ops::Not};
 
 use super::NodeKind;
 use crate::{
     indexes::reader::ContentDocument,
-    repo::RepoRef,
     snippet::{Snipper, Snippet},
     text_range::TextRange,
 };
 
+use rayon::prelude::*;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -46,14 +46,142 @@ pub enum OccurrenceKind {
 
 pub enum CodeNavigationError {}
 
-pub struct CodeNavigationContext<'a> {
-    pub repo_ref: RepoRef,
+pub struct CodeNavigationContext<'a, 'b> {
     pub token: Token<'a>,
-    pub all_docs: Vec<ContentDocument>,
+    pub all_docs: &'b [ContentDocument],
     pub source_document_idx: usize,
 }
 
-impl<'a> CodeNavigationContext<'a> {
+impl<'a, 'b> CodeNavigationContext<'a, 'b> {
+    /// Produces a list of docs that import items from source_document
+    ///
+    /// This works by going through every definition node in source_document, calculating
+    /// repo-wide references for all such nodes, and gathering the resulting file-set.
+    pub fn files_importing(
+        all_docs: &'b [ContentDocument],
+        source_document_idx: usize,
+    ) -> HashSet<&'b ContentDocument> {
+        // scope graph of the source document
+        let source_doc = all_docs.get(source_document_idx).unwrap();
+        let Some(source_sg) = source_doc.symbol_locations.scope_graph() else {
+            return HashSet::default();
+        };
+        source_sg
+            .graph
+            .node_indices()
+            .par_bridge()
+            .filter(|idx| source_sg.is_definition(*idx) && source_sg.is_top_level(*idx))
+            .flat_map_iter(|idx| {
+                let range = source_sg.graph[idx].range();
+                let token = Token {
+                    relative_path: &source_doc.relative_path,
+                    start_byte: range.start.byte,
+                    end_byte: range.end.byte,
+                };
+                let active_token_range = token.start_byte..token.end_byte;
+                let active_token_text =
+                    source_doc.content.as_str().get(active_token_range).unwrap();
+                all_docs
+                    .par_iter()
+                    .filter(|doc| doc.relative_path != source_doc.relative_path)
+                    .filter(|doc| {
+                        let Some(scope_graph) = doc.symbol_locations.scope_graph() else {
+                            return false;
+                        };
+                        let content = doc.content.as_bytes();
+                        scope_graph
+                            .graph
+                            .node_indices()
+                            .par_bridge()
+                            .filter(|&idx| scope_graph.is_top_level(idx))
+                            .any(|idx| match scope_graph.get_node(idx).unwrap() {
+                                NodeKind::Import(n) => {
+                                    n.name(content) == active_token_text.as_bytes()
+                                }
+                                _ => false,
+                            })
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    /// Produces a list of docs that are imported in source_document
+    ///
+    /// This works by going through every reference or import node in the current file, calculating
+    /// its non-local definition (if any) and gathering the resuting file-set.
+    pub fn files_imported(
+        all_docs: &'b [ContentDocument],
+        source_document_idx: usize,
+    ) -> HashSet<&'b ContentDocument> {
+        // scope graph of the source document
+        let source_doc = all_docs.get(source_document_idx).unwrap();
+        let Some(source_sg) = source_doc.symbol_locations.scope_graph() else {
+            return HashSet::default();
+        };
+
+        source_sg
+            .graph
+            .node_indices()
+            .par_bridge()
+            .filter(|idx| source_sg.is_reference(*idx) || source_sg.is_import(*idx))
+            .filter(|&idx| {
+                CodeNavigationContext {
+                    all_docs,
+                    source_document_idx,
+                    token: Token {
+                        relative_path: &source_doc.relative_path,
+                        start_byte: source_sg.graph[idx].range().start.byte,
+                        end_byte: source_sg.graph[idx].range().end.byte,
+                    },
+                }
+                .local_definitions()
+                .is_none()
+            })
+            .flat_map_iter(|idx| {
+                let range = source_sg.graph[idx].range();
+                let token = Token {
+                    relative_path: &source_doc.relative_path,
+                    start_byte: range.start.byte,
+                    end_byte: range.end.byte,
+                };
+                let active_token_range = token.start_byte..token.end_byte;
+                let active_token_text =
+                    source_doc.content.as_str().get(active_token_range).unwrap();
+                all_docs
+                    .par_iter()
+                    .filter(|doc| doc.relative_path != source_doc.relative_path)
+                    .filter(|doc| {
+                        let Some(scope_graph) = doc.symbol_locations.scope_graph() else {
+                        return false;
+                    };
+                        let content = doc.content.as_bytes();
+                        scope_graph
+                            .graph
+                            .node_indices()
+                            .par_bridge()
+                            .filter(|idx| scope_graph.is_top_level(*idx))
+                            .any(|idx| {
+                                if let Some(NodeKind::Def(d)) = scope_graph.get_node(idx) {
+                                    d.name(content) == active_token_text.as_bytes()
+                                } else {
+                                    false
+                                }
+                            })
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<HashSet<_>>()
+    }
+
+    fn singleton(source_document: &'b ContentDocument, token: Token<'a>) -> Self {
+        Self {
+            all_docs: std::slice::from_ref(source_document),
+            source_document_idx: 0,
+            token,
+        }
+    }
+
     fn source_document(&self) -> &ContentDocument {
         self.all_docs.get(self.source_document_idx).unwrap()
     }
@@ -189,6 +317,7 @@ impl<'a> CodeNavigationContext<'a> {
 
     fn repo_wide_definitions(&self) -> Vec<FileSymbols> {
         self.non_source_documents()
+            .par_bridge()
             .filter_map(|doc| {
                 let scope_graph = doc.symbol_locations.scope_graph()?;
                 let content = doc.content.as_bytes();
@@ -248,6 +377,7 @@ impl<'a> CodeNavigationContext<'a> {
 
     fn repo_wide_references(&self) -> Vec<FileSymbols> {
         self.non_source_documents()
+            .par_bridge()
             .filter_map(|doc| {
                 let scope_graph = doc.symbol_locations.scope_graph()?;
                 let content = doc.content.as_bytes();
@@ -314,4 +444,67 @@ fn to_occurrence(doc: &ContentDocument, range: TextRange) -> Snippet {
     Snipper::default()
         .expand(highlight, src, line_end_indices)
         .reify(src, &[])
+}
+
+// ranges of defs in related_file_document used in source_document
+pub fn imported_ranges(
+    source_document: &ContentDocument,
+    related_file_document: &ContentDocument,
+) -> HashSet<TextRange> {
+    // scope graph of the source document
+    let Some(source_sg) = source_document.symbol_locations.scope_graph() else {
+        return HashSet::new();
+    };
+
+    // scope graph of the related_file document
+    let Some(related_file_sg) = related_file_document.symbol_locations.scope_graph() else {
+        return HashSet::new();
+    };
+    let related_file_content = &related_file_document.content;
+
+    source_sg
+        .graph
+        .node_indices()
+        .par_bridge()
+        .filter(|idx| source_sg.is_reference(*idx) || source_sg.is_import(*idx))
+        .filter(|&idx| {
+            let token = Token {
+                relative_path: &source_document.relative_path,
+                start_byte: source_sg.graph[idx].range().start.byte,
+                end_byte: source_sg.graph[idx].range().end.byte,
+            };
+            (CodeNavigationContext::singleton(source_document, token))
+                .local_definitions()
+                .is_none()
+        })
+        .flat_map(|idx| {
+            let range = source_sg.graph[idx].range();
+            let token = Token {
+                relative_path: &source_document.relative_path,
+                start_byte: range.start.byte,
+                end_byte: range.end.byte,
+            };
+            let active_token_range = token.start_byte..token.end_byte;
+            let active_token_text = source_document
+                .content
+                .as_str()
+                .get(active_token_range)
+                .unwrap();
+
+            related_file_sg
+                .graph
+                .node_indices()
+                .par_bridge()
+                .filter(|idx| related_file_sg.is_top_level(*idx))
+                .filter(|idx| {
+                    if let Some(NodeKind::Def(d)) = related_file_sg.get_node(*idx) {
+                        d.name(related_file_content.as_bytes()) == active_token_text.as_bytes()
+                    } else {
+                        false
+                    }
+                })
+                .filter_map(|idx| related_file_sg.value_of_definition(idx))
+                .map(|idx| related_file_sg.graph[idx].range())
+        })
+        .collect()
 }

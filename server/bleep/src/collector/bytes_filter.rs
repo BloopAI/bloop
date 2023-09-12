@@ -36,7 +36,7 @@ where
 impl<TCollector, TPredicate> Collector for BytesFilterCollector<TCollector, TPredicate>
 where
     TCollector: Collector + Send + Sync,
-    TPredicate: 'static + Fn(&[u8]) -> bool + Send + Sync + Clone,
+    TPredicate: Fn(&[u8]) -> bool + Send + Sync + Clone,
 {
     // That's the type of our result.
     // Our standard deviation will be a float.

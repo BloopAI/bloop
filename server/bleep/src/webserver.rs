@@ -3,7 +3,7 @@ use crate::{env::Feature, Application};
 use axum::{
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{delete, get, post},
     Extension, Json,
 };
 use std::{borrow::Cow, net::SocketAddr};
@@ -23,8 +23,11 @@ mod index;
 mod intelligence;
 pub mod middleware;
 mod query;
+mod quota;
 pub mod repos;
-mod semantic;
+mod search;
+mod studio;
+mod template;
 
 pub type Router<S = Application> = axum::Router<S>;
 
@@ -53,8 +56,15 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         // intelligence
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))
+        .route("/related-files", get(intelligence::related_files))
+        .route(
+            "/related-files-with-ranges",
+            get(intelligence::related_file_with_ranges),
+        )
+        .route("/token-value", get(intelligence::token_value))
         // misc
-        .route("/search", get(semantic::complex_search))
+        .route("/search/code", get(search::semantic_code))
+        .route("/search/path", get(search::fuzzy_path))
         .route("/file", get(file::handle))
         .route("/answer", get(answer::answer))
         .route("/answer/explain", get(answer::explain))
@@ -66,7 +76,37 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             "/answer/conversations/:thread_id",
             get(answer::conversations::thread),
         )
-        .route("/answer/vote", post(answer::vote));
+        .route("/answer/vote", post(answer::vote))
+        .route("/studio", post(studio::create))
+        .route("/studio", get(studio::list))
+        .route(
+            "/studio/:studio_id",
+            get(studio::get).patch(studio::patch).delete(studio::delete),
+        )
+        .route("/studio/import", post(studio::import))
+        .route("/studio/:studio_id/generate", get(studio::generate))
+        .route("/studio/:studio_id/snapshots", get(studio::list_snapshots))
+        .route(
+            "/studio/:studio_id/snapshots/:snapshot_id",
+            delete(studio::delete_snapshot),
+        )
+        .route(
+            "/studio/file-token-count",
+            post(studio::get_file_token_count),
+        )
+        .route("/template", post(template::create))
+        .route("/template", get(template::list))
+        .route(
+            "/template/:id",
+            get(template::get)
+                .patch(template::patch)
+                .delete(template::delete),
+        )
+        .route("/quota", get(quota::get))
+        .route(
+            "/quota/create-checkout-session",
+            get(quota::create_checkout_session),
+        );
 
     if app.env.allow(Feature::AnyPathScan) {
         api = api.route("/repos/scan", get(repos::scan_local));
@@ -184,6 +224,26 @@ impl Error {
         }
     }
 
+    fn not_found<S: std::fmt::Display>(message: S) -> Self {
+        Error {
+            status: StatusCode::NOT_FOUND,
+            body: EndpointError {
+                kind: ErrorKind::NotFound,
+                message: message.to_string().into(),
+            },
+        }
+    }
+
+    fn unauthorized<S: std::fmt::Display>(message: S) -> Self {
+        Error {
+            status: StatusCode::UNAUTHORIZED,
+            body: EndpointError {
+                kind: ErrorKind::User,
+                message: message.to_string().into(),
+            },
+        }
+    }
+
     fn message(&self) -> &str {
         self.body.message.as_ref()
     }
@@ -191,7 +251,13 @@ impl Error {
 
 impl From<anyhow::Error> for Error {
     fn from(value: anyhow::Error) -> Self {
-        Error::internal(value.to_string())
+        Error::internal(value)
+    }
+}
+
+impl From<sqlx::Error> for Error {
+    fn from(value: sqlx::Error) -> Self {
+        Error::internal(value)
     }
 }
 

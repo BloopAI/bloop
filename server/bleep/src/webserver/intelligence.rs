@@ -4,7 +4,9 @@ use super::prelude::*;
 use crate::{
     indexes::{reader::ContentDocument, Indexes},
     intelligence::{
-        code_navigation::{CodeNavigationContext, FileSymbols, Occurrence, OccurrenceKind, Token},
+        code_navigation::{
+            self, CodeNavigationContext, FileSymbols, Occurrence, OccurrenceKind, Token,
+        },
         Language, NodeKind, TSLanguage,
     },
     repo::RepoRef,
@@ -86,9 +88,8 @@ pub(super) async fn handle(
         .ok_or(Error::internal("invalid language"))?;
 
     let ctx = CodeNavigationContext {
-        repo_ref: repo_ref.clone(),
         token,
-        all_docs,
+        all_docs: &all_docs,
         source_document_idx,
     };
 
@@ -108,6 +109,230 @@ pub(super) async fn handle(
     } else {
         Ok(json(TokenInfoResponse { data }))
     }
+}
+
+/// The request made to the `related-files` endpoint.
+#[derive(Debug, Deserialize)]
+pub(super) struct RelatedFilesRequest {
+    /// The repo_ref of the file of interest
+    repo_ref: RepoRef,
+
+    /// The path to the file of interest, relative to the repo root
+    relative_path: String,
+
+    /// Branch name to use for the lookup,
+    branch: Option<String>,
+}
+
+/// The response from the `related-files` endpoint.
+#[derive(Serialize, Debug)]
+pub struct RelatedFilesResponse {
+    /// Files importing `target`, across this repo
+    files_importing: Vec<String>,
+
+    /// Files imported in `target`
+    files_imported: Vec<String>,
+}
+
+impl super::ApiResponse for RelatedFilesResponse {}
+
+pub(super) async fn related_files(
+    Query(payload): Query<RelatedFilesRequest>,
+    Extension(indexes): Extension<Arc<Indexes>>,
+) -> Result<impl IntoResponse> {
+    let source_document = indexes
+        .file
+        .by_path(
+            &payload.repo_ref,
+            &payload.relative_path,
+            payload.branch.as_deref(),
+        )
+        .await
+        .map_err(Error::user)?
+        .ok_or_else(|| Error::user("path not found").with_status(StatusCode::NOT_FOUND))?;
+    let lang = source_document.lang.as_deref();
+    let all_docs = {
+        let associated_langs = match lang.map(TSLanguage::from_id) {
+            Some(Language::Supported(config)) => config.language_ids,
+            _ => &[],
+        };
+        indexes
+            .file
+            .by_repo(
+                &payload.repo_ref,
+                associated_langs.iter(),
+                payload.branch.as_deref(),
+            )
+            .await
+    };
+
+    let source_document_idx = all_docs
+        .iter()
+        .position(|doc| doc.relative_path == payload.relative_path)
+        .ok_or(Error::internal("invalid language"))?;
+
+    let (h1, h2) = std::thread::scope(|s| {
+        let h1 = s.spawn(|| {
+            CodeNavigationContext::files_imported(&all_docs, source_document_idx)
+                .into_iter()
+                .map(|doc| doc.relative_path.clone())
+                .collect()
+        });
+        let h2 = s.spawn(|| {
+            CodeNavigationContext::files_importing(&all_docs, source_document_idx)
+                .into_iter()
+                .map(|doc| doc.relative_path.clone())
+                .collect()
+        });
+        (h1.join(), h2.join())
+    });
+
+    let files_imported = h1.map_err(|_| Error::internal("failed to find imported files"))?;
+    let files_importing = h2.map_err(|_| Error::internal("failed to find importing files"))?;
+
+    return Ok(json(RelatedFilesResponse {
+        files_imported,
+        files_importing,
+    }));
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+pub(super) enum RelatedFileKind {
+    Imported,
+    Importing,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct WithRangesRequest {
+    /// The repo_ref of the file of interest
+    repo_ref: RepoRef,
+
+    /// Branch name to use for the lookup,
+    branch: Option<String>,
+
+    /// The path to the source-file
+    source_file_path: String,
+
+    /// The path to the related-file
+    related_file_path: String,
+
+    /// Whether this is an importing file or an imported file
+    kind: RelatedFileKind,
+}
+
+#[derive(Debug, Serialize, Default)]
+pub(super) struct WithRangesResponse {
+    ranges: Vec<TextRange>,
+}
+
+impl WithRangesResponse {
+    fn empty() -> Self {
+        Self::default()
+    }
+}
+
+impl super::ApiResponse for WithRangesResponse {}
+
+pub(super) async fn related_file_with_ranges(
+    Query(payload): Query<WithRangesRequest>,
+    Extension(indexes): Extension<Arc<Indexes>>,
+) -> Result<impl IntoResponse> {
+    let source_document = indexes
+        .file
+        .by_path(
+            &payload.repo_ref,
+            &payload.source_file_path,
+            payload.branch.as_deref(),
+        )
+        .await
+        .map_err(Error::user)?
+        .ok_or_else(|| Error::user("path not found").with_status(StatusCode::NOT_FOUND))?;
+
+    let related_file_document = indexes
+        .file
+        .by_path(
+            &payload.repo_ref,
+            &payload.related_file_path,
+            payload.branch.as_deref(),
+        )
+        .await
+        .map_err(Error::user)?
+        .ok_or_else(|| Error::user("path not found").with_status(StatusCode::NOT_FOUND))?;
+
+    match payload.kind {
+        RelatedFileKind::Imported => {
+            return Ok(json(WithRangesResponse {
+                ranges: code_navigation::imported_ranges(&source_document, &related_file_document)
+                    .into_iter()
+                    .collect(),
+            }))
+        }
+        RelatedFileKind::Importing => return Ok(json(WithRangesResponse::empty())),
+    }
+}
+
+/// The request made to the `token-value` endpoint.
+#[derive(Debug, Deserialize)]
+pub(super) struct TokenValueRequest {
+    /// The repo_ref of the file of interest
+    repo_ref: RepoRef,
+
+    /// The path to the file of interest, relative to the repo root
+    relative_path: String,
+
+    /// Branch name to use for the lookup,
+    branch: Option<String>,
+
+    /// The byte range to look for
+    start: usize,
+    end: usize,
+}
+
+/// The response from the `related-files` endpoint.
+#[derive(Serialize, Debug)]
+pub struct TokenValueResponse {
+    range: TextRange,
+    content: String,
+}
+
+impl super::ApiResponse for TokenValueResponse {}
+
+pub(super) async fn token_value(
+    Query(payload): Query<TokenValueRequest>,
+    Extension(indexes): Extension<Arc<Indexes>>,
+) -> Result<impl IntoResponse> {
+    let source_document = indexes
+        .file
+        .by_path(
+            &payload.repo_ref,
+            &payload.relative_path,
+            payload.branch.as_deref(),
+        )
+        .await
+        .map_err(Error::user)?
+        .ok_or_else(|| Error::user("path not found").with_status(StatusCode::NOT_FOUND))?;
+
+    let sg = source_document
+        .symbol_locations
+        .scope_graph()
+        .ok_or_else(|| Error::internal("path not supported for /token-value"))?;
+
+    let node_idx = sg
+        .node_by_range(payload.start, payload.end)
+        .ok_or_else(|| Error::internal("token not supported for /token-value"))?;
+
+    let range = sg.graph[sg.value_of_definition(node_idx).unwrap_or(node_idx)].range();
+
+    // extend the range to cover the entire start line and the entire end line
+    let new_start = range.start.byte - range.start.column;
+    let new_end = source_document
+        .line_end_indices
+        .get(range.end.line)
+        .map(|l| *l as usize)
+        .unwrap_or(range.end.byte);
+    let content = source_document.content[new_start..new_end].to_string();
+
+    Ok(json(TokenValueResponse { range, content }))
 }
 
 async fn search_nav(

@@ -15,6 +15,9 @@ type Props = {
   repo: string;
   onClick?: (path: string, fileType?: FileTreeFileType) => void;
   shouldGoToFile?: boolean;
+  nonInteractive?: boolean;
+  allowOverflow?: boolean;
+  scrollContainerRef?: React.MutableRefObject<HTMLDivElement | null>;
 } & Omit<BProps, 'pathParts'>;
 
 const BreadcrumbsPath = ({
@@ -22,6 +25,8 @@ const BreadcrumbsPath = ({
   onClick,
   repo,
   shouldGoToFile,
+  allowOverflow,
+  scrollContainerRef,
   ...rest
 }: Props) => {
   const { navigateRepoPath, navigateFullResult } = useAppNavigation();
@@ -55,8 +60,18 @@ const BreadcrumbsPath = ({
   }, [path]);
 
   return (
-    <div className="overflow-hidden w-full">
-      <Breadcrumbs {...rest} pathParts={pathParts} path={path} />
+    <div
+      className={`${
+        allowOverflow ? 'overflow-auto' : 'overflow-hidden'
+      } w-full`}
+      ref={scrollContainerRef}
+    >
+      <Breadcrumbs
+        {...rest}
+        pathParts={pathParts}
+        path={path}
+        allowOverflow={allowOverflow}
+      />
     </div>
   );
 };

@@ -35,6 +35,8 @@ type Props = {
   path: string;
   separator?: string;
   limitSectionWidth?: boolean;
+  allowOverflow?: boolean;
+  nonInteractive?: boolean;
   type?: 'link' | 'button';
   activeStyle?: 'primary' | 'secondary';
 };
@@ -44,14 +46,16 @@ const Breadcrumbs = ({
   separator = '/',
   type = 'link',
   limitSectionWidth,
+  nonInteractive,
   path,
+  allowOverflow,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [formattedPathParts, setFormattedPathParts] =
     useState<(PathParts | PathParts[])[]>(pathParts);
 
   useEffect(() => {
-    if (!containerRef.current) {
+    if (!containerRef.current || allowOverflow) {
       return;
     }
     const parentWidth = containerRef.current.parentElement!.clientWidth;
@@ -86,7 +90,7 @@ const Breadcrumbs = ({
       }
     }
     setFormattedPathParts(partsToShow);
-  }, [pathParts]);
+  }, [pathParts, allowOverflow]);
 
   const onCopy = useCallback(
     (e: ClipboardEvent<HTMLDivElement>) => {
@@ -150,6 +154,7 @@ const Breadcrumbs = ({
                 isLast={i == formattedPathParts.length - 1}
                 type={type}
                 limitSectionWidth={limitSectionWidth}
+                nonInteractive={nonInteractive}
               />
             </span>
           )}
