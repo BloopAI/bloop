@@ -26,7 +26,7 @@
       ],
       "nullable": [
         false,
-        false,
+        true,
         false,
         false
       ],
@@ -53,6 +53,30 @@
       }
     },
     "query": "SELECT user_id FROM templates WHERE id = ? AND (user_id = ? OR user_id IS NULL)"
+  },
+  "081aa337d2c658e09c21c3f7ec2f5164296c66e78fad34d2e65b47a0de508aeb": {
+    "describe": {
+      "columns": [
+        {
+          "name": "context",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "messages",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT context, messages FROM studio_snapshots WHERE id = ?"
   },
   "0c72c51f4a5b726f6f524fcb269f074550b1a3a25ed050fb2701f8bec02678d7": {
     "describe": {
@@ -462,6 +486,24 @@
     },
     "query": "DELETE FROM templates WHERE id = ? AND user_id = ? RETURNING id"
   },
+  "77cb1637b38b9a0988d8e07c08d8086c9047b50a7c2a664171a851271b877f9b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT id FROM studios WHERE id = ? AND name IS NULL"
+  },
   "7ca39c2d8aebd7ebe1dbda00b4fb5fce6f4ea17894ce64c3d9786585c61739f0": {
     "describe": {
       "columns": [
@@ -587,7 +629,7 @@
       ],
       "nullable": [
         false,
-        false,
+        true,
         false,
         false,
         false

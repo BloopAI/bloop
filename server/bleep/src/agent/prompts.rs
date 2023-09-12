@@ -322,3 +322,23 @@ pub fn final_explanation_prompt(context: &str, query: &str, query_history: &str)
         assert_eq!(try_parse_hypothetical_documents(document), expected);
     }
 }
+
+pub fn studio_name_prompt(context_json: &str, messages_json: &str) -> String {
+    format!(
+        "Your job is to generate a name for a conversation about software source code, given \
+        source code context and conversation history. Follow these rules strictly:\n\
+        - You MUST only return the new title, and NO additional text\n\
+        - Be brief, only return a few words, 3-5 is ideal\n\
+        - Do NOT respond with quotation marks, just the title itself\n\
+        \n\
+        Here is the source code context:\n\
+        =====\n\
+        {context_json}\n\
+        =====\n\
+        \n\
+        And here is the serialized conversation:\n\
+        =====\n\
+        {messages_json}\n\
+        ====="
+    )
+}

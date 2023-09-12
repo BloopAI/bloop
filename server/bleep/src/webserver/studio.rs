@@ -16,8 +16,7 @@ use chrono::NaiveDateTime;
 use futures::{pin_mut, stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use reqwest::StatusCode;
-use secrecy::ExposeSecret;
-use tracing::error;
+use tracing::{debug, error};
 use uuid::Uuid;
 
 use super::{middleware::User, Error};
@@ -37,6 +36,10 @@ fn no_user_id() -> Error {
 
 fn studio_not_found() -> Error {
     Error::not_found("unknown code studio ID")
+}
+
+fn default_studio_name() -> String {
+    "New Studio".to_owned()
 }
 
 async fn latest_snapshot_id<'a, E>(studio_id: i64, exec: E, user_id: &str) -> webserver::Result<i64>
@@ -61,22 +64,24 @@ where
 
 #[derive(serde::Deserialize)]
 pub struct Create {
-    name: String,
+    name: Option<String>,
 }
 
 pub async fn create(
     app: Extension<Application>,
     user: Extension<User>,
-    params: Json<Create>,
+    Json(params): Json<Create>,
 ) -> webserver::Result<String> {
     let mut transaction = app.sql.begin().await?;
 
     let user_id = user.login().ok_or_else(no_user_id)?.to_string();
 
+    let name = params.name.unwrap_or_else(|| "New Studio".to_owned());
+
     let studio_id: i64 = sqlx::query! {
         "INSERT INTO studios (user_id, name) VALUES (?, ?) RETURNING id",
         user_id,
-        params.name,
+        name,
     }
     .fetch_one(&mut transaction)
     .await?
@@ -179,7 +184,7 @@ pub async fn get(
 
     Ok(Json(Studio {
         modified_at: row.modified_at,
-        name: row.name,
+        name: row.name.unwrap_or_else(default_studio_name),
         token_counts: token_counts((*app).clone(), &messages, &context).await?,
         context,
         messages,
@@ -371,7 +376,7 @@ pub async fn list(
 
         let list_item = ListItem {
             id: studio.id,
-            name: studio.name,
+            name: studio.name.unwrap_or_else(default_studio_name),
             modified_at: studio.modified_at,
             repos: repos.into_iter().collect::<Vec<_>>(),
             most_common_ext,
@@ -526,23 +531,19 @@ fn count_tokens_in_file(body: &str, ranges: &[Range<usize>]) -> usize {
 
 pub async fn generate(
     app: Extension<Application>,
-    Extension(user): Extension<User>,
+    user: Extension<User>,
     Path(studio_id): Path<i64>,
 ) -> webserver::Result<Sse<Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>> {
     let user_id = user.login().ok_or_else(no_user_id)?.to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
 
-    let answer_api_token = app
-        .answer_api_token()
+    let llm_gateway = app
+        .llm_gateway_client()
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
-        .map(|s| s.expose_secret().clone());
-
-    let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
-        .quota_gated(true)
+        .quota_gated(!app.env.is_cloud_instance())
         .model(LLM_GATEWAY_MODEL)
-        .temperature(0.0)
-        .bearer(answer_api_token);
+        .temperature(0.0);
 
     let (messages_json, context_json) = sqlx::query!(
         "SELECT messages, context FROM studio_snapshots WHERE id = ?",
@@ -604,12 +605,14 @@ pub async fn generate(
         }
         .execute(&*app.sql)
         .await?;
+
+        populate_studio_name(app.clone(), user.clone(), studio_id).await?;
     };
 
     let mut errored = false;
-    let stream = stream.take_while(move |e| {
+    let stream = stream.take_while(move |r| {
         let ok = !errored;
-        if let Err(e) = &e {
+        if let Err(e) = &r {
             error!(?e, "stream error");
             errored = true;
         }
@@ -618,7 +621,7 @@ pub async fn generate(
 
     let event_stream = stream.map(|result| {
         sse::Event::default()
-            .json_data(result.map_err(|e: anyhow::Error| e.to_string()))
+            .json_data(result.map_err(|e: Error| e.to_string()))
             .map_err(anyhow::Error::new)
     });
     let done_stream = stream::once(async { Ok(sse::Event::default().data("[DONE]")) });
@@ -678,6 +681,62 @@ async fn generate_llm_context(app: Application, context: Vec<ContextFile>) -> Re
     }
 
     Ok(s)
+}
+
+/// If a given studio's name is `NULL`, try to auto-generate a name.
+///
+/// If the requested studio already has a name, this is a no-op.
+async fn populate_studio_name(
+    app: Extension<Application>,
+    user: Extension<User>,
+    studio_id: i64,
+) -> webserver::Result<()> {
+    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+
+    let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
+    let needs_name = sqlx::query! {
+        "SELECT id FROM studios WHERE id = ? AND name IS NULL",
+        studio_id,
+    }
+    .fetch_optional(&*app.sql)
+    .await?
+    .is_some();
+
+    if !needs_name {
+        return Ok(());
+    }
+
+    let (context_json, messages_json) = sqlx::query! {
+        "SELECT context, messages FROM studio_snapshots WHERE id = ?",
+        snapshot_id,
+    }
+    .fetch_one(&*app.sql)
+    .await
+    .map(|r| (r.context, r.messages))?;
+
+    let llm_gateway = app
+        .llm_gateway_client()
+        .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
+        .model(LLM_GATEWAY_MODEL)
+        .temperature(0.0);
+
+    let messages = &[llm_gateway::api::Message::system(
+        &prompts::studio_name_prompt(&context_json, &messages_json),
+    )];
+
+    let name = llm_gateway
+        .chat(messages, None)
+        .await?
+        .try_collect::<String>()
+        .await?;
+
+    debug!("populate studio `{studio_id}` with LLM-generated name: `{name}`");
+
+    sqlx::query!("UPDATE studios SET name = ? WHERE id = ?", name, studio_id)
+        .execute(&*app.sql)
+        .await?;
+
+    Ok(())
 }
 
 #[derive(serde::Deserialize)]
@@ -803,16 +862,11 @@ async fn extract_relevant_chunks(
 ) -> webserver::Result<Vec<ContextFile>> {
     let context_json = serde_json::to_string(&context).unwrap();
 
-    let answer_api_token = app
-        .answer_api_token()
+    let llm_gateway = app
+        .llm_gateway_client()
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
-        .map(|s| s.expose_secret().clone());
-
-    // Create an instance of the LLM gateway client
-    let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
         .model(LLM_GATEWAY_MODEL)
-        .temperature(0.0)
-        .bearer(answer_api_token);
+        .temperature(0.0);
 
     // Get last message
     let mut last_message = String::new();
