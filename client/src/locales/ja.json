@@ -183,7 +183,7 @@
 	"Reading ": "読む",
 	"avatar": "アバター",
 	"Submit": "送信",
-    "Save": "保存",
+	"Save": "保存",
 	"Generating response...": "回答を生成中...",
 	"Responding...": "回答中...",
 	"Reading": "読む",
@@ -352,5 +352,9 @@
 	"Upgrade": "アップグレード",
 	"Your quota resets every 24 hours, upgrade for unlimited uses": "あなたのクオータは24時間ごとにリセットされます、無制限のリクエストにアップグレードしてください",
 	"Manage subscription": "サブスクリプションを管理します",
-	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "今日は無料の使用法がなくなっています。クォータがリセットまたはアップグレードされるのを待ってください。"
+	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "今日は無料の使用法がなくなっています。クォータがリセットまたはアップグレードされるのを待ってください。",
+	"Faster answers may impact the quality of results": "より速い回答は、結果の質に影響を与える可能性があります",
+	"Normal": "普通",
+	"Fast": "速い",
+	"Answer speed": "回答速度"
 }

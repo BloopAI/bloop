@@ -344,7 +344,6 @@
 	"<0>#</0> of #_one": "<0>{{count}}</0> of {{total}}",
 	"<0>#</0> of #_other": "<0>{{count}}</0> of {{total}}",
 	"Templates": "Templates",
-	"Loading...": "Loading...",
 	"No related files found": "No related files found",
 	"Unavailable": "Unavailable",
 	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.",
@@ -355,5 +354,9 @@
 	"Your quota resets every 24 hours, upgrade for unlimited uses": "Your quota resets every 24 hours, upgrade for unlimited uses",
 	"Manage subscription": "Manage subscription",
 	"Usage resets in": "Usage resets in",
-	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage"
+	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage",
+	"Fast": "Fast",
+	"Answer speed": "Answer speed",
+	"Faster answers may impact the quality of results": "Faster answers may impact the quality of results",
+	"Normal": "Normal"
 }

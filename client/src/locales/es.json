@@ -345,7 +345,6 @@
 	"<0>#</0> of #_one": "<0>{{count}}</0> de {{total}}",
 	"<0>#</0> of #_other": "<0>{{count}}</0> de {{total}}",
 	"Templates": "Plantillas",
-	"Loading...": "Cargando...",
 	"No related files found": "No se encontraron archivos relacionados",
 	"Unavailable": "Indisponible",
 	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "Límite de token excedido. Reduzca la cantidad de archivos o mensajes de contexto para habilitar la capacidad de generar.",
@@ -355,5 +354,9 @@
 	"Upgrade": "Actualizar",
 	"Your quota resets every 24 hours, upgrade for unlimited uses": "Tu cuota se restablece cada 24 horas, actualiza para solicitudes ilimitadas",
 	"Manage subscription": "Administrar suscripción",
-	"Usage resets in": "Restablecimiento de uso en"
+	"Usage resets in": "Restablecimiento de uso en",
+	"Faster answers may impact the quality of results": "Las respuestas más rápidas pueden afectar la calidad de los resultados",
+	"Normal": "Normal",
+	"Answer speed": "Velocidad de respuesta",
+	"Fast": "Rápida"
 }
