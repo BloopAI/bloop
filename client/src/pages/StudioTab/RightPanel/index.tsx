@@ -15,6 +15,7 @@ type Props = {
   refetchCodeStudio: () => Promise<void>;
   handleRestore: () => void;
   isPreviewing: boolean;
+  isActiveTab: boolean;
 };
 
 const RightPanel = ({
@@ -26,6 +27,7 @@ const RightPanel = ({
   setIsHistoryOpen,
   isPreviewing,
   handleRestore,
+  isActiveTab,
 }: Props) => {
   useTranslation();
   return (
@@ -59,6 +61,7 @@ const RightPanel = ({
         setIsHistoryOpen={setIsHistoryOpen}
         isPreviewing={isPreviewing}
         handleRestore={handleRestore}
+        isActiveTab={isActiveTab}
       />
     </>
   );
